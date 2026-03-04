@@ -1,0 +1,45 @@
+schema: augentic
+
+context: |
+  Platform: Rust WASM (wasm32-wasip2) on Omnia SDK
+  Architecture: Handler<P> pattern with provider trait bounds
+  Provider capabilities: Config, HttpRequest, Identity, Publish,
+    StateStore, TableStore, Broadcast
+  Constraints: No std::env/fs/net, no reqwest/tokio runtime,
+    no unwrap/expect in production, all I/O through providers
+  Crate layout: crates/<name>/src/{lib,handler,types}.rs + tests/
+  Guest: wasm guest at $PROJECT_DIR/src/lib.rs with Axum 0.8 routing
+  IR format: Markdown-based, see references/ir-spec.md
+  Change categories: additive, subtractive, modifying, structural
+
+rules:
+  current-state:
+    - Extract handler inventory with exact trait bounds
+    - Extract domain types with serde attributes
+    - Extract provider capabilities actually called
+    - Extract config keys from Config::get calls
+    - Use code-analysis IR format sections
+    - Include test inventory (name, handler covered, assertions)
+  specs:
+    - One spec file per capability (handler or feature)
+    - Use Given/When/Then for BDD scenarios
+    - Mark additions with + prefix, removals with - prefix
+    - Each requirement must be traceable to JIRA story or design doc
+    - Include provider capability requirements per capability
+  design:
+    - Document domain model with entity relationships
+    - Document API contracts with request/response shapes
+    - Document provider capability changes
+    - Flag structural changes (type renames, handler splits/merges)
+    - Use mermaid diagrams for entity relationships and flows
+  manifest:
+    - Classify every change as additive/subtractive/modifying/structural
+    - Assess overall complexity (low/medium/high/recommend-regeneration)
+    - Predict affected files per change item
+    - Flag cross-target dependencies
+    - Order changes structual → subtractive → modifying → additive
+  pipeline:
+    - One target per affected crate
+    - Include repo URL, project dir, crate name
+    - Reference spec files per target
+    - Declare cross-target dependencies with compatibility rules

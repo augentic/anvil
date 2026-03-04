@@ -1,0 +1,25 @@
+name: augentic
+artifacts:
+  - id: current-state
+    generates: current-state.md
+    requires: []
+
+  - id: proposal
+    generates: proposal.md
+    requires: [current-state]
+
+  - id: specs
+    generates: specs/**/*.md
+    requires: [proposal]
+
+  - id: design
+    generates: design.md
+    requires: [proposal]
+
+  - id: manifest
+    generates: manifest.md
+    requires: [specs, design, current-state]
+
+  - id: pipeline-config
+    generates: pipeline.toml
+    requires: [manifest]
