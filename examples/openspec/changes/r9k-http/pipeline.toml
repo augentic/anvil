@@ -1,0 +1,21 @@
+change = "r9k-http"
+lifecycle_ref = "augentic/lifecycle@main"
+
+[[targets]]
+id = "r9k-connector"
+specs = ["r9k-xml-ingest"]
+route = "crate-updater"
+
+[[targets]]
+id = "r9k-adapter"
+specs = ["r9k-xml-to-smartrak-gtfs"]
+route = "crate-updater"
+
+[[dependencies]]
+from = "r9k-connector"
+to = "r9k-adapter"
+type = "event-schema"
+contract = "domains/train/shared-types.md#R9kEvent"
+
+concurrency = 1
+stop_on_dependency_failure = true

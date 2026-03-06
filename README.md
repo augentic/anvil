@@ -1,92 +1,170 @@
-# Augentic Delivery Lifecycle
+# OPSX Lifecycle
 
-A custom [OpenSpec](https://github.com/Fission-AI/OpenSpec/) schema that defines how Augentic plans, specifies, and delivers changes to code built using Augentic plugins.
+`opsx` is a Rust CLI for centralized planning and distributed execution of OpenSpec-driven changes across many repositories.
 
-## What This Is
+It combines:
 
-OpenSpec provides spec-driven development for AI coding assistants — you agree on *what* to build before any code gets written. This repo contains Augentic's custom schema (`augentic`), tailored for the constraints of `wasm32-wasip2` targets, the `Handler<P>` pattern, and provider-based I/O.
+- a central plan in this repo (`registry.toml`, `openspec/changes/<change>/pipeline.toml`, `status.toml`)
+- a pluggable spec engine adapter (`SpecEngine`, currently `OpenSpecEngine`)
+- automated fan-out, apply, and PR lifecycle synchronization
 
-Where OpenSpec's built-in `spec-driven` schema is general-purpose, this schema adds:
+## How It Works
 
-- **Current-state analysis** as a first-class artifact — the AI reads existing crate source before proposing anything
-- **Change classification** (additive / subtractive / modifying / structural) with ordered execution
-- **Pipeline configuration** that maps changes to crates and declares cross-target dependencies
-- **Omnia-aware context and rules** injected into every artifact via `config.yaml`
+```mermaid
+flowchart LR
+  subgraph centralRepo [CentralRepo]
+    registryToml[registry.toml]
+    changePlan[openspecChanges]
+    statusToml[status.toml]
+  end
 
-## Artifact Pipeline
+  subgraph opsxCli [opsxCLI]
+    proposeCmd[opsxPropose]
+    fanOutCmd[opsxFanOut]
+    applyCmd[opsxApply]
+    syncCmd[opsxSync]
+    archiveCmd[opsxArchive]
+  end
 
-The schema defines six artifacts with explicit dependencies:
+  subgraph targetRepos [TargetRepos]
+    targetChange[openspecChangesChange]
+    draftPr[DraftPR]
+    implementation[Implementation]
+  end
 
-```
-current-state ──→ proposal ──→ specs ──┐
-                     │                  │
-                     └──→ design ───────┤
-                                        ▼
-                                    manifest ──→ pipeline-config
-```
+  registryToml --> proposeCmd
+  changePlan --> fanOutCmd
+  statusToml --> applyCmd
+  statusToml --> syncCmd
+  statusToml --> archiveCmd
 
-
-| Artifact            | Purpose                                                                                   |
-| ------------------- | ----------------------------------------------------------------------------------------- |
-| **current-state**   | Inventory of handlers, types, provider usage, tests, and dependencies in affected crates  |
-| **proposal**        | Why this change is needed, what's in scope, and what risks exist                          |
-| **specs**           | BDD specifications per capability with `+`/`-` deltas against existing specs              |
-| **design**          | Domain model, API contracts, provider changes, structural changes — with mermaid diagrams |
-| **manifest**        | Classified, ordered change plan with complexity assessment and affected file predictions  |
-| **pipeline-config** | TOML execution config mapping targets to crates, specs, and routes                        |
-
-
-## Repo Structure
-
-```
-├── config.yaml              # Project config: schema default, platform context, per-artifact rules
-├── schemas/
-│   └── schema.yaml          # Artifact DAG and dependency graph
-└── templates/
-    ├── current-state.md     # Template: crate inventory extraction
-    ├── proposal.md          # Template: change proposal
-    ├── specs.md             # Template: BDD specifications
-    ├── design.md            # Template: technical design
-    ├── manifest.md          # Template: classified change plan
-    └── pipeline.md          # Template: pipeline TOML generation
+  proposeCmd --> changePlan
+  fanOutCmd --> targetChange
+  fanOutCmd --> draftPr
+  applyCmd --> implementation
+  syncCmd --> statusToml
+  archiveCmd --> changePlan
 ```
 
-### `config.yaml`
+## Workspace Layout
 
-Sets `augentic` as the default schema and injects platform context (Rust WASM, Omnia SDK, Handler pattern, provider capabilities) into every artifact. Per-artifact rules enforce conventions — for example, specs must use Given/When/Then format and current-state must extract handler trait bounds.
+```text
+.
+├── registry.toml
+├── openspec/
+│   ├── config.yaml
+│   ├── schemas/
+│   ├── templates/
+│   └── changes/
+│       └── <change>/
+│           ├── current-state.md
+│           ├── proposal.md
+│           ├── specs/
+│           ├── design.md
+│           ├── manifest.md
+│           ├── pipeline.toml
+│           └── status.toml
+└── src/
+```
 
-See the OpenSpec [customization docs](https://github.com/Fission-AI/OpenSpec/blob/main/docs/customization.md) for how config, context, and rules are resolved and injected.
+## Command Reference
 
-### `schemas/schema.yaml`
+### `opsx propose <change> --description "<text>"`
 
-Defines the six artifacts and their dependency graph. OpenSpec enforces this ordering — you can't create a manifest until specs, design, and current-state all exist.
+Generate central planning artifacts for a change:
 
-### `templates/`
+- `current-state.md`
+- `proposal.md`
+- `specs/*/spec.md`
+- `design.md`
+- `manifest.md`
+- `pipeline.toml`
 
-Markdown templates injected into the AI prompt when generating each artifact. Each template contains instructions specific to Augentic's codebase patterns (handler inventory format, serde attribute tracking, provider capability extraction, change classification decision trees).
+The command invokes the configured agent backend in the workspace root and validates generated `pipeline.toml` against `registry.toml`.
 
-## Usage
+### `opsx fan-out <change> [--dry-run]`
 
-With [OpenSpec installed](https://github.com/Fission-AI/OpenSpec/#quick-start), point it at a project that contains this schema:
+Distribute a central change to all affected repositories:
+
+- clone target repos
+- create branch `opsx/<change>`
+- install schema/templates/config
+- scaffold target change
+- open draft PR per repo group
+- set target states to `distributed`
+
+### `opsx apply <change> [--target <id>]`
+
+Execute implementation in dependency order:
+
+- reads `pipeline.toml`
+- applies topological ordering
+- invokes agent command (`/opsx:apply <change>`) in each target repo
+- commits and pushes on success
+- updates target state to `implemented` or `failed`
+
+### `opsx sync <change> [--mark-ready]`
+
+Synchronize GitHub PR metadata into `status.toml`:
+
+- `OPEN` + non-draft PR -> `reviewing` (from `implemented`)
+- `MERGED` -> `merged`
+- `CLOSED` (not merged) -> `failed`
+
+`--mark-ready` promotes draft PRs to ready-for-review for implemented targets.
+
+### `opsx status <change>`
+
+Print status table across all targets and progress summary.
+
+### `opsx archive <change>`
+
+Archive a fully merged change:
+
+- invokes archive command in target repos
+- updates targets to `archived`
+- moves central change folder to `openspec/changes/archive/<date>-<change>`
+
+### Registry Commands
+
+- `opsx registry list`
+- `opsx registry query --domain <domain>`
+- `opsx registry query --cap <capability>`
+
+## Agent Backend
+
+`opsx` supports configurable backends through `OPSX_AGENT_BACKEND`:
+
+- `claude` (default): execute via `claude --message ... --yes`
+- `dry-run`: print/log command and return success without executing
+
+## End-to-End Workflow
 
 ```bash
-# Propose a change (current-state is generated first)
-/opsx:propose "add webhook delivery handler"
+# 1) Plan in central repo
+opsx propose r9k-http --description "Migrate XML ingestion to HTTP/JSON and update downstream adapter"
 
-# Generate specs and design from the approved proposal
-/opsx:continue
+# 2) Human review of planning artifacts
 
-# Generate manifest and pipeline config
-/opsx:continue
+# 3) Distribute to impacted repos
+opsx fan-out r9k-http
 
-# Implement
-/opsx:apply
+# 4) Implement in dependency order
+opsx apply r9k-http
+
+# 5) Sync PR state (optional mark-ready)
+opsx sync r9k-http --mark-ready
+
+# 6) Archive after all PRs are merged
+opsx archive r9k-http
 ```
 
-The `config.yaml` context ensures the AI knows about WASM constraints, the Handler pattern, and provider capabilities throughout the entire workflow.
+## Development
 
-## Customization
+```bash
+cargo test
+cargo clippy --all-features
+cargo fmt --all
+```
 
-To adapt this schema for a different Augentic project, edit `config.yaml` to update the platform context. To change the artifact workflow itself, edit `schemas/schema.yaml` — for example, adding a `review` artifact between `design` and `manifest`.
-
-See the OpenSpec [customization guide](https://github.com/Fission-AI/OpenSpec/blob/main/docs/customization.md) for the full reference on schemas, templates, and config resolution.
+For long-form design context, see `plan.md`.
