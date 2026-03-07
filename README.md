@@ -1,170 +1,216 @@
-# OPSX Lifecycle
+# lc
 
-`opsx` is a Rust CLI for centralized planning and distributed execution of OpenSpec-driven changes across many repositories.
+Multi-repo orchestration CLI for spec-driven development. Centralised planning, distributed execution.
 
-It combines:
-
-- a central plan in this repo (`registry.toml`, `openspec/changes/<change>/pipeline.toml`, `status.toml`)
-- a pluggable spec engine adapter (`SpecEngine`, currently `OpenSpecEngine`)
-- automated fan-out, apply, and PR lifecycle synchronization
-
-## How It Works
-
-```mermaid
-flowchart LR
-  subgraph centralRepo [CentralRepo]
-    registryToml[registry.toml]
-    changePlan[openspecChanges]
-    statusToml[status.toml]
-  end
-
-  subgraph opsxCli [opsxCLI]
-    proposeCmd[opsxPropose]
-    fanOutCmd[opsxFanOut]
-    applyCmd[opsxApply]
-    syncCmd[opsxSync]
-    archiveCmd[opsxArchive]
-  end
-
-  subgraph targetRepos [TargetRepos]
-    targetChange[openspecChangesChange]
-    draftPr[DraftPR]
-    implementation[Implementation]
-  end
-
-  registryToml --> proposeCmd
-  changePlan --> fanOutCmd
-  statusToml --> applyCmd
-  statusToml --> syncCmd
-  statusToml --> archiveCmd
-
-  proposeCmd --> changePlan
-  fanOutCmd --> targetChange
-  fanOutCmd --> draftPr
-  applyCmd --> implementation
-  syncCmd --> statusToml
-  archiveCmd --> changePlan
-```
-
-## Workspace Layout
-
-```text
-.
-├── registry.toml
-├── openspec/
-│   ├── config.yaml
-│   ├── schemas/
-│   ├── templates/
-│   └── changes/
-│       └── <change>/
-│           ├── current-state.md
-│           ├── proposal.md
-│           ├── specs/
-│           ├── design.md
-│           ├── manifest.md
-│           ├── pipeline.toml
-│           └── status.toml
-└── src/
-```
-
-## Command Reference
-
-### `opsx propose <change> --description "<text>"`
-
-Generate central planning artifacts for a change:
-
-- `current-state.md`
-- `proposal.md`
-- `specs/*/spec.md`
-- `design.md`
-- `manifest.md`
-- `pipeline.toml`
-
-The command invokes the configured agent backend in the workspace root and validates generated `pipeline.toml` against `registry.toml`.
-
-### `opsx fan-out <change> [--dry-run]`
-
-Distribute a central change to all affected repositories:
-
-- clone target repos
-- create branch `opsx/<change>`
-- install schema/templates/config
-- scaffold target change
-- open draft PR per repo group
-- set target states to `distributed`
-
-### `opsx apply <change> [--target <id>]`
-
-Execute implementation in dependency order:
-
-- reads `pipeline.toml`
-- applies topological ordering
-- invokes agent command (`/opsx:apply <change>`) in each target repo
-- commits and pushes on success
-- updates target state to `implemented` or `failed`
-
-### `opsx sync <change> [--mark-ready]`
-
-Synchronize GitHub PR metadata into `status.toml`:
-
-- `OPEN` + non-draft PR -> `reviewing` (from `implemented`)
-- `MERGED` -> `merged`
-- `CLOSED` (not merged) -> `failed`
-
-`--mark-ready` promotes draft PRs to ready-for-review for implemented targets.
-
-### `opsx status <change>`
-
-Print status table across all targets and progress summary.
-
-### `opsx archive <change>`
-
-Archive a fully merged change:
-
-- invokes archive command in target repos
-- updates targets to `archived`
-- moves central change folder to `openspec/changes/archive/<date>-<change>`
-
-### Registry Commands
-
-- `opsx registry list`
-- `opsx registry query --domain <domain>`
-- `opsx registry query --cap <capability>`
-
-## Agent Backend
-
-`opsx` supports configurable backends through `OPSX_AGENT_BACKEND`:
-
-- `claude` (default): execute via `claude --message ... --yes`
-- `dry-run`: print/log command and return success without executing
-
-## End-to-End Workflow
+## Quick Start
 
 ```bash
-# 1) Plan in central repo
-opsx propose r9k-http --description "Migrate XML ingestion to HTTP/JSON and update downstream adapter"
-
-# 2) Human review of planning artifacts
-
-# 3) Distribute to impacted repos
-opsx fan-out r9k-http
-
-# 4) Implement in dependency order
-opsx apply r9k-http
-
-# 5) Sync PR state (optional mark-ready)
-opsx sync r9k-http --mark-ready
-
-# 6) Archive after all PRs are merged
-opsx archive r9k-http
+cargo install --path .
 ```
+
+Create a `registry.toml` at the root of your hub repo:
+
+```toml
+[[services]]
+id = "my-service"
+repo = "git@github.com:org/my-service.git"
+project_dir = "."
+crate = "my-service"
+domain = "core"
+capabilities = ["ingest", "transform"]
+```
+
+Then run the workflow:
+
+```bash
+lc propose my-change --description "Add priority field to ingest pipeline"
+# Review the generated artefacts in openspec/changes/my-change/
+
+lc fan-out my-change
+# Creates branches and draft PRs in target repos
+
+lc apply my-change
+# Invokes the AI agent in each target repo to implement the change
+
+lc sync my-change
+# Syncs PR state (open/merged/closed) into status.toml
+
+lc archive my-change
+# Moves the change to archive after all PRs are merged
+```
+
+Every command supports `--dry-run` to preview without side effects.
+
+## Commands
+
+### `lc propose <change> --description <text> [--dry-run]`
+
+Generate planning artefacts for a new cross-repo change. The agent reads `registry.toml` and current specs from target repos, then produces:
+
+- `proposal.md` — why and what, per-affected-service summary
+- `specs/<service>/<capability>/spec.md` — delta specs (ADDED/MODIFIED/REMOVED)
+- `design.md` — technical design per service
+- `tasks.md` — implementation tasks grouped by repo
+- `pipeline.toml` — execution plan with targets and dependencies
+
+All artefacts are written to `openspec/changes/<change>/`.
+
+### `lc fan-out <change> [--dry-run]`
+
+Distribute the change to target repos. For each repo group in `pipeline.toml`:
+
+1. Shallow-clones the repo
+2. Creates branch `lc/<change>` (or the branch specified in pipeline.toml)
+3. Copies delta specs, upstream context (design.md, tasks.md), and a brief.toml
+4. Commits, pushes, and opens a draft PR
+5. Updates `status.toml` to `distributed`
+
+### `lc apply <change> [--target <id>] [--dry-run]`
+
+Invoke the AI agent in each target repo to implement the change. Targets are processed in dependency order (topological sort). Use `--target` to apply a single target.
+
+A target must be in `distributed` state before apply will run it. Targets already at `implemented` or later are skipped.
+
+### `lc status <change>`
+
+Print the pipeline status table showing each target's current state and PR URL.
+
+States: `pending` → `distributed` → `applying` → `implemented` → `reviewing` → `merged` → `archived`. A target can also be `failed`.
+
+### `lc sync <change> [--mark-ready]`
+
+Synchronize PR state from GitHub into `status.toml`. Uses `gh pr view` to check each target's PR. Transitions:
+
+- PR merged → state becomes `merged`
+- PR open + not draft + target is `implemented` → state becomes `reviewing`
+- PR closed → state becomes `failed`
+
+With `--mark-ready`, draft PRs for `implemented` targets are promoted to ready for review via `gh pr ready`.
+
+### `lc archive <change> [--dry-run]`
+
+Archive a completed change. All targets must be in `merged` state. Moves the change folder to `openspec/changes/archive/YYYY-MM-DD-<change>/`.
+
+### `lc registry list`
+
+List all services in `registry.toml`.
+
+### `lc registry query --domain <name>` / `--cap <name>`
+
+Query services by domain or capability.
+
+## Configuration Files
+
+### `registry.toml`
+
+The service catalog. Lives at the hub repo root. Each entry maps a service to its repo, crate, domain, and capabilities.
+
+```toml
+[[services]]
+id = "r9k-connector"                                    # stable identifier
+repo = "git@github.com:wasm-replatform/train.git"       # git clone URL
+project_dir = "."                                        # crate location within repo
+crate = "r9k-connector"                                  # Rust crate name
+domain = "train"                                         # domain grouping
+capabilities = ["r9k-xml-ingest"]                        # what the service does
+```
+
+Multiple services can share a repo. During fan-out, services sharing a repo are grouped into one branch and one PR.
+
+### `pipeline.toml`
+
+Generated by `propose`, lives in the change folder. Defines which targets are affected and their execution order.
+
+```toml
+change = "r9k-http"
+
+[[targets]]
+id = "r9k-connector"
+specs = ["r9k-connector/r9k-xml-ingest"]
+
+[[targets]]
+id = "r9k-adapter"
+specs = ["r9k-adapter/r9k-xml-to-smartrak-gtfs"]
+depends_on = ["r9k-connector"]                           # inline dependency
+
+[[dependencies]]                                         # rich dependency metadata
+from = "r9k-connector"
+to = "r9k-adapter"
+type = "event-schema"
+contract = "domains/train/shared-types.md#R9kEvent"
+
+stop_on_dependency_failure = true
+```
+
+Target fields `repo`, `crate`, `project_dir`, and `branch` are optional overrides — if omitted, values are resolved from `registry.toml`.
+
+### `status.toml`
+
+Auto-managed state for each target in a change. Created on first use by `fan-out` or `status`. Updated by `fan-out`, `apply`, `sync`, and `archive`.
+
+## Environment Variables
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `OPSX_AGENT_BACKEND` | `claude` | Agent backend. Set to `dry-run` to print commands without executing. |
+| `RUST_LOG` | `info` | Log level filter (standard `tracing` env filter syntax). |
+
+## Prerequisites
+
+- Rust 1.93+ (edition 2024)
+- `git` on PATH
+- `gh` CLI (GitHub CLI) — for PR creation and sync
+- `claude` CLI — for agent invocation (or set `OPSX_AGENT_BACKEND=dry-run`)
 
 ## Development
 
 ```bash
-cargo test
-cargo clippy --all-features
-cargo fmt --all
+cargo test            # run all tests
+cargo build           # build debug binary
+cargo run -- --help   # run directly
+
+# Useful during development
+OPSX_AGENT_BACKEND=dry-run cargo run -- propose test --description "test change"
 ```
 
-For long-form design context, see `plan.md`.
+### Project Structure
+
+```text
+src/
+├── main.rs        — entry point, workspace root discovery, command dispatch
+├── cli.rs         — clap CLI definition
+├── engine/
+│   ├── mod.rs     — Engine trait (abstraction over OPSX / SpecKit / etc.)
+│   └── opsx.rs    — OPSX engine implementation
+├── registry.rs    — service registry (registry.toml)
+├── pipeline.rs    — pipeline, targets, dependencies, topological sort
+├── status.rs      — target state machine (status.toml)
+├── git.rs         — git and gh CLI operations
+├── agent.rs       — AI agent invocation (claude or dry-run)
+├── propose.rs     — centralised planning command
+├── fan_out.rs     — distribute to target repos
+├── apply.rs       — invoke agent per target
+├── archive.rs     — archive completed change
+├── sync.rs        — sync PR state from GitHub
+└── brief.rs       — change brief generation
+```
+
+### Engine Abstraction
+
+The `Engine` trait is the seam between the orchestrator and the spec engine. Everything else (registry, pipeline, status, git, agent) is engine-agnostic. To add a new engine:
+
+1. Create `src/engine/myengine.rs`
+2. Implement the `Engine` trait
+3. Wire it up in `main.rs`
+
+### Running Tests
+
+```bash
+cargo test
+```
+
+Tests cover pipeline validation, topological sort, cycle detection, status state transitions, registry queries, and brief generation.
+
+## License
+
+MIT OR Apache-2.0

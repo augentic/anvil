@@ -3,7 +3,7 @@ use std::path::Path;
 use anyhow::{Context, Result};
 
 use crate::pipeline::RepoGroup;
-use crate::spec_engine::{BriefChange, BriefSpecs, BriefTarget, BriefUpstream, ChangeBrief};
+use crate::engine::{BriefChange, BriefSpecs, BriefTarget, BriefUpstream, ChangeBrief};
 
 /// Build a change brief for a repo group.
 pub fn generate(change_name: &str, group: &RepoGroup) -> ChangeBrief {
@@ -20,8 +20,8 @@ pub fn generate(change_name: &str, group: &RepoGroup) -> ChangeBrief {
             files: group.specs.iter().map(|s| format!("{s}/spec.md")).collect(),
         },
         upstream: BriefUpstream {
-            architecture: "upstream/architecture.md".to_string(),
-            contracts: "upstream/contracts.md".to_string(),
+            design: "upstream/design.md".to_string(),
+            tasks: "upstream/tasks.md".to_string(),
             pipeline: "upstream/pipeline.toml".to_string(),
         },
     }
@@ -50,7 +50,11 @@ mod tests {
             targets: vec![Target {
                 id: String::from("r9k-connector"),
                 specs: vec![String::from("r9k-xml-ingest")],
-                route: String::from("crate-updater"),
+                repo: None,
+                crate_name: None,
+                project_dir: None,
+                branch: None,
+                depends_on: vec![],
             }],
             crates: vec![String::from("r9k-connector")],
             specs: vec![String::from("r9k-xml-ingest")],

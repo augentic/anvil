@@ -2,63 +2,146 @@ use std::path::Path;
 
 use anyhow::{Context, Result, bail};
 
-use crate::{agent, pipeline, registry};
+use crate::engine::Engine;
+use crate::{agent, git, registry};
 
-pub fn run(change: &str, description: &str, workspace: &Path) -> Result<()> {
-    let change_dir = workspace.join("openspec/changes").join(change);
+pub fn run(
+    change: &str, description: &str, dry_run: bool, engine: &dyn Engine, workspace: &Path,
+) -> Result<()> {
+    let changes_dir = workspace.join(engine.changes_dir());
+    let change_dir = changes_dir.join(change);
+
+    if change_dir.exists() {
+        bail!("change '{}' already exists at {}", change, change_dir.display());
+    }
+
     std::fs::create_dir_all(change_dir.join("specs")).with_context(|| {
-        format!("creating change scaffold directories under {}", change_dir.display())
+        format!("creating change scaffold under {}", change_dir.display())
     })?;
 
-    let command = build_propose_prompt(change, description);
-    let succeeded = agent::invoke(&command, workspace)?;
+    let reg = registry::Registry::load(&workspace.join("registry.toml"))?;
+    let context = gather_context(workspace, engine, &reg)?;
+
+    let prompt = engine.propose_prompt(change, description, &context);
+
+    if dry_run {
+        println!("=== DRY RUN: propose '{change}' ===\n");
+        println!("change dir: {}\n", change_dir.display());
+        println!("--- AGENT PROMPT ---\n{prompt}\n--- END ---");
+        std::fs::remove_dir_all(&change_dir)?;
+        return Ok(());
+    }
+
+    let succeeded = agent::invoke(&prompt, workspace)?;
     if !succeeded {
         bail!("proposal agent failed for change '{change}'");
     }
 
-    verify_artifacts(&change_dir)?;
+    verify_artifacts(&change_dir, engine)?;
 
-    let reg = registry::Registry::load(&workspace.join("registry.toml"))?;
-    let pipeline = pipeline::Pipeline::load(&change_dir.join("pipeline.toml"))?;
-    pipeline.validate(&reg, &change_dir)?;
-
-    println!("proposal artifacts generated at {}", change_dir.display());
-    println!("next step: review artifacts, then run `opsx fan-out {change}`");
+    println!("planning artefacts generated at {}", change_dir.display());
+    println!("next step: review artefacts, then run `lc fan-out {change}`");
     Ok(())
 }
 
-fn build_propose_prompt(change: &str, description: &str) -> String {
-    format!(
-        concat!(
-            "Generate OpenSpec planning artifacts for change '{}'.\n\n",
-            "User intent:\n",
-            "{}\n\n",
-            "Write files in this exact directory:\n",
-            "openspec/changes/{}\n\n",
-            "Required artifact order:\n",
-            "1) current-state.md\n",
-            "2) proposal.md\n",
-            "3) specs/*/spec.md\n",
-            "4) design.md\n",
-            "5) manifest.md\n",
-            "6) pipeline.toml\n\n",
-            "Rules:\n",
-            "- Use registry.toml to choose impacted targets.\n",
-            "- Use openspec/schemas/augentic.yaml and openspec/templates/*.md as guidance.\n",
-            "- pipeline.toml must include only targets present in registry.toml.\n",
-            "- Include dependency edges when contracts cross targets.\n",
-            "- Keep content implementation-ready for distributed apply.\n"
-        ),
-        change, description, change
-    )
+/// Gather platform context for the propose prompt:
+/// registry summary + current specs from target repos.
+fn gather_context(workspace: &Path, engine: &dyn Engine, reg: &registry::Registry) -> Result<String> {
+    let mut ctx = String::from("=== REGISTRY ===\n");
+    for svc in &reg.services {
+        ctx.push_str(&format!(
+            "- {} (repo={}, crate={}, domain={}, caps=[{}])\n",
+            svc.id,
+            svc.repo,
+            svc.crate_name,
+            svc.domain,
+            svc.capabilities.join(", "),
+        ));
+    }
+
+    ctx.push_str("\n=== CURRENT SPECS ===\n");
+
+    let mut seen_repos: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+    for svc in &reg.services {
+        if !seen_repos.insert(svc.repo.clone()) {
+            continue;
+        }
+
+        let repo_specs = try_read_repo_specs(workspace, &svc.repo, engine);
+        if let Some(specs_content) = repo_specs {
+            ctx.push_str(&format!("\n--- repo: {} ---\n{}\n", svc.repo, specs_content));
+        }
+    }
+
+    Ok(ctx)
 }
 
-fn verify_artifacts(change_dir: &Path) -> Result<()> {
-    for required in ["current-state.md", "proposal.md", "design.md", "manifest.md", "pipeline.toml"]
-    {
+/// Try to read specs from a target repo. Looks for the repo as a sibling
+/// directory first (workspace layout), otherwise clones shallowly.
+fn try_read_repo_specs(workspace: &Path, repo_url: &str, engine: &dyn Engine) -> Option<String> {
+    let repo_name = repo_url.rsplit('/').next().unwrap_or("repo").trim_end_matches(".git");
+
+    if let Some(parent) = workspace.parent() {
+        let sibling = parent.join(repo_name);
+        let specs_dir = sibling.join(engine.specs_dir());
+        if specs_dir.is_dir() {
+            return Some(read_specs_dir(&specs_dir));
+        }
+    }
+
+    let tmp = std::env::temp_dir().join(format!("opsx-specs-{repo_name}-{}", std::process::id()));
+    if tmp.exists() {
+        let _ = std::fs::remove_dir_all(&tmp);
+    }
+
+    if git::clone_shallow(repo_url, &tmp).is_ok() {
+        let specs_dir = tmp.join(engine.specs_dir());
+        let result = if specs_dir.is_dir() {
+            Some(read_specs_dir(&specs_dir))
+        } else {
+            None
+        };
+        let _ = std::fs::remove_dir_all(&tmp);
+        return result;
+    }
+
+    None
+}
+
+fn read_specs_dir(dir: &Path) -> String {
+    let mut output = String::new();
+    if let Ok(entries) = collect_md_files(dir) {
+        for path in entries {
+            let rel = path.strip_prefix(dir).unwrap_or(&path);
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                output.push_str(&format!("\n## {}\n{}\n", rel.display(), content));
+            }
+        }
+    }
+    output
+}
+
+fn collect_md_files(dir: &Path) -> Result<Vec<std::path::PathBuf>> {
+    let mut files = Vec::new();
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_dir() {
+            files.extend(collect_md_files(&path)?);
+        } else if path.extension().is_some_and(|e| e == "md") {
+            files.push(path);
+        }
+    }
+    files.sort();
+    Ok(files)
+}
+
+fn verify_artifacts(change_dir: &Path, engine: &dyn Engine) -> Result<()> {
+    for required in engine.required_artifacts() {
         let path = change_dir.join(required);
         if !path.exists() {
-            bail!("missing generated artifact: {}", path.display());
+            bail!("missing generated artefact: {}", path.display());
         }
     }
 

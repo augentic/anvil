@@ -1,7 +1,7 @@
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "opsx", about = "Multi-repo orchestration for spec-driven development")]
+#[command(name = "lc", about = "Multi-repo orchestration for spec-driven development")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
@@ -9,13 +9,16 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Generate planning artifacts for a new change in the central repo
+    /// Generate planning artefacts for a new change in the hub repo
     Propose {
         /// Change name (e.g., r9k-http)
         change: String,
         /// Human description of the initiative
         #[arg(long)]
         description: String,
+        /// Preview the prompt without invoking the agent
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Distribute change to target repos, open draft PRs
     FanOut {
@@ -32,16 +35,22 @@ pub enum Command {
         /// Apply only a specific target
         #[arg(long)]
         target: Option<String>,
+        /// Preview what would happen without invoking agents
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Show pipeline status for all targets
     Status {
         /// Change name
         change: String,
     },
-    /// Archive change across all repos
+    /// Archive completed change in the hub
     Archive {
         /// Change name
         change: String,
+        /// Preview what would happen without archiving
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Synchronize PR state into status.toml
     Sync {

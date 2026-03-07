@@ -1,5 +1,5 @@
 [package]
-name = "opsx"
+name = "lc"
 description = "Multi-repo orchestration CLI for spec-driven development"
 version.workspace = true
 edition.workspace = true

@@ -2,13 +2,14 @@ use std::path::Path;
 
 use anyhow::{Context, Result, bail};
 
-use crate::spec_engine::SpecEngine;
-use crate::{agent, git, pipeline, registry, status};
+use crate::engine::Engine;
+use crate::{agent, brief, git, pipeline, registry, status};
 
 pub fn run(
-    change: &str, target_filter: Option<&str>, engine: &dyn SpecEngine, workspace: &Path,
+    change: &str, target_filter: Option<&str>, dry_run: bool, engine: &dyn Engine,
+    workspace: &Path,
 ) -> Result<()> {
-    let change_dir = workspace.join("openspec/changes").join(change);
+    let change_dir = workspace.join(engine.changes_dir()).join(change);
     let pipeline = pipeline::Pipeline::load(&change_dir.join("pipeline.toml"))?;
     let reg = registry::Registry::load(&workspace.join("registry.toml"))?;
     pipeline.validate(&reg, &change_dir)?;
@@ -30,6 +31,28 @@ pub fn run(
             bail!("target '{filter}' not found in pipeline");
         }
         bail!("no targets in pipeline");
+    }
+
+    let groups = pipeline.group_by_repo(&reg)?;
+
+    if dry_run {
+        println!("=== DRY RUN: apply '{change}' ===\n");
+        for target in &targets {
+            let ts = pstatus.get(&target.id).context("target missing from status")?;
+            let group = groups.iter().find(|g| {
+                g.targets.iter().any(|t| t.id == target.id)
+            });
+            let repo = group.map(|g| g.repo.as_str()).unwrap_or("unknown");
+            println!("  {} (state={}, repo={})", target.id, ts.state, repo);
+            let change_brief = group
+                .map(|g| brief::generate(change, g));
+            if let Some(brief) = &change_brief {
+                let cmd = engine.apply_command(change, brief);
+                println!("    command: {}", cmd.lines().next().unwrap_or(""));
+            }
+        }
+        println!("\nno changes made (dry run)");
+        return Ok(());
     }
 
     for target in &targets {
@@ -77,16 +100,25 @@ pub fn run(
             std::fs::remove_dir_all(&tmp)?;
         }
 
-        let branch = format!("opsx/{change}");
+        let branch = target
+            .branch
+            .as_deref()
+            .map(String::from)
+            .unwrap_or_else(|| format!("lc/{change}"));
         git::clone_shallow(&svc.repo, &tmp)?;
         git::run_cmd("git", &["checkout", &branch], &tmp)
             .with_context(|| format!("checking out branch {branch}"))?;
 
-        let apply_cmd = engine.agent_apply_command(change);
+        let group = groups
+            .iter()
+            .find(|g| g.repo == svc.repo)
+            .context("repo group not found")?;
+        let change_brief = brief::generate(change, group);
+        let apply_cmd = engine.apply_command(change, &change_brief);
         let succeeded = agent::invoke(&apply_cmd, &tmp)?;
 
         if succeeded {
-            let msg = format!("opsx: implement {change} for {}", target.id);
+            let msg = format!("lc: implement {change} for {}", target.id);
             if let Err(e) = git::add_commit_push(&tmp, &msg, &branch) {
                 tracing::warn!(target = %target.id, error = %e, "push failed (possibly no changes)");
             }

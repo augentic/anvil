@@ -9,7 +9,6 @@ use crate::registry::Registry;
 #[derive(Debug, Deserialize)]
 pub struct Pipeline {
     pub change: String,
-    pub lifecycle_ref: Option<String>,
     pub targets: Vec<Target>,
     #[serde(default)]
     pub dependencies: Vec<Dependency>,
@@ -21,9 +20,16 @@ pub struct Pipeline {
 pub struct Target {
     pub id: String,
     pub specs: Vec<String>,
-    pub route: String,
+    pub repo: Option<String>,
+    #[serde(rename = "crate")]
+    pub crate_name: Option<String>,
+    pub project_dir: Option<String>,
+    pub branch: Option<String>,
+    #[serde(default)]
+    pub depends_on: Vec<String>,
 }
 
+/// Rich dependency metadata between targets.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Dependency {
     pub from: String,
@@ -55,6 +61,22 @@ impl Pipeline {
         self.stop_on_dependency_failure.unwrap_or(true)
     }
 
+    /// Collect all dependency edges from both `[[dependencies]]` and inline `depends_on`.
+    fn all_edges(&self) -> Vec<(&str, &str)> {
+        let mut edges: Vec<(&str, &str)> = self
+            .dependencies
+            .iter()
+            .map(|d| (d.from.as_str(), d.to.as_str()))
+            .collect();
+
+        for target in &self.targets {
+            for dep in &target.depends_on {
+                edges.push((dep.as_str(), target.id.as_str()));
+            }
+        }
+        edges
+    }
+
     /// Validate pipeline integrity against registry and on-disk specs.
     pub fn validate(&self, registry: &Registry, change_dir: &Path) -> Result<()> {
         if self.targets.is_empty() {
@@ -69,9 +91,6 @@ impl Pipeline {
             if registry.find_by_id(&target.id).is_none() {
                 bail!("pipeline target '{}' not found in registry.toml", target.id);
             }
-            if target.route.trim().is_empty() {
-                bail!("target '{}' has empty route", target.id);
-            }
             for spec in &target.specs {
                 if !spec_exists(change_dir, spec) {
                     bail!("target '{}' references missing spec '{}'", target.id, spec);
@@ -79,36 +98,36 @@ impl Pipeline {
             }
         }
 
-        for dep in &self.dependencies {
-            if dep.from == dep.to {
-                bail!("self-dependency is not allowed for target '{}'", dep.from);
+        for (from, to) in self.all_edges() {
+            if from == to {
+                bail!("self-dependency is not allowed for target '{from}'");
             }
-            if !target_ids.contains(dep.from.as_str()) {
-                bail!("dependency references unknown 'from' target '{}'", dep.from);
+            if !target_ids.contains(from) {
+                bail!("dependency references unknown 'from' target '{from}'");
             }
-            if !target_ids.contains(dep.to.as_str()) {
-                bail!("dependency references unknown 'to' target '{}'", dep.to);
+            if !target_ids.contains(to) {
+                bail!("dependency references unknown 'to' target '{to}'");
             }
         }
 
         Ok(())
     }
 
-    /// Kahn's algorithm: returns target IDs in dependency order (upstream first).
+    /// Kahn's algorithm: returns targets in dependency order (upstream first).
     pub fn topological_sort(&self) -> Result<Vec<&Target>> {
         let target_ids: HashSet<&str> = self.targets.iter().map(|t| t.id.as_str()).collect();
         let mut in_degree: HashMap<&str, usize> = target_ids.iter().map(|id| (*id, 0)).collect();
         let mut dependents: HashMap<&str, Vec<&str>> = HashMap::new();
 
-        for dep in &self.dependencies {
-            if !target_ids.contains(dep.from.as_str()) {
-                bail!("dependency references unknown target '{}'", dep.from);
+        for (from, to) in self.all_edges() {
+            if !target_ids.contains(from) {
+                bail!("dependency references unknown target '{from}'");
             }
-            if !target_ids.contains(dep.to.as_str()) {
-                bail!("dependency references unknown target '{}'", dep.to);
+            if !target_ids.contains(to) {
+                bail!("dependency references unknown target '{to}'");
             }
-            *in_degree.entry(dep.to.as_str()).or_default() += 1;
-            dependents.entry(dep.from.as_str()).or_default().push(dep.to.as_str());
+            *in_degree.entry(to).or_default() += 1;
+            dependents.entry(from).or_default().push(to);
         }
 
         let mut queue: VecDeque<&str> =
@@ -147,9 +166,13 @@ impl Pipeline {
                 .find_by_id(&target.id)
                 .with_context(|| format!("target '{}' not found in registry.toml", target.id))?;
 
-            let group = groups.entry(svc.repo.clone()).or_insert_with(|| RepoGroup {
-                repo: svc.repo.clone(),
-                project_dir: svc.project_dir.clone(),
+            let repo = target.repo.as_deref().unwrap_or(&svc.repo);
+            let project_dir = target.project_dir.as_deref().unwrap_or(&svc.project_dir);
+            let crate_name = target.crate_name.as_deref().unwrap_or(&svc.crate_name);
+
+            let group = groups.entry(repo.to_string()).or_insert_with(|| RepoGroup {
+                repo: repo.to_string(),
+                project_dir: project_dir.to_string(),
                 domain: svc.domain.clone(),
                 targets: Vec::new(),
                 crates: Vec::new(),
@@ -157,7 +180,7 @@ impl Pipeline {
             });
 
             group.targets.push(target.clone());
-            group.crates.push(svc.crate_name.clone());
+            group.crates.push(crate_name.to_string());
             group.specs.extend(target.specs.clone());
         }
 
@@ -166,7 +189,22 @@ impl Pipeline {
 
     /// Return targets that `id` depends on (i.e., must complete before `id`).
     pub fn upstream_of(&self, id: &str) -> Vec<&str> {
-        self.dependencies.iter().filter(|d| d.to == id).map(|d| d.from.as_str()).collect()
+        let mut upstream: Vec<&str> = self
+            .dependencies
+            .iter()
+            .filter(|d| d.to == id)
+            .map(|d| d.from.as_str())
+            .collect();
+
+        if let Some(target) = self.targets.iter().find(|t| t.id == id) {
+            for dep in &target.depends_on {
+                if !upstream.contains(&dep.as_str()) {
+                    upstream.push(dep.as_str());
+                }
+            }
+        }
+
+        upstream
     }
 }
 
@@ -185,17 +223,15 @@ mod tests {
     fn sample_pipeline() -> Pipeline {
         let toml_str = r#"
 change = "r9k-http"
-lifecycle_ref = "augentic/lifecycle@abc123"
 
 [[targets]]
 id = "r9k-connector"
 specs = ["r9k-xml-ingest"]
-route = "crate-updater"
 
 [[targets]]
 id = "r9k-adapter"
 specs = ["r9k-xml-to-smartrak-gtfs"]
-route = "crate-updater"
+depends_on = ["r9k-connector"]
 
 [[dependencies]]
 from = "r9k-connector"
@@ -218,17 +254,33 @@ stop_on_dependency_failure = true
     }
 
     #[test]
+    fn inline_depends_on_drives_sort() {
+        let toml_str = r#"
+change = "test"
+[[targets]]
+id = "a"
+specs = []
+[[targets]]
+id = "b"
+specs = []
+depends_on = ["a"]
+"#;
+        let p: Pipeline = toml::from_str(toml_str).unwrap();
+        let sorted = p.topological_sort().unwrap();
+        assert_eq!(sorted[0].id, "a");
+        assert_eq!(sorted[1].id, "b");
+    }
+
+    #[test]
     fn detects_cycle() {
         let toml_str = r#"
 change = "test"
 [[targets]]
 id = "a"
 specs = []
-route = "x"
 [[targets]]
 id = "b"
 specs = []
-route = "x"
 [[dependencies]]
 from = "a"
 to = "b"
@@ -245,7 +297,8 @@ type = "x"
     #[test]
     fn upstream_of() {
         let p = sample_pipeline();
-        assert_eq!(p.upstream_of("r9k-adapter"), vec!["r9k-connector"]);
+        let upstream = p.upstream_of("r9k-adapter");
+        assert!(upstream.contains(&"r9k-connector"));
         assert!(p.upstream_of("r9k-connector").is_empty());
     }
 
@@ -256,11 +309,9 @@ change = "test"
 [[targets]]
 id = "a"
 specs = []
-route = "x"
 [[targets]]
 id = "a"
 specs = []
-route = "x"
 "#;
         let p: Pipeline = toml::from_str(toml_str).expect("parsing pipeline");
         let reg: Registry = toml::from_str(
