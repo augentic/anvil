@@ -46,10 +46,21 @@ pub trait Engine {
     /// Build the AI command/prompt for implementing a change in a target repo.
     fn apply_command(&self, change: &str, brief: &ChangeBrief) -> String;
 
+    /// Relative paths for upstream artefacts as placed in the target repo
+    /// by `distribute()`. Used by brief generation to keep paths in sync.
+    fn upstream_paths(&self) -> UpstreamPaths;
+
     // --- Archive ---
 
     /// Generate the archive directory name for a completed change.
     fn archive_dirname(&self, change: &str) -> String;
+}
+
+/// Paths to upstream artefacts within the engine's distribution directory.
+pub struct UpstreamPaths {
+    pub design: &'static str,
+    pub tasks: &'static str,
+    pub pipeline: &'static str,
 }
 
 /// Context passed to `Engine::distribute()`.

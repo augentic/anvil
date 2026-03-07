@@ -3,6 +3,12 @@ use clap::{Parser, Subcommand};
 #[derive(Parser)]
 #[command(name = "alc", about = "Multi-repo orchestration for spec-driven development")]
 pub struct Cli {
+    /// Increase log verbosity to debug level
+    #[arg(long, short = 'v', global = true)]
+    pub verbose: bool,
+    /// Decrease log verbosity to warnings only
+    #[arg(long, short = 'q', global = true)]
+    pub quiet: bool,
     #[command(subcommand)]
     pub command: Command,
 }
@@ -16,6 +22,12 @@ pub enum Command {
         /// Human description of the initiative
         #[arg(long)]
         description: String,
+        /// Only load specs from repos in these domains
+        #[arg(long)]
+        domain: Vec<String>,
+        /// Only load specs from these services
+        #[arg(long)]
+        service: Vec<String>,
         /// Preview the prompt without invoking the agent
         #[arg(long)]
         dry_run: bool,
@@ -28,11 +40,11 @@ pub enum Command {
         #[arg(long)]
         dry_run: bool,
     },
-    /// Invoke agent per target in dependency order
+    /// Invoke agent per repo group in dependency order
     Apply {
         /// Change name
         change: String,
-        /// Apply only a specific target
+        /// Apply only the repo group containing this target
         #[arg(long)]
         target: Option<String>,
         /// Preview what would happen without invoking agents

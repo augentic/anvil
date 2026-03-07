@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
-use super::{ChangeBrief, DistributeContext, Engine};
+use super::{ChangeBrief, DistributeContext, Engine, UpstreamPaths};
 use crate::brief;
 
 pub struct OpsxEngine;
@@ -56,7 +56,7 @@ impl Engine for OpsxEngine {
     }
 
     fn distribute(&self, ctx: &DistributeContext) -> Result<()> {
-        let change_brief = brief::generate(ctx.change, ctx.group);
+        let change_brief = brief::generate(ctx.change, ctx.group, self);
 
         let opsx_dir = ctx.repo_dir.join(".opsx");
         std::fs::create_dir_all(&opsx_dir).context("creating .opsx dir")?;
@@ -89,6 +89,14 @@ impl Engine for OpsxEngine {
             crates = crates,
             specs = specs.join(", "),
         )
+    }
+
+    fn upstream_paths(&self) -> UpstreamPaths {
+        UpstreamPaths {
+            design: "upstream/design.md",
+            tasks: "upstream/tasks.md",
+            pipeline: "upstream/pipeline.toml",
+        }
     }
 
     fn archive_dirname(&self, change: &str) -> String {

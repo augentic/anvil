@@ -2,29 +2,23 @@ use std::path::Path;
 
 use anyhow::Result;
 
+use crate::context::{self, ChangeContext};
 use crate::engine::{DistributeContext, Engine};
 use crate::pipeline::RepoGroup;
-use crate::{git, pipeline, registry, status};
+use crate::{git, status};
 
 pub fn run(change: &str, dry_run: bool, engine: &dyn Engine, workspace: &Path) -> Result<()> {
-    let change_dir = workspace.join(engine.changes_dir()).join(change);
-    let pipeline = pipeline::Pipeline::load(&change_dir.join("pipeline.toml"))?;
-    let reg = registry::Registry::load(&workspace.join("registry.toml"))?;
-    pipeline.validate(&reg, &change_dir)?;
-    let groups = pipeline.group_by_repo(&reg)?;
-
-    let status_path = change_dir.join("status.toml");
-    let mut pstatus =
-        status::PipelineStatus::load_or_create(&status_path, change, &pipeline, &reg)?;
+    let mut ctx = ChangeContext::load(workspace, engine, change)?;
+    let groups = ctx.groups()?;
 
     if dry_run {
-        print_dry_run(change, &groups, &pipeline);
+        print_dry_run(change, &groups, &ctx);
         return Ok(());
     }
 
     for group in &groups {
         let all_distributed = group.targets.iter().all(|t| {
-            pstatus
+            ctx.status
                 .get(&t.id)
                 .map(|s| s.state.is_at_least(status::TargetState::Distributed))
                 .unwrap_or(false)
@@ -36,22 +30,21 @@ pub fn run(change: &str, dry_run: bool, engine: &dyn Engine, workspace: &Path) -
 
         tracing::info!(repo = %group.repo, crates = ?group.crates, "distributing");
 
-        let tmp = tempdir_for_repo(&group.repo)?;
+        let tmp = context::temp_dir(&repo_label(&group.repo))?;
 
         git::clone_shallow(&group.repo, &tmp)?;
         let branch = branch_name(change, group);
         git::checkout_new_branch(&tmp, &branch)?;
 
-        let ctx = DistributeContext {
+        let dist_ctx = DistributeContext {
             workspace,
             change,
             repo_dir: &tmp,
             group,
         };
-        engine.distribute(&ctx)?;
+        engine.distribute(&dist_ctx)?;
 
-        let commit_msg =
-            format!("alc: distribute {change} for {}", group.crates.join(", "));
+        let commit_msg = format!("alc: distribute {change} for {}", group.crates.join(", "));
         git::add_commit_push(&tmp, &commit_msg, &branch)?;
 
         let pr_title = format!("alc: {change} — {}", group.crates.join(", "));
@@ -63,16 +56,17 @@ pub fn run(change: &str, dry_run: bool, engine: &dyn Engine, workspace: &Path) -
         let pr_url = git::create_draft_pr(&tmp, &pr_title, &pr_body)?;
 
         for t in &group.targets {
-            pstatus.transition(&t.id, status::TargetState::Distributed)?;
-            pstatus.set_pr(&t.id, pr_url.clone())?;
+            ctx.status.transition(&t.id, status::TargetState::Distributed)?;
+            ctx.status.set_pr(&t.id, pr_url.clone())?;
         }
-        pstatus.save(&status_path)?;
+        ctx.save_status()?;
 
+        let _ = std::fs::remove_dir_all(&tmp);
         tracing::info!(repo = %group.repo, pr = %pr_url, "distributed");
     }
 
     println!();
-    pstatus.print_summary();
+    ctx.status.print_summary();
     Ok(())
 }
 
@@ -85,13 +79,22 @@ fn branch_name(change: &str, group: &RepoGroup) -> String {
         .unwrap_or_else(|| format!("alc/{change}"))
 }
 
-fn print_dry_run(change: &str, groups: &[RepoGroup], pipeline: &pipeline::Pipeline) {
+fn repo_label(repo_url: &str) -> String {
+    repo_url
+        .rsplit('/')
+        .next()
+        .unwrap_or("repo")
+        .trim_end_matches(".git")
+        .to_string()
+}
+
+fn print_dry_run(change: &str, groups: &[RepoGroup], ctx: &ChangeContext) {
     println!("=== DRY RUN: fan-out for '{change}' ===\n");
 
-    let sorted = pipeline.topological_sort().unwrap_or_default();
+    let sorted = ctx.pipeline.topological_sort().unwrap_or_default();
     println!("dependency order:");
     for (i, t) in sorted.iter().enumerate() {
-        let deps = pipeline.upstream_of(&t.id);
+        let deps = ctx.pipeline.upstream_of(&t.id);
         if deps.is_empty() {
             println!("  {}. {} (no dependencies)", i + 1, t.id);
         } else {
@@ -111,14 +114,4 @@ fn print_dry_run(change: &str, groups: &[RepoGroup], pipeline: &pipeline::Pipeli
         }
     }
     println!("\nno changes made (dry run)");
-}
-
-fn tempdir_for_repo(repo_url: &str) -> Result<std::path::PathBuf> {
-    let name = repo_url.rsplit('/').next().unwrap_or("repo").trim_end_matches(".git");
-
-    let tmp = std::env::temp_dir().join(format!("opsx-{name}-{}", std::process::id()));
-    if tmp.exists() {
-        std::fs::remove_dir_all(&tmp)?;
-    }
-    Ok(tmp)
 }

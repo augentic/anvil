@@ -2,142 +2,184 @@ use std::path::Path;
 
 use anyhow::{Context, Result, bail};
 
+use crate::context::{self, ChangeContext};
 use crate::engine::Engine;
-use crate::{agent, brief, git, pipeline, registry, status};
+use crate::pipeline::RepoGroup;
+use crate::{agent, brief, git, status};
 
 pub fn run(
     change: &str, target_filter: Option<&str>, dry_run: bool, engine: &dyn Engine,
     workspace: &Path,
 ) -> Result<()> {
-    let change_dir = workspace.join(engine.changes_dir()).join(change);
-    let pipeline = pipeline::Pipeline::load(&change_dir.join("pipeline.toml"))?;
-    let reg = registry::Registry::load(&workspace.join("registry.toml"))?;
-    pipeline.validate(&reg, &change_dir)?;
+    let mut ctx = ChangeContext::load(workspace, engine, change)?;
+    let groups = ctx.pipeline.groups_in_dependency_order(&ctx.registry)?;
 
-    let status_path = change_dir.join("status.toml");
-    let mut pstatus =
-        status::PipelineStatus::load_or_create(&status_path, change, &pipeline, &reg)?;
-
-    let sorted = pipeline.topological_sort()?;
-
-    let targets: Vec<_> = if let Some(filter) = target_filter {
-        sorted.into_iter().filter(|t| t.id == filter).collect()
+    let groups: Vec<_> = if let Some(filter) = target_filter {
+        groups
+            .into_iter()
+            .filter(|g| g.targets.iter().any(|t| t.id == filter))
+            .collect()
     } else {
-        sorted
+        groups
     };
 
-    if targets.is_empty() {
+    if groups.is_empty() {
         if let Some(filter) = target_filter {
             bail!("target '{filter}' not found in pipeline");
         }
         bail!("no targets in pipeline");
     }
 
-    let groups = pipeline.group_by_repo(&reg)?;
-
     if dry_run {
-        println!("=== DRY RUN: apply '{change}' ===\n");
-        for target in &targets {
-            let ts = pstatus.get(&target.id).context("target missing from status")?;
-            let group = groups.iter().find(|g| {
-                g.targets.iter().any(|t| t.id == target.id)
-            });
-            let repo = group.map(|g| g.repo.as_str()).unwrap_or("unknown");
-            println!("  {} (state={}, repo={})", target.id, ts.state, repo);
-            let change_brief = group
-                .map(|g| brief::generate(change, g));
-            if let Some(brief) = &change_brief {
-                let cmd = engine.apply_command(change, brief);
-                println!("    command: {}", cmd.lines().next().unwrap_or(""));
-            }
-        }
-        println!("\nno changes made (dry run)");
+        print_dry_run(change, &groups, engine, &ctx);
         return Ok(());
     }
 
-    for target in &targets {
-        let ts = pstatus.get(&target.id).context("target missing from status")?;
-
-        if ts.state.is_at_least(status::TargetState::Implemented) {
-            tracing::info!(target = %target.id, state = %ts.state, "already implemented, skipping");
+    for group in &groups {
+        let all_done = group.targets.iter().all(|t| {
+            ctx.status
+                .get(&t.id)
+                .map(|s| s.state.is_at_least(status::TargetState::Implemented))
+                .unwrap_or(false)
+        });
+        if all_done {
+            tracing::info!(repo = %group.repo, "all targets already implemented, skipping");
             continue;
         }
 
-        if ts.state == status::TargetState::Pending {
+        let any_pending = group.targets.iter().any(|t| {
+            ctx.status
+                .get(&t.id)
+                .map(|s| s.state == status::TargetState::Pending)
+                .unwrap_or(true)
+        });
+        if any_pending {
             bail!(
-                "target '{}' is in pending state — run `opsx fan-out {}` first",
-                target.id,
+                "repo '{}' has targets in pending state — run `alc fan-out {}` first",
+                group.repo,
                 change
             );
         }
 
-        let upstream_ids = pipeline.upstream_of(&target.id);
-        let blocked = upstream_ids.iter().any(|dep_id| {
-            !pstatus
-                .get(dep_id)
-                .map(|s| s.state.is_at_least(status::TargetState::Implemented))
-                .unwrap_or(false)
-        });
-
-        if blocked && pipeline.stop_on_failure() {
-            tracing::warn!(
-                target = %target.id,
-                deps = ?upstream_ids,
-                "blocked by incomplete dependencies, skipping"
-            );
+        if is_blocked_by_upstream(group, &ctx) {
+            tracing::warn!(repo = %group.repo, "blocked by incomplete upstream dependencies, skipping");
             continue;
         }
 
-        tracing::info!(target = %target.id, "applying");
-        pstatus.transition(&target.id, status::TargetState::Applying)?;
-        pstatus.save(&status_path)?;
+        tracing::info!(repo = %group.repo, crates = ?group.crates, "applying");
 
-        let svc = reg.find_by_id(&target.id).context("target not in registry")?;
-
-        let tmp =
-            std::env::temp_dir().join(format!("opsx-apply-{}-{}", target.id, std::process::id()));
-        if tmp.exists() {
-            std::fs::remove_dir_all(&tmp)?;
+        for t in &group.targets {
+            if !ctx
+                .status
+                .get(&t.id)
+                .map(|s| s.state.is_at_least(status::TargetState::Implemented))
+                .unwrap_or(false)
+            {
+                ctx.status
+                    .transition(&t.id, status::TargetState::Applying)?;
+            }
         }
+        ctx.save_status()?;
 
-        let branch = target
-            .branch
-            .as_deref()
-            .map(String::from)
-            .unwrap_or_else(|| format!("alc/{change}"));
-        git::clone_shallow(&svc.repo, &tmp)?;
+        let tmp = context::temp_dir(&format!("apply-{}", repo_label(&group.repo)))?;
+        let branch = branch_name(change, group);
+        git::clone_shallow(&group.repo, &tmp)?;
         git::run_cmd("git", &["checkout", &branch], &tmp)
             .with_context(|| format!("checking out branch {branch}"))?;
 
-        let group = groups
-            .iter()
-            .find(|g| g.repo == svc.repo)
-            .context("repo group not found")?;
-        let change_brief = brief::generate(change, group);
+        let change_brief = brief::generate(change, group, engine);
         let apply_cmd = engine.apply_command(change, &change_brief);
         let succeeded = agent::invoke(&apply_cmd, &tmp)?;
 
         if succeeded {
-            let msg = format!("alc: implement {change} for {}", target.id);
+            let msg = format!("alc: implement {change} for {}", group.crates.join(", "));
             if let Err(e) = git::add_commit_push(&tmp, &msg, &branch) {
-                tracing::warn!(target = %target.id, error = %e, "push failed (possibly no changes)");
+                tracing::warn!(repo = %group.repo, error = %e, "push failed (possibly no changes)");
             }
 
-            pstatus.transition(&target.id, status::TargetState::Implemented)?;
-            tracing::info!(target = %target.id, "implemented");
-        } else {
-            pstatus.transition(&target.id, status::TargetState::Failed)?;
-            tracing::error!(target = %target.id, "agent failed");
-            if pipeline.stop_on_failure() {
-                pstatus.save(&status_path)?;
-                bail!("stopping pipeline: target '{}' failed", target.id);
+            for t in &group.targets {
+                ctx.status
+                    .transition(&t.id, status::TargetState::Implemented)?;
             }
+            tracing::info!(repo = %group.repo, "implemented");
+        } else {
+            for t in &group.targets {
+                ctx.status
+                    .transition(&t.id, status::TargetState::Failed)?;
+            }
+            tracing::error!(repo = %group.repo, "agent failed");
+            ctx.save_status()?;
+            bail!("stopping pipeline: repo '{}' failed", group.repo);
         }
 
-        pstatus.save(&status_path)?;
+        ctx.save_status()?;
     }
 
     println!();
-    pstatus.print_summary();
+    ctx.status.print_summary();
     Ok(())
+}
+
+/// Check whether any target in this group has an upstream dependency
+/// (in another group) that is not yet Implemented.
+fn is_blocked_by_upstream(group: &RepoGroup, ctx: &ChangeContext) -> bool {
+    let group_target_ids: std::collections::HashSet<&str> =
+        group.targets.iter().map(|t| t.id.as_str()).collect();
+
+    for target in &group.targets {
+        for dep in &target.depends_on {
+            if group_target_ids.contains(dep.as_str()) {
+                continue;
+            }
+            let met = ctx
+                .status
+                .get(dep)
+                .map(|s| s.state.is_at_least(status::TargetState::Implemented))
+                .unwrap_or(false);
+            if !met {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn branch_name(change: &str, group: &RepoGroup) -> String {
+    group
+        .targets
+        .first()
+        .and_then(|t| t.branch.as_deref())
+        .map(String::from)
+        .unwrap_or_else(|| format!("alc/{change}"))
+}
+
+fn repo_label(repo_url: &str) -> String {
+    repo_url
+        .rsplit('/')
+        .next()
+        .unwrap_or("repo")
+        .trim_end_matches(".git")
+        .to_string()
+}
+
+fn print_dry_run(change: &str, groups: &[RepoGroup], engine: &dyn Engine, ctx: &ChangeContext) {
+    println!("=== DRY RUN: apply '{change}' ===\n");
+
+    for group in groups {
+        let branch = branch_name(change, group);
+        println!("repo: {} (branch: {branch})", group.repo);
+        for t in &group.targets {
+            let state = ctx
+                .status
+                .get(&t.id)
+                .map(|s| s.state.to_string())
+                .unwrap_or_else(|| "unknown".to_string());
+            println!("  target: {} (state={})", t.id, state);
+        }
+        let change_brief = brief::generate(change, group, engine);
+        let cmd = engine.apply_command(change, &change_brief);
+        println!("  command: {}", cmd.lines().next().unwrap_or(""));
+        println!();
+    }
+    println!("no changes made (dry run)");
 }

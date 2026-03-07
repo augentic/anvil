@@ -3,23 +3,25 @@ mod apply;
 mod archive;
 mod brief;
 mod cli;
+mod context;
+mod engine;
 mod fan_out;
 mod git;
 mod pipeline;
 mod propose;
 mod registry;
-mod engine;
 mod status;
 mod sync;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 
 use cli::{Cli, Command, RegistryAction};
-use registry::Registry;
+use context::ChangeContext;
 use engine::opsx::OpsxEngine;
+use registry::Registry;
 
 /// Walk upward from the current directory to find the workspace root,
 /// identified by the presence of `registry.toml`.
@@ -35,52 +37,64 @@ fn find_workspace_root() -> Result<PathBuf> {
     }
 }
 
-/// Resolve the change directory within the workspace.
-fn change_dir(workspace: &Path, engine: &dyn engine::Engine, change: &str) -> PathBuf {
-    workspace.join(engine.changes_dir()).join(change)
-}
-
 fn run() -> Result<()> {
+    let cli = Cli::parse();
+
+    let default_level = if cli.verbose {
+        "debug"
+    } else if cli.quiet {
+        "warn"
+    } else {
+        "info"
+    };
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
+                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new(default_level)),
         )
         .without_time()
         .init();
-
-    let cli = Cli::parse();
     let workspace = find_workspace_root()?;
     let engine = OpsxEngine;
 
     match cli.command {
-        Command::Propose { change, description, dry_run } => {
-            propose::run(&change, &description, dry_run, &engine, &workspace)?;
+        Command::Propose {
+            change,
+            description,
+            domain,
+            service,
+            dry_run,
+        } => {
+            propose::run(
+                &change,
+                &description,
+                &domain,
+                &service,
+                dry_run,
+                &engine,
+                &workspace,
+            )?;
         }
         Command::FanOut { change, dry_run } => {
             fan_out::run(&change, dry_run, &engine, &workspace)?;
         }
-        Command::Apply { change, target, dry_run } => {
+        Command::Apply {
+            change,
+            target,
+            dry_run,
+        } => {
             apply::run(&change, target.as_deref(), dry_run, &engine, &workspace)?;
         }
         Command::Status { change } => {
-            let change_dir = change_dir(&workspace, &engine, &change);
-            let pipeline = pipeline::Pipeline::load(&change_dir.join("pipeline.toml"))?;
-            let registry = Registry::load(&workspace.join("registry.toml"))?;
-            pipeline.validate(&registry, &change_dir)?;
-            let status = status::PipelineStatus::load_or_create(
-                &change_dir.join("status.toml"),
-                &change,
-                &pipeline,
-                &registry,
-            )?;
-            status.print_summary();
+            let ctx = ChangeContext::load(&workspace, &engine, &change)?;
+            ctx.status.print_summary();
         }
         Command::Archive { change, dry_run } => {
             archive::run(&change, dry_run, &engine, &workspace)?;
         }
         Command::Sync { change, mark_ready } => {
-            sync::run(&change, mark_ready, &workspace)?;
+            sync::run(&change, mark_ready, &engine, &workspace)?;
         }
         Command::Registry { action } => {
             let reg = Registry::load(&workspace.join("registry.toml"))?;

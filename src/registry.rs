@@ -40,7 +40,7 @@ impl Registry {
     }
 
     pub fn print_all(&self) {
-        println!("{:<24} {:<12} {:<24} {}", "ID", "DOMAIN", "CRATE", "REPO");
+        println!("{:<24} {:<12} {:<24} REPO", "ID", "DOMAIN", "CRATE");
         println!("{}", "-".repeat(80));
         for s in &self.services {
             println!("{:<24} {:<12} {:<24} {}", s.id, s.domain, s.crate_name, s.repo);

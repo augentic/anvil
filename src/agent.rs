@@ -11,11 +11,10 @@ enum Backend {
 
 impl Backend {
     fn from_env() -> Self {
-        match std::env::var("OPSX_AGENT_BACKEND")
-            .unwrap_or_else(|_| String::from("claude"))
-            .to_ascii_lowercase()
-            .as_str()
-        {
+        let val = std::env::var("ALC_AGENT_BACKEND")
+            .or_else(|_| std::env::var("OPSX_AGENT_BACKEND"))
+            .unwrap_or_else(|_| String::from("claude"));
+        match val.to_ascii_lowercase().as_str() {
             "dry-run" | "dry_run" | "dryrun" => Self::DryRun,
             _ => Self::Claude,
         }
@@ -24,7 +23,7 @@ impl Backend {
 
 /// Invoke the configured agent backend for a command in a repo.
 ///
-/// Set `OPSX_AGENT_BACKEND=dry-run` to print commands without executing.
+/// Set `ALC_AGENT_BACKEND=dry-run` to print commands without executing.
 pub fn invoke(command: &str, repo_dir: &Path) -> Result<bool> {
     let backend = Backend::from_env();
     tracing::info!(

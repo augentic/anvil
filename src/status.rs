@@ -16,7 +16,6 @@ pub enum TargetState {
     Implemented,
     Reviewing,
     Merged,
-    Archived,
     Failed,
 }
 
@@ -30,7 +29,6 @@ impl TargetState {
             Self::Implemented => 3,
             Self::Reviewing => 4,
             Self::Merged => 5,
-            Self::Archived => 6,
             Self::Failed => 0,
         }
     }
@@ -49,7 +47,6 @@ impl fmt::Display for TargetState {
             Self::Implemented => "implemented",
             Self::Reviewing => "reviewing",
             Self::Merged => "merged",
-            Self::Archived => "archived",
             Self::Failed => "failed",
         };
         f.write_str(s)
@@ -141,7 +138,6 @@ impl PipelineStatus {
                 | (TargetState::Implemented, TargetState::Failed)
                 | (TargetState::Reviewing, TargetState::Failed)
                 | (TargetState::Reviewing, TargetState::Merged)
-                | (TargetState::Merged, TargetState::Archived)
                 // Idempotent re-runs
                 | (TargetState::Failed, TargetState::Distributed)
                 | (TargetState::Failed, TargetState::Applying)
@@ -150,12 +146,16 @@ impl PipelineStatus {
                 | (TargetState::Implemented, TargetState::Implemented)
                 | (TargetState::Reviewing, TargetState::Reviewing)
                 | (TargetState::Merged, TargetState::Merged)
-                | (TargetState::Archived, TargetState::Archived)
                 | (TargetState::Failed, TargetState::Failed)
         );
 
         if !allowed {
-            bail!("invalid state transition for '{}': {} -> {}", id, target.state, new_state);
+            bail!(
+                "invalid state transition for '{}': {} -> {}",
+                id,
+                target.state,
+                new_state
+            );
         }
 
         target.state = new_state;
@@ -177,15 +177,27 @@ impl PipelineStatus {
         println!("change: {}", self.change);
         println!("updated: {}", self.updated);
         println!();
-        println!("{:<24} {:<14} {}", "TARGET", "STATE", "PR");
+        println!("{:<24} {:<14} PR", "TARGET", "STATE");
         println!("{}", "-".repeat(72));
         for t in &self.targets {
-            println!("{:<24} {:<14} {}", t.id, t.state, t.pr.as_deref().unwrap_or("-"));
+            println!(
+                "{:<24} {:<14} {}",
+                t.id,
+                t.state,
+                t.pr.as_deref().unwrap_or("-")
+            );
         }
-        let done =
-            self.targets.iter().filter(|t| t.state.is_at_least(TargetState::Implemented)).count();
+        let done = self
+            .targets
+            .iter()
+            .filter(|t| t.state.is_at_least(TargetState::Implemented))
+            .count();
         println!();
-        println!("progress: {}/{} targets implemented or later", done, self.targets.len());
+        println!(
+            "progress: {}/{} targets implemented or later",
+            done,
+            self.targets.len()
+        );
     }
 }
 

@@ -45,20 +45,15 @@ pub fn add_commit_push(repo_dir: &Path, message: &str, branch: &str) -> Result<(
 }
 
 pub fn create_draft_pr(repo_dir: &Path, title: &str, body: &str) -> Result<String> {
-    run_cmd("gh", &["pr", "create", "--draft", "--title", title, "--body", body], repo_dir)
+    run_cmd(
+        "gh",
+        &["pr", "create", "--draft", "--title", title, "--body", body],
+        repo_dir,
+    )
 }
 
-#[derive(Debug, Deserialize)]
-struct PullRequestView {
-    url: String,
-    #[serde(rename = "isDraft")]
-    is_draft: bool,
-    state: String,
-    #[serde(rename = "mergedAt")]
-    merged_at: Option<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PullRequestInfo {
     pub url: String,
     pub is_draft: bool,
@@ -67,16 +62,13 @@ pub struct PullRequestInfo {
 }
 
 pub fn pull_request_info(pr_url: &str, dir: &Path) -> Result<PullRequestInfo> {
-    let output =
-        run_cmd("gh", &["pr", "view", pr_url, "--json", "url,isDraft,state,mergedAt"], dir)?;
-    let view: PullRequestView = serde_json::from_str(&output)
-        .with_context(|| format!("parsing gh pr view json for {pr_url}"))?;
-    Ok(PullRequestInfo {
-        url: view.url,
-        is_draft: view.is_draft,
-        state: view.state,
-        merged_at: view.merged_at,
-    })
+    let output = run_cmd(
+        "gh",
+        &["pr", "view", pr_url, "--json", "url,isDraft,state,mergedAt"],
+        dir,
+    )?;
+    serde_json::from_str(&output)
+        .with_context(|| format!("parsing gh pr view json for {pr_url}"))
 }
 
 pub fn mark_pr_ready(pr_url: &str, dir: &Path) -> Result<()> {

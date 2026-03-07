@@ -1,36 +1,66 @@
+use std::collections::HashSet;
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
 
+use crate::context;
 use crate::engine::Engine;
+use crate::registry::Service;
 use crate::{agent, git, registry};
 
 pub fn run(
-    change: &str, description: &str, dry_run: bool, engine: &dyn Engine, workspace: &Path,
+    change: &str,
+    description: &str,
+    domains: &[String],
+    services: &[String],
+    dry_run: bool,
+    engine: &dyn Engine,
+    workspace: &Path,
 ) -> Result<()> {
     let changes_dir = workspace.join(engine.changes_dir());
     let change_dir = changes_dir.join(change);
 
     if change_dir.exists() {
-        bail!("change '{}' already exists at {}", change, change_dir.display());
+        bail!(
+            "change '{}' already exists at {}",
+            change,
+            change_dir.display()
+        );
+    }
+
+    let reg = registry::Registry::load(&workspace.join("registry.toml"))?;
+
+    let filtered = filter_services(&reg.services, domains, services);
+
+    let unique_repos: HashSet<&str> = filtered.iter().map(|s| s.repo.as_str()).collect();
+    if unique_repos.len() > 10 && domains.is_empty() && services.is_empty() {
+        tracing::warn!(
+            repos = unique_repos.len(),
+            "loading specs from {} repos — consider using --domain or --service to narrow scope",
+            unique_repos.len()
+        );
+    }
+
+    let platform_context = gather_context(workspace, engine, &reg, &filtered)?;
+    let prompt = engine.propose_prompt(change, description, &platform_context);
+
+    if dry_run {
+        println!("=== DRY RUN: propose '{change}' ===\n");
+        println!("change dir: {}\n", change_dir.display());
+        if !domains.is_empty() || !services.is_empty() {
+            println!(
+                "scope: {} unique repos from {} services\n",
+                unique_repos.len(),
+                filtered.len()
+            );
+        }
+        println!("--- AGENT PROMPT ---\n{prompt}\n--- END ---");
+        return Ok(());
     }
 
     std::fs::create_dir_all(change_dir.join("specs")).with_context(|| {
         format!("creating change scaffold under {}", change_dir.display())
     })?;
-
-    let reg = registry::Registry::load(&workspace.join("registry.toml"))?;
-    let context = gather_context(workspace, engine, &reg)?;
-
-    let prompt = engine.propose_prompt(change, description, &context);
-
-    if dry_run {
-        println!("=== DRY RUN: propose '{change}' ===\n");
-        println!("change dir: {}\n", change_dir.display());
-        println!("--- AGENT PROMPT ---\n{prompt}\n--- END ---");
-        std::fs::remove_dir_all(&change_dir)?;
-        return Ok(());
-    }
 
     let succeeded = agent::invoke(&prompt, workspace)?;
     if !succeeded {
@@ -44,9 +74,32 @@ pub fn run(
     Ok(())
 }
 
-/// Gather platform context for the propose prompt:
-/// registry summary + current specs from target repos.
-fn gather_context(workspace: &Path, engine: &dyn Engine, reg: &registry::Registry) -> Result<String> {
+/// Filter services by domain and/or service name.
+/// When no filters are given, returns all services.
+fn filter_services<'a>(
+    all: &'a [Service],
+    domains: &[String],
+    services: &[String],
+) -> Vec<&'a Service> {
+    if domains.is_empty() && services.is_empty() {
+        return all.iter().collect();
+    }
+    all.iter()
+        .filter(|s| {
+            domains.iter().any(|d| d == &s.domain) || services.iter().any(|sid| sid == &s.id)
+        })
+        .collect()
+}
+
+/// Build platform context for the propose prompt.
+/// The full registry summary is always included so the agent knows the topology.
+/// Spec loading (the expensive part) only runs for filtered services.
+fn gather_context(
+    workspace: &Path,
+    engine: &dyn Engine,
+    reg: &registry::Registry,
+    filtered: &[&Service],
+) -> Result<String> {
     let mut ctx = String::from("=== REGISTRY ===\n");
     for svc in &reg.services {
         ctx.push_str(&format!(
@@ -61,9 +114,8 @@ fn gather_context(workspace: &Path, engine: &dyn Engine, reg: &registry::Registr
 
     ctx.push_str("\n=== CURRENT SPECS ===\n");
 
-    let mut seen_repos: std::collections::HashSet<String> = std::collections::HashSet::new();
-
-    for svc in &reg.services {
+    let mut seen_repos: HashSet<String> = HashSet::new();
+    for svc in filtered {
         if !seen_repos.insert(svc.repo.clone()) {
             continue;
         }
@@ -80,7 +132,11 @@ fn gather_context(workspace: &Path, engine: &dyn Engine, reg: &registry::Registr
 /// Try to read specs from a target repo. Looks for the repo as a sibling
 /// directory first (workspace layout), otherwise clones shallowly.
 fn try_read_repo_specs(workspace: &Path, repo_url: &str, engine: &dyn Engine) -> Option<String> {
-    let repo_name = repo_url.rsplit('/').next().unwrap_or("repo").trim_end_matches(".git");
+    let repo_name = repo_url
+        .rsplit('/')
+        .next()
+        .unwrap_or("repo")
+        .trim_end_matches(".git");
 
     if let Some(parent) = workspace.parent() {
         let sibling = parent.join(repo_name);
@@ -90,11 +146,7 @@ fn try_read_repo_specs(workspace: &Path, repo_url: &str, engine: &dyn Engine) ->
         }
     }
 
-    let tmp = std::env::temp_dir().join(format!("opsx-specs-{repo_name}-{}", std::process::id()));
-    if tmp.exists() {
-        let _ = std::fs::remove_dir_all(&tmp);
-    }
-
+    let tmp = context::temp_dir(&format!("specs-{repo_name}")).ok()?;
     if git::clone_shallow(repo_url, &tmp).is_ok() {
         let specs_dir = tmp.join(engine.specs_dir());
         let result = if specs_dir.is_dir() {
@@ -151,7 +203,10 @@ fn verify_artifacts(change_dir: &Path, engine: &dyn Engine) -> Result<()> {
             .with_context(|| format!("reading {}", specs_dir.display()))?
             .any(|entry| entry.is_ok());
     if !has_specs {
-        bail!("specs directory is empty after propose: {}", specs_dir.display());
+        bail!(
+            "specs directory is empty after propose: {}",
+            specs_dir.display()
+        );
     }
 
     Ok(())
