@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::process::Command;
 
 use anyhow::{Context, Result};
 
@@ -24,7 +23,7 @@ impl Backend {
 /// Invoke the configured agent backend for a command in a repo.
 ///
 /// Set `ALC_AGENT_BACKEND=dry-run` to print commands without executing.
-pub fn invoke(command: &str, repo_dir: &Path) -> Result<bool> {
+pub async fn invoke(command: &str, repo_dir: &Path) -> Result<bool> {
     let backend = Backend::from_env();
     tracing::info!(
         command,
@@ -39,11 +38,12 @@ pub fn invoke(command: &str, repo_dir: &Path) -> Result<bool> {
             Ok(true)
         }
         Backend::Claude => {
-            let status = Command::new("claude")
+            let status = tokio::process::Command::new("claude")
                 .args(["--message", command, "--yes"])
                 .arg("--directory")
                 .arg(repo_dir)
                 .status()
+                .await
                 .context("spawning claude CLI")?;
 
             if status.success() {

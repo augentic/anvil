@@ -91,6 +91,10 @@ impl Engine for OpsxEngine {
         )
     }
 
+    fn spec_file_path(&self, spec_name: &str) -> String {
+        format!("{spec_name}/spec.md")
+    }
+
     fn upstream_paths(&self) -> UpstreamPaths {
         UpstreamPaths {
             design: "upstream/design.md",

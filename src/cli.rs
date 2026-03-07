@@ -9,6 +9,12 @@ pub struct Cli {
     /// Decrease log verbosity to warnings only
     #[arg(long, short = 'q', global = true)]
     pub quiet: bool,
+    /// Max concurrent repo operations (fan-out, apply)
+    #[arg(long, short = 'j', global = true, default_value = "4")]
+    pub concurrency: usize,
+    /// Spec engine to use
+    #[arg(long, global = true, default_value = "opsx")]
+    pub engine: String,
     #[command(subcommand)]
     pub command: Command,
 }
@@ -22,12 +28,6 @@ pub enum Command {
         /// Human description of the initiative
         #[arg(long)]
         description: String,
-        /// Only load specs from repos in these domains
-        #[arg(long)]
-        domain: Vec<String>,
-        /// Only load specs from these services
-        #[arg(long)]
-        service: Vec<String>,
         /// Preview the prompt without invoking the agent
         #[arg(long)]
         dry_run: bool,
@@ -50,6 +50,9 @@ pub enum Command {
         /// Preview what would happen without invoking agents
         #[arg(long)]
         dry_run: bool,
+        /// Continue executing independent groups when one fails
+        #[arg(long)]
+        continue_on_failure: bool,
     },
     /// Show pipeline status for all targets
     Status {

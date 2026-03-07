@@ -1,13 +1,22 @@
 use std::path::Path;
 
 use anyhow::Result;
+use futures::stream::{self, StreamExt};
 
-use crate::context::{self, ChangeContext};
+use crate::context::{ChangeContext, TempDir};
 use crate::engine::{DistributeContext, Engine};
 use crate::pipeline::RepoGroup;
-use crate::{git, status};
+use crate::status::TargetState;
+use crate::{git, github, status};
 
-pub fn run(change: &str, dry_run: bool, engine: &dyn Engine, workspace: &Path) -> Result<()> {
+/// Result of a single repo group fan-out: per-target state updates.
+struct FanOutResult {
+    updates: Vec<(String, TargetState, String)>,
+}
+
+pub async fn run(
+    change: &str, dry_run: bool, concurrency: usize, engine: &dyn Engine, workspace: &Path,
+) -> Result<()> {
     let mut ctx = ChangeContext::load(workspace, engine, change)?;
     let groups = ctx.groups()?;
 
@@ -16,76 +25,96 @@ pub fn run(change: &str, dry_run: bool, engine: &dyn Engine, workspace: &Path) -
         return Ok(());
     }
 
-    for group in &groups {
-        let all_distributed = group.targets.iter().all(|t| {
-            ctx.status
-                .get(&t.id)
-                .map(|s| s.state.is_at_least(status::TargetState::Distributed))
-                .unwrap_or(false)
-        });
-        if all_distributed {
-            tracing::info!(repo = %group.repo, "already distributed, skipping");
-            continue;
-        }
+    let pending_groups: Vec<_> = groups
+        .into_iter()
+        .filter(|group| {
+            let all_distributed = group.targets.iter().all(|t| {
+                ctx.status
+                    .get(&t.id)
+                    .map(|s| s.state.is_at_least(status::TargetState::Distributed))
+                    .unwrap_or(false)
+            });
+            if all_distributed {
+                tracing::info!(repo = %group.repo, "already distributed, skipping");
+            }
+            !all_distributed
+        })
+        .collect();
 
-        tracing::info!(repo = %group.repo, crates = ?group.crates, "distributing");
-
-        let tmp = context::temp_dir(&repo_label(&group.repo))?;
-
-        git::clone_shallow(&group.repo, &tmp)?;
-        let branch = branch_name(change, group);
-        git::checkout_new_branch(&tmp, &branch)?;
-
-        let dist_ctx = DistributeContext {
-            workspace,
-            change,
-            repo_dir: &tmp,
-            group,
-        };
-        engine.distribute(&dist_ctx)?;
-
-        let commit_msg = format!("alc: distribute {change} for {}", group.crates.join(", "));
-        git::add_commit_push(&tmp, &commit_msg, &branch)?;
-
-        let pr_title = format!("alc: {change} — {}", group.crates.join(", "));
-        let pr_body = format!(
-            "Distributed from central plan.\n\nTargets: {}\nSpecs: {}",
-            group.crates.join(", "),
-            group.specs.join(", "),
-        );
-        let pr_url = git::create_draft_pr(&tmp, &pr_title, &pr_body)?;
-
-        for t in &group.targets {
-            ctx.status.transition(&t.id, status::TargetState::Distributed)?;
-            ctx.status.set_pr(&t.id, pr_url.clone())?;
-        }
-        ctx.save_status()?;
-
-        let _ = std::fs::remove_dir_all(&tmp);
-        tracing::info!(repo = %group.repo, pr = %pr_url, "distributed");
+    if pending_groups.is_empty() {
+        ctx.status.print_summary();
+        return Ok(());
     }
 
+    let workspace_buf = workspace.to_path_buf();
+    let change_str = change.to_string();
+
+    let results: Vec<Result<FanOutResult>> = stream::iter(pending_groups)
+        .map(|group| {
+            let ws = workspace_buf.clone();
+            let ch = change_str.clone();
+            async move { fan_out_group(&ch, &group, engine, &ws).await }
+        })
+        .buffer_unordered(concurrency)
+        .collect()
+        .await;
+
+    for result in results {
+        let outcome = result?;
+        for (target_id, new_state, pr_url) in outcome.updates {
+            ctx.status.transition(&target_id, new_state)?;
+            ctx.status.set_pr(&target_id, pr_url)?;
+        }
+    }
+
+    ctx.save_status()?;
     println!();
     ctx.status.print_summary();
     Ok(())
 }
 
-fn branch_name(change: &str, group: &RepoGroup) -> String {
-    group
-        .targets
-        .first()
-        .and_then(|t| t.branch.as_deref())
-        .map(String::from)
-        .unwrap_or_else(|| format!("alc/{change}"))
-}
+async fn fan_out_group(
+    change: &str, group: &RepoGroup, engine: &dyn Engine, workspace: &Path,
+) -> Result<FanOutResult> {
+    tracing::info!(repo = %group.repo, crates = ?group.crates, "distributing");
 
-fn repo_label(repo_url: &str) -> String {
-    repo_url
-        .rsplit('/')
-        .next()
-        .unwrap_or("repo")
-        .trim_end_matches(".git")
-        .to_string()
+    let tmp = TempDir::new(&group.repo_label())?;
+
+    git::clone_shallow(&group.repo, tmp.path()).await?;
+    let branch = group.branch_name(change);
+    git::checkout_new_branch(tmp.path(), &branch).await?;
+
+    let dist_ctx = DistributeContext {
+        workspace,
+        change,
+        repo_dir: tmp.path(),
+        group,
+    };
+    engine.distribute(&dist_ctx)?;
+
+    let commit_msg = format!("alc: distribute {change} for {}", group.crates.join(", "));
+    git::add_commit_push(tmp.path(), &commit_msg, &branch).await?;
+
+    let (owner, repo_name) = git::parse_repo_url(&group.repo)?;
+    let base = git::default_branch(tmp.path()).await?;
+    let pr_title = format!("alc: {change} — {}", group.crates.join(", "));
+    let pr_body = format!(
+        "Distributed from central plan.\n\nTargets: {}\nSpecs: {}",
+        group.crates.join(", "),
+        group.specs.join(", "),
+    );
+    let pr_url =
+        github::create_draft_pr(&owner, &repo_name, &branch, &base, &pr_title, &pr_body).await?;
+
+    tracing::info!(repo = %group.repo, pr = %pr_url, "distributed");
+
+    let updates = group
+        .targets
+        .iter()
+        .map(|t| (t.id.clone(), TargetState::Distributed, pr_url.clone()))
+        .collect();
+
+    Ok(FanOutResult { updates })
 }
 
 fn print_dry_run(change: &str, groups: &[RepoGroup], ctx: &ChangeContext) {
@@ -104,7 +133,7 @@ fn print_dry_run(change: &str, groups: &[RepoGroup], ctx: &ChangeContext) {
 
     println!("\nrepo groups:");
     for group in groups {
-        let branch = branch_name(change, group);
+        let branch = group.branch_name(change);
         println!("  {} (branch: {branch}, 1 PR)", group.repo);
         for c in &group.crates {
             println!("    crate: {c}");

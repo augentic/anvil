@@ -4,9 +4,11 @@ use anyhow::{Context, Result};
 
 use crate::context::ChangeContext;
 use crate::engine::Engine;
-use crate::{git, status};
+use crate::{git, github, status};
 
-pub fn run(change: &str, mark_ready: bool, engine: &dyn Engine, workspace: &Path) -> Result<()> {
+pub async fn run(
+    change: &str, mark_ready: bool, engine: &dyn Engine, workspace: &Path,
+) -> Result<()> {
     let mut ctx = ChangeContext::load(workspace, engine, change)?;
     let mut changed = false;
 
@@ -23,7 +25,11 @@ pub fn run(change: &str, mark_ready: bool, engine: &dyn Engine, workspace: &Path
             continue;
         };
 
-        let mut info = git::pull_request_info(&pr_url, &ctx.workspace)
+        let (owner, repo_name, pr_number) = git::parse_pr_url(&pr_url)
+            .with_context(|| format!("parsing PR URL for target {id}"))?;
+
+        let mut info = github::pull_request_info(&owner, &repo_name, pr_number)
+            .await
             .with_context(|| format!("reading PR metadata for target {id}"))?;
 
         if mark_ready {
@@ -32,11 +38,14 @@ pub fn run(change: &str, mark_ready: bool, engine: &dyn Engine, workspace: &Path
                 && info.state.eq_ignore_ascii_case("OPEN")
                 && info.is_draft
             {
-                git::mark_pr_ready(&pr_url, &ctx.workspace)
+                github::mark_pr_ready(&owner, &repo_name, pr_number)
+                    .await
                     .with_context(|| format!("marking PR ready for target {id}"))?;
-                info = git::pull_request_info(&pr_url, &ctx.workspace).with_context(|| {
-                    format!("re-reading PR metadata after ready for target {id}")
-                })?;
+                info = github::pull_request_info(&owner, &repo_name, pr_number)
+                    .await
+                    .with_context(|| {
+                        format!("re-reading PR metadata after ready for target {id}")
+                    })?;
             }
         }
 

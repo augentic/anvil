@@ -7,6 +7,7 @@ mod context;
 mod engine;
 mod fan_out;
 mod git;
+mod github;
 mod pipeline;
 mod propose;
 mod registry;
@@ -20,6 +21,7 @@ use clap::Parser;
 
 use cli::{Cli, Command, RegistryAction};
 use context::ChangeContext;
+use engine::Engine;
 use engine::opsx::OpsxEngine;
 use registry::Registry;
 
@@ -37,7 +39,7 @@ fn find_workspace_root() -> Result<PathBuf> {
     }
 }
 
-fn run() -> Result<()> {
+async fn run() -> Result<()> {
     let cli = Cli::parse();
 
     let default_level = if cli.verbose {
@@ -55,46 +57,36 @@ fn run() -> Result<()> {
         )
         .without_time()
         .init();
+
     let workspace = find_workspace_root()?;
-    let engine = OpsxEngine;
+    let concurrency = cli.concurrency;
+
+    let engine: Box<dyn Engine> = match cli.engine.as_str() {
+        "opsx" => Box::new(OpsxEngine),
+        other => bail!("unknown engine '{other}' (supported: opsx)"),
+    };
+
+    let engine: &dyn Engine = &*engine;
 
     match cli.command {
-        Command::Propose {
-            change,
-            description,
-            domain,
-            service,
-            dry_run,
-        } => {
-            propose::run(
-                &change,
-                &description,
-                &domain,
-                &service,
-                dry_run,
-                &engine,
-                &workspace,
-            )?;
+        Command::Propose { change, description, dry_run } => {
+            propose::run(&change, &description, dry_run, engine, &workspace).await?;
         }
         Command::FanOut { change, dry_run } => {
-            fan_out::run(&change, dry_run, &engine, &workspace)?;
+            fan_out::run(&change, dry_run, concurrency, engine, &workspace).await?;
         }
-        Command::Apply {
-            change,
-            target,
-            dry_run,
-        } => {
-            apply::run(&change, target.as_deref(), dry_run, &engine, &workspace)?;
+        Command::Apply { change, target, dry_run, continue_on_failure } => {
+            apply::run(&change, target.as_deref(), dry_run, continue_on_failure, concurrency, engine, &workspace).await?;
         }
         Command::Status { change } => {
-            let ctx = ChangeContext::load(&workspace, &engine, &change)?;
+            let ctx = ChangeContext::load(&workspace, engine, &change)?;
             ctx.status.print_summary();
         }
         Command::Archive { change, dry_run } => {
-            archive::run(&change, dry_run, &engine, &workspace)?;
+            archive::run(&change, dry_run, engine, &workspace)?;
         }
         Command::Sync { change, mark_ready } => {
-            sync::run(&change, mark_ready, &engine, &workspace)?;
+            sync::run(&change, mark_ready, engine, &workspace).await?;
         }
         Command::Registry { action } => {
             let reg = Registry::load(&workspace.join("registry.toml"))?;
@@ -118,8 +110,9 @@ fn run() -> Result<()> {
     Ok(())
 }
 
-fn main() {
-    if let Err(e) = run() {
+#[tokio::main]
+async fn main() {
+    if let Err(e) = run().await {
         eprintln!("error: {e:#}");
         std::process::exit(1);
     }

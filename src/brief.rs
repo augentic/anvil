@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 use crate::engine::{BriefChange, BriefSpecs, BriefTarget, BriefUpstream, ChangeBrief, Engine};
 use crate::pipeline::RepoGroup;
 
-/// Build a change brief for a repo group, using engine-provided upstream paths.
+/// Build a change brief for a repo group, using engine-provided paths.
 pub fn generate(change_name: &str, group: &RepoGroup, engine: &dyn Engine) -> ChangeBrief {
     let paths = engine.upstream_paths();
     ChangeBrief {
@@ -18,7 +18,11 @@ pub fn generate(change_name: &str, group: &RepoGroup, engine: &dyn Engine) -> Ch
             domain: group.domain.clone(),
         },
         specs: BriefSpecs {
-            files: group.specs.iter().map(|s| format!("{s}/spec.md")).collect(),
+            files: group
+                .specs
+                .iter()
+                .map(|s| engine.spec_file_path(s))
+                .collect(),
         },
         upstream: BriefUpstream {
             design: paths.design.to_string(),

@@ -10,8 +10,6 @@ use crate::registry::Registry;
 pub struct Pipeline {
     pub change: String,
     pub targets: Vec<Target>,
-    /// Optional rich metadata about cross-target dependencies.
-    /// NOT used for ordering -- ordering comes solely from `depends_on` on each target.
     #[serde(default)]
     pub dependencies: Vec<Dependency>,
 }
@@ -29,8 +27,7 @@ pub struct Target {
     pub depends_on: Vec<String>,
 }
 
-/// Rich dependency metadata between targets (type, contract).
-/// Informational only -- not used for execution ordering.
+/// Rich dependency metadata between targets.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Dependency {
     pub from: String,
@@ -51,11 +48,49 @@ pub struct RepoGroup {
     pub specs: Vec<String>,
 }
 
+impl RepoGroup {
+    /// Derive the branch name for this group's change.
+    /// Uses an explicit `branch` from the first target if set, otherwise `alc/<change>`.
+    pub fn branch_name(&self, change: &str) -> String {
+        self.targets
+            .first()
+            .and_then(|t| t.branch.as_deref())
+            .map(String::from)
+            .unwrap_or_else(|| format!("alc/{change}"))
+    }
+
+    /// Short label extracted from the repo URL (e.g. "train" from "git@github.com:org/train.git").
+    pub fn repo_label(&self) -> String {
+        self.repo
+            .rsplit('/')
+            .next()
+            .unwrap_or("repo")
+            .trim_end_matches(".git")
+            .to_string()
+    }
+}
+
 impl Pipeline {
     pub fn load(path: &Path) -> Result<Self> {
         let content =
             std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
         toml::from_str(&content).with_context(|| format!("parsing {}", path.display()))
+    }
+
+    /// Collect all dependency edges from both `[[dependencies]]` and inline `depends_on`.
+    fn all_edges(&self) -> Vec<(&str, &str)> {
+        let mut edges: Vec<(&str, &str)> = self
+            .dependencies
+            .iter()
+            .map(|d| (d.from.as_str(), d.to.as_str()))
+            .collect();
+
+        for target in &self.targets {
+            for dep in &target.depends_on {
+                edges.push((dep.as_str(), target.id.as_str()));
+            }
+        }
+        edges
     }
 
     /// Validate pipeline integrity against registry and on-disk specs.
@@ -79,32 +114,15 @@ impl Pipeline {
             }
         }
 
-        for target in &self.targets {
-            for dep in &target.depends_on {
-                if dep == &target.id {
-                    bail!("self-dependency is not allowed for target '{}'", target.id);
-                }
-                if !target_ids.contains(dep.as_str()) {
-                    bail!(
-                        "target '{}' depends_on unknown target '{dep}'",
-                        target.id
-                    );
-                }
+        for (from, to) in self.all_edges() {
+            if from == to {
+                bail!("self-dependency is not allowed for target '{from}'");
             }
-        }
-
-        for d in &self.dependencies {
-            if !target_ids.contains(d.from.as_str()) {
-                bail!(
-                    "[[dependencies]] references unknown 'from' target '{}'",
-                    d.from
-                );
+            if !target_ids.contains(from) {
+                bail!("dependency references unknown 'from' target '{from}'");
             }
-            if !target_ids.contains(d.to.as_str()) {
-                bail!(
-                    "[[dependencies]] references unknown 'to' target '{}'",
-                    d.to
-                );
+            if !target_ids.contains(to) {
+                bail!("dependency references unknown 'to' target '{to}'");
             }
         }
 
@@ -112,30 +130,24 @@ impl Pipeline {
     }
 
     /// Kahn's algorithm: returns targets in dependency order (upstream first).
-    /// Ordering is driven solely by `depends_on` on each target.
     pub fn topological_sort(&self) -> Result<Vec<&Target>> {
         let target_ids: HashSet<&str> = self.targets.iter().map(|t| t.id.as_str()).collect();
         let mut in_degree: HashMap<&str, usize> = target_ids.iter().map(|id| (*id, 0)).collect();
         let mut dependents: HashMap<&str, Vec<&str>> = HashMap::new();
 
-        for target in &self.targets {
-            for dep in &target.depends_on {
-                if !target_ids.contains(dep.as_str()) {
-                    bail!("depends_on references unknown target '{dep}'");
-                }
-                *in_degree.entry(target.id.as_str()).or_default() += 1;
-                dependents
-                    .entry(dep.as_str())
-                    .or_default()
-                    .push(target.id.as_str());
+        for (from, to) in self.all_edges() {
+            if !target_ids.contains(from) {
+                bail!("dependency references unknown target '{from}'");
             }
+            if !target_ids.contains(to) {
+                bail!("dependency references unknown target '{to}'");
+            }
+            *in_degree.entry(to).or_default() += 1;
+            dependents.entry(from).or_default().push(to);
         }
 
-        let mut queue: VecDeque<&str> = in_degree
-            .iter()
-            .filter(|(_, deg)| **deg == 0)
-            .map(|(&id, _)| id)
-            .collect();
+        let mut queue: VecDeque<&str> =
+            in_degree.iter().filter(|(_, deg)| **deg == 0).map(|(&id, _)| id).collect();
 
         let mut order: Vec<&str> = Vec::with_capacity(self.targets.len());
 
@@ -143,9 +155,7 @@ impl Pipeline {
             order.push(id);
             if let Some(deps) = dependents.get(id) {
                 for &dep in deps {
-                    let deg = in_degree
-                        .get_mut(dep)
-                        .expect("in_degree populated for all target IDs");
+                    let deg = in_degree.get_mut(dep).unwrap();
                     *deg -= 1;
                     if *deg == 0 {
                         queue.push_back(dep);
@@ -185,6 +195,19 @@ impl Pipeline {
                 specs: Vec::new(),
             });
 
+            if group.project_dir != project_dir {
+                bail!(
+                    "target '{}' has project_dir '{}' but repo group '{}' uses '{}'",
+                    target.id, project_dir, repo, group.project_dir
+                );
+            }
+            if group.domain != svc.domain {
+                bail!(
+                    "target '{}' has domain '{}' but repo group '{}' uses '{}'",
+                    target.id, svc.domain, repo, group.domain
+                );
+            }
+
             group.targets.push(target.clone());
             group.crates.push(crate_name.to_string());
             group.specs.extend(target.specs.clone());
@@ -193,29 +216,18 @@ impl Pipeline {
         Ok(groups.into_values().collect())
     }
 
-    /// Return target IDs that `id` depends on (must complete before `id`).
-    pub fn upstream_of(&self, id: &str) -> Vec<&str> {
-        self.targets
-            .iter()
-            .find(|t| t.id == id)
-            .map(|t| t.depends_on.iter().map(String::as_str).collect())
-            .unwrap_or_default()
-    }
-
-    /// Sort repo groups so that groups with upstream dependencies come first.
-    /// A group must run before another if any target in the second group
-    /// depends on a target in the first group.
-    /// Sort repo groups so that groups with upstream dependencies come first.
-    /// A group must run before another if any target in the second group
-    /// depends on a target in the first group.
-    pub fn groups_in_dependency_order(&self, registry: &Registry) -> Result<Vec<RepoGroup>> {
+    /// Partition repo groups into dependency levels for parallel execution.
+    /// Level 0 groups have no cross-group dependencies, level 1 depends only
+    /// on level 0, etc. Groups within the same level can run concurrently.
+    pub fn dependency_levels(&self, registry: &Registry) -> Result<Vec<Vec<RepoGroup>>> {
         let groups = self.group_by_repo(registry)?;
-        if groups.len() <= 1 {
-            return Ok(groups);
+        if groups.is_empty() {
+            return Ok(vec![]);
+        }
+        if groups.len() == 1 {
+            return Ok(vec![groups]);
         }
 
-        // Build target -> repo index from the pipeline + registry (not from groups)
-        // to avoid borrowing groups.
         let mut target_to_repo: HashMap<&str, String> = HashMap::new();
         for target in &self.targets {
             let svc = registry
@@ -226,70 +238,85 @@ impl Pipeline {
         }
 
         let repo_ids: Vec<String> = groups.iter().map(|g| g.repo.clone()).collect();
-        let mut in_degree: HashMap<&str, usize> =
-            repo_ids.iter().map(|r| (r.as_str(), 0)).collect();
-        let mut dependents: HashMap<&str, HashSet<&str>> = HashMap::new();
 
-        for target in &self.targets {
-            let target_repo = &target_to_repo[target.id.as_str()];
-            for dep in &target.depends_on {
-                if let Some(dep_repo) = target_to_repo.get(dep.as_str())
-                    && dep_repo != target_repo
-                {
-                    let target_repo_str = repo_ids
-                        .iter()
-                        .find(|r| r.as_str() == target_repo.as_str())
-                        .expect("repo in list")
-                        .as_str();
-                    let dep_repo_str = repo_ids
-                        .iter()
-                        .find(|r| r.as_str() == dep_repo.as_str())
-                        .expect("dep repo in list")
-                        .as_str();
-                    if dependents
-                        .entry(dep_repo_str)
-                        .or_default()
-                        .insert(target_repo_str)
-                    {
-                        *in_degree.entry(target_repo_str).or_default() += 1;
-                    }
+        let mut repo_deps: HashMap<&str, HashSet<&str>> = HashMap::new();
+        for (from, to) in self.all_edges() {
+            if let (Some(from_repo), Some(to_repo)) =
+                (target_to_repo.get(from), target_to_repo.get(to))
+            {
+                if from_repo != to_repo {
+                    let from_str = repo_ids.iter().find(|r| r.as_str() == from_repo.as_str()).expect("repo in list").as_str();
+                    let to_str = repo_ids.iter().find(|r| r.as_str() == to_repo.as_str()).expect("repo in list").as_str();
+                    repo_deps.entry(to_str).or_default().insert(from_str);
                 }
             }
         }
 
-        let mut queue: VecDeque<&str> = in_degree
-            .iter()
-            .filter(|(_, deg)| **deg == 0)
-            .map(|(&id, _)| id)
-            .collect();
-
-        let mut order: Vec<&str> = Vec::with_capacity(groups.len());
-        while let Some(repo) = queue.pop_front() {
-            order.push(repo);
-            if let Some(deps) = dependents.get(repo) {
-                for &dep_repo in deps {
-                    let deg = in_degree
-                        .get_mut(dep_repo)
-                        .expect("in_degree populated for all repos");
-                    *deg -= 1;
-                    if *deg == 0 {
-                        queue.push_back(dep_repo);
-                    }
-                }
-            }
+        let mut repo_to_level: HashMap<&str, usize> = HashMap::new();
+        for repo in &repo_ids {
+            assign_level(repo.as_str(), &repo_deps, &mut repo_to_level);
         }
 
-        if order.len() != groups.len() {
-            bail!("dependency cycle detected between repo groups");
-        }
-
+        let max_level = repo_to_level.values().copied().max().unwrap_or(0);
         let mut group_map: HashMap<String, RepoGroup> =
             groups.into_iter().map(|g| (g.repo.clone(), g)).collect();
-        Ok(order
-            .into_iter()
-            .filter_map(|repo| group_map.remove(repo))
-            .collect())
+
+        let mut levels: Vec<Vec<RepoGroup>> = Vec::with_capacity(max_level + 1);
+        for level in 0..=max_level {
+            let level_groups: Vec<RepoGroup> = repo_ids
+                .iter()
+                .filter(|r| repo_to_level.get(r.as_str()) == Some(&level))
+                .filter_map(|r| group_map.remove(r.as_str()))
+                .collect();
+            if !level_groups.is_empty() {
+                levels.push(level_groups);
+            }
+        }
+
+        Ok(levels)
     }
+
+    /// Return targets that `id` depends on (i.e., must complete before `id`).
+    pub fn upstream_of(&self, id: &str) -> Vec<&str> {
+        let mut upstream: Vec<&str> = self
+            .dependencies
+            .iter()
+            .filter(|d| d.to == id)
+            .map(|d| d.from.as_str())
+            .collect();
+
+        if let Some(target) = self.targets.iter().find(|t| t.id == id) {
+            for dep in &target.depends_on {
+                if !upstream.contains(&dep.as_str()) {
+                    upstream.push(dep.as_str());
+                }
+            }
+        }
+
+        upstream
+    }
+}
+
+fn assign_level<'a>(
+    repo: &'a str,
+    deps: &HashMap<&'a str, HashSet<&'a str>>,
+    levels: &mut HashMap<&'a str, usize>,
+) -> usize {
+    if let Some(&lvl) = levels.get(repo) {
+        return lvl;
+    }
+    let lvl = deps
+        .get(repo)
+        .map(|upstream| {
+            upstream
+                .iter()
+                .map(|dep| assign_level(dep, deps, levels) + 1)
+                .max()
+                .unwrap_or(0)
+        })
+        .unwrap_or(0);
+    levels.insert(repo, lvl);
+    lvl
 }
 
 fn spec_exists(change_dir: &Path, spec: &str) -> bool {
@@ -322,14 +349,15 @@ from = "r9k-connector"
 to = "r9k-adapter"
 type = "event-schema"
 contract = "domains/train/shared-types.md#R9kEvent"
+
 "#;
-        toml::from_str(toml_str).expect("parsing sample pipeline")
+        toml::from_str(toml_str).unwrap()
     }
 
     #[test]
     fn topological_sort_respects_deps() {
         let p = sample_pipeline();
-        let sorted = p.topological_sort().expect("topological sort");
+        let sorted = p.topological_sort().unwrap();
         assert_eq!(sorted[0].id, "r9k-connector");
         assert_eq!(sorted[1].id, "r9k-adapter");
     }
@@ -346,8 +374,8 @@ id = "b"
 specs = []
 depends_on = ["a"]
 "#;
-        let p: Pipeline = toml::from_str(toml_str).expect("parsing pipeline");
-        let sorted = p.topological_sort().expect("topological sort");
+        let p: Pipeline = toml::from_str(toml_str).unwrap();
+        let sorted = p.topological_sort().unwrap();
         assert_eq!(sorted[0].id, "a");
         assert_eq!(sorted[1].id, "b");
     }
@@ -359,13 +387,19 @@ change = "test"
 [[targets]]
 id = "a"
 specs = []
-depends_on = ["b"]
 [[targets]]
 id = "b"
 specs = []
-depends_on = ["a"]
+[[dependencies]]
+from = "a"
+to = "b"
+type = "x"
+[[dependencies]]
+from = "b"
+to = "a"
+type = "x"
 "#;
-        let p: Pipeline = toml::from_str(toml_str).expect("parsing pipeline");
+        let p: Pipeline = toml::from_str(toml_str).unwrap();
         assert!(p.topological_sort().is_err());
     }
 
@@ -401,7 +435,7 @@ capabilities = []
 "#,
         )
         .expect("parsing registry");
-        let tmp = std::env::temp_dir().join(format!("alc-test-{}", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!("opsx-test-{}", std::process::id()));
         let _ = std::fs::create_dir_all(tmp.join("specs"));
         assert!(p.validate(&reg, &tmp).is_err());
         let _ = std::fs::remove_dir_all(tmp);
@@ -435,29 +469,5 @@ capabilities = ["r9k-xml-to-smartrak-gtfs"]
         assert_eq!(groups[0].targets.len(), 2);
         assert!(groups[0].crates.contains(&String::from("r9k-connector")));
         assert!(groups[0].crates.contains(&String::from("r9k-adapter")));
-    }
-
-    #[test]
-    fn dependencies_metadata_does_not_affect_ordering() {
-        let toml_str = r#"
-change = "test"
-[[targets]]
-id = "a"
-specs = []
-[[targets]]
-id = "b"
-specs = []
-
-[[dependencies]]
-from = "a"
-to = "b"
-type = "event-schema"
-"#;
-        let p: Pipeline = toml::from_str(toml_str).expect("parsing pipeline");
-        let sorted = p.topological_sort().expect("topological sort");
-        // Without depends_on, both are independent -- either order is valid
-        assert_eq!(sorted.len(), 2);
-        // The [[dependencies]] metadata is parsed but doesn't create ordering edges
-        assert!(p.dependencies.len() == 1);
     }
 }
