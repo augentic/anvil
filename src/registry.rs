@@ -3,12 +3,14 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use serde::Deserialize;
 
+/// Service registry loaded from `registry.toml`.
 #[derive(Debug, Deserialize)]
 pub struct Registry {
     #[serde(rename = "services")]
     pub services: Vec<Service>,
 }
 
+/// A single service entry in the registry.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Service {
     pub id: String,
@@ -21,60 +23,28 @@ pub struct Service {
 }
 
 impl Registry {
+    /// Load registry from a TOML file.
     pub fn load(path: &Path) -> Result<Self> {
         let content =
             std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
         toml::from_str(&content).with_context(|| format!("parsing {}", path.display()))
     }
 
+    /// Look up a service by its ID.
     pub fn find_by_id(&self, id: &str) -> Option<&Service> {
         self.services.iter().find(|s| s.id == id)
     }
 
+    /// Return all services in the given domain.
     pub fn find_by_domain(&self, domain: &str) -> Vec<&Service> {
         self.services.iter().filter(|s| s.domain == domain).collect()
     }
 
+    /// Return all services that expose the given capability.
     pub fn find_by_capability(&self, cap: &str) -> Vec<&Service> {
         self.services.iter().filter(|s| s.capabilities.iter().any(|c| c == cap)).collect()
     }
 
-    pub fn print_all(&self) {
-        println!("{:<24} {:<12} {:<24} REPO", "ID", "DOMAIN", "CRATE");
-        println!("{}", "-".repeat(80));
-        for s in &self.services {
-            println!("{:<24} {:<12} {:<24} {}", s.id, s.domain, s.crate_name, s.repo);
-        }
-    }
-
-    pub fn print_by_domain(&self, domain: &str) {
-        let matches = self.find_by_domain(domain);
-        if matches.is_empty() {
-            println!("no services in domain '{domain}'");
-            return;
-        }
-        println!("services in domain '{domain}':");
-        for s in matches {
-            println!(
-                "  {:<24} crate={:<20} caps=[{}]",
-                s.id,
-                s.crate_name,
-                s.capabilities.join(", ")
-            );
-        }
-    }
-
-    pub fn print_by_capability(&self, cap: &str) {
-        let matches = self.find_by_capability(cap);
-        if matches.is_empty() {
-            println!("no services with capability '{cap}'");
-            return;
-        }
-        println!("services with capability '{cap}':");
-        for s in matches {
-            println!("  {:<24} domain={:<12} crate={}", s.id, s.domain, s.crate_name);
-        }
-    }
 }
 
 #[cfg(test)]
@@ -130,5 +100,28 @@ capabilities = ["flows-api", "incidents-api"]
         assert_eq!(reg.find_by_capability("r9k-xml-ingest").len(), 1);
         assert_eq!(reg.find_by_capability("flows-api").len(), 1);
         assert!(reg.find_by_capability("nonexistent").is_empty());
+    }
+
+    #[test]
+    fn malformed_registry_toml_gives_error() {
+        let bad_toml = "not valid toml [[[";
+        let result: Result<Registry, _> = toml::from_str(bad_toml);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn registry_missing_required_fields() {
+        let toml_str = r#"
+[[services]]
+id = "a"
+"#;
+        let result: Result<Registry, _> = toml::from_str(toml_str);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn load_nonexistent_file() {
+        let result = Registry::load(std::path::Path::new("/nonexistent/registry.toml"));
+        assert!(result.is_err());
     }
 }

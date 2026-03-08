@@ -7,15 +7,23 @@ use serde::{Deserialize, Serialize};
 use crate::pipeline::Pipeline;
 use crate::registry::Registry;
 
+/// Lifecycle state of a pipeline target.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum TargetState {
+    /// Not yet distributed to repos.
     Pending,
+    /// Changes distributed, branch/PR created.
     Distributed,
+    /// Implementation in progress.
     Applying,
+    /// Implementation complete, ready for review.
     Implemented,
+    /// PR under review.
     Reviewing,
+    /// PR merged.
     Merged,
+    /// Failed at some step; can be retried.
     Failed,
 }
 
@@ -33,6 +41,7 @@ impl TargetState {
         }
     }
 
+    /// True if this state is at or past the threshold on the happy path (Failed is treated as behind).
     pub fn is_at_least(self, threshold: Self) -> bool {
         self != Self::Failed && self.ordinal() >= threshold.ordinal()
     }
@@ -53,6 +62,7 @@ impl fmt::Display for TargetState {
     }
 }
 
+/// Per-target status within a pipeline run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TargetStatus {
     pub id: String,
@@ -62,6 +72,7 @@ pub struct TargetStatus {
     pub state: TargetState,
 }
 
+/// Persisted status for a change across all pipeline targets.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PipelineStatus {
     pub change: String,
@@ -70,6 +81,7 @@ pub struct PipelineStatus {
 }
 
 impl PipelineStatus {
+    /// Load status from a TOML file.
     pub fn load(path: &Path) -> Result<Self> {
         let content =
             std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
@@ -107,6 +119,7 @@ impl PipelineStatus {
         })
     }
 
+    /// Persist status to a TOML file.
     pub fn save(&self, path: &Path) -> Result<()> {
         let content = toml::to_string_pretty(self).context("serializing status")?;
         if let Some(parent) = path.parent() {
@@ -115,10 +128,12 @@ impl PipelineStatus {
         std::fs::write(path, content).with_context(|| format!("writing {}", path.display()))
     }
 
+    /// Look up target status by ID.
     pub fn get(&self, id: &str) -> Option<&TargetStatus> {
         self.targets.iter().find(|t| t.id == id)
     }
 
+    /// Move a target to a new state; validates allowed transitions.
     pub fn transition(&mut self, id: &str, new_state: TargetState) -> Result<()> {
         let target = self
             .targets
@@ -163,6 +178,7 @@ impl PipelineStatus {
         Ok(())
     }
 
+    /// Record the PR URL for a target.
     pub fn set_pr(&mut self, id: &str, pr_url: String) -> Result<()> {
         let target = self
             .targets
@@ -173,32 +189,6 @@ impl PipelineStatus {
         Ok(())
     }
 
-    pub fn print_summary(&self) {
-        println!("change: {}", self.change);
-        println!("updated: {}", self.updated);
-        println!();
-        println!("{:<24} {:<14} PR", "TARGET", "STATE");
-        println!("{}", "-".repeat(72));
-        for t in &self.targets {
-            println!(
-                "{:<24} {:<14} {}",
-                t.id,
-                t.state,
-                t.pr.as_deref().unwrap_or("-")
-            );
-        }
-        let done = self
-            .targets
-            .iter()
-            .filter(|t| t.state.is_at_least(TargetState::Implemented))
-            .count();
-        println!();
-        println!(
-            "progress: {}/{} targets implemented or later",
-            done,
-            self.targets.len()
-        );
-    }
 }
 
 fn now() -> String {

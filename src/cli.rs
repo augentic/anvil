@@ -1,7 +1,24 @@
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
+
+/// Supported spec engines.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, ValueEnum)]
+pub enum EngineKind {
+    #[default]
+    Opsx,
+}
 
 #[derive(Parser)]
-#[command(name = "alc", about = "Multi-repo orchestration for spec-driven development")]
+#[command(
+    name = "alc",
+    about = "Multi-repo orchestration for spec-driven development",
+    after_help = "\
+Typical workflow:
+  alc propose <change> -d \"description\"   Generate planning artefacts
+  alc fan-out <change>                     Distribute to target repos, open draft PRs
+  alc apply <change>                       Invoke agent per repo to implement
+  alc sync <change>                        Sync PR state from GitHub
+  alc archive <change>                     Archive after all PRs merged"
+)]
 pub struct Cli {
     /// Increase log verbosity to debug level
     #[arg(long, short = 'v', global = true)]
@@ -13,20 +30,22 @@ pub struct Cli {
     #[arg(long, short = 'j', global = true, default_value = "4")]
     pub concurrency: usize,
     /// Spec engine to use
-    #[arg(long, global = true, default_value = "opsx")]
-    pub engine: String,
+    #[arg(long, global = true, default_value = "opsx", value_enum)]
+    pub engine: EngineKind,
     #[command(subcommand)]
     pub command: Command,
 }
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// Initialise a new hub workspace with registry.toml and directory layout
+    Init,
     /// Generate planning artefacts for a new change in the hub repo
     Propose {
         /// Change name (e.g., r9k-http)
         change: String,
         /// Human description of the initiative
-        #[arg(long)]
+        #[arg(long, short = 'd')]
         description: String,
         /// Preview the prompt without invoking the agent
         #[arg(long)]
@@ -75,6 +94,13 @@ pub enum Command {
         #[arg(long)]
         mark_ready: bool,
     },
+    /// Validate pipeline, registry, and status consistency for a change
+    Validate {
+        /// Change name
+        change: String,
+    },
+    /// List existing changes in the hub
+    List,
     /// Query the service registry
     Registry {
         #[command(subcommand)]

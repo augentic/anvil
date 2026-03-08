@@ -4,11 +4,12 @@ use std::path::Path;
 use anyhow::{Context, Result, bail};
 use futures::stream::{self, StreamExt};
 
-use crate::context::{ChangeContext, TempDir};
+use crate::context::ChangeContext;
+use crate::util::TempDir;
 use crate::engine::Engine;
 use crate::pipeline::RepoGroup;
 use crate::status::TargetState;
-use crate::{agent, brief, git, status};
+use crate::{agent, brief, git, output, status};
 
 /// Result of applying a single repo group.
 struct ApplyResult {
@@ -142,7 +143,7 @@ pub async fn run(
     }
 
     println!();
-    ctx.status.print_summary();
+    output::print_status_summary(&ctx.status);
 
     if had_failure {
         bail!("one or more repo groups failed (--continue-on-failure was set)");
@@ -231,7 +232,7 @@ fn is_blocked_by_upstream(group: &RepoGroup, ctx: &ChangeContext) -> bool {
 }
 
 fn print_dry_run(change: &str, groups: &[&RepoGroup], engine: &dyn Engine, ctx: &ChangeContext) {
-    println!("=== DRY RUN: apply '{change}' ===\n");
+    output::dry_run_banner("apply", change);
 
     for group in groups {
         let branch = group.branch_name(change);
@@ -249,5 +250,5 @@ fn print_dry_run(change: &str, groups: &[&RepoGroup], engine: &dyn Engine, ctx: 
         println!("  command: {}", cmd.lines().next().unwrap_or(""));
         println!();
     }
-    println!("no changes made (dry run)");
+    output::dry_run_footer();
 }

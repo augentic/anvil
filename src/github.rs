@@ -78,7 +78,7 @@ pub async fn mark_pr_ready(owner: &str, repo: &str, number: u64) -> Result<()> {
     let node_id = pr
         .node_id
         .filter(|id| !id.is_empty())
-        .context(format!("PR #{number} in {owner}/{repo} has no node_id for GraphQL mutation"))?;
+        .with_context(|| format!("PR #{number} in {owner}/{repo} has no node_id for GraphQL mutation"))?;
 
     let query = format!(
         r#"mutation {{ markPullRequestReadyForReview(input: {{ pullRequestId: "{node_id}" }}) {{ pullRequest {{ isDraft }} }} }}"#

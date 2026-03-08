@@ -2,8 +2,8 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 
-use super::{ChangeBrief, DistributeContext, Engine, UpstreamPaths};
-use crate::brief;
+use super::{DistributeContext, Engine, UpstreamPaths};
+use crate::brief::{self, ChangeBrief};
 
 pub struct OpsxEngine;
 
@@ -111,7 +111,7 @@ impl Engine for OpsxEngine {
 use crate::pipeline::RepoGroup;
 
 fn copy_specs(workspace: &Path, change: &str, group: &RepoGroup, dest_dir: &Path) -> Result<()> {
-    let central_specs = workspace.join("openspec/changes").join(change).join("specs");
+    let central_specs = OpsxEngine.change_dir(workspace, change).join("specs");
     if !central_specs.exists() {
         return Ok(());
     }
@@ -132,7 +132,7 @@ fn copy_specs(workspace: &Path, change: &str, group: &RepoGroup, dest_dir: &Path
 }
 
 fn copy_upstream(workspace: &Path, change: &str, dest_dir: &Path) -> Result<()> {
-    let central = workspace.join("openspec/changes").join(change);
+    let central = OpsxEngine.change_dir(workspace, change);
     let upstream = dest_dir.join("upstream");
     std::fs::create_dir_all(&upstream)?;
 

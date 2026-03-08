@@ -3,11 +3,12 @@ use std::path::Path;
 use anyhow::Result;
 use futures::stream::{self, StreamExt};
 
-use crate::context::{ChangeContext, TempDir};
+use crate::context::ChangeContext;
+use crate::util::TempDir;
 use crate::engine::{DistributeContext, Engine};
 use crate::pipeline::RepoGroup;
 use crate::status::TargetState;
-use crate::{git, github, status};
+use crate::{git, github, output, status};
 
 /// Result of a single repo group fan-out: per-target state updates.
 struct FanOutResult {
@@ -21,7 +22,7 @@ pub async fn run(
     let groups = ctx.groups()?;
 
     if dry_run {
-        print_dry_run(change, &groups, &ctx);
+        print_dry_run(change, &groups, &ctx)?;
         return Ok(());
     }
 
@@ -42,34 +43,55 @@ pub async fn run(
         .collect();
 
     if pending_groups.is_empty() {
-        ctx.status.print_summary();
+        output::print_status_summary(&ctx.status);
         return Ok(());
     }
+
+    let total = pending_groups.len();
+    tracing::info!(total, "distributing to repo groups");
 
     let workspace_buf = workspace.to_path_buf();
     let change_str = change.to_string();
 
-    let results: Vec<Result<FanOutResult>> = stream::iter(pending_groups)
-        .map(|group| {
+    let results: Vec<Result<FanOutResult>> = stream::iter(pending_groups.into_iter().enumerate())
+        .map(|(idx, group)| {
             let ws = workspace_buf.clone();
             let ch = change_str.clone();
-            async move { fan_out_group(&ch, &group, engine, &ws).await }
+            async move {
+                tracing::info!("[{}/{}] {}", idx + 1, total, group.repo);
+                fan_out_group(&ch, &group, engine, &ws).await
+            }
         })
         .buffer_unordered(concurrency)
         .collect()
         .await;
 
+    let mut first_error: Option<anyhow::Error> = None;
     for result in results {
-        let outcome = result?;
-        for (target_id, new_state, pr_url) in outcome.updates {
-            ctx.status.transition(&target_id, new_state)?;
-            ctx.status.set_pr(&target_id, pr_url)?;
+        match result {
+            Ok(outcome) => {
+                for (target_id, new_state, pr_url) in outcome.updates {
+                    ctx.status.transition(&target_id, new_state)?;
+                    ctx.status.set_pr(&target_id, pr_url)?;
+                }
+            }
+            Err(e) => {
+                tracing::error!(error = %e, "fan-out group failed");
+                if first_error.is_none() {
+                    first_error = Some(e);
+                }
+            }
         }
     }
 
     ctx.save_status()?;
     println!();
-    ctx.status.print_summary();
+    output::print_status_summary(&ctx.status);
+
+    if let Some(e) = first_error {
+        return Err(e.context("one or more fan-out groups failed"));
+    }
+
     Ok(())
 }
 
@@ -82,7 +104,11 @@ async fn fan_out_group(
 
     git::clone_shallow(&group.repo, tmp.path()).await?;
     let branch = group.branch_name(change);
-    git::checkout_new_branch(tmp.path(), &branch).await?;
+    if git::branch_exists(tmp.path(), &branch).await? {
+        git::checkout_existing_branch(tmp.path(), &branch).await?;
+    } else {
+        git::checkout_new_branch(tmp.path(), &branch).await?;
+    }
 
     let dist_ctx = DistributeContext {
         workspace,
@@ -117,10 +143,10 @@ async fn fan_out_group(
     Ok(FanOutResult { updates })
 }
 
-fn print_dry_run(change: &str, groups: &[RepoGroup], ctx: &ChangeContext) {
-    println!("=== DRY RUN: fan-out for '{change}' ===\n");
+fn print_dry_run(change: &str, groups: &[RepoGroup], ctx: &ChangeContext) -> Result<()> {
+    output::dry_run_banner("fan-out", change);
 
-    let sorted = ctx.pipeline.topological_sort().unwrap_or_default();
+    let sorted = ctx.pipeline.topological_sort()?;
     println!("dependency order:");
     for (i, t) in sorted.iter().enumerate() {
         let deps = ctx.pipeline.upstream_of(&t.id);
@@ -142,5 +168,6 @@ fn print_dry_run(change: &str, groups: &[RepoGroup], ctx: &ChangeContext) {
             println!("    spec:  {s}");
         }
     }
-    println!("\nno changes made (dry run)");
+    output::dry_run_footer();
+    Ok(())
 }

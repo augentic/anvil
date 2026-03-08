@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 
 use crate::context::ChangeContext;
 use crate::engine::Engine;
-use crate::{git, github, status};
+use crate::{git, github, output, status};
 
 pub async fn run(
     change: &str, mark_ready: bool, engine: &dyn Engine, workspace: &Path,
@@ -81,6 +81,6 @@ pub async fn run(
         ctx.save_status()?;
     }
 
-    ctx.status.print_summary();
+    output::print_status_summary(&ctx.status);
     Ok(())
 }

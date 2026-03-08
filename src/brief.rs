@@ -1,9 +1,47 @@
 use std::path::Path;
 
 use anyhow::{Context, Result};
+use serde::{Deserialize, Serialize};
 
-use crate::engine::{BriefChange, BriefSpecs, BriefTarget, BriefUpstream, ChangeBrief, Engine};
+use crate::engine::Engine;
 use crate::pipeline::RepoGroup;
+
+/// Per-repo artefact summarising what the change means for this repo group.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ChangeBrief {
+    pub change: BriefChange,
+    pub target: BriefTarget,
+    pub specs: BriefSpecs,
+    pub upstream: BriefUpstream,
+}
+
+/// Change metadata (name) for the brief.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BriefChange {
+    pub name: String,
+}
+
+/// Target repo and crates for the brief.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BriefTarget {
+    pub repo: String,
+    pub crates: Vec<String>,
+    pub domain: String,
+}
+
+/// Spec file paths referenced by the brief.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BriefSpecs {
+    pub files: Vec<String>,
+}
+
+/// Paths to upstream design, tasks, and pipeline files.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct BriefUpstream {
+    pub design: String,
+    pub tasks: String,
+    pub pipeline: String,
+}
 
 /// Build a change brief for a repo group, using engine-provided paths.
 pub fn generate(change_name: &str, group: &RepoGroup, engine: &dyn Engine) -> ChangeBrief {

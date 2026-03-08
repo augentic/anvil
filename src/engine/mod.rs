@@ -3,8 +3,8 @@ pub mod opsx;
 use std::path::Path;
 
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 
+use crate::brief::ChangeBrief;
 use crate::pipeline::RepoGroup;
 
 /// Interface between the orchestrator and the spec engine.
@@ -24,6 +24,11 @@ pub trait Engine {
 
     /// Relative path to the archive directory in the hub repo.
     fn archive_dir(&self) -> &str;
+
+    /// Absolute path to a specific change directory within the hub workspace.
+    fn change_dir(&self, workspace: &Path, change: &str) -> std::path::PathBuf {
+        workspace.join(self.changes_dir()).join(change)
+    }
 
     // --- Planning (hub-side) ---
 
@@ -77,37 +82,4 @@ pub struct DistributeContext<'a> {
     pub repo_dir: &'a Path,
     /// The repo group being distributed to.
     pub group: &'a RepoGroup,
-}
-
-/// Per-repo artefact summarising what the change means for this repo group.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ChangeBrief {
-    pub change: BriefChange,
-    pub target: BriefTarget,
-    pub specs: BriefSpecs,
-    pub upstream: BriefUpstream,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BriefChange {
-    pub name: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BriefTarget {
-    pub repo: String,
-    pub crates: Vec<String>,
-    pub domain: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BriefSpecs {
-    pub files: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct BriefUpstream {
-    pub design: String,
-    pub tasks: String,
-    pub pipeline: String,
 }

@@ -29,7 +29,7 @@ alc propose my-change --description "Add priority field to ingest pipeline"
 alc fan-out my-change
 # Creates branches and draft PRs in target repos
 
-lc apply my-change
+alc apply my-change
 # Invokes the AI agent in each target repo to implement the change
 
 alc sync my-change
@@ -95,7 +95,7 @@ Archive a completed change. All targets must be in `merged` state. Moves the cha
 
 List all services in `registry.toml`.
 
-### `lc registry query --domain <name>` / `--cap <name>`
+### `alc registry query --domain <name>` / `--cap <name>`
 
 Query services by domain or capability.
 

@@ -11,10 +11,10 @@ fn credentials_callback(
         return git2::Cred::ssh_key_from_agent(user);
     }
 
-    if allowed_types.contains(git2::CredentialType::USER_PASS_PLAINTEXT) {
-        if let Ok(token) = std::env::var("GITHUB_TOKEN") {
-            return git2::Cred::userpass_plaintext("x-access-token", &token);
-        }
+    if allowed_types.contains(git2::CredentialType::USER_PASS_PLAINTEXT)
+        && let Ok(token) = std::env::var("GITHUB_TOKEN")
+    {
+        return git2::Cred::userpass_plaintext("x-access-token", &token);
     }
 
     Err(git2::Error::from_str("no suitable credentials found"))
@@ -47,6 +47,21 @@ fn clone_shallow_sync(repo_url: &str, dest: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Check whether a branch exists locally or on the remote.
+pub async fn branch_exists(repo_dir: &Path, branch: &str) -> Result<bool> {
+    let dir = repo_dir.to_path_buf();
+    let branch = branch.to_string();
+    tokio::task::spawn_blocking(move || {
+        let repo = git2::Repository::open(&dir)
+            .with_context(|| format!("opening repo at {}", dir.display()))?;
+        let local = format!("refs/heads/{branch}");
+        let remote = format!("refs/remotes/origin/{branch}");
+        Ok(repo.find_reference(&local).is_ok() || repo.find_reference(&remote).is_ok())
+    })
+    .await
+    .context("join branch-exists task")?
+}
+
 /// Create and check out a new branch at HEAD.
 pub async fn checkout_new_branch(repo_dir: &Path, branch: &str) -> Result<()> {
     let dir = repo_dir.to_path_buf();
@@ -59,10 +74,12 @@ pub async fn checkout_new_branch(repo_dir: &Path, branch: &str) -> Result<()> {
 fn checkout_new_branch_sync(repo_dir: &Path, branch: &str) -> Result<()> {
     let repo = git2::Repository::open(repo_dir)
         .with_context(|| format!("opening repo at {}", repo_dir.display()))?;
-    let head = repo.head()?.peel_to_commit()?;
-    repo.branch(branch, &head, false)?;
+    let head = repo.head().context("reading HEAD")?.peel_to_commit().context("peeling HEAD to commit")?;
+    repo.branch(branch, &head, false)
+        .with_context(|| format!("creating branch '{branch}'"))?;
     let refname = format!("refs/heads/{branch}");
-    repo.set_head(&refname)?;
+    repo.set_head(&refname)
+        .with_context(|| format!("setting HEAD to '{refname}'"))?;
     repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
         .context("checkout new branch")?;
     Ok(())
@@ -78,21 +95,27 @@ pub async fn checkout_existing_branch(repo_dir: &Path, branch: &str) -> Result<(
 }
 
 fn checkout_existing_sync(repo_dir: &Path, branch: &str) -> Result<()> {
-    let repo = git2::Repository::open(repo_dir)?;
+    let repo = git2::Repository::open(repo_dir)
+        .with_context(|| format!("opening repo at {}", repo_dir.display()))?;
     let refname = format!("refs/heads/{branch}");
 
     if repo.find_reference(&refname).is_ok() {
-        repo.set_head(&refname)?;
+        repo.set_head(&refname)
+            .with_context(|| format!("setting HEAD to '{refname}'"))?;
     } else {
         let remote_ref = format!("refs/remotes/origin/{branch}");
         let reference = repo.find_reference(&remote_ref)
             .with_context(|| format!("branch '{branch}' not found locally or in origin"))?;
-        let commit = reference.peel_to_commit()?;
-        repo.branch(branch, &commit, false)?;
-        repo.set_head(&format!("refs/heads/{branch}"))?;
+        let commit = reference.peel_to_commit()
+            .with_context(|| format!("peeling remote ref '{remote_ref}' to commit"))?;
+        repo.branch(branch, &commit, false)
+            .with_context(|| format!("creating local branch '{branch}'"))?;
+        repo.set_head(&format!("refs/heads/{branch}"))
+            .with_context(|| format!("setting HEAD to '{branch}'"))?;
     }
 
-    repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))?;
+    repo.checkout_head(Some(git2::build::CheckoutBuilder::new().force()))
+        .with_context(|| format!("checking out branch '{branch}'"))?;
     Ok(())
 }
 
@@ -107,18 +130,19 @@ pub async fn add_commit_push(repo_dir: &Path, message: &str, branch: &str) -> Re
 }
 
 fn add_commit_push_sync(repo_dir: &Path, message: &str, branch: &str) -> Result<()> {
-    let repo = git2::Repository::open(repo_dir)?;
+    let repo = git2::Repository::open(repo_dir)
+        .with_context(|| format!("opening repo at {}", repo_dir.display()))?;
 
-    let mut index = repo.index()?;
+    let mut index = repo.index().context("reading index")?;
     index
         .add_all(["*"], git2::IndexAddOption::DEFAULT, None)
         .context("staging files")?;
-    index.write()?;
+    index.write().context("writing index")?;
 
-    let tree_oid = index.write_tree()?;
-    let tree = repo.find_tree(tree_oid)?;
+    let tree_oid = index.write_tree().context("writing tree")?;
+    let tree = repo.find_tree(tree_oid).context("finding tree")?;
 
-    let head = repo.head()?.peel_to_commit()?;
+    let head = repo.head().context("reading HEAD")?.peel_to_commit().context("peeling HEAD to commit")?;
     let sig = repo
         .signature()
         .or_else(|_| git2::Signature::now("alc", "alc@augentic.io"))
@@ -127,7 +151,7 @@ fn add_commit_push_sync(repo_dir: &Path, message: &str, branch: &str) -> Result<
     repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &[&head])
         .context("creating commit")?;
 
-    let mut remote = repo.find_remote("origin")?;
+    let mut remote = repo.find_remote("origin").context("finding remote 'origin'")?;
     let refspec = format!("refs/heads/{branch}:refs/heads/{branch}");
     let mut push_opts = git2::PushOptions::new();
     push_opts.remote_callbacks(remote_callbacks());
@@ -165,8 +189,9 @@ pub async fn default_branch(repo_dir: &Path) -> Result<String> {
 }
 
 fn default_branch_sync(repo_dir: &Path) -> Result<String> {
-    let repo = git2::Repository::open(repo_dir)?;
-    let remote = repo.find_remote("origin")?;
+    let repo = git2::Repository::open(repo_dir)
+        .with_context(|| format!("opening repo at {}", repo_dir.display()))?;
+    let remote = repo.find_remote("origin").context("finding remote 'origin'")?;
     let head = remote.default_branch()?;
     let refname = head.as_str().context("non-utf8 default branch")?;
     Ok(refname

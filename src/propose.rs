@@ -2,9 +2,9 @@ use std::path::Path;
 
 use anyhow::{Context, Result, bail};
 
-use crate::context::TempDir;
+use crate::util::TempDir;
 use crate::engine::Engine;
-use crate::{agent, git, registry};
+use crate::{agent, git, output, registry};
 
 pub async fn run(
     change: &str, description: &str, dry_run: bool, engine: &dyn Engine, workspace: &Path,
@@ -26,9 +26,10 @@ pub async fn run(
     let prompt = engine.propose_prompt(change, description, &context);
 
     if dry_run {
-        println!("=== DRY RUN: propose '{change}' ===\n");
+        output::dry_run_banner("propose", change);
         println!("change dir: {}\n", change_dir.display());
         println!("--- AGENT PROMPT ---\n{prompt}\n--- END ---");
+        output::dry_run_footer();
         std::fs::remove_dir_all(&change_dir)?;
         return Ok(());
     }
@@ -91,33 +92,49 @@ async fn try_read_repo_specs(
         let sibling = parent.join(repo_name);
         let specs_dir = sibling.join(engine.specs_dir());
         if specs_dir.is_dir() {
-            return Some(read_specs_dir(&specs_dir));
+            match read_specs_dir(&specs_dir) {
+                Ok(content) => return Some(content),
+                Err(e) => {
+                    tracing::warn!(repo = repo_url, error = %e, "failed to read specs from sibling");
+                }
+            }
         }
     }
 
-    let tmp = TempDir::new(&format!("specs-{repo_name}")).ok()?;
+    let tmp = match TempDir::new(&format!("specs-{repo_name}")) {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::warn!(repo = repo_url, error = %e, "failed to create temp dir for specs");
+            return None;
+        }
+    };
 
     if git::clone_shallow(repo_url, tmp.path()).await.is_ok() {
         let specs_dir = tmp.path().join(engine.specs_dir());
         if specs_dir.is_dir() {
-            return Some(read_specs_dir(&specs_dir));
+            match read_specs_dir(&specs_dir) {
+                Ok(content) => return Some(content),
+                Err(e) => {
+                    tracing::warn!(repo = repo_url, error = %e, "failed to read specs from clone");
+                }
+            }
         }
     }
 
     None
 }
 
-fn read_specs_dir(dir: &Path) -> String {
+fn read_specs_dir(dir: &Path) -> Result<String> {
     let mut output = String::new();
-    if let Ok(entries) = collect_md_files(dir) {
-        for path in entries {
-            let rel = path.strip_prefix(dir).unwrap_or(&path);
-            if let Ok(content) = std::fs::read_to_string(&path) {
-                output.push_str(&format!("\n## {}\n{}\n", rel.display(), content));
-            }
-        }
+    let entries = collect_md_files(dir)
+        .with_context(|| format!("collecting spec files from {}", dir.display()))?;
+    for path in entries {
+        let rel = path.strip_prefix(dir).unwrap_or(&path);
+        let content = std::fs::read_to_string(&path)
+            .with_context(|| format!("reading spec file {}", path.display()))?;
+        output.push_str(&format!("\n## {}\n{}\n", rel.display(), content));
     }
-    output
+    Ok(output)
 }
 
 fn collect_md_files(dir: &Path) -> Result<Vec<std::path::PathBuf>> {

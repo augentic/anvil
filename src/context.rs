@@ -7,42 +7,25 @@ use crate::pipeline::{Pipeline, RepoGroup};
 use crate::registry::Registry;
 use crate::status::PipelineStatus;
 
-/// RAII wrapper around a temporary directory that is removed on drop.
-pub struct TempDir(PathBuf);
-
-impl TempDir {
-    /// Create (or reclaim) a temp directory with a consistent naming scheme.
-    pub fn new(label: &str) -> Result<Self> {
-        let dir = std::env::temp_dir().join(format!("alc-{label}-{}", std::process::id()));
-        if dir.exists() {
-            std::fs::remove_dir_all(&dir)?;
-        }
-        Ok(Self(dir))
-    }
-
-    pub fn path(&self) -> &Path {
-        &self.0
-    }
-}
-
-impl Drop for TempDir {
-    fn drop(&mut self) {
-        let _ = std::fs::remove_dir_all(&self.0);
-    }
-}
-
 /// Shared context for all commands that operate on an existing change.
 ///
 /// Loads and validates the pipeline, registry, and status in one place,
 /// eliminating the repeated preamble across fan-out, apply, sync, archive,
 /// and status commands.
 pub struct ChangeContext {
+    /// Workspace root (directory containing `registry.toml`).
     pub workspace: PathBuf,
+    /// Change identifier.
     pub change: String,
+    /// Path to the change directory (specs, pipeline, status).
     pub change_dir: PathBuf,
+    /// Path to `status.toml`.
     pub status_path: PathBuf,
+    /// Loaded pipeline for this change.
     pub pipeline: Pipeline,
+    /// Service registry.
     pub registry: Registry,
+    /// Current pipeline status (mutable).
     pub status: PipelineStatus,
 }
 

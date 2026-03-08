@@ -4,7 +4,7 @@ use anyhow::{Context, Result, bail};
 
 use crate::context::ChangeContext;
 use crate::engine::Engine;
-use crate::status;
+use crate::{output, status};
 
 /// Archive a completed change: verify all target PRs are merged, then move
 /// the change folder to the archive directory.
@@ -31,10 +31,11 @@ pub fn run(change: &str, dry_run: bool, engine: &dyn Engine, workspace: &Path) -
         .join(engine.archive_dirname(change));
 
     if dry_run {
-        println!("=== DRY RUN: archive '{change}' ===\n");
+        output::dry_run_banner("archive", change);
         println!("  from: {}", ctx.change_dir.display());
         println!("    to: {}", archive_dest.display());
-        println!("\nall targets merged. no changes made (dry run)");
+        println!("\nall targets merged.");
+        output::dry_run_footer();
         return Ok(());
     }
 
@@ -45,11 +46,10 @@ pub fn run(change: &str, dry_run: bool, engine: &dyn Engine, workspace: &Path) -
         );
     }
 
-    std::fs::create_dir_all(
-        archive_dest
-            .parent()
-            .expect("archive dest always has a parent"),
-    )?;
+    if let Some(parent) = archive_dest.parent() {
+        std::fs::create_dir_all(parent)
+            .with_context(|| format!("creating archive parent dir {}", parent.display()))?;
+    }
     std::fs::rename(&ctx.change_dir, &archive_dest).with_context(|| {
         format!(
             "moving {} to {}",
