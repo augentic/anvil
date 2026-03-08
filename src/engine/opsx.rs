@@ -24,6 +24,10 @@ impl OpsxEngine {
         "openspec/changes/archive"
     }
 
+    pub const fn domains_dir(&self) -> &'static str {
+        "domains"
+    }
+
     pub fn change_dir(&self, workspace: &Path, change: &str) -> std::path::PathBuf {
         workspace.join(self.changes_dir()).join(change)
     }
@@ -43,7 +47,7 @@ impl OpsxEngine {
                 "5) pipeline.toml — execution config with [[targets]] and [[dependencies]]\n\n",
                 "Rules:\n",
                 "- Read registry.toml to identify impacted services\n",
-                "- Read openspec/specs/ from affected target repos for current state\n",
+                "- Read domains/ context for service descriptions, shared concepts, and event contracts\n",
                 "- Namespace delta specs under specs/<service-id>/<capability>/\n",
                 "- pipeline.toml targets must reference services in registry.toml\n",
                 "- Include dependency edges when contracts cross services\n",

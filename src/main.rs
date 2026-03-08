@@ -103,11 +103,13 @@ fn init_workspace() -> Result<()> {
     std::fs::write(registry_path, template).context("writing registry.toml")?;
     std::fs::create_dir_all(engine.changes_dir()).context("creating changes directory")?;
     std::fs::create_dir_all(engine.specs_dir()).context("creating specs directory")?;
+    std::fs::create_dir_all(engine.domains_dir()).context("creating domains directory")?;
 
     println!("initialised alc workspace:");
     println!("  registry.toml        — add your services here");
     println!("  {}/    — change artefacts", engine.changes_dir());
     println!("  {}/      — shared specs", engine.specs_dir());
+    println!("  {}/          — domain context docs", engine.domains_dir());
     Ok(())
 }
 

@@ -4,8 +4,7 @@ use std::path::Path;
 use anyhow::{Context, Result, bail};
 
 use crate::session::Session;
-use crate::util::TempDir;
-use crate::{agent, git, output, registry};
+use crate::{agent, output, registry};
 
 #[allow(clippy::similar_names)]
 pub async fn run(change: &str, description: &str, dry_run: bool, session: &Session) -> Result<()> {
@@ -21,7 +20,7 @@ pub async fn run(change: &str, description: &str, dry_run: bool, session: &Sessi
     })?;
 
     let reg = registry::Registry::load(&session.workspace.join("registry.toml"))?;
-    let context = gather_context(session, &reg).await?;
+    let context = gather_context(session, &reg)?;
 
     let prompt = session.engine.propose_prompt(change, description, &context);
 
@@ -47,8 +46,8 @@ pub async fn run(change: &str, description: &str, dry_run: bool, session: &Sessi
 }
 
 /// Gather platform context for the propose prompt:
-/// registry summary + current specs from target repos.
-async fn gather_context(session: &Session, reg: &registry::Registry) -> Result<String> {
+/// registry summary + domain docs from the local `domains/` directory.
+fn gather_context(session: &Session, reg: &registry::Registry) -> Result<String> {
     let mut ctx = String::from("=== REGISTRY ===\n");
     for svc in &reg.services {
         let _ = writeln!(
@@ -62,76 +61,47 @@ async fn gather_context(session: &Session, reg: &registry::Registry) -> Result<S
         );
     }
 
-    ctx.push_str("\n=== CURRENT SPECS ===\n");
-
-    let mut seen_repos: std::collections::HashSet<String> = std::collections::HashSet::new();
-
-    for svc in &reg.services {
-        if !seen_repos.insert(svc.repo.clone()) {
-            continue;
-        }
-
-        let repo_specs = try_read_repo_specs(session, &svc.repo).await;
-        if let Some(specs_content) = repo_specs {
-            let _ = write!(ctx, "\n--- repo: {} ---\n{specs_content}\n", svc.repo);
+    let domains_dir = session.workspace.join(session.engine.domains_dir());
+    if domains_dir.is_dir() {
+        ctx.push_str("\n=== DOMAINS ===\n");
+        let mut domains = read_domain_dirs(&domains_dir)?;
+        domains.sort_by(|(a, _), (b, _)| a.cmp(b));
+        for (name, content) in domains {
+            let _ = write!(ctx, "\n--- domain: {name} ---\n{content}\n");
         }
     }
 
     Ok(ctx)
 }
 
-/// Try to read specs from a target repo. Looks for the repo as a sibling
-/// directory first (workspace layout), otherwise clones shallowly.
-async fn try_read_repo_specs(session: &Session, repo_url: &str) -> Option<String> {
-    let repo_name = git::repo_name(repo_url);
+/// Read all domain subdirectories, returning `(domain_name, concatenated_md_content)` pairs.
+fn read_domain_dirs(domains_dir: &Path) -> Result<Vec<(String, String)>> {
+    let mut domains = Vec::new();
+    for entry in std::fs::read_dir(domains_dir)
+        .with_context(|| format!("reading {}", domains_dir.display()))?
+    {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        let files = collect_md_files(&path)
+            .with_context(|| format!("collecting docs from domain '{name}'"))?;
 
-    if let Some(parent) = session.workspace.parent() {
-        let sibling = parent.join(repo_name);
-        let specs_dir = sibling.join(session.engine.specs_dir());
-        if specs_dir.is_dir() {
-            match read_specs_dir(&specs_dir) {
-                Ok(content) => return Some(content),
-                Err(e) => {
-                    tracing::warn!(repo = repo_url, error = %e, "failed to read specs from sibling");
-                }
-            }
+        let mut content = String::new();
+        for file in files {
+            let rel = file.strip_prefix(&path).unwrap_or(&file);
+            let text = std::fs::read_to_string(&file)
+                .with_context(|| format!("reading {}", file.display()))?;
+            let _ = write!(content, "\n## {}\n{text}\n", rel.display());
+        }
+
+        if !content.is_empty() {
+            domains.push((name, content));
         }
     }
-
-    let tmp = match TempDir::new(&format!("specs-{repo_name}")) {
-        Ok(t) => t,
-        Err(e) => {
-            tracing::warn!(repo = repo_url, error = %e, "failed to create temp dir for specs");
-            return None;
-        }
-    };
-
-    if git::clone_shallow(repo_url, tmp.path()).await.is_ok() {
-        let specs_dir = tmp.path().join(session.engine.specs_dir());
-        if specs_dir.is_dir() {
-            match read_specs_dir(&specs_dir) {
-                Ok(content) => return Some(content),
-                Err(e) => {
-                    tracing::warn!(repo = repo_url, error = %e, "failed to read specs from clone");
-                }
-            }
-        }
-    }
-
-    None
-}
-
-fn read_specs_dir(dir: &Path) -> Result<String> {
-    let mut output = String::new();
-    let entries = collect_md_files(dir)
-        .with_context(|| format!("collecting spec files from {}", dir.display()))?;
-    for path in entries {
-        let rel = path.strip_prefix(dir).unwrap_or(&path);
-        let content = std::fs::read_to_string(&path)
-            .with_context(|| format!("reading spec file {}", path.display()))?;
-        let _ = write!(output, "\n## {}\n{content}\n", rel.display());
-    }
-    Ok(output)
+    Ok(domains)
 }
 
 fn collect_md_files(dir: &Path) -> Result<Vec<std::path::PathBuf>> {
