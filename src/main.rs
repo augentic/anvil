@@ -1,3 +1,5 @@
+//! `alc` — multi-repo orchestration CLI for spec-driven development.
+
 mod agent;
 mod apply;
 mod archive;
@@ -45,7 +47,7 @@ async fn run() -> Result<()> {
         .without_time()
         .init();
 
-    if let Command::Init = &cli.command {
+    if matches!(&cli.command, Command::Init) {
         return init_workspace();
     }
 

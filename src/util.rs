@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
-use anyhow::Result;
+use anyhow::{Context, Result};
+use serde::de::DeserializeOwned;
 
 /// RAII wrapper around a temporary directory that is removed on drop.
 pub struct TempDir(PathBuf);
@@ -20,6 +21,13 @@ impl TempDir {
     pub fn path(&self) -> &Path {
         &self.0
     }
+}
+
+/// Load and deserialize a TOML file.
+pub fn load_toml<T: DeserializeOwned>(path: &Path) -> Result<T> {
+    let content =
+        std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
+    toml::from_str(&content).with_context(|| format!("parsing {}", path.display()))
 }
 
 impl Drop for TempDir {

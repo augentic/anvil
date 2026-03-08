@@ -1,3 +1,4 @@
+use std::fmt::Write as _;
 use std::path::Path;
 
 use anyhow::{Context, Result, bail};
@@ -6,6 +7,7 @@ use crate::session::Session;
 use crate::util::TempDir;
 use crate::{agent, git, output, registry};
 
+#[allow(clippy::similar_names)]
 pub async fn run(change: &str, description: &str, dry_run: bool, session: &Session) -> Result<()> {
     let changes_dir = session.workspace.join(session.engine.changes_dir());
     let change_dir = changes_dir.join(change);
@@ -49,14 +51,15 @@ pub async fn run(change: &str, description: &str, dry_run: bool, session: &Sessi
 async fn gather_context(session: &Session, reg: &registry::Registry) -> Result<String> {
     let mut ctx = String::from("=== REGISTRY ===\n");
     for svc in &reg.services {
-        ctx.push_str(&format!(
-            "- {} (repo={}, crate={}, domain={}, caps=[{}])\n",
+        let _ = writeln!(
+            ctx,
+            "- {} (repo={}, crate={}, domain={}, caps=[{}])",
             svc.id,
             svc.repo,
             svc.crate_name,
             svc.domain,
             svc.capabilities.join(", "),
-        ));
+        );
     }
 
     ctx.push_str("\n=== CURRENT SPECS ===\n");
@@ -70,7 +73,7 @@ async fn gather_context(session: &Session, reg: &registry::Registry) -> Result<S
 
         let repo_specs = try_read_repo_specs(session, &svc.repo).await;
         if let Some(specs_content) = repo_specs {
-            ctx.push_str(&format!("\n--- repo: {} ---\n{}\n", svc.repo, specs_content));
+            let _ = write!(ctx, "\n--- repo: {} ---\n{specs_content}\n", svc.repo);
         }
     }
 
@@ -80,7 +83,7 @@ async fn gather_context(session: &Session, reg: &registry::Registry) -> Result<S
 /// Try to read specs from a target repo. Looks for the repo as a sibling
 /// directory first (workspace layout), otherwise clones shallowly.
 async fn try_read_repo_specs(session: &Session, repo_url: &str) -> Option<String> {
-    let repo_name = repo_url.rsplit('/').next().unwrap_or("repo").trim_end_matches(".git");
+    let repo_name = git::repo_name(repo_url);
 
     if let Some(parent) = session.workspace.parent() {
         let sibling = parent.join(repo_name);
@@ -126,7 +129,7 @@ fn read_specs_dir(dir: &Path) -> Result<String> {
         let rel = path.strip_prefix(dir).unwrap_or(&path);
         let content = std::fs::read_to_string(&path)
             .with_context(|| format!("reading spec file {}", path.display()))?;
-        output.push_str(&format!("\n## {}\n{}\n", rel.display(), content));
+        let _ = write!(output, "\n## {}\n{content}\n", rel.display());
     }
     Ok(output)
 }

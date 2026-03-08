@@ -6,22 +6,21 @@ use super::{DistributeContext, UpstreamPaths};
 use crate::brief::{self, ChangeBrief};
 use crate::pipeline::RepoGroup;
 
+/// OPSX spec engine: directory conventions, prompt templates, and
+/// artefact distribution for the `OpenSpec` workflow.
 pub struct OpsxEngine;
 
+#[allow(clippy::unused_self)]
 impl OpsxEngine {
-    pub fn name(&self) -> &str {
-        "opsx"
-    }
-
-    pub fn specs_dir(&self) -> &str {
+    pub const fn specs_dir(&self) -> &'static str {
         "openspec/specs"
     }
 
-    pub fn changes_dir(&self) -> &str {
+    pub const fn changes_dir(&self) -> &'static str {
         "openspec/changes"
     }
 
-    pub fn archive_dir(&self) -> &str {
+    pub const fn archive_dir(&self) -> &'static str {
         "openspec/changes/archive"
     }
 
@@ -100,7 +99,7 @@ impl OpsxEngine {
         format!("{spec_name}/spec.md")
     }
 
-    pub fn upstream_paths(&self) -> UpstreamPaths {
+    pub const fn upstream_paths(&self) -> UpstreamPaths {
         UpstreamPaths {
             design: "upstream/design.md",
             tasks: "upstream/tasks.md",

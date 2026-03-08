@@ -17,6 +17,7 @@ struct ApplyResult {
     error: Option<anyhow::Error>,
 }
 
+#[allow(clippy::too_many_lines)]
 pub async fn run(
     change: &str, target_filter: Option<&str>, dry_run: bool, continue_on_failure: bool,
     session: &Session,
@@ -62,8 +63,7 @@ pub async fn run(
                 let all_done = group.targets.iter().all(|t| {
                     ctx.status
                         .get(&t.id)
-                        .map(|s| s.state.is_at_least(status::TargetState::Implemented))
-                        .unwrap_or(false)
+                        .is_some_and(|s| s.state.is_at_least(status::TargetState::Implemented))
                 });
                 if all_done {
                     tracing::info!(repo = %group.repo, "all targets already implemented, skipping");
@@ -73,8 +73,7 @@ pub async fn run(
                 let any_pending = group.targets.iter().any(|t| {
                     ctx.status
                         .get(&t.id)
-                        .map(|s| s.state == status::TargetState::Pending)
-                        .unwrap_or(true)
+                        .is_none_or(|s| s.state == status::TargetState::Pending)
                 });
                 if any_pending {
                     tracing::warn!(repo = %group.repo, "targets in pending state, skipping");
@@ -105,8 +104,7 @@ pub async fn run(
                 if !ctx
                     .status
                     .get(&t.id)
-                    .map(|s| s.state.is_at_least(status::TargetState::Implemented))
-                    .unwrap_or(false)
+                    .is_some_and(|s| s.state.is_at_least(status::TargetState::Implemented))
                 {
                     ctx.status.transition(&t.id, TargetState::Applying)?;
                 }
@@ -230,9 +228,8 @@ fn is_blocked_by_upstream(group: &RepoGroup, ctx: &ChangeContext) -> bool {
             }
             let met = ctx
                 .status
-                .get(*from)
-                .map(|s| s.state.is_at_least(status::TargetState::Implemented))
-                .unwrap_or(false);
+                .get(from)
+                .is_some_and(|s| s.state.is_at_least(status::TargetState::Implemented));
             if !met {
                 return true;
             }
@@ -251,8 +248,7 @@ fn print_dry_run(change: &str, groups: &[&RepoGroup], session: &Session, ctx: &C
             let state = ctx
                 .status
                 .get(&t.id)
-                .map(|s| s.state.to_string())
-                .unwrap_or_else(|| "unknown".to_string());
+                .map_or_else(|| "unknown".to_string(), |s| s.state.to_string());
             println!("  target: {} (state={})", t.id, state);
         }
         let change_brief = brief::generate(change, group, &session.engine);

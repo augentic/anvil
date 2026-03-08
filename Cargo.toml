@@ -3,10 +3,13 @@ name = "alc"
 description = "Multi-repo orchestration CLI for spec-driven development"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+keywords.workspace = true
 
 [dependencies]
 anyhow = "1"
-chrono = { version = "0.4.44", features = ["serde"] }
+chrono = "0.4.44"
 clap = { version = "4.5.60", features = ["derive"] }
 futures = "0.3"
 git2 = "0.20"
@@ -45,6 +48,8 @@ all = "warn"      # correctness, suspicious, style, complexity, perf
 cargo = "warn"
 nursery = "warn"
 pedantic = "warn"
+cargo_common_metadata = { level = "allow", priority = 1 }
+multiple_crate_versions = { level = "allow", priority = 1 }
 
 # Cherry-picked lints are from the `restriction` lint group in order to drive up
 # consistency, quality, and brevity
@@ -70,5 +75,8 @@ unnecessary_safety_comment = "warn"
 unnecessary_safety_doc = "warn"
 unneeded_field_pattern = "warn"
 unused_result_ok = "warn"
+
+[lints]
+workspace = true
 
 [workspace.dependencies]

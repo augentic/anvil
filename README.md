@@ -79,17 +79,29 @@ States: `pending` → `distributed` → `applying` → `implemented` → `review
 
 ### `alc sync <change> [--mark-ready]`
 
-Synchronize PR state from GitHub into `status.toml`. Uses `gh pr view` to check each target's PR. Transitions:
+Synchronize PR state from GitHub into `status.toml`. Fetches each target's PR via the GitHub API. Transitions:
 
 - PR merged → state becomes `merged`
 - PR open + not draft + target is `implemented` → state becomes `reviewing`
 - PR closed → state becomes `failed`
 
-With `--mark-ready`, draft PRs for `implemented` targets are promoted to ready for review via `gh pr ready`.
+With `--mark-ready`, draft PRs for `implemented` targets are promoted to ready for review via the GitHub GraphQL API.
 
 ### `alc archive <change> [--dry-run]`
 
 Archive a completed change. All targets must be in `merged` state. Moves the change folder to `openspec/changes/archive/YYYY-MM-DD-<change>/`.
+
+### `alc init`
+
+Initialise a new hub workspace in the current directory: creates `registry.toml`, `openspec/changes/`, and `openspec/specs/`.
+
+### `alc validate <change>`
+
+Validate pipeline, registry, and status consistency for a change. Exits with an error if any referenced targets are missing from the registry or specs are absent.
+
+### `alc list`
+
+List all existing changes in the hub, showing whether each has a pipeline and/or status file.
 
 ### `alc registry list`
 
@@ -151,18 +163,20 @@ Auto-managed state for each target in a change. Created on first use by `fan-out
 ## Environment Variables
 
 
-| Variable             | Default  | Description                                                          |
-| -------------------- | -------- | -------------------------------------------------------------------- |
-| `OPSX_AGENT_BACKEND` | `claude` | Agent backend. Set to `dry-run` to print commands without executing. |
-| `RUST_LOG`           | `info`   | Log level filter (standard `tracing` env filter syntax).             |
+| Variable                 | Default  | Description                                                          |
+| ------------------------ | -------- | -------------------------------------------------------------------- |
+| `GITHUB_TOKEN`           | —        | GitHub personal access token for PR creation and sync (required for `fan-out`, `sync`). |
+| `ALC_AGENT_BACKEND`      | `claude` | Agent backend. Set to `dry-run` to print commands without executing. |
+| `ALC_AGENT_TIMEOUT_SECS` | `600`    | Timeout in seconds for agent invocation.                             |
+| `RUST_LOG`               | `info`   | Log level filter (standard `tracing` env filter syntax).             |
 
 
 ## Prerequisites
 
 - Rust 1.93+ (edition 2024)
 - `git` on PATH
-- `gh` CLI (GitHub CLI) — for PR creation and sync
-- `claude` CLI — for agent invocation (or set `OPSX_AGENT_BACKEND=dry-run`)
+- `GITHUB_TOKEN` env var — for PR creation and sync via the GitHub API
+- `claude` CLI — for agent invocation (or set `ALC_AGENT_BACKEND=dry-run`)
 
 ## Development
 
@@ -172,38 +186,45 @@ cargo build           # build debug binary
 cargo run -- --help   # run directly
 
 # Useful during development
-OPSX_AGENT_BACKEND=dry-run cargo run -- propose test --description "test change"
+ALC_AGENT_BACKEND=dry-run cargo run -- propose test --description "test change"
 ```
 
 ### Project Structure
 
 ```text
 src/
-├── main.rs        — entry point, workspace root discovery, command dispatch
-├── cli.rs         — clap CLI definition
+├── main.rs          — entry point, command dispatch
+├── cli.rs           — clap CLI definition
+├── session.rs       — Session: runtime context (workspace, engine, concurrency, GitHub client)
+├── context.rs       — ChangeContext: per-change state (pipeline, registry, status)
 ├── engine/
-│   ├── mod.rs     — Engine trait (abstraction over OPSX / SpecKit / etc.)
-│   └── opsx.rs    — OPSX engine implementation
-├── registry.rs    — service registry (registry.toml)
-├── pipeline.rs    — pipeline, targets, dependencies, topological sort
-├── status.rs      — target state machine (status.toml)
-├── git.rs         — git and gh CLI operations
-├── agent.rs       — AI agent invocation (claude or dry-run)
-├── propose.rs     — centralised planning command
-├── fan_out.rs     — distribute to target repos
-├── apply.rs       — invoke agent per target
-├── archive.rs     — archive completed change
-├── sync.rs        — sync PR state from GitHub
-└── brief.rs       — change brief generation
+│   ├── mod.rs       — shared types (UpstreamPaths, DistributeContext)
+│   └── opsx.rs      — OPSX engine: directory layout, prompts, distribution
+├── registry.rs      — service registry (registry.toml)
+├── pipeline/
+│   ├── mod.rs       — Pipeline, Target, Dependency types and validation
+│   ├── graph.rs     — topological sort, dependency levels
+│   └── grouping.rs  — group targets by repo
+├── status.rs        — target state machine (status.toml)
+├── git.rs           — git operations via libgit2
+├── github.rs        — GitHub API operations via octocrab
+├── agent.rs         — AI agent invocation (claude CLI or dry-run)
+├── propose.rs       — centralised planning command
+├── fan_out.rs       — distribute to target repos
+├── apply.rs         — invoke agent per target in dependency order
+├── archive.rs       — archive completed change
+├── sync.rs          — sync PR state from GitHub
+├── brief.rs         — change brief generation
+├── output.rs        — display helpers (status tables, dry-run banners)
+├── util.rs          — TempDir, load_toml helper
+└── workspace.rs     — workspace root discovery
 ```
 
 ### Engine Abstraction
 
-The `Engine` trait is the seam between the orchestrator and the spec engine. Everything else (registry, pipeline, status, git, agent) is engine-agnostic. To add a new engine:
+`OpsxEngine` is a concrete struct that encapsulates all OpenSpec-specific logic: directory conventions, prompt templates, required artefacts, and file distribution. The rest of the codebase (registry, pipeline, status, git, agent) is engine-agnostic.
 
-1. Create `src/engine/myengine.rs`
-2. Implement the `Engine` trait
-3. Wire it up in `main.rs`
+When a second engine is needed, extract a trait from `OpsxEngine`'s public API and thread it through `Session`.
 
 ### Running Tests
 

@@ -29,8 +29,7 @@ pub async fn run(change: &str, dry_run: bool, session: &Session) -> Result<()> {
             let all_distributed = group.targets.iter().all(|t| {
                 ctx.status
                     .get(&t.id)
-                    .map(|s| s.state.is_at_least(status::TargetState::Distributed))
-                    .unwrap_or(false)
+                    .is_some_and(|s| s.state.is_at_least(status::TargetState::Distributed))
             });
             if all_distributed {
                 tracing::info!(repo = %group.repo, "already distributed, skipping");
@@ -91,7 +90,7 @@ pub async fn run(change: &str, dry_run: bool, session: &Session) -> Result<()> {
 async fn fan_out_group(change: &str, group: &RepoGroup, session: &Session) -> Result<FanOutResult> {
     tracing::info!(repo = %group.repo, crates = ?group.crates, "distributing");
 
-    let tmp = TempDir::new(&group.repo_label())?;
+    let tmp = TempDir::new(group.repo_label())?;
 
     git::clone_shallow(&group.repo, tmp.path()).await?;
     let branch = group.branch_name(change);

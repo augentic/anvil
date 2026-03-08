@@ -29,15 +29,14 @@ pub enum TargetState {
 
 impl TargetState {
     /// Ordinal for "at least this far" comparisons in the happy path.
-    fn ordinal(self) -> u8 {
+    const fn ordinal(self) -> u8 {
         match self {
-            Self::Pending => 0,
+            Self::Pending | Self::Failed => 0,
             Self::Distributed => 1,
             Self::Applying => 2,
             Self::Implemented => 3,
             Self::Reviewing => 4,
             Self::Merged => 5,
-            Self::Failed => 0,
         }
     }
 
@@ -83,9 +82,7 @@ pub struct PipelineStatus {
 impl PipelineStatus {
     /// Load status from a TOML file.
     pub fn load(path: &Path) -> Result<Self> {
-        let content =
-            std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-        toml::from_str(&content).with_context(|| format!("parsing {}", path.display()))
+        crate::util::load_toml(path)
     }
 
     /// Load existing status or create a new one with all targets in `Pending`.
@@ -143,25 +140,30 @@ impl PipelineStatus {
 
         let allowed = matches!(
             (target.state, new_state),
-            (TargetState::Pending, TargetState::Distributed)
-                | (TargetState::Distributed, TargetState::Applying)
-                | (TargetState::Applying, TargetState::Implemented)
-                | (TargetState::Applying, TargetState::Failed)
-                | (TargetState::Implemented, TargetState::Reviewing)
-                | (TargetState::Implemented, TargetState::Merged)
-                | (TargetState::Distributed, TargetState::Failed)
-                | (TargetState::Implemented, TargetState::Failed)
-                | (TargetState::Reviewing, TargetState::Failed)
-                | (TargetState::Reviewing, TargetState::Merged)
-                // Idempotent re-runs
-                | (TargetState::Failed, TargetState::Distributed)
-                | (TargetState::Failed, TargetState::Applying)
-                | (TargetState::Distributed, TargetState::Distributed)
-                | (TargetState::Applying, TargetState::Applying)
-                | (TargetState::Implemented, TargetState::Implemented)
-                | (TargetState::Reviewing, TargetState::Reviewing)
-                | (TargetState::Merged, TargetState::Merged)
-                | (TargetState::Failed, TargetState::Failed)
+            // Forward transitions (grouped by destination)
+            (
+                TargetState::Pending | TargetState::Failed | TargetState::Distributed,
+                TargetState::Distributed
+            ) | (
+                TargetState::Distributed | TargetState::Failed | TargetState::Applying,
+                TargetState::Applying
+            ) | (
+                TargetState::Applying | TargetState::Implemented,
+                TargetState::Implemented
+            ) | (
+                TargetState::Implemented | TargetState::Reviewing,
+                TargetState::Reviewing
+            ) | (
+                TargetState::Implemented | TargetState::Reviewing | TargetState::Merged,
+                TargetState::Merged
+            ) | (
+                TargetState::Applying
+                    | TargetState::Distributed
+                    | TargetState::Implemented
+                    | TargetState::Reviewing
+                    | TargetState::Failed,
+                TargetState::Failed
+            )
         );
 
         if !allowed {

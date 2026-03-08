@@ -2,7 +2,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result, bail};
 
-/// Resolve git credentials from SSH agent or GITHUB_TOKEN env var.
+/// Resolve git credentials from SSH agent or `GITHUB_TOKEN` env var.
 fn credentials_callback(
     _url: &str, username_from_url: Option<&str>, allowed_types: git2::CredentialType,
 ) -> std::result::Result<git2::Cred, git2::Error> {
@@ -168,7 +168,7 @@ fn add_commit_push_sync(repo_dir: &Path, message: &str, branch: &str) -> Result<
     Ok(true)
 }
 
-/// Parse a GitHub PR URL into (owner, repo, pr_number).
+/// Parse a GitHub PR URL into `(owner, repo, pr_number)`.
 pub fn parse_pr_url(url: &str) -> Result<(String, String, u64)> {
     let stripped = url
         .trim_end_matches('/')
@@ -204,6 +204,12 @@ fn default_branch_sync(repo_dir: &Path) -> Result<String> {
         .strip_prefix("refs/heads/")
         .unwrap_or(refname)
         .to_string())
+}
+
+/// Extract the short repo name from a clone URL (e.g. "train" from
+/// `git@github.com:org/train.git`).
+pub fn repo_name(url: &str) -> &str {
+    url.rsplit('/').next().unwrap_or("repo").trim_end_matches(".git")
 }
 
 /// Derive owner/repo from a clone URL for GitHub API calls.

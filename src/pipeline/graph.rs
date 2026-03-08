@@ -81,9 +81,9 @@ impl Pipeline {
                 && from_repo != to_repo
             {
                 let from_str = repo_ids.iter().find(|r| r.as_str() == from_repo.as_str())
-                    .with_context(|| format!("repo '{}' not found in groups", from_repo))?.as_str();
+                    .with_context(|| format!("repo '{from_repo}' not found in groups"))?.as_str();
                 let to_str = repo_ids.iter().find(|r| r.as_str() == to_repo.as_str())
-                    .with_context(|| format!("repo '{}' not found in groups", to_repo))?.as_str();
+                    .with_context(|| format!("repo '{to_repo}' not found in groups"))?.as_str();
                 repo_deps.entry(to_str).or_default().insert(from_str);
             }
         }
@@ -141,16 +141,13 @@ fn assign_level<'a>(
     if let Some(&lvl) = levels.get(repo) {
         return lvl;
     }
-    let lvl = deps
-        .get(repo)
-        .map(|upstream| {
-            upstream
-                .iter()
-                .map(|dep| assign_level(dep, deps, levels) + 1)
-                .max()
-                .unwrap_or(0)
-        })
-        .unwrap_or(0);
+    let lvl = deps.get(repo).map_or(0, |upstream| {
+        upstream
+            .iter()
+            .map(|dep| assign_level(dep, deps, levels) + 1)
+            .max()
+            .unwrap_or(0)
+    });
     levels.insert(repo, lvl);
     lvl
 }

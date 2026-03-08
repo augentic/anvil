@@ -4,7 +4,7 @@ mod grouping;
 use std::collections::HashSet;
 use std::path::Path;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Result, bail};
 use serde::Deserialize;
 
 use crate::registry::Registry;
@@ -12,6 +12,8 @@ use crate::registry::Registry;
 /// Change pipeline: targets and their dependencies for a single change.
 #[derive(Debug, Deserialize)]
 pub struct Pipeline {
+    /// Deserialized for validation; not read at runtime yet.
+    #[allow(dead_code)]
     pub change: String,
     pub targets: Vec<Target>,
     #[serde(default)]
@@ -48,12 +50,15 @@ pub enum DepType {
 }
 
 /// Rich dependency metadata between targets.
+/// `dep_type` and `contract` are deserialized for future contract validation.
 #[derive(Debug, Clone, Deserialize)]
 pub struct Dependency {
     pub from: String,
     pub to: String,
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     pub dep_type: DepType,
+    #[allow(dead_code)]
     pub contract: Option<String>,
 }
 
@@ -79,23 +84,16 @@ impl RepoGroup {
             .unwrap_or_else(|| format!("alc/{change}"))
     }
 
-    /// Short label extracted from the repo URL (e.g. "train" from "git@github.com:org/train.git").
-    pub fn repo_label(&self) -> String {
-        self.repo
-            .rsplit('/')
-            .next()
-            .unwrap_or("repo")
-            .trim_end_matches(".git")
-            .to_string()
+    /// Short label extracted from the repo URL (e.g. "train" from `git@github.com:org/train.git`).
+    pub fn repo_label(&self) -> &str {
+        crate::git::repo_name(&self.repo)
     }
 }
 
 impl Pipeline {
     /// Load pipeline from a TOML file.
     pub fn load(path: &Path) -> Result<Self> {
-        let content =
-            std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-        toml::from_str(&content).with_context(|| format!("parsing {}", path.display()))
+        crate::util::load_toml(path)
     }
 
     /// Collect all dependency edges from both `[[dependencies]]` and inline `depends_on`.

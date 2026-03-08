@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use serde::Deserialize;
 
 /// Service registry loaded from `registry.toml`.
@@ -25,9 +25,7 @@ pub struct Service {
 impl Registry {
     /// Load registry from a TOML file.
     pub fn load(path: &Path) -> Result<Self> {
-        let content =
-            std::fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
-        toml::from_str(&content).with_context(|| format!("parsing {}", path.display()))
+        crate::util::load_toml(path)
     }
 
     /// Look up a service by its ID.
