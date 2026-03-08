@@ -4,7 +4,9 @@ use crate::context::ChangeContext;
 use crate::session::Session;
 use crate::{git, github, output, status};
 
-pub async fn run(change: &str, mark_ready: bool, session: &Session) -> Result<()> {
+pub async fn run(
+    change: &str, mark_ready: bool, auto_merge: bool, session: &Session,
+) -> Result<()> {
     let mut ctx = ChangeContext::load(session, change)?;
     let gh = session.github()?;
     let mut changed = false;
@@ -43,6 +45,21 @@ pub async fn run(change: &str, mark_ready: bool, session: &Session) -> Result<()
                     .with_context(|| {
                         format!("re-reading PR metadata after ready for target {id}")
                     })?;
+            }
+        }
+
+        if auto_merge {
+            let current = ctx.status.get(&id).context("target missing from status")?;
+            if matches!(
+                current.state,
+                status::TargetState::Implemented | status::TargetState::Reviewing
+            ) && info.state.eq_ignore_ascii_case("OPEN")
+                && !info.is_draft
+            {
+                github::enable_auto_merge(gh, &owner, &repo_name, pr_number)
+                    .await
+                    .with_context(|| format!("enabling auto-merge for target {id}"))?;
+                tracing::info!(target = %id, pr = %pr_url, "auto-merge enabled");
             }
         }
 

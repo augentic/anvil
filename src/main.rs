@@ -72,8 +72,8 @@ async fn run() -> Result<()> {
             let changes_dir = session.workspace.join(session.engine.changes_dir());
             list_changes(&changes_dir)?;
         }
-        Command::Archive { change, mark_ready } => {
-            archive::run(&change, mark_ready, &session).await?;
+        Command::Archive { change, mark_ready, auto_merge } => {
+            archive::run(&change, mark_ready, auto_merge, &session).await?;
         }
         Command::Registry { action } => {
             let reg = Registry::load(&session.workspace.join("registry.toml"))?;

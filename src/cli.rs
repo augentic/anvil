@@ -65,6 +65,9 @@ pub enum Command {
         /// Mark draft PRs as ready for review when implemented
         #[arg(long)]
         mark_ready: bool,
+        /// Enable GitHub auto-merge (squash) on eligible PRs
+        #[arg(long)]
+        auto_merge: bool,
     },
     /// Validate pipeline, registry, and status consistency for a change
     Validate {

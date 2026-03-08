@@ -29,8 +29,8 @@ alc propose my-change --description "Add priority field to ingest pipeline"
 alc apply my-change
 # Distributes specs, opens draft PRs, and invokes the AI agent in each target repo
 
-alc archive my-change
-# Syncs PR state from GitHub; auto-archives when all PRs are merged
+alc archive my-change --mark-ready --auto-merge
+# Promotes draft PRs, enables auto-merge, syncs state; auto-archives when all merged
 ```
 
 Every command supports `--dry-run` to preview without side effects.
@@ -58,7 +58,7 @@ flowchart LR
 
 ### Planning
 
-Generate planning artefacts for a new change. This phase is centralised and determines which repos will be impacted by the change.
+Generate planning artefacts for a new change. This phase is centralised and will determine which repos are impacted by the change.
 
 ```bash
 alc propose <change> --description <text> [--dry-run]
@@ -110,7 +110,7 @@ States are: `pending` → `distributed` → `applying` → `implemented` → `re
 When all repos have had their PRs merged (`merged` state), the change is automatically archived to `openspec/changes/archive/YYYY-MM-DD-<change>/`.
 
 ```bash
-alc archive <change> [--mark-ready]
+alc archive <change> [--mark-ready] [--auto-merge]
 ```
 
 Synchronize PR state from GitHub into `status.toml`. Fetches each target's PR via the GitHub API. Transitions:
@@ -120,6 +120,10 @@ Synchronize PR state from GitHub into `status.toml`. Fetches each target's PR vi
 - PR closed → state becomes `failed`
 
 With `--mark-ready`, draft PRs for `implemented` targets are promoted to ready for review via the GitHub GraphQL API.
+
+With `--auto-merge`, GitHub's native auto-merge (squash) is enabled on open, non-draft PRs whose targets are in `implemented` or `reviewing` state. GitHub will merge the PR automatically once branch protection rules (CI checks, required reviews) are satisfied. The mutation is idempotent, so re-running `archive --auto-merge` is safe.
+
+The two flags compose naturally: `alc archive <change> --mark-ready --auto-merge` first promotes drafts to ready-for-review, then enables auto-merge on the now-ready PRs.
 
 ## Auxillary Commands
 
@@ -209,6 +213,7 @@ Auto-managed state for each target in a change. Created on first use by `apply` 
 - `git` on PATH
 - `GITHUB_TOKEN` env var — for PR creation and sync via the GitHub API
 - `claude` CLI — for agent invocation (or set `ALC_AGENT_BACKEND=dry-run`)
+- Branch protection rules on target repos — required for `--auto-merge` (GitHub rejects the mutation without them)
 
 ## Development
 

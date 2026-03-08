@@ -87,3 +87,35 @@ pub async fn mark_pr_ready(
 
     Ok(())
 }
+
+/// Enable GitHub's native auto-merge (squash) on a PR via the GraphQL API.
+///
+/// Requires the repo to have branch protection rules configured. The mutation
+/// is idempotent — calling it when auto-merge is already enabled is a no-op.
+pub async fn enable_auto_merge(
+    client: &octocrab::Octocrab, owner: &str, repo: &str, number: u64,
+) -> Result<()> {
+    let pr = client
+        .pulls(owner, repo)
+        .get(number)
+        .await
+        .with_context(|| format!("fetching PR #{number} for auto-merge mutation"))?;
+
+    let node_id = pr
+        .node_id
+        .filter(|id| !id.is_empty())
+        .with_context(|| {
+            format!("PR #{number} in {owner}/{repo} has no node_id for GraphQL mutation")
+        })?;
+
+    let query = format!(
+        r#"mutation {{ enablePullRequestAutoMerge(input: {{ pullRequestId: "{node_id}", mergeMethod: SQUASH }}) {{ pullRequest {{ autoMergeRequest {{ enabledAt }} }} }} }}"#
+    );
+
+    client
+        .graphql::<serde_json::Value>(&query)
+        .await
+        .with_context(|| format!("enabling auto-merge on PR #{number} in {owner}/{repo}"))?;
+
+    Ok(())
+}
