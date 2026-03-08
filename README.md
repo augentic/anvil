@@ -8,7 +8,7 @@ Multi-repo orchestration CLI for spec-driven development. Centralised planning, 
 cargo install --path .
 ```
 
-Create a `registry.toml` at the root of your hub repo:
+Create a `registry.toml` at the root of your planning repo:
 
 ```toml
 [[services]]
@@ -129,7 +129,7 @@ The two flags compose naturally: `alc archive <change> --mark-ready --auto-merge
 
 ### `alc init`
 
-Initialise a new hub workspace in the current directory: creates `registry.toml`, `openspec/changes/`, and `openspec/specs/`.
+Initialise a new planning workspace in the current directory: creates `registry.toml`, `openspec/changes/`, and `openspec/specs/`.
 
 ### `alc validate <change>`
 
@@ -137,7 +137,7 @@ Validate pipeline, registry, and status consistency for a change. Exits with an 
 
 ### `alc list`
 
-List all existing changes in the hub, showing whether each has a pipeline and/or status file.
+List all existing changes in the planning, showing whether each has a pipeline and/or status file.
 
 ### `alc registry list`
 
@@ -151,7 +151,7 @@ Query services by domain or capability.
 
 ### `registry.toml`
 
-The service catalog. Lives at the hub repo root. Each entry maps a service to its repo, crate, domain, and capabilities.
+The service catalog. Lives at the planning repo root. Each entry maps a service to its repo, crate, domain, and capabilities.
 
 ```toml
 [[services]]

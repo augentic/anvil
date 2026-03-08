@@ -26,9 +26,9 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Initialise a new hub workspace with registry.toml and directory layout
+    /// Initialise a new planning workspace with registry.toml and directory layout
     Init,
-    /// Generate planning artefacts for a new change in the hub repo
+    /// Generate planning artefacts for a new change in the planning repo
     Propose {
         /// Change name (e.g., r9k-http)
         change: String,
@@ -74,7 +74,7 @@ pub enum Command {
         /// Change name
         change: String,
     },
-    /// List existing changes in the hub
+    /// List existing changes in the planning
     List,
     /// Query the service registry
     Registry {
