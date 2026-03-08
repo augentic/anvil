@@ -10,7 +10,7 @@ use crate::status::PipelineStatus;
 /// Shared context for all commands that operate on an existing change.
 ///
 /// Loads and validates the pipeline, registry, and status in one place,
-/// eliminating the repeated preamble across apply, sync, and status commands.
+/// eliminating the repeated preamble across apply, archive, and status commands.
 pub struct ChangeContext {
     /// Path to the change directory (specs, pipeline, status).
     pub change_dir: PathBuf,

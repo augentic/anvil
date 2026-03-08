@@ -29,7 +29,7 @@ alc propose my-change --description "Add priority field to ingest pipeline"
 alc apply my-change
 # Distributes specs, opens draft PRs, and invokes the AI agent in each target repo
 
-alc sync my-change
+alc archive my-change
 # Syncs PR state from GitHub; auto-archives when all PRs are merged
 ```
 
@@ -38,14 +38,22 @@ Every command supports `--dry-run` to preview without side effects.
 ## Workflow
 
 ```mermaid
-graph TD
-    Start([Start]) --> Propose[alc propose]
-    Propose -->|Generates Plan| Apply[alc apply]
-    Apply -->|Distributes + Implements| Sync[alc sync]
-    Sync -->|Updates Status| Check{All Merged?}
-    Check -- No --> Review[Manual Review/Merge]
-    Review --> Sync
-    Check -- Yes --> Archived([Archived])
+flowchart LR
+    subgraph Planning
+        Propose --> Review
+    end
+
+    subgraph Executing
+        Apply -->|/opsx:apply| Repo-1 & Repo-2
+    end
+
+    subgraph Finalising
+        Merge[Merge PR] -->|/opsx:archive| Archived([Archived])
+    end
+
+    New([New]) -->|alc propose| Planning
+    Planning -->|alc apply| Executing
+    Executing -->|alc archive| Finalising
 ```
 
 ## Commands
@@ -83,7 +91,7 @@ Print the pipeline status table showing each target's current state and PR URL.
 
 States: `pending` → `distributed` → `applying` → `implemented` → `reviewing` → `merged`. A target can also be `failed`.
 
-### `alc sync <change> [--mark-ready]`
+### `alc archive <change> [--mark-ready]`
 
 Synchronize PR state from GitHub into `status.toml`. Fetches each target's PR via the GitHub API. Transitions:
 
@@ -162,14 +170,14 @@ Target fields `repo`, `crate`, `project_dir`, and `branch` are optional override
 
 ### `status.toml`
 
-Auto-managed state for each target in a change. Created on first use by `apply` or `status`. Updated by `apply` and `sync`.
+Auto-managed state for each target in a change. Created on first use by `apply` or `status`. Updated by `apply` and `archive`.
 
 ## Environment Variables
 
 
 | Variable                 | Default  | Description                                                          |
 | ------------------------ | -------- | -------------------------------------------------------------------- |
-| `GITHUB_TOKEN`           | —        | GitHub personal access token for PR creation and sync (required for `apply`, `sync`). |
+| `GITHUB_TOKEN`           | —        | GitHub personal access token for PR creation and sync (required for `apply`, `archive`). |
 | `ALC_AGENT_BACKEND`      | `claude` | Agent backend. Set to `dry-run` to print commands without executing. |
 | `ALC_AGENT_TIMEOUT_SECS` | `600`    | Timeout in seconds for agent invocation.                             |
 | `RUST_LOG`               | `info`   | Log level filter (standard `tracing` env filter syntax).             |
@@ -215,7 +223,7 @@ src/
 ├── agent.rs         — AI agent invocation (claude CLI or dry-run)
 ├── propose.rs       — centralised planning command
 ├── apply.rs         — distribute specs, open PRs, invoke agent per target
-├── sync.rs          — sync PR state from GitHub, auto-archive when done
+├── archive.rs       — sync PR state from GitHub, auto-archive when done
 ├── brief.rs         — change brief generation
 ├── output.rs        — display helpers (status tables, dry-run banners)
 ├── util.rs          — TempDir, load_toml helper

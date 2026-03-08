@@ -8,7 +8,7 @@ use clap::{Parser, Subcommand};
 Typical workflow:
   alc propose <change> -d \"description\"   Generate planning artefacts
   alc apply <change>                       Distribute specs, open draft PRs, invoke agent
-  alc sync <change>                        Sync PR state, auto-archive when all merged"
+  alc archive <change>                     Sync PR state, auto-archive when all merged"
 )]
 pub struct Cli {
     /// Increase log verbosity to debug level
@@ -59,7 +59,7 @@ pub enum Command {
         change: String,
     },
     /// Synchronize PR state from GitHub; auto-archive when all targets are merged
-    Sync {
+    Archive {
         /// Change name
         change: String,
         /// Mark draft PRs as ready for review when implemented

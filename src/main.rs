@@ -14,7 +14,7 @@ mod propose;
 mod registry;
 mod session;
 mod status;
-mod sync;
+mod archive;
 mod util;
 mod workspace;
 
@@ -72,8 +72,8 @@ async fn run() -> Result<()> {
             let changes_dir = session.workspace.join(session.engine.changes_dir());
             list_changes(&changes_dir)?;
         }
-        Command::Sync { change, mark_ready } => {
-            sync::run(&change, mark_ready, &session).await?;
+        Command::Archive { change, mark_ready } => {
+            archive::run(&change, mark_ready, &session).await?;
         }
         Command::Registry { action } => {
             let reg = Registry::load(&session.workspace.join("registry.toml"))?;
