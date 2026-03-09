@@ -6,6 +6,19 @@ context: |
   Testing: Rust integration tests, cargo test
 
 rules:
+  proposal:
+    - Include rollback plan
+    - Identify affected domains
+  specs:
+    - Use Given/When/Then format
+    - Reference existing patterns before inventing new ones
+  design:
+    - Document domain model with entity relationships
+    - Document API contracts with request/response shapes
+    - Document provider capability changes
+    - Flag structural changes (type renames, handler splits/merges)
+    - Use mermaid diagrams for entity relationships and flows
+
   # current-state:
   #   - Extract handler inventory with exact trait bounds
   #   - Extract domain types with serde attributes
@@ -13,22 +26,6 @@ rules:
   #   - Extract config keys from Config::get calls
   #   - Use code-analysis IR format sections
   #   - Include test inventory (name, handler covered, assertions)
-  proposal:
-    - Include rollback plan
-    - Identify affected domains
-  specs:
-    - Use Given/When/Then format
-    - Reference existing patterns before inventing new ones
-    # - One spec file per capability (handler or feature)
-    # - Mark additions with + prefix, removals with - prefix
-    # - Each requirement must be traceable to JIRA story or design doc
-    # - Include provider capability requirements per capability
-  design:
-    - Document domain model with entity relationships
-    - Document API contracts with request/response shapes
-    - Document provider capability changes
-    - Flag structural changes (type renames, handler splits/merges)
-    - Use mermaid diagrams for entity relationships and flows
   # manifest:
   #   - Classify every change as additive/subtractive/modifying/structural
   #   - Assess overall complexity (low/medium/high/recommend-regeneration)
