@@ -7,6 +7,7 @@ Analyze existing Rust WASM crates to understand what the system does today.
 Read the crate source and extract:
 
 ### Handler Inventory
+
 For each handler in `src/handler.rs` or `src/handlers/*.rs`:
 - Handler name (request type that implements `Handler<P>`)
 - Provider trait bounds (e.g., `P: Config + HttpRequest + Identity`)
@@ -16,6 +17,7 @@ For each handler in `src/handler.rs` or `src/handlers/*.rs`:
 - Business logic summary (what the `handle` function does)
 
 ### Domain Types
+
 For each type in `src/types.rs` and domain modules:
 - Type name, fields, and Rust types
 - Serde attributes (`rename`, `rename_all`, `default`, `skip_serializing_if`)
@@ -23,6 +25,7 @@ For each type in `src/types.rs` and domain modules:
 - Relationships between types
 
 ### Provider Usage
+
 - Which provider traits are actually called (not just bounded)
 - Config keys used via `Config::get`
 - HTTP endpoints called via `HttpRequest::fetch`
@@ -30,12 +33,14 @@ For each type in `src/types.rs` and domain modules:
 - State keys used via `StateStore::get/set`
 
 ### Test Coverage
+
 For each test file in `tests/`:
 - Test name and which handler it covers
 - MockProvider configuration (config keys, HTTP fixtures)
 - Key assertions
 
 ### Dependencies
+
 From `Cargo.toml`:
 - Direct dependencies and their purpose
 - Feature flags enabled

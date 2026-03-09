@@ -1,0 +1,16 @@
+change = "add-caching"
+
+[[targets]]
+id = "cache-service"
+specs = ["cache-api"]
+
+[[targets]]
+id = "api-gateway"
+specs = ["gateway-cache-integration"]
+depends_on = ["cache-service"]
+
+[[dependencies]]
+from = "cache-service"
+to = "api-gateway"
+type = "http-api"
+contract = "specs/cache-api/spec.md#CacheEndpoints"

@@ -43,32 +43,39 @@ pipeline.
 ## Targets
 
 ### Target: <crate-name>
+
 - Complexity: <low|medium|high|recommend-regeneration>
 - Route: <crate-updater|tdd-gen>
 
 #### STRUCTURAL
+
 - STR-N: <description>
   - Source: <spec ref or design section>
   - Scope: <number of files, references>
 
 #### SUBTRACTIVE
+
 - SUB-N: <description>
   - Source: <spec ref>
   - Current location: <file path>
   - Dependents: <list>
 
 #### MODIFYING
+
 - MOD-N: <description>
   - Source: <spec ref>
   - Affected: <handler names, type names>
 
 #### ADDITIVE
+
 - ADD-N: <description>
   - Source: <spec ref>
   - New files: <predicted paths>
 
 ## Cross-Target Dependencies
+
 - <from-target> → <to-target>: <what contract is shared>
 
 ## Risks
+
 - <interaction risks between changes>
