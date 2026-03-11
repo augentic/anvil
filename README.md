@@ -8,10 +8,14 @@ Admin CLI for Augentic's spec-driven development workflow. Manages OpenSpec sche
 cargo install --path .
 ```
 
+## Prerequisites
+
+- [Homebrew](https://brew.sh) -- `anvil init` installs the `openspec` CLI via `brew install openspec` if it is not already on PATH.
+
 ## Quick Start
 
 ```bash
-# Initialise OpenSpec in your project
+# Initialise OpenSpec in your project (installs openspec CLI if needed)
 anvil init
 ```
 
@@ -19,12 +23,11 @@ anvil init
 
 ### `anvil init`
 
-Initialise OpenSpec in the current project. Creates the `openspec/` directory structure with schemas, templates, and a `config.yaml`.
+Install the `openspec` CLI (via Homebrew) if needed, run `openspec init --tools cursor --force` to scaffold the project, then layer on anvil-specific schema and configuration.
 
 ```bash
 anvil init                                      # interactive
 anvil init --schema omnia --context "Rust WASM"  # non-interactive (CI-friendly)
-anvil init --force                               # reinitialise existing project
 ```
 
 ### `anvil update`
@@ -76,25 +79,21 @@ The embedded schemas provide offline functionality. `anvil update` fetches the l
 
 ## Project Layout
 
-After running `anvil init`, your project will have:
+After running `anvil init`, your project will have the standard OpenSpec structure plus anvil-specific schema files:
 
 ```
 openspec/
   config.yaml                # Project configuration (schema, context, rules)
-  changes/                   # Change directories (created by `anvil new`)
-    <change-name>/
-      proposal.md
-      design.md
-      specs/
-      tasks.md
+  specs/                     # Source of truth (your system's behaviour)
+  changes/                   # Proposed changes (one folder per change)
   schemas/
-    <schema-name>/           # Schema definition and templates
+    <schema-name>/           # Anvil schema definition and templates
       schema.yaml
       templates/
-        proposal.md
-        design.md
-        spec.md
-        tasks.md
+
+.cursor/
+  skills/                    # Cursor skills (created by openspec init)
+  commands/                  # Cursor OPSX commands
 ```
 
 ## Configuration
@@ -148,7 +147,6 @@ src/
 ├── commands/
 │   ├── init.rs         -- anvil init
 │   ├── update.rs       -- anvil update
-│   ├── new.rs          -- anvil new
 │   ├── validate.rs     -- anvil validate
 │   ├── schemas.rs      -- anvil schemas
 │   └── completions.rs  -- anvil completions

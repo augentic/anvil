@@ -21,11 +21,7 @@ fn main() {
 
 fn run(command: Command) -> anyhow::Result<()> {
     match command {
-        Command::Init {
-            schema,
-            context,
-            force,
-        } => anvil::commands::init::run(schema, context, force),
+        Command::Init { schema, context } => anvil::commands::init::run(schema, context),
         Command::Update {
             project,
             repo,

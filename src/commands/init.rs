@@ -1,6 +1,8 @@
-//! `anvil init` -- initialise `OpenSpec` in the current project.
+//! `anvil init` -- install `OpenSpec` and initialise it in the current project.
 
-use anyhow::{Result, bail};
+use std::process::Command;
+
+use anyhow::{Context, Result, bail};
 use console::style;
 use dialoguer::{Input, Select};
 
@@ -10,20 +12,20 @@ use crate::core::registry;
 
 /// Run the init command.
 ///
+/// Ensures the `openspec` CLI is installed (via Homebrew), delegates base
+/// project scaffolding to `openspec init`, then layers on anvil-specific
+/// schema and configuration.
+///
 /// # Errors
 ///
-/// Returns an error if the project cannot be initialised (directory exists without
-/// `--force`, schema not found, or filesystem errors).
-pub fn run(schema: Option<String>, context: Option<String>, force: bool) -> Result<()> {
+/// Returns an error if Homebrew is unavailable, openspec installation fails,
+/// `openspec init` fails, or the anvil-specific layering encounters errors.
+pub fn run(schema: Option<String>, context: Option<String>) -> Result<()> {
+    ensure_openspec_installed()?;
+    run_openspec_init()?;
+
     let cwd = std::env::current_dir()?;
     let project = ProjectDir::from_root(&cwd);
-
-    if project.exists() && !force {
-        bail!(
-            "openspec/ already exists at {}; use --force to reinitialise",
-            project.root().display()
-        );
-    }
 
     let schema_name = resolve_schema_name(schema)?;
     let context_text = resolve_context(context)?;
@@ -40,9 +42,8 @@ pub fn run(schema: Option<String>, context: Option<String>, force: bool) -> Resu
     config.write(&project.config_file())?;
 
     println!(
-        "\n  {} Initialised OpenSpec in {}\n",
+        "\n  {} Anvil configuration layered on top of OpenSpec\n",
         style("✓").green().bold(),
-        style(project.root().display()).cyan()
     );
     println!("  Schema:  {schema_name} (v{})", resolved.schema.version);
     println!("  Config:  {}", project.config_file().display());
@@ -50,9 +51,80 @@ pub fn run(schema: Option<String>, context: Option<String>, force: bool) -> Resu
         "\n  Next steps:\n    1. Edit {} to customise rules",
         style("openspec/config.yaml").yellow()
     );
-    println!("    2. Run {} to scaffold a change\n", style("anvil new <change-name>").yellow());
+    println!(
+        "    2. Run {} to start a change\n",
+        style("/opsx:propose <description>").yellow()
+    );
 
     Ok(())
+}
+
+/// Check whether `openspec` is on PATH; if not, install it via Homebrew.
+fn ensure_openspec_installed() -> Result<()> {
+    if is_openspec_available() {
+        tracing::debug!("openspec already installed");
+        return Ok(());
+    }
+
+    println!(
+        "\n  {} openspec CLI not found -- installing via Homebrew...\n",
+        style("→").cyan().bold(),
+    );
+
+    if !is_brew_available() {
+        bail!(
+            "Homebrew is required to install openspec but `brew` was not found.\n  \
+             Install Homebrew from https://brew.sh then re-run `anvil init`."
+        );
+    }
+
+    let status = Command::new("brew")
+        .args(["install", "openspec"])
+        .status()
+        .context("failed to run `brew install openspec`")?;
+
+    if !status.success() {
+        bail!("`brew install openspec` failed (exit code: {status})");
+    }
+
+    if !is_openspec_available() {
+        bail!("openspec was installed but is not available on PATH; check your shell configuration");
+    }
+
+    Ok(())
+}
+
+/// Run `openspec init --tools cursor --force` in the current directory.
+fn run_openspec_init() -> Result<()> {
+    println!(
+        "\n  {} Running openspec init...\n",
+        style("→").cyan().bold(),
+    );
+
+    let status = Command::new("openspec")
+        .args(["init", "--tools", "cursor", "--force"])
+        .status()
+        .context("failed to run `openspec init`")?;
+
+    if !status.success() {
+        bail!("`openspec init --tools cursor --force` failed (exit code: {status})");
+    }
+
+    Ok(())
+}
+
+fn is_openspec_available() -> bool {
+    Command::new("openspec")
+        .arg("--version")
+        .output()
+        .is_ok_and(|o| o.status.success())
+}
+
+fn is_brew_available() -> bool {
+    Command::new("brew")
+        .arg("--version")
+        .output()
+        .is_ok_and(|o| o.status.success())
 }
 
 /// Prompt for or validate the schema name.

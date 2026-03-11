@@ -28,6 +28,10 @@ pub struct Anvil {
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Initialise `OpenSpec` in the current project.
+    ///
+    /// Installs the `openspec` CLI via Homebrew if needed, runs
+    /// `openspec init --tools cursor --force`, then layers on
+    /// anvil-specific schema and configuration.
     Init {
         /// Schema to use (skips interactive prompt).
         #[arg(long)]
@@ -36,10 +40,6 @@ pub enum Command {
         /// Project context description (skips interactive prompt).
         #[arg(long)]
         context: Option<String>,
-
-        /// Overwrite existing openspec/ directory.
-        #[arg(long)]
-        force: bool,
     },
 
     /// Fetch the latest schemas from GitHub.
