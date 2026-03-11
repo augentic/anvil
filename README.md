@@ -81,7 +81,7 @@ The embedded schemas provide offline functionality. `anvil update` fetches the l
 
 After running `anvil init`, your project will have the standard OpenSpec structure plus anvil-specific schema files:
 
-```
+```text
 openspec/
   config.yaml                # Project configuration (schema, context, rules)
   specs/                     # Source of truth (your system's behaviour)
@@ -121,12 +121,10 @@ rules:
 
 ## Global Options
 
-
 | Flag              | Description                                      |
 | ----------------- | ------------------------------------------------ |
 | `-v`, `--verbose` | Increase log verbosity (`-v` debug, `-vv` trace) |
 | `-q`, `--quiet`   | Suppress non-error output                        |
-
 
 ## Development
 
@@ -157,7 +155,3 @@ src/
     ├── registry.rs     -- schema registry (embedded + local + GitHub)
     └── schema.rs       -- schema model
 ```
-
-## License
-
-MIT OR Apache-2.0
