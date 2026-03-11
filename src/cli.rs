@@ -1,99 +1,99 @@
-use clap::{Parser, Subcommand};
+//! Command-line interface definitions.
 
-#[derive(Parser)]
-#[command(
-    name = "alc",
-    about = "Multi-repo orchestration for spec-driven development",
-    after_help = "\
-Typical workflow:
-  alc propose <change> -d \"description\"   Generate planning artefacts
-  alc apply <change>                       Distribute specs, open draft PRs, invoke agent
-  alc archive <change>                     Sync PR state, auto-archive when all merged"
-)]
-pub struct Cli {
-    /// Increase log verbosity to debug level
-    #[arg(long, short = 'v', global = true)]
-    pub verbose: bool,
-    /// Decrease log verbosity to warnings only
-    #[arg(long, short = 'q', global = true)]
+use std::path::PathBuf;
+
+use clap::{Parser, Subcommand, ValueEnum};
+
+/// Admin CLI for Augentic's spec-driven development workflow.
+///
+/// Manages `OpenSpec` schemas, templates, and project configuration for
+/// spec-driven development with Augentic tooling.
+#[derive(Debug, Parser)]
+#[command(name = "anvil", version, about, long_about = None)]
+pub struct Anvil {
+    /// Increase log verbosity (-v for debug, -vv for trace).
+    #[arg(short, long, action = clap::ArgAction::Count, global = true)]
+    pub verbose: u8,
+
+    /// Suppress non-error output.
+    #[arg(short, long, global = true)]
     pub quiet: bool,
-    /// Max concurrent repo operations
-    #[arg(long, short = 'j', global = true, default_value = "4")]
-    pub concurrency: usize,
+
+    /// Subcommand to execute.
     #[command(subcommand)]
     pub command: Command,
 }
 
-#[derive(Subcommand)]
+/// Top-level subcommands.
+#[derive(Debug, Subcommand)]
 pub enum Command {
-    /// Initialise a new planning workspace with registry.toml and directory layout
-    Init,
-    /// Generate planning artefacts for a new change in the planning repo
-    Propose {
-        /// Change name (e.g., r9k-http)
-        change: String,
-        /// Human description of the initiative
-        #[arg(long, short = 'd')]
-        description: String,
-        /// Preview the prompt without invoking the agent
+    /// Initialise `OpenSpec` in the current project.
+    Init {
+        /// Schema to use (skips interactive prompt).
         #[arg(long)]
-        dry_run: bool,
+        schema: Option<String>,
+
+        /// Project context description (skips interactive prompt).
+        #[arg(long)]
+        context: Option<String>,
+
+        /// Overwrite existing openspec/ directory.
+        #[arg(long)]
+        force: bool,
     },
-    /// Distribute specs, open draft PRs, and invoke agent per repo group in dependency order
-    Apply {
-        /// Change name
-        change: String,
-        /// Apply only the repo group containing this target
+
+    /// Fetch the latest schemas from GitHub.
+    Update {
+        /// Also update the current project's openspec/schemas/.
         #[arg(long)]
-        target: Option<String>,
-        /// Preview what would happen without invoking agents
-        #[arg(long)]
-        dry_run: bool,
-        /// Continue executing independent groups when one fails
-        #[arg(long)]
-        continue_on_failure: bool,
+        project: bool,
+
+        /// GitHub repository to fetch schemas from.
+        #[arg(long, default_value = "augentic/lifecycle")]
+        repo: String,
+
+        /// Git ref (branch or tag) to fetch from.
+        #[arg(long, default_value = "main")]
+        git_ref: String,
     },
-    /// Show pipeline status for all targets
-    Status {
-        /// Change name
-        change: String,
-    },
-    /// Synchronize PR state from GitHub; auto-archive when all targets are merged
-    Archive {
-        /// Change name
-        change: String,
-        /// Mark draft PRs as ready for review when implemented
+
+    /// Validate project `OpenSpec` configuration and structure.
+    Validate,
+
+    /// List available schemas.
+    Schemas,
+
+    /// Generate shell completions.
+    Completions {
+        /// Shell to generate completions for.
+        shell: ShellChoice,
+
+        /// Directory to write completions to (defaults to stdout).
         #[arg(long)]
-        mark_ready: bool,
-        /// Enable GitHub auto-merge (squash) on eligible PRs
-        #[arg(long)]
-        auto_merge: bool,
-    },
-    /// Validate pipeline, registry, and status consistency for a change
-    Validate {
-        /// Change name
-        change: String,
-    },
-    /// List existing changes in the planning
-    List,
-    /// Query the service registry
-    Registry {
-        #[command(subcommand)]
-        action: RegistryAction,
+        output: Option<PathBuf>,
     },
 }
 
-#[derive(Subcommand)]
-pub enum RegistryAction {
-    /// List all services
-    List,
-    /// Query services by domain or capability
-    Query {
-        /// Filter by domain
-        #[arg(long)]
-        domain: Option<String>,
-        /// Filter by capability
-        #[arg(long)]
-        cap: Option<String>,
-    },
+/// Supported shells for completion generation.
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum ShellChoice {
+    /// Bash shell.
+    Bash,
+    /// Zsh shell.
+    Zsh,
+    /// Fish shell.
+    Fish,
+    /// `PowerShell`.
+    PowerShell,
+}
+
+impl From<ShellChoice> for clap_complete::Shell {
+    fn from(s: ShellChoice) -> Self {
+        match s {
+            ShellChoice::Bash => Self::Bash,
+            ShellChoice::Zsh => Self::Zsh,
+            ShellChoice::Fish => Self::Fish,
+            ShellChoice::PowerShell => Self::PowerShell,
+        }
+    }
 }

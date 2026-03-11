@@ -1,19 +1,9 @@
-//! `alc` — multi-repo orchestration CLI for spec-driven development.
+//! Admin CLI for Augentic's spec-driven development workflow.
+//!
+//! Manages `OpenSpec` schemas, templates, and project configuration. Provides
+//! commands to initialise projects, fetch schema updates, scaffold changes,
+//! and validate project structure.
 
-pub mod agent;
-pub mod apply;
-pub mod archive;
-pub mod brief;
 pub mod cli;
-pub mod context;
-pub mod engine;
-pub mod git;
-pub mod github;
-pub mod output;
-pub mod pipeline;
-pub mod propose;
-pub mod registry;
-pub mod session;
-pub mod status;
-pub mod util;
-pub mod workspace;
+pub mod commands;
+pub mod core;
