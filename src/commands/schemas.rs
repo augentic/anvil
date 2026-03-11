@@ -1,4 +1,4 @@
-//! `anvil schemas` -- list available schemas.
+//! `specify schemas` -- list available schemas.
 
 use anyhow::Result;
 use console::style;
@@ -29,7 +29,7 @@ pub fn run() -> Result<()> {
     if !has_any {
         println!(
             "\n  No schemas found. Run {} to fetch schemas.\n",
-            style("anvil update").yellow()
+            style("specify update").yellow()
         );
         return Ok(());
     }

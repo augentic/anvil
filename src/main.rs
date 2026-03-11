@@ -1,11 +1,11 @@
-//! Entry point for the `anvil` CLI.
+//! Entry point for the `specify` CLI.
 
-use anvil::cli::{Anvil, Command};
 use clap::Parser;
+use specify::cli::{Command, Specify};
 use tracing_subscriber::EnvFilter;
 
 fn main() {
-    let cli = Anvil::parse();
+    let cli = Specify::parse();
 
     init_tracing(cli.verbose, cli.quiet);
 
@@ -20,16 +20,16 @@ fn main() {
 
 fn run(command: Command) -> anyhow::Result<()> {
     match command {
-        Command::Init { schema, context } => anvil::commands::init::run(schema, context),
+        Command::Init { schema, context } => specify::commands::init::run(schema, context),
         Command::Update {
             project,
             repo,
             git_ref,
-        } => anvil::commands::update::run(project, &repo, &git_ref),
-        Command::Validate => anvil::commands::validate::run(),
-        Command::Schemas => anvil::commands::schemas::run(),
+        } => specify::commands::update::run(project, &repo, &git_ref),
+        Command::Validate => specify::commands::validate::run(),
+        Command::Schemas => specify::commands::schemas::run(),
         Command::Completions { shell, output } => {
-            anvil::commands::completions::run(shell, output.as_deref())
+            specify::commands::completions::run(shell, output.as_deref())
         }
     }
 }
@@ -40,7 +40,7 @@ fn init_tracing(verbose: u8, quiet: bool) {
     } else {
         match verbose {
             0 => "warn",
-            1 => "info,anvil=debug",
+            1 => "info,specify=debug",
             2.. => "trace",
         }
     };

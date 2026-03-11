@@ -109,7 +109,7 @@ pub fn resolve(name: &str) -> Result<ResolvedSchema> {
     }
 
     bail!(
-        "schema '{name}' not found in local store or embedded schemas; run `anvil update` to fetch it"
+        "schema '{name}' not found in local store or embedded schemas; run `specify update` to fetch it"
     );
 }
 
@@ -313,7 +313,7 @@ struct GitHubContent {
 /// GET JSON from the GitHub API with a User-Agent header.
 fn github_get_json<T: serde::de::DeserializeOwned>(url: &str) -> Result<T> {
     let body = ureq::get(url)
-        .header("User-Agent", concat!("anvil/", env!("CARGO_PKG_VERSION")))
+        .header("User-Agent", concat!("specify/", env!("CARGO_PKG_VERSION")))
         .header("Accept", "application/vnd.github.v3+json")
         .call()
         .with_context(|| format!("GitHub API request to {url}"))?

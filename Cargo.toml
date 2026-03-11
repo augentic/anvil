@@ -1,5 +1,5 @@
 [package]
-name = "anvil"
+name = "specify"
 description = "Admin CLI for Augentic's spec-driven development workflow"
 version.workspace = true
 edition.workspace = true

@@ -1,4 +1,4 @@
-//! `anvil init` -- install `OpenSpec` and initialise it in the current project.
+//! `specify init` -- install `OpenSpec` and initialise it in the current project.
 
 use std::process::Command;
 
@@ -13,13 +13,13 @@ use crate::core::registry;
 /// Run the init command.
 ///
 /// Ensures the `openspec` CLI is installed (via Homebrew), delegates base
-/// project scaffolding to `openspec init`, then layers on anvil-specific
+/// project scaffolding to `openspec init`, then layers on specify-specific
 /// schema and configuration.
 ///
 /// # Errors
 ///
 /// Returns an error if Homebrew is unavailable, openspec installation fails,
-/// `openspec init` fails, or the anvil-specific layering encounters errors.
+/// `openspec init` fails, or the specify-specific layering encounters errors.
 pub fn run(schema: Option<String>, context: Option<String>) -> Result<()> {
     ensure_openspec_installed()?;
     run_openspec_init()?;
@@ -41,7 +41,10 @@ pub fn run(schema: Option<String>, context: Option<String>) -> Result<()> {
     let config = ProjectConfig::new(&schema_name, &context_text);
     config.write(&project.config_file())?;
 
-    println!("\n  {} Anvil configuration layered on top of OpenSpec\n", style("✓").green().bold(),);
+    println!(
+        "\n  {} Specify configuration layered on top of OpenSpec\n",
+        style("✓").green().bold(),
+    );
     println!("  Schema:  {schema_name} (v{})", resolved.schema.version);
     println!("  Config:  {}", project.config_file().display());
     println!(
@@ -68,7 +71,7 @@ fn ensure_openspec_installed() -> Result<()> {
     if !is_brew_available() {
         bail!(
             "Homebrew is required to install openspec but `brew` was not found.\n  \
-             Install Homebrew from https://brew.sh then re-run `anvil init`."
+             Install Homebrew from https://brew.sh then re-run `specify init`."
         );
     }
 
@@ -122,7 +125,7 @@ fn resolve_schema_name(provided: Option<String>) -> Result<String> {
 
     let available = registry::list_embedded();
     if available.is_empty() {
-        bail!("no schemas available; run `anvil update` to fetch schemas from GitHub");
+        bail!("no schemas available; run `specify update` to fetch schemas from GitHub");
     }
 
     if available.len() == 1 {

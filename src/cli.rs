@@ -9,8 +9,8 @@ use clap::{Parser, Subcommand, ValueEnum};
 /// Manages `OpenSpec` schemas, templates, and project configuration for
 /// spec-driven development with Augentic tooling.
 #[derive(Debug, Parser)]
-#[command(name = "anvil", version, about, long_about = None)]
-pub struct Anvil {
+#[command(name = "specify", version, about, long_about = None)]
+pub struct Specify {
     /// Increase log verbosity (-v for debug, -vv for trace).
     #[arg(short, long, action = clap::ArgAction::Count, global = true)]
     pub verbose: u8,
@@ -31,7 +31,7 @@ pub enum Command {
     ///
     /// Installs the `openspec` CLI via Homebrew if needed, runs
     /// `openspec init --tools cursor --force`, then layers on
-    /// anvil-specific schema and configuration.
+    /// specify-specific schema and configuration.
     Init {
         /// Schema to use (skips interactive prompt).
         #[arg(long)]

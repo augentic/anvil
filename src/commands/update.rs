@@ -1,4 +1,4 @@
-//! `anvil update` -- fetch latest schemas from GitHub.
+//! `specify update` -- fetch latest schemas from GitHub.
 
 use anyhow::Result;
 use console::style;
