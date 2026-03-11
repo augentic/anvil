@@ -1,4 +1,4 @@
-//! `alc init` -- initialise `OpenSpec` in the current project.
+//! `anvil init` -- initialise `OpenSpec` in the current project.
 
 use anyhow::{Result, bail};
 use console::style;
@@ -50,7 +50,7 @@ pub fn run(schema: Option<String>, context: Option<String>, force: bool) -> Resu
         "\n  Next steps:\n    1. Edit {} to customise rules",
         style("openspec/config.yaml").yellow()
     );
-    println!("    2. Run {} to scaffold a change\n", style("alc new <change-name>").yellow());
+    println!("    2. Run {} to scaffold a change\n", style("anvil new <change-name>").yellow());
 
     Ok(())
 }
@@ -63,7 +63,7 @@ fn resolve_schema_name(provided: Option<String>) -> Result<String> {
 
     let available = registry::list_embedded();
     if available.is_empty() {
-        bail!("no schemas available; run `alc update` to fetch schemas from GitHub");
+        bail!("no schemas available; run `anvil update` to fetch schemas from GitHub");
     }
 
     if available.len() == 1 {

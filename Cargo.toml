@@ -1,5 +1,5 @@
 [package]
-name = "alc"
+name = "anvil"
 description = "Admin CLI for Augentic's spec-driven development workflow"
 version.workspace = true
 edition.workspace = true
@@ -11,16 +11,16 @@ keywords.workspace = true
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 clap_complete = "4"
-console = "0.15"
-dialoguer = "0.11"
-dirs = "6"
-include_dir = "0.7"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-serde_yaml = "0.9"
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-ureq = "3"
+console = "0.16.2"
+dialoguer = "0.12"
+dirs = "6.0.0"
+include_dir = "0.7.4"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+serde_yaml = "0.9.34-deprecated"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+ureq = "3.2.0"
 
 [workspace]
 # members = ["examples"]
@@ -45,7 +45,7 @@ unused_extern_crates = "warn"
 
 [workspace.lints.clippy]
 # https://doc.rust-lang.org/stable/clippy/index.html
-all = "warn"      # correctness, suspicious, style, complexity, perf
+all = "warn"                                                # correctness, suspicious, style, complexity, perf
 cargo = "warn"
 nursery = "warn"
 pedantic = "warn"

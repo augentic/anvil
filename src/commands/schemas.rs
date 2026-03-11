@@ -1,4 +1,4 @@
-//! `alc schemas` -- list available schemas.
+//! `anvil schemas` -- list available schemas.
 
 use anyhow::Result;
 use console::style;
@@ -27,7 +27,10 @@ pub fn run() -> Result<()> {
 
     let has_any = !embedded.is_empty() || !local.is_empty() || !project.is_empty();
     if !has_any {
-        println!("\n  No schemas found. Run {} to fetch schemas.\n", style("alc update").yellow());
+        println!(
+            "\n  No schemas found. Run {} to fetch schemas.\n",
+            style("anvil update").yellow()
+        );
         return Ok(());
     }
 

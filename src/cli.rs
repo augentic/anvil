@@ -9,8 +9,8 @@ use clap::{Parser, Subcommand, ValueEnum};
 /// Manages `OpenSpec` schemas, templates, and project configuration for
 /// spec-driven development with Augentic tooling.
 #[derive(Debug, Parser)]
-#[command(name = "alc", version, about, long_about = None)]
-pub struct Cli {
+#[command(name = "anvil", version, about, long_about = None)]
+pub struct Anvil {
     /// Increase log verbosity (-v for debug, -vv for trace).
     #[arg(short, long, action = clap::ArgAction::Count, global = true)]
     pub verbose: u8,
@@ -55,12 +55,6 @@ pub enum Command {
         /// Git ref (branch or tag) to fetch from.
         #[arg(long, default_value = "main")]
         git_ref: String,
-    },
-
-    /// Scaffold a new change directory from schema templates.
-    New {
-        /// Name for the change (kebab-case recommended).
-        name: String,
     },
 
     /// Validate project `OpenSpec` configuration and structure.

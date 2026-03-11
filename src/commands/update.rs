@@ -1,4 +1,4 @@
-//! `alc update` -- fetch latest schemas from GitHub.
+//! `anvil update` -- fetch latest schemas from GitHub.
 
 use anyhow::Result;
 use console::style;

@@ -1,4 +1,4 @@
-//! `alc validate` -- check project `OpenSpec` configuration and structure.
+//! `anvil validate` -- check project `OpenSpec` configuration and structure.
 
 use anyhow::Result;
 use console::style;
@@ -33,7 +33,7 @@ pub fn run() -> Result<()> {
         println!(
             "\n  {} No openspec/ directory found. Run {} first.\n",
             style("✗").red().bold(),
-            style("alc init").yellow()
+            style("anvil init").yellow()
         );
         return Ok(());
     };
