@@ -23,7 +23,7 @@ specify init
 
 ### `specify init`
 
-Install the `openspec` CLI (via Homebrew) if needed, run `openspec init --tools cursor --force` to scaffold the project, then layer on specify-specific schema and configuration.
+Install the `openspec` CLI (via Homebrew) if needed, then resolve the schema and write specify-specific configuration.
 
 ```bash
 specify init                                      # interactive
@@ -92,7 +92,7 @@ openspec/
       templates/
 
 .cursor/
-  skills/                    # Cursor skills (created by openspec init)
+  skills/                    # Cursor skills
   commands/                  # Cursor OPSX commands
 ```
 

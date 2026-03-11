@@ -12,17 +12,16 @@ use crate::core::registry;
 
 /// Run the init command.
 ///
-/// Ensures the `openspec` CLI is installed (via Homebrew), delegates base
-/// project scaffolding to `openspec init`, then layers on specify-specific
-/// schema and configuration.
+/// Ensures the `openspec` CLI is installed (via Homebrew), then resolves the
+/// chosen schema, copies it into `openspec/schemas/`, and writes
+/// `openspec/config.yaml`.
 ///
 /// # Errors
 ///
 /// Returns an error if Homebrew is unavailable, openspec installation fails,
-/// `openspec init` fails, or the specify-specific layering encounters errors.
+/// or the specify-specific layering encounters errors.
 pub fn run(schema: Option<String>, context: Option<String>) -> Result<()> {
     ensure_openspec_installed()?;
-    run_openspec_init()?;
 
     let cwd = std::env::current_dir()?;
     let project = ProjectDir::from_root(&cwd);
@@ -41,10 +40,7 @@ pub fn run(schema: Option<String>, context: Option<String>) -> Result<()> {
     let config = ProjectConfig::new(&schema_name, &context_text);
     config.write(&project.config_file())?;
 
-    println!(
-        "\n  {} Specify configuration layered on top of OpenSpec\n",
-        style("✓").green().bold(),
-    );
+    println!("\n  {} Specify configuration written\n", style("✓").green().bold(),);
     println!("  Schema:  {schema_name} (v{})", resolved.schema.version);
     println!("  Config:  {}", project.config_file().display());
     println!(
@@ -88,22 +84,6 @@ fn ensure_openspec_installed() -> Result<()> {
         bail!(
             "openspec was installed but is not available on PATH; check your shell configuration"
         );
-    }
-
-    Ok(())
-}
-
-/// Run `openspec init --tools cursor --force` in the current directory.
-fn run_openspec_init() -> Result<()> {
-    println!("\n  {} Running openspec init...\n", style("→").cyan().bold(),);
-
-    let status = Command::new("openspec")
-        .args(["init", "--tools", "cursor", "--force"])
-        .status()
-        .context("failed to run `openspec init`")?;
-
-    if !status.success() {
-        bail!("`openspec init --tools cursor --force` failed (exit code: {status})");
     }
 
     Ok(())

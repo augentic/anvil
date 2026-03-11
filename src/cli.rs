@@ -29,9 +29,8 @@ pub struct Specify {
 pub enum Command {
     /// Initialise `OpenSpec` in the current project.
     ///
-    /// Installs the `openspec` CLI via Homebrew if needed, runs
-    /// `openspec init --tools cursor --force`, then layers on
-    /// specify-specific schema and configuration.
+    /// Installs the `openspec` CLI via Homebrew if needed, then
+    /// resolves the schema and writes specify-specific configuration.
     Init {
         /// Schema to use (skips interactive prompt).
         #[arg(long)]
