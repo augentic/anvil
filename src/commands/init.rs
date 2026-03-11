@@ -41,7 +41,10 @@ pub fn run(schema: Option<String>, context: Option<String>) -> Result<()> {
     let config = ProjectConfig::new(&schema_name, &context_text);
     config.write(&project.config_file())?;
 
-    println!("\n  {} Specify configuration layered on top of OpenSpec\n", style("✓").green().bold(),);
+    println!(
+        "\n  {} Specify configuration layered on top of OpenSpec\n",
+        style("✓").green().bold(),
+    );
     println!("  Schema:  {schema_name} (v{})", resolved.schema.version);
     println!("  Config:  {}", project.config_file().display());
     println!(
