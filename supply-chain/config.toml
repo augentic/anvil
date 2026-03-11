@@ -22,28 +22,72 @@ url = "https://raw.githubusercontent.com/mozilla/supply-chain/main/audits.toml"
 [imports.zcash]
 url = "https://raw.githubusercontent.com/zcash/rust-ecosystem/main/supply-chain/audits.toml"
 
+[[exemptions.bitflags]]
+version = "2.11.0"
+criteria = "safe-to-deploy"
+
 [[exemptions.cc]]
 version = "1.2.56"
 criteria = "safe-to-deploy"
 
-[[exemptions.chrono]]
-version = "0.4.44"
+[[exemptions.clap_complete]]
+version = "4.5.66"
+criteria = "safe-to-deploy"
+
+[[exemptions.console]]
+version = "0.16.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.crc32fast]]
+version = "1.5.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.dialoguer]]
+version = "0.12.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.dirs]]
+version = "2.0.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.dirs-sys]]
+version = "0.3.7"
+criteria = "safe-to-deploy"
+
+[[exemptions.encode_unicode]]
+version = "0.3.6"
 criteria = "safe-to-deploy"
 
 [[exemptions.find-msvc-tools]]
 version = "0.1.9"
 criteria = "safe-to-deploy"
 
-[[exemptions.iana-time-zone]]
-version = "0.1.65"
+[[exemptions.getrandom]]
+version = "0.2.17"
+criteria = "safe-to-deploy"
+
+[[exemptions.getrandom]]
+version = "0.4.2"
+criteria = "safe-to-deploy"
+
+[[exemptions.id-arena]]
+version = "2.3.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.include_dir]]
+version = "0.7.4"
+criteria = "safe-to-deploy"
+
+[[exemptions.include_dir_macros]]
+version = "0.7.4"
 criteria = "safe-to-deploy"
 
 [[exemptions.itoa]]
 version = "1.0.17"
 criteria = "safe-to-deploy"
 
-[[exemptions.js-sys]]
-version = "0.3.91"
+[[exemptions.libredox]]
+version = "0.1.14"
 criteria = "safe-to-deploy"
 
 [[exemptions.log]]
@@ -58,12 +102,44 @@ criteria = "safe-to-deploy"
 version = "0.2.17"
 criteria = "safe-to-deploy"
 
+[[exemptions.r-efi]]
+version = "6.0.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.redox_users]]
+version = "0.4.3"
+criteria = "safe-to-deploy"
+
+[[exemptions.ring]]
+version = "0.17.14"
+criteria = "safe-to-deploy"
+
+[[exemptions.rustls]]
+version = "0.23.37"
+criteria = "safe-to-deploy"
+
+[[exemptions.rustls-pki-types]]
+version = "1.14.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.rustls-webpki]]
+version = "0.103.9"
+criteria = "safe-to-deploy"
+
 [[exemptions.serde_yaml]]
 version = "0.9.34+deprecated"
 criteria = "safe-to-deploy"
 
-[[exemptions.toml]]
-version = "0.9.12+spec-1.1.0"
+[[exemptions.shell-words]]
+version = "1.1.1"
+criteria = "safe-to-deploy"
+
+[[exemptions.simd-adler32]]
+version = "0.3.8"
+criteria = "safe-to-deploy"
+
+[[exemptions.tempfile]]
+version = "3.27.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.tracing]]
@@ -86,18 +162,18 @@ criteria = "safe-to-deploy"
 version = "0.2.11"
 criteria = "safe-to-deploy"
 
-[[exemptions.wasm-bindgen]]
-version = "0.2.114"
+[[exemptions.untrusted]]
+version = "0.9.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.wasm-bindgen-macro]]
-version = "0.2.114"
+[[exemptions.ureq]]
+version = "3.2.0"
 criteria = "safe-to-deploy"
 
-[[exemptions.wasm-bindgen-macro-support]]
-version = "0.2.114"
+[[exemptions.webpki-roots]]
+version = "1.0.6"
 criteria = "safe-to-deploy"
 
-[[exemptions.wasm-bindgen-shared]]
-version = "0.2.114"
+[[exemptions.zmij]]
+version = "1.0.21"
 criteria = "safe-to-deploy"

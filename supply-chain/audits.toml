@@ -59,43 +59,43 @@ end = "2026-09-11"
 
 [[trusted.bytes]]
 criteria = "safe-to-deploy"
-user-id = 6741
+user-id = 6741 # Alice Ryhl (Darksonn)
 start = "2021-01-11"
 end = "2026-09-11"
 
 [[trusted.cap-fs-ext]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2020-12-11"
 end = "2026-09-11"
 
 [[trusted.cap-net-ext]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2023-04-07"
 end = "2026-09-11"
 
 [[trusted.cap-primitives]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2020-08-07"
 end = "2026-09-11"
 
 [[trusted.cap-rand]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2020-09-24"
 end = "2026-09-11"
 
 [[trusted.cap-std]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2020-06-25"
 end = "2026-09-11"
 
 [[trusted.cap-time-ext]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2020-09-21"
 end = "2026-09-11"
 
@@ -143,79 +143,79 @@ end = "2026-09-11"
 
 [[trusted.cranelift-assembler-x64]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-02-20"
 end = "2026-11-27"
 
 [[trusted.cranelift-assembler-x64-meta]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-02-20"
 end = "2026-11-27"
 
 [[trusted.cranelift-bforest]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.cranelift-bitset]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2024-07-22"
 end = "2026-11-27"
 
 [[trusted.cranelift-codegen]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.cranelift-codegen-meta]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.cranelift-codegen-shared]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.cranelift-control]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2023-05-22"
 end = "2026-11-27"
 
 [[trusted.cranelift-entity]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.cranelift-frontend]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.cranelift-isle]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-12-13"
 end = "2026-11-27"
 
 [[trusted.cranelift-native]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.cranelift-srcgen]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-04-21"
 end = "2026-11-27"
 
@@ -239,13 +239,13 @@ end = "2026-09-11"
 
 [[trusted.errno]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2023-08-29"
 end = "2026-09-11"
 
 [[trusted.fd-lock]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2022-01-21"
 end = "2026-09-11"
 
@@ -263,19 +263,19 @@ end = "2026-09-11"
 
 [[trusted.flate2]]
 criteria = "safe-to-deploy"
-user-id = 980
+user-id = 980 # Sebastian Thiel (Byron)
 start = "2023-08-15"
 end = "2026-09-11"
 
 [[trusted.form_urlencoded]]
 criteria = "safe-to-deploy"
-user-id = 1139
+user-id = 1139 # Manish Goregaokar (Manishearth)
 start = "2021-02-19"
 end = "2026-09-11"
 
 [[trusted.fs-set-times]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2020-09-15"
 end = "2026-09-11"
 
@@ -287,7 +287,7 @@ end = "2026-09-11"
 
 [[trusted.h2]]
 criteria = "safe-to-deploy"
-user-id = 359
+user-id = 359 # Sean McArthur (seanmonstar)
 start = "2019-03-13"
 end = "2026-09-11"
 
@@ -299,37 +299,37 @@ end = "2026-09-11"
 
 [[trusted.http]]
 criteria = "safe-to-deploy"
-user-id = 359
+user-id = 359 # Sean McArthur (seanmonstar)
 start = "2019-04-05"
 end = "2026-09-11"
 
 [[trusted.http-body-util]]
 criteria = "safe-to-deploy"
-user-id = 359
+user-id = 359 # Sean McArthur (seanmonstar)
 start = "2022-10-25"
 end = "2026-09-11"
 
 [[trusted.httparse]]
 criteria = "safe-to-deploy"
-user-id = 359
+user-id = 359 # Sean McArthur (seanmonstar)
 start = "2019-07-03"
 end = "2026-09-11"
 
 [[trusted.hyper]]
 criteria = "safe-to-deploy"
-user-id = 359
+user-id = 359 # Sean McArthur (seanmonstar)
 start = "2019-03-01"
 end = "2026-09-11"
 
 [[trusted.hyper-tls]]
 criteria = "safe-to-deploy"
-user-id = 359
+user-id = 359 # Sean McArthur (seanmonstar)
 start = "2019-03-19"
 end = "2026-09-11"
 
 [[trusted.hyper-util]]
 criteria = "safe-to-deploy"
-user-id = 359
+user-id = 359 # Sean McArthur (seanmonstar)
 start = "2022-01-15"
 end = "2026-09-11"
 
@@ -347,7 +347,7 @@ end = "2026-12-11"
 
 [[trusted.idna]]
 criteria = "safe-to-deploy"
-user-id = 1139
+user-id = 1139 # Manish Goregaokar (Manishearth)
 start = "2024-07-01"
 end = "2026-09-11"
 
@@ -359,13 +359,13 @@ end = "2026-09-11"
 
 [[trusted.io-extras]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2021-11-09"
 end = "2026-09-11"
 
 [[trusted.io-lifetimes]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2021-06-12"
 end = "2026-09-11"
 
@@ -377,7 +377,7 @@ end = "2026-09-11"
 
 [[trusted.js-sys]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2019-03-04"
 end = "2026-09-11"
 
@@ -395,7 +395,7 @@ end = "2026-09-11"
 
 [[trusted.linux-raw-sys]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2021-06-12"
 end = "2026-09-11"
 
@@ -419,7 +419,7 @@ end = "2026-09-11"
 
 [[trusted.mime]]
 criteria = "safe-to-deploy"
-user-id = 359
+user-id = 359 # Sean McArthur (seanmonstar)
 start = "2019-09-09"
 end = "2026-09-11"
 
@@ -437,13 +437,13 @@ end = "2026-09-11"
 
 [[trusted.openssl-probe]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2020-08-04"
 end = "2026-09-11"
 
 [[trusted.openssl-src]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2019-02-25"
 end = "2026-09-11"
 
@@ -461,7 +461,7 @@ end = "2026-09-11"
 
 [[trusted.potential_utf]]
 criteria = "safe-to-deploy"
-user-id = 1139
+user-id = 1139 # Manish Goregaokar (Manishearth)
 start = "2024-11-23"
 end = "2026-09-11"
 
@@ -479,13 +479,13 @@ end = "2026-09-11"
 
 [[trusted.pulley-interpreter]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2024-09-20"
 end = "2026-11-27"
 
 [[trusted.pulley-macros]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-06-20"
 end = "2026-11-27"
 
@@ -527,7 +527,7 @@ end = "2026-09-11"
 
 [[trusted.reqwest]]
 criteria = "safe-to-deploy"
-user-id = 359
+user-id = 359 # Sean McArthur (seanmonstar)
 start = "2019-03-04"
 end = "2026-09-11"
 
@@ -539,7 +539,7 @@ end = "2026-09-11"
 
 [[trusted.rustix]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2021-10-29"
 end = "2026-09-11"
 
@@ -593,7 +593,7 @@ end = "2026-09-11"
 
 [[trusted.slab]]
 criteria = "safe-to-deploy"
-user-id = 6741
+user-id = 6741 # Alice Ryhl (Darksonn)
 start = "2021-10-13"
 end = "2026-09-11"
 
@@ -617,13 +617,13 @@ end = "2026-09-11"
 
 [[trusted.system-interface]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2020-10-27"
 end = "2026-09-11"
 
 [[trusted.target-lexicon]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2019-03-06"
 end = "2026-09-11"
 
@@ -647,19 +647,19 @@ end = "2026-09-11"
 
 [[trusted.tokio]]
 criteria = "safe-to-deploy"
-user-id = 6741
+user-id = 6741 # Alice Ryhl (Darksonn)
 start = "2020-12-25"
 end = "2026-09-11"
 
 [[trusted.tokio-macros]]
 criteria = "safe-to-deploy"
-user-id = 6741
+user-id = 6741 # Alice Ryhl (Darksonn)
 start = "2020-10-26"
 end = "2026-09-11"
 
 [[trusted.tokio-util]]
 criteria = "safe-to-deploy"
-user-id = 6741
+user-id = 6741 # Alice Ryhl (Darksonn)
 start = "2021-01-12"
 end = "2026-09-11"
 
@@ -683,13 +683,13 @@ end = "2026-11-27"
 
 [[trusted.tower]]
 criteria = "safe-to-deploy"
-user-id = 359
+user-id = 359 # Sean McArthur (seanmonstar)
 start = "2024-09-09"
 end = "2026-09-11"
 
 [[trusted.tower-http]]
 criteria = "safe-to-deploy"
-user-id = 359
+user-id = 359 # Sean McArthur (seanmonstar)
 start = "2024-09-23"
 end = "2026-09-11"
 
@@ -707,13 +707,13 @@ end = "2026-09-11"
 
 [[trusted.unicode-properties]]
 criteria = "safe-to-deploy"
-user-id = 1139
+user-id = 1139 # Manish Goregaokar (Manishearth)
 start = "2023-07-27"
 end = "2026-09-11"
 
 [[trusted.url]]
 criteria = "safe-to-deploy"
-user-id = 1139
+user-id = 1139 # Manish Goregaokar (Manishearth)
 start = "2021-02-18"
 end = "2026-09-11"
 
@@ -725,193 +725,193 @@ end = "2026-09-11"
 
 [[trusted.wasi]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2020-06-03"
 end = "2026-09-11"
 
 [[trusted.wasip3]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2025-09-09"
 end = "2026-11-23"
 
 [[trusted.wasm-bindgen]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2019-03-04"
 end = "2026-09-11"
 
 [[trusted.wasm-bindgen-backend]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2019-03-04"
 end = "2026-09-11"
 
 [[trusted.wasm-bindgen-futures]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2019-03-04"
 end = "2026-09-11"
 
 [[trusted.wasm-bindgen-macro]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2019-03-04"
 end = "2026-09-11"
 
 [[trusted.wasm-bindgen-macro-support]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2019-03-04"
 end = "2026-09-11"
 
 [[trusted.wasm-bindgen-shared]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2019-03-04"
 end = "2026-09-11"
 
 [[trusted.wasm-encoder]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2024-02-15"
 end = "2026-09-11"
 
 [[trusted.wasmparser]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2024-02-15"
 end = "2026-09-11"
 
 [[trusted.wasmprinter]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2024-02-15"
 end = "2026-09-11"
 
 [[trusted.wasmtime]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.wasmtime-environ]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-component-macro]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-07-22"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-component-util]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-07-22"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-cranelift]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-08-20"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-fiber]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-07-22"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-jit-debug]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-07-22"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-jit-icache-coherence]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-07-22"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-math]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-07-22"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-slab]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-07-22"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-unwinder]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-07-22"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-versioned-export-macros]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-07-22"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-winch]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-08-20"
 end = "2026-11-27"
 
 [[trusted.wasmtime-internal-wit-bindgen]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-07-22"
 end = "2026-11-27"
 
 [[trusted.wasmtime-wasi]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.wasmtime-wasi-http]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2023-05-22"
 end = "2026-11-27"
 
 [[trusted.wasmtime-wasi-io]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2025-02-20"
 end = "2026-11-27"
 
 [[trusted.web-sys]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2019-03-04"
 end = "2026-09-11"
 
 [[trusted.wiggle]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.wiggle-generate]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
 [[trusted.wiggle-macro]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2021-10-29"
 end = "2026-11-27"
 
@@ -923,7 +923,7 @@ end = "2026-09-11"
 
 [[trusted.winch-codegen]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2022-11-21"
 end = "2026-11-27"
 
@@ -1037,18 +1037,18 @@ end = "2026-11-27"
 
 [[trusted.winx]]
 criteria = "safe-to-deploy"
-user-id = 6825
+user-id = 6825 # Dan Gohman (sunfishcode)
 start = "2019-08-20"
 end = "2026-09-11"
 
 [[trusted.wit-parser]]
 criteria = "safe-to-deploy"
-user-id = 73222
+user-id = 73222 # wasmtime-publish
 start = "2024-02-15"
 end = "2026-09-11"
 
 [[trusted.witx]]
 criteria = "safe-to-deploy"
-user-id = 1
+user-id = 1 # Alex Crichton (alexcrichton)
 start = "2021-06-22"
 end = "2026-09-11"

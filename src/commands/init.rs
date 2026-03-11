@@ -41,20 +41,14 @@ pub fn run(schema: Option<String>, context: Option<String>) -> Result<()> {
     let config = ProjectConfig::new(&schema_name, &context_text);
     config.write(&project.config_file())?;
 
-    println!(
-        "\n  {} Anvil configuration layered on top of OpenSpec\n",
-        style("✓").green().bold(),
-    );
+    println!("\n  {} Anvil configuration layered on top of OpenSpec\n", style("✓").green().bold(),);
     println!("  Schema:  {schema_name} (v{})", resolved.schema.version);
     println!("  Config:  {}", project.config_file().display());
     println!(
         "\n  Next steps:\n    1. Edit {} to customise rules",
         style("openspec/config.yaml").yellow()
     );
-    println!(
-        "    2. Run {} to start a change\n",
-        style("/opsx:propose <description>").yellow()
-    );
+    println!("    2. Run {} to start a change\n", style("/opsx:propose <description>").yellow());
 
     Ok(())
 }
@@ -88,7 +82,9 @@ fn ensure_openspec_installed() -> Result<()> {
     }
 
     if !is_openspec_available() {
-        bail!("openspec was installed but is not available on PATH; check your shell configuration");
+        bail!(
+            "openspec was installed but is not available on PATH; check your shell configuration"
+        );
     }
 
     Ok(())
@@ -96,10 +92,7 @@ fn ensure_openspec_installed() -> Result<()> {
 
 /// Run `openspec init --tools cursor --force` in the current directory.
 fn run_openspec_init() -> Result<()> {
-    println!(
-        "\n  {} Running openspec init...\n",
-        style("→").cyan().bold(),
-    );
+    println!("\n  {} Running openspec init...\n", style("→").cyan().bold(),);
 
     let status = Command::new("openspec")
         .args(["init", "--tools", "cursor", "--force"])
@@ -114,17 +107,11 @@ fn run_openspec_init() -> Result<()> {
 }
 
 fn is_openspec_available() -> bool {
-    Command::new("openspec")
-        .arg("--version")
-        .output()
-        .is_ok_and(|o| o.status.success())
+    Command::new("openspec").arg("--version").output().is_ok_and(|o| o.status.success())
 }
 
 fn is_brew_available() -> bool {
-    Command::new("brew")
-        .arg("--version")
-        .output()
-        .is_ok_and(|o| o.status.success())
+    Command::new("brew").arg("--version").output().is_ok_and(|o| o.status.success())
 }
 
 /// Prompt for or validate the schema name.

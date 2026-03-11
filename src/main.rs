@@ -1,9 +1,8 @@
 //! Entry point for the `anvil` CLI.
 
+use anvil::cli::{Anvil, Command};
 use clap::Parser;
 use tracing_subscriber::EnvFilter;
-
-use anvil::cli::{Anvil, Command};
 
 fn main() {
     let cli = Anvil::parse();
