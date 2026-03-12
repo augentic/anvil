@@ -69,7 +69,7 @@ fn validate_completeness(change: &Change, schema: &Schema) -> Result<()> {
 }
 
 /// For each `specs/<capability>/spec.md` in the change, merge into the
-/// project's baseline at `openspec/specs/<capability>/spec.md`.
+/// project's baseline at `specify/specs/<capability>/spec.md`.
 ///
 /// Returns the list of capability names that were merged.
 fn merge_delta_specs(change: &Change, project: &ProjectDir) -> Result<Vec<String>> {

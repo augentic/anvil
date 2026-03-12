@@ -66,7 +66,7 @@ impl Change {
         })
     }
 
-    /// Discover all active (non-archived) changes under `openspec/changes/`.
+    /// Discover all active (non-archived) changes under `specify/changes/`.
     ///
     /// # Errors
     ///
@@ -79,7 +79,7 @@ impl Change {
         discover_in(&changes_dir, true)
     }
 
-    /// Discover all archived changes under `openspec/changes/archive/`.
+    /// Discover all archived changes under `specify/changes/archive/`.
     ///
     /// # Errors
     ///
@@ -94,7 +94,7 @@ impl Change {
 
     /// Move this change into the dated archive directory.
     ///
-    /// Returns the new path inside `openspec/changes/archive/<date>-<name>/`.
+    /// Returns the new path inside `specify/changes/archive/<date>-<name>/`.
     ///
     /// # Errors
     ///

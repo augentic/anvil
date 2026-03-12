@@ -37,7 +37,7 @@ pipeline.
 
 # Change Manifest
 
-- Change: <openspec change name>
+- Change: <change name>
 - Generated: <timestamp>
 
 ## Targets

@@ -32,7 +32,7 @@ Use kebab-case names (e.g., user-auth, data-export).
 
 <!-- 
 List existing capabilities whose REQUIREMENTS are changing.
-Use existing spec folder names from openspec/specs/.
+Use existing spec folder names from specify/specs/.
 Leave empty if no requirement changes.
 -->
 

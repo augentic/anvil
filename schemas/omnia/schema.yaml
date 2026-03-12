@@ -31,7 +31,7 @@ artifacts:
         - **Modified Capabilities**: List existing capabilities whose 
           REQUIREMENTS are changing. Only include if spec-level behavior
           changes (not just implementation details). Each needs a delta spec
-          file. Check `openspec/specs/` for existing spec names. Leave empty if
+          file. Check `specify/specs/` for existing spec names. Leave empty if
           no requirement changes.
         - For **Repository** or **Epic** sources, capabilities will be
           determined by the analyzer skill. List expected capabilities if
@@ -101,7 +101,7 @@ artifacts:
           - New capabilities: use the exact kebab-case name from the proposal
           (specs/<capability>/spec.md).
           - Modified capabilities: use the existing spec folder name from
-          openspec/specs/<capability>/ when creating the delta spec at
+          specify/specs/<capability>/ when creating the delta spec at
           specs/<capability>/spec.md.
 
         Delta operations (use ## headers):
@@ -125,7 +125,7 @@ artifacts:
 
         MODIFIED requirements workflow:
           1. Locate the existing requirement in 
-            openspec/specs/<capability>/spec.md
+            specify/specs/<capability>/spec.md
           2. Copy the ENTIRE requirement block (from `### Requirement:`
             through all scenarios).
           3. Paste under `## MODIFIED Requirements` and edit to reflect new 
@@ -248,7 +248,7 @@ apply:
     delegate to the skills below.
 
     Arguments (used by all skills):
-    - CHANGE_ID: the name of this change (from openspec status)
+    - CHANGE_ID: the name of this change (from specify status)
     - PROJECT_DIR: the project root (typically ".")
     - CRATE_NAME: the spec folder name (specs/<crate>/spec.md)
     - CRATE_PATH: PROJECT_DIR/crates/CRATE_NAME

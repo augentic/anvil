@@ -71,7 +71,7 @@ impl Schema {
         serde_yaml::from_slice(bytes).map_err(|e| anyhow::anyhow!("invalid schema.yaml: {e}"))
     }
 
-    /// Load a schema by name from a project's `openspec/schemas/<name>/schema.yaml`.
+    /// Load a schema by name from a project's `specify/schemas/<name>/schema.yaml`.
     ///
     /// # Errors
     ///

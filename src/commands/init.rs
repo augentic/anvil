@@ -10,9 +10,9 @@ use crate::core::registry;
 
 /// Run the init command.
 ///
-/// Resolves the chosen schema, copies it into `openspec/schemas/`, creates the
-/// `openspec/changes/` and `openspec/specs/` directories, and writes
-/// `openspec/config.yaml`.
+/// Resolves the chosen schema, copies it into `specify/schemas/`, creates the
+/// `specify/changes/` and `specify/specs/` directories, and writes
+/// `specify/config.yaml`.
 ///
 /// # Errors
 ///
@@ -45,7 +45,7 @@ pub fn run(schema: Option<String>) -> Result<()> {
     println!("  Config:  {}", project.config_file().display());
     println!(
         "\n  Next steps:\n    1. Edit {} to customise context and rules",
-        style("openspec/config.yaml").yellow()
+        style("specify/config.yaml").yellow()
     );
     println!("    2. Run {} to start a change\n", style("specify new <name>").yellow());
 

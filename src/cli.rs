@@ -29,8 +29,8 @@ pub struct Specify {
 pub enum Command {
     /// Initialise `OpenSpec` in the current project.
     ///
-    /// Resolves the chosen schema, copies it into `openspec/schemas/`, and
-    /// writes `openspec/config.yaml`.
+    /// Resolves the chosen schema, copies it into `specify/schemas/`, and
+    /// writes `specify/config.yaml`.
     Init {
         /// Schema to use (skips interactive prompt).
         #[arg(long)]
@@ -39,7 +39,7 @@ pub enum Command {
 
     /// Create a new change.
     ///
-    /// Scaffolds a change directory under `openspec/changes/<name>/` with
+    /// Scaffolds a change directory under `specify/changes/<name>/` with
     /// metadata and an empty `specs/` subdirectory.
     New {
         /// Kebab-case name for the change (e.g. `add-dark-mode`).
@@ -90,7 +90,7 @@ pub enum Command {
     /// Archive a completed change.
     ///
     /// Merges delta specs from the change into the project's baseline specs
-    /// at `openspec/specs/`, then moves the change directory to a dated
+    /// at `specify/specs/`, then moves the change directory to a dated
     /// archive folder.
     Archive {
         /// Name of the change to archive.
@@ -103,7 +103,7 @@ pub enum Command {
 
     /// Fetch the latest schemas from GitHub.
     Update {
-        /// Also update the current project's openspec/schemas/.
+        /// Also update the current project's specify/schemas/.
         #[arg(long)]
         project: bool,
 

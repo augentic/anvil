@@ -34,7 +34,7 @@ pub fn run() -> Result<()> {
 
     let Ok(project) = ProjectDir::discover(&cwd) else {
         println!(
-            "\n  {} No openspec/ directory found. Run {} first.\n",
+            "\n  {} No specify/ directory found. Run {} first.\n",
             style("✗").red().bold(),
             style("specify init").yellow()
         );

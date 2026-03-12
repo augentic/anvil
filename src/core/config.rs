@@ -1,4 +1,4 @@
-//! Project configuration model -- parsed representation of `openspec/config.yaml`.
+//! Project configuration model -- parsed representation of `specify/config.yaml`.
 
 use std::collections::BTreeMap;
 use std::path::Path;

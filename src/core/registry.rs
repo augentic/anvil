@@ -25,9 +25,9 @@ pub struct SchemaEntry {
 pub enum SchemaSource {
     /// Compiled into the binary.
     Embedded,
-    /// Found in `~/.local/share/openspec/schemas/`.
+    /// Found in `~/.local/share/specify/schemas/`.
     LocalStore,
-    /// Found in the current project's `openspec/schemas/`.
+    /// Found in the current project's `specify/schemas/`.
     Project,
 }
 
@@ -136,7 +136,7 @@ pub enum SchemaLocation {
 impl ResolvedSchema {
     /// Copy the schema's directory tree into `dest`.
     ///
-    /// `dest` should be the target schema directory (e.g. `openspec/schemas/omnia/`).
+    /// `dest` should be the target schema directory (e.g. `specify/schemas/omnia/`).
     ///
     /// # Errors
     ///
@@ -237,7 +237,7 @@ fn entries_from_dir(dir: &Path, source: SchemaSource) -> Result<Vec<SchemaEntry>
 
 /// Fetch schemas from a GitHub repository and write them to the local data store.
 ///
-/// Uses the GitHub Contents API to recursively download the `openspec/schemas/`
+/// Uses the GitHub Contents API to recursively download the `schemas/`
 /// directory from the given repository.
 ///
 /// # Errors
@@ -253,7 +253,7 @@ pub fn fetch_from_github(repo: &str, git_ref: &str) -> Result<Vec<String>> {
     for schema_name in &schemas {
         let dest = data_dir.schema_dir(schema_name);
         std::fs::create_dir_all(&dest)?;
-        download_github_dir(repo, git_ref, &format!("openspec/schemas/{schema_name}"), &dest)?;
+        download_github_dir(repo, git_ref, &format!("schemas/{schema_name}"), &dest)?;
         updated.push(schema_name.clone());
     }
 
@@ -262,8 +262,7 @@ pub fn fetch_from_github(repo: &str, git_ref: &str) -> Result<Vec<String>> {
 
 /// Discover which schema directories exist in the remote repo.
 fn discover_github_schemas(repo: &str, git_ref: &str) -> Result<Vec<String>> {
-    let url =
-        format!("https://api.github.com/repos/{repo}/contents/openspec/schemas?ref={git_ref}");
+    let url = format!("https://api.github.com/repos/{repo}/contents/schemas?ref={git_ref}");
     let response: Vec<GitHubContent> = github_get_json(&url)?;
     Ok(response.into_iter().filter(|c| c.content_type == "dir").map(|c| c.name).collect())
 }

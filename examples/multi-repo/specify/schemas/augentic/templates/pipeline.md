@@ -16,7 +16,7 @@ Generate the execution config for the pipeline.
 
 ## Output: pipeline.toml
 
-change = "openspec/changes/<change-name>"
+change = "specify/changes/<change-name>"
 
 [[targets]]
 id = "<target-id>"
