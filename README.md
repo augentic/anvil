@@ -5,6 +5,9 @@ Spec-driven development CLI. Manages the full change lifecycle -- propose, apply
 ## Installation
 
 ```bash
+# Homebrew (macOS / Linux)
+brew install augentic/specify/specify
+
 # from GitHub
 cargo install --git https://github.com/augentic/specify --root ~/.local
 
