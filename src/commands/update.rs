@@ -38,7 +38,7 @@ pub fn run(project: bool, repo: &str, git_ref: &str) -> Result<()> {
     Ok(())
 }
 
-/// Copy updated schemas into the current project's `openspec/schemas/`.
+/// Copy updated schemas into the current project's `specify/schemas/`.
 fn update_project_schemas(schema_names: &[String], _repo: &str, _git_ref: &str) -> Result<()> {
     let cwd = std::env::current_dir()?;
     let project = ProjectDir::discover(&cwd)?;

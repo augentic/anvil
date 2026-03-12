@@ -31,7 +31,7 @@ artifacts:
         - **Modified Capabilities**: List existing capabilities whose 
           REQUIREMENTS are changing. Only include if spec-level behavior
           changes (not just implementation details). Each needs a delta spec
-          file. Check `openspec/specs/` for existing spec names. Leave empty if
+          file. Check `specify/specs/` for existing spec names. Leave empty if
           no requirement changes.
         - For **Repository** or **Epic** sources, capabilities will be
           determined by the analyzer skill. List expected capabilities if
@@ -101,7 +101,7 @@ artifacts:
           - New capabilities: use the exact kebab-case name from the proposal
           (specs/<capability>/spec.md).
           - Modified capabilities: use the existing spec folder name from
-          openspec/specs/<capability>/ when creating the delta spec at
+          specify/specs/<capability>/ when creating the delta spec at
           specs/<capability>/spec.md.
 
         Delta operations (use ## headers):
@@ -118,14 +118,14 @@ artifacts:
           - Each scenario: `#### Scenario: <name>` with WHEN/THEN format
           - **CRITICAL**: In delta specs (this template), scenarios MUST use
             exactly 4 hashtags (`####`). In full baseline specs organized
-            under `## Handler:` sections (see references/openspec.md),
+            under `## Handler:` sections (see references/specify.md),
             scenarios are one level deeper at `#####`. Using fewer hashtags
             or bullets will fail silently.
           - Every requirement MUST have at least one scenario.
 
         MODIFIED requirements workflow:
           1. Locate the existing requirement in 
-            openspec/specs/<capability>/spec.md
+            specify/specs/<capability>/spec.md
           2. Copy the ENTIRE requirement block (from `### Requirement:`
             through all scenarios).
           3. Paste under `## MODIFIED Requirements` and edit to reflect new 
@@ -169,36 +169,15 @@ artifacts:
     instruction: |
       Create the design document to explain HOW to implement the change.
 
-      First, check whether design.md already exists in the change directory
-      (produced by code-analyzer or epic-analyzer during the specs phase).
-
-      ---
-
-      **If design.md already exists** (RT or Omnia flow):
-
-        Review and refine it rather than writing from scratch. Verify it
-        contains all required sections (listed below) and fill any gaps.
-
-        If a supplementary solution design document is available, use it
-        to manually fill gaps in the existing design.md -- add missing
-        sections and extend sparse ones but do not replace existing
-        content derived from source analysis.
-
-      ---
-
-      **If design.md does not exist** (manual flow):
-
-        Create design.md only if any of the following apply:
-          - Cross-cutting change (multiple services/modules) or new
-            architectural pattern
-          - New external dependency or significant data model changes
-          - Security, performance, or migration complexity
-          - Ambiguity that benefits from technical decisions before coding
-
-        If none apply, create a minimal design.md noting that a full design
-        is not warranted and referencing the proposal and specs.
-
-      ---
+      Create full design if any of the following apply:
+        - Cross-cutting change (multiple services/modules) or new
+          architectural pattern
+        - New external dependency or significant data model changes
+        - Security, performance, or migration complexity
+        - Ambiguity that benefits from technical decisions before coding
+      
+      If none of the above apply, create a minimal design.md noting that a full
+      design is not warranted and referencing the proposal and specs:
 
       Required sections (see template):
         - **Context**: Source, purpose, background, and current state
@@ -269,23 +248,32 @@ apply:
     delegate to the skills below.
 
     Arguments (used by all skills):
-    - CHANGE_ID: the name of this change (from openspec status)
+    - CHANGE_ID: the name of this change (from specify status)
     - PROJECT_DIR: the project root (typically ".")
     - CRATE_NAME: the spec folder name (specs/<crate>/spec.md)
     - CRATE_PATH: PROJECT_DIR/crates/CRATE_NAME
 
     Mode detection -- check whether CRATE_PATH/Cargo.toml exists:
+    - If Cargo.toml does not exist, use create mode.
+    - If Cargo.toml exists, use update mode.
 
     **Create mode** (Cargo.toml does NOT exist -- new crate):
-      1. /omnia:guest-writer <PROJECT_DIR>
-         Generates the WASM guest project (src/lib.rs, Cargo.toml, Provider).
-      2. /omnia:crate-writer <CHANGE_ID> <PROJECT_DIR>
-         Generates the domain crate (types, handlers, baseline tests) from
-         OpenSpec artifacts. Auto-detects create mode when no Cargo.toml exists.
-      3. (Optional) /omnia:test-writer <CRATE_NAME> <PROJECT_DIR>
-         Generates comprehensive test suites from spec scenarios. Use when
-         baseline tests from crate-writer are insufficient, or to establish
-         spec-to-test traceability for drift detection.
+      1. Use the /omnia:guest-writer skill to generate the WASM guest project 
+        (src/lib.rs, Cargo.toml, Provider). Run the skill from start to finish;
+        do not implement the guest manually. Complete every step in the skill,
+        and ensure the skill's verification checklist is satisfied.
+
+      2. Use the /omnia:crate-writer skill to generate the domain crate
+        (types, handlers, baseline tests) from OpenSpec artifacts. 
+        Run the skill from start to finish; do not implement the crate
+        manually. Complete every step in the skill, and ensure the skill's
+        verification checklist is satisfied.
+
+      3. Use the /omnia:test-writer skill to generate comprehensive test suites
+        from spec scenarios. Run the skill from start to finish; do not implement
+        the tests manually. Complete every step in the skill, and ensure the skill's
+        verification checklist is satisfied.
+      
       4. Verify from CRATE_PATH (repair loop -- max 3 iterations):
            a. cargo fmt --check
               If fails: run cargo fmt, then re-check. Formatting is
@@ -305,14 +293,22 @@ apply:
            exhausted. If still failing after 3 iterations: STOP. Do NOT
            mark the task complete. Report the remaining failures with
            error output and ask for guidance.
+      
       5. (Optional) /omnia:code-reviewer <CRATE_PATH>
          AI code review for security, WASM constraints, and quality.
 
     **Update mode** (Cargo.toml exists -- incremental change):
-      1. /omnia:crate-writer <CHANGE_ID> <PROJECT_DIR>
-         Incremental update; auto-detects update mode from existing Cargo.toml.
-      2. (Optional) /omnia:test-writer <CRATE_NAME> <PROJECT_DIR>
+      1. Use the /omnia:crate-writer skill to update the domain crate. Run the
+         skill from start to finish; do not implement the crate manually.
+         Complete every step in the skill, and ensure the skill's verification
+         checklist is satisfied.
+
+      2. Use the /omnia:test-writer skill to regenerate or update tests to match
+         changed specs. Run the skill from start to finish; do not implement the
+         tests manually. Complete every step in the skill, and ensure the skill's
+         verification checklist is satisfied.
          Regenerates or updates tests to match changed specs.
+         
       3. Verify from CRATE_PATH (repair loop -- max 3 iterations):
            a. cargo fmt --check
               If fails: run cargo fmt, then re-check.

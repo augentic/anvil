@@ -3,7 +3,10 @@
 use anyhow::Result;
 use console::style;
 
+use crate::core::change::Change;
 use crate::core::config::ProjectConfig;
+use crate::core::delta;
+use crate::core::graph::ArtifactGraph;
 use crate::core::paths::ProjectDir;
 use crate::core::schema::Schema;
 
@@ -31,7 +34,7 @@ pub fn run() -> Result<()> {
 
     let Ok(project) = ProjectDir::discover(&cwd) else {
         println!(
-            "\n  {} No openspec/ directory found. Run {} first.\n",
+            "\n  {} No specify/ directory found. Run {} first.\n",
             style("✗").red().bold(),
             style("specify init").yellow()
         );
@@ -40,6 +43,7 @@ pub fn run() -> Result<()> {
 
     check_config(&project, &mut findings);
     check_schema(&project, &mut findings);
+    check_graph(&project, &mut findings);
     check_changes(&project, &mut findings);
 
     print_findings(&findings);
@@ -129,24 +133,86 @@ fn check_schema(project: &ProjectDir, findings: &mut Vec<Finding>) {
     }
 }
 
-fn check_changes(project: &ProjectDir, findings: &mut Vec<Finding>) {
-    let changes_dir = project.changes_dir();
-    if !changes_dir.is_dir() {
-        return;
-    }
-
+/// Validate that the artifact graph is acyclic and all references resolve.
+fn check_graph(project: &ProjectDir, findings: &mut Vec<Finding>) {
     let Ok(config) = ProjectConfig::load(&project.config_file()) else {
         return;
     };
-
-    let schema_yaml_path = project.schema_dir(&config.schema).join("schema.yaml");
-    let Some(schema) =
-        std::fs::read(&schema_yaml_path).ok().and_then(|b| Schema::from_yaml(&b).ok())
-    else {
+    let Ok(schema) = Schema::load(project, &config.schema) else {
         return;
     };
 
-    let Ok(entries) = std::fs::read_dir(&changes_dir) else {
+    if let Err(e) = ArtifactGraph::from_schema(&schema) {
+        findings.push(Finding {
+            level: Level::Error,
+            message: format!("artifact graph: {e}"),
+        });
+    }
+}
+
+fn check_changes(project: &ProjectDir, findings: &mut Vec<Finding>) {
+    let Ok(config) = ProjectConfig::load(&project.config_file()) else {
+        return;
+    };
+    let Ok(schema) = Schema::load(project, &config.schema) else {
+        return;
+    };
+    let Ok(graph) = ArtifactGraph::from_schema(&schema) else {
+        return;
+    };
+
+    let Ok(changes) = Change::discover_active(project) else {
+        return;
+    };
+
+    for change in &changes {
+        check_change_metadata(change, findings);
+        check_change_artifacts(change, &graph, findings);
+        check_change_delta_specs(change, findings);
+    }
+}
+
+fn check_change_metadata(change: &Change, findings: &mut Vec<Finding>) {
+    if change.metadata.schema.is_empty() {
+        findings.push(Finding {
+            level: Level::Warn,
+            message: format!("change '{}': .metadata.yaml has empty schema field", change.name),
+        });
+    }
+    if change.metadata.created_at.is_empty() {
+        findings.push(Finding {
+            level: Level::Warn,
+            message: format!("change '{}': .metadata.yaml has empty created_at field", change.name),
+        });
+    }
+}
+
+fn check_change_artifacts(change: &Change, graph: &ArtifactGraph, findings: &mut Vec<Finding>) {
+    for id in graph.artifact_ids() {
+        let Some(pattern) = graph.generates(id) else {
+            continue;
+        };
+        if pattern.contains("**") {
+            continue;
+        }
+        let file_path = change.path.join(pattern);
+        if !file_path.is_file() {
+            findings.push(Finding {
+                level: Level::Warn,
+                message: format!("change '{}': missing artifact '{pattern}'", change.name),
+            });
+        }
+    }
+}
+
+/// Validate delta spec structure if spec files exist.
+fn check_change_delta_specs(change: &Change, findings: &mut Vec<Finding>) {
+    let specs_dir = change.path.join("specs");
+    if !specs_dir.is_dir() {
+        return;
+    }
+
+    let Ok(entries) = std::fs::read_dir(&specs_dir) else {
         return;
     };
 
@@ -154,23 +220,21 @@ fn check_changes(project: &ProjectDir, findings: &mut Vec<Finding>) {
         if !entry.file_type().is_ok_and(|ft| ft.is_dir()) {
             continue;
         }
-        let change_name = entry.file_name().to_string_lossy().to_string();
-        let change_path = entry.path();
+        let capability = entry.file_name().to_string_lossy().to_string();
+        let spec_path = entry.path().join("spec.md");
+        if !spec_path.is_file() {
+            continue;
+        }
 
-        for artifact in &schema.artifacts {
-            if artifact.generates.contains("**") {
-                continue;
-            }
-            let file_path = change_path.join(&artifact.generates);
-            if !file_path.is_file() {
-                findings.push(Finding {
-                    level: Level::Warn,
-                    message: format!(
-                        "change '{change_name}': missing artifact '{}'",
-                        artifact.generates
-                    ),
-                });
-            }
+        let Ok(content) = std::fs::read_to_string(&spec_path) else {
+            continue;
+        };
+
+        if let Err(e) = delta::parse_sections(&content) {
+            findings.push(Finding {
+                level: Level::Error,
+                message: format!("change '{}': specs/{capability}/spec.md: {e}", change.name,),
+            });
         }
     }
 }

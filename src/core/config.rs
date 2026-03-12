@@ -1,4 +1,4 @@
-//! Project configuration model -- parsed representation of `openspec/config.yaml`.
+//! Project configuration model -- parsed representation of `specify/config.yaml`.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -13,7 +13,7 @@ pub struct ProjectConfig {
     pub schema: String,
 
     /// Free-form project context injected into artifact generation.
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub context: String,
 
     /// Per-artifact rule overrides keyed by artifact ID.

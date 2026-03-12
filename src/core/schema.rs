@@ -71,6 +71,19 @@ impl Schema {
         serde_yaml::from_slice(bytes).map_err(|e| anyhow::anyhow!("invalid schema.yaml: {e}"))
     }
 
+    /// Load a schema by name from a project's `specify/schemas/<name>/schema.yaml`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the file cannot be read or parsed.
+    pub fn load(project: &super::paths::ProjectDir, schema_name: &str) -> anyhow::Result<Self> {
+        let path = project.schema_dir(schema_name).join("schema.yaml");
+        let bytes = std::fs::read(&path).map_err(|e| {
+            anyhow::anyhow!("schema '{schema_name}' not found at {}: {e}", path.display())
+        })?;
+        Self::from_yaml(&bytes)
+    }
+
     /// Return the list of template filenames referenced by artifacts.
     #[must_use]
     pub fn template_names(&self) -> Vec<&str> {

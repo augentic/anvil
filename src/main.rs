@@ -20,7 +20,16 @@ fn main() {
 
 fn run(command: Command) -> anyhow::Result<()> {
     match command {
-        Command::Init { schema, context } => specify::commands::init::run(schema, context),
+        Command::Init { schema } => specify::commands::init::run(schema),
+        Command::New { name, json } => specify::commands::new::run(&name, json),
+        Command::Status { change, json } => specify::commands::status::run(change.as_deref(), json),
+        Command::Instructions {
+            artifact,
+            change,
+            json,
+        } => specify::commands::instructions::run(&artifact, change.as_deref(), json),
+        Command::List { json } => specify::commands::list::run(json),
+        Command::Archive { change, json } => specify::commands::archive::run(&change, json),
         Command::Update {
             project,
             repo,

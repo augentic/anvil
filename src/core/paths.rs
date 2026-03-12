@@ -4,17 +4,17 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, bail};
 
-const DATA_SUBDIR: &str = "openspec";
-const PROJECT_DIR: &str = "openspec";
+const DATA_SUBDIR: &str = "specify";
+const PROJECT_DIR: &str = "specify";
 
-/// Resolved paths for the `OpenSpec` data directory.
+/// Resolved paths for the Specify data directory.
 #[derive(Debug, Clone)]
 pub struct DataDir {
     root: PathBuf,
 }
 
 impl DataDir {
-    /// Resolve the global data directory (`~/.local/share/openspec` on Linux/macOS).
+    /// Resolve the global data directory (`~/.local/share/specify` on Linux/macOS).
     ///
     /// # Errors
     ///
@@ -55,14 +55,14 @@ impl DataDir {
     }
 }
 
-/// Resolved paths for a project's `openspec/` directory.
+/// Resolved paths for a project's `specify/` directory.
 #[derive(Debug, Clone)]
 pub struct ProjectDir {
     root: PathBuf,
 }
 
 impl ProjectDir {
-    /// Construct from an explicit project root (the parent of `openspec/`).
+    /// Construct from an explicit project root (the parent of `specify/`).
     #[must_use]
     pub fn from_root(project_root: &Path) -> Self {
         Self {
@@ -70,11 +70,11 @@ impl ProjectDir {
         }
     }
 
-    /// Locate the project's `openspec/` directory by searching upward from `start`.
+    /// Locate the project's `specify/` directory by searching upward from `start`.
     ///
     /// # Errors
     ///
-    /// Returns an error if no `openspec/` directory is found in the path hierarchy.
+    /// Returns an error if no `specify/` directory is found in the path hierarchy.
     pub fn discover(start: &Path) -> Result<Self> {
         let mut current = start.to_path_buf();
         loop {
@@ -83,18 +83,18 @@ impl ProjectDir {
                 return Ok(Self { root: candidate });
             }
             if !current.pop() {
-                bail!("no openspec/ directory found (searched upward from {})", start.display());
+                bail!("no specify/ directory found (searched upward from {})", start.display());
             }
         }
     }
 
-    /// Root of the openspec directory (`<project>/openspec/`).
+    /// Root of the specify directory (`<project>/specify/`).
     #[must_use]
     pub fn root(&self) -> &Path {
         &self.root
     }
 
-    /// Path to `openspec/config.yaml`.
+    /// Path to `specify/config.yaml`.
     #[must_use]
     pub fn config_file(&self) -> PathBuf {
         self.root.join("config.yaml")
@@ -124,19 +124,39 @@ impl ProjectDir {
         self.changes_dir().join(name)
     }
 
-    /// Whether the openspec directory already exists.
+    /// Path to the baseline specs directory (`specify/specs/`).
+    #[must_use]
+    pub fn specs_dir(&self) -> PathBuf {
+        self.root.join("specs")
+    }
+
+    /// Path to a specific capability's spec directory (`specify/specs/<capability>/`).
+    #[must_use]
+    pub fn spec_dir(&self, capability: &str) -> PathBuf {
+        self.specs_dir().join(capability)
+    }
+
+    /// Path to the change archive directory (`specify/changes/archive/`).
+    #[must_use]
+    pub fn archive_dir(&self) -> PathBuf {
+        self.changes_dir().join("archive")
+    }
+
+    /// Whether the specify directory already exists.
     #[must_use]
     pub fn exists(&self) -> bool {
         self.root.is_dir()
     }
 
-    /// Ensure the full directory skeleton exists.
+    /// Ensure the full directory skeleton exists (changes/ and specs/).
     ///
     /// # Errors
     ///
     /// Returns an error if the directories cannot be created.
     pub fn ensure(&self) -> Result<()> {
         std::fs::create_dir_all(self.changes_dir())
-            .with_context(|| format!("creating project directory at {}", self.root.display()))
+            .with_context(|| format!("creating {}", self.changes_dir().display()))?;
+        std::fs::create_dir_all(self.specs_dir())
+            .with_context(|| format!("creating {}", self.specs_dir().display()))
     }
 }

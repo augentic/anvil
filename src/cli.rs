@@ -29,21 +29,81 @@ pub struct Specify {
 pub enum Command {
     /// Initialise `OpenSpec` in the current project.
     ///
-    /// Installs the `openspec` CLI via Homebrew if needed, then
-    /// resolves the schema and writes specify-specific configuration.
+    /// Resolves the chosen schema, copies it into `specify/schemas/`, and
+    /// writes `specify/config.yaml`.
     Init {
         /// Schema to use (skips interactive prompt).
         #[arg(long)]
         schema: Option<String>,
+    },
 
-        /// Project context description (skips interactive prompt).
+    /// Create a new change.
+    ///
+    /// Scaffolds a change directory under `specify/changes/<name>/` with
+    /// metadata and an empty `specs/` subdirectory.
+    New {
+        /// Kebab-case name for the change (e.g. `add-dark-mode`).
+        name: String,
+
+        /// Output machine-readable JSON.
         #[arg(long)]
-        context: Option<String>,
+        json: bool,
+    },
+
+    /// Show artifact completion status for a change.
+    ///
+    /// Reports which artifacts are complete, ready, or blocked.
+    /// Auto-selects the change when only one is active.
+    Status {
+        /// Change name (optional if only one active change exists).
+        change: Option<String>,
+
+        /// Output machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Output enriched instructions for creating an artifact.
+    ///
+    /// The instruction includes the schema instruction, project context, rules,
+    /// template content, and dependency guidance. Use `apply` as the artifact
+    /// to get apply-phase instructions.
+    Instructions {
+        /// Artifact ID (e.g. `proposal`, `specs`, `design`, `tasks`, `apply`).
+        artifact: String,
+
+        /// Change name (optional if only one active change exists).
+        change: Option<String>,
+
+        /// Output machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// List active and archived changes.
+    List {
+        /// Output machine-readable JSON.
+        #[arg(long)]
+        json: bool,
+    },
+
+    /// Archive a completed change.
+    ///
+    /// Merges delta specs from the change into the project's baseline specs
+    /// at `specify/specs/`, then moves the change directory to a dated
+    /// archive folder.
+    Archive {
+        /// Name of the change to archive.
+        change: String,
+
+        /// Output machine-readable JSON.
+        #[arg(long)]
+        json: bool,
     },
 
     /// Fetch the latest schemas from GitHub.
     Update {
-        /// Also update the current project's openspec/schemas/.
+        /// Also update the current project's specify/schemas/.
         #[arg(long)]
         project: bool,
 

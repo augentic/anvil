@@ -9,6 +9,7 @@ keywords.workspace = true
 
 [dependencies]
 anyhow = "1"
+chrono = { version = "0.4.44", features = ["serde"] }
 clap = { version = "4", features = ["derive"] }
 clap_complete = "4"
 console = "0.16.2"
@@ -30,9 +31,9 @@ resolver = "3"
 authors = ["Augentic"]
 edition = "2024"
 homepage = "https://augentic.io"
-keywords = ["spec-driven", "openspec", "cli", "workflow"]
+keywords = ["spec-driven", "cli", "workflow"]
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/augentic/lifecycle"
+repository = "https://github.com/augentic/specify"
 rust-version = "1.93"
 version = "0.1.0"
 
@@ -79,5 +80,8 @@ unused_result_ok = "warn"
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+tempfile = "3.27.0"
 
 [workspace.dependencies]
