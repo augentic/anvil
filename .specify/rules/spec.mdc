@@ -1,0 +1,70 @@
+---
+description: Specify plugin context -- Specify workflow orchestration for proposing, applying, archiving, and exploring changes
+alwaysApply: true
+---
+
+# Specify Plugin - Specify Workflow
+
+## Overview
+
+This plugin provides the core Specify workflow skills: propose a change, apply (implement) a change, archive a completed change, and explore ideas or problems interactively. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
+
+**Purpose**: Drive the propose → apply → archive workflow with optional explore for thinking and investigation.
+
+## Plugin Architecture
+
+```text
+/plugins/spec/
+├── .cursor-plugin/
+│   └── plugin.json      # Plugin manifest
+├── mcp.json              # MCP config (none required)
+├── rules/
+│   └── spec.mdc          # This file
+└── skills/
+    ├── propose/           # Create a change with all artifacts
+    ├── apply/             # Implement tasks from a change
+    ├── archive/           # Archive a completed change
+    └── explore/           # Thinking partner for ideas and investigation
+```
+
+Each skill has its own SKILL.md with full details. The Specify artifact format is described in [specify.md](../references/specify.md).
+
+## Workflow
+
+```text
+/spec:propose  ->  /spec:apply  ->  /spec:archive
+                        ^
+                        |
+                   /spec:explore (anytime)
+```
+
+- **propose**: Create a change directory and generate proposal, design, and task artifacts
+- **apply**: Implement tasks from an existing change, marking them complete as you go
+- **archive**: Finalize a completed change, syncing delta specs to baseline
+- **explore**: Read-only thinking mode for investigating problems and clarifying requirements
+
+## Troubleshooting
+
+### Specify CLI Not Found
+
+- Run `brew install augentic/specify/specify` and `specify init` in the project root
+- Verify with `specify list`
+
+### Change Not Found
+
+- Run `specify list --json` to see active changes
+- Check the change name matches (kebab-case)
+
+### Artifacts Incomplete
+
+- Re-run `specify status "<name>"` to check artifact status
+- Use propose to regenerate missing artifacts
+
+## Related Documentation
+
+- See project rule (`.cursor/rules/project.mdc`) for overall project context
+- [Propose SKILL.md](skills/propose/SKILL.md) - Create changes with artifacts
+- [Apply SKILL.md](skills/apply/SKILL.md) - Implement change tasks
+- [Archive SKILL.md](skills/archive/SKILL.md) - Finalize completed changes
+- [Explore SKILL.md](skills/explore/SKILL.md) - Thinking and investigation mode
+- [Specify Artifact Specification](../references/specify.md) - Artifact format details
