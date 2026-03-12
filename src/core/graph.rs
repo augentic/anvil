@@ -244,10 +244,12 @@ pub struct TaskProgress {
 
 #[cfg(test)]
 mod tests {
+    use std::fs;
+
+    use tempfile::TempDir;
+
     use super::*;
     use crate::core::schema::{ApplyConfig, Artifact, Schema};
-    use std::fs;
-    use tempfile::TempDir;
 
     fn test_schema() -> Schema {
         Schema {

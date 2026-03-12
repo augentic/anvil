@@ -30,6 +30,10 @@ criteria = "safe-to-deploy"
 version = "1.2.56"
 criteria = "safe-to-deploy"
 
+[[exemptions.chrono]]
+version = "0.4.44"
+criteria = "safe-to-deploy"
+
 [[exemptions.clap_complete]]
 version = "4.5.66"
 criteria = "safe-to-deploy"
@@ -70,6 +74,10 @@ criteria = "safe-to-deploy"
 version = "0.4.2"
 criteria = "safe-to-deploy"
 
+[[exemptions.iana-time-zone]]
+version = "0.1.65"
+criteria = "safe-to-deploy"
+
 [[exemptions.id-arena]]
 version = "2.3.0"
 criteria = "safe-to-deploy"
@@ -84,6 +92,10 @@ criteria = "safe-to-deploy"
 
 [[exemptions.itoa]]
 version = "1.0.17"
+criteria = "safe-to-deploy"
+
+[[exemptions.js-sys]]
+version = "0.3.91"
 criteria = "safe-to-deploy"
 
 [[exemptions.libredox]]
@@ -168,6 +180,22 @@ criteria = "safe-to-deploy"
 
 [[exemptions.ureq]]
 version = "3.2.0"
+criteria = "safe-to-deploy"
+
+[[exemptions.wasm-bindgen]]
+version = "0.2.114"
+criteria = "safe-to-deploy"
+
+[[exemptions.wasm-bindgen-macro]]
+version = "0.2.114"
+criteria = "safe-to-deploy"
+
+[[exemptions.wasm-bindgen-macro-support]]
+version = "0.2.114"
+criteria = "safe-to-deploy"
+
+[[exemptions.wasm-bindgen-shared]]
+version = "0.2.114"
 criteria = "safe-to-deploy"
 
 [[exemptions.webpki-roots]]
