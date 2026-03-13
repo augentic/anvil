@@ -1,7 +1,7 @@
 ---
 name: sow-writer
 description: Generate a Statement of Work (SoW) document from Specify artifacts and project context.
-argument-hint: [change-dir] [output-path?] [client-name?] [--pdf?]
+argument-hint: [change-dir] [output-path?] [client-name?] [company-name?] [--pdf?]
 allowed-tools: Read, Write, StrReplace, Shell, Grep
 ---
 
@@ -9,19 +9,19 @@ allowed-tools: Read, Write, StrReplace, Shell, Grep
 
 ## Overview
 
-Generate a professional Statement of Work (SoW) document from Specify artifacts and project context. The SoW follows the standard Propellerhead template structure and writing voice, suitable for export to Google Docs.
+Generate a professional Statement of Work (SoW) document from Specify artifacts and project context. The SoW follows the standard $COMPANY_NAME template structure and writing voice, suitable for export to Google Docs.
 
-This skill reads the Specify artifacts (specs and design.md) produced by `code-analyzer` or `epic-analyzer` and translates technical content into client-facing deliverables. The output is a Markdown document structured to match the standard Propellerhead SoW format.
+This skill reads the Specify artifacts (specs and design.md) produced by `code-analyzer` or `epic-analyzer` and translates technical content into client-facing deliverables. The output is a Markdown document structured to match the standard $COMPANY_NAME SoW format.
 
 **Key principle**: Translate technical artifacts into business-oriented deliverables. Do not reproduce implementation details; focus on what the client receives, not how it is built.
 
 ## Writing Style
 
-The SoW must match the Propellerhead house style. Follow these rules consistently:
+The SoW must match the $COMPANY_NAME house style. Follow these rules consistently:
 
 ### Voice and Tone
 
-- **First person plural**: Use "we" when referring to Propellerhead. "We need access to..." not "Propellerhead requires access to..."
+- **First person plural**: Use "we" when referring to $COMPANY_NAME. "We need access to..." not "$COMPANY_NAME requires access to..."
 - **Direct and concise**: Short sentences. No filler or padding. Get to the point.
 - **Business language**: No technical jargon. Translate all technical terms from the artifacts into business language.
 - **Confident but not presumptuous**: State facts and requirements clearly. Avoid hedging language.
@@ -46,8 +46,9 @@ The SoW must match the Propellerhead house style. Follow these rules consistentl
 ```text
 $CHANGE_DIR  = $ARGUMENTS[0]                           # Path to Specify change directory
 $OUTPUT_PATH = $ARGUMENTS[1] OR derive_from_change_dir # Output SoW path
-$CLIENT_NAME = $ARGUMENTS[2] OR "unknown — to be confirmed" # Client organisation name
-$PDF_FLAG    = "--pdf" present in $ARGUMENTS            # Optional: also generate PDF
+$CLIENT_NAME  = $ARGUMENTS[2] OR "unknown — to be confirmed" # Client organisation name
+$COMPANY_NAME = $ARGUMENTS[3] OR "Propellerhead"             # Company name (default: Propellerhead)
+$PDF_FLAG     = "--pdf" present in $ARGUMENTS                # Optional: also generate PDF
 ```
 
 Path derivation:
@@ -67,7 +68,7 @@ Read the Specify artifacts from `$CHANGE_DIR` (specs/ and design.md) and validat
 
 **Required sections**:
 
-- Component (Name, Purpose)
+- Context (Source, Purpose)
 - Business Logic Blocks OR User Stories (at least one)
 
 **Optional but valuable sections**:
@@ -92,8 +93,8 @@ The artifact origin informs the Background and Scope narrative.
 
 From the artifacts, extract:
 
-- **Project Name**: From design.md `## Component` → Name field. Convert from `snake_case` to Title Case for display.
-- **Project Purpose**: From design.md `## Component` → Purpose summary.
+- **Project Name**: From design.md `## Context` → Purpose summary (extract name if possible, otherwise use Purpose).
+- **Project Purpose**: From design.md `## Context` → Purpose summary.
 - **Artifact Origin**: From design.md header → determines migration vs greenfield framing.
 - **Source Reference**: From design.md header → Source field (repo URL, JIRA epic key, or design document path).
 
@@ -109,7 +110,7 @@ Write the SoW cover page with metadata table:
 
 | | |
 | --- | --- |
-| Author: | [Author], Propellerhead |
+| Author: | [Author], $COMPANY_NAME |
 | Date: | $TODAY |
 | Project Manager: | [Project Manager] |
 | Version: | $VERSION_DATE |
@@ -284,7 +285,7 @@ Sources:
 
 Standard dependencies (always include):
 
-- Access to Environments — "We need reliable environments for all components, and the necessary services need to be readily available and accessible by Propellerhead in order to deliver this work in a timely manner and within the budget of this Statement of Work."
+- Access to Environments — "We need reliable environments for all components, and the necessary services need to be readily available and accessible by $COMPANY_NAME in order to deliver this work in a timely manner and within the budget of this Statement of Work."
 - $CLIENT_NAME Project Manager — "$CLIENT_NAME provides a Project Manager who can coordinate various project resources and help resolve any impediments to delivery."
 - $CLIENT_NAME Product Owner — "$CLIENT_NAME will nominate a product owner to clarify requirements, prioritise deliverables, and accept completed work."
 
@@ -333,7 +334,7 @@ Write the acceptance section with signature blocks using Authorised Person forma
 ```markdown
 ## Acceptance
 
-### SIGNED by for and on behalf of Propellerhead by:
+### SIGNED by for and on behalf of $COMPANY_NAME by:
 
 | | |
 | --- | --- |
@@ -352,7 +353,7 @@ Write the acceptance section with signature blocks using Authorised Person forma
 
 ### Step 9: Generate Appendix A — Standard Services and Deliverables
 
-Write Appendix A with the standard Propellerhead service descriptions. Read the template from [sow-template.md](references/sow-template.md) and include the Standard Services and Deliverables appendix verbatim.
+Write Appendix A with the standard $COMPANY_NAME service descriptions. Read the template from [sow-template.md](references/sow-template.md) and include the Standard Services and Deliverables appendix verbatim.
 
 This appendix covers:
 
@@ -432,7 +433,7 @@ PDF generated: $OUTPUT_DIR/$BASENAME.pdf
 | Issue | Cause | Resolution |
 | ----- | ----- | ---------- |
 | Artifacts not found | Invalid `$CHANGE_DIR` | Verify path and re-run |
-| Missing Component section | Artifacts are incomplete or malformed | Run the appropriate analyzer skill first |
+| Missing Context section | Artifacts are incomplete or malformed | Run the appropriate analyzer skill first |
 | No Business Logic or User Stories | Artifacts lack actionable content | Re-run `epic-analyzer` to enrich artifacts before generating SoW |
 | Artifacts have many `[unknown]` tokens | Analysis was incomplete | Note unknowns as assumptions in the SoW; flag for Client Strategist review |
 | Cannot determine project type | Artifact origin header missing | Default to `requirements` framing; note in SoW |
@@ -463,8 +464,8 @@ PDF generated: $OUTPUT_DIR/$BASENAME.pdf
 
 - **Never invent costs**: All monetary values must be placeholders. Cost estimation is the Client Strategist's responsibility.
 - **Business language**: Translate technical artifact content into client-facing language. "Implement Handler<P> trait with HttpRequest provider" becomes "Integration with external API".
-- **Propellerhead voice**: Use "we" for Propellerhead, direct and concise sentences, no filler.
-- **Standard boilerplate**: The SoW includes standard Propellerhead sections (Reference Agreement, Fees terms, Change Requests, Warranty, Acceptance). These are consistent across all SoWs.
+- **$COMPANY_NAME voice**: Use "we" for $COMPANY_NAME, direct and concise sentences, no filler.
+- **Standard boilerplate**: The SoW includes standard $COMPANY_NAME sections (Reference Agreement, Fees terms, Change Requests, Warranty, Acceptance). These are consistent across all SoWs.
 - **Client Strategist review**: The generated SoW is a draft. It must be reviewed and completed by the Client Strategist before being sent to the client.
 - **Appendix A is standard**: The Standard Services and Deliverables appendix is the same across all SoWs and should be included verbatim from the template.
 - **Exclusions protect scope**: Be thorough with exclusions. It is better to explicitly exclude something and later include it than to have scope ambiguity. Keep descriptions terse.

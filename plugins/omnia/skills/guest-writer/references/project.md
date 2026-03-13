@@ -40,7 +40,7 @@ Directory layout for a WASM guest project.
 | `examples/<guest-name>.rs` | Local dev runtime with WASI hosts |
 | `examples/.env.example` | Environment variable template |
 | `Cargo.toml` | Package manifest with dependencies |
-| `.cargo/config.toml` | Credibil registry + credential providers |
+| `.cargo/config.toml` | crates.io registry + credential providers |
 
 ## Configuration Files
 

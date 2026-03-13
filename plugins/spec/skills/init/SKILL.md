@@ -22,18 +22,26 @@ I'll create the `.specify/` directory structure and a starter `config.yaml` for 
    - Use **AskQuestion tool** to confirm whether they want to reinitialize (which overwrites config).
    - If they decline, stop.
 
-2. **Create directory structure**
+2. **Select Schema**
+
+   Use the **AskQuestion tool** to let the user select the project schema:
+   - **omnia**: New development (JIRA -> Rust WASM)
+   - **realtime**: Migration (TypeScript -> Rust WASM)
+
+   Store the selection as `$SCHEMA`.
+
+3. **Create directory structure**
 
    ```bash
    mkdir -p .specify/changes .specify/specs
    ```
 
-3. **Write config.yaml**
+4. **Write config.yaml**
 
-   Write `.specify/config.yaml` with the following template. If the user provided project context, fill in the `context` field. Otherwise use the default below.
+   Write `.specify/config.yaml` with the following template, using the selected `$SCHEMA`. If the user provided project context, fill in the `context` field. Otherwise use the default below.
 
    ```yaml
-   schema: omnia
+   schema: $SCHEMA
 
    context: |
      <project context -- tech stack, architecture, testing approach>
@@ -57,7 +65,7 @@ I'll create the `.specify/` directory structure and a starter `config.yaml` for 
        - Structure tasks around behavioral changes for existing crate updates
    ```
 
-4. **Prompt for customization**
+5. **Prompt for customization**
 
    Tell the user:
    - "Specify initialized. Config written to `.specify/config.yaml`."

@@ -3,7 +3,6 @@ name: git-cloner
 description: Clone git repositories autonomously with validation, error handling, and flexible options.
 argument-hint: [repo-url] [dest-dir] [detach?]
 allowed-tools: Read, Write, StrReplace, Shell
-user-invocable: false
 ---
 
 # Git Cloner Skill

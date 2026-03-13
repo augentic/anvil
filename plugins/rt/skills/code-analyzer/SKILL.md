@@ -3,7 +3,6 @@ name: code-analyzer
 description: Analyze source code to produce Specify artifacts (specs + design.md) capturing business logic for code migration.
 argument-hint: [source-path] [change-dir]
 allowed-tools: Read, Write, StrReplace, Shell, Grep
-user-invocable: false
 ---
 
 # Code Analyzer Skill

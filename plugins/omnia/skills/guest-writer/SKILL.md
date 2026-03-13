@@ -3,9 +3,6 @@ name: guest-writer
 description: Generate a Rust project that exposes HTTP endpoints, subscribes to message topics, and handles WebSocket events in order to surface business logic via the Omnia WASI runtime.
 argument-hint: [project-dir?]
 allowed-tools: Read, Write, StrReplace, Shell
-user-invocable: false
-context: fork
-agent: general-purpose
 ---
 
 # Guest Generator Skill
@@ -92,7 +89,7 @@ See [Project structure](references/project.md) for complete layout and [Configur
 
 ### Step 2: Generate Cargo.toml
 
-All omnia packages are published to the Credibil and at-realtime registries. **Configure `.cargo/config.toml` first** -- see [Configuration](references/configuration.md) for the full configuration including registry URLs, credential providers, and net settings.
+All omnia packages are published to crates.io. **Configure `.cargo/config.toml` first** -- see [Configuration](references/configuration.md) for the full configuration including registry URLs, credential providers, and net settings.
 
 Then configure workspace dependencies based on domain crate requirements:
 

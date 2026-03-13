@@ -42,6 +42,7 @@ When ready to implement, run /spec:apply
 3. **Check initialization and existing changes**
 
    - Verify `.specify/config.yaml` exists. If not, tell the user to run `/spec:init` first.
+   - Read `.specify/config.yaml` to determine the project schema (look for `schema: <name>`). Default to `omnia` if not found.
    - Check if `.specify/changes/<name>/` already exists. If so, ask if user wants to continue it or create a new one with a different name.
 
 4. **Create the change directory**
@@ -50,9 +51,9 @@ When ready to implement, run /spec:apply
    mkdir -p .specify/changes/<name>/specs
    ```
 
-   Write `.specify/changes/<name>/.metadata.yaml`:
+   Write `.specify/changes/<name>/.metadata.yaml` using the schema read from config:
    ```yaml
-   schema: omnia
+   schema: <schema_from_config>
    created_at: <current ISO-8601 timestamp>
    ```
 
@@ -113,9 +114,14 @@ When ready to implement, run /spec:apply
 
    Sections:
    - **Why**: 1-2 sentences on the problem or opportunity. What problem does this solve? Why now?
-   - **Source**: Identify where the requirements come from. Pick ONE:
-     - **Repository**: URL of the repository to migrate (e.g., `https://github.com/org/repo`). This triggers the RT workflow -- the specs phase will clone the repo and run code-analyzer.
+   - **Source**: Identify where the requirements come from. Pick ONE based on the project schema:
+
+     **For 'omnia' schema:**
      - **Epic**: JIRA/ADO/Linear epic key (e.g., `ATR-7102`). This triggers the Plan workflow -- the specs phase will run epic-analyzer.
+     - **Manual**: Requirements are described directly in this proposal. This is the default workflow -- specs and design are written by hand.
+
+     **For 'realtime' schema:**
+     - **Repository**: URL of the repository to migrate (e.g., `https://github.com/org/repo`). This triggers the RT workflow -- the specs phase will clone the repo and run code-analyzer.
      - **Manual**: Requirements are described directly in this proposal. This is the default workflow -- specs and design are written by hand.
    - **What Changes**: Bullet list of changes. Be specific about new capabilities, modifications, or removals. Mark breaking changes with **BREAKING**.
    - **Capabilities**: Identify which specs will be created or modified:

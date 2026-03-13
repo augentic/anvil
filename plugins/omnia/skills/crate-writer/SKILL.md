@@ -1,11 +1,8 @@
 ---
 name: crate-writer
 description: "Write Rust WASM crates from Specify artifacts -- greenfield creation or incremental updates -- following Omnia SDK patterns with provider-based dependency injection."
-argument-hint: [crate-name] [project-dir?] [--skip-tests?] [change-description?]
+argument-hint: [crate-name] [project-dir?] [--skip-tests?] [--change-dir <path>?] [change-description?]
 allowed-tools: Read, Write, StrReplace, Shell, Grep, ReadLints
-user-invocable: false
-context: fork
-agent: general-purpose
 ---
 
 # Crate Writer
@@ -66,8 +63,11 @@ Violations of any rule below fail generation or update.
 $CRATE_NAME         = $ARGUMENTS[0]
 $PROJECT_DIR        = $ARGUMENTS[1] OR "."
 $SKIP_TESTS         = "--skip-tests" in $ARGUMENTS  # Boolean, default false
+$CHANGE_DIR_ARG     = "--change-dir" value in $ARGUMENTS # Optional
 $CHANGE_DESCRIPTION = last non-flag argument after $PROJECT_DIR, OR null  # Optional: plain-text summary of what changed (update mode)
-$CHANGE_DIR         = $PROJECT_DIR/.specify/changes/$CRATE_NAME
+
+# Path derivation
+$CHANGE_DIR         = $CHANGE_DIR_ARG OR $PROJECT_DIR/.specify/changes/$CRATE_NAME
 $SPECS_DIR          = $CHANGE_DIR/specs
 $DESIGN_PATH        = $CHANGE_DIR/design.md
 $CRATE_PATH         = $PROJECT_DIR/crates/$CRATE_NAME

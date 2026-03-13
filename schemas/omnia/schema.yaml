@@ -266,7 +266,7 @@ apply:
         and ensure the skill's verification checklist is satisfied.
 
       2. Use the /omnia:crate-writer skill to generate the domain crate
-        (types, handlers, baseline tests) from OpenSpec artifacts. 
+        (types, handlers, baseline tests) from Specify artifacts. 
         Run the skill from start to finish; do not implement the crate
         manually. Complete every step in the skill, and ensure the skill's
         verification checklist is satisfied.
