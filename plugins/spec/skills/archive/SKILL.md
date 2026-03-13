@@ -19,11 +19,18 @@ Archive a completed change.
 
    **IMPORTANT**: Always confirm the change name before archiving.
 
-   Read `.specify/changes/<name>/.metadata.yaml` for the schema value and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
+   Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status. **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
 
-   Read `schema.yaml` for artifact definitions and terminology (e.g., "Crates" vs "Capabilities"). Use schema terminology in summary output.
+   Read `schema.yaml` for artifact definitions, `spec_format` heading conventions, and terminology (e.g., "Crates" vs "Capabilities"). Use schema terminology in summary output.
 
-2. **Check artifact completion**
+2. **Check lifecycle status**
+
+   Read `status` from `.metadata.yaml`:
+   - If `status` is not `complete`: display warning (e.g., "This change has status '<status>' — it may not be fully implemented.")
+   - Use **AskQuestion tool** to confirm user wants to proceed despite the status
+   - Proceed if user confirms
+
+3. **Check artifact completion**
 
    For each artifact defined in `schema.yaml`, check whether it is complete:
    - If `generates` is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
@@ -34,9 +41,9 @@ Archive a completed change.
    - Use **AskQuestion tool** to confirm user wants to proceed
    - Proceed if user confirms
 
-3. **Check task completion**
+4. **Check task completion**
 
-   Read `tasks.md` and count:
+   Read the file tracked by `apply.tracks` (from `schema.yaml`) and count:
    - `- [ ] ` lines = incomplete tasks
    - `- [x] ` or `- [X] ` lines = complete tasks
 
@@ -47,12 +54,43 @@ Archive a completed change.
 
    **If no tasks file exists:** Proceed without task-related warning.
 
-4. **Merge delta specs into baseline**
+5. **Preview merge operations**
 
    For each subdirectory in `.specify/changes/<name>/specs/`:
    - The subdirectory name is the **capability name**
    - The file at `specs/<capability>/spec.md` is the **delta spec**
    - The baseline is at `.specify/specs/<capability>/spec.md`
+
+   Read the `spec_format` section from `schema.yaml` for heading conventions:
+   - `delta_operations.added`, `delta_operations.modified`, `delta_operations.removed`, `delta_operations.renamed` — the headings used in delta specs
+   - `requirement_heading` — the heading prefix for requirement blocks (e.g., `### Requirement:`)
+
+   For each capability with a delta spec, show what will happen WITHOUT performing the merge:
+
+   ```
+   ## Archive Preview: <change-name>
+
+   ### <capability-1>/spec.md (existing baseline)
+   - REMOVING: Requirement: <name>
+   - MODIFYING: Requirement: <name>
+   - ADDING: Requirement: <name>
+
+   ### <capability-2>/spec.md (new baseline)
+   - Creating new baseline with N requirements
+   ```
+
+   **Conflict detection**: For each capability with `type: modified` in `.metadata.yaml`'s `touched_capabilities` (if present), check if `.specify/specs/<capability>/spec.md` has been modified since `proposed_at` (compare file modification time). If the baseline has changed since the change was proposed:
+   - Warn: "The baseline for `<capability>` has been modified since this change was proposed (possibly by archiving another change)."
+   - Use **AskQuestion tool**: proceed anyway, or cancel
+
+   Use the **AskQuestion tool** to confirm:
+   - **Proceed**: apply all merges
+   - **Show full content**: display the complete merged baseline for each capability before writing
+   - **Cancel**: abort archive
+
+   Only proceed to the actual merge after user confirms.
+
+6. **Merge delta specs into baseline**
 
    **For each capability with a delta spec**, perform the merge:
 
@@ -62,53 +100,46 @@ Archive a completed change.
 
    c. **If NO baseline exists** (new capability):
       - Create `.specify/specs/<capability>/` directory
-      - Detect the spec format:
-        - If the spec contains `## Handler:` sections (new crate format):
-          copy the entire content as the new baseline directly — it is
-          already in baseline format.
-        - If the spec contains `## ADDED Requirements` (delta format):
-          extract only the `### Requirement:` blocks and their content
-          (description, scenarios), without the `## ADDED Requirements`
-          header.
+      - Check whether the spec contains any delta operation headers (the headings from `spec_format.delta_operations` in `schema.yaml`)
+      - If the spec does NOT contain delta operation headers: copy the entire content as the new baseline directly — it is already in baseline format
+      - If the spec DOES contain delta operation headers: extract only the requirement blocks (matching `spec_format.requirement_heading`) from the ADDED section and write them as the baseline. Ignore MODIFIED/REMOVED/RENAMED sections (they don't apply to a new baseline).
       - Write the result as the new baseline at `.specify/specs/<capability>/spec.md`
-      - Ignore any MODIFIED/REMOVED/RENAMED sections (they don't apply to a new baseline)
 
    d. **If a baseline EXISTS** (existing capability):
       - Read the baseline from `.specify/specs/<capability>/spec.md`
-      - Parse the delta spec to identify sections by their `## ` headers (case-insensitive matching):
-        - `## ADDED Requirements`
-        - `## MODIFIED Requirements`
-        - `## REMOVED Requirements`
-        - `## RENAMED Requirements`
+      - Parse the delta spec to identify sections by the headings defined in `schema.yaml`'s `spec_format.delta_operations` (case-insensitive matching)
       - Apply operations in **this exact order** (order matters):
 
       **Step 1 -- RENAMED** (must happen first so MODIFIED/REMOVED use new names):
       - Look for `FROM:` and `TO:` lines within the RENAMED section
-      - For each pair, find the `### Requirement: <FROM name>` block in the baseline
-      - Change its header to `### Requirement: <TO name>`
+      - For each pair, find the matching requirement block (using `spec_format.requirement_heading`) in the baseline
+      - Change its header to use the TO name
       - If the FROM name is not found in the baseline, report an error
 
       **Step 2 -- REMOVED**:
-      - For each `### Requirement: <name>` in the REMOVED section, delete the entire matching block from the baseline (from the `### Requirement:` line through to the next `### Requirement:` line or end of file)
+      - For each requirement in the REMOVED section, delete the entire matching block from the baseline (from the requirement heading through to the next requirement heading or end of file)
       - If the name is not found in the baseline, report an error
 
       **Step 3 -- MODIFIED**:
-      - For each `### Requirement: <name>` in the MODIFIED section, find the matching block in the baseline and replace it entirely with the version from the delta (from the `### Requirement:` line through all its content)
+      - For each requirement in the MODIFIED section, find the matching block in the baseline and replace it entirely with the version from the delta
       - If the name is not found in the baseline, report an error
 
       **Step 4 -- ADDED**:
-      - Append each `### Requirement: <name>` block from the ADDED section to the end of the baseline
+      - Append each requirement block from the ADDED section to the end of the baseline
 
       - Write the merged result to `.specify/specs/<capability>/spec.md`
 
-   e. **Verify the merge**: Re-read the merged baseline and confirm it looks structurally correct (has proper `### Requirement:` headers, no duplicate names, no orphaned content).
+   e. **Verify the merge**: Re-read the merged baseline and confirm it looks structurally correct (has proper requirement headings, no duplicate names, no orphaned content).
 
    **What is a requirement block?**
-   A requirement block starts at a `### Requirement: <name>` line and includes all content until the next `### Requirement:` line or the next `## ` header or end of file. This includes the description text, all `#### Scenario:` sub-sections, and any other content within the block.
+   A requirement block starts at a requirement heading (as defined in `spec_format.requirement_heading`) and includes all content until the next requirement heading or the next `## ` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
 
-   **Preserve preamble**: Any text before the first `### Requirement:` or `## ` header in the baseline should be preserved as-is.
+   **Preserve preamble**: Any text before the first requirement heading or `## ` header in the baseline should be preserved as-is.
 
-5. **Move the change to archive**
+7. **Update metadata and move to archive**
+
+   Update `.specify/changes/<name>/.metadata.yaml`:
+   - Set `status` to `archived`
 
    ```bash
    mkdir -p .specify/changes/archive
@@ -117,7 +148,7 @@ Archive a completed change.
 
    Use today's date in `YYYY-MM-DD` format.
 
-6. **Display summary**
+8. **Display summary**
 
 **Output On Success**
 
@@ -205,6 +236,7 @@ The system SHALL authenticate users via OAuth 2.0 providers.
 - Always confirm the change before archiving
 - Warn on incomplete artifacts or tasks but don't block
 - Apply delta operations in strict order: RENAMED -> REMOVED -> MODIFIED -> ADDED
+- Use heading conventions from `schema.yaml`'s `spec_format` — do not hard-code heading patterns
 - Report errors if RENAMED/REMOVED/MODIFIED reference requirement names not found in the baseline
 - After merging, verify the result by re-reading the merged file
 - If the merge looks wrong, stop and ask the user before proceeding to the move step

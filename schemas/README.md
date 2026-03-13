@@ -1,8 +1,9 @@
 # Specify Schemas
 
 This directory contains the schema definitions for the Specify workflow. Each
-schema provides artifact definitions (`schema.yaml`), a starter config
-(`config.yaml`), and artifact templates (`templates/`).
+schema provides artifact declarations (`schema.yaml`), artifact instructions
+(`instructions/`), a starter config (`config.yaml`), and artifact templates
+(`templates/`).
 
 ## Schemas
 
@@ -28,22 +29,35 @@ Each schema directory contains:
 
 ```text
 schemas/<name>/
-├── schema.yaml      # Artifact definitions, instructions, apply instruction
+├── schema.yaml      # Artifact declarations (id, generates, requires, template, instruction path)
 ├── config.yaml      # Starter config installed by /spec:init
+├── instructions/    # Detailed instructions for each artifact and apply
+│   ├── proposal.md
+│   ├── specs.md
+│   ├── design.md
+│   ├── tasks.md
+│   └── apply.md
 └── templates/       # Artifact templates
     ├── proposal.md
-    ├── spec.md
+    ├── spec-new.md    # Template for new crates/capabilities
+    ├── spec-delta.md  # Template for modified crates/capabilities (delta format)
     ├── design.md
     └── tasks.md
 ```
 
-- **`schema.yaml`**: Defines the artifacts (id, template filename,
-  instruction, dependencies) and the apply instruction. Skills read this to
-  know how to generate artifacts and implement tasks.
+- **`schema.yaml`**: Declares artifacts (id, template filename, instruction
+  file path, dependencies), the `spec_format` heading conventions, and the
+  `apply` configuration. Skills read this to know how to generate artifacts
+  and implement tasks.
+- **`instructions/`**: One markdown file per artifact plus `apply.md`.
+  Contains the detailed generation or implementation instructions that were
+  previously inline in `schema.yaml`. Referenced by file path from
+  `schema.yaml`'s `instruction` field.
 - **`config.yaml`**: Installed into `.specify/config.yaml` by `/spec:init`.
   Contains the `schema` URL, default `context`, and per-artifact `rules`.
-- **`templates/`**: Markdown templates for each artifact. Referenced by
-  filename in `schema.yaml`.
+- **`templates/`**: Markdown templates for each artifact. Spec templates
+  are split into `spec-new.md` (new crate/capability) and `spec-delta.md`
+  (delta format for modifications). Referenced by filename in `schema.yaml`.
 
 ## Schema Resolution
 
@@ -85,6 +99,13 @@ schema: https://github.com/augentic/specify/schemas/omnia@abc123   # pinned to c
    raw content URLs using the extracted ref:
    `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>`).
 
+### Schema Composition
+
+Schemas can extend other schemas using the `extends` field in `schema.yaml`.
+See `plugins/spec/references/schema-resolution.md` for the full composition
+rules, including artifact merging, field-level overrides, and file fallback
+behavior.
+
 ## Caching
 
 When a schema is resolved remotely, fetched files are cached at the project
@@ -95,9 +116,16 @@ level in `.specify/.cache/`:
 ├── .cache-meta.yaml     # schema_url + fetched_at
 ├── schema.yaml
 ├── config.yaml          (if fetched)
+├── instructions/        (if fetched)
+│   ├── proposal.md
+│   ├── specs.md
+│   ├── design.md
+│   ├── tasks.md
+│   └── apply.md
 └── templates/           (if fetched)
     ├── proposal.md
-    ├── spec.md
+    ├── spec-new.md
+    ├── spec-delta.md
     ├── design.md
     └── tasks.md
 ```
@@ -112,17 +140,20 @@ The `/spec:init` skill creates `.specify/.cache/` and adds it to
 
 ## Templates
 
-The `spec.md`, `design.md`, and `tasks.md` templates share the same structure
-across schemas. The `proposal.md` templates differ:
+The `design.md` and `tasks.md` templates share the same structure across
+schemas. The `proposal.md` templates differ:
 
 - **Omnia**: uses "Crates" (New Crates / Modified Crates); Source supports
   Repository, Epic, and Manual.
 - **Realtime**: uses "Capabilities" (New Capabilities / Modified
   Capabilities); Source supports Repository and Manual.
 
-Schema instructions reference `references/specify.md` for artifact guidance.
-This path resolves to `plugins/references/specify.md` in the skill execution
-context (where symlinks map `references/` to the correct location).
+Spec templates are split per schema:
+
+- **`spec-new.md`**: Template for new crates/capabilities (baseline format
+  with `## Handler:` sections).
+- **`spec-delta.md`**: Template for modified crates/capabilities (delta
+  format with ADDED/MODIFIED/REMOVED/RENAMED sections).
 
 ## Configuration
 

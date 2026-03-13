@@ -49,9 +49,12 @@ Specs are behavioral. They should not encode Omnia trait bindings, WASM implemen
 
 ### Spec File Format (Baseline / New Crate)
 
-New crate specs and promoted baselines use the `## Handler:` format. This
+New crate specs and promoted baselines use the section heading format defined
+in the schema's `spec_format.section_heading` (default: `## Handler:`). This
 is the format that downstream skills (crate-writer, test-writer) expect.
-code-analyzer and epic-analyzer also produce this format.
+code-analyzer and epic-analyzer also produce this format. The heading
+conventions (section, requirement, scenario, delta operations) are all
+configurable via the `spec_format` section in `schema.yaml`.
 
 ```markdown
 # <Crate Name> Specification
@@ -90,11 +93,12 @@ Source: <source function, JIRA story, or design section>
 
 ### Delta Spec Format (Modified Crate)
 
-When modifying an existing crate, delta specs use operation headers
-(`## ADDED Requirements`, `## MODIFIED Requirements`, etc.) with
+When modifying an existing crate, delta specs use the operation headers
+defined in the schema's `spec_format.delta_operations` (default:
+`## ADDED Requirements`, `## MODIFIED Requirements`, etc.) with
 `### Requirement:` and `#### Scenario:` at shallower heading depth.
-See the spec artifact reference for details on delta operations and
-the archive skill for how deltas merge into the baseline.
+See the schema's `templates/spec-delta.md` for the template and the
+archive skill for how deltas merge into the baseline.
 
 ### Deriving Specs From Source Code (code-analyzer)
 

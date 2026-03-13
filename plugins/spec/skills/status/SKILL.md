@@ -4,7 +4,7 @@ description: Show the current state of Specify changes -- active changes, artifa
 license: MIT
 metadata:
   author: specify
-  version: "2.0"
+  version: "3.0"
 ---
 
 Show the current state of Specify in this project.
@@ -28,7 +28,15 @@ Show the current state of Specify in this project.
 
    If no active changes exist, report: "No active changes."
 
-3. **For each active change (or the one specified), check artifact completion**
+3. **For each active change (or the one specified), show lifecycle status and artifact completion**
+
+   Read `.metadata.yaml` for the change to get `status`, `schema`, `created_at`, `proposed_at`, `apply_started_at`, and `completed_at`.
+
+   Display the lifecycle status prominently:
+   - `proposing` — "Proposal in progress (artifacts may be incomplete)"
+   - `proposed` — "All artifacts created, ready for implementation"
+   - `applying` — "Implementation in progress"
+   - `complete` — "All tasks complete, ready to archive"
 
    For each artifact defined in `schema.yaml`, check whether it is complete:
    - If `generates` is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
@@ -54,7 +62,15 @@ Show the current state of Specify in this project.
 
    Apply is ready when all artifacts listed in `apply.requires` (from `schema.yaml`) are complete.
 
-6. **List archived changes** (brief)
+6. **Show next-step guidance based on lifecycle status**
+
+   Based on the `status` field, provide targeted guidance:
+   - `proposing` — "Run `/spec:propose` to complete artifact generation."
+   - `proposed` — "Run `/spec:apply` to start implementing tasks."
+   - `applying` — "Run `/spec:apply` to continue implementation." Show remaining task count.
+   - `complete` — "Run `/spec:archive` to finalize this change."
+
+7. **List archived changes** (brief)
 
    List directories in `.specify/changes/archive/` if any exist.
 
@@ -65,17 +81,19 @@ Show the current state of Specify in this project.
 
 ### Active Changes
 
-**<change-name>** (schema: omnia, created: <date>)
+**<change-name>** (schema: omnia, status: proposed, created: <date>)
 
 | Artifact | Status |
 |----------|--------|
 | proposal | done   |
 | specs    | done   |
 | design   | done   |
-| tasks    | ready  |
+| tasks    | done   |
 
 Tasks: 0/5 complete
-Apply: blocked (tasks not complete)
+Apply: ready
+
+Next: Run `/spec:apply` to start implementing tasks.
 
 ### Archived Changes
 
@@ -88,4 +106,4 @@ If a single change is specified or only one exists, show the detailed view only 
 **Guardrails**
 - Read-only -- do not create or modify any files
 - If `.specify/` does not exist, suggest `/spec:init`
-- Show clear next-step guidance based on current state
+- Show clear next-step guidance based on current lifecycle status

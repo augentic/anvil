@@ -21,18 +21,46 @@ This plugin provides the core Specify workflow skills: propose a change, apply (
 ├── rules/
 │   └── spec.mdc          # This file
 ├── references/
-│   ├── schema-resolution.md  # Centralized schema resolution algorithm
+│   ├── schema-resolution.md  # Centralized schema resolution + composition algorithm
 │   └── specify.md            # Artifact format reference (symlink)
 └── skills/
     ├── init/              # Initialize Specify in a project
-    ├── propose/           # Create a change with all artifacts
+    ├── propose/           # Create a change with all artifacts (or regenerate one)
     ├── apply/             # Implement tasks from a change
     ├── archive/           # Archive a completed change
     ├── explore/           # Thinking partner for ideas and investigation
     └── status/            # Check change status and progress
 ```
 
-Each skill has its own SKILL.md with full details. Schema resolution is defined in [schema-resolution.md](../references/schema-resolution.md). The Specify artifact format is described in [specify.md](../references/specify.md).
+Each skill has its own SKILL.md with full details. Schema resolution and composition is defined in [schema-resolution.md](../references/schema-resolution.md). The Specify artifact format is described in [specify.md](../references/specify.md).
+
+## Schema Structure
+
+Schemas define the artifact graph, instructions, templates, and heading conventions. Each schema directory contains:
+
+```text
+schemas/<name>/
+├── schema.yaml      # Declarations: artifacts, spec_format, apply config
+├── config.yaml      # Starter config for /spec:init
+├── instructions/    # Detailed instructions per artifact + apply
+└── templates/       # Artifact templates (spec-new.md, spec-delta.md, etc.)
+```
+
+`schema.yaml` is declaration-only — instructions live in separate files referenced by path. Schemas can extend other schemas via the `extends` field.
+
+## Change Lifecycle
+
+Changes track their status in `.metadata.yaml`:
+
+```text
+proposing  ->  proposed  ->  applying  ->  complete  ->  archived
+```
+
+- **proposing**: Artifacts are being generated (propose in progress)
+- **proposed**: All artifacts created, ready for implementation
+- **applying**: Tasks are being implemented
+- **complete**: All tasks done, ready to archive
+- **archived**: Specs merged into baseline, change moved to archive
 
 ## Workflow
 
@@ -47,11 +75,11 @@ Each skill has its own SKILL.md with full details. Schema resolution is defined 
 ```
 
 - **init**: One-time project setup -- creates `.specify/` directory structure and `config.yaml`
-- **propose**: Create a change directory and generate proposal, specs, design, and task artifacts
+- **propose**: Create a change directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:propose <name> <artifact-id>`.
 - **apply**: Implement tasks from an existing change, marking them complete as you go
-- **archive**: Finalize a completed change, merging delta specs into baseline
+- **archive**: Preview merge operations, finalize a completed change, merge delta specs into baseline
 - **explore**: Read-only thinking mode for investigating problems and clarifying requirements
-- **status**: Check artifact completion, task progress, and active/archived changes
+- **status**: Check lifecycle status, artifact completion, task progress, and active/archived changes
 
 ## Troubleshooting
 
@@ -68,7 +96,8 @@ Each skill has its own SKILL.md with full details. Schema resolution is defined 
 ### Artifacts Incomplete
 
 - Run `/spec:status <name>` to check artifact status
-- Use `/spec:propose` to regenerate missing artifacts
+- Use `/spec:propose <name> <artifact-id>` to regenerate a single artifact
+- Use `/spec:propose` to create a new change with all artifacts
 
 ## Related Documentation
 

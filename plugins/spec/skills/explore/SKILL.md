@@ -76,7 +76,7 @@ You have full context of the Specify system. Use it naturally, don't force it.
 
 ### Check for context
 
-At the start, quickly check what exists by listing directories in `.specify/changes/` (skip `archive/`). Each subdirectory with a `.metadata.yaml` is an active change. Read `.metadata.yaml` for the schema name and creation date.
+At the start, quickly check what exists by listing directories in `.specify/changes/` (skip `archive/`). Each subdirectory with a `.metadata.yaml` is an active change. Read `.metadata.yaml` for the schema name, lifecycle `status`, and creation date.
 
 Also read `.specify/config.yaml` for the `schema` field and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
 
@@ -84,7 +84,7 @@ Read `schema.yaml` to understand what artifacts the schema defines, what source 
 
 This tells you:
 - If there are active changes
-- Their names, schemas, and status
+- Their names, schemas, lifecycle status (`proposing`, `proposed`, `applying`, `complete`), and dates
 - What the user might be working on
 - What the project workflow and artifact structure looks like
 
@@ -100,10 +100,8 @@ Think freely. When insights crystallize, you might offer:
 If the user mentions a change or you detect one is relevant:
 
 1. **Read existing artifacts for context**
-   - `.specify/changes/<name>/proposal.md`
-   - `.specify/changes/<name>/specs/` (all spec files)
-   - `.specify/changes/<name>/design.md`
-   - `.specify/changes/<name>/tasks.md`
+
+   For each artifact defined in `schema.yaml`, read the file(s) at `.specify/changes/<name>/<generates>`. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
 
 2. **Reference them naturally in conversation**
    - "Your design mentions using Redis, but we just realized SQLite fits better..."

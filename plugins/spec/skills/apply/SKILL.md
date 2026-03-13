@@ -19,7 +19,22 @@ Implement tasks from a Specify change.
 
    Always announce: "Using change: <name>" and how to override (e.g., `/spec:apply <other>`).
 
-2. **Check artifact completion**
+2. **Read project config and resolve schema**
+
+   Read `.specify/config.yaml` for project context. Use `context` and `rules` as constraints guiding your implementation -- do not copy them into code comments.
+
+   Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status.
+
+   **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `instructions/apply.md`. Read `schema.yaml` from the resolved location.
+
+3. **Check lifecycle status**
+
+   Read `status` from `.metadata.yaml`:
+   - If `status` is `proposing`: warn that artifacts may be incomplete — some may not have been generated yet. Suggest running `/spec:propose` to complete them.
+   - If `status` is `complete`: congratulate, all tasks already done. Suggest `/spec:archive`.
+   - Otherwise: proceed.
+
+4. **Check artifact completion**
 
    For each artifact defined in `schema.yaml`, check whether it is complete:
    - If `generates` is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
@@ -27,26 +42,15 @@ Implement tasks from a Specify change.
 
    **Handle states:**
    - If any artifact listed in `apply.requires` (from `schema.yaml`) is incomplete: show message listing missing artifacts, suggest using `/spec:propose` to create them
-   - If all tasks are already complete: congratulate, suggest `/spec:archive`
    - Otherwise: proceed to implementation
 
-3. **Read project config and resolve schema**
+5. **Read context files**
 
-   Read `.specify/config.yaml` for project context. Use `context` and `rules` as constraints guiding your implementation -- do not copy them into code comments.
+   Read all artifacts for the change. For each artifact defined in `schema.yaml`, read the file(s) at `.specify/changes/<name>/<generates>`. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
 
-   **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`. Read `schema.yaml` from the resolved location.
+6. **Show current progress**
 
-4. **Read context files**
-
-   Read the artifacts for the change:
-   - `.specify/changes/<name>/proposal.md`
-   - `.specify/changes/<name>/specs/` (all spec files)
-   - `.specify/changes/<name>/design.md`
-   - `.specify/changes/<name>/tasks.md`
-
-5. **Show current progress**
-
-   Count tasks in `tasks.md`:
+   Read the file tracked by `apply.tracks` (from `schema.yaml`) and count:
    - `- [ ] ` lines = incomplete tasks
    - `- [x] ` or `- [X] ` lines = complete tasks
 
@@ -54,9 +58,19 @@ Implement tasks from a Specify change.
    - Progress: "N/M tasks complete"
    - Remaining tasks overview
 
-6. **Implement tasks (loop until done or blocked)**
+   If all tasks are already complete: congratulate, suggest `/spec:archive`.
 
-   Read the `apply.instruction` field from the resolved `schema.yaml` for the detailed implementation steps, including:
+7. **Update lifecycle status**
+
+   If `status` in `.metadata.yaml` is `proposed` (first time applying):
+   - Update `status` to `applying`
+   - Set `apply_started_at` to current ISO-8601 timestamp
+
+8. **Implement tasks (loop until done or blocked)**
+
+   Read the apply instruction file from the resolved schema directory (the file path is given by `apply.instruction` in `schema.yaml`).
+
+   Follow the detailed implementation steps from the instruction file, including:
    - Arguments used by skills
    - Mode detection (Create vs Update)
    - Step-by-step execution for each mode
@@ -70,11 +84,14 @@ Implement tasks from a Specify change.
 
    **Pause if:**
    - Task is unclear -> ask for clarification
-   - Implementation reveals a design issue -> suggest updating artifacts
+   - Implementation reveals a design issue -> suggest updating artifacts (use `/spec:propose <name> <artifact-id>` to regenerate)
    - Error or blocker encountered -> report and wait for guidance
    - User interrupts
 
-7. **On completion or pause, show status**
+9. **On completion or pause, show status**
+
+   If all tasks are complete:
+   - Update `.metadata.yaml`: set `status` to `complete`, set `completed_at` to current ISO-8601 timestamp
 
    Display:
    - Tasks completed this session
