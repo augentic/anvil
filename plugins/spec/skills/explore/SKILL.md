@@ -78,13 +78,7 @@ You have full context of the Specify system. Use it naturally, don't force it.
 
 At the start, quickly check what exists by listing directories in `.specify/changes/` (skip `archive/`). Each subdirectory with a `.metadata.yaml` is an active change. Read `.metadata.yaml` for the schema name and creation date.
 
-Also read `.specify/config.yaml` for the `schema` field and **resolve the schema** to understand the project workflow:
-- **Name** (e.g., `omnia`): look for `schemas/<name>/` in this plugin directory.
-- **URL** (e.g., `https://github.com/augentic/specify/schemas/omnia`):
-  1. Extract the schema name from the last path segment of the URL.
-  2. Check if `schemas/<name>/` exists locally in this plugin directory.
-  3. If found locally, use the local directory.
-  4. If not found locally, fetch `schema.yaml` via **WebFetch** (for GitHub URLs, convert to raw content: `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>/schema.yaml`).
+Also read `.specify/config.yaml` for the `schema` field and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
 
 Read `schema.yaml` to understand what artifacts the schema defines, what source types are supported (Repository, Epic, Manual), and what the workflow looks like.
 
@@ -117,14 +111,7 @@ If the user mentions a change or you detect one is relevant:
 
 3. **Offer to capture when decisions are made**
 
-   | Insight Type | Where to Capture |
-   |--------------|------------------|
-   | New requirement discovered | `specs/$CRATE_NAME/spec.md` |
-   | Requirement changed | `specs/$CRATE_NAME/spec.md` |
-   | Design decision made | `design.md` |
-   | Scope changed | `proposal.md` |
-   | New work identified | `tasks.md` |
-   | Assumption invalidated | Relevant artifact |
+   When decisions are made during exploration, offer to capture them in the relevant artifact. Consult the schema's artifact definitions (from `schema.yaml`) to determine which artifact is appropriate for the insight type — the `id` and `description` fields describe each artifact's purpose.
 
    Example offers:
    - "That's a design decision. Capture it in design.md?"

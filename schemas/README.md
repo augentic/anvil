@@ -48,18 +48,67 @@ schemas/<name>/
 ## Schema Resolution
 
 Skills resolve the `schema` field from `.specify/config.yaml` to locate
-schema files. The `schema` value can be a name or a URL.
+schema files. The resolution algorithm is defined in
+`plugins/spec/references/schema-resolution.md`. The `schema` value can be a
+name or a URL.
+
+### URL Format
+
+Schema URLs support an optional `@ref` suffix to pin a specific git ref:
+
+```
+https://github.com/{owner}/{repo}/schemas/{name}
+https://github.com/{owner}/{repo}/schemas/{name}@{ref}
+```
+
+When no `@ref` is present, `main` is used as the default ref. Examples:
+
+```yaml
+schema: https://github.com/augentic/specify/schemas/omnia          # defaults to main
+schema: https://github.com/augentic/specify/schemas/omnia@v1       # pinned to tag
+schema: https://github.com/augentic/specify/schemas/omnia@abc123   # pinned to commit
+```
+
+### Resolution Order
 
 **Name resolution** (e.g., `schema: omnia`):
 - Look for `schemas/<name>/` in the plugin directory.
 
-**URL resolution** (e.g., `schema: https://github.com/augentic/specify/schemas/omnia`):
-1. Extract the schema name from the last path segment of the URL.
+**URL resolution** (e.g., `schema: https://github.com/augentic/specify/schemas/omnia@v1`):
+1. Split on `@` to extract the schema name (last path segment) and ref
+   (default `main`).
 2. Check if `schemas/<name>/` exists locally in the plugin directory.
 3. If found locally, use the local directory.
-4. If not found locally, fetch files via WebFetch (for GitHub URLs, convert
-   to raw content URLs:
-   `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>`).
+4. If not found locally, check the project-level cache at
+   `.specify/.cache/` (see Caching below).
+5. If no valid cache, fetch files via WebFetch (for GitHub URLs, convert to
+   raw content URLs using the extracted ref:
+   `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>`).
+
+## Caching
+
+When a schema is resolved remotely, fetched files are cached at the project
+level in `.specify/.cache/`:
+
+```text
+.specify/.cache/
+├── .cache-meta.yaml     # schema_url + fetched_at
+├── schema.yaml
+├── config.yaml          (if fetched)
+└── templates/           (if fetched)
+    ├── proposal.md
+    ├── spec.md
+    ├── design.md
+    └── tasks.md
+```
+
+The cache is valid as long as `schema_url` in `.cache-meta.yaml` matches the
+`schema` field in `.specify/config.yaml`. When the schema URL changes (e.g.,
+bumping from `@v1` to `@v2`), the cache is automatically invalidated and
+refetched on the next skill invocation.
+
+The `/spec:init` skill creates `.specify/.cache/` and adds it to
+`.specify/.gitignore`. To force a refetch, delete `.specify/.cache/`.
 
 ## Templates
 

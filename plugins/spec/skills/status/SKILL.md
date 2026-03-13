@@ -15,10 +15,12 @@ Show the current state of Specify in this project.
 
 **Steps**
 
-1. **Check initialization**
+1. **Check initialization and resolve schema**
 
    Verify `.specify/config.yaml` exists. If not:
    > "Specify is not initialized in this project. Run `/spec:init` to get started."
+
+   Read `.specify/config.yaml` for the `schema` value and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`. Read `schema.yaml` to get the artifact definitions (id, generates, requires) and apply configuration.
 
 2. **List active changes**
 
@@ -28,29 +30,21 @@ Show the current state of Specify in this project.
 
 3. **For each active change (or the one specified), check artifact completion**
 
-   Check file existence to determine artifact status:
+   For each artifact defined in `schema.yaml`, check whether it is complete:
+   - If `generates` is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
+   - If `generates` is a glob pattern (e.g., `specs/**/*.md`), check if the directory contains at least one matching `.md` file.
 
-   | Artifact | Complete when |
-   |----------|---------------|
-   | proposal | `.specify/changes/<name>/proposal.md` exists |
-   | specs | `.specify/changes/<name>/specs/` contains at least one `.md` file (in any subdirectory) |
-   | design | `.specify/changes/<name>/design.md` exists |
-   | tasks | `.specify/changes/<name>/tasks.md` exists |
+   Derive readiness from each artifact's `requires` field:
+   - An artifact with empty `requires` is always **ready** (no dependencies)
+   - An artifact is **ready** when all artifacts listed in its `requires` are complete
+   - An artifact is **blocked** when any artifact in its `requires` is incomplete
+   - An artifact is **done** when its generated file(s) exist
 
-   Dependency order for readiness:
-   - `proposal`: always ready (no dependencies)
-   - `specs`: ready when `proposal` is complete
-   - `design`: ready when `proposal` is complete
-   - `tasks`: ready when both `specs` and `design` are complete
+   Display the artifact table dynamically from the schema's artifact list.
 
-   Classify each artifact as:
-   - **done**: file exists
-   - **ready**: dependencies are complete, file is missing
-   - **blocked**: dependencies are incomplete
+4. **Check task progress**
 
-4. **Check task progress** (if tasks.md exists)
-
-   Read `tasks.md` and count lines matching:
+   If the artifact tracked by `apply.tracks` (from `schema.yaml`) exists, read it and count lines matching:
    - `- [ ] ` = incomplete task
    - `- [x] ` or `- [X] ` = complete task
 
@@ -58,7 +52,7 @@ Show the current state of Specify in this project.
 
 5. **Check apply readiness**
 
-   Apply is ready when `tasks.md` exists (the `tasks` artifact is complete).
+   Apply is ready when all artifacts listed in `apply.requires` (from `schema.yaml`) are complete.
 
 6. **List archived changes** (brief)
 

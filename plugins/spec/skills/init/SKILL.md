@@ -35,19 +35,17 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
 
    Store the result as `$SCHEMA`.
 
-   Resolve `$SCHEMA` to locate the schema directory containing `config.yaml`, `schema.yaml`, and `templates/`:
-
-   - **Name** (e.g., `omnia`): look for `schemas/$SCHEMA/` in this plugin directory.
-   - **URL** (e.g., `https://github.com/augentic/specify/schemas/omnia`):
-     1. Extract the schema name from the last path segment of the URL.
-     2. Check if `schemas/<name>/` exists locally in this plugin directory.
-     3. If found locally, use the local directory.
-     4. If not found locally, fetch `config.yaml` from the URL via **WebFetch** (for GitHub URLs, convert to raw content: `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>/config.yaml`).
+   Resolve `$SCHEMA` using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `config.yaml`.
 
 3. **Create directory structure**
 
    ```bash
-   mkdir -p .specify/changes .specify/specs
+   mkdir -p .specify/changes .specify/specs .specify/.cache
+   ```
+
+   If `.specify/.gitignore` does not exist, create it with:
+   ```
+   .cache/
    ```
 
 4. **Install config.yaml**

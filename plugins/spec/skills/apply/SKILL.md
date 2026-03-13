@@ -21,17 +21,12 @@ Implement tasks from a Specify change.
 
 2. **Check artifact completion**
 
-   Verify all required artifacts exist by checking file presence:
-
-   | Artifact | Complete when |
-   |----------|---------------|
-   | proposal | `.specify/changes/<name>/proposal.md` exists |
-   | specs | `.specify/changes/<name>/specs/` contains at least one `.md` file (in any subdirectory) |
-   | design | `.specify/changes/<name>/design.md` exists |
-   | tasks | `.specify/changes/<name>/tasks.md` exists |
+   For each artifact defined in `schema.yaml`, check whether it is complete:
+   - If `generates` is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
+   - If `generates` is a glob pattern (e.g., `specs/**/*.md`), check if the directory contains at least one matching `.md` file.
 
    **Handle states:**
-   - If `tasks.md` does not exist (apply is blocked): show message listing missing artifacts, suggest using `/spec:propose` to create them
+   - If any artifact listed in `apply.requires` (from `schema.yaml`) is incomplete: show message listing missing artifacts, suggest using `/spec:propose` to create them
    - If all tasks are already complete: congratulate, suggest `/spec:archive`
    - Otherwise: proceed to implementation
 
@@ -39,14 +34,7 @@ Implement tasks from a Specify change.
 
    Read `.specify/config.yaml` for project context. Use `context` and `rules` as constraints guiding your implementation -- do not copy them into code comments.
 
-   **Resolve the schema** from the `schema` field in config to locate `schema.yaml`:
-   - **Name** (e.g., `omnia`): look for `schemas/<name>/` in this plugin directory.
-   - **URL** (e.g., `https://github.com/augentic/specify/schemas/omnia`):
-     1. Extract the schema name from the last path segment of the URL.
-     2. Check if `schemas/<name>/` exists locally in this plugin directory.
-     3. If found locally, use the local directory.
-     4. If not found locally, fetch `schema.yaml` via **WebFetch** (for GitHub URLs, convert to raw content: `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>/schema.yaml`).
-   - Read `schema.yaml` from the resolved schema directory.
+   **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`. Read `schema.yaml` from the resolved location.
 
 4. **Read context files**
 

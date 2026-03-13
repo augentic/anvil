@@ -43,14 +43,8 @@ When ready to implement, run /spec:apply
 
    - Verify `.specify/config.yaml` exists. If not, tell the user to run `/spec:init` first.
    - Read `.specify/config.yaml` to get the `schema` value. Default to `omnia` if not found.
-   - **Resolve the schema** to locate `schema.yaml` and `templates/`:
-     - **Name** (e.g., `omnia`): look for `schemas/<name>/` in this plugin directory.
-     - **URL** (e.g., `https://github.com/augentic/specify/schemas/omnia`):
-       1. Extract the schema name from the last path segment of the URL.
-       2. Check if `schemas/<name>/` exists locally in this plugin directory.
-       3. If found locally, use the local directory.
-       4. If not found locally, fetch `schema.yaml` and templates via **WebFetch** (for GitHub URLs, convert to raw content: `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>`).
-   - Read `schema.yaml` from the resolved schema directory. This defines the artifacts (id, template, instruction, requires) and the artifact dependency graph.
+   - **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml` and `templates/*`.
+   - Read `schema.yaml` from the resolved schema directory. This defines the artifact list, dependency graph, templates, and instructions. **All artifact knowledge comes from the schema** — do not assume fixed artifact IDs or output paths.
    - Check if `.specify/changes/<name>/` already exists. If so, ask if user wants to continue it or create a new one with a different name.
 
 4. **Create the change directory**
@@ -75,57 +69,19 @@ When ready to implement, run /spec:apply
 
    Use the **TodoWrite tool** to track progress through the artifacts.
 
-   The artifact dependency graph is:
-   ```
-   proposal (no dependencies)
-      |
-      +---> specs (requires: proposal)
-      |
-      +---> design (requires: proposal)
-               |
-               +---> tasks (requires: specs + design)
-   ```
+   Build the dependency graph from the `requires` field of each artifact in `schema.yaml`. Topologically sort: an artifact is ready when all artifacts listed in its `requires` are complete. Artifacts with no `requires` come first; artifacts sharing the same dependency level can be created in parallel or any order.
 
-   Create artifacts in this order: **proposal** -> **specs** + **design** -> **tasks**
+   For each artifact (in dependency order):
 
-   For each artifact:
-   - Read any completed dependency files for context
-   - Look up the artifact definition in `schema.yaml` by its `id` (proposal, specs, design, tasks)
-   - Read the `instruction` field from `schema.yaml` for that artifact
-   - Read the template file from `templates/<template-filename>` in the resolved schema directory (the `template` field in `schema.yaml` gives the filename)
+   - Read any completed dependency files (the artifacts listed in `requires`) for context
+   - Read the `instruction` field from `schema.yaml` for this artifact
+   - Read the template from `templates/<template>` in the resolved schema directory (the `template` field in `schema.yaml` gives the filename)
+   - Determine the output path from the `generates` field, relative to `.specify/changes/<name>/`:
+     - Simple filename (e.g., `proposal.md`): write to `.specify/changes/<name>/<generates>`
+     - Glob pattern (e.g., `specs/**/*.md`): the instruction determines how many files to create and where within the pattern
    - Create the artifact file using the template structure and following the instruction
-   - Apply `context` and `rules` from config.yaml as constraints -- but do NOT copy them into the file
+   - Apply `context` and `rules` from config.yaml as constraints — but do NOT copy them into the file
    - Verify the file exists after writing before proceeding to next
-
-   ---
-
-   ### Artifact: proposal
-
-   **Schema artifact id**: `proposal`
-   **Write to**: `.specify/changes/<name>/proposal.md`
-
-   ---
-
-   ### Artifact: specs
-
-   **Schema artifact id**: `specs`
-   **Write to**: `.specify/changes/<name>/specs/<crate>/spec.md` (one per crate)
-
-   The schema instruction describes the workflow paths (RT, Omnia, Manual) and the spec formats to use for new vs modified crates. Follow the instruction from `schema.yaml` for the `specs` artifact.
-
-   ---
-
-   ### Artifact: design
-
-   **Schema artifact id**: `design`
-   **Write to**: `.specify/changes/<name>/design.md`
-
-   ---
-
-   ### Artifact: tasks
-
-   **Schema artifact id**: `tasks`
-   **Write to**: `.specify/changes/<name>/tasks.md`
 
 7. **Show final status**
 
@@ -136,8 +92,8 @@ When ready to implement, run /spec:apply
    - Prompt: "Run `/spec:apply` or ask me to implement to start working on the tasks."
 
 **Guardrails**
-- Create ALL artifacts needed for implementation (proposal, specs, design, tasks)
-- Always read dependency artifacts before creating a new one
+- Create ALL artifacts defined in `schema.yaml` before declaring the change ready
+- Always read dependency artifacts (from `requires`) before creating a new one
 - If context is critically unclear, ask the user -- but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, ask if user wants to continue it or create a new one
 - Verify each artifact file exists after writing before proceeding to next

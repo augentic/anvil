@@ -97,14 +97,29 @@ artifacts:
         Create one spec file per crate listed in the proposal's
         Crates section. Choose the right template based on the proposal:
 
-        **New Crates**: use the Handler-organized baseline format with
-        `## Handler:` sections containing Purpose, Requirements, Scenarios,
-        and Error Conditions. Use `##### Scenario:` (5 hashtags) and
-        `#### Requirement:` (4 hashtags) within handler sections. Use the
-        exact kebab-case name from the proposal (specs/<crate>/spec.md).
-        See references/specify.md for the full baseline format.
+        **New Crates**: use the **New Crate** template from the resolved
+        schema's `templates/spec.md`. Organize by `## Handler:` sections.
+        Use the exact kebab-case name from the proposal
+        (specs/<crate>/spec.md).
 
-        **Modified Crates**: use the delta format. Use the existing spec
+        New crate guidelines:
+
+        Structure the spec with one `## Handler:` section per handler.
+        Each handler section contains:
+          - `### Purpose` — what the handler does
+          - `### Requirements` — behavioral requirements, each as
+            `#### Requirement: <name>` with `##### Scenario:` entries
+          - `### Error Conditions` — error types and triggers
+          - `### Metrics` — (optional) metric names and types
+
+        Format requirements:
+          - Use SHALL/MUST for normative requirements (avoid should/may)
+          - Each scenario: `##### Scenario: <name>` with WHEN/THEN format
+          - Every requirement MUST have at least one scenario
+          - Specs should be testable — each scenario is a potential test case
+
+        **Modified Crates**: use the **Modified Crate** template from the
+        resolved schema's `templates/spec.md`. Use the existing spec
         folder name from .specify/specs/<crate>/ when creating the delta
         spec at specs/<crate>/spec.md.
 
@@ -136,6 +151,9 @@ artifacts:
 
         Common pitfall: Using MODIFIED with partial content loses detail at
         archive time.
+
+        If adding new concerns without changing existing behavior, use ADDED
+        instead.
 
         Specs should be testable - each scenario is a potential test case.
 

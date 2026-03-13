@@ -21,7 +21,8 @@ This plugin provides the core Specify workflow skills: propose a change, apply (
 ├── rules/
 │   └── spec.mdc          # This file
 ├── references/
-│   └── specify.md        # Artifact format reference
+│   ├── schema-resolution.md  # Centralized schema resolution algorithm
+│   └── specify.md            # Artifact format reference (symlink)
 └── skills/
     ├── init/              # Initialize Specify in a project
     ├── propose/           # Create a change with all artifacts
@@ -31,7 +32,7 @@ This plugin provides the core Specify workflow skills: propose a change, apply (
     └── status/            # Check change status and progress
 ```
 
-Each skill has its own SKILL.md with full details. The Specify artifact format is described in [specify.md](../references/specify.md).
+Each skill has its own SKILL.md with full details. Schema resolution is defined in [schema-resolution.md](../references/schema-resolution.md). The Specify artifact format is described in [specify.md](../references/specify.md).
 
 ## Workflow
 
