@@ -1,0 +1,9 @@
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/wasmprinter-bb7e940260508213.d: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/component.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/operand_stack.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/operator.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/print.rs
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/libwasmprinter-bb7e940260508213.rmeta: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/component.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/operand_stack.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/operator.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/print.rs
+
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/lib.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/component.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/operand_stack.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/operator.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmprinter-0.244.0/src/print.rs:

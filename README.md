@@ -10,8 +10,6 @@ This repository is designed for a human-driven Specify workflow:
 /spec:propose  ->  /spec:apply  ->  /spec:archive
 ```
 
-See [Specify](https://github.com/augentic/specify) for more options.
-
 The job of this repository is not to replace Specify. Its job is to supply specialist expertise:
 
 - Omnia and WASM-aware code generation
@@ -22,23 +20,16 @@ The job of this repository is not to replace Specify. Its job is to supply speci
 
 ## Getting Started
 
-Install Specify and initialize the repository as an Specify project:
-
-```bash
-brew install augentic/specify/specify
-specify init
-specify update
-```
-
-Then use the core Specify flow in Cursor's agent pane:
+Install the Augentic plugin in Cursor, then initialize Specify in your project:
 
 | Command | Description |
 | ------- | ----------- |
-| `/spec:propose` "Migrate [https://github.com/org/my-service](https://github.com/org/my-service) to Rust WASM on Omnia." | Create artifacts |
+| `/spec:init` | Initialize Specify in your project (creates `.specify/` structure) |
+| `/spec:propose` "Migrate https://github.com/org/my-service to Rust WASM on Omnia." | Create artifacts |
 | `/spec:apply` | Apply the change |
-| `/spec:archive` | Merge specs and design into baseline specs |
-
-If you are working from a fresh clone, run `specify init` before using any `/spec:*` command. The workflow skills in `plugins/spec/` expect the standard Specify project structure to exist.
+| `/spec:archive` | Merge specs into baseline and archive |
+| `/spec:status` | Check artifact completion and task progress |
+| `/spec:explore` | Think through ideas and investigate problems |
 
 ## Plugins
 
@@ -50,10 +41,12 @@ Core Specify workflow orchestration.
 
 | Skill                | Primary role                                                                 |
 | -------------------- | ---------------------------------------------------------------------------- |
+| `init`               | Initialize Specify in a project                                              |
 | `propose`            | Create a change and generate all artifacts in one step                       |
-| `apply`              | Implement tasks from an Specify change                                      |
+| `apply`              | Implement tasks from a Specify change                                       |
 | `archive`            | Finalize and archive a completed change                                      |
 | `explore`            | Thinking partner for exploring ideas, problems, and requirements             |
+| `status`             | Check artifact completion, task progress, and active changes                 |
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -92,14 +85,13 @@ Requirements analysis, design enrichment, and SoW generation.
 augentic-plugins/
 ├── .cursor/
 │   └── rules/                    # Project guidance for agents
-├── .specify/                     # Specify project config and schemas
 ├── plugins/
 │   ├── omnia/                    # Omnia code generation plugin
-│   ├── spec/                     # Specify workflow plugin (propose, apply, archive, explore)
+│   ├── spec/                     # Specify workflow plugin
 │   ├── plan/                     # Plan requirements analysis plugin
 │   └── rt/                       # RT migration plugin
 ├── references/                   # Shared Omnia and workflow references
-├── examples/                     # Supporting examples and reference material
+├── schemas/                      # Schema definitions (reference documentation)
 └── scripts/                      # Documentation and consistency checks
 ```
 

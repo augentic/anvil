@@ -1,0 +1,8 @@
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/wasmtime_internal_fiber-f5cdbc59f8ffc0e7.d: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/unix.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/stackswitch.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/stackswitch/aarch64.rs
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/libwasmtime_internal_fiber-f5cdbc59f8ffc0e7.rmeta: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/unix.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/stackswitch.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/stackswitch/aarch64.rs
+
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/lib.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/unix.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/stackswitch.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wasmtime-internal-fiber-42.0.1/src/stackswitch/aarch64.rs:

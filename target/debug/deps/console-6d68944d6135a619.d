@@ -1,0 +1,11 @@
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/console-6d68944d6135a619.d: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/common_term.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/kb.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/term.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/unix_term.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/utils.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/ansi.rs
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/libconsole-6d68944d6135a619.rmeta: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/common_term.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/kb.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/term.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/unix_term.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/utils.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/ansi.rs
+
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/lib.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/common_term.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/kb.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/term.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/unix_term.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/utils.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/console-0.16.2/src/ansi.rs:

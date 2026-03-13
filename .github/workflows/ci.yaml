@@ -3,12 +3,10 @@ name: CI
 on:
   push:
     paths:
-      - "skills/**"
       - "references/**"
       - "scripts/**"
-      - ".specify/**"
       - "plugins/**"
-      - "examples/**"
+      - "schemas/**"
       - ".github/workflows/ci.yaml"
   pull_request:
     branches: [main]

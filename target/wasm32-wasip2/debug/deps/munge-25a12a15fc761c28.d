@@ -1,0 +1,11 @@
+/Users/andrewweston/rust/github.com/augentic/specify/target/wasm32-wasip2/debug/deps/munge-25a12a15fc761c28.d: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/__macro.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/impls.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/internal.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/../example.md
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/wasm32-wasip2/debug/deps/libmunge-25a12a15fc761c28.rlib: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/__macro.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/impls.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/internal.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/../example.md
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/wasm32-wasip2/debug/deps/libmunge-25a12a15fc761c28.rmeta: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/__macro.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/impls.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/internal.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/../example.md
+
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/lib.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/__macro.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/impls.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/internal.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/munge-0.4.7/src/../example.md:

@@ -1,0 +1,2 @@
+cargo:rerun-if-changed=build.rs
+cargo:rustc-env=DEBUG_OUTPUT_DIR=/Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/wasmtime-internal-component-macro-4a62550031a13ebd/out

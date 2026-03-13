@@ -1,0 +1,8 @@
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/omnia_runtime_macro-550300915893c859.d: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/expand.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/runtime.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/../README.md
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/libomnia_runtime_macro-550300915893c859.dylib: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/expand.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/runtime.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/../README.md
+
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/lib.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/expand.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/runtime.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-runtime-macro-0.28.0/src/../README.md:

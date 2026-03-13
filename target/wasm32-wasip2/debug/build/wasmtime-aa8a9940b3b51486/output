@@ -1,0 +1,9 @@
+cargo:rerun-if-changed=build.rs
+cargo:rustc-check-cfg=cfg(asan)
+cargo:rustc-check-cfg=cfg(has_native_signals)
+cargo:rustc-check-cfg=cfg(has_virtual_memory)
+cargo:rustc-check-cfg=cfg(has_custom_sync)
+cargo:rustc-check-cfg=cfg(has_host_compiler_backend)
+cargo:rustc-check-cfg=cfg(default_target_pulley)
+cargo:rustc-cfg=default_target_pulley
+cargo:rustc-cfg=feature="pulley"

@@ -1,0 +1,11 @@
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/wast-8b738b2d918a1e8e.d: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/ast/mod.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/lexer.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/parser.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/ast/token.rs
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/libwast-8b738b2d918a1e8e.rlib: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/ast/mod.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/lexer.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/parser.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/ast/token.rs
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/libwast-8b738b2d918a1e8e.rmeta: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/ast/mod.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/lexer.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/parser.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/ast/token.rs
+
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/lib.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/ast/mod.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/lexer.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/parser.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/wast-35.0.2/src/ast/token.rs:

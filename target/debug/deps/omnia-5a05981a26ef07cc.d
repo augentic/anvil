@@ -1,0 +1,11 @@
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/omnia-5a05981a26ef07cc.d: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/compile.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/create.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/traits.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/../README.md
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/libomnia-5a05981a26ef07cc.rlib: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/compile.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/create.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/traits.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/../README.md
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/libomnia-5a05981a26ef07cc.rmeta: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/compile.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/create.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/traits.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/../README.md
+
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/lib.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/compile.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/create.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/traits.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-0.28.0/src/../README.md:

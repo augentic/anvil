@@ -1,0 +1,9 @@
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/include_dir-4fd15b48c3f2cea7.d: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/dir.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/dir_entry.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/file.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/../README.md
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/libinclude_dir-4fd15b48c3f2cea7.rmeta: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/dir.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/dir_entry.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/file.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/../README.md
+
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/lib.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/dir.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/dir_entry.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/file.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/include_dir-0.7.4/src/../README.md:

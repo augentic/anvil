@@ -1,9 +1,0 @@
-name: Create Release
-
-on:
-  workflow_dispatch:
-
-jobs:
-  release:
-    uses: augentic/.github/.github/workflows/release.yaml@main
-    secrets: inherit

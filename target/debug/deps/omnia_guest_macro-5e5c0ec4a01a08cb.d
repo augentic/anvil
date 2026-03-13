@@ -1,0 +1,9 @@
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/omnia_guest_macro-5e5c0ec4a01a08cb.d: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/guest.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/http.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/messaging.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/../README.md
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/libomnia_guest_macro-5e5c0ec4a01a08cb.dylib: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/guest.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/http.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/messaging.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/../README.md
+
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/lib.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/guest.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/http.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/messaging.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/omnia-guest-macro-0.28.0/src/../README.md:

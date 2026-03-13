@@ -2,11 +2,9 @@
 name: explore
 description: Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.
 license: MIT
-compatibility: Requires specify CLI.
 metadata:
   author: specify
-  version: "1.0"
-  generatedBy: "1.2.0"
+  version: "2.0"
 ---
 
 Enter explore mode. Think deeply. Visualize freely. Follow the conversation wherever it goes.
@@ -81,10 +79,7 @@ You have full context of the Specify system. Use it naturally, don't force it.
 
 ### Check for context
 
-At the start, quickly check what exists:
-```bash
-specify list --json
-```
+At the start, quickly check what exists by listing directories in `.specify/changes/` (skip `archive/`). Each subdirectory with a `.metadata.yaml` is an active change. Read `.metadata.yaml` for the schema name and creation date.
 
 This tells you:
 - If there are active changes
@@ -104,9 +99,9 @@ If the user mentions a change or you detect one is relevant:
 
 1. **Read existing artifacts for context**
    - `.specify/changes/<name>/proposal.md`
+   - `.specify/changes/<name>/specs/` (all spec files)
    - `.specify/changes/<name>/design.md`
    - `.specify/changes/<name>/tasks.md`
-   - etc.
 
 2. **Reference them naturally in conversation**
    - "Your design mentions using Redis, but we just realized SQLite fits better..."

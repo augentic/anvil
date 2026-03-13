@@ -1,0 +1,26 @@
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/settings.rs
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/types.rs
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/opcodes.rs
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/inst_builder.rs
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/settings-pulley.rs
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/settings-pulley.rs
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/settings-arm64.rs
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/numerics.isle
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_numerics.rs
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/clif_opt.isle
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/clif_lower.isle
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/assembler.isle
+Writing generated file: /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/assembler-isle-macro.rs
+Rebuilding /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_opt.rs
+Writing ISLE-generated Rust code to /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_opt.rs
+Rebuilding /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_x64.rs
+Writing ISLE-generated Rust code to /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_x64.rs
+Rebuilding /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_aarch64.rs
+Writing ISLE-generated Rust code to /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_aarch64.rs
+Rebuilding /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_s390x.rs
+Writing ISLE-generated Rust code to /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_s390x.rs
+Rebuilding /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_riscv64.rs
+Writing ISLE-generated Rust code to /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_riscv64.rs
+Rebuilding /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_pulley_shared.rs
+Writing ISLE-generated Rust code to /Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/cranelift-codegen-0f77751a483c33a9/out/isle_pulley_shared.rs
+fatal: not a git repository (or any of the parent directories): .git

@@ -12,6 +12,7 @@ This repository provides specialist skills and references for Specify-driven Rus
 The intended workflow is human-driven Specify:
 
 ```bash
+/spec:init      # once per project
 /spec:propose
 /spec:apply
 /spec:archive
@@ -51,10 +52,12 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Specify Plugin (`plugins/spec/`)
 
+- `init` - initialize Specify in a project (one-time setup)
 - `propose` - create a change and generate all artifacts in one step
-- `apply` - implement tasks from an Specify change
+- `apply` - implement tasks from a Specify change
 - `archive` - finalize and archive a completed change
 - `explore` - thinking partner for ideas, investigation, and requirements
+- `status` - check artifact completion, task progress, and active changes
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -80,15 +83,13 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 ```text
 /.cursor/
   └── rules/        # Project guidance for agents
-
-/.specify/          # Specify project config and schemas
 /plugins/
   ├── omnia/        # Omnia code generation plugin
-  ├── spec/         # Specify workflow plugin (propose, apply, archive, explore)
+  ├── spec/         # Specify workflow plugin (init, propose, apply, archive, explore, status)
   ├── plan/         # Plan requirements analysis plugin
   └── rt/           # RT migration plugin
 /references/        # Shared Omnia and workflow references
-/examples/          # Worked examples
+/schemas/           # Schema definitions (reference documentation)
 /scripts/           # Documentation and consistency checks
 ```
 

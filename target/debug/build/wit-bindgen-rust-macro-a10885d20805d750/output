@@ -1,0 +1,2 @@
+cargo:rerun-if-changed=build.rs
+cargo:rustc-env=DEBUG_OUTPUT_DIR=/Users/andrewweston/rust/github.com/augentic/specify/target/debug/build/wit-bindgen-rust-macro-a10885d20805d750/out

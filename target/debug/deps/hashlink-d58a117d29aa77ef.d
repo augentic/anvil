@@ -1,0 +1,8 @@
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/hashlink-d58a117d29aa77ef.d: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/linked_hash_map.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/linked_hash_set.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/lru_cache.rs
+
+/Users/andrewweston/rust/github.com/augentic/specify/target/debug/deps/libhashlink-d58a117d29aa77ef.rmeta: /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/lib.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/linked_hash_map.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/linked_hash_set.rs /Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/lru_cache.rs
+
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/lib.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/linked_hash_map.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/linked_hash_set.rs:
+/Users/andrewweston/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/hashlink-0.11.0/src/lru_cache.rs:

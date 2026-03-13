@@ -2,4 +2,3 @@
 # Primary language: Markdown
 * linguist-documentation=false
 *.md linguist-detectable=true
-*.rs linguist-detectable=false
