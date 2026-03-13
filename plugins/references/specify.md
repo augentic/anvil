@@ -47,10 +47,14 @@ One spec file per capability or crate, at `specs/<name>/spec.md`.
 
 Specs are behavioral. They should not encode Omnia trait bindings, WASM implementation details, or generator-specific instructions.
 
-### Spec File Format
+### Spec File Format (Baseline / New Crate)
+
+New crate specs and promoted baselines use the `## Handler:` format. This
+is the format that downstream skills (crate-writer, test-writer) expect.
+code-analyzer and epic-analyzer also produce this format.
 
 ```markdown
-# <Capability Name> Specification
+# <Crate Name> Specification
 
 ## Handler: <handler-name>
 
@@ -83,6 +87,14 @@ Source: <source function, JIRA story, or design section>
 
 - `<metric_name>` — type: <counter|gauge|histogram>; emitted: <when>
 ```
+
+### Delta Spec Format (Modified Crate)
+
+When modifying an existing crate, delta specs use operation headers
+(`## ADDED Requirements`, `## MODIFIED Requirements`, etc.) with
+`### Requirement:` and `#### Scenario:` at shallower heading depth.
+See the spec artifact reference for details on delta operations and
+the archive skill for how deltas merge into the baseline.
 
 ### Deriving Specs From Source Code (code-analyzer)
 
@@ -159,6 +171,11 @@ Generator-owned binding decisions such as Omnia trait composition remain in spec
 
 Use `proposal.md` to capture why the change exists and what is in scope.
 
+The Omnia schema uses **Crates** (`New Crates` / `Modified Crates`). The
+Realtime schema uses **Capabilities** (`New Capabilities` / `Modified
+Capabilities`). The schema-specific proposal template determines which
+heading names to use. Both map to `specs/<name>/spec.md`.
+
 ```markdown
 ## Why
 
@@ -174,15 +191,15 @@ Use `proposal.md` to capture why the change exists and what is in scope.
 
 - <scoped change>
 
-## Capabilities
+## Crates (Omnia) / Capabilities (Realtime)
 
-### New Capabilities
+### New Crates / New Capabilities
 
-- `capability-name`: one-line description
+- `name`: one-line description
 
-### Modified Capabilities
+### Modified Crates / Modified Capabilities
 
-- `existing-capability`: one-line description
+- `existing-name`: one-line description
 
 ## Impact
 

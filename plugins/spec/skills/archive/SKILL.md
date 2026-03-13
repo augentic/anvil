@@ -63,8 +63,15 @@ Archive a completed change.
 
    c. **If NO baseline exists** (new capability):
       - Create `.specify/specs/<capability>/` directory
-      - Extract only the content under `## ADDED Requirements` -- specifically, the `### Requirement:` blocks and their content (description, scenarios)
-      - Write these requirement blocks (without the `## ADDED Requirements` header) as the new baseline at `.specify/specs/<capability>/spec.md`
+      - Detect the spec format:
+        - If the spec contains `## Handler:` sections (new crate format):
+          copy the entire content as the new baseline directly — it is
+          already in baseline format.
+        - If the spec contains `## ADDED Requirements` (delta format):
+          extract only the `### Requirement:` blocks and their content
+          (description, scenarios), without the `## ADDED Requirements`
+          header.
+      - Write the result as the new baseline at `.specify/specs/<capability>/spec.md`
       - Ignore any MODIFIED/REMOVED/RENAMED sections (they don't apply to a new baseline)
 
    d. **If a baseline EXISTS** (existing capability):

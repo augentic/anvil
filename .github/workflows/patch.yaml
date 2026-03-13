@@ -9,20 +9,21 @@ concurrency:
 jobs:
   skip:
     name: Skipped
-    if: startsWith(github.ref_name, 'release-') == false
+    if: startsWith(github.ref_name, 'release/') == false
     runs-on: ubuntu-latest
     steps:
       - run: |
-          echo "This workflow only runs on the 'release-*' branches"
+          echo "This workflow only runs on 'release/*' branches"
           exit 1
 
   patch:
     name: Patch
-    if: startsWith(github.ref_name, 'release-') == true
+    if: startsWith(github.ref_name, 'release/') == true
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: write
+      pull-requests: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -51,7 +52,7 @@ jobs:
       - name: Create patch branch from latest tag
         run: |
           git checkout "${{ steps.version.outputs.base_tag }}"
-          git checkout -b "release-${{ steps.version.outputs.version }}"
+          git checkout -b "release/v${{ steps.version.outputs.version }}"
 
       - name: Update version
         run: echo "${{ steps.version.outputs.version }}" > VERSION
@@ -63,14 +64,23 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "release: prepare v${VERSION}"
-          git push origin "release-${VERSION}"
+          git push origin "release/v${VERSION}"
+
+      - name: Open PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          gh pr create \
+            --title "Patch v${VERSION}" \
+            --body "Patch release v${VERSION}. Cherry-pick fixes onto this branch before merging."
 
       - name: Summary
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           echo "## Patch Branch Created" >> "$GITHUB_STEP_SUMMARY"
-          echo "Branch: \`release-${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "Branch: \`release/v${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "Next steps:" >> "$GITHUB_STEP_SUMMARY"
-          echo "1. Cherry-pick fixes onto \`release-${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
-          echo "2. Run **Publish Release** workflow from \`release-${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "1. Cherry-pick fixes onto \`release/v${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "2. Merge the PR to publish the release" >> "$GITHUB_STEP_SUMMARY"

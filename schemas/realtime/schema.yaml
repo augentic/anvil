@@ -79,67 +79,47 @@ artifacts:
       **Manual path** (Source is "Manual" or absent):
 
         Create one spec file per capability listed in the proposal's
-        Capabilities section.
+        Capabilities section. Choose the right template based on the proposal:
 
-        Guidelines:
-          - New capabilities: use the exact kebab-case name from the proposal
-          (specs/<capability>/spec.md).
-          - Modified capabilities: use the existing spec folder name from
-          .specify/specs/<capability>/ when creating the delta spec at
-          specs/<capability>/spec.md.
+        **New Capabilities**: use the Handler-organized baseline format with
+        `## Handler:` sections containing Purpose, Requirements, Scenarios,
+        and Error Conditions. Use `##### Scenario:` (5 hashtags) and
+        `#### Requirement:` (4 hashtags) within handler sections. Use the
+        exact kebab-case name from the proposal (specs/<capability>/spec.md).
+        See references/specify.md for the full baseline format.
+
+        **Modified Capabilities**: use the delta format. Use the existing
+        spec folder name from .specify/specs/<capability>/ when creating
+        the delta spec at specs/<capability>/spec.md.
 
         Delta operations (use ## headers):
-          - **ADDED Requirements**: New capabilities
-          - **MODIFIED Requirements**: Changed behavior - MUST include full 
+          - **ADDED Requirements**: New behavior
+          - **MODIFIED Requirements**: Changed behavior - MUST include full
             updated content.
-          - **REMOVED Requirements**: Deprecated features - MUST include 
+          - **REMOVED Requirements**: Deprecated features - MUST include
             **Reason** and **Migration**.
           - **RENAMED Requirements**: Name changes only - use FROM:/TO: format
 
-        Format requirements:
+        Delta format requirements:
           - Each requirement: `### Requirement: <name>` followed by description
           - Use SHALL/MUST for normative requirements (avoid should/may)
           - Each scenario: `#### Scenario: <name>` with WHEN/THEN format
-          - **CRITICAL**: In delta specs (this template), scenarios MUST use
-            exactly 4 hashtags (`####`). In full baseline specs organized
-            under `## Handler:` sections (see references/specify.md),
-            scenarios are one level deeper at `#####`. Using fewer hashtags
-            or bullets will fail silently.
+          - **CRITICAL**: In delta specs, scenarios MUST use exactly 4 hashtags
+            (`####`). In full baseline specs organized under `## Handler:`
+            sections, scenarios are one level deeper at `#####`.
           - Every requirement MUST have at least one scenario.
 
         MODIFIED requirements workflow:
-          1. Locate the existing requirement in 
+          1. Locate the existing requirement in
             .specify/specs/<capability>/spec.md
           2. Copy the ENTIRE requirement block (from `### Requirement:`
             through all scenarios).
-          3. Paste under `## MODIFIED Requirements` and edit to reflect new 
+          3. Paste under `## MODIFIED Requirements` and edit to reflect new
             behavior.
           4. Ensure header text matches exactly (whitespace-insensitive)
 
         Common pitfall: Using MODIFIED with partial content loses detail at
         archive time.
-
-        If adding new concerns without changing existing behavior, use ADDED
-        instead.
-
-        Example:
-          
-        ```markdown
-        ## ADDED Requirements
-
-        ### Requirement: User can export data
-        The system SHALL allow users to export their data in CSV format.
-
-        #### Scenario: Successful export
-        - **WHEN** user clicks "Export" button
-        - **THEN** system downloads a CSV file with all user data
-
-        ## REMOVED Requirements
-
-        ### Requirement: Legacy export
-        **Reason**: Replaced by new export system
-        **Migration**: Use new export endpoint at /api/v2/export
-        ```
 
         Specs should be testable - each scenario is a potential test case.
 

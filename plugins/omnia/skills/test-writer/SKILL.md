@@ -1,7 +1,7 @@
 ---
 name: test-writer
 description: "Generate or update test suites for Omnia Rust WASM crates from Specify artifacts -- MockProvider setup, integration tests, spec-to-test mapping, and drift detection."
-argument-hint: [crate-name] [project-dir?]
+argument-hint: [crate-name] [project-dir?] [--change-dir <path>?]
 allowed-tools: Read, Write, StrReplace, Shell, Grep, ReadLints
 ---
 
@@ -24,12 +24,13 @@ Use test-writer when:
 ## Arguments
 
 ```text
-$CRATE_NAME   = $ARGUMENTS[0]
-$PROJECT_DIR  = $ARGUMENTS[1] OR "."
-$CRATE_PATH   = $PROJECT_DIR/crates/$CRATE_NAME
-$CHANGE_DIR   = $PROJECT_DIR/.specify/changes/$CRATE_NAME
-$SPECS_DIR    = $CHANGE_DIR/specs
-$DESIGN_PATH  = $CHANGE_DIR/design.md
+$CRATE_NAME     = $ARGUMENTS[0]
+$PROJECT_DIR    = $ARGUMENTS[1] OR "."
+$CHANGE_DIR_ARG = "--change-dir" value in $ARGUMENTS  # Optional
+$CRATE_PATH     = $PROJECT_DIR/crates/$CRATE_NAME
+$CHANGE_DIR     = $CHANGE_DIR_ARG OR $PROJECT_DIR/.specify/changes/$CRATE_NAME
+$SPECS_DIR      = $CHANGE_DIR/specs
+$DESIGN_PATH    = $CHANGE_DIR/design.md
 ```
 
 ## Required References

@@ -86,11 +86,13 @@ augentic-plugins/
 ├── .cursor/
 │   └── rules/                    # Project guidance for agents
 ├── plugins/
+│   ├── references/               # Shared references (specify.md, agent-teams.md)
 │   ├── omnia/                    # Omnia code generation plugin
+│   │   └── references/           # Omnia-specific references (guardrails, providers, etc.)
 │   ├── spec/                     # Specify workflow plugin
+│   │   └── references/           # Artifact templates and instructions
 │   ├── plan/                     # Plan requirements analysis plugin
 │   └── rt/                       # RT migration plugin
-│   ├── references/               # Shared Omnia and workflow references
 ├── schemas/                      # Schema definitions (reference documentation)
 └── scripts/                      # Documentation and consistency checks
 ```

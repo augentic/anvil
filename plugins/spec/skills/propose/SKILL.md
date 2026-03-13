@@ -99,7 +99,14 @@ When ready to implement, run /spec:apply
    ### Artifact: specs
 
    **Reference**: `references/spec.md`
-   **Write to**: `.specify/changes/<name>/specs/<capability>/spec.md` (one per capability)
+   **Write to**: `.specify/changes/<name>/specs/<crate>/spec.md` (one per crate)
+
+   The spec reference provides two templates:
+   - **New Crates** (listed under New Crates in the proposal): use the
+     `## Handler:` baseline format with Purpose, Requirements, Scenarios.
+     This is the format downstream skills (crate-writer, test-writer) expect.
+   - **Modified Crates** (listed under Modified Crates in the proposal): use
+     the delta format (ADDED/MODIFIED/REMOVED/RENAMED sections).
 
    ---
 

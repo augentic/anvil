@@ -3,11 +3,14 @@ name: CI
 on:
   push:
     paths:
-      - "references/**"
-      - "scripts/**"
       - "plugins/**"
       - "schemas/**"
+      - "scripts/**"
+      - ".cursor/rules/**"
+      - ".cursor-plugin/**"
       - ".github/workflows/ci.yaml"
+      - "AGENTS.md"
+      - "Makefile"
   pull_request:
     branches: [main]
   workflow_call:

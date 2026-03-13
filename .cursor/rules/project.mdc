@@ -82,15 +82,17 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ```text
 /.cursor/
-  └── rules/        # Project guidance for agents
+  └── rules/              # Project guidance for agents
 /plugins/
-  ├── omnia/        # Omnia code generation plugin
-  ├── spec/         # Specify workflow plugin (init, propose, apply, archive, explore, status)
-  ├── plan/         # Plan requirements analysis plugin
-  └── rt/           # RT migration plugin
-  ├── references/   # Shared Omnia and workflow references
-/schemas/           # Schema definitions (reference documentation)
-/scripts/           # Documentation and consistency checks
+  ├── references/         # Shared references (specify.md, agent-teams.md)
+  ├── omnia/              # Omnia code generation plugin
+  │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
+  ├── spec/               # Specify workflow plugin (init, propose, apply, archive, explore, status)
+  │   └── references/     # Artifact templates and instructions
+  ├── plan/               # Plan requirements analysis plugin
+  └── rt/                 # RT migration plugin
+/schemas/                 # Schema definitions (reference documentation)
+/scripts/                 # Documentation and consistency checks
 ```
 
 ## Validation
@@ -120,7 +122,7 @@ cargo clippy -- -D warnings
 
 ### WASM And Omnia SDK Constraints
 
-See [guardrails.md](plugins/references/omnia/guardrails.md) for forbidden crates and APIs, provider trait rules, validation placement, and runtime constraints.
+See [guardrails.md](plugins/omnia/references/guardrails.md) for forbidden crates and APIs, provider trait rules, validation placement, and runtime constraints.
 
 ## File Locations
 
@@ -158,5 +160,5 @@ In this repository:
 
 - Review `plugins/references/specify.md`
 - Review the relevant `SKILL.md`
-- Review `plugins/references/omnia/`
+- Review `plugins/omnia/references/`
 - Open an issue for bugs or enhancement requests
