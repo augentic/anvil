@@ -35,9 +35,18 @@ Implement tasks from a Specify change.
    - If all tasks are already complete: congratulate, suggest `/spec:archive`
    - Otherwise: proceed to implementation
 
-3. **Read project config**
+3. **Read project config and resolve schema**
 
    Read `.specify/config.yaml` for project context. Use `context` and `rules` as constraints guiding your implementation -- do not copy them into code comments.
+
+   **Resolve the schema** from the `schema` field in config to locate `schema.yaml`:
+   - **Name** (e.g., `omnia`): look for `schemas/<name>/` in this plugin directory.
+   - **URL** (e.g., `https://github.com/augentic/specify/schemas/omnia`):
+     1. Extract the schema name from the last path segment of the URL.
+     2. Check if `schemas/<name>/` exists locally in this plugin directory.
+     3. If found locally, use the local directory.
+     4. If not found locally, fetch `schema.yaml` via **WebFetch** (for GitHub URLs, convert to raw content: `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>/schema.yaml`).
+   - Read `schema.yaml` from the resolved schema directory.
 
 4. **Read context files**
 
@@ -59,9 +68,7 @@ Implement tasks from a Specify change.
 
 6. **Implement tasks (loop until done or blocked)**
 
-   Apply instruction (from schema):
-
-   Read `references/apply.md` for the detailed implementation steps, including:
+   Read the `apply.instruction` field from the resolved `schema.yaml` for the detailed implementation steps, including:
    - Arguments used by skills
    - Mode detection (Create vs Update)
    - Step-by-step execution for each mode

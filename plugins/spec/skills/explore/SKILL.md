@@ -78,10 +78,21 @@ You have full context of the Specify system. Use it naturally, don't force it.
 
 At the start, quickly check what exists by listing directories in `.specify/changes/` (skip `archive/`). Each subdirectory with a `.metadata.yaml` is an active change. Read `.metadata.yaml` for the schema name and creation date.
 
+Also read `.specify/config.yaml` for the `schema` field and **resolve the schema** to understand the project workflow:
+- **Name** (e.g., `omnia`): look for `schemas/<name>/` in this plugin directory.
+- **URL** (e.g., `https://github.com/augentic/specify/schemas/omnia`):
+  1. Extract the schema name from the last path segment of the URL.
+  2. Check if `schemas/<name>/` exists locally in this plugin directory.
+  3. If found locally, use the local directory.
+  4. If not found locally, fetch `schema.yaml` via **WebFetch** (for GitHub URLs, convert to raw content: `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>/schema.yaml`).
+
+Read `schema.yaml` to understand what artifacts the schema defines, what source types are supported (Repository, Epic, Manual), and what the workflow looks like.
+
 This tells you:
 - If there are active changes
 - Their names, schemas, and status
 - What the user might be working on
+- What the project workflow and artifact structure looks like
 
 ### When no change exists
 

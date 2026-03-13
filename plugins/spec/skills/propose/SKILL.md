@@ -39,10 +39,18 @@ When ready to implement, run /spec:apply
    Good: `add-dark-mode`, `fix-export-bug`, `user-auth-v2`
    Bad: `Add-Dark-Mode`, `add dark mode`, `-leading`, `trailing-`
 
-3. **Check initialization and existing changes**
+3. **Check initialization and resolve schema**
 
    - Verify `.specify/config.yaml` exists. If not, tell the user to run `/spec:init` first.
-   - Read `.specify/config.yaml` to determine the project schema (look for `schema: <name>`). Default to `omnia` if not found.
+   - Read `.specify/config.yaml` to get the `schema` value. Default to `omnia` if not found.
+   - **Resolve the schema** to locate `schema.yaml` and `templates/`:
+     - **Name** (e.g., `omnia`): look for `schemas/<name>/` in this plugin directory.
+     - **URL** (e.g., `https://github.com/augentic/specify/schemas/omnia`):
+       1. Extract the schema name from the last path segment of the URL.
+       2. Check if `schemas/<name>/` exists locally in this plugin directory.
+       3. If found locally, use the local directory.
+       4. If not found locally, fetch `schema.yaml` and templates via **WebFetch** (for GitHub URLs, convert to raw content: `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>`).
+   - Read `schema.yaml` from the resolved schema directory. This defines the artifacts (id, template, instruction, requires) and the artifact dependency graph.
    - Check if `.specify/changes/<name>/` already exists. If so, ask if user wants to continue it or create a new one with a different name.
 
 4. **Create the change directory**
@@ -82,8 +90,10 @@ When ready to implement, run /spec:apply
 
    For each artifact:
    - Read any completed dependency files for context
-   - Read the corresponding reference file from `references/` (e.g., `references/proposal.md`) to get the Template and Instruction.
-   - Create the artifact file using that content.
+   - Look up the artifact definition in `schema.yaml` by its `id` (proposal, specs, design, tasks)
+   - Read the `instruction` field from `schema.yaml` for that artifact
+   - Read the template file from `templates/<template-filename>` in the resolved schema directory (the `template` field in `schema.yaml` gives the filename)
+   - Create the artifact file using the template structure and following the instruction
    - Apply `context` and `rules` from config.yaml as constraints -- but do NOT copy them into the file
    - Verify the file exists after writing before proceeding to next
 
@@ -91,35 +101,30 @@ When ready to implement, run /spec:apply
 
    ### Artifact: proposal
 
-   **Reference**: `references/proposal.md`
+   **Schema artifact id**: `proposal`
    **Write to**: `.specify/changes/<name>/proposal.md`
 
    ---
 
    ### Artifact: specs
 
-   **Reference**: `references/spec.md`
+   **Schema artifact id**: `specs`
    **Write to**: `.specify/changes/<name>/specs/<crate>/spec.md` (one per crate)
 
-   The spec reference provides two templates:
-   - **New Crates** (listed under New Crates in the proposal): use the
-     `## Handler:` baseline format with Purpose, Requirements, Scenarios.
-     This is the format downstream skills (crate-writer, test-writer) expect.
-   - **Modified Crates** (listed under Modified Crates in the proposal): use
-     the delta format (ADDED/MODIFIED/REMOVED/RENAMED sections).
+   The schema instruction describes the workflow paths (RT, Omnia, Manual) and the spec formats to use for new vs modified crates. Follow the instruction from `schema.yaml` for the `specs` artifact.
 
    ---
 
    ### Artifact: design
 
-   **Reference**: `references/design.md`
+   **Schema artifact id**: `design`
    **Write to**: `.specify/changes/<name>/design.md`
 
    ---
 
    ### Artifact: tasks
 
-   **Reference**: `references/tasks.md`
+   **Schema artifact id**: `tasks`
    **Write to**: `.specify/changes/<name>/tasks.md`
 
 7. **Show final status**

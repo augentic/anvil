@@ -1,16 +1,21 @@
 ---
 name: init
 description: Initialize Specify in a project. Creates the .specify/ directory structure and config.yaml. Use when setting up a new project for spec-driven development.
-license: MIT
+argument-hint: [schema?]
+allowed-tools: Read, Write, Shell, Grep, WebFetch
 ---
 
-Initialize Specify in this project.
+## Arguments
 
-I'll create the `.specify/` directory structure and a starter `config.yaml` for you to customize.
+```text
+$SCHEMA         = $ARGUMENTS[0]
+```
+
+I'll create the `.specify/` directory structure and install a starter `config.yaml` for you to customize.
 
 ---
 
-**Input**: None required. Optionally the user may describe their tech stack or project context.
+**Input**: None required. Optionally a schema (name or URL) and project context.
 
 **Steps**
 
@@ -22,13 +27,22 @@ I'll create the `.specify/` directory structure and a starter `config.yaml` for 
    - Use **AskQuestion tool** to confirm whether they want to reinitialize (which overwrites config).
    - If they decline, stop.
 
-2. **Select Schema**
+2. **Resolve schema**
 
-   Use the **AskQuestion tool** to let the user select the project schema:
+   If `$SCHEMA` is provided (as an argument), use it directly. Otherwise, use the **AskQuestion tool** to let the user select:
    - **omnia**: New development (JIRA -> Rust WASM)
    - **realtime**: Migration (TypeScript -> Rust WASM)
 
-   Store the selection as `$SCHEMA`.
+   Store the result as `$SCHEMA`.
+
+   Resolve `$SCHEMA` to locate the schema directory containing `config.yaml`, `schema.yaml`, and `templates/`:
+
+   - **Name** (e.g., `omnia`): look for `schemas/$SCHEMA/` in this plugin directory.
+   - **URL** (e.g., `https://github.com/augentic/specify/schemas/omnia`):
+     1. Extract the schema name from the last path segment of the URL.
+     2. Check if `schemas/<name>/` exists locally in this plugin directory.
+     3. If found locally, use the local directory.
+     4. If not found locally, fetch `config.yaml` from the URL via **WebFetch** (for GitHub URLs, convert to raw content: `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>/config.yaml`).
 
 3. **Create directory structure**
 
@@ -36,34 +50,13 @@ I'll create the `.specify/` directory structure and a starter `config.yaml` for 
    mkdir -p .specify/changes .specify/specs
    ```
 
-4. **Write config.yaml**
+4. **Install config.yaml**
 
-   Write `.specify/config.yaml` with the following template, using the selected `$SCHEMA`. If the user provided project context, fill in the `context` field. Otherwise use the default below.
+   Read `config.yaml` from the resolved schema directory and write it to `.specify/config.yaml`.
 
-   ```yaml
-   schema: $SCHEMA
+   If the user provided project context, fill in the `context` field with their description. Otherwise keep the schema's default context.
 
-   context: |
-     <project context -- tech stack, architecture, testing approach>
-
-   rules:
-     proposal:
-       - "Identify the source: a git repository URL (for code analysis), a
-         JIRA/ADO/Linear epic key (for requirements analysis), or Manual (feature
-         work). This determines the workflow for downstream artifacts."
-       - Capability names are crate names. For modified capabilities, use the
-         existing spec folder name from .specify/specs/. For new capabilities,
-         choose a name that will be the crate name
-     specs:
-       - Use WHEN/THEN format for scenarios
-       - Reference existing patterns before inventing new ones
-     design:
-       - Document domain model with entity relationships
-       - Document business logic per handler as tagged pseudocode
-     tasks:
-       - Structure tasks around the skill chain for new crates
-       - Structure tasks around behavioral changes for existing crate updates
-   ```
+   If schema resolution failed (no matching directory, fetch error), warn the user and stop — a valid schema is required.
 
 5. **Prompt for customization**
 
@@ -78,6 +71,7 @@ I'll create the `.specify/` directory structure and a starter `config.yaml` for 
 ```
 ## Specify Initialized
 
+**Schema**: $SCHEMA
 **Config**: .specify/config.yaml
 **Changes**: .specify/changes/
 **Baseline specs**: .specify/specs/
@@ -89,5 +83,6 @@ Next steps:
 
 **Guardrails**
 - Do not overwrite an existing config without user confirmation
-- Keep the default config template minimal -- users should customize it
-- Do not create `.specify/schemas/` -- skills embed schema knowledge directly
+- The schema's `config.yaml` is the source of truth for default config content — do not use an inline template
+- Do not create `.specify/schemas/` — schemas are resolved from the plugin directory or fetched from URLs
+- If schema resolution fails, stop and report the error rather than creating a config with unknown schema content

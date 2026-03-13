@@ -1,4 +1,4 @@
-schema: omnia
+schema: https://github.com/augentic/specify/schemas/omnia
 
 context: |
   Tech stack: Rust, WASM (wasm32-wasip2), Omnia SDK
@@ -7,9 +7,9 @@ context: |
 
 rules:
   proposal:
-    - "Identify the source: a git repository URL (for code analysis), a
+    - Identify the source; a git repository URL (for code analysis), a
       JIRA/ADO/Linear epic key (for requirements analysis), or Manual (feature
-      work). This determines the workflow for downstream artifacts."
+      work). This determines the workflow for downstream artifacts.
     - Use crate names. For modified crates, use the
       existing spec folder name from .specify/specs/. For new crates, 
       choose a name that will be the crate name
@@ -36,10 +36,10 @@ rules:
     - Flag structural changes (type renames, handler splits/merges)
     - Use mermaid diagrams for entity relationships and flows
   tasks:
-    - "For new crates (no existing Cargo.toml), structure tasks around the
-      create-mode skill chain: 1) guest-writer, 2) crate-writer, 3) verify,
+    - For new crates (no existing Cargo.toml), structure tasks around the
+      create-mode skill chain; 1) guest-writer, 2) crate-writer, 3) verify,
       4) code-reviewer. Do not list individual Rust code changes -- the
-      skills handle file-level generation."
-    - "For existing crate updates, structure tasks around the specific
+      skills handle file-level generation.
+    - For existing crate updates, structure tasks around the specific
       behavioral changes from the specs. crate-writer handles the code
-      modifications."
+      modifications.

@@ -1,4 +1,4 @@
-schema: realtime
+schema: https://github.com/augentic/specify/schemas/realtime
 
 context: |
   Tech stack: Rust, WASM (wasm32-wasip2), Omnia SDK

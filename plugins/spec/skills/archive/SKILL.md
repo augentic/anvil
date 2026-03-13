@@ -19,6 +19,16 @@ Archive a completed change.
 
    **IMPORTANT**: Always confirm the change name before archiving.
 
+   Read `.specify/changes/<name>/.metadata.yaml` for the schema value and **resolve the schema**:
+   - **Name** (e.g., `omnia`): look for `schemas/<name>/` in this plugin directory.
+   - **URL** (e.g., `https://github.com/augentic/specify/schemas/omnia`):
+     1. Extract the schema name from the last path segment of the URL.
+     2. Check if `schemas/<name>/` exists locally in this plugin directory.
+     3. If found locally, use the local directory.
+     4. If not found locally, fetch `schema.yaml` via **WebFetch** (for GitHub URLs, convert to raw content: `https://raw.githubusercontent.com/<owner>/<repo>/main/<path>/schema.yaml`).
+
+   Read `schema.yaml` for artifact definitions and terminology (e.g., "Crates" vs "Capabilities"). Use schema terminology in summary output.
+
 2. **Check artifact completion**
 
    Check file existence for all artifacts:
