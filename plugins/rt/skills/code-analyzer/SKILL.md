@@ -272,6 +272,7 @@ For each external service or system dependency, document thoroughly:
 - Authentication method
 
 **Service type classification**:
+
 - **database**: SQL databases accessed via ORM, raw SQL, or repository patterns (PostgreSQL, MySQL, SQL Server, etc.)
 - **managed table store**: Cloud-managed NoSQL/table storage services accessed via SDK or REST API (Azure Table Storage via `@azure/data-tables`/`TableClient`, Azure Cosmos DB, DynamoDB, etc.). Do NOT classify these as `API` — they are managed data stores, not external HTTP APIs.
 - **cache**: Key-value stores used for caching or ephemeral state (Redis, Memcached, in-memory cache libraries)
@@ -383,6 +384,7 @@ Write `$DESIGN_PATH` with the following sections (see [specify.md](references/sp
 **IMPORTANT — Managed data store classification:**
 
 When the source code uses `@azure/data-tables`, `TableClient`, `listEntities`, `createEntity`, `updateEntity`, `deleteEntity`, or calls Azure Table Storage REST endpoints (`*.table.core.windows.net`):
+
 - The External Services section **MUST** classify these as type: `managed table store`, NOT as type: `API`.
 - The Source Capabilities Summary **MUST** check `Table/database access`.
 - Cloud-managed table/document stores (Azure Table Storage, Cosmos DB, DynamoDB) are data stores, not external HTTP APIs, regardless of their access protocol.
@@ -393,7 +395,7 @@ When the source code uses `@azure/data-tables`, `TableClient`, `listEntities`, `
 Write a single consolidated spec file at `$SPECS_DIR/$CRATE_NAME/spec.md` using the flat baseline format:
 
 1. `## Purpose` — 1-2 sentence description of what the crate/capability does overall
-2. `### Requirement: <Behavior Name>` — one top-level block per distinct business rule (use `The system SHALL ...` format). Each requirement includes:
+2. `### Requirement: <Behavior Name>` — one top-level block per distinct business rule (use `The system SHALL ...` format). Add `ID: REQ-XXX` immediately after the heading, numbering requirements sequentially in file order. Each requirement includes:
    - Source traceability (source function path)
    - `#### Scenario: <name>` entries derived from algorithm steps (happy path), error handling (error paths), and edge cases
 3. `## Error Conditions` — shared error type, description, HTTP status, and trigger conditions when the source exposes them
@@ -403,7 +405,7 @@ See [specify.md](references/specify.md) Spec File Format and Deriving Specs from
 
 **VERIFY**: After writing, validate against the checklist:
 
-- [ ] One spec file per crate at `$SPECS_DIR/$CRATE_NAME/spec.md` using flat `### Requirement:` blocks
+- [ ] One spec file per crate at `$SPECS_DIR/$CRATE_NAME/spec.md` using flat `### Requirement:` blocks with stable `ID: REQ-XXX` lines
 - [ ] Each spec has Purpose, Requirements with BDD scenarios, and Error Conditions
 - [ ] design.md has all required sections (Context through Notes)
 - [ ] design.md Business Logic has tagged algorithm for every handler
@@ -441,14 +443,12 @@ Detailed examples are available in the `references/examples/` directory:
 
 ### Common Issues and Resolutions
 
-| Issue                           | Cause                                             | Resolution                                                             |
-| ------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------- |
-| TypeScript source doesn't parse | Invalid TypeScript or missing dependencies        | Run `tsc --noEmit` to verify source compiles first                     |
-| Too many [unknown] tags in artifacts | Dynamic typing, metaprogramming, or unclear logic | Review source for type annotations; add comments for clarity      |
-| Artifacts missing business logic | Functions not exported or in inaccessible modules | Check module imports; ensure key functions are exported               |
-| Artifacts missing API endpoints | Routes defined dynamically or in middleware       | Check framework-specific routing patterns (Express, Nest, etc.)        |
-| Config keys not captured        | Environment variables accessed indirectly         | Search for `process.env` patterns across all source files              |
-| Type shapes incomplete          | Complex generic types or union types              | Document full type definition; use `unknown` for unresolvable generics |
+- **TypeScript source doesn't parse**: Cause: invalid TypeScript or missing dependencies. Resolution: run `tsc --noEmit` to verify the source compiles first.
+- **Too many [unknown] tags in artifacts**: Cause: dynamic typing, metaprogramming, or unclear logic. Resolution: review the source for type annotations and add comments for clarity.
+- **Artifacts missing business logic**: Cause: functions not exported or in inaccessible modules. Resolution: check module imports and ensure key functions are exported.
+- **Artifacts missing API endpoints**: Cause: routes defined dynamically or in middleware. Resolution: check framework-specific routing patterns such as Express or Nest.
+- **Config keys not captured**: Cause: environment variables accessed indirectly. Resolution: search for `process.env` patterns across all source files.
+- **Type shapes incomplete**: Cause: complex generic types or union types. Resolution: document the full type definition and use `unknown` for unresolvable generics.
 
 ### Recovery Process
 
@@ -466,7 +466,7 @@ Additionally, verify these skill-specific items:
 
 **Artifact completeness**:
 
-- [ ] **One spec per crate**: Single consolidated spec file at `$SPECS_DIR/$CRATE_NAME/spec.md` with flat `### Requirement:` blocks for each distinct behavior
+- [ ] **One spec per crate**: Single consolidated spec file at `$SPECS_DIR/$CRATE_NAME/spec.md` with flat `### Requirement:` blocks and stable `ID: REQ-XXX` lines for each distinct behavior
 - [ ] **design.md complete**: design.md includes all required sections (Context, Domain Model, Structures, API Contracts, External Services, Constants & Configuration, Business Logic, Publication & Timing, Output Event Structures, Implementation Constraints, Source Capabilities Summary, Dependencies, Notes)
 - [ ] **BDD scenarios**: Each spec has Requirements with Given/When/Then scenarios derived from algorithm steps and error handling
 

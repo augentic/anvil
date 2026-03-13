@@ -13,6 +13,8 @@ what crate-writer and test-writer expect as input.
 
 ### Requirement: <Behavior Name>
 
+ID: REQ-001
+
 The system SHALL <behavioral description>.
 
 #### Scenario: <Happy Path>
@@ -34,4 +36,4 @@ The system SHALL <behavioral description>.
 - `<metric_name>` — type: <counter|gauge|histogram>; emitted: <when>
 ```
 
-Repeat `### Requirement:` blocks for each distinct behavior in the crate.
+Repeat `### Requirement:` blocks for each distinct behavior in the crate, incrementing the `ID: REQ-XXX` line for each new requirement.

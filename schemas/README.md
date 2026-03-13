@@ -46,8 +46,8 @@ schemas/<name>/
 ```
 
 - **`schema.yaml`**: Declares artifacts (id, template filename, instruction
-  file path, dependencies, the `spec_format` heading conventions for flat
-  requirement/scenario blocks and delta operations, and the
+  file path, dependencies, the `spec_format` conventions for flat
+  requirement/scenario blocks, stable requirement IDs, delta operations, and the
   `apply` configuration. Skills read this to know how to generate artifacts
   and implement tasks.
 - **`instructions/`**: One markdown file per artifact plus `apply.md`.
@@ -154,9 +154,11 @@ schemas. The `proposal.md` templates differ:
 Spec templates are split per schema:
 
 - **`spec-new.md`**: Template for new crates/capabilities (baseline format
-  with top-level `### Requirement:` blocks and `#### Scenario:` entries).
+  with top-level `### Requirement:` blocks, `ID: REQ-XXX` lines, and
+  `#### Scenario:` entries).
 - **`spec-delta.md`**: Template for modified crates/capabilities (delta
-  format with ADDED/MODIFIED/REMOVED/RENAMED sections).
+  format with ADDED/MODIFIED/REMOVED/RENAMED sections keyed by stable
+  requirement IDs).
 
 ## Configuration
 

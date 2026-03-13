@@ -4,6 +4,8 @@ description: Omnia workflow
 
 spec_format:
   requirement_heading: "### Requirement:"
+  requirement_id_prefix: "ID:"
+  requirement_id_pattern: "^REQ-[0-9]{3}$"
   scenario_heading: "#### Scenario:"
   delta_operations:
     added: "## ADDED Requirements"
@@ -35,6 +37,8 @@ artifacts:
       - proposal
     validate:
       - Every requirement has at least one scenario
+      - Every requirement includes a stable ID line immediately after the heading
+      - Requirement IDs use the REQ-XXX format and stay stable when behavior is modified or renamed
       - Uses SHALL/MUST language for normative requirements (not should/may)
       - Requirements use the flat baseline format with top-level requirement headings
       - Every scenario uses WHEN/THEN format

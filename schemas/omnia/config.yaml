@@ -17,11 +17,12 @@ rules:
     - Use WHEN/THEN format for scenarios
     - Reference existing patterns before inventing new ones
     - Organize baseline specs as flat requirement blocks using
-      ### Requirement: <name> with #### Scenario: <name> entries
+      ### Requirement: <name> plus ID: REQ-XXX and #### Scenario: <name>
+      entries
     - Use an optional ## Purpose preamble plus optional ## Error Conditions
       and ## Metrics sections for shared context
     - For update changes use top-level ADDED/MODIFIED/REMOVED/RENAMED
-      delta-operation sections
+      delta-operation sections keyed by stable requirement IDs
   design:
     - Include Context section with Source field (jira-epic or source-code)
     - Document domain model entity/type definitions with field names, types, 

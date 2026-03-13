@@ -1,6 +1,6 @@
 # Specify Guidance Supplement
 
-This repository uses stock Specify as the executable workflow contract. This document is a repository-specific supplement describing how Augentic specialists use `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:propose -> /spec:apply -> /spec:archive`.
+This repository uses stock Specify as the executable workflow contract. This document is a repository-specific supplement describing how Augentic specialists use `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:propose -> /spec:apply -> /spec:archive`, with `/spec:abandon` available when a change should be discarded instead of promoted.
 
 ## Overview
 
@@ -21,12 +21,14 @@ Artifacts move through the normal Specify lifecycle:
 
 1. `.specify/changes/<change>/` holds the working change.
 2. `.specify/specs/` holds the promoted baseline specs.
-3. `.specify/changes/archive/` holds archived completed changes.
+3. `.specify/changes/archive/` holds finalized changes, including archived and abandoned changes.
 
 The human workflow is:
 
 ```text
 /spec:propose -> /spec:apply -> /spec:archive
+/spec:propose -> /spec:abandon
+/spec:apply   -> /spec:abandon
 ```
 
 ## Artifact Locations
@@ -62,6 +64,8 @@ headings used by all downstream skills.
 
 ### Requirement: <Behavior Name>
 
+ID: REQ-001
+
 The system SHALL <behavioral description>.
 Source: <source function, JIRA story, or design section>
 
@@ -88,8 +92,9 @@ Source: <source function, JIRA story, or design section>
 
 When modifying an existing crate, delta specs use the operation headers
 defined in the schema's `spec_format.delta_operations` (default:
-`## ADDED Requirements`, `## MODIFIED Requirements`, etc.) with the same
-`### Requirement:` and `#### Scenario:` headings as the baseline format.
+`## ADDED Requirements`, `## MODIFIED Requirements`, etc.). Requirement
+blocks still use `### Requirement:` and `#### Scenario:` headings, but the
+stable merge key is the `ID: REQ-XXX` line rather than the display name.
 See the schema's `templates/spec-delta.md` for the template and the
 archive skill for how deltas merge into the baseline.
 
@@ -98,7 +103,7 @@ archive skill for how deltas merge into the baseline.
 Create a consolidated spec file from the source behavior:
 
 1. Purpose from the role of the handler or function.
-2. Requirements from distinct business rules.
+2. Requirements from distinct business rules, assigning stable IDs in spec order (`REQ-001`, `REQ-002`, ...).
 3. Scenarios from happy paths, edge cases, and failures.
 4. Error conditions from observed failure behavior.
 5. Metrics only when they are explicit in the source.
@@ -108,14 +113,14 @@ Create a consolidated spec file from the source behavior:
 Create or update spec files from user stories and acceptance criteria:
 
 1. Purpose from story summaries.
-2. Requirements from acceptance criteria.
+2. Requirements from acceptance criteria, assigning stable IDs in spec order (`REQ-001`, `REQ-002`, ...).
 3. Scenarios from BDD or equivalent examples.
 4. Error conditions from explicit failure or validation requirements.
-5. Traceability back to JIRA stories or criteria.
+5. Traceability back to JIRA stories or criteria, with requirement IDs available for design and test references.
 
 ## Design Document (Technical "How")
 
-`design.md` carries the technical shape needed to implement the change. It may reference constraints relevant to generation, but it should not hardcode target-specific bindings as part of the behavioral contract.
+`design.md` carries the technical shape needed to implement the change. It may reference constraints relevant to generation, but it should not hardcode target-specific bindings as part of the behavioral contract. When design sections refer to behavior from specs, cite the stable requirement IDs (for example, `REQ-003`) rather than relying on requirement titles staying unchanged.
 
 ### Design Document Format
 
@@ -244,9 +249,9 @@ Use explicit unknown markers instead of guessing.
 ### Behavioral Specs
 
 - [ ] One spec file per capability or crate
-- [ ] Each spec has Purpose, flat Requirement blocks, Scenarios, and Error Conditions
+- [ ] Each spec has Purpose, flat Requirement blocks, stable `ID: REQ-XXX` lines, Scenarios, and Error Conditions
 - [ ] Specs stay behavioral and avoid platform-binding detail
-- [ ] Traceability is present for each requirement
+- [ ] Traceability is present for each requirement and can refer to its stable ID
 
 ### Technical Design
 

@@ -64,7 +64,7 @@ When conflicts arise, follow this strict precedence:
 
 ### Step 1: Read Crate and Artifacts
 
-1. Read the spec file from `$SPECS_DIR/$CRATE_NAME/spec.md` (consolidated file with flat `### Requirement:` / `#### Scenario:` blocks)
+1. Read the spec file from `$SPECS_DIR/$CRATE_NAME/spec.md` (consolidated file with flat `### Requirement:` / `ID: REQ-XXX` / `#### Scenario:` blocks)
 2. Read design.md from `$DESIGN_PATH`
 3. Read existing crate code from `$CRATE_PATH/src/` to identify:
    - Handler implementations and their provider trait bounds
@@ -84,12 +84,13 @@ If `$CRATE_PATH/tests/` exists, parse it to understand the current test state:
 
 ### Step 3: Map Spec Scenarios to Tests
 
-For the spec file at `$SPECS_DIR/$CRATE_NAME/spec.md`, and for each `### Requirement:` block plus each `#### Scenario:` within it:
+For the spec file at `$SPECS_DIR/$CRATE_NAME/spec.md`, and for each requirement block (`### Requirement:` plus its `ID: REQ-XXX` line) and each `#### Scenario:` within it:
 
 1. **One test function per scenario** -- deterministic naming: `test_<crate>_<scenario_snake_case>`
 2. **Happy path tests** from success scenarios (WHEN/THEN with expected output)
 3. **Error case tests** from error scenarios (WHEN/THEN with expected error code)
 4. **Validation tests** from requirement constraints (field presence, format, range)
+5. **Traceability comments** should cite the stable requirement ID so renaming a requirement title does not orphan the test
 
 See [spec-to-test-mapping.md](references/spec-to-test-mapping.md) for the detailed mapping rules.
 
@@ -177,7 +178,7 @@ All generated tests must pass. If failures occur:
 
 ## Test Directory Structure
 
-```
+```text
 $CRATE_PATH/
 ├── tests/
 │   ├── provider.rs         # MockProvider (shared across tests)

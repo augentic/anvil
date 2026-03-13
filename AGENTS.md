@@ -12,6 +12,7 @@ Humans are expected to work through stock Specify:
 - `/spec:propose`
 - `/spec:apply`
 - `/spec:archive`
+- `/spec:abandon`
 
 This repository provides specialist skills and references that support that workflow.
 

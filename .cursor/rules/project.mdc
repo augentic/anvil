@@ -16,6 +16,7 @@ The intended workflow is human-driven Specify:
 /spec:propose
 /spec:apply
 /spec:archive
+/spec:abandon
 ```
 
 Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
@@ -56,6 +57,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `propose` - create a change and generate all artifacts in one step
 - `apply` - implement tasks from a Specify change
 - `archive` - finalize and archive a completed change
+- `abandon` - discard a change without merging specs into baseline
 - `explore` - thinking partner for ideas, investigation, and requirements
 - `status` - check artifact completion, task progress, and active changes
 
@@ -87,7 +89,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
   ├── references/         # Shared references (specify.md, agent-teams.md)
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
-  ├── spec/               # Specify workflow plugin (init, propose, apply, archive, explore, status)
+  ├── spec/               # Specify workflow plugin (init, propose, apply, archive, abandon, explore, status)
   │   └── references/     # Artifact templates and instructions
   ├── plan/               # Plan requirements analysis plugin
   └── rt/                 # RT migration plugin

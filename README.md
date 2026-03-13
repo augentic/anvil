@@ -8,6 +8,7 @@ This repository is designed for a human-driven Specify workflow:
 
 ```text
 /spec:propose  ->  /spec:apply  ->  /spec:archive
+                     \--------> /spec:abandon
 ```
 
 The job of this repository is not to replace Specify. Its job is to supply specialist expertise:
@@ -22,14 +23,13 @@ The job of this repository is not to replace Specify. Its job is to supply speci
 
 Install the Augentic plugin in Cursor, then initialize Specify in your project:
 
-| Command | Description |
-| ------- | ----------- |
-| `/spec:init` | Initialize Specify in your project (creates `.specify/` structure) |
-| `/spec:propose` "Migrate https://github.com/org/my-service to Rust WASM on Omnia." | Create artifacts |
-| `/spec:apply` | Apply the change |
-| `/spec:archive` | Merge specs into baseline and archive |
-| `/spec:status` | Check artifact completion and task progress |
-| `/spec:explore` | Think through ideas and investigate problems |
+- `/spec:init`: Initialize Specify in your project and create the `.specify/` structure.
+- `/spec:propose "Migrate <repo-url> to Rust WASM on Omnia."`: Create artifacts.
+- `/spec:apply`: Apply the change.
+- `/spec:archive`: Merge specs into baseline and archive.
+- `/spec:abandon`: Discard a change without merging specs.
+- `/spec:status`: Check artifact completion and task progress.
+- `/spec:explore`: Think through ideas and investigate problems.
 
 ## Plugins
 
@@ -39,45 +39,38 @@ Four plugins provide specialist skills consumed during `/spec` work:
 
 Core Specify workflow orchestration.
 
-| Skill                | Primary role                                                                 |
-| -------------------- | ---------------------------------------------------------------------------- |
-| `init`               | Initialize Specify in a project                                              |
-| `propose`            | Create a change and generate all artifacts in one step                       |
-| `apply`              | Implement tasks from a Specify change                                       |
-| `archive`            | Finalize and archive a completed change                                      |
-| `explore`            | Thinking partner for exploring ideas, problems, and requirements             |
-| `status`             | Check artifact completion, task progress, and active changes                 |
+- `init`: Initialize Specify in a project.
+- `propose`: Create a change and generate all artifacts in one step.
+- `apply`: Implement tasks from a Specify change.
+- `archive`: Finalize and archive a completed change.
+- `abandon`: Discard a change without merging specs into the baseline.
+- `explore`: Thinking partner for exploring ideas, problems, and requirements.
+- `status`: Check artifact completion, task progress, and active changes.
 
 ### Omnia Plugin (`plugins/omnia/`)
 
 Code generation and review for Rust WASM on the Omnia runtime.
 
-| Skill                | Primary role                                                                 |
-| -------------------- | ---------------------------------------------------------------------------- |
-| `crate-writer`       | Generate or update Rust crates from Specify artifacts                       |
-| `test-writer`        | Generate or update test suites from Specify artifacts and crate code        |
-| `guest-writer`       | Generate the WASM guest wrapper around domain crates                         |
-| `code-reviewer`      | Review generated or updated crates for correctness and Omnia/WASM compliance |
+- `crate-writer`: Generate or update Rust crates from Specify artifacts.
+- `test-writer`: Generate or update test suites from Specify artifacts and crate code.
+- `guest-writer`: Generate the WASM guest wrapper around domain crates.
+- `code-reviewer`: Review generated or updated crates for correctness and Omnia/WASM compliance.
 
 ### RT Plugin (`plugins/rt/`)
 
 TypeScript source analysis and fixture capture for migration workflows.
 
-| Skill                | Primary role                                                                 |
-| -------------------- | ---------------------------------------------------------------------------- |
-| `code-analyzer`      | Derive baseline Specify artifacts from an existing TypeScript codebase      |
-| `git-cloner`         | Clone a source repository as a detached tree for analysis                    |
-| `replay-writer`      | Add regression tests from captured real-world fixtures                       |
-| `wiretapper`         | Capture fixture data from legacy services                                    |
+- `code-analyzer`: Derive baseline Specify artifacts from an existing TypeScript codebase.
+- `git-cloner`: Clone a source repository as a detached tree for analysis.
+- `replay-writer`: Add regression tests from captured real-world fixtures.
+- `wiretapper`: Capture fixture data from legacy services.
 
 ### Plan Plugin (`plugins/plan/`)
 
 Requirements analysis, design enrichment, and SoW generation.
 
-| Skill                | Primary role                                                                 |
-| -------------------- | ---------------------------------------------------------------------------- |
-| `epic-analyzer`      | Derive proposal, specs, and design context from JIRA epics and stories       |
-| `sow-writer`         | Translate Specify artifacts into client-facing SoW material                 |
+- `epic-analyzer`: Derive proposal, specs, and design context from JIRA epics and stories.
+- `sow-writer`: Translate Specify artifacts into client-facing SoW material.
 
 ## Repository Structure
 

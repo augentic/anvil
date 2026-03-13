@@ -7,13 +7,15 @@ metadata:
   version: "3.0"
 ---
 
+# Status
+
 Show the current state of Specify in this project.
 
----
+## Input
 
-**Input**: Optionally specify a change name to focus on. Otherwise show an overview.
+Optionally specify a change name to focus on. Otherwise show an overview.
 
-**Steps**
+## Steps
 
 1. **Check initialization and resolve schema**
 
@@ -37,6 +39,7 @@ Show the current state of Specify in this project.
    - `proposed` — "All artifacts created, ready for implementation"
    - `applying` — "Implementation in progress"
    - `complete` — "All tasks complete, ready to archive"
+   - `abandoned` — "Change discarded and moved to archive without merging specs"
 
    For each artifact defined in `schema.yaml`, check whether it is complete:
    - If `generates` is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
@@ -53,8 +56,8 @@ Show the current state of Specify in this project.
 4. **Check task progress**
 
    If the artifact tracked by `apply.tracks` (from `schema.yaml`) exists, read it and count lines matching:
-   - `- [ ] ` = incomplete task
-   - `- [x] ` or `- [X] ` = complete task
+   - `- [ ]` = incomplete task
+   - `- [x]` or `- [X]` = complete task
 
    Report: "N/M tasks complete"
 
@@ -65,18 +68,18 @@ Show the current state of Specify in this project.
 6. **Show next-step guidance based on lifecycle status**
 
    Based on the `status` field, provide targeted guidance:
-   - `proposing` — "Run `/spec:propose` to complete artifact generation."
-   - `proposed` — "Run `/spec:apply` to start implementing tasks."
-   - `applying` — "Run `/spec:apply` to continue implementation." Show remaining task count.
-   - `complete` — "Run `/spec:archive` to finalize this change."
+   - `proposing` — "Run `/spec:propose` to complete artifact generation, or `/spec:abandon` to discard the change."
+   - `proposed` — "Run `/spec:apply` to start implementing tasks, or `/spec:abandon` to discard the change."
+   - `applying` — "Run `/spec:apply` to continue implementation, or `/spec:abandon` to discard the change." Show remaining task count.
+   - `complete` — "Run `/spec:archive` to finalize this change, or `/spec:abandon` to discard it without merging specs."
 
 7. **List archived changes** (brief)
 
-   List directories in `.specify/changes/archive/` if any exist.
+   List directories in `.specify/changes/archive/` if any exist. If an archived directory contains `.metadata.yaml`, read its `status` and show whether it was `archived` or `abandoned`.
 
-**Output**
+## Output
 
-```
+```text
 ## Specify Status
 
 ### Active Changes
@@ -97,13 +100,15 @@ Next: Run `/spec:apply` to start implementing tasks.
 
 ### Archived Changes
 
-- 2026-01-15-add-auth
-- 2026-02-01-fix-export
+- 2026-01-15-add-auth (status: archived)
+- 2026-02-01-spike-export (status: abandoned)
 ```
 
 If a single change is specified or only one exists, show the detailed view only (skip the list format).
 
-**Guardrails**
+## Guardrails
+
 - Read-only -- do not create or modify any files
 - If `.specify/` does not exist, suggest `/spec:init`
 - Show clear next-step guidance based on current lifecycle status
+- Distinguish archived changes from abandoned changes when metadata is available

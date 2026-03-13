@@ -1,5 +1,5 @@
 ---
-description: Specify plugin context -- Specify workflow orchestration for proposing, applying, archiving, and exploring changes
+description: Specify plugin context -- Specify workflow orchestration for proposing, applying, archiving, abandoning, and exploring changes
 alwaysApply: true
 ---
 
@@ -7,9 +7,9 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: propose a change, apply (implement) a change, archive a completed change, explore ideas or problems interactively, check status, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
+This plugin provides the core Specify workflow skills: propose a change, apply (implement) a change, archive a completed change, abandon a discarded change, explore ideas or problems interactively, check status, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
 
-**Purpose**: Drive the propose -> apply -> archive workflow with optional explore for thinking and investigation.
+**Purpose**: Drive the propose -> apply -> archive workflow, with abandon for cleanup and explore for thinking and investigation.
 
 ## Plugin Architecture
 
@@ -28,6 +28,7 @@ This plugin provides the core Specify workflow skills: propose a change, apply (
     ├── propose/           # Create a change with all artifacts (or regenerate one)
     ├── apply/             # Implement tasks from a change
     ├── archive/           # Archive a completed change
+    ├── abandon/           # Discard a change without merging specs
     ├── explore/           # Thinking partner for ideas and investigation
     └── status/            # Check change status and progress
 ```
@@ -54,6 +55,8 @@ Changes track their status in `.metadata.yaml`:
 
 ```text
 proposing  ->  proposed  ->  applying  ->  complete  ->  archived
+                               \------> abandoned
+proposed   ---------------------------------------> abandoned
 ```
 
 - **proposing**: Artifacts are being generated (propose in progress)
@@ -61,6 +64,7 @@ proposing  ->  proposed  ->  applying  ->  complete  ->  archived
 - **applying**: Tasks are being implemented
 - **complete**: All tasks done, ready to archive
 - **archived**: Specs merged into baseline, change moved to archive
+- **abandoned**: Change moved to archive without merging specs into the baseline
 
 ## Workflow
 
@@ -72,12 +76,14 @@ proposing  ->  proposed  ->  applying  ->  complete  ->  archived
                         |
                    /spec:explore (anytime)
                    /spec:status  (anytime)
+                   /spec:abandon (discard instead of archive)
 ```
 
 - **init**: One-time project setup -- creates `.specify/` directory structure and `config.yaml`
 - **propose**: Create a change directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:propose <name> <artifact-id>`.
 - **apply**: Implement tasks from an existing change, marking them complete as you go
 - **archive**: Preview merge operations, finalize a completed change, merge delta specs into baseline
+- **abandon**: Discard an active change, set `status: abandoned`, and move it to archive without merging specs
 - **explore**: Read-only thinking mode for investigating problems and clarifying requirements
 - **status**: Check lifecycle status, artifact completion, task progress, and active/archived changes
 
@@ -106,6 +112,7 @@ proposing  ->  proposed  ->  applying  ->  complete  ->  archived
 - [Propose SKILL.md](skills/propose/SKILL.md) - Create changes with artifacts
 - [Apply SKILL.md](skills/apply/SKILL.md) - Implement change tasks
 - [Archive SKILL.md](skills/archive/SKILL.md) - Finalize completed changes
+- [Abandon SKILL.md](skills/abandon/SKILL.md) - Discard a change without merging specs
 - [Explore SKILL.md](skills/explore/SKILL.md) - Thinking and investigation mode
 - [Status SKILL.md](skills/status/SKILL.md) - Check status and progress
 - [Specify Artifact Specification](../references/specify.md) - Artifact format details

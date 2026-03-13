@@ -4,11 +4,15 @@ description: Archive a completed change. Merges delta specs into baseline and mo
 license: MIT
 ---
 
+# Archive
+
 Archive a completed change.
 
-**Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+## Input
 
-**Steps**
+Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+
+## Steps
 
 1. **Select the change**
 
@@ -26,7 +30,7 @@ Archive a completed change.
 2. **Check lifecycle status**
 
    Read `status` from `.metadata.yaml`:
-   - If `status` is not `complete`: display warning (e.g., "This change has status '<status>' — it may not be fully implemented.")
+   - If `status` is not `complete`: display warning (e.g., "This change has status `<status>` — it may not be fully implemented.")
    - Use **AskQuestion tool** to confirm user wants to proceed despite the status
    - Proceed if user confirms
 
@@ -44,8 +48,8 @@ Archive a completed change.
 4. **Check task completion**
 
    Read the file tracked by `apply.tracks` (from `schema.yaml`) and count:
-   - `- [ ] ` lines = incomplete tasks
-   - `- [x] ` or `- [X] ` lines = complete tasks
+   - `- [ ]` lines = incomplete tasks
+   - `- [x]` or `- [X]` lines = complete tasks
 
    **If incomplete tasks found:**
    - Display warning showing count of incomplete tasks
@@ -64,16 +68,17 @@ Archive a completed change.
    Read the `spec_format` section from `schema.yaml` for heading conventions:
    - `delta_operations.added`, `delta_operations.modified`, `delta_operations.removed`, `delta_operations.renamed` — the headings used in delta specs
    - `requirement_heading` — the heading prefix for requirement blocks (e.g., `### Requirement:`)
+   - `requirement_id_prefix` — the stable requirement ID line prefix (e.g., `ID:`)
 
    For each capability with a delta spec, show what will happen WITHOUT performing the merge:
 
-   ```
+   ```text
    ## Archive Preview: <change-name>
 
    ### <capability-1>/spec.md (existing baseline)
-   - REMOVING: Requirement: <name>
-   - MODIFYING: Requirement: <name>
-   - ADDING: Requirement: <name>
+   - REMOVING: REQ-001 — <name>
+   - MODIFYING: REQ-002 — <name>
+   - ADDING: REQ-003 — <name>
 
    ### <capability-2>/spec.md (new baseline)
    - Creating new baseline with N requirements
@@ -102,39 +107,41 @@ Archive a completed change.
       - Create `.specify/specs/<capability>/` directory
       - Check whether the spec contains any delta operation headers (the headings from `spec_format.delta_operations` in `schema.yaml`)
       - If the spec does NOT contain delta operation headers: copy the entire content as the new baseline directly — it is already in baseline format
-      - If the spec DOES contain delta operation headers: extract only the requirement blocks (matching `spec_format.requirement_heading`) from the ADDED section and write them as the baseline. Ignore MODIFIED/REMOVED/RENAMED sections (they don't apply to a new baseline).
+      - If the spec DOES contain delta operation headers: extract only the requirement blocks (matching `spec_format.requirement_heading` and `spec_format.requirement_id_prefix`) from the ADDED section and write them as the baseline. Ignore MODIFIED/REMOVED/RENAMED sections (they don't apply to a new baseline).
       - Write the result as the new baseline at `.specify/specs/<capability>/spec.md`
 
    d. **If a baseline EXISTS** (existing capability):
       - Read the baseline from `.specify/specs/<capability>/spec.md`
       - Parse the delta spec to identify sections by the headings defined in `schema.yaml`'s `spec_format.delta_operations` (case-insensitive matching)
+      - Parse each requirement block's stable ID from the line that starts with `spec_format.requirement_id_prefix`
       - Apply operations in **this exact order** (order matters):
 
-      **Step 1 -- RENAMED** (must happen first so MODIFIED/REMOVED use new names):
-      - Look for `FROM:` and `TO:` lines within the RENAMED section
-      - For each pair, find the matching requirement block (using `spec_format.requirement_heading`) in the baseline
-      - Change its header to use the TO name
-      - If the FROM name is not found in the baseline, report an error
+      **Step 1 -- RENAMED** (must happen first so MODIFIED/REMOVED use the updated display name):
+      - Look for `ID:` and `TO:` lines within the RENAMED section
+      - For each pair, find the matching requirement block in the baseline by requirement ID
+      - Change its requirement heading to use the TO name while preserving the existing `ID:` line
+      - If the ID is not found in the baseline, report an error
 
       **Step 2 -- REMOVED**:
-      - For each requirement in the REMOVED section, delete the entire matching block from the baseline (from the requirement heading through to the next requirement heading or end of file)
-      - If the name is not found in the baseline, report an error
+      - For each requirement in the REMOVED section, delete the entire matching block from the baseline by requirement ID
+      - If the ID is not found in the baseline, report an error
 
       **Step 3 -- MODIFIED**:
-      - For each requirement in the MODIFIED section, find the matching block in the baseline and replace it entirely with the version from the delta
-      - If the name is not found in the baseline, report an error
+      - For each requirement in the MODIFIED section, find the matching block in the baseline by requirement ID and replace it entirely with the version from the delta
+      - If the ID is not found in the baseline, report an error
 
       **Step 4 -- ADDED**:
       - Append each requirement block from the ADDED section to the end of the baseline
+      - If an added requirement ID already exists in the baseline, report an error
 
       - Write the merged result to `.specify/specs/<capability>/spec.md`
 
-   e. **Verify the merge**: Re-read the merged baseline and confirm it looks structurally correct (has proper requirement headings, no duplicate names, no orphaned content).
+   e. **Verify the merge**: Re-read the merged baseline and confirm it looks structurally correct (has proper requirement headings, a stable `ID:` line after each heading, no duplicate IDs, and no orphaned content).
 
    **What is a requirement block?**
-   A requirement block starts at a requirement heading (as defined in `spec_format.requirement_heading`) and includes all content until the next requirement heading or the next `## ` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
+   A requirement block starts at a requirement heading (as defined in `spec_format.requirement_heading`), includes the immediately following `ID:` line, and continues until the next requirement heading or the next `##` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
 
-   **Preserve preamble**: Any text before the first requirement heading or `## ` header in the baseline should be preserved as-is.
+   **Preserve preamble**: Any text before the first requirement heading or `##` header in the baseline should be preserved as-is.
 
 7. **Update metadata and move to archive**
 
@@ -150,9 +157,9 @@ Archive a completed change.
 
 8. **Display summary**
 
-**Output On Success**
+## Output On Success
 
-```
+```text
 ## Archive Complete
 
 **Change:** <change-name>
@@ -167,11 +174,13 @@ Archive a completed change.
 All artifacts complete. All tasks complete.
 ```
 
-**Delta Merge Example**
+## Delta Merge Example
 
 Given this baseline at `.specify/specs/user-auth/spec.md`:
+
 ```markdown
 ### Requirement: Password login
+ID: REQ-001
 The system SHALL authenticate users via password.
 
 #### Scenario: Successful login
@@ -179,6 +188,7 @@ The system SHALL authenticate users via password.
 - **THEN** session is created
 
 ### Requirement: Session timeout
+ID: REQ-002
 The system SHALL expire sessions after 30 minutes of inactivity.
 
 #### Scenario: Idle timeout
@@ -187,10 +197,12 @@ The system SHALL expire sessions after 30 minutes of inactivity.
 ```
 
 And this delta spec at `.specify/changes/add-oauth/specs/user-auth/spec.md`:
+
 ```markdown
 ## ADDED Requirements
 
 ### Requirement: OAuth login
+ID: REQ-003
 The system SHALL authenticate users via OAuth 2.0 providers.
 
 #### Scenario: Google OAuth
@@ -200,6 +212,7 @@ The system SHALL authenticate users via OAuth 2.0 providers.
 ## MODIFIED Requirements
 
 ### Requirement: Session timeout
+ID: REQ-002
 The system SHALL expire sessions after 60 minutes of inactivity.
 
 #### Scenario: Idle timeout
@@ -209,13 +222,16 @@ The system SHALL expire sessions after 60 minutes of inactivity.
 ## REMOVED Requirements
 
 ### Requirement: Password login
+ID: REQ-001
 **Reason**: Replaced by OAuth authentication
 **Migration**: Users should use OAuth providers instead
 ```
 
 The merged baseline becomes:
+
 ```markdown
 ### Requirement: Session timeout
+ID: REQ-002
 The system SHALL expire sessions after 60 minutes of inactivity.
 
 #### Scenario: Idle timeout
@@ -223,6 +239,7 @@ The system SHALL expire sessions after 60 minutes of inactivity.
 - **THEN** session is invalidated
 
 ### Requirement: OAuth login
+ID: REQ-003
 The system SHALL authenticate users via OAuth 2.0 providers.
 
 #### Scenario: Google OAuth
@@ -232,11 +249,13 @@ The system SHALL authenticate users via OAuth 2.0 providers.
 
 (Password login was REMOVED; Session timeout was MODIFIED with new duration; OAuth login was ADDED at the end.)
 
-**Guardrails**
+## Guardrails
+
 - Always confirm the change before archiving
 - Warn on incomplete artifacts or tasks but don't block
 - Apply delta operations in strict order: RENAMED -> REMOVED -> MODIFIED -> ADDED
 - Use heading conventions from `schema.yaml`'s `spec_format` — do not hard-code heading patterns
-- Report errors if RENAMED/REMOVED/MODIFIED reference requirement names not found in the baseline
+- Match requirements by stable ID, not by requirement title
+- Report errors if RENAMED/REMOVED/MODIFIED reference IDs not found in the baseline
 - After merging, verify the result by re-reading the merged file
 - If the merge looks wrong, stop and ask the user before proceeding to the move step

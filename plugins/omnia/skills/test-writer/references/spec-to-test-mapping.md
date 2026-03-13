@@ -8,7 +8,7 @@ How Specify spec scenarios map to test functions. This mapping is deterministic 
 
 Each spec file maps to a primary test file:
 
-```
+```text
 specs/worksite/spec.md  →  tests/worksite.rs
 specs/order/spec.md     →  tests/order.rs
 ```
@@ -17,9 +17,9 @@ Naming convention: snake_case of the spec directory name.
 
 ### Scenario to Test Function
 
-Each scenario under a requirement maps to one test function:
+Each scenario under a requirement maps to one test function. The requirement's stable `ID: REQ-XXX` line is the traceability key:
 
-```
+```text
 #### Scenario: Successful worksite retrieval
   →  #[tokio::test] async fn test_worksite_successful_retrieval()
 
@@ -60,6 +60,7 @@ Each scenario becomes its own test. A requirement with 3 scenarios produces 3 te
 
 ```markdown
 ### Requirement: Worksite data retrieval
+ID: REQ-001
 #### Scenario: Successful retrieval
 #### Scenario: Worksite not found
 #### Scenario: External API timeout
@@ -79,6 +80,7 @@ Validation requirements in specs often produce tests for `from_input()`:
 
 ```markdown
 ### Requirement: Input validation
+ID: REQ-002
 #### Scenario: Missing worksite code
 - WHEN request has empty worksite_code
 - THEN system returns BadRequest with code "missing_worksite_code"
@@ -100,21 +102,21 @@ async fn test_worksite_missing_worksite_code() {
 
 ## Traceability
 
-Each generated test should include a traceability comment linking back to the spec:
+Each generated test should include a traceability comment linking back to the spec with the stable requirement ID:
 
 ```rust
-/// Spec: specs/fleet-api/spec.md > Requirement: Worksite data retrieval > Scenario: Successful retrieval
+/// Spec: specs/fleet-api/spec.md > Requirement ID: REQ-001 > Requirement: Worksite data retrieval > Scenario: Successful retrieval
 #[tokio::test]
 async fn test_fleet_api_successful_retrieval() { ... }
 ```
 
-This enables automated drift detection: parse test comments to find the source scenario, then verify the scenario still exists in the spec with matching WHEN/THEN clauses.
+This enables automated drift detection: parse test comments to find the source scenario and requirement ID, then verify the requirement and scenario still exist in the spec with matching WHEN/THEN clauses.
 
 ## Drift Detection Mechanics
 
 ### Detecting Missing Tests
 
-1. Parse all `### Requirement:` and `#### Scenario:` entries from the spec
+1. Parse all requirement blocks from the spec, including each `### Requirement:`, `ID: REQ-XXX`, and `#### Scenario:` entry
 2. Parse all `#[tokio::test]` function names from `tests/*.rs`
 3. For each scenario, check if a corresponding test function exists
 4. Report scenarios without tests as **missing coverage**
@@ -122,7 +124,7 @@ This enables automated drift detection: parse test comments to find the source s
 ### Detecting Extra Tests
 
 1. Parse all test functions with traceability comments
-2. Check if the referenced scenario still exists in the spec
+2. Check if the referenced requirement ID and scenario still exist in the spec
 3. Report tests referencing removed scenarios as **stale tests**
 
 Tests without traceability comments are treated as manually added and are not flagged.

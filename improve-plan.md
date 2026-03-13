@@ -73,11 +73,3 @@ Future: `- [ ] Create the user crate <!-- skill: omnia:crate-writer -->` The `/s
 ### Drift Detection (/spec:verify)
 
 Problem: Over time, code may drift from the specs if changes are made without going through the workflow. Solution: Add a `/spec:verify` command (or skill) that uses the code-analyzer (from the rt plugin) to reverse-engineer the current code behavior and compare it against the baseline specs in `.specify/specs/`. This closes the loop, ensuring that the "Source of Truth" remains truthful.
-
----
-
-## Dropped
-
-### Make apply's instruction pipeline declarative instead of prose
-
-The orchestration layer (which skills to invoke, in what order) is a tiny fraction of apply's work. The real complexity is inside the downstream skills (generating Rust code, writing tests, repairing failures), all of which are inherently LLM-driven. Making the 1% orchestration deterministic while the 99% execution remains non-deterministic doesn't materially improve reliability. The current prose-based approach is more flexible for handling edge cases, and the LLM is reliable at following numbered sequential steps.
