@@ -1,0 +1,80 @@
+---
+description: RT plugin context -- TypeScript to Rust WASM migration patterns and troubleshooting
+alwaysApply: true
+---
+
+# RT Plugin - TypeScript to Rust WASM Migration
+
+## Overview
+
+This plugin migrates existing TypeScript services to production-grade Rust WASM components targeting the Omnia SDK and wasmtime runtime.
+
+**Purpose**: Automate large-scale migrations from TypeScript to Rust WASM with high fidelity and reproducibility.
+
+## Plugin Architecture
+
+```
+/plugins/rt/
+├── .cursor-plugin/
+│   └── plugin.json      # Plugin manifest
+├── rules/
+│   └── rt.mdc            # This file
+└── skills/
+    ├── code-analyzer/     # TypeScript → Specify artifacts
+    ├── git-cloner/        # Repository cloning (optional detach)
+    ├── wiretapper/        # Add wiretap to legacy repo for fixture capture
+    └── replay-writer/     # Add regression tests from captured fixtures
+```
+
+Each skill has its own SKILL.md with full details. After **clone**, **wiretapper** runs in parallel with **analyze** (wiretapper adds `src/wiretap/` to the legacy repo and wires the app entrypoint so that with `WIRETAP_ENABLED=true` the app writes `{app-name}.wiretap.json`). The RT plugin provides the analysis and fixture-capture side; code generation skills (crate-writer, guest-writer, test-writer, code-reviewer) live in the Omnia plugin.
+
+## TypeScript-Specific Patterns
+
+### What the Analysis Layer Captures (Specify artifacts)
+
+- **Async/await patterns**: Documented as concurrent execution patterns
+- **Type definitions**: TypeScript interfaces → domain model types
+- **REST API handlers**: Express routes → API contracts and business logic blocks
+- **Environment variables**: process.env.X → configuration dependencies
+- **HTTP requests**: axios/fetch → outbound HTTP external service dependencies
+- **Message publishing**: Kafka/RabbitMQ → message publishing capabilities
+- **Data access**: Azure Table Storage, Redis, SQL → external service dependencies with type classification
+
+The code-analyzer produces platform-agnostic Specify artifacts (specs + design.md). The crate-writer skill then maps artifact capabilities to Omnia SDK provider traits (e.g., outbound HTTP → `HttpRequest`, configuration → `Config`).
+
+### Known Challenges
+
+- **Dynamic typing**: TypeScript's `any` → [unknown] tag in artifacts
+- **Complex OOP**: Deep inheritance hierarchies need flattening
+- **Decorators**: Must manually map to Rust patterns
+- **Metaprogramming**: Reflection/proxies can't be directly translated
+- **DOM APIs**: Browser-specific code must be redesigned for WASM
+
+## Troubleshooting
+
+### TypeScript Analysis Fails
+
+- Is source valid TypeScript? (run `tsc --noEmit`)
+- Are dependencies installed? (`npm install`)
+- Is tsconfig.json present?
+
+### Artifacts Missing Business Logic
+
+- Are functions exported? (code-analyzer skips internal functions)
+- Is logic in accessible files? (check module imports)
+- Are there dynamically loaded modules?
+
+### TypeScript Libraries with No Rust Equivalent
+
+- Find Rust crate equivalents (crates.io)
+- Implement functionality using Omnia SDK providers
+- Document in Migration.md as manual work
+
+## Related Documentation
+
+- See project rule (`.cursor/rules/project.mdc`) for overall project context
+- [Code Analyzer SKILL.md](skills/code-analyzer/SKILL.md) - Analysis details
+- [Wiretapper SKILL.md](skills/wiretapper/SKILL.md) - Fixture capture from legacy services
+- [Replay Writer SKILL.md](skills/replay-writer/SKILL.md) - Add tests from captured fixtures
+- [Git Cloner SKILL.md](skills/git-cloner/SKILL.md) - Repository cloning
+- [Specify Artifact Specification](../../references/specify.md) - Artifact format details

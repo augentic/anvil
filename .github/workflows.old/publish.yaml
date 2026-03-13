@@ -1,0 +1,31 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  skip:
+    name: Skipped
+    if: ${{ !startsWith(github.ref_name, 'release-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "This workflow only runs on the 'release-*' branches"
+          exit 1
+
+  ci:
+    name: CI
+    if: ${{ startsWith(github.ref_name, 'release-') }}
+    uses: augentic/.github/.github/workflows/ci.yaml@main
+    secrets: inherit
+
+  publish:
+    name: Publish
+    needs: ci
+    uses: augentic/.github/.github/workflows/publish.yaml@main
+
+  crates:
+    name: Publish crates
+    needs: publish
+    uses: augentic/.github/.github/workflows/crates.yaml@main
+    secrets: inherit

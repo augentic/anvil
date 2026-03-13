@@ -1,0 +1,34 @@
+{
+  "name": "augentic",
+  "owner": {
+    "name": "Augentic",
+    "email": "info@augentic.io"
+  },
+  "metadata": {
+    "description": "AI-driven code generation plugins for Augentic.",
+    "version": "0.12.0",
+    "pluginRoot": "plugins"
+  },
+  "plugins": [
+    {
+      "name": "rt",
+      "source": "rt",
+      "description": "Skills to assist in the migration of TypeScript projects to Omnia Rust wasm32-wasip2 crates."
+    },
+    {
+      "name": "omnia",
+      "source": "omnia",
+      "description": "Skills to generate Omnia Rust wasm32-wasip2 crates."
+    },
+    {
+      "name": "plan",
+      "source": "plan",
+      "description": "Skills to derive proposals, specs, design, and SoW from requirements."
+    },
+    {
+      "name": "spec",
+      "source": "spec",
+      "description": "Skills for Specify workflow orchestration: propose, apply, archive, and explore."
+    }
+  ]
+}

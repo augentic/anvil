@@ -2,10 +2,35 @@ name: CI
 
 on:
   push:
+    paths:
+      - "skills/**"
+      - "references/**"
+      - "scripts/**"
+      - ".specify/**"
+      - "plugins/**"
+      - "examples/**"
+      - ".github/workflows/ci.yaml"
+  pull_request:
+    branches: [main]
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  ci:
-    uses: augentic/.github/.github/workflows/ci.yaml@main
-    secrets: inherit
-    # with:
-    #   outdated: prost
+  checks:
+    name: Documentation and consistency checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run checks
+        run: make checks

@@ -1,0 +1,77 @@
+---
+description: Plan plugin context -- requirements analysis, design enrichment, and SoW generation
+alwaysApply: true
+---
+
+# Plan Plugin - Requirements Analysis and Design
+
+## Overview
+
+This plugin derives proposals, specifications, design documents, and Statements of Work from JIRA epics, design documents, and other requirement sources. It produces the Specify artifacts that downstream generation plugins (Omnia, RT) consume.
+
+**Purpose**: Bridge business requirements to structured Specify artifacts ready for code generation.
+
+## Plugin Architecture
+
+```
+/plugins/plan/
+├── .cursor-plugin/
+│   └── plugin.json      # Plugin manifest
+├── mcp.json              # Atlassian MCP for JIRA access
+├── rules/
+│   └── plan.mdc          # This file
+└── skills/
+    ├── epic-analyzer/     # JIRA → Specify artifacts
+    └── sow-writer/        # Statement of Work generation
+```
+
+Each skill has its own SKILL.md with full details. The Specify artifact format (specs + design.md) is described in [specify.md](../../references/specify.md).
+
+## JIRA Epic Requirements
+
+For best results, JIRA epics should include:
+
+### Essential
+- **Clear epic description**: Purpose and high-level functionality
+- **User stories**: At least 3-5 stories with acceptance criteria
+- **API endpoints**: HTTP methods, paths, request/response formats
+- **Data model**: Entity definitions with field types
+
+### Recommended
+- **BDD scenarios**: Given/When/Then specifications for key workflows
+- **Error handling**: Expected error conditions and messages
+- **Validation rules**: Input constraints, format requirements
+- **External dependencies**: APIs, databases, message queues
+
+### Optional
+- **Performance requirements**: Latency targets, throughput goals
+- **Security requirements**: Authentication, authorization, data protection
+- **Example payloads**: Sample JSON/XML for requests and responses
+
+**Tip**: High `[unknown]` count in generated artifacts means the epic needs more detail.
+
+## Troubleshooting
+
+### Cannot Fetch JIRA Epic
+
+- Is epic key correct? (Check JIRA URL)
+- Do you have read permissions?
+- Are API credentials set?
+
+### Artifacts Missing Detail
+
+- Are user stories complete with acceptance criteria?
+- Are API endpoints fully specified?
+- Are request/response schemas documented?
+
+### Design Enrichment Incomplete
+
+- Is the supplementary design document accessible?
+- Does the design document contain the expected sections?
+
+## Related Documentation
+
+- See project rule (`.cursor/rules/project.mdc`) for overall project context
+- [Epic Analyzer SKILL.md](skills/epic-analyzer/SKILL.md) - JIRA extraction details
+- [SoW Writer SKILL.md](skills/sow-writer/SKILL.md) - Statement of Work generation
+- [Specify Artifact Specification](../../references/specify.md) - Artifact format details

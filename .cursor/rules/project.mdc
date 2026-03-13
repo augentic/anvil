@@ -1,0 +1,161 @@
+---
+description: Augentic plugins project overview, Specify workflow, and conventions
+alwaysApply: true
+---
+
+# Augentic Plugins - Specify Specialist Skills
+
+This repository provides specialist skills and references for Specify-driven Rust WASM development on Augentic's Omnia runtime.
+
+## Operating Model
+
+The intended workflow is human-driven Specify:
+
+```bash
+/spec:propose
+/spec:apply
+/spec:archive
+```
+
+Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
+
+## Main Inputs
+
+1. **TypeScript → Rust WASM**: reconstruct baseline specs and design from an existing service.
+2. **JIRA → Rust WASM**: derive proposal, specs, and design context from epics and stories.
+
+## Authority Hierarchy
+
+When conflicts arise, follow this strict precedence order:
+
+1. **SKILL.md** - generation rules and hard constraints
+2. **Specify artifacts** - `proposal.md`, `spec.md`, `design.md`, `tasks.md`
+3. **references/** - authoritative patterns and examples
+4. **Source** - reference for ambiguity only
+5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
+
+**Key principle**: If artifacts conflict with source, trust the artifacts. If the artifacts are incomplete, mark unknowns rather than guessing.
+
+## Artifact Boundaries
+
+Specify artifacts have separate responsibilities:
+
+- **`proposal.md`**: why the change exists and what is in scope
+- **`spec.md`**: behavioral requirements, scenarios, error conditions, optional metrics
+- **`design.md`**: domain model, APIs, integrations, configuration, technical logic
+- **`tasks.md`**: implementation sequencing only
+
+Behavioral specs should remain platform-neutral. Omnia trait selection, guest wiring, and WASM translation belong in specialist skills and references.
+
+## Specialist Skills
+
+### Specify Plugin (`plugins/spec/`)
+
+- `propose` - create a change and generate all artifacts in one step
+- `apply` - implement tasks from an Specify change
+- `archive` - finalize and archive a completed change
+- `explore` - thinking partner for ideas, investigation, and requirements
+
+### Omnia Plugin (`plugins/omnia/`)
+
+- `crate-writer` - generate or update Rust crates from Specify artifacts
+- `test-writer` - generate or update test suites from Specify artifacts and crate code
+- `guest-writer` - generate the WASM guest wrapper
+- `code-reviewer` - review generated code for correctness and Omnia/WASM compliance
+
+### RT Plugin (`plugins/rt/`)
+
+- `code-analyzer` - derive specs and design from TypeScript
+- `git-cloner` - clone a source repository for analysis
+- `replay-writer` - add regression tests from captured fixtures
+- `wiretapper` - capture fixture data from legacy services
+
+### Plan Plugin (`plugins/plan/`)
+
+- `epic-analyzer` - derive proposal/specs/design context from JIRA
+- `sow-writer` - translate Specify artifacts into client-facing SoW material
+
+## Repository Layout
+
+```text
+/.cursor/
+  └── rules/        # Project guidance for agents
+
+/.specify/          # Specify project config and schemas
+/plugins/
+  ├── omnia/        # Omnia code generation plugin
+  ├── spec/         # Specify workflow plugin (propose, apply, archive, explore)
+  ├── plan/         # Plan requirements analysis plugin
+  └── rt/           # RT migration plugin
+/references/        # Shared Omnia and workflow references
+/examples/          # Worked examples
+/scripts/           # Documentation and consistency checks
+```
+
+## Validation
+
+```bash
+make checks
+```
+
+For generated crates in downstream consumer projects, the normal verification commands apply:
+
+```bash
+cd crates/<name> && cargo check
+cd crates/<name> && cargo test
+cargo build --target wasm32-wasip2 --release
+cargo fmt -- --check
+cargo clippy -- -D warnings
+```
+
+## Code Style And Constraints
+
+### Microsoft Pragmatic Rust Style
+
+- Strong typing with newtypes
+- Explicit error handling
+- Clear, descriptive naming
+- Prefer small functions and explain genuinely complex logic
+
+### WASM And Omnia SDK Constraints
+
+See [guardrails.md](references/omnia/guardrails.md) for forbidden crates and APIs, provider trait rules, validation placement, and runtime constraints.
+
+## File Locations
+
+In downstream consumer projects:
+
+- **Crates**: `$PROJECT_DIR/crates/<crate_name>/`
+- **Metrics**: `$PROJECT_DIR/.metrics.json` when tracking is enabled
+
+In this repository:
+
+- **Working artifacts**: `$PROJECT_DIR/.specify/changes/<change-name>/`
+- **Baseline specs**: `$PROJECT_DIR/.specify/specs/`
+
+## Troubleshooting
+
+### Artifact Issues
+
+- Mark uncertain behavior with `[unknown]`
+- Keep specs behavioral and technical detail in `design.md`
+- Review `references/specify.md` when artifact responsibilities feel blurred
+
+### Generation Issues
+
+- Check the relevant `SKILL.md` first
+- Review Omnia references for capability and provider patterns
+- Compare against worked examples before inventing a new pattern
+
+## For Contributors
+
+- All skills follow the shared `SKILL.md` structure
+- Changes to generation behavior belong in the relevant skill or reference
+- Keep the repo aligned with the Specify-first operating model
+
+## Getting Help
+
+- Review `references/specify.md`
+- Review the relevant `SKILL.md`
+- Review `references/omnia/`
+- Open an issue for bugs or enhancement requests

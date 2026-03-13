@@ -2,3 +2,7 @@
 .PHONY: %
 %:
 	@cargo make $@
+
+.PHONY: checks
+checks:
+	@./scripts/checks.sh

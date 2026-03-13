@@ -3,7 +3,74 @@ name: Create Patch
 on:
   workflow_dispatch:
 
+concurrency:
+  group: release
+
 jobs:
+  skip:
+    name: Skipped
+    if: startsWith(github.ref_name, 'release-') == false
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "This workflow only runs on the 'release-*' branches"
+          exit 1
+
   patch:
-    uses: augentic/.github/.github/workflows/patch.yaml@main
-    secrets: inherit
+    name: Patch
+    if: startsWith(github.ref_name, 'release-') == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Determine patch version
+        id: version
+        run: |
+          LATEST_TAG=$(git tag --list 'v*' --sort=-v:refname | head -n1)
+          if [ -z "$LATEST_TAG" ]; then
+            echo "::error::No existing tags found. Use the Create Release workflow first."
+            exit 1
+          fi
+
+          VERSION="${LATEST_TAG#v}"
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$VERSION"
+          PATCH=$((PATCH + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "base_tag=$LATEST_TAG" >> "$GITHUB_OUTPUT"
+          echo "## Patch" >> "$GITHUB_STEP_SUMMARY"
+          echo "**${LATEST_TAG}** → **v${NEW_VERSION}**" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create patch branch from latest tag
+        run: |
+          git checkout "${{ steps.version.outputs.base_tag }}"
+          git checkout -b "release-${{ steps.version.outputs.version }}"
+
+      - name: Update version
+        run: echo "${{ steps.version.outputs.version }}" > VERSION
+
+      - name: Commit and push
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "release: prepare v${VERSION}"
+          git push origin "release-${VERSION}"
+
+      - name: Summary
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "## Patch Branch Created" >> "$GITHUB_STEP_SUMMARY"
+          echo "Branch: \`release-${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Next steps:" >> "$GITHUB_STEP_SUMMARY"
+          echo "1. Cherry-pick fixes onto \`release-${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "2. Run **Publish Release** workflow from \`release-${VERSION}\`" >> "$GITHUB_STEP_SUMMARY"

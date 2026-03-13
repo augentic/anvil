@@ -1,267 +1,123 @@
-# Augentic Lifecycle (specify)
+# Augentic Plugins
 
-Spec-driven development CLI. Manages the full change lifecycle -- propose, apply, archive -- with schema-governed artifacts, an artifact dependency graph, and structural delta merging for baseline spec evolution.
+Specialist skills and references for Specify-driven Rust WASM delivery on Augentic's Omnia runtime.
 
-## Installation
+## Workflow
 
-```bash
-# from this repo
-cargo install --path . --root ~/.local
+This repository is designed for a human-driven Specify workflow:
 
-# from GitHub
-cargo install --git https://github.com/augentic/specify --root ~/.local
+```text
+/spec:propose  ->  /spec:apply  ->  /spec:archive
 ```
 
+See [Specify](https://github.com/augentic/specify) for more options.
+
+The job of this repository is not to replace Specify. Its job is to supply specialist expertise:
+
+- Omnia and WASM-aware code generation
+- TypeScript source analysis
+- JIRA requirements analysis
+- Design enrichment
+- Code review and verification guidance
+
+## Getting Started
+
+Install Specify and initialize the repository as an Specify project:
+
 ```bash
-# Homebrew (macOS / Linux)
-# brew install augentic/specify
-
-# from source
-cargo install --path . --root ~/.local
-```
-
-## Quick Start
-
-```bash
-# Initialise OpenSpec in your project
+brew install augentic/specify/specify
 specify init
-
-# Create a new change
-specify new add-dark-mode
-
-# Check artifact status
-specify status add-dark-mode
-
-# Get instructions for the next artifact
-specify instructions proposal add-dark-mode
-
-# ... write artifacts (proposal.md, specs, design.md, tasks.md) ...
-
-# Archive when done (merges delta specs into baseline)
-specify archive add-dark-mode
+specify update
 ```
 
-## Commands
+Then use the core Specify flow in Cursor's agent pane:
 
-### `specify init`
+| Command | Description |
+| ------- | ----------- |
+| `/spec:propose` "Migrate [https://github.com/org/my-service](https://github.com/org/my-service) to Rust WASM on Omnia." | Create artifacts |
+| `/spec:apply` | Apply the change |
+| `/spec:archive` | Merge specs and design into baseline specs |
 
-Resolve the schema and write project configuration. Creates `.specify/config.yaml`, `.specify/schemas/`, `.specify/changes/`, and `.specify/specs/`.
+If you are working from a fresh clone, run `specify init` before using any `/spec:*` command. The workflow skills in `plugins/spec/` expect the standard Specify project structure to exist.
 
-```bash
-specify init                  # interactive
-specify init --schema omnia   # non-interactive (CI-friendly)
-```
+## Plugins
 
-### `specify new <name>`
+Four plugins provide specialist skills consumed during `/spec` work:
 
-Create a new change directory with metadata and an empty `specs/` subdirectory.
+### Specify Plugin (`plugins/spec/`)
 
-```bash
-specify new add-dark-mode
-specify new add-dark-mode --json   # machine-readable output
-```
+Core Specify workflow orchestration.
 
-### `specify status [change]`
+| Skill                | Primary role                                                                 |
+| -------------------- | ---------------------------------------------------------------------------- |
+| `propose`            | Create a change and generate all artifacts in one step                       |
+| `apply`              | Implement tasks from an Specify change                                      |
+| `archive`            | Finalize and archive a completed change                                      |
+| `explore`            | Thinking partner for exploring ideas, problems, and requirements             |
 
-Report artifact completion state for a change. Auto-selects when only one active change exists.
+### Omnia Plugin (`plugins/omnia/`)
 
-```bash
-specify status                     # auto-select single active change
-specify status add-dark-mode       # explicit change name
-specify status --json              # machine-readable output
-```
+Code generation and review for Rust WASM on the Omnia runtime.
 
-### `specify instructions <artifact> [change]`
+| Skill                | Primary role                                                                 |
+| -------------------- | ---------------------------------------------------------------------------- |
+| `crate-writer`       | Generate or update Rust crates from Specify artifacts                       |
+| `test-writer`        | Generate or update test suites from Specify artifacts and crate code        |
+| `guest-writer`       | Generate the WASM guest wrapper around domain crates                         |
+| `code-reviewer`      | Review generated or updated crates for correctness and Omnia/WASM compliance |
 
-Output enriched instructions for creating an artifact. Includes schema instruction, project context, rules, template content, and dependency guidance.
+### RT Plugin (`plugins/rt/`)
 
-```bash
-specify instructions proposal add-dark-mode
-specify instructions apply add-dark-mode
-specify instructions specs --json   # machine-readable output
-```
+TypeScript source analysis and fixture capture for migration workflows.
 
-### `specify list`
+| Skill                | Primary role                                                                 |
+| -------------------- | ---------------------------------------------------------------------------- |
+| `code-analyzer`      | Derive baseline Specify artifacts from an existing TypeScript codebase      |
+| `git-cloner`         | Clone a source repository as a detached tree for analysis                    |
+| `replay-writer`      | Add regression tests from captured real-world fixtures                       |
+| `wiretapper`         | Capture fixture data from legacy services                                    |
 
-List active and archived changes with completion summaries.
+### Plan Plugin (`plugins/plan/`)
 
-```bash
-specify list
-specify list --json
-```
+Requirements analysis, design enrichment, and SoW generation.
 
-### `specify archive <change>`
+| Skill                | Primary role                                                                 |
+| -------------------- | ---------------------------------------------------------------------------- |
+| `epic-analyzer`      | Derive proposal, specs, and design context from JIRA epics and stories       |
+| `sow-writer`         | Translate Specify artifacts into client-facing SoW material                 |
 
-Merge delta specs into baseline specs and move the change to a dated archive.
-
-```bash
-specify archive add-dark-mode
-specify archive add-dark-mode --json
-```
-
-The archive process:
-
-1. Validates all artifacts are complete
-2. Merges each `specs/<capability>/spec.md` into `.specify/specs/<capability>/spec.md`
-3. Moves the change to `.specify/changes/archive/<date>-<name>/`
-
-### `specify update`
-
-Fetch the latest schemas from GitHub and write them to the local store (`~/.local/share/specify/schemas/`).
-
-```bash
-specify update                        # fetch from augentic/lifecycle main branch
-specify update --project              # also update this project's .specify/schemas/
-specify update --repo org/repo        # fetch from a different repository
-specify update --git-ref v2.0         # fetch from a specific tag or branch
-```
-
-### `specify validate`
-
-Validate the project's OpenSpec configuration and directory structure. Checks config, schema, artifact graph consistency, change metadata, and delta spec structure.
-
-```bash
-specify validate
-```
-
-### `specify schemas`
-
-List all available schemas from embedded, local store, and project sources.
-
-```bash
-specify schemas
-```
-
-### `specify completions <shell>`
-
-Generate shell completions for bash, zsh, fish, or powershell.
-
-```bash
-specify completions zsh > ~/.zfunc/_specify
-specify completions bash --output /etc/bash_completion.d/specify
-```
-
-## Delta Spec System
-
-Changes use delta operations to evolve baseline specs without replacing them wholesale:
-
-- **ADDED Requirements** -- new requirements appended to the baseline
-- **MODIFIED Requirements** -- existing requirements replaced by name match
-- **REMOVED Requirements** -- existing requirements deleted by name match
-- **RENAMED Requirements** -- requirement header renamed (FROM:/TO: format)
-
-Delta merging is structural (header-based section splitting) and does not interpret markdown content. At archive time, deltas are applied to `.specify/specs/` and the change is moved to the archive.
-
-## Skill Integration
-
-The CLI is designed for invocation from AI coding skills (Cursor, Claude Code, etc.). All commands that produce output support `--json` for machine-readable consumption.
-
-Typical skill workflow:
-
-1. `specify new <name>` -- scaffold the change
-2. `specify status <name>` -- check what's ready
-3. `specify instructions <artifact> <name>` -- get enriched instructions
-4. LLM writes the artifact
-5. Repeat 2-4 until all artifacts are complete
-6. `specify instructions apply <name>` -- get apply instructions
-7. `specify archive <name>` -- merge and archive
-
-## OpenSpec Artifacts
+## Repository Structure
 
 ```text
-.specify/
-  config.yaml                # Project configuration (schema, context, rules)
-  specs/                     # Baseline specs (source of truth)
-  changes/                   # Active changes (one folder per change)
-    <change-name>/
-      .metadata.yaml         # Change metadata (schema, created_at)
-      proposal.md            # Why this change
-      specs/                 # Delta specs (ADDED/MODIFIED/REMOVED/RENAMED)
-        <capability>/
-          spec.md
-      design.md              # How to implement
-      tasks.md               # Implementation checklist
-    archive/                 # Completed changes (dated)
-  schemas/
-    <schema-name>/
-      schema.yaml            # Artifact definitions and dependency graph
-      templates/             # Artifact templates
+augentic-plugins/
+├── .cursor/
+│   └── rules/                    # Project guidance for agents
+├── .specify/                     # Specify project config and schemas
+├── plugins/
+│   ├── omnia/                    # Omnia code generation plugin
+│   ├── spec/                     # Specify workflow plugin (propose, apply, archive, explore)
+│   ├── plan/                     # Plan requirements analysis plugin
+│   └── rt/                       # RT migration plugin
+├── references/                   # Shared Omnia and workflow references
+├── examples/                     # Supporting examples and reference material
+└── scripts/                      # Documentation and consistency checks
 ```
 
-## Configuration
+## Validation
 
-`.specify/config.yaml` controls which schema is active and provides project-specific context and rules for artifact generation.
-
-```yaml
-schema: omnia
-
-context: |
-  Tech stack: Rust, WASM (wasm32-wasip2), Omnia SDK
-  Architecture: Handler<P> pattern with provider trait bounds
-  Testing: Rust integration tests, cargo test
-
-rules:
-  proposal:
-    - Identify the source workflow
-  specs:
-    - Use WHEN/THEN format for scenarios
-  design:
-    - Document domain model with entity relationships
-  tasks:
-    - Structure tasks around the skill chain
-```
-
-## Schema Resolution
-
-Schemas are resolved in priority order:
-
-1. **Local store** (`~/.local/share/specify/schemas/`) -- populated by `specify update`
-2. **Embedded** -- schemas bundled at compile time from this repository's `schemas/`
-
-## Global Options
-
-
-| Flag              | Description                                      |
-| ----------------- | ------------------------------------------------ |
-| `-v`, `--verbose` | Increase log verbosity (`-v` debug, `-vv` trace) |
-| `-q`, `--quiet`   | Suppress non-error output                        |
-
-
-## Development
+Validate the repository documentation and metadata with:
 
 ```bash
-cargo build           # build debug binary
-cargo clippy          # lint
-cargo fmt             # format
-cargo run -- --help   # run directly
+make checks
 ```
 
-### Project Structure
+## Documentation
 
-```text
-src/
-├── main.rs               -- entry point, command dispatch
-├── lib.rs                -- module re-exports
-├── cli.rs                -- clap CLI definitions
-├── commands/
-│   ├── archive.rs        -- specify archive
-│   ├── completions.rs    -- specify completions
-│   ├── init.rs           -- specify init
-│   ├── instructions.rs   -- specify instructions
-│   ├── list.rs           -- specify list
-│   ├── new.rs            -- specify new
-│   ├── schemas.rs        -- specify schemas
-│   ├── status.rs         -- specify status
-│   ├── update.rs         -- specify update
-│   └── validate.rs       -- specify validate
-└── core/
-    ├── change.rs         -- change lifecycle (create, discover, archive)
-    ├── config.rs         -- project config model (serde_yaml)
-    ├── delta.rs          -- structural delta merge (parse, apply)
-    ├── embedded.rs       -- compile-time embedded schemas
-    ├── graph.rs          -- artifact DAG (topological sort, completion)
-    ├── paths.rs          -- XDG path resolution, project root detection
-    ├── registry.rs       -- schema registry (embedded + local + GitHub)
-    └── schema.rs         -- schema model
-```
+- [Specify Artifact Guidance](references/specify.md)
+- [Project Rule](.cursor/rules/project.mdc)
+- [Contribution Guide](CONTRIBUTING.md)
+- [Cursor Skills Documentation](https://docs.cursor.com/skills)
 
+## License
+
+Dual-licensed under [MIT](LICENSE-MIT) or [Apache 2.0](LICENSE-APACHE), at your option.

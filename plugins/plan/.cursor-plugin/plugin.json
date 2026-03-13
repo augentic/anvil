@@ -1,0 +1,19 @@
+{
+  "name": "plan",
+  "displayName": "Plan",
+  "description": "Derive proposals, specs, design, and SoW from JIRA epics and design documents.",
+  "version": "0.12.0",
+  "author": {
+    "name": "Augentic",
+    "email": "andrew@augentic.io"
+  },
+  "homepage": "https://github.com/augentic/plugins",
+  "repository": "https://github.com/augentic/plugins",
+  "license": "MIT or Apache-2.0",
+  "keywords": [
+    "rust",
+    "plan",
+    "jira"
+  ],
+  "settings": {}
+}

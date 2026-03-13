@@ -1,0 +1,343 @@
+---
+description: Omnia SDK patterns for Rust WASM crate and guest development -- handler traits, provider capabilities, error handling, serde conventions, and WASM constraints.
+globs: "**/*.rs"
+alwaysApply: false
+---
+
+# Omnia Rust Development
+
+## 1. WASM Hard Constraints
+
+All code targets `wasm32-wasip2`. Violating any rule below causes build or runtime failure.
+
+1. **Omnia SDK only** -- all errors return `omnia_sdk::Error`; no custom error types in public API
+2. **Provider-only I/O** -- all external I/O through provider traits; no direct network/file/env access
+3. **No forbidden crates** -- see table below
+4. **No mutable global state** -- no `static mut`, `OnceCell`, `lazy_static!`; `LazyLock` allowed only for immutable compile-time lookup tables
+5. **Handler trait required** -- request structs implement `Handler<P>` with delegation pattern
+6. **Strong typing** -- newtypes for IDs; enums for known value sets; no raw primitives for domain concepts
+7. **WASM compatible** -- no `std::env`, `std::fs`, `std::net`, `std::process`, `std::thread::spawn`
+8. **All operations async** -- no blocking I/O
+
+### Forbidden Crates
+
+| Crate | Alternative |
+|-------|-------------|
+| `reqwest` | `HttpRequest::fetch` via provider |
+| `tokio` (as runtime) | Only in `[dev-dependencies]` for tests |
+| `redis` | `StateStore` via provider |
+| `sqlx`, `diesel` | `TableStore` via provider |
+| `hyper` | `omnia-wasi-http` + axum |
+| `dotenv`, `dotenvy` | `Config::get` via provider |
+| `rand`, `uuid` | Accept IDs as input or derive deterministically |
+| `lazy_static` | `std::sync::LazyLock` for immutable tables only |
+
+### Forbidden std APIs
+
+| API | Alternative |
+|-----|-------------|
+| `std::env::var` | `Config::get` via provider |
+| `std::fs::*` | `StateStore` or `HttpRequest` |
+| `std::net::*` | `HttpRequest::fetch` via provider |
+| `std::process::*` | N/A |
+| `std::thread::spawn` | Async patterns |
+
+Allowed: `std::sync::LazyLock` (immutable tables), `std::collections::HashMap`, `std::fmt`, `std::io` (in-memory), `std::str`.
+
+### Code Quality
+
+- No `unwrap()` or `expect()` in production code (allowed in tests)
+- No `println!`, `dbg!`, `eprintln!` -- use `tracing::debug!` / `tracing::info!`
+- No `unsafe` blocks
+- Functions < 50 lines
+- All public types and functions have doc comments
+
+## 2. Handler Pattern
+
+Every handler follows this pattern. The request struct implements `Handler<P>` and delegates to a standalone async function.
+
+```rust
+use omnia_sdk::api::{Context, Handler, Reply};
+use omnia_sdk::{Config, Error, HttpRequest, Result};
+
+async fn handle<P>(owner: &str, request: MyRequest, provider: &P) -> Result<Reply<MyResponse>>
+where
+    P: Config + HttpRequest,
+{
+    // business logic here
+    Ok(Reply::ok(response))
+}
+
+impl<P> Handler<P> for MyRequest
+where
+    P: Config + HttpRequest,
+{
+    type Error = Error;
+    type Input = Vec<u8>;
+    type Output = MyResponse;
+
+    fn from_input(input: Vec<u8>) -> Result<Self> {
+        serde_json::from_slice(&input)
+            .context("deserializing MyRequest")
+            .map_err(Into::into)
+    }
+
+    async fn handle(self, ctx: Context<'_, P>) -> Result<Reply<MyResponse>> {
+        handle(ctx.owner, self, ctx.provider).await
+    }
+}
+```
+
+### Input Type Decision Tree
+
+- `Vec<u8>` -- message/POST body (`serde_json::from_slice` or `quick_xml::de::from_reader`)
+- `String` -- single path param (`GET /item/{id}`)
+- `(String, String)` -- tuple path params (`GET /a/{x}/{y}`)
+- `Option<String>` -- query string (`serde_urlencoded::from_str`)
+- `()` -- scheduled/cron (no payload)
+
+**Never** use `type Input = MyRequest` -- this bypasses deserialization and is incompatible with the Omnia runtime.
+
+### Response Types
+
+HTTP response types must implement `IntoBody`:
+
+```rust
+impl IntoBody for MyResponse {
+    fn into_body(self) -> anyhow::Result<Vec<u8>> {
+        serde_json::to_vec(&self).context("serializing reply")
+    }
+}
+```
+
+Messaging handlers use `type Output = ()` and do not need `IntoBody`.
+
+## 3. Provider Capabilities
+
+All 7 traits live in `omnia_sdk`. Domain crates declare which traits they need as generic bounds; the guest Provider struct satisfies those bounds with empty impls that delegate to SDK defaults.
+
+### Capability Selection
+
+| Need | Trait | Import |
+|------|-------|--------|
+| Environment variables, URLs, feature flags | `Config` | `use omnia_sdk::Config;` |
+| Outbound HTTP calls | `HttpRequest` | `use omnia_sdk::HttpRequest;` |
+| Message publishing (Kafka) | `Publish` | `use omnia_sdk::{Publish, Message};` |
+| Caching, state persistence | `StateStore` | `use omnia_sdk::StateStore;` |
+| Auth tokens (Azure AD, OAuth) | `Identity` | `use omnia_sdk::Identity;` |
+| SQL database queries | `TableStore` | `use omnia_sdk::TableStore;` |
+| WebSocket send/reply | `Broadcast` | `use omnia_sdk::Broadcast;` |
+
+### Composition Rules
+
+- Include **only** the traits the function actually calls. Fewer bounds = more testable and self-documenting.
+- Handler bounds are the **union** of all traits needed by internal functions it calls.
+- Never construct host-side types (`Client::new()`, `RedisClient::connect()`).
+- Never wrap provider traits in custom abstractions.
+- All state is explicit -- no caching, memoization, or global state.
+- Use `Config::get(provider, "KEY")`, never `std::env::var("KEY")`.
+
+### Authentication Pattern
+
+When any HTTP call requires a Bearer token, follow Config -> Identity -> HttpRequest:
+
+```rust
+let identity = Config::get(provider, "AZURE_IDENTITY").await?;
+let token = Identity::access_token(provider, identity).await?;
+let request = http::Request::builder()
+    .header("Authorization", format!("Bearer {token}"))
+    .body(Empty::<Bytes>::new())?;
+let response = HttpRequest::fetch(provider, request).await?;
+```
+
+This requires handler bounds `P: Config + Identity + HttpRequest` at minimum.
+
+## 4. Error Handling
+
+### SDK Error Variants
+
+```rust
+pub enum Error {
+    BadRequest { code: String, description: String },   // 400
+    NotFound { code: String, description: String },     // 404
+    ServerError { code: String, description: String },  // 500
+    BadGateway { code: String, description: String },   // 502
+}
+```
+
+**CRITICAL**: Method-style constructors like `Error::bad_request("msg")` DO NOT EXIST. Use one of:
+
+1. **Macros** (preferred): `bad_request!("msg")`, `server_error!("msg")`, `bad_gateway!("msg")`
+2. **Struct variant**: `Error::BadRequest { code: "code".to_string(), description: "msg".to_string() }`
+3. **Domain error conversion**: `impl From<DomainError> for Error`
+
+### Error Macros
+
+```rust
+use omnia_sdk::{bad_request, server_error, bad_gateway};
+
+bad_request!("missing field");                        // single-arg: message as both code and description
+bad_request!("customer_not_found", "Customer not found"); // two-arg: stable code + description
+server_error!("unexpected state: {}", state);
+bad_gateway!("upstream API failed: {e}");
+```
+
+### Domain Error Pattern
+
+```rust
+#[derive(Error, Debug)]
+pub enum MyError {
+    #[error("{0}")]
+    InvalidInput(String),
+    #[error("{0}")]
+    NotFound(String),
+}
+
+impl MyError {
+    fn code(&self) -> &'static str {
+        match self {
+            Self::InvalidInput(_) => "invalid_input",
+            Self::NotFound(_) => "not_found",
+        }
+    }
+}
+
+impl From<MyError> for omnia_sdk::Error {
+    fn from(err: MyError) -> Self {
+        match &err {
+            MyError::InvalidInput(_) => Self::BadRequest {
+                code: err.code().to_string(), description: err.to_string(),
+            },
+            MyError::NotFound(_) => Self::NotFound {
+                code: err.code().to_string(), description: err.to_string(),
+            },
+        }
+    }
+}
+```
+
+Use `anyhow::Context` for error chaining: `.context("deserializing response").map_err(Into::into)`.
+
+## 5. Serde and Type Conventions
+
+### Input-Only Types (deserialized but not re-serialized with wire names)
+
+```rust
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default)]
+pub struct InboundMessage {
+    #[serde(rename(deserialize = "sourceField"))]
+    pub source_field: Option<String>,
+}
+```
+
+- `#[serde(rename(deserialize = "..."))]` -- deserialize-only rename
+- `#[serde(default)]` -- tolerate missing fields
+- Derive `Default + Deserialize` (not `Serialize` unless needed for caching)
+
+**Wrong**: `#[serde(rename = "sourceField")]` -- this causes serialization to use foreign field names in logs and StateStore.
+
+### Output Types (JSON responses, published events)
+
+```rust
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OutputEvent {
+    pub received_at: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub optional_field: Option<String>,
+}
+```
+
+### Integer-Backed Enums
+
+Use `serde_repr`. Never deserialize integer enums as raw `u32` with manual conversion.
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize_repr)]
+#[repr(u8)]
+pub enum ChangeType {
+    Created = 1,
+    Updated = 2,
+    Deleted = 3,
+}
+```
+
+### Timestamp Semantics
+
+- `received_at` -- always `Utc::now()` (processing time), NOT the source message's creation timestamp
+- Source creation dates map to named fields like `created_at`, not `received_at`
+
+### DST-Safe Timezone Conversion
+
+Use `.earliest()` not `.single()` when converting local times. `.single()` returns `None` during DST transitions.
+
+```rust
+let naive_dt = date.and_hms_opt(0, 0, 0).unwrap_or_default();
+let Some(midnight) = naive_dt.and_local_timezone(tz).earliest() else {
+    return Err(bad_request!("invalid local time: {naive_dt}"));
+};
+```
+
+## 6. Validation Placement
+
+### Structural validation belongs in `from_input()`
+
+Checks that depend ONLY on the parsed data structure: field presence, format (regex, email), range checks on constants, type conversions.
+
+### Temporal/contextual validation belongs in `handle()` or a `validate()` method
+
+Checks that compare against runtime state or time: timestamp freshness using `Utc::now()`, idempotency checks (requires StateStore), business rule validation (requires external API calls).
+
+**Never use `Utc::now()` in `from_input()`** -- the test framework's `shift_time` cannot fix validation at parse time. Message replay tests will fail.
+
+```text
+Does the validation use Utc::now(), SystemTime, or runtime state?
+ YES -> belongs in handle() or validate() called from handle()
+ NO  -> can this check be done immediately after parsing?
+         YES -> belongs in from_input()
+         NO  -> belongs in handle()
+```
+
+## 7. Guest Wiring Principles
+
+The guest is a thin wrapper. It handles WASI/wasm32 boundary concerns (HTTP routing, message topic dispatch, WebSocket events, provider setup). ALL business logic delegates to domain crates.
+
+- `#![cfg(target_arch = "wasm32")]` guard at top of `src/lib.rs`
+- Handler builder API: `Type::handler(input)?.provider(&Provider::new()).owner("at").await.map_err(Into::into)`
+- Route params use `{param}` brace syntax (Axum 0.8), not `:param`
+- Messaging handlers return `Err(Error::Other(...))` for unhandled topics, not `Ok(())`
+- HTTP handlers return `HttpResult<Reply<T>>`, not `HttpResult<T>`
+- All handler functions annotated with `#[omnia_wasi_otel::instrument]`
+
+### Provider Struct
+
+Empty trait impls delegate to Omnia SDK defaults. Use `ensure_env!` to validate required config at startup.
+
+```rust
+#[derive(Clone, Default)]
+pub struct Provider;
+
+impl Provider {
+    #[must_use]
+    pub fn new() -> Self {
+        ensure_env!("API_URL", "AZURE_IDENTITY");
+        Self
+    }
+}
+
+impl Config for Provider {}
+impl HttpRequest for Provider {}
+impl Identity for Provider {}
+impl Publish for Provider {}
+```
+
+### Metrics and Logging
+
+Use `tracing` for all diagnostics and metrics. OpenTelemetry-compatible metric names:
+
+```rust
+tracing::info!(monotonic_counter.events_published = 1);
+tracing::info!(gauge.processing_delay = delay_secs);
+tracing::debug!("fetched {} layouts", layouts.len());
+```
