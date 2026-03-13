@@ -14,6 +14,7 @@ The intended workflow is human-driven Specify:
 ```bash
 /spec:init      # once per project
 /spec:propose
+/spec:review    # optional — validate before implementing
 /spec:apply
 /spec:archive
 /spec:abandon
@@ -55,6 +56,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 - `init` - initialize Specify in a project (one-time setup)
 - `propose` - create a change and generate all artifacts in one step
+- `review` - validate artifacts with structured checks and cross-artifact consistency
 - `apply` - implement tasks from a Specify change
 - `archive` - finalize and archive a completed change
 - `abandon` - discard a change without merging specs into baseline
@@ -89,7 +91,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
   ├── references/         # Shared references (specify.md, agent-teams.md)
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
-  ├── spec/               # Specify workflow plugin (init, propose, apply, archive, abandon, explore, status)
+  ├── spec/               # Specify workflow plugin (init, propose, review, apply, archive, abandon, explore, status)
   │   └── references/     # Artifact templates and instructions
   ├── plan/               # Plan requirements analysis plugin
   └── rt/                 # RT migration plugin

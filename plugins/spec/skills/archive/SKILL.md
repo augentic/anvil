@@ -143,7 +143,32 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    **Preserve preamble**: Any text before the first requirement heading or `##` header in the baseline should be preserved as-is.
 
-7. **Update metadata and move to archive**
+7. **Baseline coherence check**
+
+   After all merges complete, validate the entire baseline under `.specify/specs/` to catch inconsistencies that valid individual changes may introduce when merged sequentially.
+
+   For every spec file that was created or updated by the merge in step 6:
+
+   a. **No duplicate requirement IDs**: Scan for all lines starting with `spec_format.requirement_id_prefix`. Report an error if any ID value appears more than once in the same file.
+
+   b. **No duplicate requirement names**: Scan for all lines matching `spec_format.requirement_heading`. Report an error if any requirement display name appears more than once in the same file.
+
+   c. **Heading structure valid**: For each requirement block, verify:
+      - A line starting with `spec_format.requirement_id_prefix` follows the requirement heading
+      - The ID matches `spec_format.requirement_id_pattern`
+      - At least one `spec_format.scenario_heading` exists within the requirement block
+
+   d. **No orphaned design references**: If `.specify/changes/<name>/design.md` exists, scan it for requirement ID references matching `spec_format.requirement_id_pattern`. For each referenced ID, verify it exists in the baseline specs under `.specify/specs/`. Report any IDs referenced in design that no longer exist in the baseline.
+
+   **If any check fails:**
+   - Display the failures with file paths and details
+   - Use the **AskQuestion tool**:
+     - **Proceed anyway**: continue to archive despite the issues
+     - **Abort**: leave the change in its current directory for manual correction (the merged baseline files are already written; the user can edit them before re-running archive)
+
+   Only proceed to step 8 after user confirms.
+
+8. **Update metadata and move to archive**
 
    Update `.specify/changes/<name>/.metadata.yaml`:
    - Set `status` to `archived`
@@ -155,7 +180,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    Use today's date in `YYYY-MM-DD` format.
 
-8. **Display summary**
+9. **Display summary**
 
 ## Output On Success
 

@@ -123,7 +123,7 @@ The user's request should include a change name (kebab-case) OR a description of
      - Glob pattern (e.g., `specs/**/*.md`): the instruction determines how many files to create and where within the pattern
    - Create the artifact file using the template structure and following the instruction
    - Apply `context` and `rules` from config.yaml as constraints — but do NOT copy them into the file
-   - If the artifact has `validate` rules in `schema.yaml`, re-read the written file and verify each rule. If any rule fails: report which rules failed and why, attempt to fix the artifact, re-validate after fixing. If still failing after one fix attempt, warn the user and proceed.
+   - If the artifact has `validate_checks` in `schema.yaml`, re-read the written file and run each structured check (see the review skill for check type definitions). If the artifact only has `validate` string rules (no `validate_checks`), verify each string rule instead. If any check fails: report which checks failed and why, attempt to fix the artifact, re-validate after fixing. If still failing after one fix attempt, warn the user and proceed.
    - Verify the file exists after writing before proceeding to next
 
 8. **Finalize and show status**

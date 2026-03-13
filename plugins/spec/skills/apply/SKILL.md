@@ -62,7 +62,7 @@ Implement tasks from a Specify change.
 
 7. **Update lifecycle status**
 
-   If `status` in `.metadata.yaml` is `proposed` (first time applying):
+   If `status` in `.metadata.yaml` is `proposed` or `reviewed` (first time applying):
    - Update `status` to `applying`
    - Set `apply_started_at` to current ISO-8601 timestamp
 

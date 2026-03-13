@@ -36,7 +36,8 @@ Optionally specify a change name to focus on. Otherwise show an overview.
 
    Display the lifecycle status prominently:
    - `proposing` — "Proposal in progress (artifacts may be incomplete)"
-   - `proposed` — "All artifacts created, ready for implementation"
+   - `proposed` — "All artifacts created, ready for review or implementation"
+   - `reviewed` — "All structured checks passed, ready for implementation"
    - `applying` — "Implementation in progress"
    - `complete` — "All tasks complete, ready to archive"
    - `abandoned` — "Change discarded and moved to archive without merging specs"
@@ -69,7 +70,8 @@ Optionally specify a change name to focus on. Otherwise show an overview.
 
    Based on the `status` field, provide targeted guidance:
    - `proposing` — "Run `/spec:propose` to complete artifact generation, or `/spec:abandon` to discard the change."
-   - `proposed` — "Run `/spec:apply` to start implementing tasks, or `/spec:abandon` to discard the change."
+   - `proposed` — "Run `/spec:review` to validate artifacts, `/spec:apply` to start implementing tasks, or `/spec:abandon` to discard the change."
+   - `reviewed` — "Run `/spec:apply` to start implementing tasks, or `/spec:abandon` to discard the change."
    - `applying` — "Run `/spec:apply` to continue implementation, or `/spec:abandon` to discard the change." Show remaining task count.
    - `complete` — "Run `/spec:archive` to finalize this change, or `/spec:abandon` to discard it without merging specs."
 

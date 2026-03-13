@@ -33,16 +33,24 @@ When no `@ref` is present, `main` is used as the default ref.
 1. **Parse the schema value**
 
    - If `$SCHEMA_VALUE` contains no `/` (bare name like `omnia`):
-     set `$NAME = $SCHEMA_VALUE`, `$REF = main` → local resolution only.
+     set `$NAME = $SCHEMA_VALUE`, `$REF = main` → local resolution only
+     (step 2).
    - If `$SCHEMA_VALUE` contains `/` (URL):
      - Split on `@` — the part before `@` is the URL path, the part after
        is `$REF` (default `main` if no `@` present).
      - Extract `$NAME` from the last path segment of the URL path.
+     - Skip local resolution — go directly to step 3 (cache check).
 
-2. **Local resolution**
+2. **Local resolution** (bare name only)
+
+   This step only runs when `$SCHEMA_VALUE` is a bare name (no `/`).
+   URL-based schemas skip this step to ensure deterministic pinning.
 
    Check if `schemas/$NAME/` exists in this plugin directory.
    If found, use the local directory for all `$FILES_NEEDED`. Done.
+
+   If not found and `$SCHEMA_VALUE` is a bare name, stop and report an
+   error — bare names cannot fall through to remote resolution.
 
 3. **Cache check** (skip for init)
 
@@ -59,7 +67,7 @@ When no `@ref` is present, `main` is used as the default ref.
    If `schema_url` does not match (schema URL changed in config), the
    cache is stale — proceed to step 4 to refetch.
 
-4. **Remote resolution** (URL, no local match, no valid cache)
+4. **Remote resolution** (URL, no valid cache)
 
    Construct raw content URLs using `$REF`:
 
@@ -134,6 +142,21 @@ Given `omnia-secure` extends `omnia`:
 2. Resolve `omnia-secure` (child) → yields override `schema.yaml`
 3. Merge: parent artifacts + child artifacts (override by `id`, append new)
 4. For file reads: check child directory first, fall back to parent
+
+## Resolution Modes
+
+The schema value format determines the resolution path:
+
+| Format              | Example                                      | Resolution                                       |
+|---------------------|----------------------------------------------|--------------------------------------------------|
+| Bare name           | `schema: omnia`                              | Local `schemas/omnia/` only. For development.    |
+| URL (default ref)   | `schema: https://github.com/.../omnia`       | Cache, then remote fetch at `main`.              |
+| URL with pinned ref | `schema: https://github.com/.../omnia@v1`    | Cache, then remote fetch at `v1`.                |
+
+Bare names always resolve locally and never reach the network. URLs always
+resolve via cache or remote and never use a local `schemas/` directory,
+even if one exists with the same name. This guarantees that a pinned URL
+produces the same schema across machines and branches.
 
 ## Cache Notes
 
