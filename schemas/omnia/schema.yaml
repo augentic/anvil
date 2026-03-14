@@ -5,17 +5,6 @@ description: Omnia workflow
 terminology:
   unit: crate
 
-spec-format:
-  requirement-heading: "### Requirement:"
-  requirement-id-prefix: "ID:"
-  requirement-id-pattern: "^REQ-[0-9]{3}$"
-  scenario-heading: "#### Scenario:"
-  delta-operations:
-    added: "## ADDED Requirements"
-    modified: "## MODIFIED Requirements"
-    removed: "## REMOVED Requirements"
-    renamed: "## RENAMED Requirements"
-
 artifacts:
   - id: proposal
     generates: proposal.md

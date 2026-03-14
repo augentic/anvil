@@ -4,4 +4,4 @@ checks:
 
 .PHONY: merge-specs
 merge-specs:
-	@python3 scripts/merge-specs.py $(ARGS)
+	@python3 plugins/spec/skills/archive/scripts/merge-specs.py $(ARGS)

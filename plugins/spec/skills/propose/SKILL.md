@@ -40,9 +40,10 @@ The user's request should include a change name (kebab-case) OR a description of
    - Read `.specify/config.yaml` to get:
      - `schema`: the schema value. Default to `omnia` if not found.
      - `context`: Project background (constraints for you - do NOT include in artifact output)
-     - `rules`: Per-artifact rules (constraints for you - do NOT include in artifact output)
-   - **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `instructions/*`.
+     - `rules`: Per-artifact rule overrides (constraints for you - do NOT include in artifact output)
+   - **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `config.yaml`, `instructions/*`.
    - Read `schema.yaml` from the resolved schema directory. This defines the artifact list, dependency graph, and file references. **All artifact knowledge comes from the schema** — do not assume fixed artifact IDs or output paths.
+   - Read `config.yaml` from the resolved schema directory for default `rules`. **Resolve effective rules** per artifact: for each artifact ID, use the project's `rules.<id>` if present and non-empty, otherwise fall back to the schema's `rules.<id>`. These effective rules are constraints for you — do NOT include them in artifact output.
 
 4. **Check for regenerate mode**
 
@@ -55,7 +56,7 @@ The user's request should include a change name (kebab-case) OR a description of
    e. Read the required artifacts for context
    f. Read the instruction file at the path given by the artifact's `instruction` field in the resolved schema directory
    g. Regenerate ONLY the specified artifact following the instruction
-   i. Apply `context` and `rules` from config.yaml as constraints
+   i. Apply `context` and effective rules as constraints
    j. Run validators if `validate` rules are defined for this artifact (see step 6)
    k. Do NOT change the `status` field
    l. Show output:
@@ -115,7 +116,7 @@ The user's request should include a change name (kebab-case) OR a description of
      - Simple filename (e.g., `proposal.md`): write to `.specify/changes/<name>/<generates>`
      - Glob pattern (e.g., `specs/**/*.md`): the instruction determines how many files to create and where within the pattern
    - Create the artifact file following the instruction, applying the format conventions below for the matching artifact type
-   - Apply `context` and `rules` from config.yaml as constraints — but do NOT copy them into the file
+   - Apply `context` and effective rules as constraints — but do NOT copy them into the file
    - If the artifact has `validate` rules in `schema.yaml`, re-read the written file and verify each rule. If any fail: report which rules failed and why, attempt to fix the artifact, re-validate after fixing. If still failing after one fix attempt, warn the user and proceed.
    - Verify the file exists after writing before proceeding to next
 
@@ -137,8 +138,7 @@ The user's request should include a change name (kebab-case) OR a description of
 
    **Modified-crate specs (delta format):**
 
-   Delta operations use the headings defined in `schema.yaml`'s
-   `spec-format.delta-operations`:
+   Delta operations use the headings defined in `references/spec-format.md`:
    - **ADDED Requirements**: new behavior with a new `ID: REQ-XXX`
    - **MODIFIED Requirements**: changed behavior — MUST include full updated content and preserve the existing requirement ID
    - **REMOVED Requirements**: deprecated features — MUST include **Reason**, **Migration**, and the existing requirement ID
@@ -252,4 +252,4 @@ The user's request should include a change name (kebab-case) OR a description of
 - If context is critically unclear, ask the user -- but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, check its status before deciding how to proceed
 - Verify each artifact file exists after writing before proceeding to next
-- **IMPORTANT**: `context` and `rules` from config.yaml are constraints for YOU, not content for the file. Do NOT copy `<context>`, `<rules>`, `<project_context>` blocks into any artifact.
+- **IMPORTANT**: `context` and effective rules (project config with schema defaults as fallback) are constraints for YOU, not content for the file. Do NOT copy `<context>`, `<rules>`, `<project_context>` blocks into any artifact.

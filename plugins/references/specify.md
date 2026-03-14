@@ -53,8 +53,9 @@ Specs are behavioral. They should not encode Omnia trait bindings, WASM implemen
 ### Spec File Format (Baseline / New Crate)
 
 New crate specs and promoted baselines use a flat requirement format. The
-schema's `spec-format` defines the requirement, scenario, and delta-operation
-headings used by all downstream skills.
+hard-coded spec format (`plugins/spec/references/spec-format.md`) defines
+the requirement, scenario, and delta-operation headings used by all
+downstream skills.
 
 ```markdown
 # <Crate Name> Specification
@@ -92,8 +93,9 @@ Source: <source function, JIRA story, or design section>
 ### Delta Spec Format (Modified Crate)
 
 When modifying an existing crate, delta specs use the operation headers
-defined in the schema's `spec-format.delta-operations` (default:
-`## ADDED Requirements`, `## MODIFIED Requirements`, etc.). Requirement
+defined in the spec format (`## ADDED Requirements`,
+`## MODIFIED Requirements`, `## REMOVED Requirements`,
+`## RENAMED Requirements`). Requirement
 blocks still use `### Requirement:` and `#### Scenario:` headings, but the
 stable merge key is the `ID: REQ-XXX` line rather than the display name.
 See the schema's `instructions/specs.md` for the full delta structure and the

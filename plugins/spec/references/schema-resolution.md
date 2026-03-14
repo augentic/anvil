@@ -124,8 +124,6 @@ merges the child on top.
 - **`artifacts`**: child artifacts with the same `id` override the parent
   entirely; new `id`s are appended to the parent's list. Dependency order
   is recomputed from the merged `requires` graph.
-- **`spec-format`**: child overrides parent field-by-field (e.g., child
-  can override `requirement-heading` without restating `delta-operations`).
 - **`terminology`**: child replaces parent. If omitted, inherits the
   parent's `terminology`. Contains only `unit` (skills infer plural and
   heading forms).
@@ -183,8 +181,8 @@ produces the same schema across machines and branches.
 | Skill   | Files needed                                          |
 |---------|-------------------------------------------------------|
 | init    | `config.yaml`                                         |
-| propose | `schema.yaml`, `instructions/*`                       |
-| apply   | `schema.yaml`, `instructions/apply.md`                |
+| propose | `schema.yaml`, `config.yaml`, `instructions/*`        |
+| apply   | `schema.yaml`, `config.yaml`, `instructions/apply.md` |
 | archive | `schema.yaml`                                         |
 | abandon | `schema.yaml`                                         |
 | verify  | `schema.yaml`                                         |

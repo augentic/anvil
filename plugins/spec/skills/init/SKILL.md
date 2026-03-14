@@ -62,7 +62,7 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
    Tell the user:
    - "Specify initialized. Config written to `.specify/config.yaml`."
    - "Edit the `context` field to describe your project's tech stack, architecture, and testing approach."
-   - "Edit `rules` to add project-specific constraints for each artifact type."
+   - "The `rules` section contains the schema defaults. Edit any artifact key under `rules` to override its defaults. Keys you don't change will keep the schema defaults automatically."
    - "When ready, run `/spec:propose` to start your first change."
 
 **Output**
