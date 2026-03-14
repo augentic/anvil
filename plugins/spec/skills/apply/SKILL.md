@@ -48,7 +48,61 @@ Implement tasks from a Specify change.
 
    Read all artifacts for the change. For each artifact defined in `schema.yaml`, read the file(s) at `.specify/changes/<name>/<generates>`. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
 
-6. **Show current progress**
+6. **Validate artifacts**
+
+   Run all validation checks before proceeding to implementation. Collect all results — do not stop at the first failure.
+
+   **Per-artifact validation**: For each artifact that has a `validate` field in `schema.yaml`, verify each rule against the artifact content read in step 5. Record each rule result as **PASS** or **FAIL** with a reason.
+
+   **Cross-artifact consistency checks**: If the schema defines `cross-artifact-checks`, run each named check:
+   - `proposal-crates-have-specs`: every crate listed in the proposal has a corresponding spec file under `specs/`
+   - `design-references-valid`: requirement IDs (`REQ-XXX`) referenced in `design.md` exist in spec files
+   - `spec-format-valid`: all spec files match the heading structure defined in `spec-format`
+
+   Record each check result as **PASS** or **FAIL** with details.
+
+   **If all checks pass**: report "Validation passed" and continue to step 7.
+
+   **If any check fails**: produce a validation summary and **halt** — do not proceed to implementation:
+
+   ```text
+   ## Validation Failed: <change-name>
+
+   ### Per-Artifact Validation
+
+   **proposal.md**
+   - PASS: Has a Why section with at least one sentence
+   - FAIL: Has a Crates section listing at least one new or modified crate — heading found but no content below it
+
+   **specs/user-auth/spec.md**
+   - PASS: Every requirement has at least one scenario
+   - FAIL: Uses SHALL/MUST language for normative requirements — REQ-003 uses "should"
+
+   **design.md**
+   - PASS: Has a Context section
+
+   **tasks.md**
+   - PASS: Every task uses checkbox format
+
+   ### Cross-Artifact Checks
+
+   - PASS: proposal-crates-have-specs
+   - FAIL: design-references-valid — REQ-005 referenced in design.md not found in specs
+   - PASS: spec-format-valid
+
+   ### Result
+
+   X passed, Y failed — fix the failures above before implementation can proceed.
+   ```
+
+   Suggest fixes for each failure:
+   - Missing artifacts: "Run `/spec:propose <name> <artifact-id>` to regenerate."
+   - Spec format issues: "Edit the spec file to match the required structure."
+   - Cross-artifact issues: "Update the referenced artifact to fix the inconsistency."
+
+   Use heading conventions from `schema.yaml`'s `spec-format` — do not hard-code heading patterns. If `validate` is not defined for an artifact, skip validation for that artifact.
+
+7. **Show current progress**
 
    Read the file tracked by `apply.tracks` (from `schema.yaml`) and count:
    - `- [ ] ` lines = incomplete tasks
@@ -60,13 +114,13 @@ Implement tasks from a Specify change.
 
    If all tasks are already complete: congratulate, suggest `/spec:archive`.
 
-7. **Update lifecycle status**
+8. **Update lifecycle status**
 
-   If `status` in `.metadata.yaml` is `proposed` or `reviewed` (first time applying):
+   If `status` in `.metadata.yaml` is `proposed` (first time applying):
    - Update `status` to `applying`
    - Set `apply_started_at` to current ISO-8601 timestamp
 
-8. **Implement tasks (loop until done or blocked)**
+9. **Implement tasks (loop until done or blocked)**
 
    Read the apply instruction file from the resolved schema directory (the file path is given by `apply.instruction` in `schema.yaml`).
 
@@ -87,7 +141,7 @@ Implement tasks from a Specify change.
    - Error or blocker encountered -> report and wait for guidance
    - User interrupts
 
-9. **On completion or pause, show status**
+10. **On completion or pause, show status**
 
    If all tasks are complete:
    - Update `.metadata.yaml`: set `status` to `complete`, set `completed_at` to current ISO-8601 timestamp

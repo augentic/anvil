@@ -1,6 +1,6 @@
 # Specify Guidance Supplement
 
-This repository uses stock Specify as the executable workflow contract. This document is a repository-specific supplement describing how Augentic specialists use `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:propose -> /spec:apply -> /spec:archive`, with `/spec:abandon` available when a change should be discarded instead of promoted and `/spec:verify` available to detect drift between code and baseline specs.
+This repository uses stock Specify as the executable workflow contract. This document is a repository-specific supplement describing how Augentic specialists use `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:propose -> /spec:apply -> /spec:archive`, with `/spec:abandon` available when a change should be discarded instead of promoted and `/spec:verify` available to detect drift between code and baseline specs. Artifact validation is performed automatically by `/spec:apply` before implementation begins.
 
 ## Overview
 
@@ -26,7 +26,7 @@ Artifacts move through the normal Specify lifecycle:
 The human workflow is:
 
 ```text
-/spec:propose -> /spec:review (optional) -> /spec:apply -> /spec:archive
+/spec:propose -> /spec:apply -> /spec:archive
 /spec:propose -> /spec:abandon
 /spec:apply   -> /spec:abandon
 /spec:verify  (anytime -- compare code against baseline specs)

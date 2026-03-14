@@ -65,7 +65,7 @@ artifacts:
       - Tasks are grouped under numbered headings
       - At least one task exists
 
-# Built-in check names recognized by the review skill (not extensible by schemas)
+# Built-in check names used during artifact validation in the apply skill (not extensible by schemas)
 cross-artifact-checks:
   - proposal-crates-have-specs
   - design-references-valid

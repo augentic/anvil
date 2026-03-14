@@ -8,8 +8,7 @@ Core workflow orchestration for spec-driven development: propose changes, implem
 |-------|---------|-------------|
 | [init](skills/init/SKILL.md) | `/spec:init` | Initialize Specify in a project |
 | [propose](skills/propose/SKILL.md) | `/spec:propose` | Create a change and generate all artifacts |
-| [review](skills/review/SKILL.md) | `/spec:review` | Validate artifacts before implementation |
-| [apply](skills/apply/SKILL.md) | `/spec:apply` | Implement tasks from a change |
+| [apply](skills/apply/SKILL.md) | `/spec:apply` | Validate artifacts and implement tasks from a change |
 | [archive](skills/archive/SKILL.md) | `/spec:archive` | Finalize and merge specs into baseline |
 | [abandon](skills/abandon/SKILL.md) | `/spec:abandon` | Discard a change without merging |
 | [verify](skills/verify/SKILL.md) | `/spec:verify` | Detect drift between code and baseline specs |

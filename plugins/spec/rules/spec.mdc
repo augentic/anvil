@@ -7,9 +7,9 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: propose a change, review artifacts, apply (implement) a change, archive a completed change, abandon a discarded change, verify code-to-spec consistency, explore ideas or problems interactively, check status, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
+This plugin provides the core Specify workflow skills: propose a change, apply (validate and implement) a change, archive a completed change, abandon a discarded change, verify code-to-spec consistency, explore ideas or problems interactively, check status, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
 
-**Purpose**: Drive the propose -> review -> apply -> archive workflow, with abandon for cleanup, verify for drift detection, and explore for thinking and investigation.
+**Purpose**: Drive the propose -> apply -> archive workflow, with abandon for cleanup, verify for drift detection, and explore for thinking and investigation.
 
 ## Plugin Architecture
 
@@ -26,8 +26,7 @@ This plugin provides the core Specify workflow skills: propose a change, review 
 └── skills/
     ├── init/              # Initialize Specify in a project
     ├── propose/           # Create a change with all artifacts (or regenerate one)
-    ├── review/            # Validate artifacts with structured checks
-    ├── apply/             # Implement tasks from a change
+    ├── apply/             # Validate artifacts and implement tasks from a change
     ├── archive/           # Archive a completed change
     ├── abandon/           # Discard a change without merging specs
     ├── explore/           # Thinking partner for ideas and investigation
@@ -35,7 +34,7 @@ This plugin provides the core Specify workflow skills: propose a change, review 
     └── status/            # Check change status and progress
 ```
 
-Each skill has its own SKILL.md with full details. Schema resolution and composition is defined in [schema-resolution.md](../references/schema-resolution.md). The Specify artifact format is described in [specify.md](../references/specify.md). Validation rules are defined in `schema.yaml` and verified by the review skill.
+Each skill has its own SKILL.md with full details. Schema resolution and composition is defined in [schema-resolution.md](../references/schema-resolution.md). The Specify artifact format is described in [specify.md](../references/specify.md). Validation rules are defined in `schema.yaml` and enforced by the apply skill's validation gate.
 
 ## Schema Structure
 
@@ -55,15 +54,14 @@ schemas/<name>/
 Changes track their status in `.metadata.yaml`:
 
 ```text
-proposing -> proposed -> reviewed -> applying -> complete -> archived
-    \           \          \           \
-     `--------> `--------> `--------> `--------> abandoned
+proposing -> proposed -> applying -> complete -> archived
+    \           \          \
+     `--------> `--------> `--------> abandoned
 ```
 
 - **proposing**: Artifacts are being generated (propose in progress)
-- **proposed**: All artifacts created, ready for review or implementation
-- **reviewed**: All validation rules passed (optional — apply accepts both `proposed` and `reviewed`)
-- **applying**: Tasks are being implemented
+- **proposed**: All artifacts created, ready for implementation
+- **applying**: Tasks are being implemented (artifacts validated on entry)
 - **complete**: All tasks done, ready to archive
 - **archived**: Specs merged into baseline, change moved to archive
 - **abandoned**: Change moved to archive without merging specs into the baseline
@@ -73,19 +71,18 @@ proposing -> proposed -> reviewed -> applying -> complete -> archived
 ```text
 /spec:init (once per project)
 
-/spec:propose  ->  /spec:review  ->  /spec:apply  ->  /spec:archive
-                   (optional)             ^
-                                          |
-                                     /spec:explore (anytime)
-                                     /spec:status  (anytime)
-                                     /spec:verify  (after archive, detect drift)
-                                     /spec:abandon (discard instead of archive)
+/spec:propose  ->  /spec:apply  ->  /spec:archive
+                        ^
+                        |
+                   /spec:explore (anytime)
+                   /spec:status  (anytime)
+                   /spec:verify  (after archive, detect drift)
+                   /spec:abandon (discard instead of archive)
 ```
 
 - **init**: One-time project setup -- creates `.specify/` directory structure and `config.yaml`
 - **propose**: Create a change directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:propose <name> <artifact-id>`.
-- **review**: Validate artifacts against `schema.yaml` rules and cross-artifact consistency. Sets status to `reviewed` when all checks pass (optional step).
-- **apply**: Implement tasks from an existing change, marking them complete as you go
+- **apply**: Validate artifacts against `schema.yaml` rules and cross-artifact consistency, then implement tasks from the change, marking them complete as you go
 - **archive**: Preview merge operations, finalize a completed change, merge delta specs into baseline
 - **abandon**: Discard an active change, set `status: abandoned`, and move it to archive without merging specs
 - **verify**: Compare current code against baseline specs to detect drift -- read-only
@@ -115,8 +112,7 @@ proposing -> proposed -> reviewed -> applying -> complete -> archived
 - See project rule (`.cursor/rules/project.mdc`) for overall project context
 - [Init SKILL.md](skills/init/SKILL.md) - Initialize Specify
 - [Propose SKILL.md](skills/propose/SKILL.md) - Create changes with artifacts
-- [Review SKILL.md](skills/review/SKILL.md) - Validate artifacts against schema rules
-- [Apply SKILL.md](skills/apply/SKILL.md) - Implement change tasks
+- [Apply SKILL.md](skills/apply/SKILL.md) - Validate artifacts and implement change tasks
 - [Archive SKILL.md](skills/archive/SKILL.md) - Finalize completed changes
 - [Abandon SKILL.md](skills/abandon/SKILL.md) - Discard a change without merging specs
 - [Verify SKILL.md](skills/verify/SKILL.md) - Detect drift between code and baseline specs

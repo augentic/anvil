@@ -184,7 +184,6 @@ produces the same schema across machines and branches.
 |---------|-------------------------------------------------------|
 | init    | `config.yaml`                                         |
 | propose | `schema.yaml`, `instructions/*`                       |
-| review  | `schema.yaml`                                         |
 | apply   | `schema.yaml`, `instructions/apply.md`                |
 | archive | `schema.yaml`                                         |
 | abandon | `schema.yaml`                                         |
