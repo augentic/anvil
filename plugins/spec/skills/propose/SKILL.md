@@ -137,8 +137,7 @@ The user's request should include a change name (kebab-case) OR a description of
 
    **Modified-crate specs (delta format):**
 
-   Delta operations use the headings defined in `schema.yaml`'s
-   `spec-format.delta-operations`:
+   Delta operations use the headings defined in `references/spec-format.md`:
    - **ADDED Requirements**: new behavior with a new `ID: REQ-XXX`
    - **MODIFIED Requirements**: changed behavior — MUST include full updated content and preserve the existing requirement ID
    - **REMOVED Requirements**: deprecated features — MUST include **Reason**, **Migration**, and the existing requirement ID

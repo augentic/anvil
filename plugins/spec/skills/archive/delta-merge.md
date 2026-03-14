@@ -7,7 +7,7 @@ This document describes the merge algorithm used when archiving a change to prom
 The co-located `scripts/merge-specs.py` tool implements this algorithm. The description is kept here for reference and as a fallback when the tool is unavailable.
 
 **What is a requirement block?**
-A requirement block starts at a requirement heading (as defined in `spec-format.requirement-heading`), includes the immediately following `ID:` line, and continues until the next requirement heading or the next `##` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
+A requirement block starts at a `### Requirement:` heading, includes the immediately following `ID:` line, and continues until the next requirement heading or the next `##` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
 
 **Preserve preamble**: Any text before the first requirement heading or `##` header in the baseline is preserved as-is.
 

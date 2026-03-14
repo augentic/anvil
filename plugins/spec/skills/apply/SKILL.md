@@ -57,7 +57,7 @@ Implement tasks from a Specify change.
    **Cross-artifact consistency checks**: If the schema defines `cross-artifact-checks`, run each named check:
    - `proposal-crates-have-specs`: every crate listed in the proposal has a corresponding spec file under `specs/`
    - `design-references-valid`: requirement IDs (`REQ-XXX`) referenced in `design.md` exist in spec files
-   - `spec-format-valid`: all spec files match the heading structure defined in `spec-format`
+   - `spec-format-valid`: all spec files match the heading structure defined in `references/spec-format.md`
 
    Record each check result as **PASS** or **FAIL** with details.
 
@@ -100,7 +100,7 @@ Implement tasks from a Specify change.
    - Spec format issues: "Edit the spec file to match the required structure."
    - Cross-artifact issues: "Update the referenced artifact to fix the inconsistency."
 
-   Use heading conventions from `schema.yaml`'s `spec-format` — do not hard-code heading patterns. If `validate` is not defined for an artifact, skip validation for that artifact.
+   Use heading conventions from `references/spec-format.md`. If `validate` is not defined for an artifact, skip validation for that artifact.
 
 7. **Show current progress**
 

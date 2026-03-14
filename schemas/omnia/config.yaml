@@ -6,14 +6,14 @@ context: |
   Testing: Rust integration tests, cargo test
 
 rules:
-  proposal:
-    - Identify the source; a git repository URL (for code analysis), a
-      JIRA/ADO/Linear epic key (for requirements analysis), or Manual (feature
-      work). This determines the workflow for downstream artifacts.
-    - Use crate names. For modified crates, use the
-      existing spec folder name from .specify/specs/. For new crates, 
-      choose a name that will be the crate name
-  specs:
+  proposal: |
+    - Identify the proposal source. It will be either a git repository URL
+      (for code analysis), a JIRA/ADO epic key (for requirements analysis), or
+      a manual proposal (feature work).
+    - Use crate names. For modified crates, use the existing spec folder name
+      from .specify/specs/. For new crates, choose a name that will be the 
+      crate name
+  specs: |
     - Use WHEN/THEN format for scenarios
     - Reference existing patterns before inventing new ones
     - Organize baseline specs as flat requirement blocks using
@@ -23,7 +23,7 @@ rules:
       and ## Metrics sections for shared context
     - For update changes use top-level ADDED/MODIFIED/REMOVED/RENAMED
       delta-operation sections keyed by stable requirement IDs
-  design:
+  design: |
     - Include Context section with Source field (jira-epic or source-code)
     - Document domain model entity/type definitions with field names, types, 
       wire names, and optionality
@@ -37,11 +37,11 @@ rules:
       Publish, StateStore, Identity, TableStore, Broadcast)
     - Flag structural changes (type renames, handler splits/merges)
     - Use mermaid diagrams for entity relationships and flows
-  tasks:
-    - For new crates (no existing Cargo.toml), structure tasks around the
-      create-mode skill chain; 1) guest-writer, 2) crate-writer, 3) verify,
-      4) code-reviewer. Do not list individual Rust code changes -- the
-      skills handle file-level generation.
-    - For existing crate updates, structure tasks around the specific
-      behavioral changes from the specs. crate-writer handles the code
-      modifications.
+  tasks: |
+    - For greenfields projects (no existing Cargo.toml), structure tasks around
+      the create-mode skill chain: 1) guest-writer, 2) crate-writer, 3) verify,
+      4) code-reviewer. Do not list individual Rust code changes — the skills 
+      handle file-level generation.
+    - For brownfield projects (where this is an existing Cargo.toml), structure
+      tasks around the specific behavioral changes from the specs. crate-writer
+      handles the code modifications.

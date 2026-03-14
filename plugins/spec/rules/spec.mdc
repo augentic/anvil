@@ -42,7 +42,7 @@ Schemas define the artifact graph, instructions, and heading conventions. Each s
 
 ```text
 schemas/<name>/
-├── schema.yaml      # Declarations: artifacts, spec-format, apply config
+├── schema.yaml      # Declarations: artifacts, terminology, apply config
 ├── config.yaml      # Starter config for /spec:init
 └── instructions/    # Detailed instructions per artifact + apply
 ```

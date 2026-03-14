@@ -25,7 +25,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status. **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
 
-   Read `schema.yaml` for artifact definitions, `spec-format` heading conventions, and `terminology.unit` (e.g., "crate" vs "capability"). Infer plural and heading forms from the unit name. Use schema terminology in summary output.
+   Read `schema.yaml` for artifact definitions and `terminology.unit` (e.g., "crate" vs "capability"). Infer plural and heading forms from the unit name. Use schema terminology in summary output. Read `references/spec-format.md` for heading conventions.
 
 2. **Check lifecycle status**
 
@@ -65,10 +65,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - The file at `specs/<capability>/spec.md` is the **delta spec**
    - The baseline is at `.specify/specs/<capability>/spec.md`
 
-   Read the `spec-format` section from `schema.yaml` for heading conventions:
-   - `delta-operations.added`, `delta-operations.modified`, `delta-operations.removed`, `delta-operations.renamed` — the headings used in delta specs
-   - `requirement-heading` — the heading prefix for requirement blocks (e.g., `### Requirement:`)
-   - `requirement-id-prefix` — the stable requirement ID line prefix (e.g., `ID:`)
+   Read `references/spec-format.md` for heading conventions (requirement headings, ID prefix, delta operation headings).
 
    For each capability with a delta spec, show what will happen WITHOUT performing the merge:
 
@@ -111,7 +108,6 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
       ```bash
       python3 scripts/merge-specs.py \
-        --schema "$SCHEMA" \
         --delta "$DELTA" \
         --baseline "$BASELINE" \
         --output "$OUTPUT"
@@ -129,7 +125,6 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    ```bash
    python3 scripts/merge-specs.py \
-     --schema "$SCHEMA" \
      --validate ".specify/specs/<capability>/spec.md" \
      --design ".specify/changes/<name>/design.md"
    ```

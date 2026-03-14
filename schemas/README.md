@@ -14,15 +14,6 @@ schema provides artifact declarations (`schema.yaml`), artifact instructions
 - **Target**: Rust WASM (Omnia SDK)
 - **Workflow**: `propose` -> `specs` (from Epic, Code, or Manual) -> `design` -> `tasks` -> `apply` (crate-writer)
 
-### `realtime`
-
-- **URL**: `https://github.com/augentic/specify/schemas/realtime`
-- **Extends**: `omnia` (inherits `spec-format`, `specs`/`design`/`tasks` artifacts, `instructions/`, and `apply` config)
-- **Purpose**: Migration (TypeScript -> Rust WASM)
-- **Source**: Git Repository (`/rt:code-analyzer`) or Manual (Epic source excluded)
-- **Target**: Rust WASM (Omnia SDK)
-- **Workflow**: `propose` -> `specs` (from Code or Manual) -> `design` -> `tasks` -> `apply` (crate-writer)
-
 ## Schema Directory Structure
 
 A base schema directory contains all files. A child schema that uses `extends`
@@ -31,7 +22,7 @@ falls back to the parent directory for missing files).
 
 ```text
 schemas/<name>/
-├── schema.yaml      # Artifact declarations, terminology, spec-format, apply config
+├── schema.yaml      # Artifact declarations, terminology, apply config
 ├── config.yaml      # Starter config installed by /spec:init
 └── instructions/    # Detailed instructions for each artifact and apply
     ├── proposal.md
@@ -45,20 +36,18 @@ Child schemas that use `extends` may omit the entire `instructions/` directory
 or individual files within it. Missing files are resolved from the parent schema
 via fallback.
 
-- **`schema.yaml`**: Declares artifacts (id, instruction file path,
-  dependencies, validation rules), `terminology` (the `unit` name,
-  e.g., "crate"), `spec-format` conventions for flat requirement/scenario
-  blocks, stable requirement IDs, delta operations, and the `apply`
-  configuration.
-  Child schemas may use `extends` to inherit from a parent and only override
-  what differs. Skills read this to know how to generate artifacts and
-  implement tasks.
-- **`instructions/`**: One markdown file per artifact plus `apply.md`.
-  Contains the detailed generation or implementation instructions including
-  output structure. Referenced by file path from `schema.yaml`'s
-  `instruction` field.
-- **`config.yaml`**: Installed into `.specify/config.yaml` by `/spec:init`.
-  Contains the `schema` URL, default `context`, and per-artifact `rules`.
+- `**schema.yaml**`: Declares artifacts (id, instruction file path,
+dependencies, validation rules), `terminology` (the `unit` name,
+e.g., "crate"), and the `apply` configuration.
+Child schemas may use `extends` to inherit from a parent and only override
+what differs. Skills read this to know how to generate artifacts and
+implement tasks.
+- `**instructions/**`: One markdown file per artifact plus `apply.md`.
+Contains the detailed generation or implementation instructions including
+output structure. Referenced by file path from `schema.yaml`'s
+`instruction` field.
+- `**config.yaml**`: Installed into `.specify/config.yaml` by `/spec:init`.
+Contains the `schema` URL, default `context`, and per-artifact `rules`.
 
 ## Schema Resolution
 
@@ -93,13 +82,13 @@ schema: https://github.com/augentic/specify/schemas/omnia@abc123   # pinned to c
 **URL resolution** (e.g., `schema: https://github.com/augentic/specify/schemas/omnia@v1`):
 
 1. Split on `@` to extract the schema name (last path segment) and ref
-   (default `main`).
+  (default `main`).
 2. Check if `schemas/<name>/` exists locally in the plugin directory.
 3. If found locally, use the local directory.
 4. If not found locally, check the project-level cache at
-   `.specify/.cache/` (see Caching below).
+  `.specify/.cache/` (see Caching below).
 5. If no valid cache, fetch files via WebFetch (for GitHub URLs, convert to
-   raw content URLs using the extracted ref:
+  raw content URLs using the extracted ref:
    `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>`).
 
 ### Schema Composition

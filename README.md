@@ -4,34 +4,22 @@ Specify is a plugin system for [Cursor](https://cursor.com) that orchestrates sp
 
 Each change flows through a defined lifecycle — propose, implement, archive — with artifact validation built into the implementation step. All artifacts are version-controlled alongside your code.
 
-## Table of Contents
-
-- [Prerequisites](#prerequisites)
-- [Getting Started](#getting-started)
-- [Plugins](#plugins)
-- [How It Works](#how-it-works)
-- [Repository Structure](#repository-structure)
-- [Development](#development)
-- [Documentation](#documentation)
-- [License](#license)
-
-## Prerequisites
-
-- [Cursor IDE](https://cursor.com)
-- The Augentic plugin marketplace installed in Cursor (Settings > Plugins > search for `augentic`)
-- `python3` and `bash` (for running `make checks` locally)
-
 ## Getting Started
 
-### Initialize your project
+### Prerequisites
 
-Initialize Specify in your project by running the `/spec:init` command in Cursor Agent chat. The argument is a schema URL that determines which artifact templates and instructions to install. Two schemas are available:
+You will need to have the [Cursor IDE](https://cursor.com) installed with the Augentic plugin marketplace installed in Cursor (Settings > Plugins > search for `augentic`).
+
+### Initialize a project
+
+Initialize Specify in a project by running the `/spec:init "<schema URL>"` skill in Cursor Agent chat. The `<schema URL>` argument is used to select the schema to use for the project. 
+
+Available schemas are:
 
 
 | Schema     | URL | Use case |
 | ---------- | --- | -------- |
 | `omnia`    | `https://github.com/augentic/specify/schemas/omnia` | Greenfield [Omnia](https://omnia.host) development |
-| `realtime` | `https://github.com/augentic/specify/schemas/realtime` | TypeScript to Rust WASM migration |
 
 
 For example, to initialize a new Omnia project:
@@ -50,7 +38,21 @@ Once initialized, use the Specify workflow to propose, implement, and finalize c
 /spec:propose -> /spec:apply -> /spec:archive
 ```
 
-The core commands:
+To propose a new change:
+
+```text
+/spec:propose "Add a new feature to the user interface"
+```
+
+To migrate a TypeScript project to Omnia:
+
+```text
+/spec:propose "Migrate https://github.com/org/repo"
+```
+
+#### Commands
+
+Core commands:
 
 - `/spec:propose "description"` -- Generate a complete set of artifacts (proposal, specs, design, tasks) from a description of what you want to build.
 - `/spec:apply` -- Validate artifacts against schema rules, then implement the tasks defined in the change artifacts.
@@ -170,16 +172,11 @@ This executes `./scripts/checks.sh`, which requires `python3` and `bash`.
 
 ### Local plugin development
 
-To use a local checkout of the plugins in another project (for development or testing), symlink the plugin directories:
+To use a local checkout of the plugins in another project (for development or testing), symlink the plugins directory:
 
 ```bash
-SPECIFY_REPO=/path/to/specify
-
-mkdir -p .cursor/plugins && \
-for plugin in $SPECIFY_REPO/plugins/*/; do
-  name=$(basename "$plugin")
-  ln -sfn "$plugin" ".cursor/plugins/$name"
-done
+mkdir .cursor && \
+ln -s /path/to/augentic/specify/plugins .cursor/plugins
 ```
 
 Replace `/path/to/specify` with the absolute path to your local clone of this repository.

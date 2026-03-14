@@ -124,8 +124,6 @@ merges the child on top.
 - **`artifacts`**: child artifacts with the same `id` override the parent
   entirely; new `id`s are appended to the parent's list. Dependency order
   is recomputed from the merged `requires` graph.
-- **`spec-format`**: child overrides parent field-by-field (e.g., child
-  can override `requirement-heading` without restating `delta-operations`).
 - **`terminology`**: child replaces parent. If omitted, inherits the
   parent's `terminology`. Contains only `unit` (skills infer plural and
   heading forms).

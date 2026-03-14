@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """Deterministic spec merge tool for Specify archive workflow.
 
-Parses baseline and delta spec files using heading conventions from
-schema.yaml's spec-format, applies RENAMED -> REMOVED -> MODIFIED -> ADDED
-in strict order, and writes the merged result.
+Parses baseline and delta spec files using hard-coded heading conventions,
+applies RENAMED -> REMOVED -> MODIFIED -> ADDED in strict order, and writes
+the merged result.
 
 Exit codes:
   0  merge succeeded (or --validate passed)
   1  merge failed due to errors (missing IDs, duplicates, structure issues)
 
 Usage:
-  merge-specs.py --schema schema.yaml --baseline baseline.md --delta delta.md [--output out.md]
-  merge-specs.py --schema schema.yaml --validate merged.md [--design design.md]
+  merge-specs.py --baseline baseline.md --delta delta.md [--output out.md]
+  merge-specs.py --validate merged.md [--design design.md]
 """
 
 import argparse
@@ -22,7 +22,7 @@ from typing import Dict, List, NamedTuple, Optional, Tuple
 
 
 # ---------------------------------------------------------------------------
-# Minimal schema.yaml parser (stdlib only -- no PyYAML dependency)
+# Hard-coded spec format (see plugins/spec/references/spec-format.md)
 # ---------------------------------------------------------------------------
 
 class SpecFormat(NamedTuple):
@@ -36,71 +36,16 @@ class SpecFormat(NamedTuple):
     delta_renamed: str
 
 
-def _yaml_value(line: str) -> str:
-    """Extract the value after the colon, stripping surrounding quotes."""
-    _, _, val = line.partition(":")
-    val = val.strip()
-    if (val.startswith('"') and val.endswith('"')) or (
-        val.startswith("'") and val.endswith("'")
-    ):
-        val = val[1:-1]
-    return val
-
-
-def parse_spec_format(schema_path: str) -> SpecFormat:
-    """Read spec-format fields from a simple schema.yaml."""
-    with open(schema_path, encoding="utf-8") as f:
-        lines = f.readlines()
-
-    fields: Dict[str, str] = {}
-    in_spec_format = False
-    in_delta = False
-
-    for raw in lines:
-        stripped = raw.rstrip()
-        indent = len(raw) - len(raw.lstrip())
-
-        if stripped == "spec-format:":
-            in_spec_format = True
-            in_delta = False
-            continue
-
-        if in_spec_format:
-            if indent == 0 and stripped and not stripped.startswith("#"):
-                break  # left spec-format block
-
-            key_match = re.match(r"\s+([\w-]+):", stripped)
-            if not key_match:
-                continue
-            key = key_match.group(1)
-
-            if key == "delta-operations":
-                in_delta = True
-                continue
-
-            if in_delta and indent >= 4:
-                fields[f"delta_{key}"] = _yaml_value(stripped)
-            elif not in_delta:
-                fields[key] = _yaml_value(stripped)
-
-            if in_delta and indent < 4 and key != "delta-operations":
-                in_delta = False
-                fields[key] = _yaml_value(stripped)
-
-    try:
-        return SpecFormat(
-            requirement_heading=fields["requirement-heading"],
-            requirement_id_prefix=fields["requirement-id-prefix"],
-            requirement_id_pattern=fields["requirement-id-pattern"],
-            scenario_heading=fields["scenario-heading"],
-            delta_added=fields["delta_added"],
-            delta_modified=fields["delta_modified"],
-            delta_removed=fields["delta_removed"],
-            delta_renamed=fields["delta_renamed"],
-        )
-    except KeyError as exc:
-        die(f"schema.yaml missing spec-format field: {exc}")
-        raise  # unreachable, keeps mypy happy
+SPEC_FORMAT = SpecFormat(
+    requirement_heading="### Requirement:",
+    requirement_id_prefix="ID:",
+    requirement_id_pattern=r"^REQ-[0-9]{3}$",
+    scenario_heading="#### Scenario:",
+    delta_added="## ADDED Requirements",
+    delta_modified="## MODIFIED Requirements",
+    delta_removed="## REMOVED Requirements",
+    delta_renamed="## RENAMED Requirements",
+)
 
 
 # ---------------------------------------------------------------------------
@@ -420,9 +365,6 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description="Deterministic spec merge tool for Specify"
     )
-    parser.add_argument(
-        "--schema", required=True, help="Path to schema.yaml"
-    )
 
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument(
@@ -445,10 +387,7 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if not os.path.isfile(args.schema):
-        die(f"Schema file not found: {args.schema}")
-
-    fmt = parse_spec_format(args.schema)
+    fmt = SPEC_FORMAT
 
     # --- Validate mode ---
     if args.validate:
