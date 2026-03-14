@@ -10,9 +10,9 @@ rules:
     - "Identify the source: a git repository URL (for code analysis), or
       Manual (feature work). This determines the workflow for downstream
       artifacts."
-    - Capability names are crate names. For modified capabilities, use the
-      existing spec folder name from .specify/specs/. For new capabilities, 
-      choose a name that will be the crate name
+    - "For modified crates, use the existing spec folder name from
+      .specify/specs/. For new crates, choose a name that will be the
+      crate name"
   specs:
     - Use WHEN/THEN format for scenarios
     - Reference existing patterns before inventing new ones

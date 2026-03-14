@@ -25,7 +25,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status. **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
 
-   Read `schema.yaml` for artifact definitions, `spec_format` heading conventions, and terminology (e.g., "Crates" vs "Capabilities"). Use schema terminology in summary output.
+   Read `schema.yaml` for artifact definitions, `spec-format` heading conventions, and `terminology.unit` (e.g., "crate" vs "capability"). Infer plural and heading forms from the unit name. Use schema terminology in summary output.
 
 2. **Check lifecycle status**
 
@@ -65,10 +65,10 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - The file at `specs/<capability>/spec.md` is the **delta spec**
    - The baseline is at `.specify/specs/<capability>/spec.md`
 
-   Read the `spec_format` section from `schema.yaml` for heading conventions:
-   - `delta_operations.added`, `delta_operations.modified`, `delta_operations.removed`, `delta_operations.renamed` — the headings used in delta specs
-   - `requirement_heading` — the heading prefix for requirement blocks (e.g., `### Requirement:`)
-   - `requirement_id_prefix` — the stable requirement ID line prefix (e.g., `ID:`)
+   Read the `spec-format` section from `schema.yaml` for heading conventions:
+   - `delta-operations.added`, `delta-operations.modified`, `delta-operations.removed`, `delta-operations.renamed` — the headings used in delta specs
+   - `requirement-heading` — the heading prefix for requirement blocks (e.g., `### Requirement:`)
+   - `requirement-id-prefix` — the stable requirement ID line prefix (e.g., `ID:`)
 
    For each capability with a delta spec, show what will happen WITHOUT performing the merge:
 
@@ -177,108 +177,12 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 All artifacts complete. All tasks complete.
 ```
 
-## Delta Merge Example
-
-Given this baseline at `.specify/specs/user-auth/spec.md`:
-
-```markdown
-### Requirement: Password login
-ID: REQ-001
-The system SHALL authenticate users via password.
-
-#### Scenario: Successful login
-- **WHEN** user submits valid credentials
-- **THEN** session is created
-
-### Requirement: Session timeout
-ID: REQ-002
-The system SHALL expire sessions after 30 minutes of inactivity.
-
-#### Scenario: Idle timeout
-- **WHEN** session is inactive for 30 minutes
-- **THEN** session is invalidated
-```
-
-And this delta spec at `.specify/changes/add-oauth/specs/user-auth/spec.md`:
-
-```markdown
-## ADDED Requirements
-
-### Requirement: OAuth login
-ID: REQ-003
-The system SHALL authenticate users via OAuth 2.0 providers.
-
-#### Scenario: Google OAuth
-- **WHEN** user clicks "Sign in with Google"
-- **THEN** system redirects to Google OAuth and creates session on callback
-
-## MODIFIED Requirements
-
-### Requirement: Session timeout
-ID: REQ-002
-The system SHALL expire sessions after 60 minutes of inactivity.
-
-#### Scenario: Idle timeout
-- **WHEN** session is inactive for 60 minutes
-- **THEN** session is invalidated
-
-## REMOVED Requirements
-
-### Requirement: Password login
-ID: REQ-001
-**Reason**: Replaced by OAuth authentication
-**Migration**: Users should use OAuth providers instead
-```
-
-The merged baseline becomes:
-
-```markdown
-### Requirement: Session timeout
-ID: REQ-002
-The system SHALL expire sessions after 60 minutes of inactivity.
-
-#### Scenario: Idle timeout
-- **WHEN** session is inactive for 60 minutes
-- **THEN** session is invalidated
-
-### Requirement: OAuth login
-ID: REQ-003
-The system SHALL authenticate users via OAuth 2.0 providers.
-
-#### Scenario: Google OAuth
-- **WHEN** user clicks "Sign in with Google"
-- **THEN** system redirects to Google OAuth and creates session on callback
-```
-
-(Password login was REMOVED; Session timeout was MODIFIED with new duration; OAuth login was ADDED at the end.)
-
 ## Guardrails
 
 - Always confirm the change before archiving
 - Warn on incomplete artifacts or tasks but don't block
 - Use `scripts/merge-specs.py` for all merge and validation operations — do not perform merges inline
-- If the merge tool is unavailable (e.g., `python3` not installed), fall back to manual merge following the algorithm reference below
+- If the merge tool is unavailable (e.g., `python3` not installed), fall back to manual merge following the algorithm in `references/delta-merge.md`
 - If the merge tool reports errors, stop and ask the user before proceeding
 
-## Merge Algorithm Reference
-
-The `scripts/merge-specs.py` tool implements this algorithm. The description is kept here for reference and as a fallback when the tool is unavailable.
-
-**What is a requirement block?**
-A requirement block starts at a requirement heading (as defined in `spec_format.requirement_heading`), includes the immediately following `ID:` line, and continues until the next requirement heading or the next `##` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
-
-**Preserve preamble**: Any text before the first requirement heading or `##` header in the baseline is preserved as-is.
-
-**New capability** (no baseline):
-
-- If the delta contains no delta operation headers: copy verbatim as the new baseline
-- If the delta contains delta operation headers: extract only requirement blocks from the ADDED section
-
-**Existing capability** (baseline exists) -- apply operations in strict order:
-
-1. **RENAMED**: For each `ID:` + `TO:` pair, find the matching requirement block by ID and update its heading. Preserve the `ID:` line.
-2. **REMOVED**: For each requirement, delete the matching block by ID.
-3. **MODIFIED**: For each requirement, replace the matching block by ID with the delta version.
-4. **ADDED**: Append each requirement block to the end of the baseline. Error if the ID already exists.
-
-Errors are reported for missing IDs (RENAMED/REMOVED/MODIFIED) or duplicate IDs (ADDED).
+For the merge algorithm and a worked example, see `references/delta-merge.md`.

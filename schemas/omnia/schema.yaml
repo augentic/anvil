@@ -4,15 +4,13 @@ description: Omnia workflow
 
 terminology:
   unit: crate
-  unit_plural: crates
-  unit_heading: Crates
 
-spec_format:
-  requirement_heading: "### Requirement:"
-  requirement_id_prefix: "ID:"
-  requirement_id_pattern: "^REQ-[0-9]{3}$"
-  scenario_heading: "#### Scenario:"
-  delta_operations:
+spec-format:
+  requirement-heading: "### Requirement:"
+  requirement-id-prefix: "ID:"
+  requirement-id-pattern: "^REQ-[0-9]{3}$"
+  scenario-heading: "#### Scenario:"
+  delta-operations:
     added: "## ADDED Requirements"
     modified: "## MODIFIED Requirements"
     removed: "## REMOVED Requirements"
@@ -22,7 +20,6 @@ artifacts:
   - id: proposal
     generates: proposal.md
     description: Initial proposal document
-    template: proposal.md
     instruction: instructions/proposal.md
     requires: []
     validate:
@@ -30,26 +27,10 @@ artifacts:
       - Has a Source section identifying Repository, Epic, or Manual
       - Has a Crates section listing at least one new or modified crate
       - Crate names are kebab-case
-    validate_checks:
-      - check: heading_exists
-        heading: "## Why"
-        min_content_lines: 1
-      - check: heading_exists
-        heading: "## Source"
-        content_matches: "Repository|Epic|Manual"
-      - check: heading_exists
-        heading: "## Crates"
-        min_content_lines: 1
-      - check: pattern_match
-        scope: crate_names
-        pattern: "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
 
   - id: specs
     generates: specs/**/*.md
     description: Detailed specifications for the change
-    templates:
-      new: spec-new.md
-      delta: spec-delta.md
     instruction: instructions/specs.md
     requires:
       - proposal
@@ -60,25 +41,10 @@ artifacts:
       - Uses SHALL/MUST language for normative requirements (not should/may)
       - Requirements use the flat baseline format with top-level requirement headings
       - Every scenario uses WHEN/THEN format
-    validate_checks:
-      - check: spec_structure
-        heading_ref: spec_format.requirement_heading
-        id_ref: spec_format.requirement_id_prefix
-        scenario_ref: spec_format.scenario_heading
-      - check: requirement_has_id
-        pattern_ref: spec_format.requirement_id_pattern
-      - check: requirement_has_scenario
-        scenario_ref: spec_format.scenario_heading
-      - check: normative_language
-        required_terms: ["SHALL", "MUST"]
-        forbidden_as_normative: ["should", "may"]
-      - check: scenario_keywords
-        required: ["WHEN", "THEN"]
 
   - id: design
     generates: design.md
     description: Technical design document with implementation details
-    template: design.md
     instruction: instructions/design.md
     requires:
       - proposal
@@ -86,21 +52,10 @@ artifacts:
       - Has a Context section
       - Has a Domain Model section (or explicitly states none needed)
       - Has a Business Logic section (or explicitly states none needed)
-    validate_checks:
-      - check: heading_exists
-        heading: "## Context"
-        min_content_lines: 1
-      - check: heading_exists_or_waived
-        heading: "## Domain Model"
-        waiver_pattern: "[Nn]one needed|[Nn]ot applicable"
-      - check: heading_exists_or_waived
-        heading: "## Business Logic"
-        waiver_pattern: "[Nn]one needed|[Nn]ot applicable"
 
   - id: tasks
     generates: tasks.md
     description: Implementation checklist with trackable tasks
-    template: tasks.md
     instruction: instructions/tasks.md
     requires:
       - specs
@@ -109,25 +64,12 @@ artifacts:
       - Every task uses checkbox format (- [ ] X.Y description)
       - Tasks are grouped under numbered headings
       - At least one task exists
-    validate_checks:
-      - check: pattern_match
-        scope: task_lines
-        pattern: "^- \\[[ xX]\\] \\d+\\.\\d+ "
-      - check: heading_match
-        pattern: "^## \\d+\\."
-        min_count: 1
-      - check: min_count
-        scope: task_lines
-        pattern: "^- \\[[ xX]\\] "
-        min: 1
 
-cross_artifact_checks:
-  - check: proposal_crates_have_specs
-    description: Every crate listed in the proposal has a corresponding spec file under specs/
-  - check: design_references_valid
-    description: Requirement IDs (REQ-XXX) referenced in design.md exist in spec files
-  - check: spec_format_valid
-    description: All spec files match the heading structure defined in spec_format
+# Built-in check names used during artifact validation in the apply skill (not extensible by schemas)
+cross-artifact-checks:
+  - proposal-crates-have-specs
+  - design-references-valid
+  - spec-format-valid
 
 apply:
   requires: [tasks]

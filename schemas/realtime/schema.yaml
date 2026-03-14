@@ -3,41 +3,13 @@ version: 1
 description: Realtime workflow
 extends: https://github.com/augentic/specify/schemas/omnia
 
-terminology:
-  unit: capability
-  unit_plural: capabilities
-  unit_heading: Capabilities
-
 artifacts:
   - id: proposal
     generates: proposal.md
     description: Initial proposal document
-    template: proposal.md
-    instruction: instructions/proposal.md
     requires: []
     validate:
       - Has a Why section with at least one sentence
       - Has a Source section identifying Repository or Manual
-      - Has a Capabilities section listing at least one new or modified capability
-      - Capability names are kebab-case
-    validate_checks:
-      - check: heading_exists
-        heading: "## Why"
-        min_content_lines: 1
-      - check: heading_exists
-        heading: "## Source"
-        content_matches: "Repository|Manual"
-      - check: heading_exists
-        heading: "## Capabilities"
-        min_content_lines: 1
-      - check: pattern_match
-        scope: capability_names
-        pattern: "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
-
-cross_artifact_checks:
-  - check: proposal_capabilities_have_specs
-    description: Every capability listed in the proposal has a corresponding spec file under specs/
-  - check: design_references_valid
-    description: Requirement IDs (REQ-XXX) referenced in design.md exist in spec files
-  - check: spec_format_valid
-    description: All spec files match the heading structure defined in spec_format
+      - Has a Crates section listing at least one new or modified crate
+      - Crate names are kebab-case

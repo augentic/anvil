@@ -2,27 +2,26 @@
 
 This directory contains the schema definitions for the Specify workflow. Each
 schema provides artifact declarations (`schema.yaml`), artifact instructions
-(`instructions/`), a starter config (`config.yaml`), and artifact templates
-(`templates/`).
+(`instructions/`), and a starter config (`config.yaml`).
 
 ## Schemas
 
 ### `omnia`
 
 - **URL**: `https://github.com/augentic/specify/schemas/omnia`
-- **Purpose**: Greenfield development (JIRA -> Rust WASM)
-- **Source**: JIRA Epic (`/plan:epic-analyzer`) or Manual
+- **Purpose**: Rust WASM development (greenfield or migration)
+- **Source**: JIRA Epic (`/plan:epic-analyzer`), Git Repository (`/rt:code-analyzer`), or Manual
 - **Target**: Rust WASM (Omnia SDK)
-- **Workflow**: `propose` -> `specs` (from Epic) -> `design` (from Epic) -> `tasks` -> `apply` (crate-writer)
+- **Workflow**: `propose` -> `specs` (from Epic, Code, or Manual) -> `design` -> `tasks` -> `apply` (crate-writer)
 
 ### `realtime`
 
 - **URL**: `https://github.com/augentic/specify/schemas/realtime`
-- **Extends**: `omnia` (inherits `spec_format`, `specs`/`design`/`tasks` artifacts, and `apply` config)
+- **Extends**: `omnia` (inherits `spec-format`, `specs`/`design`/`tasks` artifacts, `instructions/`, and `apply` config)
 - **Purpose**: Migration (TypeScript -> Rust WASM)
-- **Source**: Git Repository (`/rt:code-analyzer`) or Manual
+- **Source**: Git Repository (`/rt:code-analyzer`) or Manual (Epic source excluded)
 - **Target**: Rust WASM (Omnia SDK)
-- **Workflow**: `propose` -> `specs` (from Code) -> `design` (from Code) -> `tasks` -> `apply` (crate-writer)
+- **Workflow**: `propose` -> `specs` (from Code or Manual) -> `design` -> `tasks` -> `apply` (crate-writer)
 
 ## Schema Directory Structure
 
@@ -32,38 +31,34 @@ falls back to the parent directory for missing files).
 
 ```text
 schemas/<name>/
-├── schema.yaml      # Artifact declarations, terminology, spec_format, apply config
+├── schema.yaml      # Artifact declarations, terminology, spec-format, apply config
 ├── config.yaml      # Starter config installed by /spec:init
-├── instructions/    # Detailed instructions for each artifact and apply
-│   ├── proposal.md
-│   ├── specs.md
-│   ├── design.md
-│   ├── tasks.md
-│   └── apply.md     # May be omitted in child schemas (inherited from parent)
-└── templates/       # Artifact templates
+└── instructions/    # Detailed instructions for each artifact and apply
     ├── proposal.md
-    ├── spec-new.md    # Template for new crates/capabilities
-    ├── spec-delta.md  # Template for modified crates/capabilities (delta format)
+    ├── specs.md
     ├── design.md
-    └── tasks.md       # May be omitted in child schemas (inherited from parent)
+    ├── tasks.md
+    └── apply.md
 ```
 
-- **`schema.yaml`**: Declares artifacts (id, template filename, instruction
-  file path, dependencies), `terminology` (unit naming for crates vs
-  capabilities), `spec_format` conventions for flat requirement/scenario blocks,
-  stable requirement IDs, delta operations, and the `apply` configuration.
+Child schemas that use `extends` may omit the entire `instructions/` directory
+or individual files within it. Missing files are resolved from the parent schema
+via fallback.
+
+- **`schema.yaml`**: Declares artifacts (id, instruction file path,
+  dependencies, validation rules), `terminology` (the `unit` name,
+  e.g., "crate"), `spec-format` conventions for flat requirement/scenario
+  blocks, stable requirement IDs, delta operations, and the `apply`
+  configuration.
   Child schemas may use `extends` to inherit from a parent and only override
   what differs. Skills read this to know how to generate artifacts and
   implement tasks.
 - **`instructions/`**: One markdown file per artifact plus `apply.md`.
-  Contains the detailed generation or implementation instructions that were
-  previously inline in `schema.yaml`. Referenced by file path from
-  `schema.yaml`'s `instruction` field.
+  Contains the detailed generation or implementation instructions including
+  output structure. Referenced by file path from `schema.yaml`'s
+  `instruction` field.
 - **`config.yaml`**: Installed into `.specify/config.yaml` by `/spec:init`.
   Contains the `schema` URL, default `context`, and per-artifact `rules`.
-- **`templates/`**: Markdown templates for each artifact. Spec templates
-  are split into `spec-new.md` (new crate/capability) and `spec-delta.md`
-  (delta format for modifications). Referenced by filename in `schema.yaml`.
 
 ## Schema Resolution
 
@@ -124,18 +119,12 @@ level in `.specify/.cache/`:
 ├── .cache-meta.yaml     # schema_url + fetched_at
 ├── schema.yaml
 ├── config.yaml          (if fetched)
-├── instructions/        (if fetched)
-│   ├── proposal.md
-│   ├── specs.md
-│   ├── design.md
-│   ├── tasks.md
-│   └── apply.md
-└── templates/           (if fetched)
+└── instructions/        (if fetched)
     ├── proposal.md
-    ├── spec-new.md
-    ├── spec-delta.md
+    ├── specs.md
     ├── design.md
-    └── tasks.md
+    ├── tasks.md
+    └── apply.md
 ```
 
 The cache is valid as long as `schema_url` in `.cache-meta.yaml` matches the
@@ -145,25 +134,6 @@ refetched on the next skill invocation.
 
 The `/spec:init` skill creates `.specify/.cache/` and adds it to
 `.specify/.gitignore`. To force a refetch, delete `.specify/.cache/`.
-
-## Templates
-
-The `design.md` and `tasks.md` templates share the same structure across
-schemas. The `proposal.md` templates differ:
-
-- **Omnia**: uses "Crates" (New Crates / Modified Crates); Source supports
-  Repository, Epic, and Manual.
-- **Realtime**: uses "Capabilities" (New Capabilities / Modified
-  Capabilities); Source supports Repository and Manual.
-
-Spec templates are split per schema:
-
-- **`spec-new.md`**: Template for new crates/capabilities (baseline format
-  with top-level `### Requirement:` blocks, `ID: REQ-XXX` lines, and
-  `#### Scenario:` entries).
-- **`spec-delta.md`**: Template for modified crates/capabilities (delta
-  format with ADDED/MODIFIED/REMOVED/RENAMED sections keyed by stable
-  requirement IDs).
 
 ## Configuration
 

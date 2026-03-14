@@ -1,6 +1,6 @@
 # Specify Guidance Supplement
 
-This repository uses stock Specify as the executable workflow contract. This document is a repository-specific supplement describing how Augentic specialists use `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:propose -> /spec:apply -> /spec:archive`, with `/spec:abandon` available when a change should be discarded instead of promoted and `/spec:verify` available to detect drift between code and baseline specs.
+This repository uses stock Specify as the executable workflow contract. This document is a repository-specific supplement describing how Augentic specialists use `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:propose -> /spec:apply -> /spec:archive`, with `/spec:abandon` available when a change should be discarded instead of promoted and `/spec:verify` available to detect drift between code and baseline specs. Artifact validation is performed automatically by `/spec:apply` before implementation begins.
 
 ## Overview
 
@@ -26,7 +26,7 @@ Artifacts move through the normal Specify lifecycle:
 The human workflow is:
 
 ```text
-/spec:propose -> /spec:review (optional) -> /spec:apply -> /spec:archive
+/spec:propose -> /spec:apply -> /spec:archive
 /spec:propose -> /spec:abandon
 /spec:apply   -> /spec:abandon
 /spec:verify  (anytime -- compare code against baseline specs)
@@ -53,7 +53,7 @@ Specs are behavioral. They should not encode Omnia trait bindings, WASM implemen
 ### Spec File Format (Baseline / New Crate)
 
 New crate specs and promoted baselines use a flat requirement format. The
-schema's `spec_format` defines the requirement, scenario, and delta-operation
+schema's `spec-format` defines the requirement, scenario, and delta-operation
 headings used by all downstream skills.
 
 ```markdown
@@ -92,11 +92,11 @@ Source: <source function, JIRA story, or design section>
 ### Delta Spec Format (Modified Crate)
 
 When modifying an existing crate, delta specs use the operation headers
-defined in the schema's `spec_format.delta_operations` (default:
+defined in the schema's `spec-format.delta-operations` (default:
 `## ADDED Requirements`, `## MODIFIED Requirements`, etc.). Requirement
 blocks still use `### Requirement:` and `#### Scenario:` headings, but the
 stable merge key is the `ID: REQ-XXX` line rather than the display name.
-See the schema's `templates/spec-delta.md` for the template and the
+See the schema's `instructions/specs.md` for the full delta structure and the
 archive skill for how deltas merge into the baseline.
 
 ### Deriving Specs From Source Code (code-analyzer)
@@ -175,9 +175,9 @@ Generator-owned binding decisions such as Omnia trait composition remain in spec
 Use `proposal.md` to capture why the change exists and what is in scope.
 
 The Omnia schema uses **Crates** (`New Crates` / `Modified Crates`). The
-Realtime schema uses **Capabilities** (`New Capabilities` / `Modified
-Capabilities`). The schema-specific proposal template determines which
-heading names to use. Both map to `specs/<name>/spec.md`.
+Realtime schema uses **Crates** (`New Crates` / `Modified Crates`).
+The schema-specific proposal instruction determines which heading names
+to use. Both map to `specs/<name>/spec.md`.
 
 ```markdown
 ## Why

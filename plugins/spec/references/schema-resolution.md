@@ -5,7 +5,7 @@ Skills resolve the `schema` field from `.specify/config.yaml` (or `.metadata.yam
 ## Inputs
 
 - **`$SCHEMA_VALUE`**: the `schema` field value (a name or URL)
-- **`$FILES_NEEDED`**: which files the calling skill requires (e.g., `schema.yaml`, `config.yaml`, `instructions/*`, `templates/*`)
+- **`$FILES_NEEDED`**: which files the calling skill requires (e.g., `schema.yaml`, `config.yaml`, `instructions/*`)
 
 ## URL Format
 
@@ -94,18 +94,12 @@ When no `@ref` is present, `main` is used as the default ref.
    ├── .cache-meta.yaml
    ├── schema.yaml
    ├── config.yaml          (if fetched)
-   ├── instructions/        (if fetched)
-   │   ├── proposal.md
-   │   ├── specs.md
-   │   ├── design.md
-   │   ├── tasks.md
-   │   └── apply.md
-   └── templates/
-       ├── proposal.md      (if fetched)
-       ├── spec-new.md      (if fetched)
-       ├── spec-delta.md    (if fetched)
-       ├── design.md        (if fetched)
-       └── tasks.md         (if fetched)
+   └── instructions/        (if fetched)
+       ├── proposal.md
+       ├── specs.md
+       ├── design.md
+       ├── tasks.md
+       └── apply.md
    ```
 
    Write `.cache-meta.yaml` with:
@@ -130,18 +124,19 @@ merges the child on top.
 - **`artifacts`**: child artifacts with the same `id` override the parent
   entirely; new `id`s are appended to the parent's list. Dependency order
   is recomputed from the merged `requires` graph.
-- **`spec_format`**: child overrides parent field-by-field (e.g., child
-  can override `requirement_heading` without restating `delta_operations`).
-- **`terminology`**: child replaces parent entirely. If omitted, inherits
-  the parent's `terminology` block.
-- **`cross_artifact_checks`**: child replaces parent entirely. If omitted,
-  inherits the parent's checks.
+- **`spec-format`**: child overrides parent field-by-field (e.g., child
+  can override `requirement-heading` without restating `delta-operations`).
+- **`terminology`**: child replaces parent. If omitted, inherits the
+  parent's `terminology`. Contains only `unit` (skills infer plural and
+  heading forms).
+- **`cross-artifact-checks`**: child replaces parent entirely (simple
+  string list). If omitted, inherits the parent's checks.
 - **`apply`**: child `requires` replaces parent `requires`; child
   `instruction` replaces parent `instruction`; child `tracks` replaces
   parent `tracks`. Omitted fields inherit from parent.
-- **`instructions/` and `templates/`**: resolve from the child schema
-  directory first; fall back to the parent schema directory for any files
-  not present in the child.
+- **`instructions/`**: resolve from the child schema directory first;
+  fall back to the parent schema directory for any files not present in
+  the child.
 - **All other top-level fields** (`name`, `version`, `description`): child
   replaces parent. These are identity fields and should always be declared
   in the child.
@@ -151,7 +146,7 @@ merges the child on top.
 
 Given `omnia-secure` extends `omnia`:
 
-1. Resolve `omnia` (parent) → yields base `schema.yaml`, `instructions/*`, `templates/*`
+1. Resolve `omnia` (parent) → yields base `schema.yaml`, `instructions/*`
 2. Resolve `omnia-secure` (child) → yields override `schema.yaml`
 3. Merge: parent artifacts + child artifacts (override by `id`, append new)
 4. For file reads: check child directory first, fall back to parent
@@ -188,8 +183,7 @@ produces the same schema across machines and branches.
 | Skill   | Files needed                                          |
 |---------|-------------------------------------------------------|
 | init    | `config.yaml`                                         |
-| propose | `schema.yaml`, `instructions/*`, `templates/*`        |
-| review  | `schema.yaml`                                         |
+| propose | `schema.yaml`, `instructions/*`                       |
 | apply   | `schema.yaml`, `instructions/apply.md`                |
 | archive | `schema.yaml`                                         |
 | abandon | `schema.yaml`                                         |
