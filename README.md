@@ -1,78 +1,71 @@
-# Augentic Plugins
+# Spec-Driven Development
 
-Specialist skills and references for Specify-driven Rust WASM delivery on Augentic's Omnia runtime.
-
-## Workflow
-
-This repository is designed for a human-driven Specify workflow:
-
-```text
-/spec:propose  ->  /spec:apply  ->  /spec:archive
-                     \--------> /spec:abandon
-```
-
-The job of this repository is not to replace Specify. Its job is to supply specialist expertise:
-
-- Omnia and WASM-aware code generation
-- TypeScript source analysis
-- JIRA requirements analysis
-- Design enrichment
-- Code review and verification guidance
+Specify contains specialist skills that implement spec-driven software development based on Augentic frameworks such as the Omnia runtime.
 
 ## Getting Started
 
-Install the Augentic plugin in Cursor, then initialize Specify in your project:
+### Initialize the repository
 
-- `/spec:init`: Initialize Specify in your project and create the `.specify/` structure.
+After installing the Augentic plugin marketplace in Cursor, initialize spec-driven development for your project. This will initialize Specify in your project and create the `.specify/` directory populated with the specified schema.
+
+For example:
+
+```text
+/spec:init https://github.com/augentic/specify/omnia
+```
+
+### Create a change
+
+Once initialized, use the default workflow to work through the process of creating, implementing, and merging a change.
+
+```text
+/spec:propose -> /spec:apply -> /spec:archive
+```
+
+Use the commands to:
+
 - `/spec:propose "Migrate <repo-url> to Rust WASM on Omnia."`: Create artifacts.
 - `/spec:apply`: Apply the change.
 - `/spec:archive`: Merge specs into baseline and archive.
+
+Other commands available:
+
 - `/spec:abandon`: Discard a change without merging specs.
 - `/spec:status`: Check artifact completion and task progress.
 - `/spec:explore`: Think through ideas and investigate problems.
 
-## Plugins
+## Development
 
-Four plugins provide specialist skills consumed during `/spec` work:
+In a new project, add the skills and references to the project's `.cursor/skills/` directory by creating symlinks to each skill:
 
-### Specify Plugin (`plugins/spec/`)
+```bash
+mkdir -p .cursor/plugins && \
+for plugin in $SPECIFY_REPO/plugins/*/; do
+  name=$(basename "$plugin")
+  ln -sfn "$plugin" ".cursor/plugins/$name"
+done
+```
 
-Core Specify workflow orchestration.
+### Validation
 
-- `init`: Initialize Specify in a project.
-- `propose`: Create a change and generate all artifacts in one step.
-- `apply`: Implement tasks from a Specify change.
-- `archive`: Finalize and archive a completed change.
-- `abandon`: Discard a change without merging specs into the baseline.
-- `explore`: Thinking partner for exploring ideas, problems, and requirements.
-- `status`: Check artifact completion, task progress, and active changes.
+Validate the repository documentation and metadata with:
 
-### Omnia Plugin (`plugins/omnia/`)
+```bash
+make checks
+```
 
-Code generation and review for Rust WASM on the Omnia runtime.
+## About
 
-- `crate-writer`: Generate or update Rust crates from Specify artifacts.
-- `test-writer`: Generate or update test suites from Specify artifacts and crate code.
-- `guest-writer`: Generate the WASM guest wrapper around domain crates.
-- `code-reviewer`: Review generated or updated crates for correctness and Omnia/WASM compliance.
+### Plugins
 
-### RT Plugin (`plugins/rt/`)
+This repository provides specialist skills to support spec-driven software development. Skills are organised — or namespeced — by plugin.
 
-TypeScript source analysis and fixture capture for migration workflows.
+- [**Specify**](plugins/spec/) -- Core workflow orchestration: propose, apply, archive, abandon, explore, and more.
+- [**Omnia**](plugins/omnia/) -- Generate and review Rust WASM crates targeting the Omnia runtime.
+- [**RT**](plugins/rt/) -- TypeScript source analysis, fixture capture, and regression testing for migrations.
+- [**Plan**](plugins/plan/) -- Requirements analysis, design enrichment, and SoW generation from JIRA.
 
-- `code-analyzer`: Derive baseline Specify artifacts from an existing TypeScript codebase.
-- `git-cloner`: Clone a source repository as a detached tree for analysis.
-- `replay-writer`: Add regression tests from captured real-world fixtures.
-- `wiretapper`: Capture fixture data from legacy services.
-
-### Plan Plugin (`plugins/plan/`)
-
-Requirements analysis, design enrichment, and SoW generation.
-
-- `epic-analyzer`: Derive proposal, specs, and design context from JIRA epics and stories.
-- `sow-writer`: Translate Specify artifacts into client-facing SoW material.
-
-## Repository Structure
+### Structure
 
 ```text
 augentic-plugins/
@@ -90,13 +83,6 @@ augentic-plugins/
 └── scripts/                      # Documentation and consistency checks
 ```
 
-## Validation
-
-Validate the repository documentation and metadata with:
-
-```bash
-make checks
-```
 
 ## Documentation
 
