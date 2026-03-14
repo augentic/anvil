@@ -2,7 +2,7 @@
 """Deterministic spec merge tool for Specify archive workflow.
 
 Parses baseline and delta spec files using heading conventions from
-schema.yaml's spec_format, applies RENAMED -> REMOVED -> MODIFIED -> ADDED
+schema.yaml's spec-format, applies RENAMED -> REMOVED -> MODIFIED -> ADDED
 in strict order, and writes the merged result.
 
 Exit codes:
@@ -48,7 +48,7 @@ def _yaml_value(line: str) -> str:
 
 
 def parse_spec_format(schema_path: str) -> SpecFormat:
-    """Read spec_format fields from a simple schema.yaml."""
+    """Read spec-format fields from a simple schema.yaml."""
     with open(schema_path, encoding="utf-8") as f:
         lines = f.readlines()
 
@@ -60,21 +60,21 @@ def parse_spec_format(schema_path: str) -> SpecFormat:
         stripped = raw.rstrip()
         indent = len(raw) - len(raw.lstrip())
 
-        if stripped == "spec_format:":
+        if stripped == "spec-format:":
             in_spec_format = True
             in_delta = False
             continue
 
         if in_spec_format:
             if indent == 0 and stripped and not stripped.startswith("#"):
-                break  # left spec_format block
+                break  # left spec-format block
 
-            key_match = re.match(r"\s+([\w_]+):", stripped)
+            key_match = re.match(r"\s+([\w-]+):", stripped)
             if not key_match:
                 continue
             key = key_match.group(1)
 
-            if key == "delta_operations":
+            if key == "delta-operations":
                 in_delta = True
                 continue
 
@@ -83,23 +83,23 @@ def parse_spec_format(schema_path: str) -> SpecFormat:
             elif not in_delta:
                 fields[key] = _yaml_value(stripped)
 
-            if in_delta and indent < 4 and key != "delta_operations":
+            if in_delta and indent < 4 and key != "delta-operations":
                 in_delta = False
                 fields[key] = _yaml_value(stripped)
 
     try:
         return SpecFormat(
-            requirement_heading=fields["requirement_heading"],
-            requirement_id_prefix=fields["requirement_id_prefix"],
-            requirement_id_pattern=fields["requirement_id_pattern"],
-            scenario_heading=fields["scenario_heading"],
+            requirement_heading=fields["requirement-heading"],
+            requirement_id_prefix=fields["requirement-id-prefix"],
+            requirement_id_pattern=fields["requirement-id-pattern"],
+            scenario_heading=fields["scenario-heading"],
             delta_added=fields["delta_added"],
             delta_modified=fields["delta_modified"],
             delta_removed=fields["delta_removed"],
             delta_renamed=fields["delta_renamed"],
         )
     except KeyError as exc:
-        die(f"schema.yaml missing spec_format field: {exc}")
+        die(f"schema.yaml missing spec-format field: {exc}")
         raise  # unreachable, keeps mypy happy
 
 

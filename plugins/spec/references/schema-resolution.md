@@ -130,11 +130,11 @@ merges the child on top.
 - **`artifacts`**: child artifacts with the same `id` override the parent
   entirely; new `id`s are appended to the parent's list. Dependency order
   is recomputed from the merged `requires` graph.
-- **`spec_format`**: child overrides parent field-by-field (e.g., child
-  can override `requirement_heading` without restating `delta_operations`).
+- **`spec-format`**: child overrides parent field-by-field (e.g., child
+  can override `requirement-heading` without restating `delta-operations`).
 - **`terminology`**: child replaces parent entirely. If omitted, inherits
   the parent's `terminology` block.
-- **`cross_artifact_checks`**: child replaces parent entirely. If omitted,
+- **`cross-artifact-checks`**: child replaces parent entirely. If omitted,
   inherits the parent's checks.
 - **`apply`**: child `requires` replaces parent `requires`; child
   `instruction` replaces parent `instruction`; child `tracks` replaces

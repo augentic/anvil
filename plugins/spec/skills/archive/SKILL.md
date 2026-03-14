@@ -25,7 +25,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status. **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
 
-   Read `schema.yaml` for artifact definitions, `spec_format` heading conventions, and terminology (e.g., "Crates" vs "Capabilities"). Use schema terminology in summary output.
+   Read `schema.yaml` for artifact definitions, `spec-format` heading conventions, and terminology (e.g., "Crates" vs "Capabilities"). Use schema terminology in summary output.
 
 2. **Check lifecycle status**
 
@@ -65,10 +65,10 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - The file at `specs/<capability>/spec.md` is the **delta spec**
    - The baseline is at `.specify/specs/<capability>/spec.md`
 
-   Read the `spec_format` section from `schema.yaml` for heading conventions:
-   - `delta_operations.added`, `delta_operations.modified`, `delta_operations.removed`, `delta_operations.renamed` — the headings used in delta specs
-   - `requirement_heading` — the heading prefix for requirement blocks (e.g., `### Requirement:`)
-   - `requirement_id_prefix` — the stable requirement ID line prefix (e.g., `ID:`)
+   Read the `spec-format` section from `schema.yaml` for heading conventions:
+   - `delta-operations.added`, `delta-operations.modified`, `delta-operations.removed`, `delta-operations.renamed` — the headings used in delta specs
+   - `requirement-heading` — the heading prefix for requirement blocks (e.g., `### Requirement:`)
+   - `requirement-id-prefix` — the stable requirement ID line prefix (e.g., `ID:`)
 
    For each capability with a delta spec, show what will happen WITHOUT performing the merge:
 
@@ -265,7 +265,7 @@ The system SHALL authenticate users via OAuth 2.0 providers.
 The `scripts/merge-specs.py` tool implements this algorithm. The description is kept here for reference and as a fallback when the tool is unavailable.
 
 **What is a requirement block?**
-A requirement block starts at a requirement heading (as defined in `spec_format.requirement_heading`), includes the immediately following `ID:` line, and continues until the next requirement heading or the next `##` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
+A requirement block starts at a requirement heading (as defined in `spec-format.requirement-heading`), includes the immediately following `ID:` line, and continues until the next requirement heading or the next `##` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
 
 **Preserve preamble**: Any text before the first requirement heading or `##` header in the baseline is preserved as-is.
 

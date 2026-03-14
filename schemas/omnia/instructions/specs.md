@@ -69,7 +69,7 @@ First, read the proposal's **Source** section to determine the workflow:
   spec at `specs/<crate>/spec.md`.
 
   Delta operations use the headings defined in `schema.yaml`'s
-  `spec_format.delta_operations`:
+  `spec-format.delta-operations`:
     - **ADDED Requirements**: New behavior with a new `ID: REQ-XXX`
     - **MODIFIED Requirements**: Changed behavior - MUST include full
       updated content and preserve the existing requirement ID.

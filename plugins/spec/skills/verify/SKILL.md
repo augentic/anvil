@@ -19,7 +19,7 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
    Verify `.specify/config.yaml` exists. If not:
    > "Specify is not initialized in this project. Run `/spec:init` to get started."
 
-   Read `.specify/config.yaml` for the `schema` value and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`. Read `schema.yaml` for `spec_format` heading conventions and terminology.
+   Read `.specify/config.yaml` for the `schema` value and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`. Read `schema.yaml` for `spec-format` heading conventions and terminology.
 
 2. **Locate baseline specs**
 
@@ -54,7 +54,7 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
 
 5. **Compare against baseline requirements**
 
-   Read each baseline spec from `.specify/specs/<capability>/spec.md`. Parse requirement blocks using `spec_format` from `schema.yaml`.
+   Read each baseline spec from `.specify/specs/<capability>/spec.md`. Parse requirement blocks using `spec-format` from `schema.yaml`.
 
    For each requirement in the baseline, classify it:
 

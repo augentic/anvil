@@ -43,7 +43,7 @@ Schemas define the artifact graph, instructions, templates, and heading conventi
 
 ```text
 schemas/<name>/
-├── schema.yaml      # Declarations: artifacts, spec_format, apply config
+├── schema.yaml      # Declarations: artifacts, spec-format, apply config
 ├── config.yaml      # Starter config for /spec:init
 ├── instructions/    # Detailed instructions per artifact + apply
 └── templates/       # Artifact templates (spec-new.md, spec-delta.md, etc.)

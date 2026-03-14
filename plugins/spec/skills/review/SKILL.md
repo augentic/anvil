@@ -23,7 +23,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status. **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
 
-   Read `schema.yaml` for artifact definitions, `spec_format` heading conventions, `validate_checks`, and `cross_artifact_checks`.
+   Read `schema.yaml` for artifact definitions, `spec-format` heading conventions, `validate-checks`, and `cross-artifact-checks`.
 
 2. **Check lifecycle status**
 
@@ -38,15 +38,15 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    If an artifact file is missing, record it as a `MISSING` failure for that artifact and continue.
 
-4. **Run per-artifact validate_checks**
+4. **Run per-artifact validate-checks**
 
-   For each artifact that has a `validate_checks` field in `schema.yaml`, run every check against the artifact content. See [check-types.md](../../references/check-types.md) for the full check type definitions and parameters.
+   For each artifact that has a `validate-checks` field in `schema.yaml`, run every check against the artifact content. See [check-types.md](../../references/check-types.md) for the full check type definitions and parameters.
 
    Record each check result as **PASS** or **FAIL** with a reason.
 
 5. **Run cross-artifact consistency checks**
 
-   If the schema defines `cross_artifact_checks`, run each one. See [check-types.md](../../references/check-types.md) for the cross-artifact check type definitions.
+   If the schema defines `cross-artifact-checks`, run each one. See [check-types.md](../../references/check-types.md) for the cross-artifact check type definitions.
 
    Record each check result as **PASS** or **FAIL** with details.
 
@@ -60,28 +60,28 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    ### Per-Artifact Checks
 
    **proposal.md**
-   - PASS: heading_exists (## Why)
-   - PASS: heading_exists (## Source)
-   - FAIL: heading_exists (## Crates) — heading found but no content below it
+   - PASS: heading-exists (## Why)
+   - PASS: heading-exists (## Source)
+   - FAIL: heading-exists (## Crates) — heading found but no content below it
 
    **specs/user-auth/spec.md**
-   - PASS: spec_structure
-   - PASS: requirement_has_id
-   - FAIL: requirement_has_scenario — REQ-003 has no scenario
+   - PASS: spec-structure
+   - PASS: requirement-has-id
+   - FAIL: requirement-has-scenario — REQ-003 has no scenario
 
    **design.md**
-   - PASS: heading_exists (## Context)
-   - PASS: heading_exists_or_waived (## Domain Model)
+   - PASS: heading-exists (## Context)
+   - PASS: heading-exists-or-waived (## Domain Model)
 
    **tasks.md**
-   - PASS: pattern_match (task_lines)
-   - PASS: min_count (task_lines)
+   - PASS: pattern-match (task-lines)
+   - PASS: min-count (task-lines)
 
    ### Cross-Artifact Checks
 
-   - PASS: proposal_crates_have_specs
-   - FAIL: design_references_valid — REQ-005 referenced in design.md not found in specs
-   - PASS: spec_format_valid
+   - PASS: proposal-crates-have-specs
+   - FAIL: design-references-valid — REQ-005 referenced in design.md not found in specs
+   - PASS: spec-format-valid
 
    ### Result
 
@@ -107,7 +107,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
 - Read-only until the final status update — do not modify artifact files unless the user requests automatic fixes
 - Run ALL checks before reporting — do not stop at the first failure
-- Use heading conventions from `schema.yaml`'s `spec_format` — do not hard-code heading patterns
-- If `validate_checks` is not defined for an artifact, skip structured checks for that artifact (fall back to `validate` string rules)
+- Use heading conventions from `schema.yaml`'s `spec-format` — do not hard-code heading patterns
+- If `validate-checks` is not defined for an artifact, skip structured checks for that artifact (fall back to `validate` string rules)
 - Always report both passes and failures for full visibility
 - The `reviewed` status is optional in the workflow — `/spec:apply` accepts both `proposed` and `reviewed` as valid entry states

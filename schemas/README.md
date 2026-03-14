@@ -18,7 +18,7 @@ schema provides artifact declarations (`schema.yaml`), artifact instructions
 ### `realtime`
 
 - **URL**: `https://github.com/augentic/specify/schemas/realtime`
-- **Extends**: `omnia` (inherits `spec_format`, `specs`/`design`/`tasks` artifacts, and `apply` config)
+- **Extends**: `omnia` (inherits `spec-format`, `specs`/`design`/`tasks` artifacts, and `apply` config)
 - **Purpose**: Migration (TypeScript -> Rust WASM)
 - **Source**: Git Repository (`/rt:code-analyzer`) or Manual
 - **Target**: Rust WASM (Omnia SDK)
@@ -32,7 +32,7 @@ falls back to the parent directory for missing files).
 
 ```text
 schemas/<name>/
-├── schema.yaml      # Artifact declarations, terminology, spec_format, apply config
+├── schema.yaml      # Artifact declarations, terminology, spec-format, apply config
 ├── config.yaml      # Starter config installed by /spec:init
 ├── instructions/    # Detailed instructions for each artifact and apply
 │   ├── proposal.md
@@ -50,7 +50,7 @@ schemas/<name>/
 
 - **`schema.yaml`**: Declares artifacts (id, template filename, instruction
   file path, dependencies), `terminology` (unit naming for crates vs
-  capabilities), `spec_format` conventions for flat requirement/scenario blocks,
+  capabilities), `spec-format` conventions for flat requirement/scenario blocks,
   stable requirement IDs, delta operations, and the `apply` configuration.
   Child schemas may use `extends` to inherit from a parent and only override
   what differs. Skills read this to know how to generate artifacts and
