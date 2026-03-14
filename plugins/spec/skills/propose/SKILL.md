@@ -114,10 +114,123 @@ The user's request should include a change name (kebab-case) OR a description of
    - Determine the output path from the `generates` field, relative to `.specify/changes/<name>/`:
      - Simple filename (e.g., `proposal.md`): write to `.specify/changes/<name>/<generates>`
      - Glob pattern (e.g., `specs/**/*.md`): the instruction determines how many files to create and where within the pattern
-   - Create the artifact file following the instruction
+   - Create the artifact file following the instruction, applying the format conventions below for the matching artifact type
    - Apply `context` and `rules` from config.yaml as constraints — but do NOT copy them into the file
    - If the artifact has `validate` rules in `schema.yaml`, re-read the written file and verify each rule. If any fail: report which rules failed and why, attempt to fix the artifact, re-validate after fixing. If still failing after one fix attempt, warn the user and proceed.
    - Verify the file exists after writing before proceeding to next
+
+   ### Spec format conventions
+
+   These rules apply to all spec files regardless of schema. The instruction
+   file provides the templates and workflow routing; these conventions govern
+   the content written into those templates.
+
+   **New-crate specs (baseline format):**
+
+   - Structure as a flat baseline document:
+     `## Purpose` → `### Requirement:` blocks → `## Error Conditions` → `## Metrics`
+   - Assign requirement IDs sequentially within the spec (`REQ-001`, `REQ-002`, ...)
+   - Use SHALL/MUST for normative requirements (avoid should/may)
+   - Each scenario: `#### Scenario: <name>` with WHEN/THEN format
+   - Every requirement MUST have at least one scenario
+   - Specs should be testable — each scenario is a potential test case
+
+   **Modified-crate specs (delta format):**
+
+   Delta operations use the headings defined in `schema.yaml`'s
+   `spec-format.delta-operations`:
+   - **ADDED Requirements**: new behavior with a new `ID: REQ-XXX`
+   - **MODIFIED Requirements**: changed behavior — MUST include full updated content and preserve the existing requirement ID
+   - **REMOVED Requirements**: deprecated features — MUST include **Reason**, **Migration**, and the existing requirement ID
+   - **RENAMED Requirements**: name changes only — use `ID:` plus `TO:` format
+
+   Format rules (apply to both new and delta):
+   - Each requirement block starts with `### Requirement: <name>` followed by `ID: REQ-XXX`
+   - The `ID:` line is the stable key. Heading text is display text only.
+   - Use SHALL/MUST for normative requirements (avoid should/may)
+   - Each scenario: `#### Scenario: <name>` with WHEN/THEN format
+   - Every requirement MUST have at least one scenario
+
+   **MODIFIED requirements workflow:**
+   1. Locate the existing requirement in `.specify/specs/<crate>/spec.md`
+   2. Copy the ENTIRE requirement block (from `### Requirement:` through all scenarios), including the `ID:` line
+   3. Paste under the MODIFIED heading and edit to reflect new behavior
+   4. Preserve the original `ID:` value exactly
+
+   **ADDED requirements workflow:**
+   1. Inspect `.specify/specs/<crate>/spec.md` for the highest existing requirement ID
+   2. Assign the next sequential ID to the new requirement block
+   3. Do not reuse IDs from removed requirements
+
+   **Common pitfalls:**
+   - Using MODIFIED with partial content loses detail at archive time
+   - If adding new concerns without changing existing behavior, use ADDED instead
+
+   ### Design writing guidance
+
+   These rules apply when generating design.md regardless of schema. The
+   instruction file provides the output template; this guidance governs
+   when and how to fill it.
+
+   Create a full design if any of the following apply:
+   - Cross-cutting change (multiple services/modules) or new architectural pattern
+   - New external dependency or significant data model changes
+   - Security, performance, or migration complexity
+   - Ambiguity that benefits from technical decisions before coding
+
+   If none apply, create a minimal design.md noting that a full design is
+   not warranted and referencing the proposal and specs.
+
+   For multi-crate changes, structure the document with crate-specific
+   sections (`## Crate: <crate-name>`) each containing the relevant
+   subsections.
+
+   Focus on the technical shape needed for implementation. Reference the
+   proposal for motivation and specs for behavioral requirements. Use
+   mermaid diagrams for entity relationships and flows.
+
+   ### Task format conventions
+
+   These rules apply when generating tasks.md regardless of schema. The
+   instruction file provides the available-skills table; this guidance
+   governs the task structure.
+
+   **IMPORTANT: Follow the format below exactly.** The apply phase parses
+   checkbox format to track progress. Tasks not using `- [ ]` won't be
+   tracked.
+
+   Guidelines:
+   - Group related tasks under `##` numbered headings
+   - Each task MUST be a checkbox: `- [ ] X.Y Task description`
+   - Tasks should be small enough to complete in one session
+   - Order tasks by dependency (what must be done first?)
+
+   Example:
+
+   ```markdown
+   ## 1. Setup
+   - [ ] 1.1 Create new module structure
+   - [ ] 1.2 Add dependencies to Cargo.toml
+
+   ## 2. Core Implementation
+   - [ ] 2.1 Implement data export function
+   - [ ] 2.2 Add CSV formatting utilities
+   ```
+
+   Reference specs for what needs to be built, design for how to build it.
+   Each task should be verifiable — you know when it's done.
+
+   **Skill directives (optional):** Tasks may include an HTML comment tag
+   that names a specialist skill to invoke during apply. The apply phase
+   parses these tags and delegates the task to the referenced skill instead
+   of following the default apply instruction.
+
+   Format: `- [ ] X.Y Task description <!-- skill: plugin:skill-name -->`
+
+   Tasks without a skill tag are implemented via the default apply
+   instruction (mode detection, verification loop, etc.). Use skill tags
+   when a task maps cleanly to a single specialist skill invocation. The
+   instruction file lists available skills per schema.
 
 8. **Finalize and show status**
 

@@ -80,23 +80,6 @@ First, read the proposal's **Source** section to determine the workflow:
   Repeat `### Requirement:` blocks for each distinct behavior,
   incrementing `ID: REQ-XXX` for each new requirement.
 
-  New crate guidelines:
-
-  Structure the spec as a flat baseline document:
-    - `## Purpose` — what the crate does overall
-    - `### Requirement: <name>` — one block per behavioral requirement
-    - `ID: REQ-XXX` — stable identifier immediately after each requirement heading
-    - `#### Scenario: <name>` — one or more scenarios under each requirement
-    - `## Error Conditions` — optional shared error types and triggers
-    - `## Metrics` — optional metric names and types
-
-  Format requirements:
-    - Assign requirement IDs sequentially within the spec (`REQ-001`, `REQ-002`, ...)
-    - Use SHALL/MUST for normative requirements (avoid should/may)
-    - Each scenario: `#### Scenario: <name>` with WHEN/THEN format
-    - Every requirement MUST have at least one scenario
-    - Specs should be testable — each scenario is a potential test case
-
   **Modified Crates**: Use the existing spec folder name from
   `.specify/specs/<crate>/` when creating the delta spec at
   `specs/<crate>/spec.md`. Follow this structure:
@@ -135,40 +118,5 @@ First, read the proposal's **Source** section to determine the workflow:
   TO: <!-- new requirement name -->
   ```
 
-  Delta operations use the headings defined in `schema.yaml`'s
-  `spec-format.delta-operations`:
-    - **ADDED Requirements**: New behavior with a new `ID: REQ-XXX`
-    - **MODIFIED Requirements**: Changed behavior - MUST include full
-      updated content and preserve the existing requirement ID.
-    - **REMOVED Requirements**: Deprecated features - MUST include
-      **Reason**, **Migration**, and the existing requirement ID.
-    - **RENAMED Requirements**: Name changes only - use `ID:` plus `TO:` format
-
-  Delta format requirements:
-    - Each requirement block starts with `### Requirement: <name>` followed by `ID: REQ-XXX`
-    - Use SHALL/MUST for normative requirements (avoid should/may)
-    - Each scenario: `#### Scenario: <name>` with WHEN/THEN format
-    - Every requirement MUST have at least one scenario.
-    - The `ID:` line is the stable key. Heading text is display text only.
-
-  MODIFIED requirements workflow:
-    1. Locate the existing requirement in
-      `.specify/specs/<crate>/spec.md`
-    2. Copy the ENTIRE requirement block (from `### Requirement:`
-      through all scenarios), including the `ID:` line.
-    3. Paste under the MODIFIED heading and edit to reflect new
-      behavior.
-    4. Preserve the original `ID:` value exactly.
-
-  ADDED requirements workflow:
-    1. Inspect `.specify/specs/<crate>/spec.md` for the highest existing requirement ID
-    2. Assign the next sequential ID to the new requirement block
-    3. Do not reuse IDs from removed requirements
-
-  Common pitfall: Using MODIFIED with partial content loses detail at
-  archive time.
-
-  If adding new concerns without changing existing behavior, use ADDED
-  instead.
-
-  Specs should be testable - each scenario is a potential test case.
+  Follow the spec format conventions defined in the propose skill for
+  delta operations, format rules, and the MODIFIED/ADDED workflows.
