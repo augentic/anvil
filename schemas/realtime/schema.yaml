@@ -10,7 +10,6 @@ artifacts:
   - id: proposal
     generates: proposal.md
     description: Initial proposal document
-    template: proposal.md
     instruction: instructions/proposal.md
     requires: []
     validate:
@@ -18,16 +17,3 @@ artifacts:
       - Has a Source section identifying Repository or Manual
       - Has a Crates section listing at least one new or modified crate
       - Crate names are kebab-case
-    validate-checks:
-      - check: heading-exists
-        heading: "## Why"
-        min-content-lines: 1
-      - check: heading-exists
-        heading: "## Source"
-        content-matches: "Repository|Manual"
-      - check: heading-exists
-        heading: "## Crates"
-        min-content-lines: 1
-      - check: pattern-match
-        scope: crate-names
-        pattern: "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"

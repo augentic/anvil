@@ -36,3 +36,38 @@ Keep it concise (1-2 pages). Focus on the "why" not the "how" -
 implementation details belong in design.md.
 
 This is the foundation - specs, design, and tasks all build on this.
+
+## Output Structure
+
+```markdown
+## Why
+
+<!-- Explain the motivation for this change. What problem does this solve? -->
+
+## Source
+
+<!-- Pick ONE: Repository URL or Manual -->
+
+## What Changes
+
+<!-- Describe what will change. Be specific about new crates or modifications. -->
+
+## Crates
+
+### New Crates
+
+<!-- List crates being introduced. Each becomes a new specs/<name>/spec.md.
+Use kebab-case names (e.g., user-auth, data-export). -->
+
+### Modified Crates
+
+<!-- List existing crates whose REQUIREMENTS are changing.
+Use existing spec folder names from .specify/specs/.
+Leave empty if no requirement changes. -->
+
+## Impact
+
+<!-- Affected code, APIs, dependencies, systems.
+Call out risks such as cross-service contract changes, breaking changes,
+complexity concerns -->
+```

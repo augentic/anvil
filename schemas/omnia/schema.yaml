@@ -20,7 +20,6 @@ artifacts:
   - id: proposal
     generates: proposal.md
     description: Initial proposal document
-    template: proposal.md
     instruction: instructions/proposal.md
     requires: []
     validate:
@@ -28,26 +27,10 @@ artifacts:
       - Has a Source section identifying Repository, Epic, or Manual
       - Has a Crates section listing at least one new or modified crate
       - Crate names are kebab-case
-    validate-checks:
-      - check: heading-exists
-        heading: "## Why"
-        min-content-lines: 1
-      - check: heading-exists
-        heading: "## Source"
-        content-matches: "Repository|Epic|Manual"
-      - check: heading-exists
-        heading: "## Crates"
-        min-content-lines: 1
-      - check: pattern-match
-        scope: crate-names
-        pattern: "^[a-z][a-z0-9]*(-[a-z0-9]+)*$"
 
   - id: specs
     generates: specs/**/*.md
     description: Detailed specifications for the change
-    templates:
-      new: spec-new.md
-      delta: spec-delta.md
     instruction: instructions/specs.md
     requires:
       - proposal
@@ -58,25 +41,10 @@ artifacts:
       - Uses SHALL/MUST language for normative requirements (not should/may)
       - Requirements use the flat baseline format with top-level requirement headings
       - Every scenario uses WHEN/THEN format
-    validate-checks:
-      - check: spec-structure
-        heading-ref: spec-format.requirement-heading
-        id-ref: spec-format.requirement-id-prefix
-        scenario-ref: spec-format.scenario-heading
-      - check: requirement-has-id
-        pattern-ref: spec-format.requirement-id-pattern
-      - check: requirement-has-scenario
-        scenario-ref: spec-format.scenario-heading
-      - check: normative-language
-        required-terms: ["SHALL", "MUST"]
-        forbidden-as-normative: ["should", "may"]
-      - check: scenario-keywords
-        required: ["WHEN", "THEN"]
 
   - id: design
     generates: design.md
     description: Technical design document with implementation details
-    template: design.md
     instruction: instructions/design.md
     requires:
       - proposal
@@ -84,21 +52,10 @@ artifacts:
       - Has a Context section
       - Has a Domain Model section (or explicitly states none needed)
       - Has a Business Logic section (or explicitly states none needed)
-    validate-checks:
-      - check: heading-exists
-        heading: "## Context"
-        min-content-lines: 1
-      - check: heading-exists-or-waived
-        heading: "## Domain Model"
-        waiver-pattern: "[Nn]one needed|[Nn]ot applicable"
-      - check: heading-exists-or-waived
-        heading: "## Business Logic"
-        waiver-pattern: "[Nn]one needed|[Nn]ot applicable"
 
   - id: tasks
     generates: tasks.md
     description: Implementation checklist with trackable tasks
-    template: tasks.md
     instruction: instructions/tasks.md
     requires:
       - specs
@@ -107,25 +64,11 @@ artifacts:
       - Every task uses checkbox format (- [ ] X.Y description)
       - Tasks are grouped under numbered headings
       - At least one task exists
-    validate-checks:
-      - check: pattern-match
-        scope: task-lines
-        pattern: "^- \\[[ xX]\\] \\d+\\.\\d+ "
-      - check: heading-match
-        pattern: "^## \\d+\\."
-        min-count: 1
-      - check: min-count
-        scope: task-lines
-        pattern: "^- \\[[ xX]\\] "
-        min: 1
 
 cross-artifact-checks:
-  - check: proposal-crates-have-specs
-    description: Every crate listed in the proposal has a corresponding spec file under specs/
-  - check: design-references-valid
-    description: Requirement IDs (REQ-XXX) referenced in design.md exist in spec files
-  - check: spec-format-valid
-    description: All spec files match the heading structure defined in spec-format
+  - proposal-crates-have-specs
+  - design-references-valid
+  - spec-format-valid
 
 apply:
   requires: [tasks]

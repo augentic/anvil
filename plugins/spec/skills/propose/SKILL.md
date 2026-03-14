@@ -41,7 +41,7 @@ The user's request should include a change name (kebab-case) OR a description of
      - `schema`: the schema value. Default to `omnia` if not found.
      - `context`: Project background (constraints for you - do NOT include in artifact output)
      - `rules`: Per-artifact rules (constraints for you - do NOT include in artifact output)
-   - **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `instructions/*`, `templates/*`.
+   - **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `instructions/*`.
    - Read `schema.yaml` from the resolved schema directory. This defines the artifact list, dependency graph, and file references. **All artifact knowledge comes from the schema** — do not assume fixed artifact IDs or output paths.
 
 4. **Check for regenerate mode**
@@ -54,8 +54,7 @@ The user's request should include a change name (kebab-case) OR a description of
    d. Verify all artifacts listed in its `requires` exist in the change directory
    e. Read the required artifacts for context
    f. Read the instruction file at the path given by the artifact's `instruction` field in the resolved schema directory
-   g. Read the template file(s) — for specs, use `templates.<new>` or `templates.<delta>` based on whether the crate is new or modified; for other artifacts, use `template`
-   h. Regenerate ONLY the specified artifact using the instruction and template
+   g. Regenerate ONLY the specified artifact following the instruction
    i. Apply `context` and `rules` from config.yaml as constraints
    j. Run validators if `validate` rules are defined for this artifact (see step 6)
    k. Do NOT change the `status` field
@@ -112,15 +111,12 @@ The user's request should include a change name (kebab-case) OR a description of
 
    - Read any completed dependency files (the artifacts listed in `requires`) for context
    - Read the instruction file at the path given by the artifact's `instruction` field in the resolved schema directory
-   - Read the template file(s) from the resolved schema directory:
-     - If the artifact has a `template` field (singular): read `templates/<template>`
-     - If the artifact has a `templates` field (plural, e.g., specs): read `templates/<templates.new>` for new crates/capabilities and `templates/<templates.delta>` for modified ones
    - Determine the output path from the `generates` field, relative to `.specify/changes/<name>/`:
      - Simple filename (e.g., `proposal.md`): write to `.specify/changes/<name>/<generates>`
      - Glob pattern (e.g., `specs/**/*.md`): the instruction determines how many files to create and where within the pattern
-   - Create the artifact file using the template structure and following the instruction
+   - Create the artifact file following the instruction
    - Apply `context` and `rules` from config.yaml as constraints — but do NOT copy them into the file
-   - If the artifact has `validate-checks` in `schema.yaml`, re-read the written file and run each structured check (see [check-types.md](../../references/check-types.md) for check type definitions). If the artifact only has `validate` string rules (no `validate-checks`), verify each string rule instead. If any check fails: report which checks failed and why, attempt to fix the artifact, re-validate after fixing. If still failing after one fix attempt, warn the user and proceed.
+   - If the artifact has `validate` rules in `schema.yaml`, re-read the written file and verify each rule. If any fail: report which rules failed and why, attempt to fix the artifact, re-validate after fixing. If still failing after one fix attempt, warn the user and proceed.
    - Verify the file exists after writing before proceeding to next
 
 8. **Finalize and show status**

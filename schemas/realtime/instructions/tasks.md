@@ -1,6 +1,6 @@
 Create the task list that breaks down the implementation work.
 
-**IMPORTANT: Follow the template below exactly.** The apply phase parses
+**IMPORTANT: Follow the format below exactly.** The apply phase parses
 checkbox format to track progress. Tasks not using `- [ ]` won't be
 tracked.
 

@@ -1,6 +1,6 @@
 ---
 name: review
-description: Validate artifacts with structured checks and cross-artifact consistency. Sets status to reviewed when all checks pass. Use when the user wants to verify artifact quality before implementation.
+description: Validate artifacts and cross-artifact consistency. Sets status to reviewed when all checks pass. Use when the user wants to verify artifact quality before implementation.
 license: MIT
 ---
 
@@ -23,7 +23,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status. **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
 
-   Read `schema.yaml` for artifact definitions, `spec-format` heading conventions, `validate-checks`, and `cross-artifact-checks`.
+   Read `schema.yaml` for artifact definitions, `spec-format` heading conventions, `validate` rules, and `cross-artifact-checks`.
 
 2. **Check lifecycle status**
 
@@ -38,15 +38,18 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    If an artifact file is missing, record it as a `MISSING` failure for that artifact and continue.
 
-4. **Run per-artifact validate-checks**
+4. **Run per-artifact validation**
 
-   For each artifact that has a `validate-checks` field in `schema.yaml`, run every check against the artifact content. See [check-types.md](../../references/check-types.md) for the full check type definitions and parameters.
+   For each artifact that has a `validate` field in `schema.yaml`, verify each rule against the artifact content.
 
-   Record each check result as **PASS** or **FAIL** with a reason.
+   Record each rule result as **PASS** or **FAIL** with a reason.
 
 5. **Run cross-artifact consistency checks**
 
-   If the schema defines `cross-artifact-checks`, run each one. See [check-types.md](../../references/check-types.md) for the cross-artifact check type definitions.
+   If the schema defines `cross-artifact-checks`, run each named check:
+   - `proposal-crates-have-specs`: every crate listed in the proposal has a corresponding spec file under `specs/`
+   - `design-references-valid`: requirement IDs (`REQ-XXX`) referenced in `design.md` exist in spec files
+   - `spec-format-valid`: all spec files match the heading structure defined in `spec-format`
 
    Record each check result as **PASS** or **FAIL** with details.
 
@@ -57,25 +60,26 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    ```text
    ## Review Summary: <change-name>
 
-   ### Per-Artifact Checks
+   ### Per-Artifact Validation
 
    **proposal.md**
-   - PASS: heading-exists (## Why)
-   - PASS: heading-exists (## Source)
-   - FAIL: heading-exists (## Crates) — heading found but no content below it
+   - PASS: Has a Why section with at least one sentence
+   - PASS: Has a Source section identifying Repository, Epic, or Manual
+   - FAIL: Has a Crates section listing at least one new or modified crate — heading found but no content below it
+   - PASS: Crate names are kebab-case
 
    **specs/user-auth/spec.md**
-   - PASS: spec-structure
-   - PASS: requirement-has-id
-   - FAIL: requirement-has-scenario — REQ-003 has no scenario
+   - PASS: Every requirement has at least one scenario
+   - PASS: Every requirement includes a stable ID line immediately after the heading
+   - FAIL: Uses SHALL/MUST language for normative requirements — REQ-003 uses "should"
 
    **design.md**
-   - PASS: heading-exists (## Context)
-   - PASS: heading-exists-or-waived (## Domain Model)
+   - PASS: Has a Context section
+   - PASS: Has a Domain Model section (or explicitly states none needed)
 
    **tasks.md**
-   - PASS: pattern-match (task-lines)
-   - PASS: min-count (task-lines)
+   - PASS: Every task uses checkbox format (- [ ] X.Y description)
+   - PASS: Tasks are grouped under numbered headings
 
    ### Cross-Artifact Checks
 
@@ -85,7 +89,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    ### Result
 
-   6 passed, 2 failed
+   8 passed, 2 failed
    Status: NOT READY (fix failures before implementation)
    ```
 
@@ -108,6 +112,6 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 - Read-only until the final status update — do not modify artifact files unless the user requests automatic fixes
 - Run ALL checks before reporting — do not stop at the first failure
 - Use heading conventions from `schema.yaml`'s `spec-format` — do not hard-code heading patterns
-- If `validate-checks` is not defined for an artifact, skip structured checks for that artifact (fall back to `validate` string rules)
+- If `validate` is not defined for an artifact, skip validation for that artifact
 - Always report both passes and failures for full visibility
 - The `reviewed` status is optional in the workflow — `/spec:apply` accepts both `proposed` and `reviewed` as valid entry states

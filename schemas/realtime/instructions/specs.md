@@ -26,11 +26,45 @@ First, read the proposal's **Source** section to determine the workflow:
 **Manual path** (Source is "Manual" or absent):
 
   Create one spec file per crate listed in the proposal's
-  Crates section. Choose the right template based on the proposal:
+  Crates section.
 
-  **New Crates**: use the **New Crate** template from the
-  resolved schema's `templates/spec-new.md`. Use the exact kebab-case
-  name from the proposal (`specs/<crate>/spec.md`).
+  **New Crates**: Use the exact kebab-case name from the proposal
+  (`specs/<crate>/spec.md`). Follow this structure:
+
+  ```markdown
+  # <Crate Name> Specification
+
+  ## Purpose
+
+  <1-2 sentence description of what this crate does>
+
+  ### Requirement: <Behavior Name>
+
+  ID: REQ-001
+
+  The system SHALL <behavioral description>.
+
+  #### Scenario: <Happy Path>
+
+  - **WHEN** <trigger or input>
+  - **THEN** <expected behavior>
+
+  #### Scenario: <Error Case>
+
+  - **WHEN** <invalid input or failing condition>
+  - **THEN** <expected error behavior>
+
+  ## Error Conditions
+
+  - <error type>: <description and trigger conditions>
+
+  ## Metrics
+
+  - `<metric_name>` — type: <counter|gauge|histogram>; emitted: <when>
+  ```
+
+  Repeat `### Requirement:` blocks for each distinct behavior,
+  incrementing `ID: REQ-XXX` for each new requirement.
 
   New crate guidelines:
 
@@ -49,10 +83,43 @@ First, read the proposal's **Source** section to determine the workflow:
     - Every requirement MUST have at least one scenario
     - Specs should be testable — each scenario is a potential test case
 
-  **Modified Crates**: use the **Modified Crate** template
-  from the resolved schema's `templates/spec-delta.md`. Use the existing
-  spec folder name from `.specify/specs/<crate>/` when creating
-  the delta spec at `specs/<crate>/spec.md`.
+  **Modified Crates**: Use the existing spec folder name from
+  `.specify/specs/<crate>/` when creating the delta spec at
+  `specs/<crate>/spec.md`. Follow this structure:
+
+  ```markdown
+  ## ADDED Requirements
+
+  ### Requirement: <!-- requirement name -->
+  ID: REQ-<!-- next available id -->
+  <!-- requirement text -->
+
+  #### Scenario: <!-- scenario name -->
+  - **WHEN** <!-- condition -->
+  - **THEN** <!-- expected outcome -->
+
+  ## MODIFIED Requirements
+
+  ### Requirement: <!-- existing requirement name -->
+  ID: REQ-<!-- existing id (must match baseline) -->
+  <!-- full updated requirement text -->
+
+  #### Scenario: <!-- scenario name -->
+  - **WHEN** <!-- condition -->
+  - **THEN** <!-- expected outcome -->
+
+  ## REMOVED Requirements
+
+  ### Requirement: <!-- existing requirement name -->
+  ID: REQ-<!-- existing id -->
+  **Reason**: <!-- why this requirement is being removed -->
+  **Migration**: <!-- how to handle the removal -->
+
+  ## RENAMED Requirements
+
+  ID: REQ-<!-- existing id -->
+  TO: <!-- new requirement name -->
+  ```
 
   Delta operations use the headings defined in `schema.yaml`'s
   `spec-format.delta-operations`:

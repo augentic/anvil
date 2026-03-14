@@ -12,7 +12,7 @@ design is not warranted and referencing the proposal and specs:
 
 Structure the document with crate-specific sections if multiple crates are involved.
 
-Required sections (see template):
+Required sections:
   - **Context**: Source, purpose, background, and current state
   - **Domain Model**: Entity and type definitions with field names,
     types, wire names, and optionality
@@ -31,6 +31,62 @@ Required sections (see template):
   - **Dependencies**: External packages or services
   - **Risks / Open Questions**: Known risks and unresolved decisions
   - **Notes**: Additional observations
+
+For multi-crate changes, structure the document with crate-specific
+sections (`## Crate: <crate-name>`) each containing the relevant
+subsections.
+
+## Output Structure
+
+```markdown
+## Context
+
+<!-- Source, purpose, and background for this change -->
+
+## Domain Model
+
+<!-- Entity and type definitions with field names, types, wire names, and optionality -->
+
+## API Contracts
+
+<!-- Endpoints with method, path, request/response shapes, errors -->
+
+## External Services
+
+<!-- Name, type (API, table store, cache, message broker), authentication -->
+
+## Constants & Configuration
+
+<!-- All config keys with descriptions and defaults -->
+
+## Business Logic
+
+<!-- Per-handler tagged pseudocode ([domain], [infrastructure], [mechanical]) -->
+
+## Publication & Timing Patterns
+
+<!-- Topics, message shapes, timing, partition keys -->
+
+## Implementation Constraints
+
+<!-- Platform or runtime constraints relevant to generation -->
+
+## Source Capabilities Summary
+
+<!-- Checklist of required provider traits -->
+
+## Dependencies
+
+<!-- External packages or services this change depends on -->
+
+## Risks / Open Questions
+
+<!-- Known risks, trade-offs, and unresolved decisions -->
+
+## Notes
+
+<!-- Additional observations or considerations -->
+```
 
 Focus on the technical shape needed for implementation. Reference the
 proposal for motivation and specs for behavioral requirements. Use

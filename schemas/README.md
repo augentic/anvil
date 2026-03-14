@@ -2,8 +2,7 @@
 
 This directory contains the schema definitions for the Specify workflow. Each
 schema provides artifact declarations (`schema.yaml`), artifact instructions
-(`instructions/`), a starter config (`config.yaml`), and artifact templates
-(`templates/`).
+(`instructions/`), and a starter config (`config.yaml`).
 
 ## Schemas
 
@@ -34,22 +33,16 @@ falls back to the parent directory for missing files).
 schemas/<name>/
 ├── schema.yaml      # Artifact declarations, terminology, spec-format, apply config
 ├── config.yaml      # Starter config installed by /spec:init
-├── instructions/    # Detailed instructions for each artifact and apply
-│   ├── proposal.md
-│   ├── specs.md
-│   ├── design.md
-│   ├── tasks.md
-│   └── apply.md     # May be omitted in child schemas (inherited from parent)
-└── templates/       # Artifact templates
+└── instructions/    # Detailed instructions for each artifact and apply
     ├── proposal.md
-    ├── spec-new.md    # Template for new crates
-    ├── spec-delta.md  # Template for modified crates (delta format)
+    ├── specs.md
     ├── design.md
-    └── tasks.md       # May be omitted in child schemas (inherited from parent)
+    ├── tasks.md
+    └── apply.md     # May be omitted in child schemas (inherited from parent)
 ```
 
-- **`schema.yaml`**: Declares artifacts (id, template filename, instruction
-  file path, dependencies), `terminology` (the `unit` name, e.g., "crate"
+- **`schema.yaml`**: Declares artifacts (id, instruction file path,
+  dependencies, validation rules), `terminology` (the `unit` name,
   e.g., "crate"), `spec-format` conventions for flat requirement/scenario
   blocks, stable requirement IDs, delta operations, and the `apply`
   configuration.
@@ -57,14 +50,11 @@ schemas/<name>/
   what differs. Skills read this to know how to generate artifacts and
   implement tasks.
 - **`instructions/`**: One markdown file per artifact plus `apply.md`.
-  Contains the detailed generation or implementation instructions that were
-  previously inline in `schema.yaml`. Referenced by file path from
-  `schema.yaml`'s `instruction` field.
+  Contains the detailed generation or implementation instructions including
+  output structure. Referenced by file path from `schema.yaml`'s
+  `instruction` field.
 - **`config.yaml`**: Installed into `.specify/config.yaml` by `/spec:init`.
   Contains the `schema` URL, default `context`, and per-artifact `rules`.
-- **`templates/`**: Markdown templates for each artifact. Spec templates
-  are split into `spec-new.md` (new crate) and `spec-delta.md`
-  (delta format for modifications). Referenced by filename in `schema.yaml`.
 
 ## Schema Resolution
 
@@ -125,18 +115,12 @@ level in `.specify/.cache/`:
 ├── .cache-meta.yaml     # schema_url + fetched_at
 ├── schema.yaml
 ├── config.yaml          (if fetched)
-├── instructions/        (if fetched)
-│   ├── proposal.md
-│   ├── specs.md
-│   ├── design.md
-│   ├── tasks.md
-│   └── apply.md
-└── templates/           (if fetched)
+└── instructions/        (if fetched)
     ├── proposal.md
-    ├── spec-new.md
-    ├── spec-delta.md
+    ├── specs.md
     ├── design.md
-    └── tasks.md
+    ├── tasks.md
+    └── apply.md
 ```
 
 The cache is valid as long as `schema_url` in `.cache-meta.yaml` matches the
@@ -146,25 +130,6 @@ refetched on the next skill invocation.
 
 The `/spec:init` skill creates `.specify/.cache/` and adds it to
 `.specify/.gitignore`. To force a refetch, delete `.specify/.cache/`.
-
-## Templates
-
-The `design.md` and `tasks.md` templates share the same structure across
-schemas. The `proposal.md` templates differ:
-
-- **Omnia**: uses "Crates" (New Crates / Modified Crates); Source supports
-  Repository, Epic, and Manual.
-- **Realtime**: uses "Crates" (New Crates / Modified Crates); Source
-  supports Repository and Manual.
-
-Spec templates are split per schema:
-
-- **`spec-new.md`**: Template for new crates (baseline format
-  with top-level `### Requirement:` blocks, `ID: REQ-XXX` lines, and
-  `#### Scenario:` entries).
-- **`spec-delta.md`**: Template for modified crates (delta
-  format with ADDED/MODIFIED/REMOVED/RENAMED sections keyed by stable
-  requirement IDs).
 
 ## Configuration
 

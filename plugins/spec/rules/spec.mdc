@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: propose a change, review artifacts with structured checks, apply (implement) a change, archive a completed change, abandon a discarded change, verify code-to-spec consistency, explore ideas or problems interactively, check status, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
+This plugin provides the core Specify workflow skills: propose a change, review artifacts, apply (implement) a change, archive a completed change, abandon a discarded change, verify code-to-spec consistency, explore ideas or problems interactively, check status, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
 
 **Purpose**: Drive the propose -> review -> apply -> archive workflow, with abandon for cleanup, verify for drift detection, and explore for thinking and investigation.
 
@@ -35,18 +35,17 @@ This plugin provides the core Specify workflow skills: propose a change, review 
     └── status/            # Check change status and progress
 ```
 
-Each skill has its own SKILL.md with full details. Schema resolution and composition is defined in [schema-resolution.md](../references/schema-resolution.md). The Specify artifact format is described in [specify.md](../references/specify.md). Structured validation checks are defined in `schema.yaml` and executed by the review skill.
+Each skill has its own SKILL.md with full details. Schema resolution and composition is defined in [schema-resolution.md](../references/schema-resolution.md). The Specify artifact format is described in [specify.md](../references/specify.md). Validation rules are defined in `schema.yaml` and verified by the review skill.
 
 ## Schema Structure
 
-Schemas define the artifact graph, instructions, templates, and heading conventions. Each schema directory contains:
+Schemas define the artifact graph, instructions, and heading conventions. Each schema directory contains:
 
 ```text
 schemas/<name>/
 ├── schema.yaml      # Declarations: artifacts, spec-format, apply config
 ├── config.yaml      # Starter config for /spec:init
-├── instructions/    # Detailed instructions per artifact + apply
-└── templates/       # Artifact templates (spec-new.md, spec-delta.md, etc.)
+└── instructions/    # Detailed instructions per artifact + apply
 ```
 
 `schema.yaml` is declaration-only — instructions live in separate files referenced by path. Schemas can extend other schemas via the `extends` field.
@@ -63,7 +62,7 @@ proposing -> proposed -> reviewed -> applying -> complete -> archived
 
 - **proposing**: Artifacts are being generated (propose in progress)
 - **proposed**: All artifacts created, ready for review or implementation
-- **reviewed**: All structured checks passed (optional — apply accepts both `proposed` and `reviewed`)
+- **reviewed**: All validation rules passed (optional — apply accepts both `proposed` and `reviewed`)
 - **applying**: Tasks are being implemented
 - **complete**: All tasks done, ready to archive
 - **archived**: Specs merged into baseline, change moved to archive
@@ -85,7 +84,7 @@ proposing -> proposed -> reviewed -> applying -> complete -> archived
 
 - **init**: One-time project setup -- creates `.specify/` directory structure and `config.yaml`
 - **propose**: Create a change directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:propose <name> <artifact-id>`.
-- **review**: Validate artifacts with structured checks from `schema.yaml` and cross-artifact consistency. Sets status to `reviewed` when all checks pass (optional step).
+- **review**: Validate artifacts against `schema.yaml` rules and cross-artifact consistency. Sets status to `reviewed` when all checks pass (optional step).
 - **apply**: Implement tasks from an existing change, marking them complete as you go
 - **archive**: Preview merge operations, finalize a completed change, merge delta specs into baseline
 - **abandon**: Discard an active change, set `status: abandoned`, and move it to archive without merging specs
@@ -116,7 +115,7 @@ proposing -> proposed -> reviewed -> applying -> complete -> archived
 - See project rule (`.cursor/rules/project.mdc`) for overall project context
 - [Init SKILL.md](skills/init/SKILL.md) - Initialize Specify
 - [Propose SKILL.md](skills/propose/SKILL.md) - Create changes with artifacts
-- [Review SKILL.md](skills/review/SKILL.md) - Validate artifacts with structured checks
+- [Review SKILL.md](skills/review/SKILL.md) - Validate artifacts against schema rules
 - [Apply SKILL.md](skills/apply/SKILL.md) - Implement change tasks
 - [Archive SKILL.md](skills/archive/SKILL.md) - Finalize completed changes
 - [Abandon SKILL.md](skills/abandon/SKILL.md) - Discard a change without merging specs

@@ -96,7 +96,7 @@ defined in the schema's `spec-format.delta-operations` (default:
 `## ADDED Requirements`, `## MODIFIED Requirements`, etc.). Requirement
 blocks still use `### Requirement:` and `#### Scenario:` headings, but the
 stable merge key is the `ID: REQ-XXX` line rather than the display name.
-See the schema's `templates/spec-delta.md` for the template and the
+See the schema's `instructions/specs.md` for the full delta structure and the
 archive skill for how deltas merge into the baseline.
 
 ### Deriving Specs From Source Code (code-analyzer)
@@ -175,9 +175,9 @@ Generator-owned binding decisions such as Omnia trait composition remain in spec
 Use `proposal.md` to capture why the change exists and what is in scope.
 
 The Omnia schema uses **Crates** (`New Crates` / `Modified Crates`). The
-Realtime schema uses **Capabilities** (`New Capabilities` / `Modified
-Capabilities`). The schema-specific proposal template determines which
-heading names to use. Both map to `specs/<name>/spec.md`.
+Realtime schema uses **Crates** (`New Crates` / `Modified Crates`).
+The schema-specific proposal instruction determines which heading names
+to use. Both map to `specs/<name>/spec.md`.
 
 ```markdown
 ## Why
