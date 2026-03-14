@@ -3,14 +3,10 @@ version: 1
 description: Realtime workflow
 extends: https://github.com/augentic/specify/schemas/omnia
 
-terminology:
-  unit: crate
-
 artifacts:
   - id: proposal
     generates: proposal.md
     description: Initial proposal document
-    instruction: instructions/proposal.md
     requires: []
     validate:
       - Has a Why section with at least one sentence

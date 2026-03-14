@@ -9,19 +9,19 @@ schema provides artifact declarations (`schema.yaml`), artifact instructions
 ### `omnia`
 
 - **URL**: `https://github.com/augentic/specify/schemas/omnia`
-- **Purpose**: Greenfield development (JIRA -> Rust WASM)
-- **Source**: JIRA Epic (`/plan:epic-analyzer`) or Manual
+- **Purpose**: Rust WASM development (greenfield or migration)
+- **Source**: JIRA Epic (`/plan:epic-analyzer`), Git Repository (`/rt:code-analyzer`), or Manual
 - **Target**: Rust WASM (Omnia SDK)
-- **Workflow**: `propose` -> `specs` (from Epic) -> `design` (from Epic) -> `tasks` -> `apply` (crate-writer)
+- **Workflow**: `propose` -> `specs` (from Epic, Code, or Manual) -> `design` -> `tasks` -> `apply` (crate-writer)
 
 ### `realtime`
 
 - **URL**: `https://github.com/augentic/specify/schemas/realtime`
-- **Extends**: `omnia` (inherits `spec-format`, `specs`/`design`/`tasks` artifacts, and `apply` config)
+- **Extends**: `omnia` (inherits `spec-format`, `specs`/`design`/`tasks` artifacts, `instructions/`, and `apply` config)
 - **Purpose**: Migration (TypeScript -> Rust WASM)
-- **Source**: Git Repository (`/rt:code-analyzer`) or Manual
+- **Source**: Git Repository (`/rt:code-analyzer`) or Manual (Epic source excluded)
 - **Target**: Rust WASM (Omnia SDK)
-- **Workflow**: `propose` -> `specs` (from Code) -> `design` (from Code) -> `tasks` -> `apply` (crate-writer)
+- **Workflow**: `propose` -> `specs` (from Code or Manual) -> `design` -> `tasks` -> `apply` (crate-writer)
 
 ## Schema Directory Structure
 
@@ -38,8 +38,12 @@ schemas/<name>/
     ├── specs.md
     ├── design.md
     ├── tasks.md
-    └── apply.md     # May be omitted in child schemas (inherited from parent)
+    └── apply.md
 ```
+
+Child schemas that use `extends` may omit the entire `instructions/` directory
+or individual files within it. Missing files are resolved from the parent schema
+via fallback.
 
 - **`schema.yaml`**: Declares artifacts (id, instruction file path,
   dependencies, validation rules), `terminology` (the `unit` name,
