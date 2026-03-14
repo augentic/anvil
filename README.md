@@ -178,7 +178,7 @@ To test plugins locally before releasing to the marketplace (preserves namespaci
 ./scripts/install-plugins.sh
 ```
 
-Use with `"skills": { "source": "local" }` in `.cursor/settings.json`. Note: skills appear as `/apply`, `/crate-writer` (no namespace); `/spec:apply` invoking `/omnia:crate-writer` will not work.
+Use with `{"skills": {"source": "local"}}` in `.cursor/settings.json`. Note: skills appear as `/apply`, `/crate-writer` (no namespace); `/spec:apply` invoking `/omnia:crate-writer` will not work.
 
 ### Contributing
 
