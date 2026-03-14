@@ -172,34 +172,13 @@ This executes `./scripts/checks.sh`, which requires `python3` and `bash`.
 
 ### Local plugin development
 
-To use a local checkout of the plugins in another project (for development or testing), symlink the plugins directory. 
-
-Be sure to replace `/path/to/augentic/specify` with the absolute path to your local clone of this repository.
-
-**Symlink skills:**
+To test plugins locally before releasing to the marketplace (preserves namespacing and interdependencies such as `/spec:apply` → `/omnia:crate-writer`):
 
 ```bash
-SPECIFY_REPO="path/to/augentic/specify"
-
-mkdir -p .cursor/skills && \
-for skill in "$SPECIFY_REPO"/plugins/*/skills/*; do
-    name="$(basename "$skill")"
-    ln -s "$skill" ".cursor/skills/$name"
-done
+./scripts/install-plugins.sh
 ```
 
-**Use the symlinked skills:**
-
-```bash
-cat > .cursor/settings.json << 'EOF'
-{
-    "skills": {
-        "source": "local"
-    }
-}
-EOF
-echo "Created .cursor/settings.json"
-```
+Use with `"skills": { "source": "local" }` in `.cursor/settings.json`. Note: skills appear as `/apply`, `/crate-writer` (no namespace); `/spec:apply` invoking `/omnia:crate-writer` will not work.
 
 ### Contributing
 
