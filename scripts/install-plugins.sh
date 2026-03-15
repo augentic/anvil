@@ -18,7 +18,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CURSOR_PLUGINS="${CURSOR_PLUGINS:-$HOME/.cursor/plugins}"
+CURSOR_PLUGINS="${CURSOR_PLUGINS:-$HOME/.cursor/plugins/local}"
 CLAUDE_DIR="${CLAUDE_DIR:-$HOME/.claude}"
 CLAUDE_PLUGINS="$CLAUDE_DIR/plugins/installed_plugins.json"
 CLAUDE_SETTINGS="$CLAUDE_DIR/settings.json"
@@ -80,7 +80,7 @@ with open(path, "w") as f:
 PY
 
 # 3. Upsert `enabledPlugins` in `settings.json`
-#    in ~/.claude/settings.json
+#    Enable @local plugins and disable conflicting Augentic marketplace plugins
 echo "Updating $CLAUDE_SETTINGS"
 python3 - "$CLAUDE_SETTINGS" "${PLUGINS[@]}" <<'PY'
 import json, os, sys
@@ -97,8 +97,20 @@ if os.path.exists(path):
         pass
 
 enabled = data.setdefault("enabledPlugins", {})
-for name in plugins_to_enable:
+local_plugins = set(plugins_to_enable)
+
+# Enable local plugins
+for name in local_plugins:
     enabled[f"{name}@local"] = True
+
+# Disable Augentic marketplace plugins that conflict with local versions
+# (e.g. spec@augentic, omnia@augentic)
+for pid in list(enabled.keys()):
+    base = pid.split("@")[0] if "@" in pid else ""
+    suffix = pid.split("@")[-1] if "@" in pid else ""
+    if base in local_plugins and suffix != "local":
+        enabled[pid] = False
+
 data["enabledPlugins"] = enabled
 
 os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -111,3 +123,4 @@ echo "Done. Restart Cursor (or Reload Window) to load local plugins."
 echo
 echo "Installed: ${PLUGINS[*]}"
 echo "Skills will appear as /spec:apply, /omnia:crate-writer, etc."
+echo "Marketplace versions of these plugins have been disabled to avoid conflicts."

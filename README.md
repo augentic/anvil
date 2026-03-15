@@ -178,7 +178,12 @@ To test plugins locally before releasing to the marketplace (preserves namespaci
 ./scripts/install-plugins.sh
 ```
 
-Use with `{"skills": {"source": "local"}}` in `.cursor/settings.json`. Note: skills appear as `/apply`, `/crate-writer` (no namespace); `/spec:apply` invoking `/omnia:crate-writer` will not work.
+
+#### Marketplace vs Local
+
+If the Augentic marketplace plugins are installed, the `install-plugins.sh` script automatically disables them (sets `enabledPlugins[spec@augentic] = false`, etc.) so only the `@local` versions load. No manual step needed.
+
+To do it manually: Settings → Plugins → disable the marketplace versions of spec, omnia, rt, plan.
 
 ### Contributing
 
