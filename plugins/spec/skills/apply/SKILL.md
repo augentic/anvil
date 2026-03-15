@@ -21,13 +21,13 @@ Implement tasks from a Specify change.
 
 2. **Read project config and resolve schema**
 
-   Read `.specify/config.yaml` for project context and rule overrides.
+   Read `.specify/config.yaml` for project context overrides and rule overrides.
 
    Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status.
 
    **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `config.yaml`, `instructions/apply.md`. Read `schema.yaml` and `config.yaml` from the resolved location.
 
-   **Resolve effective rules**: for each artifact ID under `rules`, use the project's value (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's value (from the resolved `config.yaml`). Use `context` and effective rules as constraints guiding your implementation -- do not copy them into code comments.
+   **Resolve effective context**: use the project's `context` (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's `context` (from the resolved `config.yaml`). **Resolve effective rules**: for each artifact ID under `rules`, use the project's value (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's value (from the resolved `config.yaml`). Use effective context and effective rules as constraints guiding your implementation -- do not copy them into code comments.
 
 3. **Check lifecycle status**
 

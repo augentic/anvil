@@ -2,6 +2,10 @@
 checks:
 	@./scripts/checks.sh
 
-.PHONY: merge-specs
-merge-specs:
-	@python3 plugins/spec/skills/archive/scripts/merge-specs.py $(ARGS)
+.PHONY: dev-plugins
+dev-plugins:
+	@./scripts/dev-plugins.sh
+
+.PHONY: prod-plugins
+prod-plugins:
+	@./scripts/prod-plugins.sh

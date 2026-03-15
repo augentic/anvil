@@ -33,8 +33,8 @@ When no `@ref` is present, `main` is used as the default ref.
 1. **Parse the schema value**
 
    - If `$SCHEMA_VALUE` contains no `/` (bare name like `omnia`):
-     set `$NAME = $SCHEMA_VALUE`, `$REF = main` → local resolution only
-     (step 2).
+     set `$NAME = $SCHEMA_VALUE`, `$REF = main` → local resolution
+     (step 2), then cache (step 3) if local not found.
    - If `$SCHEMA_VALUE` contains `/` (URL):
      - Split on `@` — the part before `@` is the URL path, the part after
        is `$REF` (default `main` if no `@` present).
@@ -50,15 +50,19 @@ When no `@ref` is present, `main` is used as the default ref.
    (i.e., the root of the repository that contains the schema definitions).
    If found, use the local directory for all `$FILES_NEEDED`. Done.
 
-   If not found and `$SCHEMA_VALUE` is a bare name, stop and report an
-   error — bare names cannot fall through to remote resolution.
+   If not found, fall through to step 3 (cache check). The `init` skill
+   populates the cache for bare-name schemas using `local:<name>` as the
+   `schema_url`, so downstream skills can resolve from cache even without
+   a local `schemas/` directory. If neither local resolution nor cache
+   produces a match, stop and report an error — bare names cannot fall
+   through to remote resolution.
 
-   > **Note**: Bare-name resolution is a development convenience for
-   > working within the specify repository itself. Downstream projects
-   > should use URL-based schemas (with optional `@ref` pinning) to
-   > ensure reproducible resolution across machines.
+   > **Note**: Bare-name resolution against `schemas/` is a development
+   > convenience for working within the specify repository itself.
+   > Downstream projects either use URL-based schemas (with optional
+   > `@ref` pinning) or rely on the cache populated by `init`.
 
-3. **Cache check** (skip for init)
+3. **Cache check**
 
    If `.specify/.cache/.cache-meta.yaml` exists, read it:
 
@@ -67,8 +71,12 @@ When no `@ref` is present, `main` is used as the default ref.
    fetched_at: 2026-03-13T10:30:00Z
    ```
 
-   If `schema_url` matches `$SCHEMA_VALUE` exactly, use the cached files
-   from `.specify/.cache/` for all `$FILES_NEEDED`. Done.
+   Match `schema_url` against `$SCHEMA_VALUE`:
+   - For URL-based schemas: `schema_url` must match `$SCHEMA_VALUE` exactly.
+   - For bare-name schemas: `schema_url` must equal `local:$NAME`.
+
+   If matched, use the cached files from `.specify/.cache/` for all
+   `$FILES_NEEDED`. Done.
 
    If `schema_url` does not match (schema URL changed in config), the
    cache is stale — proceed to step 4 to refetch.
@@ -155,14 +163,15 @@ The schema value format determines the resolution path:
 
 | Format              | Example                                      | Resolution                                       |
 |---------------------|----------------------------------------------|--------------------------------------------------|
-| Bare name           | `schema: omnia`                              | Local `schemas/omnia/` only. For development.    |
+| Bare name           | `schema: omnia`                              | Local `schemas/omnia/`, then cache.              |
 | URL (default ref)   | `schema: https://github.com/.../omnia`       | Cache, then remote fetch at `main`.              |
 | URL with pinned ref | `schema: https://github.com/.../omnia@v1`    | Cache, then remote fetch at `v1`.                |
 
-Bare names always resolve locally and never reach the network. URLs always
-resolve via cache or remote and never use a local `schemas/` directory,
-even if one exists with the same name. This guarantees that a pinned URL
-produces the same schema across machines and branches.
+Bare names resolve locally first, then fall back to the cache populated by
+`init`; they never reach the network. URLs always resolve via cache or
+remote and never use a local `schemas/` directory, even if one exists with
+the same name. This guarantees that a pinned URL produces the same schema
+across machines and branches.
 
 ## Cache Notes
 
@@ -173,14 +182,16 @@ produces the same schema across machines and branches.
   matches, triggering a refetch.
 - To force a refetch, delete `.specify/.cache/` and run any skill that
   resolves the schema.
-- The `init` skill does **not** use the cache (it creates the project
-  structure from scratch and only needs `config.yaml`).
+- The `init` skill populates the cache with the full schema during
+  initialization. Subsequent skills resolve from cache.
+- For locally resolved schemas (bare name), init writes `.cache-meta.yaml`
+  with `schema_url: local:<name>` so downstream skills can match against it.
 
 ## What Each Skill Needs
 
 | Skill   | Files needed                                          |
 |---------|-------------------------------------------------------|
-| init    | `config.yaml`                                         |
+| init    | `schema.yaml`, `config.yaml`, `instructions/*`        |
 | propose | `schema.yaml`, `config.yaml`, `instructions/*`        |
 | apply   | `schema.yaml`, `config.yaml`, `instructions/apply.md` |
 | archive | `schema.yaml`                                         |

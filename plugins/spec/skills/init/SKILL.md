@@ -36,7 +36,7 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
 
    Store the result as `$SCHEMA`.
 
-   Resolve `$SCHEMA` using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `config.yaml`.
+   Resolve `$SCHEMA` using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `config.yaml`, `instructions/*`.
 
 3. **Create directory structure**
 
@@ -49,20 +49,60 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
    .cache/
    ```
 
-4. **Install config.yaml**
+4. **Populate schema cache**
 
-   Read `config.yaml` from the resolved schema directory and write it to `.specify/config.yaml`.
+   Copy all resolved schema files into `.specify/.cache/`, mirroring the schema directory structure:
 
-   If the user provided project context, fill in the `context` field with their description. Otherwise keep the schema's default context.
+   ```text
+   .specify/.cache/
+   ├── .cache-meta.yaml
+   ├── schema.yaml
+   ├── config.yaml
+   └── instructions/
+       ├── proposal.md
+       ├── specs.md
+       ├── design.md
+       ├── tasks.md
+       └── apply.md
+   ```
+
+   Write `.specify/.cache/.cache-meta.yaml` with:
+   - `schema_url`: the full `$SCHEMA` value. For bare-name schemas (no `/`), use `local:<name>` (e.g., `local:omnia`). For URL-based schemas, use the full URL (including `@ref` if present).
+   - `fetched_at`: current ISO-8601 timestamp
+
+   If the resolved schema directory contains an `instructions/` subdirectory, create `.specify/.cache/instructions/` and copy all files from it.
+
+5. **Install config.yaml**
+
+   Write a thin project config to `.specify/config.yaml` with:
+   - `schema`: set to `$SCHEMA` (the resolved schema value — bare name or URL)
+   - `context`: set to the user's description if provided, otherwise a placeholder comment (`# Describe your project here`)
+   - `rules`: scaffold one key per artifact defined in the resolved `schema.yaml` (read `artifacts[].id`). Each key is a YAML block scalar (`|`) containing a placeholder comment. For example, with the omnia schema the output is:
+
+     ```yaml
+     rules:
+       proposal: |
+         # TODO: Add any proposal override rules here
+       specs: |
+         # TODO: Add any specs override rules here
+       design: |
+         # TODO: Add any design override rules here
+       tasks: |
+         # TODO: Add any tasks override rules here
+     ```
+
+     These are overrides only — schema defaults from `.specify/.cache/config.yaml` still apply for any key left as a placeholder.
+
+   Do NOT copy the schema's `config.yaml` wholesale. The project config is a thin overlay; schema defaults live in the cache.
 
    If schema resolution failed (no matching directory, fetch error), warn the user and stop — a valid schema is required.
 
-5. **Prompt for customization**
+6. **Prompt for customization**
 
    Tell the user:
    - "Specify initialized. Config written to `.specify/config.yaml`."
    - "Edit the `context` field to describe your project's tech stack, architecture, and testing approach."
-   - "The `rules` section contains the schema defaults. Edit any artifact key under `rules` to override its defaults. Keys you don't change will keep the schema defaults automatically."
+   - "Fill in the scaffolded `rules` entries to override schema defaults for specific artifacts. To see the defaults, check `.specify/.cache/config.yaml`."
    - "When ready, run `/spec:propose` to start your first change."
 
 **Output**
@@ -82,6 +122,6 @@ Next steps:
 
 **Guardrails**
 - Do not overwrite an existing config without user confirmation
-- The schema's `config.yaml` is the source of truth for default config content — do not use an inline template
-- Do not create `.specify/schemas/` — schemas are resolved from the plugin directory or fetched from URLs
+- Write a thin project config with `schema`, `context`, and scaffolded `rules` keys (one per schema artifact) — schema defaults live in `.specify/.cache/config.yaml`
+- Populate `.specify/.cache/` with the full schema so downstream skills resolve from cache
 - If schema resolution fails, stop and report the error rather than creating a config with unknown schema content

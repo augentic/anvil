@@ -84,19 +84,22 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ## Repository Layout
 
+See [docs/architecture.md](docs/architecture.md) for the full repository structure. Key directories:
+
 ```text
-/.cursor/
-  └── rules/              # Project guidance for agents
+/.cursor/rules/           # Project guidance for agents
+/.cursor-plugin/          # Multi-plugin marketplace manifest
+/docs/                    # Extended documentation (architecture, plugins)
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
+  ├── spec/               # Specify workflow plugin (init, propose, apply, archive, abandon, verify, explore, status)
+  │   └── references/     # Artifact templates and schema resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
-  ├── spec/               # Specify workflow plugin (init, propose, apply, archive, abandon, verify, explore, status)
-  │   └── references/     # Artifact templates and instructions
-  ├── plan/               # Plan requirements analysis plugin
-  └── rt/                 # RT migration plugin
-/schemas/                 # Schema definitions (reference documentation)
-/scripts/                 # Documentation and consistency checks
+  ├── rt/                 # RT migration plugin
+  └── plan/               # Plan requirements analysis plugin
+/schemas/                 # Schema definitions (omnia, realtime)
+/scripts/                 # Validation and plugin management
 ```
 
 ## Validation

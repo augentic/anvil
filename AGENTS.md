@@ -17,12 +17,13 @@ Humans are expected to work through stock Specify:
 
 This repository provides specialist skills and references that support that workflow.
 
-### Validation commands
+### Commands
 
-All validation is run from the repository root:
+All commands are run from the repository root:
 
 - **`make checks`** -- runs `./scripts/checks.sh` for documentation and workflow consistency checks
-- **`./scripts/checks.sh`** -- standalone documentation linting (requires `python3` and `bash`)
+- **`make dev-plugins`** -- symlink local plugins into Cursor for development/testing
+- **`make prod-plugins`** -- restore Augentic marketplace plugins (reload Cursor after either)
 
 ### Gotchas
 
