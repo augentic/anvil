@@ -1,22 +1,34 @@
 #!/usr/bin/env bash
 
-# Symlink local plugins into Cursor's cache so edits are picked up on restart.
-# Usage: ./scripts/local-plugins.sh
+# Symlink local plugins into Cursor's marketplace so edits are picked up on reload.
+# Usage: ./scripts/dev-plugins.sh
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CACHE_DIR="$HOME/.cursor/plugins/cache/augentic"
+PLUGINS_DIR="$HOME/.cursor/plugins"
+MARKETPLACES_DIR="$PLUGINS_DIR/marketplaces"
 
-# clear the augentic cache directory
-rm -rf "$CACHE_DIR"
-mkdir -p "$CACHE_DIR"
+# get all augentic-* directories in the marketplaces directory
+shopt -s nullglob
+dirs=("$MARKETPLACES_DIR"/augentic-*/)
+shopt -u nullglob
 
-# symlink each plugin that has a `.cursor-plugin` manifest
-for dir in "$REPO_ROOT"/plugins/*/; do
-  plugin="$(basename "$dir")"
-  [ -f "$dir/.cursor-plugin/plugin.json" ] || continue
+# if there are no augentic-* directories, create a local directory
+if [ ${#dirs[@]} -eq 0 ]; then
+  mkdir -p "$MARKETPLACES_DIR/augentic-local"
+  dirs=("$MARKETPLACES_DIR/augentic-local/")
+fi
 
-  mkdir -p "$CACHE_DIR/$plugin"
-  ln -sf "$dir" "$CACHE_DIR/$plugin/main"
+# symlink this repo to each augentic-*/main
+for dir in "${dirs[@]}"; do
+  rm -rf "$dir/main"
+  ln -sfn "$REPO_ROOT" "$dir/main"
 done
+
+# clear the cache
+rm -rf "$PLUGINS_DIR/cache/augentic"
+
+echo ""
+echo "Reload Cursor (or restart) to pick up local plugins."
+
