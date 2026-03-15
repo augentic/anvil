@@ -107,7 +107,7 @@ make prod-plugins
 
 #### Testing schema changes
 
-If testing schema changes in a separate project, schemas will need to be manually copied to the project from this repo.
+If testing schema changes in a separate project, schemas will need to be manually copied (or symlinked) to the project from this repo.
 
 ### Contributing
 
