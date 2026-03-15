@@ -102,7 +102,12 @@ To revert to Augentic marketplace plugins:
 make prod-plugins
 ```
 
-**N.B.**: Reload (or restart) Cursor to pick up the changes for both dev and prod plugins.
+> [!NOTE]  
+> Reload (or restart) Cursor to pick up the changes for both dev and prod plugins.
+
+#### Testing schema changes
+
+If testing schema changes in a separate project, schemas will need to be manually copied to the project from this repo.
 
 ### Contributing
 
