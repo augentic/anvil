@@ -39,11 +39,11 @@ The user's request should include a change name (kebab-case) OR a description of
    - Verify `.specify/config.yaml` exists. If not, tell the user to run `/spec:init` first.
    - Read `.specify/config.yaml` to get:
      - `schema`: the schema value. Default to `omnia` if not found.
-     - `context`: Project background (constraints for you - do NOT include in artifact output)
+     - `context`: Project-level context override (may be empty or a placeholder)
      - `rules`: Per-artifact rule overrides (constraints for you - do NOT include in artifact output)
    - **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `config.yaml`, `instructions/*`.
    - Read `schema.yaml` from the resolved schema directory. This defines the artifact list, dependency graph, and file references. **All artifact knowledge comes from the schema** — do not assume fixed artifact IDs or output paths.
-   - Read `config.yaml` from the resolved schema directory for default `rules`. **Resolve effective rules** per artifact: for each artifact ID, use the project's `rules.<id>` if present and non-empty, otherwise fall back to the schema's `rules.<id>`. These effective rules are constraints for you — do NOT include them in artifact output.
+   - Read `config.yaml` from the resolved schema directory for default `context` and `rules`. **Resolve effective context**: use the project's `context` if present and non-empty (not just a comment placeholder), otherwise fall back to the schema's `context`. **Resolve effective rules** per artifact: for each artifact ID, use the project's `rules.<id>` if present and non-empty, otherwise fall back to the schema's `rules.<id>`. These are constraints for you — do NOT include them in artifact output.
 
 4. **Check for regenerate mode**
 
