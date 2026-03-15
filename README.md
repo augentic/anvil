@@ -107,11 +107,11 @@ make prod-plugins
 
 #### Testing schema changes
 
-If testing schema changes in a separate project, schemas will need to be manually copied (or symlinked) to the project from this repo.
+If testing schema changes in a separate project, schemas will need to be symlinked in to the project from this repo:
 
 ```bash
-# from within the project directory
-ln -sf /path/to/specify/schemas schemas
+SPECIFY_REPO="path/to/augentic/specify"
+ln -sf "$SPECIFY_REPO/schemas" schemas
 ```
 
 ### Contributing

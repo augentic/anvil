@@ -5,7 +5,7 @@
 schema: https://github.com/augentic/specify/schemas/omnia
 
 context: |
-  Tech stack: Rust, WASM (wasm32-wasip2), Omnia SDKs
+  Tech stack: Rust, WASM (wasm32-wasip2), Omnia SDK
   Architecture: Handler<P> pattern with provider trait bounds
   Testing: Rust integration tests, cargo test
 
