@@ -109,6 +109,11 @@ make prod-plugins
 
 If testing schema changes in a separate project, schemas will need to be manually copied (or symlinked) to the project from this repo.
 
+```bash
+# from within the project directory
+ln -sf /path/to/specify/schemas schemas
+```
+
 ### Contributing
 
 All skills follow the shared `SKILL.md` structure. Changes to generation behavior belong in the relevant skill or reference. See [CONTRIBUTING.md](CONTRIBUTING.md) for the full contribution guide, including DCO requirements and pull request procedure.
