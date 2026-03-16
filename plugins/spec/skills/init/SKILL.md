@@ -30,9 +30,7 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
 
 2. **Resolve schema**
 
-   If `$SCHEMA` is provided (as an argument), use it directly. Otherwise, use the **AskQuestion tool** to let the user select:
-   - **omnia**: New development (JIRA -> Rust WASM)
-   - **realtime**: Migration (TypeScript -> Rust WASM)
+   If `$SCHEMA` is provided (as an argument), use it directly. Otherwise, list available schemas from the `schemas/` directory (each subdirectory containing a `schema.yaml` is a schema). If only one schema exists, use it as the default and confirm with the user. If multiple schemas exist, use the **AskQuestion tool** to let the user select from the available options.
 
    Store the result as `$SCHEMA`.
 
@@ -63,7 +61,7 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
        ├── specs.md
        ├── design.md
        ├── tasks.md
-       └── apply.md
+       └── build.md
    ```
 
    Write `.specify/.cache/.cache-meta.yaml` with:
@@ -77,7 +75,7 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
    Write a thin project config to `.specify/config.yaml` with:
    - `schema`: set to `$SCHEMA` (the resolved schema value — bare name or URL)
    - `context`: set to the user's description if provided, otherwise a placeholder comment (`# Describe your project here`)
-   - `rules`: scaffold one key per artifact defined in the resolved `schema.yaml` (read `artifacts[].id`). Each key is a YAML block scalar (`|`) containing a placeholder comment. For example, with the omnia schema the output is:
+   - `rules`: scaffold one key per blueprint defined in the resolved `schema.yaml` (read `blueprints[].id`). Each key is a YAML block scalar (`|`) containing a placeholder comment. For example, with the omnia schema the output is:
 
      ```yaml
      rules:
@@ -103,7 +101,7 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
    - "Specify initialized. Config written to `.specify/config.yaml`."
    - "Edit the `context` field to describe your project's tech stack, architecture, and testing approach."
    - "Fill in the scaffolded `rules` entries to override schema defaults for specific artifacts. To see the defaults, check `.specify/.cache/config.yaml`."
-   - "When ready, run `/spec:propose` to start your first change."
+   - "When ready, run `/spec:define` to start your first change."
 
 **Output**
 
@@ -117,11 +115,11 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
 
 Next steps:
 1. Edit `.specify/config.yaml` to describe your project
-2. Run `/spec:propose` to create your first change
+2. Run `/spec:define` to create your first change
 ```
 
 **Guardrails**
 - Do not overwrite an existing config without user confirmation
-- Write a thin project config with `schema`, `context`, and scaffolded `rules` keys (one per schema artifact) — schema defaults live in `.specify/.cache/config.yaml`
+- Write a thin project config with `schema`, `context`, and scaffolded `rules` keys (one per schema blueprint) — schema defaults live in `.specify/.cache/config.yaml`
 - Populate `.specify/.cache/` with the full schema so downstream skills resolve from cache
 - If schema resolution fails, stop and report the error rather than creating a config with unknown schema content

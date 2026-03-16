@@ -118,5 +118,5 @@ First, read the proposal's **Source** section to determine the workflow:
   TO: <!-- new requirement name -->
   ```
 
-  Follow the spec format conventions defined in the propose skill for
+  Follow the spec format conventions defined in the define skill for
   delta operations, format rules, and the MODIFIED/ADDED workflows.

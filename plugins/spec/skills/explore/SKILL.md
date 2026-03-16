@@ -6,7 +6,7 @@ license: MIT
 
 Enter explore mode. Think deeply. Visualize freely. Follow the conversation wherever it goes.
 
-**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change proposal. You MAY update existing Specify artifacts within an active change if the user asks — that's capturing thinking, not implementing. To create a new change, offer to run `/spec:propose`.
+**IMPORTANT: Explore mode is for thinking, not implementing.** You may read files, search code, and investigate the codebase, but you must NEVER write code or implement features. If the user asks you to implement something, remind them to exit explore mode first and create a change definition. You MAY update existing Specify artifacts within an active change if the user asks — that's capturing thinking, not implementing. To create a new change, offer to run `/spec:define`.
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.
 
@@ -84,7 +84,7 @@ Read `schema.yaml` to understand what artifacts the schema defines, what source 
 
 This tells you:
 - If there are active changes
-- Their names, schemas, lifecycle status (`proposing`, `proposed`, `applying`, `complete`), and dates
+- Their names, schemas, lifecycle status (`defining`, `defined`, `building`, `complete`), and dates
 - What the user might be working on
 - What the project workflow and artifact structure looks like
 
@@ -101,7 +101,7 @@ If the user mentions a change or you detect one is relevant:
 
 1. **Read existing artifacts for context**
 
-   For each artifact defined in `schema.yaml`, read the file(s) at `.specify/changes/<name>/<generates>`. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
+   For each blueprint defined in `schema.yaml`, read the file(s) at `.specify/changes/<name>/<generates>`. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
 
 2. **Reference them naturally in conversation**
    - "Your design mentions using Redis, but we just realized SQLite fits better..."
@@ -109,17 +109,17 @@ If the user mentions a change or you detect one is relevant:
 
 3. **Offer to capture when decisions are made**
 
-   When decisions are made during exploration, offer to capture them in the relevant artifact of the active change. Consult the schema's artifact definitions (from `schema.yaml`) to determine which artifact is appropriate for the insight type — the `id` and `description` fields describe each artifact's purpose.
+   When decisions are made during exploration, offer to capture them in the relevant artifact of the active change. Consult the schema's blueprint definitions (from `schema.yaml`) to determine which artifact is appropriate for the insight type — the `id` and `description` fields describe each blueprint's purpose.
 
    **Updating an existing change's artifacts** (allowed):
    - "That's a design decision. Capture it in design.md?"
    - "This is a new requirement. Add it to specs?"
    - "This changes scope. Update the proposal?"
 
-   **Creating a new change** (delegate to propose):
-   - "This feels like a new change. Want me to run `/spec:propose` to create one?"
+   **Creating a new change** (delegate to define):
+   - "This feels like a new change. Want me to run `/spec:define` to create one?"
 
-   Do not create change directories or `.metadata.yaml` files directly — that's the propose skill's responsibility.
+   Do not create change directories or `.metadata.yaml` files directly — that's the define skill's responsibility.
 
 4. **The user decides** - Offer and move on. Don't pressure. Don't auto-capture.
 
@@ -173,7 +173,7 @@ But this summary is optional. Sometimes the thinking IS the value.
 
 ## Guardrails
 
-- **Don't implement** - Never write code or implement features. Updating existing Specify artifacts is fine, writing application code is not. To create a new change, delegate to `/spec:propose`.
+- **Don't implement** - Never write code or implement features. Updating existing Specify artifacts is fine, writing application code is not. To create a new change, delegate to `/spec:define`.
 - **Don't fake understanding** - If something is unclear, dig deeper
 - **Don't rush** - Discovery is thinking time, not task time
 - **Don't force structure** - Let patterns emerge naturally

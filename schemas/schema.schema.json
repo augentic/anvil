@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify/schemas/schema.schema.json",
+  "title": "Specify schema.yaml",
+  "description": "Validates the structure of a Specify schema definition file.",
+  "type": "object",
+  "required": ["name", "version", "description", "terminology", "blueprints", "build"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Schema identifier (e.g., omnia)."
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Schema version number."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of the schema."
+    },
+    "extends": {
+      "type": "string",
+      "description": "URL of parent schema for composition."
+    },
+    "terminology": {
+      "type": "object",
+      "required": ["unit"],
+      "additionalProperties": false,
+      "properties": {
+        "unit": {
+          "type": "string",
+          "description": "Unit noun used by skills (e.g., crate). Skills infer plural and heading forms."
+        }
+      }
+    },
+    "blueprints": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Ordered list of blueprint declarations.",
+      "items": { "$ref": "#/$defs/blueprint" }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": { "type": "boolean" },
+      "description": "Cross-blueprint boolean validation flags."
+    },
+    "build": {
+      "type": "object",
+      "required": ["requires", "tracks", "instructions"],
+      "additionalProperties": false,
+      "properties": {
+        "requires": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Blueprint IDs that must be complete before build runs."
+        },
+        "tracks": {
+          "type": "string",
+          "description": "File that tracks build progress (e.g., tasks.md)."
+        },
+        "instructions": {
+          "type": "string",
+          "description": "Relative path to the build instructions markdown file."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "blueprint": {
+      "type": "object",
+      "required": ["id", "generates", "description", "instructions", "requires"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Blueprint identifier (e.g., proposal, specs, design, tasks)."
+        },
+        "generates": {
+          "type": "string",
+          "description": "Output filename or glob pattern."
+        },
+        "description": {
+          "type": "string",
+          "description": "What this blueprint produces."
+        },
+        "instructions": {
+          "type": "string",
+          "description": "Relative path to the instructions markdown file."
+        },
+        "requires": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Blueprint IDs that must exist before this one can be generated."
+        },
+        "validate": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Human-readable validation rules checked after generation."
+        }
+      }
+    }
+  }
+}

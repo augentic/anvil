@@ -107,7 +107,7 @@ When no `@ref` is present, `main` is used as the default ref.
        ├── specs.md
        ├── design.md
        ├── tasks.md
-       └── apply.md
+       └── build.md
    ```
 
    Write `.cache-meta.yaml` with:
@@ -129,16 +129,16 @@ merges the child on top.
 
 ### Merge Rules
 
-- **`artifacts`**: child artifacts with the same `id` override the parent
+- **`blueprints`**: child blueprints with the same `id` override the parent
   entirely; new `id`s are appended to the parent's list. Dependency order
   is recomputed from the merged `requires` graph.
 - **`terminology`**: child replaces parent. If omitted, inherits the
   parent's `terminology`. Contains only `unit` (skills infer plural and
   heading forms).
-- **`cross-artifact-checks`**: child replaces parent entirely (simple
-  string list). If omitted, inherits the parent's checks.
-- **`apply`**: child `requires` replaces parent `requires`; child
-  `instruction` replaces parent `instruction`; child `tracks` replaces
+- **`validation`**: child replaces parent entirely (boolean flag map).
+  If omitted, inherits the parent's validation flags.
+- **`build`**: child `requires` replaces parent `requires`; child
+  `instructions` replaces parent `instructions`; child `tracks` replaces
   parent `tracks`. Omitted fields inherit from parent.
 - **`instructions/`**: resolve from the child schema directory first;
   fall back to the parent schema directory for any files not present in
@@ -154,7 +154,7 @@ Given `omnia-secure` extends `omnia`:
 
 1. Resolve `omnia` (parent) → yields base `schema.yaml`, `instructions/*`
 2. Resolve `omnia-secure` (child) → yields override `schema.yaml`
-3. Merge: parent artifacts + child artifacts (override by `id`, append new)
+3. Merge: parent blueprints + child blueprints (override by `id`, append new)
 4. For file reads: check child directory first, fall back to parent
 
 ## Resolution Modes
@@ -192,10 +192,10 @@ across machines and branches.
 | Skill   | Files needed                                          |
 |---------|-------------------------------------------------------|
 | init    | `schema.yaml`, `config.yaml`, `instructions/*`        |
-| propose | `schema.yaml`, `config.yaml`, `instructions/*`        |
-| apply   | `schema.yaml`, `config.yaml`, `instructions/apply.md` |
-| archive | `schema.yaml`                                         |
-| abandon | `schema.yaml`                                         |
+| define  | `schema.yaml`, `config.yaml`, `instructions/*`        |
+| build   | `schema.yaml`, `config.yaml`, `instructions/build.md` |
+| promote | `schema.yaml`                                         |
+| drop    | `schema.yaml`                                         |
 | verify  | `schema.yaml`                                         |
 | explore | `schema.yaml`                                         |
 | status  | `schema.yaml`                                         |

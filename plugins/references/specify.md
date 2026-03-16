@@ -1,6 +1,6 @@
 # Specify Guidance Supplement
 
-This repository uses stock Specify as the executable workflow contract. This document is a repository-specific supplement describing how Augentic specialists use `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:propose -> /spec:apply -> /spec:archive`, with `/spec:abandon` available when a change should be discarded instead of promoted and `/spec:verify` available to detect drift between code and baseline specs. Artifact validation is performed automatically by `/spec:apply` before implementation begins.
+This repository uses stock Specify as the executable workflow contract. This document is a repository-specific supplement describing how Augentic specialists use `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:define -> /spec:build -> /spec:promote`, with `/spec:drop` available when a change should be discarded instead of promoted and `/spec:verify` available to detect drift between code and baseline specs. Artifact validation is performed automatically by `/spec:build` before implementation begins.
 
 ## Overview
 
@@ -21,15 +21,15 @@ Artifacts move through the normal Specify lifecycle:
 
 1. `.specify/changes/<change>/` holds the working change.
 2. `.specify/specs/` holds the promoted baseline specs.
-3. `.specify/changes/archive/` holds finalized changes, including archived and abandoned changes.
+3. `.specify/changes/archive/` holds finalized changes, including promoted and dropped changes.
 
 The human workflow is:
 
 ```text
-/spec:propose -> /spec:apply -> /spec:archive
-/spec:propose -> /spec:abandon
-/spec:apply   -> /spec:abandon
-/spec:verify  (anytime -- compare code against baseline specs)
+/spec:define -> /spec:build -> /spec:promote
+/spec:define -> /spec:drop
+/spec:build  -> /spec:drop
+/spec:verify (anytime -- compare code against baseline specs)
 ```
 
 ## Artifact Locations
@@ -99,7 +99,7 @@ defined in the spec format (`## ADDED Requirements`,
 blocks still use `### Requirement:` and `#### Scenario:` headings, but the
 stable merge key is the `ID: REQ-XXX` line rather than the display name.
 See the schema's `instructions/specs.md` for the full delta structure and the
-archive skill for how deltas merge into the baseline.
+promote skill for how deltas merge into the baseline.
 
 ### Deriving Specs From Source Code (code-analyzer)
 
@@ -219,7 +219,7 @@ Use `tasks.md` as an implementation checklist, not as another requirements or de
 ## 1. Implementation
 
 - [ ] 1.1 Refine proposal/spec/design artifacts
-- [ ] 1.2 Implement code changes via `/spec:apply`
+- [ ] 1.2 Implement code changes via `/spec:build`
 - [ ] 1.3 Verify and review output
 ```
 
@@ -227,7 +227,7 @@ Tasks should describe sequencing, checkpoints, and ownership. They should not in
 
 ### Skill Directive Tags
 
-Tasks may optionally include a skill directive as an HTML comment. The apply phase parses these tags and delegates the task to the named specialist skill instead of following the default apply instruction.
+Tasks may optionally include a skill directive as an HTML comment. The build phase parses these tags and delegates the task to the named specialist skill instead of following the default build instruction.
 
 ```markdown
 - [ ] 2.1 Generate the domain crate <!-- skill: omnia:crate-writer -->
@@ -235,7 +235,7 @@ Tasks may optionally include a skill directive as an HTML comment. The apply pha
 - [ ] 2.3 Manual integration step
 ```
 
-Tasks without a skill tag are implemented via the schema's default apply instruction (mode detection, verification loop, etc.). Use skill tags when a task maps directly to a single specialist skill invocation.
+Tasks without a skill tag are implemented via the schema's default build instruction (mode detection, verification loop, etc.). Use skill tags when a task maps directly to a single specialist skill invocation.
 
 ## Tags Reference
 
@@ -276,5 +276,5 @@ Use explicit unknown markers instead of guessing.
 
 ### Tasks
 
-- [ ] `tasks.md` exists when `/spec:apply` depends on it
+- [ ] `tasks.md` exists when `/spec:build` depends on it
 - [ ] Tasks are implementation steps and checkpoints only

@@ -93,14 +93,6 @@ Before completing, verify ALL items.
 - [ ] Integer-backed enums use `serde_repr`
 - [ ] All public items have doc comments
 
-### Tests (skip when `$SKIP_TESTS`)
-
-- [ ] `tests/provider.rs` with MockProvider implementing required traits
-- [ ] At least one test per handler (happy path)
-- [ ] Error case tests for validation failures
-- [ ] Tests use `Client::new("owner").provider(mock)` pattern
-- [ ] Test fixtures in `tests/data/` or inline
-
 ### Guest Wiring (when applicable)
 
 - [ ] All HTTP endpoints registered in guest `src/lib.rs`
@@ -113,12 +105,8 @@ Before completing, verify ALL items.
 
 ### Update Mode Only
 
-- [ ] Baseline `cargo test` captured before changes
-- [ ] No regressions: all previously-passing tests still pass
-- [ ] Post-update `cargo test` output saved to `$PROJECT_DIR/temp/$CRATE_NAME-post-update.txt`
 - [ ] CHANGELOG.md entries for all changes (additive, modifying, subtractive, structural)
 - [ ] Removed code has no orphaned references (unused imports, dead modules)
-- [ ] Tests for removed handlers/endpoints deleted (Hard Rule 14)
-- [ ] Modified handler signatures propagated to all call sites and tests
+- [ ] Modified handler signatures propagated to all call sites
 - [ ] `Architecture.md` updated to reflect structural changes
 - [ ] `Migration.md` updated with new TODOs (if any)

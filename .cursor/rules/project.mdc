@@ -13,10 +13,10 @@ The intended workflow is human-driven Specify:
 
 ```bash
 /spec:init      # once per project
-/spec:propose
-/spec:apply     # validates artifacts, then implements
-/spec:archive
-/spec:abandon
+/spec:define
+/spec:build     # validates artifacts, then implements
+/spec:promote
+/spec:drop
 /spec:verify    # detect drift between code and baseline specs
 ```
 
@@ -55,10 +55,10 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 ### Specify Plugin (`plugins/spec/`)
 
 - `init` - initialize Specify in a project (one-time setup)
-- `propose` - create a change and generate all artifacts in one step
-- `apply` - validate artifacts and implement tasks from a Specify change
-- `archive` - finalize and archive a completed change
-- `abandon` - discard a change without merging specs into baseline
+- `define` - create a change and generate all artifacts in one step
+- `build` - validate artifacts and implement tasks from a Specify change
+- `promote` - finalize and promote a completed change
+- `drop` - discard a change without merging specs into baseline
 - `verify` - detect drift between code and baseline specs
 - `explore` - thinking partner for ideas, investigation, and requirements
 - `status` - check artifact completion, task progress, and active changes
@@ -92,13 +92,13 @@ See [docs/architecture.md](docs/architecture.md) for the full repository structu
 /docs/                    # Extended documentation (architecture, plugins)
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
-  ├── spec/               # Specify workflow plugin (init, propose, apply, archive, abandon, verify, explore, status)
+  ├── spec/               # Specify workflow plugin (init, define, build, promote, drop, verify, explore, status)
   │   └── references/     # Artifact templates and schema resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
   ├── rt/                 # RT migration plugin
   └── plan/               # Plan requirements analysis plugin
-/schemas/                 # Schema definitions (omnia, realtime)
+/schemas/                 # Schema definitions
 /scripts/                 # Validation and plugin management
 ```
 

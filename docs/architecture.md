@@ -12,7 +12,7 @@ specify/
 ├── plugins/
 │   ├── references/               # Shared references (specify.md, agent-teams.md)
 │   ├── spec/                     # Specify workflow plugin
-│   │   ├── skills/               # Workflow skills (init, propose, apply, ...)
+│   │   ├── skills/               # Workflow skills (init, define, build, promote, ...)
 │   │   ├── references/           # Artifact templates and schema resolution
 │   │   └── mcp.json              # MCP server definition
 │   ├── omnia/                    # Omnia code generation plugin
@@ -25,11 +25,10 @@ specify/
 │   └── plan/                     # Plan requirements analysis plugin
 │       ├── skills/               # Planning skills (epic-analyzer, sow-writer)
 │       └── mcp.json
-├── schemas/                      # Schema definitions (omnia, realtime)
-│   ├── omnia/                    # Greenfield Rust WASM schema
-│   └── realtime/                 # TypeScript migration schema (extends omnia)
+├── schemas/                      # Schema definitions
+│   └── omnia/                    # Greenfield Rust WASM schema
 └── scripts/                      # Validation and plugin management
-    ├── checks.sh                 # Documentation and consistency checks
+    ├── checks.ts                 # Documentation and consistency checks
     ├── dev-plugins.sh            # Symlink local plugins for development
     └── prod-plugins.sh           # Restore marketplace plugins
 ```

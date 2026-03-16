@@ -1,7 +1,7 @@
 {
   "name": "spec",
   "displayName": "Specify Workflow",
-  "description": "Specify workflow orchestration: init, propose, apply, archive, abandon, explore, and status.",
+  "description": "Specify workflow orchestration: init, define, build, promote, drop, explore, and status.",
   "version": "0.14.0",
   "author": {
     "name": "Augentic",

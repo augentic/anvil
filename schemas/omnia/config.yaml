@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../config.schema.json
 # Config for the Omnia schema
 
 #  Config can be used to provide project-level overrides for the Omnia schema.
@@ -43,9 +44,9 @@ rules:
     - Use mermaid diagrams for entity relationships and flows
   tasks: |
     - For greenfields projects (no existing Cargo.toml), structure tasks around
-      the create-mode skill chain: 1) guest-writer, 2) crate-writer, 3) verify,
-      4) code-reviewer. Do not list individual Rust code changes — the skills 
-      handle file-level generation.
-    - For brownfield projects (where this is an existing Cargo.toml), structure
+      the create-mode skill chain: 1) guest-writer, 2) crate-writer,
+      3) test-writer, 4) verify, 5) code-reviewer. Do not list individual
+      Rust code changes — the skills handle file-level generation.
+    - For brownfield projects (where there is an existing Cargo.toml), structure
       tasks around the specific behavioral changes from the specs. crate-writer
-      handles the code modifications.
+      handles code modifications and test-writer handles test updates.

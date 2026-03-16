@@ -7,10 +7,10 @@ Specify ships as a [Cursor plugin marketplace](https://cursor.com/docs/reference
 Core workflow orchestration for spec-driven development.
 
 - **init** -- Initialize Specify in a project (one-time setup)
-- **propose** -- Create a change and generate all artifacts in one step
-- **apply** -- Validate artifacts and implement tasks from a Specify change
-- **archive** -- Finalize and archive a completed change
-- **abandon** -- Discard a change without merging specs into baseline
+- **define** -- Create a change and generate all artifacts in one step
+- **build** -- Validate artifacts and implement tasks from a Specify change
+- **promote** -- Finalize and promote a completed change
+- **drop** -- Discard a change without merging specs into baseline
 - **verify** -- Detect drift between code and baseline specs
 - **explore** -- Thinking partner for ideas, investigation, and requirements
 - **status** -- Check artifact completion, task progress, and active changes
@@ -53,8 +53,8 @@ Specify manages changes as a set of interdependent artifacts stored in `.specify
 
 The workflow is:
 
-1. **Propose** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by JIRA epics (`/plan:epic-analyzer`) or TypeScript source analysis (`/rt:code-analyzer`).
-2. **Apply** -- Validate artifacts for completeness and cross-artifact consistency, then implement each task. Specialist skills (crate-writer, test-writer, guest-writer) generate code from the artifacts.
-3. **Archive** -- Merge the change's specs into your project's baseline at `.specify/specs/` and move the change to the archive.
+1. **Define** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by JIRA epics (`/plan:epic-analyzer`) or TypeScript source analysis (`/rt:code-analyzer`).
+2. **Build** -- Validate artifacts for completeness and cross-blueprint consistency, then implement each task. Specialist skills (crate-writer, test-writer, guest-writer) generate code from the artifacts.
+3. **Promote** -- Merge the change's specs into your project's baseline at `.specify/specs/` and move the change to the archive.
 
 Baseline specs accumulate over time, giving future changes a foundation to build on. Use `/spec:verify` at any point to detect drift between your code and the baseline.

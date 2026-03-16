@@ -557,7 +557,7 @@ let api_url = ctx.config.get("API_URL")?;
 ### Recovery Process
 
 1. If auto-fix caused compilation errors: revert changes with `git checkout -- src/`
-2. Re-run review with `--no-fix` to get a report without auto-fixes
+2. Re-run review without `--fix` to get a report without auto-fixes
 3. Apply fixes manually based on the report recommendations
 4. Run `cargo check` and `cargo test` after each manual fix
 5. Re-run review to verify issues are resolved
@@ -636,7 +636,7 @@ Before completing review:
 
 **Overall auto-fix rate**: ~40-50% of issues
 
-### Integration with `/spec:apply`
+### Integration with `/spec:build`
 
 Add code review near the end of implementation, after generation and verification:
 

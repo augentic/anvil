@@ -1,20 +1,20 @@
 ---
-name: propose
-description: Propose a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
+name: define
+description: Define a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
 license: MIT
 ---
 
-# Propose Skill
+# Define Skill
 
-Propose a new change - create the change and generate all artifacts in one step.
+Define a new change - create the change and generate all artifacts in one step.
 
-When ready to implement, run /spec:apply
+When ready to implement, run /spec:build
 
 ---
 
 ## Input
 
-The user's request should include a change name (kebab-case) OR a description of what they want to build. Optionally, an artifact ID to regenerate a single artifact for an existing change (e.g., `/spec:propose my-change design`).
+The user's request should include a change name (kebab-case) OR a description of what they want to build. Optionally, an artifact ID to regenerate a single artifact for an existing change (e.g., `/spec:define my-change design`).
 
 ## Steps
 
@@ -42,19 +42,19 @@ The user's request should include a change name (kebab-case) OR a description of
      - `context`: Project-level context override (may be empty or a placeholder)
      - `rules`: Per-artifact rule overrides (constraints for you - do NOT include in artifact output)
    - **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `config.yaml`, `instructions/*`.
-   - Read `schema.yaml` from the resolved schema directory. This defines the artifact list, dependency graph, and file references. **All artifact knowledge comes from the schema** — do not assume fixed artifact IDs or output paths.
-   - Read `config.yaml` from the resolved schema directory for default `context` and `rules`. **Resolve effective context**: use the project's `context` if present and non-empty (not just a comment placeholder), otherwise fall back to the schema's `context`. **Resolve effective rules** per artifact: for each artifact ID, use the project's `rules.<id>` if present and non-empty, otherwise fall back to the schema's `rules.<id>`. These are constraints for you — do NOT include them in artifact output.
+   - Read `schema.yaml` from the resolved schema directory. This defines the blueprint list, dependency graph, and file references. **All blueprint knowledge comes from the schema** — do not assume fixed blueprint IDs or output paths.
+   - Read `config.yaml` from the resolved schema directory for default `context` and `rules`. **Resolve effective context**: use the project's `context` if present and non-empty (not just a comment placeholder), otherwise fall back to the schema's `context`. **Resolve effective rules** per blueprint: for each blueprint ID, use the project's `rules.<id>` if present and non-empty, otherwise fall back to the schema's `rules.<id>`. These are constraints for you — do NOT include them in artifact output.
 
 4. **Check for regenerate mode**
 
    If the user specified an artifact ID (e.g., `design`):
 
    a. Verify the change exists at `.specify/changes/<name>/`
-   b. Read `.metadata.yaml` and confirm `status` is `proposed` or `applying`
-   c. Look up the artifact by `id` in `schema.yaml`
-   d. Verify all artifacts listed in its `requires` exist in the change directory
+   b. Read `.metadata.yaml` and confirm `status` is `defined` or `building`
+   c. Look up the blueprint by `id` in `schema.yaml`
+   d. Verify all blueprints listed in its `requires` exist in the change directory
    e. Read the required artifacts for context
-   f. Read the instruction file at the path given by the artifact's `instruction` field in the resolved schema directory
+   f. Read the instruction file at the path given by the blueprint's `instructions` field in the resolved schema directory
    g. Regenerate ONLY the specified artifact following the instruction
    i. Apply `context` and effective rules as constraints
    j. Run validators if `validate` rules are defined for this artifact (see step 6)
@@ -72,12 +72,12 @@ The user's request should include a change name (kebab-case) OR a description of
 
       ```
 
-   m. Stop — do not proceed to full propose flow
+   m. Stop — do not proceed to full define flow
 
 5. **Create the change directory**
 
    - Check if `.specify/changes/<name>/` already exists. If so:
-     - Read `.metadata.yaml` — if `status` is `proposing`, offer to continue or restart
+     - Read `.metadata.yaml` — if `status` is `defining`, offer to continue or restart
      - Otherwise ask if user wants to continue it or create a new one with a different name
 
    ```bash
@@ -88,10 +88,10 @@ The user's request should include a change name (kebab-case) OR a description of
 
    ```yaml
    schema: <schema_from_config>
-   status: proposing
+   status: defining
    created_at: <current ISO-8601 timestamp>
-   proposed_at: null
-   apply_started_at: null
+   defined_at: null
+   build_started_at: null
    completed_at: null
    touched_specs: []
    ```
@@ -99,25 +99,25 @@ The user's request should include a change name (kebab-case) OR a description of
 6. **Check for overlapping changes**
 
    Before creating specs, check if any other active change (in `.specify/changes/`, skipping `archive/`) also touches the same capabilities. Read each active change's `.metadata.yaml` for its `touched_specs` list. If any capability appears in both the current proposal's crates/capabilities list and another change's `touched_specs`:
-   - Warn: "The capability `<name>` is also being modified by change `<other-change>`. This may cause conflicts at archive time."
+   - Warn: "The capability `<name>` is also being modified by change `<other-change>`. This may cause conflicts at promote time."
    - This is informational only — do not block the proposal.
 
 7. **Create artifacts in dependency order**
 
    Use the **TodoWrite tool** to track progress through the artifacts.
 
-   Build the dependency graph from the `requires` field of each artifact in `schema.yaml`. Topologically sort: an artifact is ready when all artifacts listed in its `requires` are complete. Artifacts with no `requires` come first; artifacts sharing the same dependency level can be created in parallel or any order.
+   Build the dependency graph from the `requires` field of each blueprint in `schema.yaml`. Topologically sort: a blueprint is ready when all blueprints listed in its `requires` are complete. Blueprints with no `requires` come first; blueprints sharing the same dependency level can be created in parallel or any order.
 
-   For each artifact (in dependency order):
+   For each blueprint (in dependency order):
 
-   - Read any completed dependency files (the artifacts listed in `requires`) for context
-   - Read the instruction file at the path given by the artifact's `instruction` field in the resolved schema directory
+   - Read any completed dependency files (the blueprints listed in `requires`) for context
+   - Read the instruction file at the path given by the blueprint's `instructions` field in the resolved schema directory
    - Determine the output path from the `generates` field, relative to `.specify/changes/<name>/`:
      - Simple filename (e.g., `proposal.md`): write to `.specify/changes/<name>/<generates>`
      - Glob pattern (e.g., `specs/**/*.md`): the instruction determines how many files to create and where within the pattern
    - Create the artifact file following the instruction, applying the format conventions below for the matching artifact type
    - Apply `context` and effective rules as constraints — but do NOT copy them into the file
-   - If the artifact has `validate` rules in `schema.yaml`, re-read the written file and verify each rule. If any fail: report which rules failed and why, attempt to fix the artifact, re-validate after fixing. If still failing after one fix attempt, warn the user and proceed.
+   - If the blueprint has `validate` rules in `schema.yaml`, re-read the written file and verify each rule. If any fail: report which rules failed and why, attempt to fix the artifact, re-validate after fixing. If still failing after one fix attempt, warn the user and proceed.
    - Verify the file exists after writing before proceeding to next
 
    ### Spec format conventions
@@ -163,7 +163,7 @@ The user's request should include a change name (kebab-case) OR a description of
    3. Do not reuse IDs from removed requirements
 
    **Common pitfalls:**
-   - Using MODIFIED with partial content loses detail at archive time
+   - Using MODIFIED with partial content loses detail at promote time
    - If adding new concerns without changing existing behavior, use ADDED instead
 
    ### Design writing guidance
@@ -195,7 +195,7 @@ The user's request should include a change name (kebab-case) OR a description of
    instruction file provides the available-skills table; this guidance
    governs the task structure.
 
-   **IMPORTANT: Follow the format below exactly.** The apply phase parses
+   **IMPORTANT: Follow the format below exactly.** The build phase parses
    checkbox format to track progress. Tasks not using `- [ ]` won't be
    tracked.
 
@@ -221,13 +221,13 @@ The user's request should include a change name (kebab-case) OR a description of
    Each task should be verifiable — you know when it's done.
 
    **Skill directives (optional):** Tasks may include an HTML comment tag
-   that names a specialist skill to invoke during apply. The apply phase
+   that names a specialist skill to invoke during build. The build phase
    parses these tags and delegates the task to the referenced skill instead
-   of following the default apply instruction.
+   of following the default build instruction.
 
    Format: `- [ ] X.Y Task description <!-- skill: plugin:skill-name -->`
 
-   Tasks without a skill tag are implemented via the default apply
+   Tasks without a skill tag are implemented via the default build
    instruction (mode detection, verification loop, etc.). Use skill tags
    when a task maps cleanly to a single specialist skill invocation. The
    instruction file lists available skills per schema.
@@ -235,19 +235,19 @@ The user's request should include a change name (kebab-case) OR a description of
 8. **Finalize and show status**
 
    Update `.specify/changes/<name>/.metadata.yaml`:
-   - Set `status: proposed`
-   - Set `proposed_at` to current ISO-8601 timestamp
+   - Set `status: defined`
+   - Set `defined_at` to current ISO-8601 timestamp
    - Set `touched_specs` from the spec files created — for each subdirectory in `.specify/changes/<name>/specs/`, record an entry with `name` (the directory name) and `type` (`new` if no baseline exists at `.specify/specs/<name>/spec.md`, `modified` if one does)
 
    Summarize:
    - Change name and location
    - List of artifacts created with brief descriptions
    - What's ready: "All artifacts created! Ready for implementation."
-   - Prompt: "Run `/spec:apply` or ask me to implement to start working on the tasks."
+   - Prompt: "Run `/spec:build` or ask me to implement to start working on the tasks."
 
 ## Guardrails
 
-- Create ALL artifacts defined in `schema.yaml` before declaring the change ready
+- Create ALL blueprints defined in `schema.yaml` before declaring the change ready
 - Always read dependency artifacts (from `requires`) before creating a new one
 - If context is critically unclear, ask the user -- but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, check its status before deciding how to proceed

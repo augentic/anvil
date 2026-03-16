@@ -1,7 +1,7 @@
 ---
 name: crate-writer
 description: "Write Rust WASM crates from Specify artifacts -- greenfield creation or incremental updates -- following Omnia SDK patterns with provider-based dependency injection."
-argument-hint: [crate-name] [project-dir?] [--skip-tests?] [--change-dir <path>?] [change-description?]
+argument-hint: [crate-name]
 allowed-tools: Read, Write, StrReplace, Shell, Grep, ReadLints
 ---
 
@@ -49,28 +49,24 @@ Violations of any rule below fail generation or update.
 
 ### Update-Specific Rules (update mode only)
 
-10. **Baseline before modify** -- run `cargo test` before any changes to establish which tests pass; any test that passed before and fails after is a regression that must be fixed
+10. **No regressions** -- the build orchestration layer captures a test baseline before changes and runs a verify-repair loop after both crate-writer and test-writer complete; crate-writer must not introduce changes that break previously-passing tests
 11. **Artifacts win for changed behavior** -- when the updated artifacts contradict existing code, trust the artifacts; the old behavior is intentionally being replaced
 12. **Preserve unchanged code** -- do not reformat, restructure, or modify code regions that the change set does not touch
 13. **No silent removals** -- every subtractive change must be documented in CHANGELOG.md with the reason (artifacts no longer specify this behavior)
-14. **Test coverage for changes** -- every modified or added handler must have updated or new tests; subtractive changes must remove corresponding tests
+14. **Testable exports** -- every modified or added handler must be exported so test-writer can generate tests; subtractive changes must be reflected in the public API so test-writer can remove stale tests
 15. **Atomic categories** -- complete all changes within a category before moving to the next; do not interleave
 16. **Structural changes require re-inventory** -- after applying structural changes, re-scan the crate before proceeding to subsequent categories
 
 ## Arguments
 
 ```text
-$CRATE_NAME         = $ARGUMENTS[0]
-$PROJECT_DIR        = $ARGUMENTS[1] OR "."
-$SKIP_TESTS         = "--skip-tests" in $ARGUMENTS  # Boolean, default false
-$CHANGE_DIR_ARG     = "--change-dir" value in $ARGUMENTS # Optional
-$CHANGE_DESCRIPTION = last non-flag argument after $PROJECT_DIR, OR null  # Optional: plain-text summary of what changed (update mode)
+$CRATE_NAME     = $ARGUMENTS[0]
 
 # Path derivation
-$CHANGE_DIR         = $CHANGE_DIR_ARG OR $PROJECT_DIR/.specify/changes/$CRATE_NAME
-$SPECS_DIR          = $CHANGE_DIR/specs
-$DESIGN_PATH        = $CHANGE_DIR/design.md
-$CRATE_PATH         = $PROJECT_DIR/crates/$CRATE_NAME
+$CHANGE_DIR     = .specify/changes/$CRATE_NAME
+$SPECS_DIR      = $CHANGE_DIR/specs
+$DESIGN_PATH    = $CHANGE_DIR/design.md
+$CRATE_PATH     = crates/$CRATE_NAME
 ```
 
 ## Required References
@@ -104,7 +100,6 @@ Before generating or updating code, read these documents:
 
 - [single-handler.md](examples/single-handler.md) -- messaging handler crate (like r9k-adapter)
 - [multi-handler.md](examples/multi-handler.md) -- multiple HTTP handlers crate (like cars)
-- [testing.md](examples/testing.md) -- MockProvider and test patterns
 - [anti-patterns.md](examples/anti-patterns.md) -- common LLM mistakes with wrong/right pairs
 - [capabilities/](examples/capabilities/) -- per-capability worked examples (StateStore, Identity, TableStore, Broadcast, etc.)
 
@@ -208,15 +203,11 @@ See [error-handling.md](references/error-handling.md) for domain error patterns,
 
 ## Test Generation
 
-**Skip when `$SKIP_TESTS` is true.** In that case, skip test generation and the Tests items in the verification checklist.
-
-Generate baseline tests alongside the crate using `test-writer` patterns. crate-writer produces happy path + error case tests inline. For comprehensive test suites, spec-to-test compilation, or replay-pattern tests with time-shifting, use `test-writer` or `replay-writer` respectively.
-
-See [testing.md](examples/testing.md) for complete patterns and [mock-provider.md](references/mock-provider.md) for MockProvider implementations.
+Tests are generated separately by test-writer. crate-writer does not generate tests. The build orchestration layer runs test-writer after crate-writer completes, then runs a unified verify-repair loop across both code and tests.
 
 ## Guest Wiring (Conditional)
 
-**Trigger**: only when `$PROJECT_DIR/src/lib.rs` exists.
+**Trigger**: only when `src/lib.rs` exists.
 
 After generating or updating the crate, inject or update wiring in the guest project. See [guest-wiring.md](references/guest-wiring.md) for templates.
 
@@ -228,7 +219,7 @@ After generating or updating the crate, inject or update wiring in the guest pro
 4. WebSocket handler delegation (WebSocket handlers) -- add delegation inside existing WebSocket Guest impl, or create the full WebSocket Guest export block if none exists
 5. Handler functions with `#[omnia_wasi_otel::instrument]`
 6. Provider trait impls if new capabilities needed
-7. Crate dependency in `$PROJECT_DIR/Cargo.toml`
+7. Crate dependency in `Cargo.toml`
 
 ### Guest Wiring by Category (update mode)
 
@@ -280,12 +271,9 @@ Before starting code generation, verify artifact completeness per [checklists.md
 10. Generate `src/types.rs` or domain type modules
 11. Generate `src/handlers.rs` (or `src/handler.rs` for single handler)
 12. Generate domain-specific modules as needed
-13. (skip if `$SKIP_TESTS`) Generate `tests/provider.rs` with MockProvider
-14. (skip if `$SKIP_TESTS`) Generate `tests/<name>.rs` with integration tests
-15. Generate `Migration.md`, `Architecture.md`, `.env.example`
-16. Run `cargo check` to verify compilation
-17. Run verification checklist
-18. If `$PROJECT_DIR/src/lib.rs` exists: inject guest wiring (see Guest Wiring section above)
+13. Generate `Migration.md`, `Architecture.md`, `.env.example`
+14. Run `cargo check` as a smoke check (full verification runs at the orchestration level after test-writer completes)
+15. If `src/lib.rs` exists: inject guest wiring (see Guest Wiring section above)
 
 ---
 
@@ -319,19 +307,7 @@ Changes are applied in this fixed order to minimize intermediate breakage:
 
 Read all documents listed in [Required References](#required-references) including update-specific references, and at least one matching update example.
 
-#### Step 1: Capture Baseline
-
-Before any changes, establish the current state:
-
-```bash
-cd $CRATE_PATH && cargo test 2>&1 | tee $PROJECT_DIR/temp/$CRATE_NAME-baseline.txt
-```
-
-Record which tests pass and which fail. This baseline is used in Step 7 to detect regressions.
-
-If `cargo test` fails to compile, record the compilation errors -- the update must not introduce additional compilation failures.
-
-#### Step 2: Inventory Existing Crate
+#### Step 1: Inventory Existing Crate
 
 Parse the existing crate to build a structural inventory mapping artifact concepts to file locations:
 
@@ -341,9 +317,7 @@ Parse the existing crate to build a structural inventory mapping artifact concep
 | `src/lib.rs`                                                | Module declarations, re-exports, error type definitions                                       |
 | `src/handler.rs` or `src/handlers.rs` + `src/handlers/*.rs` | Handler implementations, provider trait bounds, input types, `from_input` patterns            |
 | `src/types.rs` and domain modules                           | Type definitions, serde attributes, newtypes, enums                                           |
-| `tests/provider.rs`                                         | MockProvider: which traits are implemented, what config keys return, what HTTP fixtures exist |
-| `tests/*.rs`                                                | Test names, what handlers they cover, assertion patterns                                      |
-| `$PROJECT_DIR/src/lib.rs` (guest, if exists)                | Routes, topic arms, WebSocket handlers, imports, Provider trait impls                         |
+| `src/lib.rs` (guest, if exists)                             | Routes, topic arms, WebSocket handlers, imports, Provider trait impls                         |
 
 The inventory is an in-memory working model, not a persisted artifact. For each item, record:
 
@@ -352,7 +326,7 @@ The inventory is an in-memory working model, not a persisted artifact. For each 
 - **Lines**: approximate line range
 - **Signature**: handler trait bounds, type fields, serde attributes
 
-#### Step 3: Derive Change Set
+#### Step 2: Derive Change Set
 
 Read the updated artifacts from `$CHANGE_DIR` (specs and design.md) and compare them against the inventory:
 
@@ -368,15 +342,9 @@ Read the updated artifacts from `$CHANGE_DIR` (specs and design.md) and compare 
 | Config key in artifacts but not in `.env.example`                                  | **Additive**    |
 | Config key in `.env.example` but not in artifacts                                  | **Subtractive** |
 
-If `$CHANGE_DESCRIPTION` is provided, use it to:
-
-- **Focus**: prioritize changes that match the description
-- **Validate**: confirm the derived change set is consistent with the stated intent
-- **Flag**: warn if the derived change set includes unexpected changes not mentioned in the description
-
 See [change-classification.md](references/change-classification.md) for detailed classification rules and edge cases.
 
-#### Step 4: Generate Update Plan
+#### Step 3: Generate Update Plan
 
 For each change, determine the specific edit operations. The plan is a structured list:
 
@@ -385,32 +353,28 @@ STRUCTURAL (apply first):
   1. Rename OrderEvent → PurchaseEvent
      - src/types.rs: lines 15-30 (struct definition)
      - src/handler.rs: lines 45, 67 (references)
-     - tests/handler_test.rs: lines 12, 34 (test fixtures)
 
 SUBTRACTIVE (apply second):
   2. Remove GET /legacy-status endpoint
      - src/handlers/legacy_status.rs: delete file
      - src/handlers.rs: remove mod + pub use
-     - tests/legacy_status.rs: delete file
      - guest src/lib.rs: remove route + import
 
 MODIFYING (apply third):
   3. Add `priority` field to WorksiteRequest
      - src/handlers/worksite.rs: lines 20-28 (struct definition)
      - src/handlers/worksite.rs: lines 45-60 (filter builder)
-     - tests/worksite.rs: lines 15-30 (test fixture)
 
 ADDITIVE (apply last):
   4. Add POST /worksite handler
      - src/handlers/create_worksite.rs: new file
      - src/handlers.rs: add mod + pub use
-     - tests/create_worksite.rs: new file
      - guest src/lib.rs: add route + import
 ```
 
 Log the plan for traceability. Do not modify any files in this step.
 
-#### Step 5: Apply Changes by Category
+#### Step 4: Apply Changes by Category
 
 Execute the plan in the fixed order: structural, subtractive, modifying, additive.
 
@@ -420,13 +384,12 @@ Execute the plan in the fixed order: structural, subtractive, modifying, additiv
 - Proceed only if compilation passes
 - Patterns: See [update-patterns.md](references/update-patterns.md#structural-patterns)
 
-**Subtractive Changes**: Remove handlers, types, tests, and guest wiring for features no longer in the artifacts:
+**Subtractive Changes**: Remove handlers, types, and guest wiring for features no longer in the artifacts:
 1. Remove handler implementation files (or handler functions from shared files)
 2. Remove corresponding type definitions (only if not used by remaining handlers)
-3. Remove corresponding test files
-4. Remove module declarations from `lib.rs` or barrel modules
-5. Remove unused dependencies from `Cargo.toml`
-6. Document each removal in CHANGELOG.md (Hard Rule 13)
+3. Remove module declarations from `lib.rs` or barrel modules
+4. Remove unused dependencies from `Cargo.toml`
+5. Document each removal in CHANGELOG.md (Hard Rule 13)
 - Patterns: See [update-patterns.md](references/update-patterns.md#subtractive-patterns)
 
 **Modifying Changes**: Update existing handler logic, types, or provider bounds:
@@ -435,66 +398,25 @@ Execute the plan in the fixed order: structural, subtractive, modifying, additiv
 3. Update provider trait bounds if new capabilities are needed
 4. Update `from_input()` for structural validation changes
 5. Update `handle()` for temporal/contextual validation changes
-6. Update MockProvider in `tests/provider.rs` for new capabilities
-7. Update existing tests to match new behavior
-8. Preserve function signatures where possible; when signatures change, update all call sites
+6. Preserve function signatures where possible; when signatures change, update all call sites
 - Patterns: See [update-patterns.md](references/update-patterns.md#modifying-patterns)
 
-**Additive Changes**: Add new handlers, types, and tests following the create-mode patterns exactly:
+**Additive Changes**: Add new handlers and types following the create-mode patterns exactly:
 1. Generate new handler files following the Handler pattern
 2. Generate new type definitions
 3. Add module declarations to `lib.rs` or barrel modules
 4. Add dependencies to `Cargo.toml`
-5. Generate new test files
-6. Update MockProvider if new provider traits are needed
 - Patterns: See [update-patterns.md](references/update-patterns.md#additive-patterns)
 
-#### Step 6: Update Guest Wiring
+#### Step 5: Update Guest Wiring
 
-If `$PROJECT_DIR/src/lib.rs` exists, apply guest wiring changes per the Guest Wiring by Category table above.
+If `src/lib.rs` exists, apply guest wiring changes per the Guest Wiring by Category table above.
 
-#### Step 7: Verify (repair loop -- max 3 iterations)
+#### Step 6: Smoke Check
 
-Run the verification suite as a bounded repair loop. Each iteration runs all
-three checks; if any fail, fix the issue and start a new iteration.
-
-**7a. Formatting**:
-```bash
-cd $CRATE_PATH && cargo fmt --check
-```
-If fails: run `cargo fmt` to fix. Formatting is mechanical; one pass suffices.
-
-**7b. Compilation and lint**:
-```bash
-cd $CRATE_PATH && cargo check
-cd $CRATE_PATH && cargo clippy -- -D warnings
-```
-If fails: fix each warning using [repair-patterns.md](references/repair-patterns.md)
-(clippy section), then re-run.
-
-**7c. Test suite**:
-```bash
-cd $CRATE_PATH && cargo test 2>&1 | tee $PROJECT_DIR/temp/$CRATE_NAME-post-update.txt
-```
-
-Compare against the baseline from Step 1:
-- Tests that passed before must still pass (no regressions)
-- New tests for added/modified handlers must pass
-- Tests for removed handlers should no longer exist
-
-If failures are detected, apply the matching repair strategy from
-[repair-patterns.md](references/repair-patterns.md):
-- Type mismatches: update struct definitions, serde attributes
-- Validation errors: fix `from_input()` or `handle()` logic
-- Provider mock errors: update MockProvider to match new trait bounds
-- Logic errors: compare handler implementation against artifacts
-
-**Loop control**: Repeat from 7a until all three pass or 3 iterations are
-exhausted. If still failing after 3 iterations: STOP. Do not mark the task
-complete. Report the remaining failures with error output and escalate for
-guidance.
-
-**7d. Verification Checklist**: Run the full checklist from the Verification Checklist section below.
+Run `cargo check` as a quick sanity check after applying all changes. Full
+verification (fmt, clippy, test suite, regression detection) runs at the
+orchestration level after test-writer completes.
 
 ---
 
@@ -504,7 +426,7 @@ Any functionality that cannot be fully implemented must be marked with a TODO at
 
 ## Verification Checklist
 
-Before completing, verify ALL items per [checklists.md](references/checklists.md#verification-checklist). This covers compilation, handler compliance, artifact fidelity, type quality, tests, guest wiring, and update-mode-specific checks.
+Before completing, verify code-quality items per [checklists.md](references/checklists.md#verification-checklist). This covers compilation, handler compliance, artifact fidelity, type quality, guest wiring, and update-mode-specific checks. Test verification runs at the orchestration level after test-writer completes.
 
 ## Output Documents
 
@@ -521,7 +443,7 @@ Only emit: `.rs` source files, `Cargo.toml`, and the required docs. Do not emit 
 ## Important Notes
 
 - **Mode is auto-detected**: If `$CRATE_PATH/Cargo.toml` exists, update mode runs. Otherwise, create mode runs.
-- In update mode, existing tests are treated as specifications: a previously-passing test that fails after update is a regression, not an expected change.
-- In update mode, changes are applied in fixed order (structural → subtractive → modifying → additive) regardless of `$CHANGE_DESCRIPTION`.
+- **Tests are test-writer's responsibility**: crate-writer generates code only. The build orchestration layer runs test-writer after crate-writer, then runs a unified verify-repair loop.
+- In update mode, changes are applied in fixed order (structural → subtractive → modifying → additive).
 - In update mode, after structural changes, the crate is re-inventoried before subsequent categories to ensure references are current.
 - When in doubt about whether a change is required (update mode), compare the specific artifact section against the existing code. If they match, no change is needed.

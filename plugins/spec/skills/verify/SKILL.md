@@ -97,8 +97,8 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
 
    If drift is detected, suggest next steps:
    - For DRIFTED: "Update the baseline spec to match the code, or fix the code to match the spec."
-   - For MISSING: "Implement the requirement, or remove it from the baseline via a new change (`/spec:propose`)."
-   - For UNSPECIFIED: "Add a new requirement to cover this behavior via `/spec:propose`, or remove the code if it is unintended."
+   - For MISSING: "Implement the requirement, or remove it from the baseline via a new change (`/spec:define`)."
+   - For UNSPECIFIED: "Add a new requirement to cover this behavior via `/spec:define`, or remove the code if it is unintended."
 
 ## Output
 
@@ -121,7 +121,7 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
 
 ### Suggested Actions
 - DRIFTED REQ-003: Update spec to include PKCE flow, or revert code to match spec.
-- UNSPECIFIED Rate limiter: Add a requirement via `/spec:propose`, or remove if unintended.
+- UNSPECIFIED Rate limiter: Add a requirement via `/spec:define`, or remove if unintended.
 ```
 
 ## Guardrails

@@ -12,6 +12,6 @@ This directory contains shared reference documentation used by multiple plugins.
 Plugin-specific references are located within each plugin's directory:
 
 - `plugins/omnia/references/`: Omnia SDK patterns, WASM constraints, and provider documentation.
-- `plugins/spec/references/`: Artifact templates and instructions for propose/apply/archive.
+- `plugins/spec/references/`: Artifact templates and instructions for define/build/promote.
 
 Skills link to these references using relative paths and symlinks.

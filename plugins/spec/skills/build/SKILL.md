@@ -1,5 +1,5 @@
 ---
-name: apply
+name: build
 description: Implement tasks from a Specify change. Use when the user wants to start implementing, continue implementation, or work through tasks.
 license: MIT
 ---
@@ -17,7 +17,7 @@ Implement tasks from a Specify change.
    - Auto-select if only one active change exists (list directories in `.specify/changes/`, skipping `archive/`, looking for dirs with `.metadata.yaml`)
    - If ambiguous, list available changes and use the **AskQuestion tool** to let the user select
 
-   Always announce: "Using change: <name>" and how to override (e.g., `/spec:apply <other>`).
+   Always announce: "Using change: <name>" and how to override (e.g., `/spec:build <other>`).
 
 2. **Read project config and resolve schema**
 
@@ -25,38 +25,38 @@ Implement tasks from a Specify change.
 
    Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status.
 
-   **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `config.yaml`, `instructions/apply.md`. Read `schema.yaml` and `config.yaml` from the resolved location.
+   **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `config.yaml`, `instructions/build.md`. Read `schema.yaml` and `config.yaml` from the resolved location.
 
-   **Resolve effective context**: use the project's `context` (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's `context` (from the resolved `config.yaml`). **Resolve effective rules**: for each artifact ID under `rules`, use the project's value (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's value (from the resolved `config.yaml`). Use effective context and effective rules as constraints guiding your implementation -- do not copy them into code comments.
+   **Resolve effective context**: use the project's `context` (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's `context` (from the resolved `config.yaml`). **Resolve effective rules**: for each blueprint ID under `rules`, use the project's value (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's value (from the resolved `config.yaml`). Use effective context and effective rules as constraints guiding your implementation -- do not copy them into code comments.
 
 3. **Check lifecycle status**
 
    Read `status` from `.metadata.yaml`:
-   - If `status` is `proposing`: warn that artifacts may be incomplete — some may not have been generated yet. Suggest running `/spec:propose` to complete them.
-   - If `status` is `complete`: congratulate, all tasks already done. Suggest `/spec:archive`.
+   - If `status` is `defining`: warn that artifacts may be incomplete — some may not have been generated yet. Suggest running `/spec:define` to complete them.
+   - If `status` is `complete`: congratulate, all tasks already done. Suggest `/spec:promote`.
    - Otherwise: proceed.
 
-4. **Check artifact completion**
+4. **Check blueprint completion**
 
-   For each artifact defined in `schema.yaml`, check whether it is complete:
+   For each blueprint defined in `schema.yaml`, check whether it is complete:
    - If `generates` is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
    - If `generates` is a glob pattern (e.g., `specs/**/*.md`), check if the directory contains at least one matching `.md` file.
 
    **Handle states:**
-   - If any artifact listed in `apply.requires` (from `schema.yaml`) is incomplete: show message listing missing artifacts, suggest using `/spec:propose` to create them
+   - If any blueprint listed in `build.requires` (from `schema.yaml`) is incomplete: show message listing missing artifacts, suggest using `/spec:define` to create them
    - Otherwise: proceed to implementation
 
 5. **Read context files**
 
-   Read all artifacts for the change. For each artifact defined in `schema.yaml`, read the file(s) at `.specify/changes/<name>/<generates>`. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
+   Read all artifacts for the change. For each blueprint defined in `schema.yaml`, read the file(s) at `.specify/changes/<name>/<generates>`. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
 
 6. **Validate artifacts**
 
    Run all validation checks before proceeding to implementation. Collect all results — do not stop at the first failure.
 
-   **Per-artifact validation**: For each artifact that has a `validate` field in `schema.yaml`, verify each rule against the artifact content read in step 5. Record each rule result as **PASS** or **FAIL** with a reason.
+   **Per-blueprint validation**: For each blueprint that has a `validate` field in `schema.yaml`, verify each rule against the artifact content read in step 5. Record each rule result as **PASS** or **FAIL** with a reason.
 
-   **Cross-artifact consistency checks**: If the schema defines `cross-artifact-checks`, run each named check:
+   **Cross-blueprint consistency checks**: For each key in `validation` (from `schema.yaml`) that is set to `true`, run the named check:
    - `proposal-crates-have-specs`: every crate listed in the proposal has a corresponding spec file under `specs/`
    - `design-references-valid`: requirement IDs (`REQ-XXX`) referenced in `design.md` exist in spec files
    - `spec-format-valid`: all spec files match the heading structure defined in `references/spec-format.md`
@@ -70,7 +70,7 @@ Implement tasks from a Specify change.
    ```text
    ## Validation Failed: <change-name>
 
-   ### Per-Artifact Validation
+   ### Per-Blueprint Validation
 
    **proposal.md**
    - PASS: Has a Why section with at least one sentence
@@ -86,7 +86,7 @@ Implement tasks from a Specify change.
    **tasks.md**
    - PASS: Every task uses checkbox format
 
-   ### Cross-Artifact Checks
+   ### Cross-Blueprint Checks
 
    - PASS: proposal-crates-have-specs
    - FAIL: design-references-valid — REQ-005 referenced in design.md not found in specs
@@ -98,7 +98,7 @@ Implement tasks from a Specify change.
    ```
 
    Suggest fixes for each failure:
-   - Missing artifacts: "Run `/spec:propose <name> <artifact-id>` to regenerate."
+   - Missing artifacts: "Run `/spec:define <name> <artifact-id>` to regenerate."
    - Spec format issues: "Edit the spec file to match the required structure."
    - Cross-artifact issues: "Update the referenced artifact to fix the inconsistency."
 
@@ -106,7 +106,7 @@ Implement tasks from a Specify change.
 
 7. **Show current progress**
 
-   Read the file tracked by `apply.tracks` (from `schema.yaml`) and count:
+   Read the file tracked by `build.tracks` (from `schema.yaml`) and count:
    - `- [ ] ` lines = incomplete tasks
    - `- [x] ` or `- [X] ` lines = complete tasks
 
@@ -114,17 +114,17 @@ Implement tasks from a Specify change.
    - Progress: "N/M tasks complete"
    - Remaining tasks overview
 
-   If all tasks are already complete: congratulate, suggest `/spec:archive`.
+   If all tasks are already complete: congratulate, suggest `/spec:promote`.
 
 8. **Update lifecycle status**
 
-   If `status` in `.metadata.yaml` is `proposed` (first time applying):
-   - Update `status` to `applying`
-   - Set `apply_started_at` to current ISO-8601 timestamp
+   If `status` in `.metadata.yaml` is `defined` (first time building):
+   - Update `status` to `building`
+   - Set `build_started_at` to current ISO-8601 timestamp
 
 9. **Implement tasks (loop until done or blocked)**
 
-   Read the apply instruction file from the resolved schema directory (the file path is given by `apply.instruction` in `schema.yaml`).
+   Read the build instruction file from the resolved schema directory (the file path is given by `build.instructions` in `schema.yaml`).
 
    **Skill directive tags**: Before starting each task, check whether it contains an HTML comment tag in the form `<!-- skill: plugin:skill-name -->`. If present, invoke that skill directly instead of following the default mode-detection logic. For example, a task tagged `<!-- skill: omnia:crate-writer -->` should be handled by running `/omnia:crate-writer` with the standard arguments. Tasks without a skill tag follow the instruction file's mode detection and step-by-step execution as before.
 
@@ -139,7 +139,7 @@ Implement tasks from a Specify change.
 
    **Pause if:**
    - Task is unclear -> ask for clarification
-   - Implementation reveals a design issue -> suggest updating artifacts (use `/spec:propose <name> <artifact-id>` to regenerate)
+   - Implementation reveals a design issue -> suggest updating artifacts (use `/spec:define <name> <artifact-id>` to regenerate)
    - Error or blocker encountered -> report and wait for guidance
    - User interrupts
 
@@ -151,7 +151,7 @@ Implement tasks from a Specify change.
    Display:
    - Tasks completed this session
    - Overall progress: "N/M tasks complete"
-   - If all done: suggest `/spec:archive`
+   - If all done: suggest `/spec:promote`
    - If paused: explain why and wait for guidance
 
 **Output During Implementation**
@@ -181,8 +181,8 @@ Task complete
 - [x] Task 2
 ...
 
-All tasks complete! Ready to archive this change.
-Run `/spec:archive` to finalize.
+All tasks complete! Ready to promote this change.
+Run `/spec:promote` to finalize.
 ```
 
 **Output On Pause (Issue Encountered)**

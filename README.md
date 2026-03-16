@@ -1,8 +1,8 @@
 # Specify
 
-Specify is a plugin system for [Cursor](https://cursor.com) that orchestrates spec-driven software development, providing specialist skills for structured proposal-to-implementation workflows.
+Specify is a plugin system to orchestrate spec-driven software development. This repository provides the specialist skills used to power structured proposal-to-implementation workflows.
 
-Each change flows through a defined lifecycle — propose, implement, archive — with artifact validation built into the implementation step. All artifacts are version-controlled alongside your code.
+Each change flows through a defined lifecycle — define, build, promote — with artifact validation built into the implementation step. All artifacts are version-controlled alongside your code.
 
 ## Getting Started
 
@@ -17,8 +17,8 @@ Initialize Specify in a project by running the `/spec:init "<schema URL>"` skill
 Available schemas are:
 
 
-| Schema  | URL                                                 | Use case                                           |
-| ------- | --------------------------------------------------- | -------------------------------------------------- |
+| Schema | URL | Use case |
+| ------ | --- | -------- |
 | `omnia` | `https://github.com/augentic/specify/schemas/omnia` | Greenfield [Omnia](https://omnia.host) development |
 
 
@@ -32,35 +32,35 @@ This creates the `.specify/` directory with a `config.yaml` you can customize to
 
 ### Work through a change
 
-Once initialized, use the Specify workflow to propose, implement, and finalize changes:
+Once initialized, use the Specify workflow to define, build, and promote changes:
 
 ```text
-/spec:propose -> /spec:apply -> /spec:archive
+/spec:define -> /spec:build -> /spec:promote
 ```
 
-To propose a new change:
+To define a new change:
 
 ```text
-/spec:propose "Add a new feature to the user interface"
+/spec:define "Add a new feature to the user interface"
 ```
 
 To migrate a TypeScript project to Omnia:
 
 ```text
-/spec:propose "Migrate https://github.com/org/repo"
+/spec:define "Migrate https://github.com/org/repo"
 ```
 
 #### Commands
 
 Core commands:
 
-- `/spec:propose "description"` -- Generate a complete set of artifacts (proposal, specs, design, tasks) from a description of what you want to build.
-- `/spec:apply` -- Validate artifacts against schema rules, then implement the tasks defined in the change artifacts.
-- `/spec:archive` -- Merge delta specs into the baseline and archive the completed change.
+- `/spec:define "description"` -- Generate a complete set of artifacts (proposal, specs, design, tasks) from a description of what you want to build.
+- `/spec:build` -- Validate artifacts against schema rules, then implement the tasks defined in the change artifacts.
+- `/spec:promote` -- Merge delta specs into the baseline and archive the completed change.
 
 Additional commands:
 
-- `/spec:abandon` -- Discard a change without merging specs into baseline.
+- `/spec:drop` -- Discard a change without merging specs into baseline.
 - `/spec:verify` -- Detect drift between your code and baseline specs.
 - `/spec:status` -- Check artifact completion, task progress, and active changes.
 - `/spec:explore` -- Think through ideas and investigate problems before or during a change.
@@ -69,7 +69,7 @@ Additional commands:
 
 Specify ships as a Cursor plugin marketplace with four plugins:
 
-- **Specify** (`spec`) -- Core workflow: propose, apply, archive, verify, explore
+- **Specify** (`spec`) -- Core workflow: define, build, promote, verify, explore
 - **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
 - **RT** (`rt`) -- TypeScript analysis, fixture capture, and migration
 - **Plan** (`plan`) -- JIRA epic analysis and SoW generation
@@ -86,11 +86,11 @@ Run documentation and consistency checks from the repository root:
 make checks
 ```
 
-This executes `./scripts/checks.sh`, which requires `python3` and `bash`.
+This runs `scripts/checks.ts` via [Deno](https://deno.land). Deno must be installed separately.
 
 ### Local plugin development
 
-To test plugins locally before releasing to the marketplace (preserves namespacing and interdependencies such as `/spec:apply` → `/omnia:crate-writer`):
+To test plugins locally before releasing to the marketplace (preserves namespacing and interdependencies such as `/spec:build` → `/omnia:crate-writer`):
 
 ```bash
 make dev-plugins

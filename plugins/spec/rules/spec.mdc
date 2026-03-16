@@ -1,5 +1,5 @@
 ---
-description: Specify plugin context -- Specify workflow orchestration for proposing, applying, archiving, abandoning, and exploring changes
+description: Specify plugin context -- Specify workflow orchestration for defining, building, promoting, dropping, and exploring changes
 alwaysApply: true
 ---
 
@@ -7,9 +7,9 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: propose a change, apply (validate and implement) a change, archive a completed change, abandon a discarded change, verify code-to-spec consistency, explore ideas or problems interactively, check status, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
+This plugin provides the core Specify workflow skills: define a change, build (validate and implement) a change, promote a completed change, drop a discarded change, verify code-to-spec consistency, explore ideas or problems interactively, check status, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
 
-**Purpose**: Drive the propose -> apply -> archive workflow, with abandon for cleanup, verify for drift detection, and explore for thinking and investigation.
+**Purpose**: Drive the define -> build -> promote workflow, with drop for cleanup, verify for drift detection, and explore for thinking and investigation.
 
 ## Plugin Architecture
 
@@ -25,16 +25,16 @@ This plugin provides the core Specify workflow skills: propose a change, apply (
 │   └── specify.md            # Artifact format reference (symlink)
 └── skills/
     ├── init/              # Initialize Specify in a project
-    ├── propose/           # Create a change with all artifacts (or regenerate one)
-    ├── apply/             # Validate artifacts and implement tasks from a change
-    ├── archive/           # Archive a completed change
-    ├── abandon/           # Discard a change without merging specs
+    ├── define/            # Create a change with all artifacts (or regenerate one)
+    ├── build/             # Validate artifacts and implement tasks from a change
+    ├── promote/           # Promote a completed change
+    ├── drop/              # Discard a change without merging specs
     ├── explore/           # Thinking partner for ideas and investigation
     ├── verify/            # Detect drift between code and baseline specs
     └── status/            # Check change status and progress
 ```
 
-Each skill has its own SKILL.md with full details. Schema resolution and composition is defined in [schema-resolution.md](../references/schema-resolution.md). The Specify artifact format is described in [specify.md](../references/specify.md). Validation rules are defined in `schema.yaml` and enforced by the apply skill's validation gate.
+Each skill has its own SKILL.md with full details. Schema resolution and composition is defined in [schema-resolution.md](../references/schema-resolution.md). The Specify artifact format is described in [specify.md](../references/specify.md). Validation rules are defined in `schema.yaml` and enforced by the build skill's validation gate.
 
 ## Schema Structure
 
@@ -42,9 +42,9 @@ Schemas define the artifact graph, instructions, and heading conventions. Each s
 
 ```text
 schemas/<name>/
-├── schema.yaml      # Declarations: artifacts, terminology, apply config
+├── schema.yaml      # Declarations: blueprints, validation, terminology, build config
 ├── config.yaml      # Starter config for /spec:init
-└── instructions/    # Detailed instructions per artifact + apply
+└── instructions/    # Detailed instructions per blueprint + build
 ```
 
 `schema.yaml` is declaration-only — instructions live in separate files referenced by path. Schemas can extend other schemas via the `extends` field.
@@ -54,40 +54,40 @@ schemas/<name>/
 Changes track their status in `.metadata.yaml`:
 
 ```text
-proposing -> proposed -> applying -> complete -> archived
-    \           \          \
-     `--------> `--------> `--------> abandoned
+defining -> defined -> building -> complete -> promoted
+    \          \          \
+     `-------> `-------> `-------> dropped
 ```
 
-- **proposing**: Artifacts are being generated (propose in progress)
-- **proposed**: All artifacts created, ready for implementation
-- **applying**: Tasks are being implemented (artifacts validated on entry)
-- **complete**: All tasks done, ready to archive
-- **archived**: Specs merged into baseline, change moved to archive
-- **abandoned**: Change moved to archive without merging specs into the baseline
+- **defining**: Artifacts are being generated (define in progress)
+- **defined**: All artifacts created, ready for implementation
+- **building**: Tasks are being implemented (artifacts validated on entry)
+- **complete**: All tasks done, ready to promote
+- **promoted**: Specs merged into baseline, change moved to archive
+- **dropped**: Change moved to archive without merging specs into the baseline
 
 ## Workflow
 
 ```text
 /spec:init (once per project)
 
-/spec:propose  ->  /spec:apply  ->  /spec:archive
-                        ^
-                        |
-                   /spec:explore (anytime)
-                   /spec:status  (anytime)
-                   /spec:verify  (after archive, detect drift)
-                   /spec:abandon (discard instead of archive)
+/spec:define  ->  /spec:build  ->  /spec:promote
+                       ^
+                       |
+                  /spec:explore (anytime)
+                  /spec:status  (anytime)
+                  /spec:verify  (after promote, detect drift)
+                  /spec:drop    (discard instead of promote)
 ```
 
 - **init**: One-time project setup -- creates `.specify/` directory structure and `config.yaml`
-- **propose**: Create a change directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:propose <name> <artifact-id>`.
-- **apply**: Validate artifacts against `schema.yaml` rules and cross-artifact consistency, then implement tasks from the change, marking them complete as you go
-- **archive**: Preview merge operations, finalize a completed change, merge delta specs into baseline
-- **abandon**: Discard an active change, set `status: abandoned`, and move it to archive without merging specs
+- **define**: Create a change directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:define <name> <blueprint-id>`.
+- **build**: Validate artifacts against `schema.yaml` rules and cross-blueprint consistency, then implement tasks from the change, marking them complete as you go
+- **promote**: Preview merge operations, finalize a completed change, merge delta specs into baseline
+- **drop**: Discard an active change, set `status: dropped`, and move it to archive without merging specs
 - **verify**: Compare current code against baseline specs to detect drift -- read-only
 - **explore**: Read-only thinking mode for investigating problems and clarifying requirements
-- **status**: Check lifecycle status, artifact completion, task progress, and active/archived changes
+- **status**: Check lifecycle status, artifact completion, task progress, and active/promoted changes
 
 ## Troubleshooting
 
@@ -104,17 +104,17 @@ proposing -> proposed -> applying -> complete -> archived
 ### Artifacts Incomplete
 
 - Run `/spec:status <name>` to check artifact status
-- Use `/spec:propose <name> <artifact-id>` to regenerate a single artifact
-- Use `/spec:propose` to create a new change with all artifacts
+- Use `/spec:define <name> <blueprint-id>` to regenerate a single artifact
+- Use `/spec:define` to create a new change with all artifacts
 
 ## Related Documentation
 
 - See project rule (`.cursor/rules/project.mdc`) for overall project context
 - [Init SKILL.md](skills/init/SKILL.md) - Initialize Specify
-- [Propose SKILL.md](skills/propose/SKILL.md) - Create changes with artifacts
-- [Apply SKILL.md](skills/apply/SKILL.md) - Validate artifacts and implement change tasks
-- [Archive SKILL.md](skills/archive/SKILL.md) - Finalize completed changes
-- [Abandon SKILL.md](skills/abandon/SKILL.md) - Discard a change without merging specs
+- [Define SKILL.md](skills/define/SKILL.md) - Create changes with artifacts
+- [Build SKILL.md](skills/build/SKILL.md) - Validate artifacts and implement change tasks
+- [Promote SKILL.md](skills/promote/SKILL.md) - Finalize completed changes
+- [Drop SKILL.md](skills/drop/SKILL.md) - Discard a change without merging specs
 - [Verify SKILL.md](skills/verify/SKILL.md) - Detect drift between code and baseline specs
 - [Explore SKILL.md](skills/explore/SKILL.md) - Thinking and investigation mode
 - [Status SKILL.md](skills/status/SKILL.md) - Check status and progress

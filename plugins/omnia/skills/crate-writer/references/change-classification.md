@@ -51,7 +51,6 @@ An item is **subtractive** when:
 
 - Verify the item is truly absent from the artifacts (search all sections, not just the obvious one)
 - Verify no remaining handler depends on the type/config key being removed
-- If `$CHANGE_DESCRIPTION` is provided and does not mention this removal, flag it for confirmation
 
 ### Modifying
 
@@ -147,8 +146,6 @@ Do the new artifacts contain a type/handler with:
 └─ NO → Separate SUBTRACTIVE + ADDITIVE
 ```
 
-If `$CHANGE_DESCRIPTION` mentions a rename, trust it over heuristic matching.
-
 ## Too Complex for Automation
 
 Flag a change as **too complex** and recommend greenfield regeneration when:
@@ -161,15 +158,3 @@ Flag a change as **too complex** and recommend greenfield regeneration when:
 | Crate purpose changed (e.g., adapter → API service) | Re-run full pipeline |
 
 When aborting, document the rationale in Migration.md and recommend the appropriate pipeline invocation.
-
-## Change Description Interaction
-
-When `$CHANGE_DESCRIPTION` is provided:
-
-1. **Validate alignment**: The derived change set should be consistent with the description. If the description says "add priority filtering" but the change set includes removing an endpoint, flag the discrepancy.
-
-2. **Resolve ambiguity**: If a difference could be classified multiple ways, use the description to choose. Example: description says "rename OrderEvent to PurchaseEvent" → classify as structural, not remove + add.
-
-3. **Scope focusing**: If the artifacts have many differences but the description mentions only specific changes, prioritize the described changes. Apply undescribed changes only if they are clearly required by the artifacts (e.g., the artifacts no longer have a section for a removed endpoint).
-
-4. **No override**: The description cannot override the artifacts. If the description says "add field X" but the artifacts do not contain field X, do not add it. The artifacts are authoritative (authority hierarchy level 2).

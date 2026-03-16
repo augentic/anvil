@@ -28,7 +28,7 @@
     {
       "name": "spec",
       "source": "spec",
-      "description": "Skills for Specify workflow orchestration: propose, apply, archive, abandon, and explore."
+      "description": "Skills for Specify workflow orchestration: define, build, promote, drop, and explore."
     }
   ]
 }
