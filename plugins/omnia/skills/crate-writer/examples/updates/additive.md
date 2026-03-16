@@ -212,7 +212,7 @@ async fn create_worksite_empty_code_rejected() {
 
 ### 4. Guest Wiring Update
 
-Append to `$PROJECT_DIR/src/lib.rs`:
+Append to `src/lib.rs`:
 
 ```rust
 // New import

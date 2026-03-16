@@ -10,7 +10,7 @@ blueprints:
   - id: proposal
     generates: proposal.md
     description: Initial proposal document
-    instruction: instructions/proposal.md
+    instructions: instructions/proposal.md
     requires: []
     validate:
       - Has a Why section with at least one sentence
@@ -21,7 +21,7 @@ blueprints:
   - id: specs
     generates: specs/**/*.md
     description: Detailed specifications for the change
-    instruction: instructions/specs.md
+    instructions: instructions/specs.md
     requires:
       - proposal
     validate:
@@ -38,7 +38,7 @@ blueprints:
   - id: design
     generates: design.md
     description: Technical design document with implementation details
-    instruction: instructions/design.md
+    instructions: instructions/design.md
     requires:
       - proposal
     validate:
@@ -49,7 +49,7 @@ blueprints:
   - id: tasks
     generates: tasks.md
     description: Implementation checklist with trackable tasks
-    instruction: instructions/tasks.md
+    instructions: instructions/tasks.md
     requires:
       - specs
       - design
@@ -67,4 +67,4 @@ build:
   requires: 
     - tasks
   tracks: tasks.md
-  instruction: instructions/build.md
+  instructions: instructions/build.md

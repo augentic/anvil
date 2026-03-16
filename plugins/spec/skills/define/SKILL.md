@@ -54,7 +54,7 @@ The user's request should include a change name (kebab-case) OR a description of
    c. Look up the blueprint by `id` in `schema.yaml`
    d. Verify all blueprints listed in its `requires` exist in the change directory
    e. Read the required artifacts for context
-   f. Read the instruction file at the path given by the blueprint's `instruction` field in the resolved schema directory
+   f. Read the instruction file at the path given by the blueprint's `instructions` field in the resolved schema directory
    g. Regenerate ONLY the specified artifact following the instruction
    i. Apply `context` and effective rules as constraints
    j. Run validators if `validate` rules are defined for this artifact (see step 6)
@@ -111,7 +111,7 @@ The user's request should include a change name (kebab-case) OR a description of
    For each blueprint (in dependency order):
 
    - Read any completed dependency files (the blueprints listed in `requires`) for context
-   - Read the instruction file at the path given by the blueprint's `instruction` field in the resolved schema directory
+   - Read the instruction file at the path given by the blueprint's `instructions` field in the resolved schema directory
    - Determine the output path from the `generates` field, relative to `.specify/changes/<name>/`:
      - Simple filename (e.g., `proposal.md`): write to `.specify/changes/<name>/<generates>`
      - Glob pattern (e.g., `specs/**/*.md`): the instruction determines how many files to create and where within the pattern

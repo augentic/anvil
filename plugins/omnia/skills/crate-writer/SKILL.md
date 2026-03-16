@@ -1,7 +1,7 @@
 ---
 name: crate-writer
 description: "Write Rust WASM crates from Specify artifacts -- greenfield creation or incremental updates -- following Omnia SDK patterns with provider-based dependency injection."
-argument-hint: [crate-name] [project-dir?] [--skip-tests?] [--change-dir <path>?] [change-description?]
+argument-hint: [crate-name] [skip-tests?]
 allowed-tools: Read, Write, StrReplace, Shell, Grep, ReadLints
 ---
 
@@ -60,17 +60,14 @@ Violations of any rule below fail generation or update.
 ## Arguments
 
 ```text
-$CRATE_NAME         = $ARGUMENTS[0]
-$PROJECT_DIR        = $ARGUMENTS[1] OR "."
-$SKIP_TESTS         = "--skip-tests" in $ARGUMENTS  # Boolean, default false
-$CHANGE_DIR_ARG     = "--change-dir" value in $ARGUMENTS # Optional
-$CHANGE_DESCRIPTION = last non-flag argument after $PROJECT_DIR, OR null  # Optional: plain-text summary of what changed (update mode)
+$CRATE_NAME     = $ARGUMENTS[0]
+$SKIP_TESTS     = "skip-tests" in $ARGUMENTS  # Boolean, default false
 
 # Path derivation
-$CHANGE_DIR         = $CHANGE_DIR_ARG OR $PROJECT_DIR/.specify/changes/$CRATE_NAME
-$SPECS_DIR          = $CHANGE_DIR/specs
-$DESIGN_PATH        = $CHANGE_DIR/design.md
-$CRATE_PATH         = $PROJECT_DIR/crates/$CRATE_NAME
+$CHANGE_DIR     = .specify/changes/$CRATE_NAME
+$SPECS_DIR      = $CHANGE_DIR/specs
+$DESIGN_PATH    = $CHANGE_DIR/design.md
+$CRATE_PATH     = crates/$CRATE_NAME
 ```
 
 ## Required References
@@ -216,7 +213,7 @@ See [testing.md](examples/testing.md) for complete patterns and [mock-provider.m
 
 ## Guest Wiring (Conditional)
 
-**Trigger**: only when `$PROJECT_DIR/src/lib.rs` exists.
+**Trigger**: only when `src/lib.rs` exists.
 
 After generating or updating the crate, inject or update wiring in the guest project. See [guest-wiring.md](references/guest-wiring.md) for templates.
 
@@ -228,7 +225,7 @@ After generating or updating the crate, inject or update wiring in the guest pro
 4. WebSocket handler delegation (WebSocket handlers) -- add delegation inside existing WebSocket Guest impl, or create the full WebSocket Guest export block if none exists
 5. Handler functions with `#[omnia_wasi_otel::instrument]`
 6. Provider trait impls if new capabilities needed
-7. Crate dependency in `$PROJECT_DIR/Cargo.toml`
+7. Crate dependency in `Cargo.toml`
 
 ### Guest Wiring by Category (update mode)
 
@@ -285,7 +282,7 @@ Before starting code generation, verify artifact completeness per [checklists.md
 15. Generate `Migration.md`, `Architecture.md`, `.env.example`
 16. Run `cargo check` to verify compilation
 17. Run verification checklist
-18. If `$PROJECT_DIR/src/lib.rs` exists: inject guest wiring (see Guest Wiring section above)
+18. If `src/lib.rs` exists: inject guest wiring (see Guest Wiring section above)
 
 ---
 
@@ -324,7 +321,7 @@ Read all documents listed in [Required References](#required-references) includi
 Before any changes, establish the current state:
 
 ```bash
-cd $CRATE_PATH && cargo test 2>&1 | tee $PROJECT_DIR/temp/$CRATE_NAME-baseline.txt
+cd $CRATE_PATH && cargo test 2>&1 | tee temp/$CRATE_NAME-baseline.txt
 ```
 
 Record which tests pass and which fail. This baseline is used in Step 7 to detect regressions.
@@ -343,7 +340,7 @@ Parse the existing crate to build a structural inventory mapping artifact concep
 | `src/types.rs` and domain modules                           | Type definitions, serde attributes, newtypes, enums                                           |
 | `tests/provider.rs`                                         | MockProvider: which traits are implemented, what config keys return, what HTTP fixtures exist |
 | `tests/*.rs`                                                | Test names, what handlers they cover, assertion patterns                                      |
-| `$PROJECT_DIR/src/lib.rs` (guest, if exists)                | Routes, topic arms, WebSocket handlers, imports, Provider trait impls                         |
+| `src/lib.rs` (guest, if exists)                             | Routes, topic arms, WebSocket handlers, imports, Provider trait impls                         |
 
 The inventory is an in-memory working model, not a persisted artifact. For each item, record:
 
@@ -367,12 +364,6 @@ Read the updated artifacts from `$CHANGE_DIR` (specs and design.md) and compare 
 | Type in inventory but not in artifacts                                              | **Subtractive** |
 | Config key in artifacts but not in `.env.example`                                  | **Additive**    |
 | Config key in `.env.example` but not in artifacts                                  | **Subtractive** |
-
-If `$CHANGE_DESCRIPTION` is provided, use it to:
-
-- **Focus**: prioritize changes that match the description
-- **Validate**: confirm the derived change set is consistent with the stated intent
-- **Flag**: warn if the derived change set includes unexpected changes not mentioned in the description
 
 See [change-classification.md](references/change-classification.md) for detailed classification rules and edge cases.
 
@@ -451,7 +442,7 @@ Execute the plan in the fixed order: structural, subtractive, modifying, additiv
 
 #### Step 6: Update Guest Wiring
 
-If `$PROJECT_DIR/src/lib.rs` exists, apply guest wiring changes per the Guest Wiring by Category table above.
+If `src/lib.rs` exists, apply guest wiring changes per the Guest Wiring by Category table above.
 
 #### Step 7: Verify (repair loop -- max 3 iterations)
 
@@ -474,7 +465,7 @@ If fails: fix each warning using [repair-patterns.md](references/repair-patterns
 
 **7c. Test suite**:
 ```bash
-cd $CRATE_PATH && cargo test 2>&1 | tee $PROJECT_DIR/temp/$CRATE_NAME-post-update.txt
+cd $CRATE_PATH && cargo test 2>&1 | tee temp/$CRATE_NAME-post-update.txt
 ```
 
 Compare against the baseline from Step 1:
@@ -522,6 +513,6 @@ Only emit: `.rs` source files, `Cargo.toml`, and the required docs. Do not emit 
 
 - **Mode is auto-detected**: If `$CRATE_PATH/Cargo.toml` exists, update mode runs. Otherwise, create mode runs.
 - In update mode, existing tests are treated as specifications: a previously-passing test that fails after update is a regression, not an expected change.
-- In update mode, changes are applied in fixed order (structural → subtractive → modifying → additive) regardless of `$CHANGE_DESCRIPTION`.
+- In update mode, changes are applied in fixed order (structural → subtractive → modifying → additive).
 - In update mode, after structural changes, the crate is re-inventoried before subsequent categories to ensure references are current.
 - When in doubt about whether a change is required (update mode), compare the specific artifact section against the existing code. If they match, no change is needed.

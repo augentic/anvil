@@ -138,7 +138,7 @@ merges the child on top.
 - **`validation`**: child replaces parent entirely (boolean flag map).
   If omitted, inherits the parent's validation flags.
 - **`build`**: child `requires` replaces parent `requires`; child
-  `instruction` replaces parent `instruction`; child `tracks` replaces
+  `instructions` replaces parent `instructions`; child `tracks` replaces
   parent `tracks`. Omitted fields inherit from parent.
 - **`instructions/`**: resolve from the child schema directory first;
   fall back to the parent schema directory for any files not present in

@@ -115,7 +115,7 @@ Before completing, verify ALL items.
 
 - [ ] Baseline `cargo test` captured before changes
 - [ ] No regressions: all previously-passing tests still pass
-- [ ] Post-update `cargo test` output saved to `$PROJECT_DIR/temp/$CRATE_NAME-post-update.txt`
+- [ ] Post-update `cargo test` output saved to `temp/$CRATE_NAME-post-update.txt`
 - [ ] CHANGELOG.md entries for all changes (additive, modifying, subtractive, structural)
 - [ ] Removed code has no orphaned references (unused imports, dead modules)
 - [ ] Tests for removed handlers/endpoints deleted (Hard Rule 14)

@@ -141,7 +141,7 @@ Subtractive changes remove code. Every removal is documented in CHANGELOG.md.
 2. **Update barrel**: Remove `mod legacy_status;` and `pub use legacy_status::*;` from `src/handlers.rs`
 3. **Delete types**: Remove `LegacyStatusRequest` and `LegacyStatusResponse` from `src/types.rs` (only if no other handler uses them)
 4. **Delete tests**: Remove `tests/legacy_status.rs`
-5. **Update guest**: Remove the route from `$PROJECT_DIR/src/lib.rs`:
+5. **Update guest**: Remove the route from `src/lib.rs`:
 
    ```rust
    // REMOVE this line:

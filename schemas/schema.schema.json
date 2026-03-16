@@ -48,7 +48,7 @@
     },
     "build": {
       "type": "object",
-      "required": ["requires", "tracks", "instruction"],
+      "required": ["requires", "tracks", "instructions"],
       "additionalProperties": false,
       "properties": {
         "requires": {
@@ -60,9 +60,9 @@
           "type": "string",
           "description": "File that tracks build progress (e.g., tasks.md)."
         },
-        "instruction": {
+        "instructions": {
           "type": "string",
-          "description": "Relative path to the build instruction markdown file."
+          "description": "Relative path to the build instructions markdown file."
         }
       }
     }
@@ -70,7 +70,7 @@
   "$defs": {
     "blueprint": {
       "type": "object",
-      "required": ["id", "generates", "description", "instruction", "requires"],
+      "required": ["id", "generates", "description", "instructions", "requires"],
       "additionalProperties": false,
       "properties": {
         "id": {
@@ -85,9 +85,9 @@
           "type": "string",
           "description": "What this blueprint produces."
         },
-        "instruction": {
+        "instructions": {
           "type": "string",
-          "description": "Relative path to the instruction markdown file."
+          "description": "Relative path to the instructions markdown file."
         },
         "requires": {
           "type": "array",

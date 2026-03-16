@@ -111,7 +111,7 @@ grep -r "feature_response" tests/ --include="*.rs"
 
 If other tests reference it, leave it in place.
 
-### 5. Update Guest Wiring (`$PROJECT_DIR/src/lib.rs`)
+### 5. Update Guest Wiring (`src/lib.rs`)
 
 Remove the route:
 

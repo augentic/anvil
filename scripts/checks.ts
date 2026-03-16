@@ -148,8 +148,8 @@ async function checkRemovedSurfaces(): Promise<void> {
 
 interface SchemaYaml {
   name: string;
-  blueprints: { id: string; requires: string[]; instruction?: string }[];
-  build: { requires: string[]; instruction?: string };
+  blueprints: { id: string; requires: string[]; instructions?: string }[];
+  build: { requires: string[]; instructions?: string };
 }
 
 interface ConfigYaml {
@@ -200,7 +200,7 @@ async function validateSchemaYaml(): Promise<void> {
 
 // ──────────────────────────────────────────────────────────────
 // 5. Schema referential integrity
-//    (blueprint requires, instruction paths, config rule keys)
+//    (blueprint requires, instructions paths, config rule keys)
 // ──────────────────────────────────────────────────────────────
 
 async function checkSchemaIntegrity(): Promise<void> {
@@ -268,25 +268,25 @@ async function checkSchemaIntegrity(): Promise<void> {
     }
 
     for (const bp of blueprints) {
-      const inst = bp.instruction ?? "";
+      const inst = bp.instructions ?? "";
       if (inst) {
         try {
           await Deno.stat(join(dirPath, inst));
         } catch {
           fail(
-            `Schema integrity: ${name}/schema.yaml: blueprint '${bp.id}' instruction not found: ${inst}`,
+            `Schema integrity: ${name}/schema.yaml: blueprint '${bp.id}' instructions not found: ${inst}`,
           );
         }
       }
     }
 
-    const buildInst = build.instruction ?? "";
+    const buildInst = build.instructions ?? "";
     if (buildInst) {
       try {
         await Deno.stat(join(dirPath, buildInst));
       } catch {
         fail(
-          `Schema integrity: ${name}/schema.yaml: build.instruction not found: ${buildInst}`,
+          `Schema integrity: ${name}/schema.yaml: build.instructions not found: ${buildInst}`,
         );
       }
     }

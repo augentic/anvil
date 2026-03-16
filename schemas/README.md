@@ -32,7 +32,7 @@ Child schemas that use `extends` may omit the entire `instructions/` directory
 or individual files within it. Missing files are resolved from the parent schema
 via fallback.
 
-- `**schema.yaml**`: Declares blueprints (id, instruction file path,
+- `**schema.yaml**`: Declares blueprints (id, instructions file path,
 dependencies, validation rules), `terminology` (the `unit` name,
 e.g., "crate"), and the `build` configuration.
 Child schemas may use `extends` to inherit from a parent and only override
@@ -41,7 +41,7 @@ implement tasks.
 - `**instructions/**`: One markdown file per blueprint plus `build.md`.
 Contains the detailed generation or implementation instructions including
 output structure. Referenced by file path from `schema.yaml`'s
-`instruction` field.
+`instructions` field.
 - `**config.yaml**`: Installed into `.specify/config.yaml` by `/spec:init`.
 Contains the `schema` URL, default `context`, and default per-blueprint
 `rules`. The project copy can override individual blueprint keys (see
@@ -70,7 +70,7 @@ Rules Override below).
 | `id` | string | yes | Blueprint identifier (e.g., `proposal`, `specs`, `design`, `tasks`) |
 | `generates` | string | yes | Output filename or glob pattern (e.g., `proposal.md`, `specs/**/*.md`) |
 | `description` | string | yes | What this blueprint produces |
-| `instruction` | string | yes | Relative path to the instruction markdown file |
+| `instructions` | string | yes | Relative path to the instructions markdown file |
 | `requires` | array of strings | yes | Blueprint IDs that must exist before this one can be generated |
 | `validate` | array of strings | no | Human-readable validation rules checked after generation |
 
@@ -80,7 +80,7 @@ Rules Override below).
 |-------|------|----------|-------------|
 | `requires` | array of strings | yes | Blueprint IDs that must be complete before build runs |
 | `tracks` | string | yes | File that tracks build progress (e.g., `tasks.md`) |
-| `instruction` | string | yes | Relative path to the build instruction markdown file |
+| `instructions` | string | yes | Relative path to the build instructions markdown file |
 
 ### `config.yaml`
 

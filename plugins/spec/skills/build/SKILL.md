@@ -124,7 +124,7 @@ Implement tasks from a Specify change.
 
 9. **Implement tasks (loop until done or blocked)**
 
-   Read the build instruction file from the resolved schema directory (the file path is given by `build.instruction` in `schema.yaml`).
+   Read the build instruction file from the resolved schema directory (the file path is given by `build.instructions` in `schema.yaml`).
 
    **Skill directive tags**: Before starting each task, check whether it contains an HTML comment tag in the form `<!-- skill: plugin:skill-name -->`. If present, invoke that skill directly instead of following the default mode-detection logic. For example, a task tagged `<!-- skill: omnia:crate-writer -->` should be handled by running `/omnia:crate-writer` with the standard arguments. Tasks without a skill tag follow the instruction file's mode detection and step-by-step execution as before.
 
