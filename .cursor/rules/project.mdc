@@ -98,7 +98,7 @@ See [docs/architecture.md](docs/architecture.md) for the full repository structu
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
   ├── rt/                 # RT migration plugin
   └── plan/               # Plan requirements analysis plugin
-/schemas/                 # Schema definitions (omnia, realtime)
+/schemas/                 # Schema definitions
 /scripts/                 # Validation and plugin management
 ```
 

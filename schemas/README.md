@@ -124,7 +124,7 @@ schema: https://github.com/augentic/specify/schemas/omnia@abc123   # pinned to c
 
 **Name resolution** (e.g., `schema: omnia`):
 
-- Look for `schemas/<name>/` in the plugin directory.
+- Look for `schemas/<name>/` relative to the workspace root.
 
 **URL resolution** (e.g., `schema: https://github.com/augentic/specify/schemas/omnia@v1`):
 

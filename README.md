@@ -86,7 +86,7 @@ Run documentation and consistency checks from the repository root:
 make checks
 ```
 
-This runs `scripts/checks.ts` via [Deno](https://deno.land). If Deno is not installed, `make checks` will install it automatically.
+This runs `scripts/checks.ts` via [Deno](https://deno.land). Deno must be installed separately.
 
 ### Local plugin development
 
