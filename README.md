@@ -86,7 +86,7 @@ Run documentation and consistency checks from the repository root:
 make checks
 ```
 
-This executes `./scripts/checks.sh`, which requires `python3` and `bash`.
+This runs `scripts/checks.ts` via [Deno](https://deno.land). If Deno is not installed, `make checks` will install it automatically.
 
 ### Local plugin development
 
