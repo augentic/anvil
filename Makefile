@@ -1,6 +1,8 @@
+DENO := $(or $(shell command -v deno 2>/dev/null),$(wildcard $(HOME)/.deno/bin/deno))
+
 .PHONY: checks
 checks:
-	@./scripts/checks.sh
+	@$(DENO) run --allow-read scripts/checks.ts
 
 .PHONY: dev-plugins
 dev-plugins:

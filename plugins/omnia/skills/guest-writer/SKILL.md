@@ -1,7 +1,7 @@
 ---
 name: guest-writer
 description: Generate a Rust project that exposes HTTP endpoints, subscribes to message topics, and handles WebSocket events in order to surface business logic via the Omnia WASI runtime.
-argument-hint: [project-dir?]
+argument-hint: []
 allowed-tools: Read, Write, StrReplace, Shell
 ---
 
@@ -43,20 +43,16 @@ The guest is a thin wrapper. It handles WASI/wasm32 boundary concerns such as HT
 
 ## Derived Arguments
 
-1. **Project directory** (`$PROJECT_DIR`): Directory for the WASM guest project. If not provided, the current directory should be used. Default value `.`
-
-```text
-$PROJECT_DIR   = $ARGUMENTS[0] OR "."
-```
+All paths are relative to the project root, consistent with crate-writer and test-writer.
 
 ## Process
 
 ### Step 1: Generate project structure
 
-Create the guest project at `$PROJECT_DIR` with structure:
+Create the guest project at the project root with structure:
 
 ```text
-$PROJECT_DIR/
+./
 ├── .cargo/config.toml   # Registry + credential providers
 ├── .github/
 │   └── workflows/

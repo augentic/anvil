@@ -29,7 +29,6 @@ specify/
 │   ├── omnia/                    # Greenfield Rust WASM schema
 │   └── realtime/                 # TypeScript migration schema (extends omnia)
 └── scripts/                      # Validation and plugin management
-    ├── checks.sh                 # Deno bootstrap wrapper (auto-installs deno)
     ├── checks.ts                 # Documentation and consistency checks
     ├── dev-plugins.sh            # Symlink local plugins for development
     └── prod-plugins.sh           # Restore marketplace plugins

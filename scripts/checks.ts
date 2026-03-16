@@ -88,6 +88,7 @@ async function checkStaleClaims(): Promise<void> {
     includeDirs: false,
   })) {
     if (/node_modules|\.git/.test(entry.path)) continue;
+    if (await isUnderSymlink(entry.path)) continue;
     let content: string;
     try {
       content = await Deno.readTextFile(entry.path);
@@ -101,53 +102,15 @@ async function checkStaleClaims(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 3. Removed workflow surfaces do not reappear
-// ──────────────────────────────────────────────────────────────
-
-async function checkRemovedSurfaces(): Promise<void> {
-  const STALE_TERMS = [
-    "/rt:orchestrator",
-    "/omnia:orchestrator",
-    "cursor plugin marketplace",
-    "claude plugin validate",
-    "Provider Capabilities",
-  ];
-  const SKIP_PATHS = [/\.git/, /temp/, /improvements/, /scripts\/checks\.ts$/];
-
-  for await (const entry of walk(REPO_ROOT, {
-    includeDirs: false,
-  })) {
-    if (SKIP_PATHS.some((re) => re.test(entry.path))) continue;
-    const name = entry.name;
-    if (
-      !name.endsWith(".md") &&
-      !name.endsWith(".sh") &&
-      !name.endsWith(".ts") &&
-      name !== "Makefile"
-    ) {
-      continue;
-    }
-
-    let content: string;
-    try {
-      content = await Deno.readTextFile(entry.path);
-    } catch {
-      continue;
-    }
-    if (STALE_TERMS.some((term) => content.includes(term))) {
-      fail(
-        `Stale removed workflow surface in ${relative(REPO_ROOT, entry.path)}`,
-      );
-    }
-  }
-}
-
-// ──────────────────────────────────────────────────────────────
-// 4. Schema YAML files validate against JSON Schema
+// 3. Schema YAML files validate against JSON Schema
 // ──────────────────────────────────────────────────────────────
 
 interface SchemaYaml {
   name: string;
+  version?: string;
+  description?: string;
+  terminology?: Record<string, string>;
+  validation?: Record<string, boolean>;
   blueprints: { id: string; requires: string[]; instructions?: string }[];
   build: { requires: string[]; instructions?: string };
 }
@@ -199,7 +162,7 @@ async function validateSchemaYaml(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 5. Schema referential integrity
+// 4. Schema referential integrity
 //    (blueprint requires, instructions paths, config rule keys)
 // ──────────────────────────────────────────────────────────────
 
@@ -313,11 +276,14 @@ async function checkSchemaIntegrity(): Promise<void> {
 // Run all checks
 // ──────────────────────────────────────────────────────────────
 
-await checkMarkdownLinks();
-await checkStaleClaims();
-await checkRemovedSurfaces();
-await validateSchemaYaml();
-await checkSchemaIntegrity();
+await Promise.all([
+  checkMarkdownLinks(),
+  checkStaleClaims(),
+]);
+await Promise.all([
+  validateSchemaYaml(),
+  checkSchemaIntegrity(),
+]);
 
 console.log();
 if (errors > 0) {

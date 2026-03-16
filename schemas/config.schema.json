@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/schemas/config.schema.json",
   "title": "Specify config.yaml",
-  "description": "Validates the structure of a Specify schema config file.",
+  "description": "Validates the structure of a Specify schema-level config file (schemas/<name>/config.yaml). Project-level .specify/config.yaml files are initialized from this structure but have independent lifecycles.",
   "type": "object",
   "required": ["schema", "context"],
   "additionalProperties": false,
