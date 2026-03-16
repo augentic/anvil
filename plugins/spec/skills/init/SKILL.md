@@ -30,9 +30,7 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
 
 2. **Resolve schema**
 
-   If `$SCHEMA` is provided (as an argument), use it directly. Otherwise, use the **AskQuestion tool** to let the user select:
-   - **omnia**: New development (JIRA -> Rust WASM)
-   - **realtime**: Migration (TypeScript -> Rust WASM)
+   If `$SCHEMA` is provided (as an argument), use it directly. Otherwise, list available schemas from the `schemas/` directory (each subdirectory containing a `schema.yaml` is a schema). If only one schema exists, use it as the default and confirm with the user. If multiple schemas exist, use the **AskQuestion tool** to let the user select from the available options.
 
    Store the result as `$SCHEMA`.
 

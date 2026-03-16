@@ -130,19 +130,19 @@ schema: https://github.com/augentic/specify/schemas/omnia@abc123   # pinned to c
 
 1. Split on `@` to extract the schema name (last path segment) and ref
   (default `main`).
-2. Check if `schemas/<name>/` exists locally in the plugin directory.
-3. If found locally, use the local directory.
-4. If not found locally, check the project-level cache at
-  `.specify/.cache/` (see Caching below).
-5. If no valid cache, fetch files via WebFetch (for GitHub URLs, convert to
+2. Check the project-level cache at `.specify/.cache/` (see Caching below).
+3. If no valid cache, fetch files via WebFetch (for GitHub URLs, convert to
   raw content URLs using the extracted ref:
    `https://raw.githubusercontent.com/<owner>/<repo>/<ref>/<path>`).
+
+URL schemas skip local resolution entirely to guarantee that a pinned URL
+produces the same schema across machines and branches.
 
 ### Schema Composition
 
 Schemas can extend other schemas using the `extends` field in `schema.yaml`.
 See `plugins/spec/references/schema-resolution.md` for the full composition
-rules, including artifact merging, field-level overrides, and file fallback
+rules, including blueprint merging, field-level overrides, and file fallback
 behavior.
 
 ## Caching

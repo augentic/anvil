@@ -135,8 +135,8 @@ merges the child on top.
 - **`terminology`**: child replaces parent. If omitted, inherits the
   parent's `terminology`. Contains only `unit` (skills infer plural and
   heading forms).
-- **`blueprints.validation`**: child replaces parent entirely (boolean
-  flag map). If omitted, inherits the parent's validation flags.
+- **`validation`**: child replaces parent entirely (boolean flag map).
+  If omitted, inherits the parent's validation flags.
 - **`build`**: child `requires` replaces parent `requires`; child
   `instruction` replaces parent `instruction`; child `tracks` replaces
   parent `tracks`. Omitted fields inherit from parent.

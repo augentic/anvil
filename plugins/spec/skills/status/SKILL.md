@@ -58,7 +58,7 @@ Optionally specify a change name to focus on. Otherwise show an overview.
 
    Report: "N/M tasks complete"
 
-5. **Check apply readiness**
+5. **Check build readiness**
 
    Build is ready when all blueprints listed in `build.requires` (from `schema.yaml`) are complete.
 

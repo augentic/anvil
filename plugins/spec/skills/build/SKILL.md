@@ -56,7 +56,7 @@ Implement tasks from a Specify change.
 
    **Per-blueprint validation**: For each blueprint that has a `validate` field in `schema.yaml`, verify each rule against the artifact content read in step 5. Record each rule result as **PASS** or **FAIL** with a reason.
 
-   **Cross-blueprint consistency checks**: For each key in `blueprints.validation` (from `schema.yaml`) that is set to `true`, run the named check:
+   **Cross-blueprint consistency checks**: For each key in `validation` (from `schema.yaml`) that is set to `true`, run the named check:
    - `proposal-crates-have-specs`: every crate listed in the proposal has a corresponding spec file under `specs/`
    - `design-references-valid`: requirement IDs (`REQ-XXX`) referenced in `design.md` exist in spec files
    - `spec-format-valid`: all spec files match the heading structure defined in `references/spec-format.md`
