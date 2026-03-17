@@ -119,6 +119,6 @@ Next steps:
 
 **Guardrails**
 - Do not overwrite an existing config without user confirmation
-- Write a thin project config with `schema`, `context`, and scaffolded `rules` keys (one per schema blueprint) — schema defaults live in the `defaults` section of `schema.yaml`
+- Write a thin project config with `schema`, `context`, and scaffolded `overrides` keys (one per schema blueprint) — schema defaults live in the `defaults` section of `schema.yaml`
 - Populate `.specify/.cache/` with the full schema so downstream skills resolve from cache
 - If schema resolution fails, stop and report the error rather than creating a config with unknown schema content
