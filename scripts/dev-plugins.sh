@@ -6,29 +6,11 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PLUGINS_DIR="$HOME/.cursor/plugins"
-MARKETPLACES_DIR="$PLUGINS_DIR/marketplaces"
+SPECIFY_DIR="$HOME/.cursor/plugins/marketplaces/github.com/augentic/specify"
 
-# get all augentic-* directories in the marketplaces directory
-shopt -s nullglob
-dirs=("$MARKETPLACES_DIR"/augentic-*/)
-shopt -u nullglob
-
-# if there are no augentic-* directories, create a local directory
-if [ ${#dirs[@]} -eq 0 ]; then
-  mkdir -p "$MARKETPLACES_DIR/augentic-local"
-  dirs=("$MARKETPLACES_DIR/augentic-local/")
-fi
-
-# symlink this repo to each augentic-*/main
-for dir in "${dirs[@]}"; do
-  rm -rf "$dir/main"
-  ln -sfn "$REPO_ROOT" "$dir/main"
-done
-
-# clear the cache
-rm -rf "$PLUGINS_DIR/cache/augentic"
+rm -rf "$SPECIFY_DIR"/*
+mkdir -p "$SPECIFY_DIR"
+ln -sfn "$REPO_ROOT" "$SPECIFY_DIR/local"
 
 echo ""
 echo "Reload Cursor (or restart) to pick up local plugins."
-
