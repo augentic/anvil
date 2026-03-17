@@ -12,5 +12,8 @@ rm -rf "$SPECIFY_DIR"/*
 mkdir -p "$SPECIFY_DIR"
 ln -sfn "$REPO_ROOT" "$SPECIFY_DIR/local"
 
+# clear cache
+rm -rf "$HOME/.cursor/plugins/cache/augentic"
+
 echo ""
 echo "Reload Cursor (or restart) to pick up local plugins."

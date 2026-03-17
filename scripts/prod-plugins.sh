@@ -5,9 +5,10 @@
 
 set -euo pipefail
 
-SPECIFY_DIR="$HOME/.cursor/plugins/marketplaces/github.com/augentic/specify"
+PLUGINS_DIR="$HOME/.cursor/plugins"
 
-rm -rf "$SPECIFY_DIR"/*
+rm -rf "$PLUGINS_DIR"/marketplaces/github.com/augentic/specify/local
+rm -rf "$PLUGINS_DIR"/cache/augentic
 
 echo ""
 echo "Reload Cursor (or restart) to pick up production plugins."
