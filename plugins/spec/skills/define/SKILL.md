@@ -41,10 +41,10 @@ The user's request should include a change name (kebab-case) OR a description of
    - Read `.specify/config.yaml` to get:
      - `schema`: the schema value. Default to `omnia` if not found.
      - `context`: Project-level context override (may be empty or a placeholder)
-     - `rules`: Per-artifact rule overrides (constraints for you - do NOT include in artifact output)
+     - `overrides`: Per-artifact rule overrides (constraints for you - do NOT include in artifact output)
    - **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `instructions/*`.
    - Read `schema.yaml` from the resolved schema directory. This defines the blueprint list, dependency graph, and file references. **All blueprint knowledge comes from the schema** — do not assume fixed blueprint IDs or output paths.
-   - Read the `defaults` section from the resolved `schema.yaml` for default `context` and `rules`. **Resolve effective context**: use the project's `context` if present and non-empty (not just a comment placeholder), otherwise fall back to the schema's `defaults.context`. **Resolve effective rules** per blueprint: for each blueprint ID, use the project's `rules.<id>` if present and non-empty, otherwise fall back to the schema's `defaults.rules.<id>`. These are constraints for you — do NOT include them in artifact output.
+   - Read the `defaults` section from the resolved `schema.yaml` for default `context` and `rules`. **Resolve effective context**: use the project's `context` if present and non-empty (not just a comment placeholder), otherwise fall back to the schema's `defaults.context`. **Resolve effective rules** per blueprint: for each blueprint ID, use the project's `overrides.<id>` if present and non-empty, otherwise fall back to the schema's `defaults.rules.<id>`. These are constraints for you — do NOT include them in artifact output.
 
 4. **Check for regenerate mode**
 

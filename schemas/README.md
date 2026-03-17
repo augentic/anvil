@@ -98,7 +98,7 @@ override file — it does not exist in the schema directory.
 |-------|------|----------|-------------|
 | `schema` | string | yes | Schema URL or bare name (see Schema Resolution) |
 | `context` | string | no | Project-specific context override (tech stack, architecture, etc.) |
-| `rules` | object | no | Per-blueprint rule overrides keyed by blueprint `id` |
+| `overrides` | object | no | Per-blueprint rule overrides keyed by blueprint `id` |
 
 The project config is a thin overlay. Keys left empty or as placeholders
 fall back to the schema's `defaults` automatically.
@@ -186,16 +186,16 @@ schema: https://github.com/augentic/specify/schemas/omnia
 ```
 
 The `/spec:init` skill creates `.specify/config.yaml` with the `schema`
-value and scaffolded `context` and `rules` keys. Users customize these
+value and scaffolded `context` and `overrides` keys. Users customize these
 after initialization to override schema defaults.
 
-## Rules Override
+## Overrides
 
 The schema's `defaults.rules` section in `schema.yaml` provides default
 rules for each blueprint (e.g., `proposal`, `specs`, `design`, `tasks`).
 
 The override granularity is **per-blueprint key**. If the project's
-`.specify/config.yaml` defines a non-empty value for `rules.<blueprint-id>`,
+`.specify/config.yaml` defines a non-empty value for `overrides.<blueprint-id>`,
 that value replaces the schema default for that blueprint. Blueprint keys
 that are absent or empty in the project config fall back to the schema
 default automatically.
@@ -204,7 +204,7 @@ For example, to override the `specs` rules while keeping the schema
 defaults for all other blueprints:
 
 ```yaml
-rules:
+overrides:
   specs: |
     - Use GIVEN/WHEN/THEN format for scenarios
     - Include performance benchmarks in every scenario

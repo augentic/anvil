@@ -74,10 +74,10 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
    Write a thin project config to `.specify/config.yaml` with:
    - `schema`: set to `$SCHEMA` (the resolved schema value — bare name or URL)
    - `context`: set to the user's description if provided, otherwise a placeholder comment (`# Describe your project here`)
-   - `rules`: scaffold one key per blueprint defined in the resolved `schema.yaml` (read `blueprints[].id`). Each key is a YAML block scalar (`|`) containing a placeholder comment. For example, with the omnia schema the output is:
+   - `overrides`: scaffold one key per blueprint defined in the resolved `schema.yaml` (read `blueprints[].id`). Each key is a YAML block scalar (`|`) containing a placeholder comment. For example, with the omnia schema the output is:
 
      ```yaml
-     rules:
+     overrides:
        proposal: |
          # TODO: Add any proposal override rules here
        specs: |
@@ -99,7 +99,7 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
    Tell the user:
    - "Specify initialized. Config written to `.specify/config.yaml`."
    - "Edit the `context` field to describe your project's tech stack, architecture, and testing approach."
-   - "Fill in the scaffolded `rules` entries to override schema defaults for specific artifacts. To see the defaults, check the `defaults` section in `.specify/.cache/schema.yaml`."
+   - "Fill in the scaffolded `overrides` entries to override schema defaults for specific artifacts. To see the defaults, check the `defaults` section in `.specify/.cache/schema.yaml`."
    - "When ready, run `/spec:define` to start your first change."
 
 **Output**
