@@ -37,16 +37,6 @@ MyRequest::handler(input)?
     .map_err(Into::into)
 ```
 
-When using the `guest!` macro, `owner` is declared once at the top level:
-
-```rust
-omnia_sdk::guest!({
-    owner: "at",
-    provider: Provider,
-    // ...
-});
-```
-
 The owner value is determined by the organization or tenant that owns the Omnia deployment. It is typically a short string (e.g. `"at"`) and must be consistent across all handlers in a guest.
 
 ### Available Traits

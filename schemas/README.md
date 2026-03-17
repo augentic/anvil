@@ -1,8 +1,8 @@
 # Specify Schemas
 
 This directory contains the schema definitions for the Specify workflow. Each
-schema provides artifact declarations (`schema.yaml`), artifact instructions
-(`instructions/`), and a starter config (`config.yaml`).
+schema provides artifact declarations, default context and rules, and artifact
+instructions — all within `schema.yaml` and `instructions/`.
 
 ## Schemas
 
@@ -18,8 +18,7 @@ falls back to the parent directory for missing files).
 
 ```text
 schemas/<name>/
-├── schema.yaml      # Blueprint declarations, terminology, build config
-├── config.yaml      # Starter config installed by /spec:init
+├── schema.yaml      # Blueprint declarations, terminology, build config, defaults
 └── instructions/    # Detailed instructions for each blueprint and build
     ├── proposal.md
     ├── specs.md
@@ -34,18 +33,14 @@ via fallback.
 
 - `**schema.yaml**`: Declares blueprints (id, instructions file path,
 dependencies, validation rules), `terminology` (the `deliverable` name,
-e.g., "crate"), and the `build` configuration.
-Child schemas may use `extends` to inherit from a parent and only override
-what differs. Skills read this to know how to generate blueprints and
-implement tasks.
+e.g., "crate"), the `build` configuration, and `defaults` (default
+`context` and per-blueprint `rules`). Child schemas may use `extends` to
+inherit from a parent and only override what differs. Skills read this to
+know how to generate blueprints and implement tasks.
 - `**instructions/**`: One markdown file per blueprint plus `build.md`.
 Contains the detailed generation or implementation instructions including
 output structure. Referenced by file path from `schema.yaml`'s
 `instructions` field.
-- `**config.yaml**`: Installed into `.specify/config.yaml` by `/spec:init`.
-Contains the `schema` URL, default `context`, and default per-blueprint
-`rules`. The project copy can override individual blueprint keys (see
-Rules Override below).
 
 ## Schema File Reference
 
@@ -62,6 +57,7 @@ Rules Override below).
 | `blueprints` | array | yes | Ordered list of blueprint declarations |
 | `validation` | object | no | Cross-blueprint boolean validation flags (keys are rule names, values are booleans) |
 | `build` | object | yes | Build-phase configuration |
+| `defaults` | object | no | Default context and per-blueprint rules (see Defaults below) |
 
 **Blueprint object fields:**
 
@@ -82,19 +78,30 @@ Rules Override below).
 | `tracks` | string | yes | File that tracks build progress (e.g., `tasks.md`) |
 | `instructions` | string | yes | Relative path to the build instructions markdown file |
 
-### `config.yaml`
+**Defaults object fields:**
 
-Installed into `.specify/config.yaml` by `/spec:init`. The project copy
-can override individual keys after initialization.
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `defaults.context` | string | no | Default project context (tech stack, architecture, testing approach) |
+| `defaults.rules` | object | no | Default per-blueprint generation rules keyed by blueprint `id` |
+
+Each key under `defaults.rules` is a blueprint `id` whose value is a
+multi-line string of generation rules. See Rules Override below for
+merge semantics.
+
+### Project Config (`.specify/config.yaml`)
+
+Created by `/spec:init` in the project directory. This is the project-level
+override file — it does not exist in the schema directory.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `schema` | string | yes | Schema URL or bare name (see Schema Resolution) |
-| `context` | string | yes | Multi-line project context block (tech stack, architecture, etc.) |
+| `context` | string | no | Project-specific context override (tech stack, architecture, etc.) |
 | `rules` | object | no | Per-blueprint rule overrides keyed by blueprint `id` |
 
-Each key under `rules` is a blueprint `id` whose value is a multi-line
-string of generation rules. See Rules Override below for merge semantics.
+The project config is a thin overlay. Keys left empty or as placeholders
+fall back to the schema's `defaults` automatically.
 
 ## Schema Resolution
 
@@ -154,7 +161,6 @@ level in `.specify/.cache/`:
 .specify/.cache/
 ├── .cache-meta.yaml     # schema_url + fetched_at
 ├── schema.yaml
-├── config.yaml          (if fetched)
 └── instructions/        (if fetched)
     ├── proposal.md
     ├── specs.md
@@ -179,15 +185,14 @@ The active schema is defined in `.specify/config.yaml` as a URL:
 schema: https://github.com/augentic/specify/schemas/omnia
 ```
 
-The `/spec:init` skill installs the schema's `config.yaml` into
-`.specify/config.yaml`. Users customize `context` and `rules` after
-initialization.
+The `/spec:init` skill creates `.specify/config.yaml` with the `schema`
+value and scaffolded `context` and `rules` keys. Users customize these
+after initialization to override schema defaults.
 
 ## Rules Override
 
-The schema's `config.yaml` provides default `rules` for each blueprint
-(e.g., `proposal`, `specs`, `design`, `tasks`). When `/spec:init` installs
-the config, the project starts with these defaults.
+The schema's `defaults.rules` section in `schema.yaml` provides default
+rules for each blueprint (e.g., `proposal`, `specs`, `design`, `tasks`).
 
 The override granularity is **per-blueprint key**. If the project's
 `.specify/config.yaml` defines a non-empty value for `rules.<blueprint-id>`,
@@ -208,5 +213,5 @@ rules:
 Only `specs` is overridden; `proposal`, `design`, and `tasks` continue to
 use the schema defaults.
 
-Skills that consume rules (define, build) resolve the schema's
-`config.yaml` at runtime and apply this fallback per blueprint.
+Skills that consume rules (define, build) read the schema's
+`defaults.rules` at runtime and apply this fallback per blueprint.

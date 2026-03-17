@@ -10,8 +10,7 @@
 
 | File | Description |
 |------|-------------|
-| `schema.yaml` | Blueprint declarations, terminology (`deliverable: crate`), validation flags, and build config |
-| `config.yaml` | Starter config installed by `/spec:init` with Omnia-specific context and per-blueprint rules |
+| `schema.yaml` | Blueprint declarations, terminology (`deliverable: crate`), validation flags, build config, and defaults (context + per-blueprint rules) |
 | `instructions/proposal.md` | Generation instructions for the proposal blueprint |
 | `instructions/specs.md` | Generation instructions for the specs blueprint |
 | `instructions/design.md` | Generation instructions for the design blueprint |
@@ -32,5 +31,5 @@ Build requires tasks to be complete and is tracked via `tasks.md`.
 ## Schema Framework
 
 For general schema concepts — directory structure, field reference for
-`schema.yaml` and `config.yaml`, schema resolution, composition, caching,
-and rules override — see the [Schemas README](../README.md).
+`schema.yaml`, schema resolution, composition, caching, and rules
+override — see the [Schemas README](../README.md).

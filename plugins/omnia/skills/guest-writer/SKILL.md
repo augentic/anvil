@@ -29,7 +29,6 @@ The guest is a thin wrapper. It handles WASI/wasm32 boundary concerns such as HT
    - HTTP endpoints, messaging, and WebSocket → [Handlers](references/handlers.md)
    - Provider and runtime → [Providers](references/omnia/providers/README.md), [Runtime](references/omnia/runtime.md)
    - Dependencies, config templates, and CI/CD → [Configuration](references/configuration.md)
-   - Guest macro (optional) → [guest! Macro](references/handlers.md#guest-macro)
 
 2. **Verify all constraints and patterns** in the reference docs match your generated code
 
@@ -103,17 +102,13 @@ See [Configuration](references/configuration.md) for dependency patterns and ver
 
 ### Step 3: Generate src/lib.rs
 
-Generate the main guest module. Choose one approach:
-
-**Option A: Manual wiring** -- full control over HTTP routing, messaging dispatch, WebSocket handling, and handler invocation:
+Generate the main guest module with manual wiring for full control over HTTP routing, messaging dispatch, WebSocket handling, and handler invocation:
 
 1. **HTTP Guest** -- Axum router with routes using `{param}` syntax (Axum 0.8)
 2. **Messaging Guest** -- Topic dispatcher that returns `Err` for unhandled topics
 3. **WebSocket Guest** -- Event handler that delegates to domain crate handlers
 4. **Handler invocation** -- use the builder API: `Type::handler(input)?.provider(&provider).owner("owner").await`
 5. **Provider** -- trait implementations for WASI capabilities
-
-**Option B: `guest!` macro** -- declarative DSL that generates all wiring. See [Handlers](references/handlers.md#guest-macro) for syntax and the [Complete lib.rs Example](references/handlers.md#complete-librs-example) for both approaches side by side.
 
 **Owner**: every handler requires an `owner` string identifying the Omnia component owner (e.g. `"at"`). See [Providers](references/omnia/providers/README.md#owner) for details.
 
@@ -172,7 +167,7 @@ See [Configuration](references/configuration.md) for all templates and post-gene
 Detailed guidance and specifications are available in `references/`:
 
 - **[Project structure](references/project.md)** - Directory layout and file organization
-- **[Handlers](references/handlers.md)** - HTTP routing, message subscriptions, WebSocket events, lib.rs wiring, and `guest!` macro
+- **[Handlers](references/handlers.md)** - HTTP routing, message subscriptions, WebSocket events, and lib.rs wiring
 - **[Providers](references/omnia/providers/README.md)** - WASI capability provider patterns
 - **[Runtime](references/omnia/runtime.md)** - Local development runtime setup
 - **[Configuration](references/configuration.md)** - Cargo workspace, config templates, and GitHub workflows

@@ -76,14 +76,14 @@ ensure_env!(
 
 ### Owner
 
-Every handler invocation requires an `owner` parameter -- a hardcoded string identifying the Omnia component owner (e.g. `"at"`). When using the `guest!` macro, `owner` is declared once at the top level:
+Every handler invocation requires an `owner` parameter -- a hardcoded string identifying the Omnia component owner (e.g. `"at"`). The owner is specified in the builder chain:
 
 ```rust
-omnia_sdk::guest!({
-    owner: "at",
-    provider: Provider,
-    // ...
-});
+MyRequest::handler(input)?
+    .provider(&Provider::new())
+    .owner("at")
+    .await
+    .map_err(Into::into)
 ```
 
 ---

@@ -113,10 +113,7 @@ interface SchemaYaml {
   validation?: Record<string, boolean>;
   blueprints: { id: string; requires: string[]; instructions?: string }[];
   build: { requires: string[]; instructions?: string };
-}
-
-interface ConfigYaml {
-  rules?: Record<string, string>;
+  defaults?: { context?: string; rules?: Record<string, string> };
 }
 
 async function validateSchemaYaml(): Promise<void> {
@@ -125,12 +122,8 @@ async function validateSchemaYaml(): Promise<void> {
   const schemaSchema = JSON.parse(
     await Deno.readTextFile(join(SCHEMA_DIR, "schema.schema.json")),
   );
-  const configSchema = JSON.parse(
-    await Deno.readTextFile(join(SCHEMA_DIR, "config.schema.json")),
-  );
 
   const validateSchema = ajv.compile(schemaSchema);
-  const validateConfig = ajv.compile(configSchema);
 
   for await (const entry of walk(SCHEMA_DIR, {
     maxDepth: 2,
@@ -145,25 +138,11 @@ async function validateSchemaYaml(): Promise<void> {
       }
     }
   }
-
-  for await (const entry of walk(SCHEMA_DIR, {
-    maxDepth: 2,
-    includeDirs: false,
-    match: [/config\.yaml$/],
-  })) {
-    const rel = relative(REPO_ROOT, entry.path);
-    const data = parseYaml(await Deno.readTextFile(entry.path));
-    if (!validateConfig(data)) {
-      for (const err of validateConfig.errors ?? []) {
-        fail(`Config validation failed: ${rel} — ${err.instancePath} ${err.message}`);
-      }
-    }
-  }
 }
 
 // ──────────────────────────────────────────────────────────────
 // 4. Schema referential integrity
-//    (blueprint requires, instructions paths, config rule keys)
+//    (blueprint requires, instructions paths, defaults.rules keys)
 // ──────────────────────────────────────────────────────────────
 
 async function checkSchemaIntegrity(): Promise<void> {
@@ -254,20 +233,12 @@ async function checkSchemaIntegrity(): Promise<void> {
       }
     }
 
-    const configPath = join(dirPath, "config.yaml");
-    try {
-      const config = parseYaml(
-        await Deno.readTextFile(configPath),
-      ) as ConfigYaml;
-      for (const key of Object.keys(config.rules ?? {})) {
-        if (!ids.has(key)) {
-          fail(
-            `Schema integrity: ${name}/config.yaml: rule key '${key}' does not match any blueprint id`,
-          );
-        }
+    for (const key of Object.keys(schema.defaults?.rules ?? {})) {
+      if (!ids.has(key)) {
+        fail(
+          `Schema integrity: ${name}/schema.yaml: defaults.rules key '${key}' does not match any blueprint id`,
+        );
       }
-    } catch {
-      // config.yaml doesn't exist — that's fine
     }
   }
 }

@@ -5,7 +5,7 @@ Skills resolve the `schema` field from `.specify/config.yaml` (or `.metadata.yam
 ## Inputs
 
 - **`$SCHEMA_VALUE`**: the `schema` field value (a name or URL)
-- **`$FILES_NEEDED`**: which files the calling skill requires (e.g., `schema.yaml`, `config.yaml`, `instructions/*`)
+- **`$FILES_NEEDED`**: which files the calling skill requires (e.g., `schema.yaml`, `instructions/*`)
 
 ## URL Format
 
@@ -101,7 +101,6 @@ When no `@ref` is present, `main` is used as the default ref.
    .specify/.cache/
    ├── .cache-meta.yaml
    ├── schema.yaml
-   ├── config.yaml          (if fetched)
    └── instructions/        (if fetched)
        ├── proposal.md
        ├── specs.md
@@ -140,6 +139,10 @@ merges the child on top.
 - **`build`**: child `requires` replaces parent `requires`; child
   `instructions` replaces parent `instructions`; child `tracks` replaces
   parent `tracks`. Omitted fields inherit from parent.
+- **`defaults`**: child `defaults.context` replaces parent if present;
+  child `defaults.rules` merges per blueprint key (child overrides parent
+  for matching keys, parent provides the rest). If `defaults` is omitted
+  entirely, inherits the parent's `defaults`.
 - **`instructions/`**: resolve from the child schema directory first;
   fall back to the parent schema directory for any files not present in
   the child.
@@ -189,13 +192,13 @@ across machines and branches.
 
 ## What Each Skill Needs
 
-| Skill   | Files needed                                          |
-|---------|-------------------------------------------------------|
-| init    | `schema.yaml`, `config.yaml`, `instructions/*`        |
-| define  | `schema.yaml`, `config.yaml`, `instructions/*`        |
-| build   | `schema.yaml`, `config.yaml`, `instructions/build.md` |
-| merge   | `schema.yaml`                                         |
-| drop    | `schema.yaml`                                         |
-| verify  | `schema.yaml`                                         |
-| explore | `schema.yaml`                                         |
-| status  | `schema.yaml`                                         |
+| Skill   | Files needed                              |
+|---------|-------------------------------------------|
+| init    | `schema.yaml`, `instructions/*`           |
+| define  | `schema.yaml`, `instructions/*`           |
+| build   | `schema.yaml`, `instructions/build.md`    |
+| merge   | `schema.yaml`                             |
+| drop    | `schema.yaml`                             |
+| verify  | `schema.yaml`                             |
+| explore | `schema.yaml`                             |
+| status  | `schema.yaml`                             |

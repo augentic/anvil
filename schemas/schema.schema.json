@@ -65,6 +65,22 @@
           "description": "Relative path to the build instructions markdown file."
         }
       }
+    },
+    "defaults": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Default context and per-blueprint rules. Projects override these via .specify/config.yaml.",
+      "properties": {
+        "context": {
+          "type": "string",
+          "description": "Default project context (tech stack, architecture, testing approach)."
+        },
+        "rules": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Default per-blueprint generation rules keyed by blueprint id."
+        }
+      }
     }
   },
   "$defs": {

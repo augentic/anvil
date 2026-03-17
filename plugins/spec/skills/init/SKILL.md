@@ -34,7 +34,7 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
 
    Store the result as `$SCHEMA`.
 
-   Resolve `$SCHEMA` using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `config.yaml`, `instructions/*`.
+   Resolve `$SCHEMA` using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `instructions/*`.
 
 3. **Create directory structure**
 
@@ -55,7 +55,6 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
    .specify/.cache/
    ├── .cache-meta.yaml
    ├── schema.yaml
-   ├── config.yaml
    └── instructions/
        ├── proposal.md
        ├── specs.md
@@ -89,9 +88,9 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
          # TODO: Add any tasks override rules here
      ```
 
-     These are overrides only — schema defaults from `.specify/.cache/config.yaml` still apply for any key left as a placeholder.
+     These are overrides only — schema defaults from the `defaults` section in `.specify/.cache/schema.yaml` still apply for any key left as a placeholder.
 
-   Do NOT copy the schema's `config.yaml` wholesale. The project config is a thin overlay; schema defaults live in the cache.
+   Do NOT copy the schema's defaults wholesale. The project config is a thin overlay; schema defaults live in `schema.yaml`.
 
    If schema resolution failed (no matching directory, fetch error), warn the user and stop — a valid schema is required.
 
@@ -100,7 +99,7 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
    Tell the user:
    - "Specify initialized. Config written to `.specify/config.yaml`."
    - "Edit the `context` field to describe your project's tech stack, architecture, and testing approach."
-   - "Fill in the scaffolded `rules` entries to override schema defaults for specific artifacts. To see the defaults, check `.specify/.cache/config.yaml`."
+   - "Fill in the scaffolded `rules` entries to override schema defaults for specific artifacts. To see the defaults, check the `defaults` section in `.specify/.cache/schema.yaml`."
    - "When ready, run `/spec:define` to start your first change."
 
 **Output**
@@ -120,6 +119,6 @@ Next steps:
 
 **Guardrails**
 - Do not overwrite an existing config without user confirmation
-- Write a thin project config with `schema`, `context`, and scaffolded `rules` keys (one per schema blueprint) — schema defaults live in `.specify/.cache/config.yaml`
+- Write a thin project config with `schema`, `context`, and scaffolded `rules` keys (one per schema blueprint) — schema defaults live in the `defaults` section of `schema.yaml`
 - Populate `.specify/.cache/` with the full schema so downstream skills resolve from cache
 - If schema resolution fails, stop and report the error rather than creating a config with unknown schema content

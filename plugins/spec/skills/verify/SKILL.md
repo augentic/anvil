@@ -44,7 +44,7 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
 
    For each capability with a source directory, analyze the source code to build a current-state requirement inventory:
 
-   a. Read the source files. Check the schema's `context` field (from the resolved `config.yaml`) for tech-stack hints to narrow file extensions (e.g., `.rs` for the omnia schema). Fall back to common extensions (`.rs`, `.ts`, `.js`, `.go`, `.py`) when the context does not specify a language.
+   a. Read the source files. Check the schema's `defaults.context` field (from the resolved `schema.yaml`) for tech-stack hints to narrow file extensions (e.g., `.rs` for the omnia schema). Fall back to common extensions (`.rs`, `.ts`, `.js`, `.go`, `.py`) when the context does not specify a language.
    b. Identify distinct behaviors: handlers, business rules, validation logic, error handling, external calls
    c. For each identified behavior, note:
       - A brief description of what the code does

@@ -26,9 +26,9 @@ Implement tasks from a Specify change.
 
    Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status.
 
-   **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `config.yaml`, `instructions/build.md`. Read `schema.yaml` and `config.yaml` from the resolved location.
+   **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `instructions/build.md`. Read `schema.yaml` from the resolved location.
 
-   **Resolve effective context**: use the project's `context` (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's `context` (from the resolved `config.yaml`). **Resolve effective rules**: for each blueprint ID under `rules`, use the project's value (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's value (from the resolved `config.yaml`). Use effective context and effective rules as constraints guiding your implementation -- do not copy them into code comments.
+   **Resolve effective context**: use the project's `context` (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's `defaults.context` (from the resolved `schema.yaml`). **Resolve effective rules**: for each blueprint ID under `rules`, use the project's value (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's `defaults.rules` value (from the resolved `schema.yaml`). Use effective context and effective rules as constraints guiding your implementation -- do not copy them into code comments.
 
 3. **Check lifecycle status**
 

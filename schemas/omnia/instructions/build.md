@@ -31,7 +31,7 @@ to the next skill.
 
 Run the verify-repair loop described below.
 
-### Phase 3: Review (optional)
+### Phase 3: Review
 
 4. /omnia:code-reviewer -- AI code review
 
@@ -71,7 +71,7 @@ includes a regression check: compare post-test results against the
 baseline captured in Step 0. See "Repair discipline" for how to
 distinguish true regressions from expected behavioral changes.
 
-### Phase 3: Review (optional)
+### Phase 3: Review
 
 3. /omnia:code-reviewer -- AI code review
 
