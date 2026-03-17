@@ -6,11 +6,13 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-PLUGINS_DIR="$HOME/.cursor/plugins"
 SPECIFY_DIR="$HOME/.cursor/plugins/marketplaces/github.com/augentic/specify"
 
+rm -f "$SPECIFY_DIR/local"
+
+rm -rf "$SPECIFY_DIR"/*
 mkdir -p "$SPECIFY_DIR"
-rm -rf "$SPECIFY_DIR"/*/
+
 ln -sfn "$REPO_ROOT" "$SPECIFY_DIR/local"
 
 # clear the cache
