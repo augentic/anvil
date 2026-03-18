@@ -2,7 +2,7 @@
 
 ## Cursor Cloud specific instructions
 
-This is a **documentation/prompt-engineering repository**. The codebase consists of markdown skill definitions, reference docs, templates, and shell scripts. Generated Rust crates appear in downstream projects, not in this repository itself.
+This is a **documentation/prompt-engineering repository**. The codebase consists of markdown skill definitions, reference docs, templates, and shell scripts. Generated Rust crates and Swift shells appear in downstream projects, not in this repository itself.
 
 ### Workflow overview
 

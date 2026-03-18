@@ -1,0 +1,78 @@
+---
+description: Vectis plugin context -- Crux cross-platform application generation, iOS shell development, and design system management
+alwaysApply: true
+---
+
+# Vectis Plugin - Crux Cross-Platform Development
+
+## Overview
+
+This plugin generates cross-platform applications using the Crux framework (Rust), SwiftUI iOS shells, and the VectisDesign token system. Requirements come from Specify artifacts (specs + design.md); this plugin handles code generation, testing, and review.
+
+**Purpose**: Generate, test, and review Crux applications from structured Specify artifacts.
+
+## Plugin Architecture
+
+```
+/plugins/vectis/
+├── .cursor-plugin/
+│   └── plugin.json          # Plugin manifest
+├── rules/
+│   └── vectis.mdc           # This file
+├── references/              # Shared references
+└── skills/
+    ├── core-writer/          # Specify artifacts → Rust Crux shared crate
+    ├── core-reviewer/        # AI-powered code review for Crux core
+    ├── ios-writer/           # Crux core → SwiftUI iOS shell
+    ├── ios-reviewer/         # AI-powered code review for iOS shell
+    └── design-system-writer/ # tokens.yaml → VectisDesign Swift package
+```
+
+Each skill has its own SKILL.md with full details. The Specify artifact format (specs + design.md) is described in [specify.md](../../references/specify.md).
+
+## Common Patterns
+
+### New Crux Application
+
+A full-stack Crux app involves three modules: a core module (Rust shared crate with all business logic), an iOS shell module (SwiftUI views + Core.swift bridge), and optionally a design-system module (VectisDesign tokens). The core must be generated before the iOS shell.
+
+### Core Update
+
+Specify artifacts with updated feature specs and design generate: modified Event variants, updated `update()` match arms, changed view model types, and updated tests.
+
+### iOS Shell Update
+
+When the core types change (new ViewModel variants, new Event variants), the iOS shell must be updated: new screen views, updated ContentView switch, modified effect handlers.
+
+### Design System Update
+
+Token changes in `tokens.yaml` trigger regeneration of Swift enums (VectisColors, VectisTypography, VectisSpacing, VectisCornerRadius) and `Theme.swift`.
+
+## Troubleshooting
+
+### Generated Core Incomplete
+
+- Are specs complete with requirements and scenarios?
+- Does design.md include the full Crux type system (Model, Event, ViewModel, Effect)?
+- Are capabilities explicitly listed in the design?
+
+### iOS Shell Build Fails
+
+- Does the core module exist with `shared/src/app.rs`?
+- Is `uniffi` pinned to `"=0.29.4"` in `shared/Cargo.toml`?
+- Is `facet` pinned to `"=0.31"`?
+
+### Tests Don't Match Expected Behavior
+
+- Are spec scenarios accurate?
+- Were requirements changed after generation?
+
+## Related Documentation
+
+- See project rule (`.cursor/rules/project.mdc`) for overall project context
+- [Core Writer SKILL.md](../skills/core-writer/SKILL.md) - Crux core generation
+- [Core Reviewer SKILL.md](../skills/core-reviewer/SKILL.md) - Crux core code review
+- [iOS Writer SKILL.md](../skills/ios-writer/SKILL.md) - iOS shell generation
+- [iOS Reviewer SKILL.md](../skills/ios-reviewer/SKILL.md) - iOS shell code review
+- [Design System Writer SKILL.md](../skills/design-system-writer/SKILL.md) - Design token generation
+- [Specify Artifact Specification](../../references/specify.md) - Artifact format details

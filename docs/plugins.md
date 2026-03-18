@@ -1,6 +1,6 @@
 # Plugins
 
-Specify ships as a [Cursor plugin marketplace](https://cursor.com/docs/reference/plugins) containing four plugins. Each plugin provides specialist skills namespaced by domain. Plugins also expose [MCP](https://cursor.com/docs/mcp) tool servers for programmatic integration.
+Specify ships as a [Cursor plugin marketplace](https://cursor.com/docs/reference/plugins) containing five plugins. Each plugin provides specialist skills namespaced by domain. Plugins also expose [MCP](https://cursor.com/docs/mcp) tool servers for programmatic integration.
 
 ## Specify (`plugins/spec/`)
 
@@ -23,6 +23,16 @@ Generate and review Rust WASM crates targeting the Omnia runtime.
 - **test-writer** -- Generate or update test suites from Specify artifacts and crate code
 - **guest-writer** -- Generate the WASM guest wrapper
 - **code-reviewer** -- Review generated code for correctness and Omnia/WASM compliance
+
+## Vectis (`plugins/vectis/`)
+
+Generate cross-platform Crux applications: Rust shared core, SwiftUI iOS shell, and VectisDesign token system.
+
+- **core-writer** -- Generate or update Rust Crux shared crates from Specify artifacts
+- **core-reviewer** -- Review generated Crux core for structural, logic, and quality issues
+- **ios-writer** -- Generate or update SwiftUI iOS shells for Crux applications
+- **ios-reviewer** -- Review generated iOS shells for structural and quality issues
+- **design-system-writer** -- Generate VectisDesign Swift package from tokens.yaml
 
 ## RT (`plugins/rt/`)
 
@@ -54,7 +64,7 @@ Specify manages changes as a set of interdependent artifacts stored in `.specify
 The workflow is:
 
 1. **Define** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by JIRA epics (`/plan:epic-analyzer`) or TypeScript source analysis (`/rt:code-analyzer`).
-2. **Build** -- Validate artifacts for completeness and cross-blueprint consistency, then implement each task. Specialist skills (crate-writer, test-writer, guest-writer) generate code from the artifacts.
+2. **Build** -- Validate artifacts for completeness and cross-blueprint consistency, then implement each task. Specialist skills (crate-writer, test-writer, guest-writer, core-writer, ios-writer) generate code from the artifacts.
 3. **Merge** -- Merge the change's specs into your project's baseline at `.specify/specs/` and move the change to the archive.
 
 Baseline specs accumulate over time, giving future changes a foundation to build on. Use `/spec:verify` at any point to detect drift between your code and the baseline.

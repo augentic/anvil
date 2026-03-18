@@ -1,0 +1,127 @@
+# yaml-language-server: $schema=../schema.schema.json
+name: vectis
+version: 1
+description: Vectis workflow
+
+terminology:
+  deliverable: module
+
+blueprints:
+  - id: proposal
+    generates: proposal.md
+    description: Initial proposal document
+    instructions: instructions/proposal.md
+    requires: []
+    validate:
+      - Has a Why section with at least one sentence
+      - Has a Source section identifying Manual as the source
+      - Has a Modules section listing at least one new or modified module
+      - Module names are kebab-case
+      - Each module identifies its type (core, ios-shell, or design-system)
+
+  - id: specs
+    generates: specs/**/*.md
+    description: Detailed specifications for the change
+    instructions: instructions/specs.md
+    requires:
+      - proposal
+    validate:
+      - Every requirement has at least one scenario
+      - Every requirement includes a stable ID line immediately after the
+        heading
+      - Requirement IDs use the REQ-XXX format and stay stable when behavior is
+        modified or renamed
+      - Uses SHALL/MUST language for normative requirements (not should/may)
+      - Requirements use the flat baseline format with top-level requirement
+        headings
+      - Every scenario uses WHEN/THEN format
+
+  - id: design
+    generates: design.md
+    description: Technical design document with implementation details
+    instructions: instructions/design.md
+    requires:
+      - proposal
+    validate:
+      - Has a Context section
+      - Has a Domain Model section (or explicitly states none needed)
+      - Has a Capabilities section listing Crux capabilities used
+
+  - id: tasks
+    generates: tasks.md
+    description: Implementation checklist with trackable tasks
+    instructions: instructions/tasks.md
+    requires:
+      - specs
+      - design
+    validate:
+      - Every task uses checkbox format (- [ ] X.Y description)
+      - Tasks are grouped under numbered headings
+      - At least one task exists
+
+validation:
+  proposal-modules-have-specs: true
+  design-references-valid: true
+  spec-format-valid: true
+
+build:
+  requires:
+    - tasks
+  tracks: tasks.md
+  instructions: instructions/build.md
+
+defaults:
+  context: |
+    Tech stack: Rust (Crux 0.17), Swift 6 (SwiftUI, iOS 17+), VectisDesign tokens
+    Architecture: Crux App trait with Model, Event, ViewModel, Effect, Command
+    Testing: Rust integration tests (cargo test), Xcode build verification (make build)
+  rules:
+    proposal: |
+      - Source is always Manual for Crux projects.
+      - Use module names. For modified modules, use the existing spec folder
+        name from .specify/specs/. For new modules, choose a descriptive
+        kebab-case name.
+      - Identify the module type: core (Rust shared crate), ios-shell
+        (SwiftUI shell), or design-system (token generation).
+    specs: |
+      - Use WHEN/THEN format for scenarios
+      - Reference existing patterns before inventing new ones
+      - Organize baseline specs as flat requirement blocks using
+        ### Requirement: <name> plus ID: REQ-XXX and #### Scenario: <name>
+        entries
+      - Use an optional ## Purpose preamble plus optional ## Error Conditions
+        and ## Metrics sections for shared context
+      - For update changes use top-level ADDED/MODIFIED/REMOVED/RENAMED
+        delta-operation sections keyed by stable requirement IDs
+      - For core modules, map Features to requirements with scenarios and
+        Business Rules to requirements with validation scenarios
+      - For ios-shell modules, capture platform-specific behavioral
+        requirements (navigation, gestures, accessibility)
+      - For design-system modules, capture token change requirements
+    design: |
+      - Include Context section identifying the module types in scope
+      - For core modules, document the Crux type system: App struct name,
+        Model fields, Event variants (shell-facing and internal), ViewModel
+        enum, Page enum, Route enum, Effect enum, per-page view structs
+      - Document Capabilities table (Render, HTTP, KV, Time, SSE, Platform)
+        with Yes/No and details
+      - Document API contracts with method, URL, request/response shapes
+      - For ios-shell modules, document navigation style, screen
+        customizations, platform features, design system overrides
+      - For design-system modules, document token categories, value shapes,
+        and downstream consumers
+      - Include Implementation Constraints: Crux 0.17.0-rc3, facet 0.31,
+        uniffi 0.29.4, Swift 6, iOS 17+
+      - Use mermaid diagrams for type relationships and navigation flows
+    tasks: |
+      - For greenfield core modules (no existing shared/src/app.rs), structure
+        tasks around the create-mode skill chain: 1) core-writer,
+        2) verification, 3) core-reviewer. Do not list individual Rust code
+        changes — the skill handles file-level generation.
+      - For brownfield core modules (existing app.rs), structure tasks around
+        the specific behavioral changes from the specs. core-writer handles
+        code modifications.
+      - For ios-shell modules, structure tasks: 1) build infrastructure
+        (cargo xcode), 2) ios-writer, 3) build verification, 4) ios-reviewer.
+      - For design-system modules, structure tasks: 1) design-system-writer,
+        2) swift build verification, 3) downstream impact check.

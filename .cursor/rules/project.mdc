@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Augentic Plugins - Specify Specialist Skills
 
-This repository provides specialist skills and references for Specify-driven Rust WASM development on Augentic's Omnia runtime.
+This repository provides specialist skills and references for Specify-driven development on Augentic's Omnia runtime and Crux cross-platform framework.
 
 ## Operating Model
 
@@ -26,6 +26,7 @@ Specify owns the workflow contract. This repository contributes specialist analy
 
 1. **TypeScript → Rust WASM**: reconstruct baseline specs and design from an existing service.
 2. **JIRA → Rust WASM**: derive proposal, specs, and design context from epics and stories.
+3. **Manual → Crux App**: generate cross-platform Crux applications (Rust core, iOS shell, design system).
 
 ## Authority Hierarchy
 
@@ -77,6 +78,14 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `replay-writer` - add regression tests from captured fixtures
 - `wiretapper` - capture fixture data from legacy services
 
+### Vectis Plugin (`plugins/vectis/`)
+
+- `core-writer` - generate or update Rust Crux shared crates
+- `core-reviewer` - review Crux core for structural and logic issues
+- `ios-writer` - generate or update SwiftUI iOS shells
+- `ios-reviewer` - review iOS shells for structural and quality issues
+- `design-system-writer` - generate VectisDesign Swift package from tokens
+
 ### Plan Plugin (`plugins/plan/`)
 
 - `epic-analyzer` - derive proposal/specs/design context from JIRA
@@ -96,9 +105,11 @@ See [docs/architecture.md](docs/architecture.md) for the full repository structu
   │   └── references/     # Artifact templates and schema resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
+  ├── vectis/             # Vectis Crux development plugin
+  │   └── references/     # Crux patterns, design system references
   ├── rt/                 # RT migration plugin
   └── plan/               # Plan requirements analysis plugin
-/schemas/                 # Schema definitions
+/schemas/                 # Schema definitions (omnia, vectis)
 /scripts/                 # Validation and plugin management
 ```
 
@@ -168,4 +179,5 @@ In this repository:
 - Review `plugins/references/specify.md`
 - Review the relevant `SKILL.md`
 - Review `plugins/omnia/references/`
+- Review `plugins/vectis/references/`
 - Open an issue for bugs or enhancement requests

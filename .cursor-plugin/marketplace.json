@@ -26,6 +26,11 @@
       "description": "Skills to derive proposals, specs, design, and SoW from requirements."
     },
     {
+      "name": "vectis",
+      "source": "vectis",
+      "description": "Skills to generate cross-platform Crux applications (Rust core, iOS shell, design system)."
+    },
+    {
       "name": "spec",
       "source": "spec",
       "description": "Skills for Specify workflow orchestration: define, build, merge, drop, and explore."

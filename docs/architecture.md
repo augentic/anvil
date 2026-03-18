@@ -19,6 +19,9 @@ specify/
 │   │   ├── skills/               # Code generation skills (crate-writer, test-writer, ...)
 │   │   ├── references/           # Guardrails, providers, guest wiring patterns
 │   │   └── mcp.json
+│   ├── vectis/                   # Vectis Crux development plugin
+│   │   ├── skills/               # Crux skills (core-writer, ios-writer, ...)
+│   │   └── references/           # Crux patterns, design system references
 │   ├── rt/                       # RT migration plugin
 │   │   ├── skills/               # Migration skills (code-analyzer, replay-writer, ...)
 │   │   └── mcp.json
@@ -26,7 +29,8 @@ specify/
 │       ├── skills/               # Planning skills (epic-analyzer, sow-writer)
 │       └── mcp.json
 ├── schemas/                      # Schema definitions
-│   └── omnia/                    # Greenfield Rust WASM schema
+│   ├── omnia/                    # Greenfield Rust WASM schema
+│   └── vectis/                   # Cross-platform Crux application schema
 └── scripts/                      # Validation and plugin management
     ├── checks.ts                 # Documentation and consistency checks
     ├── dev-plugins.sh            # Symlink local plugins for development
@@ -42,7 +46,7 @@ Specify artifacts have separate responsibilities:
 - **`design.md`** -- Domain model, APIs, integrations, configuration, technical logic
 - **`tasks.md`** -- Implementation sequencing only
 
-Behavioral specs should remain platform-neutral. Omnia trait selection, guest wiring, and WASM translation belong in specialist skills and references.
+Behavioral specs should remain platform-neutral. Omnia trait selection, guest wiring, WASM translation, and Crux type system design belong in specialist skills and references.
 
 ## File Locations
 
