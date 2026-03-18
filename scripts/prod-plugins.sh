@@ -7,7 +7,7 @@ set -euo pipefail
 
 PLUGINS_DIR="$HOME/.cursor/plugins"
 
-rm -rf "$PLUGINS_DIR"/marketplaces/github.com/augentic/specify/local
+rm -rf "$PLUGINS_DIR"/marketplaces/github.com/augentic/specify/*
 rm -rf "$PLUGINS_DIR"/cache/augentic
 
 echo ""
