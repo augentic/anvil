@@ -5,6 +5,8 @@ Arguments (used by all skills):
 - CHANGE_ID: the name of this change (from specify status)
 - MODULE_NAME: the spec folder name (specs/<module>/spec.md)
 - PROJECT_DIR: the target project directory
+- IOS_SHELL_DIR: the root directory of the iOS shell project (e.g. `$PROJECT_DIR/ios`)
+- APP_NAME: the Xcode target / Swift source folder name (e.g. `MyApp`)
 
 ## Module type detection
 
@@ -186,13 +188,13 @@ and escalate for guidance.
 ### 1. Format
 
 ```bash
-swiftformat {ios-shell-dir}/{AppName}/
+swiftformat $IOS_SHELL_DIR/$APP_NAME/
 ```
 
 ### 2. Build
 
 ```bash
-cd {ios-shell-dir} && make build
+cd $IOS_SHELL_DIR && make build
 ```
 
 If fails: fix the issue and re-run.
@@ -200,7 +202,7 @@ If fails: fix the issue and re-run.
 ### 3. Simulator build
 
 ```bash
-cd {ios-shell-dir} && make sim-build
+cd $IOS_SHELL_DIR && make sim-build
 ```
 
 If fails: fix the issue and re-run.
