@@ -72,7 +72,7 @@ build:
 
 defaults:
   context: |
-    Tech stack: Rust (Crux 0.17), Swift 6 (SwiftUI, iOS 17+), VectisDesign tokens
+    Tech stack: Rust (Crux 0.17.0-rc3), Swift 6 (SwiftUI, iOS 17+), VectisDesign tokens
     Architecture: Crux App trait with Model, Event, ViewModel, Effect, Command
     Testing: Rust integration tests (cargo test), Xcode build verification (make build)
   rules:
