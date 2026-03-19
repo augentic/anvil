@@ -65,7 +65,7 @@ only -- `Theme.swift` is handled separately in step 4.
 **File naming rules:**
 
 - Convert the YAML key to PascalCase for the filename (e.g., `colors` ->
-  `Colors.swift`, `cornerRadius` -> `CornerRadius.swift`).
+  `Colors.swift`, `typography` -> `Typography.swift`).
 - Exception: `spacing` and `cornerRadius` are colocated in `Spacing.swift`
   as two separate enums (`VectisSpacing` and `VectisCornerRadius`). This
   matches the existing layout and avoids a file with only five entries.
