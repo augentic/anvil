@@ -10,8 +10,11 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SPECIFY_DIR="$HOME/.cursor/plugins/marketplaces/github.com/augentic/specify"
 CACHE_DIR="$HOME/.cursor/plugins/cache/augentic"
 
-# clear stale cache
-rm -rf "$CACHE_DIR"
+# Remove only local symlinks from previous runs; preserve hash-based entries
+# that Cursor created from the remote (needed to mirror unpublished plugins).
+if [ -d "$CACHE_DIR" ]; then
+  find "$CACHE_DIR" -maxdepth 2 -name local -type l -delete
+fi
 
 # remove whatever is at SPECIFY_DIR (symlink or directory) and create a fresh directory
 rm -rf "$SPECIFY_DIR"
@@ -53,6 +56,36 @@ for plugin in $PLUGINS; do
   fi
 done
 
+# Mirror hash-based entries for plugins not yet on the remote.
+# Cursor discovers skills only from hash-named directories, so unpublished
+# plugins need an entry at the same hash the remote uses.
+EXISTING_HASH=""
+for dir in "$CACHE_DIR"/*/; do
+  for entry in "$dir"*/; do
+    name=$(basename "$entry")
+    if [ "$name" != "local" ]; then
+      EXISTING_HASH="$name"
+      break 2
+    fi
+  done
+done
+
+if [ -n "$EXISTING_HASH" ]; then
+  for plugin in $PLUGINS; do
+    hash_dest="$CACHE_DIR/$plugin/$EXISTING_HASH"
+    if [ ! -e "$hash_dest" ]; then
+      ln -sfn "$REPO_ROOT/$PLUGIN_ROOT/$plugin" "$hash_dest"
+      echo "Mirrored $plugin at hash $EXISTING_HASH"
+    fi
+  done
+fi
+
 echo ""
 echo "Seeded cache for: $PLUGINS"
+if [ -z "$EXISTING_HASH" ]; then
+  echo "No remote hash found yet. Reload Cursor, then run this script again"
+  echo "to mirror unpublished plugins at the correct hash."
+else
+  echo "Remote hash: $EXISTING_HASH"
+fi
 echo "Reload Cursor (or restart) to pick up local plugins."

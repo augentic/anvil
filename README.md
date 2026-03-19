@@ -113,6 +113,8 @@ make prod-plugins
 > [!NOTE]  
 > Reload (or restart) Cursor to pick up the changes for both dev and prod plugins.
 
+For plugins not yet published to `main`, the script mirrors them at the hash Cursor uses for remote plugins. On a fresh setup (no prior cache), run the script twice with a Cursor reload in between — the first reload populates the remote hash, and the second run mirrors unpublished plugins at that hash.
+
 #### Testing schema changes
 
 If testing schema changes in a separate project, schemas will need to be symlinked in to the project from this repo so they can be used locally:
