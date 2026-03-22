@@ -152,13 +152,14 @@ All skills follow the shared `SKILL.md` structure. Changes to generation behavio
 ## Documentation
 
 - [Plugin Reference](docs/plugins.md)
+- [Vectis User Guide](docs/vectis.md) -- prerequisites, Crux workflow, Xcode setup, design system
 - [Repository Architecture](docs/architecture.md)
 - [Specify Artifact Guidance](plugins/references/specify.md)
 - [Project Rule](.cursor/rules/project.mdc)
+- [Agent Instructions](AGENTS.md)
 - [Contribution Guide](CONTRIBUTING.md)
 - [Governance](GOVERNANCE.md)
 - [Code of Conduct](CODE-OF-CONDUCT.md)
-- [Agent Instructions](AGENTS.md)
 - [Cursor Skills Documentation](https://cursor.com/docs/skills)
 - [Cursor Plugin Reference](https://cursor.com/docs/reference/plugins)
 

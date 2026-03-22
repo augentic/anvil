@@ -8,7 +8,8 @@ specify/
 │   └── marketplace.json          # Multi-plugin marketplace manifest
 ├── docs/                         # Extended documentation
 │   ├── architecture.md           # Repository structure reference
-│   └── plugins.md                # Full plugin and skill reference
+│   ├── plugins.md                # Full plugin and skill reference
+│   └── vectis.md                 # Vectis user guide (prerequisites, Xcode, design system)
 ├── plugins/
 │   ├── references/               # Shared references (specify.md, agent-teams.md)
 │   ├── spec/                     # Specify workflow plugin
