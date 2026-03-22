@@ -98,29 +98,52 @@ This runs `scripts/checks.ts` via [Deno](https://deno.land). Deno must be instal
 
 ### Local plugin development
 
-To test plugins locally before releasing to the marketplace (preserves namespacing and interdependencies such as `/spec:build` → `/omnia:crate-writer` or `/spec:build` → `/vectis:core-writer`):
+Cursor's plugin cache is populated from the server when it is missing, and left alone when it already exists. The dev-plugins script exploits this by clearing the cache and repopulating it with files from your working tree. The agent then loads your local skill, rule, and reference content instead of the published versions.
+
+#### Dev iteration loop
+
+1. Edit skills, rules, or references in `plugins/`.
+2. Run `make dev-plugins` to copy local files into the cache.
+3. Restart Cursor.
+4. Test in a target project.
+5. Repeat from step 1.
 
 ```bash
-make dev-plugins
+make dev-plugins    # copy local plugins into cache
 ```
 
-To revert to Augentic marketplace plugins:
+When finished, revert to published plugins:
 
 ```bash
-make prod-plugins
+make prod-plugins   # clear cache; Cursor refetches from server on restart
 ```
 
 > [!NOTE]  
-> Reload (or restart) Cursor to pick up the changes for both dev and prod plugins.
+> Restart Cursor after running either command. A window reload is not sufficient.
 
 #### Testing schema changes
 
-If testing schema changes in a separate project, schemas will need to be symlinked in to the project from this repo so they can be used locally:
+Schemas are read from the filesystem at `/spec:init` time, not from the plugin cache. To iterate on schemas in a separate project, symlink them from this repo:
 
 ```bash
 SPECIFY_REPO="path/to/augentic/specify"
 ln -sf "$SPECIFY_REPO/schemas" schemas
 ```
+
+Schema edits take effect immediately — no cache clear or restart needed.
+
+#### Publishing a new plugin
+
+New plugins added to `marketplace.json` require a one-time server-side setup:
+
+1. Push the plugin to `main` and merge.
+2. Open the Cursor plugin marketplace dashboard.
+3. Refresh the marketplace (even if auto-refresh is enabled).
+4. Set the new plugin to **Required**.
+5. Click **Save**.
+6. Restart Cursor locally to pick up the new plugin.
+
+After this initial setup, the plugin participates in the normal dev/prod workflow above.
 
 ### Contributing
 
