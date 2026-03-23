@@ -23,6 +23,23 @@ First, read the proposal's **Source** section to determine the workflow:
 
 ---
 
+**Source-code path** (Source is a local path to existing code):
+
+  1. Generate specs and design with iterative validation. Invoke
+     `/spec:reverse-spec` with arguments:
+       `<source-path> <change-dir>`
+     reverse-spec runs an iterative workflow: structural inventory
+     (user-confirmed), clarification checkpoint (user-answered),
+     domain-by-domain extraction, artifact generation, and a
+     validation loop that compares artifacts against source code
+     until zero critical discrepancies remain.
+  2. reverse-spec produces both `specs/` and `design.md` after
+     validation converges.
+  3. Proceed to the next artifact. design.md was already produced by
+     reverse-spec — the design phase will review/enrich it.
+
+---
+
 **Omnia path** (Source is a JIRA/ADO/Linear epic key):
 
   Prerequisite: The Omnia plugin must be loaded for JIRA MCP access.

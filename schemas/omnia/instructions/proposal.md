@@ -7,6 +7,9 @@ Sections:
   - **Repository**: URL of the repository to migrate (e.g.,
     `https://github.com/org/repo`). This triggers the RT workflow
     — the specs phase will clone the repo and run code-analyzer.
+  - **Source-code**: Local path to existing source code (e.g.,
+    `/path/to/legacy/crate`). This triggers the reverse-spec workflow
+    — the specs phase will run reverse-spec with iterative validation.
   - **Epic**: JIRA/ADO/Linear epic key (e.g., `ATR-7102`). This triggers
     the Omnia workflow — the specs phase will run epic-analyzer.
   - **Manual**: Requirements are described directly in this proposal.
@@ -23,8 +26,8 @@ Sections:
     changes (not just implementation details). Each needs a delta spec
     file. Check `.specify/specs/` for existing spec names. Leave empty if
     no requirement changes.
-  - For **Repository** or **Epic** sources, crates will be
-    determined by the analyzer skill. List expected crates if
+  - For **Repository**, **Source-code**, or **Epic** sources, crates
+    will be determined by the analyzer skill. List expected crates if
     known, but analyzer output takes precedence.
 - **Impact**: Affected code, APIs, dependencies, or systems.
 
@@ -48,7 +51,7 @@ This is the foundation - specs, design, and tasks all build on this.
 
 ## Source
 
-<!-- Pick ONE: Repository URL, Epic key, or Manual -->
+<!-- Pick ONE: Repository URL, Source-code path, Epic key, or Manual -->
 
 ## What Changes
 
