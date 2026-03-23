@@ -1,7 +1,7 @@
 # iOS Project Configuration
 
 Build infrastructure for a Crux iOS shell using XcodeGen, cargo-swift, and
-the facet-based codegen binary from the shared crate. Targets Crux 0.17.0-rc3.
+the facet-based codegen binary from the shared crate. Targets Crux 0.17.0.
 
 ## Directory Layout
 

@@ -100,7 +100,7 @@ Include only when HTTP capability is used. -->
 
 <!-- Runtime and dependency constraints relevant to generation.
 Standard constraints for Crux projects:
-- Crux 0.17.0-rc3 (git dependency, tag crux_core-v0.17.0-rc3)
+- Crux 0.17.0 (crates.io)
 - facet = "=0.31" (exact pin required)
 - uniffi = "=0.29.4" (exact pin, must match crux_core bundled version)
 - Swift 6, iOS 17+ deployment target

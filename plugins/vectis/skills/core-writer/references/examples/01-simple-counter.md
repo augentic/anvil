@@ -19,7 +19,7 @@ edition = "2024"
 rust-version = "1.88"
 
 [workspace.dependencies]
-crux_core = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
+crux_core = "0.17.0"
 serde = "1.0"
 facet = "=0.31"
 ```

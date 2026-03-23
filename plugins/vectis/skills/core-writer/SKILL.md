@@ -14,8 +14,7 @@ When an existing project is detected, the skill operates in **update mode**: it
 compares the Specify artifacts against the current implementation and makes targeted
 edits rather than regenerating from scratch.
 
-This skill targets **Crux 0.17.0-rc3**, pinned to the `crux_core-v0.17.0-rc3` tag.
-Dependencies use git references with a tag until the crate is published to crates.io.
+This skill targets **Crux 0.17.0** from crates.io.
 
 ## Arguments
 
@@ -168,7 +167,7 @@ edition = "2024"
 rust-version = "1.88"
 
 [workspace.dependencies]
-crux_core = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
+crux_core = "0.17.0"
 serde = "1.0"
 facet = "=0.31"
 
@@ -804,8 +803,7 @@ all other items apply in both modes.
 
 ## Important Notes
 
-- **0.17 is pre-release**: Use git dependencies pinned to the `crux_core-v0.17.0-rc3` tag.
-  When 0.17 is published to crates.io, replace git dependencies with versioned ones.
+- **Crux 0.17.0 is published**: Use crates.io version pins for all Crux dependencies.
 - **`facet` version pinning**: The `facet` crate must be pinned to `"=0.31"` exactly.
   Other versions may be incompatible with `crux_core`.
 - **`uniffi` version pinning**: The `uniffi` crate must be pinned to `"=0.29.4"` exactly,

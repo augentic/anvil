@@ -1,7 +1,7 @@
 # Crux Project Configuration
 
 This reference describes the Cargo workspace layout, dependency management, feature flags,
-and toolchain configuration for a Crux core project pinned to `crux_core-v0.17.0-rc3`.
+and toolchain configuration for a Crux core project using Crux 0.17.0 from crates.io.
 
 ## Directory Layout
 
@@ -30,7 +30,7 @@ edition = "2024"
 rust-version = "1.88"
 
 [workspace.dependencies]
-crux_core = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
+crux_core = "0.17.0"
 serde = "1.0"
 facet = "=0.31"
 
@@ -69,23 +69,16 @@ Add capability crates based on what the app needs:
 
 ```toml
 # Add if using HTTP
-crux_http = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
+crux_http = "0.16.0"
 
 # Add if using Key-Value
-crux_kv = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
+crux_kv = "0.11.0"
 
 # Add if using Time
-crux_time = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
+crux_time = "0.15.0"
 
 # Add if using Platform detection
-crux_platform = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
-```
-
-When Crux 0.17 is published to crates.io, replace git dependencies with versioned ones:
-
-```toml
-crux_core = "0.17"
-crux_http = "0.16"   # check actual published version
+crux_platform = "0.8.0"
 ```
 
 ## Shared Crate `Cargo.toml`
@@ -417,9 +410,9 @@ edition = "2024"
 rust-version = "1.88"
 
 [workspace.dependencies]
-crux_core = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
-crux_http = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
-crux_kv = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
+crux_core = "0.17.0"
+crux_http = "0.16.0"
+crux_kv = "0.11.0"
 serde = "1.0"
 serde_json = "1.0"
 facet = "=0.31"
