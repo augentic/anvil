@@ -2,7 +2,7 @@
 name: reverse-spec
 description: Reverse-engineer Specify artifacts (specs + design.md) from existing source code with iterative validation. Use when the proposal source is a local path to existing code, or when /spec:define is given a source-code path to analyze.
 license: MIT
-argument-hint: [source-path] [change-dir]
+argument-hint: "[source-path] [change-dir]"
 ---
 
 # Reverse Spec
