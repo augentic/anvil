@@ -402,7 +402,7 @@ Same as create mode step 11:
 | ViewModel variant `Main(MainView)` | `struct MainScreen: View` | `Views/MainScreen.swift` |
 | `struct MainView { pub items: Vec<ItemView> }` | Screen properties: `let viewModel: MainView` | `Views/MainScreen.swift` |
 | Shell-facing `Event::AddItem(String)` | `onEvent(.addItem(text))` | Relevant screen view |
-| `Effect::Http(HttpRequest)` | `case .http(let req): Task { ... }` | `Core.swift` |
+| `Effect::Http(HttpRequest)` | `case .http(let req): Task { @MainActor in ... }` | `Core.swift` |
 | `enum Route { Main, Settings }` | Navigation tabs or stack paths | `ContentView.swift` |
 
 ## Preservation Rules (Update Mode)
@@ -482,9 +482,9 @@ Same as create mode step 11:
 
 - [ ] Every screen view has a `#Preview` with sample data
 - [ ] Interactive icons have `accessibilityLabel`
-- [ ] No force unwraps in production code (test-only; `try!` for bincode
-  serialization is acceptable in Core.swift as these are infallible for
-  well-formed types)
+- [ ] No force unwraps (`!`) or force try (`try!`) in production code
+- [ ] Bincode serialization failures use `assertionFailure` + safe fallback, not `try!`
+- [ ] Async effect handlers use `Task { @MainActor in }`, not bare `Task { }`
 - [ ] Swift strict concurrency checking enabled (`SWIFT_STRICT_CONCURRENCY: complete`)
 
 ## Important Notes

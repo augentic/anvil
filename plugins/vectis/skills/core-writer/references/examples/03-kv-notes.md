@@ -594,10 +594,26 @@ mod tests {
 ```rust
 use crux_core::{
     Core,
-    bridge::{Bridge, EffectId},
+    bridge::{Bridge, BridgeError, EffectId, FfiFormat},
 };
 
 use crate::Notes;
+
+#[derive(Debug, thiserror::Error)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Error))]
+#[cfg_attr(feature = "uniffi", uniffi(flat_error))]
+pub enum CoreError {
+    #[error("{msg}")]
+    Bridge { msg: String },
+}
+
+impl<F: FfiFormat> From<BridgeError<F>> for CoreError {
+    fn from(e: BridgeError<F>) -> Self {
+        Self::Bridge {
+            msg: e.to_string(),
+        }
+    }
+}
 
 #[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
 #[cfg_attr(feature = "wasm_bindgen", wasm_bindgen::prelude::wasm_bindgen)]
@@ -626,31 +642,22 @@ impl CoreFFI {
         }
     }
 
-    #[must_use]
-    pub fn update(&self, data: &[u8]) -> Vec<u8> {
+    pub fn update(&self, data: &[u8]) -> Result<Vec<u8>, CoreError> {
         let mut effects = Vec::new();
-        match self.core.update(data, &mut effects) {
-            Ok(()) => effects,
-            Err(e) => panic!("{e}"),
-        }
+        self.core.update(data, &mut effects)?;
+        Ok(effects)
     }
 
-    #[must_use]
-    pub fn resolve(&self, id: u32, data: &[u8]) -> Vec<u8> {
+    pub fn resolve(&self, id: u32, data: &[u8]) -> Result<Vec<u8>, CoreError> {
         let mut effects = Vec::new();
-        match self.core.resolve(EffectId(id), data, &mut effects) {
-            Ok(()) => effects,
-            Err(e) => panic!("{e}"),
-        }
+        self.core.resolve(EffectId(id), data, &mut effects)?;
+        Ok(effects)
     }
 
-    #[must_use]
-    pub fn view(&self) -> Vec<u8> {
+    pub fn view(&self) -> Result<Vec<u8>, CoreError> {
         let mut view_model = Vec::new();
-        match self.core.view(&mut view_model) {
-            Ok(()) => view_model,
-            Err(e) => panic!("{e}"),
-        }
+        self.core.view(&mut view_model)?;
+        Ok(view_model)
     }
 }
 ```

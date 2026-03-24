@@ -5,16 +5,37 @@ In 0.17+ this is implemented as a `CoreFFI` struct with feature-gated attributes
 
 ## `shared/src/ffi.rs`
 
-This file is identical across all Crux apps except for the `Bridge<AppType>` generic parameter.
-Copy this template and replace `MyApp` with your app struct name.
+This file is identical across all Crux apps except for the `Bridge<AppType>` generic
+parameter and the `use crate::MyApp` import. Copy this template and replace `MyApp`
+with your app struct name.
 
 ```rust
 use crux_core::{
     Core,
-    bridge::{Bridge, EffectId},
+    bridge::{Bridge, BridgeError, EffectId, FfiFormat},
 };
 
 use crate::MyApp;
+
+/// FFI error type surfaced to shell platforms.
+///
+/// UniFFI maps this to a thrown Swift/Kotlin error.
+/// wasm-bindgen maps this to a JavaScript exception.
+#[derive(Debug, thiserror::Error)]
+#[cfg_attr(feature = "uniffi", derive(uniffi::Error))]
+#[cfg_attr(feature = "uniffi", uniffi(flat_error))]
+pub enum CoreError {
+    #[error("{msg}")]
+    Bridge { msg: String },
+}
+
+impl<F: FfiFormat> From<BridgeError<F>> for CoreError {
+    fn from(e: BridgeError<F>) -> Self {
+        Self::Bridge {
+            msg: e.to_string(),
+        }
+    }
+}
 
 #[cfg_attr(feature = "uniffi", derive(uniffi::Object))]
 #[cfg_attr(feature = "wasm_bindgen", wasm_bindgen::prelude::wasm_bindgen)]
@@ -44,39 +65,37 @@ impl CoreFFI {
     }
 
     /// Send an event to the app and return the serialized effects.
-    /// # Panics
-    /// If the event cannot be deserialized.
-    #[must_use]
-    pub fn update(&self, data: &[u8]) -> Vec<u8> {
+    ///
+    /// # Errors
+    ///
+    /// Returns `CoreError` if the event cannot be deserialized.
+    pub fn update(&self, data: &[u8]) -> Result<Vec<u8>, CoreError> {
         let mut effects = Vec::new();
-        match self.core.update(data, &mut effects) {
-            Ok(()) => effects,
-            Err(e) => panic!("{e}"),
-        }
+        self.core.update(data, &mut effects)?;
+        Ok(effects)
     }
 
     /// Resolve an effect with a response and return any new serialized effects.
-    /// # Panics
-    /// If the data cannot be deserialized or the `effect_id` is invalid.
-    #[must_use]
-    pub fn resolve(&self, id: u32, data: &[u8]) -> Vec<u8> {
+    ///
+    /// # Errors
+    ///
+    /// Returns `CoreError` if the data cannot be deserialized or the effect ID
+    /// is invalid.
+    pub fn resolve(&self, id: u32, data: &[u8]) -> Result<Vec<u8>, CoreError> {
         let mut effects = Vec::new();
-        match self.core.resolve(EffectId(id), data, &mut effects) {
-            Ok(()) => effects,
-            Err(e) => panic!("{e}"),
-        }
+        self.core.resolve(EffectId(id), data, &mut effects)?;
+        Ok(effects)
     }
 
     /// Get the current `ViewModel` as serialized bytes.
-    /// # Panics
-    /// If the view cannot be serialized.
-    #[must_use]
-    pub fn view(&self) -> Vec<u8> {
+    ///
+    /// # Errors
+    ///
+    /// Returns `CoreError` if the view model cannot be serialized.
+    pub fn view(&self) -> Result<Vec<u8>, CoreError> {
         let mut view_model = Vec::new();
-        match self.core.view(&mut view_model) {
-            Ok(()) => view_model,
-            Err(e) => panic!("{e}"),
-        }
+        self.core.view(&mut view_model)?;
+        Ok(view_model)
     }
 }
 ```
@@ -151,9 +170,25 @@ neither feature is enabled (e.g., during `cargo test`).
 
 | Method | Shell calls it when... | Input | Output |
 |--------|------------------------|-------|--------|
-| `update(data)` | User interacts with UI | Serialized `Event` | Serialized effect requests |
-| `resolve(id, data)` | Shell completes a side-effect | Effect ID + serialized response | Serialized new effect requests |
-| `view()` | Shell needs current UI state | None | Serialized `ViewModel` |
+| `update(data)` | User interacts with UI | Serialized `Event` | `Result<Vec<u8>, CoreError>` -- serialized effect requests |
+| `resolve(id, data)` | Shell completes a side-effect | Effect ID + serialized response | `Result<Vec<u8>, CoreError>` -- serialized new effect requests |
+| `view()` | Shell needs current UI state | None | `Result<Vec<u8>, CoreError>` -- serialized `ViewModel` |
+
+All three methods return `Result` so that serialization or deserialization
+failures surface as typed errors in the shell rather than crashing the process.
+UniFFI maps `Result<T, CoreError>` to Swift `throws` / Kotlin `throws`.
+wasm-bindgen maps it to a JavaScript exception.
+
+### `CoreError`
+
+`CoreError` is a simple wrapper around `BridgeError` that works across FFI
+boundaries. It uses `thiserror::Error` for the `Display` impl and is
+feature-gated with `uniffi::Error` (using `flat_error` so UniFFI uses the
+`Display` string as the error message). The `From<BridgeError<F>>` impl
+enables `?` propagation from Bridge methods.
+
+Do **not** use `panic!` in FFI methods. A panic in the static library traps
+the host process (iOS app crash, browser tab crash) with no recovery path.
 
 ### `EffectId`
 

@@ -51,15 +51,24 @@ class Core: ObservableObject {
 
     init() {
         self.core = CoreFfi()
-        self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
+        self.view = Self.deserializeView(core.view())
         update(.fetchCount)
     }
 
     func update(_ event: Event) {
-        let effects = [UInt8](
-            core.update(Data(try! event.bincodeSerialize()))
-        )
-        let requests: [Request] = try! .bincodeDeserialize(input: effects)
+        guard let data = try? event.bincodeSerialize() else {
+            assertionFailure("Failed to serialize event: \(event)")
+            return
+        }
+        let effects = [UInt8](core.update(Data(data)))
+        processEffects(effects)
+    }
+
+    private func processEffects(_ data: [UInt8]) {
+        guard let requests = try? [Request].bincodeDeserialize(input: data) else {
+            assertionFailure("Failed to deserialize requests")
+            return
+        }
         for request in requests {
             processEffect(request)
         }
@@ -68,27 +77,36 @@ class Core: ObservableObject {
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
-            self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
+            self.view = Self.deserializeView(core.view())
 
         case .http(let httpRequest):
-            Task {
+            Task { @MainActor in
                 let response = await performHttpRequest(httpRequest)
-                let effects = [UInt8](
-                    core.resolve(
-                        request.id,
-                        Data(try! HttpResult.ok(response).bincodeSerialize())
-                    )
-                )
-                let requests: [Request] = try! .bincodeDeserialize(input: effects)
-                for request in requests {
-                    processEffect(request)
+                guard let data = try? HttpResult.ok(response).bincodeSerialize() else {
+                    assertionFailure("Failed to serialize HttpResult")
+                    return
                 }
+                let effects = [UInt8](
+                    core.resolve(request.id, Data(data))
+                )
+                processEffects(effects)
             }
         }
     }
 
+    private static func deserializeView(_ data: Data) -> ViewModel {
+        guard let vm = try? ViewModel.bincodeDeserialize(input: [UInt8](data)) else {
+            assertionFailure("Failed to deserialize ViewModel")
+            return .loading
+        }
+        return vm
+    }
+
     private func performHttpRequest(_ request: HttpRequest) async -> HttpResponse {
-        var urlRequest = URLRequest(url: URL(string: request.url)!)
+        guard let url = URL(string: request.url) else {
+            return HttpResponse(status: 0, headers: [], body: [])
+        }
+        var urlRequest = URLRequest(url: url)
         urlRequest.httpMethod = request.method
 
         for header in request.headers {
@@ -101,7 +119,9 @@ class Core: ObservableObject {
 
         do {
             let (data, response) = try await URLSession.shared.data(for: urlRequest)
-            let httpResponse = response as! HTTPURLResponse
+            guard let httpResponse = response as? HTTPURLResponse else {
+                return HttpResponse(status: 0, headers: [], body: [])
+            }
             return HttpResponse(
                 status: UInt16(httpResponse.statusCode),
                 headers: httpResponse.allHeaderFields.map { key, value in

@@ -170,6 +170,7 @@ rust-version = "1.88"
 crux_core = "0.17.0"
 serde = "1.0"
 facet = "=0.31"
+thiserror = "2"
 
 [workspace.lints.rust]
 trivial_numeric_casts = "warn"
@@ -275,6 +276,7 @@ Follow the template in `references/crux-project-config.md`. Key points:
 - Feature-gate `uniffi` and `wasm_bindgen` dependencies
 - Add a `codegen` feature for type generation
 - Include only the capability crates actually needed
+- Include `thiserror` as a non-optional dependency (used by `CoreError` in `ffi.rs`)
 - Add `[lints] workspace = true` to inherit workspace lint configuration
 - Add `#![allow(clippy::cargo_common_metadata)]` to `lib.rs` if the crate is not
   intended for crates.io publication (e.g., example projects)
@@ -315,7 +317,10 @@ For testing, consult `references/crux-testing-patterns.md`.
 ### 6. Generate `shared/src/ffi.rs`
 
 Follow `references/crux-ffi-scaffolding.md` exactly. The `CoreFFI` struct is identical
-across all apps except for the `Bridge<AppType>` generic parameter.
+across all apps except for the `Bridge<AppType>` generic parameter and the
+`use crate::MyApp` import. The file defines a `CoreError` type that wraps
+`BridgeError` for FFI transport -- all three methods (`update`, `resolve`, `view`)
+return `Result<Vec<u8>, CoreError>` instead of panicking.
 
 ### 7. Generate custom capability modules (if needed)
 
@@ -794,6 +799,8 @@ all other items apply in both modes.
 - [ ] Per-page view structs derive `Facet, Serialize, Deserialize, Clone, Debug, Default`
 - [ ] Effect enum uses `#[effect(facet_typegen)]`
 - [ ] `CoreFFI` uses feature-gated `uniffi` and `wasm_bindgen` attributes
+- [ ] `CoreFFI` methods return `Result<Vec<u8>, CoreError>`, not `Vec<u8>` with `panic!`
+- [ ] `CoreError` derives `thiserror::Error` and feature-gated `uniffi::Error` with `uniffi(flat_error)`
 - [ ] Type aliases defined for each capability: `type Http = crux_http::Http<Effect, Event>;`
 - [ ] KV callback Event variants use `Result<Option<Vec<u8>>, KeyValueError>` for `get`/`set`/`delete`
   (not `Result<(), _>`) and `Result<bool, KeyValueError>` for `exists`
