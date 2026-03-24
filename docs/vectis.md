@@ -157,7 +157,7 @@ The core-writer skill produces these files:
 
 | Artifact                      | Description                                                                                |
 | ----------------------------- | ------------------------------------------------------------------------------------------ |
-| `Cargo.toml` (workspace root) | Workspace manifest with pinned Crux git dependencies                                       |
+| `Cargo.toml` (workspace root) | Workspace manifest with pinned Crux 0.17.0 crates.io dependencies                         |
 | `clippy.toml`                 | Clippy configuration for allowed duplicate crates                                          |
 | `rust-toolchain.toml`         | Rust toolchain targeting iOS, Android, macOS, and WASM                                     |
 | `spec.md`                     | Copy of the specification used to generate (or update) the core                            |
