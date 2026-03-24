@@ -232,10 +232,41 @@ targets = [
 profile = "minimal"
 ```
 
-**`{project-dir}/.gitignore`** -- multi-platform ignore rules. Use the full
-`.gitignore` template from `references/crux-project-config.md`. This covers
-Rust, Swift/Xcode, TypeScript/Node, Kotlin/Gradle, `.DS_Store`, and `.env`
-so the repository is ready for any shell that may be added later.
+**`{project-dir}/.gitignore`** -- multi-platform ignore rules. Include every
+section even if the project does not use all shells yet -- this future-proofs
+the repository for when new shells are added.
+
+```
+# OS
+.DS_Store
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Rust
+/target
+
+# Swift / Xcode
+*.xcodeproj/
+*.xcworkspace/
+DerivedData/
+build/
+iOS/generated/
+iOS/*.xcodeproj
+
+# TypeScript / Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Kotlin / Gradle
+.gradle/
+*.apk
+*.aab
+local.properties
+```
 
 ### 4. Generate `shared/Cargo.toml`
 
