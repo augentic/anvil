@@ -370,7 +370,6 @@ future-proofs the repository for when new shells are added.
 
 # Rust
 /target
-Cargo.lock
 
 # Swift / Xcode
 *.xcodeproj/
@@ -391,10 +390,6 @@ dist/
 *.aab
 local.properties
 ```
-
-Include `Cargo.lock` in `.gitignore` for library crates (the standard Rust convention).
-If the project is an application (has binary targets other than codegen), keep `Cargo.lock`
-tracked instead.
 
 The `build/` entry covers both Xcode and Gradle output directories.
 
