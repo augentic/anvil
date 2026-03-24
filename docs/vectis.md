@@ -123,7 +123,7 @@ The specs artifact follows a structured markdown format. Each feature spec has a
 | **Android Shell Requirements** | Android-specific behaviors (future)                         |
 | **Design System Requirements** | Token change requirements (if applicable)                   |
 
-All requirement IDs must follow the shared spec format `REQ-###` (for example, `REQ-001`, `REQ-002`). Platform-specific sections should reference these core requirement IDs rather than introducing separate, prefixed IDs.
+All requirement IDs — including those in platform-specific sections — share one flat `REQ-###` namespace (for example, `REQ-001` through `REQ-009`). Platform sections continue sequential numbering from the last core requirement. Do not use platform-prefixed IDs like `REQ-IOS-xxx`.
 
 The design document captures the technical contract:
 

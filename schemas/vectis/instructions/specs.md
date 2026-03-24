@@ -71,15 +71,16 @@ If the proposal lists `ios` in Platforms, add a `## iOS Shell
 Requirements` section after the core requirements. This section captures
 iOS-specific behavioral requirements beyond what the core spec covers.
 
-Use prefixed IDs to avoid collisions with core requirements:
-`REQ-IOS-001`, `REQ-IOS-002`, etc.
+Continue sequential numbering from the last core requirement ID. All
+requirements share one flat `REQ-[0-9]{3}` namespace — do not use
+platform prefixes like `REQ-IOS-xxx`.
 
 ```markdown
 ## iOS Shell Requirements
 
 ### Requirement: <Platform Behavior>
 
-ID: REQ-IOS-001
+ID: REQ-006
 
 The iOS shell SHALL <platform-specific behavioral description>.
 
@@ -102,20 +103,20 @@ Guidance for iOS shell requirements:
 ### Android Shell Requirements section
 
 If the proposal lists `android` in Platforms, add a `## Android Shell
-Requirements` section. Use `REQ-AND-xxx` prefixed IDs.
+Requirements` section. Continue sequential `REQ-XXX` numbering.
 
 ### Design System Requirements section
 
 If the proposal lists `design-system` in Platforms and the feature
 involves token changes, add a `## Design System Requirements` section.
-Use `REQ-DS-xxx` prefixed IDs.
+Continue sequential `REQ-XXX` numbering.
 
 ```markdown
 ## Design System Requirements
 
 ### Requirement: <Token Change>
 
-ID: REQ-DS-001
+ID: REQ-009
 
 The design system SHALL <token change description>.
 
@@ -128,8 +129,8 @@ The design system SHALL <token change description>.
 ---
 
 Repeat `### Requirement:` blocks for each distinct behavior,
-incrementing `ID: REQ-XXX` for each new requirement within its
-ID namespace (core, iOS, Android, design-system).
+incrementing `ID: REQ-XXX` sequentially across all sections (core,
+iOS, Android, design-system share one namespace).
 
 **Modified Features**: Use the existing spec folder name from
 `.specify/specs/<feature>/` when creating the delta spec at
@@ -169,9 +170,9 @@ ID: REQ-<!-- existing id -->
 TO: <!-- new requirement name -->
 ```
 
-Delta operations apply to all ID namespaces. Platform requirements
-can be added, modified, or removed using delta operations with their
-prefixed IDs (e.g., `REQ-IOS-003`).
+Delta operations apply to all sections. Platform requirements can be
+added, modified, or removed using delta operations with their `REQ-XXX`
+IDs (e.g., `REQ-008`).
 
 Follow the spec format conventions defined in the define skill for
 delta operations, format rules, and the MODIFIED/ADDED workflows.
