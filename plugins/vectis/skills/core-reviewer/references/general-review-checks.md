@@ -6,24 +6,31 @@ exempt from GEN-001 and GEN-002.
 
 ---
 
-## GEN-001: No unwrap() or expect() in production code
+## GEN-001: No unwrap(), expect(), or panic!() in production code
 
 **Severity**: Warning
 
-`unwrap()` and `expect()` panic on failure. In a Crux core, a panic crashes
-the shell and is unrecoverable. Use `?` with error propagation, `if let`,
-`match`, `unwrap_or_default()` (with care -- see LOG-005), or
-`unwrap_or_else(|| ...)`.
+`unwrap()`, `expect()`, and `panic!()` all terminate the process on failure.
+In a Crux core, a panic crashes the shell (iOS app, browser tab) and is
+unrecoverable. Use `?` with error propagation, `if let`, `match`,
+`unwrap_or_default()` (with care -- see LOG-005), or `unwrap_or_else(|| ...)`.
 
-**Detection**: Search for `.unwrap()` and `.expect(` outside `#[cfg(test)]`
-modules.
+**Detection**: Search for `.unwrap()`, `.expect(`, and `panic!(` outside
+`#[cfg(test)]` modules. In `ffi.rs`, verify that `CoreFFI` methods return
+`Result<Vec<u8>, CoreError>` rather than using `panic!` (see also CRX-011).
 
-**Exemption**: Tests may use `unwrap()` freely.
+**Exemption**: Tests may use `unwrap()` and `panic!()` freely.
 
 **Example**:
 ```rust
 // BAD
 let bytes = serde_json::to_vec(&state).expect("serializing PersistedState");
+
+// BAD (ffi.rs)
+match self.core.update(data, &mut effects) {
+    Ok(()) => effects,
+    Err(e) => panic!("{e}"),
+}
 
 // BETTER (graceful degradation)
 let bytes = match serde_json::to_vec(&state) {
@@ -33,6 +40,10 @@ let bytes = match serde_json::to_vec(&state) {
         return Command::done();
     }
 };
+
+// BETTER (ffi.rs -- propagate via Result)
+self.core.update(data, &mut effects)?;
+Ok(effects)
 ```
 
 ---

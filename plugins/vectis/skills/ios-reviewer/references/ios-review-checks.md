@@ -161,3 +161,49 @@ via `@Published var view: ViewModel`.
 conformance and `@Published` on the `view` property.
 
 **Fix**: Add `ObservableObject` conformance and `@Published` annotation.
+
+## IOS-013: Force Try in Core.swift
+
+**Severity**: Warning
+
+`Core.swift` must not use `try!` for bincode serialization. FFI type
+mismatches (e.g., after regenerating the core without updating Swift types)
+should degrade gracefully rather than crash the app.
+
+**Detection**: Search `Core.swift` for `try!`. Flag all occurrences.
+
+**Fix**: Replace with `try?` guarded by `assertionFailure` and a safe
+fallback value. Use the `deserializeView` and `processEffects` helper
+pattern from `references/crux-ios-shell-pattern.md`.
+
+## IOS-014: Bare Task in Core.swift
+
+**Severity**: Warning
+
+Async effect handlers in `Core.swift` must use `Task { @MainActor in ... }`,
+not bare `Task { ... }`. While Swift 6 inherits actor isolation for
+`Task.init` in `@MainActor` context, the explicit annotation is required
+for clarity, cross-version safety, and resilience to refactoring.
+
+**Detection**: Search `Core.swift` for `Task {` or `Task{` that is not
+immediately followed by `@MainActor in`. Flag all occurrences in
+`processEffect` method branches.
+
+**Fix**: Replace `Task {` with `Task { @MainActor in`.
+
+## IOS-015: Missing try on CoreFFI calls
+
+**Severity**: Critical
+
+`CoreFFI` methods (`view()`, `update()`, `resolve()`) return
+`Result<Vec<u8>, CoreError>` in Rust, which UniFFI maps to Swift `throws`.
+Calling these without `try` is a compile error. All calls must use `try?`
+with `assertionFailure` and a safe fallback, consistent with the bincode
+serialization pattern (IOS-013).
+
+**Detection**: Search `Core.swift` for `core.view()`, `core.update(`,
+and `core.resolve(` that are not preceded by `try`. Flag all occurrences.
+
+**Fix**: Wrap each call with `guard let ... = try? ... else {
+assertionFailure(...); return }`. Use the `deserializeView(from:)` helper
+for `core.view()` calls. See `references/crux-ios-shell-pattern.md`.

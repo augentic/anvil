@@ -354,3 +354,44 @@ under `shared/src/` for a corresponding `use <crate_name>` or
 
 **Example**: `opsx_todo` lists `url = "2"` in dependencies but never imports
 or uses the `url` crate.
+
+---
+
+## CRX-011: Panic in CoreFFI methods
+
+**Severity**: Critical
+
+`CoreFFI` methods (`update`, `resolve`, `view`) must return
+`Result<Vec<u8>, CoreError>` instead of panicking on `BridgeError`. A panic
+in the FFI layer crashes the host process (iOS app, browser tab) with no
+recovery path. The Crux `Bridge` already returns `Result<(), BridgeError>`,
+so errors should be propagated through a `CoreError` wrapper type.
+
+**Detection**: Search `ffi.rs` for `panic!`, `unwrap()`, or `expect()` in
+the `update`, `resolve`, or `view` methods. Also check that the return types
+are `Result<Vec<u8>, CoreError>`, not bare `Vec<u8>`.
+
+**Bad**:
+```rust
+pub fn update(&self, data: &[u8]) -> Vec<u8> {
+    let mut effects = Vec::new();
+    match self.core.update(data, &mut effects) {
+        Ok(()) => effects,
+        Err(e) => panic!("{e}"),
+    }
+}
+```
+
+**Good**:
+```rust
+pub fn update(&self, data: &[u8]) -> Result<Vec<u8>, CoreError> {
+    let mut effects = Vec::new();
+    self.core.update(data, &mut effects)?;
+    Ok(effects)
+}
+```
+
+**Fix**: Define `CoreError` with `thiserror::Error` and feature-gated
+`uniffi::Error` (using `uniffi(flat_error)`). Implement
+`From<BridgeError<F>> for CoreError`. Change all three methods to return
+`Result<Vec<u8>, CoreError>` and use `?` to propagate errors.

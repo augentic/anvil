@@ -165,14 +165,26 @@ class Core: ObservableObject {
 
     init() {
         self.core = CoreFfi()
-        self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
+        self.view = Self.deserializeView(from: core)
     }
 
     func update(_ event: Event) {
-        let effects = [UInt8](
-            core.update(Data(try! event.bincodeSerialize()))
-        )
-        let requests: [Request] = try! .bincodeDeserialize(input: effects)
+        guard let data = try? event.bincodeSerialize() else {
+            assertionFailure("Failed to serialize event: \(event)")
+            return
+        }
+        guard let effectsData = try? core.update(Data(data)) else {
+            assertionFailure("CoreFFI.update() failed")
+            return
+        }
+        processEffects([UInt8](effectsData))
+    }
+
+    private func processEffects(_ data: [UInt8]) {
+        guard let requests = try? [Request].bincodeDeserialize(input: data) else {
+            assertionFailure("Failed to deserialize requests")
+            return
+        }
         for request in requests {
             processEffect(request)
         }
@@ -181,8 +193,20 @@ class Core: ObservableObject {
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
-            self.view = try! .bincodeDeserialize(input: [UInt8](core.view()))
+            self.view = Self.deserializeView(from: core)
         }
+    }
+
+    private static func deserializeView(from core: CoreFfi) -> ViewModel {
+        guard let data = try? core.view() else {
+            assertionFailure("CoreFFI.view() failed")
+            return .loading
+        }
+        guard let vm = try? ViewModel.bincodeDeserialize(input: [UInt8](data)) else {
+            assertionFailure("Failed to deserialize ViewModel")
+            return .loading
+        }
+        return vm
     }
 }
 ```

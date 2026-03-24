@@ -6,16 +6,21 @@ Language-level quality checks for Swift/SwiftUI code in Crux iOS shells.
 
 **Severity**: Warning
 
-No `!` force unwraps outside of test files and `Core.swift` Bincode
-serialization (where `try!` on `bincodeSerialize`/`bincodeDeserialize` is
-acceptable for well-formed types).
+No `!` force unwraps or `try!` force tries outside of test files and
+preview blocks.
 
-**Detection**: Search `.swift` files (excluding `*Tests.swift` and
-`*Previews.swift`) for `!` used as force unwrap (not `!=` or `!==`).
-In `Core.swift`, allow `try!` on `bincodeSerialize()` and
-`bincodeDeserialize(input:)` calls only.
+`Core.swift` bincode serialization must use `try?` with `assertionFailure`
+and a safe fallback (e.g., return `.loading` for view deserialization,
+no-op for event serialization). This ensures Debug builds surface type
+mismatches loudly while Release builds degrade gracefully.
 
-**Fix**: Replace with `guard let`, `if let`, or `??` with a default value.
+**Detection**: Search `.swift` files (excluding `*Tests.swift`) for `!`
+used as force unwrap (not `!=` or `!==`) and for `try!`. Skip occurrences
+inside `#Preview { ... }` blocks and in files named `*Previews.swift`.
+Flag all other occurrences including those in `Core.swift`.
+
+**Fix**: Replace `try!` with `guard let ... = try? ... else { assertionFailure(...); return fallback }`.
+Replace `as!` with `as?` guarded by a conditional.
 
 ## SWF-002: Debug Output
 
@@ -35,14 +40,19 @@ No `print()`, `debugPrint()`, or `dump()` calls in production code.
 With Swift 6 strict concurrency:
 - `Core` must be `@MainActor`.
 - Views that capture `Core` must not pass it across isolation boundaries.
-- `Task { ... }` closures in `@MainActor` context inherit main actor isolation.
+- Async effect handlers must use `Task { @MainActor in ... }` -- never
+  bare `Task { }`. While Swift 6 inherits actor isolation for `Task.init`
+  in `@MainActor` context, the explicit annotation is required for clarity,
+  cross-version safety, and resilience to refactoring.
 
 **Detection**: Check for:
 - `nonisolated` on methods that access `@Published` properties.
 - `@Sendable` closures that capture non-`Sendable` types.
 - `DispatchQueue.main.async` (should use `@MainActor` instead).
+- `Task {` without `@MainActor in` in `Core.swift` effect handlers.
 
-**Fix**: Use `@MainActor` annotation and structured concurrency patterns.
+**Fix**: Use `Task { @MainActor in ... }` for all async effect handlers.
+Use `@MainActor` annotation and structured concurrency patterns elsewhere.
 
 ## SWF-004: State Management
 
