@@ -51,7 +51,12 @@ class Core: ObservableObject {
 
     init() {
         self.core = CoreFfi()
-        self.view = Self.deserializeView(core.view())
+        do {
+            self.view = Self.deserializeView(try core.view())
+        } catch {
+            assertionFailure("Core FFI view() failed: \(error)")
+            self.view = .loading
+        }
         update(.fetchCount)
     }
 
@@ -60,8 +65,12 @@ class Core: ObservableObject {
             assertionFailure("Failed to serialize event: \(event)")
             return
         }
-        let effects = [UInt8](core.update(Data(data)))
-        processEffects(effects)
+        do {
+            let effects = try [UInt8](core.update(Data(data)))
+            processEffects(effects)
+        } catch {
+            assertionFailure("Core FFI update() failed: \(error)")
+        }
     }
 
     private func processEffects(_ data: [UInt8]) {
@@ -77,7 +86,11 @@ class Core: ObservableObject {
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
-            self.view = Self.deserializeView(core.view())
+            do {
+                self.view = Self.deserializeView(try core.view())
+            } catch {
+                assertionFailure("Core FFI view() failed: \(error)")
+            }
 
         case .http(let httpRequest):
             Task { @MainActor in
@@ -86,10 +99,14 @@ class Core: ObservableObject {
                     assertionFailure("Failed to serialize HttpResult")
                     return
                 }
-                let effects = [UInt8](
-                    core.resolve(request.id, Data(data))
-                )
-                processEffects(effects)
+                do {
+                    let effects = try [UInt8](
+                        core.resolve(request.id, Data(data))
+                    )
+                    processEffects(effects)
+                } catch {
+                    assertionFailure("Core FFI resolve() failed: \(error)")
+                }
             }
         }
     }
