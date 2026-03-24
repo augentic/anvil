@@ -9,6 +9,7 @@ instructions — all within `schema.yaml` and `instructions/`.
 | Schema | Purpose | Details |
 |--------|---------|---------|
 | [`omnia`](omnia/README.md) | Rust WASM development (Omnia SDK) | Greenfield or migration via JIRA Epic, Git Repository, or Manual |
+| [`vectis`](vectis/README.md) | Cross-platform Crux app development | Rust core, iOS/Android shells, design system |
 
 ## Schema Directory Structure
 

@@ -179,8 +179,8 @@ create a single Specify change:
 
 ## Integration with Specify Workflow
 
-This skill is invoked as part of the `ios-shell` schema's task list, after
-code generation and build verification:
+This skill is invoked as part of the Vectis build phase, after ios-writer
+generation and build verification:
 
 ```
 define -> build (ios-writer) -> verify build -> review-fix cycle (this skill) -> generate change for design issues -> merge

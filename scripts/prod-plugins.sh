@@ -1,14 +1,13 @@
 #!/usr/bin/env bash
 
-# Restore the original augentic marketplace.
+# Clear the local plugin cache so Cursor refetches from the server on next
+# restart. Use this to revert from dev-plugins back to the published versions.
+#
 # Usage: ./scripts/prod-plugins.sh
 
 set -euo pipefail
 
-PLUGINS_DIR="$HOME/.cursor/plugins"
-
-rm -rf "$PLUGINS_DIR"/marketplaces/github.com/augentic/specify/*
-rm -rf "$PLUGINS_DIR"/cache/augentic
+rm -rf "$HOME/.cursor/plugins/cache/augentic"
 
 echo ""
-echo "Reload Cursor (or restart) to pick up production plugins."
+echo "Restart Cursor to refetch published plugins from the server."

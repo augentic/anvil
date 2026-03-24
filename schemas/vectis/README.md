@@ -10,7 +10,7 @@
 
 | File | Description |
 |------|-------------|
-| `schema.yaml` | Blueprint declarations, terminology (`deliverable: module`), validation flags, build config, and defaults (context + per-blueprint rules) |
+| `schema.yaml` | Blueprint declarations, terminology (`deliverable: feature`), validation flags, build config, and defaults (context + per-blueprint rules) |
 | `instructions/proposal.md` | Generation instructions for the proposal blueprint |
 | `instructions/specs.md` | Generation instructions for the specs blueprint |
 | `instructions/design.md` | Generation instructions for the design blueprint |
@@ -28,14 +28,33 @@ The schema declares four blueprints in dependency order:
 
 Build requires tasks to be complete and is tracked via `tasks.md`.
 
-## Module Types
+## Feature-Centric Specs
 
-The vectis schema supports three module types in a single unified pipeline:
+Specs are organized by **feature** (what the app does), not by software
+component. A single feature spec at `specs/<feature>/spec.md` contains:
 
-| Type | Description | Primary Skill |
-|------|-------------|---------------|
-| `core` | Rust Crux shared crate (business logic, state, effects) | `vectis:core-writer` |
-| `ios-shell` | SwiftUI iOS shell for an existing Crux core | `vectis:ios-writer` |
+- **Core requirements** (main body) — platform-neutral behavioral
+  requirements that drive the Crux shared crate.
+- **Platform sections** (optional) — platform-specific behavioral
+  requirements in dedicated sections (`## iOS Shell Requirements`,
+  `## Android Shell Requirements`, etc.).
+- **Design system requirements** (optional) — token change requirements
+  in a `## Design System Requirements` section.
+
+This means one spec per feature merges into one baseline — no combining
+across component boundaries.
+
+## Platforms
+
+The proposal declares which platforms a change targets. Platforms
+determine which build skills are invoked, not how specs are structured.
+
+| Platform | Description | Primary Skill |
+|----------|-------------|---------------|
+| `core` | Rust Crux shared crate (always required) | `vectis:core-writer` |
+| `ios` | SwiftUI iOS shell | `vectis:ios-writer` |
+| `android` | Android shell (future) | — |
+| `web` | Web shell (future) | — |
 | `design-system` | VectisDesign Swift package from tokens.yaml | `vectis:design-system-writer` |
 
 ## Schema Framework

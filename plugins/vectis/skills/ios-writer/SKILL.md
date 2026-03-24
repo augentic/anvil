@@ -1,6 +1,6 @@
 ---
 name: ios-writer
-description: Generate or update a SwiftUI iOS shell for a Crux application from Specify artifacts. Use when implementing ios-shell module tasks from a Specify change, or when the user mentions ios-writer.
+description: Generate or update a SwiftUI iOS shell for a Crux application from Specify artifacts. Use when implementing iOS shell tasks from a Specify change, or when the user mentions ios-writer.
 ---
 
 # Crux iOS Shell Generator
@@ -22,7 +22,7 @@ This skill targets **Swift 6** and **SwiftUI** with iOS 17+ deployment target.
 |---|---|---|
 | `app-dir` | **Yes** | Path to the Crux app directory (must contain `shared/src/app.rs`) |
 | `project-dir` | No | Directory for the iOS shell. Defaults to `{app-dir}/iOS` |
-| `change-dir` | No | Path to `.specify/changes/<change>/`. When provided, the skill reads ios-shell specs from `{change-dir}/specs/{module-name}/spec.md` for platform-specific requirements |
+| `change-dir` | No | Path to `.specify/changes/<change>/`. When provided, the skill reads the `## iOS Shell Requirements` section from `{change-dir}/specs/{feature-name}/spec.md` for platform-specific requirements |
 
 ## Prerequisites
 
@@ -57,7 +57,10 @@ Also read:
 - `design-system/spec.md` -- design system usage rules
 
 When `change-dir` is provided, also read:
-- `{change-dir}/specs/{module-name}/spec.md` -- platform-specific requirements for this change
+- `{change-dir}/specs/{feature-name}/spec.md` -- read the `## iOS Shell Requirements`
+  section for platform-specific behavioral requirements (navigation style, gestures,
+  haptics, accessibility). Also read the `## iOS Shell Details` section of
+  `{change-dir}/design.md` for platform design decisions.
 
 ## Mode Detection
 
@@ -309,8 +312,9 @@ Use this process when `{project-dir}/` already exists with Swift files.
 
 Same as create mode step 1. Extract all types from the current `app.rs`.
 
-When `change-dir` is provided, also read `{change-dir}/specs/{module-name}/spec.md`
-for platform-specific requirements that may affect the iOS shell.
+When `change-dir` is provided, also read the `## iOS Shell Requirements` section
+from `{change-dir}/specs/{feature-name}/spec.md` and the `## iOS Shell Details`
+section from `{change-dir}/design.md` for platform-specific requirements.
 
 ### U2. Read existing Swift code
 
@@ -505,8 +509,9 @@ Same as create mode step 11:
   install [InjectionIII](https://github.com/nicklama/InjectionIII/releases)
   separately -- see `references/ios-project-config.md` for setup details.
 - **Specify integration**: When `change-dir` is provided, the skill reads
-  platform-specific specs from the change directory to inform view generation
-  and update decisions. The primary input remains `app.rs` from the core;
-  Specify specs supplement with requirements that may not be expressed in
-  the Rust types alone (e.g., specific UX behaviors, accessibility
+  the `## iOS Shell Requirements` section from the feature spec and the
+  `## iOS Shell Details` section from design.md. The primary input remains
+  `app.rs` from the core; the feature spec's platform section supplements
+  with requirements that may not be expressed in the Rust types alone
+  (e.g., navigation style, specific UX behaviors, accessibility
   requirements, layout constraints).

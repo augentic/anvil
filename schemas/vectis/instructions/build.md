@@ -3,28 +3,40 @@ directly -- delegate to the skills below.
 
 Arguments (used by all skills):
 - CHANGE_ID: the name of this change (from specify status)
-- MODULE_NAME: the spec folder name (specs/<module>/spec.md)
+- FEATURE_NAME: the spec folder name (specs/<feature>/spec.md)
 - PROJECT_DIR: the target project directory
 - IOS_SHELL_DIR: the root directory of the iOS shell project (e.g. `$PROJECT_DIR/ios`)
 - APP_NAME: the Xcode target / Swift source folder name (e.g. `MyApp`)
 
-## Module type detection
+## Platform detection
 
-Check the proposal to determine which module types are in scope.
-Process modules in this order:
+Read the proposal to determine which platforms are in scope.
+Process platforms in this order:
 
-1. **design-system** modules first (other modules may depend on tokens)
-2. **core** modules next (iOS shell depends on the core)
-3. **ios-shell** modules last
+1. **design-system** first (other platforms may depend on tokens)
+2. **core** next (shells depend on the core)
+3. **ios** shell last
+4. **android** shell (future)
+5. **web** shell (future)
+
+Each skill reads the single feature spec at
+`specs/<feature>/spec.md`. The spec contains core requirements in
+the main body and platform-specific requirements in dedicated
+sections (e.g. `## iOS Shell Requirements`).
 
 ---
 
-## Core modules
+## Core
 
 Check whether `{PROJECT_DIR}/shared/src/app.rs` exists:
 
 - If `app.rs` does not exist, use create mode.
 - If `app.rs` exists, use update mode.
+
+The core-writer reads the main body of the feature spec (core
+requirements) and the design.md Domain Model and Capabilities sections.
+Platform-specific sections in the spec are not relevant to core
+generation.
 
 ### Create mode (app.rs does NOT exist -- new core)
 
@@ -51,7 +63,7 @@ Run the verify-repair loop described below.
 Before any changes, record the current test state:
 
 ```bash
-cd $PROJECT_DIR && cargo test 2>&1 | tee /tmp/${CHANGE_ID}-${MODULE_NAME}-baseline.txt
+cd $PROJECT_DIR && cargo test 2>&1 | tee /tmp/${CHANGE_ID}-${FEATURE_NAME}-baseline.txt
 ```
 
 Record which tests pass and which fail. This baseline is used in
@@ -77,7 +89,13 @@ baseline captured in Step 0.
 
 ---
 
-## iOS shell modules
+## iOS shell
+
+Only run this section if `ios` is listed in the proposal's Platforms.
+
+The ios-writer reads `app.rs` as its primary input, supplemented by
+the `## iOS Shell Requirements` section of the feature spec and the
+`## iOS Shell Details` section of design.md.
 
 Check whether the iOS shell directory exists and contains `.swift` files:
 
@@ -114,7 +132,14 @@ Run the iOS verify steps described below.
 
 ---
 
-## Design system modules
+## Design system
+
+Only run this section if `design-system` is listed in the proposal's
+Platforms.
+
+The design-system-writer reads `tokens.yaml` as its primary input,
+supplemented by the `## Design System Requirements` section of the
+feature spec if present.
 
 1. /vectis:design-system-writer -- generate design system from tokens
 

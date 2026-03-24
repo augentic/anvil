@@ -3,25 +3,30 @@
 Create specification files that define WHAT the system should do.
 
 The source for Crux projects is always Manual. Create one spec file per
-module listed in the proposal's Modules section.
+feature listed in the proposal's Features section.
+
+Each spec file is organized as a single document covering the feature's
+behavioral requirements. Core (platform-neutral) requirements form the
+main body. Platform-specific requirements go in dedicated sections at
+the end of the file.
 
 ---
 
-**New Modules**: Use the exact kebab-case name from the proposal
-(`specs/<module>/spec.md`). The spec format depends on the module type:
+**New Features**: Use the exact kebab-case name from the proposal
+(`specs/<feature>/spec.md`).
 
-### Core module specs
+### Core requirements (main body)
 
-Core module specs describe behavioral requirements for the Crux shared
-crate. Map the application's features and business rules into the
-Specify requirement format:
+The main body of the spec describes platform-neutral behavioral
+requirements — what the app does regardless of which shell renders it.
+These requirements drive the Crux shared crate implementation.
 
 ```markdown
-# <Module Name> Specification
+# <Feature Name> Specification
 
 ## Purpose
 
-<1-2 sentence description of what this module does>
+<1-2 sentence description of what this feature does>
 
 ### Requirement: <Feature or Behavior Name>
 
@@ -44,7 +49,7 @@ The system SHALL <behavioral description>.
 - <error type>: <description and trigger conditions>
 ```
 
-Guidance for core module specs:
+Guidance for core requirements:
 
 - Each user-facing **feature** (add item, delete item, toggle state)
   becomes a `### Requirement:` block with at least one scenario.
@@ -60,21 +65,21 @@ Guidance for core module specs:
 - Include requirements for page transitions (Loading -> Main, Error
   -> retry) and navigation behavior.
 
-### iOS shell module specs
+### iOS Shell Requirements section
 
-iOS shell specs describe platform-specific behavioral requirements
-beyond what the core spec covers:
+If the proposal lists `ios` in Platforms, add a `## iOS Shell
+Requirements` section after the core requirements. This section captures
+iOS-specific behavioral requirements beyond what the core spec covers.
+
+Use prefixed IDs to avoid collisions with core requirements:
+`REQ-IOS-001`, `REQ-IOS-002`, etc.
 
 ```markdown
-# <Module Name> iOS Shell Specification
-
-## Purpose
-
-<Which core module this shell renders, and where the shell lives>
+## iOS Shell Requirements
 
 ### Requirement: <Platform Behavior>
 
-ID: REQ-001
+ID: REQ-IOS-001
 
 The iOS shell SHALL <platform-specific behavioral description>.
 
@@ -84,30 +89,33 @@ The iOS shell SHALL <platform-specific behavioral description>.
 - **THEN** <expected platform behavior>
 ```
 
-Guidance for iOS shell specs:
+Guidance for iOS shell requirements:
 
 - Navigation style (single, stack, tabs) becomes a requirement.
 - Per-screen iOS-specific interactions (swipe actions, pull-to-refresh,
   toolbar items) become requirements with scenarios.
 - Platform features (haptics, share sheet) become requirements.
 - Design system overrides become requirements if they affect behavior.
-- Do NOT duplicate core module requirements — reference the core spec
+- Do NOT duplicate core requirements — reference the core spec
   for business logic.
 
-### Design system module specs
+### Android Shell Requirements section
 
-Design system specs capture token change requirements:
+If the proposal lists `android` in Platforms, add a `## Android Shell
+Requirements` section. Use `REQ-AND-xxx` prefixed IDs.
+
+### Design System Requirements section
+
+If the proposal lists `design-system` in Platforms and the feature
+involves token changes, add a `## Design System Requirements` section.
+Use `REQ-DS-xxx` prefixed IDs.
 
 ```markdown
-# <Module Name> Design System Specification
-
-## Purpose
-
-<What token changes are being made and why>
+## Design System Requirements
 
 ### Requirement: <Token Change>
 
-ID: REQ-001
+ID: REQ-DS-001
 
 The design system SHALL <token change description>.
 
@@ -120,11 +128,12 @@ The design system SHALL <token change description>.
 ---
 
 Repeat `### Requirement:` blocks for each distinct behavior,
-incrementing `ID: REQ-XXX` for each new requirement.
+incrementing `ID: REQ-XXX` for each new requirement within its
+ID namespace (core, iOS, Android, design-system).
 
-**Modified Modules**: Use the existing spec folder name from
-`.specify/specs/<module>/` when creating the delta spec at
-`specs/<module>/spec.md`. Follow this structure:
+**Modified Features**: Use the existing spec folder name from
+`.specify/specs/<feature>/` when creating the delta spec at
+`specs/<feature>/spec.md`. Follow this structure:
 
 ```markdown
 ## ADDED Requirements
@@ -159,6 +168,10 @@ ID: REQ-<!-- existing id -->
 ID: REQ-<!-- existing id -->
 TO: <!-- new requirement name -->
 ```
+
+Delta operations apply to all ID namespaces. Platform requirements
+can be added, modified, or removed using delta operations with their
+prefixed IDs (e.g., `REQ-IOS-003`).
 
 Follow the spec format conventions defined in the define skill for
 delta operations, format rules, and the MODIFIED/ADDED workflows.

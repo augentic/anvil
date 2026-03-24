@@ -288,8 +288,8 @@ single Specify change that tracks all of them:
 
 ## Integration with Specify Workflow
 
-This skill is invoked as part of the `crux-app` schema's task list, after
-code generation and compiler verification, before merge:
+This skill is invoked as part of the Vectis build phase, after core-writer
+generation and compiler verification, before merge:
 
 ```
 define -> build (core-writer) -> verify -> review-fix cycle (this skill, up to 3 iterations) -> generate change for design issues -> merge
@@ -301,9 +301,6 @@ Design-level findings from all iterations are accumulated into a single
 Specify change with all artifacts (proposal, design, specs, tasks) ready
 for implementation. This makes the output of a review directly actionable --
 the user can immediately run `/spec:build` to start fixing the issues.
-
-The tasks artifact for a crux-app change includes a Code Review section that
-invokes this skill. See the `crux-app` schema for details.
 
 The skill can also be invoked standalone at any time:
 

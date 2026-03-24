@@ -1,6 +1,6 @@
 ---
 name: design-system-writer
-description: Generate or update the platform-specific design system implementation from tokens.yaml. Use when implementing design-system module tasks from a Specify change, or when the user mentions design-system-writer.
+description: Generate or update the platform-specific design system implementation from tokens.yaml. Use when implementing design-system tasks from a Specify change, or when the user mentions design-system-writer.
 ---
 
 # Design System Writer
@@ -20,7 +20,7 @@ always regenerates from scratch.
 |---|---|---|
 | `tokens-file` | No | Path to the tokens YAML file. Defaults to `design-system/tokens.yaml` |
 | `output-dir` | No | Path to the iOS Swift Package directory. Defaults to `design-system/ios` |
-| `change-dir` | No | Path to a Specify change directory. When provided, the skill reads design-system specs from `{change-dir}/specs/{module-name}/spec.md` for context on what token changes are expected. |
+| `change-dir` | No | Path to a Specify change directory. When provided, the skill reads the `## Design System Requirements` section from `{change-dir}/specs/{feature-name}/spec.md` for context on what token changes are expected. |
 
 ## Process
 

@@ -26,7 +26,7 @@ Generate and review Rust WASM crates targeting the Omnia runtime.
 
 ## Vectis (`plugins/vectis/`)
 
-Generate cross-platform Crux applications: Rust shared core, SwiftUI iOS shell, and VectisDesign token system.
+Generate cross-platform Crux applications: Rust shared core, SwiftUI iOS shell, and VectisDesign token system. See [vectis.md](vectis.md) for the full user guide including prerequisites, Xcode workflow, and design system management.
 
 - **core-writer** -- Generate or update Rust Crux shared crates from Specify artifacts
 - **core-reviewer** -- Review generated Crux core for structural, logic, and quality issues

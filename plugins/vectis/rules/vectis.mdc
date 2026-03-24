@@ -19,7 +19,6 @@ This plugin generates cross-platform applications using the Crux framework (Rust
 │   └── plugin.json          # Plugin manifest
 ├── rules/
 │   └── vectis.mdc           # This file
-├── references/              # Shared references
 └── skills/
     ├── core-writer/          # Specify artifacts → Rust Crux shared crate
     ├── core-reviewer/        # AI-powered code review for Crux core
@@ -34,19 +33,19 @@ Each skill has its own SKILL.md with full details. The Specify artifact format (
 
 ### New Crux Application
 
-A full-stack Crux app involves three modules: a core module (Rust shared crate with all business logic), an iOS shell module (SwiftUI views + Core.swift bridge), and optionally a design-system module (VectisDesign tokens). The core must be generated before the iOS shell.
+A Crux app is defined as a single feature with platforms declared in the proposal. A feature like `todo-app` with platforms `core, ios, design-system` produces one spec covering all behavioral requirements (core logic plus platform-specific sections), one design document, and one task list. The build phase invokes the appropriate skills in order: design-system-writer, core-writer, then ios-writer.
 
-### Core Update
+### Feature Update
 
-Specify artifacts with updated feature specs and design generate: modified Event variants, updated `update()` match arms, changed view model types, and updated tests.
+Updated feature specs and design generate targeted changes across all affected platforms: modified Event variants and `update()` logic in the core, updated screen views in iOS, and regenerated tokens if the design system changed. All changes flow from a single feature spec.
 
-### iOS Shell Update
+### Adding a Platform
 
-When the core types change (new ViewModel variants, new Event variants), the iOS shell must be updated: new screen views, updated ContentView switch, modified effect handlers.
+When a new platform (e.g., Android) is added, the feature spec gains a new platform section (`## Android Shell Requirements`), the design gains a platform details section, and the build phase invokes the new platform's writer skill. Existing specs and code are unaffected.
 
 ### Design System Update
 
-Token changes in `tokens.yaml` trigger regeneration of Swift enums (VectisColors, VectisTypography, VectisSpacing, VectisCornerRadius) and `Theme.swift`.
+Token changes in `tokens.yaml` trigger regeneration of Swift enums (VectisColors, VectisTypography, VectisSpacing, VectisCornerRadius) and `Theme.swift`. Token changes can be part of a feature change or a standalone feature.
 
 ## Troubleshooting
 
@@ -58,7 +57,7 @@ Token changes in `tokens.yaml` trigger regeneration of Swift enums (VectisColors
 
 ### iOS Shell Build Fails
 
-- Does the core module exist with `shared/src/app.rs`?
+- Does the core exist with `shared/src/app.rs`?
 - Is `uniffi` pinned to `"=0.29.4"` in `shared/Cargo.toml`?
 - Is `facet` pinned to `"=0.31"`?
 

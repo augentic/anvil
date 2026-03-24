@@ -46,7 +46,7 @@ Call `render()` at the end of any `update()` branch that changes the view model.
 ```toml
 # workspace Cargo.toml
 [workspace.dependencies]
-crux_http = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
+crux_http = "0.16.0"
 ```
 
 ### Effect variant
@@ -189,7 +189,7 @@ Key points:
 ```toml
 # workspace Cargo.toml
 [workspace.dependencies]
-crux_kv = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
+crux_kv = "0.11.0"
 ```
 
 ### Effect variant

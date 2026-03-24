@@ -1,6 +1,6 @@
 ---
 name: core-writer
-description: Generate or update a Rust Crux shared crate from Specify artifacts. Use when implementing core module tasks from a Specify change, or when the user mentions core-writer.
+description: Generate or update a Rust Crux shared crate from Specify artifacts. Use when implementing core tasks from a Specify change, or when the user mentions core-writer.
 ---
 
 # Crux Core Application Generator
@@ -14,23 +14,24 @@ When an existing project is detected, the skill operates in **update mode**: it
 compares the Specify artifacts against the current implementation and makes targeted
 edits rather than regenerating from scratch.
 
-This skill targets **Crux 0.17.0-rc3**, pinned to the `crux_core-v0.17.0-rc3` tag.
-Dependencies use git references with a tag until the crate is published to crates.io.
+This skill targets **Crux 0.17.0** from crates.io.
 
 ## Arguments
 
 | Argument | Required | Description |
 |---|---|---|
 | `change-dir` | **Yes** | Path to the active Specify change directory (`.specify/changes/<change>/`). |
-| `module-name` | **Yes** | Spec folder name under `{change-dir}/specs/` identifying the module to generate. |
+| `feature-name` | **Yes** | Spec folder name under `{change-dir}/specs/` identifying the feature to generate. |
 | `project-dir` | No | Directory to create the project in. Defaults to current directory. |
 
 ## Input Artifacts
 
 The skill reads from Specify artifacts rather than a standalone spec file:
 
-- **Spec**: `{change-dir}/specs/{module-name}/spec.md` -- behavioral requirements
-  using `### Requirement:` / `#### Scenario:` format.
+- **Spec**: `{change-dir}/specs/{feature-name}/spec.md` -- behavioral requirements
+  using `### Requirement:` / `#### Scenario:` format. The skill reads the **core
+  requirements** (main body of the spec). Platform-specific sections (e.g.
+  `## iOS Shell Requirements`) are not relevant to core generation and are ignored.
 - **Design**: `{change-dir}/design.md` -- domain model, capabilities, API contracts,
   and technical design decisions.
 
@@ -54,7 +55,7 @@ the artifacts are too ambiguous to proceed.
 
 | Derived | How to infer | Example |
 |---|---|---|
-| **App struct name** | PascalCase noun from the design overview or module name | `TodoApp`, `NoteEditor`, `Counter` |
+| **App struct name** | PascalCase noun from the design overview or feature name | `TodoApp`, `NoteEditor`, `Counter` |
 | **Model** | Internal state fields from Design Domain Model section | `todos: Vec<Todo>`, `filter: Filter` |
 | **Event** | User actions from spec Requirements + internal callback variants from Capabilities + `Navigate(Route)` | `AddTodo(String)`, `Fetched(Result<...>)`, `Navigate(Route)` |
 | **ViewModel variants** | One variant per view from spec Requirements about views/pages | `ViewModel::Loading`, `ViewModel::TodoList(TodoListView)` |
@@ -102,9 +103,11 @@ Use this process when no existing project is found at `{project-dir}`.
 
 ### 1. Read and analyze the Specify artifacts
 
-Read the spec at `{change-dir}/specs/{module-name}/spec.md` and the design at
-`{change-dir}/design.md`. Extract:
-- The core concept and app name (from the design overview or module name)
+Read the spec at `{change-dir}/specs/{feature-name}/spec.md` and the design at
+`{change-dir}/design.md`. Extract core requirements from the main body of the spec
+(stop before any `## ... Shell Requirements` or `## Design System Requirements`
+sections):
+- The core concept and app name (from the design overview or feature name)
 - State that needs to be tracked (from **Design Domain Model** -> Model)
 - Actions the user can take (from **Spec Requirements** with feature scenarios -> shell-facing Event variants)
 - Side-effects needed (from **Design Capabilities** -> Effect variants and internal Event variants)
@@ -151,7 +154,7 @@ Consult `references/crux-app-pattern.md` for type conventions.
 
 ### 3. Generate workspace files
 
-Create the workspace root with two files:
+Create the workspace root files:
 
 **`{project-dir}/Cargo.toml`** -- workspace manifest:
 ```toml
@@ -164,7 +167,7 @@ edition = "2024"
 rust-version = "1.88"
 
 [workspace.dependencies]
-crux_core = { git = "https://github.com/redbadger/crux", tag = "crux_core-v0.17.0-rc3" }
+crux_core = "0.17.0"
 serde = "1.0"
 facet = "=0.31"
 
@@ -228,6 +231,11 @@ targets = [
 ]
 profile = "minimal"
 ```
+
+**`{project-dir}/.gitignore`** -- multi-platform ignore rules. Use the full
+`.gitignore` template from `references/crux-project-config.md`. This covers
+Rust, Swift/Xcode, TypeScript/Node, Kotlin/Gradle, `.DS_Store`, and `.env`
+so the repository is ready for any shell that may be added later.
 
 ### 4. Generate `shared/Cargo.toml`
 
@@ -390,7 +398,7 @@ targeted, minimal edits. Never regenerate a file from scratch in update mode.
 
 ### U1. Read and analyze the Specify artifacts
 
-Same extraction as create mode step 1. Read `{change-dir}/specs/{module-name}/spec.md`
+Same extraction as create mode step 1. Read `{change-dir}/specs/{feature-name}/spec.md`
 and `{change-dir}/design.md`. Build the full picture of the desired application state:
 app name, features, data model, UI, capabilities, API shapes, and business rules.
 
@@ -795,8 +803,7 @@ all other items apply in both modes.
 
 ## Important Notes
 
-- **0.17 is pre-release**: Use git dependencies pinned to the `crux_core-v0.17.0-rc3` tag.
-  When 0.17 is published to crates.io, replace git dependencies with versioned ones.
+- **Crux 0.17.0 is published**: Use crates.io version pins for all Crux dependencies.
 - **`facet` version pinning**: The `facet` crate must be pinned to `"=0.31"` exactly.
   Other versions may be incompatible with `crux_core`.
 - **`uniffi` version pinning**: The `uniffi` crate must be pinned to `"=0.29.4"` exactly,
