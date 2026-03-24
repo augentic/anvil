@@ -74,7 +74,7 @@ build:
 
 defaults:
   context: |
-    Tech stack: Rust (Crux 0.17.0-rc3), Swift 6 (SwiftUI, iOS 17+), VectisDesign tokens
+    Tech stack: Rust (Crux 0.17.0), Swift 6 (SwiftUI, iOS 17+), VectisDesign tokens
     Architecture: Crux App trait with Model, Event, ViewModel, Effect, Command
     Testing: Rust integration tests (cargo test), Xcode build verification (make build)
   rules:
@@ -116,7 +116,7 @@ defaults:
         system overrides
       - If design-system is in scope, include a Design System Details section
         documenting token categories, value shapes, and downstream consumers
-      - Include Implementation Constraints: Crux 0.17.0-rc3, facet 0.31,
+      - Include Implementation Constraints: Crux 0.17.0, facet 0.31,
         uniffi 0.29.4, Swift 6, iOS 17+
       - Use mermaid diagrams for type relationships and navigation flows
     tasks: |
