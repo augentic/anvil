@@ -51,7 +51,12 @@ class Core: ObservableObject {
 
     init() {
         self.core = CoreFfi()
-        self.view = Self.deserializeView(from: core)
+        do {
+            self.view = Self.deserializeView(try core.view())
+        } catch {
+            assertionFailure("Failed to get initial view from core: \(error)")
+            self.view = .loading
+        }
         update(.fetchCount)
     }
 
@@ -60,11 +65,12 @@ class Core: ObservableObject {
             assertionFailure("Failed to serialize event: \(event)")
             return
         }
-        guard let effectsData = try? core.update(Data(data)) else {
-            assertionFailure("CoreFFI.update() failed")
-            return
+        do {
+            let effects = try core.update(data: Data(data))
+            processEffects([UInt8](effects))
+        } catch {
+            assertionFailure("Failed to update core: \(error)")
         }
-        processEffects([UInt8](effectsData))
     }
 
     private func processEffects(_ data: [UInt8]) {
@@ -80,7 +86,16 @@ class Core: ObservableObject {
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
-            self.view = Self.deserializeView(from: core)
+            do {
+                let data = try core.view()
+                guard let vm = try? ViewModel.bincodeDeserialize(input: [UInt8](data)) else {
+                    assertionFailure("Failed to deserialize ViewModel from bincode")
+                    break
+                }
+                self.view = vm
+            } catch {
+                assertionFailure("Failed to get view from core: \(error)")
+            }
 
         case .http(let httpRequest):
             Task { @MainActor in
@@ -89,22 +104,21 @@ class Core: ObservableObject {
                     assertionFailure("Failed to serialize HttpResult")
                     return
                 }
-                guard let effectsData = try? core.resolve(request.id, Data(data)) else {
-                    assertionFailure("CoreFFI.resolve() failed")
-                    return
+                do {
+                    let effects = try core.resolve(id: request.id, data: Data(data))
+                    processEffects([UInt8](effects))
+                } catch {
+                    assertionFailure("Failed to resolve effect: \(error)")
                 }
-                processEffects([UInt8](effectsData))
             }
         }
     }
 
-    private static func deserializeView(from core: CoreFfi) -> ViewModel {
-        guard let data = try? core.view() else {
-            assertionFailure("CoreFFI.view() failed")
-            return .loading
-        }
+    /// Only used during `init()` where `.loading` is the correct fallback.
+    /// The `.render` handler preserves the existing view on failure.
+    private static func deserializeView(_ data: Data) -> ViewModel {
         guard let vm = try? ViewModel.bincodeDeserialize(input: [UInt8](data)) else {
-            assertionFailure("Failed to deserialize ViewModel")
+            assertionFailure("Failed to deserialize ViewModel from bincode")
             return .loading
         }
         return vm

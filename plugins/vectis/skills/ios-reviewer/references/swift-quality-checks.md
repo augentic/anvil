@@ -9,18 +9,34 @@ Language-level quality checks for Swift/SwiftUI code in Crux iOS shells.
 No `!` force unwraps or `try!` force tries outside of test files and
 preview blocks.
 
-`Core.swift` bincode serialization must use `try?` with `assertionFailure`
-and a safe fallback (e.g., return `.loading` for view deserialization,
-no-op for event serialization). This ensures Debug builds surface type
-mismatches loudly while Release builds degrade gracefully.
+`Core.swift` has two categories of throwing calls, each with a different
+error-handling pattern:
+
+- **Bincode calls** (`bincodeSerialize()`, `bincodeDeserialize()`) use
+  `try?` with `guard` + `assertionFailure` and a safe fallback. These
+  throw generic errors without structured messages.
+- **CoreFFI calls** (`core.update()`, `core.view()`, `core.resolve()`)
+  use `do/catch` with `assertionFailure` including `\(error)`. These
+  throw `CoreError` containing a meaningful `Bridge` message from the
+  Rust core -- using `try?` would discard this diagnostic information.
+
+In `init()`, view deserialization falls back to `.loading` (no prior
+state exists). In the `.render` effect handler, the existing view must be
+preserved by `break`ing without assignment -- never fall back to
+`.loading`, which would overwrite the user's current screen. Event
+serialization uses a no-op return (event is dropped). This ensures Debug
+builds surface type mismatches loudly while Release builds degrade
+gracefully.
 
 **Detection**: Search `.swift` files (excluding `*Tests.swift`) for `!`
 used as force unwrap (not `!=` or `!==`) and for `try!`. Skip occurrences
 inside `#Preview { ... }` blocks and in files named `*Previews.swift`.
-Flag all other occurrences including those in `Core.swift`.
+Flag all other occurrences including those in `Core.swift`. Also flag
+CoreFFI calls that use `try?` instead of `do/catch`.
 
-**Fix**: Replace `try!` with `guard let ... = try? ... else { assertionFailure(...); return fallback }`.
-Replace `as!` with `as?` guarded by a conditional.
+**Fix**: Replace `try!` with the appropriate pattern: `do/catch` for
+CoreFFI calls, `guard let ... = try? ... else { assertionFailure(...); return fallback }`
+for bincode calls. Replace `as!` with `as?` guarded by a conditional.
 
 ## SWF-002: Debug Output
 

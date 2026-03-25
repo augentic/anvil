@@ -191,19 +191,57 @@ immediately followed by `@MainActor in`. Flag all occurrences in
 
 **Fix**: Replace `Task {` with `Task { @MainActor in`.
 
-## IOS-015: Missing try on CoreFFI calls
+## IOS-015: CoreFFI Errors Not Surfaced
 
 **Severity**: Critical
 
 `CoreFFI` methods (`view()`, `update()`, `resolve()`) return
 `Result<Vec<u8>, CoreError>` in Rust, which UniFFI maps to Swift `throws`.
-Calling these without `try` is a compile error. All calls must use `try?`
-with `assertionFailure` and a safe fallback, consistent with the bincode
-serialization pattern (IOS-013).
+Calling these without `try` is a compile error. Unlike bincode
+serialization (IOS-013), CoreFFI calls throw `CoreError` which contains a
+meaningful `Bridge` message from the Rust core. Using `try?` discards this
+message. All CoreFFI calls must use `do/catch` with `\(error)` interpolated
+into `assertionFailure` so the underlying reason (deserialization failure,
+invalid effect ID, etc.) is visible in debug builds.
 
 **Detection**: Search `Core.swift` for `core.view()`, `core.update(`,
-and `core.resolve(` that are not preceded by `try`. Flag all occurrences.
+and `core.resolve(` that are not preceded by `try`. Also flag any CoreFFI
+calls that use `try?` instead of `do/catch` -- the error message is lost.
 
-**Fix**: Wrap each call with `guard let ... = try? ... else {
-assertionFailure(...); return }`. Use the `deserializeView(from:)` helper
-for `core.view()` calls. See `references/crux-ios-shell-pattern.md`.
+**Fix**: Wrap each CoreFFI call in `do { let x = try core.xxx(...); ... }
+catch { assertionFailure("context: \(error)") }`. In `init()`, use
+`do { self.view = Self.deserializeView(try core.view()) } catch { ... }`.
+In the `.render` effect handler, use an inline `do/catch` that preserves
+the existing view on failure. See `references/crux-ios-shell-pattern.md`.
+
+## IOS-016: Render Effect Overwrites View with Loading Fallback
+
+**Severity**: Warning
+
+The `.render` effect handler must not use `deserializeView` or any
+pattern that falls back to `.loading` on failure. This would overwrite the
+user's current view (e.g., a task list) with a loading screen on any transient
+serialization error. The `deserializeView` helper is only appropriate in
+`init()` where no prior state exists.
+
+**Detection**: In the `processEffect` method, check the `.render` case for
+calls to `deserializeView` or any assignment of `.loading` to `self.view`.
+
+**Fix**: Replace with an inline `do/catch` that preserves the existing view
+and surfaces the `CoreError` message:
+
+```swift
+case .render:
+    do {
+        let data = try core.view()
+        guard let vm = try? ViewModel.bincodeDeserialize(input: [UInt8](data)) else {
+            assertionFailure("Failed to deserialize ViewModel from bincode")
+            break
+        }
+        self.view = vm
+    } catch {
+        assertionFailure("Failed to get view from core: \(error)")
+    }
+```
+
+See `references/crux-ios-shell-pattern.md`.
