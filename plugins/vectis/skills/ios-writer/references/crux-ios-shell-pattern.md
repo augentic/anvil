@@ -89,10 +89,20 @@ class Core: ObservableObject {
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
-            self.view = Self.deserializeView(from: core)
+            guard let data = try? core.view(),
+                  let vm = try? ViewModel.bincodeDeserialize(input: [UInt8](data))
+            else {
+                assertionFailure("Failed to deserialize ViewModel")
+                break
+            }
+            self.view = vm
         }
     }
 
+    /// Deserialize the current view model from the core. Only used during
+    /// `init()` where no prior state exists and `.loading` is the correct
+    /// fallback. The `.render` effect handler uses an inline guard instead,
+    /// preserving the existing view on failure.
     private static func deserializeView(from core: CoreFfi) -> ViewModel {
         guard let data = try? core.view() else {
             assertionFailure("CoreFFI.view() failed")
@@ -115,7 +125,13 @@ Add the `.http` case to the effect switch. Use `URLSession` for the request.
 func processEffect(_ request: Request) {
     switch request.effect {
     case .render:
-        self.view = Self.deserializeView(from: core)
+        guard let data = try? core.view(),
+              let vm = try? ViewModel.bincodeDeserialize(input: [UInt8](data))
+        else {
+            assertionFailure("Failed to deserialize ViewModel")
+            break
+        }
+        self.view = vm
 
     case .http(let httpRequest):
         Task { @MainActor in

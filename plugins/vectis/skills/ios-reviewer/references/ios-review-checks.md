@@ -205,5 +205,35 @@ serialization pattern (IOS-013).
 and `core.resolve(` that are not preceded by `try`. Flag all occurrences.
 
 **Fix**: Wrap each call with `guard let ... = try? ... else {
-assertionFailure(...); return }`. Use the `deserializeView(from:)` helper
-for `core.view()` calls. See `references/crux-ios-shell-pattern.md`.
+assertionFailure(...); return }`. In `init()`, use the `deserializeView(from:)`
+helper for `core.view()`. In the `.render` effect handler, use an inline guard
+that `break`s without assignment so the existing view is preserved on failure.
+See `references/crux-ios-shell-pattern.md`.
+
+## IOS-016: Render Effect Overwrites View with Loading Fallback
+
+**Severity**: Warning
+
+The `.render` effect handler must not use `deserializeView(from:)` or any
+pattern that falls back to `.loading` on failure. This would overwrite the
+user's current view (e.g., a task list) with a loading screen on any transient
+serialization error. The `deserializeView` helper is only appropriate in
+`init()` where no prior state exists.
+
+**Detection**: In the `processEffect` method, check the `.render` case for
+calls to `deserializeView` or any assignment of `.loading` to `self.view`.
+
+**Fix**: Replace with an inline guard that preserves the existing view:
+
+```swift
+case .render:
+    guard let data = try? core.view(),
+          let vm = try? ViewModel.bincodeDeserialize(input: [UInt8](data))
+    else {
+        assertionFailure("Failed to deserialize ViewModel")
+        break
+    }
+    self.view = vm
+```
+
+See `references/crux-ios-shell-pattern.md`.

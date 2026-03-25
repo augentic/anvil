@@ -80,7 +80,13 @@ class Core: ObservableObject {
     func processEffect(_ request: Request) {
         switch request.effect {
         case .render:
-            self.view = Self.deserializeView(from: core)
+            guard let data = try? core.view(),
+                  let vm = try? ViewModel.bincodeDeserialize(input: [UInt8](data))
+            else {
+                assertionFailure("Failed to deserialize ViewModel")
+                break
+            }
+            self.view = vm
 
         case .http(let httpRequest):
             Task { @MainActor in
@@ -98,6 +104,8 @@ class Core: ObservableObject {
         }
     }
 
+    /// Only used during `init()` where `.loading` is the correct fallback.
+    /// The `.render` handler preserves the existing view on failure.
     private static func deserializeView(from core: CoreFfi) -> ViewModel {
         guard let data = try? core.view() else {
             assertionFailure("CoreFFI.view() failed")

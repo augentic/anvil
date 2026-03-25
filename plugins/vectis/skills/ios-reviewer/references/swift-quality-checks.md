@@ -10,9 +10,13 @@ No `!` force unwraps or `try!` force tries outside of test files and
 preview blocks.
 
 `Core.swift` bincode serialization must use `try?` with `assertionFailure`
-and a safe fallback (e.g., return `.loading` for view deserialization,
-no-op for event serialization). This ensures Debug builds surface type
-mismatches loudly while Release builds degrade gracefully.
+and a safe fallback. In `init()`, view deserialization falls back to
+`.loading` (no prior state exists). In the `.render` effect handler, the
+existing view must be preserved by `break`ing without assignment -- never
+fall back to `.loading`, which would overwrite the user's current screen.
+Event serialization uses a no-op return (event is dropped). This ensures
+Debug builds surface type mismatches loudly while Release builds degrade
+gracefully.
 
 **Detection**: Search `.swift` files (excluding `*Tests.swift`) for `!`
 used as force unwrap (not `!=` or `!==`) and for `try!`. Skip occurrences
