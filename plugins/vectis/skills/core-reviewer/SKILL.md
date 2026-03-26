@@ -138,7 +138,7 @@ Record findings with severity Warning or Info.
 
 #### 2e. Universal checks pass
 
-Read `../../references/universal-review-checks.md` (shared across all Vectis
+Read `../../references/universal-review-checks.md` (shared across all
 reviewer skills).
 
 Apply checks UNI-001 through UNI-017 with Rust-specific detection. Several

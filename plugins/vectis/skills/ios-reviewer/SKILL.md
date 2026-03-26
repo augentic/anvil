@@ -103,7 +103,7 @@ Record findings with severity Warning or Info.
 
 #### 2d. Universal checks pass (skip if scope = quick)
 
-Read `../../references/universal-review-checks.md` (shared across all Vectis
+Read `../../references/universal-review-checks.md` (shared across all
 reviewer skills).
 
 Apply checks UNI-001 through UNI-017 with Swift-specific detection. Several

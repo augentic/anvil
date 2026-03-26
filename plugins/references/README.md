@@ -6,6 +6,7 @@ This directory contains shared reference documentation used by multiple plugins.
 
 - **`specify.md`**: The core Specify artifact format specification (Proposal, Spec, Design, Tasks). Referenced by all plugins.
 - **`agent-teams.md`**: Patterns for multi-agent collaboration (Lead/Specialist/Antagonist). Referenced by `code-reviewer` and other complex skills.
+- **`universal-review-checks.md`**: Language and domain-agnostic review checklist (UNI-001 through UNI-017). Referenced by all reviewer skills (`code-reviewer`, `core-reviewer`, `ios-reviewer`).
 
 ## Plugin-Specific References
 

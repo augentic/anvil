@@ -511,6 +511,7 @@ let api_url = ctx.config.get("API_URL")?;
 
 ## Reference Documentation
 
+- [Universal Review Checks](references/universal-review-checks.md) -- Language and domain-agnostic review checklist shared across all reviewer skills
 - [Agent Team Patterns](references/agent-teams.md) -- Shared team roles, antagonist protocol, synthesis rules, and file ownership
 - [CodeRabbit Study: AI Code Creates 1.7x More Issues](https://www.coderabbit.ai/blog/state-of-ai-vs-human-code-generation-report)
 - [Security Best Practices for Rust](https://anssi-fr.github.io/rust-guide/)
