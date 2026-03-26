@@ -2,7 +2,7 @@
   "name": "omnia",
   "displayName": "Omnia Code Generation",
   "description": "Generate Rust WASM code from JIRA epics, requirements, or design documents.",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"

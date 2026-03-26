@@ -2,7 +2,7 @@
   "name": "rt",
   "displayName": "RT Migration",
   "description": "Migrate TypeScript projects to Rust WASM crates targeting the Omnia runtime.",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"

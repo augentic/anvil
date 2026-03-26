@@ -275,9 +275,10 @@ with "QUA-" (e.g., QUA-1, QUA-2).
 You are the Antagonist Reviewer for a Rust WASM crate at $CRATE_PATH.
 
 You receive findings from three specialist reviewers (Security, Correctness,
-Quality). Your job is to challenge every finding and find what they missed.
+Quality) and from the lead's universal checks pass (UNI-* prefixed findings).
+Your job is to challenge every finding and find what they missed.
 
-For EACH specialist finding:
+For EACH finding (SEC-, COR-, QUA-, and UNI- prefixed):
 1. Validate evidence: Is there a real file:line reference and code snippet?
 2. Challenge severity: Is CRITICAL really critical? Is LOW actually higher?
 3. Check for false positives: Could this be a non-issue or acceptable pattern?
@@ -309,17 +310,91 @@ The three specialists analyze the crate concurrently. Each reads all `.rs` files
 
 **Lead waits** for all three specialists to complete before proceeding.
 
-### Step 3: Adversarial Challenge
+### Step 3: Universal Checks
 
-After all specialists report, the lead sends their combined findings to the antagonist.
+After all specialists report, the lead reads
+`references/universal-review-checks.md` and applies checks UNI-001 through
+UNI-017 with Omnia/WASM-specific detection. Several universal checks overlap
+with categories already assigned to the specialists. Skip those and focus on
+the gaps:
+
+| Universal check | Already covered by | Action |
+|---|---|---|
+| UNI-002 Unvalidated input | Validation Logic (COR) | Skip |
+| UNI-003 Serialization failures | Error Handling (COR) | Skip |
+| UNI-006 Race conditions | WASM Constraints (SEC) -- no threads in WASM | Skip |
+| UNI-010 Panics/crashes | Error Handling: unwrap/expect (COR) | Skip |
+| UNI-013 Dead code | Code Quality (QUA) | Skip |
+| UNI-014 Hardcoded config (partial) | Provider Misuse: std::env (COR) | Apply beyond env vars |
+
+Apply the remaining checks with these Omnia/WASM-specific heuristics:
+
+- **UNI-001** (uninitialised values): Look for `#[derive(Default)]` on
+  request or response structs where the default value has no valid domain
+  meaning. Check `Option::None` fields used in handler logic without
+  distinguishing "not provided" from "intentionally empty".
+- **UNI-004** (logic bugs): Reason about handler control flow for inverted
+  conditions, off-by-one errors in pagination or batch processing, and
+  match arms that are always true or always false. Check `from_input()`
+  for conditions that silently accept invalid data.
+- **UNI-005** (unbounded growth): Look for `Vec` or `HashMap` fields built
+  up inside handler functions without size limits. Check for loops that
+  accumulate results from paginated API calls without a maximum page guard.
+- **UNI-007** (chatty calls): Look for duplicate `HttpRequest::fetch` calls
+  fetching the same URL within a single handler invocation. Check for
+  handlers that re-fetch data obtainable from the request payload or
+  from a prior call in the same flow.
+- **UNI-008** (instrumentation balance): Look for `Err` branches with no
+  `tracing::error!` or `tracing::warn!`. Flag `tracing::debug!` or
+  `tracing::info!` inside loops over collection items. Check for PII
+  (names, emails, tokens) interpolated into tracing spans.
+- **UNI-009** (handle-then-throw): Look for error paths that mutate
+  provider-backed state (`StateStore::set`, `Publish::send`) before
+  returning an error, leaving the external system in an inconsistent state
+  while the caller sees a failure.
+- **UNI-011** (timeout/retry): Check whether `HttpRequest::fetch` calls
+  account for upstream timeouts or transient failures. Flag handlers that
+  have no retry or fallback path for external calls that may hang.
+- **UNI-012** (persisted state compat): Check whether `StateStore` value
+  types that changed (new fields, renamed fields, changed types) include
+  `#[serde(default)]` on new fields or migration logic for existing keys.
+- **UNI-014** (hardcoded config, beyond env vars): Look for magic-number
+  timeouts, literal URL path segments, hardcoded retry counts, and page
+  sizes embedded in handler code rather than sourced from `Config::get`.
+- **UNI-015** (stale captures): Look for async blocks that capture local
+  variables which are mutated between the capture point and the `.await`
+  resumption. Check for closures passed to iterator combinators that
+  capture mutable references.
+- **UNI-016** (error message quality): Look for `bad_request!` or
+  `server_error!` calls with generic messages ("invalid input", "failed")
+  that omit the field name, value, or operation that caused the failure.
+- **UNI-017** (type safety): Look for `String` fields on request/response
+  types that hold values from a known closed set (should be enums). Check
+  for ID fields typed as plain `String` that are interchangeable with
+  unrelated IDs (should be newtypes per Omnia strong-typing conventions).
+
+Prefix findings from this step with `UNI-` (e.g., UNI-1, UNI-2). Use the
+severity defined in the universal checklist for each check.
+
+Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004,
+UNI-007, UNI-008, UNI-011, UNI-012, UNI-014) for inclusion in the
+Adversarial Review and report synthesis. When the spec is silent on the
+concern a check raises, note the finding as a candidate for a spec update
+via `/spec:define`.
+
+### Step 4: Adversarial Challenge
+
+After the specialist reports and universal checks are complete, the lead
+sends all combined findings (SEC-, COR-, QUA-, and UNI- prefixed) to the
+antagonist.
 
 The antagonist:
 
-1. Reviews every specialist finding for evidence quality and severity accuracy
+1. Reviews every finding for evidence quality and severity accuracy
 2. Performs a counter-scan for missed issues
 3. Sends challenged report to lead with: confirmed, downgraded, upgraded, disputed, and new findings
 
-### Step 4: Synthesis
+### Step 5: Synthesis
 
 The lead merges all findings into `$REVIEW_OUTPUT`:
 
@@ -331,11 +406,11 @@ The lead merges all findings into `$REVIEW_OUTPUT`:
 6. Assign overall confidence level per [Agent Team Patterns - Confidence Scoring](references/agent-teams.md#confidence-scoring)
 7. Add "Adversarial Review" section documenting challenge statistics
 
-### Step 5: Auto-Fix (if --fix flag provided)
+### Step 6: Auto-Fix (if --fix flag provided)
 
 If `$AUTO_FIX == true`:
 
-The **lead** applies all auto-fixes directly (specialists and antagonist have completed their analysis at this point). The finding prefix (SEC-, COR-, QUA-) tracks which reviewer identified the issue for accountability in the report.
+The **lead** applies all auto-fixes directly (specialists and antagonist have completed their analysis at this point). The finding prefix (SEC-, COR-, QUA-, UNI-) tracks which reviewer or pass identified the issue for accountability in the report.
 
 **FOR EACH** confirmed or upgraded auto-fixable issue (not disputed):
 
@@ -355,7 +430,7 @@ If errors introduced:
 - **REVERT** all auto-fixes
 - **WARN** in report: "Auto-fix caused compilation errors; manual review required"
 
-### Step 6: Cleanup
+### Step 7: Cleanup
 
 Lead shuts down all teammates and cleans up the agent team.
 
@@ -581,6 +656,7 @@ Before completing review:
 - [ ] Security Reviewer: SQL injection, XSS, secrets, WASM constraints checked
 - [ ] Correctness Reviewer: unwrap/expect, validation placement, provider usage checked
 - [ ] Quality Reviewer: N+1 patterns, naming, function length, dead code checked
+- [ ] Universal Checks: UNI-001 through UNI-017 applied with Omnia-specific heuristics (skipped where covered by SEC/COR/QUA)
 - [ ] Antagonist: counter-scan completed for blind spots
 
 ### Report Quality
@@ -589,7 +665,7 @@ Before completing review:
 - [ ] Severity reflects antagonist adjustments (upgrades/downgrades applied)
 - [ ] Adversarial Review section included with challenge statistics
 - [ ] Confidence level assigned based on antagonist results
-- [ ] Finding IDs use correct prefixes (SEC-, COR-, QUA-, NEW-)
+- [ ] Finding IDs use correct prefixes (SEC-, COR-, QUA-, UNI-, NEW-)
 
 ### Auto-Fix (if enabled)
 
@@ -597,7 +673,7 @@ Before completing review:
 - [ ] Antagonist regression flags respected (no fix applied if flagged)
 - [ ] Lead applied all fixes (not delegated to specialists)
 - [ ] All fixes verified with `cargo check`
-- [ ] Modified files listed with originating reviewer prefix (SEC-, COR-, QUA-)
+- [ ] Modified files listed with originating prefix (SEC-, COR-, QUA-, UNI-)
 - [ ] Revert performed if errors introduced
 
 ## Important Notes

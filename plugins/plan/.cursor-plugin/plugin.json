@@ -2,7 +2,7 @@
   "name": "plan",
   "displayName": "Plan",
   "description": "Derive proposals, specs, design, and SoW from JIRA epics and design documents.",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"
