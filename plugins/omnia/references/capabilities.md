@@ -446,8 +446,9 @@ impl IntoBody for DetectionReply {
 | Object-relational mapping (SQL) | `TableStore`  | `P: TableStore` (use `omnia_orm`) |
 | WebSocket send/reply            | `Broadcast`   | `P: Broadcast`                    |
 | HTTP response serialization     | `IntoBody`    | impl on Output type               |
+| Binary blobs stored by key (Azure Blob Storage, AWS S3, etc) | `Blobstore` | `P: Blobstore` |
 
-**Managed data store override**: When the artifacts or source code describe direct HTTP/REST API access to a managed data store (Azure Table Storage, Azure Cosmos DB, Redis, etc.), do NOT use `HttpRequest`. Use the appropriate storage trait (`TableStore` for table/database stores, `StateStore` for key-value caches). The Omnia runtime provides native adapters for these services. Constructing raw HTTP requests with storage-specific authentication (SharedKey, HMAC-SHA256, SAS tokens) to storage service REST APIs is always wrong — the runtime handles authentication internally.
+**Managed data store override**: When the artifacts or source code describe direct HTTP/REST API access to a managed data store (Azure Table Storage, Azure Cosmos DB, Redis, etc.), do NOT use `HttpRequest`. Use the appropriate storage trait (`TableStore` for table/database stores, `Blobstore` for blob storage, `StateStore` for key-value caches). The Omnia runtime provides native adapters for these services. Constructing raw HTTP requests with storage-specific authentication (SharedKey, HMAC-SHA256, SAS tokens) to storage service REST APIs is always wrong — the runtime handles authentication internally.
 
 **Cache-aside / on-demand loading (TableStore + StateStore):** When the artifacts list both a database/table store (e.g. Azure Table Storage) as the source of truth and a cache for the same data, or when the legacy loads data from a data store on startup into an in-memory cache, include **both** `TableStore` (or `HttpRequest` for external APIs) and `StateStore` and implement cache-aside:
 1. Read from `StateStore` (cache).
