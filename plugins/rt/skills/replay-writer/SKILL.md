@@ -5,7 +5,7 @@ argument-hint: "[crate-name] [project-dir?]"
 allowed-tools: Read, Write, StrReplace, Shell, Grep
 ---
 
-# Replay-Tests Skill
+# Replay Writer Skill
 
 ## Overview
 

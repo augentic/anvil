@@ -1,7 +1,7 @@
 {
   "name": "spec",
   "displayName": "Specify Workflow",
-  "description": "Specify workflow orchestration: init, define, build, merge, drop, explore, and status.",
+  "description": "Specify workflow orchestration: init, define, build, merge, drop, verify, explore, status, and reverse-spec.",
   "version": "0.16.0",
   "author": {
     "name": "Augentic",
