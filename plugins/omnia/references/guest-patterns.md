@@ -31,7 +31,7 @@ use wasip3::exports::http::handler::Guest;
 use wasip3::http::types::{ErrorCode, Request, Response};
 
 struct Http;
-wasip3::http::proxy::export!(Http);
+wasip3::http::service::export!(Http);
 
 impl Guest for Http {
     #[omnia_wasi_otel::instrument(name = "http_guest_handle")]
@@ -212,6 +212,59 @@ async fn handler() -> HttpResult<Reply<Response>> {
         return Err(bad_request!("validation failed: {}", reason));
     }
     // ...
+}
+```
+
+**Helper function return types:** Guest helper and utility functions (non-Axum functions called by handlers) should return `Result<T, omnia_sdk::Error>`, not `Result<T, HttpError>`. The SDK error macros (`bad_request!`, `server_error!`, etc.) produce `omnia_sdk::Error` values. The `.map_err(Into::into)` at the Axum handler boundary converts them to `HttpError`.
+
+### Custom Guest Error Type
+
+The default `HttpError` limits responses to status codes 400, 404, 500, and 502 (the four `omnia_sdk::Error` variants). When a guest needs additional status codes (e.g., 401 Unauthorized), define a custom error type that implements `IntoResponse`:
+
+```rust
+use axum::response::IntoResponse;
+use http::StatusCode;
+
+struct GuestError {
+    status: StatusCode,
+    message: String,
+}
+
+impl GuestError {
+    fn unauthorized(message: impl Into<String>) -> Self {
+        Self { status: StatusCode::UNAUTHORIZED, message: message.into() }
+    }
+}
+
+impl IntoResponse for GuestError {
+    fn into_response(self) -> axum::response::Response {
+        (self.status, self.message).into_response()
+    }
+}
+
+impl From<omnia_sdk::Error> for GuestError {
+    fn from(err: omnia_sdk::Error) -> Self {
+        let status = match &err {
+            omnia_sdk::Error::BadRequest { .. } => StatusCode::BAD_REQUEST,
+            omnia_sdk::Error::NotFound { .. } => StatusCode::NOT_FOUND,
+            omnia_sdk::Error::ServerError { .. } => StatusCode::INTERNAL_SERVER_ERROR,
+            omnia_sdk::Error::BadGateway { .. } => StatusCode::BAD_GATEWAY,
+        };
+        Self { status, message: err.to_string() }
+    }
+}
+```
+
+Handlers using the custom error type return `Result<Reply<T>, GuestError>` instead of `HttpResult<Reply<T>>`:
+
+```rust
+async fn handler(body: Bytes) -> Result<Reply<MyResponse>, GuestError> {
+    let token = extract_token(&body).ok_or_else(|| GuestError::unauthorized("missing token"))?;
+    MyRequest::handler(body.to_vec())?
+        .provider(&Provider::new())
+        .owner("owner")
+        .await
+        .map_err(Into::into)
 }
 ```
 
@@ -406,7 +459,7 @@ use omnia_wasi_websocket::types::{Error as WsError, Event};
 ## Key Points
 
 1. **wasm32 guard** -- `#![cfg(target_arch = "wasm32")]` at top of file
-2. **HTTP export** -- `wasip3::http::proxy::export!(Http);`
+2. **HTTP export** -- `wasip3::http::service::export!(Http);`
 3. **Messaging export** -- `omnia_wasi_messaging::export!(Messaging with_types_in omnia_wasi_messaging);`
 4. **WebSocket export** -- `omnia_wasi_websocket::export!(WebSocket);`
 5. **Handler builder API** -- `Type::handler(input)?.provider(&provider).owner("owner").await`

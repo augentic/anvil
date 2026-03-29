@@ -45,7 +45,7 @@ use user_domain::{
 // ============================================================================
 
 pub struct Http;
-wasip3::http::proxy::export!(Http);
+wasip3::http::service::export!(Http);
 
 impl Guest for Http {
     #[omnia_wasi_otel::instrument(name = "http_guest_handle", level = Level::INFO)]
@@ -187,7 +187,7 @@ impl StateStore for Provider {}
 ### Key Points
 
 1. **wasm32 guard** -- `#![cfg(target_arch = "wasm32")]` at top of file
-2. **HTTP export** -- `wasip3::http::proxy::export!(Http);`
+2. **HTTP export** -- `wasip3::http::service::export!(Http);`
 3. **Messaging export** -- `omnia_wasi_messaging::export!(Messaging with_types_in omnia_wasi_messaging);`
 4. **WebSocket export** -- `omnia_wasi_websocket::export!(WebSocketGuest);`
 5. **Handler builder API** -- `Type::handler(input)?.provider(&provider).owner("owner").await`
