@@ -14,6 +14,7 @@ Core workflow orchestration for spec-driven development.
 - **verify** -- Detect drift between code and baseline specs
 - **explore** -- Thinking partner for ideas, investigation, and requirements
 - **status** -- Check artifact completion, task progress, and active changes
+- **reverse-spec** -- Reverse-engineer Specify artifacts from existing source code
 
 ## Omnia (`plugins/omnia/`)
 

@@ -8,7 +8,7 @@ For provider configuration and trait composition, see [providers/README.md](prov
 
 ## Runtime Example
 
-Create `examples/<guest-name>.rs`. **Only include the WASI hosts your guest actually uses** -- omit any hosts the guest does not need (e.g. omit `WasiIdentity` and `WasiMessaging` if unused):
+Create `examples/<guest-name>.rs`. Include all WASI hosts used by the guest. The example below shows all 8 available hosts:
 
 ```rust
 cfg_if::cfg_if! {
@@ -19,6 +19,8 @@ cfg_if::cfg_if! {
         use omnia_wasi_keyvalue::{WasiKeyValue, KeyValueDefault};
         use omnia_wasi_messaging::{WasiMessaging, MessagingDefault};
         use omnia_wasi_otel::{WasiOtel, OtelDefault};
+        use omnia_wasi_sql::{WasiSql, SqlDefault};
+        use omnia_wasi_websocket::{WasiWebSocket, WebSocketDefault};
 
         omnia::runtime!({
             main: true,
@@ -29,6 +31,8 @@ cfg_if::cfg_if! {
                 WasiKeyValue: KeyValueDefault,
                 WasiMessaging: MessagingDefault,
                 WasiOtel: OtelDefault,
+                WasiSql: SqlDefault,
+                WasiWebSocket: WebSocketDefault,
             }
         });
     } else {
@@ -49,6 +53,7 @@ cfg_if::cfg_if! {
 | `WasiMessaging` | `MessagingDefault` | Message pub/sub             |
 | `WasiOtel`      | `OtelDefault`      | OpenTelemetry tracing       |
 | `WasiSql`       | `SqlDefault`       | Database connections        |
+| `WasiWebSocket` | `WebSocketDefault` | WebSocket event handling    |
 
 ## Environment Variables
 

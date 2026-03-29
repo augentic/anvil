@@ -63,6 +63,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `verify` - detect drift between code and baseline specs
 - `explore` - thinking partner for ideas, investigation, and requirements
 - `status` - check artifact completion, task progress, and active changes
+- `reverse-spec` - reverse-engineer Specify artifacts from existing source code
 
 ### Omnia Plugin (`plugins/omnia/`)
 

@@ -573,6 +573,68 @@ async function checkPluginConsistency(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
+// 11. docs/plugins.md lists every skill on disk (and vice versa)
+// ──────────────────────────────────────────────────────────────
+
+async function checkPluginsDocInventory(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+  const DOCS_PATH = join(REPO_ROOT, "docs", "plugins.md");
+
+  const skillsOnDisk = new Set<string>();
+  for await (const entry of walk(PLUGINS_DIR, {
+    match: [/SKILL\.md$/],
+    includeDirs: false,
+  })) {
+    const parts = relative(PLUGINS_DIR, entry.path).split("/");
+    if (parts.length >= 4 && parts[1] === "skills") {
+      skillsOnDisk.add(`${parts[0]}/${parts[2]}`);
+    }
+  }
+
+  let content: string;
+  try {
+    content = await Deno.readTextFile(DOCS_PATH);
+  } catch {
+    fail("Cannot read docs/plugins.md");
+    return;
+  }
+
+  const documented = new Set<string>();
+  const SECTION_RE = /^## .+\(`plugins\/([^/]+)\/`\)/;
+  const SKILL_RE = /^- \*\*([a-z][a-z0-9-]*)\*\*/;
+
+  let currentPlugin: string | null = null;
+  for (const line of content.split("\n")) {
+    const sectionMatch = line.match(SECTION_RE);
+    if (sectionMatch) {
+      currentPlugin = sectionMatch[1];
+      continue;
+    }
+    if (/^## /.test(line)) {
+      currentPlugin = null;
+      continue;
+    }
+    if (currentPlugin) {
+      const skillMatch = line.match(SKILL_RE);
+      if (skillMatch) {
+        documented.add(`${currentPlugin}/${skillMatch[1]}`);
+      }
+    }
+  }
+
+  for (const skill of skillsOnDisk) {
+    if (!documented.has(skill)) {
+      fail(`Skill '${skill}' exists on disk but is not listed in docs/plugins.md`);
+    }
+  }
+  for (const skill of documented) {
+    if (!skillsOnDisk.has(skill)) {
+      fail(`Skill '${skill}' listed in docs/plugins.md but not found on disk`);
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // Run all checks
 // ──────────────────────────────────────────────────────────────
 
@@ -591,6 +653,7 @@ await Promise.all([
   checkSkillVariables(),
   checkSkillDirectives(),
   checkPluginConsistency(),
+  checkPluginsDocInventory(),
 ]);
 
 console.log();

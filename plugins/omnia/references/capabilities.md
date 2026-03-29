@@ -114,13 +114,30 @@ The Omnia runtime provides native adapters for these services behind the respect
 
 ### HttpError
 
-The SDK also exports `HttpError` for typed HTTP error handling:
+The SDK exports `HttpError` as the standard Axum-compatible error type for HTTP guest handlers:
 
 ```rust
-use omnia_sdk::HttpError;
+use axum::response::IntoResponse;
+use omnia_sdk::{HttpError, Reply};
+
+pub type HttpResult<T: IntoResponse, E: IntoResponse = HttpError> = Result<T, E>;
 ```
 
-`HttpError` is returned when an `HttpRequest::fetch` call fails at the HTTP level (e.g., connection refused, timeout). It is distinct from application-level errors parsed from response bodies.
+`HttpError` is a struct with **private fields**. It cannot be constructed directly -- it is created via `From` implementations:
+
+- `From<omnia_sdk::Error>` -- maps SDK error variants to HTTP status codes
+- `From<anyhow::Error>` -- maps to 500 Internal Server Error
+
+The resulting HTTP status codes are limited to the four `omnia_sdk::Error` variants:
+
+| SDK Variant    | HTTP Status |
+| -------------- | ----------- |
+| `BadRequest`   | 400         |
+| `NotFound`     | 404         |
+| `ServerError`  | 500         |
+| `BadGateway`   | 502         |
+
+Status codes outside this set (e.g., 401 Unauthorized, 403 Forbidden, 409 Conflict) are **not available** through the standard `HttpError` path. When additional status codes are needed, use a custom guest error type -- see [guest-patterns.md](guest-patterns.md#custom-guest-error-type).
 
 ## Publish
 

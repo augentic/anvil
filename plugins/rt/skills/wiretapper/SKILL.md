@@ -5,7 +5,7 @@ argument-hint: "[legacy-dir] [app-name?]"
 allowed-tools: Read, Write, StrReplace, Shell, Grep
 ---
 
-# Wiretap Skill
+# Wiretapper Skill
 
 ## Overview
 

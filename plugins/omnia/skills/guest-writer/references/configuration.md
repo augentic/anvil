@@ -79,11 +79,13 @@ omnia-wasi-keyvalue = "<latest>"
 omnia-wasi-messaging = "<latest>"
 omnia-wasi-otel = "<latest>"
 omnia-wasi-sql = "<latest>"
+omnia-wasi-websocket = "<latest>"
 
 # Core dependencies — resolve each version from crates.io via `cargo search`
 anyhow = "<latest>"
 axum = { version = "<latest>", default-features = false }
 bytes = "<latest>"
+http-body-util = "<latest>"
 serde = { version = "<latest>", features = ["derive"] }
 serde_json = "<latest>"
 tracing = "<latest>"
@@ -140,8 +142,10 @@ wasip3.workspace = true
 # Domain crates
 <domain-crate> = { path = "crates/<domain-crate>" }
 # Add only if needed:
+# http-body-util.workspace = true          # If guest builds http::Request bodies directly
 # omnia-wasi-messaging.workspace = true    # If messaging used
 # omnia-wasi-keyvalue.workspace = true     # If StateStore used
+# omnia-wasi-websocket.workspace = true    # If WebSocket used
 
 [dev-dependencies]
 # Dependencies that work on all targets
@@ -152,6 +156,13 @@ serde_json.workspace = true
 # Native-only dependencies for local runtime / integration tests
 omnia.workspace = true
 omnia-wasi-config.workspace = true
+omnia-wasi-http.workspace = true
+omnia-wasi-identity.workspace = true
+omnia-wasi-keyvalue.workspace = true
+omnia-wasi-messaging.workspace = true
+omnia-wasi-otel.workspace = true
+omnia-wasi-sql.workspace = true
+omnia-wasi-websocket.workspace = true
 wasmtime.workspace = true
 wasmtime-wasi.workspace = true
 ```
@@ -212,6 +223,7 @@ workspace = true
 | `anyhow`               | Error context and propagation                            |
 | `axum`                 | HTTP routing (enable `json`, `macros`, `query` features) |
 | `bytes`                | Efficient byte buffer for HTTP body extraction           |
+| `http-body-util`       | HTTP body utilities (`Empty<Bytes>` for GET requests)    |
 | `omnia-sdk`            | SDK types, traits, and macros                            |
 | `omnia-wasi-http`      | HTTP server/client support                               |
 | `omnia-wasi-messaging` | Message pub/sub                                          |
