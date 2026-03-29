@@ -173,7 +173,8 @@ Apply the remaining checks with these Swift-specific heuristics:
   user-controlled arguments.
 - **UNI-020** (unsafe deserialization): Look for `JSONDecoder` decoding of
   untrusted external payloads directly into model types that carry
-  privilege state. Check for missing `ContentLength` or payload size limits
+  privilege state. Check for missing `Content-Length` header checks,
+  `URLResponse.expectedContentLength` checks, or explicit payload size limits
   on data fetched from external sources.
 - **UNI-021** (missing auth checks): Check that effect handlers attaching
   authentication credentials (Bearer tokens, API keys) to outbound
