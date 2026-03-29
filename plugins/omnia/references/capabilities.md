@@ -117,7 +117,8 @@ The Omnia runtime provides native adapters for these services behind the respect
 The SDK exports `HttpError` as the standard Axum-compatible error type for HTTP guest handlers:
 
 ```rust
-use omnia_sdk::{HttpError, HttpResult, Reply};
+use axum::response::IntoResponse;
+use omnia_sdk::{HttpError, Reply};
 
 pub type HttpResult<T: IntoResponse, E: IntoResponse = HttpError> = Result<T, E>;
 ```
