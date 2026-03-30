@@ -74,7 +74,7 @@ $CRATE_PATH     = crates/$CRATE_NAME
 Before generating or updating code, read these documents:
 
 1. [sdk-api.md](references/sdk-api.md) -- Handler<P>, Context, Reply, IntoBody, Client, Error types
-2. [capabilities.md](references/capabilities.md) -- all 7 provider traits with exact signatures and artifact triggers
+2. [capabilities.md](references/capabilities.md) -- all 9 provider traits with exact signatures and artifact triggers
 3. [capability-mapping.md](references/capability-mapping.md) -- mapping from Specify artifact capabilities to Omnia provider traits
 4. [wasm-constraints.md](references/wasm-constraints.md) -- translating `[runtime]` constraints to Omnia/WASM patterns
 5. [providers.md](references/providers.md) -- Provider struct setup, trait composition rules, MockProvider patterns

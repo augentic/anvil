@@ -1,6 +1,6 @@
 # Provider Capability Traits
 
-All 7 traits from `omnia_sdk::capabilities`. Each trait has default WASM32 implementations that use WASI bindings -- the guest Provider struct needs only empty `impl` blocks.
+All 9 traits from `omnia_sdk::capabilities`. Each trait has default WASM32 implementations that use WASI bindings -- the guest Provider struct needs only empty `impl` blocks.
 
 **Source of truth:** [`omnia-sdk/src/capabilities.rs`](https://github.com/augentic/omnia/blob/main/crates/omnia-sdk/src/capabilities.rs)
 
@@ -104,7 +104,11 @@ let response = HttpRequest::fetch(provider, request)
 | Service | Correct Trait | NOT HttpRequest |
 |---------|---------------|-----------------|
 | Azure Table Storage | `TableStore` | Never raw HTTP to `*.table.core.windows.net` |
-| Azure Cosmos DB | `TableStore` | Never raw HTTP to `*.documents.azure.com` |
+| Azure Cosmos DB (SQL/table) | `TableStore` | Never raw HTTP to `*.documents.azure.com` |
+| Azure Cosmos DB (document) | `DocumentStore` | Never raw HTTP to `*.documents.azure.com` |
+| MongoDB / document DBs | `DocumentStore` | Never raw HTTP to document store endpoints |
+| Azure Blob Storage | `Blobstore` | Never raw HTTP to `*.blob.core.windows.net` |
+| AWS S3 | `Blobstore` | Never raw HTTP to S3 endpoints |
 | Redis / Memcached | `StateStore` | Never raw HTTP to cache endpoints |
 | SQL databases | `TableStore` | Never raw HTTP to database endpoints |
 
@@ -417,6 +421,186 @@ Broadcast::send(provider, "channel", &data, Some(vec![socket_id])).await?;
 
 **Cargo.toml**: no extra dependencies.
 
+## Blobstore
+
+Binary object storage (Azure Blob Storage, AWS S3, local filesystem blobs).
+
+||                 |                              |
+|| --------------- | ---------------------------- |
+|| **Crate**       | `omnia_sdk`                  |
+|| **WASI module** | `omnia_wasi_blobstore`       |
+|| **Import**      | `use omnia_sdk::Blobstore;`  |
+
+```rust
+pub trait Blobstore: Send + Sync {
+    fn get_data(
+        &self, container: &str, name: &str, start: u64, end: u64,
+    ) -> impl Future<Output = Result<Option<Vec<u8>>>> + Send;
+
+    fn write_data(
+        &self, container: &str, name: &str, data: &[u8],
+    ) -> impl Future<Output = Result<()>> + Send;
+
+    fn delete_object(
+        &self, container: &str, name: &str,
+    ) -> impl Future<Output = Result<()>> + Send;
+
+    fn has_object(
+        &self, container: &str, name: &str,
+    ) -> impl Future<Output = Result<bool>> + Send;
+
+    fn list_objects(
+        &self, container: &str,
+    ) -> impl Future<Output = Result<Vec<String>>> + Send;
+}
+```
+
+- `container` — logical container / bucket name
+- `name` — object key within the container
+- `start` / `end` — byte range for partial reads (pass `0, 0` for full read)
+
+**Usage**:
+
+```rust
+// Write a blob
+let data = serde_json::to_vec(&report)?;
+Blobstore::write_data(provider, "reports", &key, &data).await?;
+
+// Read a blob
+let bytes = Blobstore::get_data(provider, "reports", &key, 0, 0)
+    .await?
+    .ok_or_else(|| bad_request!("blob not found: {key}"))?;
+
+// Check existence
+if Blobstore::has_object(provider, "reports", &key).await? {
+    Blobstore::delete_object(provider, "reports", &key).await?;
+}
+
+// List all objects in a container
+let keys = Blobstore::list_objects(provider, "reports").await?;
+```
+
+**Include when**: handler stores or retrieves binary blobs, files, or large unstructured payloads. Use for file uploads/downloads, report storage, image/media assets, or any binary content addressed by key.
+
+**Specify triggers**: blob storage, file uploads/downloads, Azure Blob Storage, AWS S3, object storage; any `BlobServiceClient`, `ContainerClient`, `uploadBlob`, `downloadBlob`, `S3Client`, `putObject`, `getObject` in code-analysis artifacts; any binary storage requirements in requirements artifacts.
+
+**Exclusion — do NOT use for structured data**: Use `TableStore` for tabular/row data, `DocumentStore` for JSON documents, and `StateStore` for small key-value cache entries. `Blobstore` is for opaque binary payloads.
+
+**Cargo.toml**: no extra dependencies.
+
+## DocumentStore
+
+JSON document storage (Cosmos DB, MongoDB, PoloDB, and other document databases).
+
+||                 |                                   |
+|| --------------- | --------------------------------- |
+|| **Crate**       | `omnia_sdk`                       |
+|| **WASI module** | `omnia_wasi_jsondb`               |
+|| **Import**      | `use omnia_sdk::DocumentStore;`   |
+|| **Types**       | `use omnia_sdk::document_store::{Document, QueryOptions, QueryResult, Filter, SortField};` |
+
+```rust
+use omnia_sdk::document_store::{Document, QueryOptions, QueryResult};
+
+pub trait DocumentStore: Send + Sync {
+    fn get(
+        &self, store: &str, id: &str,
+    ) -> impl Future<Output = Result<Option<Document>>> + Send;
+
+    fn insert(
+        &self, store: &str, doc: &Document,
+    ) -> impl Future<Output = Result<()>> + Send;
+
+    fn put(
+        &self, store: &str, doc: &Document,
+    ) -> impl Future<Output = Result<()>> + Send;
+
+    fn delete(
+        &self, store: &str, id: &str,
+    ) -> impl Future<Output = Result<bool>> + Send;
+
+    fn query(
+        &self, store: &str, options: QueryOptions,
+    ) -> impl Future<Output = Result<QueryResult>> + Send;
+}
+```
+
+### Key Types
+
+```rust
+/// Stored document: identifier plus JSON body bytes.
+pub struct Document {
+    pub id: String,
+    pub data: Vec<u8>,
+}
+
+/// Options for listing or searching documents.
+pub struct QueryOptions {
+    pub filter: Option<Filter>,
+    pub order_by: Vec<SortField>,
+    pub limit: Option<u32>,
+    pub offset: Option<u32>,
+    pub continuation: Option<String>,
+}
+
+/// Result of a query with optional next-page token.
+pub struct QueryResult {
+    pub documents: Vec<Document>,
+    pub continuation: Option<String>,
+}
+```
+
+- `store` — collection / database name
+- `insert` — fails if a document with the same `id` already exists
+- `put` — upserts (inserts or replaces)
+- `delete` — returns `true` if a document was removed
+- `query` — supports filtering, sorting, pagination, and continuation tokens
+
+**Usage**:
+
+```rust
+use omnia_sdk::document_store::{Document, QueryOptions, Filter};
+
+// Store a document
+let payload = serde_json::to_vec(&customer)?;
+let doc = Document { id: customer_id.clone(), data: payload };
+DocumentStore::put(provider, "customers", &doc).await?;
+
+// Retrieve by id
+let doc = DocumentStore::get(provider, "customers", &customer_id)
+    .await?
+    .ok_or_else(|| bad_request!("customer not found: {customer_id}"))?;
+let customer: Customer = serde_json::from_slice(&doc.data)
+    .context("deserializing customer")?;
+
+// Query with filter
+let options = QueryOptions {
+    filter: Some(Filter::eq("status", "active")),
+    limit: Some(50),
+    ..Default::default()
+};
+let result = DocumentStore::query(provider, "customers", options).await?;
+for doc in &result.documents {
+    let c: Customer = serde_json::from_slice(&doc.data)?;
+    // ...
+}
+```
+
+**Include when**: handler stores or retrieves JSON documents by key or query. Use for document databases, flexible schema storage, or any data where the natural shape is a JSON document rather than a tabular row.
+
+**Specify triggers**: document database access, JSON document storage, Cosmos DB document operations, MongoDB operations; any `CosmosClient`, `MongoClient`, `find`, `insertOne`, `updateOne`, `deleteOne`, `findOne` in code-analysis artifacts; any document storage requirements in requirements artifacts.
+
+**Exclusion — choosing between storage traits**:
+
+| Data Shape | Trait | When |
+|------------|-------|------|
+| Tabular rows, SQL queries | `TableStore` | Relational data, Azure Table Storage entities, SQL CRUD |
+| JSON documents by key/query | `DocumentStore` | Cosmos DB documents, MongoDB collections, flexible schema |
+| Binary blobs by key | `Blobstore` | Files, images, large payloads, opaque binary data |
+| Small key-value cache entries | `StateStore` | Redis cache, session state, TTL-based expiry |
+
+**Cargo.toml**: no extra dependencies (types come from `omnia-sdk` re-exports via `omnia_wasi_jsondb`).
+
 ## IntoBody
 
 Custom response body serialization for HTTP handler output types.
@@ -461,11 +645,12 @@ impl IntoBody for DetectionReply {
 | SQL database queries            | `TableStore`  | `P: TableStore`                   |
 | Azure Table Store               | `TableStore`  | `P: TableStore`                   |
 | Object-relational mapping (SQL) | `TableStore`  | `P: TableStore` (use `omnia_orm`) |
-| WebSocket send/reply            | `Broadcast`   | `P: Broadcast`                    |
-| HTTP response serialization     | `IntoBody`    | impl on Output type               |
-| Binary blobs stored by key (Azure Blob Storage, AWS S3, etc) | `Blobstore` | `P: Blobstore` |
+| WebSocket send/reply            | `Broadcast`      | `P: Broadcast`                    |
+| Binary blobs (Azure Blob Storage, AWS S3, etc) | `Blobstore` | `P: Blobstore`           |
+| JSON document storage (Cosmos DB, MongoDB, etc) | `DocumentStore` | `P: DocumentStore`    |
+| HTTP response serialization     | `IntoBody`       | impl on Output type               |
 
-**Managed data store override**: When the artifacts or source code describe direct HTTP/REST API access to a managed data store (Azure Table Storage, Azure Cosmos DB, Redis, etc.), do NOT use `HttpRequest`. Use the appropriate storage trait (`TableStore` for table/database stores, `Blobstore` for blob storage, `StateStore` for key-value caches). The Omnia runtime provides native adapters for these services. Constructing raw HTTP requests with storage-specific authentication (SharedKey, HMAC-SHA256, SAS tokens) to storage service REST APIs is always wrong — the runtime handles authentication internally.
+**Managed data store override**: When the artifacts or source code describe direct HTTP/REST API access to a managed data store (Azure Table Storage, Azure Cosmos DB, Redis, Azure Blob Storage, etc.), do NOT use `HttpRequest`. Use the appropriate storage trait (`TableStore` for table/database stores, `DocumentStore` for JSON document stores, `Blobstore` for blob storage, `StateStore` for key-value caches). The Omnia runtime provides native adapters for these services. Constructing raw HTTP requests with storage-specific authentication (SharedKey, HMAC-SHA256, SAS tokens) to storage service REST APIs is always wrong — the runtime handles authentication internally.
 
 **Cache-aside / on-demand loading (TableStore + StateStore):** When the artifacts list both a database/table store (e.g. Azure Table Storage) as the source of truth and a cache for the same data, or when the legacy loads data from a data store on startup into an in-memory cache, include **both** `TableStore` (or `HttpRequest` for external APIs) and `StateStore` and implement cache-aside:
 1. Read from `StateStore` (cache).

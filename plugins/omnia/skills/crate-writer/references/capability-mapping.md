@@ -13,6 +13,8 @@ This document defines how to translate the platform-agnostic **Source Capabiliti
 | Authentication/Identity | type: identity provider | `Identity` | `use omnia_sdk::Identity;` |
 | Table/database access | type: database, type: managed table store | `TableStore` | `use omnia_sdk::TableStore;` |
 | Real-time messaging | type: WebSocket | `Broadcast` | `use omnia_sdk::Broadcast;` |
+| Blob/file storage | type: blob store | `Blobstore` | `use omnia_sdk::Blobstore;` |
+| Document storage | type: document store | `DocumentStore` | `use omnia_sdk::DocumentStore;` |
 
 ## Hard Rules
 
@@ -24,7 +26,11 @@ This document defines how to translate the platform-agnostic **Source Capabiliti
 
 4. **`HttpRequest` is for external APIs only.** Do not use `HttpRequest` for managed data stores. If design.md documents an outbound HTTP call to a managed data store endpoint (e.g., `*.table.core.windows.net`), override and use `TableStore`.
 
-5. **Cache-aside requires both `StateStore` AND the data source trait.** When the artifacts describe a caching pattern where data is loaded from a data store on cache miss, the handler needs both `StateStore` (for the cache) and the appropriate data source trait (`TableStore` for databases/managed table stores, `HttpRequest` for external APIs).
+5. **Cache-aside requires both `StateStore` AND the data source trait.** When the artifacts describe a caching pattern where data is loaded from a data store on cache miss, the handler needs both `StateStore` (for the cache) and the appropriate data source trait (`TableStore` for databases/managed table stores, `DocumentStore` for document databases, `HttpRequest` for external APIs).
+
+6. **Document databases map to `DocumentStore`, not `TableStore`.** When design.md External Services lists a service with type `document store` (Cosmos DB document API, MongoDB), the Omnia trait is `DocumentStore`. Use `TableStore` for tabular/row data and SQL queries; use `DocumentStore` for JSON document storage with key-based access and document queries.
+
+7. **Blob storage maps to `Blobstore`, never `HttpRequest`.** When design.md External Services lists a service with type `blob store` (Azure Blob Storage, AWS S3, file storage), the Omnia trait is `Blobstore`. The Omnia runtime provides native adapters for blob storage behind this trait.
 
 ## Deriving Traits from Specify Artifacts
 
@@ -43,6 +49,8 @@ For each entry in design.md **External Services**, verify the trait mapping:
 
 Scan design.md **Business Logic** for data access phrasing:
 - `Table access: SELECT/INSERT/UPDATE/DELETE ...` → `TableStore`
+- `Document: get/insert/put/delete/query ...` → `DocumentStore`
+- `Blob: get_data/write_data/delete_object ...` → `Blobstore`
 - `Cache: get/set/delete ...` → `StateStore`
 - `Cache: get ... on miss query database/table` → `StateStore` + `TableStore`
 

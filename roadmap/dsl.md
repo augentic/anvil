@@ -770,7 +770,7 @@ pub fn crate_writer() -> SkillDef {
             Reference {
                 id: "capabilities",
                 path: "references/capabilities.md",
-                description: "all 7 provider traits with exact signatures and artifact triggers",
+                description: "all 9 provider traits with exact signatures and artifact triggers",
                 mode: RefMode::Both,
             },
             Reference {

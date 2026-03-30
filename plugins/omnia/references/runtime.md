@@ -8,14 +8,16 @@ For provider configuration and trait composition, see [providers/README.md](prov
 
 ## Runtime Example
 
-Create `examples/<guest-name>.rs`. Include all WASI hosts used by the guest. The example below shows all 8 available hosts:
+Create `examples/<guest-name>.rs`. Include all WASI hosts used by the guest. The example below shows all 10 available hosts:
 
 ```rust
 cfg_if::cfg_if! {
     if #[cfg(not(target_arch = "wasm32"))] {
+        use omnia_wasi_blobstore::{WasiBlobstore, BlobstoreDefault};
         use omnia_wasi_config::{WasiConfig, ConfigDefault};
         use omnia_wasi_http::{WasiHttp, HttpDefault};
         use omnia_wasi_identity::{WasiIdentity, IdentityDefault};
+        use omnia_wasi_jsondb::{WasiJsonDb, JsonDbDefault};
         use omnia_wasi_keyvalue::{WasiKeyValue, KeyValueDefault};
         use omnia_wasi_messaging::{WasiMessaging, MessagingDefault};
         use omnia_wasi_otel::{WasiOtel, OtelDefault};
@@ -25,9 +27,11 @@ cfg_if::cfg_if! {
         omnia::runtime!({
             main: true,
             hosts: {
+                WasiBlobstore: BlobstoreDefault,
                 WasiConfig: ConfigDefault,
                 WasiHttp: HttpDefault,
                 WasiIdentity: IdentityDefault,
+                WasiJsonDb: JsonDbDefault,
                 WasiKeyValue: KeyValueDefault,
                 WasiMessaging: MessagingDefault,
                 WasiOtel: OtelDefault,
@@ -54,6 +58,8 @@ cfg_if::cfg_if! {
 | `WasiOtel`      | `OtelDefault`      | OpenTelemetry tracing       |
 | `WasiSql`       | `SqlDefault`       | Database connections        |
 | `WasiWebSocket` | `WebSocketDefault` | WebSocket event handling    |
+| `WasiBlobstore` | `BlobstoreDefault` | Binary blob storage         |
+| `WasiJsonDb`    | `JsonDbDefault`    | JSON document storage       |
 
 ## Environment Variables
 

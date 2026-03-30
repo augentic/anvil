@@ -377,7 +377,7 @@ Write `$DESIGN_PATH` with the following sections (see [specify.md](references/sp
     - `[runtime]` Source uses circuit breaker library for outbound HTTP
     - `[runtime]` Source caches OAuth tokens in process memory
     When API response parity matters, fill **Serialization & API Fidelity** (optional fields, DateTime format, field naming, concurrency)
-11. **Source Capabilities Summary** — derive from External Services; checklist of generic capability categories (Configuration, Outbound HTTP, Message publishing, Key-value state, Authentication/Identity, Table/database access, Real-time messaging)
+11. **Source Capabilities Summary** — derive from External Services; checklist of generic capability categories (Configuration, Outbound HTTP, Message publishing, Key-value state, Authentication/Identity, Table/database access, Real-time messaging, Blob storage, Document storage)
 12. **Dependencies** — external packages with purpose
 13. **Notes** — additional observations, source-specific constructs, performance/security considerations
 
@@ -388,6 +388,8 @@ When the source code uses `@azure/data-tables`, `TableClient`, `listEntities`, `
 - The External Services section **MUST** classify these as type: `managed table store`, NOT as type: `API`.
 - The Source Capabilities Summary **MUST** check `Table/database access`.
 - Cloud-managed table/document stores (Azure Table Storage, Cosmos DB, DynamoDB) are data stores, not external HTTP APIs, regardless of their access protocol.
+- When the source uses blob storage APIs (`BlobServiceClient`, `ContainerClient`, `S3Client`, `putObject`, `getObject`), classify as type: `blob store` and check `Blob storage` in the Source Capabilities Summary.
+- When the source uses document database APIs (`MongoClient`, `CosmosClient` document API, `find`, `insertOne`), classify as type: `document store` and check `Document storage` in the Source Capabilities Summary.
 - When the source loads data from a managed table store and caches it in memory, the Source Capabilities Summary should include **both** `Table/database access` and `Key-value state`.
 
 #### 7c: Write Spec File

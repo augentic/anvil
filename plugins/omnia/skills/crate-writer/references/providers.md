@@ -38,6 +38,8 @@ impl HttpRequest for Provider {}
 impl Identity for Provider {}
 impl Publish for Provider {}
 impl StateStore for Provider {}
+// impl Blobstore for Provider {}      // Add if crate uses Blobstore
+// impl DocumentStore for Provider {}  // Add if crate uses DocumentStore
 ```
 
 ### Without Config Validation

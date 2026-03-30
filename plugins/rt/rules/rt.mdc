@@ -38,7 +38,7 @@ Each skill has its own SKILL.md with full details. After **clone**, **wiretapper
 - **Environment variables**: process.env.X → configuration dependencies
 - **HTTP requests**: axios/fetch → outbound HTTP external service dependencies
 - **Message publishing**: Kafka/RabbitMQ → message publishing capabilities
-- **Data access**: Azure Table Storage, Redis, SQL → external service dependencies with type classification
+- **Data access**: Azure Table Storage, Redis, SQL, blob storage, document databases → external service dependencies with type classification
 
 The code-analyzer produces platform-agnostic Specify artifacts (specs + design.md). The crate-writer skill then maps artifact capabilities to Omnia SDK provider traits (e.g., outbound HTTP → `HttpRequest`, configuration → `Config`).
 

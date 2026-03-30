@@ -103,10 +103,12 @@ One function per route, topic, or WebSocket event, following the patterns in [gu
 If the new crate uses a capability trait not yet implemented on the Provider:
 
 ```rust
-impl Publish for Provider {}     // Add if crate uses Publish
-impl Identity for Provider {}    // Add if crate uses Identity
-impl Broadcast for Provider {}   // Add if crate uses Broadcast
-impl TableStore for Provider {}  // Add if crate uses TableStore
+impl Publish for Provider {}        // Add if crate uses Publish
+impl Identity for Provider {}       // Add if crate uses Identity
+impl Broadcast for Provider {}      // Add if crate uses Broadcast
+impl TableStore for Provider {}     // Add if crate uses TableStore
+impl Blobstore for Provider {}      // Add if crate uses Blobstore
+impl DocumentStore for Provider {}  // Add if crate uses DocumentStore
 ```
 
 ### Rules

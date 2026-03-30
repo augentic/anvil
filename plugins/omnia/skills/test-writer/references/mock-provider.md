@@ -309,4 +309,6 @@ For complete MockProvider implementations of each trait (basic and advanced patt
 - [StateStore](providers/state-store.md#mockprovider-implementation) -- OnceCell + Mutex, TTL tracking, cache verification helpers
 - [Broadcast](providers/broadcast.md#mockprovider-implementation) -- capture sends with channel and target info
 - [TableStore](../../crate-writer/examples/capabilities/tablestore.md) -- return fixture rows from `query`, affected count from `exec`
+- [Blobstore](../../../references/providers/blobstore.md#mockprovider-implementation) -- in-memory nested HashMap (container -> name -> bytes)
+- [DocumentStore](../../../references/providers/document-store.md#mockprovider-implementation) -- in-memory nested HashMap (store -> id -> Document)
 - [Multi-trait MockProvider](providers/README.md#multi-trait-mockprovider) -- combining all traits in a single provider

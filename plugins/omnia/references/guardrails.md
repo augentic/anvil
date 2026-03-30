@@ -12,6 +12,9 @@ These crates are **never** allowed in generated code:
 | `tokio` (as runtime) | Not WASM-compatible             | Only in `[dev-dependencies]` for tests          |
 | `redis`              | Direct connection not available | `StateStore` via provider                       |
 | `sqlx`, `diesel`     | Direct DB connection            | `TableStore` via provider                       |
+| `mongodb`            | Direct DB connection            | `DocumentStore` via provider                    |
+| `azure_storage_blobs` | Direct blob storage connection | `Blobstore` via provider                        |
+| `aws-sdk-s3`         | Direct blob storage connection  | `Blobstore` via provider                        |
 | `hyper`              | Server-side HTTP                | `omnia-wasi-http` + axum                        |
 | `dotenv`, `dotenvy`  | File system access              | `Config::get` via provider                      |
 | `rand`               | RNG not available in WASM       | Accept IDs as input or derive deterministically |

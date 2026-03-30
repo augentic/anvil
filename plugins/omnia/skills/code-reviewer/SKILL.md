@@ -96,11 +96,12 @@ Violations prevent compilation or cause runtime errors in WASM.
 **Check for**:
 
 - `std::env` usage (must use Config provider)
-- `std::fs` usage (must use StateStore provider)
+- `std::fs` usage (must use StateStore, Blobstore, or DocumentStore provider)
 - `std::net` usage (must use HttpRequest provider)
 - `std::thread` usage (must be async)
 - Mutable global state (`static mut`, `OnceCell` outside `LazyLock` pattern)
 - `unsafe` code blocks
+- Direct blob/document client crates (`mongodb`, `azure_storage_blobs`, `aws-sdk-s3`) -- must use Blobstore/DocumentStore provider
 - Blocking operations (synchronous I/O)
 
 **Severity**: CRITICAL (build failure or runtime crash)
@@ -189,7 +190,7 @@ SECURITY: Scan every .rs file in src/ for:
 
 WASM CONSTRAINTS: Scan every .rs file in src/ for:
 - std::env usage (must use Config provider)
-- std::fs usage (must use StateStore provider)
+- std::fs usage (must use StateStore, Blobstore, or DocumentStore provider)
 - std::net usage (must use HttpRequest provider)
 - std::thread usage (must be async)
 - Mutable global state (static mut, OnceCell outside LazyLock)

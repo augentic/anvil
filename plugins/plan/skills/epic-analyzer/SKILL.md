@@ -278,7 +278,7 @@ Write `$DESIGN_PATH` directly from the JIRA data gathered in Steps 1-5, followin
 5. **External Services** — From Step 3.5 `## External Services` / `## External Dependencies` sections, or `[unknown — not specified in JIRA]` if absent
 6. **Constants & Configuration** — From Step 3.5 `## Configuration` sections, or `[unknown — not specified in JIRA]` if absent
 7. **Publication & Timing Patterns** — From event/messaging sections in JIRA data, or omit if absent
-8. **Source Capabilities Summary** — Inferred from which generic capabilities the component requires (Configuration, Outbound HTTP, Message publishing, Key-value state, Authentication/Identity, Table/database access, Real-time messaging)
+8. **Source Capabilities Summary** — Inferred from which generic capabilities the component requires (Configuration, Outbound HTTP, Message publishing, Key-value state, Authentication/Identity, Table/database access, Real-time messaging, Blob storage, Document storage)
 9. **Implementation Constraints** — From technical requirements and architecture notes
 
 **Validation**:
