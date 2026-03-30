@@ -23,6 +23,7 @@ minimum SDK 34.
 |---|---|---|
 | `app-dir` | **Yes** | Path to the Crux app directory (must contain `shared/src/app.rs`) |
 | `project-dir` | No | Directory for the Android shell. Defaults to `{app-dir}/Android` |
+| `change-dir` | No | Path to `.specify/changes/<change>/`. When provided, the skill reads the `## Android Shell Requirements` section from `{change-dir}/specs/{feature-name}/spec.md` for platform-specific requirements |
 
 ## Prerequisites
 
@@ -65,6 +66,14 @@ Also read:
 - `{app-dir}/shared/Cargo.toml` -- capability dependencies
 - `{app-dir}/shared/src/ffi.rs` -- CoreFFI struct definition
 - `{app-dir}/shared/src/bin/codegen.rs` -- codegen binary for type generation
+- `design-system/tokens.yaml` -- design tokens for styling
+- `design-system/spec.md` -- design system usage rules
+
+When `change-dir` is provided, also read:
+- `{change-dir}/specs/{feature-name}/spec.md` -- read the `## Android Shell Requirements`
+  section for platform-specific behavioral requirements (navigation style, gestures,
+  haptics, accessibility). Also read the `## Android Shell Details` section of
+  `{change-dir}/design.md` for platform design decisions.
 
 ## Generated Type Conventions (CRITICAL)
 
@@ -191,7 +200,7 @@ class SseClient { ... }
 ## Mode Detection
 
 - **Create Mode** -- `{project-dir}/` does **not** exist. Generate the entire
-  Android shell from scratch (steps 1--12 below).
+  Android shell from scratch (steps 1--15 below).
 - **Update Mode** -- `{project-dir}/` **does** exist and contains `.kt` files.
   Read existing code, diff against the core, and make targeted edits
   (steps U1--U8 below).
@@ -214,7 +223,15 @@ Input Analysis table above. Build a complete picture of:
 
 If `app.rs` cannot be read or parsed, report the error and stop.
 
-### 2. Determine app name and package
+### 2. Read the design system
+
+Read `design-system/tokens.yaml` for color, typography, spacing, and corner
+radius values. Read `design-system/spec.md` for usage rules.
+
+If the design system files do not exist, generate composables without design
+system references and note this in the output.
+
+### 3. Determine app name and package
 
 Derive the app name and package from the `App` struct in `app.rs`:
 
@@ -227,7 +244,7 @@ Derive the app name and package from the `App` struct in `app.rs`:
 
 The app name is used for the Gradle project name, theme, and Activity.
 
-### 3. Determine capability dependencies
+### 4. Determine capability dependencies
 
 From the Effect variants, determine which Android libraries are needed:
 
@@ -242,7 +259,7 @@ From the Effect variants, determine which Android libraries are needed:
 
 If more than one non-Render effect exists, use Koin for dependency injection.
 
-### 4. Generate directory structure
+### 5. Generate directory structure
 
 Create the following directories under `{project-dir}`:
 
@@ -281,7 +298,7 @@ Create the following directories under `{project-dir}`:
     .gitignore
 ```
 
-### 5. Generate `Makefile`
+### 6. Generate `Makefile`
 
 Create `{project-dir}/Makefile` with the build pipeline. The Makefile runs
 the Rust codegen binary to produce Kotlin types and UniFFI bindings.
@@ -318,7 +335,7 @@ lib:
 
 See `references/android-project-config.md` for the complete Makefile template.
 
-### 6. Generate Gradle files and wrapper
+### 7. Generate Gradle files and wrapper
 
 Create the Gradle build configuration following the template in
 `references/android-project-config.md`.
@@ -398,7 +415,7 @@ Important Gradle configuration notes:
 - The `app` module depends on `:shared` and on capability-specific libraries.
 - Use Kotlin DSL (`.gradle.kts`) for all build files.
 
-### 7. Generate `Core.kt`
+### 8. Generate `Core.kt`
 
 Create `{project-dir}/app/src/main/java/com/vectis/{appname}/core/Core.kt`
 following the pattern in `references/crux-android-shell-pattern.md`.
@@ -516,7 +533,7 @@ Include only the effect handlers that the app actually uses.
 See `references/crux-android-shell-pattern.md` for full implementations of
 each effect handler.
 
-### 8. Generate capability clients
+### 9. Generate capability clients
 
 For each non-Render effect, generate the corresponding client class in
 `{project-dir}/app/src/main/java/com/vectis/{appname}/core/`:
@@ -531,7 +548,7 @@ For each non-Render effect, generate the corresponding client class in
 
 See `references/crux-android-shell-pattern.md` for implementations.
 
-### 9. Generate DI module and Application class
+### 10. Generate DI module and Application class
 
 When using Koin (more than one non-Render effect), generate:
 
@@ -566,7 +583,7 @@ class {AppName}Application : Application() {
 The property name follows the pattern `uniffi.component.{crate_name}.libraryOverride`
 where `{crate_name}` matches the `[lib] name = "shared"` in `Cargo.toml`.
 
-### 10. Generate screen composables
+### 11. Generate screen composables
 
 For each ViewModel variant, create a screen composable file in
 `{project-dir}/app/src/main/java/com/vectis/{appname}/ui/screens/`:
@@ -585,7 +602,9 @@ For each screen:
    it uses (e.g., `import com.example.app.Event`, `import com.example.app.TodoListView`).
 2. Accept the per-page view struct as a parameter.
 3. Accept `onEvent: (Event) -> Unit` for user interactions.
-4. Use Material 3 theme tokens for all colors, fonts, and spacing.
+4. Use Material 3 theme tokens for all colors, fonts, and spacing. When a
+   design system is available, use its tokens for colors, typography, spacing,
+   and corner radii.
 5. Map each shell-facing Event variant that is relevant to this view to a
    user interaction (button click, swipe, pull-to-refresh, etc.).
 6. Add a `@Preview` with sample data at the bottom of the file.
@@ -606,7 +625,13 @@ For each screen:
    cast to `Long` for Compose text: `"${viewModel.count.toLong()}"`.
    Do NOT pass `ULong` directly to string interpolation in `Text()` composables.
 
-### 11. Generate `MainActivity.kt`
+Consult `references/compose-view-patterns.md` for layout patterns (lists,
+forms, navigation, swipe actions, pull-to-refresh).
+
+Consult `references/design-system-integration.md` for token usage when a
+design system is available.
+
+### 12. Generate `MainActivity.kt`
 
 Create `{project-dir}/app/src/main/java/com/vectis/{appname}/MainActivity.kt`
 following the pattern in `references/compose-view-patterns.md`.
@@ -658,7 +683,7 @@ class MainActivity : ComponentActivity() {
 }
 ```
 
-### 12. Generate theme files
+### 13. Generate theme files
 
 Create Material 3 theme files in
 `{project-dir}/app/src/main/java/com/vectis/{appname}/ui/theme/`:
@@ -667,7 +692,7 @@ Create Material 3 theme files in
 - `Theme.kt` -- `AppTheme` composable with dynamic color support
 - `Type.kt` -- typography configuration
 
-### 13. Generate `AndroidManifest.xml` and Android resources
+### 14. Generate `AndroidManifest.xml` and Android resources
 
 #### AndroidManifest.xml
 
@@ -735,12 +760,12 @@ development servers:
 The address `10.0.2.2` is the Android emulator's alias for the host machine's
 `localhost`. Include it for development builds.
 
-### 14. Build and verify
+### 15. Build and verify
 
 Pre-flight checks before first build:
 
 1. Verify Gradle wrapper exists: `ls {project-dir}/gradlew`. If missing,
-   generate it (see step 6).
+   generate it (see step 7).
 2. Verify `local.properties` has `sdk.dir` set.
 3. Verify `gradle.properties` has `org.gradle.java.home` pointing to Java 21.
 4. Verify Rust Android targets are installed:
@@ -776,6 +801,10 @@ Use this process when `{project-dir}/` already exists with Kotlin files.
 ### U1. Read and analyze the Crux core
 
 Same as create mode step 1. Extract all types from the current `app.rs`.
+
+When `change-dir` is provided, also read the `## Android Shell Requirements` section
+from `{change-dir}/specs/{feature-name}/spec.md` and the `## Android Shell Details`
+section from `{change-dir}/design.md` for platform-specific requirements.
 
 ### U2. Read existing Kotlin code
 
@@ -841,7 +870,7 @@ Output the diff summary before making edits.
 
 ### U8. Build and verify
 
-Same as create mode step 14:
+Same as create mode step 15:
 
 1. Run `make build` to regenerate types.
 2. Run `./gradlew :app:assembleDebug` to verify compilation.
@@ -877,6 +906,7 @@ Same as create mode step 14:
 | `references/crux-android-shell-pattern.md` | Core.kt template, effect handling, serialization protocol |
 | `references/compose-view-patterns.md` | Screen patterns, lists, forms, navigation, accessibility |
 | `references/android-project-config.md` | Gradle files, Makefile, build configuration |
+| `references/design-system-integration.md` | Design system token usage in composables |
 
 ## Examples
 
@@ -898,13 +928,13 @@ Same as create mode step 14:
 | `cargoBuild` fails with `target may not be installed` | Run `rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android` |
 | NDK not found | Install via `sdkmanager "ndk;29.0.14206865"` or Android Studio SDK Manager |
 | Python 3 not found | Required by rust-android-gradle; install via system package manager |
-| `./gradlew: No such file or directory` | Generate the Gradle wrapper -- see step 6 |
-| `Minimum supported Gradle version is X.Y` | Update `gradle-wrapper.properties` to match AGP requirement -- see step 6 |
+| `./gradlew: No such file or directory` | Generate the Gradle wrapper -- see step 7 |
+| `Minimum supported Gradle version is X.Y` | Update `gradle-wrapper.properties` to match AGP requirement -- see step 7 |
 | `java.lang.IllegalArgumentException: 25.0.1` (or similar Java version parse error) | Set `org.gradle.java.home` to Java 21 in `gradle.properties` |
-| `resource style/Theme.{AppName} not found` | Create `res/values/themes.xml` -- see step 13 |
+| `resource style/Theme.{AppName} not found` | Create `res/values/themes.xml` -- see step 14 |
 | `Unresolved reference 'Event'` (or `ViewModel`, `Effect`, etc.) | Add `import com.example.app.*` imports to the affected Kotlin file |
 | `Unresolved reference 'CoreFfi'` | Add `import uniffi.shared.CoreFfi` to `Core.kt` |
-| `Unresolved reference 'Icons'` | Add `material-icons-extended` dependency -- see step 10 |
+| `Unresolved reference 'Icons'` | Add `material-icons-extended` dependency -- see step 11 |
 | `Namespace 'X' is used in multiple modules` | Use `com.vectis.{appname}.shared` namespace for the shared module |
 | `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- ensure `uniffi = "=0.29.4"` in shared `Cargo.toml` |
 | `This declaration needs opt-in` (unsigned types) | Add `@OptIn(ExperimentalUnsignedTypes::class)` to the class |
@@ -913,9 +943,9 @@ Same as create mode step 14:
 
 | Crash | Resolution |
 |---|---|
-| `UnsatisfiedLinkError: Unable to load library 'uniffi_shared'` | Add `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` to Application `onCreate()` -- see step 9 |
-| `CLEARTEXT communication not permitted` | Create `network_security_config.xml` and reference in AndroidManifest -- see step 13 |
-| Unhandled exception in SSE/Time coroutine | Wrap `scope.launch` blocks for async effects in `try/catch` -- see step 7 |
+| `UnsatisfiedLinkError: Unable to load library 'uniffi_shared'` | Add `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` to Application `onCreate()` -- see step 10 |
+| `CLEARTEXT communication not permitted` | Create `network_security_config.xml` and reference in AndroidManifest -- see step 14 |
+| Unhandled exception in SSE/Time coroutine | Wrap `scope.launch` blocks for async effects in `try/catch` -- see step 8 |
 
 ## Verification Checklist
 
@@ -950,6 +980,13 @@ Same as create mode step 14:
 - [ ] Simple enum comparisons use `==` (e.g., `Filter.ALL`), not `is`
 - [ ] `ULong` values are cast to `Long` for Compose text display
 - [ ] Classes using `toUByteArray()` have `@OptIn(ExperimentalUnsignedTypes::class)`
+
+### Design System
+
+- [ ] All color references use design system tokens when available (no hardcoded hex)
+- [ ] All font references use design system typography when available (no inline `TextStyle`)
+- [ ] All spacing values use design system spacing when available (no magic numbers)
+- [ ] All corner radius values use design system corner radii when available
 
 ### Quality
 
@@ -997,7 +1034,7 @@ Same as create mode step 14:
   plain class with `StateFlow` injected via Koin.
 - **Gradle wrapper is required**: The `gradlew` script must be generated as
   part of the shell creation. Without it, no `./gradlew` command works.
-  See step 6 for generation instructions.
+  See step 7 for generation instructions.
 - **Java 21 LTS required**: Java 25+ has a version string that Gradle's
   Kotlin compiler cannot parse. Always pin `org.gradle.java.home` to Java 21
   in `gradle.properties`.
@@ -1016,3 +1053,10 @@ Same as create mode step 14:
   handles compilation. The emulator can be launched from the command line.
   Android Studio is only needed for initial SDK/NDK installation or for the
   visual layout editor.
+- **Specify integration**: When `change-dir` is provided, the skill reads
+  the `## Android Shell Requirements` section from the feature spec and the
+  `## Android Shell Details` section from design.md. The primary input remains
+  `app.rs` from the core; the feature spec's platform section supplements
+  with requirements that may not be expressed in the Rust types alone
+  (e.g., navigation style, specific UX behaviors, accessibility
+  requirements, layout constraints).
