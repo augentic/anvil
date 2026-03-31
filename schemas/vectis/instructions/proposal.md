@@ -27,7 +27,9 @@ Sections:
     `vectis:core-reviewer` for review.
   - **ios** — SwiftUI iOS shell. Uses `vectis:ios-writer` for generation
     and `vectis:ios-reviewer` for review. Requires a core to exist.
-  - **android** — Android shell (future).
+  - **android** — Kotlin/Jetpack Compose Android shell. Uses
+    `vectis:android-writer` for generation and `vectis:android-reviewer`
+    for review. Requires a core to exist.
   - **web** — Web shell (future).
   - **design-system** — VectisDesign Swift package generated from
     tokens.yaml. Uses `vectis:design-system-writer`.

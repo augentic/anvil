@@ -27,12 +27,14 @@ Generate and review Rust WASM crates targeting the Omnia runtime.
 
 ## Vectis (`plugins/vectis/`)
 
-Generate cross-platform Crux applications: Rust shared core, SwiftUI iOS shell, and VectisDesign token system. See [vectis.md](vectis.md) for the full user guide including prerequisites, Xcode workflow, and design system management.
+Generate cross-platform Crux applications: Rust shared core, SwiftUI iOS shell, Kotlin/Jetpack Compose Android shell, and VectisDesign token system. See [vectis.md](vectis.md) for the full user guide including prerequisites, Xcode workflow, Android setup, and design system management.
 
 - **core-writer** -- Generate or update Rust Crux shared crates from Specify artifacts
 - **core-reviewer** -- Review generated Crux core for structural, logic, and quality issues
 - **ios-writer** -- Generate or update SwiftUI iOS shells for Crux applications
 - **ios-reviewer** -- Review generated iOS shells for structural and quality issues
+- **android-writer** -- Generate or update Kotlin/Jetpack Compose Android shells for Crux applications
+- **android-reviewer** -- Review generated Android shells for structural, integration, and quality issues
 - **design-system-writer** -- Generate VectisDesign Swift package from tokens.yaml
 
 ## RT (`plugins/rt/`)
@@ -65,7 +67,7 @@ Specify manages changes as a set of interdependent artifacts stored in `.specify
 The workflow is:
 
 1. **Define** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by JIRA epics (`/plan:epic-analyzer`) or TypeScript source analysis (`/rt:code-analyzer`).
-2. **Build** -- Validate artifacts for completeness and cross-blueprint consistency, then implement each task. Specialist skills (crate-writer, test-writer, guest-writer, core-writer, ios-writer) generate code from the artifacts.
+2. **Build** -- Validate artifacts for completeness and cross-blueprint consistency, then implement each task. Specialist skills (crate-writer, test-writer, guest-writer, core-writer, ios-writer, android-writer) generate code from the artifacts.
 3. **Merge** -- Merge the change's specs into your project's baseline at `.specify/specs/` and move the change to the archive.
 
 Baseline specs accumulate over time, giving future changes a foundation to build on. Use `/spec:verify` at any point to detect drift between your code and the baseline.

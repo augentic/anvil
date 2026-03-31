@@ -3,8 +3,8 @@
 - **URL**: `https://github.com/augentic/specify/schemas/vectis`
 - **Purpose**: Cross-platform Crux application development
 - **Source**: Manual
-- **Target**: Rust (Crux shared crate), Swift (iOS shell), VectisDesign (design system)
-- **Workflow**: `define` -> `specs` -> `design` -> `tasks` -> `build` (core-writer, ios-writer, design-system-writer)
+- **Target**: Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell), VectisDesign (design system)
+- **Workflow**: `define` -> `specs` -> `design` -> `tasks` -> `build` (core-writer, ios-writer, android-writer, design-system-writer)
 
 ## Contents
 
@@ -53,7 +53,7 @@ determine which build skills are invoked, not how specs are structured.
 |----------|-------------|---------------|
 | `core` | Rust Crux shared crate (always required) | `vectis:core-writer` |
 | `ios` | SwiftUI iOS shell | `vectis:ios-writer` |
-| `android` | Android shell (future) | — |
+| `android` | Kotlin/Jetpack Compose Android shell | `vectis:android-writer` |
 | `web` | Web shell (future) | — |
 | `design-system` | VectisDesign Swift package from tokens.yaml | `vectis:design-system-writer` |
 

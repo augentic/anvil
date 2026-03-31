@@ -5,7 +5,8 @@ Arguments (used by all skills):
 - CHANGE_ID: the name of this change (from specify status)
 - FEATURE_NAME: the spec folder name (specs/<feature>/spec.md)
 - PROJECT_DIR: the target project directory
-- IOS_SHELL_DIR: the root directory of the iOS shell project (e.g. `$PROJECT_DIR/ios`)
+- IOS_SHELL_DIR: the root directory of the iOS shell project (e.g. `$PROJECT_DIR/iOS`)
+- ANDROID_SHELL_DIR: the root directory of the Android shell project (e.g. `$PROJECT_DIR/Android`)
 - APP_NAME: the Xcode target / Swift source folder name (e.g. `MyApp`)
 
 ## Platform detection
@@ -15,8 +16,8 @@ Process platforms in this order:
 
 1. **design-system** first (other platforms may depend on tokens)
 2. **core** next (shells depend on the core)
-3. **ios** shell last
-4. **android** shell (future)
+3. **ios** shell
+4. **android** shell
 5. **web** shell (future)
 
 Each skill reads the single feature spec at
@@ -132,6 +133,49 @@ Run the iOS verify steps described below.
 
 ---
 
+## Android shell
+
+Only run this section if `android` is listed in the proposal's Platforms.
+
+The android-writer reads `app.rs` as its primary input, supplemented by
+the `## Android Shell Requirements` section of the feature spec and the
+`## Android Shell Details` section of design.md.
+
+Check whether the Android shell directory exists and contains `.kt` files:
+
+- If no Kotlin files exist, use create mode.
+- If Kotlin files exist, use update mode.
+
+### Create mode (new Android shell)
+
+#### Phase 1: Generate
+
+1. /vectis:android-writer -- generate the Android shell
+
+#### Phase 2: Verify
+
+Run the Android verify steps described below.
+
+#### Phase 3: Review
+
+2. /vectis:android-reviewer -- AI code review
+
+### Update mode (existing Android shell)
+
+#### Phase 1: Generate
+
+1. /vectis:android-writer -- update the Android shell
+
+#### Phase 2: Verify
+
+Run the Android verify steps described below.
+
+#### Phase 3: Review
+
+2. /vectis:android-reviewer -- AI code review
+
+---
+
 ## Design system
 
 Only run this section if `design-system` is listed in the proposal's
@@ -228,6 +272,34 @@ If fails: fix the issue and re-run.
 
 ```bash
 cd $IOS_SHELL_DIR && make sim-build
+```
+
+If fails: fix the issue and re-run.
+
+---
+
+## Android verify steps
+
+### 1. Type generation
+
+```bash
+cd $ANDROID_SHELL_DIR && make build
+```
+
+If fails: fix the issue and re-run.
+
+### 2. Rust library build
+
+```bash
+cd $ANDROID_SHELL_DIR && ./gradlew :shared:cargoBuild
+```
+
+If fails: fix the issue and re-run.
+
+### 3. APK build
+
+```bash
+cd $ANDROID_SHELL_DIR && ./gradlew :app:assembleDebug
 ```
 
 If fails: fix the issue and re-run.

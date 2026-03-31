@@ -13,10 +13,12 @@ and any platform-specific requirements in dedicated sections.
 
 ## Available Skills
 
-| Directive                      | Skill                              | When to Use                          |
-| ------------------------------ | ---------------------------------- | ------------------------------------ |
-| `vectis:core-writer`           | Generate or update Crux core       | Core implementation tasks            |
-| `vectis:core-reviewer`         | AI code review for Crux core       | Post-implementation review of core   |
-| `vectis:ios-writer`            | Generate or update iOS shell       | iOS shell implementation tasks       |
-| `vectis:ios-reviewer`          | AI code review for iOS shell       | Post-implementation review of shell  |
-| `vectis:design-system-writer`  | Generate design system from tokens | Design system generation tasks       |
+| Directive                      | Skill                              | When to Use                            |
+| ------------------------------ | ---------------------------------- | -------------------------------------- |
+| `vectis:core-writer`           | Generate or update Crux core       | Core implementation tasks              |
+| `vectis:core-reviewer`         | AI code review for Crux core       | Post-implementation review of core     |
+| `vectis:ios-writer`            | Generate or update iOS shell       | iOS shell implementation tasks         |
+| `vectis:ios-reviewer`          | AI code review for iOS shell       | Post-implementation review of iOS      |
+| `vectis:android-writer`        | Generate or update Android shell   | Android shell implementation tasks     |
+| `vectis:android-reviewer`      | AI code review for Android shell   | Post-implementation review of Android  |
+| `vectis:design-system-writer`  | Generate design system from tokens | Design system generation tasks         |

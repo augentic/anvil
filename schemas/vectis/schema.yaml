@@ -74,9 +74,9 @@ build:
 
 defaults:
   context: |
-    Tech stack: Rust (Crux 0.17.0), Swift 6 (SwiftUI, iOS 17+), VectisDesign tokens
+    Tech stack: Rust (Crux 0.17.0), Swift 6 (SwiftUI, iOS 17+), Kotlin 2.x (Jetpack Compose, Material 3), VectisDesign tokens
     Architecture: Crux App trait with Model, Event, ViewModel, Effect, Command
-    Testing: Rust integration tests (cargo test), Xcode build verification (make build)
+    Testing: Rust integration tests (cargo test), Xcode build verification (make build), Gradle build verification (./gradlew :app:assembleDebug)
   rules:
     proposal: |
       - Source is always Manual for Crux projects.
@@ -115,10 +115,13 @@ defaults:
       - If iOS is in scope, include an iOS Shell Details section documenting
         navigation style, screen customizations, platform features, design
         system overrides
+      - If Android is in scope, include an Android Shell Details section
+        documenting navigation patterns, Material 3 customizations, platform
+        features
       - If design-system is in scope, include a Design System Details section
         documenting token categories, value shapes, and downstream consumers
       - Include Implementation Constraints: Crux 0.17.0, facet 0.31,
-        uniffi 0.29.4, Swift 6, iOS 17+
+        uniffi 0.29.4, Swift 6, iOS 17+, Kotlin 2.x, min SDK 34
       - Use mermaid diagrams for type relationships and navigation flows
     tasks: |
       - For greenfield features (no existing shared/src/app.rs), structure
@@ -130,6 +133,8 @@ defaults:
         code modifications.
       - If iOS is in scope, add tasks: 1) build infrastructure (cargo xcode),
         2) ios-writer, 3) build verification, 4) ios-reviewer.
+      - If Android is in scope, add tasks: 1) android-writer,
+        2) Gradle build verification, 3) android-reviewer.
       - If design-system is in scope, add tasks: 1) design-system-writer,
         2) swift build verification, 3) downstream impact check.
       - Order task groups: design-system first, core second, shells last.
