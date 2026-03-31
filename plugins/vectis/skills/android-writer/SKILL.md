@@ -54,8 +54,8 @@ render and handle. Read `{app-dir}/shared/src/app.rs` and extract:
 | Extract | Source | Maps to |
 |---|---|---|
 | App struct name | `impl App for X` | App name, package name |
-| ViewModel variants | `enum ViewModel` | `when` branches in the main composable |
-| Per-page view structs | Structs wrapped by ViewModel variants | Screen composable properties and layout |
+| ViewModel shape | `enum ViewModel` or `struct ViewModel` | Root composable routing (`when` for enum, direct render for struct) |
+| Per-page view structs | Structs wrapped by enum variants, or `ViewModel` itself when it is a struct | Screen composable properties and layout |
 | Shell-facing Event variants | `enum Event` (non-`#[serde(skip)]`, non-`#[facet(skip)]`) | User interaction handlers in screen composables |
 | Effect variants | `enum Effect` | `processRequest` `when` branches in Core.kt |
 | Route variants | `enum Route` | Navigation destinations |
@@ -215,7 +215,8 @@ If found, switch to update mode.
 Read `{app-dir}/shared/src/app.rs` and extract all types listed in the
 Input Analysis table above. Build a complete picture of:
 
-- Which ViewModel variants exist (determines number of screens)
+- Whether `ViewModel` is an enum or struct (determines screen mapping strategy)
+- If `ViewModel` is an enum, which variants exist (determines number of screens)
 - Which per-page view struct fields exist (determines screen layout)
 - Which shell-facing Event variants exist (determines user interaction points)
 - Which Effect variants exist (determines which platform capabilities to implement)
@@ -504,7 +505,13 @@ class Core(
                     try {
                         handleTimeEffect(request.id, effect.value)
                     } catch (e: CancellationException) { throw e }
-                    catch (e: Exception) { Log.e(TAG, "Time effect error", e) }
+                    catch (e: Exception) {
+                        Log.e(TAG, "Time effect error", e)
+                        resolveAndHandleEffects(
+                            request.id,
+                            fallbackTimeResponse(effect.value).bincodeSerialize()
+                        )
+                    }
                 }
             }
             is Effect.ServerSentEvents -> {
@@ -515,7 +522,10 @@ class Core(
                             resolveAndHandleEffects(request.id, response.bincodeSerialize())
                         }
                     } catch (e: CancellationException) { throw e }
-                    catch (e: Exception) { Log.e(TAG, "SSE error: ${e.message}", e) }
+                    catch (e: Exception) {
+                        Log.e(TAG, "SSE error: ${e.message}", e)
+                        resolveAndHandleEffects(request.id, SseResponse.Done.bincodeSerialize())
+                    }
                 }
             }
             // ...other effects
@@ -527,7 +537,8 @@ class Core(
 **CRITICAL**: All `scope.launch` blocks for async effects (SSE, Time) MUST
 wrap their body in `try/catch` to prevent unhandled exceptions from crashing
 the app. Always rethrow `CancellationException` to preserve coroutine
-cancellation semantics.
+cancellation semantics. On non-cancellation failures, resolve the request with
+a terminal response so request IDs do not remain unresolved.
 
 Include only the effect handlers that the app actually uses.
 See `references/crux-android-shell-pattern.md` for full implementations of
@@ -548,14 +559,17 @@ For each non-Render effect, generate the corresponding client class in
 
 See `references/crux-android-shell-pattern.md` for implementations.
 
-### 10. Generate DI module and Application class
+### 10. Generate Application class (required) and DI module (if needed)
 
-When using Koin (more than one non-Render effect), generate:
+Always generate:
 
-- `{project-dir}/app/src/main/java/com/vectis/{appname}/di/AppModule.kt`
 - `{project-dir}/app/src/main/java/com/vectis/{appname}/{AppName}Application.kt`
 
-And register the Application class in `AndroidManifest.xml`.
+When using Koin (more than one non-Render effect), also generate:
+
+- `{project-dir}/app/src/main/java/com/vectis/{appname}/di/AppModule.kt`
+
+And always register the Application class in `AndroidManifest.xml`.
 
 #### UniFFI library name override (CRITICAL)
 
@@ -572,6 +586,7 @@ class {AppName}Application : Application() {
         // but Cargo builds libshared.so
         System.setProperty("uniffi.component.shared.libraryOverride", "shared")
 
+        // Only include this block when Koin is used.
         startKoin {
             androidContext(this@{AppName}Application)
             modules(appModule)
@@ -585,8 +600,13 @@ where `{crate_name}` matches the `[lib] name = "shared"` in `Cargo.toml`.
 
 ### 11. Generate screen composables
 
-For each ViewModel variant, create a screen composable file in
-`{project-dir}/app/src/main/java/com/vectis/{appname}/ui/screens/`:
+If `ViewModel` is an enum, create one screen composable file per variant in
+`{project-dir}/app/src/main/java/com/vectis/{appname}/ui/screens/`.
+
+If `ViewModel` is a struct, create a single root screen file (typically
+`MainScreen.kt`) that takes `viewModel: ViewModel` directly.
+
+For enum-based ViewModels:
 
 | ViewModel variant | Screen file | Content |
 |---|---|---|
@@ -637,8 +657,8 @@ Create `{project-dir}/app/src/main/java/com/vectis/{appname}/MainActivity.kt`
 following the pattern in `references/compose-view-patterns.md`.
 
 The activity sets up the theme and renders the root composable. The root
-composable observes the `ViewModel` and switches on its variants to display
-the appropriate screen.
+composable observes `ViewModel` and either switches on enum variants or renders
+the struct directly, depending on the core type shape.
 
 #### Simple pattern (ViewModel-based Core):
 
@@ -723,7 +743,8 @@ HTTP or SSE effects, include the `networkSecurityConfig` attribute:
 </manifest>
 ```
 
-Omit the `android:name` Application attribute if Koin is not used.
+Always include the `android:name` Application attribute so the UniFFI override
+runs before any `CoreFfi` usage.
 Omit the `networkSecurityConfig` if no HTTP/SSE effects.
 
 #### themes.xml (REQUIRED)
@@ -837,8 +858,8 @@ Walk through in this order:
 
 1. **Effect variants** -- new or removed capabilities affect Core.kt and
    may require new client classes.
-2. **ViewModel variants** -- new or removed views affect the root composable
-   and screen composable files.
+2. **ViewModel shape and variants** -- enum/struct changes affect root
+   composable strategy and screen composable files.
 3. **Per-page view struct fields** -- changed display data affects screen
    composables.
 4. **Event variants** -- new or removed user actions affect screen composables.
@@ -856,9 +877,10 @@ Output the diff summary before making edits.
 
 ### U6. Apply changes to composables
 
-- Add new screen composable files for added ViewModel variants.
-- Remove screen composable files for removed ViewModel variants.
-- Update the root composable `when` to add/remove cases.
+- For enum `ViewModel`: add/remove screen files per variant and update root
+  composable `when` cases.
+- For struct `ViewModel`: keep a single root screen composable and update its
+  layout bindings to the struct fields.
 - Update existing screen composables for changed per-page view struct fields.
 - Add/remove event dispatch calls for changed Event variants.
 
@@ -881,6 +903,7 @@ Same as create mode step 15:
 | Rust Type (in `app.rs`) | Kotlin Artifact | File |
 |---|---|---|
 | `enum ViewModel { Loading, Main(MainView) }` | `when (state) { is ViewModel.Loading -> ... is ViewModel.Main -> ... }` | `MainActivity.kt` |
+| `struct ViewModel { ... }` | Direct render: `MainScreen(viewModel = state, onEvent = core::update)` | `MainActivity.kt` + `ui/screens/MainScreen.kt` |
 | ViewModel variant `Main(MainView)` | `@Composable fun MainScreen(viewModel: MainView, onEvent: (Event) -> Unit)` | `ui/screens/MainScreen.kt` |
 | `struct MainView { pub items: Vec<ItemView> }` | Function parameter: `viewModel: MainView` | `ui/screens/MainScreen.kt` |
 | Shell-facing `Event::AddItem(String)` | `onEvent(Event.AddItem(text))` | Relevant screen composable |
@@ -961,8 +984,12 @@ Same as create mode step 15:
 
 ### Structure
 
-- [ ] Every ViewModel variant has a corresponding screen composable file
-- [ ] Every ViewModel variant has a branch in the root composable `when`
+- [ ] If `ViewModel` is an enum, every variant has a corresponding screen
+      composable file
+- [ ] If `ViewModel` is an enum, every variant has a branch in the root
+      composable `when`
+- [ ] If `ViewModel` is a struct, the root composable renders the struct
+      directly (no variant switch)
 - [ ] Every Effect variant has a branch in `processRequest` `when`
 - [ ] Every shell-facing Event variant is dispatched by at least one composable
 - [ ] `Core.kt` handles all effects from the core

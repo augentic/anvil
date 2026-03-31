@@ -51,6 +51,12 @@ are supported based on complexity.
 For apps with only the `Render` effect. `Core` extends
 `androidx.lifecycle.ViewModel` and uses Compose `mutableStateOf`.
 
+**CRITICAL**: Render-only apps still load `CoreFfi`, so they still need an
+`Application` class that sets:
+`System.setProperty("uniffi.component.shared.libraryOverride", "shared")`
+before any UniFFI type is touched. Register that class via
+`android:name=".{AppName}Application"` in `AndroidManifest.xml`.
+
 ```kotlin
 package com.vectis.counter.core
 
@@ -109,6 +115,8 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private const val TAG = "Core"
 
@@ -118,6 +126,8 @@ class Core(
 ) {
     private val coreFfi = CoreFfi()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val timerLock = Mutex()
+    private val timerJobs = mutableMapOf<String, Job>()
 
     private val _viewModel: MutableStateFlow<ViewModel> =
         MutableStateFlow(getViewModel())
@@ -153,7 +163,13 @@ class Core(
                             resolveAndHandleEffects(request.id, response.bincodeSerialize())
                         }
                     } catch (e: CancellationException) { throw e }
-                    catch (e: Exception) { Log.e(TAG, "SSE error: ${e.message}", e) }
+                    catch (e: Exception) {
+                        Log.e(TAG, "SSE error: ${e.message}", e)
+                        resolveAndHandleEffects(
+                            request.id,
+                            SseResponse.Done.bincodeSerialize()
+                        )
+                    }
                 }
             }
             is Effect.Time -> {
@@ -161,7 +177,13 @@ class Core(
                     try {
                         handleTimeEffect(request.id, effect.value)
                     } catch (e: CancellationException) { throw e }
-                    catch (e: Exception) { Log.e(TAG, "Time effect error", e) }
+                    catch (e: Exception) {
+                        Log.e(TAG, "Time effect error", e)
+                        resolveAndHandleEffects(
+                            request.id,
+                            fallbackTimeResponse(effect.value).bincodeSerialize()
+                        )
+                    }
                 }
             }
             is Effect.Platform -> {
@@ -178,6 +200,17 @@ class Core(
         val effects = coreFfi.resolve(requestId, data)
         handleEffects(effects)
     }
+
+    private fun fallbackTimeResponse(request: TimeRequest): TimeResponse =
+        when (request) {
+            is TimeRequest.Now -> {
+                val now = ZonedDateTime.now(ZoneOffset.UTC)
+                TimeResponse.Now(Instant(now.toEpochSecond().toULong(), now.nano.toUInt()))
+            }
+            is TimeRequest.NotifyAfter -> TimeResponse.Cleared(request.value.id)
+            is TimeRequest.NotifyAt -> TimeResponse.Cleared(request.value.id)
+            is TimeRequest.Clear -> TimeResponse.Cleared(request.value)
+        }
 
     private fun getViewModel(): ViewModel =
         ViewModel.bincodeDeserialize(coreFfi.view())
@@ -214,6 +247,12 @@ import com.example.app.TimeRequest
 import com.example.app.TimeResponse
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+
+private val timerLock = Mutex()
+private val timerJobs = mutableMapOf<String, Job>()
 
 private suspend fun handleTimeEffect(requestId: UInt, timeRequest: TimeRequest) {
     when (timeRequest) {
@@ -225,23 +264,57 @@ private suspend fun handleTimeEffect(requestId: UInt, timeRequest: TimeRequest) 
             resolveAndHandleEffects(requestId, response.bincodeSerialize())
         }
         is TimeRequest.NotifyAfter -> {
-            val millis = timeRequest.value.duration.nanos / 1_000_000UL
-            delay(millis.toLong())
-            val response = TimeResponse.DurationElapsed(timeRequest.value.id)
-            resolveAndHandleEffects(requestId, response.bincodeSerialize())
+            val timerKey = timeRequest.value.id.toString()
+            val timerJob = scope.launch {
+                try {
+                    val millis = timeRequest.value.duration.nanos / 1_000_000UL
+                    delay(millis.toLong())
+                    val response = TimeResponse.DurationElapsed(timeRequest.value.id)
+                    resolveAndHandleEffects(requestId, response.bincodeSerialize())
+                } finally {
+                    timerLock.withLock {
+                        if (timerJobs[timerKey] === coroutineContext[Job]) {
+                            timerJobs.remove(timerKey)
+                        }
+                    }
+                }
+            }
+            timerLock.withLock {
+                timerJobs.remove(timerKey)?.cancel()
+                timerJobs[timerKey] = timerJob
+            }
         }
         is TimeRequest.NotifyAt -> {
-            val now = java.time.Instant.now()
-            val target = java.time.Instant.ofEpochSecond(
-                timeRequest.value.instant.seconds.toLong(),
-                timeRequest.value.instant.nanos.toLong()
-            )
-            val delayMs = java.time.Duration.between(now, target).toMillis()
-            if (delayMs > 0) delay(delayMs)
-            val response = TimeResponse.InstantArrived(timeRequest.value.id)
-            resolveAndHandleEffects(requestId, response.bincodeSerialize())
+            val timerKey = timeRequest.value.id.toString()
+            val timerJob = scope.launch {
+                try {
+                    val now = java.time.Instant.now()
+                    val target = java.time.Instant.ofEpochSecond(
+                        timeRequest.value.instant.seconds.toLong(),
+                        timeRequest.value.instant.nanos.toLong()
+                    )
+                    val delayMs = java.time.Duration.between(now, target).toMillis()
+                    if (delayMs > 0) delay(delayMs)
+                    val response = TimeResponse.InstantArrived(timeRequest.value.id)
+                    resolveAndHandleEffects(requestId, response.bincodeSerialize())
+                } finally {
+                    timerLock.withLock {
+                        if (timerJobs[timerKey] === coroutineContext[Job]) {
+                            timerJobs.remove(timerKey)
+                        }
+                    }
+                }
+            }
+            timerLock.withLock {
+                timerJobs.remove(timerKey)?.cancel()
+                timerJobs[timerKey] = timerJob
+            }
         }
         is TimeRequest.Clear -> {
+            val timerKey = timeRequest.value.toString()
+            timerLock.withLock {
+                timerJobs.remove(timerKey)?.cancel()
+            }
             val response = TimeResponse.Cleared(timeRequest.value)
             resolveAndHandleEffects(requestId, response.bincodeSerialize())
         }
@@ -276,7 +349,10 @@ is Effect.ServerSentEvents -> {
                 resolveAndHandleEffects(request.id, response.bincodeSerialize())
             }
         } catch (e: CancellationException) { throw e }
-        catch (e: Exception) { Log.e(TAG, "SSE error: ${e.message}", e) }
+        catch (e: Exception) {
+            Log.e(TAG, "SSE error: ${e.message}", e)
+            resolveAndHandleEffects(request.id, SseResponse.Done.bincodeSerialize())
+        }
     }
 }
 ```
@@ -548,8 +624,9 @@ core.update(Event.StartWatch)    // if core defines Event::StartWatch
 core.update(Event.Navigate(Route.MAIN))  // if using route-based init
 ```
 
-Note: Unit variants without payloads use UPPER_CASE (`Event.STARTWATCH`).
-Variants with payloads use PascalCase (`Event.Navigate(route)`).
+Note: For sealed-interface enums like `Event`, variants use generated type
+names (`Event.StartWatch`, `Event.Navigate(route)`, `Event.ClearCompleted`).
+`UPPER_CASE` naming applies only to simple `enum class` types like `Filter.ALL`.
 
 ## Thread Safety
 
