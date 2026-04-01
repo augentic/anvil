@@ -207,8 +207,9 @@ pub use {anyhow, axum, bytes, http, http_body, tracing};
 On `wasm32`:
 
 ```rust
-pub use {omnia_wasi_http, omnia_wasi_identity, omnia_wasi_keyvalue,
-         omnia_wasi_messaging, omnia_wasi_otel, wasip3, wit_bindgen};
+pub use {omnia_wasi_blobstore, omnia_wasi_http, omnia_wasi_identity,
+         omnia_wasi_jsondb, omnia_wasi_keyvalue, omnia_wasi_messaging,
+         omnia_wasi_otel, wasip3, wit_bindgen};
 ```
 
 ## ensure_env! Macro

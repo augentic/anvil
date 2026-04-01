@@ -72,9 +72,11 @@ version.workspace = true
 # All omnia-* crates share the same version — resolve via `cargo search omnia-sdk`
 omnia = "<latest>"
 omnia-sdk = "<latest>"
+omnia-wasi-blobstore = "<latest>"
 omnia-wasi-config = "<latest>"
 omnia-wasi-http = "<latest>"
 omnia-wasi-identity = "<latest>"
+omnia-wasi-jsondb = "<latest>"
 omnia-wasi-keyvalue = "<latest>"
 omnia-wasi-messaging = "<latest>"
 omnia-wasi-otel = "<latest>"
@@ -146,6 +148,8 @@ wasip3.workspace = true
 # omnia-wasi-messaging.workspace = true    # If messaging used
 # omnia-wasi-keyvalue.workspace = true     # If StateStore used
 # omnia-wasi-websocket.workspace = true    # If WebSocket used
+# omnia-wasi-blobstore.workspace = true    # If Blobstore used
+# omnia-wasi-jsondb.workspace = true       # If DocumentStore used
 
 [dev-dependencies]
 # Dependencies that work on all targets
@@ -155,9 +159,11 @@ serde_json.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
 # Native-only dependencies for local runtime / integration tests
 omnia.workspace = true
+omnia-wasi-blobstore.workspace = true
 omnia-wasi-config.workspace = true
 omnia-wasi-http.workspace = true
 omnia-wasi-identity.workspace = true
+omnia-wasi-jsondb.workspace = true
 omnia-wasi-keyvalue.workspace = true
 omnia-wasi-messaging.workspace = true
 omnia-wasi-otel.workspace = true

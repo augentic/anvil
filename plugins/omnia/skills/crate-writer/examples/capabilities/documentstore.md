@@ -1,6 +1,6 @@
 # DocumentStore Handler Patterns
 
-This document covers the `DocumentStore` trait pattern used for JSON document storage operations in Omnia business logic crates. `DocumentStore` is backed by `omnia_wasi_jsondb` and covers document databases such as Cosmos DB (document API), MongoDB, and PoloDB.
+This document covers the `DocumentStore` trait pattern used for JSON document storage operations in Omnia business logic crates. `DocumentStore` is backed by `omnia_wasi_jsondb` and covers Azure Table Storage, Cosmos DB (document API), MongoDB, and PoloDB.
 
 **Demonstrates:** `DocumentStore` and `Config` capability traits
 
@@ -235,6 +235,93 @@ impl<P: Config + DocumentStore> Handler<P> for UpsertCustomerRequest {
 }
 ```
 
+## Azure Table Storage Examples
+
+Azure Table Storage entities are stored as JSON documents. Model `PartitionKey` and `RowKey` as regular fields in your domain type.
+
+### Entity Definition (Azure Table Storage)
+
+```rust
+use serde::{Deserialize, Serialize};
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RawVehicle {
+    pub partition_key: String,
+    pub row_key: String,
+    pub vehicle_label: Option<String>,
+    pub vehicle_type: Option<String>,
+    pub seating_capacity: Option<String>,
+    pub standing_capacity: Option<String>,
+    pub tag: Option<String>,
+}
+```
+
+### Fetch All Entities (Azure Table Storage)
+
+```rust
+use anyhow::Context as _;
+use omnia_sdk::{bad_gateway, Config, DocumentStore, Result};
+use omnia_sdk::document_store::QueryOptions;
+
+async fn fetch_all_vehicles<P>(provider: &P) -> Result<Vec<RawVehicle>>
+where
+    P: Config + DocumentStore,
+{
+    let store = Config::get(provider, "FLEET_DOCUMENT_STORE")
+        .await
+        .context("getting FLEET_DOCUMENT_STORE config")?;
+
+    let result = DocumentStore::query(provider, &store, QueryOptions::default())
+        .await
+        .map_err(|e| bad_gateway!("failed to fetch fleet data: {e}"))?;
+
+    let vehicles: Vec<RawVehicle> = result
+        .documents
+        .into_iter()
+        .map(|doc| serde_json::from_slice(&doc.data).context("deserializing vehicle"))
+        .collect::<anyhow::Result<Vec<_>>>()?;
+
+    Ok(vehicles)
+}
+```
+
+### Fetch with Filter (Azure Table Storage)
+
+```rust
+use omnia_sdk::document_store::Filter;
+
+async fn fetch_vehicles_by_type<P>(provider: &P, vehicle_type: &str) -> Result<Vec<RawVehicle>>
+where
+    P: Config + DocumentStore,
+{
+    let store = Config::get(provider, "FLEET_DOCUMENT_STORE")
+        .await
+        .context("getting FLEET_DOCUMENT_STORE config")?;
+
+    let options = QueryOptions {
+        filter: Some(Filter::eq("vehicleType", vehicle_type)),
+        ..Default::default()
+    };
+
+    let result = DocumentStore::query(provider, &store, options)
+        .await
+        .map_err(|e| bad_gateway!("failed to fetch vehicles by type: {e}"))?;
+
+    let vehicles: Vec<RawVehicle> = result
+        .documents
+        .into_iter()
+        .map(|doc| serde_json::from_slice(&doc.data).context("deserializing vehicle"))
+        .collect::<anyhow::Result<Vec<_>>>()?;
+
+    Ok(vehicles)
+}
+```
+
+### Cache-Aside with Azure Table Storage
+
+When the legacy component loads data from Azure Table Storage on startup into an in-memory cache, the WASM translation is on-demand cache-aside: `StateStore` for caching + `DocumentStore` as the data source. See [statestore.md](./statestore.md#cache-aside-with-documentstore-on-demand-loading) for the complete cache-aside pattern.
+
 ## Required Imports
 
 ```rust
@@ -266,8 +353,8 @@ use serde::{Deserialize, Serialize};
 
 | Data Shape | Trait | When |
 |------------|-------|------|
-| Tabular rows, SQL queries | `TableStore` | Relational data, Azure Table Storage, SQL CRUD |
-| JSON documents by key/query | `DocumentStore` | Cosmos DB documents, MongoDB, flexible schema |
+| Tabular rows, SQL queries | `TableStore` | Relational data, SQL CRUD |
+| JSON documents by key/query | `DocumentStore` | Azure Table Storage, Cosmos DB documents, MongoDB, flexible schema |
 | Binary blobs by key | `Blobstore` | Files, images, large payloads |
 | Small key-value cache entries | `StateStore` | Redis cache, session state, TTL-based expiry |
 

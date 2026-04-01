@@ -315,37 +315,33 @@ if let Err(err) = StateStore::set(provider, &key, &data, None).await {
 }
 ```
 
-## Cache-Aside with TableStore (On-Demand Loading)
+## Cache-Aside with DocumentStore (On-Demand Loading)
 
-When the legacy component loads data from a managed data store (e.g., Azure Table Storage) on startup into an in-memory cache, the WASM translation is **on-demand cache-aside**: `StateStore` for caching + `TableStore` as the data source. The handler fetches from the data store on cache miss — no separate cron/ETL component is needed.
+When the legacy component loads data from a managed data store (e.g., Azure Table Storage) on startup into an in-memory cache, the WASM translation is **on-demand cache-aside**: `StateStore` for caching + `DocumentStore` as the data source. The handler fetches from the data store on cache miss — no separate cron/ETL component is needed.
 
 ```rust
 use anyhow::Context as _;
 use omnia_sdk::{
-    Config, Context, Error, Handler, Reply, Result, StateStore,
+    Config, DocumentStore, Result, StateStore,
     bad_gateway, server_error,
 };
-use omnia_wasi_sql::entity;
-use omnia_wasi_sql::orm::{SelectBuilder, TableStore};
+use omnia_sdk::document_store::QueryOptions;
 use serde::{Deserialize, Serialize};
 
 const FLEET_CACHE_KEY: &str = "fleet-data";
 
-entity! {
-    table = "fleetdata",
-    #[derive(Clone, Debug, Deserialize, Serialize)]
-    pub struct RawVehicle {
-        pub partition_key: String,
-        pub row_key: String,
-        pub label: Option<String>,
-        pub call_sign: Option<String>,
-    }
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RawVehicle {
+    pub partition_key: String,
+    pub row_key: String,
+    pub label: Option<String>,
+    pub call_sign: Option<String>,
 }
 
-/// Load fleet data with cache-aside: StateStore first, TableStore on miss.
 async fn load_fleet_data<P>(provider: &P) -> Result<Vec<RawVehicle>>
 where
-    P: Config + TableStore + StateStore,
+    P: Config + DocumentStore + StateStore,
 {
     // 1. Check StateStore cache
     if let Some(bytes) = StateStore::get(provider, FLEET_CACHE_KEY)
@@ -358,16 +354,22 @@ where
         return Ok(vehicles);
     }
 
-    // 2. Cache miss — fetch from TableStore (Azure Table Storage)
-    tracing::info!("Fleet data cache miss, fetching from TableStore");
-    let db_name = Config::get(provider, "FLEET_TABLE_STORE")
+    // 2. Cache miss — fetch from DocumentStore (Azure Table Storage)
+    tracing::info!("Fleet data cache miss, fetching from DocumentStore");
+    let store = Config::get(provider, "FLEET_DOCUMENT_STORE")
         .await
-        .map_err(|e| bad_gateway!("missing FLEET_TABLE_STORE config: {e}"))?;
+        .map_err(|e| bad_gateway!("missing FLEET_DOCUMENT_STORE config: {e}"))?;
 
-    let vehicles = SelectBuilder::<RawVehicle>::new()
-        .fetch(provider, &db_name)
+    let result = DocumentStore::query(provider, &store, QueryOptions::default())
         .await
         .map_err(|e| bad_gateway!("failed to fetch fleet data: {e}"))?;
+
+    let vehicles: Vec<RawVehicle> = result
+        .documents
+        .into_iter()
+        .map(|doc| serde_json::from_slice(&doc.data).context("deserializing vehicle"))
+        .collect::<anyhow::Result<Vec<_>>>()
+        .map_err(|e| server_error!("{e}"))?;
 
     // 3. Populate cache with TTL (replaces legacy periodic refresh)
     if !vehicles.is_empty() {
@@ -395,13 +397,13 @@ where
 
 ### Key Differences from HttpRequest Cache-Aside
 
-| Aspect | HttpRequest upstream | TableStore upstream |
-|--------|---------------------|---------------------|
-| Data source trait | `HttpRequest` | `TableStore` |
-| Handler bounds | `P: Config + HttpRequest + StateStore` | `P: Config + TableStore + StateStore` |
-| Fetch call | `HttpRequest::fetch(provider, request)` | `SelectBuilder::<T>::new().fetch(provider, &db_name)` |
+| Aspect | HttpRequest upstream | DocumentStore upstream |
+|--------|---------------------|------------------------|
+| Data source trait | `HttpRequest` | `DocumentStore` |
+| Handler bounds | `P: Config + HttpRequest + StateStore` | `P: Config + DocumentStore + StateStore` |
+| Fetch call | `HttpRequest::fetch(provider, request)` | `DocumentStore::query(provider, &store, options)` |
 | Auth | Explicit (Identity, API keys) | Handled by runtime |
-| Use when | External REST APIs | Databases, Azure Table Storage, Cosmos DB |
+| Use when | External REST APIs | Azure Table Storage, Cosmos DB, MongoDB |
 
 ## References
 

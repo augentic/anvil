@@ -39,7 +39,7 @@ All code targets `wasm32-wasip2`. Violating any rule below causes build or runti
 | API | Alternative |
 |-----|-------------|
 | `std::env::var` | `Config::get` via provider |
-| `std::fs::*` | `StateStore` or `HttpRequest` |
+| `std::fs::*` | `StateStore`, `Blobstore`, or `HttpRequest` |
 | `std::net::*` | `HttpRequest::fetch` via provider |
 | `std::process::*` | N/A |
 | `std::thread::spawn` | Async patterns |

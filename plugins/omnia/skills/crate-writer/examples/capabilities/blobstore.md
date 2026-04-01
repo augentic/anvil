@@ -215,8 +215,8 @@ use serde::{Deserialize, Serialize};
 | Data Shape | Trait | When |
 |------------|-------|------|
 | Binary blobs by key | `Blobstore` | Files, images, large payloads, opaque binary data |
-| JSON documents by key/query | `DocumentStore` | Cosmos DB documents, MongoDB, flexible schema |
-| Tabular rows, SQL queries | `TableStore` | Relational data, Azure Table Storage, SQL CRUD |
+| JSON documents by key/query | `DocumentStore` | Azure Table Storage, Cosmos DB documents, MongoDB, flexible schema |
+| Tabular rows, SQL queries | `TableStore` | Relational data, SQL CRUD |
 | Small key-value cache entries | `StateStore` | Redis cache, session state, TTL-based expiry |
 
 ## References

@@ -103,7 +103,7 @@ let response = HttpRequest::fetch(provider, request)
 
 | Service | Correct Trait | NOT HttpRequest |
 |---------|---------------|-----------------|
-| Azure Table Storage | `TableStore` | Never raw HTTP to `*.table.core.windows.net` |
+| Azure Table Storage | `DocumentStore` | Never raw HTTP to `*.table.core.windows.net` |
 | Azure Cosmos DB (SQL/table) | `TableStore` | Never raw HTTP to `*.documents.azure.com` |
 | Azure Cosmos DB (document) | `DocumentStore` | Never raw HTTP to `*.documents.azure.com` |
 | MongoDB / document DBs | `DocumentStore` | Never raw HTTP to document store endpoints |
@@ -289,9 +289,9 @@ let response = HttpRequest::fetch(provider, request).await?;
 
 ## TableStore
 
-Database and table storage access (queries, CRUD, and statements). Covers **both** relational SQL databases **and** managed NoSQL table stores (Azure Table Storage, Cosmos DB). An ORM layer is available via `omnia_orm`.
+Database access (queries, CRUD, and statements) for SQL databases. An ORM layer is available via `omnia_orm`.
 
-> **WARNING — Do not be misled by the `omnia_wasi_sql` module name.** The WASI module is named `omnia_wasi_sql` for historical reasons, but `TableStore` is a **general-purpose data access abstraction** used by the Omnia runtime for SQL databases, Azure Table Storage, Azure Cosmos DB, and other tabular/document stores. The runtime provides native adapters for each backend behind this single trait. When you see `@azure/data-tables`, `TableClient`, `listEntities`, or `*.table.core.windows.net` in source code, use `TableStore` — not `HttpRequest` or `StateStore`. Azure Table Storage being "NoSQL" or "not SQL" is **irrelevant** to trait selection.
+> **Note:** `TableStore` is for **SQL databases only** (PostgreSQL, MySQL, SQL Server, Cosmos DB SQL API). Azure Table Storage has moved to `DocumentStore`. When you see `@azure/data-tables`, `TableClient`, `listEntities`, or `*.table.core.windows.net` in source code, use `DocumentStore` — not `TableStore` or `HttpRequest`.
 
 |                 |                                                                                        |
 | --------------- | -------------------------------------------------------------------------------------- |
@@ -357,11 +357,9 @@ let users = SelectBuilder::<User>::new()
     .await?;
 ```
 
-**Include when**: handler needs database or table storage access — SQL databases, Azure Table Storage, Azure Cosmos DB, or any managed data store. For Azure Table Storage, always include `PartitionKey` and `RowKey` fields in update and delete filter criteria, and always send an entire object for update.
+**Include when**: handler needs SQL database access — PostgreSQL, MySQL, SQL Server, Cosmos DB SQL API, or any relational/SQL data store.
 
-**CRITICAL — Azure Table Storage is TableStore, NOT HttpRequest**: When the source code or artifacts describe access to Azure Table Storage (via `@azure/data-tables` SDK, REST API calls to `*.table.core.windows.net`, SharedKey/SAS authentication, or `TableClient.listEntities`), use `TableStore` — never `HttpRequest`. Azure Table Storage being "NoSQL" is irrelevant; the Omnia runtime provides a native Azure Table Storage adapter behind the `TableStore` trait. The `entity!` macro and ORM builders work with Azure Table Storage entities just as they do with SQL rows.
-
-**Specify triggers**: SQL database operations, CRUD patterns; any database queries or table references in requirements artifacts; any SQL/ORM operations in code-analysis artifacts; **Azure Table Storage access** (including `@azure/data-tables`, `TableClient`, `listEntities`, `table.core.windows.net`, SharedKey auth); any "Table/database access" capability in the Source Capabilities Summary; any external service with type "managed table store" or "database".
+**Specify triggers**: SQL database operations, CRUD patterns; any database queries or table references in requirements artifacts; any SQL/ORM operations in code-analysis artifacts; any "Table/database access" capability in the Source Capabilities Summary; any external service with type "database" (SQL). Azure Table Storage is **not** a trigger for `TableStore` — use `DocumentStore` instead.
 
 **Cargo.toml**: no extra dependencies (types come from `omnia-sdk` re-exports). ORM requires `omnia-orm`.
 
@@ -490,7 +488,7 @@ let keys = Blobstore::list_objects(provider, "reports").await?;
 
 ## DocumentStore
 
-JSON document storage (Cosmos DB, MongoDB, PoloDB, and other document databases).
+JSON document storage (Azure Table Storage, Cosmos DB, MongoDB, PoloDB, and other document databases).
 
 ||                 |                                   |
 || --------------- | --------------------------------- |
@@ -586,15 +584,17 @@ for doc in &result.documents {
 }
 ```
 
-**Include when**: handler stores or retrieves JSON documents by key or query. Use for document databases, flexible schema storage, or any data where the natural shape is a JSON document rather than a tabular row.
+**Include when**: handler stores or retrieves JSON documents by key or query. Use for document databases, Azure Table Storage, flexible schema storage, or any data where the natural shape is a JSON document rather than a tabular row. For Azure Table Storage, model `PartitionKey` and `RowKey` as regular fields in the serialized document.
 
-**Specify triggers**: document database access, JSON document storage, Cosmos DB document operations, MongoDB operations; any `CosmosClient`, `MongoClient`, `find`, `insertOne`, `updateOne`, `deleteOne`, `findOne` in code-analysis artifacts; any document storage requirements in requirements artifacts.
+**CRITICAL — Azure Table Storage is DocumentStore, NOT TableStore or HttpRequest**: When the source code or artifacts describe access to Azure Table Storage (via `@azure/data-tables` SDK, REST API calls to `*.table.core.windows.net`, SharedKey/SAS authentication, or `TableClient.listEntities`), use `DocumentStore` — never `TableStore` or `HttpRequest`. The Omnia runtime provides a native Azure Table Storage adapter behind the `DocumentStore` trait.
+
+**Specify triggers**: document database access, JSON document storage, Cosmos DB document operations, MongoDB operations; **Azure Table Storage access** (including `@azure/data-tables`, `TableClient`, `listEntities`, `table.core.windows.net`, SharedKey auth); any `CosmosClient`, `MongoClient`, `find`, `insertOne`, `updateOne`, `deleteOne`, `findOne` in code-analysis artifacts; any document storage requirements in requirements artifacts; any external service with type "managed table store".
 
 **Exclusion — choosing between storage traits**:
 
 | Data Shape | Trait | When |
 |------------|-------|------|
-| Tabular rows, SQL queries | `TableStore` | Relational data, Azure Table Storage entities, SQL CRUD |
+| Tabular rows, SQL queries | `TableStore` | Relational data, SQL CRUD |
 | JSON documents by key/query | `DocumentStore` | Cosmos DB documents, MongoDB collections, flexible schema |
 | Binary blobs by key | `Blobstore` | Files, images, large payloads, opaque binary data |
 | Small key-value cache entries | `StateStore` | Redis cache, session state, TTL-based expiry |
@@ -643,18 +643,18 @@ impl IntoBody for DetectionReply {
 | Caching, state persistence      | `StateStore`  | `P: StateStore`                   |
 | Auth tokens (Azure AD, etc.)    | `Identity`    | `P: Identity`                     |
 | SQL database queries            | `TableStore`  | `P: TableStore`                   |
-| Azure Table Store               | `TableStore`  | `P: TableStore`                   |
+| Azure Table Store               | `DocumentStore` | `P: DocumentStore`              |
 | Object-relational mapping (SQL) | `TableStore`  | `P: TableStore` (use `omnia_orm`) |
 | WebSocket send/reply            | `Broadcast`      | `P: Broadcast`                    |
 | Binary blobs (Azure Blob Storage, AWS S3, etc) | `Blobstore` | `P: Blobstore`           |
 | JSON document storage (Cosmos DB, MongoDB, etc) | `DocumentStore` | `P: DocumentStore`    |
 | HTTP response serialization     | `IntoBody`       | impl on Output type               |
 
-**Managed data store override**: When the artifacts or source code describe direct HTTP/REST API access to a managed data store (Azure Table Storage, Azure Cosmos DB, Redis, Azure Blob Storage, etc.), do NOT use `HttpRequest`. Use the appropriate storage trait (`TableStore` for table/database stores, `DocumentStore` for JSON document stores, `Blobstore` for blob storage, `StateStore` for key-value caches). The Omnia runtime provides native adapters for these services. Constructing raw HTTP requests with storage-specific authentication (SharedKey, HMAC-SHA256, SAS tokens) to storage service REST APIs is always wrong — the runtime handles authentication internally.
+**Managed data store override**: When the artifacts or source code describe direct HTTP/REST API access to a managed data store (Azure Table Storage, Azure Cosmos DB, MongoDB, Redis, Azure Blob Storage, etc.), do NOT use `HttpRequest`. Use the appropriate storage trait (`TableStore` for SQL databases, `DocumentStore` for Azure Table Storage and document databases, `Blobstore` for blob storage, `StateStore` for key-value caches). The Omnia runtime provides native adapters for these services. Constructing raw HTTP requests with storage-specific authentication (SharedKey, HMAC-SHA256, SAS tokens) to storage service REST APIs is always wrong — the runtime handles authentication internally.
 
-**Cache-aside / on-demand loading (TableStore + StateStore):** When the artifacts list both a database/table store (e.g. Azure Table Storage) as the source of truth and a cache for the same data, or when the legacy loads data from a data store on startup into an in-memory cache, include **both** `TableStore` (or `HttpRequest` for external APIs) and `StateStore` and implement cache-aside:
+**Cache-aside / on-demand loading (data source + StateStore):** When the artifacts list both a data store (e.g. Azure Table Storage, SQL database) as the source of truth and a cache for the same data, or when the legacy loads data from a data store on startup into an in-memory cache, include **both** the data source trait (`DocumentStore` for Azure Table Storage/document databases, `TableStore` for SQL databases, or `HttpRequest` for external APIs) and `StateStore` and implement cache-aside:
 1. Read from `StateStore` (cache).
-2. On miss, query the data source (`TableStore` for databases/table stores, `HttpRequest` for APIs).
+2. On miss, query the data source (`DocumentStore` for Azure Table Storage/document databases, `TableStore` for SQL databases, `HttpRequest` for APIs).
 3. Write the result to `StateStore` with a TTL (replacing legacy periodic refresh with TTL-based expiry).
 4. Return the data.
 

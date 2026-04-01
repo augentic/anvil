@@ -95,6 +95,8 @@ Then configure workspace dependencies based on domain crate requirements:
 - If StateStore used: `omnia-wasi-keyvalue`
 - If Identity used: `omnia-wasi-identity`
 - If TableStore used: `omnia-wasi-sql`
+- If Blobstore used: `omnia-wasi-blobstore`
+- If DocumentStore used: `omnia-wasi-jsondb`
 
 All `omnia-*` crates are published on **crates.io**. No private registry configuration is needed.
 

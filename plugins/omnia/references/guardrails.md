@@ -29,7 +29,7 @@ These standard library APIs are not available in WASM guests:
 | API                  | Reason                | Alternative                       |
 | -------------------- | --------------------- | --------------------------------- |
 | `std::env::var`      | No environment access | `Config::get` via provider        |
-| `std::fs::*`         | No filesystem access  | `StateStore` or `HttpRequest`     |
+| `std::fs::*`         | No filesystem access  | `StateStore`, `Blobstore`, or `HttpRequest` |
 | `std::net::*`        | No direct networking  | `HttpRequest::fetch` via provider |
 | `std::process::*`    | No process management | N/A                               |
 | `std::thread::spawn` | Single-threaded WASM  | Async patterns                    |
