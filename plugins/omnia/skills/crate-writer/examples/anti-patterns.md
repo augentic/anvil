@@ -483,7 +483,7 @@ async fn download_report(account: &str, container: &str, blob: &str) -> anyhow::
 **Right:**
 
 ```rust
-use omnia_sdk::{bad_gateway, Blobstore, Config, Result};
+use omnia_sdk::{bad_gateway, bad_request, Blobstore, Config, Result};
 
 async fn download_report<P>(provider: &P) -> Result<Vec<u8>>
 where
@@ -491,10 +491,10 @@ where
 {
     let container = Config::get(provider, "REPORTS_CONTAINER").await?;
     let blob_name = "monthly-report.pdf";
-    let data = Blobstore::get(provider, &container, blob_name)
+    Blobstore::get_data(provider, &container, blob_name, 0, 0)
         .await
-        .map_err(|e| bad_gateway!("failed to download report: {e}"))?;
-    Ok(data)
+        .map_err(|e| bad_gateway!("failed to download report: {e}"))?
+        .ok_or_else(|| bad_request!("report not found: {blob_name}"))
 }
 ```
 
