@@ -35,7 +35,7 @@ Before starting code generation, verify artifact completeness:
 - [ ] Capability-to-trait mapping applied per [capability-mapping.md](capability-mapping.md)?
 - [ ] `[runtime]` constraints translated per [wasm-constraints.md](wasm-constraints.md)?
 - [ ] Every named external system in business logic steps maps to one of the 9 Omnia traits, or flagged for TODO?
-- [ ] Managed data store override applied? If design.md External Services lists a managed table store but algorithm steps phrase it as HTTP, override to `TableStore` per SKILL.md authority (see [todo-markers.md](todo-markers.md) "Capability override for managed data stores").
+- [ ] Managed data store override applied? If design.md External Services lists a managed table store but algorithm steps phrase it as HTTP, override to `DocumentStore` per SKILL.md authority (see [todo-markers.md](todo-markers.md) "Capability override for managed data stores").
 
 ### Publication Patterns
 

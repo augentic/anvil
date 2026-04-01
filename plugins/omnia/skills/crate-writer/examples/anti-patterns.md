@@ -381,7 +381,9 @@ where
 **Right:**
 
 ```rust
+use anyhow::Context as _;
 use omnia_sdk::{bad_gateway, Config, DocumentStore, Result};
+use omnia_sdk::document_store::QueryOptions;
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -397,12 +399,13 @@ where
     P: Config + DocumentStore,
 {
     let store = Config::get(provider, "FLEET_DOCUMENT_STORE").await?;
-    let documents = DocumentStore::query(provider, &store, None)
+    let result = DocumentStore::query(provider, &store, QueryOptions::default())
         .await
         .map_err(|e| bad_gateway!("failed to fetch fleet data: {e}"))?;
-    let vehicles: Vec<RawVehicle> = documents
-        .into_iter()
-        .map(|doc| serde_json::from_value(doc.data).context("deserializing vehicle"))
+    let vehicles: Vec<RawVehicle> = result
+        .documents
+        .iter()
+        .map(|doc| serde_json::from_slice(&doc.data).context("deserializing vehicle"))
         .collect::<anyhow::Result<Vec<_>>>()?;
     Ok(vehicles)
 }
@@ -433,20 +436,26 @@ async fn find_orders(connection_str: &str) -> anyhow::Result<Vec<Order>> {
 **Right:**
 
 ```rust
+use anyhow::Context as _;
 use omnia_sdk::{bad_gateway, Config, DocumentStore, Result};
+use omnia_sdk::document_store::{Filter, QueryOptions};
 
 async fn find_orders<P>(provider: &P) -> Result<Vec<Order>>
 where
     P: Config + DocumentStore,
 {
     let store = Config::get(provider, "ORDERS_DOCUMENT_STORE").await?;
-    let filter = serde_json::json!({ "status": "active" });
-    let documents = DocumentStore::query(provider, &store, Some(filter))
+    let options = QueryOptions {
+        filter: Some(Filter::eq("status", "active")),
+        ..Default::default()
+    };
+    let result = DocumentStore::query(provider, &store, options)
         .await
         .map_err(|e| bad_gateway!("failed to query orders: {e}"))?;
-    let orders: Vec<Order> = documents
-        .into_iter()
-        .map(|doc| serde_json::from_value(doc.data).context("deserializing order"))
+    let orders: Vec<Order> = result
+        .documents
+        .iter()
+        .map(|doc| serde_json::from_slice(&doc.data).context("deserializing order"))
         .collect::<anyhow::Result<Vec<_>>>()?;
     Ok(orders)
 }
