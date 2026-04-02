@@ -39,10 +39,12 @@ All code targets `wasm32-wasip2`. Violating any rule below causes build or runti
 | API | Alternative |
 |-----|-------------|
 | `std::env::var` | `Config::get` via provider |
-| `std::fs::*` | `StateStore`, `Blobstore`, or `HttpRequest` |
+| `std::fs::*` | `StateStore`, `Blobstore`, `DocumentStore`, or `HttpRequest` |
 | `std::net::*` | `HttpRequest::fetch` via provider |
 | `std::process::*` | N/A |
 | `std::thread::spawn` | Async patterns |
+
+> **`std::fs` replacement guide**: `StateStore` for small key-value state or cache entries; `Blobstore` for binary files, images, or large payloads; `DocumentStore` for JSON documents or structured data files; `HttpRequest` for fetching remote resources.
 
 Allowed: `std::sync::LazyLock` (immutable tables), `std::collections::HashMap`, `std::fmt`, `std::io` (in-memory), `std::str`.
 

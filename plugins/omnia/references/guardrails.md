@@ -29,10 +29,12 @@ These standard library APIs are not available in WASM guests:
 | API                  | Reason                | Alternative                       |
 | -------------------- | --------------------- | --------------------------------- |
 | `std::env::var`      | No environment access | `Config::get` via provider        |
-| `std::fs::*`         | No filesystem access  | `StateStore`, `Blobstore`, or `HttpRequest` |
+| `std::fs::*`         | No filesystem access  | `StateStore`, `Blobstore`, `DocumentStore`, or `HttpRequest` |
 | `std::net::*`        | No direct networking  | `HttpRequest::fetch` via provider |
 | `std::process::*`    | No process management | N/A                               |
 | `std::thread::spawn` | Single-threaded WASM  | Async patterns                    |
+
+> **`std::fs` replacement guide**: `StateStore` for small key-value state or cache entries; `Blobstore` for binary files, images, or large payloads; `DocumentStore` for JSON documents or structured data files; `HttpRequest` for fetching remote resources.
 
 ### Exceptions
 

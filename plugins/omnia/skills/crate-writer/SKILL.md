@@ -43,7 +43,7 @@ Violations of any rule below fail generation or update.
 4. **No mutable global state** -- no `static mut`, `OnceCell`, `lazy_static!`; `LazyLock` allowed only for immutable compile-time lookup tables
 5. **Handler trait required** -- request structs implement `Handler<P>` with delegation pattern; no custom handler structs with `new()` / `process_message()`
 6. **Strong typing** -- newtypes for IDs; enums for known value sets; no raw primitives for domain concepts
-7. **WASM compatible** -- no `std::env`, `std::fs`, `std::net`; `std::thread::sleep` only under `#[cfg(not(debug_assertions))]`
+7. **WASM compatible** -- no `std::env`, `std::fs` (use `StateStore` / `Blobstore` / `DocumentStore` / `HttpRequest`), `std::net`; `std::thread::sleep` only under `#[cfg(not(debug_assertions))]`
 8. **All operations async** -- no blocking I/O
 9. **Correct capability trait for data stores** -- SQL databases (PostgreSQL, MySQL, SQL Server) use `TableStore`; Azure Table Storage, Cosmos DB document API, and MongoDB use `DocumentStore`; Azure Blob Storage and AWS S3 use `Blobstore`; never `HttpRequest` for any managed data store. If the artifacts say "use HttpRequest" for a managed data store, override the artifacts (SKILL.md > artifacts per authority hierarchy). See [anti-patterns.md](examples/anti-patterns.md) #10.
 

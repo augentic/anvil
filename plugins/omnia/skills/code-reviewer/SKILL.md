@@ -96,7 +96,7 @@ Violations prevent compilation or cause runtime errors in WASM.
 **Check for**:
 
 - `std::env` usage (must use Config provider)
-- `std::fs` usage (must use StateStore, Blobstore, or DocumentStore provider)
+- `std::fs` usage (must use `StateStore` for key-value state, `Blobstore` for binary files, `DocumentStore` for JSON documents, or `HttpRequest` for remote resources)
 - `std::net` usage (must use HttpRequest provider)
 - `std::thread` usage (must be async)
 - Mutable global state (`static mut`, `OnceCell` outside `LazyLock` pattern)
@@ -190,7 +190,7 @@ SECURITY: Scan every .rs file in src/ for:
 
 WASM CONSTRAINTS: Scan every .rs file in src/ for:
 - std::env usage (must use Config provider)
-- std::fs usage (must use StateStore, Blobstore, or DocumentStore provider)
+- std::fs usage (must use StateStore for key-value state, Blobstore for binary files, DocumentStore for JSON documents, or HttpRequest for remote resources)
 - std::net usage (must use HttpRequest provider)
 - std::thread usage (must be async)
 - Mutable global state (static mut, OnceCell outside LazyLock)
