@@ -219,7 +219,9 @@ impl DocumentStore for MockProvider {
     async fn delete(
         &self, store: &str, id: &str,
     ) -> anyhow::Result<bool> {
-        let mut collections = docs().lock().unwrap();
+        let mut collections = docs()
+            .lock()
+            .map_err(|e| anyhow::anyhow!("doc lock poisoned: {e}"))?;
         Ok(collections
             .get_mut(store)
             .map_or(false, |c| c.remove(id).is_some()))
@@ -228,7 +230,9 @@ impl DocumentStore for MockProvider {
     async fn query(
         &self, store: &str, options: QueryOptions,
     ) -> anyhow::Result<QueryResult> {
-        let collections = docs().lock().unwrap();
+        let collections = docs()
+            .lock()
+            .map_err(|e| anyhow::anyhow!("doc lock poisoned: {e}"))?;
         let documents: Vec<Document> = collections
             .get(store)
             .map(|c| {
