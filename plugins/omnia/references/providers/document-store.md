@@ -1,6 +1,6 @@
 # DocumentStore
 
-**When Required**: Component stores or queries JSON documents (Cosmos DB, MongoDB, PoloDB).
+**When Required**: Component stores or queries JSON documents (Cosmos DB, MongoDB, PoloDB, Azure Table Storage, and other managed object or no-SQL stores).
 
 For the trait definition and method signatures, see [capabilities.md](../capabilities.md). For provider composition rules, see [README.md](README.md).
 
