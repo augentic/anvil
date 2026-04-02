@@ -1,14 +1,14 @@
 # TableStore Handler Patterns
 
-This document covers the `TableStore` trait pattern used for database and table storage operations in Omnia business logic crates. `TableStore` covers **both** SQL databases **and** managed NoSQL table stores (Azure Table Storage, Azure Cosmos DB).
+This document covers the `TableStore` trait pattern used for SQL database operations in Omnia business logic crates.
 
 **Demonstrates:** `TableStore` and `Config` capability traits
 
 ## Overview
 
-The `TableStore` trait provides data access for SQL databases and managed table stores. **Prefer the ORM layer** (SelectBuilder, InsertBuilder, UpdateBuilder, Filter) for CRUD and simple queries. Use **raw SQL** (TableStore::query / TableStore::exec) only for GeoSearch/spatial (e.g. PostGIS), nested subqueries, or complex transactional flows that appear in legacy code.
+The `TableStore` trait provides data access for SQL databases (PostgreSQL, MySQL, SQL Server, Cosmos DB SQL API). **Prefer the ORM layer** (SelectBuilder, InsertBuilder, UpdateBuilder, Filter) for CRUD and simple queries. Use **raw SQL** (TableStore::query / TableStore::exec) only for GeoSearch/spatial (e.g. PostGIS), nested subqueries, or complex transactional flows that appear in legacy code.
 
-> **WARNING — The `omnia_wasi_sql` module name is misleading.** Despite the "sql" in the module name, `TableStore` is a general-purpose data access abstraction. The Omnia runtime provides native adapters for SQL databases, Azure Table Storage, Azure Cosmos DB, and other tabular/document stores behind this single trait. When migrating code that uses `@azure/data-tables`, `TableClient`, or `*.table.core.windows.net`, use `TableStore` — not `HttpRequest` or `StateStore`. Azure Table Storage being "NoSQL" is irrelevant to trait selection.
+> **Note:** `TableStore` is for SQL databases only. Azure Table Storage now uses `DocumentStore` — see [documentstore.md](documentstore.md) for Azure Table Storage patterns.
 
 **Source:** `omnia_wasi_sql::orm::TableStore`
 
@@ -471,117 +471,6 @@ impl<P: Config + TableStore> Handler<P> for ArticlePublishRequest {
 }
 ```
 
-## Azure Table Storage Examples
-
-Azure Table Storage entities use the same `entity!` macro and ORM builders as SQL tables. The runtime adapter translates `SelectBuilder` queries into Azure Table Storage REST API calls internally.
-
-### Entity Definition (Azure Table Storage)
-
-Azure Table Storage entities include `PartitionKey` and `RowKey` as system properties. Define them as regular fields:
-
-```rust
-use omnia_wasi_sql::entity;
-use serde::{Deserialize, Serialize};
-
-entity! {
-    table = "fleetdata",
-    #[derive(Clone, Debug, Deserialize, Serialize)]
-    pub struct RawVehicle {
-        #[serde(rename(deserialize = "PartitionKey"))]
-        pub partition_key: String,
-        #[serde(rename(deserialize = "RowKey"))]
-        pub row_key: String,
-        #[serde(rename(deserialize = "Vehicle_Label"))]
-        pub vehicle_label: Option<String>,
-        #[serde(rename(deserialize = "Vehicle_Type"))]
-        pub vehicle_type: Option<String>,
-        #[serde(rename(deserialize = "Seating_Capacity"))]
-        pub seating_capacity: Option<String>,
-        #[serde(rename(deserialize = "Standing_Capacity"))]
-        pub standing_capacity: Option<String>,
-        #[serde(rename(deserialize = "Tag"))]
-        pub tag: Option<String>,
-    }
-}
-```
-
-### SELECT All Entities (Azure Table Storage)
-
-```rust
-use anyhow::Context as _;
-use omnia_sdk::{Config, Error, Result, bad_gateway};
-use omnia_wasi_sql::orm::{SelectBuilder, TableStore};
-
-async fn fetch_all_vehicles<P>(provider: &P) -> Result<Vec<RawVehicle>>
-where
-    P: Config + TableStore,
-{
-    let db_name = Config::get(provider, "FLEET_TABLE_STORE")
-        .await
-        .context("getting FLEET_TABLE_STORE config")?;
-
-    let vehicles = SelectBuilder::<RawVehicle>::new()
-        .fetch(provider, &db_name)
-        .await
-        .map_err(|e| bad_gateway!("failed to fetch fleet data: {e}"))?;
-
-    Ok(vehicles)
-}
-```
-
-### SELECT with Filter (Azure Table Storage)
-
-```rust
-async fn fetch_vehicles_by_type<P>(provider: &P, vehicle_type: &str) -> Result<Vec<RawVehicle>>
-where
-    P: Config + TableStore,
-{
-    let db_name = Config::get(provider, "FLEET_TABLE_STORE")
-        .await
-        .context("getting FLEET_TABLE_STORE config")?;
-
-    let vehicles = SelectBuilder::<RawVehicle>::new()
-        .r#where(Filter::eq("Vehicle_Type", vehicle_type))
-        .fetch(provider, &db_name)
-        .await
-        .map_err(|e| bad_gateway!("failed to fetch vehicles by type: {e}"))?;
-
-    Ok(vehicles)
-}
-```
-
-### Cache-Aside with Azure Table Storage
-
-When the legacy component loads data from Azure Table Storage on startup into an in-memory cache, the WASM translation is on-demand cache-aside: `StateStore` for caching + `TableStore` as the data source. See [statestore.md](./statestore.md#cache-aside-with-tablestore-on-demand-loading) for the complete cache-aside pattern.
-
-```rust
-async fn load_fleet_data<P>(provider: &P) -> Result<Vec<RawVehicle>>
-where
-    P: Config + TableStore + StateStore,
-{
-    // 1. Check StateStore cache
-    if let Some(cached) = StateStore::get(provider, "fleet_api:fleet_data").await? {
-        if let Ok(vehicles) = serde_json::from_slice::<Vec<RawVehicle>>(&cached) {
-            return Ok(vehicles);
-        }
-    }
-
-    // 2. Cache miss — fetch from TableStore (Azure Table Storage)
-    let db_name = Config::get(provider, "FLEET_TABLE_STORE").await?;
-    let vehicles = SelectBuilder::<RawVehicle>::new()
-        .fetch(provider, &db_name)
-        .await
-        .map_err(|e| bad_gateway!("failed to fetch fleet data: {e}"))?;
-
-    // 3. Populate cache with TTL
-    if let Ok(serialized) = serde_json::to_vec(&vehicles) {
-        let _ = StateStore::set(provider, "fleet_api:fleet_data", &serialized, Some(60)).await;
-    }
-
-    Ok(vehicles)
-}
-```
-
 ## Filter Reference
 
 | Filter                | Description       | Example                                               |
@@ -630,7 +519,7 @@ use serde::{Deserialize, Serialize};
 ## Key Rules
 
 1. **Target Architecture**: TableStore handlers are designed for `wasm32-wasip2` only
-2. **Entity Macro**: Always use `entity!` macro for database models — SQL tables and Azure Table Storage entities alike
+2. **Entity Macro**: Always use `entity!` macro for SQL database models
 3. **Config for Database Name**: Get database/table store connection name from `Config` trait
 4. **Validation First**: Validate input parameters before building queries
 5. **Error Mapping**: Map ORM errors to `omnia_sdk::Error` with context
@@ -639,7 +528,7 @@ use serde::{Deserialize, Serialize};
    - **Nested subqueries** or complex expressions that the ORM builders do not support
    - **Complex transactional** multi-statement flows
    When using raw SQL, always use parameterized queries (e.g. `?` placeholders and `DataType` params), never string-concatenate user input.
-7. **Azure Table Storage uses TableStore**: When the source uses `@azure/data-tables`, `TableClient`, `listEntities`, or `*.table.core.windows.net`, use `TableStore` with ORM builders. Do NOT use `HttpRequest` for Azure Table Storage access — the runtime provides a native adapter. See the [Azure Table Storage Examples](#azure-table-storage-examples) section above.
+7. **Azure Table Storage uses DocumentStore, not TableStore**: When the source uses `@azure/data-tables`, `TableClient`, `listEntities`, or `*.table.core.windows.net`, use `DocumentStore` — not `TableStore`. See [documentstore.md](documentstore.md) for Azure Table Storage patterns.
 
 ## References
 

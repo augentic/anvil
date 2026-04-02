@@ -345,9 +345,9 @@ impl<P: Config> Handler<P> for R9kMessage {
 
 **Exception:** Scheduled/cron/health-check handlers use `type Input = ()` because they receive no payload.
 
-## 10. Using `HttpRequest` for Azure Table Storage instead of `TableStore`
+## 10. Using `HttpRequest` for Azure Table Storage instead of `DocumentStore`
 
-When the source code or artifacts describe access to Azure Table Storage (via `@azure/data-tables`, REST API calls, `TableClient`, etc.), use `TableStore` — not `HttpRequest`. The Omnia runtime provides a native Azure Table Storage adapter behind `TableStore`.
+When the source code or artifacts describe access to Azure Table Storage (via `@azure/data-tables`, REST API calls, `TableClient`, etc.), use `DocumentStore` — not `HttpRequest`. The Omnia runtime provides a native Azure Table Storage adapter behind `DocumentStore`.
 
 **Wrong:**
 
@@ -381,33 +381,121 @@ where
 **Right:**
 
 ```rust
-use omnia_sdk::{Config, Result};
-use omnia_wasi_sql::entity;
-use omnia_wasi_sql::orm::{SelectBuilder, TableStore};
+use anyhow::Context as _;
+use omnia_sdk::{bad_gateway, Config, DocumentStore, Result};
+use omnia_sdk::document_store::QueryOptions;
 
-entity! {
-    table = "fleetdata",
-    #[derive(Clone, Debug, Deserialize, Serialize)]
-    pub struct RawVehicle {
-        pub partition_key: String,
-        pub row_key: String,
-        pub call_sign: Option<String>,
-        pub label: Option<String>,
-        // ... remaining Azure Table Storage entity fields
-    }
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RawVehicle {
+    pub partition_key: String,
+    pub row_key: String,
+    pub call_sign: Option<String>,
+    pub label: Option<String>,
 }
 
 async fn fetch_fleet_data<P>(provider: &P) -> Result<Vec<RawVehicle>>
 where
-    P: Config + TableStore,
+    P: Config + DocumentStore,
 {
-    let db_name = Config::get(provider, "FLEET_TABLE_STORE").await?;
-    let vehicles = SelectBuilder::<RawVehicle>::new()
-        .fetch(provider, &db_name)
+    let store = Config::get(provider, "FLEET_DOCUMENT_STORE").await?;
+    let result = DocumentStore::query(provider, &store, QueryOptions::default())
         .await
         .map_err(|e| bad_gateway!("failed to fetch fleet data: {e}"))?;
+    let vehicles: Vec<RawVehicle> = result
+        .documents
+        .iter()
+        .map(|doc| serde_json::from_slice(&doc.data).context("deserializing vehicle"))
+        .collect::<anyhow::Result<Vec<_>>>()?;
     Ok(vehicles)
 }
 ```
 
-**Why:** The Omnia runtime provides a native adapter for Azure Table Storage behind the `TableStore` trait. Constructing raw HTTP requests with SharedKey authentication headers is unnecessary, error-prone (HMAC-SHA256 signature generation is complex), and bypasses the runtime's connection management and authentication handling. The `entity!` macro and ORM builders work with Azure Table Storage entities the same way they work with SQL rows — Azure Table Storage being NoSQL is irrelevant to trait selection.
+**Why:** The Omnia runtime provides a native adapter for Azure Table Storage behind the `DocumentStore` trait. Constructing raw HTTP requests with SharedKey authentication headers is unnecessary, error-prone (HMAC-SHA256 signature generation is complex), and bypasses the runtime's connection management and authentication handling.
+
+## 11. Using `mongodb` crate directly instead of `DocumentStore`
+
+When the source code uses the `mongodb` crate for Cosmos DB or MongoDB access, use `DocumentStore` — not a direct client. The `mongodb` crate is forbidden in WASM builds.
+
+**Wrong:**
+
+```rust
+use mongodb::{Client, options::ClientOptions};
+
+async fn find_orders(connection_str: &str) -> anyhow::Result<Vec<Order>> {
+    let options = ClientOptions::parse(connection_str).await?;
+    let client = Client::with_options(options)?;
+    let db = client.database("orders_db");
+    let collection = db.collection::<Order>("orders");
+    let cursor = collection.find(doc! { "status": "active" }).await?;
+    let orders: Vec<Order> = cursor.try_collect().await?;
+    Ok(orders)
+}
+```
+
+**Right:**
+
+```rust
+use anyhow::Context as _;
+use omnia_sdk::{bad_gateway, Config, DocumentStore, Result};
+use omnia_sdk::document_store::{Filter, QueryOptions};
+
+async fn find_orders<P>(provider: &P) -> Result<Vec<Order>>
+where
+    P: Config + DocumentStore,
+{
+    let store = Config::get(provider, "ORDERS_DOCUMENT_STORE").await?;
+    let options = QueryOptions {
+        filter: Some(Filter::eq("status", "active")),
+        ..Default::default()
+    };
+    let result = DocumentStore::query(provider, &store, options)
+        .await
+        .map_err(|e| bad_gateway!("failed to query orders: {e}"))?;
+    let orders: Vec<Order> = result
+        .documents
+        .iter()
+        .map(|doc| serde_json::from_slice(&doc.data).context("deserializing order"))
+        .collect::<anyhow::Result<Vec<_>>>()?;
+    Ok(orders)
+}
+```
+
+**Why:** The `mongodb` crate requires native TCP connections and TLS, which are unavailable in WASM. The `DocumentStore` trait provides the same document-oriented CRUD through the Omnia runtime's managed adapter.
+
+## 12. Using blob storage SDKs directly instead of `Blobstore`
+
+When the source code uses `azure_storage_blobs` or `aws-sdk-s3` for object storage, use `Blobstore` — not a direct SDK. Both crates are forbidden in WASM builds.
+
+**Wrong:**
+
+```rust
+use azure_storage_blobs::prelude::*;
+
+async fn download_report(account: &str, container: &str, blob: &str) -> anyhow::Result<Vec<u8>> {
+    let client = BlobServiceClient::new(account, StorageCredentials::anonymous());
+    let blob_client = client.container_client(container).blob_client(blob);
+    let data = blob_client.get_content().await?;
+    Ok(data)
+}
+```
+
+**Right:**
+
+```rust
+use omnia_sdk::{bad_gateway, bad_request, Blobstore, Config, Result};
+
+async fn download_report<P>(provider: &P) -> Result<Vec<u8>>
+where
+    P: Config + Blobstore,
+{
+    let container = Config::get(provider, "REPORTS_CONTAINER").await?;
+    let blob_name = "monthly-report.pdf";
+    Blobstore::get_data(provider, &container, blob_name, 0, 0)
+        .await
+        .map_err(|e| bad_gateway!("failed to download report: {e}"))?
+        .ok_or_else(|| bad_request!("report not found: {blob_name}"))
+}
+```
+
+**Why:** The `azure_storage_blobs` and `aws-sdk-s3` crates require native networking and credential handling unavailable in WASM. The `Blobstore` trait provides binary object CRUD through the Omnia runtime's managed adapter.

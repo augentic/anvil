@@ -16,6 +16,8 @@ For trait definitions and method signatures, see [capabilities.md](../capabiliti
 | **Identity**    | ANY HTTP call uses Bearer authentication            | Return realistic tokens; track requests           | [identity.md](identity.md)         |
 | **StateStore**  | Component uses caching or key-value storage         | OnceCell + Mutex; handle TTL                      | [state-store.md](state-store.md)   |
 | **Broadcast**   | Handler sends data to WebSocket clients             | Capture sends; verify channel and targets         | [broadcast.md](broadcast.md)       |
+| **Blobstore**   | Component stores or retrieves binary blobs          | In-memory HashMap; track writes                   | [blobstore.md](blobstore.md)       |
+| **DocumentStore** | Component stores or queries JSON documents        | In-memory HashMap; track operations               | [document-store.md](document-store.md) |
 
 ---
 

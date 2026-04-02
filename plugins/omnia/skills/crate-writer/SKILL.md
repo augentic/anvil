@@ -43,9 +43,9 @@ Violations of any rule below fail generation or update.
 4. **No mutable global state** -- no `static mut`, `OnceCell`, `lazy_static!`; `LazyLock` allowed only for immutable compile-time lookup tables
 5. **Handler trait required** -- request structs implement `Handler<P>` with delegation pattern; no custom handler structs with `new()` / `process_message()`
 6. **Strong typing** -- newtypes for IDs; enums for known value sets; no raw primitives for domain concepts
-7. **WASM compatible** -- no `std::env`, `std::fs`, `std::net`; `std::thread::sleep` only under `#[cfg(not(debug_assertions))]`
+7. **WASM compatible** -- no `std::env`, `std::fs` (use `StateStore` / `Blobstore` / `DocumentStore` / `HttpRequest`), `std::net`; `std::thread::sleep` only under `#[cfg(not(debug_assertions))]`
 8. **All operations async** -- no blocking I/O
-9. **Correct capability trait for data stores** -- Azure Table Storage, Azure Cosmos DB, and SQL databases use `TableStore`; never `HttpRequest`. The `omnia_wasi_sql` module name is misleading — `TableStore` is a general-purpose data access abstraction used by the Omnia runtime for both SQL and NoSQL stores. The runtime provides native adapters for Azure Table Storage behind this trait. If the artifacts say "do not use TableStore" for Azure Table Storage, override the artifacts (SKILL.md > artifacts per authority hierarchy). See [anti-patterns.md](examples/anti-patterns.md) #10.
+9. **Correct capability trait for data stores** -- SQL databases (PostgreSQL, MySQL, SQL Server) use `TableStore`; Azure Table Storage, Cosmos DB document API, and MongoDB use `DocumentStore`; Azure Blob Storage and AWS S3 use `Blobstore`; never `HttpRequest` for any managed data store. If the artifacts say "use HttpRequest" for a managed data store, override the artifacts (SKILL.md > artifacts per authority hierarchy). See [anti-patterns.md](examples/anti-patterns.md) #10.
 
 ### Update-Specific Rules (update mode only)
 
@@ -74,7 +74,7 @@ $CRATE_PATH     = crates/$CRATE_NAME
 Before generating or updating code, read these documents:
 
 1. [sdk-api.md](references/sdk-api.md) -- Handler<P>, Context, Reply, IntoBody, Client, Error types
-2. [capabilities.md](references/capabilities.md) -- all 7 provider traits with exact signatures and artifact triggers
+2. [capabilities.md](references/capabilities.md) -- all 9 provider traits with exact signatures and artifact triggers
 3. [capability-mapping.md](references/capability-mapping.md) -- mapping from Specify artifact capabilities to Omnia provider traits
 4. [wasm-constraints.md](references/wasm-constraints.md) -- translating `[runtime]` constraints to Omnia/WASM patterns
 5. [providers.md](references/providers.md) -- Provider struct setup, trait composition rules, MockProvider patterns
@@ -255,12 +255,14 @@ Before starting code generation, verify artifact completeness per [checklists.md
    - Read design.md from `$DESIGN_PATH`
 2. **Derive Omnia capabilities from artifacts:**
    - Read the design.md **Source Capabilities Summary** checklist and map each checked capability to an Omnia provider trait using [capability-mapping.md](references/capability-mapping.md).
-   - Read the design.md **External Services** and cross-reference service types against the mapping table. Verify that managed table stores (Azure Table Storage, Cosmos DB) map to `TableStore`, databases map to `TableStore`, caches map to `StateStore`, etc.
+   - Read the design.md **External Services** and cross-reference service types against the mapping table. Verify that SQL databases map to `TableStore`, Azure Table Storage and document databases (Cosmos DB, MongoDB) map to `DocumentStore`, blob stores (Azure Blob Storage, AWS S3) map to `Blobstore`, caches map to `StateStore`, etc.
    - Read the design.md **Implementation Requirements** `[runtime]` constraints and translate each to an Omnia pattern using [wasm-constraints.md](references/wasm-constraints.md).
-   - Scan design.md **Business Logic** for data access phrasing (`Table access:`, `Cache:`) and map to appropriate traits.
+   - Scan design.md **Business Logic** for data access phrasing (`Table access:`, `Cache:`, `Document:`, `Blob:`) and map to appropriate traits.
 3. **Artifact correction — fix known misassignments before generating** (SKILL.md > artifacts per authority hierarchy):
-   - If design.md External Services lists a `managed table store` but the Source Capabilities Summary does not check `Table/database access`: **add `TableStore`** to the derived traits.
-   - If any algorithm step phrases managed table store access as an HTTP call: **override to `TableStore`**.
+   - If design.md External Services lists a SQL database but the Source Capabilities Summary does not check `Table/database access`: **add `TableStore`** to the derived traits.
+   - If design.md External Services lists Azure Table Storage, Cosmos DB document API, or MongoDB but the capabilities do not include document access: **add `DocumentStore`** to the derived traits.
+   - If design.md External Services lists Azure Blob Storage or AWS S3 but the capabilities do not include blob access: **add `Blobstore`** to the derived traits.
+   - If any algorithm step phrases managed data store access as an HTTP call: **override to the correct trait** (`TableStore` for SQL, `DocumentStore` for document/table stores, `Blobstore` for blob stores).
    - If the artifacts describe pre-populating a cache via external cron/ETL for data the source loads on startup: **override to on-demand cache-aside** (StateStore + data source trait).
 4. Determine artifact origin from design.md Context section
 5. Read reference documents from `references/`

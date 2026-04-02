@@ -27,6 +27,8 @@ All code targets `wasm32-wasip2`. Violating any rule below causes build or runti
 | `tokio` (as runtime) | Only in `[dev-dependencies]` for tests |
 | `redis` | `StateStore` via provider |
 | `sqlx`, `diesel` | `TableStore` via provider |
+| `mongodb` | `DocumentStore` via provider |
+| `azure_storage_blobs`, `aws-sdk-s3` | `Blobstore` via provider |
 | `hyper` | `omnia-wasi-http` + axum |
 | `dotenv`, `dotenvy` | `Config::get` via provider |
 | `rand`, `uuid` | Accept IDs as input or derive deterministically |
@@ -37,10 +39,12 @@ All code targets `wasm32-wasip2`. Violating any rule below causes build or runti
 | API | Alternative |
 |-----|-------------|
 | `std::env::var` | `Config::get` via provider |
-| `std::fs::*` | `StateStore` or `HttpRequest` |
+| `std::fs::*` | `StateStore`, `Blobstore`, `DocumentStore`, or `HttpRequest` |
 | `std::net::*` | `HttpRequest::fetch` via provider |
 | `std::process::*` | N/A |
 | `std::thread::spawn` | Async patterns |
+
+> **`std::fs` replacement guide**: `StateStore` for small key-value state or cache entries; `Blobstore` for binary files, images, or large payloads; `DocumentStore` for JSON documents or structured data files; `HttpRequest` for fetching remote resources.
 
 Allowed: `std::sync::LazyLock` (immutable tables), `std::collections::HashMap`, `std::fmt`, `std::io` (in-memory), `std::str`.
 
@@ -114,7 +118,7 @@ Messaging handlers use `type Output = ()` and do not need `IntoBody`.
 
 ## 3. Provider Capabilities
 
-All 7 traits live in `omnia_sdk`. Domain crates declare which traits they need as generic bounds; the guest Provider struct satisfies those bounds with empty impls that delegate to SDK defaults.
+All 9 traits live in `omnia_sdk`. Domain crates declare which traits they need as generic bounds; the guest Provider struct satisfies those bounds with empty impls that delegate to SDK defaults.
 
 ### Capability Selection
 
@@ -127,6 +131,8 @@ All 7 traits live in `omnia_sdk`. Domain crates declare which traits they need a
 | Auth tokens (Azure AD, OAuth) | `Identity` | `use omnia_sdk::Identity;` |
 | SQL database queries | `TableStore` | `use omnia_sdk::TableStore;` |
 | WebSocket send/reply | `Broadcast` | `use omnia_sdk::Broadcast;` |
+| Binary blob storage (Azure Blob, S3) | `Blobstore` | `use omnia_sdk::Blobstore;` |
+| JSON document storage (Cosmos DB, MongoDB) | `DocumentStore` | `use omnia_sdk::DocumentStore;` |
 
 ### Composition Rules
 
@@ -330,6 +336,8 @@ impl Config for Provider {}
 impl HttpRequest for Provider {}
 impl Identity for Provider {}
 impl Publish for Provider {}
+// impl Blobstore for Provider {}      // Add if crate uses Blobstore
+// impl DocumentStore for Provider {}  // Add if crate uses DocumentStore
 ```
 
 ### Metrics and Logging

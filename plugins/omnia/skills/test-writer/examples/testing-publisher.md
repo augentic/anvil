@@ -561,15 +561,15 @@ some_async_call().await;
 
 ```toml
 [dependencies]
-omnia-sdk = "0.26"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-anyhow = "1"
-async-trait = "0.1"
+omnia-sdk.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+anyhow.workspace = true
+async-trait.workspace = true
 
 [dev-dependencies]
-tokio = { version = "1", features = ["full"] }
-tracing = "0.1"
+tokio.workspace = true
+tracing.workspace = true
 ```
 
 ## Summary

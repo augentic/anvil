@@ -14,7 +14,7 @@ Generate a complete WASM guest project that wraps one or more domain crates cont
 - Exposes HTTP endpoints using `wasip3::http` types
 - Handles message subscription using `omnia_wasi_messaging` types
 - Handles WebSocket events using `omnia_wasi_websocket` types
-- Configures provider traits for WASI capabilities (Config, Publish, Identity, StateStore, TableStore, etc.)
+- Configures provider traits for WASI capabilities (Config, Publish, Identity, StateStore, TableStore, Blobstore, DocumentStore, etc.)
 - Bridges domain logic to the Omnia WASI runtime
 
 ## Key Principle
@@ -95,6 +95,8 @@ Then configure workspace dependencies based on domain crate requirements:
 - If StateStore used: `omnia-wasi-keyvalue`
 - If Identity used: `omnia-wasi-identity`
 - If TableStore used: `omnia-wasi-sql`
+- If Blobstore used: `omnia-wasi-blobstore`
+- If DocumentStore used: `omnia-wasi-jsondb`
 
 All `omnia-*` crates are published on **crates.io**. No private registry configuration is needed.
 

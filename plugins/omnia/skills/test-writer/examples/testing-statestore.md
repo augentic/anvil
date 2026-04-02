@@ -522,16 +522,16 @@ println!("Requested URI: {}", uri);  // Add debug output
 
 ```toml
 [dependencies]
-omnia-sdk = "0.26"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-anyhow = "1"
-http = "1"
-bytes = "1"
+omnia-sdk.workspace = true
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+anyhow.workspace = true
+http.workspace = true
+bytes.workspace = true
 
 [dev-dependencies]
-tokio = { version = "1", features = ["full"] }
-once_cell = "1"
+tokio.workspace = true
+once_cell.workspace = true
 ```
 
 ## Summary

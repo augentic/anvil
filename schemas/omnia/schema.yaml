@@ -103,7 +103,8 @@ defaults:
         message broker), authentication
       - Document configuration with all config keys, descriptions, and defaults
       - Include Source Capabilities Summary checklist (Config, HttpRequest,
-        Publish, StateStore, Identity, TableStore, Broadcast)
+        Publish, StateStore, Identity, TableStore, Broadcast, Blobstore,
+        DocumentStore)
       - Flag structural changes (type renames, handler splits/merges)
       - Use mermaid diagrams for entity relationships and flows
     tasks: |

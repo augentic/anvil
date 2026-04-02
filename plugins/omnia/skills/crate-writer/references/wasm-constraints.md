@@ -6,7 +6,7 @@ This document defines how to translate `[runtime]` constraints from Specify arti
 
 | Specify `[runtime]` Constraint | Omnia Translation | Required Traits | Pattern Reference |
 | --- | --- | --- | --- |
-| Source uses in-memory cache with startup loading | On-demand **cache-aside**: `StateStore` for caching + original data source trait for fetching. Data loaded on first request (or cache miss), not at startup. | `StateStore` + data source trait (`TableStore` or `HttpRequest`) | [statestore.md](../examples/capabilities/statestore.md) |
+| Source uses in-memory cache with startup loading | On-demand **cache-aside**: `StateStore` for caching + original data source trait for fetching. Data loaded on first request (or cache miss), not at startup. | `StateStore` + data source trait (`DocumentStore`, `TableStore`, or `HttpRequest`) | [statestore.md](../examples/capabilities/statestore.md) |
 | Source uses `setTimeout`/`setInterval` for periodic refresh | **TTL-based cache expiry** via `StateStore`. Set TTL when writing; stale entries auto-evicted and re-fetched on next request. | `StateStore` | [statestore.md](../examples/capabilities/statestore.md) |
 | Source uses circuit breaker library | **Provider-only HTTP**. The Omnia runtime handles transport-level resilience. No circuit breaker crate needed. | `HttpRequest` | [guardrails.md](guardrails.md) |
 | Source caches OAuth tokens in process memory | **`Identity` provider**. Token acquisition and caching delegated to the Omnia runtime via `Identity::access_token`. | `Identity` | [capabilities.md](capabilities.md#identity) |
@@ -22,7 +22,7 @@ When the artifacts say the source loads data from a data store on application st
 1. WASM guests are stateless — no long-lived process memory across requests
 2. Translate to **on-demand cache-aside**:
    - On each request, check `StateStore` for cached data
-   - On cache miss, fetch from the original data source (use `TableStore` for databases/managed table stores, `HttpRequest` for external APIs)
+   - On cache miss, fetch from the original data source (use `DocumentStore` for Azure Table Storage/document databases, `TableStore` for SQL databases, `HttpRequest` for external APIs)
    - Write the fetched data to `StateStore` with a TTL
 3. Do NOT assume a separate cron/ETL component pre-populates the cache — the handler itself must fetch from the data source on cache miss
 4. The handler's provider bounds must include BOTH `StateStore` AND the data source trait

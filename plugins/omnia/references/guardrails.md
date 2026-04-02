@@ -12,6 +12,9 @@ These crates are **never** allowed in generated code:
 | `tokio` (as runtime) | Not WASM-compatible             | Only in `[dev-dependencies]` for tests          |
 | `redis`              | Direct connection not available | `StateStore` via provider                       |
 | `sqlx`, `diesel`     | Direct DB connection            | `TableStore` via provider                       |
+| `mongodb`            | Direct DB connection            | `DocumentStore` via provider                    |
+| `azure_storage_blobs` | Direct blob storage connection | `Blobstore` via provider                        |
+| `aws-sdk-s3`         | Direct blob storage connection  | `Blobstore` via provider                        |
 | `hyper`              | Server-side HTTP                | `omnia-wasi-http` + axum                        |
 | `dotenv`, `dotenvy`  | File system access              | `Config::get` via provider                      |
 | `rand`               | RNG not available in WASM       | Accept IDs as input or derive deterministically |
@@ -26,10 +29,12 @@ These standard library APIs are not available in WASM guests:
 | API                  | Reason                | Alternative                       |
 | -------------------- | --------------------- | --------------------------------- |
 | `std::env::var`      | No environment access | `Config::get` via provider        |
-| `std::fs::*`         | No filesystem access  | `StateStore` or `HttpRequest`     |
+| `std::fs::*`         | No filesystem access  | `StateStore`, `Blobstore`, `DocumentStore`, or `HttpRequest` |
 | `std::net::*`        | No direct networking  | `HttpRequest::fetch` via provider |
 | `std::process::*`    | No process management | N/A                               |
 | `std::thread::spawn` | Single-threaded WASM  | Async patterns                    |
+
+> **`std::fs` replacement guide**: `StateStore` for small key-value state or cache entries; `Blobstore` for binary files, images, or large payloads; `DocumentStore` for JSON documents or structured data files; `HttpRequest` for fetching remote resources.
 
 ### Exceptions
 

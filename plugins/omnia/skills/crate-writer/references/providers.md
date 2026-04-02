@@ -38,6 +38,8 @@ impl HttpRequest for Provider {}
 impl Identity for Provider {}
 impl Publish for Provider {}
 impl StateStore for Provider {}
+// impl Blobstore for Provider {}      // Add if crate uses Blobstore
+// impl DocumentStore for Provider {}  // Add if crate uses DocumentStore
 ```
 
 ### Without Config Validation
@@ -213,6 +215,8 @@ For complete multi-trait MockProvider examples and per-trait implementation patt
 - **Identity**: return realistic token format; track token requests for verification
 - **StateStore**: use `OnceCell` for global cache state; return previous value from `set()`
 - **Broadcast**: capture sends with channel and target info for assertions
+- **Blobstore**: use nested `HashMap<String, HashMap<String, Vec<u8>>>` (container -> name -> data); provide verification helpers (`blob_exists`, `blob_get`)
+- **DocumentStore**: use nested `HashMap<String, HashMap<String, Document>>` (store -> id -> Document); enforce `insert` uniqueness; provide typed `doc_get<T>` helper
 
 ## References
 

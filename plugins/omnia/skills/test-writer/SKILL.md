@@ -99,6 +99,8 @@ Generate `tests/provider.rs` implementing all provider traits the handlers requi
 - **StateStore**: In-memory `HashMap` behind `Mutex` with get/set/delete
 - **TableStore**: Return fixture rows from `query`, affected count from `exec`
 - **Broadcast**: Capture sends with channel and target info
+- **Blobstore**: In-memory nested `HashMap` (container -> name -> bytes) with get/write/delete/list
+- **DocumentStore**: In-memory nested `HashMap` (store -> id -> Document) with get/insert/put/delete/query
 
 See [mock-provider.md](references/mock-provider.md) for complete patterns (Static and Replay variants).
 
