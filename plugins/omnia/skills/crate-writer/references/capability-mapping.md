@@ -11,7 +11,7 @@ This document defines how to translate the platform-agnostic **Source Capabiliti
 | Message publishing | type: message broker | `Publish` | `use omnia_sdk::{Publish, Message};` |
 | Key-value state | type: cache | `StateStore` | `use omnia_sdk::StateStore;` |
 | Authentication/Identity | type: identity provider | `Identity` | `use omnia_sdk::Identity;` |
-| SQL database access | type: database (SQL) | `TableStore` | `use omnia_sdk::TableStore;` |
+| SQL database access | type: database | `TableStore` | `use omnia_sdk::TableStore;` |
 | Real-time messaging | type: WebSocket | `Broadcast` | `use omnia_sdk::Broadcast;` |
 | Blob/file storage | type: blob store | `Blobstore` | `use omnia_sdk::Blobstore;` |
 | Document/table storage | type: document store, type: managed table store | `DocumentStore` | `use omnia_sdk::DocumentStore;` |
