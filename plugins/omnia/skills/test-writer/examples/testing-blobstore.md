@@ -174,7 +174,10 @@ impl Blobstore for MockProvider {
     async fn delete_object(
         &self, container: &str, name: &str,
     ) -> anyhow::Result<()> {
-        if let Some(c) = blobs().lock().unwrap().get_mut(container) {
+        let mut store = blobs()
+            .lock()
+            .map_err(|e| anyhow::anyhow!("blob lock poisoned: {e}"))?;
+        if let Some(c) = store.get_mut(container) {
             c.remove(name);
         }
         Ok(())
@@ -183,14 +186,18 @@ impl Blobstore for MockProvider {
     async fn has_object(
         &self, container: &str, name: &str,
     ) -> anyhow::Result<bool> {
-        let store = blobs().lock().unwrap();
+        let store = blobs()
+            .lock()
+            .map_err(|e| anyhow::anyhow!("blob lock poisoned: {e}"))?;
         Ok(store.get(container).map_or(false, |c| c.contains_key(name)))
     }
 
     async fn list_objects(
         &self, container: &str,
     ) -> anyhow::Result<Vec<String>> {
-        let store = blobs().lock().unwrap();
+        let store = blobs()
+            .lock()
+            .map_err(|e| anyhow::anyhow!("blob lock poisoned: {e}"))?;
         Ok(store
             .get(container)
             .map(|c| c.keys().cloned().collect())
