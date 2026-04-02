@@ -1,5 +1,5 @@
 ---
-description: Vectis plugin context -- Crux cross-platform application generation, iOS shell development, and design system management
+description: Vectis plugin context -- Crux cross-platform application generation, iOS shell development, Android shell development, and design system management
 alwaysApply: true
 ---
 
@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Overview
 
-This plugin generates cross-platform applications using the Crux framework (Rust), SwiftUI iOS shells, and the VectisDesign token system. Requirements come from Specify artifacts (specs + design.md); this plugin handles code generation, testing, and review.
+This plugin generates cross-platform applications using the Crux framework (Rust), SwiftUI iOS shells, Kotlin/Jetpack Compose Android shells, and the VectisDesign token system. Requirements come from Specify artifacts (specs + design.md); this plugin handles code generation, testing, and review.
 
 **Purpose**: Generate, test, and review Crux applications from structured Specify artifacts.
 
@@ -24,6 +24,8 @@ This plugin generates cross-platform applications using the Crux framework (Rust
     ├── core-reviewer/        # AI-powered code review for Crux core
     ├── ios-writer/           # Crux core → SwiftUI iOS shell
     ├── ios-reviewer/         # AI-powered code review for iOS shell
+    ├── android-writer/       # Crux core → Kotlin/Jetpack Compose Android shell
+    ├── android-reviewer/     # AI-powered code review for Android shell
     └── design-system-writer/ # tokens.yaml → VectisDesign Swift package
 ```
 
@@ -33,15 +35,15 @@ Each skill has its own SKILL.md with full details. The Specify artifact format (
 
 ### New Crux Application
 
-A Crux app is defined as a single feature with platforms declared in the proposal. A feature like `todo-app` with platforms `core, ios, design-system` produces one spec covering all behavioral requirements (core logic plus platform-specific sections), one design document, and one task list. The build phase invokes the appropriate skills in order: design-system-writer, core-writer, then ios-writer.
+A Crux app is defined as a single feature with platforms declared in the proposal. A feature like `todo-app` with platforms `core, ios, android, design-system` produces one spec covering all behavioral requirements (core logic plus platform-specific sections), one design document, and one task list. The build phase invokes the appropriate skills in order: design-system-writer, core-writer, then shell writers (ios-writer, android-writer).
 
 ### Feature Update
 
-Updated feature specs and design generate targeted changes across all affected platforms: modified Event variants and `update()` logic in the core, updated screen views in iOS, and regenerated tokens if the design system changed. All changes flow from a single feature spec.
+Updated feature specs and design generate targeted changes across all affected platforms: modified Event variants and `update()` logic in the core, updated screen views in iOS and Android, and regenerated tokens if the design system changed. All changes flow from a single feature spec.
 
 ### Adding a Platform
 
-When a new platform (e.g., Android) is added, the feature spec gains a new platform section (`## Android Shell Requirements`), the design gains a platform details section, and the build phase invokes the new platform's writer skill. Existing specs and code are unaffected.
+When a new platform is added, the feature spec gains a new platform section (e.g., `## Android Shell Requirements`), the design gains a platform details section, and the build phase invokes the new platform's writer skill. Existing specs and code are unaffected.
 
 ### Design System Update
 
@@ -61,6 +63,14 @@ Token changes in `tokens.yaml` trigger regeneration of Swift enums (VectisColors
 - Is `uniffi` pinned to `"=0.29.4"` in `shared/Cargo.toml`?
 - Is `facet` pinned to `"=0.31"`?
 
+### Android Shell Build Fails
+
+- Does the core exist with `shared/src/app.rs`?
+- Was `make build` run to generate Kotlin types and UniFFI bindings?
+- Is `org.gradle.java.home` set to Java 21 in `gradle.properties`?
+- Does the `Application` class set `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` before any UniFFI class is loaded?
+- Are Rust Android targets installed? (`rustup target list --installed | grep android`)
+
 ### Tests Don't Match Expected Behavior
 
 - Are spec scenarios accurate?
@@ -73,5 +83,7 @@ Token changes in `tokens.yaml` trigger regeneration of Swift enums (VectisColors
 - [Core Reviewer SKILL.md](../skills/core-reviewer/SKILL.md) - Crux core code review
 - [iOS Writer SKILL.md](../skills/ios-writer/SKILL.md) - iOS shell generation
 - [iOS Reviewer SKILL.md](../skills/ios-reviewer/SKILL.md) - iOS shell code review
+- [Android Writer SKILL.md](../skills/android-writer/SKILL.md) - Android shell generation
+- [Android Reviewer SKILL.md](../skills/android-reviewer/SKILL.md) - Android shell code review
 - [Design System Writer SKILL.md](../skills/design-system-writer/SKILL.md) - Design token generation
 - [Specify Artifact Specification](../../references/specify.md) - Artifact format details

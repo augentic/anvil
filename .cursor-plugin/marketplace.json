@@ -28,7 +28,7 @@
     {
       "name": "vectis",
       "source": "vectis",
-      "description": "Skills to generate cross-platform Crux applications (Rust core, iOS shell, design system)."
+      "description": "Skills to generate cross-platform Crux applications (Rust core, iOS shell, Android shell, design system)."
     },
     {
       "name": "spec",

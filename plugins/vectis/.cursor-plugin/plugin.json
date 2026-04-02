@@ -1,7 +1,7 @@
 {
   "name": "vectis",
   "displayName": "Vectis Crux Development",
-  "description": "Generate cross-platform Crux applications (Rust core, iOS shell, design system).",
+  "description": "Generate cross-platform Crux applications (Rust core, iOS shell, Android shell, design system).",
   "version": "0.16.0",
   "author": {
     "name": "Augentic",
@@ -14,7 +14,10 @@
     "rust",
     "crux",
     "swift",
-    "ios"
+    "ios",
+    "kotlin",
+    "android",
+    "jetpack-compose"
   ],
   "settings": {}
 }

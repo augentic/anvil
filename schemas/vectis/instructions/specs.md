@@ -103,7 +103,41 @@ Guidance for iOS shell requirements:
 ### Android Shell Requirements section
 
 If the proposal lists `android` in Platforms, add a `## Android Shell
-Requirements` section. Continue sequential `REQ-XXX` numbering.
+Requirements` section after the core requirements (and after the iOS
+section, if present). This section captures Android-specific behavioral
+requirements beyond what the core spec covers.
+
+Continue sequential numbering from the last requirement ID. All
+requirements share one flat `REQ-[0-9]{3}` namespace — do not use
+platform prefixes like `REQ-ANDROID-xxx`.
+
+```markdown
+## Android Shell Requirements
+
+### Requirement: <Platform Behavior>
+
+ID: REQ-<next>
+
+The Android shell SHALL <platform-specific behavioral description>.
+
+#### Scenario: <Platform Interaction>
+
+- **WHEN** <Android-specific trigger (bottom nav, swipe-to-dismiss, edge-to-edge)>
+- **THEN** <expected platform behavior>
+```
+
+Guidance for Android shell requirements:
+
+- Navigation patterns (single activity, bottom nav, drawer) become
+  requirements.
+- Per-screen Android-specific interactions (swipe-to-dismiss,
+  pull-to-refresh, FAB actions) become requirements with scenarios.
+- Material 3 customizations that affect behavior become requirements.
+- Platform features (edge-to-edge, system bar handling, haptics)
+  become requirements.
+- Design system overrides become requirements if they affect behavior.
+- Do NOT duplicate core requirements — reference the core spec
+  for business logic.
 
 ### Design System Requirements section
 

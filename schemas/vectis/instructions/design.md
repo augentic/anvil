@@ -85,10 +85,12 @@ Include only when HTTP capability is used. -->
 
 ## Android Shell Details
 
-<!-- Include when android is listed in Platforms (future).
-- Navigation patterns
-- Screen customizations
-- Platform features -->
+<!-- Include when android is listed in Platforms.
+- Navigation patterns (single activity, bottom nav, drawer)
+- Material 3 screen customizations per ViewModel variant
+- Platform features (edge-to-edge, system bars, haptics)
+- Koin DI requirements (when multiple non-Render effects)
+- Capability client details (Ktor for HTTP/SSE, SharedPreferences for KV) -->
 
 ## Design System Details
 
@@ -104,6 +106,8 @@ Standard constraints for Crux projects:
 - facet = "=0.31" (exact pin required)
 - uniffi = "=0.29.4" (exact pin, must match crux_core bundled version)
 - Swift 6, iOS 17+ deployment target
+- Kotlin 2.x, Jetpack Compose, Material 3, min SDK 34
+- Java 21 LTS (NOT Java 25+)
 - VectisDesign Swift Package for all styling tokens -->
 
 ## Dependencies

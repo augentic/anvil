@@ -26,7 +26,7 @@ Specify owns the workflow contract. This repository contributes specialist analy
 
 1. **TypeScript → Rust WASM**: reconstruct baseline specs and design from an existing service.
 2. **JIRA → Rust WASM**: derive proposal, specs, and design context from epics and stories.
-3. **Manual → Crux App**: generate cross-platform Crux applications (Rust core, iOS shell, design system).
+3. **Manual → Crux App**: generate cross-platform Crux applications (Rust core, iOS shell, Android shell, design system).
 
 ## Authority Hierarchy
 
@@ -85,6 +85,8 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `core-reviewer` - review Crux core for structural and logic issues
 - `ios-writer` - generate or update SwiftUI iOS shells
 - `ios-reviewer` - review iOS shells for structural and quality issues
+- `android-writer` - generate or update Kotlin/Jetpack Compose Android shells
+- `android-reviewer` - review Android shells for structural and quality issues
 - `design-system-writer` - generate VectisDesign Swift package from tokens
 
 ### Plan Plugin (`plugins/plan/`)
