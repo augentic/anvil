@@ -1,8 +1,9 @@
 # Crux Dependency Versions
 
 Current crates.io versions for all Crux projects. When generating or updating
-`Cargo.toml` files, use these versions. This is the single source of truth --
-do not hardcode versions elsewhere.
+`Cargo.toml` files, use these versions. Treat this file as the primary
+reference for dependency versions, and keep any examples elsewhere aligned
+with it.
 
 ## Workspace Dependencies
 
