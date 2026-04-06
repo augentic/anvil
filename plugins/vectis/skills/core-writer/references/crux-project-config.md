@@ -1,7 +1,10 @@
 # Crux Project Configuration
 
 This reference describes the Cargo workspace layout, dependency management, feature flags,
-and toolchain configuration for a Crux core project using Crux 0.17.0 from crates.io.
+and toolchain configuration for a Crux core project using crates.io releases.
+
+> **Version pins**: See [crux-versions.md](crux-versions.md) for current dependency
+> versions. All Crux crate versions in the templates below must match that file.
 
 ## Directory Layout
 
@@ -30,9 +33,9 @@ edition = "2024"
 rust-version = "1.88"
 
 [workspace.dependencies]
-crux_core = "0.17.0"
-serde = "1.0"
-facet = "=0.31"
+crux_core = "{version from crux-versions.md}"
+serde = "{version from crux-versions.md}"
+facet = "{version from crux-versions.md}"
 
 [workspace.lints.rust]
 trivial_numeric_casts = "warn"
@@ -65,20 +68,21 @@ unneeded_field_pattern = "warn"
 unused_result_ok = "warn"
 ```
 
-Add capability crates based on what the app needs:
+Add capability crates based on what the app needs (versions from
+[crux-versions.md](crux-versions.md)):
 
 ```toml
 # Add if using HTTP
-crux_http = "0.16.0"
+crux_http = "{version from crux-versions.md}"
 
 # Add if using Key-Value
-crux_kv = "0.11.0"
+crux_kv = "{version from crux-versions.md}"
 
 # Add if using Time
-crux_time = "0.15.0"
+crux_time = "{version from crux-versions.md}"
 
 # Add if using Platform detection
-crux_platform = "0.8.0"
+crux_platform = "{version from crux-versions.md}"
 ```
 
 ## Shared Crate `Cargo.toml`
@@ -395,6 +399,8 @@ The `build/` entry covers both Xcode and Gradle output directories.
 
 ## Complete Example: Workspace with HTTP + KV
 
+All Crux crate versions below come from [crux-versions.md](crux-versions.md).
+
 ```toml
 [workspace]
 members = ["shared"]
@@ -405,12 +411,12 @@ edition = "2024"
 rust-version = "1.88"
 
 [workspace.dependencies]
-crux_core = "0.17.0"
-crux_http = "0.16.0"
-crux_kv = "0.11.0"
-serde = "1.0"
+crux_core = "{version from crux-versions.md}"
+crux_http = "{version from crux-versions.md}"
+crux_kv = "{version from crux-versions.md}"
+serde = "{version from crux-versions.md}"
 serde_json = "1.0"
-facet = "=0.31"
+facet = "{version from crux-versions.md}"
 
 [workspace.lints.rust]
 trivial_numeric_casts = "warn"

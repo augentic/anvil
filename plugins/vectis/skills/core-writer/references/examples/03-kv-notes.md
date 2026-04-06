@@ -19,12 +19,13 @@ resolver = "3"
 edition = "2024"
 rust-version = "1.88"
 
+# Versions from crux-versions.md
 [workspace.dependencies]
-crux_core = "0.17.0"
-crux_kv = "0.11.0"
-serde = "1.0"
+crux_core = "{version from crux-versions.md}"
+crux_kv = "{version from crux-versions.md}"
+serde = "{version from crux-versions.md}"
 serde_json = "1.0"
-facet = "=0.31"
+facet = "{version from crux-versions.md}"
 ```
 
 ## `shared/Cargo.toml`

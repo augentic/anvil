@@ -14,7 +14,8 @@ When an existing project is detected, the skill operates in **update mode**: it
 compares the Specify artifacts against the current implementation and makes targeted
 edits rather than regenerating from scratch.
 
-This skill targets **Crux 0.17.0** from crates.io.
+This skill targets the current Crux release from crates.io. See
+`references/crux-versions.md` for the authoritative version pins.
 
 ## Arguments
 
@@ -167,9 +168,10 @@ edition = "2024"
 rust-version = "1.88"
 
 [workspace.dependencies]
-crux_core = "0.17.0"
-serde = "1.0"
-facet = "=0.31"
+# See references/crux-versions.md for current Crux and companion dependency versions
+crux_core = "{version from crux-versions.md}"
+serde = "{version from crux-versions.md}"
+facet = "{version from crux-versions.md}"
 thiserror = "2"
 
 [workspace.lints.rust]
@@ -739,6 +741,7 @@ Consult these references during generation. Do not deviate from the patterns the
 
 | Reference | Purpose |
 |---|---|
+| `references/crux-versions.md` | Authoritative Crux crate version pins (single source of truth) |
 | `references/crux-app-pattern.md` | App trait, Model, Event, ViewModel (enum), Page management, Route/Navigate pattern, Effect type conventions |
 | `references/crux-command-api.md` | Command creation, chaining, combining, async context |
 | `references/crux-capabilities.md` | HTTP and KV capability APIs |
@@ -841,7 +844,7 @@ all other items apply in both modes.
 
 ## Important Notes
 
-- **Crux 0.17.0 is published**: Use crates.io version pins for all Crux dependencies.
+- **Crux versions**: See `references/crux-versions.md` for current version pins of all Crux dependencies.
 - **`facet` version pinning**: The `facet` crate must be pinned to `"=0.31"` exactly.
   Other versions may be incompatible with `crux_core`.
 - **`uniffi` version pinning**: The `uniffi` crate must be pinned to `"=0.29.4"` exactly,
