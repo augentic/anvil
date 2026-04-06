@@ -44,9 +44,9 @@ Call `render()` at the end of any `update()` branch that changes the view model.
 ### Dependencies
 
 ```toml
-# workspace Cargo.toml
+# workspace Cargo.toml -- version from crux-versions.md
 [workspace.dependencies]
-crux_http = "0.16.0"
+crux_http = "{version from crux-versions.md}"
 ```
 
 ### Effect variant
@@ -187,9 +187,9 @@ Key points:
 ### Dependencies
 
 ```toml
-# workspace Cargo.toml
+# workspace Cargo.toml -- version from crux-versions.md
 [workspace.dependencies]
-crux_kv = "0.11.0"
+crux_kv = "{version from crux-versions.md}"
 ```
 
 ### Effect variant
