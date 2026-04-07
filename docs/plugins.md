@@ -2,6 +2,10 @@
 
 Specify ships as a [Cursor plugin marketplace](https://cursor.com/docs/reference/plugins) containing five plugins. Each plugin provides specialist skills namespaced by domain. Plugins also expose [MCP](https://cursor.com/docs/mcp) tool servers for programmatic integration.
 
+## Workspace rule vs marketplace installs
+
+The Specify repository includes a workspace-level Cursor rule at [`.cursor/rules/project.mdc`](../.cursor/rules/project.mdc): unified `/spec:*` workflow, authority hierarchy (SKILL → artifacts → references), and an index of all plugins. **Installing Augentic plugins from the Cursor marketplace does not add this file to your application repository** — each plugin bundles its own `rules/*.mdc` only. To use the same cross-plugin briefing elsewhere, copy `project.mdc` from the Specify repo into your project’s `.cursor/rules/`, or work with the Specify repository as your workspace. Plugin rules may reference `.cursor/rules/project.mdc` as optional supplementary context; that path resolves when the file is present locally.
+
 ## Specify (`plugins/spec/`)
 
 Core workflow orchestration for spec-driven development.

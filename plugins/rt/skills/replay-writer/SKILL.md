@@ -113,7 +113,7 @@ When adding new tests from fixtures, follow the crate's existing test style (sam
 - **Existing crate code and tests** — handler signatures, MockProvider usage, and test patterns.
 - **references/** — [fixture-format.md](references/fixture-format.md), [crate-layout.md](references/crate-layout.md).
 - **examples/** - [handler.md](examples/handler.md), [fixtures.md](examples/fixtures.md), [tests.md](examples/tests.md)
-- **Omnia** — handler pattern, provider traits, error handling (see `.cursor/rules/project.mdc` and `.cursor/rules/omnia.mdc`).
+- **Omnia** — handler pattern, provider traits, error handling — see [guardrails.md](../../../omnia/references/guardrails.md) and the Omnia plugin rules (*omnia.mdc*, *rust-sdk.mdc*). For cross-plugin workflow context, copy [project.mdc](https://github.com/augentic/specify/blob/main/.cursor/rules/project.mdc) from the Specify repository into `.cursor/rules/` if your workspace does not already include it.
 
 Do not change handler semantics or add production code beyond what is strictly required to make tests pass. Prefer fixing test setup or assertions over changing library code unless the failure indicates a real bug.
 
