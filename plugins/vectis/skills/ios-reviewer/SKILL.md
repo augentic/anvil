@@ -240,6 +240,8 @@ Apply fixes for findings that are mechanical:
 - Replacing hardcoded colors with `VectisColors` tokens
 - Replacing hardcoded spacing with `VectisSpacing` tokens
 - Adding missing `#Preview` blocks
+- Adding missing Inject boilerplate (`import Inject`,
+  `@ObserveInjection var inject`, `.enableInjection()`) to view files
 
 Do NOT auto-fix structural issues (missing screen views, missing effect
 handlers) without confirmation -- these may require design decisions about

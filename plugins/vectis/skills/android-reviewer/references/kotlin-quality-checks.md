@@ -11,17 +11,36 @@ No `!!` non-null assertions outside of test files and preview composables.
 A `!!` on a null value throws `NullPointerException`, crashing the app with
 no recovery path.
 
-In `Core.kt`, bincode serialization/deserialization calls should be wrapped in
-`try/catch` rather than assumed infallible. A type mismatch after regenerating
-the core without updating Kotlin types should degrade gracefully.
+`Core.kt` has two categories of throwing calls, each with a different
+error-handling pattern:
+
+- **Bincode calls** (`bincodeSerialize()`, `bincodeDeserialize()`) use
+  `try/catch` with `Log.w(TAG, "context", e)` and a safe fallback. These
+  throw generic errors without structured messages.
+- **CoreFFI calls** (`coreFfi.update()`, `coreFfi.view()`, `coreFfi.resolve()`)
+  use `try/catch` with `Log.e(TAG, "context: ${e.message}", e)`. These throw
+  `CoreException` containing a meaningful `Bridge` message from the Rust
+  core -- using a generic catch without `e.message` would discard this
+  diagnostic information.
+
+In `initialView()`, view deserialization falls back to `ViewModel.Loading`
+(no prior state exists). In the `Effect.Render` handler, the existing view
+must be preserved by returning without assignment -- never fall back to
+`ViewModel.Loading`, which would overwrite the user's current screen. Event
+serialization failures use a no-op return (event is dropped). This ensures
+Debug builds surface type mismatches via logcat while Release builds degrade
+gracefully.
 
 **Detection**: Search `.kt` files (excluding `*Test.kt`) for `!!`. Skip
 occurrences inside `@Preview` composables and test files. Flag all other
-occurrences.
+occurrences including those in `Core.kt`. Also flag CoreFFI calls that
+have no `try/catch` or that use a catch block without `e.message` logging.
 
 **Fix**: Replace `!!` with safe alternatives: `?.let { ... }`, `?: fallback`,
 `requireNotNull` with a descriptive message (only for true preconditions), or
-`try/catch` for deserialization.
+`try/catch` for deserialization. For CoreFFI calls, use `try/catch` with
+`Log.e(TAG, "context: ${e.message}", e)`. For bincode calls, use `try/catch`
+with `Log.w(TAG, "context", e)` and a fallback value.
 
 ## KTL-002: Debug Output
 

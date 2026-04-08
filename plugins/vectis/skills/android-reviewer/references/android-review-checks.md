@@ -357,3 +357,90 @@ the map, and remove the entry in a `finally`-equivalent path (after the delay
 completes or when cancelled). In `Clear`, call
 `timerJobs.remove(timeRequest.value)?.cancel()` before resolving. See
 `references/crux-android-shell-pattern.md` for the full implementation.
+
+## AND-023: CoreFFI Errors Not Surfaced
+
+**Severity**: Critical
+
+`CoreFfi` methods (`view()`, `update()`, `resolve()`) return
+`Result<Vec<u8>, CoreError>` in Rust, which UniFFI maps to Kotlin functions
+that throw `CoreException`. The exception contains a meaningful `Bridge`
+error message from the Rust core (deserialization failure, invalid effect ID,
+etc.). Calling these without `try/catch` lets the exception propagate
+unhandled and crash the app. Using a generic catch that discards `e.message`
+loses the diagnostic information needed to debug type mismatches after core
+regeneration.
+
+Unlike bincode serialization (AND-014), CoreFFI calls throw structured errors
+with context from the Rust side. All CoreFFI calls must use `try/catch` with
+`Log.e(TAG, "context: ${e.message}", e)` so the underlying reason is visible
+in logcat during development.
+
+**Detection**: Search `Core.kt` for `coreFfi.view()`, `coreFfi.update(`,
+and `coreFfi.resolve(` calls. Verify each is wrapped in a `try/catch` block
+that logs `e.message`. Flag any CoreFFI calls that:
+
+1. Have no `try/catch` at all (exception propagates to the caller)
+2. Use a catch block that discards the message (e.g., catches `Exception`
+   but only logs a static string without `${e.message}`)
+3. Use a catch block that rethrows without logging (diagnostic is lost
+   unless the caller also logs)
+
+**Fix**: Wrap each CoreFFI call in a `try/catch` block:
+
+```kotlin
+val effects = try {
+    coreFfi.update(serialized)
+} catch (e: Exception) {
+    Log.e(TAG, "Failed to update core: ${e.message}", e)
+    return
+}
+```
+
+In `initialView()` (called during construction), fall back to
+`ViewModel.Loading`. In effect handlers, preserve the existing view or
+return without state changes. See the android-writer skill step 8 for the
+full pattern.
+
+## AND-024: Render Effect Overwrites View with Loading Fallback
+
+**Severity**: Warning
+
+The `Effect.Render` handler must not fall back to `ViewModel.Loading` (or
+any other default ViewModel) on deserialization failure. This would overwrite
+the user's current view (e.g., a task list, a form with entered data) with a
+loading screen on any transient serialization error. The `initialView()`
+helper is the only place where a `ViewModel.Loading` fallback is safe,
+because no prior state exists at construction time.
+
+**Detection**: In the `processRequest` method, check the `Effect.Render`
+branch for:
+
+1. Calls to `initialView()` or any helper that falls back to
+   `ViewModel.Loading`
+2. Direct assignment of `ViewModel.Loading` in a catch block
+3. Any pattern that assigns a default ViewModel value when
+   deserialization fails
+
+**Fix**: Replace with an inline pattern that preserves the existing view
+on failure:
+
+```kotlin
+is Effect.Render -> {
+    val data = try {
+        coreFfi.view()
+    } catch (e: Exception) {
+        Log.e(TAG, "Failed to get view from core: ${e.message}", e)
+        return
+    }
+    val vm = try {
+        ViewModel.bincodeDeserialize(data)
+    } catch (e: Exception) {
+        Log.w(TAG, "Failed to deserialize ViewModel", e)
+        return
+    }
+    _viewModel.value = vm
+}
+```
+
+See the android-writer skill step 8 for the full Core.kt pattern.

@@ -79,7 +79,7 @@ mechanical fixes do not alter FFI type mappings or build configuration.
 
 Read `references/android-review-checks.md` in this skill's directory.
 
-Apply checks AND-001 through AND-022 against the Kotlin source. These are
+Apply checks AND-001 through AND-024 against the Kotlin source. These are
 pattern-based checks that verify the shell correctly maps to the Crux core:
 
 - Screen composable / ViewModel variant correspondence
@@ -90,6 +90,8 @@ pattern-based checks that verify the shell correctly maps to the Crux core:
 - Root composable `when` exhaustiveness
 - UniFFI library override presence
 - Generated type import correctness
+- CoreFFI error handling (try/catch with diagnostic logging)
+- Render effect view preservation on failure
 - Coroutine error handling patterns
 - Timer job tracking and cancellation
 - Build configuration correctness
