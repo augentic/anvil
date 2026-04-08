@@ -526,7 +526,7 @@ additional effects. The loop runs until no more effects are returned.
 
 ```
 User taps button
-    → coreFfi.update(Event.buttonTapped.bincodeSerialize())
+    → coreFfi.update(Event.ButtonTapped.bincodeSerialize())
     → [Request(id: 1, effect: Effect.Http(...))]
     → perform HTTP request
     → coreFfi.resolve(1, httpResponse.bincodeSerialize())
@@ -548,8 +548,11 @@ core.update(Event.StartWatch)    // if core defines Event::StartWatch
 core.update(Event.Navigate(Route.MAIN))  // if using route-based init
 ```
 
-Note: Unit variants without payloads use UPPER_CASE (`Event.STARTWATCH`).
-Variants with payloads use PascalCase (`Event.Navigate(route)`).
+Note: `Event` is typically a sealed interface (mixed enum) so unit variants
+use PascalCase as `data object` (e.g., `Event.StartWatch`). Only simple
+enums where *every* variant is a unit use `UPPER_CASE` as `enum class`
+values (e.g., `Filter.ALL`). See the "Enum mapping" section below for
+details.
 
 ## Thread Safety
 
