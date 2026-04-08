@@ -549,7 +549,7 @@ For each non-Render effect, generate the corresponding client class in
 
 See `references/crux-android-shell-pattern.md` for implementations.
 
-### 10. Generate Application class (and DI module if Koin)
+### 10. Generate Application class (REQUIRED) and DI module
 
 Always generate `{project-dir}/app/src/main/java/com/vectis/{appname}/{AppName}Application.kt`.
 
@@ -711,8 +711,36 @@ Create Material 3 theme files in
 
 #### AndroidManifest.xml
 
-Create `{project-dir}/app/src/main/AndroidManifest.xml`. When the app uses
-HTTP or SSE effects, include the `networkSecurityConfig` attribute:
+Create `{project-dir}/app/src/main/AndroidManifest.xml`. The `android:name`
+attribute pointing to the Application class is **always required** -- it sets
+the UniFFI library override that prevents `UnsatisfiedLinkError` at launch.
+
+**Base manifest (Render-only apps):**
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application
+        android:name=".{AppName}Application"
+        android:allowBackup="true"
+        android:label="{AppName}"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.{AppName}">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:theme="@style/Theme.{AppName}">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
+```
+
+**With HTTP or SSE effects** -- add the `INTERNET` permission and
+`networkSecurityConfig`:
 
 ```xml
 <?xml version="1.0" encoding="utf-8"?>
@@ -737,10 +765,6 @@ HTTP or SSE effects, include the `networkSecurityConfig` attribute:
     </application>
 </manifest>
 ```
-
-The `android:name` attribute is always required -- the Application class sets
-the UniFFI library override that prevents `UnsatisfiedLinkError` at launch.
-Omit the `networkSecurityConfig` if no HTTP/SSE effects.
 
 #### themes.xml (REQUIRED)
 
