@@ -7,7 +7,8 @@ SSE streaming, Koin dependency injection, and Ktor HTTP client.
 This shell pairs with the core-writer example `02-http-counter.md`. The
 shared crate defines:
 
-- `ViewModel { text: String, confirmed: bool }`
+- `ViewModel::Loading` and `ViewModel::Counter(CounterView)` variants (two-variant enum)
+- `CounterView { text: String, confirmed: bool }` per-page view struct
 - Shell-facing events: `Event::Get`, `Event::Increment`, `Event::Decrement`, `Event::StartWatch`
 - Internal events: `Event::Set(Result<...>)`, `Event::Update(Count)` (serde/facet skipped)
 - `Effect::Render(RenderOperation)`, `Effect::Http(HttpRequest)`, `Effect::ServerSentEvents(SseRequest)`
@@ -58,6 +59,7 @@ examples/http-counter/
                     ui/
                         screens/
                             CounterScreen.kt
+                            LoadingScreen.kt
                         theme/
                             Color.kt
                             Theme.kt
@@ -446,15 +448,12 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.app.Event
 import com.example.app.ViewModel
 import com.vectis.counter.core.Core
 import com.vectis.counter.ui.screens.CounterScreen
+import com.vectis.counter.ui.screens.LoadingScreen
 import com.vectis.counter.ui.theme.CounterTheme
 import org.koin.android.ext.android.inject
 
@@ -473,13 +472,24 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    CounterScreen(
-                        viewModel = state,
-                        onEvent = { core.update(it) }
-                    )
+                    AppView(state = state, onEvent = { core.update(it) })
                 }
             }
         }
+    }
+}
+
+@Composable
+fun AppView(
+    state: ViewModel,
+    onEvent: (Event) -> Unit
+) {
+    when (state) {
+        is ViewModel.Loading -> LoadingScreen()
+        is ViewModel.Counter -> CounterScreen(
+            viewModel = state.value,
+            onEvent = onEvent
+        )
     }
 }
 ```
@@ -498,13 +508,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.app.CounterView
 import com.example.app.Event
-import com.example.app.ViewModel
 import com.vectis.counter.ui.theme.CounterTheme
 
 @Composable
 fun CounterScreen(
-    viewModel: ViewModel,
+    viewModel: CounterView,
     onEvent: (Event) -> Unit
 ) {
     Column(
@@ -551,9 +561,49 @@ fun CounterScreen(
 fun CounterScreenPreview() {
     CounterTheme {
         CounterScreen(
-            viewModel = ViewModel("42 (2026-01-01T00:00:00Z)", true),
+            viewModel = CounterView("42 (2026-01-01T00:00:00Z)", true),
             onEvent = { }
         )
+    }
+}
+```
+
+## `Android/app/src/main/java/com/vectis/counter/ui/screens/LoadingScreen.kt`
+
+```kotlin
+package com.vectis.counter.ui.screens
+
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import com.vectis.counter.ui.theme.CounterTheme
+
+@Composable
+fun LoadingScreen() {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
+    ) {
+        CircularProgressIndicator()
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Loading...",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LoadingScreenPreview() {
+    CounterTheme {
+        LoadingScreen()
     }
 }
 ```
@@ -609,23 +659,30 @@ fun CounterScreenPreview() {
 
 ## Key Patterns Demonstrated
 
-1. **HTTP effect handling** -- `HttpClient` uses Ktor + OkHttp engine with
+1. **Enum ViewModel with `when` branching** -- `AppView` uses `when (state)`
+   to match `ViewModel.Loading` and `ViewModel.Counter`, rendering the
+   corresponding screen composable for each variant.
+2. **Per-page view struct as screen parameter** -- `CounterScreen` accepts
+   `CounterView`, not `ViewModel`. The `when` branch extracts `state.value`.
+3. **One screen per ViewModel variant** -- `LoadingScreen` for the `Loading`
+   variant and `CounterScreen` for the `Counter(CounterView)` variant.
+4. **HTTP effect handling** -- `HttpClient` uses Ktor + OkHttp engine with
    proper timeout configuration and error mapping.
-2. **SSE streaming** -- `SseClient` reads a Ktor channel line-by-line and
+5. **SSE streaming** -- `SseClient` reads a Ktor channel line-by-line and
    invokes a callback for each chunk. Uses `@OptIn(ExperimentalUnsignedTypes::class)`.
-3. **Defensive error handling** -- SSE effect is wrapped in `scope.launch`
+6. **Defensive error handling** -- SSE effect is wrapped in `scope.launch`
    with `try/catch` to prevent crashes. `CancellationException` is rethrown.
-4. **Koin DI** -- `Core`, `HttpClient`, and `SseClient` are singletons
+7. **Koin DI** -- `Core`, `HttpClient`, and `SseClient` are singletons
    injected via Koin. The `CounterApplication` bootstraps Koin.
-5. **UniFFI library override** -- `System.setProperty("uniffi.component.shared.libraryOverride", "shared")`
+8. **UniFFI library override** -- `System.setProperty("uniffi.component.shared.libraryOverride", "shared")`
    set in `CounterApplication.onCreate()` before Koin initialization.
-6. **Generated type imports** -- all `.kt` files explicitly import types
+9. **Generated type imports** -- all `.kt` files explicitly import types
    from `com.example.app.*` and `uniffi.shared.CoreFfi`.
-7. **Network security config** -- cleartext HTTP allowed for localhost/`10.0.2.2`
-   to support development servers.
-8. **themes.xml** -- Android theme resource required by `AndroidManifest.xml`.
-9. **StateFlow observation** -- `core.viewModel.collectAsState()` in Compose
-   triggers recomposition on ViewModel changes.
-10. **Effect loop** -- `update -> handleEffects -> processRequest -> resolve
+10. **Network security config** -- cleartext HTTP allowed for localhost/`10.0.2.2`
+    to support development servers.
+11. **themes.xml** -- Android theme resource required by `AndroidManifest.xml`.
+12. **StateFlow observation** -- `core.viewModel.collectAsState()` in Compose
+    triggers recomposition on ViewModel changes.
+13. **Effect loop** -- `update -> handleEffects -> processRequest -> resolve
     -> handleEffects` forms the recursive effect processing loop.
-11. **INTERNET permission** -- Required in AndroidManifest for HTTP/SSE.
+14. **INTERNET permission** -- Required in AndroidManifest for HTTP/SSE.

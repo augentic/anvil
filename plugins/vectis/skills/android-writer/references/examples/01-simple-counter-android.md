@@ -7,7 +7,8 @@ Gradle configuration, and Makefile.
 This shell pairs with the core-writer example `01-simple-counter.md`. The
 shared crate defines:
 
-- `ViewModel` as a flat struct: `ViewModel { count: String }`
+- `ViewModel::Counter(CounterView)` variant (single-variant enum)
+- `CounterView { count: String }` per-page view struct
 - `Event::Increment`, `Event::Decrement`, `Event::Reset`
 - `Effect::Render(RenderOperation)`
 
@@ -349,12 +350,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.app.ViewModel
 import com.vectis.counter.core.Core
@@ -379,10 +375,12 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppView(core: Core = viewModel()) {
-    CounterScreen(
-        viewModel = core.view,
-        onEvent = { core.update(it) }
-    )
+    when (val state = core.view) {
+        is ViewModel.Counter -> CounterScreen(
+            viewModel = state.value,
+            onEvent = { core.update(it) }
+        )
+    }
 }
 ```
 
@@ -400,13 +398,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.app.CounterView
 import com.example.app.Event
-import com.example.app.ViewModel
 import com.vectis.counter.ui.theme.CounterTheme
 
 @Composable
 fun CounterScreen(
-    viewModel: ViewModel,
+    viewModel: CounterView,
     onEvent: (Event) -> Unit
 ) {
     Column(
@@ -455,7 +453,7 @@ fun CounterScreen(
 fun CounterScreenPreview() {
     CounterTheme {
         CounterScreen(
-            viewModel = ViewModel("Count is: 42"),
+            viewModel = CounterView("Count is: 42"),
             onEvent = { }
         )
     }
@@ -498,11 +496,15 @@ fun CounterScreenPreview() {
 ## Key Patterns Demonstrated
 
 1. **Simple Core pattern** -- `Core` extends `ViewModel`, uses `mutableStateOf`.
-2. **Application class** -- `CounterApplication` sets the UniFFI library override
+2. **Enum ViewModel with `when` branching** -- even a single-variant enum uses
+   `when` in the root composable to destructure the per-page view struct.
+3. **Per-page view struct as screen parameter** -- `CounterScreen` accepts
+   `CounterView`, not `ViewModel`. The `when` branch extracts `state.value`.
+4. **Application class** -- `CounterApplication` sets the UniFFI library override
    before any UniFFI class loads. Required even without Koin.
-3. **Event callback pattern** -- screens receive `(Event) -> Unit`, not the `Core`.
-4. **Material 3 theming** -- colors from `MaterialTheme.colorScheme`.
-5. **Preview support** -- every screen has a `@Preview` with sample data.
-6. **Render-only Core.kt** -- the simplest possible effect handler.
-7. **No DI needed** -- simple apps use `viewModel()` directly.
-8. **Command-line build** -- `make build && ./gradlew :app:assembleDebug`.
+5. **Event callback pattern** -- screens receive `(Event) -> Unit`, not the `Core`.
+6. **Material 3 theming** -- colors from `MaterialTheme.colorScheme`.
+7. **Preview support** -- every screen has a `@Preview` with sample data.
+8. **Render-only Core.kt** -- the simplest possible effect handler.
+9. **No DI needed** -- simple apps use `viewModel()` directly.
+10. **Command-line build** -- `make build && ./gradlew :app:assembleDebug`.
