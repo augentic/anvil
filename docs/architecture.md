@@ -21,7 +21,7 @@ specify/
 │   │   ├── references/           # Guardrails, providers, guest wiring patterns
 │   │   └── mcp.json
 │   ├── vectis/                   # Vectis Crux development plugin
-│   │   ├── skills/               # Crux skills (core-writer, ios-writer, ...)
+│   │   ├── skills/               # Crux skills (core-writer, test-writer, ios-writer, ...)
 │   │   └── references/           # Crux patterns, design system references
 │   ├── rt/                       # RT migration plugin
 │   │   ├── skills/               # Migration skills (code-analyzer, replay-writer, ...)

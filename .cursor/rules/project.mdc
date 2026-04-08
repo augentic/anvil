@@ -82,6 +82,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 ### Vectis Plugin (`plugins/vectis/`)
 
 - `core-writer` - generate or update Rust Crux shared crates
+- `test-writer` - generate or update test suites with spec-to-test traceability
 - `core-reviewer` - review Crux core for structural and logic issues
 - `ios-writer` - generate or update SwiftUI iOS shells
 - `ios-reviewer` - review iOS shells for structural and quality issues

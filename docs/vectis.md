@@ -97,7 +97,7 @@ Review the artifacts in `.specify/changes/<change-name>/`. Edit them by hand or 
 
 > `/spec:build`
 
-The agent works through the tasks in platform order: design-system first, then core, then shells. For the core, it invokes the `core-writer` skill to generate the `shared` crate, verifies with `cargo check`, `cargo test`, and `cargo clippy`, then runs the `core-reviewer` skill. If iOS is in scope, it invokes the `ios-writer` skill, verifies the build, then runs the `ios-reviewer` skill. If Android is in scope, it invokes the `android-writer` skill, verifies the build, then runs the `android-reviewer` skill.
+The agent works through the tasks in platform order: design-system first, then core, then shells. For the core, it invokes the `core-writer` skill to generate the `shared` crate, then the `test-writer` skill to generate spec-traced tests, verifies with `cargo check`, `cargo test`, and `cargo clippy`, then runs the `core-reviewer` skill. If iOS is in scope, it invokes the `ios-writer` skill, verifies the build, then runs the `ios-reviewer` skill. If Android is in scope, it invokes the `android-writer` skill, verifies the build, then runs the `android-reviewer` skill.
 
 The code review covers three passes:
 
@@ -453,6 +453,7 @@ The `android-reviewer` skill reviews Android shell code (Kotlin/Jetpack Compose)
 | Skill | Purpose |
 | ----- | ------- |
 | `core-writer` | Generate or update the Rust Crux shared crate from Specify artifacts |
+| `test-writer` | Generate or update test suites from Specify artifacts with spec-to-test traceability |
 | `core-reviewer` | Review Crux core for structural, logic, and quality issues |
 | `ios-writer` | Generate or update the SwiftUI iOS shell from the Crux core |
 | `ios-reviewer` | Review iOS shell for structural and quality issues |
