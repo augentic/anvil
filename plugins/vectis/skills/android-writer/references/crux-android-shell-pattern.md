@@ -118,6 +118,7 @@ class Core(
 ) {
     private val coreFfi = CoreFfi()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val timerJobs = mutableMapOf<TimerId, Job>()
 
     private val _viewModel: MutableStateFlow<ViewModel> =
         MutableStateFlow(getViewModel())
@@ -202,14 +203,22 @@ The Time capability has multiple request types. Handle each variant:
 - `TimeRequest.Now` -- respond with current time
 - `TimeRequest.NotifyAfter(id, duration)` -- delay, then respond with `DurationElapsed(id)`
 - `TimeRequest.NotifyAt(id, instant)` -- delay until instant, then respond with `InstantArrived(id)`
-- `TimeRequest.Clear(id)` -- cancel a pending timer (respond with `Cleared(id)`)
+- `TimeRequest.Clear(id)` -- cancel a pending timer's coroutine job, then respond with `Cleared(id)`
 
 **CRITICAL**: `Duration` has a single `nanos: ULong` field (total nanoseconds),
 NOT separate `secs`/`nanos`. `TimeResponse` variants use `DurationElapsed`,
 `InstantArrived`, and `Cleared` -- not `DURATIONREACHED` or `NOTIFYREACHED`.
 
+**CRITICAL**: `NotifyAfter` and `NotifyAt` must store their coroutine `Job` in
+`timerJobs` keyed by `TimerId`. `Clear` must cancel and remove the stored job
+before responding. Without this, cleared timers continue to fire and deliver
+stale `DurationElapsed` or `InstantArrived` events to the core. The map is
+safe to access without synchronization because all coroutines run on
+`Dispatchers.Main.immediate`.
+
 ```kotlin
 import com.example.app.Instant
+import com.example.app.TimerId
 import com.example.app.TimeRequest
 import com.example.app.TimeResponse
 import java.time.ZoneOffset
@@ -225,23 +234,48 @@ private suspend fun handleTimeEffect(requestId: UInt, timeRequest: TimeRequest) 
             resolveAndHandleEffects(requestId, response.bincodeSerialize())
         }
         is TimeRequest.NotifyAfter -> {
-            val millis = timeRequest.value.duration.nanos / 1_000_000UL
-            delay(millis.toLong())
-            val response = TimeResponse.DurationElapsed(timeRequest.value.id)
-            resolveAndHandleEffects(requestId, response.bincodeSerialize())
+            val timerId = timeRequest.value.id
+            timerJobs[timerId] = scope.launch {
+                try {
+                    val millis = timeRequest.value.duration.nanos / 1_000_000UL
+                    delay(millis.toLong())
+                    timerJobs.remove(timerId)
+                    val response = TimeResponse.DurationElapsed(timerId)
+                    resolveAndHandleEffects(requestId, response.bincodeSerialize())
+                } catch (e: CancellationException) {
+                    timerJobs.remove(timerId)
+                    throw e
+                } catch (e: Exception) {
+                    timerJobs.remove(timerId)
+                    Log.e(TAG, "Timer NotifyAfter error", e)
+                }
+            }
         }
         is TimeRequest.NotifyAt -> {
-            val now = java.time.Instant.now()
-            val target = java.time.Instant.ofEpochSecond(
-                timeRequest.value.instant.seconds.toLong(),
-                timeRequest.value.instant.nanos.toLong()
-            )
-            val delayMs = java.time.Duration.between(now, target).toMillis()
-            if (delayMs > 0) delay(delayMs)
-            val response = TimeResponse.InstantArrived(timeRequest.value.id)
-            resolveAndHandleEffects(requestId, response.bincodeSerialize())
+            val timerId = timeRequest.value.id
+            timerJobs[timerId] = scope.launch {
+                try {
+                    val now = java.time.Instant.now()
+                    val target = java.time.Instant.ofEpochSecond(
+                        timeRequest.value.instant.seconds.toLong(),
+                        timeRequest.value.instant.nanos.toLong()
+                    )
+                    val delayMs = java.time.Duration.between(now, target).toMillis()
+                    if (delayMs > 0) delay(delayMs)
+                    timerJobs.remove(timerId)
+                    val response = TimeResponse.InstantArrived(timerId)
+                    resolveAndHandleEffects(requestId, response.bincodeSerialize())
+                } catch (e: CancellationException) {
+                    timerJobs.remove(timerId)
+                    throw e
+                } catch (e: Exception) {
+                    timerJobs.remove(timerId)
+                    Log.e(TAG, "Timer NotifyAt error", e)
+                }
+            }
         }
         is TimeRequest.Clear -> {
+            timerJobs.remove(timeRequest.value)?.cancel()
             val response = TimeResponse.Cleared(timeRequest.value)
             resolveAndHandleEffects(requestId, response.bincodeSerialize())
         }

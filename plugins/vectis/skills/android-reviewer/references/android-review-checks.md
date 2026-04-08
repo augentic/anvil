@@ -317,3 +317,33 @@ warnings or fails.
 
 **Fix**: Use `com.vectis.{appname}` for `app` and
 `com.vectis.{appname}.shared` for `shared`.
+
+## AND-022: Time Effect Clear Handler Missing Job Cancellation
+
+**Severity**: Critical
+
+If the app handles `Effect.Time`, the `TimeRequest.Clear` branch must actually
+cancel the coroutine job for any previously scheduled `NotifyAfter` or
+`NotifyAt` timer. Without job tracking and cancellation, cleared timers
+continue to fire stale `DurationElapsed` or `InstantArrived` events into
+the core, producing incorrect state transitions.
+
+**Detection**: In `Core.kt`, verify all three conditions:
+
+1. A `MutableMap<TimerId, Job>` (or equivalent) field exists to track active
+   timer coroutine jobs.
+2. `NotifyAfter` and `NotifyAt` branches store their launched coroutine `Job`
+   in the map, keyed by the timer's `TimerId`.
+3. The `Clear` branch removes and cancels the stored job
+   (`timerJobs.remove(timerId)?.cancel()`) before responding with
+   `TimeResponse.Cleared`.
+
+Also verify that `NotifyAfter` and `NotifyAt` coroutines clean up their map
+entry on natural completion and on `CancellationException`.
+
+**Fix**: Add a `timerJobs` map to the `Core` class. In `NotifyAfter` and
+`NotifyAt`, launch a child coroutine via `scope.launch`, store the `Job` in
+the map, and remove the entry in a `finally`-equivalent path (after the delay
+completes or when cancelled). In `Clear`, call
+`timerJobs.remove(timeRequest.value)?.cancel()` before resolving. See
+`references/crux-android-shell-pattern.md` for the full implementation.

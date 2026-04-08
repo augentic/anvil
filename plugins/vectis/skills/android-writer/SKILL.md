@@ -187,6 +187,10 @@ when (event) {
   `NotifyAfter(id, duration)`, `Clear(id)` -- each has a `TimerId` field
 - `TimeResponse` variants: `Now(instant)`, `InstantArrived(id)`,
   `DurationElapsed(id)`, `Cleared(id)` -- NOT `DURATIONREACHED`
+- `NotifyAfter` and `NotifyAt` handlers must store their coroutine `Job` in a
+  `timerJobs` map keyed by `TimerId`. `Clear` must cancel and remove the stored
+  job before responding with `Cleared`. Without job tracking, cleared timers
+  continue to fire stale events into the core.
 
 ### @OptIn annotations
 
@@ -1037,6 +1041,7 @@ Same as create mode step 15:
 - [ ] Coroutine scopes use `SupervisorJob` for fault isolation
 - [ ] Async effects (SSE, Time) wrapped in `try/catch` inside `scope.launch`
 - [ ] `CancellationException` is always rethrown in catch blocks
+- [ ] Time `NotifyAfter`/`NotifyAt` jobs tracked in `timerJobs` map; `Clear` cancels stored job
 
 ### Command-Line Workflow
 
