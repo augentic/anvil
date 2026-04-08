@@ -20,7 +20,7 @@ Crux is written in Rust and documented at [docs.rs/crux_core](https://docs.rs/cr
 
 ### iOS / macOS Development
 
-Only required if you are building an iOS shell. Future platform shells will have their own prerequisites.
+Only required if you are building an iOS shell.
 
 [Install Xcode command line tools](https://developer.apple.com/documentation/xcode/installing-the-command-line-tools/)
 
@@ -43,9 +43,32 @@ cargo install cargo-swift
 
 Install the [Swift Language Support](https://open-vsx.org/extension/chrisatwindsurf/swift-vscode) and [SweetPad](https://marketplace.visualstudio.com/items?itemName=SweetPad.sweetpad) Cursor extensions for Swift editing and Xcode integration.
 
+### Android Development
+
+Only required if you are building an Android shell.
+
+- Android SDK (command-line tools, platform-tools, emulator) -- install via [Android Studio](https://developer.android.com/studio) or [command-line tools](https://developer.android.com/studio#command-tools)
+- Android NDK (install via `sdkmanager "ndk;29.0.14206865"` or through SDK Manager)
+- Java 21 LTS JDK (NOT Java 25+ -- Gradle's embedded Kotlin compiler cannot parse Java 25+ version strings)
+- Python 3 (required by Mozilla's rust-android-gradle plugin)
+- Rust Android targets:
+
+```shell
+rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+```
+
+Set the required environment variables:
+
+```shell
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+export PATH="$ANDROID_HOME/platform-tools:$PATH"
+export PATH="$ANDROID_HOME/emulator:$PATH"
+```
+
 ## Creating a Crux App
 
-App generation uses the Specify workflow with the `vectis` schema. Each app is a Specify **change** that produces a proposal, specs, design, and tasks. The proposal describes the feature and declares which platforms to target. The build phase invokes the appropriate skills (core-writer, ios-writer, design-system-writer) based on the platforms declared.
+App generation uses the Specify workflow with the `vectis` schema. Each app is a Specify **change** that produces a proposal, specs, design, and tasks. The proposal describes the feature and declares which platforms to target. The build phase invokes the appropriate skills (core-writer, ios-writer, android-writer, design-system-writer) based on the platforms declared.
 
 ### Define a new app
 
@@ -74,7 +97,7 @@ Review the artifacts in `.specify/changes/<change-name>/`. Edit them by hand or 
 
 > `/spec:build`
 
-The agent works through the tasks in platform order: design-system first, then core, then shells. For the core, it invokes the `core-writer` skill to generate the `shared` crate, verifies with `cargo check`, `cargo test`, and `cargo clippy`, then runs the `core-reviewer` skill. If iOS is in scope, it invokes the `ios-writer` skill, verifies the build, then runs the `ios-reviewer` skill.
+The agent works through the tasks in platform order: design-system first, then core, then shells. For the core, it invokes the `core-writer` skill to generate the `shared` crate, verifies with `cargo check`, `cargo test`, and `cargo clippy`, then runs the `core-reviewer` skill. If iOS is in scope, it invokes the `ios-writer` skill, verifies the build, then runs the `ios-reviewer` skill. If Android is in scope, it invokes the `android-writer` skill, verifies the build, then runs the `android-reviewer` skill.
 
 The code review covers three passes:
 
@@ -120,7 +143,7 @@ The specs artifact follows a structured markdown format. Each feature spec has a
 | **Error Conditions**         | Error states and recovery behavior                            |
 | **Metrics**                  | Observable metrics (optional)                                 |
 | **iOS Shell Requirements**   | iOS-specific behaviors: navigation, gestures, haptics         |
-| **Android Shell Requirements** | Android-specific behaviors (future)                         |
+| **Android Shell Requirements** | Android-specific behaviors: navigation, gestures, accessibility |
 | **Design System Requirements** | Token change requirements (if applicable)                   |
 
 All requirement IDs — including those in platform-specific sections — share one flat `REQ-###` namespace (for example, `REQ-001`, `REQ-002`, `REQ-010`). Platform sections continue sequential numbering from the last core requirement. Do not use platform-prefixed IDs like `REQ-IOS-xxx`.
@@ -135,6 +158,7 @@ The design document captures the technical contract:
 | **Capabilities**       | Which external capabilities the app needs (see table below)           |
 | **API Details**        | HTTP endpoints, methods, request/response shapes. Omit if no HTTP     |
 | **iOS Shell Details**  | Navigation style, screen customizations, platform features            |
+| **Android Shell Details** | Navigation style, Material 3 customizations, platform features      |
 | **Design System Details** | Token categories, value shapes, downstream consumers               |
 | **Constraints**        | Implementation constraints (Crux version, uniffi pin, etc.)           |
 
@@ -181,6 +205,23 @@ When iOS is in scope, the ios-writer skill produces:
 
 All views use the shared `VectisDesign` package for colors, typography, and spacing tokens.
 
+When Android is in scope, the android-writer skill produces:
+
+| Artifact                      | Description                                                |
+| ----------------------------- | ---------------------------------------------------------- |
+| `Makefile`                    | Build pipeline (typegen, Rust library, Gradle build)       |
+| `build.gradle.kts` (root)    | Root Gradle build with plugin declarations                 |
+| `settings.gradle.kts`        | Module includes (`:app`, `:shared`)                        |
+| `gradle/libs.versions.toml`  | Version catalog for dependencies                           |
+| `shared/build.gradle.kts`    | Shared module with rust-android-gradle for cross-compilation |
+| `app/build.gradle.kts`       | App module with Compose, Material 3, and capability dependencies |
+| `app/.../core/Core.kt`       | Bridge between Jetpack Compose and the Rust core           |
+| `app/.../MainActivity.kt`    | Activity entry point switching on ViewModel variants       |
+| `app/.../ui/screens/*.kt`    | One screen composable per ViewModel variant                |
+| `app/.../ui/theme/*.kt`      | Material 3 theme (Color, Theme, Type)                      |
+
+All composables use Material 3 theme tokens, with design system tokens applied when available.
+
 ## Platforms
 
 Platforms are declared in the proposal and determine which skills the build phase invokes. A single feature change can target multiple platforms simultaneously.
@@ -189,7 +230,7 @@ Platforms are declared in the proposal and determine which skills the build phas
 | ---------------- | --------------------------------------------- | ------------------------ |
 | `core`           | Rust Crux shared crate (always required)      | `vectis:core-writer`     |
 | `ios`            | SwiftUI iOS shell                             | `vectis:ios-writer`      |
-| `android`        | Android shell (future)                        | --                       |
+| `android`        | Kotlin/Jetpack Compose Android shell          | `vectis:android-writer`  |
 | `web`            | Web shell (future)                            | --                       |
 | `design-system`  | VectisDesign Swift package from tokens.yaml   | `vectis:design-system-writer` |
 
@@ -197,7 +238,7 @@ Build order: design-system first, core second, shells last. Each skill reads the
 
 ## Design System
 
-The design system provides platform-agnostic design tokens with platform-specific implementations. Currently only an iOS Swift Package is generated.
+The design system provides platform-agnostic design tokens with platform-specific implementations. Currently an iOS Swift Package is generated; Android shells consume tokens via a generated Compose theme integration.
 
 | Path                        | Purpose                                                               |
 | --------------------------- | --------------------------------------------------------------------- |
@@ -205,7 +246,7 @@ The design system provides platform-agnostic design tokens with platform-specifi
 | `design-system/tokens.yaml` | Concrete token values (single source of truth for code generation)    |
 | `design-system/ios/`        | `VectisDesign` Swift Package -- generated from `tokens.yaml`          |
 
-The design system is shared across all apps generated by the ios-writer skill. Future platform shells (Android, Web) will add their own implementations under `design-system/` using the same tokens.
+The design system is shared across all apps generated by the ios-writer and android-writer skills. Future platform shells (Web) will add their own implementations under `design-system/` using the same tokens.
 
 ### Design system as part of a feature
 
@@ -340,6 +381,51 @@ make build      # builds for iPhone 16 simulator via xcodebuild
 make sim-build  # simulator-only build for verification
 ```
 
+## Working with Android
+
+After generating an Android shell, the `Android/` directory contains a Gradle project with a `Makefile` for the Rust type-generation step.
+
+### First-time setup
+
+```bash
+cd path/to/Android
+make build
+```
+
+This runs type generation (Kotlin bindings from the Rust core via codegen) and compiles the Rust shared library for Android ABIs.
+
+### Build the APK
+
+```bash
+./gradlew :shared:cargoBuild
+./gradlew :app:assembleDebug
+```
+
+The first command cross-compiles the Rust crate into `libshared.so` for all four Android ABIs. The second builds the debug APK.
+
+### Run on an emulator
+
+```bash
+emulator -list-avds
+emulator -avd <avd_name> &
+./gradlew :app:installDebug
+adb shell am start -n com.vectis.<appname>/.MainActivity
+```
+
+### Common mistakes to avoid
+
+- Do **not** skip `make build` -- the generated Kotlin types and UniFFI bindings must exist before Gradle can compile.
+- If the app crashes on launch with `UnsatisfiedLinkError`, ensure the `Application` class sets `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` before any UniFFI class is loaded.
+- Java 25+ causes a `IllegalArgumentException` in Gradle's Kotlin compiler. Pin `org.gradle.java.home` to Java 21 in `gradle.properties`.
+- If Gradle reports `Minimum supported Gradle version is X.Y`, update `gradle-wrapper.properties` to match the AGP version requirement.
+
+### Debugging crashes
+
+```bash
+adb logcat -b crash -d
+adb logcat | grep -i "fatal\|exception\|error"
+```
+
 ## Reviewing Generated Code
 
 ### Core review
@@ -356,6 +442,12 @@ The `ios-reviewer` skill reviews iOS shell code for structural and quality issue
 
 > Use the ios-reviewer skill to review `path/to/my-app`
 
+### Android review
+
+The `android-reviewer` skill reviews Android shell code (Kotlin/Jetpack Compose) for structural issues, integration correctness, and quality problems. It also runs automatically during the build phase and can be invoked standalone:
+
+> Use the android-reviewer skill to review `path/to/my-app`
+
 ## Skills Reference
 
 | Skill | Purpose |
@@ -364,6 +456,8 @@ The `ios-reviewer` skill reviews iOS shell code for structural and quality issue
 | `core-reviewer` | Review Crux core for structural, logic, and quality issues |
 | `ios-writer` | Generate or update the SwiftUI iOS shell from the Crux core |
 | `ios-reviewer` | Review iOS shell for structural and quality issues |
+| `android-writer` | Generate or update the Kotlin/Jetpack Compose Android shell from the Crux core |
+| `android-reviewer` | Review Android shell for structural, integration, and quality issues |
 | `design-system-writer` | Generate VectisDesign Swift package from `tokens.yaml` |
 
 See [plugins.md](plugins.md) for the full plugin and skill reference.
