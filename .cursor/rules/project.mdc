@@ -83,11 +83,11 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 - `core-writer` - generate or update Rust Crux shared crates
 - `test-writer` - generate or update test suites with spec-to-test traceability
-- `core-reviewer` - review Crux core for structural and logic issues
+- `core-reviewer` - review Crux core via agent team (structural/logic/quality specialists + antagonist)
 - `ios-writer` - generate or update SwiftUI iOS shells
-- `ios-reviewer` - review iOS shells for structural and quality issues
+- `ios-reviewer` - review iOS shells via agent team (structural/quality/integration specialists + antagonist)
 - `android-writer` - generate or update Kotlin/Jetpack Compose Android shells
-- `android-reviewer` - review Android shells for structural and quality issues
+- `android-reviewer` - review Android shells via agent team (structural/quality/integration specialists + antagonist)
 - `design-system-writer` - generate VectisDesign Swift package from tokens
 
 ### Plan Plugin (`plugins/plan/`)
