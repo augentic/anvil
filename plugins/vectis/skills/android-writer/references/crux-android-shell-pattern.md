@@ -560,6 +560,53 @@ Variants with payloads use PascalCase (`Event.Navigate(route)`).
 - Async effect handlers run in coroutines scoped to `SupervisorJob`, so one
   failure doesn't cancel other in-flight effects.
 
+## Application Class (Required)
+
+Every Android shell MUST have an Application class that sets the UniFFI
+library override in `onCreate()`, BEFORE any UniFFI class is loaded. Without
+it, JNA tries to load `libuniffi_shared.so` which doesn't exist -- Cargo
+produces `libshared.so` -- causing an `UnsatisfiedLinkError` crash on launch.
+
+### Minimal Application class (no Koin)
+
+```kotlin
+package com.vectis.myapp
+
+import android.app.Application
+
+class MyAppApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        System.setProperty("uniffi.component.shared.libraryOverride", "shared")
+    }
+}
+```
+
+### Application class with Koin
+
+When using the full Core pattern with DI, add `startKoin` after the library
+override:
+
+```kotlin
+package com.vectis.myapp
+
+import android.app.Application
+import com.vectis.myapp.di.appModule
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.startKoin
+
+class MyAppApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        System.setProperty("uniffi.component.shared.libraryOverride", "shared")
+        startKoin {
+            androidContext(this@MyAppApplication)
+            modules(appModule)
+        }
+    }
+}
+```
+
 ## Dependency Injection (Koin)
 
 When using the full Core pattern, set up Koin for DI:
@@ -579,32 +626,6 @@ val appModule = module {
     singleOf(::HttpClient)
     singleOf(::SseClient)
     singleOf(::Core)
-}
-```
-
-### Application class
-
-**CRITICAL**: The `System.setProperty` call MUST be the first thing in
-`onCreate()`, before any UniFFI class is loaded. Without it, JNA tries to
-load `libuniffi_shared.so` which doesn't exist -- Cargo produces `libshared.so`.
-
-```kotlin
-package com.vectis.myapp
-
-import android.app.Application
-import com.vectis.myapp.di.appModule
-import org.koin.android.ext.koin.androidContext
-import org.koin.core.context.startKoin
-
-class MyAppApplication : Application() {
-    override fun onCreate() {
-        super.onCreate()
-        System.setProperty("uniffi.component.shared.libraryOverride", "shared")
-        startKoin {
-            androidContext(this@MyAppApplication)
-            modules(appModule)
-        }
-    }
 }
 ```
 

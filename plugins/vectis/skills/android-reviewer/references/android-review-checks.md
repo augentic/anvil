@@ -147,18 +147,23 @@ navigation controls (bottom nav, buttons, drawer items).
 
 **Severity**: Critical
 
-The `Application` class `onCreate()` must set the JNA library override
-property BEFORE any UniFFI class is loaded. Without this, JNA tries to load
+An `Application` class is required in **all** Android shells -- not just those
+using Koin. Its `onCreate()` must set the JNA library override property BEFORE
+any UniFFI class is loaded. Without this, JNA tries to load
 `libuniffi_shared.so` but Cargo produces `libshared.so`, causing an
 `UnsatisfiedLinkError` crash on launch.
 
-**Detection**: Search the Application class for
+**Detection**: Verify that an Application class exists and that
+`AndroidManifest.xml` includes the `android:name` attribute pointing to it.
+Search the Application class for
 `System.setProperty("uniffi.component.shared.libraryOverride", "shared")`.
 Verify it appears before `startKoin` or any other code that triggers UniFFI
-class loading.
+class loading. If no Application class exists at all, flag it as critical.
 
-**Fix**: Add `System.setProperty("uniffi.component.shared.libraryOverride", "shared")`
-as the first statement after `super.onCreate()`.
+**Fix**: Create an Application class with
+`System.setProperty("uniffi.component.shared.libraryOverride", "shared")`
+as the first statement after `super.onCreate()`, and add `android:name` to
+the manifest's `<application>` element.
 
 ## AND-012: Core Missing StateFlow / mutableStateOf
 

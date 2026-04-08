@@ -268,6 +268,7 @@ Create the following directories under `{project-dir}`:
     app/
         src/main/
             java/com/vectis/{appname}/
+                {AppName}Application.kt  # REQUIRED -- UniFFI library override
                 core/
                 ui/
                     screens/
@@ -548,28 +549,45 @@ For each non-Render effect, generate the corresponding client class in
 
 See `references/crux-android-shell-pattern.md` for implementations.
 
-### 10. Generate DI module and Application class
+### 10. Generate Application class (and DI module if Koin)
 
-When using Koin (more than one non-Render effect), generate:
+Always generate `{project-dir}/app/src/main/java/com/vectis/{appname}/{AppName}Application.kt`.
+
+When using Koin (more than one non-Render effect), also generate:
 
 - `{project-dir}/app/src/main/java/com/vectis/{appname}/di/AppModule.kt`
-- `{project-dir}/app/src/main/java/com/vectis/{appname}/{AppName}Application.kt`
 
-And register the Application class in `AndroidManifest.xml`.
+And register the Application class in `AndroidManifest.xml` (the `android:name`
+attribute is always required -- see step 14).
 
 #### UniFFI library name override (CRITICAL)
 
 The Application class `onCreate()` MUST set the JNA library override BEFORE
 any UniFFI class is loaded. Without this, JNA looks for `libuniffi_shared.so`
 but Cargo produces `libshared.so`, causing an `UnsatisfiedLinkError` crash on
-launch:
+launch. This applies to **all** shells -- simple (Render-only) and full (with
+side effects) alike.
+
+The property name follows the pattern `uniffi.component.{crate_name}.libraryOverride`
+where `{crate_name}` matches the `[lib] name = "shared"` in `Cargo.toml`.
+
+#### Simple Application class (no Koin):
 
 ```kotlin
 class {AppName}Application : Application() {
     override fun onCreate() {
         super.onCreate()
-        // MUST be first -- JNA loads libuniffi_shared.so by default,
-        // but Cargo builds libshared.so
+        System.setProperty("uniffi.component.shared.libraryOverride", "shared")
+    }
+}
+```
+
+#### Application class with Koin:
+
+```kotlin
+class {AppName}Application : Application() {
+    override fun onCreate() {
+        super.onCreate()
         System.setProperty("uniffi.component.shared.libraryOverride", "shared")
 
         startKoin {
@@ -579,9 +597,6 @@ class {AppName}Application : Application() {
     }
 }
 ```
-
-The property name follows the pattern `uniffi.component.{crate_name}.libraryOverride`
-where `{crate_name}` matches the `[lib] name = "shared"` in `Cargo.toml`.
 
 ### 11. Generate screen composables
 
@@ -723,7 +738,8 @@ HTTP or SSE effects, include the `networkSecurityConfig` attribute:
 </manifest>
 ```
 
-Omit the `android:name` Application attribute if Koin is not used.
+The `android:name` attribute is always required -- the Application class sets
+the UniFFI library override that prevents `UnsatisfiedLinkError` at launch.
 Omit the `networkSecurityConfig` if no HTTP/SSE effects.
 
 #### themes.xml (REQUIRED)
@@ -1031,7 +1047,8 @@ Same as create mode step 15:
   If Python 3.13+ causes issues with the `pipes` module, use Python 3.12.
 - **Two Core patterns**: Simple apps (Render-only) use `Core` extending
   `ViewModel` with `mutableStateOf`. Complex apps (with HTTP/SSE) use a
-  plain class with `StateFlow` injected via Koin.
+  plain class with `StateFlow` injected via Koin. Both patterns require
+  an Application class for the UniFFI library override -- see step 10.
 - **Gradle wrapper is required**: The `gradlew` script must be generated as
   part of the shell creation. Without it, no `./gradlew` command works.
   See step 7 for generation instructions.

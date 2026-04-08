@@ -42,6 +42,7 @@ examples/counter/
                     values/
                         themes.xml  # REQUIRED
                 java/com/vectis/counter/
+                    CounterApplication.kt
                     MainActivity.kt
                     core/
                         Core.kt
@@ -281,6 +282,21 @@ tasks.matching { it.name.matches(Regex("merge.*JniLibFolders")) }.configureEach 
 }
 ```
 
+## `Android/app/src/main/java/com/vectis/counter/CounterApplication.kt`
+
+```kotlin
+package com.vectis.counter
+
+import android.app.Application
+
+class CounterApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        System.setProperty("uniffi.component.shared.libraryOverride", "shared")
+    }
+}
+```
+
 ## `Android/app/src/main/java/com/vectis/counter/core/Core.kt`
 
 ```kotlin
@@ -452,6 +468,7 @@ fun CounterScreenPreview() {
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
+        android:name=".CounterApplication"
         android:allowBackup="true"
         android:label="Counter"
         android:supportsRtl="true"
@@ -481,9 +498,11 @@ fun CounterScreenPreview() {
 ## Key Patterns Demonstrated
 
 1. **Simple Core pattern** -- `Core` extends `ViewModel`, uses `mutableStateOf`.
-2. **Event callback pattern** -- screens receive `(Event) -> Unit`, not the `Core`.
-3. **Material 3 theming** -- colors from `MaterialTheme.colorScheme`.
-4. **Preview support** -- every screen has a `@Preview` with sample data.
-5. **Render-only Core.kt** -- the simplest possible effect handler.
-6. **No DI needed** -- simple apps use `viewModel()` directly.
-7. **Command-line build** -- `make build && ./gradlew :app:assembleDebug`.
+2. **Application class** -- `CounterApplication` sets the UniFFI library override
+   before any UniFFI class loads. Required even without Koin.
+3. **Event callback pattern** -- screens receive `(Event) -> Unit`, not the `Core`.
+4. **Material 3 theming** -- colors from `MaterialTheme.colorScheme`.
+5. **Preview support** -- every screen has a `@Preview` with sample data.
+6. **Render-only Core.kt** -- the simplest possible effect handler.
+7. **No DI needed** -- simple apps use `viewModel()` directly.
+8. **Command-line build** -- `make build && ./gradlew :app:assembleDebug`.

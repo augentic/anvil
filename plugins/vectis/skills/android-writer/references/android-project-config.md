@@ -35,7 +35,7 @@ from the shared crate. Targets Crux 0.17.0+.
                         network_security_config.xml  # if HTTP/SSE effects
                 java/com/vectis/{appname}/
                     MainActivity.kt
-                    {AppName}Application.kt # if Koin is used
+                    {AppName}Application.kt # REQUIRED -- UniFFI library override
                     core/
                         Core.kt
                         HttpClient.kt      # if HTTP effect
