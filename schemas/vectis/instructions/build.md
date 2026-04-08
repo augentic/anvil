@@ -41,7 +41,7 @@ generation.
 
 ### Create mode (app.rs does NOT exist -- new core)
 
-#### Phase 1: Generate
+#### Phase 1: Generate code
 
 1. /vectis:core-writer -- generate the Crux shared crate
 
@@ -49,13 +49,21 @@ Run the skill from start to finish. Complete every step in the skill's
 process and ensure its verification checklist is satisfied before moving
 to the next phase.
 
-#### Phase 2: Verify and repair
+#### Phase 2: Generate tests
+
+2. /vectis:test-writer -- generate spec-traced tests
+
+Run the skill from start to finish. It generates the `#[cfg(test)]`
+module in `app.rs` with one test per spec scenario and traceability
+comments linking each test to its `REQ-XXX` ID.
+
+#### Phase 3: Verify and repair
 
 Run the verify-repair loop described below.
 
-#### Phase 3: Review
+#### Phase 4: Review
 
-2. /vectis:core-reviewer -- AI code review
+3. /vectis:core-reviewer -- AI code review
 
 ### Update mode (app.rs exists -- incremental change)
 
@@ -68,9 +76,9 @@ cd $PROJECT_DIR && cargo test 2>&1 | tee /tmp/${CHANGE_ID}-${FEATURE_NAME}-basel
 ```
 
 Record which tests pass and which fail. This baseline is used in
-Phase 2 to detect regressions.
+Phase 3 to detect regressions.
 
-#### Phase 1: Generate
+#### Phase 1: Generate code
 
 1. /vectis:core-writer -- update the Crux shared crate
 
@@ -78,15 +86,23 @@ Run the skill from start to finish. Complete every step in the skill's
 process and ensure its verification checklist is satisfied before moving
 to the next phase.
 
-#### Phase 2: Verify and repair
+#### Phase 2: Generate/update tests
+
+2. /vectis:test-writer -- update spec-traced tests
+
+Run the skill from start to finish. It diffs spec scenarios against
+existing tests, adds tests for new scenarios, updates tests for
+modified scenarios, and flags stale tests for removed scenarios.
+
+#### Phase 3: Verify and repair
 
 Run the verify-repair loop described below. In update mode, step 3
 includes a regression check: compare post-test results against the
 baseline captured in Step 0.
 
-#### Phase 3: Review
+#### Phase 4: Review
 
-2. /vectis:core-reviewer -- AI code review
+3. /vectis:core-reviewer -- AI code review
 
 ---
 
@@ -222,8 +238,19 @@ cd $PROJECT_DIR && cargo test
 ```
 
 If failures are detected, classify each failure and route the fix to
-core-writer for repair. Pass the full error output as context so the
-skill can make a targeted fix.
+the appropriate skill:
+
+| Failure signal | Classification | Fix action |
+| --- | --- | --- |
+| Error in `#[cfg(test)] mod tests`, test helper functions, or factory functions | **Test issue** | Re-enter test-writer with the error output |
+| Error in production code (`app.rs` outside `#[cfg(test)]`), missing types or methods | **Code issue** | Re-enter core-writer with the error output |
+| Assertion mismatch where the *actual* value looks correct per spec | **Test issue** | Re-enter test-writer -- the expected value is wrong |
+| Assertion mismatch where the *expected* value matches spec | **Code issue** | Re-enter core-writer -- the handler returns the wrong result |
+| Type mismatch between handler output and test assertion | **Code issue** if handler type is wrong per spec; **test issue** if assertion type is stale | Classify per spec, fix accordingly |
+| Unresolved import or missing crate in `Cargo.toml` | **Workspace issue** | Fix `Cargo.toml` directly |
+
+When re-entering a skill for repair, pass the full error output as
+context so the skill can make a targeted fix.
 
 ### Repair discipline
 
@@ -232,6 +259,10 @@ When re-entering a skill for repair:
 - **Minimum change only** -- fix the reported error and nothing else.
 - **Scope the diff** -- before committing a repair, verify the change
   is limited to files and functions identified in the error output.
+- **One failure class per re-entry** -- if multiple failures are
+  present, group them by classification (code issue vs test issue) and
+  re-enter each skill once with all same-class errors. Do not
+  interleave code and test fixes in a single re-entry.
 
 **Update mode only -- regression check**: compare post-test results
 against the baseline from Step 0. For each test that passed before

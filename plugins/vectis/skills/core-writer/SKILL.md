@@ -85,10 +85,10 @@ custom capability module following the pattern in `references/crux-custom-capabi
 The skill operates in one of two modes depending on whether an existing project is found:
 
 - **Create Mode** -- used when `{project-dir}/shared/src/app.rs` does **not** exist.
-  Generates the entire project from scratch (steps 1--12 below).
+  Generates the entire project from scratch (steps 1--13 below).
 - **Update Mode** -- used when `{project-dir}/shared/src/app.rs` **does** exist.
   Reads the existing code, diffs it against the artifacts, and makes targeted edits
-  (steps U1--U9 below).
+  (steps U1--U8 below).
 
 The Specify artifacts always represent the **full desired state** of the application, not a
 partial diff. In update mode the skill compares the full artifacts against the existing
@@ -309,12 +309,11 @@ This is the heart of the application. Follow `references/crux-app-pattern.md`:
     match on `model.page` and return the corresponding `ViewModel` variant.
     The `Navigate(route)` arm must be state-aware: navigating to a view that
     requires data may trigger a load sequence rather than an immediate page switch.
-12. Write `#[cfg(test)] mod tests` with at least one test per Event variant, plus
-    tests verifying page transitions (e.g. `Loading` -> main view after data loads)
-    and navigation events (e.g. Navigate from Error triggers re-initialization)
 
 For `update()` logic, consult `references/crux-command-api.md` for command patterns.
-For testing, consult `references/crux-testing-patterns.md`.
+
+**Test generation**: Tests are generated separately by test-writer after
+core-writer completes. core-writer does not generate `#[cfg(test)]` modules.
 
 ### 6. Generate `shared/src/ffi.rs`
 
@@ -364,7 +363,8 @@ Run `cargo check` in the project directory. If it fails:
 3. Re-run `cargo check`
 4. Repeat until clean
 
-Then run `cargo test` to verify tests pass.
+Full verification (fmt, clippy, test suite) runs at the orchestration level
+after test-writer completes.
 
 ### 11. Lint with clippy
 
@@ -428,6 +428,12 @@ After all mechanical checks pass, review the generated code for these common log
    both success and error. See `references/crux-app-pattern.md` § "Pending Operation Sync
    Queue" for the full pattern.
 
+## Test Generation
+
+Tests are generated separately by test-writer. core-writer does not generate
+tests. The build orchestration layer runs test-writer after core-writer
+completes, then runs a unified verify-repair loop across both code and tests.
+
 ## Process: Update Mode
 
 Use this process when `{project-dir}/shared/src/app.rs` already exists. The goal is
@@ -473,7 +479,7 @@ item by name:
 | Helper functions | Names, signatures, purposes | Free functions and `impl` blocks in `app.rs` |
 | Custom capability modules | Module names, operations | Separate `.rs` files, `lib.rs` module decls |
 | Dependencies | Crate names, features | `shared/Cargo.toml` `[dependencies]` |
-| Tests | Test function names, which events they cover | `#[cfg(test)] mod tests` in `app.rs` |
+| Tests | Test function names, which events they cover (owned by test-writer) | `#[cfg(test)] mod tests` in `app.rs` |
 
 ### U4. Diff analysis
 
@@ -545,41 +551,28 @@ Edit the `update()` and `view()` functions in `app.rs`:
    variant must have a corresponding match arm in `view()`.
 7. Add, modify, or remove **helper functions** as needed.
 
-### U7. Update tests
+### U7. Verify
 
-Edit the `#[cfg(test)] mod tests` section in `app.rs`:
+Run `cargo check` as a quick sanity check after applying all changes. Fix
+any compilation errors before proceeding. Full verification (fmt, clippy,
+test suite, regression detection) runs at the orchestration level after
+test-writer completes.
 
-1. Add at least one test for every **added** Event variant.
-2. Update tests for every **modified** Event variant or business rule.
-3. Remove tests for **removed** Event variants.
-4. Preserve test utilities (factory functions like `make_item`, setup helpers like
-   `seeded_model`) unless the types they construct were changed -- in which case,
-   update them to match the new type definitions.
-5. If domain types gained or lost fields, update all test code that constructs
-   those types.
+Also review for:
 
-Consult `references/crux-testing-patterns.md` for testing conventions.
-
-### U8. Verify
-
-Same as create mode steps 10--13:
-
-1. Run `cargo check` -- fix any compilation errors.
-2. Run `cargo test` -- fix any test failures.
-3. Run `cargo clippy --all-targets` -- fix any warnings.
-4. Audit `Cargo.toml` for unused dependencies (especially after removing a
+1. Unused dependencies in `Cargo.toml` (especially after removing a
    capability).
-5. Self-review for logic bugs (state consistency, ownership, KV payload types,
+2. Logic bugs (state consistency, ownership, KV payload types,
    pending op removal by ID).
 
-### U9. Final diff review
+### U8. Final diff review
 
 After all edits and verification pass, do a final review of every changed line.
 Confirm:
 
 - No unchanged code was accidentally modified.
 - No orphaned types, fields, imports, or test functions remain.
-- The code compiles, tests pass, and clippy is clean.
+- The code compiles and clippy is clean.
 
 ## Artifact-to-Code Mapping
 
@@ -628,7 +621,6 @@ when applying changes in steps U5--U7.
    variant.
 6. Add page transition logic in the relevant `update()` arms (`model.page = Page::NewView`).
 7. If the view has user interactions, add shell-facing Event variants for them.
-8. Write tests verifying the page transition, navigation, and the view output.
 
 ### Removing a view
 
@@ -639,7 +631,6 @@ when applying changes in steps U5--U7.
 4. Remove the `Page` variant.
 5. Remove the `ViewModel` variant and its per-page view struct.
 6. Remove any Event variants that were exclusive to the removed view.
-7. Remove related tests.
 
 ### Adding a feature
 
@@ -648,7 +639,7 @@ when applying changes in steps U5--U7.
 3. If the feature needs new state, add a field to `Model` (with a `Default` value).
 4. If the feature produces new display data, add a field to the relevant per-page
    view struct and update the corresponding match arm in `view()`.
-5. Write at least one test for the new Event variant.
+5. Ensure the new Event variant is testable (test-writer will generate tests).
 
 ### Removing a feature
 
@@ -657,15 +648,14 @@ when applying changes in steps U5--U7.
 3. Remove any Model fields that are now unused (not referenced by any remaining
    event handler or `view()`).
 4. Remove any per-page view struct fields that are now unused.
-5. Remove tests for the removed Event variant.
-6. Check for helper functions that are now unused and remove them.
+5. Check for helper functions that are now unused and remove them.
 
 ### Modifying a feature
 
 1. Update the Event variant payload if the signature changed.
 2. Update the match arm logic in `update()`.
 3. Update any Model or ViewModel fields affected by the change.
-4. Update tests to reflect the new behavior.
+4. Ensure modified Event variant remains testable (test-writer will update tests).
 
 ### Adding a capability
 
@@ -679,7 +669,6 @@ when applying changes in steps U5--U7.
 7. Add internal Event variants for the capability's callbacks (with `#[serde(skip)]`
    and `#[facet(skip)]`).
 8. Add match arms in `update()` for the new internal Event variants.
-9. Write tests for the new capability interactions.
 
 ### Removing a capability
 
@@ -692,7 +681,6 @@ Reverse of adding -- remove in this order to avoid compilation errors:
 5. Remove `use` imports.
 6. Remove the crate from `shared/Cargo.toml` and workspace `Cargo.toml`.
 7. If custom, delete the module file and remove `pub mod {name};` from `lib.rs`.
-8. Remove related tests.
 
 ### Changing an API endpoint
 
@@ -701,13 +689,13 @@ Reverse of adding -- remove in this order to avoid compilation errors:
 3. Update request body structs if the payload shape changed.
 4. Update response handling if the response shape changed (may require updating
    the internal Event variant's payload type).
-5. Update tests that verify HTTP requests or responses.
+5. Ensure changed API shapes remain testable (test-writer will update tests).
 
 ### Changing a business rule
 
 1. Locate the match arm(s) in `update()` that enforce the rule.
 2. Update the guard condition, validation logic, or helper function.
-3. Update or add tests that verify the old and new rule behavior.
+3. Ensure changed rule is testable (test-writer will update tests).
 
 ## Preservation Rules
 
@@ -780,7 +768,6 @@ all other items apply in both modes.
 ### Build and lint
 
 - [ ] `cargo check` passes with no errors
-- [ ] `cargo test` passes with no failures
 - [ ] `cargo clippy --all-targets` passes with no warnings
 - [ ] Workspace lints (`all`, `nursery`, `pedantic`, `cargo`, restriction cherry-picks)
   are configured in workspace `Cargo.toml` and inherited via `[lints] workspace = true`
@@ -810,7 +797,6 @@ all other items apply in both modes.
 
 ### Code quality
 
-- [ ] At least one test per Event variant exists
 - [ ] No `unwrap()` or `expect()` in production code (allowed in tests; `expect()` allowed
   only for provably infallible operations like serializing a simple derive struct)
 - [ ] No unused dependencies in `Cargo.toml` -- every crate has a matching `use` in `src/`
@@ -837,8 +823,6 @@ all other items apply in both modes.
   its callback Event variants and match arms are also removed
 - [ ] **(update)** No orphaned Effect variants or type aliases for removed capabilities
 - [ ] **(update)** No orphaned imports (`use` statements) for removed crates or types
-- [ ] **(update)** Tests exist for every **new or modified** Event variant
-- [ ] **(update)** Existing passing tests for **unchanged** features still pass
 - [ ] **(update)** Preservation rules were followed -- unchanged code, comments,
   helpers, and test utilities were not modified
 
@@ -862,4 +846,7 @@ all other items apply in both modes.
   for compile-time type extraction. Do NOT use `crux_core::cli::run()` which depends on
   `rustdoc-types` and breaks with newer Rust versions.
 - **SSE is not a published crate**: It is a custom capability. Generate it inline when needed.
+- **Tests are test-writer's responsibility**: core-writer generates code only. The build
+  orchestration layer runs test-writer after core-writer, then runs a unified verify-repair
+  loop. Test coverage, spec traceability, and test updates are all owned by test-writer.
 - **Core only**: This skill generates only the `shared` crate. Shell skills are separate.

@@ -79,7 +79,7 @@ severity (Critical or Warning), and suggested fix.
 
 Read `references/logic-review-checks.md` in this skill's directory.
 
-Apply checks LOG-001 through LOG-008. These require reasoning about event
+Apply checks LOG-001 through LOG-009. These require reasoning about event
 sequences, not just pattern matching. For each check:
 
 1. **LOG-001 State machine completeness** -- Enumerate every state enum
@@ -112,9 +112,15 @@ sequences, not just pattern matching. For each check:
    input without validation that common sense requires (empty strings, negative
    numbers, duplicate IDs) even if the spec is silent.
 
-8. **LOG-008 Missing edge-case tests** -- Cross-reference the `#[cfg(test)]`
-   module against the interaction sequences from LOG-001--007. Each identified
-   risk should have at least one test.
+8. **LOG-008 Spec-to-test coverage gap** -- For each `#### Scenario:` in
+   `spec.md`, verify a test with a matching `/// Spec:` traceability comment
+   (referencing the stable `REQ-XXX` ID) exists in the `#[cfg(test)]` module.
+   Additionally, cross-reference interaction sequences from LOG-001--007 to
+   verify edge-case coverage. List all missing scenarios in the report.
+
+9. **LOG-009 Stale tests** -- Identify tests with `/// Spec:` traceability
+   comments that reference scenarios no longer present in the spec. Flag
+   them as Warning findings for human review. Do not auto-delete.
 
 Record findings with severity Critical (data loss, incorrect server calls) or
 Warning (stale UI, missing tests).
@@ -398,7 +404,7 @@ This skill is invoked as part of the Vectis build phase, after core-writer
 generation and compiler verification, before merge:
 
 ```
-define -> build (core-writer) -> verify -> review-fix cycle (this skill, up to 3 iterations) -> generate change for design issues -> merge
+define -> build (core-writer) -> test (test-writer) -> verify -> review-fix cycle (this skill, up to 3 iterations) -> generate change for design issues -> merge
 ```
 
 The review-fix cycle auto-fixes mechanical issues and re-reviews its own
