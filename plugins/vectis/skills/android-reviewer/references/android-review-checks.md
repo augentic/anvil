@@ -211,25 +211,35 @@ against `sealed interface` data class variants.
 **Fix**: Use `==` for `enum class` values; use `is` for `sealed interface`
 data class variants; use direct reference for `data object` variants.
 
-## AND-015: Async Effect Handler Missing try/catch
+## AND-015: Async Effect Handler Missing try/catch or Missing Fallback Resolve
 
 **Severity**: Critical
 
 All async effect handlers (SSE, Time) that run inside `scope.launch` blocks
 MUST wrap their body in `try/catch` to prevent unhandled exceptions from
 crashing the app. The catch block MUST rethrow `CancellationException` to
-preserve coroutine cancellation semantics.
+preserve coroutine cancellation semantics. The catch block MUST also call
+`resolveAndHandleEffects` with a fallback response so the core request ID
+is never left unresolved (e.g., `SseResponse.Done` for SSE,
+`TimeResponse.DurationElapsed` / `TimeResponse.InstantArrived` for timers).
+A catch block that only logs leaves the core stalled in a loading or pending
+state.
 
 **Detection**: In `Core.kt`, search for `scope.launch` blocks inside
-`processRequest`. Verify each has a `try/catch` wrapping the body. Check
-that `CancellationException` is rethrown (`catch (e: CancellationException) { throw e }`).
+`processRequest` and inside `handleTimeEffect`. Verify each has a
+`try/catch` wrapping the body. Check that `CancellationException` is
+rethrown (`catch (e: CancellationException) { throw e }`). Check that the
+non-cancellation catch branch calls `resolveAndHandleEffects`.
 
 **Fix**: Wrap the `scope.launch` body in:
 ```kotlin
 try {
     // ... effect handling
 } catch (e: CancellationException) { throw e }
-catch (e: Exception) { Log.e(TAG, "effect error", e) }
+catch (e: Exception) {
+    Log.e(TAG, "effect error", e)
+    resolveAndHandleEffects(requestId, fallbackResponse.bincodeSerialize())
+}
 ```
 
 ## AND-016: Missing SupervisorJob in CoroutineScope

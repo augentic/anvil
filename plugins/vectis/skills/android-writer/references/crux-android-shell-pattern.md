@@ -97,7 +97,10 @@ For apps with HTTP, SSE, KV, Time, or Platform effects. Uses coroutines and
 
 **CRITICAL**: All `scope.launch` blocks for async effects (SSE, Time) MUST
 wrap their body in `try/catch` to prevent unhandled exceptions from crashing
-the app. Always rethrow `CancellationException`.
+the app. Always rethrow `CancellationException`. Catch blocks MUST call
+`resolveAndHandleEffects` with a fallback response (e.g., `SseResponse.Done`
+for SSE, `TimeResponse.DurationElapsed` / `TimeResponse.InstantArrived` for
+timers) so the core request ID is never left unresolved.
 
 ```kotlin
 package com.vectis.myapp.core
@@ -154,7 +157,10 @@ class Core(
                             resolveAndHandleEffects(request.id, response.bincodeSerialize())
                         }
                     } catch (e: CancellationException) { throw e }
-                    catch (e: Exception) { Log.e(TAG, "SSE error: ${e.message}", e) }
+                    catch (e: Exception) {
+                        Log.e(TAG, "SSE error: ${e.message}", e)
+                        resolveAndHandleEffects(request.id, SseResponse.Done.bincodeSerialize())
+                    }
                 }
             }
             is Effect.Time -> {
@@ -248,6 +254,7 @@ private suspend fun handleTimeEffect(requestId: UInt, timeRequest: TimeRequest) 
                 } catch (e: Exception) {
                     timerJobs.remove(timerId)
                     Log.e(TAG, "Timer NotifyAfter error", e)
+                    resolveAndHandleEffects(requestId, TimeResponse.DurationElapsed(timerId).bincodeSerialize())
                 }
             }
         }
@@ -271,6 +278,7 @@ private suspend fun handleTimeEffect(requestId: UInt, timeRequest: TimeRequest) 
                 } catch (e: Exception) {
                     timerJobs.remove(timerId)
                     Log.e(TAG, "Timer NotifyAt error", e)
+                    resolveAndHandleEffects(requestId, TimeResponse.InstantArrived(timerId).bincodeSerialize())
                 }
             }
         }
@@ -310,7 +318,10 @@ is Effect.ServerSentEvents -> {
                 resolveAndHandleEffects(request.id, response.bincodeSerialize())
             }
         } catch (e: CancellationException) { throw e }
-        catch (e: Exception) { Log.e(TAG, "SSE error: ${e.message}", e) }
+        catch (e: Exception) {
+            Log.e(TAG, "SSE error: ${e.message}", e)
+            resolveAndHandleEffects(request.id, SseResponse.Done.bincodeSerialize())
+        }
     }
 }
 ```

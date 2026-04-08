@@ -520,7 +520,10 @@ class Core(
                             resolveAndHandleEffects(request.id, response.bincodeSerialize())
                         }
                     } catch (e: CancellationException) { throw e }
-                    catch (e: Exception) { Log.e(TAG, "SSE error: ${e.message}", e) }
+                    catch (e: Exception) {
+                        Log.e(TAG, "SSE error: ${e.message}", e)
+                        resolveAndHandleEffects(request.id, SseResponse.Done.bincodeSerialize())
+                    }
                 }
             }
             // ...other effects
@@ -532,7 +535,10 @@ class Core(
 **CRITICAL**: All `scope.launch` blocks for async effects (SSE, Time) MUST
 wrap their body in `try/catch` to prevent unhandled exceptions from crashing
 the app. Always rethrow `CancellationException` to preserve coroutine
-cancellation semantics.
+cancellation semantics. Catch blocks MUST call `resolveAndHandleEffects`
+with a fallback response (e.g., `SseResponse.Done` for SSE,
+`TimeResponse.DurationElapsed` / `TimeResponse.InstantArrived` for timers)
+so the core request ID is never left unresolved.
 
 Include only the effect handlers that the app actually uses.
 See `references/crux-android-shell-pattern.md` for full implementations of

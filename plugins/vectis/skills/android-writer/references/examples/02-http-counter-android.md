@@ -247,7 +247,10 @@ class Core(
                             resolveAndHandleEffects(request.id, response.bincodeSerialize())
                         }
                     } catch (e: CancellationException) { throw e }
-                    catch (e: Exception) { Log.e(TAG, "SSE error: ${e.message}", e) }
+                    catch (e: Exception) {
+                        Log.e(TAG, "SSE error: ${e.message}", e)
+                        resolveAndHandleEffects(request.id, SseResponse.Done.bincodeSerialize())
+                    }
                 }
             }
             is Effect.Render -> {
