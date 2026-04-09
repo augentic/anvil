@@ -40,7 +40,7 @@ Generate cross-platform Crux applications: Rust shared core, SwiftUI iOS shell, 
 - **ios-reviewer** -- Review generated iOS shells via agent team (structural/quality/integration specialists + antagonist)
 - **android-writer** -- Generate or update Kotlin/Jetpack Compose Android shells for Crux applications
 - **android-reviewer** -- Review generated Android shells via agent team (structural/quality/integration specialists + antagonist)
-- **design-system-writer** -- Generate VectisDesign Swift package from tokens.yaml
+- **design-system-writer** -- Generate VectisDesign from tokens.yaml (iOS Swift package and Android Compose Material 3 library)
 
 ## RT (`plugins/rt/`)
 

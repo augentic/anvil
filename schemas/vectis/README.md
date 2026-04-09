@@ -55,7 +55,7 @@ determine which build skills are invoked, not how specs are structured.
 | `ios` | SwiftUI iOS shell | `vectis:ios-writer` |
 | `android` | Kotlin/Jetpack Compose Android shell | `vectis:android-writer` |
 | `web` | Web shell (future) | — |
-| `design-system` | VectisDesign Swift package from tokens.yaml | `vectis:design-system-writer` |
+| `design-system` | VectisDesign from tokens.yaml (iOS SPM + Android library) | `vectis:design-system-writer` |
 
 ## Schema Framework
 

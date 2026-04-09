@@ -88,7 +88,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `ios-reviewer` - review iOS shells via agent team (structural/quality/integration specialists + antagonist)
 - `android-writer` - generate or update Kotlin/Jetpack Compose Android shells
 - `android-reviewer` - review Android shells via agent team (structural/quality/integration specialists + antagonist)
-- `design-system-writer` - generate VectisDesign Swift package from tokens
+- `design-system-writer` - generate VectisDesign from tokens (iOS Swift package + Android Compose library)
 
 ### Plan Plugin (`plugins/plan/`)
 

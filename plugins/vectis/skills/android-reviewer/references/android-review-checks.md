@@ -66,12 +66,17 @@ Compose Navigation APIs rather than explicit dispatch.
 Composables should use design system color tokens when available, not
 hardcoded `Color(...)`, `Color.Red`, or hex values.
 
-**Detection**: Search `.kt` files for:
+**Detection**: Search `.kt` files under the **app module** source roots
+(typically `app/src/main/java/` or `app/src/main/kotlin/`) for:
 - `Color(0x` or `Color(red =` (explicit color construction)
 - `Color.Red`, `Color.Blue`, etc. (named colors used as semantic colors)
-- Hex color patterns `0xFF[0-9A-Fa-f]{6}` outside design system definitions
+- Hex color patterns `0xFF[0-9A-Fa-f]{6}` outside generated design-system code
 
 Exclude Material Theme color references (`MaterialTheme.colorScheme.*`).
+
+**Do not flag** the generated **VectisDesign** Android library under
+`design-system/android/` — it legitimately contains `Color(0xFF...)` emitted
+from `tokens.yaml`.
 
 **Fix**: Replace with the appropriate design system color token or
 `MaterialTheme.colorScheme` reference.
@@ -83,11 +88,12 @@ Exclude Material Theme color references (`MaterialTheme.colorScheme.*`).
 Composables should use design system typography tokens or `MaterialTheme.typography`
 rather than inline `TextStyle(fontSize = ...)`.
 
-**Detection**: Search `.kt` files for `TextStyle(fontSize` or
+**Detection**: Search **app module** `.kt` files for `TextStyle(fontSize` or
 `fontSize = ` with numeric literals without a preceding design system
 reference.
 
-Exclude icon sizing in `Icon` composables.
+Exclude icon sizing in `Icon` composables. Exclude generated sources under
+`design-system/android/` (token `TextStyle` definitions).
 
 **Fix**: Replace with the appropriate design system typography token or
 `MaterialTheme.typography` reference.
@@ -99,11 +105,13 @@ Exclude icon sizing in `Icon` composables.
 Padding and spacing values should use design system spacing tokens, not
 magic numbers.
 
-**Detection**: Search for `.padding(` or `Arrangement.spacedBy(` with numeric
-literals (`X.dp`) that are not `0.dp`. Check that the value matches a token;
-flag if it does not.
+**Detection**: In **app module** composables, search for `.padding(` or
+`Arrangement.spacedBy(` with numeric literals (`X.dp`) that are not `0.dp`.
+Check that the value matches a token; flag if it does not. Skip generated
+`design-system/android/` sources.
 
-**Fix**: Replace with the appropriate design system spacing token.
+**Fix**: Replace with the appropriate design system spacing token (e.g.
+`VectisSpacing.md` from `com.vectis.design`).
 
 ## AND-008: Missing Preview
 

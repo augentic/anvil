@@ -21,4 +21,4 @@ and any platform-specific requirements in dedicated sections.
 | `vectis:ios-reviewer`          | AI code review for iOS shell       | Post-implementation review of iOS      |
 | `vectis:android-writer`        | Generate or update Android shell   | Android shell implementation tasks     |
 | `vectis:android-reviewer`      | AI code review for Android shell   | Post-implementation review of Android  |
-| `vectis:design-system-writer`  | Generate design system from tokens | Design system generation tasks         |
+| `vectis:design-system-writer`  | Regenerate iOS + Android design system from tokens | Design system generation tasks         |

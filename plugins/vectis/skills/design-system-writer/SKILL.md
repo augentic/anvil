@@ -1,18 +1,26 @@
 ---
 name: design-system-writer
-description: Generate or update the platform-specific design system implementation from tokens.yaml. Use when implementing design-system tasks from a Specify change, or when the user mentions design-system-writer.
+description: Generate or update the platform-specific design system implementation from tokens.yaml for iOS (Swift Package) and Android (Jetpack Compose Material 3 library). Use when implementing design-system tasks from a Specify change, or when the user mentions design-system-writer.
 ---
 
 # Design System Writer
 
 Generate (or regenerate) the platform-specific design system code from
-`tokens.yaml`. The Swift files under `design-system/ios/` are fully derived
-from the YAML source and carry a "do not edit manually" comment. Every
-invocation reads the YAML and overwrites the Swift files.
+`tokens.yaml` for **both**:
+
+1. **iOS** — Swift files under `design-system/ios/` (`VectisDesign` Swift
+   Package), verified with `swift build`.
+2. **Android** — Kotlin sources under `design-system/android/` (`vectis-design`
+   Gradle library module using Compose Material 3), verified with
+   `./gradlew :vectis-design:compileDebugKotlin` from the Android project.
+
+Generated token files carry a "do not edit manually" comment (except iOS
+`Theme.swift` and Android `Theme.kt`, which are structural scaffolds without
+that header — same rule as Swift).
 
 Unlike core-writer or ios-writer, there is no create vs update distinction.
-The mapping from YAML to Swift is mechanical and deterministic -- the skill
-always regenerates from scratch.
+The mapping from YAML to Swift and Kotlin is mechanical and deterministic — the
+skill always regenerates token outputs from scratch for both platforms.
 
 ## Arguments
 
@@ -20,6 +28,8 @@ always regenerates from scratch.
 |---|---|---|
 | `tokens-file` | No | Path to the tokens YAML file. Defaults to `design-system/tokens.yaml` |
 | `output-dir` | No | Path to the iOS Swift Package directory. Defaults to `design-system/ios` |
+| `android-output-dir` | No | Path to the Android library module root. Defaults to `design-system/android` |
+| `android-package` | No | Kotlin package for generated sources. Defaults to `com.vectis.design` |
 | `change-dir` | No | Path to a Specify change directory. When provided, the skill reads the `## Design System Requirements` section from `{change-dir}/specs/{feature-name}/spec.md` for context on what token changes are expected. |
 
 ## Process
@@ -27,167 +37,194 @@ always regenerates from scratch.
 ### 1. Read and inventory tokens
 
 Read the tokens YAML file. Build an inventory of every top-level key (excluding
-`version`). Each key is a **token category** that maps to one Swift enum.
+`version`). Each key is a **token category** that maps to one Swift enum **and**
+the corresponding Kotlin artifact (see table below).
 
-Currently defined categories:
-
-| YAML key | Swift enum | File |
-|---|---|---|
-| `colors` | `VectisColors` | `Colors.swift` |
-| `typography` | `VectisTypography` | `Typography.swift` |
-| `spacing` | `VectisSpacing` | `Spacing.swift` (first section) |
-| `cornerRadius` | `VectisCornerRadius` | `Spacing.swift` (second section) |
+| YAML key | Swift enum | Kotlin | File(s) |
+|---|---|---|---|
+| `colors` | `VectisColors` | `vectisLightColorScheme()`, `vectisDarkColorScheme()`, `vectisColor()` | iOS: `Colors.swift` / Android: `VectisColorScheme.kt` |
+| `typography` | `VectisTypography` | `VectisTypography` object + `vectisTypography()` | `Typography.swift` / `Typography.kt` |
+| `spacing` | `VectisSpacing` | `VectisSpacing` object | `Spacing.swift` (first section) / `Spacing.kt` |
+| `cornerRadius` | `VectisCornerRadius` | `VectisCornerRadius` object | `Spacing.swift` (second section) / `Spacing.kt` |
 
 If a new top-level key appears in the YAML (e.g., `elevation`, `opacity`,
-`animation`), the skill generates a new Swift file for it using the
-appropriate value-shape mapping (see step 2).
+`animation`), generate new Swift **and** Kotlin artifacts using the appropriate
+value-shape mapping (see step 2). Extend
+`references/swift-token-templates.md` and `references/kotlin-token-templates.md`
+together when introducing a new shape.
 
 ### 2. Classify value shapes
 
-Each token category has a **value shape** that determines the Swift code
-pattern. Detect the shape from the first entry in the category:
+Each token category has a **value shape** that determines code patterns on both
+platforms. Detect the shape from the first entry in the category:
 
-| Shape | Detection | Swift pattern |
-|---|---|---|
-| **Color** | Values have `light` and `dark` keys | `Color(light:dark:)` static |
-| **Font** | Values have `size` and `weight` keys | `Font.system(size:weight:)` static |
-| **Scalar** | Values are plain numbers | `CGFloat` static |
+| Shape | Detection | Swift pattern | Kotlin pattern |
+|---|---|---|---|
+| **Color** | Values have `light` and `dark` keys | `Color(light:dark:)` static | `vectisColor` + `lightColorScheme` / `darkColorScheme` |
+| **Font** | Values have `size` and `weight` keys | `Font.system(size:weight:)` static | `TextStyle` + `vectisTypography(): Typography` |
+| **Scalar** | Values are plain numbers | `CGFloat` static | `Dp` in `object` |
 
-Read `references/swift-token-templates.md` for the exact Swift code templates
-for each shape, including helper extensions and the weight mapping table.
+Read `references/swift-token-templates.md` and
+`references/kotlin-token-templates.md` for exact templates, weight mapping, and
+Material 3 `ColorScheme` field mapping (`surfaceSecondary` → `surfaceVariant`,
+`shadow` → `scrim`, etc.).
 
-### 3. Generate token files
+---
+
+## iOS generation
+
+### 3. Generate Swift token files
 
 For each token category, generate or overwrite the corresponding Swift file
 under `{output-dir}/Sources/VectisDesign/`. This step covers token enum files
-only -- `Theme.swift` is handled separately in step 4.
+only — `Theme.swift` is handled separately in step 5.
 
 **File naming rules:**
 
-- Convert the YAML key to PascalCase for the filename (e.g., `colors` ->
-  `Colors.swift`, `typography` -> `Typography.swift`).
-- Exception: `spacing` and `cornerRadius` are colocated in `Spacing.swift`
-  as two separate enums (`VectisSpacing` and `VectisCornerRadius`). This
-  matches the existing layout and avoids a file with only five entries.
+- Convert the YAML key to PascalCase for the filename (e.g., `colors` →
+  `Colors.swift`, `typography` → `Typography.swift`).
+- Exception: `spacing` and `cornerRadius` are colocated in `Spacing.swift` as
+  two separate enums (`VectisSpacing` and `VectisCornerRadius`).
 
-**Enum naming:** `Vectis{PascalCaseCategory}` (e.g., `VectisColors`,
-`VectisTypography`, `VectisSpacing`, `VectisCornerRadius`).
+**Enum naming:** `Vectis{PascalCaseCategory}`.
 
-**File structure:**
+**File structure:** See `references/swift-token-templates.md` (import,
+MARK, generated comment, enum, color extensions).
 
-1. `import SwiftUI`
-2. MARK comment with the category name
-3. Generated-file comment: `// Generated from design-system/tokens.yaml — do not edit manually.`
-4. `public enum Vectis{Category} { ... }` with one `public static let` per token
-5. For color files only: append the `Color(light:dark:)` initializer extension
-   and the `UIColor(hex:)` convenience initializer
+### 4. Generate iOS `Theme.swift`
 
-Token entries within an enum preserve the order from the YAML file.
+Regenerate `Theme.swift` to reference all generated enums (environment key +
+`.vectisTheme()` modifier). No "Generated from" header.
 
-For colocated files (e.g., `Spacing.swift` containing both `VectisSpacing` and
-`VectisCornerRadius`), the `// Generated from` comment appears only after the
-first MARK. The second enum section has only its own `// MARK:` comment.
+### 5. Generate iOS `Package.swift` (if missing)
 
-For color tokens, group entries with a blank line between semantic groups
-(primary group, secondary group, surface group, error group, utility group).
-Use the explicit grouping table in `references/swift-token-templates.md` for
-current tokens. For novel tokens, group by shared prefix root
-(e.g., `primary`, `primaryContainer`, `onPrimary`, `onPrimaryContainer`).
+If `{output-dir}/Package.swift` does not exist, generate it per
+`references/swift-token-templates.md`. If the file already exists, leave it
+unchanged.
 
-### 4. Generate Theme.swift
+---
 
-`Theme.swift` is structural scaffolding, not a token file. It does NOT use the
-step 3 file structure (no MARK header, no "Generated from" comment). Instead
-it uses the dedicated Theme template from the reference documentation.
+## Android generation
 
-Regenerate `Theme.swift` to reference all generated enums. The file contains:
+### 6. Generate Kotlin token files
 
-- The `VectisTheme` struct with one `public let` property per token category,
-  typed as `Vectis{Category}.Type` and defaulting to `Vectis{Category}.self`
-- The `VectisThemeKey` environment key
-- The `EnvironmentValues` extension
-- The `.vectisTheme()` view modifier
+Emit sources under:
 
-Read `references/swift-token-templates.md` for the complete `Theme.swift`
-template.
+`{android-output-dir}/src/main/kotlin/{android-package path}/`
 
-### 5. Generate Package.swift (if missing)
+Example package `com.vectis.design` → directory `com/vectis/design/`.
 
-If `{output-dir}/Package.swift` does not exist, generate it:
+**Files (regenerate from YAML each run):**
 
-```swift
-// swift-tools-version: 6.0
+| File | Contents |
+|---|---|
+| `VectisColorScheme.kt` | `vectisColor(hex)`, `vectisLightColorScheme()`, `vectisDarkColorScheme()` |
+| `Typography.kt` | `object VectisTypography` + `fun vectisTypography(): Typography` |
+| `Spacing.kt` | `object VectisSpacing` and `object VectisCornerRadius` (colocated, like Swift) |
+| `Theme.kt` | `@Composable fun VectisTheme(...)` wrapping `MaterialTheme` with static token schemes |
 
-import PackageDescription
+Use **static** light/dark schemes from tokens (not `dynamicLightColorScheme`) so
+Android matches iOS adaptive colors. Reserve dynamic color for app shells that
+have **no** `tokens.yaml` (see android-writer).
 
-let package = Package(
-    name: "VectisDesign",
-    platforms: [
-        .iOS(.v17),
-        .macOS(.v14),
-    ],
-    products: [
-        .library(name: "VectisDesign", targets: ["VectisDesign"]),
-    ],
-    targets: [
-        .target(name: "VectisDesign"),
-    ]
-)
+Apply the generated-file comment to every file **except** `Theme.kt` (scaffold,
+same as iOS `Theme.swift`).
+
+**Imports:** `androidx.compose.material3`, `androidx.compose.ui.graphics.Color`,
+`androidx.compose.ui.text.*`, `androidx.compose.ui.unit.*`, as required by
+templates in `references/kotlin-token-templates.md`.
+
+### 7. Generate Android `build.gradle.kts` (if missing)
+
+If `{android-output-dir}/build.gradle.kts` does not exist, generate the minimal
+Android library file from `references/kotlin-token-templates.md` (Compose + M3,
+same `compileSdk` / `minSdk` / JVM target as the android-writer app template).
+
+If the file already exists, **do not overwrite** — teams may pin dependencies or
+ABI options (mirror: iOS `Package.swift` left unchanged when present).
+
+### 8. Consumer wiring (documentation only)
+
+The **android-writer** skill is responsible for `settings.gradle.kts` and
+`app/build.gradle.kts` (`include(":vectis-design")` and
+`implementation(project(":vectis-design"))`). The design-system-writer does not
+edit consumer apps unless the task explicitly includes them; after generating
+the library, remind that Android projects need the include path, typically:
+
+```kotlin
+include(":vectis-design")
+project(":vectis-design").projectDir = file("../design-system/android")
 ```
 
-If the file already exists, leave it unchanged. SPM auto-discovers source
-files so no update is needed when files are added or removed.
+Adjust the relative path when the Android directory is not one level below the
+repo root (same idea as the iOS path to `design-system/ios`).
 
-### 6. Verify build
+---
 
-Run `swift build` in the `{output-dir}` directory. If the build fails:
+## Verification
 
-1. Read the error output
-2. Fix the generated file that caused the failure
-3. Re-run `swift build`
-4. Repeat until clean
+### 9. Verify iOS build
 
-### 7. Check downstream impact (optional)
+Run `swift build` in `{output-dir}`. On failure: read errors, fix generated
+Swift, repeat until clean.
 
-Search the workspace for downstream consumers that `import VectisDesign`:
+### 10. Verify Android build
 
+From the **Android** project directory that includes `:vectis-design` (after
+wiring, or a scratch project for CI):
+
+```bash
+./gradlew :vectis-design:compileDebugKotlin
 ```
-grep -r "import VectisDesign" . --include="*.swift" -l
-```
 
-If any are found, run `swift build` (or the project's build command) in each
-consumer's directory to verify the token changes did not break downstream
-consumers. Report any failures.
+On failure: read errors, fix generated Kotlin or the **missing** consumer
+Gradle wiring, repeat until clean.
 
-### 8. Removing stale files
+If the repo has no Android project yet, skip this step and record that
+verification is pending shell generation.
 
-If a token category was removed from `tokens.yaml`, the corresponding Swift
-file should be deleted from `Sources/VectisDesign/`. Compare the set of
-expected files (derived from YAML keys) against the actual files in the
-directory. Delete any generated file that no longer has a corresponding
-YAML category.
+---
 
-Do NOT delete `Theme.swift` or `Package.swift` -- these are always present.
+## Downstream impact (optional)
 
-Do NOT delete files that do not carry the "Generated from" header comment --
-these may be hand-written additions.
+**iOS** — search for `import VectisDesign` and rebuild consumers.
 
-## Adding a New Token Category
+**Android** — search for `import com.vectis.design` (or the chosen
+`android-package`) and rebuild the app module.
 
-When a user adds a new top-level key to `tokens.yaml`:
+---
 
-1. Detect the value shape (color, font, or scalar)
-2. Generate a new Swift file with the appropriate enum
-3. Add a property to `VectisTheme` for the new category
-4. Rebuild and verify
+## Removing stale files
 
-No changes to `Package.swift` are needed (SPM auto-discovers sources).
+**Swift:** If a token category was removed from `tokens.yaml`, delete the
+corresponding generated Swift file under `Sources/VectisDesign/`. Do not delete
+`Theme.swift` or `Package.swift`. Do not delete files without the "Generated
+from" header.
 
-## Value Shape Reference
+**Kotlin:** Delete generated token files under `{android-output-dir}/src/.../`
+that no longer correspond to YAML categories. Do not delete `build.gradle.kts`
+if present. Do not delete `Theme.kt` when categories are removed — regenerate it
+so `VectisTheme` still compiles (it may only depend on remaining APIs).
+
+---
+
+## Adding a new token category
+
+1. Detect the value shape (color, font, or scalar).
+2. Generate new Swift file + Kotlin file(s) with the appropriate pattern.
+3. Add a property to iOS `VectisTheme` for the new category.
+4. If the new category affects Material theming on Android, extend
+   `vectisTypography()` / color scheme mapping or add a new Kotlin object.
+5. Rebuild iOS and Android.
+
+---
+
+## Value shape reference
 
 ### Color shape
 
 YAML:
+
 ```yaml
 colors:
   primary:
@@ -196,13 +233,19 @@ colors:
 ```
 
 Swift:
+
 ```swift
 public static let primary = Color(light: "#007AFF", dark: "#0A84FF")
 ```
 
+Kotlin: map `light` into `vectisLightColorScheme()`, `dark` into
+`vectisDarkColorScheme()` using `vectisColor("#...")` per
+`references/kotlin-token-templates.md`.
+
 ### Font shape
 
 YAML:
+
 ```yaml
 typography:
   largeTitle:
@@ -211,44 +254,75 @@ typography:
 ```
 
 Swift:
+
 ```swift
 public static let largeTitle = Font.system(size: 34, weight: .bold)
 ```
 
-Weight mapping: `bold` -> `.bold`, `semibold` -> `.semibold`, `regular` ->
-`.regular`, `medium` -> `.medium`, `light` -> `.light`, `thin` -> `.thin`,
-`ultraLight` -> `.ultraLight`, `heavy` -> `.heavy`, `black` -> `.black`.
+Kotlin: `VectisTypography.largeTitle = TextStyle(fontSize = 34.sp, fontWeight = FontWeight.Bold, ...)`
+and wire into `vectisTypography()`.
+
+Weight mapping matches Swift (see swift-token-templates / kotlin-token-templates).
 
 ### Scalar shape
 
 YAML:
+
 ```yaml
 spacing:
   md: 16
 ```
 
 Swift:
+
 ```swift
 public static let md: CGFloat = 16
 ```
 
-## Error Handling
+Kotlin:
+
+```kotlin
+val md = 16.dp
+```
+
+---
+
+## Error handling
 
 | Error | Resolution |
 |---|---|
 | `tokens.yaml` not found | Verify `tokens-file` path; default is `design-system/tokens.yaml` |
-| Unknown value shape | Token values must be color (light/dark), font (size/weight), or scalar (number). Report the unexpected structure and skip the category. |
-| `swift build` fails | Read compiler errors, fix the generated file, rebuild |
-| Downstream shell breaks | A renamed or removed token was referenced by an iOS shell. Report the affected file and token name. |
+| Unknown value shape | Token values must be color (light/dark), font (size/weight), or scalar (number). Report the unexpected structure and skip the category on both platforms. |
+| `swift build` fails | Read compiler errors, fix the generated Swift, rebuild |
+| `compileDebugKotlin` fails | Read compiler errors; fix Kotlin, or add/fix `:vectis-design` in settings and BOM alignment |
+| Downstream shell breaks | A renamed or removed token was referenced by a shell. Report the affected file and token name. |
 
-## Verification Checklist
+---
 
-- [ ] Every YAML category has a corresponding Swift enum
-- [ ] Every token in the YAML has a corresponding `public static let` in its enum
-- [ ] Token order in Swift matches order in YAML
+## Verification checklist
+
+**Shared**
+
+- [ ] Every YAML category has corresponding Swift and Kotlin outputs
+- [ ] Every token has a corresponding definition on both platforms
+- [ ] Token order matches YAML on both platforms
+
+**iOS**
+
 - [ ] `Theme.swift` references every generated enum
 - [ ] `Package.swift` exists
 - [ ] `swift build` passes
-- [ ] All token files have the "Generated from" header comment (Theme.swift is exempt)
-- [ ] No stale Swift files remain for removed categories
+- [ ] Generated Swift files have the "Generated from" header where required
+- [ ] No stale Swift token files for removed categories
+
+**Android**
+
+- [ ] `VectisColorScheme.kt`, `Typography.kt`, `Spacing.kt`, `Theme.kt` present and compile
+- [ ] Library uses Compose Material 3 and BOM alignment per kotlin-token-templates
+- [ ] `./gradlew :vectis-design:compileDebugKotlin` passes when the module is wired
+- [ ] No stale Kotlin token artifacts for removed categories
+
+**Consumers**
+
 - [ ] Downstream iOS shells (if any) still build
+- [ ] Downstream Android apps (if any) still build after `vectis-design` wiring

@@ -161,6 +161,19 @@ include(":app")
 include(":shared")
 ```
 
+### When `design-system/tokens.yaml` exists
+
+Include the generated Compose library (same Compose BOM and SDK alignment as
+`app`). Path is relative to `{app-dir}` (the `Android/` project root):
+
+```kotlin
+include(":vectis-design")
+project(":vectis-design").projectDir = file("../design-system/android")
+```
+
+Adjust `projectDir` if `design-system/android/` is not reachable via that
+relative path from `{app-dir}`.
+
 ## `gradle.properties`
 
 **CRITICAL**: Pin `org.gradle.java.home` to Java 21 LTS. Java 25+ version
@@ -298,6 +311,9 @@ android {
 
 dependencies {
     implementation(project(":shared"))
+    // When design-system/tokens.yaml exists and design-system-writer generated
+    // `design-system/android/`, also add:
+    // implementation(project(":vectis-design"))
     implementation(libs.lifecycle.viewmodel.compose)
 
     implementation(libs.androidx.core.ktx)

@@ -119,12 +119,16 @@ functions.
 **Severity**: Warning
 
 Every `.kt` file in `ui/screens/` that uses design system tokens must import
-the design system package.
+the generated design system package (default `com.vectis.design` for
+`VectisSpacing`, `VectisCornerRadius`, or `VectisTypography`).
 
-**Detection**: Search for design system token references (color, typography,
-spacing constants) without a corresponding import.
+**Detection**: Search for references to `VectisSpacing`, `VectisCornerRadius`,
+or `VectisTypography` without `import com.vectis.design...` (or the project’s
+configured package). Color and typography accessed only via
+`MaterialTheme.colorScheme` / `MaterialTheme.typography` after `VectisTheme`
+do not require an extra import.
 
-**Fix**: Add the missing design system import at the top of the file.
+**Fix**: Add the missing import at the top of the file.
 
 ## KTL-007: Deprecated Compose API Usage
 
