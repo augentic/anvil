@@ -97,7 +97,9 @@ function following the deterministic mapping rules in
 [spec-to-test-mapping.md](references/spec-to-test-mapping.md):
 
 1. **One test function per scenario** -- naming:
-   `test_<feature>_<scenario_snake_case>`
+   `test_<feature_snake>_<scenario_snake_case>` where `<feature_snake>` is
+   the spec folder name converted to snake_case (e.g., `weather-forecast`
+   becomes `weather_forecast`)
 2. **Happy path tests** from success scenarios (WHEN/THEN with expected
    state and view model)
 3. **Error case tests** from error scenarios (WHEN/THEN with expected error
@@ -113,7 +115,7 @@ function following the deterministic mapping rules in
 ```rust
 /// Spec: specs/<feature>/spec.md > REQ-XXX > Scenario: <scenario title>
 #[test]
-fn test_<feature>_<scenario_snake_case>() {
+fn test_<feature_snake>_<scenario_snake_case>() {
     // ...
 }
 ```
@@ -148,7 +150,7 @@ mod tests {
 
     /// Spec: specs/<feature>/spec.md > REQ-001 > Scenario: <title>
     #[test]
-    fn test_<feature>_<scenario>() {
+    fn test_<feature_snake>_<scenario>() {
         let app = app();
         let mut model = Model::default();
 
@@ -203,7 +205,7 @@ that happens at the orchestration level.
 - [ ] All tests are inside `#[cfg(test)] mod tests` in `app.rs`
 - [ ] Every spec scenario has a corresponding test function
 - [ ] Every test has a `/// Spec:` traceability comment with `REQ-XXX` ID
-- [ ] Test naming follows `test_<feature>_<scenario_snake_case>` convention
+- [ ] Test naming follows `test_<feature_snake>_<scenario_snake_case>` convention
 - [ ] Tests use synchronous `#[test]` (not `#[tokio::test]`)
 - [ ] Tests import `crux_core::App as _` for `update()` and `view()` access
 - [ ] Effect chain tests resolve effects and feed events back into `update()`
@@ -346,7 +348,7 @@ completes.
 ### Structure
 
 - [ ] Tests are inside `#[cfg(test)] mod tests` in `app.rs`
-- [ ] Test naming follows `test_<feature>_<scenario_snake_case>`
+- [ ] Test naming follows `test_<feature_snake>_<scenario_snake_case>`
 - [ ] Tests use `#[test]` (synchronous, no async runtime)
 - [ ] `crux_core::App as _` imported in test module
 - [ ] Factory functions extract repeated type construction

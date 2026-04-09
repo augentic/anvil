@@ -23,13 +23,15 @@ requirement's stable `ID: REQ-XXX` line is the traceability key:
 
 ```text
 #### Scenario: Successful item fetch
-  →  #[test] fn test_<feature>_successful_item_fetch()
+  →  #[test] fn test_<feature_snake>_successful_item_fetch()
 
 #### Scenario: Item not found
-  →  #[test] fn test_<feature>_item_not_found()
+  →  #[test] fn test_<feature_snake>_item_not_found()
 ```
 
-Naming convention: `test_<feature_snake>_<scenario_snake>`.
+Naming convention: `test_<feature_snake>_<scenario_snake>` where
+`<feature_snake>` is the spec folder name converted to snake_case
+(replace `-` with `_`).
 
 All tests are synchronous `#[test]` -- Crux's testing model does not
 require an async runtime.
@@ -42,7 +44,7 @@ requirement and scenario using the stable `REQ-XXX` ID:
 ```rust
 /// Spec: specs/<feature>/spec.md > REQ-001 > Scenario: Successful item fetch
 #[test]
-fn test_<feature>_successful_item_fetch() { ... }
+fn test_<feature_snake>_successful_item_fetch() { ... }
 ```
 
 The REQ-ID is the traceability key. If a requirement title is renamed but
@@ -100,7 +102,7 @@ Maps to:
 ```rust
 /// Spec: specs/<feature>/spec.md > REQ-001 > Scenario: Fetch items on load
 #[test]
-fn test_<feature>_fetch_items_on_load() {
+fn test_<feature_snake>_fetch_items_on_load() {
     let app = MyApp;
     let mut model = Model::default();
 
@@ -155,15 +157,15 @@ Produces:
 ```rust
 /// Spec: specs/<feature>/spec.md > REQ-001 > Scenario: Add new item
 #[test]
-fn test_<feature>_add_new_item() { ... }
+fn test_<feature_snake>_add_new_item() { ... }
 
 /// Spec: specs/<feature>/spec.md > REQ-001 > Scenario: Delete existing item
 #[test]
-fn test_<feature>_delete_existing_item() { ... }
+fn test_<feature_snake>_delete_existing_item() { ... }
 
 /// Spec: specs/<feature>/spec.md > REQ-001 > Scenario: Delete non-existent item
 #[test]
-fn test_<feature>_delete_non_existent_item() { ... }
+fn test_<feature_snake>_delete_non_existent_item() { ... }
 ```
 
 ### Validation Requirements
@@ -184,7 +186,7 @@ Produces:
 ```rust
 /// Spec: specs/<feature>/spec.md > REQ-002 > Scenario: Empty title rejected
 #[test]
-fn test_<feature>_empty_title_rejected() {
+fn test_<feature_snake>_empty_title_rejected() {
     let app = MyApp;
     let mut model = Model::default();
     model.page = Page::AddItem;
@@ -217,7 +219,7 @@ Produces:
 ```rust
 /// Spec: specs/<feature>/spec.md > REQ-003 > Scenario: Retry from error page
 #[test]
-fn test_<feature>_retry_from_error_page() {
+fn test_<feature_snake>_retry_from_error_page() {
     let app = MyApp;
     let mut model = Model::default();
     model.page = Page::Error {
