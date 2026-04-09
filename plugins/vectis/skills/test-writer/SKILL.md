@@ -150,7 +150,7 @@ mod tests {
 
     /// Spec: specs/<feature>/spec.md > REQ-001 > Scenario: <title>
     #[test]
-    fn test_<feature_snake>_<scenario>() {
+    fn test_<feature_snake>_<scenario_snake_case>() {
         let app = app();
         let mut model = Model::default();
 
