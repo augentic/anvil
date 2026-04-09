@@ -143,10 +143,11 @@ sequences, not just pattern matching. For each check:
 
 8. LOG-008 Spec-to-test coverage gap -- For each `#### Scenario:` in
    `spec.md`, verify a test with a matching `/// Spec:` traceability
-   comment (referencing the stable `REQ-XXX` ID) exists in the
-   `#[cfg(test)]` module. Additionally, cross-reference interaction
-   sequences from LOG-001--007 to verify edge-case coverage. List all
-   missing scenarios.
+   comment (referencing the stable `REQ-XXX` ID **and** the scenario
+   title) exists in the `#[cfg(test)]` module. A single requirement can
+   contain multiple scenarios; matching by ID alone is insufficient.
+   Additionally, cross-reference interaction sequences from LOG-001--007
+   to verify edge-case coverage. List all missing scenarios.
 
 9. LOG-009 Stale tests -- Identify tests with `/// Spec:` traceability
    comments that reference scenarios no longer present in the spec. Flag

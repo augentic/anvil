@@ -274,8 +274,10 @@ Same checklist as create mode Step 6, plus:
 
 The mapping from spec scenarios to tests is deterministic -- the same spec
 always produces the same test structure. Each BDD scenario maps to exactly
-one test function, keyed by the stable `REQ-XXX` ID (not the scenario
-title, which may change).
+one test function. The requirement identity is the stable `REQ-XXX` ID
+(not the requirement display name, which may change). Within a requirement,
+each scenario is matched by its title -- a requirement with 3 scenarios
+produces 3 tests, each traced to `REQ-XXX` + its scenario title.
 
 See [spec-to-test-mapping.md](references/spec-to-test-mapping.md) for the
 full mapping rules, including WHEN-to-setup and THEN-to-assertion
