@@ -55,11 +55,14 @@ the fixes. The cycle exits when no mechanical fixes are applied or
 
 #### 2a. Initialize team
 
-**CREATE** agent team with specialists appropriate for this iteration. Each
-receives the target-dir path and their assigned review scope.
+**CREATE** agent team with specialists appropriate for this iteration and
+scope. Each receives the target-dir path and their assigned review scope.
 
-**First iteration** (`iteration = 1`): Spawn all three specialists. This is
+**First iteration (`scope = full`)**: Spawn all three specialists. This is
 the comprehensive initial review.
+
+**First iteration (`scope = quick`)**: Spawn only the **Structural
+Specialist** and **Quality Specialist**. Skip the Logic Specialist.
 
 **Subsequent iterations** (`iteration > 1`): Spawn only the **Structural
 Specialist** and **Quality Specialist**, scoped to files modified by the
@@ -194,7 +197,7 @@ in `shared/src/` but reports only on their assigned checks.
 
 **Lead waits** for all specialists to complete before proceeding.
 
-#### 2c. Universal checks (lead)
+#### 2c. Universal checks (lead; skip if scope = quick)
 
 After all specialists report, the lead reads
 `../../references/universal-review-checks.md` and applies checks UNI-001
@@ -272,7 +275,7 @@ Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004,
 UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in
 the adversarial review and spec-change output in step 3.
 
-#### 2d. Comparative review (first iteration only; if reference-dir provided)
+#### 2d. Comparative review (first iteration only; if reference-dir provided; skip if scope = quick)
 
 Compare structural decisions between the target and reference apps:
 
