@@ -433,7 +433,7 @@ error-handling pattern:
 - **CoreFFI calls** (`coreFfi.update()`, `coreFfi.view()`, `coreFfi.resolve()`)
   use `try/catch` with `Log.e(TAG, "context: ${e.message}", e)`. These throw
   `CoreException` containing a meaningful `Bridge` error message from the Rust
-  core -- catching generically would discard this diagnostic information.
+  core -- catching without logging `e.message` would discard this diagnostic information.
 - **Bincode calls** (`bincodeSerialize()`, `bincodeDeserialize()`) use
   `try/catch` with `Log.w(TAG, "context", e)` and a safe fallback. These throw
   generic exceptions without structured messages.
