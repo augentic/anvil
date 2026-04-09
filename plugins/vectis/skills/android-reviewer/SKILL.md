@@ -322,7 +322,7 @@ Output format:
 ## New Findings: NEW-1, NEW-2, etc. with full finding details
 
 You MUST provide evidence for every challenge. Opinion alone is insufficient.
-You CANNOT remove findings entirely -- minimum action is downgrade to Info.
+You CANNOT remove findings entirely -- the minimum action is to downgrade.
 Severity downgrades move at most one level (Critical to Warning, not to Info).
 ```
 
