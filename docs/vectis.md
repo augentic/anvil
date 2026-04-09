@@ -97,13 +97,16 @@ Review the artifacts in `.specify/changes/<change-name>/`. Edit them by hand or 
 
 > `/spec:build`
 
-The agent works through the tasks in platform order: design-system first, then core, then shells. For the core, it invokes the `core-writer` skill to generate the `shared` crate, verifies with `cargo check`, `cargo test`, and `cargo clippy`, then runs the `core-reviewer` skill. If iOS is in scope, it invokes the `ios-writer` skill, verifies the build, then runs the `ios-reviewer` skill. If Android is in scope, it invokes the `android-writer` skill, verifies the build, then runs the `android-reviewer` skill.
+The agent works through the tasks in platform order: design-system first, then core, then shells. For the core, it invokes the `core-writer` skill to generate the `shared` crate, then the `test-writer` skill to generate spec-traced tests, verifies with `cargo check`, `cargo test`, and `cargo clippy`, then runs the `core-reviewer` skill. If iOS is in scope, it invokes the `ios-writer` skill, verifies the build, then runs the `ios-reviewer` skill. If Android is in scope, it invokes the `android-writer` skill, verifies the build, then runs the `android-reviewer` skill.
 
-The code review covers three passes:
+Each reviewer skill uses an agent team (3 specialist reviewers + 1 antagonist) following the shared [Agent Team Patterns](../plugins/references/agent-teams.md). The core-reviewer spawns Structural, Logic, and Quality specialists concurrently; the ios-reviewer and android-reviewer spawn Structural, Quality, and Integration specialists. After specialists complete, an Antagonist challenges all findings for evidence quality, severity accuracy, and false positives, then performs a counter-scan for missed issues. The lead synthesizes results with confidence scoring.
 
-- **Structural** -- missing `render()` calls, serde derives, input validation
-- **Logic** -- state machine completeness, operation coalescing, race conditions, conflict-resolution gaps, spec gap detection
-- **Quality** -- `unwrap()`/`expect()` in production, error handling, function length
+Core review categories:
+
+- **Structural** -- missing `render()` calls, serde derives, input validation (CRX checks)
+- **Logic** -- state machine completeness, operation coalescing, race conditions, conflict-resolution gaps, spec-to-test coverage (LOG checks)
+- **Quality** -- `unwrap()`/`expect()` in production, error handling, function length (GEN checks)
+- **Universal** -- cross-cutting checks applied by the lead (UNI checks)
 
 Critical and Warning findings are addressed before proceeding.
 
@@ -453,6 +456,7 @@ The `android-reviewer` skill reviews Android shell code (Kotlin/Jetpack Compose)
 | Skill | Purpose |
 | ----- | ------- |
 | `core-writer` | Generate or update the Rust Crux shared crate from Specify artifacts |
+| `test-writer` | Generate or update test suites from Specify artifacts with spec-to-test traceability |
 | `core-reviewer` | Review Crux core for structural, logic, and quality issues |
 | `ios-writer` | Generate or update the SwiftUI iOS shell from the Crux core |
 | `ios-reviewer` | Review iOS shell for structural and quality issues |

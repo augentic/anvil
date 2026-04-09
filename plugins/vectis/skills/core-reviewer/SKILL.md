@@ -23,11 +23,17 @@ state machine incompleteness, and interaction-sequence race conditions.
 
 ## Process
 
+This skill uses an agent team with 3 specialist reviewers and 1 antagonist.
+The lead coordinates the team, synthesizes findings, and produces the final
+report. See [Agent Team Patterns](references/agent-teams.md) for shared
+protocols (team roles, antagonist protocol, synthesis rules, file ownership,
+and confidence scoring).
+
 ### 1. Gather context
 
 Read the following files from `{target-dir}`:
 
-- `spec.md` -- the app specification (required for logic pass)
+- `spec.md` -- the app specification (required for logic specialist)
 - `shared/Cargo.toml` -- dependencies and features
 - All `.rs` files under `shared/src/` -- focus on `app.rs` (the `update()` function)
 
@@ -42,25 +48,34 @@ Before starting, initialize:
 - An empty list of **accumulated design-level findings** (carried across
   iterations)
 
-The cycle repeats: run review passes, report findings, auto-fix mechanical
-issues, then re-review the fixes. The cycle exits when no mechanical fixes
-are applied or `max_iterations` is reached.
+The cycle repeats: spawn the team, run specialist analysis, challenge via
+antagonist, synthesize findings, auto-fix mechanical issues, then re-review
+the fixes. The cycle exits when no mechanical fixes are applied or
+`max_iterations` is reached.
 
-#### 2a. Select passes for this iteration
+#### 2a. Initialize team
 
-**First iteration** (`iteration = 1`): Run all five passes -- structural,
-logic, quality, universal, and comparative. This is the comprehensive
-initial review.
+**CREATE** agent team with specialists appropriate for this iteration and
+scope. Each receives the target-dir path and their assigned review scope.
 
-**Subsequent iterations** (`iteration > 1`): Run only the **structural pass**,
-**quality pass**, and **universal pass**, scoped to files modified by the
-previous iteration's fixes. Skip the logic pass and comparative review --
-mechanical fixes (serde derives, `render().and()`, `.trim()` checks) do not
-alter event sequences or conflict-resolution logic.
+**First iteration (`scope = full`)**: Spawn all three specialists. This is
+the comprehensive initial review.
 
-#### 2b. Structural pass
+**First iteration (`scope = quick`)**: Spawn only the **Structural
+Specialist** and **Quality Specialist**. Skip the Logic Specialist.
 
-Read `references/crux-review-checks.md` in this skill's directory.
+**Subsequent iterations** (`iteration > 1`): Spawn only the **Structural
+Specialist** and **Quality Specialist**, scoped to files modified by the
+previous iteration's fixes. Skip the Logic Specialist -- mechanical fixes
+(serde derives, `render().and()`, `.trim()` checks) do not alter event
+sequences or conflict-resolution logic.
+
+**Spawn Structural Specialist**:
+
+```text
+You are a Structural Reviewer for a Crux shared crate at $TARGET_DIR.
+
+Read `references/crux-review-checks.md`.
 
 Apply checks CRX-001 through CRX-011 against the source code. These are
 pattern-based checks that scan for known Crux-specific issues:
@@ -72,56 +87,87 @@ pattern-based checks that scan for known Crux-specific issues:
 - ViewModel field typing (typed values vs pre-formatted strings)
 - Unused dependencies in `Cargo.toml`
 
-For each violation found, record: check ID, file, line range, description,
-severity (Critical or Warning), and suggested fix.
+For each finding, report: check ID (CRX-NNN), file:line, code snippet,
+severity (Critical or Warning), risk description, suggested fix, and
+whether it is auto-fixable (mechanical).
 
-#### 2c. Logic pass (first iteration only; skip if scope = quick)
+Output your findings as a numbered list in markdown. Prefix each finding
+ID with "CRX-" (e.g., CRX-001-1, CRX-005-1).
+```
 
-Read `references/logic-review-checks.md` in this skill's directory.
+If `iteration > 1`, append: "Scope your analysis to these files modified
+in the previous iteration: [list of changed files]."
 
-Apply checks LOG-001 through LOG-008. These require reasoning about event
+**Spawn Logic Specialist** (first iteration only; skip if scope = quick):
+
+```text
+You are a Logic Reviewer for a Crux shared crate at $TARGET_DIR.
+
+Read `references/logic-review-checks.md`.
+
+Also read `spec.md` for the app specification -- you need it for spec gap
+detection and spec-to-test coverage analysis.
+
+Apply checks LOG-001 through LOG-009. These require reasoning about event
 sequences, not just pattern matching. For each check:
 
-1. **LOG-001 State machine completeness** -- Enumerate every state enum
+1. LOG-001 State machine completeness -- Enumerate every state enum
    (Page, SyncStatus, SseConnectionState, etc.). For each transition in
-   `update()`, verify that all required side-effects fire (render, save, sync).
-   Draw the state machine mentally; flag incomplete edges.
+   `update()`, verify that all required side-effects fire (render, save,
+   sync). Draw the state machine mentally; flag incomplete edges.
 
-2. **LOG-002 Operation coalescing** -- Trace the sequence: Create -> Delete
-   before sync. Does the code skip the server call for items that were never
-   synced? Check both delete and clear-completed handlers.
+2. LOG-002 Operation coalescing -- Trace the sequence: Create -> Delete
+   before sync. Does the code skip the server call for items that were
+   never synced? Check both delete and clear-completed handlers.
 
-3. **LOG-003 Concurrent operation conflicts** -- Trace: sync in-flight +
-   SSE event for the same item. Does `pending_ops.retain()` in the SSE handler
+3. LOG-003 Concurrent operation conflicts -- Trace: sync in-flight + SSE
+   event for the same item. Does `pending_ops.retain()` in the SSE handler
    clobber the in-flight sync state?
 
-4. **LOG-004 Temporal ordering** -- For every conflict-resolution comparison,
-   verify both sides have timestamps. Check `PendingOp` variants for missing
-   temporal fields.
+4. LOG-004 Temporal ordering -- For every conflict-resolution comparison,
+   verify both sides have timestamps. Check `PendingOp` variants for
+   missing temporal fields.
 
-5. **LOG-005 Fallback-on-None** -- For every `unwrap_or_default()`, `Option`
-   with `_ => true`, or `None` fallback, check if the default is semantically
-   correct in the domain.
+5. LOG-005 Fallback-on-None -- For every `unwrap_or_default()`, `Option`
+   with `_ => true`, or `None` fallback, check if the default is
+   semantically correct in the domain.
 
-6. **LOG-006 Rapid-action sequences** -- Trace what happens when the user
+6. LOG-006 Rapid-action sequences -- Trace what happens when the user
    fires the same action twice before the first async operation completes.
    Check for duplicate pending ops or unbounded queue growth.
 
-7. **LOG-007 Spec gap detection** -- Compare each user-facing Event variant
-   against the Features section of `spec.md`. Flag events that accept untrusted
-   input without validation that common sense requires (empty strings, negative
-   numbers, duplicate IDs) even if the spec is silent.
+7. LOG-007 Spec gap detection -- Compare each user-facing Event variant
+   against the Features section of `spec.md`. Flag events that accept
+   untrusted input without validation that common sense requires (empty
+   strings, negative numbers, duplicate IDs) even if the spec is silent.
 
-8. **LOG-008 Missing edge-case tests** -- Cross-reference the `#[cfg(test)]`
-   module against the interaction sequences from LOG-001--007. Each identified
-   risk should have at least one test.
+8. LOG-008 Spec-to-test coverage gap -- For each `#### Scenario:` in
+   `spec.md`, verify a test with a matching `/// Spec:` traceability
+   comment (referencing the stable `REQ-XXX` ID **and** the scenario
+   title) exists in the `#[cfg(test)]` module. A single requirement can
+   contain multiple scenarios; matching by ID alone is insufficient.
+   Additionally, cross-reference interaction sequences from LOG-001--007
+   to verify edge-case coverage. List all missing scenarios.
 
-Record findings with severity Critical (data loss, incorrect server calls) or
-Warning (stale UI, missing tests).
+9. LOG-009 Stale tests -- Identify tests with `/// Spec:` traceability
+   comments that reference scenarios no longer present in the spec. Flag
+   them for human review. Do not auto-delete.
 
-#### 2d. Quality pass
+For each finding, report: check ID (LOG-NNN), file:line, code snippet,
+severity (Critical for data loss/incorrect server calls/conflict-resolution
+failure; Warning for stale UI/missing tests), risk description, suggested
+fix, and whether it is auto-fixable.
 
-Read `references/general-review-checks.md` in this skill's directory.
+Output your findings as a numbered list in markdown. Prefix each finding
+ID with "LOG-" (e.g., LOG-001-1, LOG-003-1).
+```
+
+**Spawn Quality Specialist**:
+
+```text
+You are a Quality Reviewer for a Crux shared crate at $TARGET_DIR.
+
+Read `references/general-review-checks.md`.
 
 Apply checks GEN-001 through GEN-012 against all `.rs` files. These are
 language-level quality checks:
@@ -134,16 +180,31 @@ language-level quality checks:
 - Serialization round-trip completeness
 - Function length (under 50 lines)
 
-Record findings with severity Warning or Info.
+For each finding, report: check ID (GEN-NNN), file:line, code snippet,
+severity (Warning or Info), risk description, suggested fix, and whether
+it is auto-fixable.
 
-#### 2e. Universal checks pass
+Output your findings as a numbered list in markdown. Prefix each finding
+ID with "GEN-" (e.g., GEN-001-1, GEN-005-1).
+```
 
-Read `../../references/universal-review-checks.md` (shared across all
-reviewer skills).
+If `iteration > 1`, append: "Scope your analysis to these files modified
+in the previous iteration: [list of changed files]."
 
-Apply checks UNI-001 through UNI-021 with Rust-specific detection. Several
-universal checks overlap with platform-specific checks already applied in
-earlier passes. Skip those and focus on the gaps:
+#### 2b. Specialist analysis (concurrent)
+
+The specialists analyze the crate concurrently. Each reads all `.rs` files
+in `shared/src/` but reports only on their assigned checks.
+
+**Lead waits** for all specialists to complete before proceeding.
+
+#### 2c. Universal checks (lead; skip if scope = quick)
+
+After all specialists report, the lead reads
+`../../references/universal-review-checks.md` and applies checks UNI-001
+through UNI-021 with Rust-specific detection. Several universal checks
+overlap with categories already assigned to the specialists. Skip those
+and focus on the gaps:
 
 | Universal check | Already covered by | Action |
 |---|---|---|
@@ -208,12 +269,14 @@ Apply the remaining checks with these Rust-specific heuristics:
   `model.auth_state` or equivalent before proceeding. Flag handlers that
   assume authentication without checking.
 
-Record findings with the severity defined in the universal checklist. Tag
-findings that have a **Spec-change indicator** (UNI-002, UNI-004, UNI-007,
-UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in the spec-change
-output in step 3.
+Prefix findings from this step with `UNI-` (e.g., UNI-1, UNI-2). Use the
+severity defined in the universal checklist for each check.
 
-#### 2f. Comparative review (first iteration only; if reference-dir provided)
+Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004,
+UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in
+the adversarial review and spec-change output in step 3.
+
+#### 2d. Comparative review (first iteration only; if reference-dir provided; skip if scope = quick)
 
 Compare structural decisions between the target and reference apps:
 
@@ -223,16 +286,86 @@ Compare structural decisions between the target and reference apps:
 - Test coverage breadth (count and categorize tests in both)
 
 Flag significant divergences as Warning with a note explaining what the
-reference app does differently and why.
+reference app does differently and why. Prefix findings with `CMP-`.
+
+#### 2e. Adversarial challenge
+
+After the specialist reports, universal checks, and comparative review are
+complete, the lead sends all combined findings (CRX-, LOG-, GEN-, UNI-, and
+CMP- prefixed) to the antagonist.
+
+**Spawn Antagonist**:
+
+```text
+You are the Antagonist Reviewer for a Crux shared crate at $TARGET_DIR.
+
+You receive findings from specialist reviewers (Structural, Logic, Quality)
+and from the lead's universal and comparative checks. Your job is to
+challenge every finding and find what they missed.
+
+For EACH finding (CRX-, LOG-, GEN-, UNI-, and CMP- prefixed):
+1. Validate evidence: Is there a real file:line reference and code snippet?
+2. Challenge severity: Is Critical really critical? Is Info actually higher?
+3. Check for false positives: Could this be a non-issue or acceptable
+   Crux pattern?
+4. Assess auto-fix safety: Could the suggested fix introduce regressions?
+
+Then perform a COUNTER-SCAN of all `.rs` files in `shared/src/` looking
+for issues ALL specialists missed. Common Crux blind spots:
+- Missing `render()` in deeply nested match arms (not just top-level)
+- Effect ordering bugs (render before vs after async command chains)
+- Model mutation without corresponding Command return
+- State machine edges that silently drop events (no-op match arms)
+- PendingOp cleanup paths that leak entries on error
+- Stale model field reads after `.and()` chains that may have mutated state
+
+Output format:
+## Confirmed: [ID] -- evidence solid, severity accurate
+## Downgraded: [ID] ORIG_SEVERITY -> NEW_SEVERITY -- rationale
+## Upgraded: [ID] ORIG_SEVERITY -> NEW_SEVERITY -- rationale
+## Disputed: [ID] -- rationale (must cite evidence for dispute)
+## New Findings: NEW-1, NEW-2, etc. with full finding details
+
+You MUST provide evidence for every challenge. Opinion alone is insufficient.
+You CANNOT remove findings entirely -- the minimum action is to downgrade.
+Severity downgrades move at most one level (Critical to Warning, not to Info).
+```
+
+The antagonist:
+
+1. Reviews every finding for evidence quality and severity accuracy
+2. Performs a counter-scan for missed Crux-specific issues
+3. Sends challenged report to lead with: confirmed, downgraded, upgraded,
+   disputed, and new findings
+
+#### 2f. Synthesis
+
+The lead merges all findings (specialist reports, universal checks,
+comparative review, and antagonist challenges) into a single iteration
+report:
+
+1. **Confirmed findings**: Include verbatim from specialist reports
+2. **Downgraded findings**: Include with the antagonist's revised severity
+   and rationale
+3. **Upgraded findings**: Include with the antagonist's revised severity
+   and rationale
+4. **Disputed findings**: Lead makes final call; if included, add dispute
+   note
+5. **New findings**: Include with the antagonist's severity and evidence
+6. Assign overall **confidence level** per
+   [Agent Team Patterns - Confidence Scoring](references/agent-teams.md#confidence-scoring)
 
 #### 2g. Produce iteration report
 
-Output the findings for this iteration. On the first iteration, use the
-full report format. On subsequent iterations, report only new findings
-discovered in re-review and note the iteration number.
+Output the synthesized findings for this iteration. On the first iteration,
+use the full report format. On subsequent iterations, report only new
+findings discovered in re-review and note the iteration number.
 
-```
+````
 ## Code Review Report: {app-name} (iteration {N})
+
+**Review Team**: 3 specialists + 1 antagonist
+**Confidence Level**: [HIGH | MEDIUM | LOW]
 
 ### Summary
 - Critical: N findings
@@ -241,8 +374,10 @@ discovered in re-review and note the iteration number.
 
 ### Critical Findings
 
-#### [CRX-001] Missing render() after page transition
+#### [CRX-001-1] Missing render() after page transition
 - **File**: shared/src/app.rs, lines 384-388
+- **Reviewer**: Structural Specialist
+- **Antagonist**: Confirmed
 - **Issue**: Navigating from Error to Loading mutates `model.page` without
   emitting `render()`. The shell may not see the Loading state.
 - **Fix**: Wrap the return in `render().and(Command::event(Event::Initialize))`
@@ -255,10 +390,39 @@ discovered in re-review and note the iteration number.
 ### Info Findings
 ...
 
+### Adversarial Review
+
+**Antagonist Activity Summary**:
+
+| Action       | Count   |
+| ------------ | ------- |
+| Confirmed    | [count] |
+| Downgraded   | [count] |
+| Upgraded     | [count] |
+| Disputed     | [count] |
+| New Findings | [count] |
+
+**Acceptance Rate**: [confirmed / total specialist findings]%
+
+#### Downgraded Findings
+- [ID] ORIG -> NEW: rationale
+
+#### Upgraded Findings
+- [ID] ORIG -> NEW: rationale
+
+#### Disputed Findings
+- [ID] Reported as SEVERITY: "description"
+  Dispute: rationale
+  Lead Decision: [Included | Excluded]
+
+#### New Findings (Missed by Specialists)
+- [NEW-1] SEVERITY: description (file:line)
+  Evidence: details
+
 ### Test Gap Summary
 - Missing test for: [scenario description]
 - Missing test for: ...
-```
+````
 
 Classify each finding as **mechanical** (auto-fixable) or **design-level**
 (requires architectural decisions). Add design-level findings to the
@@ -266,7 +430,13 @@ accumulated list.
 
 #### 2h. Auto-fix mechanical issues
 
-Apply fixes for findings that are mechanical:
+The **lead** applies all auto-fixes directly (specialists and antagonist
+have completed their analysis). The finding prefix (CRX-, LOG-, GEN-,
+UNI-, NEW-) tracks which reviewer or pass identified the issue for
+accountability in the report.
+
+Apply fixes for findings that are mechanical and confirmed or upgraded
+(not disputed):
 
 - Adding missing `Serialize`/`Deserialize` derives
 - Wrapping returns in `render().and(...)`
@@ -274,27 +444,30 @@ Apply fixes for findings that are mechanical:
 - Removing unused dependencies from `Cargo.toml`
 
 Do NOT auto-fix logic bugs (LOG-001 through LOG-008) without explicit
-confirmation -- these require design decisions.
+confirmation -- these require design decisions. Respect antagonist
+regression flags.
 
 After any fixes, re-run `cargo check`, `cargo test`, and `cargo clippy` to
-verify the fixes compile and pass.
+verify the fixes compile and pass. If fixes cause compilation errors,
+revert all auto-fixes and warn in the report.
 
 #### 2i. Loop control
 
-After applying fixes and verifying:
+After applying fixes, verifying, and shutting down the team:
 
 1. If **no mechanical fixes** were applied in this iteration, exit the cycle.
 2. If `iteration >= max_iterations`, exit the cycle.
 3. Otherwise, increment `iteration` and return to step 2a.
 
-When the cycle exits, output a summary across all iterations:
+When the cycle exits, shut down all remaining teammates and output a summary
+across all iterations:
 
 ```
 ### Review Cycle Summary
 - Iteration 1: Fixed N mechanical issues (CRX-001 x3, CRX-002, CRX-005).
-  M design-level findings deferred.
+  M design-level findings deferred. Confidence: HIGH.
 - Iteration 2: Fixed K regressions (GEN-005 from iteration 1 fix).
-  No new design-level findings.
+  No new design-level findings. Confidence: HIGH.
 - Total: N+K mechanical fixes applied. M design-level findings accumulated.
 ```
 
@@ -392,13 +565,45 @@ single Specify change that tracks all of them:
 | **Warning** | Stale UI, missing tests, suboptimal types, unnecessary clones | Should fix; acceptable to defer with justification |
 | **Info** | Style, documentation, minor improvements | Fix if convenient |
 
+## Verification Checklist
+
+Before completing review:
+
+### Team Execution
+
+- [ ] All specialists spawned with correct category assignments
+- [ ] All specialists completed before antagonist spawned
+- [ ] Antagonist received all specialist + universal findings
+- [ ] Antagonist provided evidence for every challenge
+- [ ] Lead synthesized all findings with confidence scoring
+- [ ] Team shut down and cleaned up
+
+### Scan Coverage
+
+- [ ] Structural Specialist: CRX-001 through CRX-011 checked
+- [ ] Logic Specialist: LOG-001 through LOG-009 checked (first iteration)
+- [ ] Quality Specialist: GEN-001 through GEN-012 checked
+- [ ] Universal Checks: UNI-001 through UNI-021 applied with Rust-specific
+  heuristics (skipped where covered by CRX/LOG/GEN)
+- [ ] Antagonist: counter-scan completed for Crux-specific blind spots
+- [ ] Comparative review completed (if reference-dir provided)
+
+### Report Quality
+
+- [ ] Each issue has file:line reference and code snippet
+- [ ] Severity reflects antagonist adjustments (upgrades/downgrades applied)
+- [ ] Adversarial Review section included with challenge statistics
+- [ ] Confidence level assigned based on antagonist results
+- [ ] Finding IDs use correct prefixes (CRX-, LOG-, GEN-, UNI-, CMP-, NEW-)
+- [ ] Design-level findings classified as code-fix or spec-change
+
 ## Integration with Specify Workflow
 
 This skill is invoked as part of the Vectis build phase, after core-writer
 generation and compiler verification, before merge:
 
 ```
-define -> build (core-writer) -> verify -> review-fix cycle (this skill, up to 3 iterations) -> generate change for design issues -> merge
+define -> build (core-writer) -> test (test-writer) -> verify -> review-fix cycle (this skill, up to 3 iterations) -> generate change for design issues -> merge
 ```
 
 The review-fix cycle auto-fixes mechanical issues and re-reviews its own

@@ -60,7 +60,7 @@ For each specialist finding or proposal, the antagonist assigns one of:
 ### Antagonist Rules
 
 1. **Evidence required**: Every challenge must cite specific code, test output, or documentation. Opinion alone is insufficient.
-2. **No removals**: The antagonist cannot remove findings entirely. The minimum action is downgrade to LOW with strong justification.
+2. **No removals**: The antagonist cannot remove findings entirely. The minimum action is to downgrade, with strong justification.
 3. **Severity bounds**: Downgrades move at most one level (CRITICAL to HIGH, not CRITICAL to LOW). Upgrades have no bound.
 4. **Root cause focus** (for fix proposals): Challenge fixes that address symptoms rather than root causes. A fix that silences a test without addressing the underlying issue must be flagged.
 5. **Regression awareness**: For every proposed code change, the antagonist must assess which other tests or behaviors could break.

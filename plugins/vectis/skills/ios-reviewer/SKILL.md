@@ -24,6 +24,12 @@ violations.
 
 ## Process
 
+This skill uses an agent team with 3 specialist reviewers and 1 antagonist.
+The lead coordinates the team, synthesizes findings, and produces the final
+report. See [Agent Team Patterns](references/agent-teams.md) for shared
+protocols (team roles, antagonist protocol, synthesis rules, file ownership,
+and confidence scoring).
+
 ### 1. Gather context
 
 Read the following files from `{target-dir}`:
@@ -48,29 +54,32 @@ Before starting, initialize:
 - `iteration = 1`, `max_iterations = 3`
 - An empty list of **accumulated design-level findings**
 
-The cycle repeats: run review passes, report findings, auto-fix mechanical
-issues, then re-review. Exit when no mechanical fixes are applied or
-`max_iterations` is reached.
+The cycle repeats: spawn the team, run specialist analysis, challenge via
+antagonist, synthesize findings, auto-fix mechanical issues, then re-review.
+Exit when no mechanical fixes are applied or `max_iterations` is reached.
 
-#### 2a. Select passes for this iteration
+#### 2a. Initialize team
 
-**First iteration (`scope = full`)**: Run all four passes -- structural,
-quality, universal, and integration. This is the comprehensive initial
-review.
+**CREATE** agent team with specialists appropriate for this iteration and
+scope. Each receives the target-dir path and their assigned review scope.
 
-**First iteration (`scope = quick`)**: Run only the **structural pass** and
-**quality pass**. Skip the universal pass and integration pass entirely.
+**First iteration (`scope = full`)**: Spawn all three specialists. This is
+the comprehensive initial review.
 
-**Subsequent iterations (either scope)**: Run only the passes that were
-active in the first iteration, minus the integration pass, scoped to files
-modified by the previous iteration's fixes. For `full` this means
-structural + quality + universal; for `quick` this means structural +
-quality only. Skip the integration pass on all subsequent iterations --
-mechanical fixes do not alter FFI type mappings or build configuration.
+**First iteration (`scope = quick`)**: Spawn only the **Structural
+Specialist** and **Quality Specialist**. Skip the Integration Specialist.
 
-#### 2b. Structural pass
+**Subsequent iterations (either scope)**: Spawn only the **Structural
+Specialist** and **Quality Specialist**, scoped to files modified by the
+previous iteration's fixes. Skip the Integration Specialist -- mechanical
+fixes do not alter FFI type mappings or build configuration.
 
-Read `references/ios-review-checks.md` in this skill's directory.
+**Spawn Structural Specialist**:
+
+```text
+You are a Structural Reviewer for a Crux iOS shell at $TARGET_DIR.
+
+Read `references/ios-review-checks.md`.
 
 Apply checks IOS-001 through IOS-016 against the Swift source. These are
 pattern-based checks that verify the shell correctly maps to the Crux core:
@@ -82,12 +91,23 @@ pattern-based checks that verify the shell correctly maps to the Crux core:
 - Design system token usage
 - ContentView switch exhaustiveness
 
-For each violation found, record: check ID, file, line range, description,
-severity (Critical or Warning), and suggested fix.
+For each finding, report: check ID (IOS-NNN), file:line, code snippet,
+severity (Critical or Warning), risk description, suggested fix, and
+whether it is auto-fixable (mechanical).
 
-#### 2c. Quality pass
+Output your findings as a numbered list in markdown. Prefix each finding
+ID with "IOS-" (e.g., IOS-001-1, IOS-005-1).
+```
 
-Read `references/swift-quality-checks.md` in this skill's directory.
+If `iteration > 1`, append: "Scope your analysis to these files modified
+in the previous iteration: [list of changed files]."
+
+**Spawn Quality Specialist**:
+
+```text
+You are a Quality Reviewer for a Crux iOS shell at $TARGET_DIR.
+
+Read `references/swift-quality-checks.md`.
 
 Apply checks SWF-001 through SWF-010 against all `.swift` files. These are
 Swift/SwiftUI best practice checks:
@@ -99,16 +119,57 @@ Swift/SwiftUI best practice checks:
 - Preview coverage
 - swiftformat compliance
 
-Record findings with severity Warning or Info.
+For each finding, report: check ID (SWF-NNN), file:line, code snippet,
+severity (Warning or Info), risk description, suggested fix, and whether
+it is auto-fixable.
 
-#### 2d. Universal checks pass (skip if scope = quick)
+Output your findings as a numbered list in markdown. Prefix each finding
+ID with "SWF-" (e.g., SWF-001-1, SWF-006-1).
+```
 
-Read `../../references/universal-review-checks.md` (shared across all
-reviewer skills).
+If `iteration > 1`, append: "Scope your analysis to these files modified
+in the previous iteration: [list of changed files]."
 
-Apply checks UNI-001 through UNI-021 with Swift-specific detection. Several
-universal checks overlap with platform-specific checks already applied in
-earlier passes. Skip those and focus on the gaps:
+**Spawn Integration Specialist** (first iteration only; skip if scope = quick):
+
+```text
+You are an Integration Reviewer for a Crux iOS shell at $TARGET_DIR.
+
+Cross-reference the Rust core types (`shared/src/app.rs`) against the
+Swift implementation:
+
+1. Type completeness -- every FFI-crossing type in `app.rs` must have a
+   corresponding Swift type in the generated bindings.
+2. Serialization correctness -- verify Bincode serialize/deserialize calls
+   use the correct types.
+3. Build configuration -- verify `project.yml` references the correct
+   shared library path, correct deployment target, correct Swift version.
+4. Capability alignment -- every Effect variant in `app.rs` must have a
+   handler in `Core.swift`.
+
+For each finding, report: a finding ID (INT-NNN), file:line, code snippet,
+severity (Critical or Warning), risk description, suggested fix, and
+whether it is auto-fixable.
+
+Output your findings as a numbered list in markdown. Prefix each finding
+ID with "INT-" (e.g., INT-001, INT-002).
+```
+
+#### 2b. Specialist analysis (concurrent)
+
+The specialists analyze the shell concurrently. Each reads all `.swift`
+files under `iOS/` (and `shared/src/app.rs` for the Integration Specialist)
+but reports only on their assigned checks.
+
+**Lead waits** for all specialists to complete before proceeding.
+
+#### 2c. Universal checks (lead; skip if scope = quick)
+
+After all specialists report, the lead reads
+`../../references/universal-review-checks.md` and applies checks UNI-001
+through UNI-021 with Swift-specific detection. Several universal checks
+overlap with categories already assigned to the specialists. Skip those
+and focus on the gaps:
 
 | Universal check | Already covered by | Action |
 |---|---|---|
@@ -182,32 +243,91 @@ Apply the remaining checks with these Swift-specific heuristics:
   values or unprotected UserDefaults. Flag API calls to protected
   endpoints dispatched without any auth header.
 
-Record findings with the severity defined in the universal checklist. Tag
-findings that have a **Spec-change indicator** (UNI-002, UNI-004, UNI-007,
-UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in the spec-change
-output in step 3.
+Prefix findings from this step with `UNI-` (e.g., UNI-1, UNI-2). Use the
+severity defined in the universal checklist for each check.
 
-#### 2e. Integration pass (first iteration only; skip if scope = quick)
+Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004,
+UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in
+the adversarial review and spec-change output in step 3.
 
-Cross-reference the Rust core types against the Swift implementation:
+#### 2d. Adversarial challenge
 
-1. **Type completeness** -- every FFI-crossing type in `app.rs` must have a
-   corresponding Swift type in the generated bindings.
-2. **Serialization correctness** -- verify Bincode serialize/deserialize calls
-   use the correct types.
-3. **Build configuration** -- verify `project.yml` references the correct
-   shared library path, correct deployment target, correct Swift version.
-4. **Capability alignment** -- every Effect variant in `app.rs` must have a
-   handler in `Core.swift`.
+After the specialist reports and universal checks are complete, the lead
+sends all combined findings (IOS-, SWF-, INT-, and UNI- prefixed) to the
+antagonist.
 
-Record findings with severity Critical or Warning.
+**Spawn Antagonist**:
+
+```text
+You are the Antagonist Reviewer for a Crux iOS shell at $TARGET_DIR.
+
+You receive findings from specialist reviewers (Structural, Quality,
+Integration) and from the lead's universal checks. Your job is to
+challenge every finding and find what they missed.
+
+For EACH finding (IOS-, SWF-, INT-, and UNI- prefixed):
+1. Validate evidence: Is there a real file:line reference and code snippet?
+2. Challenge severity: Is Critical really critical? Is Info actually higher?
+3. Check for false positives: Could this be a non-issue or acceptable
+   SwiftUI pattern?
+4. Assess auto-fix safety: Could the suggested fix introduce regressions?
+
+Then perform a COUNTER-SCAN of all `.swift` files under `iOS/` looking
+for issues ALL specialists missed. Common SwiftUI blind spots:
+- Missing `@MainActor` on classes that update `@Published` properties
+- `Sendable` conformance violations in async contexts
+- Preview data that is stale relative to the current ViewModel structure
+- Retain cycles from `self` capture in Task or URLSession closures
+- Navigation state inconsistencies (deep link paths not handled)
+- Missing `onDisappear` cleanup for SSE or timer subscriptions
+- Hardcoded design tokens that don't match `tokens.yaml`
+
+Output format:
+## Confirmed: [ID] -- evidence solid, severity accurate
+## Downgraded: [ID] ORIG_SEVERITY -> NEW_SEVERITY -- rationale
+## Upgraded: [ID] ORIG_SEVERITY -> NEW_SEVERITY -- rationale
+## Disputed: [ID] -- rationale (must cite evidence for dispute)
+## New Findings: NEW-1, NEW-2, etc. with full finding details
+
+You MUST provide evidence for every challenge. Opinion alone is insufficient.
+You CANNOT remove findings entirely -- the minimum action is to downgrade.
+Severity downgrades move at most one level (Critical to Warning, not to Info).
+```
+
+The antagonist:
+
+1. Reviews every finding for evidence quality and severity accuracy
+2. Performs a counter-scan for missed SwiftUI-specific issues
+3. Sends challenged report to lead with: confirmed, downgraded, upgraded,
+   disputed, and new findings
+
+#### 2e. Synthesis
+
+The lead merges all findings (specialist reports, universal checks, and
+antagonist challenges) into a single iteration report:
+
+1. **Confirmed findings**: Include verbatim from specialist reports
+2. **Downgraded findings**: Include with the antagonist's revised severity
+   and rationale
+3. **Upgraded findings**: Include with the antagonist's revised severity
+   and rationale
+4. **Disputed findings**: Lead makes final call; if included, add dispute
+   note
+5. **New findings**: Include with the antagonist's severity and evidence
+6. Assign overall **confidence level** per
+   [Agent Team Patterns - Confidence Scoring](references/agent-teams.md#confidence-scoring)
 
 #### 2f. Produce iteration report
 
-Output findings for this iteration:
+Output the synthesized findings for this iteration. On the first iteration,
+use the full report format. On subsequent iterations, report only new
+findings discovered in re-review and note the iteration number.
 
-```
+````
 ## iOS Shell Review Report: {app-name} (iteration {N})
+
+**Review Team**: 3 specialists + 1 antagonist
+**Confidence Level**: [HIGH | MEDIUM | LOW]
 
 ### Summary
 - Critical: N findings
@@ -216,8 +336,10 @@ Output findings for this iteration:
 
 ### Critical Findings
 
-#### [IOS-001] Missing screen view for ViewModel variant
+#### [IOS-001-1] Missing screen view for ViewModel variant
 - **File**: iOS/{AppName}/ContentView.swift
+- **Reviewer**: Structural Specialist
+- **Antagonist**: Confirmed
 - **Issue**: ViewModel variant `Settings(SettingsView)` has no corresponding
   screen view file.
 - **Fix**: Create `Views/SettingsScreen.swift` and add the case to ContentView.
@@ -227,40 +349,81 @@ Output findings for this iteration:
 
 ### Info Findings
 ...
-```
+
+### Adversarial Review
+
+**Antagonist Activity Summary**:
+
+| Action       | Count   |
+| ------------ | ------- |
+| Confirmed    | [count] |
+| Downgraded   | [count] |
+| Upgraded     | [count] |
+| Disputed     | [count] |
+| New Findings | [count] |
+
+**Acceptance Rate**: [confirmed / total specialist findings]%
+
+#### Downgraded Findings
+- [ID] ORIG -> NEW: rationale
+
+#### Upgraded Findings
+- [ID] ORIG -> NEW: rationale
+
+#### Disputed Findings
+- [ID] Reported as SEVERITY: "description"
+  Dispute: rationale
+  Lead Decision: [Included | Excluded]
+
+#### New Findings (Missed by Specialists)
+- [NEW-1] SEVERITY: description (file:line)
+  Evidence: details
+````
 
 Classify each finding as **mechanical** (auto-fixable) or **design-level**.
 
 #### 2g. Auto-fix mechanical issues
 
-Apply fixes for findings that are mechanical:
+The **lead** applies all auto-fixes directly (specialists and antagonist
+have completed their analysis). The finding prefix (IOS-, SWF-, INT-,
+UNI-, NEW-) tracks which reviewer or pass identified the issue for
+accountability in the report.
+
+Apply fixes for findings that are mechanical and confirmed or upgraded
+(not disputed):
 
 - Adding missing accessibility labels
 - Adding missing `import VectisDesign`
 - Replacing hardcoded colors with `VectisColors` tokens
 - Replacing hardcoded spacing with `VectisSpacing` tokens
 - Adding missing `#Preview` blocks
+- Adding missing Inject boilerplate (`import Inject`,
+  `@ObserveInjection var inject`, `.enableInjection()`) to view files
 
 Do NOT auto-fix structural issues (missing screen views, missing effect
 handlers) without confirmation -- these may require design decisions about
-layout and interaction.
+layout and interaction. Respect antagonist regression flags.
 
-After fixes, run `swiftformat` on modified files.
+After fixes, run `swiftformat` on modified files. If fixes cause build
+errors, revert all auto-fixes and warn in the report.
 
 #### 2h. Loop control
+
+After applying fixes, verifying, and shutting down the team:
 
 1. If **no mechanical fixes** were applied, exit the cycle.
 2. If `iteration >= max_iterations`, exit the cycle.
 3. Otherwise, increment `iteration` and return to step 2a.
 
-When the cycle exits, output a summary across all iterations:
+When the cycle exits, shut down all remaining teammates and output a summary
+across all iterations:
 
 ```
 ### Review Cycle Summary
 - Iteration 1: Fixed N mechanical issues (IOS-005 x2, SWF-006, UNI-016).
-  M design-level findings deferred.
+  M design-level findings deferred. Confidence: HIGH.
 - Iteration 2: Fixed K regressions from iteration 1 fixes.
-  No new design-level findings.
+  No new design-level findings. Confidence: HIGH.
 - Total: N+K mechanical fixes applied. M design-level findings accumulated.
 ```
 
@@ -356,6 +519,38 @@ single Specify change that tracks all of them:
 | **Critical** | Missing screen views, missing effect handlers, broken build, data not rendered | Must fix before merge |
 | **Warning** | Hardcoded tokens, missing previews, accessibility gaps, style inconsistencies | Should fix; acceptable to defer |
 | **Info** | Minor improvements, alternative patterns | Fix if convenient |
+
+## Verification Checklist
+
+Before completing review:
+
+### Team Execution
+
+- [ ] All specialists spawned with correct category assignments
+- [ ] All specialists completed before antagonist spawned
+- [ ] Antagonist received all specialist + universal findings
+- [ ] Antagonist provided evidence for every challenge
+- [ ] Lead synthesized all findings with confidence scoring
+- [ ] Team shut down and cleaned up
+
+### Scan Coverage
+
+- [ ] Structural Specialist: IOS-001 through IOS-016 checked
+- [ ] Quality Specialist: SWF-001 through SWF-010 checked
+- [ ] Integration Specialist: type completeness, serialization, build config,
+  capability alignment checked (first iteration, full scope)
+- [ ] Universal Checks: UNI-001 through UNI-021 applied with Swift-specific
+  heuristics (skipped where covered by IOS/SWF)
+- [ ] Antagonist: counter-scan completed for SwiftUI-specific blind spots
+
+### Report Quality
+
+- [ ] Each issue has file:line reference and code snippet
+- [ ] Severity reflects antagonist adjustments (upgrades/downgrades applied)
+- [ ] Adversarial Review section included with challenge statistics
+- [ ] Confidence level assigned based on antagonist results
+- [ ] Finding IDs use correct prefixes (IOS-, SWF-, INT-, UNI-, NEW-)
+- [ ] Design-level findings classified as code-fix or spec-change
 
 ## Integration with Specify Workflow
 

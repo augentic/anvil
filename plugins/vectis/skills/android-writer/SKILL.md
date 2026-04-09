@@ -425,26 +425,68 @@ Important Gradle configuration notes:
 Create `{project-dir}/app/src/main/java/com/vectis/{appname}/core/Core.kt`
 following the pattern in `references/crux-android-shell-pattern.md`.
 
+#### Error handling categories
+
+`Core.kt` has two categories of fallible calls, each with a different
+error-handling pattern:
+
+- **CoreFFI calls** (`coreFfi.update()`, `coreFfi.view()`, `coreFfi.resolve()`)
+  use `try/catch` with `Log.e(TAG, "context: ${e.message}", e)`. These throw
+  `CoreException` containing a meaningful `Bridge` error message from the Rust
+  core -- catching without logging `e.message` would discard this diagnostic information.
+- **Bincode calls** (`bincodeSerialize()`, `bincodeDeserialize()`) use
+  `try/catch` with `Log.w(TAG, "context", e)` and a safe fallback. These throw
+  generic exceptions without structured messages.
+
+In `initialView()`, view deserialization falls back to `ViewModel.Loading`
+(no prior state exists). In the `Effect.Render` handler, the existing view
+must be preserved by returning without assignment -- never fall back to
+`ViewModel.Loading`, which would overwrite the user's current screen. Event
+serialization failures use a no-op return (event is dropped). This ensures
+Debug builds surface type mismatches via logcat while Release builds degrade
+gracefully.
+
 #### Simple Core (Render only, no DI)
 
 When the only effect is `Render`, `Core` extends `androidx.lifecycle.ViewModel`
 and uses Compose `mutableStateOf` directly:
 
 ```kotlin
+import android.util.Log
 import com.example.app.*         // generated bincode types
 import uniffi.shared.CoreFfi     // generated UniFFI bridge
+
+private const val TAG = "Core"
 
 open class Core : androidx.lifecycle.ViewModel() {
     private var coreFfi: CoreFfi = CoreFfi()
 
-    var view: ViewModel by mutableStateOf(
-        ViewModel.bincodeDeserialize(coreFfi.view())
-    )
+    var view: ViewModel by mutableStateOf(initialView())
         private set
 
     fun update(event: Event) {
-        val effects = coreFfi.update(event.bincodeSerialize())
-        val requests = Requests.bincodeDeserialize(effects)
+        val serialized = try {
+            event.bincodeSerialize()
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to serialize event: $event", e)
+            return
+        }
+        val effects = try {
+            coreFfi.update(serialized)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to update core: ${e.message}", e)
+            return
+        }
+        processEffects(effects)
+    }
+
+    private fun processEffects(data: ByteArray) {
+        val requests = try {
+            Requests.bincodeDeserialize(data)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to deserialize requests", e)
+            return
+        }
         for (request in requests) {
             processRequest(request)
         }
@@ -453,8 +495,36 @@ open class Core : androidx.lifecycle.ViewModel() {
     private fun processRequest(request: Request) {
         when (val effect = request.effect) {
             is Effect.Render -> {
-                this.view = ViewModel.bincodeDeserialize(coreFfi.view())
+                val data = try {
+                    coreFfi.view()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to get view from core: ${e.message}", e)
+                    return
+                }
+                val vm = try {
+                    ViewModel.bincodeDeserialize(data)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to deserialize ViewModel", e)
+                    return
+                }
+                this.view = vm
             }
+        }
+    }
+
+    /** Only used during init where Loading is the correct fallback. */
+    private fun initialView(): ViewModel {
+        val data = try {
+            coreFfi.view()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get initial view: ${e.message}", e)
+            return ViewModel.Loading
+        }
+        return try {
+            ViewModel.bincodeDeserialize(data)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to deserialize initial ViewModel", e)
+            ViewModel.Loading
         }
     }
 }
@@ -484,27 +554,56 @@ class Core(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     private val _viewModel: MutableStateFlow<ViewModel> =
-        MutableStateFlow(getViewModel())
+        MutableStateFlow(initialView())
     val viewModel: StateFlow<ViewModel> = _viewModel.asStateFlow()
 
     fun update(event: Event) {
         scope.launch {
-            val effects = coreFfi.update(event.bincodeSerialize())
+            val serialized = try {
+                event.bincodeSerialize()
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to serialize event: $event", e)
+                return@launch
+            }
+            val effects = try {
+                coreFfi.update(serialized)
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to update core: ${e.message}", e)
+                return@launch
+            }
             handleEffects(effects)
         }
     }
 
     private suspend fun handleEffects(effects: ByteArray) {
-        val requests = Requests.bincodeDeserialize(effects)
+        val requests = try {
+            Requests.bincodeDeserialize(effects)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to deserialize requests", e)
+            return
+        }
         for (request in requests) { processRequest(request) }
     }
 
     private suspend fun processRequest(request: Request) {
         when (val effect = request.effect) {
             is Effect.Http -> { /* delegate to httpClient */ }
-            is Effect.Render -> { _viewModel.value = getViewModel() }
+            is Effect.Render -> {
+                val data = try {
+                    coreFfi.view()
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to get view from core: ${e.message}", e)
+                    return
+                }
+                val vm = try {
+                    ViewModel.bincodeDeserialize(data)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to deserialize ViewModel", e)
+                    return
+                }
+                _viewModel.value = vm
+            }
             is Effect.Time -> {
-                // MUST launch in separate coroutine with try/catch
                 scope.launch {
                     try {
                         handleTimeEffect(request.id, effect.value)
@@ -513,7 +612,6 @@ class Core(
                 }
             }
             is Effect.ServerSentEvents -> {
-                // MUST launch in separate coroutine with try/catch
                 scope.launch {
                     try {
                         sseClient.request(effect.value) { response ->
@@ -529,16 +627,52 @@ class Core(
             // ...other effects
         }
     }
+
+    private suspend fun resolveAndHandleEffects(id: UInt, data: ByteArray) {
+        val effects = try {
+            coreFfi.resolve(id, data)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to resolve effect $id: ${e.message}", e)
+            return
+        }
+        handleEffects(effects)
+    }
+
+    /** Only used during init where Loading is the correct fallback. */
+    private fun initialView(): ViewModel {
+        val data = try {
+            coreFfi.view()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to get initial view: ${e.message}", e)
+            return ViewModel.Loading
+        }
+        return try {
+            ViewModel.bincodeDeserialize(data)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to deserialize initial ViewModel", e)
+            ViewModel.Loading
+        }
+    }
 }
 ```
 
-**CRITICAL**: All `scope.launch` blocks for async effects (SSE, Time) MUST
-wrap their body in `try/catch` to prevent unhandled exceptions from crashing
-the app. Always rethrow `CancellationException` to preserve coroutine
-cancellation semantics. Catch blocks MUST call `resolveAndHandleEffects`
-with a fallback response (e.g., `SseResponse.Done` for SSE,
-`TimeResponse.DurationElapsed` / `TimeResponse.InstantArrived` for timers)
-so the core request ID is never left unresolved.
+**CRITICAL**: CoreFFI calls (`coreFfi.update()`, `coreFfi.view()`,
+`coreFfi.resolve()`) throw `CoreException` containing a meaningful `Bridge`
+error message from the Rust core. Always use `try/catch` with
+`Log.e(TAG, "context: ${e.message}", e)` to preserve this diagnostic
+information. Bincode calls use `try/catch` with `Log.w` and a safe fallback.
+The `Effect.Render` handler MUST preserve the existing `_viewModel.value` on
+deserialization failure -- never fall back to `ViewModel.Loading`, which would
+overwrite the user's current screen. The `initialView()` helper is the only
+place where a `ViewModel.Loading` fallback is safe (no prior state exists).
+
+All `scope.launch` blocks for async effects (SSE, Time) MUST wrap their body
+in `try/catch` to prevent unhandled exceptions from crashing the app. Always
+rethrow `CancellationException` to preserve coroutine cancellation semantics.
+Catch blocks MUST call `resolveAndHandleEffects` with a fallback response
+(e.g., `SseResponse.Done` for SSE, `TimeResponse.DurationElapsed` /
+`TimeResponse.InstantArrived` for timers) so the core request ID is never
+left unresolved.
 
 Include only the effect handlers that the app actually uses.
 See `references/crux-android-shell-pattern.md` for full implementations of
@@ -627,9 +761,10 @@ For each screen:
    it uses (e.g., `import com.example.app.Event`, `import com.example.app.TodoListView`).
 2. Accept the per-page view struct as a parameter.
 3. Accept `onEvent: (Event) -> Unit` for user interactions.
-4. Use Material 3 theme tokens for all colors, fonts, and spacing. When a
-   design system is available, use its tokens for colors, typography, spacing,
-   and corner radii.
+4. When `design-system/tokens.yaml` exists, use the design system tokens
+   mapped to Material 3 theme for all colors, typography, spacing, and corner
+   radii. When no design system is available, use `MaterialTheme.colorScheme`
+   and `MaterialTheme.typography` directly.
 5. Map each shell-facing Event variant that is relevant to this view to a
    user interaction (button click, swipe, pull-to-refresh, etc.).
 6. Add a `@Preview` with sample data at the bottom of the file.
@@ -653,8 +788,8 @@ For each screen:
 Consult `references/compose-view-patterns.md` for layout patterns (lists,
 forms, navigation, swipe actions, pull-to-refresh).
 
-Consult `references/design-system-integration.md` for token usage when a
-design system is available.
+Consult `references/design-system-integration.md` for token usage and
+Material 3 theme mapping.
 
 ### 12. Generate `MainActivity.kt`
 
@@ -1033,16 +1168,22 @@ Same as create mode step 15:
 
 ### Design System
 
-- [ ] All color references use design system tokens when available (no hardcoded hex)
-- [ ] All font references use design system typography when available (no inline `TextStyle`)
-- [ ] All spacing values use design system spacing when available (no magic numbers)
-- [ ] All corner radius values use design system corner radii when available
+When `design-system/tokens.yaml` exists:
+
+- [ ] All color references use design system tokens (no hardcoded hex)
+- [ ] All font references use design system typography (no inline `TextStyle`)
+- [ ] All spacing values use design system spacing (no magic numbers)
+- [ ] All corner radius values use design system corner radii
 
 ### Quality
 
 - [ ] Every screen composable has a `@Preview` with sample data
 - [ ] Interactive icons have `contentDescription` for accessibility
 - [ ] No force unwraps or `!!` in production code
+- [ ] CoreFFI calls (`coreFfi.update()`, `coreFfi.view()`, `coreFfi.resolve()`) use `try/catch` with `Log.e` including `${e.message}`
+- [ ] Bincode calls (`bincodeSerialize()`, `bincodeDeserialize()`) use `try/catch` with `Log.w` and safe fallback
+- [ ] `Effect.Render` handler preserves existing view on failure (returns without assignment, not fallback to `ViewModel.Loading`)
+- [ ] `initialView()` is the only place that falls back to `ViewModel.Loading`
 - [ ] HTTP client has proper timeout configuration
 - [ ] Coroutine scopes use `SupervisorJob` for fault isolation
 - [ ] Async effects (SSE, Time) wrapped in `try/catch` inside `scope.launch`
@@ -1094,8 +1235,14 @@ Same as create mode step 15:
   default. Apps with HTTP or SSE effects MUST include a
   `network_security_config.xml` to allow cleartext to localhost/`10.0.2.2`
   for development. Without it, the app crashes on first network request.
-- **Defensive error handling in coroutines**: All async effect handlers
-  (SSE, Time) that run in `scope.launch` blocks MUST wrap their bodies in
+- **Defensive error handling**: CoreFFI calls (`coreFfi.update()`,
+  `coreFfi.view()`, `coreFfi.resolve()`) throw `CoreException` with a
+  meaningful Rust-side error message. Always use `try/catch` with
+  `Log.e(TAG, "context: ${e.message}", e)` so the diagnostic is visible in
+  logcat. Bincode calls use `try/catch` with `Log.w` and a safe fallback.
+  The `Effect.Render` handler must preserve the existing view on failure --
+  never fall back to `ViewModel.Loading`. All async effect handlers (SSE,
+  Time) that run in `scope.launch` blocks MUST wrap their bodies in
   `try/catch` to prevent unhandled exceptions from crashing the app. Always
   rethrow `CancellationException`.
 - **themes.xml is mandatory**: `AndroidManifest.xml` references a theme
@@ -1105,6 +1252,12 @@ Same as create mode step 15:
   handles compilation. The emulator can be launched from the command line.
   Android Studio is only needed for initial SDK/NDK installation or for the
   visual layout editor.
+- **Hot reloading**: Jetpack Compose's built-in Live Edit and `@Preview`
+  composables provide the development-time iteration equivalent of iOS's
+  Inject/InjectionIII. No additional library integration is needed -- Live
+  Edit is available in Android Studio and updates composables on save. Every
+  screen composable should include a `@Preview` with sample data (checked by
+  AND-008) to enable visual preview without running the emulator.
 - **Specify integration**: When `change-dir` is provided, the skill reads
   the `## Android Shell Requirements` section from the feature spec and the
   `## Android Shell Details` section from design.md. The primary input remains
