@@ -93,9 +93,17 @@ Parse `$CRATE_PATH/REVIEW.md`. Process findings by severity:
 
 1. If the finding is marked auto-fixable and was not disputed by the
    antagonist: apply the fix directly
-2. If the finding is not auto-fixable: re-enter /omnia:crate-writer in
-   update mode with the finding description, file:line reference, and
-   suggested fix as context. Apply minimum-change repair discipline.
+2. If the finding is not auto-fixable: classify and route to the
+   appropriate skill using the same logic as the verify-repair loop:
+   - **Test issue** (finding in `tests/` files, `MockProvider`, or
+     `provider.rs`; assertion or fixture problems): re-enter
+     /omnia:test-writer with the finding description, file:line
+     reference, and suggested fix as context.
+   - **Code issue** (finding in `src/` files, handler logic, type
+     definitions, production code): re-enter /omnia:crate-writer in
+     update mode with the finding description, file:line reference,
+     and suggested fix as context.
+   Apply minimum-change repair discipline.
 3. After all CRITICAL/HIGH fixes: run the verify-repair loop (max 2
    iterations -- tighter than the standard 3 since these are targeted
    repairs to already-reviewed code)

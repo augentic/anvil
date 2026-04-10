@@ -317,6 +317,8 @@ Before starting code generation, verify artifact completeness per [checklists.md
 
     If any verification fails: implement the missing code path before proceeding. Do not rely on the verify-repair loop or test-writer to catch these -- the code must satisfy the spec before handoff.
 
+    After implementing any missing code paths, re-run `cargo check` to verify the new code compiles.
+
 17. If `src/lib.rs` exists: inject guest wiring (see Guest Wiring section above)
 
 ---
@@ -388,6 +390,16 @@ Read the updated artifacts from `$CHANGE_DIR` (specs and design.md) and compare 
 
 See [change-classification.md](references/change-classification.md) for detailed classification rules and edge cases.
 
+#### Step 2a: Cross-Cutting Analysis (changed handlers only)
+
+For every handler that is classified as **Additive** or **Modifying** in the change set, build the same three matrices as Create mode step 7, scoped to the changed handlers only. Unchanged handlers do not need re-analysis.
+
+- **Side-Effect Matrix** -- list cross-entity reads and mutations for each changed handler
+- **Outbound Message Matrix** -- list payload transformations for each changed handler's outbound messages
+- **Transaction Boundary Matrix** -- identify atomicity requirements for each changed handler's write sequences
+
+See step 7 in the Create mode Generation Process for the full matrix definitions. Every cell in these matrices must be satisfied in the updated code.
+
 #### Step 3: Generate Update Plan
 
 For each change, determine the specific edit operations. The plan is a structured list:
@@ -458,9 +470,20 @@ If `src/lib.rs` exists, apply guest wiring changes per the Guest Wiring by Categ
 
 #### Step 6: Smoke Check
 
-Run `cargo check` as a quick sanity check after applying all changes. Full
-verification (fmt, clippy, test suite, regression detection) runs at the
-orchestration level after test-writer completes.
+Run `cargo check` as a quick sanity check after applying all changes.
+
+#### Step 7: Traceability Verification (changed handlers only)
+
+For every handler classified as **Additive** or **Modifying** in the change set, verify that the updated code satisfies the spec and cross-cutting matrices from Step 2a:
+
+- For each spec requirement and scenario that maps to a changed handler, verify a corresponding code path exists
+- For each row in the Side-Effect Matrix (Step 2a), verify cross-entity mutations are implemented
+- For each row in the Outbound Message Matrix (Step 2a), verify transform functions exist and are called
+- For each row in the Transaction Boundary Matrix (Step 2a) where Atomic=Yes, verify transaction-scoped wrapping is in place
+
+If any verification fails: implement the missing code path and re-run `cargo check` to verify the new code compiles.
+
+Full verification (fmt, clippy, test suite, regression detection) runs at the orchestration level after test-writer completes.
 
 ---
 
