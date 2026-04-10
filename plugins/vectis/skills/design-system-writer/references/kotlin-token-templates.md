@@ -34,9 +34,6 @@ so the app module can `implementation(project(":vectis-design"))` and
 | `heavy` | `FontWeight.ExtraBold` |
 | `black` | `FontWeight.Black` |
 
-Note: Kotlin has no `ultraLight`; map YAML `ultraLight` to `FontWeight.Thin` or
-`ExtraLight` and document the choice in generated code comments if needed.
-
 ---
 
 ## Hex to Compose `Color`
