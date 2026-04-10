@@ -38,14 +38,29 @@ so the app module can `implementation(project(":vectis-design"))` and
 
 ## Hex to Compose `Color`
 
-Use ARGB `0xAARRGGBB`. Generated helper (internal or private in the same module):
+Color strings in `tokens.yaml` are **`#RRGGBB`** — a `#` prefix plus **6** hex
+digits (opaque RGB). This matches the Swift `UIColor(hex:)` template in
+`swift-token-templates.md`.
+
+Compose `Color(color: Int)` expects a packed **ARGB** int. Generated code treats
+the token as **24-bit RGB** and supplies full opacity by combining **`0xFF000000`**
+with the parsed value → **`0xFFRRGGBB`**.
+
+**8-digit `#AARRGGBB`** (alpha in tokens) is **not** supported here; adding it
+would require the same parsing rules in Swift and Kotlin so both platforms stay
+aligned.
+
+Generated helper (internal or private in the same module):
 
 ```kotlin
 import androidx.compose.ui.graphics.Color
 
 internal fun vectisColor(hex: String): Color {
     val h = hex.trim().removePrefix("#")
-    val rgb = h.toLong(16).toInt()
+    require(h.length == 6) {
+        "Expected #RRGGBB (6 hex digits), got #${h} — see kotlin-token-templates.md"
+    }
+    val rgb = h.toLong(16).toInt() and 0x00FFFFFF
     return Color(0xFF000000.toInt() or rgb)
 }
 ```
