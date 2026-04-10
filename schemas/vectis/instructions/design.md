@@ -108,7 +108,8 @@ Standard constraints for Crux projects:
 - Swift 6, iOS 17+ deployment target
 - Kotlin 2.x, Jetpack Compose, Material 3, min SDK 34
 - Java 21 LTS (NOT Java 25+)
-- VectisDesign Swift Package for all styling tokens -->
+- VectisDesign: Swift Package (iOS) and Compose Material 3 library (Android)
+  from tokens.yaml -->
 
 ## Dependencies
 

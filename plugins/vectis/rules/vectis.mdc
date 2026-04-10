@@ -26,7 +26,7 @@ This plugin generates cross-platform applications using the Crux framework (Rust
     ├── ios-reviewer/         # AI-powered code review for iOS shell
     ├── android-writer/       # Crux core → Kotlin/Jetpack Compose Android shell
     ├── android-reviewer/     # AI-powered code review for Android shell
-    └── design-system-writer/ # tokens.yaml → VectisDesign Swift package
+    └── design-system-writer/ # tokens.yaml → VectisDesign (iOS SPM + Android library)
 ```
 
 Each skill has its own SKILL.md with full details. The Specify artifact format (specs + design.md) is described in [specify.md](../../references/specify.md).
@@ -47,7 +47,7 @@ When a new platform is added, the feature spec gains a new platform section (e.g
 
 ### Design System Update
 
-Token changes in `tokens.yaml` trigger regeneration of Swift enums (VectisColors, VectisTypography, VectisSpacing, VectisCornerRadius) and `Theme.swift`. Token changes can be part of a feature change or a standalone feature.
+Token changes in `tokens.yaml` trigger regeneration of the iOS Swift Package (enums + `Theme.swift`) and the Android `vectis-design` module (Compose Material 3 colors, typography, spacing, `VectisTheme`). Token changes can be part of a feature change or a standalone feature.
 
 ## Troubleshooting
 

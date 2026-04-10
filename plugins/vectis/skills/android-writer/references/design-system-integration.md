@@ -1,36 +1,65 @@
 # Design System Integration
 
-How to use design system tokens in generated Android shell composables.
+How to use the **VectisDesign** Android library in generated shell composables.
 
-## Token Source
+## Token source
 
 Design tokens live in `design-system/tokens.yaml` at the repo root. The
-tokens define color, typography, spacing, and corner radius values that
-are shared across all platform shells.
+**design-system-writer** skill regenerates:
 
-When a design system is available, the android-writer generates a Compose
-theme that maps these tokens to Material 3 theme values.
+- `design-system/ios/` — Swift Package `VectisDesign` (SwiftUI)
+- `design-system/android/` — Gradle module `vectis-design` (Jetpack Compose
+  Material 3)
 
-## Using Color Tokens
+Both are mechanical outputs from the same YAML. The Android app does **not**
+duplicate hex or `sp` literals in `ui/theme/Color.kt` or `Type.kt` when this
+library is present.
 
-When a design system is present, map token colors to the Material 3
-`ColorScheme` in `ui/theme/Color.kt` and `ui/theme/Theme.kt`:
+## Gradle wiring
+
+From the Android project directory (typically `{workspace}/Android/`):
+
+1. **`settings.gradle.kts`** — include the library and point `projectDir` at
+   the generated module (adjust the relative path to match the repo layout):
+
+   ```kotlin
+   include(":vectis-design")
+   project(":vectis-design").projectDir = file("../design-system/android")
+   ```
+
+2. **`app/build.gradle.kts`** — depend on the module (same version catalog /
+   Compose BOM as `app`; the library’s `build.gradle.kts` uses the same BOM
+   pattern):
+
+   ```kotlin
+   implementation(project(":vectis-design"))
+   ```
+
+See `android-project-config.md` for full Gradle templates.
+
+## App theme
+
+When tokens exist, the app exposes only a thin `AppTheme` in
+`ui/theme/Theme.kt` that delegates to `VectisTheme`:
 
 ```kotlin
-// Color.kt
-val VectisPrimary = Color(0xFF007AFF)       // from tokens.yaml colors.primary.light
-val VectisPrimaryDark = Color(0xFF0A84FF)   // from tokens.yaml colors.primary.dark
-val VectisOnPrimary = Color(0xFFFFFFFF)     // from tokens.yaml colors.onPrimary.light
+import androidx.compose.runtime.Composable
+import com.vectis.design.VectisTheme
 
-// Theme.kt
-private val LightColorScheme = lightColorScheme(
-    primary = VectisPrimary,
-    onPrimary = VectisOnPrimary,
-    // ... map all token colors
-)
+@Composable
+fun AppTheme(content: @Composable () -> Unit) {
+    VectisTheme(content = content)
+}
 ```
 
-Access colors in composables via `MaterialTheme.colorScheme`:
+`VectisTheme` applies **static** light/dark `ColorScheme` values from
+`tokens.yaml` (not Material You dynamic wallpaper colors), matching iOS
+`Color(light:dark:)` behavior.
+
+## Using colors
+
+Prefer **`MaterialTheme.colorScheme`** in composables — `VectisTheme` installs
+the token-derived scheme:
 
 ```kotlin
 Text(
@@ -48,31 +77,13 @@ Button(
 ) { Text("Delete") }
 ```
 
-Colors automatically adapt to light/dark mode when the theme switches.
-Never use hardcoded `Color(0xFF...)` in screen composables.
+Do not use hardcoded `Color(0xFF...)` in `app/` screen code; hex appears only
+inside the generated `design-system/android/` library.
 
-## Using Typography Tokens
+## Using typography
 
-Map token typography to Material 3 `Typography` in `ui/theme/Type.kt`:
-
-```kotlin
-val AppTypography = Typography(
-    titleLarge = TextStyle(
-        fontSize = 28.sp,       // from tokens.yaml typography.title.size
-        fontWeight = FontWeight.Bold
-    ),
-    bodyLarge = TextStyle(
-        fontSize = 16.sp,       // from tokens.yaml typography.body.size
-        fontWeight = FontWeight.Normal
-    ),
-    labelSmall = TextStyle(
-        fontSize = 12.sp,       // from tokens.yaml typography.caption.size
-        fontWeight = FontWeight.Normal
-    )
-)
-```
-
-Access in composables via `MaterialTheme.typography`:
+Use **`MaterialTheme.typography`** — slots are filled from YAML via
+`vectisTypography()` inside `VectisTheme`:
 
 ```kotlin
 Text(
@@ -86,66 +97,42 @@ Text(
 )
 ```
 
-## Using Spacing Tokens
+For a **direct** token match to Swift’s `VectisTypography.title`, you may use
+`com.vectis.design.VectisTypography.title` as a `TextStyle` when needed.
 
-Define spacing constants derived from `tokens.yaml`:
+## Using spacing and corner radius
+
+Import the generated objects (default package `com.vectis.design`):
 
 ```kotlin
-object VectisSpacing {
-    val xs = 4.dp    // from tokens.yaml spacing.xs
-    val sm = 8.dp    // from tokens.yaml spacing.sm
-    val md = 16.dp   // from tokens.yaml spacing.md
-    val lg = 24.dp   // from tokens.yaml spacing.lg
-    val xl = 32.dp   // from tokens.yaml spacing.xl
-}
+import com.vectis.design.VectisCornerRadius
+import com.vectis.design.VectisSpacing
 ```
-
-Use in composables:
 
 ```kotlin
 Column(
     verticalArrangement = Arrangement.spacedBy(VectisSpacing.md)
 ) {
-    // children spaced 16dp apart
+    // ...
 }
 
 Modifier
     .padding(horizontal = VectisSpacing.md)
     .padding(vertical = VectisSpacing.sm)
-```
 
-## Using Corner Radius Tokens
-
-Define corner radius constants derived from `tokens.yaml`:
-
-```kotlin
-object VectisCornerRadius {
-    val sm = 4.dp    // from tokens.yaml cornerRadius.sm
-    val md = 8.dp    // from tokens.yaml cornerRadius.md
-    val lg = 16.dp   // from tokens.yaml cornerRadius.lg
-    val xl = 24.dp   // from tokens.yaml cornerRadius.xl
-}
-```
-
-Use in composables:
-
-```kotlin
 Surface(
     shape = RoundedCornerShape(VectisCornerRadius.md)
 ) { ... }
-
-Modifier.clip(RoundedCornerShape(VectisCornerRadius.lg))
 ```
 
-## Fallback When No Design System
+## Fallback when no design system
 
-When `design-system/tokens.yaml` does not exist, the android-writer
-generates composables using Material 3 defaults without custom token
-values. The generated theme uses `dynamicLightColorScheme` /
-`dynamicDarkColorScheme` on Android 12+ and falls back to a default
-Material 3 color scheme on older versions.
+When `design-system/tokens.yaml` does not exist, generate composables using
+Material 3 defaults in `ui/theme/` (`Color.kt`, `Type.kt`, `Theme.kt` with
+`dynamicLightColorScheme` / `dynamicDarkColorScheme` on Android 12+), as
+described in `compose-view-patterns.md`.
 
-## Disabled State Convention
+## Disabled state convention
 
 For disabled interactive elements, apply 38% alpha to the normal color:
 
@@ -166,22 +153,17 @@ Icon(
     contentDescription = "Add item",
     tint = MaterialTheme.colorScheme.primary
 )
-
-Icon(
-    imageVector = Icons.Default.Warning,
-    contentDescription = "Error",
-    tint = MaterialTheme.colorScheme.error
-)
 ```
 
-## Review Compliance
+## Review compliance
 
-The android-reviewer skill checks that generated composables:
+The android-reviewer skill expects:
 
-1. Use `MaterialTheme.colorScheme` for all color references (no hardcoded hex).
-2. Use `MaterialTheme.typography` for all font references (no inline `TextStyle`).
-3. Use `VectisSpacing` for padding and spacing values (no magic numbers).
-4. Use `VectisCornerRadius` for corner radius values.
+1. `MaterialTheme.colorScheme` for semantic colors in **app** sources (no
+   hardcoded hex in `app/...`).
+2. `MaterialTheme.typography` (or `VectisTypography` tokens) for text styles.
+3. `VectisSpacing` / `VectisCornerRadius` from `com.vectis.design` for layout
+   metrics.
 
-Exceptions are allowed for Material 3 component defaults where the
-platform applies its own colors.
+The generated library under `design-system/android/` may contain
+`Color(0xFF...)` produced from YAML; that is expected.

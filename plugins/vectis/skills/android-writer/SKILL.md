@@ -347,7 +347,7 @@ Create the Gradle build configuration following the template in
 
 Key files:
 - `{project-dir}/build.gradle.kts` -- root build file with plugin declarations
-- `{project-dir}/settings.gradle.kts` -- includes `:app` and `:shared` modules
+- `{project-dir}/settings.gradle.kts` -- includes `:app` and `:shared` modules, and `:vectis-design` when `design-system/tokens.yaml` exists
 - `{project-dir}/gradle.properties` -- Android/Kotlin properties
 - `{project-dir}/gradle/libs.versions.toml` -- version catalog
 - `{project-dir}/app/build.gradle.kts` -- app module with Compose and dependencies
@@ -846,11 +846,57 @@ class MainActivity : ComponentActivity() {
 ### 13. Generate theme files
 
 Create Material 3 theme files in
-`{project-dir}/app/src/main/java/com/vectis/{appname}/ui/theme/`:
+`{project-dir}/app/src/main/java/com/vectis/{appname}/ui/theme/`.
+
+**When `design-system/tokens.yaml` exists** (Vectis tokens + generated
+`vectis-design` library):
+
+1. **Wire the library** in `{project-dir}/settings.gradle.kts`:
+
+   ```kotlin
+   include(":vectis-design")
+   project(":vectis-design").projectDir = file("../design-system/android")
+   ```
+
+   Adjust the path if the Android project is not one directory below the repo
+   root that contains `design-system/android/` (same idea as the iOS path to
+   `design-system/ios`).
+
+2. **Depend on the library** in `{project-dir}/app/build.gradle.kts`:
+
+   ```kotlin
+   implementation(project(":vectis-design"))
+   ```
+
+3. **App theme only** — generate **`Theme.kt`** alone. Do **not** generate
+   `Color.kt` or `Type.kt` in the app; colors and typography come from
+   `com.vectis.design` (produced by design-system-writer). `AppTheme` should be
+   a thin wrapper around `VectisTheme`:
+
+   ```kotlin
+   package com.vectis.{appname}.ui.theme
+
+   import androidx.compose.runtime.Composable
+   import com.vectis.design.VectisTheme
+
+   @Composable
+   fun AppTheme(content: @Composable () -> Unit) {
+       VectisTheme(content = content)
+   }
+   ```
+
+   Use **static** token-based light/dark schemes via `VectisTheme` — do not
+   enable Material You dynamic color when a design system is present (parity
+   with iOS `Color(light:dark:)`).
+
+**When `design-system/tokens.yaml` does not exist** — generate the full
+Material 3 scaffold in `ui/theme/`:
 
 - `Color.kt` -- color definitions
 - `Theme.kt` -- `AppTheme` composable with dynamic color support
 - `Type.kt` -- typography configuration
+
+Follow `references/compose-view-patterns.md` for the no-design-system pattern.
 
 ### 14. Generate `AndroidManifest.xml` and Android resources
 
@@ -1170,10 +1216,11 @@ Same as create mode step 15:
 
 When `design-system/tokens.yaml` exists:
 
-- [ ] All color references use design system tokens (no hardcoded hex)
-- [ ] All font references use design system typography (no inline `TextStyle`)
-- [ ] All spacing values use design system spacing (no magic numbers)
-- [ ] All corner radius values use design system corner radii
+- [ ] `settings.gradle.kts` includes `:vectis-design` with correct `projectDir`
+- [ ] `app/build.gradle.kts` has `implementation(project(":vectis-design"))`
+- [ ] `AppTheme` wraps `VectisTheme`; app `ui/theme/` has no duplicate `Color.kt` / `Type.kt`
+- [ ] Screen composables use `MaterialTheme.colorScheme` / `MaterialTheme.typography` (no hardcoded hex in `app/`)
+- [ ] Spacing and corner radii use `VectisSpacing` / `VectisCornerRadius` from `com.vectis.design`
 
 ### Quality
 

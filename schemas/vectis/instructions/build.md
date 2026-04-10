@@ -201,10 +201,12 @@ The design-system-writer reads `tokens.yaml` as its primary input,
 supplemented by the `## Design System Requirements` section of the
 feature spec if present.
 
-1. /vectis:design-system-writer -- generate design system from tokens
+1. /vectis:design-system-writer -- regenerate iOS Swift Package and Android
+   `vectis-design` library from tokens
 
-No separate verify-repair loop needed; the skill includes its own
-swift build verification step.
+The skill includes `swift build` for the iOS package and documents
+`./gradlew :vectis-design:compileDebugKotlin` for the Android module once the
+shell’s `settings.gradle.kts` includes `:vectis-design`.
 
 ---
 

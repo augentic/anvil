@@ -31,8 +31,9 @@ Sections:
     `vectis:android-writer` for generation and `vectis:android-reviewer`
     for review. Requires a core to exist.
   - **web** — Web shell (future).
-  - **design-system** — VectisDesign Swift package generated from
-    tokens.yaml. Uses `vectis:design-system-writer`.
+  - **design-system** — VectisDesign generated from tokens.yaml: iOS Swift
+    Package and Android `vectis-design` Compose library. Uses
+    `vectis:design-system-writer`.
 - **Impact**: Affected code, APIs, dependencies, or systems.
 
 IMPORTANT: The Features section creates the contract between proposal
