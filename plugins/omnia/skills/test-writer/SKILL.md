@@ -85,6 +85,14 @@ For the spec file at `$SPECS_DIR/$CRATE_NAME/spec.md`, and for each requirement 
 3. **Error case tests** from error scenarios (WHEN/THEN with expected error code)
 4. **Validation tests** from requirement constraints (field presence, format, range)
 5. **Traceability comments** should cite the stable requirement ID so renaming a requirement title does not orphan the test
+6. **Side-effect assertions from design.md** -- for each scenario, read the corresponding handler's Business Logic section in design.md and enumerate every provider interaction tagged `[infrastructure]` or `[domain]` that produces an observable side effect:
+   - **Messaging publishes** (`Publish::send`) -- assert `MockProvider` captured a publish to the expected topic with the expected payload shape. If the design.md specifies payload transformations (field stripping, additions, renames), assert the transformed shape, not the raw entity.
+   - **Database writes** (`TableStore::exec`) -- assert the expected write operations were executed with expected parameter values
+   - **Cache writes** (`StateStore::set` / `StateStore::delete`) -- assert cache keys were set or invalidated as specified
+   - **Cross-entity mutations** -- if the handler's Business Logic specifies mutating a related entity (e.g., incrementing a counter on a parent record after inserting a child), assert that the secondary write occurred
+   - **Transaction boundaries** -- if the handler wraps operations in a transaction, assert that a failed step triggers rollback and that messaging publishes do NOT occur on rollback
+
+   **The spec and design.md are ground truth, not the generated code.** Generate side-effect assertions for every specified interaction regardless of whether the current handler code appears to implement it. If a handler is missing an implementation, the test SHOULD fail -- the verify-repair loop will route the failure back to crate-writer.
 
 See [spec-to-test-mapping.md](references/spec-to-test-mapping.md) for the detailed mapping rules.
 
@@ -207,6 +215,8 @@ Before completing, verify ALL structural items. Compilation and test execution a
 - [ ] Test fixtures in `tests/data/` or inline
 - [ ] No `unwrap()` or `expect()` in production code (allowed in tests)
 - [ ] Each spec scenario has a corresponding test function (when specs are available)
+- [ ] Side-effect assertions for every `[infrastructure]` provider interaction in design.md Business Logic (messaging publishes, DB writes, cache mutations, cross-entity mutations)
+- [ ] Transaction rollback tests for handlers with atomic write sequences
 
 ## Related Skills
 

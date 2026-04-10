@@ -267,15 +267,57 @@ Before starting code generation, verify artifact completeness per [checklists.md
 4. Determine artifact origin from design.md Context section
 5. Read reference documents from `references/`
 6. Read matching example from `examples/`
-7. Run pre-generation checklist above (verify artifact completeness)
-8. Generate `Cargo.toml` (see [cargo-toml.md](references/cargo-toml.md))
-9. Generate `src/lib.rs` with module declarations and re-exports
-10. Generate `src/types.rs` or domain type modules
-11. Generate `src/handlers.rs` (or `src/handler.rs` for single handler)
-12. Generate domain-specific modules as needed
-13. Generate `Migration.md`, `Architecture.md`, `.env.example`
-14. Run `cargo check` as a smoke check (full verification runs at the orchestration level after test-writer completes)
-15. If `src/lib.rs` exists: inject guest wiring (see Guest Wiring section above)
+7. **Cross-Cutting Analysis** -- before generating any handler code, build three matrices from the spec and design artifacts. These matrices are working artifacts (not persisted) but every cell must be satisfied in the generated code. If a cell cannot be implemented, mark it with a TODO per the todo-markers rules.
+
+   **a. Side-Effect Matrix**
+
+   For every handler that performs write operations (e.g., HTTP POST/PUT/PATCH/DELETE endpoints, message-triggered handlers that insert or update data), read the design.md Business Logic section and list every entity the handler must read or mutate *beyond its primary entity*. Include cross-handler delegations where one handler invokes or depends on another handler's write path.
+
+   | Handler | Primary Entity | Cross-Entity Read | Cross-Entity Mutation | Spec Reference |
+   |---------|---------------|-------------------|----------------------|----------------|
+
+   Every cell in the Cross-Entity Mutation column becomes a mandatory code path in the generated handler. If a handler's Business Logic references another entity's data, that reference MUST appear in the generated code -- even if the handler could function without it on the "happy path."
+
+   **b. Outbound Message Matrix**
+
+   For every event or notification published as a side effect in design.md, compare the outbound payload shape against the primary entity's API response shape. If they differ, document the transformation (field additions, removals, renames). Each transformation becomes a dedicated serialization function -- never serialize the entity struct directly for outbound messages unless the shapes are confirmed identical.
+
+   | Topic | Source Entity | Stripped Fields | Added Fields | Transform Function | Spec Reference |
+   |-------|-------------|----------------|--------------|-------------------|----------------|
+
+   **c. Transaction Boundary Matrix**
+
+   For every handler whose Business Logic contains multiple sequential write operations (inserts/updates, or delegated calls to other handlers that write), identify whether the spec requires atomicity (look for REQ references to transactions, "all-or-nothing" language, multi-entity consistency requirements, or post-commit-only side effects).
+
+   | Handler | Write Operations | Atomic? | Post-Commit Side Effects | Spec Reference |
+   |---------|-----------------|---------|--------------------------|----------------|
+
+   Every row with Atomic=Yes MUST generate transaction-scoped wrapping for its write operations, with event/notification publishes occurring only after successful commit.
+
+8. Run pre-generation checklist above (verify artifact completeness)
+9. Generate `Cargo.toml` (see [cargo-toml.md](references/cargo-toml.md))
+10. Generate `src/lib.rs` with module declarations and re-exports
+11. Generate `src/types.rs` or domain type modules
+12. Generate `src/handlers.rs` (or `src/handler.rs` for single handler) -- consult the three matrices from step 7 while generating each handler to ensure cross-cutting concerns are wired
+13. Generate domain-specific modules as needed
+14. Generate `Migration.md`, `Architecture.md`, `.env.example`
+15. Run `cargo check` as a smoke check (full verification runs at the orchestration level after test-writer completes)
+16. **Traceability Verification** -- verify that every spec requirement and design.md Business Logic step has a corresponding code path in the generated crate. For each `### Requirement:` block in spec.md:
+    - Verify a traceability comment referencing the requirement ID exists in the generated code
+    - For each `#### Scenario:` under that requirement, verify that the described behavior has a corresponding branch or code path in a handler
+
+    For each row in the Side-Effect Matrix (step 7a):
+    - Verify that every Cross-Entity Mutation has a corresponding function call in the handler
+
+    For each row in the Outbound Message Matrix (step 7b):
+    - Verify that the transform function exists and is called before publishing
+
+    For each row in the Transaction Boundary Matrix (step 7c) where Atomic=Yes:
+    - Verify that transaction-scoped wrapping encloses the handler's write operations and that post-commit side effects are outside the transaction
+
+    If any verification fails: implement the missing code path before proceeding. Do not rely on the verify-repair loop or test-writer to catch these -- the code must satisfy the spec before handoff.
+
+17. If `src/lib.rs` exists: inject guest wiring (see Guest Wiring section above)
 
 ---
 

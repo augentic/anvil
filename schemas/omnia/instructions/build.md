@@ -33,7 +33,11 @@ Run the verify-repair loop described below.
 
 ### Phase 3: Review
 
-4. /omnia:code-reviewer -- AI code review
+4. /omnia:code-reviewer $CRATE_PATH --fix
+
+### Phase 4: Remediate review findings
+
+Run the remediation process described below.
 
 ---
 
@@ -73,7 +77,40 @@ distinguish true regressions from expected behavioral changes.
 
 ### Phase 3: Review
 
-3. /omnia:code-reviewer -- AI code review
+3. /omnia:code-reviewer $CRATE_PATH --fix
+
+### Phase 4: Remediate review findings
+
+Run the remediation process described below.
+
+---
+
+## Remediation process
+
+Parse `$CRATE_PATH/REVIEW.md`. Process findings by severity:
+
+**CRITICAL and HIGH findings**:
+
+1. If the finding is marked auto-fixable and was not disputed by the
+   antagonist: apply the fix directly
+2. If the finding is not auto-fixable: re-enter /omnia:crate-writer in
+   update mode with the finding description, file:line reference, and
+   suggested fix as context. Apply minimum-change repair discipline.
+3. After all CRITICAL/HIGH fixes: run the verify-repair loop (max 2
+   iterations -- tighter than the standard 3 since these are targeted
+   repairs to already-reviewed code)
+
+**MEDIUM findings**:
+
+1. Apply auto-fixable fixes
+2. For non-auto-fixable: document as accepted technical debt in
+   REVIEW.md with rationale for deferral
+
+**LOW findings**: No action required. Document in REVIEW.md.
+
+After remediation, re-run /omnia:code-reviewer $CRATE_PATH (without
+--fix) to verify fix quality. If new CRITICAL or HIGH findings are
+introduced by the fixes, repeat the remediation cycle once.
 
 ---
 
