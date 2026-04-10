@@ -392,7 +392,7 @@ See [change-classification.md](references/change-classification.md) for detailed
 
 #### Step 2a: Cross-Cutting Analysis (changed handlers only)
 
-For every handler that is classified as **Additive** or **Modifying** in the change set, build the same three matrices as Create mode step 7, scoped to the changed handlers only. Unchanged handlers do not need re-analysis.
+For every handler that is classified as **Additive** or **Modifying** in the change set, build the same three matrices as Create mode step 7. Also include any unchanged handler whose cross-cutting behavior depends on a modified entity or handler (e.g., an unchanged handler that reads or mutates an entity whose schema changed).
 
 - **Side-Effect Matrix** -- list cross-entity reads and mutations for each changed handler
 - **Outbound Message Matrix** -- list payload transformations for each changed handler's outbound messages
