@@ -2,7 +2,7 @@
   "name": "vectis",
   "displayName": "Vectis Crux Development",
   "description": "Generate cross-platform Crux applications (Rust core, iOS shell, Android shell, shared design tokens for SwiftUI and Compose Material 3).",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"
