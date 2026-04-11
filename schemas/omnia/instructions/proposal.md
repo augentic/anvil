@@ -4,12 +4,10 @@ Sections:
 - **Why**: 1-2 sentences on the problem or opportunity. What problem does
   this solve? Why now?
 - **Source**: Identify where the requirements come from. Pick ONE:
-  - **Repository**: URL of the repository to migrate (e.g.,
-    `https://github.com/org/repo`). This triggers the RT workflow
-    — the specs phase will clone the repo and run analyze.
-  - **Source-code**: Local path to existing source code (e.g.,
-    `/path/to/legacy/crate`). This triggers the analyze workflow
-    — the specs phase will run analyze with iterative validation.
+  - **Source-code**: Repository URL or local path to existing code
+    (e.g., `https://github.com/org/repo` or `/path/to/legacy/crate`).
+    If a remote URL, the specs phase clones the repo first. Then
+    analyze runs with iterative validation to produce specs and design.
   - **Manual**: Requirements are described directly in this proposal.
     This is the default workflow — specs and design are written by hand.
 - **What Changes**: Bullet list of changes. Be specific about new
@@ -24,7 +22,7 @@ Sections:
     changes (not just implementation details). Each needs a delta spec
     file. Check `.specify/specs/` for existing spec names. Leave empty if
     no requirement changes.
-  - For **Repository**, **Source-code**, or **Epic** sources, crates
+  - For **Source-code** or **Epic** sources, crates
     will be determined by the analyzer skill. List expected crates if
     known, but analyzer output takes precedence.
 - **Impact**: Affected code, APIs, dependencies, or systems.
@@ -32,7 +30,7 @@ Sections:
 IMPORTANT: The Crates section creates the contract between proposal
 and specs phases. For manual sources, research existing specs before
 filling this in — each crate listed will need a corresponding spec
-file. For repository or epic sources, the analyzer discovers crates
+file. For source-code or epic sources, the analyzer discovers crates
 automatically.
 
 Keep it concise (1-2 pages). Focus on the "why" not the "how" - 
@@ -49,7 +47,7 @@ This is the foundation - specs, design, and tasks all build on this.
 
 ## Source
 
-<!-- Pick ONE: Repository URL, Source-code path, Epic key, or Manual -->
+<!-- Pick ONE: Source-code (URL or local path), Epic key, or Manual -->
 
 ## What Changes
 

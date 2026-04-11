@@ -81,7 +81,7 @@ At the start, quickly check what exists by listing directories in `.specify/chan
 
 Also read `.specify/config.yaml` for the `schema` field and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
 
-Read `schema.yaml` to understand what artifacts the schema defines, what source types are supported (Repository, Epic, Manual), and what the workflow looks like.
+Read `schema.yaml` to understand what artifacts the schema defines, what source types are supported (Source-code, Epic, Manual), and what the workflow looks like.
 
 This tells you:
 - If there are active changes

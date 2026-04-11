@@ -6,24 +6,14 @@ First, read the proposal's **Source** section to determine the workflow:
 
 ---
 
-**RT path** (Source is a repository URL):
+**Source-code analysis path** (Source is a repository URL or local path):
 
-  1. Clone the source repository. Invoke `/spec:clone` with
-     arguments:
-       `<repo-url> legacy/ true`
-     This clones the repo into `legacy/<repo-name>` as a detached tree.
-  2. Generate specs and design. Invoke `/spec:analyze` with
-     arguments:
-       `legacy/<repo-name> <change-dir>`
-     analyze produces both `specs/` and `design.md` with iterative
-     validation until convergence.
-  3. Review the generated specs for completeness and adjust if needed.
-  4. Proceed to the next artifact. design.md was already produced by
-     analyze — the design phase will review/enrich it.
-
----
-
-**Source-code path** (Source is a local path to existing code):
+  If the source is a remote repository URL, clone it first.
+  Invoke `/spec:clone` with arguments:
+    `<repo-url> legacy/ true`
+  This clones the repo into `legacy/<repo-name>` as a detached tree.
+  The resulting local path (`legacy/<repo-name>`) becomes the
+  source path for the analysis step below.
 
   1. Generate specs and design with iterative validation. Invoke
      `/spec:analyze` with arguments:
@@ -35,7 +25,8 @@ First, read the proposal's **Source** section to determine the workflow:
      until zero critical discrepancies remain.
   2. analyze produces both `specs/` and `design.md` after
      validation converges.
-  3. Proceed to the next artifact. design.md was already produced by
+  3. Review the generated specs for completeness and adjust if needed.
+  4. Proceed to the next artifact. design.md was already produced by
      analyze — the design phase will review/enrich it.
 
 ---

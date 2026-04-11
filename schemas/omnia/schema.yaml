@@ -14,7 +14,7 @@ blueprints:
     requires: []
     validate:
       - Has a Why section with at least one sentence
-      - Has a Source section identifying Repository, Epic, or Manual
+      - Has a Source section identifying Source-code, Epic, or Manual
       - Has a Crates section listing at least one new or modified crate
       - Crate names are kebab-case
 
