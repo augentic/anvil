@@ -14,7 +14,7 @@ blueprints:
     requires: []
     validate:
       - Has a Why section with at least one sentence
-      - Has a Source section identifying Source-code, Epic, or Manual
+      - Has a Source section identifying Source-code or Manual
       - Has a Crates section listing at least one new or modified crate
       - Crate names are kebab-case
 
@@ -77,8 +77,7 @@ defaults:
   rules:
     proposal: |
       - Identify the proposal source. It will be either a git repository URL
-        (for code analysis), a JIRA/ADO epic key (for requirements analysis), or
-        a manual proposal (feature work).
+        (for code analysis) or a manual proposal (feature work).
       - Use crate names. For modified crates, use the existing spec folder name
         from .specify/specs/. For new crates, choose a name that will be the
         crate name
@@ -93,7 +92,7 @@ defaults:
       - For update changes use top-level ADDED/MODIFIED/REMOVED/RENAMED
         delta-operation sections keyed by stable requirement IDs
     design: |
-      - Include Context section with Source field (jira-epic or source-code)
+      - Include Context section with Source field (source-code or manual)
       - Document domain model entity/type definitions with field names, types,
         wire names, and optionality
       - Document API contracts with method, path, request/response shapes

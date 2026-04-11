@@ -80,7 +80,7 @@ Specify ships as a Cursor plugin marketplace with five plugins:
 - **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
 - **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
 - **RT** (`rt`) -- TypeScript analysis, fixture capture, and migration
-- **Plan** (`plan`) -- JIRA epic analysis and SoW generation
+- **Plan** (`plan`) -- Requirements analysis and SoW generation
 
 See [docs/plugins.md](docs/plugins.md) for the full skill reference and artifact lifecycle.
 

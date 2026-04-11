@@ -4,7 +4,7 @@
 - **Purpose**: Rust WASM development (greenfield or migration)
 - **Source**: Source Code (`/spec:analyze`) or Manual
 - **Target**: Rust WASM (Omnia SDK)
-- **Workflow**: `define` -> `specs` (from Epic, Code, or Manual) -> `design` -> `tasks` -> `build` (crate-writer)
+- **Workflow**: `define` -> `specs` (from Code or Manual) -> `design` -> `tasks` -> `build` (crate-writer)
 
 ## Contents
 

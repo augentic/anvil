@@ -7,9 +7,9 @@ alwaysApply: true
 
 ## Overview
 
-This plugin derives proposals, specifications, design documents, and Statements of Work from JIRA epics, design documents, and other requirement sources. It produces the Specify artifacts that downstream generation plugins (Omnia, RT) consume.
+This plugin derives Statements of Work from Specify artifacts (specs, design documents) and other requirement sources. It produces client-facing SoW material from the structured artifacts that the Specify workflow creates.
 
-**Purpose**: Bridge business requirements to structured Specify artifacts ready for code generation.
+**Purpose**: Bridge Specify artifacts to client-facing deliverables (SoW).
 
 ## Plugin Architecture
 
@@ -17,7 +17,6 @@ This plugin derives proposals, specifications, design documents, and Statements 
 /plugins/plan/
 ├── .cursor-plugin/
 │   └── plugin.json      # Plugin manifest
-├── mcp.json              # Atlassian MCP for JIRA access
 ├── rules/
 │   └── plan.mdc          # This file
 └── skills/
@@ -26,18 +25,18 @@ This plugin derives proposals, specifications, design documents, and Statements 
 
 Each skill has its own SKILL.md with full details. The Specify artifact format (specs + design.md) is described in [specify.md](../../references/specify.md).
 
-## JIRA Epic Requirements
+## Artifact Requirements
 
-For best results, JIRA epics should include:
+For best results, Specify artifacts should include:
 
 ### Essential
-- **Clear epic description**: Purpose and high-level functionality
-- **User stories**: At least 3-5 stories with acceptance criteria
-- **API endpoints**: HTTP methods, paths, request/response formats
-- **Data model**: Entity definitions with field types
+- **Clear proposal**: Purpose and high-level functionality in `proposal.md`
+- **Spec requirements**: At least 3-5 requirements with scenarios in `specs/*/spec.md`
+- **API endpoints**: HTTP methods, paths, request/response formats in `design.md`
+- **Data model**: Entity definitions with field types in `design.md`
 
 ### Recommended
-- **BDD scenarios**: Given/When/Then specifications for key workflows
+- **BDD scenarios**: WHEN/THEN specifications for key workflows
 - **Error handling**: Expected error conditions and messages
 - **Validation rules**: Input constraints, format requirements
 - **External dependencies**: APIs, databases, message queues
@@ -47,20 +46,14 @@ For best results, JIRA epics should include:
 - **Security requirements**: Authentication, authorization, data protection
 - **Example payloads**: Sample JSON/XML for requests and responses
 
-**Tip**: High `[unknown]` count in generated artifacts means the epic needs more detail.
+**Tip**: High `[unknown]` count in generated artifacts means the specs and design need more detail.
 
 ## Troubleshooting
 
-### Cannot Fetch JIRA Epic
-
-- Is epic key correct? (Check JIRA URL)
-- Do you have read permissions?
-- Are API credentials set?
-
 ### Artifacts Missing Detail
 
-- Are user stories complete with acceptance criteria?
-- Are API endpoints fully specified?
+- Are spec requirements complete with scenarios and acceptance criteria?
+- Are API endpoints fully specified in design.md?
 - Are request/response schemas documented?
 
 ### Design Enrichment Incomplete

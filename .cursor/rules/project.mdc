@@ -25,7 +25,7 @@ Specify owns the workflow contract. This repository contributes specialist analy
 ## Main Inputs
 
 1. **TypeScript → Rust WASM**: reconstruct baseline specs and design from an existing service.
-2. **JIRA → Rust WASM**: derive proposal, specs, and design context from epics and stories.
+2. **Requirements → Rust WASM**: derive proposal, specs, and design from requirements documents and design inputs.
 3. **Manual → Crux App**: generate cross-platform Crux applications (Rust core, iOS shell, Android shell, design system).
 
 ## Authority Hierarchy

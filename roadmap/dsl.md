@@ -513,7 +513,7 @@ pub enum Tool {
     Read, Write, StrReplace, Shell, Grep, Glob,
     ReadLints, WebFetch, WebSearch, AskQuestion,
     Task, TodoWrite, SemanticSearch,
-    Mcp(&'static str),  // e.g. Mcp("atlassian__*")
+    Mcp(&'static str),  // e.g. Mcp("example__*")
 }
 
 pub struct Reference {

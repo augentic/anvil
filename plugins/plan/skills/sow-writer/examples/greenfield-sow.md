@@ -2,18 +2,18 @@
 
 ## Scenario
 
-A new GTFS generation component is being built from JIRA requirements. Specify artifacts (specs + design.md) have been produced, and we need to generate a SoW for the client.
+A new GTFS generation component is being built from requirements. Specify artifacts (specs + design.md) have been produced, and we need to generate a SoW for the client.
 
 ## Input
 
 **Specify artifacts**: `./.specify/changes/gtfs_generator/`
 **Client**: Auckland Transport
-**Origin**: requirements (JIRA epic)
+**Origin**: requirements (Specify artifacts)
 
 **Key artifact content** (summarised):
 
 - **Component**: `gtfs_generator` — Generates GTFS feed data from contract and timetable sources
-- **User Stories**: 5 stories covering feed generation, validation, publishing, scheduling, and error reporting
+- **Spec Requirements**: 5 requirements covering feed generation, validation, publishing, scheduling, and error reporting
 - **Business Logic Blocks**: 4 blocks (extract contracts, transform to GTFS, validate feed, publish to CDN)
 - **API Contracts**: 3 endpoints (POST /feeds/generate, GET /feeds/{id}, GET /feeds/{id}/validation)
 - **External Service Dependencies**: Contract API (HTTP), Timetable API (HTTP), CDN (HTTP), Notification Service (Publish)
@@ -264,7 +264,7 @@ F. **Security and Compliance**
 ## Key Observations
 
 1. **Greenfield framing**: Background focuses on new capability delivery, not migration.
-2. **User Stories → Deliverables**: The 5 user stories were grouped into 3 logical deliverables plus a test suite.
+2. **Spec Requirements → Deliverables**: The 5 spec requirements were grouped into 3 logical deliverables plus a test suite.
 3. **Multiple external APIs → Multiple dependencies**: Each API from External Service Dependencies became a separate dependency.
 4. **3 `[unknown]` tokens → 3 assumptions**: Schedule, CDN cache, and retention became assumptions A-C.
 5. **Domain-specific exclusions**: "Broader Data Model Changes" and "Analytics and Reporting" are specific to this project, derived from what the artifacts do NOT cover.
