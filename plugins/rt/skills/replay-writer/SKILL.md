@@ -75,7 +75,7 @@ See [Crate layout](references/crate-layout.md) for details and how fixtures map 
 
 When adding new tests from fixtures, follow the crate's existing test style (same MockProvider, same `include_bytes!` or file-based loading, same assertion patterns).
 
-## Execution Steps
+## Process
 
 1. **Inspect crate, instructions, and fixtures**
    - Read `$CRATE_DIR/src/` to identify handlers, input/output types, and provider bounds.
@@ -107,7 +107,7 @@ When adding new tests from fixtures, follow the crate's existing test style (sam
 5. **Summarize**
    - Report: tests added or updated, failures fixed, and final `cargo test` result.
 
-## Authority and Conventions
+## Authority Hierarchy
 
 - **This SKILL.md** — generation and review rules.
 - **Existing crate code and tests** — handler signatures, MockProvider usage, and test patterns.
@@ -117,7 +117,7 @@ When adding new tests from fixtures, follow the crate's existing test style (sam
 
 Do not change handler semantics or add production code beyond what is strictly required to make tests pass. Prefer fixing test setup or assertions over changing library code unless the failure indicates a real bug.
 
-## Verification
+## Verification Checklist
 
 Before completing:
 
@@ -126,7 +126,7 @@ Before completing:
 - [ ] `cargo clippy -- -D warnings` passes (recommended).
 - [ ] No new `unwrap()` or `expect()` in production code; test code may use them where appropriate.
 
-## Related
+## Related Skills
 
 - **crate-writer** — produces the crate and initial tests; run replay-writer after generation when real-life data is ready.
 - **code-reviewer** — optional follow-up for full code review; replay-writer focuses on test coverage and making tests pass.

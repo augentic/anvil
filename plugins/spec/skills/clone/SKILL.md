@@ -193,7 +193,7 @@ Before completing, verify:
 - [ ] For updates: working directory is clean, pull succeeded
 - [ ] If detach was used: only `.git` was removed; `.gitignore` and `.gitattributes` (if present) are still in the tree
 
-## Important Notes
+## Guardrails
 
 - This skill runs **autonomously** -- it never prompts for user input
 - Missing required arguments cause immediate failure with a descriptive error message

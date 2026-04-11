@@ -39,7 +39,7 @@ $PROJECT_DIR    = <project directory>
 $APP_RS         = $PROJECT_DIR/shared/src/app.rs
 ```
 
-## Required References
+## Reference Documentation
 
 Before generating tests, read these documents:
 

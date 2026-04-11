@@ -826,7 +826,7 @@ all other items apply in both modes.
 - [ ] **(update)** Preservation rules were followed -- unchanged code, comments,
   helpers, and test utilities were not modified
 
-## Important Notes
+## Guardrails
 
 - **Crux versions**: See `references/crux-versions.md` for current version pins of all Crux dependencies.
 - **`facet` version pinning**: The `facet` crate must be pinned to `"=0.31"` exactly.

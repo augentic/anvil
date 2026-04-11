@@ -593,6 +593,7 @@ let api_url = ctx.config.get("API_URL")?;
 
 - [Universal Review Checks](references/universal-checks.md) -- Language and domain-agnostic review checklist shared across all reviewer skills
 - [Agent Team Patterns](references/agent-teams.md) -- Shared team roles, antagonist protocol, synthesis rules, and file ownership
+- [Reviewer Workflow](../../../references/reviewer-workflow.md) -- Shared review-fix cycle, synthesis, and design-level findings workflow (used by Vectis reviewers; reference for Omnia patterns)
 - [CodeRabbit Study: AI Code Creates 1.7x More Issues](https://www.coderabbit.ai/blog/state-of-ai-vs-human-code-generation-report)
 - [Security Best Practices for Rust](https://anssi-fr.github.io/rust-guide/)
 - [WASM Security Model](https://webassembly.org/docs/security/)
@@ -681,7 +682,7 @@ Before completing review:
 - [ ] Modified files listed with originating prefix (SEC-, COR-, QUA-, UNI-)
 - [ ] Revert performed if errors introduced
 
-## Important Notes
+## Guardrails
 
 ### Expected Results
 

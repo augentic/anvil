@@ -103,7 +103,7 @@ See [docs/architecture.md](docs/architecture.md) for the full repository structu
 /docs/                    # Extended documentation (architecture, plugins)
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
-  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status)
+  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status, analyze, clone)
   │   └── references/     # Artifact templates and schema resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)

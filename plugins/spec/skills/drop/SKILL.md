@@ -13,7 +13,7 @@ Drop a change without merging its specs into the baseline.
 
 Optionally specify a change name. If omitted, check whether it can be inferred from conversation context. If vague or ambiguous, you MUST prompt for available changes.
 
-## Steps
+## Process
 
 1. **Select the change**
 

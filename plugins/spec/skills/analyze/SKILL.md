@@ -42,7 +42,7 @@ $DESIGN_PATH = $CHANGE_DIR/design.md
 
 See complete definitions in the [Specify Artifact Format Specification - Tags Reference](../../references/specify.md#tags-reference).
 
-## Workflow
+## Process
 
 ```
 Phase 1  STRUCTURAL INVENTORY ──► user validates completeness

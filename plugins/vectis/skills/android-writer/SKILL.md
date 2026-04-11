@@ -1244,7 +1244,7 @@ When `design-system/tokens.yaml` exists:
 - [ ] App can be installed: `./gradlew :app:installDebug`
 - [ ] App can be launched: `adb shell am start -n <package>/.MainActivity`
 
-## Important Notes
+## Guardrails
 
 - **Core must exist first**: This skill generates the Android shell for an
   existing Crux core. Run the core-writer skill first to generate the

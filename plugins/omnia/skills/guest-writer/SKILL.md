@@ -223,7 +223,7 @@ Before completing, verify:
 - [ ] `supply-chain/` directory present with `config.toml`, `audits.toml`, and `README.md`
 - [ ] Handlers annotated with `#[omnia_wasi_otel::instrument]`
 
-## Important Notes
+## Guardrails
 
 ### Hard Rules
 

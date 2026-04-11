@@ -16,6 +16,7 @@ and any platform-specific requirements in dedicated sections.
 | Directive                      | Skill                              | When to Use                            |
 | ------------------------------ | ---------------------------------- | -------------------------------------- |
 | `vectis:core-writer`           | Generate or update Crux core       | Core implementation tasks              |
+| `vectis:test-writer`           | Generate or update Crux test suites | Post-implementation tests for core    |
 | `vectis:core-reviewer`         | AI code review for Crux core       | Post-implementation review of core     |
 | `vectis:ios-writer`            | Generate or update iOS shell       | iOS shell implementation tasks         |
 | `vectis:ios-reviewer`          | AI code review for iOS shell       | Post-implementation review of iOS      |

@@ -18,8 +18,7 @@ specify/
 │   │   └── mcp.json              # MCP server definition
 │   ├── omnia/                    # Omnia code generation plugin
 │   │   ├── skills/               # Code generation skills (crate-writer, test-writer, ...)
-│   │   ├── references/           # Guardrails, providers, guest wiring patterns
-│   │   └── mcp.json
+│   │   └── references/           # Guardrails, providers, guest wiring patterns
 │   ├── vectis/                   # Vectis Crux development plugin
 │   │   ├── skills/               # Crux skills (core-writer, test-writer, ios-writer, ...)
 │   │   └── references/           # Crux patterns, design system references
@@ -27,14 +26,13 @@ specify/
 │   │   ├── skills/               # Migration skills (replay-writer, wiretapper, ...)
 │   │   └── mcp.json
 │   └── plan/                     # Plan requirements analysis plugin
-│       ├── skills/               # Planning skills (sow-writer)
-│       └── mcp.json
+│       └── skills/               # Planning skills (sow-writer)
 ├── schemas/                      # Schema definitions
 │   ├── omnia/                    # Greenfield Rust WASM schema
 │   └── vectis/                   # Cross-platform Crux application schema
 └── scripts/                      # Validation and plugin management
     ├── checks.ts                 # Documentation and consistency checks
-    ├── dev-plugins.sh            # Symlink local plugins for development
+    ├── dev-plugins.sh            # Copy local plugins into cache for development
     └── prod-plugins.sh           # Restore marketplace plugins
 ```
 

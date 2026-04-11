@@ -30,7 +30,7 @@ When conflicts arise, follow this strict precedence:
 
 **Key difference between modes**: In update mode, existing crate code sits at level 5 -- authoritative for any behavior the artifacts do not explicitly change. In create mode, there is no existing code; levels 5-6 are skipped.
 
-## Hard Rules
+## Guardrails
 
 Violations of any rule below fail generation or update.
 
@@ -68,7 +68,7 @@ $DESIGN_PATH    = $CHANGE_DIR/design.md
 $CRATE_PATH     = crates/$CRATE_NAME
 ```
 
-## Required References
+## Reference Documentation
 
 Before generating or updating code, read these documents:
 
@@ -350,7 +350,7 @@ Changes are applied in this fixed order to minimize intermediate breakage:
 
 #### Step 0: Read References
 
-Read all documents listed in [Required References](#required-references) including update-specific references, and at least one matching update example.
+Read all documents listed in [Reference Documentation](#reference-documentation) including update-specific references, and at least one matching update example.
 
 #### Step 1: Inventory Existing Crate
 

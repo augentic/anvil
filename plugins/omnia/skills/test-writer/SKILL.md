@@ -27,7 +27,7 @@ $SPECS_DIR      = $CHANGE_DIR/specs
 $DESIGN_PATH    = $CHANGE_DIR/design.md
 ```
 
-## Required References
+## Reference Documentation
 
 Before generating tests, read these documents:
 

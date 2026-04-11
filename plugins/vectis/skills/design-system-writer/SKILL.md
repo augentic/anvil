@@ -287,7 +287,7 @@ val md = 16.dp
 
 ---
 
-## Error handling
+## Error Handling
 
 | Error | Resolution |
 |---|---|
@@ -299,7 +299,7 @@ val md = 16.dp
 
 ---
 
-## Verification checklist
+## Verification Checklist
 
 **Shared**
 

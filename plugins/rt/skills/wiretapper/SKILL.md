@@ -116,7 +116,7 @@ Optionally add `$LEGACY/src/wiretap/README.md` documenting that wiretap is enabl
 - [ ] App entrypoint contains conditional wiretap init and adapter registration (when `WIRETAP_ENABLED=true`).
 - [ ] `npm run build` (or equivalent) succeeds from `$LEGACY`.
 
-## Important Notes
+## Guardrails
 
 - **No cron/background**: Do not capture scheduled or long-running loops; only request-scoped and message-scoped handlers.
 - **Handler keys**: HTTP uses `METHOD path` (e.g. `GET /api/v1/...`); Kafka uses `topic:TopicName`.

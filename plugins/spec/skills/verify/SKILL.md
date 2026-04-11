@@ -13,7 +13,7 @@ Detect drift between baseline specs and the current codebase.
 
 Optionally specify a capability name to verify. If omitted, verify all capabilities that have baseline specs.
 
-## Steps
+## Process
 
 1. **Check initialization and resolve schema**
 

@@ -17,7 +17,7 @@ When ready to implement, run /spec:build
 
 The user's request should include a change name (kebab-case) OR a description of what they want to build. Optionally, an artifact ID to regenerate a single artifact for an existing change (e.g., `/spec:define my-change design`).
 
-## Steps
+## Process
 
 1. **If no clear input provided, ask what they want to build**
 

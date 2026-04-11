@@ -22,7 +22,7 @@ This repository provides specialist skills and references that support that work
 All commands are run from the repository root:
 
 - **`make checks`** -- runs `scripts/checks.ts` via Deno for documentation and workflow consistency checks
-- **`make dev-plugins`** -- symlink local plugins into Cursor for development/testing
+- **`make dev-plugins`** -- copy local plugins into Cursor cache for development/testing
 - **`make prod-plugins`** -- restore Augentic marketplace plugins (reload Cursor after either)
 
 ### Gotchas

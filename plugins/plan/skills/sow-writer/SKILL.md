@@ -464,7 +464,7 @@ PDF generated: $OUTPUT_DIR/$BASENAME.pdf
 - [ ] **No cost invention**: All costs are placeholders — never generate monetary values
 - [ ] **Traceability**: Each deliverable can be traced back to artifact content
 
-## Important Notes
+## Guardrails
 
 - **Never invent costs**: All monetary values must be placeholders. Cost estimation is the Client Strategist's responsibility.
 - **Business language**: Translate technical artifact content into client-facing language. "Implement Handler<P> trait with HttpRequest provider" becomes "Integration with external API".

@@ -13,7 +13,7 @@ Show the current state of Specify in this project.
 
 Optionally specify a change name to focus on. Otherwise show an overview.
 
-## Steps
+## Process
 
 1. **Check initialization and resolve schema**
 

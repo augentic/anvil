@@ -13,7 +13,7 @@ Merge a completed change.
 
 Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
-## Steps
+## Process
 
 1. **Select the change**
 

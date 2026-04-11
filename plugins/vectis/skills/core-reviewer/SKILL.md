@@ -42,33 +42,15 @@ reference app. Differences between the two highlight potential regressions.
 
 ### 2. Review-fix cycle (max 3 iterations)
 
-Before starting, initialize:
-
-- `iteration = 1`, `max_iterations = 3`
-- An empty list of **accumulated design-level findings** (carried across
-  iterations)
-
-The cycle repeats: spawn the team, run specialist analysis, challenge via
-antagonist, synthesize findings, auto-fix mechanical issues, then re-review
-the fixes. The cycle exits when no mechanical fixes are applied or
-`max_iterations` is reached.
+Follow the [Reviewer Workflow](../../../references/reviewer-workflow.md) for
+the review-fix cycle, synthesis, auto-fix, and loop control orchestration.
+The platform-specific details below define the specialists, universal check
+heuristics, and auto-fix list for this cycle.
 
 #### 2a. Initialize team
 
-**CREATE** agent team with specialists appropriate for this iteration and
-scope. Each receives the target-dir path and their assigned review scope.
-
-**First iteration (`scope = full`)**: Spawn all three specialists. This is
-the comprehensive initial review.
-
-**First iteration (`scope = quick`)**: Spawn only the **Structural
-Specialist** and **Quality Specialist**. Skip the Logic Specialist.
-
-**Subsequent iterations** (`iteration > 1`): Spawn only the **Structural
-Specialist** and **Quality Specialist**, scoped to files modified by the
-previous iteration's fixes. Skip the Logic Specialist -- mechanical fixes
-(serde derives, `render().and()`, `.trim()` checks) do not alter event
-sequences or conflict-resolution logic.
+The domain-specific specialist for Crux core is the **Logic Specialist**
+(skipped on `quick` scope and subsequent iterations).
 
 **Spawn Structural Specialist**:
 
@@ -191,20 +173,10 @@ ID with "GEN-" (e.g., GEN-001-1, GEN-005-1).
 If `iteration > 1`, append: "Scope your analysis to these files modified
 in the previous iteration: [list of changed files]."
 
-#### 2b. Specialist analysis (concurrent)
+#### 2b-c. Specialist analysis and universal checks
 
-The specialists analyze the crate concurrently. Each reads all `.rs` files
-in `shared/src/` but reports only on their assigned checks.
-
-**Lead waits** for all specialists to complete before proceeding.
-
-#### 2c. Universal checks (lead; skip if scope = quick)
-
-After all specialists report, the lead reads
-`../../references/universal-checks.md` and applies checks UNI-001
-through UNI-021 with Rust-specific detection. Several universal checks
-overlap with categories already assigned to the specialists. Skip those
-and focus on the gaps:
+Specialists run concurrently per the shared workflow. Universal checks
+use Rust-specific heuristics. Skip table:
 
 | Universal check | Already covered by | Action |
 |---|---|---|
@@ -331,35 +303,12 @@ You CANNOT remove findings entirely -- the minimum action is to downgrade.
 Severity downgrades move at most one level (Critical to Warning, not to Info).
 ```
 
-The antagonist:
+Follow the shared [Reviewer Workflow](../../../references/reviewer-workflow.md)
+for adversarial challenge, synthesis, and confidence scoring.
 
-1. Reviews every finding for evidence quality and severity accuracy
-2. Performs a counter-scan for missed Crux-specific issues
-3. Sends challenged report to lead with: confirmed, downgraded, upgraded,
-   disputed, and new findings
+#### 2f-g. Synthesis and iteration report
 
-#### 2f. Synthesis
-
-The lead merges all findings (specialist reports, universal checks,
-comparative review, and antagonist challenges) into a single iteration
-report:
-
-1. **Confirmed findings**: Include verbatim from specialist reports
-2. **Downgraded findings**: Include with the antagonist's revised severity
-   and rationale
-3. **Upgraded findings**: Include with the antagonist's revised severity
-   and rationale
-4. **Disputed findings**: Lead makes final call; if included, add dispute
-   note
-5. **New findings**: Include with the antagonist's severity and evidence
-6. Assign overall **confidence level** per
-   [Agent Team Patterns - Confidence Scoring](references/agent-teams.md#confidence-scoring)
-
-#### 2g. Produce iteration report
-
-Output the synthesized findings for this iteration. On the first iteration,
-use the full report format. On subsequent iterations, report only new
-findings discovered in re-review and note the iteration number.
+Follow the shared workflow synthesis steps. Report template:
 
 ````
 ## Code Review Report: {app-name} (iteration {N})
@@ -430,13 +379,8 @@ accumulated list.
 
 #### 2h. Auto-fix mechanical issues
 
-The **lead** applies all auto-fixes directly (specialists and antagonist
-have completed their analysis). The finding prefix (CRX-, LOG-, GEN-,
-UNI-, NEW-) tracks which reviewer or pass identified the issue for
-accountability in the report.
-
-Apply fixes for findings that are mechanical and confirmed or upgraded
-(not disputed):
+Apply mechanical auto-fixes per the shared workflow. Platform-specific
+fixes for Crux core:
 
 - Adding missing `Serialize`/`Deserialize` derives
 - Wrapping returns in `render().and(...)`
@@ -444,118 +388,29 @@ Apply fixes for findings that are mechanical and confirmed or upgraded
 - Removing unused dependencies from `Cargo.toml`
 
 Do NOT auto-fix logic bugs (LOG-001 through LOG-008) without explicit
-confirmation -- these require design decisions. Respect antagonist
-regression flags.
+confirmation -- these require design decisions.
 
-After any fixes, re-run `cargo check`, `cargo test`, and `cargo clippy` to
-verify the fixes compile and pass. If fixes cause compilation errors,
-revert all auto-fixes and warn in the report.
+After any fixes, re-run `cargo check`, `cargo test`, and `cargo clippy`.
 
 #### 2i. Loop control
 
-After applying fixes, verifying, and shutting down the team:
-
-1. If **no mechanical fixes** were applied in this iteration, exit the cycle.
-2. If `iteration >= max_iterations`, exit the cycle.
-3. Otherwise, increment `iteration` and return to step 2a.
-
-When the cycle exits, shut down all remaining teammates and output a summary
-across all iterations:
-
-```
-### Review Cycle Summary
-- Iteration 1: Fixed N mechanical issues (CRX-001 x3, CRX-002, CRX-005).
-  M design-level findings deferred. Confidence: HIGH.
-- Iteration 2: Fixed K regressions (GEN-005 from iteration 1 fix).
-  No new design-level findings. Confidence: HIGH.
-- Total: N+K mechanical fixes applied. M design-level findings accumulated.
-```
+Follow the shared workflow loop control. Exit when no fixes are applied or
+`max_iterations` is reached.
 
 ### 3. Express accumulated design-level findings as a Specify change
 
-After the review-fix cycle completes, check whether any **design-level
-findings** were accumulated -- findings that require architectural decisions,
-data-type changes, event-signature modifications, or logic rewrites
-(typically CRX-003, CRX-004, CRX-006, CRX-007, LOG-001 through LOG-008,
-and universal checks tagged with a **Spec-change indicator**).
-If none were accumulated across any iteration, skip this step.
+Follow the [Reviewer Workflow](../../../references/reviewer-workflow.md)
+design-level findings procedure. Use platform suffix `core` in the change
+name template (`review-{app-name}-core-{YYYY-MM-DDTHH-MM}`).
 
-#### Classify findings: code-fix vs spec-change
+Core-specific guidance for artifacts:
 
-Before creating the Specify change, classify each design-level finding:
-
-- **Code-fix**: The spec is clear and the code simply does not implement it
-  correctly. The fix is a code change; no spec update is needed. These
-  become tasks in `tasks.md`.
-- **Spec-change**: The spec is silent, ambiguous, or mandates behavior that
-  the review identified as problematic. The fix requires updating the spec
-  first, then implementing. These become requirements in `specs/` and
-  decisions in `design.md`.
-
-Universal checks with a Spec-change indicator (UNI-002, UNI-004, UNI-007,
-UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) commonly surface as spec-change
-findings. Consult `../../references/universal-checks.md` for the
-indicator description on each check.
-
-If design-level findings exist, delegate to `/spec:define` to create a
-single Specify change that tracks all of them:
-
-1. **Derive a change name** from the app name and append the current
-   date-time for traceability:
-
-   ```
-   review-{app-name}-{YYYY-MM-DDTHH-MM}
-   ```
-
-   Example: `review-my-crux-app-2026-03-11T14-30`
-
-   Use the shell to get the current timestamp:
-   ```bash
-   date -u +"%Y-%m-%dT%H-%M"
-   ```
-
-2. **Delegate to `/spec:define`** with the derived change name and a
-   description synthesized from the accumulated design-level findings.
-   Provide the following guidance for artifact generation:
-
-3. **Content guidelines for each artifact**:
-
-   - **proposal.md**: The "Why" section summarizes the accumulated review
-     findings by severity and risk, distinguishing spec-change findings
-     (requirements gaps) from code-fix findings (implementation bugs).
-     The "What Changes" section lists each design-level finding as a
-     bullet, prefixed with `[spec]` or `[code]` to indicate its
-     classification. Note which mechanical fixes were already applied
-     across all iterations and how many review cycles ran. The "Impact"
-     section identifies affected files, shell contract changes, and
-     migration concerns.
-
-   - **design.md**: Each design-level finding becomes a Decision section
-     with rationale and alternatives considered. Group related findings
-     (e.g., all timestamp-related changes under one decision). Reference
-     the specific check IDs (CRX-xxx, LOG-xxx, UNI-xxx) that motivated
-     each decision. For spec-change findings, explain why the current spec
-     is insufficient and what the proposed requirement should be.
-
-   - **specs/**: Create one spec file per logical area (e.g., `sync-logic`,
-     `input-validation`, `resilience`). Each requirement maps to a review
-     finding. Spec-change findings become new requirements with explicit
-     acceptance criteria. Code-fix findings become scenarios under existing
-     requirements. Scenarios should be derived from the simulation traces
-     performed during the logic pass (LOG-001 through LOG-008) and from
-     the spec-change indicators in the universal checks. Use WHEN/THEN
-     format.
-
-   - **tasks.md**: Order tasks by dependency -- spec updates first (so
-     requirements are clear before implementation), then data-type changes,
-     then event signatures, then handler logic, then test updates, then
-     new tests, then verification. Each task references the finding ID it
-     addresses. Include a final verification section that re-runs the
-     core-reviewer skill to confirm all Critical findings are resolved.
-
-4. **Show final status** using `/spec:status` and summarize: change name,
-   location, artifacts created, and prompt the user with "Run `/spec:build`
-   or ask me to implement to start working on the tasks."
+- **specs/**: Group by logical area (e.g., `sync-logic`,
+  `input-validation`, `resilience`). Derive scenarios from the Logic
+  Specialist simulation traces (LOG-001 through LOG-008).
+- **tasks.md**: Order by dependency -- spec updates, data-type changes,
+  event signatures, handler logic, test updates, verification. Include a
+  final task that re-runs core-reviewer to confirm resolution.
 
 ## Severity Definitions
 
@@ -567,16 +422,8 @@ single Specify change that tracks all of them:
 
 ## Verification Checklist
 
-Before completing review:
-
-### Team Execution
-
-- [ ] All specialists spawned with correct category assignments
-- [ ] All specialists completed before antagonist spawned
-- [ ] Antagonist received all specialist + universal findings
-- [ ] Antagonist provided evidence for every challenge
-- [ ] Lead synthesized all findings with confidence scoring
-- [ ] Team shut down and cleaned up
+Team Execution and Report Quality checks are in the shared
+[Reviewer Workflow](../../../references/reviewer-workflow.md#common-verification-checklist-items).
 
 ### Scan Coverage
 
@@ -587,15 +434,6 @@ Before completing review:
   heuristics (skipped where covered by CRX/LOG/GEN)
 - [ ] Antagonist: counter-scan completed for Crux-specific blind spots
 - [ ] Comparative review completed (if reference-dir provided)
-
-### Report Quality
-
-- [ ] Each issue has file:line reference and code snippet
-- [ ] Severity reflects antagonist adjustments (upgrades/downgrades applied)
-- [ ] Adversarial Review section included with challenge statistics
-- [ ] Confidence level assigned based on antagonist results
-- [ ] Finding IDs use correct prefixes (CRX-, LOG-, GEN-, UNI-, CMP-, NEW-)
-- [ ] Design-level findings classified as code-fix or spec-change
 
 ## Integration with Specify Workflow
 

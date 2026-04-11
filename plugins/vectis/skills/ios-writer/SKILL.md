@@ -489,7 +489,7 @@ Same as create mode step 11:
 - [ ] Async effect handlers use `Task { @MainActor in }`, not bare `Task { }`
 - [ ] Swift strict concurrency checking enabled (`SWIFT_STRICT_CONCURRENCY: complete`)
 
-## Important Notes
+## Guardrails
 
 - **Core only must exist first**: This skill generates the iOS shell for an
   existing Crux core. Run the core-writer skill first to generate the
