@@ -93,12 +93,9 @@ Source: <source function, spec requirement, or design section>
 ### Delta Spec Format (Modified Crate)
 
 When modifying an existing crate, delta specs use the operation headers
-defined in the spec format (`## ADDED Requirements`,
-`## MODIFIED Requirements`, `## REMOVED Requirements`,
-`## RENAMED Requirements`). Requirement
-blocks still use `### Requirement:` and `#### Scenario:` headings, but the
-stable merge key is the `ID: REQ-XXX` line rather than the display name.
-See the schema's `instructions/specs.md` for the full delta structure and the
+and template defined in `spec-format.md`. Requirement blocks still use
+`### Requirement:` and `#### Scenario:` headings, but the stable merge
+key is the `ID: REQ-XXX` line rather than the display name. See the
 merge skill for how deltas merge into the baseline.
 
 ### Deriving Specs From Source Code (analyze)

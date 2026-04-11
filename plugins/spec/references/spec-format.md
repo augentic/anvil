@@ -24,3 +24,42 @@ Delta specs for modified capabilities use these top-level headings:
 | Modified | `## MODIFIED Requirements` |
 | Removed | `## REMOVED Requirements` |
 | Renamed | `## RENAMED Requirements` |
+
+### Delta Spec Template
+
+For modified deliverables, the delta spec uses these sections (include only
+sections that apply):
+
+```markdown
+## ADDED Requirements
+
+### Requirement: <!-- requirement name -->
+ID: REQ-<!-- next available id -->
+<!-- requirement text -->
+
+#### Scenario: <!-- scenario name -->
+- **WHEN** <!-- condition -->
+- **THEN** <!-- expected outcome -->
+
+## MODIFIED Requirements
+
+### Requirement: <!-- existing requirement name -->
+ID: REQ-<!-- existing id (must match baseline) -->
+<!-- full updated requirement text -->
+
+#### Scenario: <!-- scenario name -->
+- **WHEN** <!-- condition -->
+- **THEN** <!-- expected outcome -->
+
+## REMOVED Requirements
+
+### Requirement: <!-- existing requirement name -->
+ID: REQ-<!-- existing id -->
+**Reason**: <!-- why this requirement is being removed -->
+**Migration**: <!-- how to handle the removal -->
+
+## RENAMED Requirements
+
+ID: REQ-<!-- existing id -->
+TO: <!-- new requirement name -->
+```

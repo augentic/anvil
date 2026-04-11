@@ -314,7 +314,7 @@ The three specialists analyze the crate concurrently. Each reads all `.rs` files
 ### Step 3: Universal Checks
 
 After all specialists report, the lead reads
-`references/universal-review-checks.md` and applies checks UNI-001 through
+`references/universal-checks.md` and applies checks UNI-001 through
 UNI-021 with Omnia/WASM-specific detection. Several universal checks overlap
 with categories already assigned to the specialists. Skip those and focus on
 the gaps:
@@ -591,7 +591,7 @@ let api_url = ctx.config.get("API_URL")?;
 
 ## Reference Documentation
 
-- [Universal Review Checks](references/universal-review-checks.md) -- Language and domain-agnostic review checklist shared across all reviewer skills
+- [Universal Review Checks](references/universal-checks.md) -- Language and domain-agnostic review checklist shared across all reviewer skills
 - [Agent Team Patterns](references/agent-teams.md) -- Shared team roles, antagonist protocol, synthesis rules, and file ownership
 - [CodeRabbit Study: AI Code Creates 1.7x More Issues](https://www.coderabbit.ai/blog/state-of-ai-vs-human-code-generation-report)
 - [Security Best Practices for Rust](https://anssi-fr.github.io/rust-guide/)

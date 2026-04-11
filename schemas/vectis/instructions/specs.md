@@ -168,45 +168,10 @@ iOS, Android, design-system share one namespace).
 
 **Modified Features**: Use the existing spec folder name from
 `.specify/specs/<feature>/` when creating the delta spec at
-`specs/<feature>/spec.md`. Follow this structure:
-
-```markdown
-## ADDED Requirements
-
-### Requirement: <!-- requirement name -->
-ID: REQ-<!-- next available id -->
-<!-- requirement text -->
-
-#### Scenario: <!-- scenario name -->
-- **WHEN** <!-- condition -->
-- **THEN** <!-- expected outcome -->
-
-## MODIFIED Requirements
-
-### Requirement: <!-- existing requirement name -->
-ID: REQ-<!-- existing id (must match baseline) -->
-<!-- full updated requirement text -->
-
-#### Scenario: <!-- scenario name -->
-- **WHEN** <!-- condition -->
-- **THEN** <!-- expected outcome -->
-
-## REMOVED Requirements
-
-### Requirement: <!-- existing requirement name -->
-ID: REQ-<!-- existing id -->
-**Reason**: <!-- why this requirement is being removed -->
-**Migration**: <!-- how to handle the removal -->
-
-## RENAMED Requirements
-
-ID: REQ-<!-- existing id -->
-TO: <!-- new requirement name -->
-```
+`specs/<feature>/spec.md`. Follow the delta spec template in
+`spec-format.md` — include only the delta-operation sections
+(ADDED, MODIFIED, REMOVED, RENAMED) that apply.
 
 Delta operations apply to all sections. Platform requirements can be
 added, modified, or removed using delta operations with their `REQ-XXX`
 IDs (e.g., `REQ-008`).
-
-Follow the spec format conventions defined in the define skill for
-delta operations, format rules, and the MODIFIED/ADDED workflows.

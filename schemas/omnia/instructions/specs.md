@@ -76,41 +76,6 @@ First, read the proposal's **Source** section to determine the workflow:
 
   **Modified Crates**: Use the existing spec folder name from
   `.specify/specs/<crate>/` when creating the delta spec at
-  `specs/<crate>/spec.md`. Follow this structure:
-
-  ```markdown
-  ## ADDED Requirements
-
-  ### Requirement: <!-- requirement name -->
-  ID: REQ-<!-- next available id -->
-  <!-- requirement text -->
-
-  #### Scenario: <!-- scenario name -->
-  - **WHEN** <!-- condition -->
-  - **THEN** <!-- expected outcome -->
-
-  ## MODIFIED Requirements
-
-  ### Requirement: <!-- existing requirement name -->
-  ID: REQ-<!-- existing id (must match baseline) -->
-  <!-- full updated requirement text -->
-
-  #### Scenario: <!-- scenario name -->
-  - **WHEN** <!-- condition -->
-  - **THEN** <!-- expected outcome -->
-
-  ## REMOVED Requirements
-
-  ### Requirement: <!-- existing requirement name -->
-  ID: REQ-<!-- existing id -->
-  **Reason**: <!-- why this requirement is being removed -->
-  **Migration**: <!-- how to handle the removal -->
-
-  ## RENAMED Requirements
-
-  ID: REQ-<!-- existing id -->
-  TO: <!-- new requirement name -->
-  ```
-
-  Follow the spec format conventions defined in the define skill for
-  delta operations, format rules, and the MODIFIED/ADDED workflows.
+  `specs/<crate>/spec.md`. Follow the delta spec template in
+  `spec-format.md` — include only the delta-operation sections
+  (ADDED, MODIFIED, REMOVED, RENAMED) that apply.
