@@ -7,7 +7,7 @@ Service with concurrent operations, authentication, error recovery, and message 
 ## Input Parameters
 
 ```bash
-code-analyzer ./services/event-processor $CHANGE_DIR
+analyze ./services/event-processor $CHANGE_DIR
 ```
 
 - **TypeScript Source**: `./services/event-processor`

@@ -12,31 +12,31 @@ First, read the proposal's **Source** section to determine the workflow:
      arguments:
        `<repo-url> legacy/ true`
      This clones the repo into `legacy/<repo-name>` as a detached tree.
-  2. Generate specs and design. Invoke `/rt:code-analyzer` with
+  2. Generate specs and design. Invoke `/spec:analyze` with
      arguments:
        `legacy/<repo-name> <change-dir>`
-     code-analyzer produces both `specs/` and `design.md` in a single
-     pass.
+     analyze produces both `specs/` and `design.md` with iterative
+     validation until convergence.
   3. Review the generated specs for completeness and adjust if needed.
   4. Proceed to the next artifact. design.md was already produced by
-     code-analyzer — the design phase will review/enrich it.
+     analyze — the design phase will review/enrich it.
 
 ---
 
 **Source-code path** (Source is a local path to existing code):
 
   1. Generate specs and design with iterative validation. Invoke
-     `/spec:reverse-spec` with arguments:
+     `/spec:analyze` with arguments:
        `<source-path> <change-dir>`
-     reverse-spec runs an iterative workflow: structural inventory
+     analyze runs an iterative workflow: structural inventory
      (user-confirmed), clarification checkpoint (user-answered),
      domain-by-domain extraction, artifact generation, and a
      validation loop that compares artifacts against source code
      until zero critical discrepancies remain.
-  2. reverse-spec produces both `specs/` and `design.md` after
+  2. analyze produces both `specs/` and `design.md` after
      validation converges.
   3. Proceed to the next artifact. design.md was already produced by
-     reverse-spec — the design phase will review/enrich it.
+     analyze — the design phase will review/enrich it.
 
 ---
 

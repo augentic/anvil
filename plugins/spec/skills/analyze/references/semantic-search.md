@@ -79,7 +79,7 @@ grepai --query "error handling and logging" ./typescript-repo
 grepai --query "HTTP requests to external services" ./typescript-repo
 ```
 
-**Integration in code-analyzer:**
+**Integration in analyze:**
 ```bash
 # Step 2.1: Semantic Analysis (before AST parsing)
 grepai --query "business logic and domain rules" $SOURCE_PATH > semantic-business-logic.txt
@@ -151,7 +151,7 @@ embeddings = openai.Embedding.create(
 # Query with similarity search
 ```
 
-## Integration into code-analyzer
+## Integration into analyze
 
 ### Enhanced Step 2: Extract Business Logic
 
@@ -232,7 +232,7 @@ For each function identified through semantic search OR AST traversal:
 
 ### Without Semantic Search
 
-**Typical code-analyzer results:**
+**Typical analyze results:**
 - Business logic captured: 80-85%
 - [unknown] tags: 15-20%
 - Missed validations: 20-25%
@@ -240,7 +240,7 @@ For each function identified through semantic search OR AST traversal:
 
 ### With Semantic Search
 
-**Enhanced code-analyzer results:**
+**Enhanced analyze results:**
 - Business logic captured: 90-95% (+10-15%)
 - [unknown] tags: 5-10% (67% reduction)
 - Missed validations: 5-10% (67% reduction)
@@ -250,7 +250,7 @@ For each function identified through semantic search OR AST traversal:
 
 ### Quick Integration (Phase 1)
 
-Add to code-analyzer SKILL.md Step 2:
+Add to analyze SKILL.md Step 2:
 
 ```markdown
 ### Step 2.0: Semantic Discovery (Optional but Recommended)
@@ -330,7 +330,7 @@ Use semantic results to:
 ## Implementation Checklist
 
 ### Phase 1: Add to Documentation
-- [ ] Add semantic-search.md to code-analyzer references
+- [ ] Add semantic-search.md to analyze references
 - [ ] Update SKILL.md with optional semantic search step
 - [ ] Document query patterns and best practices
 

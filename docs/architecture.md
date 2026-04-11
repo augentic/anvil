@@ -24,7 +24,7 @@ specify/
 │   │   ├── skills/               # Crux skills (core-writer, test-writer, ios-writer, ...)
 │   │   └── references/           # Crux patterns, design system references
 │   ├── rt/                       # RT migration plugin
-│   │   ├── skills/               # Migration skills (code-analyzer, replay-writer, ...)
+│   │   ├── skills/               # Migration skills (replay-writer, wiretapper, ...)
 │   │   └── mcp.json
 │   └── plan/                     # Plan requirements analysis plugin
 │       ├── skills/               # Planning skills (epic-analyzer, sow-writer)

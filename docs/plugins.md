@@ -18,7 +18,7 @@ Core workflow orchestration for spec-driven development.
 - **verify** -- Detect drift between code and baseline specs
 - **explore** -- Thinking partner for ideas, investigation, and requirements
 - **status** -- Check artifact completion, task progress, and active changes
-- **reverse-spec** -- Reverse-engineer Specify artifacts from existing source code
+- **analyze** -- Analyze source code to produce Specify artifacts with iterative validation
 
 ## Omnia (`plugins/omnia/`)
 
@@ -46,7 +46,6 @@ Generate cross-platform Crux applications: Rust shared core, SwiftUI iOS shell, 
 
 TypeScript source analysis, fixture capture, and regression testing for migrations.
 
-- **code-analyzer** -- Derive specs and design from TypeScript source
 - **git-cloner** -- Clone a source repository for analysis
 - **replay-writer** -- Add regression tests from captured fixtures
 - **wiretapper** -- Capture fixture data from legacy services
@@ -71,7 +70,7 @@ Specify manages changes as a set of interdependent artifacts stored in `.specify
 
 The workflow is:
 
-1. **Define** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by JIRA epics (`/plan:epic-analyzer`) or TypeScript source analysis (`/rt:code-analyzer`).
+1. **Define** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by JIRA epics (`/plan:epic-analyzer`) or source code analysis (`/spec:analyze`).
 2. **Build** -- Validate artifacts for completeness and cross-blueprint consistency, then implement each task. Specialist skills (crate-writer, test-writer, guest-writer, core-writer, ios-writer, android-writer) generate code from the artifacts.
 3. **Merge** -- Merge the change's specs into your project's baseline at `.specify/specs/` and move the change to the archive.
 

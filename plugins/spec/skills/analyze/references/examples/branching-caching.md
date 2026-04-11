@@ -7,7 +7,7 @@ Service with multiple conditional branches, cache-or-fetch pattern, and early re
 ## Input Parameters
 
 ```bash
-code-analyzer ./src/data-service.ts $CHANGE_DIR
+analyze ./src/data-service.ts $CHANGE_DIR
 ```
 
 - **TypeScript Source**: `./src/data-service.ts`

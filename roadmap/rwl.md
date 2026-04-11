@@ -1,7 +1,7 @@
 # Ralph Wiggum Loop (RWL) Iteration for High-Context Skills
 
 Recommendations for introducing generate-evaluate-refine loops into
-high-context skills (crate-writer, test-writer, guest-writer, code-analyzer,
+high-context skills (crate-writer, test-writer, guest-writer, spec:analyze,
 code-reviewer) and the architectural changes needed to chain them.
 
 ## Current State: Where Iteration Already Lives
@@ -39,7 +39,7 @@ Both loops share the same weaknesses:
 
 ### Loop 1: Code-Analyzer Self-Critique
 
-**Today**: `code-analyzer` is a single-pass skill. It reads source, produces
+**Today**: `spec:analyze` is a single-pass skill. It reads source, produces
 specs + design.md, and is done. There is no feedback mechanism to check whether
 the artifacts are reconstruction-grade.
 
@@ -57,7 +57,7 @@ Pass 2: For each handler in design.md Business Logic:
 Pass 3: Apply corrections → re-validate
 ```
 
-**Why this skill benefits most**: code-analyzer has the richest evaluation
+**Why this skill benefits most**: spec:analyze has the richest evaluation
 signal available — the source code itself. You can mechanically check "did the
 generated design.md reference every function in the source?" and "does the spec
 have a requirement for every endpoint?" without LLM judgment.
@@ -387,7 +387,7 @@ engine.
 | Phase | What | Connects to |
 |---|---|---|
 | **Now** | Structured feedback files between skills (`.specify-feedback.yaml`) | Enables all RWLs without architectural overhaul |
-| **Next** | code-analyzer self-critique loop (intra-skill RWL) | Highest leverage — improves all downstream quality |
+| **Next** | spec:analyze self-critique loop (intra-skill RWL) | Highest leverage — improves all downstream quality |
 | **Then** | Per-handler interleaving of crate-writer + test-writer | Replaces the current post-hoc verify-repair loop |
 | **Then** | Structured code-reviewer output with typed routing | Replaces the prose-based remediation loop |
 | **Later** | Pipeline YAML in `schema.yaml` declaring loops declaratively | Makes pipelines configurable per-schema |

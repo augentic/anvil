@@ -309,7 +309,7 @@ The Specify artifact format and downstream consumers are documented in shared re
 - **[Specify Artifact Format](references/specify.md)** -- Artifact structure with spec file templates, design document format, and proposal format
 - **[Examples](references/examples/)** -- Complete worked examples showing JIRA data to Specify artifact conversion
 
-For more detail on how the code-analyzer skill produces artifacts from source code, see the `code-analyzer` skill.
+For more detail on how the analyze skill produces artifacts from source code, see the `analyze` skill.
 
 ## Examples
 

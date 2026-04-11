@@ -20,7 +20,6 @@ This plugin migrates existing TypeScript services to production-grade Rust WASM 
 ├── rules/
 │   └── rt.mdc            # This file
 └── skills/
-    ├── code-analyzer/     # TypeScript → Specify artifacts
     ├── git-cloner/        # Repository cloning (optional detach)
     ├── wiretapper/        # Add wiretap to legacy repo for fixture capture
     └── replay-writer/     # Add regression tests from captured fixtures
@@ -40,7 +39,7 @@ Each skill has its own SKILL.md with full details. After **clone**, **wiretapper
 - **Message publishing**: Kafka/RabbitMQ → message publishing capabilities
 - **Data access**: Azure Table Storage, Redis, SQL, blob storage, document databases → external service dependencies with type classification
 
-The code-analyzer produces platform-agnostic Specify artifacts (specs + design.md). The crate-writer skill then maps artifact capabilities to Omnia SDK provider traits (e.g., outbound HTTP → `HttpRequest`, configuration → `Config`).
+The analyze skill (`/spec:analyze`) produces platform-agnostic Specify artifacts (specs + design.md). The crate-writer skill then maps artifact capabilities to Omnia SDK provider traits (e.g., outbound HTTP → `HttpRequest`, configuration → `Config`).
 
 ### Known Challenges
 
@@ -60,7 +59,7 @@ The code-analyzer produces platform-agnostic Specify artifacts (specs + design.m
 
 ### Artifacts Missing Business Logic
 
-- Are functions exported? (code-analyzer skips internal functions)
+- Are functions exported? (the analyzer skips internal functions)
 - Is logic in accessible files? (check module imports)
 - Are there dynamically loaded modules?
 
@@ -73,7 +72,6 @@ The code-analyzer produces platform-agnostic Specify artifacts (specs + design.m
 ## Related Documentation
 
 - See project rule (`.cursor/rules/project.mdc`) for overall project context
-- [Code Analyzer SKILL.md](skills/code-analyzer/SKILL.md) - Analysis details
 - [Wiretapper SKILL.md](skills/wiretapper/SKILL.md) - Fixture capture from legacy services
 - [Replay Writer SKILL.md](skills/replay-writer/SKILL.md) - Add tests from captured fixtures
 - [Git Cloner SKILL.md](skills/git-cloner/SKILL.md) - Repository cloning

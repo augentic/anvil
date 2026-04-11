@@ -1,6 +1,6 @@
 # Validation Procedure
 
-Detailed procedure for the iterative validation loop (Phase 5 of reverse-spec).
+Detailed procedure for the iterative validation loop (Phase 5 of analyze).
 
 Each validation pass systematically compares every generated artifact against the source code. The pass is structured into six dimensions, each with specific checks.
 

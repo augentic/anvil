@@ -2,7 +2,7 @@
 
 ## Scenario
 
-A TypeScript notification processing service is being migrated to Rust WASM. The `code-analyzer` skill has produced Specify artifacts (specs + design.md), and we need to generate a SoW for the client.
+A TypeScript notification processing service is being migrated to Rust WASM. The `analyze` skill has produced Specify artifacts (specs + design.md), and we need to generate a SoW for the client.
 
 ## Input
 
