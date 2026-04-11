@@ -8,7 +8,7 @@ First, read the proposal's **Source** section to determine the workflow:
 
 **RT path** (Source is a repository URL):
 
-  1. Clone the source repository. Invoke `/rt:git-cloner` with
+  1. Clone the source repository. Invoke `/spec:clone` with
      arguments:
        `<repo-url> legacy/ true`
      This clones the repo into `legacy/<repo-name>` as a detached tree.

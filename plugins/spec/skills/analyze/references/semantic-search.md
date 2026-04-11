@@ -271,7 +271,7 @@ Use semantic results to:
 
 ### Full Integration (Phase 2)
 
-1. **Build index** during git-cloner phase
+1. **Build index** during clone phase
 2. **Query semantically** before AST parsing
 3. **Combine results** in artifact generation
 4. **Validate completeness** against semantic findings
@@ -347,7 +347,7 @@ Use semantic results to:
 - [ ] Collect feedback from initial uses
 
 ### Phase 4: Optimization
-- [ ] Build persistent index during git-cloner
+- [ ] Build persistent index during clone
 - [ ] Cache embeddings for repeated analysis
 - [ ] Fine-tune queries based on common patterns
 - [ ] Automate query generation from artifact requirements

@@ -64,6 +64,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `explore` - thinking partner for ideas, investigation, and requirements
 - `status` - check artifact completion, task progress, and active changes
 - `analyze` - analyze source code to produce Specify artifacts with iterative validation
+- `clone` - clone a git repository for analysis
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -74,7 +75,6 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### RT Plugin (`plugins/rt/`)
 
-- `git-cloner` - clone a source repository for analysis
 - `replay-writer` - add regression tests from captured fixtures
 - `wiretapper` - capture fixture data from legacy services
 

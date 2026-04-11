@@ -20,12 +20,11 @@ This plugin migrates existing TypeScript services to production-grade Rust WASM 
 ├── rules/
 │   └── rt.mdc            # This file
 └── skills/
-    ├── git-cloner/        # Repository cloning (optional detach)
     ├── wiretapper/        # Add wiretap to legacy repo for fixture capture
     └── replay-writer/     # Add regression tests from captured fixtures
 ```
 
-Each skill has its own SKILL.md with full details. After **clone**, **wiretapper** runs in parallel with **analyze** (wiretapper adds `src/wiretap/` to the legacy repo and wires the app entrypoint so that with `WIRETAP_ENABLED=true` the app writes `{app-name}.wiretap.json`). The RT plugin provides the analysis and fixture-capture side; code generation skills (crate-writer, guest-writer, test-writer, code-reviewer) live in the Omnia plugin.
+Each skill has its own SKILL.md with full details. After `/spec:clone`, **wiretapper** runs in parallel with **analyze** (wiretapper adds `src/wiretap/` to the legacy repo and wires the app entrypoint so that with `WIRETAP_ENABLED=true` the app writes `{app-name}.wiretap.json`). The RT plugin provides the analysis and fixture-capture side; code generation skills (crate-writer, guest-writer, test-writer, code-reviewer) live in the Omnia plugin.
 
 ## TypeScript-Specific Patterns
 
@@ -74,5 +73,4 @@ The analyze skill (`/spec:analyze`) produces platform-agnostic Specify artifacts
 - See project rule (`.cursor/rules/project.mdc`) for overall project context
 - [Wiretapper SKILL.md](skills/wiretapper/SKILL.md) - Fixture capture from legacy services
 - [Replay Writer SKILL.md](skills/replay-writer/SKILL.md) - Add tests from captured fixtures
-- [Git Cloner SKILL.md](skills/git-cloner/SKILL.md) - Repository cloning
 - [Specify Artifact Specification](../../references/specify.md) - Artifact format details

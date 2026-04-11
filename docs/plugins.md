@@ -19,6 +19,7 @@ Core workflow orchestration for spec-driven development.
 - **explore** -- Thinking partner for ideas, investigation, and requirements
 - **status** -- Check artifact completion, task progress, and active changes
 - **analyze** -- Analyze source code to produce Specify artifacts with iterative validation
+- **clone** -- Clone a git repository for analysis
 
 ## Omnia (`plugins/omnia/`)
 
@@ -46,7 +47,6 @@ Generate cross-platform Crux applications: Rust shared core, SwiftUI iOS shell, 
 
 TypeScript source analysis, fixture capture, and regression testing for migrations.
 
-- **git-cloner** -- Clone a source repository for analysis
 - **replay-writer** -- Add regression tests from captured fixtures
 - **wiretapper** -- Capture fixture data from legacy services
 
