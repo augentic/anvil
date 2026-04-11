@@ -111,16 +111,6 @@ Create a consolidated spec file from the source behavior:
 4. Error conditions from observed failure behavior.
 5. Metrics only when they are explicit in the source.
 
-### Deriving Specs From JIRA (epic-analyzer)
-
-Create or update spec files from user stories and acceptance criteria:
-
-1. Purpose from story summaries.
-2. Requirements from acceptance criteria, assigning stable IDs in spec order (`REQ-001`, `REQ-002`, ...).
-3. Scenarios from BDD or equivalent examples.
-4. Error conditions from explicit failure or validation requirements.
-5. Traceability back to JIRA stories or criteria, with requirement IDs available for design and test references.
-
 ## Design Document (Technical "How")
 
 `design.md` carries the technical shape needed to implement the change. It may reference constraints relevant to generation, but it should not hardcode target-specific bindings as part of the behavioral contract. When design sections refer to behavior from specs, cite the stable requirement IDs (for example, `REQ-003`) rather than relying on requirement titles staying unchanged.

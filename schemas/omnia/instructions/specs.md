@@ -40,20 +40,6 @@ First, read the proposal's **Source** section to determine the workflow:
 
 ---
 
-**Omnia path** (Source is a JIRA/ADO/Linear epic key):
-
-  Prerequisite: The Omnia plugin must be loaded for JIRA MCP access.
-
-  1. Generate specs and design. Invoke `/plan:epic-analyzer` with
-     arguments:
-       `<epic-key> <change-dir>`
-     epic-analyzer produces `proposal.md`, `specs/`, and `design.md`.
-  2. Review the generated specs for completeness and adjust if needed.
-  3. Proceed to the next artifact. design.md was already produced by
-     epic-analyzer — the design phase will review/enrich it.
-
----
-
 **Manual path** (Source is "Manual" or absent):
 
   Create one spec file per crate listed in the proposal's

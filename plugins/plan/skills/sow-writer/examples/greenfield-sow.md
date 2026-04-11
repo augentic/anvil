@@ -2,7 +2,7 @@
 
 ## Scenario
 
-A new GTFS generation component is being built from JIRA requirements. The `epic-analyzer` skill has produced Specify artifacts (specs + design.md), and we need to generate a SoW for the client.
+A new GTFS generation component is being built from JIRA requirements. Specify artifacts (specs + design.md) have been produced, and we need to generate a SoW for the client.
 
 ## Input
 

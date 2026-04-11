@@ -21,7 +21,6 @@ This plugin derives proposals, specifications, design documents, and Statements 
 ├── rules/
 │   └── plan.mdc          # This file
 └── skills/
-    ├── epic-analyzer/     # JIRA → Specify artifacts
     └── sow-writer/        # Statement of Work generation
 ```
 
@@ -72,6 +71,5 @@ For best results, JIRA epics should include:
 ## Related Documentation
 
 - See project rule (`.cursor/rules/project.mdc`) for overall project context
-- [Epic Analyzer SKILL.md](skills/epic-analyzer/SKILL.md) - JIRA extraction details
 - [SoW Writer SKILL.md](skills/sow-writer/SKILL.md) - Statement of Work generation
 - [Specify Artifact Specification](../../references/specify.md) - Artifact format details

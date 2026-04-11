@@ -27,7 +27,7 @@ specify/
 │   │   ├── skills/               # Migration skills (replay-writer, wiretapper, ...)
 │   │   └── mcp.json
 │   └── plan/                     # Plan requirements analysis plugin
-│       ├── skills/               # Planning skills (epic-analyzer, sow-writer)
+│       ├── skills/               # Planning skills (sow-writer)
 │       └── mcp.json
 ├── schemas/                      # Schema definitions
 │   ├── omnia/                    # Greenfield Rust WASM schema
