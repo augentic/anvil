@@ -1,33 +1,90 @@
-# Synthesized Roadmap: Determinism and RWL Iteration
+# RWL-Optimized Roadmap: Determinism and Iteration
 
-Unified roadmap for making Specify more deterministic and introducing Ralph Wiggum Loop (RWL) iteration for high-context skills. Synthesized from parallel analyses (Opus 4.6, Gemini 3.1 Pro, Composer 2) against the full codebase, superseding the separate `deterministic.md` and `rwl.md` documents.
+Iterative roadmap for making Specify more deterministic, introducing Ralph Wiggum Loop (RWL) iteration for high-context skills, and adding compile-time type safety to skill definitions. Organized as iteration-based delivery, where each iteration produces a thin but complete vertical slice across all concerns and feedback from seeing the whole system work guides subsequent refinement. Supersedes the separate `deterministic.md`, `rwl.md`, and `dsl.md` documents.
 
 ## Design Principle
 
 **The LLM generates content; code makes process decisions.** Every time a SKILL.md instruction says "check that X is true and halt if not," that decision should be in code. The LLM is excellent at understanding requirements and producing prose/code; it is unreliable at self-assessment, state management, structural validation, and loop control.
 
+**Applied recursively**: This roadmap implements itself as an RWL. Each iteration's convergence is machine-checkable via `make checks` and the `specify` CLI — not judged by feel.
+
 ## Multi-Schema Scope
 
 This roadmap targets **Omnia first**. The `schemas/vectis/schema.yaml` schema has the same prose `validate` arrays, implicit lifecycle, and prose-embedded loop control — but Vectis has a fundamentally different pipeline shape (`core-writer → ios-writer → android-writer → design-system-writer`) and platform-specific verification (`make build` for Xcode, `./gradlew :app:assembleDebug` for Android, not `cargo check`/`cargo test`).
 
-For each phase, deliverables fall into two categories:
+Deliverables fall into two categories:
 
-- **Schema-agnostic infrastructure** (shared): feedback file schemas, validator CLI, lifecycle state machine, diagnostic formatter, pipeline engine. These are built once and consumed by both schemas.
-- **Schema-specific definitions** (per-schema): structured validation rules, pipeline YAML, blueprint IR schemas. These must be defined separately for Omnia and Vectis.
+- **Schema-agnostic infrastructure** (shared): feedback file schemas, validator CLI, lifecycle state machine, diagnostic formatter, pipeline engine. Built once, consumed by both schemas.
+- **Schema-specific definitions** (per-schema): structured validation rules, pipeline YAML, blueprint IR schemas. Defined separately for Omnia and Vectis.
 
-Phases 1–6 deliver Omnia-specific definitions alongside the shared infrastructure. Vectis parity follows as a fast-follow using the same infrastructure, with schema-specific definitions adapted for multi-platform build verification. Phase 6 pipeline YAML must be designed generically enough to support Vectis's multi-platform steps — the `step` type vocabulary should accommodate platform-specific build commands, not just Cargo toolchain.
+Iterations 1A–3 deliver Omnia-specific definitions alongside shared infrastructure. Iteration 4 extends to Vectis parity. Pipeline YAML step types must accommodate platform-specific build commands from the start — not just Cargo toolchain.
+
+## Tracks
+
+The roadmap maintains eight concurrent tracks. Each iteration advances all tracks, but at increasing depth. The tracks correspond to the core concerns (determinism, structured feedback, lifecycle, pipeline orchestration, RWL loops, intermediate representation) plus skill type safety:
+
+| Track | Concern | Primary files |
+| ----- | ------- | ------------- |
+| **F** | Structured feedback files + diagnostic formatter | `.specify-feedback.yaml`, `.review-findings.yaml`, `specify diag` |
+| **V** | Structured validation rules + validator CLI | `schema.yaml` validate arrays, `specify validate` |
+| **L** | Lifecycle state machine | `schema.yaml` lifecycle section, `.metadata.yaml` |
+| **IR** | Structured intermediate representation | `.blueprint-plan.yaml`, renderer |
+| **RWL** | Deterministic verify-repair + skill chaining | `specify diag classify`, per-handler co-refinement |
+| **P** | Pipeline YAML — declarative orchestration | `schema.yaml` pipelines section |
+| **S** | Skill type safety — structured manifests + Rust DSL | `manifest.yaml` per skill, `skill-dsl/` crate, `checks.ts` |
+| **E** | Rust engine (`specify-core`) | `specify-core` crate |
+
+## Interface Contracts
+
+In an iteration-based approach, tracks don't gate each other by completion — they gate each other by interface stability. Each iteration defines the minimum viable surface between tracks.
+
+### Iteration 1 interfaces (1A + 1B combined)
+
+- **F → RWL**: `.specify-feedback.yaml` has at minimum `schema_version` and `skill` fields. Skills can produce a feedback file; consumers can read it. The schema may grow but these fields are stable.
+- **V → RWL**: `specify validate` accepts a `--schema-version` flag, validates at least one structured rule, and returns exit code 0/1.
+- **V → IR**: The validator's check evaluation engine accepts a parsed document model, not raw Markdown. This ensures IR validation is possible without rewriting the engine.
+- **F → P**: Pipeline YAML references skill IDs and step types. Feedback files use the same skill ID vocabulary.
+- **S → V**: YAML manifest schema defines the `allowed-tools` enum and `arguments` structure. `checks.ts` cross-checks manifests against SKILL.md frontmatter. The manifest uses the same skill ID vocabulary as pipeline YAML and feedback files.
+- **E → V**: `specify-core` exports a `parse_spec` function that returns `Vec<RequirementBlock>`. The Deno validator and Rust parser share the same notion of "requirement block."
+
+### Iteration 2 interfaces
+
+- **F**: Feedback files include `handlers_generated`, `known_gaps`, and `findings` arrays.
+- **V**: `specify validate` handles `heading-present`, `pattern-match`, `keyword-present`, and cross-artifact reference checks.
+- **L**: Lifecycle transitions `defining→defined→building` are enforced. `specify validate` checks `.metadata.yaml` status.
+- **RWL**: `specify diag classify` distinguishes `test_issue` from `code_issue`. Skills accept structured feedback for repair via context injection.
+- **P**: Pipeline YAML drives the verify step. The build skill reads and follows it.
+- **S → P**: Manifests declare `skill-directives` (cross-skill references). `checks.ts` validates that pipeline YAML skill references match manifest-declared skills. Variable DAGs in manifests are schema-validated for completeness and acyclicity.
+- **E**: `specify-core` validates all structured rules that the Deno validator handles for `specs`.
+
+### Iteration 3 interfaces
+
+- All Omnia validation rules are structured; zero prose-only rules remain.
+- `specify-core` replaces the Deno validator and `merge-specs.ts`.
+- Pipeline YAML drives the full build chain. Prose pipeline removed.
+- Per-handler co-refinement runs end-to-end.
+- *(Conditional)* Rust DSL in `specify-core` generates SKILL.md from typed `SkillDef` structs. Generated output matches hand-authored SKILL.md. `checks.ts` validates rendered output as defense-in-depth. If YAML manifests prove sufficient, this is deferred.
+
+### Iteration 4 interfaces
+
+- Vectis-specific definitions use the same infrastructure.
+- `specify-core` pipeline orchestrator replaces the LLM as loop controller.
+- Structured IR round-trips through all four blueprints.
+- *(If DSL gate passed in Iteration 3)* Rust DSL covers all Vectis skills. Skill composition enables deriving platform-variant skills from shared definitions.
 
 ## Migration and Backward Compatibility
 
-Phases 1–3 introduce new files (`.specify-feedback.yaml`, `.review-findings.yaml`, artifact frontmatter, `.blueprint-plan.yaml`) and extend existing schemas. Downstream projects with existing `.specify/` directories need a migration path.
+Each iteration ships a bundle of cross-cutting changes rather than a single-concern release. This requires more disciplined migration tooling from the start.
 
-**Schema versioning**: The `version` field in `schema.yaml` already exists. Each phase that changes the schema increments this version. The validator CLI accepts a `--schema-version` flag and defaults to the latest. Older projects validate cleanly against their declared version.
+**Schema versioning**: The `version` field in `schema.yaml` already exists. Each iteration that changes the schema increments this version. The validator CLI accepts a `--schema-version` flag and defaults to the latest. Older projects validate cleanly against their declared version.
 
-**Graceful degradation**: New files (feedback sidecars, frontmatter) are optional during transition. The validator reports their absence as warnings, not errors, until the project declares a schema version that requires them.
+**Graceful degradation**: New files (feedback sidecars, frontmatter, lifecycle schema) are optional during transition. The validator reports their absence as warnings, not errors, until the project declares a schema version that requires them.
 
-**Migration command**: A `specify migrate` subcommand upgrades an existing `.specify/` structure to the latest schema version — adding frontmatter to existing artifacts, creating missing `.metadata.yaml` fields, and updating `config.yaml` to the new version. This ships with Phase 2.
+**Migration command**: `specify migrate` ships in Iteration 1A (not deferred to later) because cross-cutting changes demand it early. It upgrades an existing `.specify/` structure to the latest schema version — adding frontmatter to existing artifacts, creating missing `.metadata.yaml` fields, and updating `config.yaml` to the new version.
 
-**In-flight changes**: A change currently in `building` status when the lifecycle schema changes continues under the old schema version. The migration command only upgrades the project baseline, not active changes. Active changes complete under the version they started with.
+**In-flight changes**: A change currently in `building` status when the schema changes continues under the old schema version. The migration command only upgrades the project baseline, not active changes. Active changes complete under the version they started with.
+
+**Iteration bundles**: Because each iteration touches multiple schema sections, the migration command must handle bundled changes atomically. Each iteration's migration is a single version bump, not per-track increments.
 
 ---
 
@@ -43,6 +100,7 @@ Phases 1–3 introduce new files (`.specify-feedback.yaml`, `.review-findings.ya
 | **Workflow state**        | `.metadata.yaml` status enum, filesystem presence checks                                                                                                | **Medium** — state machine is implicit in skill prose                                  | `build/SKILL.md`, `define/SKILL.md`                |
 | **Validation rules**      | `validate:` arrays in `schema.yaml`                                                                                                                     | **Weak** — prose sentences interpreted by the LLM                                      | `schemas/omnia/schema.yaml`                        |
 | **Cross-artifact checks** | `validation:` boolean flags (`proposal-crates-have-specs`, etc.)                                                                                        | **Weak** — trigger LLM-interpreted checks                                              | `schemas/omnia/schema.yaml`                        |
+| **Skill type safety**     | `checks.ts` validates frontmatter, references, variables, directives, marketplace alignment, inventory                                                   | **Medium** — ~750 lines of CI-time checks, but SKILL.md bodies remain unvalidated     | `scripts/checks.ts`, SKILL.md frontmatter          |
 | **Code generation**       | Instruction markdown + `defaults.rules`                                                                                                                 | **Weak** — fully LLM-generated output                                                  | `schemas/omnia/instructions/*.md`                  |
 | **Loop control**          | Verify-repair and remediation loops in `build.md`                                                                                                       | **Weak** — the LLM reads prose and acts as loop controller                             | `schemas/omnia/instructions/build.md`              |
 
@@ -68,130 +126,48 @@ All share the same weaknesses: the loop controller is the LLM, feedback is unstr
 
 ---
 
-## Phase 1: Structured Feedback Files
+## Iteration 1A: Infrastructure Skeleton
 
-**Goal**: Enable structured communication between skills without architectural overhaul.
+**Goal**: The `specify` CLI exists with core subcommands. One structured validation rule is enforced by code. The YAML manifest schema is defined and validated for one skill. Migration tooling exists. The foundation is in place for all subsequent tracks.
 
-**Effort**: Low. **Leverage**: High — unblocks all subsequent RWL work.
+**Effort/leverage**: Track V (validation) is highest leverage — it directly removes the LLM from one validation decision. Track S (manifest) is low effort with high structural payoff given that `checks.ts` and Ajv already exist. Track F (feedback schemas) is definitional work that unblocks Iteration 1B and Iteration 2.
 
-### 1.1 Define `.specify-feedback.yaml` schema
+**Convergence**: `make checks` passes with new schema sections; `specify validate` gates one structured rule; one skill manifest validates against its JSON Schema; `specify migrate` upgrades a test `.specify/` directory.
 
-Add a JSON Schema for the feedback sidecar file. Skills produce this alongside their normal output.
+### Track F: Feedback files — minimal schema
+
+Define JSON Schema for `.specify-feedback.yaml` and `.review-findings.yaml` with the minimum viable fields:
 
 ```yaml
 # $CRATE_PATH/.specify-feedback.yaml (produced by crate-writer)
 schema_version: 1
 skill: omnia:crate-writer
 mode: create
-handlers_generated:
-  - name: CreateWorksite
-    file: src/handlers/create_worksite.rs
-    cargo_check: pass
-    spec_coverage: [REQ-001, REQ-002]
-  - name: ListWorksites
-    file: src/handlers/list_worksites.rs
-    cargo_check: pass
-    spec_coverage: [REQ-003]
-known_gaps:
-  - type: todo-marker
-    file: src/handlers/create_worksite.rs
-    line: 67
-    description: "Cache-aside pattern not implemented"
-    spec_reference: REQ-002
+handlers_generated: []
+known_gaps: []
 ```
-
-### 1.2 Define `.review-findings.yaml` schema
-
-Code-reviewer produces structured findings alongside `REVIEW.md`:
 
 ```yaml
 # $CRATE_PATH/.review-findings.yaml (produced by code-reviewer)
 schema_version: 1
-findings:
-  - id: SEC-1
-    severity: critical
-    file: src/handler.rs
-    line: 45
-    category: wasm-constraint
-    auto_fixable: true
-    skill_target: crate-writer
-    fix_description: "Replace std::env::var with Config::get"
-    spec_reference: null
-  - id: COR-3
-    severity: high
-    file: tests/provider.rs
-    line: 112
-    category: mock-provider
-    auto_fixable: false
-    skill_target: test-writer
-    fix_description: "MockProvider missing TableStore impl"
-    spec_reference: REQ-002
+findings: []
 ```
 
-### 1.3 Diagnostic formatter (`specify diag`)
+Skill wiring (crate-writer producing the sidecar, merge skill archiving) ships in Iteration 1B. This iteration defines the schemas so that `checks.ts` can validate them and consumers can depend on the contract.
 
-Build a lightweight script that parses compiler and test output into a concise, LLM-friendly summary (file, line, error code, snippet). This prevents context window bloat when feeding compiler errors back into skills during RWL iterations. The formatter is a subcommand of a unified `specify` CLI (alongside `specify validate` in Phase 2, `specify migrate` in Phase 2, and `specify diag classify` in Phase 4).
+### Track F: Diagnostic formatter — `specify diag format`
+
+Build the `specify` CLI entry point (Deno/TypeScript) with `specify diag format` as its first subcommand:
 
 ```bash
-# Usage:
 cargo check --message-format=json 2>&1 | specify diag format
-cargo test -- --format json 2>&1 | specify diag format
 ```
 
-The formatter defines an explicit input contract per subcommand: `cargo check --message-format=json` produces Cargo diagnostic JSON; `cargo test -- --format json` produces libtest JSON (a different shape, requiring nightly or `--format` support). For stable toolchains where `--format json` is unavailable, `specify diag` falls back to parsing human-readable test output. Document the supported toolchain and exact subcommand invocations.
+The formatter defines an explicit input contract: `cargo check --message-format=json` produces Cargo diagnostic JSON. For stable toolchains where `--format json` is unavailable for test output, `specify diag` falls back to parsing human-readable test output. Output: structured YAML with file, line, error code, and snippet.
 
-Output: structured YAML or Markdown with only the fields a skill needs for targeted repair. This is a first-class architectural component, not an afterthought.
+### Track V: One structured validation rule
 
-### 1.4 Wire feedback into skills
-
-- **crate-writer**: Produce `.specify-feedback.yaml` after generation.
-Accept a feedback-injection mode for repair passes: the orchestrating
-skill (or build pipeline) includes a feedback file in the skill's
-context, and crate-writer reads classified compiler errors or review
-findings to apply surgical fixes. (These are LLM skills invoked via
-prompt context, not CLI binaries — "feedback mode" means the
-orchestrator injects the feedback file content into the skill's
-prompt, not a literal `--feedback` flag.)
-- **test-writer**: Read crate-writer's `.specify-feedback.yaml` for
-handler signatures, trait bounds, and spec coverage. Produce its own
-feedback sidecar with test-to-spec mapping.
-- **code-reviewer**: Produce `.review-findings.yaml` alongside
-`REVIEW.md`. Structured findings enable deterministic routing.
-
-### 1.5 Feedback file lifecycle
-
-Add cleanup rules: `.specify-feedback.yaml` and
-`.review-findings.yaml` are removed from the crate path at merge time
-by the merge skill, archived to `.specify/changes/<change>/archive/`.
-The archive directory preserves the final state of all machine-generated
-sidecars for post-mortem analysis. Validate feedback file schemas in
-`checks.ts`, including the required `schema_version` field for
-forward-compatibility (see Migration and Backward Compatibility).
-
-### Deliverables
-
-- JSON Schema for `.specify-feedback.yaml` (with `schema_version` field)
-- JSON Schema for `.review-findings.yaml` (with `schema_version` field)
-- `specify` CLI entry point with `specify diag format` subcommand (Deno/TypeScript)
-- Input contracts for Cargo diagnostic JSON and libtest JSON (with stable fallback)
-- crate-writer produces feedback sidecar
-- test-writer consumes crate-writer feedback
-- code-reviewer produces structured findings
-- `checks.ts` validates feedback file schemas
-- Merge skill archives feedback files to `.specify/changes/<change>/archive/`
-
----
-
-## Phase 2: Structured Validation Rules + Validator CLI
-
-**Goal**: Remove the LLM from the artifact validation loop entirely.
-
-**Effort**: Medium. **Leverage**: Highest single determinism win.
-
-### 2.1 Machine-readable validation rules
-
-Extend `schema.yaml` `validate` arrays to support structured check
-objects alongside prose strings (backward-compatible):
+Extend `schema.yaml` `validate` arrays to support structured check objects alongside prose strings (backward-compatible):
 
 ```yaml
 validate:
@@ -199,30 +175,11 @@ validate:
     heading: "#### Scenario:"
     scope: per-requirement
     description: Every requirement has at least one scenario
-  - check: pattern-match
-    pattern: "^ID: REQ-[0-9]{3}$"
-    scope: per-requirement
-    description: Requirement IDs use REQ-XXX format
-  - check: keyword-present
-    keywords: ["SHALL", "MUST"]
-    scope: per-requirement
-    description: Uses normative language
   # Backward-compatible: plain strings still accepted
   - Has a Why section with at least one sentence
 ```
 
-The `description` stays for the LLM to use during generation; the structured fields drive the validator.
-
-**Scope vocabulary**: `scope` defines the unit of evaluation:
-- `document` — check applies once to the entire artifact file
-- `per-requirement` — check runs once per `### Requirement:` block
-- `per-scenario` — check runs once per `#### Scenario:` block within each requirement
-
-Evaluating `per-requirement` and `per-scenario` scopes requires parsing spec files into requirement and scenario blocks. The parsing logic already exists in `merge-specs.ts` (`parseRequirementBlocks`); the Phase 2 validator reuses it. Phase 7's Rust parser replaces this implementation, not introduces the concept.
-
-### 2.2 Extend `schema.schema.json`
-
-Update the blueprint `validate` items definition to accept either a string (current) or an object with structured check fields:
+Extend `schema.schema.json` to accept either a string or a structured check object:
 
 ```json
 "validate": {
@@ -236,24 +193,16 @@ Update the blueprint `validate` items definition to accept either a string (curr
 }
 ```
 
-### 2.3 Standalone validator CLI
+**Scope vocabulary**: `scope` defines the unit of evaluation:
+- `document` — check applies once to the entire artifact file
+- `per-requirement` — check runs once per `### Requirement:` block
+- `per-scenario` — check runs once per `#### Scenario:` block within each requirement
 
-Build `specify validate` as a subcommand of the unified `specify` CLI (extending the `checks.ts` and `merge-specs.ts` infrastructure):
+Build `specify validate` as a subcommand of the unified `specify` CLI. It validates one rule end-to-end: `heading-present` for `#### Scenario:` within the `specs` blueprint. Returns exit code 0/1.
 
-- Parse spec files using the `spec-format.md` grammar
-- Check structural rules from `schema.yaml` `validate` entries
-- Verify cross-artifact references (`proposal-crates-have-specs`,
-design references valid IDs, tasks reference existing specs)
-- Validate `.metadata.yaml` status vs actual filesystem state
-- Return exit code 0/1 with structured diagnostics
+**Architecture constraint**: The validator's check evaluation engine accepts a parsed document model, not raw Markdown. This makes it reusable when the structured IR arrives.
 
-**Architecture constraint**: The validator must be decoupled from any single input format. It validates **Markdown artifacts** (for drift detection, merge, manual edits, and `spec:verify`) and, once Phase 3B introduces the structured IR, validates **IR YAML** (during generation). The check evaluation engine accepts a parsed document model, not raw Markdown — this makes it reusable when the input source changes. This also ensures `spec:verify` and `spec:build` share the same diagnostics format and notion of "green."
-
-### 2.4 Wire the gate into skills
-
-`/spec:build` and `/spec:define` invoke `specify validate` via the Shell tool and halt on non-zero exit. The LLM no longer decides whether validation passed; the CLI does. Each structured rule in the skill prose is **replaced** (not duplicated) by the corresponding validator check.
-
-### 2.5 Artifact frontmatter
+### Track V: Artifact frontmatter
 
 Add YAML frontmatter to generated artifacts:
 
@@ -268,29 +217,95 @@ generated_at: 2026-04-12T10:00:00Z
 ---
 ```
 
-The validator cross-references `req_ids` against the body, catching silent drops. Downstream tooling (merge, verify) uses frontmatter instead of parsing the entire markdown body.
+### Track S: YAML manifest schema + checks.ts hardening
+
+Skills have two distinct layers: **structural metadata** (dependencies, tools, arguments, phase ordering) and **behavioral instructions** (how the agent should think and act). The structural layer benefits enormously from typing. The behavioral layer is inherently natural language. Today, `checks.ts` already validates frontmatter schemas, skill references, variable consistency, directives, marketplace alignment, and inventory — but SKILL.md bodies remain structurally unvalidated.
+
+Define a YAML manifest schema for skill structural metadata and introduce it for one skill (`omnia:crate-writer`):
+
+```yaml
+# plugins/omnia/skills/crate-writer/manifest.yaml
+name: crate-writer
+plugin: omnia
+description: "Write Rust WASM crates from Specify artifacts..."
+license: MIT
+argument-hint: "[crate-name]"
+
+allowed-tools:
+  - Read
+  - Write
+  - StrReplace
+  - Shell
+  - Grep
+  - ReadLints
+
+arguments:
+  positional:
+    - name: crate-name
+      var: CRATE_NAME
+      position: 0
+      required: true
+  derived:
+    - name: CHANGE_DIR
+      expr: ".specify/changes/$CRATE_NAME"
+      depends_on: [CRATE_NAME]
+
+references:
+  - id: sdk-api
+    path: references/sdk-api.md
+    mode: both
+
+skill-directives:
+  - omnia:test-writer
+  - omnia:guest-writer
+```
+
+Add a JSON Schema for `manifest.yaml` and validate it in `checks.ts`. Cross-check the manifest against the SKILL.md frontmatter — the manifest is the source of truth for structural metadata; the frontmatter must match. This extends the existing `checks.ts` infrastructure with structured skill metadata without changing the authoring format.
+
+| What the manifest catches | Mechanism |
+|---|---|
+| Typo in `allowed-tools` (e.g., `Readlints` vs `ReadLints`) | Enum in JSON Schema |
+| Variable `$CRATE_PATH` used but never defined | `depends_on` DAG validated for completeness |
+| Skill directive references non-existent skill | Cross-check against skill registry |
+| Manifest ↔ SKILL.md frontmatter divergence | Cross-check in `checks.ts` |
+
+### Track V+L: `specify migrate`
+
+Ship `specify migrate` in Iteration 1A. It upgrades an existing `.specify/` structure to the latest schema version — adding frontmatter to existing artifacts, creating missing `.metadata.yaml` fields, updating `config.yaml` to the new version. Because each iteration bundles cross-cutting schema changes, migration tooling must exist from the start.
 
 ### Deliverables
 
-- Structured check types in `schema.schema.json` (backward-compatible)
-- Convert `schemas/omnia/schema.yaml` validate rules to structured format
-- `specify validate` subcommand (Deno/TypeScript), format-agnostic check engine
-- `specify migrate` subcommand for upgrading existing `.specify/` structures
-- `build/SKILL.md` calls `specify validate` as a gate
-- `define/SKILL.md` calls `specify validate` as a gate
-- Artifact frontmatter generation in `define` skill
-- Remove redundant prose validation paragraphs from skills
+| Track | Deliverable | Gate |
+| ----- | ----------- | ---- |
+| F | JSON Schema for `.specify-feedback.yaml` and `.review-findings.yaml` | `checks.ts` validates schemas |
+| F | `specify` CLI entry point with `specify diag format` | Parses one `cargo check` diagnostic |
+| V | Structured check type in `schema.schema.json` | Ajv validates the new format |
+| V | One structured rule in `schemas/omnia/schema.yaml` | `specify validate` enforces it |
+| V | `specify validate` subcommand | Exit code 0/1 on one rule |
+| V | Artifact frontmatter in `define` skill | Frontmatter present in generated artifacts |
+| S | JSON Schema for `manifest.yaml` | Ajv validates the schema |
+| S | `manifest.yaml` for `omnia:crate-writer` | `checks.ts` cross-checks against frontmatter |
+| V+L | `specify migrate` subcommand | Upgrades a test `.specify/` directory |
 
 ---
 
-## Phase 3A: Lifecycle State Machine
+## Iteration 1B: System Skeleton
 
-**Goal**: Move the workflow state contract from prose to data.
+**Goal**: Every remaining track has one working example. `specify-core` compiles. Feedback files are wired into skills. The define-side quality loop establishes the RWL pattern. Pipeline YAML exists as a schema so subsequent iterations build loops against the abstraction from the start.
 
-**Effort**: Medium. **Leverage**: High — eliminates an entire class of
-state management bugs.
+**Effort/leverage**: Track E (`specify-core`) is highest effort — a new Rust crate with parity testing against Deno. Track RWL (define-side loop) is highest leverage — it establishes the core "code validates, LLM corrects" pattern used by all subsequent loops. Track P (pipeline skeleton) is low effort but prevents the pipeline-retrofit problem in later iterations by ensuring loop work in Iteration 2 targets the pipeline abstraction.
 
-### 3A.1 Codify the lifecycle in `schema.yaml`
+**Convergence**: `specify-core` compiles and parses one heading type, matching Deno output; pipeline YAML is valid against schema; `define` retries on validation failure; crate-writer produces a feedback sidecar that validates.
+
+### Track F: Wire feedback into skills
+
+Wire crate-writer to produce a `.specify-feedback.yaml` with `schema_version` and `skill` fields. The arrays can be empty stubs — the schema exists (defined in Iteration 1A) and is validated by `checks.ts`.
+
+Add cleanup rules: feedback sidecars are removed from the crate path at merge time by the merge skill, archived to `.specify/changes/<change>/archive/`.
+
+### Track L: Lifecycle skeleton in schema
+
+Add the lifecycle section to `schema.yaml` with all states defined, but only the `defining→defined` transition enforced:
 
 ```yaml
 lifecycle:
@@ -313,41 +328,14 @@ lifecycle:
       action: archive
 ```
 
-### 3A.2 Lifecycle validator
+Add the `lifecycle` section to `schema.schema.json`. Build a lifecycle validator stub in `specify validate` that checks `defining→defined` and reports all other transitions as pass-through.
 
-Build a state-machine validator that reads `.metadata.yaml` and checks transitions against the schema. Add to `specify validate` and to `checks.ts`. Remove the "valid lifecycle status values" guardrail paragraphs from all skills — the code enforces this now.
+### Track IR: Schema definition only
 
-### Deliverables
-
-- `lifecycle` section in `schema.schema.json`
-- `lifecycle` section in `schemas/omnia/schema.yaml`
-- Lifecycle validator in `specify validate`
-- Remove lifecycle guardrail paragraphs from skills
-
----
-
-## Phase 3B: Structured Intermediate Representation
-
-**Goal**: Invert artifact generation from free-form markdown to structured data rendered to markdown.
-
-**Effort**: High. **Leverage**: High — enables deterministic validation before rendering and makes Phase 7 dramatically more effective.
-
-This is architecturally the most disruptive change in the roadmap. It inverts the LLM's contract from "produce markdown" to "fill a YAML schema, code renders it." This requires structured output / JSON-mode prompt engineering for every blueprint, a complete YAML-to-markdown renderer that faithfully reproduces the current format, migration of all instruction files to target the new intermediate format, and testing that rendered output passes all downstream consumption (merge, verify, build).
-
-**Approach**: Start with a single blueprint (`specs`) as a proof of concept before committing to all four. This validates the round-trip (YAML → Markdown → merge → verify) and surfaces escaping issues (long-form prose, Mermaid diagrams, complex scenarios in YAML string literals) early.
-
-### 3B.1 Structured intermediate representation
-
-Instead of the LLM generating free-form markdown, constrain artifact generation to a structured intermediate format:
+Define the `.blueprint-plan.yaml` schema for the `specs` blueprint:
 
 ```yaml
 # .specify/changes/my-change/.blueprint-plan.yaml
-proposal:
-  why: "..."
-  source: manual
-  crates:
-    - name: my-crate
-      action: new
 specs:
   capabilities:
     - name: my-crate
@@ -360,74 +348,11 @@ specs:
               then: "..."
 ```
 
-The LLM fills the structured plan. A deterministic renderer converts it to markdown artifacts. Validation runs on the YAML before rendering. This inverts the current flow: generate structure, validate structure, render to markdown.
+No renderer yet — that is Iteration 2. The schema exists so that the validator architecture can be designed format-agnostically from the start, and so the Rust parser can target it.
 
-### 3B.2 Transition: Markdown vs IR as primary input
+### Track RWL: Define-side artifact quality loop
 
-During transition, two sources of truth coexist: hand-edited Markdown artifacts and IR-generated Markdown. The validator must handle both:
-
-- **Generation path** (`spec:define`): LLM produces IR YAML → validator checks IR → renderer produces Markdown. The IR is the source of truth; the Markdown is a render target.
-- **Editing path** (human edits, `spec:verify`, `spec:merge`): Markdown is the source of truth. The validator parses Markdown using the Phase 2 parser.
-- **Convergence**: `specify validate` auto-detects the input source. If `.blueprint-plan.yaml` exists and is newer than the rendered artifacts, validate the IR. Otherwise, validate the Markdown. This avoids forcing a choice between the two modes during transition.
-
-### Deliverables
-
-- `.blueprint-plan.yaml` schema definition (starting with `specs` blueprint)
-- Renderer: structured plan → markdown artifacts
-- LLM output constrained to JSON/YAML schema during generation
-- `specify validate` auto-detection of IR vs Markdown input
-- Proof-of-concept round-trip validation (IR → Markdown → merge → verify)
-- Migration guide for instruction files targeting the IR format
-
----
-
-## Phase 4: RWL Inner Loop — Deterministic Verify-Repair
-
-**Goal**: Replace the prose verify-repair loop with structured,
-deterministic loop control.
-
-**Effort**: Medium. **Leverage**: High — directly improves code
-generation reliability.
-
-### 4.1 Deterministic failure classification
-
-The hardest part of the verify-repair loop is classifying failures. The current `build.md` classification table can be made partially deterministic:
-
-1. Parse `cargo test` output (using `specify diag` from Phase 1)
-2. Extract failing test names and error locations
-3. If the error location is in `tests/` → **test issue**
-4. If the error location is in `src/` → **code issue**
-5. For assertion mismatches: compare the expected value against the spec
-  (this still requires LLM judgment, but the input is structured)
-
-Steps 1–4 are code. Step 5 is the residual that stays with the LLM. The spec is the arbiter: a previously-passing test is only a regression if the behavior it validates is still specified.
-
-### 4.2 Skill feedback ingestion mode
-
-Update skills to accept structured feedback for repair (via context
-injection — the orchestrator includes the feedback file in the skill's
-prompt, as established in Phase 1.4):
-
-- **crate-writer**: Receive classified errors from `specify diag`.
-Operate in repair mode: fix the reported errors, nothing else.
-- **test-writer**: Same pattern. Receive test-classified errors.
-- **Repair discipline** (preserved from `build.md`): minimum change
-only, one failure class per re-entry, scope the diff.
-
-### 4.3 Iteration tracking
-
-Persist iteration counts in `.metadata.yaml` or a sidecar:
-
-```yaml
-verify_iterations: 2
-remediation_iterations: 1
-```
-
-Support `SPECIFY_MAX_VERIFY_ITERATIONS` environment variable for CI control. Default: 3. After exhausting iterations: **STOP**, report failures, escalate.
-
-### 4.4 Define-side artifact quality loop
-
-Connect the validator CLI (Phase 2) to a generate → validate → refine loop in the `define` skill:
+Connect the single validator rule to a generate → validate → refine loop in the `define` skill:
 
 ```
 define generates artifacts → specify validate (deterministic)
@@ -436,33 +361,162 @@ define generates artifacts → specify validate (deterministic)
 
 The validator is code; the correction is LLM. This is the simplest RWL and establishes the pattern for all subsequent loops.
 
+Support `SPECIFY_MAX_VERIFY_ITERATIONS` environment variable for CI control. Default: 3.
+
+### Track P: Skeletal pipeline YAML
+
+Add a `pipelines` section to `schema.yaml` with the `create` pipeline's verify step only:
+
+```yaml
+pipelines:
+  create:
+    steps:
+      - id: verify
+        type: loop
+        max_iterations: 3
+        checks:
+          - run: cargo fmt --check
+            fix: cargo fmt
+          - run: cargo check && cargo clippy -- -D warnings
+            on_fail: classify-and-route
+          - run: cargo test
+            on_fail: classify-and-route
+        routing:
+          test_issue: omnia:test-writer
+          code_issue: omnia:crate-writer
+        convergence: all-green
+```
+
+Add the `pipelines` section to `schema.schema.json` with step types (`skill`, `loop`, `run`), `after` dependency DAG, convergence criteria, and routing tables. The full pipeline is filled in during Iteration 2.
+
+**Variable substitution**: Pipeline YAML uses `${{ vars.CHANGE_ID }}` and `${{ outputs.step_id }}` syntax rather than raw shell interpolation.
+
+### Track E: `specify-core` crate compiles
+
+Create the `specify-core` crate with a minimal spec parser:
+
+- Parse the `### Requirement:` heading from a spec file into a `RequirementBlock` struct
+- Validate the `heading-present` rule (same rule as the Deno validator)
+- Emit one diagnostic in JSON format
+- Ship as a library crate; CLI binary is Iteration 2
+
+The Rust parser and the Deno validator must produce identical results for the same input on this single rule. This is the integration test that proves the two implementations can coexist.
+
 ### Deliverables
 
-- `specify diag classify` subcommand for failure classification
-- crate-writer feedback-injection repair mode
-- test-writer feedback-injection repair mode
-- Iteration counter in `.metadata.yaml`
-- `SPECIFY_MAX_VERIFY_ITERATIONS` env var support
-- Define-side artifact quality RWL
-- Replace prose verify-repair loop in `build.md` with structured control
+| Track | Deliverable | Gate |
+| ----- | ----------- | ---- |
+| F | crate-writer produces minimal feedback sidecar | File exists and validates against 1A schema |
+| F | Merge skill archives feedback files | Archive directory created |
+| L | `lifecycle` section in `schema.yaml` + `schema.schema.json` | Schema validates |
+| L | `defining→defined` transition enforced | `specify validate` rejects invalid transition |
+| IR | `.blueprint-plan.yaml` schema for `specs` | Schema validates |
+| RWL | Define-side artifact quality loop | `define` retries on validation failure |
+| RWL | `SPECIFY_MAX_VERIFY_ITERATIONS` env var | Respected by define loop |
+| P | Skeletal `pipelines` section in `schema.yaml` | Schema validates; `checks.ts` passes |
+| P | Pipeline schema in `schema.schema.json` | Ajv validates pipeline definitions |
+| E | `specify-core` crate: parse one heading type | `cargo test` passes; matches Deno output |
 
 ---
 
-## Phase 5: RWL Outer Loops — Skill Chaining
+## Iteration 2: Single-Crate End-to-End
 
-**Goal**: Compose skills with structured feedback loops at an orchestration layer above individual skills.
+**Goal**: One Omnia crate's full build cycle runs with structured feedback, deterministic validation, pipeline-driven verify-repair, and Rust-validated specs. The system is useful, not just observable.
 
-**Effort**: High. **Leverage**: High — replaces the current post-hoc verify-repair with proactive co-refinement.
+**Effort/leverage**: Track IR (renderer) is highest effort and highest risk — see risk callout below. Track V (full Omnia validation rules) is highest leverage — it removes the LLM from all artifact validation. Track RWL (verify-repair + per-handler co-refinement) is the payoff iteration for the core RWL pattern. Track S (all Omnia manifests) is moderate effort with compounding returns from Iteration 1A's foundation.
 
-### 5.1 Per-handler co-refinement (crate-writer + test-writer)
+**Convergence**: A single crate build succeeds with `specify validate` gating all artifacts, `specify diag classify` routing all verify-repair failures, the build skill following pipeline YAML for the verify step, and `specify-core` validating all structured rules for `specs`.
 
-Replace the current sequential flow (crate-writer finishes entirely → test-writer finishes entirely → verify-repair patches up) with  
-interleaved per-handler generation:
+### Track F: Full feedback schemas
+
+Extend `.specify-feedback.yaml` to include `handlers_generated` with per-handler `cargo_check` status and `spec_coverage`, plus `known_gaps`:
+
+```yaml
+schema_version: 1
+skill: omnia:crate-writer
+mode: create
+handlers_generated:
+  - name: CreateWorksite
+    file: src/handlers/create_worksite.rs
+    cargo_check: pass
+    spec_coverage: [REQ-001, REQ-002]
+known_gaps:
+  - type: todo-marker
+    file: src/handlers/create_worksite.rs
+    line: 67
+    description: "Cache-aside pattern not implemented"
+    spec_reference: REQ-002
+```
+
+Extend `.review-findings.yaml` with typed findings:
+
+```yaml
+schema_version: 1
+findings:
+  - id: SEC-1
+    severity: critical
+    file: src/handler.rs
+    line: 45
+    category: wasm-constraint
+    auto_fixable: true
+    skill_target: crate-writer
+    fix_description: "Replace std::env::var with Config::get"
+    spec_reference: null
+```
+
+Wire all three skills:
+- **crate-writer**: Produce full `.specify-feedback.yaml`. Accept feedback-injection mode for repair passes via context injection.
+- **test-writer**: Read crate-writer's feedback for handler signatures, trait bounds, and spec coverage. Produce its own sidecar with test-to-spec mapping.
+- **code-reviewer**: Produce `.review-findings.yaml` alongside `REVIEW.md`.
+
+### Track F: Diagnostic classifier
+
+Add `specify diag classify` subcommand for failure classification:
+
+1. Parse `cargo test` output (using `specify diag format`)
+2. Extract failing test names and error locations
+3. If the error location is in `tests/` → **test issue**
+4. If the error location is in `src/` → **code issue**
+5. For assertion mismatches: produce structured input for LLM judgment
+
+Steps 1–4 are code. Step 5 is the residual that stays with the LLM. Add `cargo test -- --format json` support with stable-toolchain fallback.
+
+### Track V: Full Omnia validation rules
+
+Convert all `schemas/omnia/schema.yaml` validate rules to structured format. Add check types `pattern-match`, `keyword-present`, and cross-artifact references (`proposal-crates-have-specs`, design references valid IDs, tasks reference existing specs).
+
+Wire the gate: `/spec:build` and `/spec:define` invoke `specify validate` and halt on non-zero exit. **Replace** (not duplicate) each prose validation paragraph in skills with the corresponding structured rule.
+
+### Track L: Full lifecycle enforcement
+
+Enforce all transitions: `defining→defined→building→complete→merged` and `*→dropped`. Build the state-machine validator in `specify validate`. Remove "valid lifecycle status values" guardrail paragraphs from all skills.
+
+### Track IR: Renderer for `specs` blueprint (highest-risk deliverable)
+
+**Risk callout**: The IR transformation — inverting the LLM's contract from "produce markdown" to "fill a YAML schema, code renders it" — is architecturally the most disruptive single deliverable in this iteration. It requires structured output prompt engineering for the `specs` blueprint, a YAML-to-markdown renderer that faithfully reproduces the current format, and testing that rendered output passes all downstream consumption (merge, verify, build). Escaping issues (long-form prose, Mermaid diagrams, complex scenarios in YAML string literals) may surface fundamental problems with YAML-as-prose-carrier. If the `specs` round-trip surfaces blockers, timebox and de-scope IR rather than letting it block the rest of Iteration 2.
+
+Build the renderer: `.blueprint-plan.yaml` → markdown `spec.md`. Constrain LLM output to the IR schema during generation in the `define` skill.
+
+Add auto-detection to `specify validate`: if `.blueprint-plan.yaml` exists and is newer than rendered artifacts, validate the IR. Otherwise, validate the Markdown.
+
+Proof-of-concept round-trip: IR → Markdown → merge → verify.
+
+### Track RWL: Inner loop — deterministic verify-repair
+
+Replace the prose verify-repair loop in `build.md` with structured control:
+
+- crate-writer feedback-injection repair mode (receive classified errors, fix reported errors only)
+- test-writer feedback-injection repair mode
+- Iteration counter in `.metadata.yaml`
+- **Repair discipline**: minimum change only, one failure class per re-entry, scope the diff
+
+### Track RWL: Per-handler co-refinement
+
+Introduce per-handler generation for a single crate:
 
 ```
 Step 0: crate-writer generates shared types, domain models, and module tree
-        (mod.rs registrations, common error types, shared newtypes)
-        → cargo check (structural smoke on shared foundation)
+        → cargo check (structural smoke)
 
 For each handler in the handler manifest:
   1. crate-writer generates handler code
@@ -473,79 +527,24 @@ For each handler in the handler manifest:
   6. Max 2 refinement passes per handler
 ```
 
-Step 0 is critical: a new handler file won't pass `cargo check` unless it's registered in `mod.rs` and its dependencies on shared types are satisfied. The handler manifest must explicitly track these shared dependencies so the module tree is complete before per-handler iteration begins.
+The handler manifest is a structured list of handlers to generate, with dependencies, trait bounds, shared type references, and matrix entries.
 
-This requires crate-writer to produce a **handler manifest** after its cross-cutting analysis step: a structured list of handlers to generate, with dependencies, trait bounds, shared type references, and matrix entries.
+**Fallback**: If per-handler iteration doesn't converge in 2 passes, fall back to whole-crate iteration.
 
-**Fallback**: If per-handler iteration doesn't converge in 2 passes for a handler, fall back to whole-crate iteration. Some crates have deep handler interdependencies (shared state, cross-handler delegation, transaction boundaries) that don't decompose cleanly.
+### Track S: All Omnia skill manifests
 
-### 5.2 Code-reviewer structured feedback loop
+Extend `manifest.yaml` to all Omnia skills (`crate-writer`, `test-writer`, `guest-writer`, `code-reviewer`). Each manifest declares:
 
-Chain code-reviewer to the end of the build loop with structured routing:
+- `allowed-tools` (validated against the Tool enum in the JSON Schema)
+- `arguments` with positional args, derived variables, and `depends_on` DAGs (schema-validated for completeness and acyclicity)
+- `references` with paths (cross-checked for existence)
+- `skill-directives` (cross-checked against the skill registry)
 
-```
-code-reviewer produces .review-findings.yaml
-→ filter by severity (CRITICAL/HIGH only)
-→ group by skill_target
-→ route each group to the target skill via feedback injection
-→ verify-repair (max 2 iterations — tighter cap for targeted repairs)
-→ re-review (without --fix) to verify quality
-→ if new CRITICAL: one more remediation cycle
-```
+`checks.ts` validates all manifests, cross-checks against SKILL.md frontmatter, and verifies that pipeline YAML skill references match manifest-declared skill IDs. This closes the gap between pipeline orchestration (Track P) and skill metadata — the same skill ID vocabulary is enforced everywhere.
 
-The routing decision is data-driven from `.review-findings.yaml`: filter by `severity`, group by `skill_target`, invoke. No LLM judgment needed for the routing itself.
+### Track P: Full create pipeline
 
-### 5.3 Code-analyzer self-critique loop
-
-`spec:analyze` has the richest evaluation signal available — the source code itself. Introduce a partially deterministic self-critique:
-
-```
-Pass 1: Analyze source → produce specs + design.md
-Pass 2: For each handler:
-         - Parse generated design.md type tables
-         - Parse source code type definitions
-         - Compare: field names, types, counts
-         - Check: every REQ-XXX in design.md exists in a spec file
-         - Check: every exported handler has a Business Logic block
-         → produce structured discrepancy report
-Pass 3: LLM applies corrections → re-validate
-Convergence: zero CRITICAL/HIGH discrepancies, or max 2 iterations
-```
-
-V1 (Type Fidelity), V3 (API Contract), and V4 (Cross-Reference) checks can be partially automated. V2 (Algorithm Fidelity) and V5 (Completeness) still need LLM judgment but with structured input.
-
-### 5.4 The unified pipeline
-
-The full Omnia create-mode chain becomes:
-
-```
-guest-writer
-  → crate-writer (with handler manifest)
-    → [per-handler: cargo check → test-writer → cargo test → classify]
-      → verify-repair loop (max 3, deterministic classification)
-        → code-reviewer (structured findings)
-          → remediation loop (max 2, routed by skill_target)
-            → final re-review
-```
-
-### Deliverables
-
-- Handler manifest schema and crate-writer integration
-- Per-handler co-refinement loop in build orchestration
-- Whole-crate fallback when per-handler doesn't converge
-- Code-reviewer structured routing from `.review-findings.yaml`
-- Code-analyzer self-critique with partial automation
-- Unified pipeline documentation replacing current `build.md` prose
-
----
-
-## Phase 6: Pipeline YAML — Declarative Orchestration
-
-**Goal**: Replace prose-embedded pipelines with structured, inspectable, configurable pipeline definitions.
-
-**Effort**: High. **Leverage**: Medium-high — makes pipelines a first-class configurable contract.
-
-### 6.1 Pipeline section in `schema.yaml`
+Fill in the complete pipeline definition:
 
 ```yaml
 pipelines:
@@ -609,123 +608,266 @@ pipelines:
       # ... same verify/review/remediate structure
 ```
 
-**Variable substitution**: Pipeline YAML uses `${{ vars.CHANGE_ID }}` and `${{ outputs.step_id }}` syntax rather than raw shell interpolation. This keeps the pipeline schema portable and engine-agnostic — the pipeline engine resolves variables before invoking commands, rather than relying on platform-specific shell expansion. Outputs are abstract references, not hardcoded filesystem paths.
+The build skill reads and follows the pipeline YAML for the verify step. Prose verify-repair loop remains for non-verify steps until Iteration 3.
 
-### 6.2 Pipeline schema in `schema.schema.json`
+Add pipeline DAG validation and conformance check to `checks.ts`.
 
-Extend the schema to validate pipeline definitions: step types (`skill`, `loop`, `run`), `after` dependency DAG, convergence criteria, routing tables.
+### Track E: Validator parity
 
-### 6.3 Pipeline reader in build skill
-
-Initially, the build skill reads the pipeline YAML and executes it step by step. The LLM is still the controller but with **structured guidance** — it follows a data definition rather than interpreting prose. This is the bridge to a compiled engine.
-
-### 6.4 Pipeline conformance check
-
-Add a conformance check to `checks.ts` that ensures `build/SKILL.md` (or the relevant instruction file) references the pipeline ID from `schema.yaml`. This prevents drift where pipeline YAML exists but agents ignore it in favor of stale prose. The check can be as simple as verifying a hash or version marker of the pipeline section matches what's embedded in the skill reference.
+Extend `specify-core` to:
+- Parse spec files into typed AST (`RequirementBlock`, `Scenario`, `DeltaOperation`)
+- Validate all structured rules that the Deno validator handles for `specs`
+- Emit diagnostics in JSON/SARIF format
+- Ship as CLI binary alongside the Deno implementation (both runnable, Deno is still primary)
 
 ### Deliverables
 
-- `pipelines` section in `schema.schema.json` (with `${{ }}` variable substitution)
-- `pipelines` section in `schemas/omnia/schema.yaml`
-- `build/SKILL.md` reads and executes pipeline YAML
-- Remove prose pipeline from `schemas/omnia/instructions/build.md`
-- Pipeline DAG validation in `checks.ts`
-- Pipeline conformance check in `checks.ts` (skill ↔ pipeline alignment)
+| Track | Deliverable | Gate |
+| ----- | ----------- | ---- |
+| F | Full `.specify-feedback.yaml` and `.review-findings.yaml` schemas | All three skills produce/consume structured feedback |
+| F | `specify diag classify` | Routes test vs code issues deterministically |
+| V | All Omnia `specs` validate rules structured | `specify validate` enforces all; prose paragraphs removed |
+| V | Cross-artifact reference validation | `proposal-crates-have-specs` etc. checked by code |
+| L | All lifecycle transitions enforced | Guardrail paragraphs removed from skills |
+| IR | `.blueprint-plan.yaml` → Markdown renderer | Round-trip passes: IR → Markdown → merge → verify |
+| IR | `specify validate` auto-detection | IR vs Markdown input handled transparently |
+| RWL | Deterministic verify-repair loop | Prose loop replaced in `build.md` |
+| RWL | Per-handler co-refinement | One crate builds with per-handler iteration |
+| RWL | Handler manifest schema | crate-writer produces manifest after cross-cutting analysis |
+| P | Full `create` and `update` pipelines | Build skill follows pipeline YAML for verify step |
+| P | Pipeline conformance check | `checks.ts` validates skill ↔ pipeline alignment |
+| S | All Omnia skill manifests | `checks.ts` validates all manifests; cross-check passes |
+| S | Pipeline ↔ manifest skill ID alignment | Same vocabulary enforced everywhere |
+| E | `specify-core` validates all `specs` rules | Matches Deno output on full rule set |
+| E | `specify-core` CLI binary | `specify-core validate` runs standalone |
 
 ---
 
-## Phase 7: Rust Engine
+## Iteration 3: Full Omnia Determinism
 
-**Goal**: The LLM stops being the driver and becomes a called capability.
+**Goal**: The entire Omnia pipeline runs deterministically. `specify-core` replaces the Deno validator and merge script. The build skill executes entirely from pipeline YAML. All prose-based process control is removed.
 
-**Effort**: Very high. **Leverage**: Maximum determinism ceiling.
+**Effort/leverage**: Track E (replace Deno) is highest effort — full validator, merge, drift detection, lifecycle engine in Rust. Track P (pipeline drives full build) is highest leverage — it eliminates all prose process control. Track S (Rust DSL) is conditional — see gate above.
 
-Unlike the claim in earlier drafts, Phase 7 does **not** depend on all prior phases. Each sub-phase has specific, narrower entry criteria that enable earlier starts.
+**Convergence**: Zero prose-only validate rules in `schemas/omnia/schema.yaml`; `specify-core` is the sole validator and merge engine; pipeline YAML drives the full build chain including review and remediation; all Omnia skills produce and consume structured feedback.
 
-### 7.1 `specify-core` crate — parser and validator
+### Track F: Feedback lifecycle complete
 
-**Entry criteria**: Phase 2 (structured validation rules and `spec-format.md` grammar are stable).
+All Omnia skills produce feedback sidecars. `checks.ts` validates all feedback file schemas. Merge skill archives feedback files to `.specify/changes/<change>/archive/`. Maximum feedback file size defined; only latest iteration's findings retained.
 
-- Parse spec files into typed AST (`RequirementBlock`, `Scenario`,
-`DeltaOperation`)
-- Validate structural rules exhaustively
-- Emit diagnostics in JSON/SARIF format
-- Ship as single CLI binary, potentially WASM for editor integration
+### Track V: All blueprints validated
 
-### 7.2 `specify-core` — merge replacement
+Extend structured validation to all four Omnia blueprints (`proposal`, `specs`, `design`, `tasks`). The validator cross-references `req_ids` in frontmatter against the body.
 
-**Entry criteria**: Phase 7.1 (parser produces typed AST).
+### Track L: Complete
 
-- Perform merge deterministically (replacing `merge-specs.ts`)
-- Detect drift structurally
-- Reuse the same parsed document model for both merge and validation
+All lifecycle transitions enforced by code. No lifecycle guardrail paragraphs remain in any skill.
 
-### 7.3 `specify-core` — lifecycle engine
+### Track IR: All Omnia blueprints
 
-**Entry criteria**: Phase 3A (lifecycle state machine schema is stable).
+Extend the structured IR and renderer to `proposal`, `design`, and `tasks` blueprints. Handle escaping issues: long-form prose, Mermaid diagrams, complex scenarios in YAML string literals. Migration guide for instruction files targeting the IR format.
 
-- Read lifecycle schema from `schema.yaml`
-- Manage `.metadata.yaml` transitions
-- Enforce state machine invariants at the engine level
+### Track RWL: Code-reviewer structured routing + analyzer self-critique
 
-### 7.4 `specify-core` — pipeline orchestrator
+Chain code-reviewer with structured routing:
 
-**Entry criteria**: Phase 6 (pipeline YAML schema is stable).
+```
+code-reviewer produces .review-findings.yaml
+→ filter by severity (CRITICAL/HIGH only)
+→ group by skill_target
+→ route each group to the target skill via feedback injection
+→ verify-repair (max 2 iterations)
+→ re-review to verify quality
+→ if new CRITICAL: one more remediation cycle
+```
 
-- Read `schema.yaml` pipelines, resolve DAG
-- Execute pipeline steps: invoke LLM for content generation via defined
-interface, run validation deterministically, control loops, route
-failures
-- The LLM becomes a "content oracle" called by the engine
+Add code-analyzer self-critique loop:
 
-### 7.5 Integration with DSL roadmap
+```
+Pass 1: Analyze source → produce specs + design.md
+Pass 2: For each handler:
+         - Parse generated design.md type tables
+         - Parse source code type definitions
+         - Compare: field names, types, counts
+         - Check: every REQ-XXX in design.md exists in a spec file
+         - Check: every exported handler has a Business Logic block
+         → produce structured discrepancy report
+Pass 3: LLM applies corrections → re-validate
+Convergence: zero CRITICAL/HIGH discrepancies, or max 2 iterations
+```
 
-The Rust DSL from `roadmap/dsl.md` is complementary: once skills have structured manifests (from Phase 1 feedback schemas and Phase 6 pipeline YAML), the Rust DSL can consume those manifests and generate type-safe skill definitions. The DSL catches structural errors at compile time; the engine catches process errors at runtime. See `dsl.md` Phase 2 for SKILL compile-time structure; `specify-core` consumes the same manifests at runtime.
+### Track P: Pipeline drives full build
 
-### Deliverables
+The build skill executes entirely from pipeline YAML. Remove all prose pipeline descriptions from `schemas/omnia/instructions/build.md`. The full Omnia create-mode chain:
 
-- `specify-core` crate: spec parser + validator (can start after Phase 2)
-- `specify-core` crate: merge (after 7.1, replacing `merge-specs.ts`)
-- `specify-core` crate: drift detection (after 7.1)
-- `specify-core` crate: lifecycle engine (can start after Phase 3A)
-- `specify-core` crate: pipeline orchestrator (after Phase 6)
-- CLI binary distribution
+```
+guest-writer
+  → crate-writer (with handler manifest)
+    → [per-handler: cargo check → test-writer → cargo test → classify]
+      → verify-repair loop (max 3, deterministic classification)
+        → code-reviewer (structured findings)
+          → remediation loop (max 2, routed by skill_target)
+            → final re-review
+```
+
+### Track S: Rust DSL generates SKILL.md from typed definitions (conditional)
+
+**Gate**: Evaluate after Iteration 2 whether YAML manifests + `checks.ts` provide sufficient structural safety. The Rust DSL is only justified if skill count and complexity make the compile-time feedback loop clearly cheaper than CI-time cross-checking. If manifests prove sufficient, defer the DSL and reallocate effort to other Iteration 3 tracks.
+
+**If proceeding**: With YAML manifests stable (Iteration 2) and `specify-core` available, move skill structural metadata into Rust. Define skills as Rust structs in a `skill-dsl` crate, embed prose blocks via `include_str!`, and generate SKILL.md at build time. The Rust compiler and a build script enforce correctness.
+
+What the compiler catches that YAML manifests cannot:
+
+1. **Broken references**: `ref!(omnia::nonexistent)` fails to compile because the target does not exist as a const/type.
+2. **Blueprint alignment**: `artifact!(design)` checks against an enum generated from `schema.yaml`.
+3. **Phase DAG validation**: dependency cycles or missing phases caught at compile time.
+4. **Tool allow-lists**: enum-based, so typos are impossible.
+5. **Cross-skill directives**: typed consts validated against a registry.
+6. **Variable DAGs**: `depends_on` fields are checked for completeness and acyclicity at compile time, not CI time.
+
+Core types:
+
+```rust
+pub struct SkillDef {
+    pub name: SkillId,
+    pub plugin: PluginId,
+    pub description: &'static str,
+    pub license: License,
+    pub arguments: Arguments,
+    pub allowed_tools: &'static [Tool],
+    pub references: &'static [Reference],
+    pub authority: &'static [AuthorityLevel],
+    pub rules: &'static [HardRule],
+    pub phases: Vec<Phase>,
+    pub modes: Vec<Mode>,
+    pub body_sections: Vec<Section>,
+}
+
+pub enum Tool {
+    Read, Write, StrReplace, Shell, Grep, Glob,
+    ReadLints, WebFetch, WebSearch, AskQuestion,
+    Task, TodoWrite, SemanticSearch,
+    Mcp(&'static str),
+}
+
+pub struct Arguments {
+    pub positional: &'static [Arg],
+    pub derived: &'static [DerivedVar],
+}
+```
+
+Build integration — the Makefile chains generation before validation:
+
+```makefile
+.PHONY: generate
+generate:
+	cargo run --manifest-path skill-dsl/Cargo.toml --bin generate
+
+.PHONY: checks
+checks: generate
+	@$(DENO) run --allow-read scripts/checks.ts
+```
+
+`checks.ts` continues validating rendered SKILL.md output as defense-in-depth. The Rust DSL catches structural errors at compile time; `checks.ts` catches rendering regressions at CI time.
+
+The DSL consumes the same structured manifests (feedback schemas, pipeline YAML, skill manifests) that `specify-core` uses at runtime. The DSL catches structural errors at compile time; the engine catches process errors at runtime.
+
+### Track E: Replace Deno implementations
+
+- `specify-core` replaces `merge-specs.ts` for merge
+- `specify-core` replaces Deno validator for all structured rules
+- `specify-core` handles drift detection
+- `specify-core` lifecycle engine reads schema, manages `.metadata.yaml` transitions
+- Ship as single CLI binary
 - WASM build for editor integration (optional)
 
+### Deliverables
+
+| Track | Deliverable | Gate |
+| ----- | ----------- | ---- |
+| F | All Omnia skills produce/consume feedback | `checks.ts` validates all schemas |
+| V | All four blueprints use structured validation | Zero prose-only validate rules remain |
+| L | Complete lifecycle enforcement | No guardrail paragraphs in any skill |
+| IR | All Omnia blueprints use structured IR | Round-trip for all four blueprints |
+| RWL | Code-reviewer structured routing | Routing is data-driven from `.review-findings.yaml` |
+| RWL | Code-analyzer self-critique | Partial automation of V1, V3, V4 checks |
+| P | Full pipeline-driven build | Prose pipeline removed; conformance check passes |
+| S | Rust DSL generates all Omnia SKILL.md files *(conditional — see gate)* | Generated output matches hand-authored; `checks.ts` validates rendered |
+| S | `skill-dsl` crate with typed `SkillDef` structs *(conditional)* | `cargo build` catches broken refs, tool typos, DAG cycles |
+| E | `specify-core` replaces Deno validator + merge | Single binary, JSON/SARIF diagnostics |
+| E | `specify-core` lifecycle engine | State machine invariants at engine level |
+
 ---
 
-## Phase Summary
+## Iteration 4: Vectis Parity + Pipeline Orchestrator
+
+**Goal**: Vectis schema uses the same infrastructure with schema-specific definitions. The Rust pipeline orchestrator replaces the LLM as loop controller. The LLM becomes a content oracle called by the engine.
+
+**Effort/leverage**: Track E (pipeline orchestrator) is highest effort and highest leverage — it completes the architectural inversion where the LLM becomes a content oracle. Track F–V–L (Vectis definitions) is moderate effort leveraging all shared infrastructure from Iterations 1–3.
+
+**Convergence**: Both Omnia and Vectis pipelines run end-to-end through `specify-core`; the LLM is invoked for content generation only, never for process decisions.
+
+### Track F–V–L: Vectis-specific definitions
+
+Define Vectis-specific:
+- Structured validation rules for multi-platform build verification
+- Feedback schemas adapted for `core-writer → ios-writer → android-writer → design-system-writer` pipeline shape
+- Lifecycle transitions for the Vectis workflow
+
+### Track IR: Full convergence
+
+Structured IR for Vectis blueprints. `specify validate` auto-detects IR vs Markdown for both schemas.
+
+### Track P: Vectis pipeline YAML
+
+Pipeline step types accommodate platform-specific build commands: `make build` for Xcode, `./gradlew :app:assembleDebug` for Android. The `step` type vocabulary is generic; schema-specific definitions provide the commands.
+
+### Track S: Vectis skills + full composability (conditional on Iteration 3 DSL gate)
+
+If the Rust DSL proceeded in Iteration 3, extend it to all Vectis skills (`core-writer`, `ios-writer`, `android-writer`, `design-system-writer`, `core-reviewer`, `ios-reviewer`, `android-reviewer`, `test-writer`). Skill composition becomes valuable at this scale — platform-variant skills (e.g., `ios-reviewer` and `android-reviewer` share structural patterns but differ in platform-specific checks) can be derived from shared base definitions rather than maintained independently.
+
+The full comparison of approaches at this point:
+
+| Dimension | checks.ts (Iteration 1) | YAML Manifests (Iteration 2) | Rust DSL (Iteration 3–4) |
+|---|---|---|---|
+| **Authoring format** | Markdown directly | YAML + markdown | Rust structs + `include_str!` |
+| **Feedback loop** | CI-time (`make checks`) | CI-time (`make checks`) | Compile-time (`cargo build`) |
+| **Broken references** | Runtime file-exists check | Runtime file-exists check | Build script panic |
+| **Tool name typo** | String comparison | String against schema enum | Enum variant — won't compile |
+| **Variable consistency** | Regex-based heuristic | Schema-validated DAG | Typed `depends_on` DAG |
+| **Composability** | Limited | Medium | High — skills are data |
+
+`checks.ts` remains as defense-in-depth at every iteration. The YAML manifest is the pragmatic intermediate step that the Rust DSL subsumes but does not eliminate — manifests continue to serve as the human-readable declaration that `checks.ts` validates against rendered output.
+
+### Track E: Pipeline orchestrator
+
+`specify-core` pipeline orchestrator:
+- Read `schema.yaml` pipelines, resolve DAG
+- Execute pipeline steps: invoke LLM for content generation via defined interface, run validation deterministically, control loops, route failures
+- The LLM becomes a "content oracle" called by the engine
+
+### Deliverables
+
+| Track | Deliverable | Gate |
+| ----- | ----------- | ---- |
+| F–V–L | Vectis-specific feedback, validation, lifecycle | `make checks` passes for Vectis schema |
+| IR | Vectis structured IR | Round-trip for Vectis blueprints |
+| P | Vectis pipeline YAML | Platform-specific build commands work |
+| S | Rust DSL covers all Vectis skills *(conditional on Iteration 3 gate)* | `cargo build` catches all structural errors; composition works |
+| E | `specify-core` pipeline orchestrator | Both schemas run end-to-end through engine |
+
+---
+
+## Iteration Summary
 
 
-| Phase  | What                                             | Effort    | Done when                                                                                     |
-| ------ | ------------------------------------------------ | --------- | --------------------------------------------------------------------------------------------- |
-| **1**  | Structured feedback files + diagnostic formatter | Low       | All skills produce feedback sidecars; `checks.ts` validates their schemas                     |
-| **2**  | Structured validation rules + validator CLI      | Medium    | Zero prose-only validate rules remain in `schemas/omnia/schema.yaml`; `specify validate` gates CI |
-| **3A** | Lifecycle state machine                          | Medium    | All lifecycle transitions enforced by code; guardrail paragraphs removed from skills          |
-| **3B** | Structured intermediate representation           | High      | `specs` blueprint round-trips through IR → Markdown → merge → verify                         |
-| **4**  | Deterministic verify-repair (inner RWL)          | Medium    | `specify diag classify` handles all failure routing; prose verify-repair loop removed          |
-| **5**  | Skill chaining with outer RWL loops              | High      | Per-handler co-refinement runs end-to-end with shared types Step 0                            |
-| **6**  | Pipeline YAML in `schema.yaml`                   | High      | Build skill executes from pipeline YAML; prose pipeline removed; conformance check passes     |
-| **7**  | Rust engine (`specify-core`)                     | Very high | `specify-core` replaces `merge-specs.ts` and `specify validate` Deno implementation           |
-
-
-### Parallelism and Dependencies
-
-The foundational deliverables — Phase 1 (feedback schemas), Phase 2 (structured validation rules), and Phase 3A (lifecycle schema) — can be **defined** in parallel since they target different sections of the schema and different runtime concerns. However, they share `schema.schema.json` as an edit target, so parallel work requires clear ownership of schema file sections and merge-order coordination.
-
-Phase 3B (structured IR) is a substantial standalone effort that can proceed independently of Phases 1 and 3A, but benefits from Phase 2's validator architecture (the format-agnostic check engine). It should not block other work.
-
-The integration deliverables have sequential dependencies:
-- Phase 2.4 (wire gates into skills) depends on Phase 2.3 (validator CLI)
-- Phase 4 depends on Phase 1 (feedback files) and Phase 2 (validator CLI)
-- Phase 5 depends on Phase 4
-- Phase 6 can start alongside Phase 5 once loop patterns stabilize
-
-Phase 7 sub-phases have independent entry criteria:
-- 7.1 (parser + validator) can start after Phase 2 stabilizes
-- 7.2 (merge) depends on 7.1
-- 7.3 (lifecycle engine) can start after Phase 3A
-- 7.4 (pipeline orchestrator) depends on Phase 6
+| Iteration | Scope | Done when |
+| --------- | ----- | --------- |
+| **1A** | Infrastructure skeleton: CLI, one validation rule, one manifest, migration tooling | `make checks` passes; `specify validate` gates one rule; one skill manifest validates; `specify migrate` works |
+| **1B** | System skeleton: lifecycle, IR schema, pipeline schema, `specify-core`, define-side loop, feedback wiring | `specify-core` compiles and matches Deno; pipeline YAML valid; `define` retries on failure; feedback sidecar validates |
+| **2** | Single-crate end-to-end: full Omnia feedback, all `specs` rules, pipeline-driven verify, per-handler co-refinement, all Omnia manifests | One crate build succeeds with structured feedback, deterministic validation, pipeline-driven verify-repair; all Omnia manifests cross-checked |
+| **3** | Full Omnia determinism: `specify-core` replaces Deno; pipeline drives full build; Rust DSL *(conditional)*; all prose control removed | Zero prose-only rules; `specify-core` is sole validator/merge; pipeline YAML drives full chain |
+| **4** | Vectis parity + Rust orchestrator: LLM becomes content oracle | Both schemas run end-to-end through `specify-core` pipeline orchestrator |
 
 ---
 
@@ -733,22 +875,32 @@ Phase 7 sub-phases have independent entry criteria:
 
 ### Over-constraining the creative parts
 
-Skills like `spec:analyze` Phase 3 (domain-by-domain extraction) and `code-reviewer` category checklists require genuine language understanding. The THINK prompts ("Before extracting each type, reason through...") leverage the LLM's flexible reasoning. **Constrain the process, liberate the content generation.**
+Skills like `spec:analyze` domain-by-domain extraction and `code-reviewer` category checklists require genuine language understanding. The THINK prompts ("Before extracting each type, reason through...") leverage the LLM's flexible reasoning. **Constrain the process, liberate the content generation.**
+
+### Interface instability between tracks
+
+The defining risk of the RWL approach. When all tracks advance together, interfaces between them are being defined and used simultaneously. A feedback schema change in Iteration 2 might break the pipeline YAML work also happening in Iteration 2. **Mitigation**: The Interface Contracts section above defines minimum viable surfaces per iteration. Changes to a track's interface within an iteration require explicit coordination.
+
+### Dual maintenance across all tracks
+
+In a phase-gated approach, dual maintenance (prose + structured) is a transition concern. In the RWL approach, it is the **defining tension** of the entire implementation. During Iterations 1–2, skills contain both prose instructions (for the LLM) and structured YAML (for the validator). If these diverge, the LLM follows one set of rules while the validator enforces another. **Each structured rule must replace, not duplicate, the corresponding prose instruction** — from the very first iteration.
+
+### Spreading too thin
+
+Each iteration produces something across all eight tracks. If the team is small, each track gets very little attention per pass. **Mitigations**: (1) Iteration 1 is split into 1A (infrastructure) and 1B (system) to reduce per-delivery scope. (2) Iterations are not time-boxed — they are convergence-gated. An iteration is done when its convergence criterion passes, not when a sprint ends. (3) Effort/leverage annotations per iteration help focus investment where convergence is hardest.
 
 ### YAML complexity ceiling
 
-As pipeline definitions grow, YAML becomes its own DSL. If it needs conditional logic (`if Cargo.toml exists, use update pipeline`), inheritance, or parameterization, YAML gets unwieldy. The YAML layer declares *what happens*; the Rust engine handles complex control flow. Don't over-invest in YAML expressiveness — that's Phase 7's job.
+Pipeline definitions exist from Iteration 1B and accumulate complexity across iterations. As pipeline definitions grow, YAML becomes its own DSL. **The YAML layer declares *what happens*; the Rust engine handles complex control flow.** Don't over-invest in YAML expressiveness — that's Iteration 3–4's job.
 
 ### Context budget strategy
 
-Context pressure in RWL loops comes from multiple compounding sources, not just compiler output:
+Context pressure in RWL loops comes from multiple compounding sources:
 
-1. **Compiler/test output**: The diagnostic formatter (Phase 1.3) truncates stack traces and provides only file, line, and localized error message. This is critical infrastructure, not an optimization.
-2. **Feedback file growth**: As iterations accumulate, feedback sidecars grow. Define a maximum feedback file size or summarize across iterations (keeping only the latest iteration's findings).
-3. **Spec/design payload**: Repair passes may not need the full spec + design. The per-handler approach (Phase 5) inherently mitigates this by scoping each LLM call to a single handler's spec subset.
-4. **Accumulated repair history**: Avoid feeding the full history of prior repair attempts. Each repair pass receives only the current classified error and the relevant source context.
-
-The per-handler decomposition in Phase 5 is the primary structural mitigation — it reduces scope per LLM call. The diagnostic formatter addresses the remaining single largest source of bloat.
+1. **Compiler/test output**: The diagnostic formatter truncates stack traces and provides only file, line, and localized error message.
+2. **Feedback file growth**: Define a maximum feedback file size. Keep only the latest iteration's findings.
+3. **Spec/design payload**: The per-handler approach inherently mitigates this by scoping each LLM call to a single handler's spec subset.
+4. **Accumulated repair history**: Each repair pass receives only the current classified error and the relevant source context. No full history.
 
 ### Cost and latency from nested loops
 
@@ -756,28 +908,32 @@ Code-reviewer spawns 4 agents. Running this inside a loop, combined with multipl
 
 ### Test vs. code authority conflict
 
-When a test fails, the system doesn't inherently know if the code is wrong or the test was hallucinated. **The spec is the arbiter.** Compare the failing test against the `spec.md` ground truth. If the test matches the spec, fix the code. If the test deviates, fix the test. This principle is already in `build.md`; it must be preserved through all RWL work.
+When a test fails, the system doesn't inherently know if the code is wrong or the test was hallucinated. **The spec is the arbiter.** Compare the failing test against the `spec.md` ground truth. If the test matches the spec, fix the code. If the test deviates, fix the test.
 
-### Phase 2 / Phase 3B input source conflict
+### Markdown vs IR input source conflict
 
-Phase 2 builds a validator that parses Markdown. Phase 3B introduces a structured IR where the LLM produces YAML that is rendered to Markdown. During transition, two sources of truth coexist. If the validator only checks Markdown, IR-only errors are invisible. If it only checks IR, manually edited Markdown drifts undetected. The validator architecture must be format-agnostic from Phase 2 (see 2.3) and Phase 3B.2 defines the auto-detection and convergence strategy.
-
-### Dual maintenance during transition
-
-During migration from prose to structured definitions, skills contain both prose instructions (for the LLM) and structured YAML (for the validator). If these diverge, the LLM follows one set of rules while the validator enforces another. **Each structured rule must replace, not duplicate, the corresponding prose instruction.**
+The validator architecture must be format-agnostic from the start (Iteration 1's architecture constraint). `specify validate` auto-detects the input source: if `.blueprint-plan.yaml` exists and is newer than rendered artifacts, validate the IR; otherwise validate the Markdown. This co-evolution is less risky than the phase-gated approach because both paths exist from early on — they grow together rather than the IR arriving as a disruptive mid-stream change.
 
 ### Feedback file proliferation
 
-If every skill produces feedback sidecars, the `.specify/changes/` directory accumulates machine-generated files. These need lifecycle management (cleaned at merge, archived), schema validation, and clear ownership. Define this in Phase 1.5 before it becomes organic.
+If every skill produces feedback sidecars, the `.specify/changes/` directory accumulates machine-generated files. These need lifecycle management (cleaned at merge, archived), schema validation, and clear ownership. Defined in Iterations 1A–1B before it becomes organic.
 
 ### Per-handler granularity may not fit all crates
 
-The per-handler co-refinement loop assumes handlers are independent enough to generate and test individually. Some crates have deep handler interdependencies (shared state, cross-handler delegation). The Transaction Boundary Matrix in crate-writer exists precisely because handlers are not always independent. **Always provide a whole-crate fallback.**
+Some crates have deep handler interdependencies (shared state, cross-handler delegation, transaction boundaries). The Transaction Boundary Matrix in crate-writer exists precisely because handlers are not always independent. **Always provide a whole-crate fallback.**
 
 ### Infinite loop / hallucination spirals
 
-The LLM fails to understand a compiler error, applies a wrong fix, breaks something else, loops indefinitely. **Strict iteration caps** are non-negotiable. After cap: stop, output the diagnostic state, escalate for human guidance. Never weaken this to "try harder."
+The LLM fails to understand a compiler error, applies a wrong fix, breaks something else, loops indefinitely. **Strict iteration caps are non-negotiable.** After cap: stop, output the diagnostic state, escalate for human guidance. Never weaken this to "try harder."
+
+### DSL authoring friction vs type safety payoff
+
+The Rust DSL (Iteration 3) requires authors to define skill skeletons in Rust and embed prose via `include_str!`. For ~25 skills this is moderate ceremony. The YAML manifest intermediate step (Iterations 1–2) gets most of the structural validation without the authoring cost. **The Rust DSL is only justified once skill count and complexity make the compile-time feedback loop clearly cheaper than CI-time cross-checking.** The YAML manifests are not throwaway — they remain as the human-readable declaration that `checks.ts` validates against rendered output, even after the DSL generates from Rust.
 
 ### Scope creep on the Rust engine
 
-A Rust orchestrator is easy to overbuild. **Validate IR and CLI gates first** — the Rust engine only adds value after the validation rules, feedback schemas, and pipeline definitions exist as stable contracts.
+In a phase-gated approach, the Rust engine is naturally constrained by arriving last. In the RWL approach, `specify-core` exists from Iteration 1B and could accumulate scope before contracts are stable. **Constraint**: `specify-core` only implements what the Deno tools already validate. It must produce identical results for identical inputs. The Deno implementation is the reference; Rust is the replacement, not the pioneer.
+
+### Migration complexity from bundled changes
+
+Each iteration ships cross-cutting schema changes rather than single-concern releases. `specify migrate` must handle bundled changes atomically. **Mitigation**: Each iteration is a single schema version bump. The migration command applies all changes for that version in one pass. Test migration against a real `.specify/` directory as part of each iteration's convergence gate.
