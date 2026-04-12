@@ -1,27 +1,26 @@
 # Contribution Guide
 
-Augentic welcomes community contributions to the `omnia` library.
+Augentic welcomes community contributions to the Specify plugins repository.
 
-Since the project is still unstable, there are specific priorities for development. Pull requests that do not address these priorities will not be accepted until Omnia is production ready.
+This is a **documentation and prompt-engineering** project containing markdown skill definitions, reference docs, templates, and shell scripts. Please familiarize yourself with the [README](README.md) and [roadmap](roadmap/) before contributing.
 
-Please familiarize yourself with the Contribution Guidelines and Project Roadmap before contributing.
-
-There are many ways to help Omnia besides contributing code:
+There are many ways to help besides contributing skills:
 
 - Fix bugs or file issues
 - Improve the documentation
+- Report inconsistencies in skill definitions or references
 
 ## Table of Contents
 
-- [Contributing Code](#contributing-code)
-- [Code Style](#code-style)
+- [Contributing](#contributing)
+- [Content Style](#content-style)
 - [Developer's Certificate of Origin](#developers-certificate-of-origin)
-- [Pull request procedure](#pull-request-procedure)
+- [Pull Request Procedure](#pull-request-procedure)
 - [Conduct](#conduct)
 
-## Contributing Code
+## Contributing
 
-Unless you are fixing a known bug, we **strongly** recommend discussing it with the core team via a GitHub issue before getting started to ensure your work is consistent with Omnia's roadmap and architecture.
+Unless you are fixing a known bug, we **strongly** recommend discussing it with the core team via a GitHub issue before getting started to ensure your work is consistent with the project roadmap and architecture.
 
 All contributions are made via pull request. Note that **all patches from all contributors get reviewed**. After a pull request is made other contributors will offer feedback, and if the patch passes review a maintainer will accept it with a comment. When pull requests fail testing, authors are expected to update their pull requests to address the failures until the tests pass and the pull request merges successfully.
 
@@ -29,11 +28,14 @@ At least one review from a maintainer is required for all patches (even patches 
 
 Reviewers should leave a "LGTM" comment once they are satisfied with the patch. If the patch was submitted by a maintainer with write access, the pull request should be merged by the submitter after review.
 
-## Code Style
+## Content Style
 
-Please follow these guidelines when formatting source code:
+Please follow these guidelines when contributing:
 
-- Rust code should match the output of `cargo +nightly fmt`
+- Markdown files should be well-structured with consistent heading levels
+- SKILL.md files must include complete frontmatter (`name`, `description`, `license`, `allowed-tools`, `argument-hint`)
+- Run `make checks` before submitting to verify documentation consistency
+- Follow the existing skill structure when adding new skills (see any `plugins/*/skills/*/SKILL.md` for examples)
 
 ## Developer's Certificate of Origin
 
@@ -84,21 +86,19 @@ To accept the DCO, simply add this line to each commit message with your name an
 Signed-off-by: Jane Example <jane@example.com>
 ```
 
-For legal reasons, no anonymous or pseudonymous contributions are accepted ([contact us](mailto:aeneas@ory.am) if this is an issue).
+For legal reasons, no anonymous or pseudonymous contributions are accepted ([contact us](https://github.com/augentic/specify/issues) if this is an issue).
 
-## Pull request procedure
+## Pull Request Procedure
 
-To make a pull request, you will need a GitHub account; if you are unclear on this process, see GitHub's documentation on [forking](https://help.github.com/articles/fork-a-repo) and [pull requests](https://help.github.com/articles/using-pull-requests). Pull requests should be targeted at the `master` branch. Before creating a pull request, go through this checklist:
+To make a pull request, you will need a GitHub account; if you are unclear on this process, see GitHub's documentation on [forking](https://help.github.com/articles/fork-a-repo) and [pull requests](https://help.github.com/articles/using-pull-requests). Pull requests should be targeted at the `main` branch. Before creating a pull request, go through this checklist:
 
-1. Create a feature branch off of `master` so that changes do not get mixed up.
-1. [Rebase](https://git-scm.com/book/en/Git-Branching-Rebasing) your local changes against the `master` branch.
-1. Run the full project test suite and confirm that it passes.
+1. Create a feature branch off of `main` so that changes do not get mixed up.
+1. [Rebase](https://git-scm.com/book/en/Git-Branching-Rebasing) your local changes against the `main` branch.
+1. Run `make checks` and confirm that it passes.
 1. Accept the Developer's Certificate of Origin on all commits (see above).
-1. Ensure that each commit has a subsystem prefix (ex: `controller:`).
+1. Ensure that each commit has a subsystem prefix (e.g., `spec:`, `omnia:`, `vectis:`, `docs:`).
 
 Pull requests will be treated as "review requests," and maintainers will give feedback on the style and substance of the patch.
-
-Normally, all pull requests must include tests that test your change. Occasionally, a change will be very difficult to test for. In those cases, please include a note in your commit message explaining why.
 
 ## Conduct
 
@@ -108,7 +108,7 @@ Whether you are a regular contributor or a newcomer, we care about making this c
 - Please avoid using nicknames that might detract from a friendly, safe and welcoming environment for all.
 - Be kind and courteous. There is no need to be mean or rude.
 - We will exclude you from interaction if you insult, demean or harass anyone. In particular, we do not tolerate behavior that excludes people in socially marginalized groups.
-- Private harassment is also unacceptable. No matter who you are, if you feel you have been or are being harassed or made uncomfortable by a community member, please contact one of the channel ops or a member of the Omnia core team immediately.
+- Private harassment is also unacceptable. No matter who you are, if you feel you have been or are being harassed or made uncomfortable by a community member, please contact a member of the Augentic core team immediately.
 - Likewise any spamming, trolling, flaming, baiting or other attention-stealing behaviour is not welcome.
 
 We welcome discussion about creating a welcoming, safe, and productive environment for the community. If you have any questions, feedback, or concerns please let us know with a GitHub issue.

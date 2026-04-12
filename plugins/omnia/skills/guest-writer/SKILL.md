@@ -1,6 +1,7 @@
 ---
 name: guest-writer
 description: Generate a Rust project that exposes HTTP endpoints, subscribes to message topics, and handles WebSocket events in order to surface business logic via the Omnia WASI runtime.
+license: MIT
 argument-hint: "[]"
 allowed-tools: Read, Write, StrReplace, Shell
 ---

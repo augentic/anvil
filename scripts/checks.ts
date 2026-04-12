@@ -2,10 +2,10 @@
 // Run via: make checks
 // Exit code 0 = all checks pass; non-zero = one or more failures.
 
-import { walk } from "jsr:@std/fs@1/walk";
-import { parse as parseYaml } from "jsr:@std/yaml@1";
-import { relative, join, dirname, resolve, fromFileUrl } from "jsr:@std/path@1";
-import Ajv2020 from "npm:ajv@8/dist/2020.js";
+import { walk } from "@std/fs/walk";
+import { parse as parseYaml } from "@std/yaml";
+import { relative, join, dirname, resolve, fromFileUrl } from "@std/path";
+import Ajv2020 from "ajv/dist/2020.js";
 
 const REPO_ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const SCHEMA_DIR = join(REPO_ROOT, "schemas");
@@ -275,7 +275,7 @@ async function checkSymlinks(): Promise<void> {
 // ──────────────────────────────────────────────────────────────
 
 const KNOWN_TOOLS = new Set([
-  "Read", "Write", "StrReplace", "Shell", "Grep", "Glob",
+  "Read", "Write", "StrReplace", "Delete", "Shell", "Grep", "Glob",
   "ReadLints", "WebFetch", "WebSearch", "AskQuestion", "Task",
   "TodoWrite", "SemanticSearch", "EditNotebook", "GenerateImage",
 ]);
@@ -635,6 +635,97 @@ async function checkPluginsDocInventory(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
+// 12. Version consistency across VERSION + marketplace + plugin.json
+// ──────────────────────────────────────────────────────────────
+
+async function checkVersionConsistency(): Promise<void> {
+  const versionFile = join(REPO_ROOT, "VERSION");
+  let canonical: string;
+  try {
+    canonical = (await Deno.readTextFile(versionFile)).trim();
+  } catch {
+    fail("Cannot read VERSION file");
+    return;
+  }
+
+  const files: { path: string; extract: (data: string) => string | undefined }[] = [
+    {
+      path: join(REPO_ROOT, ".cursor-plugin", "marketplace.json"),
+      extract: (d) => JSON.parse(d)?.metadata?.version,
+    },
+  ];
+
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+  for await (const entry of walk(PLUGINS_DIR, {
+    maxDepth: 3,
+    match: [/plugin\.json$/],
+    includeDirs: false,
+  })) {
+    files.push({
+      path: entry.path,
+      extract: (d) => JSON.parse(d)?.version,
+    });
+  }
+
+  for (const { path, extract } of files) {
+    try {
+      const content = await Deno.readTextFile(path);
+      const version = extract(content);
+      if (version && version !== canonical) {
+        fail(
+          `Version mismatch: ${relative(REPO_ROOT, path)} has '${version}' but VERSION is '${canonical}'`,
+        );
+      }
+    } catch {
+      fail(`Cannot read ${relative(REPO_ROOT, path)} for version check`);
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 13. Schema instruction files have meaningful content
+// ──────────────────────────────────────────────────────────────
+
+async function checkInstructionFileContent(): Promise<void> {
+  const MIN_LINES = 3;
+
+  for await (const entry of walk(SCHEMA_DIR, {
+    maxDepth: 2,
+    includeDirs: false,
+    match: [/schema\.yaml$/],
+  })) {
+    const dirPath = dirname(entry.path);
+    const name = dirPath.split("/").pop()!;
+    const schema = parseYaml(
+      await Deno.readTextFile(entry.path),
+    ) as SchemaYaml;
+
+    const instructionPaths: string[] = [];
+    for (const bp of schema.blueprints ?? []) {
+      if (bp.instructions) instructionPaths.push(bp.instructions);
+    }
+    if (schema.build?.instructions) {
+      instructionPaths.push(schema.build.instructions);
+    }
+
+    for (const inst of instructionPaths) {
+      const fullPath = join(dirPath, inst);
+      try {
+        const content = await Deno.readTextFile(fullPath);
+        const lines = content.split("\n").filter((l) => l.trim().length > 0);
+        if (lines.length < MIN_LINES) {
+          fail(
+            `Schema instruction file too short: ${name}/${inst} has ${lines.length} non-empty lines (minimum ${MIN_LINES})`,
+          );
+        }
+      } catch {
+        // Missing file is caught by checkSchemaIntegrity
+      }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // Run all checks
 // ──────────────────────────────────────────────────────────────
 
@@ -654,6 +745,8 @@ await Promise.all([
   checkSkillDirectives(),
   checkPluginConsistency(),
   checkPluginsDocInventory(),
+  checkVersionConsistency(),
+  checkInstructionFileContent(),
 ]);
 
 console.log();

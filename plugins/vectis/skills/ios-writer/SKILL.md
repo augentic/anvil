@@ -1,6 +1,9 @@
 ---
 name: ios-writer
 description: Generate or update a SwiftUI iOS shell for a Crux application from Specify artifacts. Use when implementing iOS shell tasks from a Specify change, or when the user mentions ios-writer.
+license: MIT
+argument-hint: "<app-dir> [project-dir?]"
+allowed-tools: Read, Write, StrReplace, Shell, Glob, Grep, ReadLints
 ---
 
 # Crux iOS Shell Generator

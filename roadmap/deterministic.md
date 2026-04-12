@@ -8,7 +8,7 @@ YAML-based configuration, and a Rust engine.
 | Layer | Mechanism | Determinism |
 |---|---|---|
 | **Schema structure** | `schema.yaml` + `schema.schema.json` + Ajv validation in `checks.ts` | Strong — blueprint DAG, required fields, referential integrity are machine-checked |
-| **Spec merge** | `merge-specs.py` — parses headings, applies RENAMED→REMOVED→MODIFIED→ADDED in strict order | Strong — the one truly deterministic operation on artifact content |
+| **Spec merge** | `merge-specs.ts` — parses headings, applies RENAMED→REMOVED→MODIFIED→ADDED in strict order | Strong — the one truly deterministic operation on artifact content |
 | **Spec format** | `spec-format.md` — `### Requirement:`, `ID: REQ-XXX`, `#### Scenario:` | Medium — conventions are documented, but enforcement is LLM-interpreted except in merge |
 | **Workflow state** | `.metadata.yaml` status enum, filesystem presence checks | Medium — the state machine is implicit in skill prose |
 | **Validation rules** | `validate:` arrays in `schema.yaml` | Weak — human-readable sentences interpreted by the LLM at generation time |
@@ -29,7 +29,7 @@ validate:
 These are prose instructions that the LLM "checks" by reading the artifact and
 making a judgment call. The same applies to cross-blueprint validation flags and
 build instructions. The only place where artifact *content* is parsed by real
-code is `merge-specs.py` and the heading conventions in `spec-format.md`.
+code is `merge-specs.ts` and the heading conventions in `spec-format.md`.
 
 ## Tier 1: Tighten the YAML Layer
 
@@ -55,7 +55,7 @@ validate:
     description: Every requirement has at least one scenario
 ```
 
-A small validator (Python or Deno, like `merge-specs.py`) runs these checks
+A small validator (like `merge-specs.ts`) runs these checks
 deterministically after generation, turning the LLM's self-assessment into a
 verifiable gate. The prose `description` stays for the LLM to use during
 generation; the structured fields drive automated post-checks.
@@ -119,7 +119,7 @@ Unify artifact validation into a single tool that can:
   state)
 
 This could start as Deno/TypeScript (existing infrastructure) or Python (to
-extend `merge-specs.py`). The key decision: this should be the **gate** that
+extend `merge-specs.ts`). The key decision: this should be the **gate** that
 build/define must pass. The skill says "run `specify validate`" and halts on
 non-zero exit, removing the LLM from the judgment loop.
 
@@ -217,7 +217,7 @@ sections, wrong heading levels, inconsistent ID patterns.
 | **Now** | Structured validate rules in `schema.yaml` (Tier 1, item 1) + artifact frontmatter (item 3) | Zero breaking changes, immediate value, makes everything else easier |
 | **Next** | Standalone validator CLI (Tier 2, item 4) that skills call as a gate | Removes LLM from the validation loop; biggest single determinism win |
 | **Then** | Codified lifecycle (Tier 1, item 2) + structured intermediate representation (Tier 2, item 5) | Moves the workflow contract from prose to data |
-| **Later** | Rust spec parser (Tier 3, item 6) replacing `merge-specs.py` and the validator | Performance, single binary, foundation for the orchestrator |
+| **Later** | Rust spec parser (Tier 3, item 6) replacing `merge-specs.ts` and the validator | Performance, single binary, foundation for the orchestrator |
 | **Eventually** | Rust workflow orchestrator (Tier 3, item 7) | The LLM stops being the driver and becomes a called capability |
 
 ## Design Principle
@@ -230,6 +230,6 @@ management, and structural validation.
 
 The current architecture is already well-positioned for this evolution —
 `schema.yaml` is a real contract, `spec-format.md` is a real grammar,
-`merge-specs.py` is a real parser. The gap is that these islands of determinism
+`merge-specs.ts` is a real parser. The gap is that these islands of determinism
 don't yet cover the full lifecycle. Closing that gap incrementally, starting from
 YAML and working toward Rust, gets there without a rewrite.

@@ -1,6 +1,7 @@
 ---
 name: clone
 description: Clone git repositories autonomously with validation, error handling, and flexible options.
+license: MIT
 argument-hint: "[repo-url] [dest-dir] [detach?]"
 allowed-tools: Read, Write, StrReplace, Shell
 ---

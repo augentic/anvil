@@ -14,8 +14,7 @@ specify/
 │   ├── references/               # Shared references (specify.md, agent-teams.md)
 │   ├── spec/                     # Specify workflow plugin
 │   │   ├── skills/               # Workflow skills (init, define, build, merge, ...)
-│   │   ├── references/           # Artifact templates and schema resolution
-│   │   └── mcp.json              # MCP server definition
+│   │   └── references/           # Artifact templates and schema resolution
 │   ├── omnia/                    # Omnia code generation plugin
 │   │   ├── skills/               # Code generation skills (crate-writer, test-writer, ...)
 │   │   └── references/           # Guardrails, providers, guest wiring patterns
@@ -23,8 +22,7 @@ specify/
 │   │   ├── skills/               # Crux skills (core-writer, test-writer, ios-writer, ...)
 │   │   └── references/           # Crux patterns, design system references
 │   ├── rt/                       # RT migration plugin
-│   │   ├── skills/               # Migration skills (replay-writer, wiretapper, ...)
-│   │   └── mcp.json
+│   │   └── skills/               # Migration skills (replay-writer, wiretapper, ...)
 │   └── plan/                     # Plan requirements analysis plugin
 │       └── skills/               # Planning skills (sow-writer)
 ├── schemas/                      # Schema definitions

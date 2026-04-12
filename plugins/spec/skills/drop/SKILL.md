@@ -2,6 +2,7 @@
 name: drop
 description: Drop a change without merging specs into the baseline. Use when the user wants to discard a change that should not be merged normally.
 license: MIT
+allowed-tools: Read, Shell, Glob, Delete
 argument-hint: "[change-name?]"
 ---
 

@@ -2,6 +2,7 @@
 name: verify
 description: Compare current code against baseline specs to detect drift. Use when the user wants to check whether the codebase still matches the merged specifications.
 license: MIT
+allowed-tools: Read, Glob, Grep, Shell, SemanticSearch
 argument-hint: "[capability-name?]"
 ---
 

@@ -2,6 +2,7 @@
 name: merge
 description: Merge a completed change. Merges delta specs into baseline and moves the change to the archive. Use when the user wants to finalize a change after implementation is complete.
 license: MIT
+allowed-tools: Read, Write, Shell, Glob, Grep
 argument-hint: "[change-name?]"
 ---
 
@@ -105,10 +106,10 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    b. **If NO baseline exists** (new capability): create the `.specify/specs/<capability>/` directory.
 
-   c. **Run the merge tool** (co-located at `scripts/merge-specs.py` relative to this skill):
+   c. **Run the merge tool** (co-located at `scripts/merge-specs.ts` relative to this skill):
 
       ```bash
-      python3 scripts/merge-specs.py \
+      deno run --allow-read --allow-write scripts/merge-specs.ts \
         --delta "$DELTA" \
         --baseline "$BASELINE" \
         --output "$OUTPUT"
@@ -125,7 +126,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    After all merges complete, validate every spec file that was created or updated. For each file, run:
 
    ```bash
-   python3 scripts/merge-specs.py \
+   deno run --allow-read scripts/merge-specs.ts \
      --validate ".specify/specs/<capability>/spec.md" \
      --design ".specify/changes/<name>/design.md"
    ```
@@ -178,8 +179,8 @@ All artifacts complete. All tasks complete.
 
 - Always confirm the change before merging
 - Warn on incomplete artifacts or tasks but don't block
-- Use `scripts/merge-specs.py` for all merge and validation operations — do not perform merges inline
-- If the merge tool is unavailable (e.g., `python3` not installed), fall back to manual merge following the algorithm in `delta-merge.md`
+- Use `scripts/merge-specs.ts` for all merge and validation operations — do not perform merges inline
+- If the merge tool is unavailable (e.g., Deno not installed), fall back to manual merge following the algorithm in `delta-merge.md`
 - If the merge tool reports errors, stop and ask the user before proceeding
 - Valid lifecycle status values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped` -- use these exact strings when updating `.metadata.yaml`, no other values are permitted
 

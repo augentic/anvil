@@ -1,6 +1,7 @@
 ---
 name: test-writer
 description: "Generate or update test suites for Omnia Rust WASM crates from Specify artifacts -- MockProvider setup, integration tests, spec-to-test mapping, and drift detection."
+license: MIT
 argument-hint: "[crate-name]"
 allowed-tools: Read, Write, StrReplace, Shell, Grep, ReadLints
 ---

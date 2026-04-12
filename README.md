@@ -163,6 +163,14 @@ All skills follow the shared `SKILL.md` structure. Changes to generation behavio
 - [Cursor Skills Documentation](https://cursor.com/docs/skills)
 - [Cursor Plugin Reference](https://cursor.com/docs/reference/plugins)
 
+## Roadmap
+
+Long-term development plans live in [`roadmap/`](roadmap/):
+
+- [Deterministic Validation](roadmap/deterministic.md) -- Machine-readable rules, standalone validator, Rust spec engine
+- [Skill DSL](roadmap/dsl.md) -- Type-safe skill expression and stronger compile-time guarantees
+- [Ralph Wiggum Loop](roadmap/rwl.md) -- Generate-evaluate-refine iteration cycles with structured feedback
+
 ## License
 
 Dual-licensed under [MIT](LICENSE-MIT) or [Apache 2.0](LICENSE-APACHE), at your option.

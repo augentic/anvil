@@ -1,6 +1,9 @@
 ---
 name: core-writer
 description: Generate or update a Rust Crux shared crate from Specify artifacts. Use when implementing core tasks from a Specify change, or when the user mentions core-writer.
+license: MIT
+argument-hint: "<change-dir> <feature-name>"
+allowed-tools: Read, Write, StrReplace, Shell, Glob, Grep, ReadLints
 ---
 
 # Crux Core Application Generator

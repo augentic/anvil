@@ -2,6 +2,7 @@
 name: analyze
 description: Analyze source code to produce reconstruction-grade, language-agnostic Specify artifacts (specs + design.md) with iterative validation until convergence.
 license: MIT
+allowed-tools: Read, Write, Glob, Grep, Shell, SemanticSearch
 argument-hint: "[source-path] [change-dir]"
 ---
 
