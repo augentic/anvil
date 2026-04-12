@@ -1,3 +1,5 @@
+> **Superseded** — This document has been incorporated into [`roadmap/roadmap.md`](roadmap.md), the unified roadmap for determinism and RWL iteration. Refer to that document for current plans.
+
 # Ralph Wiggum Loop (RWL) Iteration for High-Context Skills
 
 Recommendations for introducing generate-evaluate-refine loops into

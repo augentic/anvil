@@ -1,3 +1,5 @@
+> **Superseded** — This document has been incorporated into [`roadmap/roadmap.md`](roadmap.md), the unified roadmap for determinism and RWL iteration. Refer to that document for current plans.
+
 # Making Specify More Deterministic
 
 Recommendations for striking the right balance between natural language skills,
