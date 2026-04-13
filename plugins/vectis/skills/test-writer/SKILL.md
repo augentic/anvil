@@ -69,6 +69,27 @@ traceability comments (`/// Spec:` lines referencing `REQ-` IDs):
   traceability comments, use **create mode**.
 - If the test module **has** traceability comments, use **update mode**.
 
+### Repair mode
+
+This skill may be invoked as a **repair sub-agent** from the
+verify-repair loop. In repair mode the skill receives:
+
+- `mode: repair` (not `create` or `update`)
+- The full compiler or test error output
+- The repair discipline constraints (minimum change, scoped diff)
+
+When invoked in repair mode:
+
+1. Read the `#[cfg(test)]` module in `app.rs` and any files referenced
+   in the error output.
+2. Diagnose the root cause from the error output.
+3. Apply the minimum change to fix the reported errors -- update test
+   assertions, fix factory functions, correct imports.
+4. Do **not** re-read the full reference documentation or re-run the
+   complete create/update process. The repair is scoped to the errors
+   provided.
+5. Return the list of files modified and the fix applied.
+
 ## Test Generation Process: Create Mode
 
 ### Step 1: Read Crate and Artifacts
