@@ -165,13 +165,44 @@ repo root (same idea as the iOS path to `design-system/ios`).
 
 ### 9. Verify iOS build
 
-Run `swift build` in `{output-dir}`. On failure: read errors, fix generated
-Swift, repeat until clean.
+Run `swift build` in `{output-dir}`. Note that `swift build` compiles for the
+**host** platform (macOS) by default, so generated code must compile for macOS
+even when the primary deployment target is iOS.
+
+On failure: read errors, fix generated Swift, repeat until clean.
+
+If `swift build` fails due to network errors (package resolution) or sandbox
+restrictions, log the full error and mark iOS verification as **pending** rather
+than retrying indefinitely.
 
 ### 10. Verify Android build
 
-From the **Android** project directory that includes `:vectis-design` (after
-wiring, or a scratch project for CI):
+If the repo has **no Android project yet** (no `settings.gradle.kts` that
+includes `:vectis-design`), skip this step and record that verification is
+pending shell generation.
+
+#### Gradle wrapper bootstrap
+
+Before running `./gradlew`, check whether the wrapper is usable:
+
+1. Verify `gradlew` exists and is executable **and** `gradle/wrapper/gradle-wrapper.jar` exists in the Android project directory.
+2. If the wrapper is missing or incomplete, bootstrap it from a **minimal init
+   project** to avoid triggering full AGP classpath resolution:
+   ```bash
+   tmp_dir=$(mktemp -d)
+   cd "$tmp_dir" && gradle wrapper && cd -
+   cp "$tmp_dir/gradlew" "$tmp_dir/gradlew.bat" "$ANDROID_SHELL_DIR/"
+   cp -r "$tmp_dir/gradle" "$ANDROID_SHELL_DIR/"
+   chmod +x "$ANDROID_SHELL_DIR/gradlew"
+   rm -rf "$tmp_dir"
+   ```
+3. If `gradle` is not installed, report the prerequisite error:
+   `"Gradle is required to bootstrap the wrapper. Install with: brew install gradle"`
+   and mark verification as **pending**.
+
+#### Build verification
+
+From the **Android** project directory that includes `:vectis-design`:
 
 ```bash
 ./gradlew :vectis-design:compileDebugKotlin
@@ -180,8 +211,9 @@ wiring, or a scratch project for CI):
 On failure: read errors, fix generated Kotlin or the **missing** consumer
 Gradle wiring, repeat until clean.
 
-If the repo has no Android project yet, skip this step and record that
-verification is pending shell generation.
+If `./gradlew` fails due to network errors, SSL/connection resets, or sandbox
+restrictions, log the full error and mark Android verification as **pending**
+rather than retrying indefinitely.
 
 ---
 
@@ -293,8 +325,10 @@ val md = 16.dp
 |---|---|
 | `tokens.yaml` not found | Verify `tokens-file` path; default is `design-system/tokens.yaml` |
 | Unknown value shape | Token values must be color (light/dark), font (size/weight), or scalar (number). Report the unexpected structure and skip the category on both platforms. |
-| `swift build` fails | Read compiler errors, fix the generated Swift, rebuild |
-| `compileDebugKotlin` fails | Read compiler errors; fix Kotlin, or add/fix `:vectis-design` in settings and BOM alignment |
+| `swift build` fails | Read compiler errors, fix the generated Swift, rebuild. If failure is due to network/sandbox, mark verification as pending. |
+| `compileDebugKotlin` fails | Read compiler errors; fix Kotlin, or add/fix `:vectis-design` in settings and BOM alignment. If failure is due to network/sandbox, mark verification as pending. |
+| `./gradlew` not found or wrapper jar missing | Bootstrap the wrapper from a minimal init project (see step 10). Do not re-run the broken command. |
+| Network / SSL / timeout errors | Log the full error. Do not retry indefinitely. Mark verification as pending and report to user. |
 | Downstream shell breaks | A renamed or removed token was referenced by a shell. Report the affected file and token name. |
 
 ---

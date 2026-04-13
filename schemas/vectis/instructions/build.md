@@ -27,6 +27,43 @@ sections (e.g. `## iOS Shell Requirements`).
 
 ---
 
+## Agent environment constraints
+
+Several verification commands depend on network access, external
+toolchains, or long-running processes that may not behave reliably in
+all agent environments. Follow these rules during verification:
+
+**Network failures:** Commands like `gradle`, `./gradlew`, and
+`swift build` (package resolution) may fail with connection resets,
+SSL errors, or timeouts in sandboxed environments. If a command fails
+with network-related errors, log the full error, do **not** retry
+indefinitely, mark the task as blocked on environment, and report to
+the user. A single retry is acceptable; repeated retries of the same
+network error are not.
+
+**Timeouts:** Use generous timeouts for commands that resolve
+dependencies or compile large projects. Recommended minimums:
+- Gradle configure / build: 120 seconds
+- `swift build`: 60 seconds
+- `cargo test`: 60 seconds
+
+If a command is backgrounded, poll for completion and read the output
+rather than assuming success or failure from the timeout alone.
+
+**Missing prerequisites:** If `./gradlew` is not executable or
+`gradle/wrapper/gradle-wrapper.jar` is missing, follow the wrapper
+bootstrap procedure in the Android verify section below rather than
+re-running the broken command. If `gradle` itself is not installed,
+report the prerequisite and mark verification as pending.
+
+**Stuck sessions:** If verification output stops and no progress is
+visible after polling, kill the process and report the last output
+rather than waiting indefinitely. Avoid backgrounding multiple
+Gradle or Xcode processes concurrently -- they contend for the same
+file locks and caches.
+
+---
+
 ## Core
 
 Check whether `{PROJECT_DIR}/shared/src/app.rs` exists:
@@ -285,7 +322,7 @@ and escalate for guidance.
 
 ---
 
-## iOS verify steps
+## iOS verify steps (max 3 iterations)
 
 ### 1. Format
 
@@ -299,7 +336,7 @@ swiftformat $IOS_SHELL_DIR/$APP_NAME/
 cd $IOS_SHELL_DIR && make build
 ```
 
-If fails: fix the issue and re-run.
+If fails: fix the issue and re-run from step 1.
 
 ### 3. Simulator build
 
@@ -307,11 +344,38 @@ If fails: fix the issue and re-run.
 cd $IOS_SHELL_DIR && make sim-build
 ```
 
-If fails: fix the issue and re-run.
+If fails: fix the issue and re-run from step 1.
+
+### Loop control
+
+Repeat from step 1 until all three checks pass or **3 iterations** are
+exhausted. If the same error recurs across iterations with no change in
+output, stop early. If still failing after 3 iterations: **STOP**. Do not
+mark the task complete. Report the remaining failures with full error output
+and escalate for guidance.
 
 ---
 
 ## Android verify steps
+
+### Gradle wrapper bootstrap
+
+Before running any `./gradlew` command, verify the wrapper is usable:
+`gradlew` must exist, be executable, and `gradle/wrapper/gradle-wrapper.jar`
+must be present. If the wrapper is missing or incomplete, bootstrap it from a
+minimal init project (no AGP, no `settings.gradle.kts` includes):
+
+```bash
+tmp_dir=$(mktemp -d)
+cd "$tmp_dir" && gradle wrapper && cd -
+cp "$tmp_dir/gradlew" "$tmp_dir/gradlew.bat" "$ANDROID_SHELL_DIR/"
+cp -r "$tmp_dir/gradle" "$ANDROID_SHELL_DIR/"
+chmod +x "$ANDROID_SHELL_DIR/gradlew"
+rm -rf "$tmp_dir"
+```
+
+If `gradle` is not installed, report the prerequisite error
+(`brew install gradle`) and mark Android verification as **pending**.
 
 ### 1. Type generation
 
@@ -336,3 +400,11 @@ cd $ANDROID_SHELL_DIR && ./gradlew :app:assembleDebug
 ```
 
 If fails: fix the issue and re-run.
+
+### Loop control
+
+Repeat from step 1 until all three checks pass or **3 iterations** are
+exhausted. If the same error recurs across iterations with no change in
+output, stop early. If still failing after 3 iterations: **STOP**. Do not
+mark the task complete. Report the remaining failures with full error output
+and escalate for guidance.
