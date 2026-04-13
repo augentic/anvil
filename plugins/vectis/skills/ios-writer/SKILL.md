@@ -76,6 +76,75 @@ When `change-dir` is provided, also read:
 Check for `{project-dir}/Core.swift` or `{project-dir}/*/Core.swift` to
 detect the mode. If found, switch to update mode.
 
+## Internal Sub-Agent Decomposition
+
+When invoked as a sub-agent from the build orchestrator, this skill
+can be further decomposed into two internal sub-agents to reduce
+per-agent context load. The orchestrator's sub-agent for ios-writer
+acts as a **coordinator** that runs step 1 (analysis) itself, then
+delegates the remaining work:
+
+### Phase 1: Scaffold (steps 1-6)
+
+A sub-agent that handles project infrastructure. It receives the
+analysis output from step 1 (type inventory, app name, design system
+availability) and generates:
+
+- Directory structure (step 4)
+- `project.yml` (step 5) -- needs `references/ios-project-config.md`
+- `Makefile` (step 6) -- needs `references/ios-project-config.md`
+
+This sub-agent does not need `references/swiftui-view-patterns.md` or
+`references/crux-ios-shell-pattern.md`.
+
+### Phase 2: Shell (steps 7-10)
+
+A sub-agent that generates the Swift shell code. It receives the
+analysis output from step 1 and generates:
+
+- `Core.swift` (step 7) -- needs `references/crux-ios-shell-pattern.md`
+- `ContentView.swift` (step 8) -- needs `references/swiftui-view-patterns.md`
+- Screen views (step 9) -- needs `references/swiftui-view-patterns.md`
+  and `references/design-system-integration.md`
+- App entry point (step 10)
+
+This sub-agent does not need `references/ios-project-config.md`.
+
+### Coordinator handoff
+
+The coordinator (step 1) produces a **type inventory** passed to both
+phases:
+
+| Field | Content |
+| --- | --- |
+| `app_name` | Derived app name (step 3) |
+| `viewmodel_variants` | ViewModel enum variants with associated view structs |
+| `event_variants` | Shell-facing Event variants |
+| `effect_variants` | Effect enum variants |
+| `route_variants` | Route enum variants (if any) |
+| `supporting_types` | Structs/enums used in view structs |
+| `design_system` | Whether `tokens.yaml` exists and token categories found |
+| `capabilities` | Which capabilities the core uses (HTTP, KV, SSE, Time, Platform) |
+
+### Verification ownership
+
+When the orchestrator passes `skip_verification: true`, the writer
+stops after code generation (Phase 2: Shell completes) and does
+**not** run step 11 or U8. The orchestrator's dedicated iOS verify
+sub-agent handles formatting, `make build`, and `make sim-build`
+with its own repair loop and iteration limits.
+
+When invoked **standalone** (no `skip_verification` flag, or
+`skip_verification: false`), the writer runs its full process
+including step 11 / U8.
+
+In **update mode**, the coordinator runs steps U1-U4 (analysis, read
+Swift, inventory, diff) and produces a **change plan** that the shell
+sub-agent applies (steps U5-U7). Step U8 is skipped when
+`skip_verification: true`.
+
+---
+
 ## Process: Create Mode
 
 ### 1. Read and analyze the Crux core

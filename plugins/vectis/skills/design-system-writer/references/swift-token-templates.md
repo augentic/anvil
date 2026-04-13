@@ -45,11 +45,20 @@ by name prefix root:
 
 ### Required Extensions
 
-The color file must include these two extensions after the enum. They provide
+The color file must include these extensions after the enum. They provide
 the `Color(light:dark:)` initializer used by every color token.
+
+The `Package.swift` declares both `.iOS(.v17)` and `.macOS(.v14)`, so
+generated code must compile on both platforms. Use `#if canImport(UIKit)` /
+`#elseif canImport(AppKit)` to branch between `UIColor` (iOS) and `NSColor`
+(macOS). `swift build` on a macOS host compiles for macOS by default, so
+without this guard the build fails with "cannot find type UIColor."
 
 ```swift
 // MARK: - Color Initializer from Hex
+
+#if canImport(UIKit)
+import UIKit
 
 extension Color {
     init(light: String, dark: String) {
@@ -74,6 +83,34 @@ extension UIColor {
         )
     }
 }
+
+#elseif canImport(AppKit)
+import AppKit
+
+extension Color {
+    init(light: String, dark: String) {
+        self.init(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
+                ? NSColor(hex: dark)
+                : NSColor(hex: light)
+        })
+    }
+}
+
+extension NSColor {
+    convenience init(hex: String) {
+        let hex = hex.trimmingCharacters(in: .init(charactersIn: "#"))
+        var rgb: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&rgb)
+        self.init(
+            red: CGFloat((rgb >> 16) & 0xFF) / 255,
+            green: CGFloat((rgb >> 8) & 0xFF) / 255,
+            blue: CGFloat(rgb & 0xFF) / 255,
+            alpha: 1
+        )
+    }
+}
+#endif
 ```
 
 ### Complete Example
@@ -109,6 +146,9 @@ public enum VectisColors {
 
 // MARK: - Color Initializer from Hex
 
+#if canImport(UIKit)
+import UIKit
+
 extension Color {
     init(light: String, dark: String) {
         self.init(uiColor: UIColor { traits in
@@ -132,6 +172,34 @@ extension UIColor {
         )
     }
 }
+
+#elseif canImport(AppKit)
+import AppKit
+
+extension Color {
+    init(light: String, dark: String) {
+        self.init(nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .vibrantDark]) != nil
+                ? NSColor(hex: dark)
+                : NSColor(hex: light)
+        })
+    }
+}
+
+extension NSColor {
+    convenience init(hex: String) {
+        let hex = hex.trimmingCharacters(in: .init(charactersIn: "#"))
+        var rgb: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&rgb)
+        self.init(
+            red: CGFloat((rgb >> 16) & 0xFF) / 255,
+            green: CGFloat((rgb >> 8) & 0xFF) / 255,
+            blue: CGFloat(rgb & 0xFF) / 255,
+            alpha: 1
+        )
+    }
+}
+#endif
 ```
 
 ## Typography Template

@@ -324,6 +324,13 @@ When iOS gains a new value shape or file, extend **both**
 
 ## Gradle verification
 
+**Prerequisite:** If `./gradlew` does not exist or `gradle/wrapper/gradle-wrapper.jar`
+is missing in the Android project directory, bootstrap the wrapper from a minimal
+init project (no AGP, no `settings.gradle.kts` includes) before running any
+Gradle commands. See the design-system-writer SKILL.md step 10 for the bootstrap
+procedure. If `gradle` itself is not installed, report the prerequisite error
+rather than failing silently.
+
 From the Android project directory (sibling of `design-system/`):
 
 ```bash

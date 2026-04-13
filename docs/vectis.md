@@ -50,6 +50,7 @@ Only required if you are building an Android shell.
 - Android SDK (command-line tools, platform-tools, emulator) -- install via [Android Studio](https://developer.android.com/studio) or [command-line tools](https://developer.android.com/studio#command-tools)
 - Android NDK (install via `sdkmanager "ndk;29.0.14206865"` or through SDK Manager)
 - Java 21 LTS JDK (NOT Java 25+ -- Gradle's embedded Kotlin compiler cannot parse Java 25+ version strings)
+- Gradle (`brew install gradle`) -- the design-system-writer invokes `./gradlew` which requires a local Gradle installation to bootstrap the wrapper
 - Python 3 (required by Mozilla's rust-android-gradle plugin)
 - Rust Android targets:
 

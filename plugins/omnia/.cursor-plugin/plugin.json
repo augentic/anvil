@@ -1,8 +1,13 @@
 {
   "name": "omnia",
   "displayName": "Omnia Code Generation",
+<<<<<<< roadmap
   "description": "Generate Rust WASM code from Specify artifacts and design documents.",
   "version": "0.21.0",
+=======
+  "description": "Generate Rust WASM code from JIRA epics, requirements, or design documents.",
+  "version": "0.22.0",
+>>>>>>> main
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"

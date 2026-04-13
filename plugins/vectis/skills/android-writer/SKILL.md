@@ -215,6 +215,103 @@ class SseClient { ... }
 Check for `{project-dir}/app/src/main/java/*/Core.kt` to detect the mode.
 If found, switch to update mode.
 
+## Internal Sub-Agent Decomposition
+
+When invoked as a sub-agent from the build orchestrator, this skill
+can be further decomposed into three internal sub-agents to reduce
+per-agent context load. The orchestrator's sub-agent for android-writer
+acts as a **coordinator** that runs step 1 (analysis) itself, then
+delegates the remaining work:
+
+### Phase 1: Scaffold (steps 1-7)
+
+A sub-agent that handles project infrastructure. It receives the
+analysis output from step 1 (type inventory, app name, capability
+dependencies) and generates:
+
+- Directory structure (step 5)
+- `Makefile` (step 6) -- needs `references/android-project-config.md`
+- Gradle files and wrapper (step 7) -- needs
+  `references/android-project-config.md`
+
+This sub-agent does not need `references/crux-android-shell-pattern.md`
+or `references/compose-view-patterns.md`.
+
+### Phase 2: Bridge (steps 8-10)
+
+A sub-agent that generates the Rust/Kotlin type bridge layer. It
+receives the analysis output and generates:
+
+- `Core.kt` (step 8) -- needs `references/crux-android-shell-pattern.md`
+- Capability clients (step 9) -- needs
+  `references/crux-android-shell-pattern.md`
+- Application class and DI module (step 10)
+
+This sub-agent does not need `references/compose-view-patterns.md` or
+`references/android-project-config.md`.
+
+### Phase 3: UI (steps 11-14)
+
+A sub-agent that generates Compose views and Android resources. It
+receives the analysis output and generates:
+
+- Screen composables (step 11) -- needs
+  `references/compose-view-patterns.md` and
+  `references/design-system-integration.md`
+- `MainActivity.kt` (step 12) -- needs
+  `references/compose-view-patterns.md`
+- Theme files (step 13)
+- `AndroidManifest.xml` and resources (step 14)
+
+This sub-agent does not need `references/crux-android-shell-pattern.md`
+or `references/android-project-config.md`.
+
+### Coordinator handoff
+
+The coordinator (step 1) produces a **type inventory** passed to all
+three phases:
+
+| Field | Content |
+| --- | --- |
+| `app_name` | Derived app name and package (step 3) |
+| `viewmodel_variants` | ViewModel enum variants with associated view structs |
+| `event_variants` | Shell-facing Event variants |
+| `effect_variants` | Effect enum variants |
+| `route_variants` | Route enum variants (if any) |
+| `supporting_types` | Structs/enums used in view structs |
+| `design_system` | Whether `tokens.yaml` exists and token categories found |
+| `capabilities` | Capability dependency mapping (step 4): which Android libraries are needed |
+| `use_koin` | Whether Koin DI is needed (more than one non-Render effect) |
+
+### Verification ownership
+
+When the orchestrator passes `skip_verification: true`, the writer
+stops after code generation (Phase 3: UI completes) and does **not**
+run step 15 or U8. The orchestrator's dedicated Android verify
+sub-agent handles pre-flight checks, `make build`,
+`./gradlew :shared:cargoBuild`, and `./gradlew :app:assembleDebug`
+with its own repair loop and iteration limits.
+
+The **pre-flight checks** from step 15 (Gradle wrapper exists,
+`local.properties` has `sdk.dir`, `gradle.properties` has
+`org.gradle.java.home`, Rust Android targets installed) run
+regardless of `skip_verification` -- they validate project
+configuration without invoking build tools and catch
+misconfigurations early. Only the build-tool commands
+(`make build`, `./gradlew` invocations) are skipped.
+
+When invoked **standalone** (no `skip_verification` flag, or
+`skip_verification: false`), the writer runs its full process
+including step 15 / U8.
+
+In **update mode**, the coordinator runs steps U1-U4 (analysis, read
+Kotlin, inventory, diff) and produces a **change plan**. Phase 2 and
+Phase 3 sub-agents each apply their portion of the plan (U5 for
+bridge, U6-U7 for UI). Step U8 is skipped when
+`skip_verification: true`.
+
+---
+
 ## Process: Create Mode
 
 ### 1. Read and analyze the Crux core
