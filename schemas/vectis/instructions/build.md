@@ -12,18 +12,173 @@ Arguments (used by all skills):
 ## Platform detection
 
 Read the proposal to determine which platforms are in scope.
-Process platforms in this order:
+Process platforms in this dependency order:
 
 1. **design-system** first (other platforms may depend on tokens)
 2. **core** next (shells depend on the core)
-3. **ios** shell
-4. **android** shell
-5. **web** shell (future)
+3. **ios** and **android** shells (independent of each other)
+4. **web** shell (future)
+
+### Parallel shell generation
+
+iOS and Android shells have no dependencies on each other -- both
+depend on core + design-system only. When both platforms are in scope,
+spawn their **generation** sub-agents (Phase 1) concurrently after core
+verify-repair completes. Pass `skip_verification: true` to each writer
+so they produce code without invoking build tools (ios-writer skips
+step 11; android-writer skips step 15):
+
+```
+core verify-repair done
+    ├── spawn: ios-writer sub-agent   (skip_verification: true)
+    └── spawn: android-writer sub-agent (skip_verification: true)
+         (both run in parallel)
+```
+
+Wait for both generation sub-agents to complete, then run their
+**verify** and **review** phases sequentially (not in parallel) to
+avoid build-tool contention -- Gradle and Xcode processes contend for
+file locks and caches when run concurrently. Because the writers
+skipped their internal verification, the orchestrator's verify
+sub-agents are the sole point of build verification.
+
+```
+both writers done
+    → iOS verify sub-agent
+    → iOS review sub-agent
+    → Android verify sub-agent
+    → Android review sub-agent
+```
+
+If only one shell platform is in scope, still pass
+`skip_verification: true` and run the dedicated verify sub-agent
+afterward -- this keeps the contract consistent regardless of how
+many platforms are active.
 
 Each skill reads the single feature spec at
 `specs/<feature>/spec.md`. The spec contains core requirements in
 the main body and platform-specific requirements in dedicated
 sections (e.g. `## iOS Shell Requirements`).
+
+---
+
+## Agent environment constraints
+
+Several verification commands depend on network access, external
+toolchains, or long-running processes that may not behave reliably in
+all agent environments. Follow these rules during verification:
+
+**Network failures:** Commands like `gradle`, `./gradlew`, and
+`swift build` (package resolution) may fail with connection resets,
+SSL errors, or timeouts in sandboxed environments. If a command fails
+with network-related errors, log the full error, do **not** retry
+indefinitely, mark the task as blocked on environment, and report to
+the user. A single retry is acceptable; repeated retries of the same
+network error are not.
+
+**Timeouts:** Use generous timeouts for commands that resolve
+dependencies or compile large projects. Recommended minimums:
+- Gradle configure / build: 120 seconds
+- `swift build`: 60 seconds
+- `cargo test`: 60 seconds
+
+If a command is backgrounded, poll for completion and read the output
+rather than assuming success or failure from the timeout alone.
+
+**Missing prerequisites:** If `./gradlew` is not executable or
+`gradle/wrapper/gradle-wrapper.jar` is missing, follow the wrapper
+bootstrap procedure in the Android verify section below rather than
+re-running the broken command. If `gradle` itself is not installed,
+report the prerequisite and mark verification as pending.
+
+**Stuck sessions:** If verification output stops and no progress is
+visible after polling, kill the process and report the last output
+rather than waiting indefinitely. Avoid backgrounding multiple
+Gradle or Xcode processes concurrently -- they contend for the same
+file locks and caches.
+
+---
+
+## Sub-agent delegation
+
+Each `/vectis:*` skill invocation and each verify-repair loop runs in
+its **own sub-agent** with a clean context window. The orchestrator
+(this document) coordinates the sequence but does not execute skill
+steps inline.
+
+### Why sub-agents
+
+A full greenfield build loads design-system, core, test, iOS, and
+Android skills sequentially. Without delegation, the orchestrator's
+context accumulates thousands of lines of skill instructions, reference
+material, generated code, and compiler output that are irrelevant to
+later phases. Sub-agents start fresh, carrying only the material needed
+for their specific task.
+
+### Delegation pattern
+
+For each skill invocation:
+
+1. **Spawn** a sub-agent with a prompt containing:
+   - The skill name to invoke (e.g., `/vectis:core-writer`)
+   - The standard arguments (CHANGE_ID, FEATURE_NAME, PROJECT_DIR, etc.)
+   - The mode (create or update) already determined by the orchestrator
+   - Any phase-specific context (e.g., error output for repair, baseline
+     test log for update-mode verification)
+
+2. **Wait** for the sub-agent to complete and read its result.
+
+3. **Assess** the result before proceeding:
+   - If the sub-agent reports success, continue to the next phase
+   - If the sub-agent reports failure with actionable errors, spawn a
+     repair sub-agent (see verify-repair sections) or escalate
+   - If the sub-agent reports `pending` (e.g., environment blocker),
+     log the reason and continue to the next platform
+
+The sub-agent reads the skill's SKILL.md and references itself -- the
+orchestrator does not need to pre-read or relay skill instructions.
+
+### Handoff contract
+
+Each sub-agent receives and returns structured information:
+
+**Inputs (orchestrator -> sub-agent):**
+
+| Field | Description |
+| --- | --- |
+| `skill` | Skill name (e.g., `vectis:core-writer`) |
+| `arguments` | Standard arguments: CHANGE_ID, FEATURE_NAME, PROJECT_DIR, shell dirs, APP_NAME |
+| `mode` | `create`, `update`, or `repair` (determined by orchestrator before spawning) |
+| `skip_verification` | If `true`, the skill skips its internal build-verification step (ios-writer step 11 / U8, android-writer step 15 / U8). The orchestrator sets this for shell writers and runs verification in a dedicated sub-agent afterward. Defaults to `false` for standalone invocations. |
+| `artifact_paths` | Paths to spec, design, and proposal files |
+| `extra_context` | Phase-specific: error output for repair, baseline test log for regression checks, prior phase warnings |
+
+**Outputs (sub-agent -> orchestrator):**
+
+| Field | Description |
+| --- | --- |
+| `status` | `success`, `failure`, or `pending` |
+| `files_modified` | List of paths created or changed |
+| `verification` | Internal verification result if the skill includes one |
+| `errors` | Error details when status is `failure` or `pending` |
+| `warnings` | Non-blocking issues for downstream phases |
+
+### Verify-repair sub-agents
+
+Verify-repair loops also run as sub-agents. When a verify sub-agent
+needs to re-enter a skill for repair, it spawns a **nested repair
+sub-agent** for the targeted fix rather than re-reading the entire
+skill in its own context. The nested repair sub-agent receives only:
+
+- The skill name (`vectis:core-writer` or `vectis:test-writer`)
+- The full error output to fix
+- The repair discipline constraints (minimum change, scoped diff,
+  one failure class per re-entry)
+- The mode: `repair` (not `create` or `update`)
+
+This keeps each verification iteration lightweight -- the verify
+sub-agent holds only the classification table, build commands, and
+iteration state, not the full 3,000+ line skill context.
 
 ---
 
@@ -45,64 +200,73 @@ generation.
 
 1. /vectis:core-writer -- generate the Crux shared crate
 
-Run the skill from start to finish. Complete every step in the skill's
-process and ensure its verification checklist is satisfied before moving
-to the next phase.
+Spawn a sub-agent to run the skill. Pass standard arguments with
+`mode: create`. The sub-agent reads the skill's SKILL.md and
+references, completes every step, and returns its verification
+checklist result. Wait for completion before proceeding.
 
 #### Phase 2: Generate tests
 
 2. /vectis:test-writer -- generate spec-traced tests
 
-Run the skill from start to finish. It generates the `#[cfg(test)]`
+Spawn a sub-agent to run the skill. It generates the `#[cfg(test)]`
 module in `app.rs` with one test per spec scenario and traceability
 comments linking each test to its `REQ-XXX` ID.
 
 #### Phase 3: Verify and repair
 
-Run the verify-repair loop described below.
+Spawn a sub-agent to run the core verify-repair loop described below.
+Pass PROJECT_DIR and the feature spec path.
 
 #### Phase 4: Review
 
 3. /vectis:core-reviewer -- AI code review
+
+Spawn a sub-agent to run the skill. The reviewer internally creates
+its own agent team (3 specialists + antagonist per agent-teams.md).
 
 ### Update mode (app.rs exists -- incremental change)
 
 #### Step 0: Capture baseline
 
-Before any changes, record the current test state:
+Before spawning any sub-agents, record the current test state:
 
 ```bash
 cd $PROJECT_DIR && cargo test 2>&1 | tee /tmp/${CHANGE_ID}-${FEATURE_NAME}-baseline.txt
 ```
 
-Record which tests pass and which fail. This baseline is used in
-Phase 3 to detect regressions.
+Record which tests pass and which fail. This baseline is passed to
+the verify-repair sub-agent in Phase 3 for regression detection.
 
 #### Phase 1: Generate code
 
 1. /vectis:core-writer -- update the Crux shared crate
 
-Run the skill from start to finish. Complete every step in the skill's
-process and ensure its verification checklist is satisfied before moving
-to the next phase.
+Spawn a sub-agent to run the skill. Pass standard arguments with
+`mode: update`. The sub-agent reads the skill's SKILL.md and
+references, completes every step, and returns its verification
+checklist result. Wait for completion before proceeding.
 
 #### Phase 2: Generate/update tests
 
 2. /vectis:test-writer -- update spec-traced tests
 
-Run the skill from start to finish. It diffs spec scenarios against
+Spawn a sub-agent to run the skill. It diffs spec scenarios against
 existing tests, adds tests for new scenarios, updates tests for
 modified scenarios, and flags stale tests for removed scenarios.
 
 #### Phase 3: Verify and repair
 
-Run the verify-repair loop described below. In update mode, step 3
-includes a regression check: compare post-test results against the
-baseline captured in Step 0.
+Spawn a sub-agent to run the core verify-repair loop described below.
+Pass PROJECT_DIR, the feature spec path, and the baseline test log
+from Step 0 as `extra_context` for regression checking.
 
 #### Phase 4: Review
 
 3. /vectis:core-reviewer -- AI code review
+
+Spawn a sub-agent to run the skill. The reviewer internally creates
+its own agent team (3 specialists + antagonist per agent-teams.md).
 
 ---
 
@@ -125,13 +289,23 @@ Check whether the iOS shell directory exists and contains `.swift` files:
 
 1. /vectis:ios-writer -- generate the iOS shell
 
+Spawn a sub-agent to run the skill with `mode: create` and
+`skip_verification: true`. Pass standard arguments including
+IOS_SHELL_DIR and APP_NAME. The writer generates all code but does
+not run step 11 (format and verify) -- that is handled by the
+dedicated verify sub-agent in Phase 2.
+
 #### Phase 2: Verify
 
-Run the iOS verify steps described below.
+Spawn a sub-agent to run the iOS verify steps described below. Pass
+IOS_SHELL_DIR and APP_NAME.
 
 #### Phase 3: Review
 
 2. /vectis:ios-reviewer -- AI code review
+
+Spawn a sub-agent to run the skill. The reviewer internally creates
+its own agent team (3 specialists + antagonist per agent-teams.md).
 
 ### Update mode (existing iOS shell)
 
@@ -139,13 +313,23 @@ Run the iOS verify steps described below.
 
 1. /vectis:ios-writer -- update the iOS shell
 
+Spawn a sub-agent to run the skill with `mode: update` and
+`skip_verification: true`. Pass standard arguments including
+IOS_SHELL_DIR and APP_NAME. The writer applies changes but does not
+run step U8 (format and verify) -- that is handled by the dedicated
+verify sub-agent in Phase 2.
+
 #### Phase 2: Verify
 
-Run the iOS verify steps described below.
+Spawn a sub-agent to run the iOS verify steps described below. Pass
+IOS_SHELL_DIR and APP_NAME.
 
 #### Phase 3: Review
 
 2. /vectis:ios-reviewer -- AI code review
+
+Spawn a sub-agent to run the skill. The reviewer internally creates
+its own agent team (3 specialists + antagonist per agent-teams.md).
 
 ---
 
@@ -168,13 +352,23 @@ Check whether the Android shell directory exists and contains `.kt` files:
 
 1. /vectis:android-writer -- generate the Android shell
 
+Spawn a sub-agent to run the skill with `mode: create` and
+`skip_verification: true`. Pass standard arguments including
+ANDROID_SHELL_DIR. The writer generates all code but does not run
+step 15 (build and verify) -- that is handled by the dedicated verify
+sub-agent in Phase 2.
+
 #### Phase 2: Verify
 
-Run the Android verify steps described below.
+Spawn a sub-agent to run the Android verify steps described below.
+Pass ANDROID_SHELL_DIR.
 
 #### Phase 3: Review
 
 2. /vectis:android-reviewer -- AI code review
+
+Spawn a sub-agent to run the skill. The reviewer internally creates
+its own agent team (3 specialists + antagonist per agent-teams.md).
 
 ### Update mode (existing Android shell)
 
@@ -182,13 +376,23 @@ Run the Android verify steps described below.
 
 1. /vectis:android-writer -- update the Android shell
 
+Spawn a sub-agent to run the skill with `mode: update` and
+`skip_verification: true`. Pass standard arguments including
+ANDROID_SHELL_DIR. The writer applies changes but does not run
+step U8 (build and verify) -- that is handled by the dedicated verify
+sub-agent in Phase 2.
+
 #### Phase 2: Verify
 
-Run the Android verify steps described below.
+Spawn a sub-agent to run the Android verify steps described below.
+Pass ANDROID_SHELL_DIR.
 
 #### Phase 3: Review
 
 2. /vectis:android-reviewer -- AI code review
+
+Spawn a sub-agent to run the skill. The reviewer internally creates
+its own agent team (3 specialists + antagonist per agent-teams.md).
 
 ---
 
@@ -204,17 +408,23 @@ feature spec if present.
 1. /vectis:design-system-writer -- regenerate iOS Swift Package and Android
    `vectis-design` library from tokens
 
-The skill includes `swift build` for the iOS package and documents
-`./gradlew :vectis-design:compileDebugKotlin` for the Android module once the
-shell’s `settings.gradle.kts` includes `:vectis-design`.
+Spawn a sub-agent to run the skill. The skill includes `swift build`
+for the iOS package and `./gradlew :vectis-design:compileDebugKotlin`
+for the Android module once the shell’s `settings.gradle.kts` includes
+`:vectis-design`. Verification is internal to the skill.
 
 ---
 
 ## Core verify-repair loop (max 3 iterations)
 
-After core-writer has completed, run this loop to converge on a clean
-build. Each iteration runs all three checks; if any fail, apply the
-targeted fix and start a new iteration.
+This loop runs in its **own sub-agent**, separate from the core-writer
+and test-writer sub-agents that preceded it. The orchestrator spawns
+this sub-agent with PROJECT_DIR, the spec path, and (in update mode)
+the baseline test log. The sub-agent runs the checks below and returns
+`status`, `iterations_used`, and any unresolved errors.
+
+Each iteration runs all three checks; if any fail, apply the targeted
+fix and start a new iteration.
 
 ### 1. Formatting
 
@@ -240,31 +450,33 @@ cd $PROJECT_DIR && cargo test
 ```
 
 If failures are detected, classify each failure and route the fix to
-the appropriate skill:
+the appropriate skill via a **nested repair sub-agent**:
 
 | Failure signal | Classification | Fix action |
 | --- | --- | --- |
-| Error in `#[cfg(test)] mod tests`, test helper functions, or factory functions | **Test issue** | Re-enter test-writer with the error output |
-| Error in production code (`app.rs` outside `#[cfg(test)]`), missing types or methods | **Code issue** | Re-enter core-writer with the error output |
-| Assertion mismatch where the *actual* value looks correct per spec | **Test issue** | Re-enter test-writer -- the expected value is wrong |
-| Assertion mismatch where the *expected* value matches spec | **Code issue** | Re-enter core-writer -- the handler returns the wrong result |
-| Type mismatch between handler output and test assertion | **Code issue** if handler type is wrong per spec; **test issue** if assertion type is stale | Classify per spec, fix accordingly |
-| Unresolved import or missing crate in `Cargo.toml` | **Workspace issue** | Fix `Cargo.toml` directly |
+| Error in `#[cfg(test)] mod tests`, test helper functions, or factory functions | **Test issue** | Spawn repair sub-agent for test-writer with the error output |
+| Error in production code (`app.rs` outside `#[cfg(test)]`), missing types or methods | **Code issue** | Spawn repair sub-agent for core-writer with the error output |
+| Assertion mismatch where the *actual* value looks correct per spec | **Test issue** | Spawn repair sub-agent for test-writer -- the expected value is wrong |
+| Assertion mismatch where the *expected* value matches spec | **Code issue** | Spawn repair sub-agent for core-writer -- the handler returns the wrong result |
+| Type mismatch between handler output and test assertion | **Code issue** if handler type is wrong per spec; **test issue** if assertion type is stale | Classify per spec, spawn the appropriate repair sub-agent |
+| Unresolved import or missing crate in `Cargo.toml` | **Workspace issue** | Fix `Cargo.toml` directly (no sub-agent needed) |
 
-When re-entering a skill for repair, pass the full error output as
-context so the skill can make a targeted fix.
+Each repair sub-agent receives only: the skill name, the full error
+output, the repair discipline constraints below, and `mode: repair`.
+It does **not** re-read the full skill references -- just enough
+context to make a targeted fix.
 
 ### Repair discipline
 
-When re-entering a skill for repair:
+Repair sub-agents follow these constraints:
 
 - **Minimum change only** -- fix the reported error and nothing else.
 - **Scope the diff** -- before committing a repair, verify the change
   is limited to files and functions identified in the error output.
-- **One failure class per re-entry** -- if multiple failures are
+- **One failure class per sub-agent** -- if multiple failures are
   present, group them by classification (code issue vs test issue) and
-  re-enter each skill once with all same-class errors. Do not
-  interleave code and test fixes in a single re-entry.
+  spawn one repair sub-agent per class with all same-class errors. Do
+  not interleave code and test fixes in a single sub-agent.
 
 **Update mode only -- regression check**: compare post-test results
 against the baseline from Step 0. For each test that passed before
@@ -285,7 +497,12 @@ and escalate for guidance.
 
 ---
 
-## iOS verify steps
+## iOS verify steps (max 3 iterations)
+
+This loop runs in its **own sub-agent**, separate from the ios-writer
+sub-agent that preceded it. The orchestrator spawns this sub-agent with
+IOS_SHELL_DIR and APP_NAME. The sub-agent runs the checks below and
+returns `status`, `iterations_used`, and any unresolved errors.
 
 ### 1. Format
 
@@ -299,7 +516,7 @@ swiftformat $IOS_SHELL_DIR/$APP_NAME/
 cd $IOS_SHELL_DIR && make build
 ```
 
-If fails: fix the issue and re-run.
+If fails: fix the issue and re-run from step 1.
 
 ### 3. Simulator build
 
@@ -307,11 +524,58 @@ If fails: fix the issue and re-run.
 cd $IOS_SHELL_DIR && make sim-build
 ```
 
-If fails: fix the issue and re-run.
+If fails: fix the issue and re-run from step 1.
+
+### Loop control
+
+Repeat from step 1 until all three checks pass or **3 iterations** are
+exhausted. If the same error recurs across iterations with no change in
+output, stop early. If still failing after 3 iterations: **STOP**. Do not
+mark the task complete. Report the remaining failures with full error output
+and escalate for guidance.
 
 ---
 
 ## Android verify steps
+
+This loop runs in its **own sub-agent**, separate from the
+android-writer sub-agent that preceded it. The orchestrator spawns this
+sub-agent with ANDROID_SHELL_DIR. The sub-agent runs the checks below
+and returns `status`, `iterations_used`, and any unresolved errors.
+
+### 0. Pre-flight checks
+
+Before entering the verify loop, validate project configuration. These
+checks do not invoke build tools and should fail fast on
+misconfigurations:
+
+1. Verify `local.properties` has `sdk.dir` set.
+2. Verify `gradle.properties` has `org.gradle.java.home` pointing to
+   Java 21.
+3. Verify Rust Android targets are installed:
+   `rustup target list --installed | grep android`
+
+If any check fails, report the missing prerequisite and mark Android
+verification as **pending** rather than entering the build loop.
+
+### Gradle wrapper bootstrap
+
+Before running any `./gradlew` command, verify the wrapper is usable:
+`gradlew` must exist, be executable, and `gradle/wrapper/gradle-wrapper.jar`
+must be present. If the wrapper is missing or incomplete, bootstrap it from a
+minimal init project (no AGP, no `settings.gradle.kts` includes):
+
+```bash
+tmp_dir=$(mktemp -d)
+cd "$tmp_dir" && gradle wrapper && cd -
+cp "$tmp_dir/gradlew" "$tmp_dir/gradlew.bat" "$ANDROID_SHELL_DIR/"
+cp -r "$tmp_dir/gradle" "$ANDROID_SHELL_DIR/"
+chmod +x "$ANDROID_SHELL_DIR/gradlew"
+rm -rf "$tmp_dir"
+```
+
+If `gradle` is not installed, report the prerequisite error
+(`brew install gradle`) and mark Android verification as **pending**.
 
 ### 1. Type generation
 
@@ -336,3 +600,11 @@ cd $ANDROID_SHELL_DIR && ./gradlew :app:assembleDebug
 ```
 
 If fails: fix the issue and re-run.
+
+### Loop control
+
+Repeat from step 1 until all three checks pass or **3 iterations** are
+exhausted. If the same error recurs across iterations with no change in
+output, stop early. If still failing after 3 iterations: **STOP**. Do not
+mark the task complete. Report the remaining failures with full error output
+and escalate for guidance.
