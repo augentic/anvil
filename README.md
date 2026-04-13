@@ -17,9 +17,9 @@ Initialize Specify in a project by running the `/spec:init "<schema URL>"` skill
 Available schemas are:
 
 
-| Schema | URL | Use case |
-| ------ | --- | -------- |
-| `omnia` | `https://github.com/augentic/specify/schemas/omnia` | Greenfield [Omnia](https://omnia.host) development |
+| Schema   | URL                                                  | Use case                                                                                      |
+| -------- | ---------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `omnia`  | `https://github.com/augentic/specify/schemas/omnia`  | Greenfield [Omnia](https://omnia.host) development                                            |
 | `vectis` | `https://github.com/augentic/specify/schemas/vectis` | Cross-platform [Crux](https://redbadger.github.io/crux/) apps (Rust core, iOS/Android shells) |
 
 
@@ -165,11 +165,7 @@ All skills follow the shared `SKILL.md` structure. Changes to generation behavio
 
 ## Roadmap
 
-Long-term development plans live in [`roadmap/`](roadmap/):
-
-- [Deterministic Validation](roadmap/deterministic.md) -- Machine-readable rules, standalone validator, Rust spec engine
-- [Skill DSL](roadmap/dsl.md) -- Type-safe skill expression and stronger compile-time guarantees
-- [Ralph Wiggum Loop](roadmap/rwl.md) -- Generate-evaluate-refine iteration cycles with structured feedback
+Long-term development plans live in `[roadmap/](roadmap/)`
 
 ## License
 
