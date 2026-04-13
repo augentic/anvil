@@ -189,11 +189,12 @@ Before running `./gradlew`, check whether the wrapper is usable:
 2. If the wrapper is missing or incomplete, bootstrap it from a **minimal init
    project** to avoid triggering full AGP classpath resolution:
    ```bash
+   # ANDROID_PROJECT_DIR = the consumer project directory containing settings.gradle.kts
    tmp_dir=$(mktemp -d)
    cd "$tmp_dir" && gradle wrapper && cd -
-   cp "$tmp_dir/gradlew" "$tmp_dir/gradlew.bat" "$ANDROID_SHELL_DIR/"
-   cp -r "$tmp_dir/gradle" "$ANDROID_SHELL_DIR/"
-   chmod +x "$ANDROID_SHELL_DIR/gradlew"
+   cp "$tmp_dir/gradlew" "$tmp_dir/gradlew.bat" "$ANDROID_PROJECT_DIR/"
+   cp -r "$tmp_dir/gradle" "$ANDROID_PROJECT_DIR/"
+   chmod +x "$ANDROID_PROJECT_DIR/gradlew"
    rm -rf "$tmp_dir"
    ```
 3. If `gradle` is not installed, report the prerequisite error:
