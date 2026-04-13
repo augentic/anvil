@@ -23,17 +23,14 @@ and toolchain configuration for a Crux core project using crates.io releases.
 
 ## Workspace `Cargo.toml`
 
-Projects may use edition 2024 and resolver 3 when their toolchain supports it.
-The defaults below use edition 2021 for maximum compatibility with stable Rust.
-
 ```toml
 [workspace]
 members = ["shared"]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
-edition = "2021"
-rust-version = "1.82"
+edition = "2024"
+rust-version = "1.88"
 
 [workspace.dependencies]
 crux_core = "{version from crux-versions.md}"
@@ -407,11 +404,11 @@ All Crux crate versions below come from [crux-versions.md](crux-versions.md).
 ```toml
 [workspace]
 members = ["shared"]
-resolver = "2"
+resolver = "3"
 
 [workspace.package]
-edition = "2021"
-rust-version = "1.82"
+edition = "2024"
+rust-version = "1.88"
 
 [workspace.dependencies]
 crux_core = "{version from crux-versions.md}"
