@@ -8,8 +8,8 @@ Sections:
     `https://github.com/org/repo`). This triggers the RT workflow
     — the specs phase will clone the repo and run code-analyzer.
   - **Source-code**: Local path to existing source code (e.g.,
-    `/path/to/legacy/crate`). This triggers the reverse-spec workflow
-    — the specs phase will run reverse-spec with iterative validation.
+    `/path/to/legacy/crate`). This triggers the extract workflow
+    — the specs phase will run extract with iterative validation.
   - **Epic**: JIRA/ADO/Linear epic key (e.g., `ATR-7102`). This triggers
     the Omnia workflow — the specs phase will run epic-analyzer.
   - **Manual**: Requirements are described directly in this proposal.

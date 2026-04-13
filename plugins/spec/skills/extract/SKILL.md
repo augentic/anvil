@@ -1,11 +1,11 @@
 ---
-name: reverse-spec
-description: Reverse-engineer Specify artifacts (specs + design.md) from existing source code with iterative validation. Use when the proposal source is a local path to existing code, or when /spec:define is given a source-code path to analyze.
+name: extract
+description: Extract Specify artifacts (specs + design.md) from existing source code with iterative validation. Use when the proposal source is a local path to existing code, or when /spec:define is given a source-code path to analyze.
 license: MIT
 argument-hint: "[source-path] [change-dir]"
 ---
 
-# Reverse Spec
+# Extract
 
 Analyze an existing codebase to produce reconstruction-grade Specify artifacts (specs + design.md) with iterative validation until convergence.
 
@@ -155,7 +155,7 @@ For each functional domain:
 
 ### Type Extraction Rules
 
-Type mismatches were the single largest source of errors in previous reverse-spec work. See [lessons-learned.md](references/lessons-learned.md) for details.
+Type mismatches were the single largest source of errors in previous extraction work. See [lessons-learned.md](references/lessons-learned.md) for details.
 
 - Copy type definitions verbatim — never hand-write from memory
 - Capture exact types (e.g., `i32` vs `i64`, `int` vs `long`, `number` vs `string`)
@@ -268,7 +268,7 @@ Every check must compare a **specific value** in the artifact against a **specif
 Present a convergence report:
 
 ```
-## Reverse-Spec Validation Report
+## Extract Validation Report
 
 ### Source: $SOURCE_PATH
 ### Capability: $CRATE_NAME
@@ -335,4 +335,4 @@ Ask the user or mark `[unknown]`. Never guess.
 ## References
 
 - [Validation procedure details](references/validation-procedure.md)
-- [Lessons learned from previous reverse-spec attempts](references/lessons-learned.md)
+- [Lessons learned from previous extraction attempts](references/lessons-learned.md)
