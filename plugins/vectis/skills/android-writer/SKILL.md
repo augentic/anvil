@@ -280,14 +280,32 @@ three phases:
 | `capabilities` | Capability dependency mapping (step 4): which Android libraries are needed |
 | `use_koin` | Whether Koin DI is needed (more than one non-Render effect) |
 
-Step 15 (build and verify) runs after all three phases complete,
-either in the coordinator or as a separate verify sub-agent per the
-build orchestrator's delegation pattern.
+### Verification ownership
+
+When the orchestrator passes `skip_verification: true`, the writer
+stops after code generation (Phase 3: UI completes) and does **not**
+run step 15 or U8. The orchestrator's dedicated Android verify
+sub-agent handles pre-flight checks, `make build`,
+`./gradlew :shared:cargoBuild`, and `./gradlew :app:assembleDebug`
+with its own repair loop and iteration limits.
+
+The **pre-flight checks** from step 15 (Gradle wrapper exists,
+`local.properties` has `sdk.dir`, `gradle.properties` has
+`org.gradle.java.home`, Rust Android targets installed) run
+regardless of `skip_verification` -- they validate project
+configuration without invoking build tools and catch
+misconfigurations early. Only the build-tool commands
+(`make build`, `./gradlew` invocations) are skipped.
+
+When invoked **standalone** (no `skip_verification` flag, or
+`skip_verification: false`), the writer runs its full process
+including step 15 / U8.
 
 In **update mode**, the coordinator runs steps U1-U4 (analysis, read
 Kotlin, inventory, diff) and produces a **change plan**. Phase 2 and
 Phase 3 sub-agents each apply their portion of the plan (U5 for
-bridge, U6-U7 for UI). Step U8 (verify) runs separately.
+bridge, U6-U7 for UI). Step U8 is skipped when
+`skip_verification: true`.
 
 ---
 

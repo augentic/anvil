@@ -24,19 +24,23 @@ Process platforms in this dependency order:
 iOS and Android shells have no dependencies on each other -- both
 depend on core + design-system only. When both platforms are in scope,
 spawn their **generation** sub-agents (Phase 1) concurrently after core
-verify-repair completes:
+verify-repair completes. Pass `skip_verification: true` to each writer
+so they produce code without invoking build tools (ios-writer skips
+step 11; android-writer skips step 15):
 
 ```
 core verify-repair done
-    ├── spawn: ios-writer sub-agent
-    └── spawn: android-writer sub-agent
+    ├── spawn: ios-writer sub-agent   (skip_verification: true)
+    └── spawn: android-writer sub-agent (skip_verification: true)
          (both run in parallel)
 ```
 
 Wait for both generation sub-agents to complete, then run their
 **verify** and **review** phases sequentially (not in parallel) to
 avoid build-tool contention -- Gradle and Xcode processes contend for
-file locks and caches when run concurrently.
+file locks and caches when run concurrently. Because the writers
+skipped their internal verification, the orchestrator's verify
+sub-agents are the sole point of build verification.
 
 ```
 both writers done
@@ -46,7 +50,10 @@ both writers done
     → Android review sub-agent
 ```
 
-If only one shell platform is in scope, run it sequentially as before.
+If only one shell platform is in scope, still pass
+`skip_verification: true` and run the dedicated verify sub-agent
+afterward -- this keeps the contract consistent regardless of how
+many platforms are active.
 
 Each skill reads the single feature spec at
 `specs/<feature>/spec.md`. The spec contains core requirements in
@@ -141,7 +148,8 @@ Each sub-agent receives and returns structured information:
 | --- | --- |
 | `skill` | Skill name (e.g., `vectis:core-writer`) |
 | `arguments` | Standard arguments: CHANGE_ID, FEATURE_NAME, PROJECT_DIR, shell dirs, APP_NAME |
-| `mode` | `create` or `update` (determined by orchestrator before spawning) |
+| `mode` | `create`, `update`, or `repair` (determined by orchestrator before spawning) |
+| `skip_verification` | If `true`, the skill skips its internal build-verification step (ios-writer step 11 / U8, android-writer step 15 / U8). The orchestrator sets this for shell writers and runs verification in a dedicated sub-agent afterward. Defaults to `false` for standalone invocations. |
 | `artifact_paths` | Paths to spec, design, and proposal files |
 | `extra_context` | Phase-specific: error output for repair, baseline test log for regression checks, prior phase warnings |
 
@@ -282,8 +290,11 @@ Check whether the iOS shell directory exists and contains `.swift` files:
 
 1. /vectis:ios-writer -- generate the iOS shell
 
-Spawn a sub-agent to run the skill with `mode: create`. Pass standard
-arguments including IOS_SHELL_DIR and APP_NAME.
+Spawn a sub-agent to run the skill with `mode: create` and
+`skip_verification: true`. Pass standard arguments including
+IOS_SHELL_DIR and APP_NAME. The writer generates all code but does
+not run step 11 (format and verify) -- that is handled by the
+dedicated verify sub-agent in Phase 2.
 
 #### Phase 2: Verify
 
@@ -303,8 +314,11 @@ its own agent team (3 specialists + antagonist per agent-teams.md).
 
 1. /vectis:ios-writer -- update the iOS shell
 
-Spawn a sub-agent to run the skill with `mode: update`. Pass standard
-arguments including IOS_SHELL_DIR and APP_NAME.
+Spawn a sub-agent to run the skill with `mode: update` and
+`skip_verification: true`. Pass standard arguments including
+IOS_SHELL_DIR and APP_NAME. The writer applies changes but does not
+run step U8 (format and verify) -- that is handled by the dedicated
+verify sub-agent in Phase 2.
 
 #### Phase 2: Verify
 
@@ -339,8 +353,11 @@ Check whether the Android shell directory exists and contains `.kt` files:
 
 1. /vectis:android-writer -- generate the Android shell
 
-Spawn a sub-agent to run the skill with `mode: create`. Pass standard
-arguments including ANDROID_SHELL_DIR.
+Spawn a sub-agent to run the skill with `mode: create` and
+`skip_verification: true`. Pass standard arguments including
+ANDROID_SHELL_DIR. The writer generates all code but does not run
+step 15 (build and verify) -- that is handled by the dedicated verify
+sub-agent in Phase 2.
 
 #### Phase 2: Verify
 
@@ -360,8 +377,11 @@ its own agent team (3 specialists + antagonist per agent-teams.md).
 
 1. /vectis:android-writer -- update the Android shell
 
-Spawn a sub-agent to run the skill with `mode: update`. Pass standard
-arguments including ANDROID_SHELL_DIR.
+Spawn a sub-agent to run the skill with `mode: update` and
+`skip_verification: true`. Pass standard arguments including
+ANDROID_SHELL_DIR. The writer applies changes but does not run
+step U8 (build and verify) -- that is handled by the dedicated verify
+sub-agent in Phase 2.
 
 #### Phase 2: Verify
 
@@ -523,6 +543,21 @@ This loop runs in its **own sub-agent**, separate from the
 android-writer sub-agent that preceded it. The orchestrator spawns this
 sub-agent with ANDROID_SHELL_DIR. The sub-agent runs the checks below
 and returns `status`, `iterations_used`, and any unresolved errors.
+
+### 0. Pre-flight checks
+
+Before entering the verify loop, validate project configuration. These
+checks do not invoke build tools and should fail fast on
+misconfigurations:
+
+1. Verify `local.properties` has `sdk.dir` set.
+2. Verify `gradle.properties` has `org.gradle.java.home` pointing to
+   Java 21.
+3. Verify Rust Android targets are installed:
+   `rustup target list --installed | grep android`
+
+If any check fails, report the missing prerequisite and mark Android
+verification as **pending** rather than entering the build loop.
 
 ### Gradle wrapper bootstrap
 

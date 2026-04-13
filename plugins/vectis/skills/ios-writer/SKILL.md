@@ -123,13 +123,22 @@ phases:
 | `design_system` | Whether `tokens.yaml` exists and token categories found |
 | `capabilities` | Which capabilities the core uses (HTTP, KV, SSE, Time, Platform) |
 
-Step 11 (format and verify) runs after both phases complete, either
-in the coordinator or as a separate verify sub-agent per the build
-orchestrator's delegation pattern.
+### Verification ownership
+
+When the orchestrator passes `skip_verification: true`, the writer
+stops after code generation (Phase 2: Shell completes) and does
+**not** run step 11 or U8. The orchestrator's dedicated iOS verify
+sub-agent handles formatting, `make build`, and `make sim-build`
+with its own repair loop and iteration limits.
+
+When invoked **standalone** (no `skip_verification` flag, or
+`skip_verification: false`), the writer runs its full process
+including step 11 / U8.
 
 In **update mode**, the coordinator runs steps U1-U4 (analysis, read
 Swift, inventory, diff) and produces a **change plan** that the shell
-sub-agent applies (steps U5-U7). Step U8 (verify) runs separately.
+sub-agent applies (steps U5-U7). Step U8 is skipped when
+`skip_verification: true`.
 
 ---
 
