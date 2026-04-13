@@ -6,10 +6,7 @@ _Exported on 14/04/2026 from Cursor_
 
 ## Workspace Layout
 
-The CLI lives at the repo root as a Cargo workspace. This keeps it alongside the
-plugins and schemas it operates on — important because `specify check` needs to
-validate the repo's own schema files and skills, and integration tests can
-reference the real `schemas/` directory.
+The CLI lives at the repo root as a Cargo workspace. This keeps it alongside the plugins and schemas it operates on — important because `specify check` needs to validate the repo's own schema files and skills, and integration tests can reference the real `schemas/` directory.
 
 ```
 specify/                              # repo root (already exists)
@@ -58,30 +55,14 @@ specify/                              # repo root (already exists)
 
 ## Why Three Crates, Not One
 
-**`specify-core`** is the library. It has no CLI concerns — no argument parsing,
-no terminal formatting, no exit codes. It returns `Result<T, SpecifyError>` from
-every public function. This matters because:
+**`specify-core`** is the library. It has no CLI concerns — no argument parsing, no terminal formatting, no exit codes. It returns `Result<T, SpecifyError>` from every public function. This matters because:
 
-1. Skills that invoke the CLI get structured output (JSON). But the logic may
-   also be called from other contexts — a future LSP for schema validation in
-   editors, a WASM build for browser-based tooling, or integration tests that
-   call the library directly.
-2. The merge logic, spec parser, and validator are independently testable
-   without spawning processes.
+1. Skills that invoke the CLI get structured output (JSON). But the logic may also be called from other contexts — a future LSP for schema validation in editors, a WASM build for browser-based tooling, or integration tests that call the library directly.
+2. The merge logic, spec parser, and validator are independently testable without spawning processes.
 
-**`specify-cli`** is the binary. It owns argument parsing (via `clap`), output
-formatting (JSON vs human-readable), exit codes, and I/O. It's a thin dispatch
-layer — each subcommand is ~20 lines that parse args, call a `specify-core`
-function, format the result, and set the exit code.
+**`specify-cli`** is the binary. It owns argument parsing (via `clap`), output formatting (JSON vs human-readable), exit codes, and I/O. It's a thin dispatch layer — each subcommand is ~20 lines that parse args, call a `specify-core` function, format the result, and set the exit code.
 
-**`specify-check`** is the framework-repo linter. It replaces `checks.ts` over
-time but serves a different audience than `specify-core`. `specify-core`
-validates *consumer projects* (artifact correctness at runtime).
-`specify-check` validates *this repo* (skill integrity, schema consistency,
-marketplace alignment at CI time). The overlap is small: both parse
-`schema.yaml`, so they share the `specify-core::schema` module. But the check
-logic (symlink resolution, SKILL.md frontmatter, docs inventory) is
-repo-specific and doesn't belong in the runtime library.
+**`specify-check`** is the framework-repo linter. It replaces `checks.ts` over time but serves a different audience than `specify-core`. `specify-core` validates *consumer projects* (artifact correctness at runtime). `specify-check` validates *this repo* (skill integrity, schema consistency, marketplace alignment at CI time). The overlap is small: both parse `schema.yaml`, so they share the `specify-core::schema` module. But the check logic (symlink resolution, SKILL.md frontmatter, docs inventory) is repo-specific and doesn't belong in the runtime library.
 
 ---
 
@@ -118,9 +99,7 @@ pub enum Error {
 }
 ```
 
-A single error type with structured variants means the CLI can pattern-match on
-the variant to decide exit codes and output format, and the library never touches
-`std::process::exit`.
+A single error type with structured variants means the CLI can pattern-match on the variant to decide exit codes and output format, and the library never touches `std::process::exit`.
 
 ### `config.rs`
 
@@ -146,14 +125,11 @@ impl ProjectConfig {
 }
 ```
 
-Straightforward serde deserialization. The path helpers centralise the
-`.specify/changes/`, `.specify/specs/`, `.specify/.cache/` conventions that are
-currently scattered across every skill.
+Straightforward serde deserialization. The path helpers centralise the `.specify/changes/`, `.specify/specs/`, `.specify/.cache/` conventions that are currently scattered across every skill.
 
 ### `schema.rs`
 
-The most important module — it encodes the resolution algorithm from
-`schema-resolution.md`.
+The most important module — it encodes the resolution algorithm from `schema-resolution.md`.
 
 ```rust
 #[derive(Debug, Deserialize, Serialize)]
@@ -231,12 +207,7 @@ impl Schema {
 }
 ```
 
-Note the absence of any HTTP fetching — the `resolve` function handles local and
-cache paths. Remote fetching (the WebFetch step in the current skill) remains the
-agent's responsibility. The CLI's `specify schema resolve` subcommand outputs the
-resolved path so the skill knows where to find files, but the agent does the HTTP
-fetch if the cache is stale. This keeps the CLI dependency-free for networking
-and avoids duplicating the agent's authenticated GitHub access.
+Note the absence of any HTTP fetching — the `resolve` function handles local and cache paths. Remote fetching (the WebFetch step in the current skill) remains the agent's responsibility. The CLI's `specify schema resolve` subcommand outputs the resolved path so the skill knows where to find files, but the agent does the HTTP fetch if the cache is stale. This keeps the CLI dependency-free for networking and avoids duplicating the agent's authenticated GitHub access.
 
 ### `spec.rs`
 
@@ -286,8 +257,7 @@ pub const DELTA_REMOVED: &str = "## REMOVED Requirements";
 pub const DELTA_RENAMED: &str = "## RENAMED Requirements";
 ```
 
-These are hard-coded rather than configurable because `spec-format.md` explicitly
-says "These are not configurable per-schema."
+These are hard-coded rather than configurable because `spec-format.md` explicitly says "These are not configurable per-schema."
 
 ### `merge.rs`
 
@@ -328,12 +298,8 @@ pub fn merge_change(
 
 The merge algorithm is a direct port of `merge-specs.py` with two improvements:
 
-1. **Structured output.** Instead of writing to stdout, it returns `MergeResult`
-   with the merged text and a log of operations. The CLI formats this as JSON for
-   skills or as human-readable text for direct invocation.
-2. **Atomic multi-capability merge.** The current skill runs `merge-specs.py`
-   once per capability. The library function `merge_change` takes a change
-   directory and merges all capabilities, rolling back on error.
+1. **Structured output.** Instead of writing to stdout, it returns `MergeResult` with the merged text and a log of operations. The CLI formats this as JSON for skills or as human-readable text for direct invocation.
+2. **Atomic multi-capability merge.** The current skill runs `merge-specs.py` once per capability. The library function `merge_change` takes a change directory and merges all capabilities, rolling back on error.
 
 ### `task.rs`
 
@@ -369,9 +335,7 @@ pub fn next_pending(tasks: &TaskProgress) -> Option<&Task>;
 
 ### `validate.rs`
 
-The `validate` rules in `schema.yaml` are human-readable strings. The CLI
-handles the *structural* ones deterministically and flags the *semantic* ones
-for the agent.
+The `validate` rules in `schema.yaml` are human-readable strings. The CLI handles the *structural* ones deterministically and flags the *semantic* ones for the agent.
 
 ```rust
 pub enum ValidationResult {
@@ -393,11 +357,7 @@ pub fn validate_change(
 ) -> ValidationReport;
 ```
 
-The key design decision: rules that the CLI can check deterministically (heading
-structure, ID format, checkbox format, section existence) produce `Pass` or
-`Fail`. Rules that require semantic judgment (like "Uses SHALL/MUST language for
-normative requirements") produce `Deferred` with an explanation. The skill prose
-only needs to handle deferred rules.
+The key design decision: rules that the CLI can check deterministically (heading structure, ID format, checkbox format, section existence) produce `Pass` or `Fail`. Rules that require semantic judgment (like "Uses SHALL/MUST language for normative requirements") produce `Deferred` with an explanation. The skill prose only needs to handle deferred rules.
 
 Built-in structural validators:
 
@@ -455,9 +415,7 @@ pub enum SpecType {
 }
 ```
 
-The `LifecycleStatus` enum eliminates the recurring guardrail in every skill:
-"Valid lifecycle status values are: `defining`, `defined`, `building`,
-`complete`, `merged`, `dropped`." The CLI enforces this at the type level.
+The `LifecycleStatus` enum eliminates the recurring guardrail in every skill: "Valid lifecycle status values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped`." The CLI enforces this at the type level.
 
 A status transition function prevents invalid moves:
 
@@ -508,10 +466,7 @@ pub fn init(
 ) -> Result<InitResult, Error>;
 ```
 
-The `init` function handles the mechanical parts (directory creation, config
-template, cache population, gitignore) and returns what it did so the skill can
-report to the user. The agent still handles the interactive parts (asking which
-schema, confirming reinitialize).
+The `init` function handles the mechanical parts (directory creation, config template, cache population, gitignore) and returns what it did so the skill can report to the user. The agent still handles the interactive parts (asking which schema, confirming reinitialize).
 
 ### `drift.rs` (Horizon 2-3, initially stubbed)
 
@@ -653,9 +608,7 @@ enum SchemaAction {
 
 ## Output Format
 
-Every subcommand supports `--format text` (default, human-readable) and
-`--format json` (structured, for skills). The JSON output is what makes the
-CLI truly useful for agent consumption:
+Every subcommand supports `--format text` (default, human-readable) and `--format json` (structured, for skills). The JSON output is what makes the CLI truly useful for agent consumption:
 
 ```json
 {
@@ -735,8 +688,7 @@ serde_json = "1"
 jsonschema = "0.29"
 ```
 
-No async runtime, no HTTP client, no database. The binary should compile in
-seconds and produce a ~5MB static binary.
+No async runtime, no HTTP client, no database. The binary should compile in seconds and produce a ~5MB static binary.
 
 ---
 
@@ -760,6 +712,4 @@ prod-plugins:
 	@./scripts/prod-plugins.sh
 ```
 
-During migration, both `specify check` and `checks.ts` run. As checks migrate
-from TypeScript to Rust, they are removed from `checks.ts` until it's empty and
-can be deleted.
+During migration, both `specify check` and `checks.ts` run. As checks migrate from TypeScript to Rust, they are removed from `checks.ts` until it's empty and can be deleted.
