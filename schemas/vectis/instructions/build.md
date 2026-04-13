@@ -216,8 +216,7 @@ comments linking each test to its `REQ-XXX` ID.
 #### Phase 3: Verify and repair
 
 Spawn a sub-agent to run the core verify-repair loop described below.
-Pass PROJECT_DIR and the feature spec path. If update mode, also pass
-the baseline test log.
+Pass PROJECT_DIR and the feature spec path.
 
 #### Phase 4: Review
 
