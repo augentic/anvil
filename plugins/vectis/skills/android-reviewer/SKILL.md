@@ -193,7 +193,7 @@ Integration Specialist) but reports only on their assigned checks.
 #### 2c. Universal checks (lead; skip if scope = quick)
 
 After all specialists report, the lead reads
-`../../references/universal-review-checks.md` and applies checks UNI-001
+`../../references/review-checks.md` and applies checks UNI-001
 through UNI-021 with Kotlin/Android-specific detection. Several universal
 checks overlap with categories already assigned to the specialists. Skip
 those and focus on the gaps:
@@ -485,7 +485,7 @@ Before creating the Specify change, classify each design-level finding:
 
 Universal checks with a Spec-change indicator (UNI-002, UNI-004, UNI-007,
 UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) commonly surface as spec-change
-findings. Consult `../../references/universal-review-checks.md` for the
+findings. Consult `../../references/review-checks.md` for the
 indicator description on each check.
 
 If design-level findings exist, delegate to `/spec:define` to create a
