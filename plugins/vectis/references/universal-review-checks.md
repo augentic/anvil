@@ -1,1 +1,0 @@
-../../references/universal-review-checks.md

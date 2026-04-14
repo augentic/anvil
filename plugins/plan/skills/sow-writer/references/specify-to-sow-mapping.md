@@ -8,7 +8,7 @@ This document defines how each Specify section maps to SoW sections and the tran
 | ---------- | ----------- | -------------- |
 | Component (Name, Purpose) | Cover Page, Background, Scope | Title Case name; purpose becomes background narrative |
 | Specify Type header | Background | `code-analysis` = migration framing; `requirements` = greenfield framing |
-| User Stories | Objectives, Deliverables | Acceptance criteria summarised as objectives; stories grouped into deliverables |
+| Requirements | Objectives, Deliverables | Acceptance criteria summarised as objectives; requirements grouped into deliverables |
 | Business Logic Blocks | Deliverables | Each major block becomes a deliverable item; algorithm details omitted |
 | API Contracts | Deliverables, Scope | Endpoints grouped as "API implementation" deliverable; integration points in scope |
 | External Service Dependencies | Scope, Dependencies | Integration points in scope narrative; access requirements as dependencies |

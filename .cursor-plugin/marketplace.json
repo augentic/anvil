@@ -23,7 +23,7 @@
     {
       "name": "plan",
       "source": "plan",
-      "description": "Skills to derive proposals, specs, design, and SoW from requirements."
+      "description": "Skills to generate Statements of Work from Specify artifacts."
     },
     {
       "name": "vectis",
@@ -33,7 +33,7 @@
     {
       "name": "spec",
       "source": "spec",
-      "description": "Skills for Specify workflow orchestration: init, define, build, merge, drop, verify, explore, status, and reverse-spec."
+      "description": "Skills for Specify workflow orchestration: init, define, build, merge, drop, verify, explore, status, and extract."
     }
   ]
 }

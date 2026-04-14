@@ -8,10 +8,8 @@ Sections:
     `https://github.com/org/repo`). This triggers the RT workflow
     — the specs phase will clone the repo and run code-analyzer.
   - **Source-code**: Local path to existing source code (e.g.,
-    `/path/to/legacy/crate`). This triggers the reverse-spec workflow
-    — the specs phase will run reverse-spec with iterative validation.
-  - **Epic**: JIRA/ADO/Linear epic key (e.g., `ATR-7102`). This triggers
-    the Omnia workflow — the specs phase will run epic-analyzer.
+    `/path/to/legacy/crate`). This triggers the extract workflow
+    — the specs phase will run extract with iterative validation.
   - **Manual**: Requirements are described directly in this proposal.
     This is the default workflow — specs and design are written by hand.
 - **What Changes**: Bullet list of changes. Be specific about new
@@ -26,7 +24,7 @@ Sections:
     changes (not just implementation details). Each needs a delta spec
     file. Check `.specify/specs/` for existing spec names. Leave empty if
     no requirement changes.
-  - For **Repository**, **Source-code**, or **Epic** sources, crates
+  - For **Repository** or **Source-code** sources, crates
     will be determined by the analyzer skill. List expected crates if
     known, but analyzer output takes precedence.
 - **Impact**: Affected code, APIs, dependencies, or systems.
@@ -34,7 +32,7 @@ Sections:
 IMPORTANT: The Crates section creates the contract between proposal
 and specs phases. For manual sources, research existing specs before
 filling this in — each crate listed will need a corresponding spec
-file. For repository or epic sources, the analyzer discovers crates
+file. For repository sources, the analyzer discovers crates
 automatically.
 
 Keep it concise (1-2 pages). Focus on the "why" not the "how" - 
@@ -51,7 +49,7 @@ This is the foundation - specs, design, and tasks all build on this.
 
 ## Source
 
-<!-- Pick ONE: Repository URL, Source-code path, Epic key, or Manual -->
+<!-- Pick ONE: Repository URL, Source-code path, or Manual -->
 
 ## What Changes
 

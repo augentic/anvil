@@ -2,9 +2,9 @@
 
 - **URL**: `https://github.com/augentic/specify/schemas/omnia`
 - **Purpose**: Rust WASM development (greenfield or migration)
-- **Source**: JIRA Epic (`/plan:epic-analyzer`), Git Repository (`/rt:code-analyzer`), Source Code (`/spec:reverse-spec`), or Manual
+- **Source**: Git Repository (`/rt:code-analyzer`), Source Code (`/spec:extract`), or Manual
 - **Target**: Rust WASM (Omnia SDK)
-- **Workflow**: `define` -> `specs` (from Epic, Code, or Manual) -> `design` -> `tasks` -> `build` (crate-writer)
+- **Workflow**: `define` -> `specs` (from Code or Manual) -> `design` -> `tasks` -> `build` (crate-writer)
 
 ## Contents
 

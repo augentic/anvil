@@ -71,16 +71,17 @@ Additional commands:
 - `/spec:verify` -- Detect drift between your code and baseline specs.
 - `/spec:status` -- Check artifact completion, task progress, and active changes.
 - `/spec:explore` -- Think through ideas and investigate problems before or during a change.
+- `/spec:extract` -- Extract Specify artifacts from existing source code.
 
 ## Plugins
 
 Specify ships as a Cursor plugin marketplace with five plugins:
 
-- **Specify** (`spec`) -- Core workflow: define, build, merge, verify, explore
+- **Specify** (`spec`) -- Core workflow: define, build, merge, verify, explore, extract
 - **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
 - **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
 - **RT** (`rt`) -- TypeScript analysis, fixture capture, and migration
-- **Plan** (`plan`) -- JIRA epic analysis and SoW generation
+- **Plan** (`plan`) -- Requirements analysis and SoW generation
 
 See [docs/plugins.md](docs/plugins.md) for the full skill reference and artifact lifecycle.
 

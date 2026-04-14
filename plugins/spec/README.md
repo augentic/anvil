@@ -14,6 +14,7 @@ Core workflow orchestration for spec-driven development: define changes, build t
 | [verify](skills/verify/SKILL.md) | `/spec:verify` | Detect drift between code and baseline specs |
 | [explore](skills/explore/SKILL.md) | `/spec:explore` | Thinking partner for ideas and requirements |
 | [status](skills/status/SKILL.md) | `/spec:status` | Check artifact completion and task progress |
+| [extract](skills/extract/SKILL.md) | `/spec:extract` | Extract Specify artifacts from existing source code |
 
 ## References
 

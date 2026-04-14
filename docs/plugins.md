@@ -1,6 +1,6 @@
 # Plugins
 
-Specify ships as a [Cursor plugin marketplace](https://cursor.com/docs/reference/plugins) containing five plugins. Each plugin provides specialist skills namespaced by domain. Plugins also expose [MCP](https://cursor.com/docs/mcp) tool servers for programmatic integration.
+Specify ships as a [Cursor plugin marketplace](https://cursor.com/docs/reference/plugins) containing five plugins. Each plugin provides specialist skills and reference documentation for spec-driven development.
 
 ## Workspace rule vs marketplace installs
 
@@ -18,7 +18,7 @@ Core workflow orchestration for spec-driven development.
 - **verify** -- Detect drift between code and baseline specs
 - **explore** -- Thinking partner for ideas, investigation, and requirements
 - **status** -- Check artifact completion, task progress, and active changes
-- **reverse-spec** -- Reverse-engineer Specify artifacts from existing source code
+- **extract** -- Extract Specify artifacts from existing source code
 
 ## Omnia (`plugins/omnia/`)
 
@@ -53,9 +53,8 @@ TypeScript source analysis, fixture capture, and regression testing for migratio
 
 ## Plan (`plugins/plan/`)
 
-Requirements analysis, design enrichment, and SoW generation from JIRA.
+Statement of Work generation from Specify artifacts.
 
-- **epic-analyzer** -- Derive proposal, specs, and design context from JIRA epics
 - **sow-writer** -- Translate Specify artifacts into client-facing SoW material
 
 ## How It Works
@@ -71,7 +70,7 @@ Specify manages changes as a set of interdependent artifacts stored in `.specify
 
 The workflow is:
 
-1. **Define** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by JIRA epics (`/plan:epic-analyzer`) or TypeScript source analysis (`/rt:code-analyzer`).
+1. **Define** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by TypeScript source analysis (`/rt:code-analyzer`).
 2. **Build** -- Validate artifacts for completeness and cross-blueprint consistency, then implement each task. Specialist skills (crate-writer, test-writer, guest-writer, core-writer, ios-writer, android-writer) generate code from the artifacts.
 3. **Merge** -- Merge the change's specs into your project's baseline at `.specify/specs/` and move the change to the archive.
 

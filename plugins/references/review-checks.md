@@ -1,4 +1,4 @@
-# Universal Review Checks
+# Review Checks
 
 Language and domain-agnostic code quality and security checks shared across
 all reviewer skills. Each reviewer skill applies these checks using

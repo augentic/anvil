@@ -100,9 +100,49 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
    - "Specify initialized. Config written to `.specify/config.yaml`."
    - "Edit the `context` field to describe your project's tech stack, architecture, and testing approach."
    - "Fill in the scaffolded `overrides` entries to override schema defaults for specific artifacts. To see the defaults, check the `defaults` section in `.specify/.cache/schema.yaml`."
-   - "When ready, run `/spec:define` to start your first change."
 
-**Output**
+   Do NOT print "Next steps" yet — Step 7 determines which output to show.
+
+7. **Detect existing codebase and offer baseline extraction**
+
+   Check whether the project root contains an active codebase by looking for:
+
+   - **Manifest files**: `Cargo.toml`, `package.json`, `go.mod`, `pyproject.toml`, `pom.xml`, `*.csproj`, `build.gradle`, `Gemfile`
+   - **Source directories**: `src/`, `lib/`, `app/`, `cmd/`
+
+   If **none** of these are found, show the **greenfield output** and stop.
+
+   If at least one indicator is found, use the **AskQuestion tool**:
+
+   > "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This uses `/spec:extract` and typically takes a few minutes with your input at checkpoints."
+
+   Options:
+   - **Yes, generate baseline specs** — proceed to create the change
+   - **No, skip for now** — show the greenfield output and stop (user can run `/spec:extract` manually later)
+
+   If the user chooses **yes**:
+
+   a. Create the change directory and metadata:
+
+      ```bash
+      mkdir -p .specify/changes/initial-baseline/specs
+      ```
+
+      Write `.specify/changes/initial-baseline/.metadata.yaml`:
+
+      ```yaml
+      schema: $SCHEMA
+      status: defining
+      created_at: <current ISO-8601 timestamp>
+      defined_at: null
+      build_started_at: null
+      completed_at: null
+      touched_specs: []
+      ```
+
+   b. Show the **brownfield output** and stop.
+
+**Output (greenfield — no existing codebase, or user declined extraction)**
 
 ```
 ## Specify Initialized
@@ -115,6 +155,22 @@ I'll create the `.specify/` directory structure and install a starter `config.ya
 Next steps:
 1. Edit `.specify/config.yaml` to describe your project
 2. Run `/spec:define` to create your first change
+```
+
+**Output (brownfield — user opted for baseline extraction)**
+
+```
+## Specify Initialized (Existing Codebase Detected)
+
+**Schema**: $SCHEMA
+**Config**: .specify/config.yaml
+**Baseline change**: .specify/changes/initial-baseline/
+
+Next steps:
+1. Edit `.specify/config.yaml` to describe your project
+2. Run `/spec:extract . .specify/changes/initial-baseline/` to analyze the codebase
+3. After extraction, run `/spec:merge initial-baseline` to promote specs to baseline
+4. Then run `/spec:define` for future changes
 ```
 
 **Guardrails**

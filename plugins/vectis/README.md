@@ -1,0 +1,20 @@
+# Vectis
+
+Cross-platform Crux application generation: Rust shared core, SwiftUI iOS shell, Kotlin/Jetpack Compose Android shell, and design system.
+
+## Skills
+
+| Skill | Command | Description |
+|-------|---------|-------------|
+| [core-writer](skills/core-writer/SKILL.md) | `/vectis:core-writer` | Generate or update Rust Crux shared crates |
+| [test-writer](skills/test-writer/SKILL.md) | `/vectis:test-writer` | Generate or update test suites with spec-to-test traceability |
+| [core-reviewer](skills/core-reviewer/SKILL.md) | `/vectis:core-reviewer` | Review generated Crux core code |
+| [ios-writer](skills/ios-writer/SKILL.md) | `/vectis:ios-writer` | Generate or update SwiftUI iOS shells |
+| [ios-reviewer](skills/ios-reviewer/SKILL.md) | `/vectis:ios-reviewer` | Review generated iOS shells |
+| [android-writer](skills/android-writer/SKILL.md) | `/vectis:android-writer` | Generate or update Kotlin/Jetpack Compose Android shells |
+| [android-reviewer](skills/android-reviewer/SKILL.md) | `/vectis:android-reviewer` | Review generated Android shells |
+| [design-system-writer](skills/design-system-writer/SKILL.md) | `/vectis:design-system-writer` | Generate VectisDesign from tokens.yaml |
+
+## References
+
+- [Review Checks](references/review-checks.md)

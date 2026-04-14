@@ -14,21 +14,17 @@ specify/
 │   ├── references/               # Shared references (specify.md, agent-teams.md)
 │   ├── spec/                     # Specify workflow plugin
 │   │   ├── skills/               # Workflow skills (init, define, build, merge, ...)
-│   │   ├── references/           # Artifact templates and schema resolution
-│   │   └── mcp.json              # MCP server definition
+│   │   └── references/           # Artifact templates and schema resolution
 │   ├── omnia/                    # Omnia code generation plugin
 │   │   ├── skills/               # Code generation skills (crate-writer, test-writer, ...)
-│   │   ├── references/           # Guardrails, providers, guest wiring patterns
-│   │   └── mcp.json
+│   │   └── references/           # Guardrails, providers, guest wiring patterns
 │   ├── vectis/                   # Vectis Crux development plugin
 │   │   ├── skills/               # Crux skills (core-writer, test-writer, ios-writer, ...)
 │   │   └── references/           # Crux patterns, design system references
 │   ├── rt/                       # RT migration plugin
-│   │   ├── skills/               # Migration skills (code-analyzer, replay-writer, ...)
-│   │   └── mcp.json
-│   └── plan/                     # Plan requirements analysis plugin
-│       ├── skills/               # Planning skills (epic-analyzer, sow-writer)
-│       └── mcp.json
+│   │   └── skills/               # Migration skills (code-analyzer, replay-writer, ...)
+│   └── plan/                     # Plan SoW generation plugin
+│       └── skills/               # Planning skills (sow-writer)
 ├── schemas/                      # Schema definitions
 │   ├── omnia/                    # Greenfield Rust WASM schema
 │   └── vectis/                   # Cross-platform Crux application schema

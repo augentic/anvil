@@ -25,8 +25,7 @@ Specify owns the workflow contract. This repository contributes specialist analy
 ## Main Inputs
 
 1. **TypeScript → Rust WASM**: reconstruct baseline specs and design from an existing service.
-2. **JIRA → Rust WASM**: derive proposal, specs, and design context from epics and stories.
-3. **Manual → Crux App**: generate cross-platform Crux applications (Rust core, iOS shell, Android shell, design system).
+2. **Manual → Crux App**: generate cross-platform Crux applications (Rust core, iOS shell, Android shell, design system).
 
 ## Authority Hierarchy
 
@@ -63,7 +62,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `verify` - detect drift between code and baseline specs
 - `explore` - thinking partner for ideas, investigation, and requirements
 - `status` - check artifact completion, task progress, and active changes
-- `reverse-spec` - reverse-engineer Specify artifacts from existing source code
+- `extract` - extract Specify artifacts from existing source code
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -92,7 +91,6 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Plan Plugin (`plugins/plan/`)
 
-- `epic-analyzer` - derive proposal/specs/design context from JIRA
 - `sow-writer` - translate Specify artifacts into client-facing SoW material
 
 ## Repository Layout

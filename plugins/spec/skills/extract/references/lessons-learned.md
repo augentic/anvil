@@ -1,6 +1,6 @@
 # Lessons Learned
 
-Anti-patterns and guardrails derived from real-world reverse-spec attempts. Each lesson describes a mistake that was made, why it happened, and how this skill prevents it.
+Anti-patterns and guardrails derived from real-world extraction attempts. Each lesson describes a mistake that was made, why it happened, and how this skill prevents it.
 
 ---
 

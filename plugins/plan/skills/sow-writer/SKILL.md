@@ -11,7 +11,7 @@ allowed-tools: Read, Write, StrReplace, Shell, Grep
 
 Generate a professional Statement of Work (SoW) document from Specify artifacts and project context. The SoW follows the standard $COMPANY_NAME template structure and writing voice, suitable for export to Google Docs.
 
-This skill reads the Specify artifacts (specs and design.md) produced by `code-analyzer` or `epic-analyzer` and translates technical content into client-facing deliverables. The output is a Markdown document structured to match the standard $COMPANY_NAME SoW format.
+This skill reads the Specify artifacts (specs and design.md) produced by `code-analyzer` and translates technical content into client-facing deliverables. The output is a Markdown document structured to match the standard $COMPANY_NAME SoW format.
 
 **Key principle**: Translate technical artifacts into business-oriented deliverables. Do not reproduce implementation details; focus on what the client receives, not how it is built.
 
@@ -73,7 +73,7 @@ Read the Specify artifacts from `$CHANGE_DIR` (specs/ and design.md) and validat
 **Required sections**:
 
 - Context (Source, Purpose)
-- Business Logic Blocks OR User Stories (at least one)
+- Business Logic Blocks (at least one)
 
 **Optional but valuable sections**:
 
@@ -89,7 +89,7 @@ Read the Specify artifacts from `$CHANGE_DIR` (specs/ and design.md) and validat
 **Determine artifact origin**:
 
 - `code-analysis` — Migration project (TypeScript to Rust WASM)
-- `requirements` — Greenfield development (from JIRA epic or design document)
+- `requirements` — Greenfield development (from design document)
 
 The artifact origin informs the Background and Scope narrative.
 
@@ -100,7 +100,7 @@ From the artifacts, extract:
 - **Project Name**: From design.md `## Context` → Purpose summary (extract name if possible, otherwise use Purpose).
 - **Project Purpose**: From design.md `## Context` → Purpose summary.
 - **Artifact Origin**: From design.md header → determines migration vs greenfield framing.
-- **Source Reference**: From design.md header → Source field (repo URL, JIRA epic key, or design document path).
+- **Source Reference**: From design.md header → Source field (repo URL or design document path).
 
 ### Step 3: Generate Cover Page
 
@@ -129,7 +129,7 @@ Use today's date in `DD MMMM YYYY` format. Version uses `YYYYMMDD_1` format.
 Compose a 2-3 paragraph background based on artifact origin:
 
 - **Migration** (`code-analysis` origin): Frame as modernisation of an existing system. Reference the source system, what it does, and the target platform (Rust WASM / Omnia). Close with "This Statement of Work defines the scope of the $PROJECT_NAME migration in accordance with the specifications provided by $CLIENT_NAME."
-- **Greenfield** (`requirements` origin): Frame as new capability delivery. Reference the business need from User Stories or Component purpose. Close with "This Statement of Work defines the scope of the $PROJECT_NAME delivery in accordance with the requirements specified in $SOURCE_REFERENCE."
+- **Greenfield** (`requirements` origin): Frame as new capability delivery. Reference the business need from the Component purpose. Close with "This Statement of Work defines the scope of the $PROJECT_NAME delivery in accordance with the requirements specified in $SOURCE_REFERENCE."
 
 Use the Component purpose summary and any context from the design.md Notes section.
 
@@ -180,7 +180,7 @@ Generate a table of referenced documents that inform the deliverables:
 | 2 | $DOCUMENT_2 | $DELIVERABLE(S) |
 ```
 
-For `code-analysis` artifacts, reference the source TypeScript files. For `requirements` artifacts, reference the JIRA epic and stories. Also include any external API documentation.
+For `code-analysis` artifacts, reference the source TypeScript files. For `requirements` artifacts, reference the requirements specifications. Also include any external API documentation.
 
 #### Deliverables
 
@@ -210,7 +210,7 @@ Map artifact sections to deliverables:
 | External Service Dependencies (design.md) | Integration capabilities |
 | Publication & Timing Patterns (design.md) | Event processing |
 | Domain Model (design.md) | Domain types and validation |
-| User Stories / BDD Scenarios (specs) | Feature capabilities |
+| Requirements / BDD Scenarios (specs) | Feature capabilities |
 
 Always include an **Automated Test Suite** deliverable.
 
@@ -372,7 +372,7 @@ This appendix covers:
 
 ### Step 10: Generate Appendix B — Testing Guidelines (Optional)
 
-If the artifacts contain test-related information (e.g., from crate-writer's integration test output or User Story acceptance criteria with BDD scenarios), generate a Testing Guidelines appendix covering:
+If the artifacts contain test-related information (e.g., from crate-writer's integration test output or acceptance criteria with BDD scenarios), generate a Testing Guidelines appendix covering:
 
 - Test approach (unit, integration, end-to-end)
 - Test environment requirements
@@ -430,7 +430,7 @@ PDF generated: $OUTPUT_DIR/$BASENAME.pdf
 ## Examples
 
 1. [migration-sow.md](examples/migration-sow.md) — SoW generated from `code-analysis` artifacts (TypeScript to Rust migration)
-2. [greenfield-sow.md](examples/greenfield-sow.md) — SoW generated from `requirements` artifacts (JIRA epic)
+2. [greenfield-sow.md](examples/greenfield-sow.md) — SoW generated from `requirements` artifacts (design document)
 
 ## Error Handling
 
@@ -438,7 +438,7 @@ PDF generated: $OUTPUT_DIR/$BASENAME.pdf
 | ----- | ----- | ---------- |
 | Artifacts not found | Invalid `$CHANGE_DIR` | Verify path and re-run |
 | Missing Context section | Artifacts are incomplete or malformed | Run the appropriate analyzer skill first |
-| No Business Logic or User Stories | Artifacts lack actionable content | Re-run `epic-analyzer` to enrich artifacts before generating SoW |
+| No Business Logic or Requirements | Artifacts lack actionable content | Re-run the appropriate analyzer skill to enrich artifacts before generating SoW |
 | Artifacts have many `[unknown]` tokens | Analysis was incomplete | Note unknowns as assumptions in the SoW; flag for Client Strategist review |
 | Cannot determine project type | Artifact origin header missing | Default to `requirements` framing; note in SoW |
 
