@@ -101,7 +101,7 @@ Prior to delivering software, we need to outline the technical vision, validate 
 
 ### Requirements
 
-Even when requirements have been created prior to our engagement, a large part of our success is dependent on our involvement in crafting outcome-focussed user stories, wireframes, and a simple usage narrative.
+Even when requirements have been created prior to our engagement, a large part of our success is dependent on our involvement in crafting outcome-focussed requirements, wireframes, and a simple usage narrative.
 
 ### Architecture
 

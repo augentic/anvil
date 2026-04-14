@@ -116,19 +116,10 @@ Read design.md Context section to determine origin:
 ```markdown
 ## Context
 
-- **Source**: <jira-epic | source-code>
+- **Source**: <source-code>
 ```
 
-### Requirements Artifact Mapping (Source: jira-epic)
-
-- **design.md Domain Model > Entities** -> `src/types.rs`
-- **design.md API Contracts > Endpoints** -> `src/handlers.rs`
-- **design.md Business Logic** -> domain modules or inline in handler
-- **design.md Source Capabilities Summary + design.md External Services** -> handler trait bounds (via [capability-mapping.md](references/capability-mapping.md))
-- **specs/ Requirements** -> traceability comments (`// Source: JIRA $STORY_KEY`)
-- **`[infrastructure]` steps without Omnia equivalent** -> TODO comment in handler with suggested Omnia approach; documented in Migration.md
-
-### Code-Analysis Artifact Mapping (Source: source-code)
+### Artifact Mapping
 
 - **design.md Domain Model > Types** -> `src/types.rs` (preserve exact nesting)
 - **design.md API Contracts > API Calls** -> `src/handlers.rs`

@@ -50,8 +50,7 @@ The current `defaults.rules` in `schema.yaml` contains multi-line prose strings:
 rules:
   proposal: |
     - Identify the proposal source. It will be either a git repository URL
-      (for code analysis), a JIRA/ADO epic key (for requirements analysis), or
-      a manual proposal (feature work).
+      (for code analysis) or a manual proposal (feature work).
     - Use crate names. For modified crates, use the existing spec folder name
       from .specify/specs/. For new crates, choose a name that will be the
       crate name

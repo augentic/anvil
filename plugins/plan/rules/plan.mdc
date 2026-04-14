@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Overview
 
-This plugin derives proposals, specifications, design documents, and Statements of Work from JIRA epics, design documents, and other requirement sources. It produces the Specify artifacts that downstream generation plugins (Omnia, RT) consume.
+This plugin derives proposals, specifications, design documents, and Statements of Work from design documents and other requirement sources. It produces the Specify artifacts that downstream generation plugins (Omnia, RT) consume.
 
 **Purpose**: Bridge business requirements to structured Specify artifacts ready for code generation.
 
@@ -17,7 +17,6 @@ This plugin derives proposals, specifications, design documents, and Statements 
 /plugins/plan/
 ├── .cursor-plugin/
 │   └── plugin.json      # Plugin manifest
-├── mcp.json              # Atlassian MCP for JIRA access
 ├── rules/
 │   └── plan.mdc          # This file
 └── skills/
@@ -26,40 +25,11 @@ This plugin derives proposals, specifications, design documents, and Statements 
 
 Each skill has its own SKILL.md with full details. The Specify artifact format (specs + design.md) is described in [specify.md](../../references/specify.md).
 
-## JIRA Epic Requirements
-
-For best results, JIRA epics should include:
-
-### Essential
-- **Clear epic description**: Purpose and high-level functionality
-- **User stories**: At least 3-5 stories with acceptance criteria
-- **API endpoints**: HTTP methods, paths, request/response formats
-- **Data model**: Entity definitions with field types
-
-### Recommended
-- **BDD scenarios**: Given/When/Then specifications for key workflows
-- **Error handling**: Expected error conditions and messages
-- **Validation rules**: Input constraints, format requirements
-- **External dependencies**: APIs, databases, message queues
-
-### Optional
-- **Performance requirements**: Latency targets, throughput goals
-- **Security requirements**: Authentication, authorization, data protection
-- **Example payloads**: Sample JSON/XML for requests and responses
-
-**Tip**: High `[unknown]` count in generated artifacts means the epic needs more detail.
-
 ## Troubleshooting
-
-### Cannot Fetch JIRA Epic
-
-- Is epic key correct? (Check JIRA URL)
-- Do you have read permissions?
-- Are API credentials set?
 
 ### Artifacts Missing Detail
 
-- Are user stories complete with acceptance criteria?
+- Are requirements complete with acceptance criteria?
 - Are API endpoints fully specified?
 - Are request/response schemas documented?
 

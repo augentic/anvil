@@ -1,6 +1,6 @@
 # Plan
 
-Requirements analysis, design enrichment, and statement-of-work generation from JIRA epics and design documents.
+Requirements analysis, design enrichment, and statement-of-work generation from Specify artifacts and design documents.
 
 ## Skills
 

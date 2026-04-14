@@ -53,7 +53,7 @@ TypeScript source analysis, fixture capture, and regression testing for migratio
 
 ## Plan (`plugins/plan/`)
 
-Requirements analysis, design enrichment, and SoW generation from JIRA.
+Requirements analysis, design enrichment, and SoW generation.
 
 - **sow-writer** -- Translate Specify artifacts into client-facing SoW material
 
