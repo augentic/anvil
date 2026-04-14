@@ -92,7 +92,6 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Plan Plugin (`plugins/plan/`)
 
-- `epic-analyzer` - derive proposal/specs/design context from JIRA
 - `sow-writer` - translate Specify artifacts into client-facing SoW material
 
 ## Repository Layout

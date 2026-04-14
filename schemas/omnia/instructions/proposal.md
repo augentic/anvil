@@ -10,8 +10,6 @@ Sections:
   - **Source-code**: Local path to existing source code (e.g.,
     `/path/to/legacy/crate`). This triggers the extract workflow
     — the specs phase will run extract with iterative validation.
-  - **Epic**: JIRA/ADO/Linear epic key (e.g., `ATR-7102`). This triggers
-    the Omnia workflow — the specs phase will run epic-analyzer.
   - **Manual**: Requirements are described directly in this proposal.
     This is the default workflow — specs and design are written by hand.
 - **What Changes**: Bullet list of changes. Be specific about new

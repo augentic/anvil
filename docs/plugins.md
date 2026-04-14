@@ -55,7 +55,6 @@ TypeScript source analysis, fixture capture, and regression testing for migratio
 
 Requirements analysis, design enrichment, and SoW generation from JIRA.
 
-- **epic-analyzer** -- Derive proposal, specs, and design context from JIRA epics
 - **sow-writer** -- Translate Specify artifacts into client-facing SoW material
 
 ## How It Works
@@ -71,7 +70,7 @@ Specify manages changes as a set of interdependent artifacts stored in `.specify
 
 The workflow is:
 
-1. **Define** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by JIRA epics (`/plan:epic-analyzer`) or TypeScript source analysis (`/rt:code-analyzer`).
+1. **Define** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by TypeScript source analysis (`/rt:code-analyzer`).
 2. **Build** -- Validate artifacts for completeness and cross-blueprint consistency, then implement each task. Specialist skills (crate-writer, test-writer, guest-writer, core-writer, ios-writer, android-writer) generate code from the artifacts.
 3. **Merge** -- Merge the change's specs into your project's baseline at `.specify/specs/` and move the change to the archive.
 

@@ -11,7 +11,7 @@ allowed-tools: Read, Write, StrReplace, Shell, Grep
 
 Generate a professional Statement of Work (SoW) document from Specify artifacts and project context. The SoW follows the standard $COMPANY_NAME template structure and writing voice, suitable for export to Google Docs.
 
-This skill reads the Specify artifacts (specs and design.md) produced by `code-analyzer` or `epic-analyzer` and translates technical content into client-facing deliverables. The output is a Markdown document structured to match the standard $COMPANY_NAME SoW format.
+This skill reads the Specify artifacts (specs and design.md) produced by `code-analyzer` and translates technical content into client-facing deliverables. The output is a Markdown document structured to match the standard $COMPANY_NAME SoW format.
 
 **Key principle**: Translate technical artifacts into business-oriented deliverables. Do not reproduce implementation details; focus on what the client receives, not how it is built.
 
@@ -438,7 +438,7 @@ PDF generated: $OUTPUT_DIR/$BASENAME.pdf
 | ----- | ----- | ---------- |
 | Artifacts not found | Invalid `$CHANGE_DIR` | Verify path and re-run |
 | Missing Context section | Artifacts are incomplete or malformed | Run the appropriate analyzer skill first |
-| No Business Logic or User Stories | Artifacts lack actionable content | Re-run `epic-analyzer` to enrich artifacts before generating SoW |
+| No Business Logic or User Stories | Artifacts lack actionable content | Re-run the appropriate analyzer skill to enrich artifacts before generating SoW |
 | Artifacts have many `[unknown]` tokens | Analysis was incomplete | Note unknowns as assumptions in the SoW; flag for Client Strategist review |
 | Cannot determine project type | Artifact origin header missing | Default to `requirements` framing; note in SoW |
 

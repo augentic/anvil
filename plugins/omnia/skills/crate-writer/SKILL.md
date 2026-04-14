@@ -13,7 +13,6 @@ Write Rust WASM crates from Specify artifacts (specs + design.md), following Omn
 
 This skill accepts Specify artifacts from any producer:
 
-- **Requirements artifacts** (from `epic-analyzer`) -- generates/updates crates from JIRA epics, including enriched design
 - **Code-Analysis artifacts** (from `code-analyzer`) -- generates/updates crates from existing source code
 - **Feature specs** (from Specify change artifacts) -- updated specs derived from requirements changes
 

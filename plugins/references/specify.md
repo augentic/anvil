@@ -111,7 +111,7 @@ Create a consolidated spec file from the source behavior:
 4. Error conditions from observed failure behavior.
 5. Metrics only when they are explicit in the source.
 
-### Deriving Specs From JIRA (epic-analyzer)
+### Deriving Specs From JIRA
 
 Create or update spec files from user stories and acceptance criteria:
 
