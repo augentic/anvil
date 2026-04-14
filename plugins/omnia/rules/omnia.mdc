@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Overview
 
-This plugin generates production-grade Rust WASM components from Specify artifacts (specs + design.md), targeting the Omnia SDK and wasmtime runtime. Requirements analysis and design enrichment are provided by the Plan plugin; this plugin handles code generation, testing, and review.
+This plugin generates production-grade Rust WASM components from Specify artifacts (specs + design.md), targeting the Omnia SDK and wasmtime runtime. It handles code generation, testing, and review.
 
 **Purpose**: Generate, test, and review Rust WASM crates from structured Specify artifacts.
 

@@ -14,6 +14,9 @@ Humans are expected to work through stock Specify:
 - `/spec:merge`
 - `/spec:drop`
 - `/spec:verify` (detect drift between code and baseline specs)
+- `/spec:explore` (thinking partner for ideas and requirements)
+- `/spec:status` (check artifact completion and task progress)
+- `/spec:extract` (extract Specify artifacts from existing source code)
 
 This repository provides specialist skills and references that support that workflow.
 

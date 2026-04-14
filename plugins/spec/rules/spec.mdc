@@ -17,7 +17,6 @@ This plugin provides the core Specify workflow skills: define a change, build (v
 /plugins/spec/
 ├── .cursor-plugin/
 │   └── plugin.json      # Plugin manifest
-├── mcp.json              # MCP config (none required)
 ├── rules/
 │   └── spec.mdc          # This file
 ├── references/
@@ -31,7 +30,8 @@ This plugin provides the core Specify workflow skills: define a change, build (v
     ├── drop/              # Discard a change without merging specs
     ├── explore/           # Thinking partner for ideas and investigation
     ├── verify/            # Detect drift between code and baseline specs
-    └── status/            # Check change status and progress
+    ├── status/            # Check change status and progress
+    └── extract/           # Extract Specify artifacts from existing source code
 ```
 
 Each skill has its own SKILL.md with full details. Schema resolution and composition is defined in [schema-resolution.md](../references/schema-resolution.md). The Specify artifact format is described in [specify.md](../references/specify.md). Validation rules are defined in `schema.yaml` and enforced by the build skill's validation gate.
@@ -78,6 +78,7 @@ defining -> defined -> building -> complete -> merged
                   /spec:status  (anytime)
                   /spec:verify  (after merge, detect drift)
                   /spec:drop    (discard instead of merge)
+                  /spec:extract (extract artifacts from existing source code)
 ```
 
 - **init**: One-time project setup -- creates `.specify/` directory structure and `config.yaml`
@@ -88,6 +89,7 @@ defining -> defined -> building -> complete -> merged
 - **verify**: Compare current code against baseline specs to detect drift -- read-only
 - **explore**: Read-only thinking mode for investigating problems and clarifying requirements
 - **status**: Check lifecycle status, artifact completion, task progress, and active/merged changes
+- **extract**: Extract Specify artifacts (specs + design.md) from existing source code
 
 ## Troubleshooting
 
@@ -118,4 +120,5 @@ defining -> defined -> building -> complete -> merged
 - [Verify SKILL.md](skills/verify/SKILL.md) - Detect drift between code and baseline specs
 - [Explore SKILL.md](skills/explore/SKILL.md) - Thinking and investigation mode
 - [Status SKILL.md](skills/status/SKILL.md) - Check status and progress
+- [Extract SKILL.md](skills/extract/SKILL.md) - Extract artifacts from existing source code
 - [Specify Artifact Specification](../references/specify.md) - Artifact format details

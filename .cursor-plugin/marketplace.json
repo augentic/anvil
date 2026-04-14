@@ -23,7 +23,7 @@
     {
       "name": "plan",
       "source": "plan",
-      "description": "Skills to derive proposals, specs, design, and SoW from requirements."
+      "description": "Skills to generate Statements of Work from Specify artifacts."
     },
     {
       "name": "vectis",

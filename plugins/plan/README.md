@@ -1,6 +1,6 @@
 # Plan
 
-Requirements analysis, design enrichment, and statement-of-work generation from Specify artifacts and design documents.
+Statement of Work generation from Specify artifacts.
 
 ## Skills
 

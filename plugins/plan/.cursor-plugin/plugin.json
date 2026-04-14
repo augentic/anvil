@@ -1,7 +1,7 @@
 {
   "name": "plan",
   "displayName": "Plan",
-  "description": "Derive proposals, specs, design, and SoW from Specify artifacts and design documents.",
+  "description": "Generate Statements of Work from Specify artifacts.",
   "version": "0.22.0",
   "author": {
     "name": "Augentic",
@@ -11,8 +11,8 @@
   "repository": "https://github.com/augentic/specify",
   "license": "MIT or Apache-2.0",
   "keywords": [
-    "rust",
-    "plan"
+    "plan",
+    "sow"
   ],
   "settings": {}
 }

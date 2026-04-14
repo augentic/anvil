@@ -1,6 +1,6 @@
 # Plugins
 
-Specify ships as a [Cursor plugin marketplace](https://cursor.com/docs/reference/plugins) containing five plugins. Each plugin provides specialist skills namespaced by domain. Plugins also expose [MCP](https://cursor.com/docs/mcp) tool servers for programmatic integration.
+Specify ships as a [Cursor plugin marketplace](https://cursor.com/docs/reference/plugins) containing five plugins. Each plugin provides specialist skills and reference documentation for spec-driven development.
 
 ## Workspace rule vs marketplace installs
 
@@ -53,7 +53,7 @@ TypeScript source analysis, fixture capture, and regression testing for migratio
 
 ## Plan (`plugins/plan/`)
 
-Requirements analysis, design enrichment, and SoW generation.
+Statement of Work generation from Specify artifacts.
 
 - **sow-writer** -- Translate Specify artifacts into client-facing SoW material
 
