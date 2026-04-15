@@ -1,6 +1,9 @@
-# Omnia Specs Instructions
-
-Create specification files that define WHAT the system should do.
+---
+id: specs
+description: Create specification files that define WHAT the system should do
+generates: specs/**/*.md
+needs: [proposal]
+---
 
 First, read the proposal's **Source** section to determine the workflow:
 

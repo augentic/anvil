@@ -1,0 +1,10 @@
+# .specify/project.yaml
+
+name: traffic
+domain: |
+  Traffic-related services including roadworks management,
+  lane closures, and traffic flow analysis.
+schema: omnia@v1
+
+rules:
+  proposal: rules/proposal.md

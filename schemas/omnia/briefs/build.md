@@ -1,5 +1,9 @@
-Implement the tasks in tasks.md. Do not write Rust code directly --
-delegate to the skills below.
+---
+id: build
+description: Implement the tasks in tasks.md by delegating to the skills below
+needs: [specs, design, tasks]
+tracks: tasks
+---
 
 Arguments (used by all skills):
 - CHANGE_ID: the name of this change (from specify status)

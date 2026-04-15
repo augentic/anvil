@@ -1,6 +1,6 @@
 # Specify Roadmap — Findings and Recommendations
 
-_Exported on 14/04/2026 from Cursor_
+*Exported on 14/04/2026 from Cursor*
 
 ---
 
@@ -62,17 +62,19 @@ See [cli.md](cli.md) for the full crate structure sketch.
 
 **Subcommands:**
 
-| Command | Replaces |
-|---------|----------|
-| `specify init <schema>` | Agent's mkdir/copy/write logic in init skill |
-| `specify validate <change-dir>` | 40 lines of prose validation in build skill |
-| `specify merge <change-dir>` | `merge-specs.py` |
-| `specify status [change-name]` | Agent parsing .metadata.yaml + task checkboxes |
-| `specify schema resolve <value>` | Agent interpreting schema-resolution.md |
-| `specify schema check <schema-dir>` | Parts of checks.ts |
-| `specify task next <change-dir>` | Agent parsing tasks.md for next incomplete task |
-| `specify task mark <change-dir> <n>` | Agent editing checkbox in tasks.md |
-| `specify lint <change-dir>` | Cross-artifact consistency checks |
+
+| Command                              | Replaces                                        |
+| ------------------------------------ | ----------------------------------------------- |
+| `specify init <schema>`              | Agent's mkdir/copy/write logic in init skill    |
+| `specify validate <change-dir>`      | 40 lines of prose validation in build skill     |
+| `specify merge <change-dir>`         | `merge-specs.py`                                |
+| `specify status [change-name]`       | Agent parsing .metadata.yaml + task checkboxes  |
+| `specify schema resolve <value>`     | Agent interpreting schema-resolution.md         |
+| `specify schema check <schema-dir>`  | Parts of checks.ts                              |
+| `specify task next <change-dir>`     | Agent parsing tasks.md for next incomplete task |
+| `specify task mark <change-dir> <n>` | Agent editing checkbox in tasks.md              |
+| `specify lint <change-dir>`          | Cross-artifact consistency checks               |
+
 
 **The key benefit:** `specify validate` replaces the entire "Per-blueprint validation" and "Cross-blueprint consistency checks" sections in `build/SKILL.md` (currently ~40 lines of prose the agent must interpret) with a single shell command that returns structured JSON or a pass/fail exit code. The skill prose shrinks to "run the validation and act on the result."
 
@@ -83,6 +85,7 @@ See [cli.md](cli.md) for the full crate structure sketch.
 With a CLI handling resolution, the config can become genuinely thin.
 
 **Current pain points:**
+
 - `schema` field has complex resolution semantics (bare name vs URL vs `@ref`)
 - `context` and `overrides` are free-form strings with placeholder detection
 - The schema's `defaults` section duplicates what could be inline defaults
@@ -108,10 +111,18 @@ overrides:
 ```
 
 Key changes:
-- **`project` block** replaces the freeform `context` string with structured fields the CLI can use for validation and the agent can use for context
-- **`overrides` uses structured keys** where possible, with prose-only overrides staying as freeform strings under an `instructions` key
+
+- `**project` block** replaces the freeform `context` string with structured fields the CLI can use for validation and the agent can use for context
+- `**overrides` uses structured keys** where possible, with prose-only overrides staying as freeform strings under an `instructions` key
 - **Schema resolution is a CLI concern**, not a skill concern
-- **`.metadata.yaml` stays per-change** but gets validated by the CLI
+- `**.metadata.yaml` stays per-change** but gets validated by the CLI
+
+### Considerations
+
+- *schema* for tech stack settings
+- ?? for platform settings
+- *config* for repo settings
+- ADRs for capturing long-lasting architectural decisions
 
 ### Horizon 3: Multi-Repo Coordination
 
@@ -123,13 +134,15 @@ See [horizons.md](horizons.md) for the full design.
 
 ## Shell Commands in Skills: Design Principles
 
-| Use CLI (`specify ...`) when: | Use agent judgment when: |
-|-------------------------------|--------------------------|
-| The operation must be idempotent | The response depends on context |
-| The output is structured (JSON, exit codes) | The output is natural language |
+
+| Use CLI (`specify ...`) when:                 | Use agent judgment when:                    |
+| --------------------------------------------- | ------------------------------------------- |
+| The operation must be idempotent              | The response depends on context             |
+| The output is structured (JSON, exit codes)   | The output is natural language              |
 | Correctness is verifiable (schema validation) | Correctness requires semantic understanding |
-| The operation is repeated across many skills | The operation is unique to one skill |
-| Failure modes are enumerable | Failure modes are open-ended |
+| The operation is repeated across many skills  | The operation is unique to one skill        |
+| Failure modes are enumerable                  | Failure modes are open-ended                |
+
 
 The `specify` CLI gives a clean abstraction boundary. Instead of skills containing scattered shell commands, they can use `specify` subcommands that return structured output. The principle: **the CLI owns Specify operations; external tool invocation stays with the agent.**
 
@@ -143,7 +156,7 @@ A good litmus test: "Would this command need to understand `.specify/` directory
 2. **Migrate `init` and `merge` skills** to use CLI commands
 3. **Migrate `build` validation** to use `specify validate`
 4. **Config v2** with structured `project` block and CLI-backed resolution
-5. **`specify task`** subcommands for deterministic task tracking
+5. `**specify task`** subcommands for deterministic task tracking
 6. **Federation config** and `specify federation sync` for multi-repo
 7. **Cross-repo spec references** and `specify federation validate`
 
@@ -153,14 +166,16 @@ The first three items would take a single `/spec:define` + `/spec:build` cycle t
 
 ## Impact on Existing Skills
 
-| Skill | Current agent-interpreted logic | Moves to CLI |
-|-------|---------------------------------|--------------|
-| `init` | mkdir, file creation, schema resolution, cache population | `specify init` |
-| `define` | Schema resolution, metadata writes, overlap detection | `specify schema resolve`, `specify status` |
-| `build` | Artifact validation, task progress tracking | `specify validate`, `specify task next/mark` |
-| `merge` | merge-specs.py invocation, coherence check, archive move | `specify merge` |
-| `verify` | Spec parsing, requirement extraction | `specify diff` |
-| `status` | Metadata + task parsing | `specify status` |
+
+| Skill    | Current agent-interpreted logic                           | Moves to CLI                                 |
+| -------- | --------------------------------------------------------- | -------------------------------------------- |
+| `init`   | mkdir, file creation, schema resolution, cache population | `specify init`                               |
+| `define` | Schema resolution, metadata writes, overlap detection     | `specify schema resolve`, `specify status`   |
+| `build`  | Artifact validation, task progress tracking               | `specify validate`, `specify task next/mark` |
+| `merge`  | merge-specs.py invocation, coherence check, archive move  | `specify merge`                              |
+| `verify` | Spec parsing, requirement extraction                      | `specify diff`                               |
+| `status` | Metadata + task parsing                                   | `specify status`                             |
+
 
 ---
 
@@ -171,3 +186,4 @@ The `roadmap/dsl.md` conversation explored extending `checks.ts` vs building a R
 - **Phase 1 checks (already done):** `checks.ts` validates the framework repo (symlinks, schema integrity, skill frontmatter, etc.)
 - **Phase 2:** `specify check` validates consumer project artifacts at runtime. `checks.ts` remains for framework CI; `specify check` is for runtime project validation.
 - **Phase 3 (optional):** If the skill count grows significantly, the Rust DSL from `roadmap/dsl.md` can generate SKILL.md files from typed definitions, with the `specify` crate providing the type system. But this is premature for 18 skills.
+

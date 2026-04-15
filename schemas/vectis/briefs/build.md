@@ -1,5 +1,9 @@
-Implement the tasks in tasks.md. Do not write Rust or Swift code
-directly -- delegate to the skills below.
+---
+id: build
+description: Implement the tasks in tasks.md by delegating to the skills below
+needs: [specs, design, tasks]
+tracks: tasks
+---
 
 Arguments (used by all skills):
 - CHANGE_ID: the name of this change (from specify status)
@@ -410,7 +414,7 @@ feature spec if present.
 
 Spawn a sub-agent to run the skill. The skill includes `swift build`
 for the iOS package and `./gradlew :vectis-design:compileDebugKotlin`
-for the Android module once the shell’s `settings.gradle.kts` includes
+for the Android module once the shell's `settings.gradle.kts` includes
 `:vectis-design`. Verification is internal to the skill.
 
 ---

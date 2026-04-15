@@ -1,0 +1,13 @@
+# .specify/registry.yaml (lives in any repo, or a dedicated platform repo)
+
+name: realtime
+version: 1
+
+projects:
+  - name: traffic
+    url: git@github.com:org/traffic.git
+    schema: omnia@v1
+
+  - name: command-centre
+    url: git@github.com:org/command-centre.git
+    schema: omnia@v1

@@ -98,7 +98,7 @@ defined in the spec format (`## ADDED Requirements`,
 `## RENAMED Requirements`). Requirement
 blocks still use `### Requirement:` and `#### Scenario:` headings, but the
 stable merge key is the `ID: REQ-XXX` line rather than the display name.
-See the schema's `instructions/specs.md` for the full delta structure and the
+See the schema's `briefs/specs.md` for the full delta structure and the
 merge skill for how deltas merge into the baseline.
 
 ### Deriving Specs From Source Code (code-analyzer)
@@ -179,7 +179,7 @@ Generator-owned binding decisions such as Omnia trait composition remain in spec
 
 ## Proposal Document
 
-Use `proposal.md` to capture why the change exists and what is in scope. The schema's instruction file (`instructions/proposal.md`) provides the full output template.
+Use `proposal.md` to capture why the change exists and what is in scope. The schema's brief file (`briefs/proposal.md`) provides the full output template.
 
 The **Crates** section creates the contract between proposal and specs phases. Each crate listed will need a corresponding spec file at `specs/<name>/spec.md`. For repository sources, the analyzer discovers crates automatically.
 

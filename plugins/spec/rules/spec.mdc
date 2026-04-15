@@ -38,16 +38,15 @@ Each skill has its own SKILL.md with full details. Schema resolution and composi
 
 ## Schema Structure
 
-Schemas define the artifact graph, instructions, and heading conventions. Each schema directory contains:
+Schemas define the artifact graph, briefs, and heading conventions. Each schema directory contains:
 
 ```text
 schemas/<name>/
-├── schema.yaml      # Declarations: blueprints, validation, terminology, build config
-├── config.yaml      # Starter config for /spec:init
-└── instructions/    # Detailed instructions per blueprint + build
+├── schema.yaml
+└── briefs/
 ```
 
-`schema.yaml` is declaration-only — instructions live in separate files referenced by path. Schemas can extend other schemas via the `extends` field.
+`schema.yaml` defines the pipeline phases — detailed guidance lives in brief files with YAML frontmatter. Schemas can extend other schemas via the `extends` field.
 
 ## Change Lifecycle
 
@@ -81,7 +80,7 @@ defining -> defined -> building -> complete -> merged
                   /spec:extract (extract artifacts from existing source code)
 ```
 
-- **init**: One-time project setup -- creates `.specify/` directory structure and `config.yaml`
+- **init**: One-time project setup -- creates `.specify/` directory structure and `project.yaml`
 - **define**: Create a change directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:define <name> <blueprint-id>`.
 - **build**: Validate artifacts against `schema.yaml` rules and cross-blueprint consistency, then implement tasks from the change, marking them complete as you go
 - **merge**: Preview merge operations, finalize a completed change, merge delta specs into baseline

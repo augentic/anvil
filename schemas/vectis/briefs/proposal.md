@@ -1,4 +1,8 @@
-Create the proposal document that establishes WHY this change is needed.
+---
+id: proposal
+description: Establish why this change is needed
+generates: proposal.md
+---
 
 Sections:
 - **Why**: 1-2 sentences on the problem or opportunity. What problem does

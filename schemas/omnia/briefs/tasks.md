@@ -1,4 +1,9 @@
-Create the task list that breaks down the implementation work.
+---
+id: tasks
+description: Create the task list that breaks down the implementation work
+generates: tasks.md
+needs: [specs, design]
+---
 
 Follow the task format conventions defined in the define skill for
 checkbox format, grouping, ordering, and skill directive tags.

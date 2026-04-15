@@ -1,4 +1,9 @@
-Create the design document to explain HOW to implement the change.
+---
+id: design
+description: Create the design document to explain HOW to implement the change
+generates: design.md
+needs: [proposal]
+---
 
 Include sections based on the platforms declared in the proposal.
 The Domain Model and Capabilities sections are always present (core

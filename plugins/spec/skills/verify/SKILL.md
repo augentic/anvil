@@ -17,10 +17,10 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
 
 1. **Check initialization and resolve schema**
 
-   Verify `.specify/config.yaml` exists. If not:
+   Verify `.specify/project.yaml` exists. If not:
    > "Specify is not initialized in this project. Run `/spec:init` to get started."
 
-   Read `.specify/config.yaml` for the `schema` value and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`. Read `schema.yaml` for `terminology.deliverable` (infer plural and heading forms from the deliverable name). Read `references/spec-format.md` for heading conventions.
+   Read `.specify/project.yaml` for the `schema` value and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`. Read `references/spec-format.md` for heading conventions.
 
 2. **Locate baseline specs**
 
@@ -44,7 +44,7 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
 
    For each capability with a source directory, analyze the source code to build a current-state requirement inventory:
 
-   a. Read the source files. Check the schema's `defaults.context` field (from the resolved `schema.yaml`) for tech-stack hints to narrow file extensions (e.g., `.rs` for the omnia schema). Fall back to common extensions (`.rs`, `.ts`, `.js`, `.go`, `.py`) when the context does not specify a language.
+   a. Read the source files. Check the schema's `domain` field (from the resolved `schema.yaml`) for tech-stack hints to narrow file extensions (e.g., `.rs` for the omnia schema). Fall back to common extensions (`.rs`, `.ts`, `.js`, `.go`, `.py`) when the domain does not specify a language.
    b. Identify distinct behaviors: handlers, business rules, validation logic, error handling, external calls
    c. For each identified behavior, note:
       - A brief description of what the code does

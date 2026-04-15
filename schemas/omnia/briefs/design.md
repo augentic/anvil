@@ -1,4 +1,9 @@
-Create the design document to explain HOW to implement the change.
+---
+id: design
+description: Create the design document to explain HOW to implement the change
+generates: design.md
+needs: [proposal]
+---
 
 ## Output Structure
 

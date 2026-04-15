@@ -105,15 +105,21 @@ async function checkStaleClaims(): Promise<void> {
 // 3. Schema YAML files validate against JSON Schema
 // ──────────────────────────────────────────────────────────────
 
+interface PipelineEntry {
+  id: string;
+  brief: string;
+}
+
 interface SchemaYaml {
   name: string;
-  version?: string;
+  version?: number;
   description?: string;
-  terminology?: Record<string, string>;
-  validation?: Record<string, boolean>;
-  blueprints: { id: string; requires: string[]; instructions?: string }[];
-  build: { requires: string[]; instructions?: string };
-  defaults?: { context?: string; rules?: Record<string, string> };
+  domain?: string;
+  pipeline: {
+    define: PipelineEntry[];
+    build: PipelineEntry[];
+    merge: PipelineEntry[];
+  };
 }
 
 async function validateSchemaYaml(): Promise<void> {
@@ -142,8 +148,26 @@ async function validateSchemaYaml(): Promise<void> {
 
 // ──────────────────────────────────────────────────────────────
 // 4. Schema referential integrity
-//    (blueprint requires, instructions paths, defaults.rules keys)
+//    (pipeline brief paths, frontmatter needs references, id uniqueness)
 // ──────────────────────────────────────────────────────────────
+
+async function parseBriefFrontmatter(
+  briefPath: string,
+): Promise<Record<string, unknown> | null> {
+  let content: string;
+  try {
+    content = await Deno.readTextFile(briefPath);
+  } catch {
+    return null;
+  }
+  const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!fmMatch) return null;
+  try {
+    return parseYaml(fmMatch[1]) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
 
 async function checkSchemaIntegrity(): Promise<void> {
   for await (const entry of walk(SCHEMA_DIR, {
@@ -157,40 +181,75 @@ async function checkSchemaIntegrity(): Promise<void> {
       await Deno.readTextFile(entry.path),
     ) as SchemaYaml;
 
-    const blueprints = schema.blueprints ?? [];
-    const ids = new Set(blueprints.map((bp) => bp.id));
+    const pipeline = schema.pipeline;
+    if (!pipeline) continue;
 
-    for (const bp of blueprints) {
-      for (const req of bp.requires ?? []) {
-        if (!ids.has(req)) {
-          fail(
-            `Schema integrity: ${name}/schema.yaml: blueprint '${bp.id}' requires undeclared '${req}'`,
-          );
+    const allEntries: PipelineEntry[] = [
+      ...(pipeline.define ?? []),
+      ...(pipeline.build ?? []),
+      ...(pipeline.merge ?? []),
+    ];
+
+    const ids = new Set<string>();
+    for (const pe of allEntries) {
+      if (ids.has(pe.id)) {
+        fail(
+          `Schema integrity: ${name}/schema.yaml: duplicate pipeline entry id '${pe.id}'`,
+        );
+      }
+      ids.add(pe.id);
+    }
+
+    for (const pe of allEntries) {
+      try {
+        await Deno.stat(join(dirPath, pe.brief));
+      } catch {
+        fail(
+          `Schema integrity: ${name}/schema.yaml: brief not found for '${pe.id}': ${pe.brief}`,
+        );
+        continue;
+      }
+
+      const fm = await parseBriefFrontmatter(join(dirPath, pe.brief));
+      if (!fm) {
+        fail(
+          `Schema integrity: ${name}/schema.yaml: brief '${pe.id}' has no valid frontmatter: ${pe.brief}`,
+        );
+        continue;
+      }
+
+      if (fm.id !== pe.id) {
+        fail(
+          `Schema integrity: ${name}/schema.yaml: pipeline id '${pe.id}' does not match brief frontmatter id '${fm.id}'`,
+        );
+      }
+
+      const needs = fm.needs as string[] | undefined;
+      if (needs) {
+        for (const dep of needs) {
+          if (!ids.has(dep)) {
+            fail(
+              `Schema integrity: ${name}/schema.yaml: brief '${pe.id}' needs undeclared '${dep}'`,
+            );
+          }
         }
       }
     }
 
-    const build = schema.build ?? { requires: [] };
-    for (const req of build.requires ?? []) {
-      if (!ids.has(req)) {
-        fail(
-          `Schema integrity: ${name}/schema.yaml: build.requires references undeclared '${req}'`,
-        );
-      }
-    }
-
-    // Cycle detection via Kahn's algorithm
+    // Cycle detection via Kahn's algorithm on needs graph
     const inDeg = new Map<string, number>();
     const adj = new Map<string, string[]>();
     for (const id of ids) {
       inDeg.set(id, 0);
       adj.set(id, []);
     }
-    for (const bp of blueprints) {
-      for (const req of bp.requires ?? []) {
-        if (ids.has(req)) {
-          adj.get(req)!.push(bp.id);
-          inDeg.set(bp.id, (inDeg.get(bp.id) ?? 0) + 1);
+    for (const pe of allEntries) {
+      const fm = await parseBriefFrontmatter(join(dirPath, pe.brief));
+      const needs = (fm?.needs as string[] | undefined) ?? [];
+      for (const dep of needs) {
+        if (ids.has(dep)) {
+          adj.get(dep)!.push(pe.id);
+          inDeg.set(pe.id, (inDeg.get(pe.id) ?? 0) + 1);
         }
       }
     }
@@ -206,39 +265,7 @@ async function checkSchemaIntegrity(): Promise<void> {
       }
     }
     if (visited < ids.size) {
-      fail(`Schema integrity: ${name}/schema.yaml: cycle in blueprint requires graph`);
-    }
-
-    for (const bp of blueprints) {
-      const inst = bp.instructions ?? "";
-      if (inst) {
-        try {
-          await Deno.stat(join(dirPath, inst));
-        } catch {
-          fail(
-            `Schema integrity: ${name}/schema.yaml: blueprint '${bp.id}' instructions not found: ${inst}`,
-          );
-        }
-      }
-    }
-
-    const buildInst = build.instructions ?? "";
-    if (buildInst) {
-      try {
-        await Deno.stat(join(dirPath, buildInst));
-      } catch {
-        fail(
-          `Schema integrity: ${name}/schema.yaml: build.instructions not found: ${buildInst}`,
-        );
-      }
-    }
-
-    for (const key of Object.keys(schema.defaults?.rules ?? {})) {
-      if (!ids.has(key)) {
-        fail(
-          `Schema integrity: ${name}/schema.yaml: defaults.rules key '${key}' does not match any blueprint id`,
-        );
-      }
+      fail(`Schema integrity: ${name}/schema.yaml: cycle in brief needs graph`);
     }
   }
 }

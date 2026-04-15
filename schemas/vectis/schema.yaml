@@ -2,139 +2,24 @@
 name: vectis
 version: 2
 description: Vectis workflow
+domain: |
+  Tech stack: Rust (Crux 0.17.0), Swift 6 (SwiftUI, iOS 17+), Kotlin 2.x (Jetpack Compose, Material 3), VectisDesign tokens
+  Architecture: Crux App trait with Model, Event, ViewModel, Effect, Command
+  Testing: Rust integration tests (cargo test), Xcode build verification (make build), Gradle build verification (./gradlew :app:assembleDebug)
 
-terminology:
-  deliverable: feature
-
-blueprints:
-  - id: proposal
-    generates: proposal.md
-    description: Initial proposal document
-    instructions: instructions/proposal.md
-    requires: []
-    validate:
-      - Has a Why section with at least one sentence
-      - Has a Source section identifying Manual as the source
-      - Has a Features section listing at least one new or modified feature
-      - Feature names are kebab-case
-      - Has a Platforms section listing at least core
-
-  - id: specs
-    generates: specs/**/*.md
-    description: Detailed specifications for the change
-    instructions: instructions/specs.md
-    requires:
-      - proposal
-    validate:
-      - Every requirement has at least one scenario
-      - Every requirement includes a stable ID line immediately after the
-        heading
-      - Requirement IDs use the REQ-XXX format and stay stable when behavior is
-        modified or renamed
-      - Uses SHALL/MUST language for normative requirements (not should/may)
-      - Requirements use the flat baseline format with top-level requirement
-        headings
-      - Every scenario uses WHEN/THEN format
-      - Platform requirements share the same REQ-XXX ID namespace (no platform
-        prefixes)
-
-  - id: design
-    generates: design.md
-    description: Technical design document with implementation details
-    instructions: instructions/design.md
-    requires:
-      - proposal
-    validate:
-      - Has a Context section
-      - Has a Domain Model section (or explicitly states none needed)
-      - Has a Capabilities section listing Crux capabilities used
-
-  - id: tasks
-    generates: tasks.md
-    description: Implementation checklist with trackable tasks
-    instructions: instructions/tasks.md
-    requires:
-      - specs
-      - design
-    validate:
-      - Every task uses checkbox format (- [ ] X.Y description)
-      - Tasks are grouped under numbered headings
-      - At least one task exists
-
-validation:
-  proposal-features-have-specs: true
-  design-references-valid: true
-  spec-format-valid: true
-
-build:
-  requires:
-    - tasks
-  tracks: tasks.md
-  instructions: instructions/build.md
-
-defaults:
-  context: |
-    Tech stack: Rust (Crux 0.17.0), Swift 6 (SwiftUI, iOS 17+), Kotlin 2.x (Jetpack Compose, Material 3), VectisDesign tokens
-    Architecture: Crux App trait with Model, Event, ViewModel, Effect, Command
-    Testing: Rust integration tests (cargo test), Xcode build verification (make build), Gradle build verification (./gradlew :app:assembleDebug)
-  rules:
-    proposal: |
-      - Source is always Manual for Crux projects.
-      - Use feature names. For modified features, use the existing spec folder
-        name from .specify/specs/. For new features, choose a descriptive
-        kebab-case name that reflects the business capability (e.g. todo-app,
-        weather-forecast), not a component type.
-      - List which platforms this change targets in the Platforms section.
-        core is always required. Add ios, android, web, or design-system as
-        applicable.
-    specs: |
-      - Use WHEN/THEN format for scenarios
-      - Reference existing patterns before inventing new ones
-      - Organize baseline specs as flat requirement blocks using
-        ### Requirement: <name> plus ID: REQ-XXX and #### Scenario: <name>
-        entries
-      - Use an optional ## Purpose preamble plus optional ## Error Conditions
-        and ## Metrics sections for shared context
-      - For update changes use top-level ADDED/MODIFIED/REMOVED/RENAMED
-        delta-operation sections keyed by stable requirement IDs
-      - Map application features to requirements with scenarios and business
-        rules to requirements with validation scenarios
-      - Place platform-specific behavioral requirements in dedicated sections
-        (## iOS Shell Requirements, ## Android Shell Requirements, etc.)
-      - Use the same REQ-### ID namespace for platform-specific requirements;
-        do not introduce additional prefixes (e.g. REQ-IOS-xxx) because the
-        shared spec-format contract requires IDs to match ^REQ-[0-9]{3}$
-    design: |
-      - Include Context section identifying the platforms in scope
-      - Document the Crux type system: App struct name, Model fields, Event
-        variants (shell-facing and internal), ViewModel enum, Page enum,
-        Route enum, Effect enum, per-page view structs
-      - Document Capabilities table (Render, HTTP, KV, Time, SSE, Platform)
-        with Yes/No and details
-      - Document API contracts with method, URL, request/response shapes
-      - If iOS is in scope, include an iOS Shell Details section documenting
-        navigation style, screen customizations, platform features, design
-        system overrides
-      - If Android is in scope, include an Android Shell Details section
-        documenting navigation patterns, Material 3 customizations, platform
-        features
-      - If design-system is in scope, include a Design System Details section
-        documenting token categories, value shapes, and downstream consumers
-      - Include Implementation Constraints: Crux 0.17.0, facet 0.31,
-        uniffi 0.29.4, Swift 6, iOS 17+, Kotlin 2.x, min SDK 34
-      - Use mermaid diagrams for type relationships and navigation flows
-    tasks: |
-      - For greenfield features (no existing shared/src/app.rs), structure
-        tasks around the create-mode skill chain: 1) core-writer,
-        2) verification, 3) core-reviewer. Do not list individual Rust code
-        changes — the skill handles file-level generation.
-      - For brownfield features (existing app.rs), structure tasks around
-        the specific behavioral changes from the specs. core-writer handles
-        code modifications.
-      - If iOS is in scope, add tasks: 1) build infrastructure (cargo xcode),
-        2) ios-writer, 3) build verification, 4) ios-reviewer.
-      - If Android is in scope, add tasks: 1) android-writer,
-        2) Gradle build verification, 3) android-reviewer.
-      - If design-system is in scope, add tasks: 1) design-system-writer,
-        2) swift build verification, 3) downstream impact check.
-      - Order task groups: design-system first, core second, shells last.
+pipeline:
+  define:
+    - id: proposal
+      brief: briefs/proposal.md
+    - id: specs
+      brief: briefs/specs.md
+    - id: design
+      brief: briefs/design.md
+    - id: tasks
+      brief: briefs/tasks.md
+  build:
+    - id: build
+      brief: briefs/build.md
+  merge:
+    - id: merge
+      brief: briefs/merge.md

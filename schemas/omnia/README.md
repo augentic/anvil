@@ -10,12 +10,13 @@
 
 | File | Description |
 |------|-------------|
-| `schema.yaml` | Blueprint declarations, terminology (`deliverable: crate`), validation flags, build config, and defaults (context + per-blueprint rules) |
-| `instructions/proposal.md` | Generation instructions for the proposal blueprint |
-| `instructions/specs.md` | Generation instructions for the specs blueprint |
-| `instructions/design.md` | Generation instructions for the design blueprint |
-| `instructions/tasks.md` | Generation instructions for the tasks blueprint |
-| `instructions/build.md` | Implementation instructions for the build phase |
+| `schema.yaml` | Pipeline stages, domain context, and per-stage brief references |
+| `briefs/proposal.md` | Generation brief for the proposal stage |
+| `briefs/specs.md` | Generation brief for the specs stage |
+| `briefs/design.md` | Generation brief for the design stage |
+| `briefs/tasks.md` | Generation brief for the tasks stage |
+| `briefs/build.md` | Implementation brief for the build stage |
+| `briefs/merge.md` | Merge brief for finalizing a change |
 
 ## Blueprints
 

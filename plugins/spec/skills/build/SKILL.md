@@ -22,13 +22,13 @@ Implement tasks from a Specify change.
 
 2. **Read project config and resolve schema**
 
-   Read `.specify/config.yaml` for project context overrides and rule overrides.
+   Read `.specify/project.yaml` for project domain and rule overrides.
 
    Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status.
 
-   **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `instructions/build.md`. Read `schema.yaml` from the resolved location.
+   **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `briefs/build.md`. Read `schema.yaml` from the resolved location.
 
-   **Resolve effective context**: use the project's `context` (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's `defaults.context` (from the resolved `schema.yaml`). **Resolve effective rules**: for each blueprint ID under `overrides`, use the project's value (from `.specify/config.yaml`) if present and non-empty, otherwise fall back to the schema's `defaults.rules` value (from the resolved `schema.yaml`). Use effective context and effective rules as constraints guiding your implementation -- do not copy them into code comments.
+   **Resolve effective domain**: use the project's `domain` (from `.specify/project.yaml`) if present and non-empty, otherwise fall back to the schema's `domain` (from the resolved `schema.yaml`). **Resolve effective rules**: for each brief ID under `rules`, use the project's value (from `.specify/project.yaml`) if present and non-empty; rules are optional project-level overrides. Use effective domain and effective rules as constraints guiding your implementation -- do not copy them into code comments.
 
 3. **Check lifecycle status**
 
@@ -37,77 +37,42 @@ Implement tasks from a Specify change.
    - If `status` is `complete`: congratulate, all tasks already done. Suggest `/spec:merge`.
    - Otherwise: proceed.
 
-4. **Check blueprint completion**
+4. **Check brief completion**
 
-   For each blueprint defined in `schema.yaml`, check whether it is complete:
-   - If `generates` is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
+   For each brief in `pipeline.define` entries, check whether it is complete:
+   - Read each brief's frontmatter `generates` field. If it is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
    - If `generates` is a glob pattern (e.g., `specs/**/*.md`), check if the directory contains at least one matching `.md` file.
 
    **Handle states:**
-   - If any blueprint listed in `build.requires` (from `schema.yaml`) is incomplete: show message listing missing artifacts, suggest using `/spec:define` to create them
+   - Read the build brief's frontmatter `needs` field (from the `pipeline.build` entry's brief). If any brief listed in `needs` is incomplete: show message listing missing artifacts, suggest using `/spec:define` to create them
    - Otherwise: proceed to implementation
 
 5. **Read context files**
 
-   Read all artifacts for the change. For each blueprint defined in `schema.yaml`, read the file(s) at `.specify/changes/<name>/<generates>`. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
+   Read all artifacts for the change. For each brief in `pipeline.define`, read the file(s) using the brief's frontmatter `generates` path. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
 
-6. **Validate artifacts**
+6. **Validate needs**
 
-   Run all validation checks before proceeding to implementation. Collect all results — do not stop at the first failure.
+   Validate that all briefs listed in the build brief's `needs` frontmatter have their corresponding artifacts present and non-empty in the change directory.
 
-   **Per-blueprint validation**: For each blueprint that has a `validate` field in `schema.yaml`, verify each rule against the artifact content read in step 5. Record each rule result as **PASS** or **FAIL** with a reason.
+   For each needed brief ID, look up its `generates` path from its frontmatter. Check that the generated artifact exists at `.specify/changes/<name>/<generates>` and is non-empty (for glob patterns, at least one matching file must exist).
 
-   **Cross-blueprint consistency checks**: For each key in `validation` (from `schema.yaml`) that is set to `true`, run the named check:
-   - `proposal-crates-have-specs`: every crate listed in the proposal has a corresponding spec file under `specs/`
-   - `design-references-valid`: requirement IDs (`REQ-XXX`) referenced in `design.md` exist in spec files
-   - `spec-format-valid`: all spec files match the heading structure defined in `references/spec-format.md`
+   **If all needed artifacts are present**: report "Needs satisfied" and continue to step 7.
 
-   Record each check result as **PASS** or **FAIL** with details.
-
-   **If all checks pass**: report "Validation passed" and continue to step 7.
-
-   **If any check fails**: produce a validation summary and **halt** — do not proceed to implementation. The example below uses the omnia schema's validation keys; the actual keys come from the `validation` section of the resolved `schema.yaml`.
+   **If any needed artifact is missing**: halt and report which artifacts are missing.
 
    ```text
-   ## Validation Failed: <change-name>
+   ## Needs Not Met: <change-name>
 
-   ### Per-Blueprint Validation
+   Missing artifacts required by build:
+   - <brief-id>: expected <generates-path> — not found
 
-   **proposal.md**
-   - PASS: Has a Why section with at least one sentence
-   - FAIL: Has a Crates section listing at least one new or modified crate — heading found but no content below it
-
-   **specs/user-auth/spec.md**
-   - PASS: Every requirement has at least one scenario
-   - FAIL: Uses SHALL/MUST language for normative requirements — REQ-003 uses "should"
-
-   **design.md**
-   - PASS: Has a Context section
-
-   **tasks.md**
-   - PASS: Every task uses checkbox format
-
-   ### Cross-Blueprint Checks
-
-   - PASS: proposal-crates-have-specs
-   - FAIL: design-references-valid — REQ-005 referenced in design.md not found in specs
-   - PASS: spec-format-valid
-
-   ### Result
-
-   X passed, Y failed — fix the failures above before implementation can proceed.
+   Run `/spec:define` to create the missing artifacts.
    ```
-
-   Suggest fixes for each failure:
-   - Missing artifacts: "Run `/spec:define <name> <artifact-id>` to regenerate."
-   - Spec format issues: "Edit the spec file to match the required structure."
-   - Cross-artifact issues: "Update the referenced artifact to fix the inconsistency."
-
-   Use heading conventions from `references/spec-format.md`. If `validate` is not defined for an artifact, skip validation for that artifact.
 
 7. **Show current progress**
 
-   Read the file tracked by `build.tracks` (from `schema.yaml`) and count:
+   Read the file tracked by the build brief's frontmatter `tracks` field and count:
    - `- [ ] ` lines = incomplete tasks
    - `- [x] ` or `- [X] ` lines = complete tasks
 
@@ -126,7 +91,7 @@ Implement tasks from a Specify change.
 
 9. **Implement tasks (loop until done or blocked)**
 
-   Read the build instruction file from the resolved schema directory (the file path is given by `build.instructions` in `schema.yaml`).
+   Read the build brief from the resolved schema directory (the file path is given by the `pipeline.build` entry's `brief` field in `schema.yaml`).
 
    **Skill directive tags**: Before starting each task, check whether it contains an HTML comment tag in the form `<!-- skill: plugin:skill-name -->`. If present, invoke that skill directly instead of following the default mode-detection logic. For example, a task tagged `<!-- skill: omnia:crate-writer -->` should be handled by running `/omnia:crate-writer` with the standard arguments. Tasks without a skill tag follow the instruction file's mode detection and step-by-step execution as before.
 

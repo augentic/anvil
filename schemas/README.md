@@ -1,8 +1,8 @@
 # Specify Schemas
 
 This directory contains the schema definitions for the Specify workflow. Each
-schema provides artifact declarations, default context and rules, and artifact
-instructions — all within `schema.yaml` and `instructions/`.
+schema provides a pipeline of brief references and default domain context —
+all within `schema.yaml` and `briefs/`.
 
 ## Schemas
 
@@ -19,29 +19,31 @@ falls back to the parent directory for missing files).
 
 ```text
 schemas/<name>/
-├── schema.yaml      # Blueprint declarations, terminology, build config, defaults
-└── instructions/    # Detailed instructions for each blueprint and build
+├── schema.yaml      # Pipeline declarations, domain context
+└── briefs/          # Brief markdown files with YAML frontmatter
     ├── proposal.md
     ├── specs.md
     ├── design.md
     ├── tasks.md
-    └── build.md
+    ├── build.md
+    └── merge.md
 ```
 
-Child schemas that use `extends` may omit the entire `instructions/` directory
+Child schemas that use `extends` may omit the entire `briefs/` directory
 or individual files within it. Missing files are resolved from the parent schema
 via fallback.
 
-- `**schema.yaml**`: Declares blueprints (id, instructions file path,
-dependencies, validation rules), `terminology` (the `deliverable` name,
-e.g., "crate"), the `build` configuration, and `defaults` (default
-`context` and per-blueprint `rules`). Child schemas may use `extends` to
-inherit from a parent and only override what differs. Skills read this to
-know how to generate blueprints and implement tasks.
-- `**instructions/**`: One markdown file per blueprint plus `build.md`.
-Contains the detailed generation or implementation instructions including
-output structure. Referenced by file path from `schema.yaml`'s
-`instructions` field.
+- **`schema.yaml`**: Declares the pipeline (define, build, merge phases),
+  each referencing a brief by file path, plus a `domain` string describing
+  the default project context (tech stack, architecture, testing approach).
+  Child schemas may use `extends` to inherit from a parent and only override
+  what differs. Skills read this to know how to generate artifacts and
+  implement tasks.
+- **`briefs/`**: One markdown file per pipeline entry. Each brief has YAML
+  frontmatter declaring its `id`, `description`, `generates` pattern, and
+  `needs` dependencies. The body contains detailed generation or
+  implementation instructions. Referenced by file path from `schema.yaml`'s
+  pipeline entries.
 
 ## Schema File Reference
 
@@ -53,60 +55,52 @@ output structure. Referenced by file path from `schema.yaml`'s
 | `version` | integer | yes | Schema version number |
 | `description` | string | yes | Human-readable description |
 | `extends` | string | no | URL of parent schema for composition (see Schema Composition) |
-| `terminology` | object | yes | Vocabulary used by skills |
-| `terminology.deliverable` | string | yes | Deliverable noun (e.g., `crate`); skills infer plural and heading forms |
-| `blueprints` | array | yes | Ordered list of blueprint declarations |
-| `validation` | object | no | Cross-blueprint boolean validation flags (keys are rule names, values are booleans) |
-| `build` | object | yes | Build-phase configuration |
-| `defaults` | object | no | Default context and per-blueprint rules (see Defaults below) |
+| `domain` | string | no | Default project context (tech stack, architecture, testing approach) |
+| `pipeline` | object | yes | Pipeline phases with brief references (see Pipeline below) |
 
-**Blueprint object fields:**
+The `pipeline` object has three keys — `define`, `build`, and `merge` — each
+containing an ordered array of pipeline entries.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | string | yes | Blueprint identifier (e.g., `proposal`, `specs`, `design`, `tasks`) |
-| `generates` | string | yes | Output filename or glob pattern (e.g., `proposal.md`, `specs/**/*.md`) |
-| `description` | string | yes | What this blueprint produces |
-| `instructions` | string | yes | Relative path to the instructions markdown file |
-| `requires` | array of strings | yes | Blueprint IDs that must exist before this one can be generated |
-| `validate` | array of strings | no | Human-readable validation rules checked after generation |
-
-**Build object fields:**
+**Pipeline entry fields:**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `requires` | array of strings | yes | Blueprint IDs that must be complete before build runs |
-| `tracks` | string | yes | File that tracks build progress (e.g., `tasks.md`) |
-| `instructions` | string | yes | Relative path to the build instructions markdown file |
+| `id` | string | yes | Brief identifier (e.g., `proposal`, `specs`, `design`, `tasks`, `build`, `merge`) |
+| `brief` | string | yes | Relative path to the brief markdown file with YAML frontmatter |
 
-**Defaults object fields:**
+**Brief frontmatter fields:**
+
+Each brief markdown file begins with YAML frontmatter containing metadata
+that was previously declared inline in `schema.yaml`. The body of the brief
+contains the detailed instructions.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `defaults.context` | string | no | Default project context (tech stack, architecture, testing approach) |
-| `defaults.rules` | object | no | Default per-blueprint generation rules keyed by blueprint `id` |
+| `id` | string | yes | Brief identifier, matching the pipeline entry `id` |
+| `description` | string | yes | What this brief produces or does |
+| `generates` | string | no | Output filename or glob pattern (e.g., `proposal.md`, `specs/**/*.md`) |
+| `needs` | array of strings | no | Brief IDs that must be complete before this one can run |
+| `tracks` | string | no | Brief ID whose output file tracks build progress (build briefs only) |
 
-Each key under `defaults.rules` is a blueprint `id` whose value is a
-multi-line string of generation rules. See Rules Override below for
-merge semantics.
-
-### Project Config (`.specify/config.yaml`)
+### Project Config (`.specify/project.yaml`)
 
 Created by `/spec:init` in the project directory. This is the project-level
-override file — it does not exist in the schema directory.
+configuration file — it does not exist in the schema directory.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `name` | string | yes | Project name |
+| `domain` | string | no | Project-specific domain context (tech stack, architecture, etc.) |
 | `schema` | string | yes | Schema URL or bare name (see Schema Resolution) |
-| `context` | string | no | Project-specific context override (tech stack, architecture, etc.) |
-| `overrides` | object | no | Per-blueprint rule overrides keyed by blueprint `id` |
+| `rules` | object | no | Per-brief rule overrides as file paths keyed by brief `id` |
 
-The project config is a thin overlay. Keys left empty or as placeholders
-fall back to the schema's `defaults` automatically.
+The project config is a thin overlay. When `domain` is left empty it falls
+back to the schema's `domain` automatically. Rules are file-path references
+to markdown files containing additional guidance for a specific brief.
 
 ## Schema Resolution
 
-Skills resolve the `schema` field from `.specify/config.yaml` to locate
+Skills resolve the `schema` field from `.specify/project.yaml` to locate
 schema files. The resolution algorithm is defined in
 `plugins/spec/references/schema-resolution.md`. The `schema` value can be a
 name or a URL.
@@ -150,7 +144,7 @@ produces the same schema across machines and branches.
 
 Schemas can extend other schemas using the `extends` field in `schema.yaml`.
 See `plugins/spec/references/schema-resolution.md` for the full composition
-rules, including blueprint merging, field-level overrides, and file fallback
+rules, including pipeline merging, field-level overrides, and file fallback
 behavior.
 
 ## Caching
@@ -162,16 +156,17 @@ level in `.specify/.cache/`:
 .specify/.cache/
 ├── .cache-meta.yaml     # schema_url + fetched_at
 ├── schema.yaml
-└── instructions/        (if fetched)
+└── briefs/              (if fetched)
     ├── proposal.md
     ├── specs.md
     ├── design.md
     ├── tasks.md
-    └── build.md
+    ├── build.md
+    └── merge.md
 ```
 
 The cache is valid as long as `schema_url` in `.cache-meta.yaml` matches the
-`schema` field in `.specify/config.yaml`. When the schema URL changes (e.g.,
+`schema` field in `.specify/project.yaml`. When the schema URL changes (e.g.,
 bumping from `@v1` to `@v2`), the cache is automatically invalidated and
 refetched on the next skill invocation.
 
@@ -180,39 +175,38 @@ The `/spec:init` skill creates `.specify/.cache/` and adds it to
 
 ## Configuration
 
-The active schema is defined in `.specify/config.yaml` as a URL:
+The active schema is defined in `.specify/project.yaml` as a URL:
 
 ```yaml
 schema: https://github.com/augentic/specify/schemas/omnia
 ```
 
-The `/spec:init` skill creates `.specify/config.yaml` with the `schema`
-value and scaffolded `context` and `overrides` keys. Users customize these
-after initialization to override schema defaults.
+The `/spec:init` skill creates `.specify/project.yaml` with the `name`,
+`schema`, and scaffolded `domain` and `rules` keys. Users customize these
+after initialization to provide project-specific context and rule overrides.
 
-## Overrides
+## Rules
 
-The schema's `defaults.rules` section in `schema.yaml` provides default
-rules for each blueprint (e.g., `proposal`, `specs`, `design`, `tasks`).
+The schema's brief files contain default guidance in their body text. Projects
+can supplement or replace this guidance on a per-brief basis using file-path
+rules in `.specify/project.yaml`.
 
-The override granularity is **per-blueprint key**. If the project's
-`.specify/config.yaml` defines a non-empty value for `overrides.<blueprint-id>`,
-that value replaces the schema default for that blueprint. Blueprint keys
-that are absent or empty in the project config fall back to the schema
-default automatically.
+The override granularity is **per-brief key**. If the project's
+`.specify/project.yaml` defines a non-empty value for `rules.<brief-id>`,
+that value is a relative file path to a markdown file containing additional
+rules for that brief. Brief IDs that are absent or empty in the project
+config use the schema brief's body text as-is.
 
-For example, to override the `specs` rules while keeping the schema
-defaults for all other blueprints:
+For example, to add project-specific rules for the `proposal` brief:
 
 ```yaml
-overrides:
-  specs: |
-    - Use GIVEN/WHEN/THEN format for scenarios
-    - Include performance benchmarks in every scenario
+rules:
+  proposal: rules/proposal.md
 ```
 
-Only `specs` is overridden; `proposal`, `design`, and `tasks` continue to
-use the schema defaults.
+The file at `rules/proposal.md` (relative to `.specify/`) contains the
+additional guidance. Only `proposal` gets supplemental rules; all other
+briefs continue to use their schema defaults.
 
-Skills that consume rules (define, build) read the schema's
-`defaults.rules` at runtime and apply this fallback per blueprint.
+Skills that consume rules (define, build) read the brief body text at runtime
+and merge any project-level rule file for the corresponding brief.

@@ -1,6 +1,9 @@
-# Vectis Specs Instructions
-
-Create specification files that define WHAT the system should do.
+---
+id: specs
+description: Create specification files that define WHAT the system should do
+generates: specs/**/*.md
+needs: [proposal]
+---
 
 The source for Crux projects is always Manual. Create one spec file per
 feature listed in the proposal's Features section.

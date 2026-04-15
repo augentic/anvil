@@ -79,9 +79,9 @@ You have full context of the Specify system. Use it naturally, don't force it.
 
 At the start, quickly check what exists by listing directories in `.specify/changes/` (skip `archive/`). Each subdirectory with a `.metadata.yaml` is an active change. Read `.metadata.yaml` for the schema name, lifecycle `status`, and creation date.
 
-Also read `.specify/config.yaml` for the `schema` field and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
+Also read `.specify/project.yaml` for the `schema` field and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`.
 
-Read `schema.yaml` to understand what artifacts the schema defines, what source types are supported (Repository, Manual), and what the workflow looks like.
+Read `schema.yaml` to understand the pipeline phases and brief references, what source types are supported (Repository, Manual), and what the workflow looks like.
 
 This tells you:
 - If there are active changes
@@ -102,7 +102,7 @@ If the user mentions a change or you detect one is relevant:
 
 1. **Read existing artifacts for context**
 
-   For each blueprint defined in `schema.yaml`, read the file(s) at `.specify/changes/<name>/<generates>`. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
+   For each brief in `pipeline.define` entries, read the file(s) using each brief's frontmatter `generates` path. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
 
 2. **Reference them naturally in conversation**
    - "Your design mentions using Redis, but we just realized SQLite fits better..."
@@ -110,7 +110,7 @@ If the user mentions a change or you detect one is relevant:
 
 3. **Offer to capture when decisions are made**
 
-   When decisions are made during exploration, offer to capture them in the relevant artifact of the active change. Consult the schema's blueprint definitions (from `schema.yaml`) to determine which artifact is appropriate for the insight type — the `id` and `description` fields describe each blueprint's purpose.
+   When decisions are made during exploration, offer to capture them in the relevant artifact of the active change. Consult the pipeline's brief definitions (from `schema.yaml`) to determine which artifact is appropriate for the insight type — the brief's frontmatter `id` and `description` describe each brief's purpose.
 
    **Updating an existing change's artifacts** (allowed):
    - "That's a design decision. Capture it in design.md?"
