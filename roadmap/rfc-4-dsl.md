@@ -1,6 +1,14 @@
-# Type-Safe Skill Expression
+# RFC-4: Type-Safe Skill Expression
 
-## The Two-Layer Problem
+> Status: Draft · Depends: [RFC-1](rfc-1-cli.md)
+
+## Abstract
+
+Extend the CLI's validation surface to cover skill authoring: frontmatter schema enforcement, reference resolution, variable consistency, and cross-skill directive validation. As the skill count grows, graduate to structured YAML manifests or a Rust DSL that separates the typed skeleton from the prose body.
+
+## Motivation
+
+### The Two-Layer Problem
 
 Skills have two distinct layers with fundamentally different validation needs:
 
@@ -10,17 +18,17 @@ Skills have two distinct layers with fundamentally different validation needs:
 
 Today both layers live in untyped markdown. YAML frontmatter has no schema enforcement, and the prose body uses conventions (variable names, reference links, section headings) with no structural validation. Breaking a reference or misspelling a tool name produces no feedback until runtime.
 
-## Relationship to the CLI and `checks.ts`
+### Relationship to RFC-1 and `checks.ts`
 
-The [CLI (Horizon 1)](cli.md) addresses the most acute validation gaps — artifact structure, spec format, task tracking — through `specify validate`. That work is prerequisite. This horizon extends the same principle to skill authoring itself: deterministic checks for the structural layer, agent judgment for the behavioral layer.
+[RFC-1](rfc-1-cli.md) addresses the most acute validation gaps — artifact structure, spec format, task tracking — through `specify validate`. That work is prerequisite. This RFC extends the same principle to skill authoring itself: deterministic checks for the structural layer, agent judgment for the behavioral layer.
 
-Importantly, `checks.ts` (the existing Deno validation script) already implements the core of Option 1 below: frontmatter schema enforcement, reference resolution, variable consistency, skill directive validation, marketplace consistency, and docs inventory checks. The primary gap for this horizon is not designing these checks but porting them from TypeScript into the `specify-check` crate — a migration that happens naturally as part of Horizon 1's `specify check` subcommand. Once that port is complete, the incremental work for this horizon is small.
+Importantly, `checks.ts` (the existing Deno validation script) already implements the core of Option 1 below: frontmatter schema enforcement, reference resolution, variable consistency, skill directive validation, marketplace consistency, and docs inventory checks. The primary gap for this RFC is not designing these checks but porting them from TypeScript into the `specify-check` crate — a migration that happens naturally as part of RFC-1's `specify check` subcommand. Once that port is complete, the incremental work for this RFC is small.
 
-## Options
+## Detailed Design
 
 Three approaches, ranked by investment:
 
-### 1. CLI-integrated skill validation (low friction)
+### Option 1: CLI-integrated skill validation (low friction)
 
 Add skill-aware checks to `specify validate`:
 
@@ -32,13 +40,13 @@ Add skill-aware checks to `specify validate`:
 
 This catches typos, broken links, and structural drift without changing the authoring format.
 
-### 2. YAML skill manifests (moderate friction)
+### Option 2: YAML skill manifests (moderate friction)
 
 Extract the structural metadata from SKILL.md into a companion `manifest.yaml` per skill, validated by JSON Schema. The manifest declares arguments, references, tool allow-lists, authority levels, and cross-skill directives as structured data. The SKILL.md prose stays hand-authored. The CLI cross-checks that the manifest and the SKILL.md frontmatter agree.
 
 This separates the two layers explicitly. Authoring friction is low — YAML is familiar and IDE-supported. Validation power is comparable to a full DSL for the structural layer.
 
-### 3. Rust DSL that compiles to SKILL.md (high investment)
+### Option 3: Rust DSL that compiles to SKILL.md (high investment)
 
 Model the structural skeleton in Rust — typed structs for skills, enums for tools and authority levels, `include_str!` for prose blocks. A build script validates reference paths, variable DAGs, phase dependencies, and cross-skill directives at compile time. `cargo build` fails if a reference is broken or a tool name is misspelled.
 
@@ -46,8 +54,13 @@ The Rust compiler gives you broken-reference detection, exhaustive enum matching
 
 ## Recommendation
 
-Option 1 is already mostly implemented in `checks.ts` and will be ported to Rust as part of Horizon 1's `specify-check` crate. Once that port is complete, this horizon's Option 1 is done — no additional design or implementation beyond what the CLI migration delivers.
+Option 1 is already mostly implemented in `checks.ts` and will be ported to Rust as part of RFC-1's `specify-check` crate. Once that port is complete, this RFC's Option 1 is done — no additional design or implementation beyond what the CLI migration delivers.
 
 Option 2 is the right next step if skill count grows beyond ~20 and structural drift becomes a recurring problem. Option 3 is justified only when skills need to compose programmatically (e.g., generating variant skills from a base definition) or when the skill count makes manual consistency impractical.
 
 Revisit options 2 and 3 when the ported validation catches real bugs and the failure modes point toward stronger typing.
+
+## References
+
+- [RFC-1: `specify` CLI](rfc-1-cli.md) — prerequisite; `specify-check` crate provides the validation infrastructure
+- `checks.ts` — existing Deno implementation of Option 1 checks

@@ -1,12 +1,24 @@
-# Iterative Legacy Migration — The Migration Loop
+# RFC-2: Iterative Legacy Migration
 
-> **Dependency:** This horizon builds on the [CLI (Horizon 1)](cli.md). The migration orchestrator, manifest parsing, and slice recommender are deterministic operations that belong in the CLI. The skill-level loop (extract → define → build → merge) already works today; what this horizon adds is the manifest-driven automation layer, implemented as `specify migrate` subcommands on top of the CLI foundation.
+> Status: Draft · Depends: [RFC-1](rfc-1-cli.md)
 
-Migrate existing systems into Specify-managed codebases by running the same define-build-merge loop that powers greenfield development — repeatedly, feature by feature, until the legacy system is fully reconstituted. Rather than a big-bang rewrite, each feature of the legacy system moves through an iteration of the standard Specify workflow, with the extracted code as the proposal source instead of a blank canvas.
+## Abstract
 
-This is the "Ralph Wiggum Loop": extract a feature, define it, build it, merge it, pick the next one. The baseline grows with every merge. The legacy system shrinks with every iteration.
+Migrate existing systems into Specify-managed codebases by running the same define-build-merge loop that powers greenfield development — repeatedly, feature by feature, driven by a migration manifest. Each slice of the legacy system is extracted, defined, built, and merged in a self-contained iteration. Progress is incremental and reversible.
 
-## The Migration Manifest
+## Motivation
+
+Legacy migration typically fails because the new system diverges from the old system's actual behaviour — the behaviour nobody wrote down. Big-bang rewrites take months before delivering value, and when they stall, everything is lost.
+
+By extracting specs *from the running code* (not from stale documentation), the define-build-merge loop preserves behavioural fidelity while allowing the target architecture to differ completely. Each iteration delivers a working, spec-governed feature. Progress is visible, reversible, and incremental. If a slice stalls, the baseline still reflects everything that has been successfully migrated — nothing is lost.
+
+## Dependency on RFC-1
+
+The migration orchestrator, manifest parsing, and slice recommender are deterministic operations that belong in the CLI ([RFC-1](rfc-1-cli.md)). The skill-level loop (extract → define → build → merge) already works today; what this RFC adds is the manifest-driven automation layer, implemented as `specify migrate` subcommands on top of the CLI foundation.
+
+## Detailed Design
+
+### The Migration Manifest
 
 A migration can be driven by an optional **migration manifest** — a predetermined, ordered list of the features (slices) to migrate. The manifest is the migration's table of contents: it tells the loop what to do next without requiring the agent to rediscover the legacy system's structure on every iteration.
 
@@ -67,7 +79,7 @@ The manifest can be:
 
 When no manifest exists, the loop runs in **ad-hoc mode**: the user picks the next feature interactively at the start of each iteration, just like picking what to `/spec:define` next in normal development.
 
-## The Loop
+### The Loop
 
 Each iteration of the migration loop is a single Specify change that moves one slice from the legacy system into the target codebase under spec governance. The loop reuses the existing skill chain with one additional step at the front:
 
@@ -106,7 +118,7 @@ for each slice in migration.yaml (or user's choice):
 
 Each iteration is a self-contained Specify change. The agent runs the same `/spec:define` → `/spec:build` → `/spec:merge` chain it would run for any greenfield feature — the only difference is that the input to `/spec:define` comes from `/spec:extract` (existing code) rather than a human description.
 
-## Progressive Baseline Accumulation
+### Progressive Baseline Accumulation
 
 The key mechanism is **baseline growth through merge**. After each iteration:
 
@@ -134,7 +146,7 @@ Iteration N:  baseline = { all features }
               Migration complete. Legacy system fully reconstituted under spec governance.
 ```
 
-## Fixture-Backed Verification
+### Fixture-Backed Verification
 
 For slices where the `wiretapper` has captured runtime request/response fixtures from the legacy system, each iteration gains an additional verification step:
 
@@ -144,42 +156,7 @@ For slices where the `wiretapper` has captured runtime request/response fixtures
 
 This creates a behavioural regression safety net that catches semantic drift — the most common failure mode in legacy migrations. The loop doesn't just check that the new code satisfies the specs; it checks that it behaves identically to the old code.
 
-## Why This Works
-
-Legacy migration fails most often because the new system diverges from the old system's actual behaviour — the behaviour nobody wrote down. By extracting specs *from the running code* (not from stale documentation), the define-build-merge loop preserves behavioural fidelity while allowing the target architecture to differ completely.
-
-The migration loop also solves the motivation problem. Big-bang rewrites take months before delivering any value. The migration loop delivers a working, spec-governed feature after every iteration. Progress is visible, reversible, and incremental. If a slice stalls, the baseline still reflects everything that has been successfully migrated — nothing is lost.
-
-## What Exists Today
-
-- The `code-analyzer` skill reads source code and produces Specify artifacts (specs + design.md), giving the extraction step
-- The `wiretapper` skill instruments a legacy codebase to capture real request/response pairs as fixture JSON
-- The `replay-writer` skill generates tests from those fixtures, providing a behavioural regression safety net
-- The `extract` skill in `/spec` wraps extraction with iterative validation
-- The `define`, `build`, and `merge` skills form the core loop
-
-## What's Needed
-
-The existing skill chain covers the core loop. New capabilities fall into two categories: those that extend the [CLI (Horizon 1)](cli.md) with `specify migrate` subcommands, and those that are agent-level skill work.
-
-
-| Capability                            | Status      | Notes                                                                                      |
-| ------------------------------------- | ----------- | ------------------------------------------------------------------------------------------ |
-| Extract specs from source code        | Exists      | `code-analyzer`, `/spec:extract`                                                           |
-| Capture runtime fixtures              | Exists      | `wiretapper`                                                                               |
-| Generate replay tests                 | Exists      | `replay-writer`                                                                            |
-| Define → Build → Merge chain          | Exists      | `/spec:define`, `/spec:build`, `/spec:merge`                                               |
-| Migration manifest (`migration.yaml`) | New (CLI)   | Ordered feature list with source paths, dependencies, and per-slice status                 |
-| `specify migrate init`                | New (CLI)   | Scaffold `migration.yaml` from a legacy codebase scan                                      |
-| `specify migrate next`                | New (CLI)   | Return the next pending slice from the manifest (respecting `depends_on`)                  |
-| `specify migrate status`              | New (CLI)   | Show migration progress: N/M slices migrated, current slice, blockers                      |
-| Migration orchestrator                | New (skill) | Reads the manifest, selects the next pending slice, wires extract → define → build → merge |
-| Slice recommender                     | New (skill) | Analyse legacy dependency graph and suggest migration ordering                             |
-| Behavioural diff                      | New (CLI)   | Compare legacy fixture output against new implementation output                            |
-| Cross-stack define                    | New (skill) | Extract from one stack (e.g. TypeScript) and define against another (e.g. Omnia/Rust)      |
-
-
-## Slice Strategy
+### Slice Strategy
 
 Not every slice of a legacy system is equally suitable for early migration. Good early slices are:
 
@@ -192,6 +169,29 @@ The `depends_on` field in the manifest encodes inter-slice dependencies. The mig
 
 For teams without a clear migration order, the slice recommender analyses the legacy codebase's dependency graph and suggests an ordering that minimises cross-boundary risk — leaf-first, core-last.
 
-## The Key Benefit
+## Existing Infrastructure
 
-Migration becomes incremental and reversible. Each loop iteration produces a self-contained change with specs, tests, and verified code. The same skills, validation, and merge semantics that govern greenfield development govern migration — no separate tooling, no separate process. The migration manifest provides a plan; the loop provides the discipline; the baseline provides the proof.
+| Capability                           | Status | Notes                                    |
+| ------------------------------------ | ------ | ---------------------------------------- |
+| Extract specs from source code       | Exists | `code-analyzer`, `/spec:extract`         |
+| Capture runtime fixtures             | Exists | `wiretapper`                             |
+| Generate replay tests                | Exists | `replay-writer`                          |
+| Define → Build → Merge chain        | Exists | `/spec:define`, `/spec:build`, `/spec:merge` |
+
+## New Capabilities Required
+
+| Capability                            | Type  | Notes                                                                                      |
+| ------------------------------------- | ----- | ------------------------------------------------------------------------------------------ |
+| Migration manifest (`migration.yaml`) | CLI   | Ordered feature list with source paths, dependencies, and per-slice status                 |
+| `specify migrate init`                | CLI   | Scaffold `migration.yaml` from a legacy codebase scan                                      |
+| `specify migrate next`                | CLI   | Return the next pending slice from the manifest (respecting `depends_on`)                  |
+| `specify migrate status`              | CLI   | Show migration progress: N/M slices migrated, current slice, blockers                      |
+| Migration orchestrator                | Skill | Reads the manifest, selects the next pending slice, wires extract → define → build → merge |
+| Slice recommender                     | Skill | Analyse legacy dependency graph and suggest migration ordering                             |
+| Behavioural diff                      | CLI   | Compare legacy fixture output against new implementation output                            |
+| Cross-stack define                    | Skill | Extract from one stack (e.g. TypeScript) and define against another (e.g. Omnia/Rust)      |
+
+## References
+
+- [RFC-1: `specify` CLI](rfc-1-cli.md) — prerequisite; migration subcommands extend the CLI
+- [RFC-3: Multi-Repo Coordination](rfc-3-multi-repo.md) — complements migration for cross-repo features

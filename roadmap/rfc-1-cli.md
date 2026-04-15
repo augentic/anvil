@@ -1,9 +1,18 @@
-# `specify` CLI — Crate Structure
+# RFC-1: `specify` CLI
 
-The CLI is Horizon 1 because it is the foundation every subsequent horizon builds on. Migration commands (Horizon 2), federation coordination (Horizon 3), and skill validation (Horizon 4) all extend the CLI's subcommand surface. Building the binary first means those horizons add capabilities to an existing tool rather than creating new infrastructure.
+> Status: Draft · Depends: — · Enables: [RFC-2](rfc-2-migration.md), [RFC-3](rfc-3-multi-repo.md), [RFC-4](rfc-4-dsl.md)
 
-## Shell Commands in Skills: Design Principles
+## Abstract
 
+Replace prose-interpreted deterministic operations (validation, task parsing, artifact structure checking) with a Rust CLI binary (`specify`) that returns structured JSON and exit codes. The agent retains judgment; the CLI enforces correctness.
+
+## Motivation
+
+Every precision-critical operation — validation, task parsing, artifact structure checking — is currently performed by the LLM interpreting prose rules. This produces unreliable results for operations that are fundamentally structured decision trees.
+
+The CLI is the foundation everything else builds on. Migration commands ([RFC-2](rfc-2-migration.md)), multi-repo coordination ([RFC-3](rfc-3-multi-repo.md)), and skill validation ([RFC-4](rfc-4-dsl.md)) all require a binary that understands `.specify/` structure, spec format, and schema rules. Building the CLI first means every subsequent RFC extends an existing tool rather than creating a new one.
+
+## Design Principles
 
 | Use CLI (`specify ...`) when:                 | Use agent judgment when:                    |
 | --------------------------------------------- | ------------------------------------------- |
@@ -13,16 +22,15 @@ The CLI is Horizon 1 because it is the foundation every subsequent horizon build
 | The operation is repeated across many skills  | The operation is unique to one skill        |
 | Failure modes are enumerable                  | Failure modes are open-ended                |
 
-
 The `specify` CLI gives a clean abstraction boundary. Instead of skills containing scattered shell commands, they can use `specify` subcommands that return structured output. The principle: **the CLI owns Specify operations; external tool invocation stays with the agent.**
 
 A good litmus test: "Would this command need to understand `.specify/` directory structure or spec format?" If yes, it belongs in the CLI. If no (like running `cargo test`), it stays as a direct shell command in the skill.
 
----
+## Detailed Design
 
-## Priority Order
+### Priority Order
 
-### Phase 1: Core CLI (Horizon 1)
+#### Phase 1: Core CLI
 
 1. **Cargo workspace scaffold** — workspace manifest, `specify-cli`, `specify-core`, `specify-check` crates, CI integration
 2. **`specify validate`** — the Pass/Fail/Deferred validation engine; replaces ~40 lines of prose validation in the build skill
@@ -34,7 +42,7 @@ A good litmus test: "Would this command need to understand `.specify/` directory
 
 The first four items establish a working binary with immediate value. Items 5–6 close the loop on the core workflow. Item 7 is a natural migration that happens incrementally — each check ported from TypeScript to Rust is removed from `checks.ts` until the script is empty.
 
-### Phase 2: Migration extensions (Horizon 2)
+#### Phase 2: Migration extensions ([RFC-2](rfc-2-migration.md))
 
 8. **`specify migrate init`** — scaffold `migration.yaml` from a legacy codebase scan
 9. **`specify migrate next`** — select the next pending slice from the manifest (respecting `depends_on`)
@@ -42,19 +50,16 @@ The first four items establish a working binary with immediate value. Items 5–
 11. **Slice recommender** — analyse legacy dependency graph and suggest migration ordering
 12. **Behavioural diff** — compare legacy fixture output against new implementation output
 
-These build on the existing `code-analyzer`, `wiretapper`, `replay-writer`, and core `/spec:*` skills. See [migration.md](migration.md) for the full design.
+These build on the existing `code-analyzer`, `wiretapper`, `replay-writer`, and core `/spec:*` skills. See [RFC-2](rfc-2-migration.md) for the full design.
 
-### Phase 3: Federation extensions (Horizon 3)
+#### Phase 3: Federation extensions ([RFC-3](rfc-3-multi-repo.md))
 
 13. **Federation config** and `specify federation sync` for multi-repo
 14. **Cross-repo spec references** and `specify federation validate`
 
-See [multi-repo.md](multi-repo.md) for the full design.
+See [RFC-3](rfc-3-multi-repo.md) for the full design.
 
----
-
-## Impact on Existing Skills
-
+### Impact on Existing Skills
 
 | Skill    | Current agent-interpreted logic                           | Moves to CLI                                 |
 | -------- | --------------------------------------------------------- | -------------------------------------------- |
@@ -65,9 +70,7 @@ See [multi-repo.md](multi-repo.md) for the full design.
 | `verify` | Spec parsing, requirement extraction                      | `specify diff`                               |
 | `status` | Metadata + task parsing                                   | `specify status`                             |
 
----
-
-## Workspace Layout
+### Workspace Layout
 
 The CLI lives at the repo root as a Cargo workspace. This keeps it alongside the plugins and schemas it operates on — important because `specify check` needs to validate the repo's own schema files and skills, and integration tests can reference the real `schemas/` directory.
 
@@ -94,7 +97,7 @@ specify/                              # repo root (already exists)
 │   │       ├── merge.rs              # deterministic delta-merge (replaces merge-specs.py)
 │   │       ├── init.rs               # project initialization logic
 │   │       ├── drift.rs              # spec-vs-code drift detection scaffolding
-│   │       ├── federation.rs         # multi-repo coordination (Horizon 3, stubbed)
+│   │       ├── federation.rs         # multi-repo coordination (RFC-3, stubbed)
 │   │       └── error.rs              # unified error types
 │   └── specify-check/               # framework validation (replaces checks.ts)
 │       ├── Cargo.toml
@@ -114,9 +117,7 @@ specify/                              # repo root (already exists)
 └── Makefile                          # updated with new targets
 ```
 
----
-
-## Why Three Crates, Not One
+### Why Three Crates, Not One
 
 **`specify-core`** is the library. It has no CLI concerns — no argument parsing, no terminal formatting, no exit codes. It returns `Result<T, SpecifyError>` from every public function. This matters because:
 
@@ -127,11 +128,9 @@ specify/                              # repo root (already exists)
 
 **`specify-check`** is the framework-repo linter. It replaces `checks.ts` over time but serves a different audience than `specify-core`. `specify-core` validates *consumer projects* (artifact correctness at runtime). `specify-check` validates *this repo* (skill integrity, schema consistency, marketplace alignment at CI time). The overlap is small: both parse `schema.yaml`, so they share the `specify-core::schema` module. But the check logic (symlink resolution, SKILL.md frontmatter, docs inventory) is repo-specific and doesn't belong in the runtime library.
 
----
+### Module Design: `specify-core`
 
-## Module Design: `specify-core`
-
-### `error.rs`
+#### `error.rs`
 
 ```rust
 #[derive(Debug, thiserror::Error)]
@@ -164,7 +163,7 @@ pub enum Error {
 
 A single error type with structured variants means the CLI can pattern-match on the variant to decide exit codes and output format, and the library never touches `std::process::exit`.
 
-### `config.rs`
+#### `config.rs`
 
 ```rust
 use std::path::{Path, PathBuf};
@@ -190,7 +189,7 @@ impl ProjectConfig {
 
 Straightforward serde deserialization. The path helpers centralise the `.specify/changes/`, `.specify/specs/`, `.specify/.cache/` conventions that are currently scattered across every skill.
 
-### `schema.rs`
+#### `schema.rs`
 
 The most important module — it encodes the resolution algorithm from `schema-resolution.md`.
 
@@ -272,7 +271,7 @@ impl Schema {
 
 Note the absence of any HTTP fetching — the `resolve` function handles local and cache paths. Remote fetching (the WebFetch step in the current skill) remains the agent's responsibility. The CLI's `specify schema resolve` subcommand outputs the resolved path so the skill knows where to find files, but the agent does the HTTP fetch if the cache is stale. This keeps the CLI dependency-free for networking and avoids duplicating the agent's authenticated GitHub access.
 
-### `spec.rs`
+#### `spec.rs`
 
 Replaces `merge-specs.py`'s parser in Rust.
 
@@ -322,7 +321,7 @@ pub const DELTA_RENAMED: &str = "## RENAMED Requirements";
 
 These are hard-coded rather than configurable because `spec-format.md` explicitly says "These are not configurable per-schema."
 
-### `merge.rs`
+#### `merge.rs`
 
 ```rust
 pub struct MergeResult {
@@ -364,7 +363,7 @@ The merge algorithm is a direct port of `merge-specs.py` with two improvements:
 1. **Structured output.** Instead of writing to stdout, it returns `MergeResult` with the merged text and a log of operations. The CLI formats this as JSON for skills or as human-readable text for direct invocation.
 2. **Atomic multi-capability merge.** The current skill runs `merge-specs.py` once per capability. The library function `merge_change` takes a change directory and merges all capabilities, rolling back on error.
 
-### `task.rs`
+#### `task.rs`
 
 ```rust
 pub struct Task {
@@ -396,9 +395,9 @@ pub fn mark_complete(
 pub fn next_pending(tasks: &TaskProgress) -> Option<&Task>;
 ```
 
-### `validate.rs`
+#### `validate.rs`
 
-The `validate` rules in `schema.yaml` are human-readable strings. The CLI handles the *structural* ones deterministically and flags the *semantic* ones for the agent.
+The `validate` rules in `schema.yaml` are human-readable strings. The CLI handles the *structural* ones deterministically and flags the *semantic* ones for the agent. See [RFC-1-A: Deferred Validation](rfc-1a-validation.md) for the full classification design.
 
 ```rust
 pub enum ValidationResult {
@@ -438,7 +437,7 @@ fn proposal_deliverables_have_specs(
 fn design_references_exist(design: &str, specs_dir: &Path) -> bool;
 ```
 
-### `metadata.rs`
+#### `metadata.rs`
 
 ```rust
 #[derive(Debug, Deserialize, Serialize)]
@@ -511,7 +510,7 @@ impl LifecycleStatus {
 }
 ```
 
-### `init.rs`
+#### `init.rs`
 
 ```rust
 pub struct InitResult {
@@ -531,7 +530,7 @@ pub fn init(
 
 The `init` function handles the mechanical parts (directory creation, config template, cache population, gitignore) and returns what it did so the skill can report to the user. The agent still handles the interactive parts (asking which schema, confirming reinitialize).
 
-### `drift.rs` (Horizon 2-3, initially stubbed)
+#### `drift.rs` (RFC-2/0003, initially stubbed)
 
 ```rust
 pub struct DriftEntry {
@@ -553,7 +552,7 @@ pub fn baseline_inventory(
 ) -> Result<Vec<(String, Vec<RequirementBlock>)>, Error>;
 ```
 
-### `federation.rs` (Horizon 3, stubbed)
+#### `federation.rs` (RFC-3, stubbed)
 
 ```rust
 pub struct PeerRepo {
@@ -567,9 +566,7 @@ pub fn parse_federation_config(
 ) -> Vec<PeerRepo>;
 ```
 
----
-
-## CLI Subcommands (`specify-cli`)
+### CLI Subcommands (`specify-cli`)
 
 ```rust
 use clap::{Parser, Subcommand};
@@ -667,9 +664,7 @@ enum SchemaAction {
 }
 ```
 
----
-
-## Output Format
+### Output Format
 
 Every subcommand supports `--format text` (default, human-readable) and `--format json` (structured, for skills). The JSON output is what makes the CLI truly useful for agent consumption:
 
@@ -723,9 +718,7 @@ The skill prose shrinks from 40 lines of validation instructions to:
    Do not proceed to implementation until all non-deferred checks pass.
 ```
 
----
-
-## Dependencies (conservative)
+### Dependencies (conservative)
 
 ```toml
 # crates/specify-core/Cargo.toml
@@ -753,9 +746,7 @@ jsonschema = "0.29"
 
 No async runtime, no HTTP client, no database. The binary should compile in seconds and produce a ~5MB static binary.
 
----
-
-## Makefile Integration
+### Makefile Integration
 
 ```makefile
 .PHONY: build checks dev-plugins prod-plugins
@@ -776,3 +767,16 @@ prod-plugins:
 ```
 
 During migration, both `specify check` and `checks.ts` run. As checks migrate from TypeScript to Rust, they are removed from `checks.ts` until it's empty and can be deleted.
+
+## Alternatives Considered
+
+**Single monolithic crate.** Simpler, but prevents reusing `specify-core` in non-CLI contexts (LSP, WASM, integration tests). The three-crate split costs almost nothing in maintenance.
+
+**Agent-only approach (no CLI).** Continue encoding all validation and structural operations in skill prose. Rejected because LLMs are unreliable at structured decision trees — counting sections, verifying ID patterns, checking dependency graphs.
+
+## References
+
+- [RFC-1-A: Deferred Validation](rfc-1a-validation.md) — the three-way Pass/Fail/Deferred classification
+- [RFC-2: Iterative Legacy Migration](rfc-2-migration.md) — extends the CLI with `specify migrate` subcommands
+- [RFC-3: Multi-Repo Coordination](rfc-3-multi-repo.md) — extends the CLI with `specify federation` subcommands
+- [RFC-4: Type-Safe Skill Expression](rfc-4-dsl.md) — extends `specify check` with skill validation
