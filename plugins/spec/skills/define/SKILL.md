@@ -186,6 +186,7 @@ The user's request should include a change name (kebab-case) OR a description of
 
 - Create all artifacts for briefs defined in `pipeline.define` before declaring the change ready
 - Always read dependency artifacts (from `needs`) before creating a new one
+- **All artifacts MUST be written under `.specify/changes/<name>/`**. 
 - If context is critically unclear, ask the user -- but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, check its status before deciding how to proceed
 - Verify each artifact file exists after writing before proceeding to next
