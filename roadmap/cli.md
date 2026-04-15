@@ -1,6 +1,53 @@
 # `specify` CLI — Crate Structure
 
-_Exported on 14/04/2026 from Cursor_
+
+## Shell Commands in Skills: Design Principles
+
+
+| Use CLI (`specify ...`) when:                 | Use agent judgment when:                    |
+| --------------------------------------------- | ------------------------------------------- |
+| The operation must be idempotent              | The response depends on context             |
+| The output is structured (JSON, exit codes)   | The output is natural language              |
+| Correctness is verifiable (schema validation) | Correctness requires semantic understanding |
+| The operation is repeated across many skills  | The operation is unique to one skill        |
+| Failure modes are enumerable                  | Failure modes are open-ended                |
+
+
+The `specify` CLI gives a clean abstraction boundary. Instead of skills containing scattered shell commands, they can use `specify` subcommands that return structured output. The principle: **the CLI owns Specify operations; external tool invocation stays with the agent.**
+
+A good litmus test: "Would this command need to understand `.specify/` directory structure or spec format?" If yes, it belongs in the CLI. If no (like running `cargo test`), it stays as a direct shell command in the skill.
+
+---
+
+## Suggested Priority Order
+
+1. **Specify CLI scaffolding** — `specify init`, `specify validate`, `specify merge` (replaces `merge-specs.py`)
+2. **Migrate `init` and `merge` skills** to use CLI commands
+3. **Migrate `build` validation** to use `specify validate`
+4. **`specify task`** subcommands for deterministic task tracking
+5. **Federation config** and `specify federation sync` for multi-repo
+6. **Cross-repo spec references** and `specify federation validate`
+7. **Migration manifest** — `specify migrate init` to scaffold `migration.yaml` from a legacy codebase scan
+8. **Migration orchestrator** — `specify migrate next` to select the next pending slice and wire the extract → define → build → merge chain
+9. **Slice recommender** — analyse legacy dependency graph and suggest migration ordering for the manifest
+10. **Behavioural diff** — compare legacy fixtures against new implementation output
+11. **Migration dashboard** — `specify migrate status` to track slice-level migration progress across iterations
+
+The first three items would take a single `/spec:define` + `/spec:build` cycle to implement and would immediately simplify the three most complex skills. Items 7–11 build on the existing `code-analyzer`, `wiretapper`, `replay-writer`, and core `/spec:*` skills — the migration loop reuses the entire greenfield workflow, so most of the infrastructure is already in place.
+
+---
+
+## Impact on Existing Skills
+
+
+| Skill    | Current agent-interpreted logic                           | Moves to CLI                                 |
+| -------- | --------------------------------------------------------- | -------------------------------------------- |
+| `init`   | mkdir, file creation, schema resolution, cache population | `specify init`                               |
+| `define` | Schema resolution, metadata writes, overlap detection     | `specify schema resolve`, `specify status`   |
+| `build`  | Artifact validation, task progress tracking               | `specify validate`, `specify task next/mark` |
+| `merge`  | merge-specs.py invocation, coherence check, archive move  | `specify merge`                              |
+| `verify` | Spec parsing, requirement extraction                      | `specify diff`                               |
+| `status` | Metadata + task parsing                                   | `specify status`                             |
 
 ---
 
