@@ -208,6 +208,7 @@ What would you like to do?
 ```
 
 **Guardrails**
+- **All artifacts live under `.specify/changes/<name>/`**. Read and write artifacts relative to this directory only. Do NOT use `openspec/`, `temp/`, or any other directory convention from other plugins or skills.
 - Keep going through tasks until done or blocked
 - Always read context files before starting
 - If task is ambiguous, pause and ask before implementing

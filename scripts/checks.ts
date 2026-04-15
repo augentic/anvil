@@ -635,6 +635,33 @@ async function checkPluginsDocInventory(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
+// 12. Instruction files contain output location preamble
+// ──────────────────────────────────────────────────────────────
+
+async function checkInstructionPreambles(): Promise<void> {
+  const OUTPUT_LOCATION_RE = /^> \*\*Output location\*\*: `\.specify\/changes\//m;
+
+  for await (const entry of walk(SCHEMA_DIR, {
+    maxDepth: 3,
+    includeDirs: false,
+    match: [/instructions\/[a-z]+\.md$/],
+  })) {
+    const rel = relative(REPO_ROOT, entry.path);
+    let content: string;
+    try {
+      content = await Deno.readTextFile(entry.path);
+    } catch {
+      continue;
+    }
+    if (!OUTPUT_LOCATION_RE.test(content)) {
+      fail(
+        `Missing output location preamble: ${rel} — instruction files must declare output location to prevent cross-plugin path contamination`,
+      );
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // Run all checks
 // ──────────────────────────────────────────────────────────────
 
@@ -646,6 +673,7 @@ await Promise.all([
 await Promise.all([
   validateSchemaYaml(),
   checkSchemaIntegrity(),
+  checkInstructionPreambles(),
 ]);
 await Promise.all([
   validateSkillFrontmatter(),
