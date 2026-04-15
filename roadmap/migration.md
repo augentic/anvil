@@ -1,5 +1,7 @@
 # Iterative Legacy Migration — The Migration Loop
 
+> **Dependency:** This horizon builds on the [CLI (Horizon 1)](cli.md). The migration orchestrator, manifest parsing, and slice recommender are deterministic operations that belong in the CLI. The skill-level loop (extract → define → build → merge) already works today; what this horizon adds is the manifest-driven automation layer, implemented as `specify migrate` subcommands on top of the CLI foundation.
+
 Migrate existing systems into Specify-managed codebases by running the same define-build-merge loop that powers greenfield development — repeatedly, feature by feature, until the legacy system is fully reconstituted. Rather than a big-bang rewrite, each feature of the legacy system moves through an iteration of the standard Specify workflow, with the extracted code as the proposal source instead of a blank canvas.
 
 This is the "Ralph Wiggum Loop": extract a feature, define it, build it, merge it, pick the next one. The baseline grows with every merge. The legacy system shrinks with every iteration.
@@ -156,22 +158,22 @@ The migration loop also solves the motivation problem. Big-bang rewrites take mo
 
 ## What's Needed
 
+The existing skill chain covers the core loop. New capabilities fall into two categories: those that extend the [CLI (Horizon 1)](cli.md) with `specify migrate` subcommands, and those that are agent-level skill work.
 
-| Capability                            | Status | Notes                                                                                      |
-| ------------------------------------- | ------ | ------------------------------------------------------------------------------------------ |
-| Extract specs from source code        | Exists | `code-analyzer`, `/spec:extract`                                                           |
-| Capture runtime fixtures              | Exists | `wiretapper`                                                                               |
-| Generate replay tests                 | Exists | `replay-writer`                                                                            |
-| Define → Build → Merge chain          | Exists | `/spec:define`, `/spec:build`, `/spec:merge`                                               |
-| Migration manifest (`migration.yaml`) | New    | Ordered feature list with source paths, dependencies, and per-slice status                 |
-| Migration orchestrator                | New    | Reads the manifest, selects the next pending slice, wires extract → define → build → merge |
-| Slice recommender                     | New    | Analyse legacy dependency graph and suggest migration ordering                             |
-| Behavioural diff                      | New    | Compare legacy fixture output against new implementation output                            |
-| Migration dashboard                   | New    | Track which slices are migrated, in-progress, and remaining across iterations              |
-| Cross-stack define                    | New    | Extract from one stack (e.g. TypeScript) and define against another (e.g. Omnia/Rust)      |
-| `specify migrate init`                | New    | Scaffold `migration.yaml` from a legacy codebase scan                                      |
-| `specify migrate status`              | New    | Show migration progress: N/M slices migrated, current slice, blockers                      |
-| `specify migrate next`                | New    | Return the next pending slice from the manifest (respecting `depends_on`)                  |
+| Capability                            | Status      | Notes                                                                                      |
+| ------------------------------------- | ----------- | ------------------------------------------------------------------------------------------ |
+| Extract specs from source code        | Exists      | `code-analyzer`, `/spec:extract`                                                           |
+| Capture runtime fixtures              | Exists      | `wiretapper`                                                                               |
+| Generate replay tests                 | Exists      | `replay-writer`                                                                            |
+| Define → Build → Merge chain          | Exists      | `/spec:define`, `/spec:build`, `/spec:merge`                                               |
+| Migration manifest (`migration.yaml`) | New (CLI)   | Ordered feature list with source paths, dependencies, and per-slice status                 |
+| `specify migrate init`                | New (CLI)   | Scaffold `migration.yaml` from a legacy codebase scan                                      |
+| `specify migrate next`                | New (CLI)   | Return the next pending slice from the manifest (respecting `depends_on`)                  |
+| `specify migrate status`              | New (CLI)   | Show migration progress: N/M slices migrated, current slice, blockers                      |
+| Migration orchestrator                | New (skill) | Reads the manifest, selects the next pending slice, wires extract → define → build → merge |
+| Slice recommender                     | New (skill) | Analyse legacy dependency graph and suggest migration ordering                             |
+| Behavioural diff                      | New (CLI)   | Compare legacy fixture output against new implementation output                            |
+| Cross-stack define                    | New (skill) | Extract from one stack (e.g. TypeScript) and define against another (e.g. Omnia/Rust)      |
 
 
 ## Slice Strategy

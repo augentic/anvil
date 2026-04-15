@@ -10,9 +10,11 @@ Skills have two distinct layers with fundamentally different validation needs:
 
 Today both layers live in untyped markdown. YAML frontmatter has no schema enforcement, and the prose body uses conventions (variable names, reference links, section headings) with no structural validation. Breaking a reference or misspelling a tool name produces no feedback until runtime.
 
-## Relationship to the CLI
+## Relationship to the CLI and `checks.ts`
 
-The [CLI horizon](cli.md) addresses the most acute validation gaps — artifact structure, spec format, task tracking — through `specify validate`. That work is prerequisite. This horizon extends the same principle to skill authoring itself: deterministic checks for the structural layer, agent judgment for the behavioral layer.
+The [CLI (Horizon 1)](cli.md) addresses the most acute validation gaps — artifact structure, spec format, task tracking — through `specify validate`. That work is prerequisite. This horizon extends the same principle to skill authoring itself: deterministic checks for the structural layer, agent judgment for the behavioral layer.
+
+Importantly, `checks.ts` (the existing Deno validation script) already implements the core of Option 1 below: frontmatter schema enforcement, reference resolution, variable consistency, skill directive validation, marketplace consistency, and docs inventory checks. The primary gap for this horizon is not designing these checks but porting them from TypeScript into the `specify-check` crate — a migration that happens naturally as part of Horizon 1's `specify check` subcommand. Once that port is complete, the incremental work for this horizon is small.
 
 ## Options
 
@@ -44,6 +46,8 @@ The Rust compiler gives you broken-reference detection, exhaustive enum matching
 
 ## Recommendation
 
-Option 1 is worth doing regardless — it's a natural extension of the CLI's validation surface. Option 2 is the right next step if skill count grows beyond ~20 and structural drift becomes a recurring problem. Option 3 is justified only when skills need to compose programmatically (e.g., generating variant skills from a base definition) or when the skill count makes manual consistency impractical.
+Option 1 is already mostly implemented in `checks.ts` and will be ported to Rust as part of Horizon 1's `specify-check` crate. Once that port is complete, this horizon's Option 1 is done — no additional design or implementation beyond what the CLI migration delivers.
 
-Start with option 1 as part of the CLI horizon. Revisit options 2 and 3 when the structural validation catches real bugs and the failure modes point toward stronger typing.
+Option 2 is the right next step if skill count grows beyond ~20 and structural drift becomes a recurring problem. Option 3 is justified only when skills need to compose programmatically (e.g., generating variant skills from a base definition) or when the skill count makes manual consistency impractical.
+
+Revisit options 2 and 3 when the ported validation catches real bugs and the failure modes point toward stronger typing.

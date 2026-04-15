@@ -1,5 +1,6 @@
 # `specify` CLI — Crate Structure
 
+The CLI is Horizon 1 because it is the foundation every subsequent horizon builds on. Migration commands (Horizon 2), federation coordination (Horizon 3), and skill validation (Horizon 4) all extend the CLI's subcommand surface. Building the binary first means those horizons add capabilities to an existing tool rather than creating new infrastructure.
 
 ## Shell Commands in Skills: Design Principles
 
@@ -19,21 +20,36 @@ A good litmus test: "Would this command need to understand `.specify/` directory
 
 ---
 
-## Suggested Priority Order
+## Priority Order
 
-1. **Specify CLI scaffolding** — `specify init`, `specify validate`, `specify merge` (replaces `merge-specs.py`)
-2. **Migrate `init` and `merge` skills** to use CLI commands
-3. **Migrate `build` validation** to use `specify validate`
-4. **`specify task`** subcommands for deterministic task tracking
-5. **Federation config** and `specify federation sync` for multi-repo
-6. **Cross-repo spec references** and `specify federation validate`
-7. **Migration manifest** — `specify migrate init` to scaffold `migration.yaml` from a legacy codebase scan
-8. **Migration orchestrator** — `specify migrate next` to select the next pending slice and wire the extract → define → build → merge chain
-9. **Slice recommender** — analyse legacy dependency graph and suggest migration ordering for the manifest
-10. **Behavioural diff** — compare legacy fixtures against new implementation output
-11. **Migration dashboard** — `specify migrate status` to track slice-level migration progress across iterations
+### Phase 1: Core CLI (Horizon 1)
 
-The first three items would take a single `/spec:define` + `/spec:build` cycle to implement and would immediately simplify the three most complex skills. Items 7–11 build on the existing `code-analyzer`, `wiretapper`, `replay-writer`, and core `/spec:*` skills — the migration loop reuses the entire greenfield workflow, so most of the infrastructure is already in place.
+1. **Cargo workspace scaffold** — workspace manifest, `specify-cli`, `specify-core`, `specify-check` crates, CI integration
+2. **`specify validate`** — the Pass/Fail/Deferred validation engine; replaces ~40 lines of prose validation in the build skill
+3. **`specify merge`** — deterministic delta-merge replacing `merge-specs.py`
+4. **`specify init`** — project initialization replacing scattered mkdir/write logic
+5. **Migrate `init`, `merge`, and `build` skills** to use CLI commands
+6. **`specify task`** subcommands — deterministic task parsing and progress tracking
+7. **`specify check`** — port `checks.ts` into `specify-check` crate (runs alongside `checks.ts` during migration, replaces it once complete)
+
+The first four items establish a working binary with immediate value. Items 5–6 close the loop on the core workflow. Item 7 is a natural migration that happens incrementally — each check ported from TypeScript to Rust is removed from `checks.ts` until the script is empty.
+
+### Phase 2: Migration extensions (Horizon 2)
+
+8. **`specify migrate init`** — scaffold `migration.yaml` from a legacy codebase scan
+9. **`specify migrate next`** — select the next pending slice from the manifest (respecting `depends_on`)
+10. **`specify migrate status`** — track slice-level migration progress across iterations
+11. **Slice recommender** — analyse legacy dependency graph and suggest migration ordering
+12. **Behavioural diff** — compare legacy fixture output against new implementation output
+
+These build on the existing `code-analyzer`, `wiretapper`, `replay-writer`, and core `/spec:*` skills. See [migration.md](migration.md) for the full design.
+
+### Phase 3: Federation extensions (Horizon 3)
+
+13. **Federation config** and `specify federation sync` for multi-repo
+14. **Cross-repo spec references** and `specify federation validate`
+
+See [multi-repo.md](multi-repo.md) for the full design.
 
 ---
 
