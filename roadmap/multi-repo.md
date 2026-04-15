@@ -15,20 +15,32 @@ Each repo has its own `.specify/` directory with its own specs. The feature span
 Instead of a separate "registry repo," extend the existing `config.yaml` to declare **peer repositories** and use the CLI to coordinate.
 
 ```yaml
-# .specify/config.yaml in the backend repo
-version: 2
+# .specify/project.yaml
+name: traffic
+domain: |
+  Traffic-related services including roadworks management,
+  lane closures, and traffic flow analysis.
 schema: omnia@v1
 
-project:
-  name: auth-backend
+rules:
+  proposal: rules/proposal.md
+```
 
-federation:
-  - name: auth-frontend
-    repo: git@github.com:org/auth-frontend.git
-    specs: .specify/specs
-  - name: shared-types
-    repo: git@github.com:org/shared-types.git
-    specs: .specify/specs
+The multi-repo registry is a separate file that lives in a dedicated platform repo.
+
+```yaml
+# .specify/registry.yaml (lives in any repo, or a dedicated platform repo)
+name: realtime
+version: 1
+
+projects:
+  - name: traffic
+    url: git@github.com:org/traffic.git
+    schema: omnia@v1
+
+  - name: command-centre
+    url: git@github.com:org/command-centre.git
+    schema: omnia@v1
 ```
 
 ## How It Works

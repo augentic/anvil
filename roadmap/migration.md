@@ -12,10 +12,12 @@ A migration can be driven by an optional **migration manifest** — a predetermi
 
 ```yaml
 # .specify/migration.yaml
-source: /path/to/legacy-codebase   # or git@github.com:org/legacy.git
+source: /path/to/legacy-codebase   
+# or source: https://github.com/org/legacy
+# or source: git@github.com:org/legacy.git
 target_schema: omnia@v1
 
-slices:
+features:
   - name: user-registration
     source_paths:
       - src/auth/register.ts
@@ -159,6 +161,7 @@ The migration loop also solves the motivation problem. Big-bang rewrites take mo
 ## What's Needed
 
 The existing skill chain covers the core loop. New capabilities fall into two categories: those that extend the [CLI (Horizon 1)](cli.md) with `specify migrate` subcommands, and those that are agent-level skill work.
+
 
 | Capability                            | Status      | Notes                                                                                      |
 | ------------------------------------- | ----------- | ------------------------------------------------------------------------------------------ |
