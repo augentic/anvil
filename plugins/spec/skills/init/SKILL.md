@@ -76,7 +76,7 @@ I'll create the `.specify/` directory structure and install a starter `project.y
    - `name`: set to the project directory name (or the user's provided name)
    - `domain`: set to the user's description if provided, otherwise a placeholder comment (`# Describe your project here`)
    - `schema`: set to `$SCHEMA` (the resolved schema value — bare name or URL)
-   - `rules`: scaffold one key per brief defined in `pipeline.define` of the resolved `schema.yaml` (read each entry's `id`). Each key is a YAML block scalar (`|`) containing a placeholder comment. For example, with the omnia schema the output is:
+   - `rules`: scaffold one key per brief defined in `pipeline.define` of the resolved `schema.yaml` (read each entry's `id`). Each key is an empty string (no override). Add a comment showing the file-path format so the user knows how to add rules later. For example, with the omnia schema the output is:
 
      ```yaml
      name: my-project
@@ -85,17 +85,13 @@ I'll create the `.specify/` directory structure and install a starter `project.y
      schema: omnia
 
      rules:
-       proposal: |
-         # TODO: Add any proposal rules here
-       specs: |
-         # TODO: Add any specs rules here
-       design: |
-         # TODO: Add any design rules here
-       tasks: |
-         # TODO: Add any tasks rules here
+       # proposal:  # e.g. rules/proposal.md
+       # specs:
+       # design:
+       # tasks: 
      ```
 
-     These are project-level rules only — the schema `domain` in `.specify/.cache/schema.yaml` provides fallback context for any key left as a placeholder.
+     Each value is a relative file path (from `.specify/`) to a markdown file containing additional rules for that brief. An empty string means no override — the schema brief's body text is used as-is. The schema `domain` in `.specify/.cache/schema.yaml` provides fallback context.
 
    Do NOT copy the schema's domain wholesale. The project config is a thin overlay; the schema domain lives in `schema.yaml`.
 

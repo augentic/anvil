@@ -279,7 +279,7 @@ async function checkSymlinks(): Promise<void> {
 
   for await (const entry of walk(PLUGINS_DIR, {
     includeDirs: true,
-    includeFiles: false,
+    includeFiles: true,
   })) {
     let info: Deno.FileInfo;
     try {
