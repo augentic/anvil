@@ -101,7 +101,7 @@ stable merge key is the `ID: REQ-XXX` line rather than the display name.
 See the schema's `briefs/specs.md` for the full delta structure and the
 merge skill for how deltas merge into the baseline.
 
-### Deriving Specs From Source Code (code-analyzer)
+### Deriving Specs From Source Code (extract)
 
 Create a consolidated spec file from the source behavior:
 

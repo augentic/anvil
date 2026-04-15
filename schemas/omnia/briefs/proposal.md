@@ -10,11 +10,11 @@ Sections:
   this solve? Why now?
 - **Source**: Identify where the requirements come from. Pick ONE:
   - **Repository**: URL of the repository to migrate (e.g.,
-    `https://github.com/org/repo`). This triggers the RT workflow
-    — the specs phase will clone the repo and run code-analyzer.
+    `https://github.com/org/repo`). The specs phase will clone the
+    repo and run `/spec:extract` to produce artifacts.
   - **Source-code**: Local path to existing source code (e.g.,
-    `/path/to/legacy/crate`). This triggers the extract workflow
-    — the specs phase will run extract with iterative validation.
+    `/path/to/legacy/crate`). The specs phase will run `/spec:extract`
+    to produce artifacts.
   - **Epic**: JIRA/ADO/Linear epic key (e.g., `ATR-7102`). This triggers
     the Omnia workflow — the specs phase will run epic-analyzer.
   - **Manual**: Requirements are described directly in this proposal.

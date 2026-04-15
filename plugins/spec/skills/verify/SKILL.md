@@ -51,7 +51,7 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
       - The source file and approximate location
       - Whether it maps to an existing baseline requirement (by reading the spec and matching semantically)
 
-   **Do not invoke the full code-analyzer skill** -- this step performs a lightweight read-and-compare, not a full artifact reconstruction. Focus on identifying whether baseline requirements are implemented and whether new unspecified behaviors exist.
+   **Do not invoke the full extract skill** -- this step performs a lightweight read-and-compare, not a full artifact reconstruction. Focus on identifying whether baseline requirements are implemented and whether new unspecified behaviors exist.
 
 5. **Compare against baseline requirements**
 
@@ -130,6 +130,6 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
 - Read-only -- do not create or modify any files
 - If `.specify/` does not exist, suggest `/spec:init`
 - If no baseline specs exist, report clearly and stop
-- Do not run the full code-analyzer skill -- perform lightweight comparison only
+- Do not run the full extract skill -- perform lightweight comparison only
 - When uncertain whether code matches a requirement, classify as DRIFTED rather than COVERED
 - Report all findings before suggesting actions

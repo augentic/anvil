@@ -18,7 +18,7 @@ See also: [RFC-1a: Deferred Validation](rfc-1a-validation.md) — the three-way 
 
 **Problem:** Legacy migration typically fails because the new system diverges from the old system's actual behaviour — the behaviour nobody wrote down. Big-bang rewrites take months before delivering value, and when they stall, everything is lost.
 
-**Solution:** Reuse the same define-build-merge loop that powers greenfield development, feature by feature, driven by a migration manifest. Each slice of the legacy system is extracted, defined, built, and merged in a self-contained iteration. The baseline grows with every merge; progress is incremental and reversible. Existing skills (`code-analyzer`, `wiretapper`, `replay-writer`) provide the extraction and verification infrastructure.
+**Solution:** Reuse the same define-build-merge loop that powers greenfield development, feature by feature, driven by a migration manifest. Each slice of the legacy system is extracted, defined, built, and merged in a self-contained iteration. The baseline grows with every merge; progress is incremental and reversible. Existing skills (`/spec:extract`, `wiretapper`, `replay-writer`) provide the extraction and verification infrastructure.
 
 The migration design is ready — the loop, manifest format, and slice strategy are fully specified. Implementation depends on the CLI from RFC-1: the deterministic operations (`specify migrate init`, `specify migrate next`, `specify migrate status`) are natural extensions of the CLI's subcommand surface. The skill-level orchestration (extract → define → build → merge) already works today; what's missing is the manifest-driven automation layer.
 

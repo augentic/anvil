@@ -91,9 +91,8 @@ for each slice in migration.yaml (or user's choice):
   │  1. EXTRACT  /spec:extract                              │
   │     Analyse the slice's source files and produce        │
   │     Specify artifacts (specs + design.md) capturing     │
-  │     the legacy behaviour. The code-analyzer reads the   │
-  │     source; the extract skill validates iteratively     │
-  │     until convergence.                                  │
+  │     the legacy behaviour in a single pass.              │
+  │                                                         │
   │                                                         │
   │  2. DEFINE   /spec:define                               │
   │     Refine the extracted artifacts for the target       │
@@ -173,7 +172,7 @@ For teams without a clear migration order, the slice recommender analyses the le
 
 | Capability                           | Status | Notes                                    |
 | ------------------------------------ | ------ | ---------------------------------------- |
-| Extract specs from source code       | Exists | `code-analyzer`, `/spec:extract`         |
+| Extract specs from source code       | Exists | `/spec:extract`                          |
 | Capture runtime fixtures             | Exists | `wiretapper`                             |
 | Generate replay tests                | Exists | `replay-writer`                          |
 | Define → Build → Merge chain        | Exists | `/spec:define`, `/spec:build`, `/spec:merge` |

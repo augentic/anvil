@@ -1,7 +1,7 @@
 {
   "name": "rt",
   "displayName": "RT Migration",
-  "description": "Migrate TypeScript projects to Rust WASM crates targeting the Omnia runtime.",
+  "description": "Fixture capture, repository cloning, and regression testing for migration workflows.",
   "version": "0.22.0",
   "author": {
     "name": "Augentic",

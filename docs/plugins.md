@@ -44,9 +44,8 @@ Generate cross-platform Crux applications: Rust shared core, SwiftUI iOS shell, 
 
 ## RT (`plugins/rt/`)
 
-TypeScript source analysis, fixture capture, and regression testing for migrations.
+Fixture capture, repository cloning, and regression testing for migrations. Source code analysis lives in the spec plugin as `/spec:extract`.
 
-- **code-analyzer** -- Derive specs and design from TypeScript source
 - **git-cloner** -- Clone a source repository for analysis
 - **replay-writer** -- Add regression tests from captured fixtures
 - **wiretapper** -- Capture fixture data from legacy services
@@ -70,7 +69,7 @@ Specify manages changes as a set of interdependent artifacts stored in `.specify
 
 The workflow is:
 
-1. **Define** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by TypeScript source analysis (`/rt:code-analyzer`).
+1. **Define** -- Describe what you want to build. Specify generates all four artifacts from your description, optionally enriched by source code analysis (`/spec:extract`).
 2. **Build** -- Validate artifacts for completeness and cross-blueprint consistency, then implement each task. Specialist skills (crate-writer, test-writer, guest-writer, core-writer, ios-writer, android-writer) generate code from the artifacts.
 3. **Merge** -- Merge the change's specs into your project's baseline at `.specify/specs/` and move the change to the archive.
 

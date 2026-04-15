@@ -22,7 +22,7 @@ specify/
 │   │   ├── skills/               # Crux skills (core-writer, test-writer, ios-writer, ...)
 │   │   └── references/           # Crux patterns, design system references
 │   ├── rt/                       # RT migration plugin
-│   │   └── skills/               # Migration skills (code-analyzer, replay-writer, ...)
+│   │   └── skills/               # Migration skills (git-cloner, replay-writer, wiretapper)
 │   └── plan/                     # Plan SoW generation plugin
 │       └── skills/               # Planning skills (sow-writer)
 ├── schemas/                      # Schema definitions

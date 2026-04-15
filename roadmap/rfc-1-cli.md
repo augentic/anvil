@@ -50,7 +50,7 @@ The first four items establish a working binary with immediate value. Items 5–
 11. **Slice recommender** — analyse legacy dependency graph and suggest migration ordering
 12. **Behavioural diff** — compare legacy fixture output against new implementation output
 
-These build on the existing `code-analyzer`, `wiretapper`, `replay-writer`, and core `/spec:*` skills. See [RFC-2](rfc-2-migration.md) for the full design.
+These build on the existing `/spec:extract`, `wiretapper`, `replay-writer`, and core `/spec:*` skills. See [RFC-2](rfc-2-migration.md) for the full design.
 
 #### Phase 3: Federation extensions ([RFC-3](rfc-3-multi-repo.md))
 

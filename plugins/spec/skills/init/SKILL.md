@@ -117,7 +117,7 @@ I'll create the `.specify/` directory structure and install a starter `project.y
 
    If at least one indicator is found, use the **AskQuestion tool**:
 
-   > "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This uses `/spec:extract` and typically takes a few minutes with your input at checkpoints."
+   > "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This uses `/spec:extract`."
 
    Options:
    - **Yes, generate baseline specs** — proceed to create the change
