@@ -1,11 +1,11 @@
 # Schema Resolution
 
-Skills resolve the `schema` field from `.specify/config.yaml` (or `.metadata.yaml`) to locate schema files. This document defines the resolution algorithm used by all spec skills.
+Skills resolve the `schema` field from `.specify/project.yaml` (or `.metadata.yaml`) to locate schema files. This document defines the resolution algorithm used by all spec skills.
 
 ## Inputs
 
 - **`$SCHEMA_VALUE`**: the `schema` field value (a name or URL)
-- **`$FILES_NEEDED`**: which files the calling skill requires (e.g., `schema.yaml`, `instructions/*`)
+- **`$FILES_NEEDED`**: which files the calling skill requires (e.g., `schema.yaml`, `briefs/*`)
 
 ## URL Format
 
@@ -101,12 +101,13 @@ When no `@ref` is present, `main` is used as the default ref.
    .specify/.cache/
    ├── .cache-meta.yaml
    ├── schema.yaml
-   └── instructions/        (if fetched)
+   └── briefs/        (if fetched)
        ├── proposal.md
        ├── specs.md
        ├── design.md
        ├── tasks.md
-       └── build.md
+       ├── build.md
+       └── merge.md
    ```
 
    Write `.cache-meta.yaml` with:
@@ -128,24 +129,16 @@ merges the child on top.
 
 ### Merge Rules
 
-- **`blueprints`**: child blueprints with the same `id` override the parent
-  entirely; new `id`s are appended to the parent's list. Dependency order
-  is recomputed from the merged `requires` graph.
-- **`terminology`**: child replaces parent. If omitted, inherits the
-  parent's `terminology`. Contains only `deliverable` (skills infer plural
-  and heading forms).
-- **`validation`**: child replaces parent entirely (boolean flag map).
-  If omitted, inherits the parent's validation flags.
-- **`build`**: child `requires` replaces parent `requires`; child
-  `instructions` replaces parent `instructions`; child `tracks` replaces
-  parent `tracks`. Omitted fields inherit from parent.
-- **`defaults`**: child `defaults.context` replaces parent if present;
-  child `defaults.rules` merges per blueprint key (child overrides parent
-  for matching keys, parent provides the rest). If `defaults` is omitted
-  entirely, inherits the parent's `defaults`.
-- **`instructions/`**: resolve from the child schema directory first;
+- **`pipeline`**: for each phase (`define`, `build`, `merge`), child entries
+  with the same `id` override the parent entry entirely; new `id`s are
+  appended to the parent's list. Dependency order is recomputed from the
+  merged `needs` graph (read from brief frontmatter).
+- **`domain`**: child replaces parent if present. If omitted, inherits
+  the parent's `domain`.
+- **`briefs/`**: resolve from the child schema directory first;
   fall back to the parent schema directory for any files not present in
-  the child.
+  the child. Brief frontmatter (`id`, `needs`, `generates`, `tracks`,
+  `description`) is read from whichever directory provides the file.
 - **All other top-level fields** (`name`, `version`, `description`): child
   replaces parent. These are identity fields and should always be declared
   in the child.
@@ -155,10 +148,10 @@ merges the child on top.
 
 Given `omnia-secure` extends `omnia`:
 
-1. Resolve `omnia` (parent) → yields base `schema.yaml`, `instructions/*`
+1. Resolve `omnia` (parent) → yields base `schema.yaml`, `briefs/*`
 2. Resolve `omnia-secure` (child) → yields override `schema.yaml`
-3. Merge: parent blueprints + child blueprints (override by `id`, append new)
-4. For file reads: check child directory first, fall back to parent
+3. Merge: parent pipeline entries + child pipeline entries (override by `id`, append new)
+4. For brief reads: check child directory first, fall back to parent
 
 ## Resolution Modes
 
@@ -181,7 +174,7 @@ across machines and branches.
 - The `.specify/.cache/` directory should be gitignored. The `init` skill
   creates this directory and adds it to `.gitignore` if needed.
 - Cache invalidation is automatic: when the `schema` value in
-  `.specify/config.yaml` changes, the cached `schema_url` no longer
+  `.specify/project.yaml` changes, the cached `schema_url` no longer
   matches, triggering a refetch.
 - To force a refetch, delete `.specify/.cache/` and run any skill that
   resolves the schema.
@@ -192,13 +185,13 @@ across machines and branches.
 
 ## What Each Skill Needs
 
-| Skill   | Files needed                              |
-|---------|-------------------------------------------|
-| init    | `schema.yaml`, `instructions/*`           |
-| define  | `schema.yaml`, `instructions/*`           |
-| build   | `schema.yaml`, `instructions/build.md`    |
-| merge   | `schema.yaml`                             |
-| drop    | `schema.yaml`                             |
-| verify  | `schema.yaml`                             |
-| explore | `schema.yaml`                             |
-| status  | `schema.yaml`                             |
+| Skill   | Files needed                          |
+|---------|---------------------------------------|
+| init    | `schema.yaml`, `briefs/*`             |
+| define  | `schema.yaml`, `briefs/*`             |
+| build   | `schema.yaml`, `briefs/build.md`      |
+| merge   | `schema.yaml`, `briefs/merge.md`      |
+| drop    | `schema.yaml`                         |
+| verify  | `schema.yaml`                         |
+| explore | `schema.yaml`                         |
+| status  | `schema.yaml`                         |

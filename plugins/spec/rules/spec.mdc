@@ -11,43 +11,17 @@ This plugin provides the core Specify workflow skills: define a change, build (v
 
 **Purpose**: Drive the define -> build -> merge workflow, with drop for cleanup, verify for drift detection, and explore for thinking and investigation.
 
-## Plugin Architecture
-
-```text
-/plugins/spec/
-├── .cursor-plugin/
-│   └── plugin.json      # Plugin manifest
-├── rules/
-│   └── spec.mdc          # This file
-├── references/
-│   ├── schema-resolution.md  # Centralized schema resolution + composition algorithm
-│   └── specify.md            # Artifact format reference (symlink)
-└── skills/
-    ├── init/              # Initialize Specify in a project
-    ├── define/            # Create a change with all artifacts (or regenerate one)
-    ├── build/             # Validate artifacts and implement tasks from a change
-    ├── merge/             # Merge a completed change
-    ├── drop/              # Discard a change without merging specs
-    ├── explore/           # Thinking partner for ideas and investigation
-    ├── verify/            # Detect drift between code and baseline specs
-    ├── status/            # Check change status and progress
-    └── extract/           # Extract Specify artifacts from existing source code
-```
-
-Each skill has its own SKILL.md with full details. Schema resolution and composition is defined in [schema-resolution.md](../references/schema-resolution.md). The Specify artifact format is described in [specify.md](../references/specify.md). Validation rules are defined in `schema.yaml` and enforced by the build skill's validation gate.
-
 ## Schema Structure
 
-Schemas define the artifact graph, instructions, and heading conventions. Each schema directory contains:
+Schemas define the artifact graph, briefs, and heading conventions. Each schema directory contains:
 
 ```text
 schemas/<name>/
-├── schema.yaml      # Declarations: blueprints, validation, terminology, build config
-├── config.yaml      # Starter config for /spec:init
-└── instructions/    # Detailed instructions per blueprint + build
+├── schema.yaml
+└── briefs/
 ```
 
-`schema.yaml` is declaration-only — instructions live in separate files referenced by path. Schemas can extend other schemas via the `extends` field.
+`schema.yaml` defines the pipeline phases — detailed guidance lives in brief files with YAML frontmatter. Schemas can extend other schemas via the `extends` field.
 
 ## Change Lifecycle
 
@@ -81,7 +55,7 @@ defining -> defined -> building -> complete -> merged
                   /spec:extract (extract artifacts from existing source code)
 ```
 
-- **init**: One-time project setup -- creates `.specify/` directory structure and `config.yaml`
+- **init**: One-time project setup -- creates `.specify/` directory structure and `project.yaml`
 - **define**: Create a change directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:define <name> <blueprint-id>`.
 - **build**: Validate artifacts against `schema.yaml` rules and cross-blueprint consistency, then implement tasks from the change, marking them complete as you go
 - **merge**: Preview merge operations, finalize a completed change, merge delta specs into baseline
@@ -122,3 +96,7 @@ defining -> defined -> building -> complete -> merged
 - [Status SKILL.md](skills/status/SKILL.md) - Check status and progress
 - [Extract SKILL.md](skills/extract/SKILL.md) - Extract artifacts from existing source code
 - [Specify Artifact Specification](../references/specify.md) - Artifact format details
+
+## Specification
+
+Do NOT use `openspec/`, `temp/`, or any other directory convention from other plugins or skills.

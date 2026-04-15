@@ -73,7 +73,6 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### RT Plugin (`plugins/rt/`)
 
-- `code-analyzer` - derive specs and design from TypeScript
 - `git-cloner` - clone a source repository for analysis
 - `replay-writer` - add regression tests from captured fixtures
 - `wiretapper` - capture fixture data from legacy services

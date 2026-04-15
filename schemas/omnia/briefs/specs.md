@@ -1,45 +1,36 @@
-# Omnia Specs Instructions
-
-> **Output location**: `.specify/changes/<change-name>/`
-> All artifacts for this change are written under `.specify/changes/<change-name>/`.
-> The `generates` path in schema.yaml is relative to this directory.
-> Do NOT use `openspec/`, `temp/`, or any other directory convention.
-
-Create specification files that define WHAT the system should do.
+---
+id: specs
+description: Create specification files that define WHAT the system should do
+generates: specs/**/*.md
+needs: [proposal]
+---
 
 First, read the proposal's **Source** section to determine the workflow:
 
 ---
 
-**RT path** (Source is a repository URL):
+**Repository path** (Source is a repository URL):
 
   1. Clone the source repository. Invoke `/rt:git-cloner` with
      arguments:
        `<repo-url> legacy/ true`
      This clones the repo into `legacy/<repo-name>` as a detached tree.
-  2. Generate specs and design. Invoke `/rt:code-analyzer` with
+  2. Generate specs and design. Invoke `/spec:extract` with
      arguments:
        `legacy/<repo-name> <change-dir>`
-     code-analyzer produces both `specs/` and `design.md` in a single
-     pass.
+     extract produces both `specs/` and `design.md` in a single pass.
   3. Review the generated specs for completeness and adjust if needed.
   4. Proceed to the next artifact. design.md was already produced by
-     code-analyzer — the design phase will review/enrich it.
+     extract — the design phase will review/enrich it.
 
 ---
 
 **Source-code path** (Source is a local path to existing code):
 
-  1. Generate specs and design with iterative validation. Invoke
-     `/spec:extract` with arguments:
+  1. Generate specs and design. Invoke `/spec:extract` with arguments:
        `<source-path> <change-dir>`
-     extract runs an iterative workflow: structural inventory
-     (user-confirmed), clarification checkpoint (user-answered),
-     domain-by-domain extraction, artifact generation, and a
-     validation loop that compares artifacts against source code
-     until zero critical discrepancies remain.
-  2. extract produces both `specs/` and `design.md` after
-     validation converges.
+     extract produces both `specs/` and `design.md` in a single pass.
+  2. Review the generated specs for completeness and adjust if needed.
   3. Proceed to the next artifact. design.md was already produced by
      extract — the design phase will review/enrich it.
 

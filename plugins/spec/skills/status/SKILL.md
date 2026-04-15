@@ -17,10 +17,10 @@ Optionally specify a change name to focus on. Otherwise show an overview.
 
 1. **Check initialization and resolve schema**
 
-   Verify `.specify/config.yaml` exists. If not:
+   Verify `.specify/project.yaml` exists. If not:
    > "Specify is not initialized in this project. Run `/spec:init` to get started."
 
-   Read `.specify/config.yaml` for the `schema` value and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`. Read `schema.yaml` to get the blueprint definitions (id, generates, requires) and build configuration.
+   Read `.specify/project.yaml` for the `schema` value and **resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`. Read `schema.yaml` to get the pipeline definitions. For each entry in `pipeline.define`, `pipeline.build`, and `pipeline.merge`, read the brief's frontmatter for `id`, `generates`, `needs`, and `tracks`.
 
 2. **List active changes**
 
@@ -39,21 +39,21 @@ Optionally specify a change name to focus on. Otherwise show an overview.
    - `complete` — "All tasks complete, ready to merge"
    - `dropped` — "Change discarded and moved to archive without merging specs"
 
-   For each blueprint defined in `schema.yaml`, check whether it is complete:
+   For each brief in `pipeline.define` entries, check whether it is complete:
    - If `generates` is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
    - If `generates` is a glob pattern (e.g., `specs/**/*.md`), check if the directory contains at least one matching `.md` file.
 
-   Derive readiness from each blueprint's `requires` field:
-   - A blueprint with empty `requires` is always **ready** (no dependencies)
-   - A blueprint is **ready** when all blueprints listed in its `requires` are complete
-   - A blueprint is **blocked** when any blueprint in its `requires` is incomplete
-   - A blueprint is **done** when its generated file(s) exist
+   Derive readiness from each brief's `needs` field:
+   - A brief with empty `needs` is always **ready** (no dependencies)
+   - A brief is **ready** when all briefs listed in its `needs` are complete
+   - A brief is **blocked** when any brief in its `needs` is incomplete
+   - A brief is **done** when its generated file(s) exist
 
-   Display the blueprint table dynamically from the schema's blueprint list.
+   Display the artifact table dynamically from the pipeline's brief list.
 
 4. **Check task progress**
 
-   If the artifact tracked by `build.tracks` (from `schema.yaml`) exists, read it and count lines matching:
+   Read the build brief (from `pipeline.build`) and check its frontmatter `tracks` field. If the tracked artifact exists, read it and count lines matching:
    - `- [ ]` = incomplete task
    - `- [x]` or `- [X]` = complete task
 
@@ -61,7 +61,7 @@ Optionally specify a change name to focus on. Otherwise show an overview.
 
 5. **Check build readiness**
 
-   Build is ready when all blueprints listed in `build.requires` (from `schema.yaml`) are complete.
+   Build is ready when all briefs listed in the build brief's `needs` are complete.
 
 6. **Show next-step guidance based on lifecycle status**
 

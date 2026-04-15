@@ -35,7 +35,7 @@ Or to start a new cross-platform Crux app:
 /spec:init https://github.com/augentic/specify/schemas/vectis
 ```
 
-This creates the `.specify/` directory with a `config.yaml` you can customize to describe your project's tech stack, architecture, and constraints. Schema URLs support an optional `@ref` suffix (e.g., `@v1`, `@main`) to pin a specific version.
+This creates the `.specify/` directory with a `project.yaml` you can customize to describe your project's tech stack, architecture, and constraints. Schema URLs support an optional `@ref` suffix (e.g., `@v1`, `@main`) to pin a specific version.
 
 ### Work through a change
 
@@ -80,7 +80,7 @@ Specify ships as a Cursor plugin marketplace with five plugins:
 - **Specify** (`spec`) -- Core workflow: define, build, merge, verify, explore, extract
 - **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
 - **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
-- **RT** (`rt`) -- TypeScript analysis, fixture capture, and migration
+- **RT** (`rt`) -- Repository cloning, fixture capture, and regression testing for migration
 - **Plan** (`plan`) -- Requirements analysis and SoW generation
 
 See [docs/plugins.md](docs/plugins.md) for the full skill reference and artifact lifecycle.

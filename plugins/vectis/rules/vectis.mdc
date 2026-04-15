@@ -22,6 +22,7 @@ This plugin generates cross-platform applications using the Crux framework (Rust
 └── skills/
     ├── core-writer/          # Specify artifacts → Rust Crux shared crate
     ├── core-reviewer/        # AI-powered code review for Crux core
+    ├── test-writer/          # Spec-traced test suites for Crux core
     ├── ios-writer/           # Crux core → SwiftUI iOS shell
     ├── ios-reviewer/         # AI-powered code review for iOS shell
     ├── android-writer/       # Crux core → Kotlin/Jetpack Compose Android shell

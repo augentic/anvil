@@ -1,9 +1,8 @@
-> **Output location**: `.specify/changes/<change-name>/`
-> All artifacts for this change are written under `.specify/changes/<change-name>/`.
-> The `generates` path in schema.yaml is relative to this directory.
-> Do NOT use `openspec/`, `temp/`, or any other directory convention.
-
-Create the proposal document that establishes WHY this change is needed.
+---
+id: proposal
+description: Establish why this change is needed
+generates: proposal.md
+---
 
 Sections:
 - **Why**: 1-2 sentences on the problem or opportunity. What problem does

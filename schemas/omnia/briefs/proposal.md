@@ -1,20 +1,22 @@
-> **Output location**: `.specify/changes/<change-name>/`
-> All artifacts for this change are written under `.specify/changes/<change-name>/`.
-> The `generates` path in schema.yaml is relative to this directory.
-> Do NOT use `openspec/`, `temp/`, or any other directory convention.
-
-Create the proposal document that establishes WHY this change is needed.
+---
+id: proposal
+description: Establish why this change is needed
+generates: proposal.md
+---
 
 Sections:
+
 - **Why**: 1-2 sentences on the problem or opportunity. What problem does
   this solve? Why now?
 - **Source**: Identify where the requirements come from. Pick ONE:
   - **Repository**: URL of the repository to migrate (e.g.,
-    `https://github.com/org/repo`). This triggers the RT workflow
-    — the specs phase will clone the repo and run code-analyzer.
+    `https://github.com/org/repo`). The specs phase will clone the
+    repo and run `/spec:extract` to produce artifacts.
   - **Source-code**: Local path to existing source code (e.g.,
-    `/path/to/legacy/crate`). This triggers the extract workflow
-    — the specs phase will run extract with iterative validation.
+    `/path/to/legacy/crate`). The specs phase will run `/spec:extract`
+    to produce artifacts.
+  - **Epic**: JIRA/ADO/Linear epic key (e.g., `ATR-7102`). This triggers
+    the Omnia workflow — the specs phase will run epic-analyzer.
   - **Manual**: Requirements are described directly in this proposal.
     This is the default workflow — specs and design are written by hand.
 - **What Changes**: Bullet list of changes. Be specific about new
@@ -54,7 +56,7 @@ This is the foundation - specs, design, and tasks all build on this.
 
 ## Source
 
-<!-- Pick ONE: Repository URL, Source-code path, or Manual -->
+<!-- Pick ONE: Repository URL, Source-code path, Epic key, or Manual -->
 
 ## What Changes
 

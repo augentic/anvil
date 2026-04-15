@@ -7,7 +7,7 @@ Analyze a simple TypeScript service that receives messages and makes HTTP calls 
 ## Input Parameters
 
 ```bash
-code-analyzer ./src/handler.ts $CHANGE_DIR
+extract ./src/handler.ts $CHANGE_DIR
 ```
 
 - **TypeScript Source**: `./src/handler.ts`

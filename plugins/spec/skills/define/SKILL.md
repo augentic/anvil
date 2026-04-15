@@ -37,14 +37,14 @@ The user's request should include a change name (kebab-case) OR a description of
 
 3. **Check initialization, resolve schema, and read config**
 
-   - Verify `.specify/config.yaml` exists. If not, tell the user to run `/spec:init` first.
-   - Read `.specify/config.yaml` to get:
+   - Verify `.specify/project.yaml` exists. If not, tell the user to run `/spec:init` first.
+   - Read `.specify/project.yaml` to get:
      - `schema`: the schema value. Default to `omnia` if not found.
-     - `context`: Project-level context override (may be empty or a placeholder)
-     - `overrides`: Per-artifact rule overrides (constraints for you - do NOT include in artifact output)
-   - **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `instructions/*`.
-   - Read `schema.yaml` from the resolved schema directory. This defines the blueprint list, dependency graph, and file references. **All blueprint knowledge comes from the schema** — do not assume fixed blueprint IDs or output paths.
-   - Read the `defaults` section from the resolved `schema.yaml` for default `context` and `rules`. **Resolve effective context**: use the project's `context` if present and non-empty (not just a comment placeholder), otherwise fall back to the schema's `defaults.context`. **Resolve effective rules** per blueprint: for each blueprint ID, use the project's `overrides.<id>` if present and non-empty, otherwise fall back to the schema's `defaults.rules.<id>`. These are constraints for you — do NOT include them in artifact output.
+     - `domain`: Project-level domain context (may be empty or a placeholder)
+     - `rules`: Per-brief rule overrides (constraints for you - do NOT include in artifact output)
+   - **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `briefs/*`.
+   - Read `schema.yaml` from the resolved schema directory. This defines the pipeline phases and brief references. **All pipeline and brief knowledge comes from the schema** — do not assume fixed brief IDs or output paths.
+   - Read `domain` from the resolved `schema.yaml` for default domain context. **Resolve effective domain**: use the project's `domain` if present and non-empty (not just a comment placeholder), otherwise fall back to the schema's `domain`. **Resolve effective rules** per brief: for each brief ID, use the project's `rules.<id>` if present and non-empty, otherwise no rules apply (rules are optional project-level overrides). These are constraints for you — do NOT include them in artifact output.
 
 4. **Check for regenerate mode**
 
@@ -52,14 +52,13 @@ The user's request should include a change name (kebab-case) OR a description of
 
    a. Verify the change exists at `.specify/changes/<name>/`
    b. Read `.metadata.yaml` and confirm `status` is `defined` or `building`
-   c. Look up the blueprint by `id` in `schema.yaml`
-   d. Verify all blueprints listed in its `requires` exist in the change directory
+   c. Look up the brief by `id` in `schema.yaml`'s `pipeline.define` entries
+   d. Verify all briefs listed in its frontmatter `needs` exist in the change directory
    e. Read the required artifacts for context
-   f. Read the instruction file at the path given by the blueprint's `instructions` field in the resolved schema directory
-   g. Regenerate ONLY the specified artifact following the instruction
-   i. Apply `context` and effective rules as constraints
-   j. Run validators if `validate` rules are defined for this artifact (see step 6)
-   k. Do NOT change the `status` field
+   f. Read the brief file at the path given by the pipeline entry's `brief` field in the resolved schema directory
+   g. Regenerate ONLY the specified artifact following the brief
+   i. Apply `domain` and effective rules as constraints
+   j. Do NOT change the `status` field
    l. Show output:
 
       ```markdown
@@ -67,7 +66,7 @@ The user's request should include a change name (kebab-case) OR a description of
 
       **Change:** <name>
       **Artifact:** <generates> (regenerated)
-      **Dependencies read:** <list of requires artifacts>
+      **Dependencies read:** <list of needs artifacts>
 
       The artifact has been updated. Other artifacts are unchanged.
 
@@ -107,18 +106,17 @@ The user's request should include a change name (kebab-case) OR a description of
 
    Use the **TodoWrite tool** to track progress through the artifacts.
 
-   Build the dependency graph from the `requires` field of each blueprint in `schema.yaml`. Topologically sort: a blueprint is ready when all blueprints listed in its `requires` are complete. Blueprints with no `requires` come first; blueprints sharing the same dependency level can be created in parallel or any order.
+   Build the dependency graph from the `needs` field in each brief's YAML frontmatter. Read `pipeline.define` entries from `schema.yaml`, then for each entry read the brief file's frontmatter to get `id`, `needs`, `generates`, and `description`. Topologically sort: a brief is ready when all briefs listed in its `needs` are complete. Briefs with no `needs` come first; briefs sharing the same dependency level can be created in parallel or any order.
 
-   For each blueprint (in dependency order):
+   For each brief (in dependency order):
 
-   - Read any completed dependency files (the blueprints listed in `requires`) for context
-   - Read the instruction file at the path given by the blueprint's `instructions` field in the resolved schema directory
-   - Determine the output path from the `generates` field, relative to `.specify/changes/<name>/`:
+   - Read any completed dependency files (the briefs listed in `needs`) for context
+   - Read the brief file at the path given by the pipeline entry's `brief` field in the resolved schema directory
+   - Determine the output path from the brief's frontmatter `generates` field, relative to `.specify/changes/<name>/`:
      - Simple filename (e.g., `proposal.md`): write to `.specify/changes/<name>/<generates>`
-     - Glob pattern (e.g., `specs/**/*.md`): the instruction determines how many files to create and where within the pattern
-   - Create the artifact file following the instruction, applying the format conventions below for the matching artifact type
-   - Apply `context` and effective rules as constraints — but do NOT copy them into the file
-   - If the blueprint has `validate` rules in `schema.yaml`, re-read the written file and verify each rule. If any fail: report which rules failed and why, attempt to fix the artifact, re-validate after fixing. If still failing after one fix attempt, warn the user and proceed.
+     - Glob pattern (e.g., `specs/**/*.md`): the brief determines how many files to create and where within the pattern
+   - Create the artifact file following the brief, applying the format conventions below for the matching artifact type
+   - Apply `domain` and effective rules as constraints — but do NOT copy them into the file
    - Verify the file exists after writing before proceeding to next
 
    ### Spec format conventions
@@ -186,11 +184,11 @@ The user's request should include a change name (kebab-case) OR a description of
 
 ## Guardrails
 
-- **All artifacts MUST be written under `.specify/changes/<name>/`**. The `generates` path in each blueprint is relative to this directory. Do NOT use `openspec/`, `temp/`, or any other directory convention from other plugins or skills.
-- Create ALL blueprints defined in `schema.yaml` before declaring the change ready
-- Always read dependency artifacts (from `requires`) before creating a new one
+- Create all artifacts for briefs defined in `pipeline.define` before declaring the change ready
+- Always read dependency artifacts (from `needs`) before creating a new one
+- **All artifacts MUST be written under `.specify/changes/<name>/`**. 
 - If context is critically unclear, ask the user -- but prefer making reasonable decisions to keep momentum
 - If a change with that name already exists, check its status before deciding how to proceed
 - Verify each artifact file exists after writing before proceeding to next
-- **IMPORTANT**: `context` and effective rules (project config with schema defaults as fallback) are constraints for YOU, not content for the file. Do NOT copy `<context>`, `<rules>`, `<project_context>` blocks into any artifact.
+- **IMPORTANT**: `domain` and effective rules (project config overrides) are constraints for YOU, not content for the file. Do NOT copy `<domain>`, `<rules>`, `<project_context>` blocks into any artifact.
 - Valid lifecycle status values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped` -- use these exact strings when updating `.metadata.yaml`, no other values are permitted

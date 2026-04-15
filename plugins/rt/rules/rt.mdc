@@ -20,11 +20,12 @@ This plugin migrates existing TypeScript services to production-grade Rust WASM 
 ├── rules/
 │   └── rt.mdc            # This file
 └── skills/
-    ├── code-analyzer/     # TypeScript → Specify artifacts
     ├── git-cloner/        # Repository cloning (optional detach)
     ├── wiretapper/        # Add wiretap to legacy repo for fixture capture
     └── replay-writer/     # Add regression tests from captured fixtures
 ```
+
+Note: Source code analysis (formerly `code-analyzer`) has moved to `/spec:extract` in the spec plugin.
 
 Each skill has its own SKILL.md with full details. After **clone**, **wiretapper** runs in parallel with **analyze** (wiretapper adds `src/wiretap/` to the legacy repo and wires the app entrypoint so that with `WIRETAP_ENABLED=true` the app writes `{app-name}.wiretap.json`). The RT plugin provides the analysis and fixture-capture side; code generation skills (crate-writer, guest-writer, test-writer, code-reviewer) live in the Omnia plugin.
 
@@ -40,7 +41,7 @@ Each skill has its own SKILL.md with full details. After **clone**, **wiretapper
 - **Message publishing**: Kafka/RabbitMQ → message publishing capabilities
 - **Data access**: Azure Table Storage, Redis, SQL, blob storage, document databases → external service dependencies with type classification
 
-The code-analyzer produces platform-agnostic Specify artifacts (specs + design.md). The crate-writer skill then maps artifact capabilities to Omnia SDK provider traits (e.g., outbound HTTP → `HttpRequest`, configuration → `Config`).
+The `/spec:extract` skill produces platform-agnostic Specify artifacts (specs + design.md). The crate-writer skill then maps artifact capabilities to Omnia SDK provider traits (e.g., outbound HTTP → `HttpRequest`, configuration → `Config`).
 
 ### Known Challenges
 
@@ -60,7 +61,7 @@ The code-analyzer produces platform-agnostic Specify artifacts (specs + design.m
 
 ### Artifacts Missing Business Logic
 
-- Are functions exported? (code-analyzer skips internal functions)
+- Are functions exported? (the extract skill skips internal functions)
 - Is logic in accessible files? (check module imports)
 - Are there dynamically loaded modules?
 
@@ -73,7 +74,7 @@ The code-analyzer produces platform-agnostic Specify artifacts (specs + design.m
 ## Related Documentation
 
 - See project rule (`.cursor/rules/project.mdc`) for overall project context
-- [Code Analyzer SKILL.md](skills/code-analyzer/SKILL.md) - Analysis details
+- [Extract SKILL.md](../../spec/skills/extract/SKILL.md) - Source code analysis (moved from this plugin)
 - [Wiretapper SKILL.md](skills/wiretapper/SKILL.md) - Fixture capture from legacy services
 - [Replay Writer SKILL.md](skills/replay-writer/SKILL.md) - Add tests from captured fixtures
 - [Git Cloner SKILL.md](skills/git-cloner/SKILL.md) - Repository cloning
