@@ -20,10 +20,6 @@ The inversion-of-control thesis is sound and architecturally distinct from the d
 
 Skills like `define`, `build`, and `merge` are behavioural contracts that the agent interprets, not rigid scripts. This gives resilience to ambiguity that a deterministic pipeline can't handle (e.g. the `build` skill's "pause if task is unclear" or "suggest artifact updates if design issues emerge").
 
-### The schema system is well-factored
-
-The separation of `schema.yaml` (structural metadata), `instructions/*.md` (behavioural guidance), and `config.yaml` (thin project overlay) creates clean layering. The `extends` mechanism for schema composition is forward-looking.
-
 ### The delta-merge spec format is clever
 
 Using stable `REQ-XXX` IDs as merge keys with ADDED/MODIFIED/REMOVED/RENAMED operations gives a specification system that can evolve without losing traceability.
@@ -32,27 +28,25 @@ Using stable `REQ-XXX` IDs as merge keys with ADDED/MODIFIED/REMOVED/RENAMED ope
 
 ## Where the Tension Shows
 
-### 1. The "deterministic islands" are ad-hoc and fragile
+### The "deterministic islands" are ad-hoc and fragile
 
 There is exactly one deterministic tool today: `merge-specs.py`. Everything else that needs precision — validation, task parsing, artifact structure checking — is done by the LLM interpreting prose rules. This creates a reliability gradient: the merge step is solid (deterministic Python with exit codes), but validation is probabilistic (the agent reading `validate` strings from `schema.yaml` and making judgment calls).
 
 The build instructions in `schemas/omnia/instructions/build.md` illustrate this well — they contain shell commands like `cargo test 2>&1 | tee /tmp/...` embedded in prose. The agent must parse the prose, decide when to run the command, interpret the output, and classify failures. That's a lot of cognitive load on the LLM for what is fundamentally a structured decision tree.
 
-### 2. The config/schema system is overloaded for what it does
-
-`config.yaml` has three fields (`schema`, `context`, `overrides`), but the resolution semantics are complex: bare names vs URLs, `@ref` suffixes, cache invalidation, fallback chains for defaults vs overrides, non-empty checks for placeholder detection. The `schemas/README.md` is 217 lines explaining what is essentially a three-field config file. This complexity exists because resolution logic is encoded in prose that the agent must interpret, rather than in a tool that handles it deterministically.
-
-### 3. Validation is specified declaratively but executed probabilistically
+### Validation is specified declaratively but executed probabilistically *(addressed — see [config.md](config.md))*
 
 The `validate` arrays in `schema.yaml` are human-readable strings like "Has a Why section with at least one sentence" and "Uses SHALL/MUST language for normative requirements." These are great for communicating intent, but the agent's interpretation of "at least one sentence" or "WHEN/THEN format" will vary across invocations. The `checks.ts` script validates the *framework itself* rigorously, but the *artifacts it produces* get weaker validation.
 
-### 4. Multi-repo is structurally hard
+### Multi-repo is structurally hard
 
 The `.specify/` directory is project-local. The `touched_specs` conflict detection in `.metadata.yaml` only works within a single workspace. There's no concept of a "spec reference" that spans repositories, and the schema resolution assumes a single project root.
 
 ---
 
 ## Roadmap — Three Horizons
+
+> **Note:** The original Horizon 2 (Config Simplification) has been completed. See [config.md](config.md) for the finalised configuration architecture. The horizons below have been renumbered accordingly.
 
 ### Horizon 1: `specify` CLI (Rust) — Deterministic Foundation
 
@@ -80,55 +74,71 @@ See [cli.md](cli.md) for the full crate structure sketch.
 
 **What the agent keeps:** The agent still decides *when* to validate, *how to respond* to failures, *whether to pause* for user input, and *what to suggest* for fixes. The CLI is a precision instrument; the agent is the practitioner.
 
-### Horizon 2: Config Simplification
-
-With a CLI handling resolution, the config can become genuinely thin.
-
-**Current pain points:**
-
-- `schema` field has complex resolution semantics (bare name vs URL vs `@ref`)
-- `context` and `overrides` are free-form strings with placeholder detection
-- The schema's `defaults` section duplicates what could be inline defaults
-- `config.yaml`, `schema.yaml`, `.cache-meta.yaml`, and `.metadata.yaml` are four separate files with overlapping concerns
-
-**Proposed `config.yaml` v2:**
-
-```yaml
-version: 2
-schema: omnia@v1
-
-project:
-  name: my-service
-  language: rust
-  description: |
-    A user authentication service built on Omnia SDK.
-
-overrides:
-  specs:
-    format: given-when-then
-  tasks:
-    greenfield-chain: [guest-writer, crate-writer, test-writer, code-reviewer]
-```
-
-Key changes:
-
-- `**project` block** replaces the freeform `context` string with structured fields the CLI can use for validation and the agent can use for context
-- `**overrides` uses structured keys** where possible, with prose-only overrides staying as freeform strings under an `instructions` key
-- **Schema resolution is a CLI concern**, not a skill concern
-- `**.metadata.yaml` stays per-change** but gets validated by the CLI
-
-### Considerations
-
-- *schema* for tech stack settings
-- ?? for platform settings
-- *config* for repo settings
-- ADRs for capturing long-lasting architectural decisions
-
-### Horizon 3: Multi-Repo Coordination
+### Horizon 2: Multi-Repo Coordination
 
 Extend the existing `config.yaml` to declare peer repositories and use the CLI to coordinate.
 
 See [horizons.md](horizons.md) for the full design.
+
+### Horizon 3: Iterative Legacy Migration
+
+Migrate existing systems into Specify-managed codebases using an iterative define-build-merge loop. Rather than a big-bang rewrite, each slice of the legacy system moves through the same workflow that powers greenfield development — but the input is existing code, not a blank canvas.
+
+**The loop:**
+
+```text
+┌─────────────────────────────────────────────────────┐
+│  1. Extract   — Analyse a slice of the legacy       │
+│                 codebase and produce Specify         │
+│                 artifacts (specs + design.md)        │
+│                                                     │
+│  2. Define    — Refine the extracted artifacts,      │
+│                 adapt them to the target stack,      │
+│                 and generate tasks                   │
+│                                                     │
+│  3. Build     — Implement the tasks against the      │
+│                 target stack using the generated     │
+│                 specs as the source of truth         │
+│                                                     │
+│  4. Verify    — Run specify verify to confirm the    │
+│                 new code satisfies the extracted     │
+│                 specs; run replay tests against      │
+│                 captured fixtures                    │
+│                                                     │
+│  5. Merge     — Merge the change, advancing the      │
+│                 baseline. The migrated slice is      │
+│                 now under spec governance            │
+│                                                     │
+│  6. Repeat    — Pick the next slice and loop         │
+└─────────────────────────────────────────────────────┘
+```
+
+**Why this works:** Legacy migration fails most often because the new system diverges from the old system's actual behaviour — the behaviour nobody wrote down. By extracting specs *from the running code* (not from stale documentation), the define-build-merge loop preserves behavioural fidelity while allowing the target architecture to differ completely.
+
+**What exists today:**
+
+- The `code-analyzer` skill reads source code and produces Specify artifacts (specs + design.md), giving the extraction step
+- The `wiretapper` skill instruments a legacy codebase to capture real request/response pairs as fixture JSON
+- The `replay-writer` skill generates tests from those fixtures, providing a behavioural regression safety net
+- The `extract` skill in `/spec` wraps extraction with iterative validation
+
+**What's needed:**
+
+
+| Capability                     | Status | Notes                                                                                 |
+| ------------------------------ | ------ | ------------------------------------------------------------------------------------- |
+| Extract specs from source code | Exists | `code-analyzer`, `/spec:extract`                                                      |
+| Capture runtime fixtures       | Exists | `wiretapper`                                                                          |
+| Generate replay tests          | Exists | `replay-writer`                                                                       |
+| Slice recommender              | New    | Suggest the next migration slice based on dependency graph and risk                   |
+| Behavioural diff               | New    | Compare legacy fixture output against new implementation output                       |
+| Migration dashboard            | New    | Track which slices are migrated, in-progress, and remaining                           |
+| Cross-stack define             | New    | Extract from one stack (e.g. TypeScript) and define against another (e.g. Omnia/Rust) |
+
+
+**Slice strategy:** Not every slice of a legacy system is equally suitable for migration. Good early slices are leaf services with few upstream dependents, clear API boundaries, and existing test coverage (or easy-to-capture request/response patterns). The slice recommender analyses the legacy codebase's dependency graph and suggests an ordering that minimises cross-boundary risk.
+
+**The key benefit:** Migration becomes incremental and reversible. Each loop iteration produces a self-contained change with specs, tests, and verified code. If a slice migration stalls, the baseline still reflects everything that has been successfully migrated. The same skills, validation, and merge semantics that govern greenfield development govern migration — no separate tooling, no separate process.
 
 ---
 
@@ -155,12 +165,14 @@ A good litmus test: "Would this command need to understand `.specify/` directory
 1. **Specify CLI scaffolding** — `specify init`, `specify validate`, `specify merge` (replaces `merge-specs.py`)
 2. **Migrate `init` and `merge` skills** to use CLI commands
 3. **Migrate `build` validation** to use `specify validate`
-4. **Config v2** with structured `project` block and CLI-backed resolution
-5. `**specify task`** subcommands for deterministic task tracking
-6. **Federation config** and `specify federation sync` for multi-repo
-7. **Cross-repo spec references** and `specify federation validate`
+4. `**specify task`** subcommands for deterministic task tracking
+5. **Federation config** and `specify federation sync` for multi-repo
+6. **Cross-repo spec references** and `specify federation validate`
+7. **Slice recommender** for legacy migration ordering
+8. **Behavioural diff** — compare legacy fixtures against new implementation output
+9. **Migration dashboard** — track slice-level migration progress
 
-The first three items would take a single `/spec:define` + `/spec:build` cycle to implement and would immediately simplify the three most complex skills.
+The first three items would take a single `/spec:define` + `/spec:build` cycle to implement and would immediately simplify the three most complex skills. Items 7–9 build on the existing `code-analyzer`, `wiretapper`, and `replay-writer` skills.
 
 ---
 
