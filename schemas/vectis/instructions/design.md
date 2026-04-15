@@ -1,3 +1,8 @@
+> **Output location**: `.specify/changes/<change-name>/`
+> All artifacts for this change are written under `.specify/changes/<change-name>/`.
+> The `generates` path in schema.yaml is relative to this directory.
+> Do NOT use `openspec/`, `temp/`, or any other directory convention.
+
 Create the design document to explain HOW to implement the change.
 
 Include sections based on the platforms declared in the proposal.

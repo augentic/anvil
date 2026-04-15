@@ -186,6 +186,7 @@ The user's request should include a change name (kebab-case) OR a description of
 
 ## Guardrails
 
+- **All artifacts MUST be written under `.specify/changes/<name>/`**. The `generates` path in each blueprint is relative to this directory. Do NOT use `openspec/`, `temp/`, or any other directory convention from other plugins or skills.
 - Create ALL blueprints defined in `schema.yaml` before declaring the change ready
 - Always read dependency artifacts (from `requires`) before creating a new one
 - If context is critically unclear, ask the user -- but prefer making reasonable decisions to keep momentum

@@ -1,5 +1,10 @@
 # Omnia Specs Instructions
 
+> **Output location**: `.specify/changes/<change-name>/`
+> All artifacts for this change are written under `.specify/changes/<change-name>/`.
+> The `generates` path in schema.yaml is relative to this directory.
+> Do NOT use `openspec/`, `temp/`, or any other directory convention.
+
 Create specification files that define WHAT the system should do.
 
 First, read the proposal's **Source** section to determine the workflow:

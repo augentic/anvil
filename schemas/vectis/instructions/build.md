@@ -1,3 +1,8 @@
+> **Output location**: `.specify/changes/<change-name>/`
+> All artifacts for this change are written under `.specify/changes/<change-name>/`.
+> The `generates` path in schema.yaml is relative to this directory.
+> Do NOT use `openspec/`, `temp/`, or any other directory convention.
+
 Implement the tasks in tasks.md. Do not write Rust or Swift code
 directly -- delegate to the skills below.
 
