@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Drive complex, multi-change initiatives through Specify's define-build-merge loop using a **manifest** — an ordered, dependency-aware plan of changes with kind-aware orchestration, status tracking, and progressive baseline accumulation. Legacy migration, greenfield builds, and platform modernisations all use the same manifest format and the same loop; the only difference is where the input to `/spec:define` comes from. Each change in the manifest declares a `kind` — feature, fix, or refactor — which determines which steps in the loop apply.
+Drive complex, multi-change initiatives through Specify's define-build-merge loop using a **manifest** — an ordered, dependency-aware plan of changes with status tracking and progressive baseline accumulation. Legacy migration, greenfield builds, and platform modernisations all use the same manifest format and the same loop; the only difference is where the input to `/spec:define` comes from.
 
 ## Motivation
 
@@ -12,19 +12,17 @@ Complex initiatives — greenfield builds, legacy migrations, platform modernisa
 
 The define-build-merge loop already works for individual changes. What's missing is the layer above: a manifest that sequences changes, tracks dependencies between them, and lets progress accumulate in the baseline across iterations. Without it, every iteration starts from scratch — the agent doesn't know what came before, what's in flight, or what's blocked.
 
-Real initiatives are not composed exclusively of features. Bugs surface during extraction, refactoring becomes necessary before the next feature can land cleanly. The manifest accommodates all three kinds of work — features, fixes, and refactors — in a single ordered plan with shared dependency tracking.
-
 By expressing the initiative as an ordered list of changes with dependency constraints, the manifest turns a sprawling effort into a series of self-contained Specify changes, each building on the baseline left by the last.
 
 ## Dependency on RFC-1
 
-The manifest orchestrator, manifest parsing, and change recommender are deterministic operations that belong in the CLI ([RFC-1](rfc-1-cli.md)). The skill-level loop (define → build → merge, optionally preceded by extract) already works today; what this RFC adds is the manifest-driven automation layer, implemented as `specify manifest` subcommands on top of the CLI foundation.
+The manifest orchestrator, manifest parsing, and change recommender are deterministic operations that belong in the CLI ([RFC-1](rfc-1-cli.md)). The skill-level loop (define → build → merge) already works today; what this RFC adds is the manifest-driven automation layer, implemented as `specify manifest` subcommands on top of the CLI foundation.
 
 ## Detailed Design
 
 ### The Manifest
 
-A manifest is an ordered list of the changes to implement, along with their kinds, dependencies, and status. It is the initiative's table of contents: it tells the loop what to do next without requiring the agent to rediscover scope on every iteration.
+A manifest is an ordered list of the changes to implement, along with their dependencies and status. It is the initiative's table of contents: it tells the loop what to do next without requiring the agent to rediscover scope on every iteration.
 
 ```yaml
 # .specify/manifest.yaml
@@ -33,7 +31,7 @@ name: platform-v2
 # Optional — only for migration/extraction use cases.
 # Named source repositories. Changes reference these by key in their
 # `sources` list. File-level scoping within a source is deferred to
-# the extract step.
+# the define step (using extract skill).
 sources:
   monolith: /path/to/legacy-codebase
   orders: git@github.com:org/orders-service.git
@@ -42,18 +40,15 @@ sources:
 
 changes:
   - name: user-registration
-    kind: feature                          # feature | fix | refactor
-    sources: [monolith]                    # which sources to extract from
-    status: done                           # pending | in-progress | done | blocked | skipped
+    sources: [monolith]              # which sources to analyze
+    status: done                     # pending | in-progress | done | blocked | failed | skipped
 
   - name: email-verification
-    kind: feature
     sources: [monolith]
     depends-on: [user-registration]
     status: in-progress
 
   - name: registration-duplicate-email-crash
-    kind: fix
     affects: [user-registration]           # which changes/capabilities this touches
     description: >
       Duplicate email submission returns 500 instead of 409.
@@ -61,14 +56,12 @@ changes:
     status: pending
 
   - name: notification-preferences
-    kind: feature
     depends-on: [user-registration]        # no sources → greenfield
     description: >
       Greenfield — user-facing notification channel and frequency settings.
     status: pending
 
   - name: extract-shared-validation
-    kind: refactor
     affects: [user-registration, email-verification]
     description: >
       Pull duplicated input validation into a shared validation crate
@@ -77,81 +70,109 @@ changes:
     status: pending
 
   - name: product-catalog
-    kind: feature
     sources: [monolith]
     depends-on: [extract-shared-validation]
     status: pending
 
   - name: shopping-cart
-    kind: feature
     sources: [orders]
     depends-on: [product-catalog, user-registration]
     status: pending
 
   - name: checkout-api
-    kind: feature
     sources: [payments]
     depends-on: [shopping-cart]
-    status: pending
+    status: failed
+    failure-reason: >
+      Type mismatch between cart line-item schema and payment gateway contract.
+      Needs design revision after shopping-cart specs are updated.
 
   - name: checkout-ui
-    kind: feature
     sources: [frontend]
     depends-on: [checkout-api]
     status: pending
 ```
 
-#### Change Kinds
-
-Every change declares a `kind` that determines which steps in the loop apply:
-
-| Kind | When to use | Loop behaviour |
-|---|---|---|
-| `feature` | New capability or migrated capability | Full loop: extract → define → build → merge |
-| `fix` | Defect in an existing capability | Define (delta spec) → build → merge |
-| `refactor` | Structural improvement, no behaviour change | Define (may be design-only) → build → merge |
-
-If `kind` is omitted, it defaults to `feature`.
-
 #### Status State Machine
 
 ```
-                    ┌──────────┐
-         ┌────────►│  blocked  │◄──── dependency not met / manual flag
-         │          └────┬─────┘
-         │               │ unblock
-         │               ▼
-  ┌──────┴───┐    ┌─────────────┐    ┌──────┐
-  │  pending  ├───►│ in-progress ├───►│ done │
-  └──────┬───┘    └──────┬──────┘    └──────┘
-         │               │
-         │               │ fail / defer
-         │               ▼
-         │          ┌─────────┐
-         └────────►│ skipped  │
-                    └─────────┘
+                      ┌─────────┐
+             flag ───►│ blocked │──── unflag ────┐
+                      └─────────┘                │
+                                                 ▼
+    ┌───────────┐   select    ┌─────────────┐  merge   ┌──────┐
+───►│  pending  ├────────────►│ in-progress ├─────────►│ done │
+    └─────┬─────┘             └──────┬──────┘          └──────┘
+          │  ▲                       │
+          │  │ retry                 │ drop
+          │  │                       ▼
+          │  │                ┌──────────┐
+          │  └────────────────┤  failed  │
+          │                   └─────┬────┘
+          │  exclude     abandon    │
+          │  ┌──────────────────────┘
+          ▼  ▼
+    ┌───────────┐
+    │  skipped  │──── re-include ────► pending
+    └───────────┘
 ```
 
-- **`pending`** — not started; all dependencies satisfied or not yet checked
-- **`in-progress`** — a Specify change exists for this entry
-- **`done`** — change merged; specs in baseline
-- **`blocked`** — cannot proceed; dependency unmet or manually flagged
-- **`skipped`** — deliberately excluded from this initiative (with a reason in `description`)
+- `**pending**` — not started; eligible for selection by `manifest next` if all `depends-on` entries are `done`
+- `**in-progress**` — a Specify change has been created; define/build/merge is underway
+- `**done**` — change merged successfully; specs are in baseline
+- `**blocked**` — manually flagged as unable to proceed (with a reason in `description`). Dependency ordering is *not* modelled as `blocked` — `manifest next` enforces `depends-on` at query time by only returning `pending` changes whose dependencies are all `done`
+- `**failed*`* — attempted but unsuccessful; the Specify change was dropped. Distinct from `skipped`, which is a deliberate exclusion
+- `**skipped**` — deliberately excluded from this initiative (with a reason in `description`); never attempted or no longer needed
+
+#### Transition Rules
+
+
+| Transition | Trigger | Who |
+| ---------- | ------- | --- |
+| `pending → in-progress` | Specify change directory created for this entry | Orchestrator or user |
+| `pending → blocked`     | Flagged with a reason — design uncertainty, external dependency, etc. | Manual |
+| `pending → skipped` | Deliberately excluded before attempting | Manual |
+| `blocked → pending` | Flag removed | Manual |
+| `in-progress → done` | Specify change reaches `merged` (`/spec:merge` completes) | Orchestrator updates manifest after merge |
+| `in-progress → failed` | Build or test failure; Specify change is dropped (`/spec:drop`) | Orchestrator or user |
+| `failed → pending` | User decides to retry; a fresh Specify change will be created on next selection | Manual |
+| `failed → skipped` | User decides not to retry | Manual |
+| `skipped → pending` | Previously excluded change re-included | Manual |
+
+
+Only **one** change may be `in-progress` at a time per manifest (single-threaded loop). `manifest next` refuses to return a new change while one is already `in-progress`.
+
+On failure, the Specify change is **dropped** via `/spec:drop`, cleaning up partial artifacts. On retry (`failed → pending`), a fresh change is created when the entry is next selected.
+
+#### Mapping to Specify LifecycleStatus
+
+The manifest tracks coarse outcome; the Specify change tracks internal lifecycle. The orchestrator reads the change's `LifecycleStatus` to decide which loop step to run next; the manifest only records whether the change is finished.
+
+
+| Manifest status                              | Specify change state                                                                |
+| -------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `pending` / `blocked` / `skipped` / `failed` | No active Specify change                                                            |
+| `in-progress`                                | Change exists — `LifecycleStatus` ∈ {`defining`, `defined`, `building`, `complete`} |
+| `done`                                       | Change reached `merged`                                                             |
+
 
 #### `affects` vs `depends-on`
 
-- **`depends-on`** — ordering constraint. "Don't start this until those are `done`." Consumed by `specify manifest next`.
-- **`affects`** — impact annotation. "This change modifies behaviour defined by those changes." Consumed by the define step to know which baseline specs to load as delta targets, and by `specify manifest status` for impact reporting. Relevant for `fix` and `refactor` kinds.
+- `**depends-on`** — ordering constraint. "Don't start this until those are `done`." Consumed by `specify manifest next`.
+- `**affects**` — impact annotation. "This change modifies behaviour defined by those changes." Consumed by the define step to know which baseline specs to load as delta targets, and by `specify manifest status` for impact reporting.
 
 #### Optional Fields
 
-| Field | Relevant kinds | Purpose |
-|---|---|---|
-| `sources` | feature | Which source repos to extract from; keys reference the top-level `sources` map. Absent → greenfield |
-| `affects` | fix, refactor | Which existing changes or capabilities are touched |
-| `description` | all | Free-text context; guides the extract step when scoping within a source |
 
-Extraction changes (those with `sources`) and greenfield changes (those without) coexist in the same manifest. A change's `sources` is a list of keys referencing entries in the top-level `sources` map — it declares *which* repositories to extract from, not *which files*. File-level scoping within a source is the extract step's responsibility; the change's `description` can provide hints when needed. A platform modernisation might extract core services from several legacy codebases while adding new capabilities and fixing defects discovered along the way — the manifest handles all three kinds in a single, ordered plan.
+| Field | Purpose |
+| ----- | ------- |
+| `sources` | Which source repos to analyze; keys reference the top-level `sources` map. Absent → greenfield |
+| `affects` | Which existing changes or capabilities are touched |
+| `description`    | Free-text context; guides the define step when scoping within a source |
+| `failure-reason` | Why the change failed; aids triage and retry decisions without overloading `description` |
+
+
+Extraction changes (those with `sources`) and greenfield changes (those without) coexist in the same manifest. A change's `sources` is a list of keys referencing entries in the top-level `sources` map — it declares *which* repositories to analyze, not *which files*. File-level scoping within a source is the define step's responsibility; the change's `description` can provide hints when needed. A platform modernisation might extract core services from several legacy codebases while adding new capabilities and fixing defects discovered along the way — the manifest handles all of these in a single, ordered plan.
 
 The manifest can be:
 
@@ -163,45 +184,38 @@ When no manifest exists, the loop runs in **ad-hoc mode**: the user picks the ne
 
 ### The Loop
 
-Each iteration of the loop is a single Specify change that implements one change from the manifest. The loop reuses the existing skill chain; the `kind` determines which steps apply:
+Each iteration of the loop is a single Specify change that implements one change from the manifest. The loop reuses the existing skill chain:
 
 ```text
 for each change in manifest.yaml (or user's choice):
 
   ┌─────────────────────────────────────────────────────────┐
   │                                                         │
-  │  match change.kind:                                     │
-  │    feature  → extract? → define → build → merge         │
-  │    fix      → define (delta) → build → merge            │
-  │    refactor → define (design-focused) → build → merge   │
+  │  1. DEFINE   /spec:define                               │
+  │     Create the change artifacts. When the change has    │
+  │     sources, define invokes /spec:extract to analyze    │
+  │     the source repositories and produce specs +         │
+  │     design from existing code. When no sources are      │
+  │     present, define works from the change description.  │
+  │     Changes with `affects` produce delta specs against  │
+  │     the affected baseline entries.                      │
   │                                                         │
-  │  1. EXTRACT  /spec:extract   [feature + sources]         │
-  │     Analyse the change's source repositories and        │
-  │     produce Specify artifacts (specs + design.md)       │
-  │     capturing the legacy behaviour in a single pass.    │
-  │                                                         │
-  │  2. DEFINE   /spec:define                               │
-  │     Create or refine the artifacts for the target       │
-  │     stack. For features: new specs or adapted extracts. │
-  │     For fixes: delta specs against affected baseline.   │
-  │     For refactors: design-focused, may skip new specs.  │
-  │                                                         │
-  │  3. BUILD    /spec:build                                │
+  │  2. BUILD    /spec:build                                │
   │     Implement every task against the target stack       │
   │     using the specs as source of truth. Run tests,      │
   │     verify against replay fixtures if available.        │
   │                                                         │
-  │  4. MERGE    /spec:merge                                │
+  │  3. MERGE    /spec:merge                                │
   │     Merge the change. Delta specs fold into baseline.   │
   │     The change is now under spec governance.            │
   │     Update manifest.yaml: status → done.                │
   │                                                         │
-  │  5. NEXT     Loop to the next pending change            │
+  │  4. NEXT     Loop to the next pending change            │
   │                                                         │
   └─────────────────────────────────────────────────────────┘
 ```
 
-Each iteration is a self-contained Specify change. The agent runs the same `/spec:define` → `/spec:build` → `/spec:merge` chain it would run for any single change — the only difference is that the manifest decides what to do next, the `kind` determines which steps apply, and progress is tracked across iterations.
+Each iteration is a self-contained Specify change. The agent runs the same `/spec:define` → `/spec:build` → `/spec:merge` chain it would run for any single change — the only difference is that the manifest decides what to do next and progress is tracked across iterations.
 
 ### Progressive Baseline Accumulation
 
@@ -214,19 +228,19 @@ The key mechanism is **baseline growth through merge**. After each iteration:
 
 ```text
 Iteration 1:  baseline = {}
-              define(user-registration) → build → merge          [feature]
+              define(user-registration) → build → merge
               baseline = { user-registration }
 
 Iteration 2:  baseline = { user-registration }
-              define(registration-duplicate-email-crash) → build → merge  [fix]
+              define(registration-duplicate-email-crash) → build → merge
               baseline = { user-registration (patched) }
 
 Iteration 3:  baseline = { user-registration }
-              define(notification-preferences) → build → merge   [feature]
+              define(notification-preferences) → build → merge
               baseline = { user-registration, notification-preferences }
 
 Iteration 4:  baseline = { user-registration, notification-preferences }
-              extract(product-catalog) → define → build → merge  [feature]
+              define(product-catalog) → build → merge
               baseline = { user-registration, notification-preferences, product-catalog }
 
 ...
@@ -235,15 +249,15 @@ Iteration N:  baseline = { all changes }
               Initiative complete. Every change under spec governance.
 ```
 
-This works identically regardless of change kind. Features add new specs to the baseline, fixes produce delta specs against existing baseline entries, and refactors may restructure specs without changing behaviour. The baseline doesn't care where the specs originated or what kind of change produced them — it only cares that they passed through the define-build-merge loop.
+This works identically for all changes. New capabilities add specs to the baseline, while changes with `affects` produce delta specs against existing baseline entries. The baseline doesn't care where the specs originated — it only cares that they passed through the define-build-merge loop.
 
 ### Migration Mode
 
-When the manifest includes a `sources` section and changes reference them, the loop operates in **migration mode** — the same loop with additional extraction and verification capabilities.
+When the manifest includes a `sources` section and changes reference them, the loop operates in **migration mode** — the same define-build-merge loop with source-aware define and additional verification capabilities.
 
-#### Extraction
+#### Source-Aware Define
 
-For each change with `sources`, the EXTRACT step analyses the referenced source repositories and produces Specify artifacts capturing the existing behaviour. The extract step determines which files within the source are relevant to the change — using the change name, description, and dependency context as scoping hints. The input to `/spec:define` comes from `/spec:extract` rather than a human description.
+For changes with `sources`, the define step invokes `/spec:extract` to analyze the referenced source repositories and produce Specify artifacts (specs + design.md) capturing the existing behaviour. The define step determines which files within the source are relevant to the change — using the change name, description, and dependency context as scoping hints. This is the only difference between migration and greenfield: where define gets its input. The loop steps are identical.
 
 #### Fixture-Backed Verification
 
@@ -272,15 +286,13 @@ For teams without a clear ordering, `specify manifest init` analyses the legacy 
 
 The manifest supports multi-repo initiatives on both the source and target sides:
 
-- **Multi-source extraction.** The top-level `sources` map names the repositories available to the initiative. A change's `sources` list declares which of these repos to extract from; a change may reference multiple sources when understanding the feature requires both (e.g., backend handlers and frontend components). File-level scoping is deferred to the extract step.
-
+- **Multi-source extraction.** The top-level `sources` map names the repositories available to the initiative. A change's `sources` list declares which of these repos to extract from; a change may reference multiple sources when understanding the feature requires both (e.g., backend handlers and frontend components). File-level scoping is deferred to the define step.
 - **Multi-target implementation.** When a logical feature spans multiple build targets — for example, a backend API and a frontend UI — it is decomposed into separate changes with explicit `depends-on` edges between them.
-
 - **Cross-repo resolution.** Cross-repo spec references are resolved through the federation model defined in [RFC-3](rfc-3-multi-repo.md). The manifest provides the coordination layer (what changes, in what order, with what dependencies); federation provides the resolution layer (where specs live, how to validate cross-repo contracts).
 
 ### Manifest Generation (`specify manifest init`)
 
-`specify manifest init` bootstraps a draft `manifest.yaml` from one or more source codebases. The analysis is deliberately shallow — it identifies change boundaries, dependency edges, and a safe ordering. It does not analyse behaviour, generate specs, or make target design decisions; that work belongs to `/spec:extract` and `/spec:define` when each change reaches the head of the loop.
+`specify manifest init` bootstraps a draft `manifest.yaml` from one or more source codebases. The analysis is deliberately shallow — it identifies change boundaries, dependency edges, and a safe ordering. It does not analyse behaviour, generate specs, or make target design decisions; that work belongs to `/spec:define` (using `/spec:extract` for source analysis) when each change reaches the head of the loop.
 
 The generation is split into two layers: deterministic structural discovery (CLI) and optional LLM-assisted refinement (change recommender skill).
 
@@ -307,7 +319,7 @@ Aggregate file-level imports to the cluster level. If any file in cluster A impo
 
 **Step 4 — Topological sort.** With clusters and dependency edges, topological sort produces a leaf-first ordering — the safest migration sequence since leaf changes have no downstream dependents. Cycles are detected and flagged for human review; they usually indicate the change boundaries need splitting.
 
-**Step 5 — Emit the manifest.** Write `manifest.yaml` with the discovered changes (all `kind: feature`), their `sources` references, `depends-on` edges, and all statuses set to `pending`. Fixes and refactors are typically added by hand as the initiative progresses.
+**Step 5 — Emit the manifest.** Write `manifest.yaml` with the discovered changes, their `sources` references, `depends-on` edges, and all statuses set to `pending`. Additional changes are typically added by hand as the initiative progresses.
 
 For multi-source initiatives the CLI runs structural discovery against each entry in the `sources` map independently, then merges the results into a single change list. Cross-source dependencies are unlikely (the sources are separate repos) but are flagged if detected.
 
@@ -325,8 +337,7 @@ Layer 2 is explicitly optional. The CLI produces a valid manifest from Layer 1 a
 
 The manifest is a table of contents, not a design document. `specify manifest init` deliberately does not:
 
-- Analyse function bodies or business logic — that's `/spec:extract`
-- Generate specs or design documents — that's `/spec:define`
+- Analyse function bodies, generate specs, or create design documents — that's `/spec:define` (using `/spec:extract` when analysing source code)
 - Make target architecture decisions — that's the human + `/spec:define`
 - Resolve types or follow indirection — unnecessary for boundary detection
 
@@ -337,7 +348,7 @@ Getting the boundaries roughly right and the dependency ordering defensible is e
 
 | Capability                     | Status | Notes                                        |
 | ------------------------------ | ------ | -------------------------------------------- |
-| Extract specs from source code | Exists | `/spec:extract`                              |
+| Source code analysis for define | Exists | `/spec:extract` (invoked by `/spec:define` when change has `sources`) |
 | Capture runtime fixtures       | Exists | `wiretapper`                                 |
 | Generate replay tests          | Exists | `replay-writer`                              |
 | Define → Build → Merge chain   | Exists | `/spec:define`, `/spec:build`, `/spec:merge` |
@@ -346,16 +357,16 @@ Getting the boundaries roughly right and the dependency ordering defensible is e
 ## New Capabilities Required
 
 
-| Capability                         | Type  | Notes                                                                                                                             |
-| ---------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Manifest (`manifest.yaml`)         | CLI   | Ordered change list with kinds, dependencies, and per-change status                                                               |
-| `specify manifest init`            | CLI   | Structural discovery: directory walking, import-graph analysis, cluster classification, topological sort → draft `manifest.yaml`  |
-| `specify manifest next`            | CLI   | Return the next pending change from the manifest (respecting `depends-on`)                                                        |
-| `specify manifest status`          | CLI   | Show initiative progress: N/M changes complete, current change, blockers. Filterable by `--kind`                                  |
-| Manifest orchestrator              | Skill | Reads the manifest, selects the next pending change, wires the kind-appropriate loop                                              |
-| Change recommender                 | Skill | Optional Layer 2 refinement: improve change names, suggest cluster splits/merges, flag ambiguous boundaries                       |
-| Behavioural diff                   | CLI   | Compare legacy fixture output against new implementation output (migration mode)                                                  |
-| Cross-stack define                 | Skill | Extract from one stack (e.g. TypeScript) and define against another (e.g. Omnia/Rust)                                             |
+| Capability                 | Type  | Notes                                                                                                                            |
+| -------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Manifest (`manifest.yaml`) | CLI   | Ordered change list with dependencies and per-change status                                                                      |
+| `specify manifest init`    | CLI   | Structural discovery: directory walking, import-graph analysis, cluster classification, topological sort → draft `manifest.yaml` |
+| `specify manifest next`    | CLI   | Return the next pending change from the manifest (respecting `depends-on`)                                                       |
+| `specify manifest status`  | CLI   | Show initiative progress: N/M changes complete, current change, blockers                                                         |
+| Manifest orchestrator      | Skill | Reads the manifest, selects the next pending change, wires the define → build → merge loop                                       |
+| Change recommender         | Skill | Optional Layer 2 refinement: improve change names, suggest cluster splits/merges, flag ambiguous boundaries                      |
+| Behavioural diff           | CLI   | Compare legacy fixture output against new implementation output (migration mode)                                                 |
+| Cross-stack define         | Mode  | `/spec:define` with sources in one language and a target schema in another (e.g. TypeScript source → Omnia/Rust target)          |
 
 
 ## References
