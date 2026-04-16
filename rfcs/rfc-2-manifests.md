@@ -4,7 +4,9 @@
 
 ## Abstract
 
-Drive complex, multi-change initiatives through Specify's define-build-merge loop using a **manifest** — an ordered, dependency-aware plan of changes with status tracking and progressive baseline accumulation. Legacy migration, greenfield builds, and platform modernisations all use the same manifest format and the same loop; the only difference is where the input to `/spec:define` comes from.
+Drive complex, multi-change initiatives through Specify's define-build-merge loop using a **manifest** — an ordered, dependency-aware plan of changes with status tracking and progressive baseline accumulation. The manifest format supports greenfield builds, legacy migrations, and platform modernisations; the only difference is where the input to `/spec:define` comes from.
+
+This RFC is structured in two layers. **Layer 1** (the MVP) delivers the manifest format and CLI commands — enough for a human to drive a manifest-based initiative using the existing skill chain. **Layer 2** adds the orchestrator skill that automates the loop. Layer 1 is immediately useful without Layer 2.
 
 ## Motivation
 
@@ -16,9 +18,11 @@ By expressing the initiative as an ordered list of changes with dependency const
 
 ## Dependency on RFC-1
 
-The manifest orchestrator and manifest parsing are deterministic operations that belong in the CLI ([RFC-1](rfc-1-cli.md)). The skill-level loop (define → build → merge) already works today; what this RFC adds is the manifest-driven automation layer, implemented as `specify manifest` subcommands on top of the CLI foundation.
+Manifest parsing, validation, and status transitions are deterministic operations that belong in the CLI ([RFC-1](rfc-1-cli.md)). The skill-level loop (define → build → merge) already works today; what this RFC adds is the manifest-driven coordination layer, implemented as `specify manifest` subcommands on top of the CLI foundation.
 
-## Detailed Design
+---
+
+## Layer 1: Manifest Format + CLI (MVP)
 
 ### The Manifest
 
@@ -32,6 +36,9 @@ name: platform-v2
 # Named source repositories. Changes reference these by key in their
 # `sources` list. File-level scoping within a source is deferred to
 # the define step (using extract skill).
+# NOTE: source-aware execution is a Layer 2 / future capability.
+# The MVP parses and validates source references but does not
+# wire them into the define step automatically.
 sources:
   monolith: /path/to/legacy-codebase
   orders: git@github.com:org/orders-service.git
@@ -93,7 +100,7 @@ changes:
     status: pending
 ```
 
-#### Status State Machine
+### Status State Machine
 
 ```
                       ┌─────────┐
@@ -117,27 +124,28 @@ changes:
     └───────────┘
 ```
 
-- `**pending**` — not started; eligible for selection by `manifest next` if all `depends-on` entries are `done`
-- `**in-progress**` — a Specify change has been created; define/build/merge is underway
-- `**done**` — change merged successfully; specs are in baseline
-- `**blocked**` — manually flagged as unable to proceed (with a reason in `description`). Dependency ordering is *not* modelled as `blocked` — `manifest next` enforces `depends-on` at query time by only returning `pending` changes whose dependencies are all `done`
-- `**failed*`* — attempted but unsuccessful; the Specify change was dropped. Distinct from `skipped`, which is a deliberate exclusion
-- `**skipped**` — deliberately excluded from this initiative (with a reason in `description`); never attempted or no longer needed
+- **`pending`** — not started; eligible for selection by `manifest next` if all `depends-on` entries are `done`
+- **`in-progress`** — a Specify change has been created; define/build/merge is underway
+- **`done`** — change merged successfully; specs are in baseline
+- **`blocked`** — manually flagged as unable to proceed (with a reason in `description`). Dependency ordering is *not* modelled as `blocked` — `manifest next` enforces `depends-on` at query time by only returning `pending` changes whose dependencies are all `done`
+- **`failed`** — attempted but unsuccessful; the Specify change was dropped. Distinct from `skipped`, which is a deliberate exclusion
+- **`skipped`** — deliberately excluded from this initiative (with a reason in `description`); never attempted or no longer needed
 
 #### Transition Rules
 
 
 | Transition | Trigger | Who |
 | ---------- | ------- | --- |
-| `pending → in-progress` | Specify change directory created for this entry | Orchestrator or user |
-| `pending → blocked`     | Flagged with a reason — design uncertainty, external dependency, etc. | Manual |
-| `pending → skipped` | Deliberately excluded before attempting | Manual |
-| `blocked → pending` | Flag removed | Manual |
-| `in-progress → done` | Specify change reaches `merged` (`/spec:merge` completes) | Orchestrator updates manifest after merge |
-| `in-progress → failed` | Build or test failure; Specify change is dropped (`/spec:drop`) | Orchestrator or user |
-| `failed → pending` | User decides to retry; a fresh Specify change will be created on next selection | Manual |
-| `failed → skipped` | User decides not to retry | Manual |
-| `skipped → pending` | Previously excluded change re-included | Manual |
+| `pending → in-progress` | Specify change directory created for this entry | `specify manifest transition` (user or orchestrator) |
+| `pending → blocked`     | Flagged with a reason — design uncertainty, external dependency, etc. | `specify manifest transition` (manual) |
+| `pending → skipped` | Deliberately excluded before attempting | `specify manifest transition` (manual) |
+| `blocked → pending` | Flag removed | `specify manifest transition` (manual) |
+| `in-progress → done` | Specify change reaches `merged` (`/spec:merge` completes) | `specify manifest transition` (user or orchestrator) |
+| `in-progress → failed` | Build or test failure; Specify change is dropped (`/spec:drop`) | `specify manifest transition` (user or orchestrator) |
+| `in-progress → blocked` | Needs human decision mid-change (Layer 2: orchestrator defers) | `specify manifest transition` (orchestrator) |
+| `failed → pending` | User decides to retry; a fresh Specify change will be created on next selection | `specify manifest transition` (manual) |
+| `failed → skipped` | User decides not to retry | `specify manifest transition` (manual) |
+| `skipped → pending` | Previously excluded change re-included | `specify manifest transition` (manual) |
 
 
 Only **one** change may be `in-progress` at a time per manifest (single-threaded loop). `manifest next` refuses to return a new change while one is already `in-progress`.
@@ -146,7 +154,7 @@ On failure, the Specify change is **dropped** via `/spec:drop`, cleaning up part
 
 #### Mapping to Specify LifecycleStatus
 
-The manifest tracks coarse outcome; the Specify change tracks internal lifecycle. The orchestrator reads the change's `LifecycleStatus` to decide which loop step to run next; the manifest only records whether the change is finished.
+The manifest tracks coarse outcome; the Specify change tracks internal lifecycle. When a future orchestrator reads the change's `LifecycleStatus` to decide which loop step to run next, the manifest only records whether the change is finished.
 
 
 | Manifest status                              | Specify change state                                                                |
@@ -158,61 +166,49 @@ The manifest tracks coarse outcome; the Specify change tracks internal lifecycle
 
 #### `affects` vs `depends-on`
 
-- `**depends-on`** — ordering constraint. "Don't start this until those are `done`." Consumed by `specify manifest next`.
-- `**affects**` — impact annotation. "This change modifies behaviour defined by those changes." Consumed by the define step to know which baseline specs to load as delta targets, and by `specify manifest status` for impact reporting. The orchestrator passes `affects` entries to define as a list of capability names; define resolves them to `.specify/specs/<name>/` paths. The orchestrator does not need to understand the spec filesystem.
+- **`depends-on`** — ordering constraint. "Don't start this until those are `done`." Consumed by `specify manifest next`.
+- **`affects`** — impact annotation. "This change modifies behaviour defined by those changes." In the MVP, `affects` is parsed, validated (targets must exist in the manifest), and reported by `specify manifest status` for impact visibility. Wiring `affects` into the define step as automatic delta-target resolution is a Layer 2 capability.
 
-#### Optional Fields
-
-
-| Field | Purpose |
-| ----- | ------- |
-| `kind` | Optional label (`feature`, `fix`, `refactor`) for human readers; does not affect execution |
-| `sources` | Which source repos to analyze; keys reference the top-level `sources` map. Absent → greenfield |
-| `affects` | Which existing changes or capabilities are touched |
-| `description`    | Free-text context; guides the define step when scoping within a source |
-| `failure-reason` | Why the change failed; aids triage and retry decisions without overloading `description` |
+#### Fields
 
 
-Extraction changes (those with `sources`) and greenfield changes (those without) coexist in the same manifest. A change's `sources` is a list of keys referencing entries in the top-level `sources` map — it declares *which* repositories to analyze, not *which files*. File-level scoping within a source is the define step's responsibility; the change's `description` can provide hints when needed. A platform modernisation might extract core services from several legacy codebases while adding new capabilities and fixing defects discovered along the way — the manifest handles all of these in a single, ordered plan.
+| Field | Required | Purpose |
+| ----- | -------- | ------- |
+| `name` | Yes | Kebab-case identifier; becomes the Specify change directory name. Must be unique across the entire manifest. |
+| `status` | Yes | Current state in the status state machine |
+| `depends-on` | No | List of change names that must be `done` before this change is eligible |
+| `description` | No | Free-text context; guides the define step when scoping |
+| `kind` | No | Label (`feature`, `fix`, `refactor`) for human readers; does not affect execution |
+| `sources` | No | Which source repos to analyze; keys reference the top-level `sources` map. Absent → greenfield. Parsed and validated in Layer 1; source-aware execution in Layer 2. |
+| `affects` | No | Which existing changes or capabilities are touched. Parsed and validated in Layer 1; automatic delta-target wiring in Layer 2. |
+| `failure-reason` | No | Why the change failed; aids triage and retry decisions without overloading `description` |
 
-Manifests are human-authored — a tech lead lists the changes they want and the order they want them in, encoding institutional knowledge about risk, priority, and dependencies. Automated generation (`specify manifest init`) from source codebase analysis is a planned future capability.
+### The Loop (Human-Driven)
 
-When no manifest exists, the loop runs in **ad-hoc mode**: the user picks the next change interactively at the start of each iteration, just like picking what to `/spec:define` next in normal development.
-
-### The Loop
-
-Each iteration of the loop is a single Specify change that implements one change from the manifest. The loop reuses the existing skill chain:
+In Layer 1, the human is the orchestrator. The CLI provides the coordination primitives; the human drives the skill chain:
 
 ```text
-for each change in manifest.yaml (or user's choice):
+specify manifest status                          # where are we?
+specify manifest next                            # what's eligible?
+specify manifest transition <name> in-progress   # claim it
 
-  ┌─────────────────────────────────────────────────────────┐
-  │                                                         │
-  │  1. DEFINE   /spec:define                               │
-  │     Create the change artifacts. When the change has    │
-  │     sources, define invokes /spec:extract to analyze    │
-  │     the source repositories and produce specs +         │
-  │     design from existing code. When no sources are      │
-  │     present, define works from the change description.  │
-  │     Changes with `affects` produce delta specs against  │
-  │     the affected baseline entries.                      │
-  │                                                         │
-  │  2. BUILD    /spec:build                                │
-  │     Implement every task against the target stack       │
-  │     using the specs as source of truth. Run tests,      │
-  │     verify against replay fixtures if available.        │
-  │                                                         │
-  │  3. MERGE    /spec:merge                                │
-  │     Merge the change. Delta specs fold into baseline.   │
-  │     The change is now under spec governance.            │
-  │     Update manifest.yaml: status → done.                │
-  │                                                         │
-  │  4. NEXT     Loop to the next pending change            │
-  │                                                         │
-  └─────────────────────────────────────────────────────────┘
+/spec:define <name>                              # existing skill
+/spec:build <name>                               # existing skill
+/spec:merge <name>                               # existing skill
+
+specify manifest transition <name> done          # record completion
 ```
 
-Each iteration is a self-contained Specify change. The agent runs the same `/spec:define` → `/spec:build` → `/spec:merge` chain it would run for any single change — the only difference is that the manifest decides what to do next and progress is tracked across iterations.
+On failure:
+
+```text
+/spec:drop <name>                                # existing skill
+specify manifest transition <name> failed --reason "..."
+```
+
+Each iteration is a self-contained Specify change. The user runs the same `/spec:define` → `/spec:build` → `/spec:merge` chain they would run for any single change — the only difference is that the manifest decides what to do next and progress is tracked across iterations.
+
+When no manifest exists, the loop runs in **ad-hoc mode**: the user picks the next change interactively at the start of each iteration, just like picking what to `/spec:define` next in normal development.
 
 ### Progressive Baseline Accumulation
 
@@ -248,50 +244,217 @@ Iteration N:  baseline = { all changes }
 
 This works identically for all changes. New capabilities add specs to the baseline, while changes with `affects` produce delta specs against existing baseline entries. The baseline doesn't care where the specs originated — it only cares that they passed through the define-build-merge loop.
 
+### CLI Commands
+
+#### `specify manifest validate`
+
+Structural validation of `manifest.yaml`:
+
+- **Duplicate names** — every `name` must be unique
+- **Cycle detection** — the `depends-on` graph must be a DAG (topological sort via `petgraph`)
+- **Referential integrity** — every `depends-on` target, every `affects` target, and every `sources` key must reference an existing entry
+- **Status values** — every `status` must be a valid state machine value
+- **Single in-progress** — at most one change may have status `in-progress`
+- **Manifest-to-change consistency** — any `in-progress` entry must have a corresponding `.specify/changes/<name>/` directory; report orphaned changes (directories without manifest entries) as warnings
+
+Returns structured JSON (with `--format json`) or human-readable text.
+
+#### `specify manifest next`
+
+Return the next eligible change: a `pending` change whose `depends-on` entries are all `done`. Selection among multiple eligible changes follows list order (first eligible wins).
+
+- If a change is `in-progress`, refuse and report which change is active.
+- If no changes are eligible, report whether this means "all done" or "remaining changes are blocked/failed/pending-on-dependencies."
+
+#### `specify manifest status`
+
+Initiative progress report:
+
+- Total changes, grouped by status (N done, M pending, etc.)
+- Current `in-progress` change (if any), with its Specify `LifecycleStatus` from `.metadata.yaml`
+- Blocked/failed entries with their reasons
+- Next eligible changes (what `manifest next` would return)
+- Impact report: which `done` changes are referenced by `affects` entries still pending
+- Display in dependency order (topological sort), not list order
+
+#### `specify manifest transition`
+
+```
+specify manifest transition <name> <target-status> [--reason "..."]
+```
+
+Validated status transitions. The command:
+
+1. Reads `manifest.yaml`
+2. Validates the transition is legal per the state machine
+3. Updates the entry's `status`
+4. If `--reason` is provided, sets `failure-reason` (for `failed`) or appends to `description` (for `blocked`/`skipped`)
+5. Writes the manifest atomically
+6. Outputs the new state
+
+All manifest mutations go through this command, ensuring the state machine is always enforced. The future orchestrator will use the same command (or the underlying `specify-core` function) rather than editing YAML directly.
+
+### `specify-core` Implementation
+
+The manifest state machine is encoded in `specify-core` alongside the existing `LifecycleStatus`:
+
+```rust
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ManifestStatus {
+    Pending,
+    InProgress,
+    Done,
+    Blocked,
+    Failed,
+    Skipped,
+}
+
+impl ManifestStatus {
+    pub fn can_transition_to(&self, target: &Self) -> bool {
+        use ManifestStatus::*;
+        matches!(
+            (self, target),
+            (Pending, InProgress)
+                | (Pending, Blocked)
+                | (Pending, Skipped)
+                | (InProgress, Done)
+                | (InProgress, Failed)
+                | (InProgress, Blocked)
+                | (Blocked, Pending)
+                | (Failed, Pending)
+                | (Failed, Skipped)
+                | (Skipped, Pending)
+        )
+    }
+
+    pub fn transition(
+        &self,
+        target: ManifestStatus,
+    ) -> Result<ManifestStatus, Error> {
+        if self.can_transition_to(&target) {
+            Ok(target)
+        } else {
+            Err(Error::ManifestTransition {
+                from: self.clone(),
+                to: target,
+            })
+        }
+    }
+}
+```
+
+Dependency resolution uses `petgraph` for topological sort and cycle detection. The `manifest.rs` module in `specify-core` provides:
+
+```rust
+pub struct Manifest {
+    pub name: String,
+    pub sources: BTreeMap<String, String>,
+    pub changes: Vec<ManifestChange>,
+}
+
+pub struct ManifestChange {
+    pub name: String,
+    pub status: ManifestStatus,
+    pub depends_on: Vec<String>,
+    pub affects: Vec<String>,
+    pub sources: Vec<String>,
+    pub description: Option<String>,
+    pub failure_reason: Option<String>,
+    pub kind: Option<String>,
+}
+
+impl Manifest {
+    pub fn load(path: &Path) -> Result<Self, Error>;
+    pub fn save(&self, path: &Path) -> Result<(), Error>;
+    pub fn validate(&self) -> Vec<ValidationResult>;
+    pub fn next_eligible(&self) -> Option<&ManifestChange>;
+    pub fn transition(
+        &mut self,
+        name: &str,
+        target: ManifestStatus,
+        reason: Option<&str>,
+    ) -> Result<(), Error>;
+    pub fn topological_order(&self) -> Result<Vec<&ManifestChange>, Error>;
+    pub fn consistency_check(
+        &self,
+        changes_dir: &Path,
+    ) -> Vec<ConsistencyWarning>;
+}
+```
+
+### Conventions
+
+- **Location.** One manifest per project at `.specify/manifest.yaml`. Multiple manifests are a future concern.
+- **Name identity.** The manifest entry `name` becomes the Specify change name (the directory under `.specify/changes/`). Names must be unique across the entire manifest, including entries with terminal statuses (`done`, `skipped`).
+- **Name format.** Same as Specify change names: kebab-case (lowercase letters, digits, hyphens).
+- **List order.** The YAML list order is cosmetic. Execution order is determined solely by `depends-on` resolution. Reordering entries in the list has no effect on execution. When multiple changes are eligible, list order breaks ties (`manifest next` returns the first eligible).
+- **Adding changes mid-initiative.** Use `specify manifest transition` to add or edit entries, or edit `manifest.yaml` directly and run `specify manifest validate` to check integrity.
+- **Initiative completion.** The initiative is complete when no eligible changes remain. `specify manifest status` reports whether this means "all done" or "remaining changes are blocked/failed."
+- **Manifest-to-change linkage.** `specify manifest validate` checks that `in-progress` entries have corresponding `.specify/changes/<name>/` directories and reports orphaned change directories (present on disk but absent from the manifest) as warnings.
+
+---
+
+## Layer 2: Orchestrator Skill (Future)
+
+Layer 2 adds an orchestrator skill that automates the human-driven loop from Layer 1. It reads the manifest, selects the next eligible change, runs the define → build → merge skill chain, and updates the manifest — all without human intervention for each step.
+
+The full orchestrator design is in the [orchestrator addendum](rfc-2-orchestrator.md). Key aspects:
+
+### Skill-Invokes-Skill Execution Model
+
+The orchestrator is the first skill that programmatically invokes other skills. This is a new execution model — no existing skill calls another skill. The mechanics of how one skill invokes another, waits for completion, and reads the result need to be designed as part of Layer 2. The non-interactive execution table in the addendum provides the specification for pre-resolving every interactive decision point.
+
+### Automatic `sources` and `affects` Wiring
+
+In Layer 2, the orchestrator resolves `sources` keys to paths and passes them to `/spec:define` so it can invoke `/spec:extract` for source analysis. It also passes `affects` entries as capability names so define loads the corresponding baseline specs as delta targets.
+
+### Autonomous Loop Mode
+
+```
+/spec:orchestrate [--dry-run] [--loop]
+```
+
+Single-change processing (supervised mode) and full-initiative processing (`--loop`, autonomous mode) as described in the addendum.
+
+### Question Recording and Journal
+
+When the orchestrator encounters a situation requiring human input, it records the question in `.specify/changes/<name>/journal.yaml`, transitions the manifest entry to `blocked`, and moves on. The journal provides structured context for the human to resolve the question.
+
+---
+
+## Future Capabilities
+
+These are supported by the manifest format but not part of the initial implementation:
+
 ### Migration Mode
 
-When the manifest includes a `sources` section and changes reference them, the loop operates in **migration mode** — the same define-build-merge loop with source-aware define and additional verification capabilities.
+When the manifest includes a `sources` section and changes reference them, the loop can operate in **migration mode** — the same define-build-merge loop with source-aware define and additional verification capabilities.
 
-#### Source-Aware Define
+**Source-aware define.** For changes with `sources`, the define step invokes `/spec:extract` to analyze the referenced source repositories and produce Specify artifacts (specs + design.md) capturing the existing behaviour. The define step determines which files within the source are relevant to the change — using the change name, description, and dependency context as scoping hints. This is the only difference between migration and greenfield: where define gets its input.
 
-For changes with `sources`, the define step invokes `/spec:extract` to analyze the referenced source repositories and produce Specify artifacts (specs + design.md) capturing the existing behaviour. The define step determines which files within the source are relevant to the change — using the change name, description, and dependency context as scoping hints. This is the only difference between migration and greenfield: where define gets its input. The loop steps are identical.
+**Fixture-backed verification.** For changes where the `wiretapper` has captured runtime request/response fixtures from the legacy system, the `replay-writer` generates tests from the captured fixtures and the build phase verifies the new implementation against them. This creates a behavioural regression safety net.
 
-#### Fixture-Backed Verification
-
-For changes where the `wiretapper` has captured runtime request/response fixtures from the legacy system, each iteration gains an additional verification step:
-
-1. Before the build phase, the `replay-writer` generates tests from the captured fixtures
-2. During the build phase, the implementation is verified against these replay tests
-3. The tests assert that the new implementation produces the same outputs as the legacy system for the same inputs
-
-This creates a behavioural regression safety net that catches semantic drift — the most common failure mode in legacy migrations.
-
-#### Slice Strategy
-
-Not every part of a legacy system is equally suitable for early migration. Good early candidates are:
-
-- **Leaf services** with few upstream dependents — migrating them doesn't break anything
-- **Clear API boundaries** — the input/output contract is well-defined and testable
-- **Existing test coverage** or easy-to-capture request/response patterns (good `wiretapper` candidates)
-- **Low cross-boundary coupling** — the change doesn't reach deep into shared mutable state
-
-The `depends-on` field in the manifest encodes inter-change dependencies. The orchestrator (or `specify manifest next`) respects these: a change won't be selected until all its dependencies have status `done`. This prevents the loop from attempting to build a change that references specs that haven't been merged into the baseline yet.
+**Slice strategy.** Good early migration candidates are leaf services with few dependents, clear API boundaries, existing test coverage, and low cross-boundary coupling. The `depends-on` field encodes these ordering decisions.
 
 ### Multi-Repo Initiatives
 
 The manifest supports multi-repo initiatives on both the source and target sides:
 
-- **Multi-source extraction.** The top-level `sources` map names the repositories available to the initiative. A change's `sources` list declares which of these repos to extract from; a change may reference multiple sources when understanding the feature requires both (e.g., backend handlers and frontend components). File-level scoping is deferred to the define step.
-- **Multi-target implementation.** When a logical feature spans multiple build targets — for example, a backend API and a frontend UI — it is decomposed into separate changes with explicit `depends-on` edges between them.
-- **Cross-repo resolution.** Cross-repo spec references are resolved through the federation model defined in [RFC-3](rfc-3-multi-repo.md). The manifest provides the coordination layer (what changes, in what order, with what dependencies); federation provides the resolution layer (where specs live, how to validate cross-repo contracts).
+- **Multi-source extraction.** A change's `sources` list declares which repos to extract from; a change may reference multiple sources.
+- **Multi-target implementation.** Features spanning multiple build targets are decomposed into separate changes with `depends-on` edges.
+- **Cross-repo resolution.** Cross-repo spec references are resolved through the federation model defined in [RFC-3](rfc-3-multi-repo.md).
 
-### Conventions
+### Other Deferred Capabilities
 
-- **Location.** One manifest per project at `.specify/manifest.yaml`. Multiple manifests are a future concern.
-- **Name identity.** The manifest entry `name` becomes the Specify change name (the directory under `.specify/changes/`). This is the key that links the manifest to the Specify change lifecycle.
-- **List order.** The YAML list order is cosmetic. Execution order is determined solely by `depends-on` resolution. Reordering entries in the list has no effect on execution.
-- **Adding changes mid-initiative.** Edit `manifest.yaml` and add an entry with `status: pending`. No command required.
-- **Initiative completion.** The loop stops when no eligible changes remain. `specify manifest status` reports whether this means "all done" or "remaining changes are blocked/failed".
+
+| Capability | Rationale for deferral |
+| ---------- | ---------------------- |
+| `specify manifest init` | Humans write better initial manifests than automated structural discovery. Add when the volume of initiatives justifies the tooling. |
+| Change recommender | LLM-assisted refinement of auto-generated manifests. Depends on `manifest init`. |
+| Behavioural diff | Undesigned. The existing `replay-writer` already provides fixture-backed verification for migration use cases. |
+| Cross-stack define | A mode of `/spec:define`, not a manifest concern. Can be added to define independently. |
+
 
 ## Existing Infrastructure
 
@@ -306,30 +469,33 @@ The manifest supports multi-repo initiatives on both the source and target sides
 
 ## New Capabilities Required
 
-
-| Capability                    | Type  | Notes                                                                          |
-| ----------------------------- | ----- | ------------------------------------------------------------------------------ |
-| Manifest (`manifest.yaml`)    | CLI   | Ordered change list with dependencies and per-change status                    |
-| `specify manifest validate`   | CLI   | Cycle detection, referential integrity (`depends-on`, `affects`, `sources` keys), duplicate name check |
-| `specify manifest next`       | CLI   | Return the next pending change from the manifest (respecting `depends-on`)     |
-| `specify manifest status`     | CLI   | Show initiative progress: N/M changes complete, current change, blockers       |
-| Manifest orchestrator         | Skill | Reads the manifest, selects the next pending change, wires the define → build → merge loop. See [orchestrator addendum](rfc-2-orchestrator.md) |
+### Layer 1 (MVP)
 
 
-## Deferred Capabilities
+| Capability                       | Type  | Notes                                                                          |
+| -------------------------------- | ----- | ------------------------------------------------------------------------------ |
+| Manifest format (`manifest.yaml`)| Schema| Ordered change list with dependencies and per-change status                    |
+| `manifest.rs` in `specify-core`  | Lib   | Parsing, validation, state machine, dependency graph, consistency checks       |
+| `specify manifest validate`      | CLI   | Cycle detection, referential integrity, duplicate names, consistency check     |
+| `specify manifest next`          | CLI   | Return the next pending change (respecting `depends-on`, single in-progress)   |
+| `specify manifest status`        | CLI   | Initiative progress in dependency order: counts, blockers, next eligible       |
+| `specify manifest transition`    | CLI   | Validated status transitions with state machine enforcement                    |
 
-These are planned but not part of the initial implementation:
 
-| Capability | Rationale for deferral |
-| ---------- | ---------------------- |
-| `specify manifest init` | Humans write better initial manifests than automated structural discovery. Add when the volume of initiatives justifies the tooling. |
-| Change recommender | LLM-assisted refinement of auto-generated manifests. Depends on `manifest init`. |
-| Behavioural diff | Undesigned. The existing `replay-writer` already provides fixture-backed verification for migration use cases. |
-| Cross-stack define | A mode of `/spec:define`, not a manifest concern. Can be added to define independently. |
+### Layer 2 (Orchestrator)
+
+
+| Capability                       | Type  | Notes                                                                          |
+| -------------------------------- | ----- | ------------------------------------------------------------------------------ |
+| Manifest orchestrator            | Skill | Automated define → build → merge loop. See [orchestrator addendum](rfc-2-orchestrator.md) |
+| Skill invocation model           | Design| How one skill programmatically invokes another and interprets the result        |
+| `sources` execution wiring       | Skill | Orchestrator resolves source paths and passes them to define/extract           |
+| `affects` execution wiring       | Skill | Orchestrator passes affected capability names to define for delta targeting    |
+| `journal.yaml`                   | Schema| Structured question/failure recording per change for autonomous operation      |
 
 
 ## References
 
 - [RFC-1: `specify` CLI](rfc-1-cli.md) — prerequisite; manifest subcommands extend the CLI
+- [RFC-2 Addendum: Orchestrator Design](rfc-2-orchestrator.md) — Layer 2 orchestrator specification
 - [RFC-3: Multi-Repo Coordination](rfc-3-multi-repo.md) — provides federation resolution for manifests that span repositories
-
