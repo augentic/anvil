@@ -4,18 +4,6 @@
 
 ---
 
-## 1. Manifest filename inconsistency
-
-**Severity:** Trivial — but blocks implementation until resolved.
-
-The RFC uses two different names for the same file:
-
-- RFC-2 line 28: `# .specify/features.yaml`
-- RFC-2 New Capabilities table: `Feature manifest (manifest.yaml)`
-- Roadmap: `manifest.yaml`
-
-**Resolution needed:** Pick one name and use it consistently across RFC-2, the roadmap, and RFC-1 Phase 2.
-
 ---
 
 ## 2. The orchestrator skill has no design
@@ -67,10 +55,10 @@ The loop shows `EXTRACT → DEFINE → BUILD → MERGE`, but the extract→defin
 
 The manifest status values are `migrated | in-progress | pending | skipped`. Issues:
 
-- **`migrated` is migration-biased.** For greenfield features that were never extracted, "migrated" is semantically wrong. Consider `done` or `complete`.
+- `**migrated` is migration-biased.** For greenfield features that were never extracted, "migrated" is semantically wrong. Consider `done` or `complete`.
 - **No failure state.** If a feature fails during build, there's no `failed` or `blocked` status.
-- **`skipped` is unexplained.** Appears in the YAML example but the text never describes when or why a feature would be skipped, or how to un-skip it.
-- **`in-progress` has no entry/exit rules.** When does `pending` → `in-progress` happen? When the change is created? When extract starts? When define starts?
+- `**skipped` is unexplained.** Appears in the YAML example but the text never describes when or why a feature would be skipped, or how to un-skip it.
+- `**in-progress` has no entry/exit rules.** When does `pending` → `in-progress` happen? When the change is created? When extract starts? When define starts?
 
 **Resolution needed:** Define the complete feature state machine with transitions, including failure and skip paths.
 
@@ -158,3 +146,4 @@ The risk is throwaway work if RFC-1's module structure changes, but the manifest
 - **Multi-source support** — the `sources` map is a simple name→path lookup.
 - **Layer 2 feature recommender** — explicitly optional, clearly scoped.
 - **Integration with RFC-3** — correctly deferred; the vague interface is appropriate for a draft.
+
