@@ -1,36 +1,35 @@
 # RFC-2 Addendum: Manifest Orchestrator Design
 
-> Companion to [RFC-2: Feature Manifests](rfc-2-manifests.md). Addresses [Issue 2: The orchestrator skill has no design](rfc-2-issues.md#2-the-orchestrator-skill-has-no-design).
+> Companion to [RFC-2: Manifests](rfc-2-manifests.md).
 
 ## Abstract
 
-The manifest orchestrator is a non-interactive, loop-driving skill that reads `manifest.yaml`, selects the next eligible change, runs the kind-appropriate step sequence, and advances to the next change — recording questions and failures rather than blocking on them.
+The manifest orchestrator is a non-interactive skill that reads `manifest.yaml`, selects the next eligible change, runs the appropriate step sequence, and updates the manifest — recording questions and failures rather than blocking on them.
 
 It is the only skill that calls other skills programmatically. All existing skills (extract, define, build, merge, drop) remain unchanged; the orchestrator invokes them with arguments and interprets their outputs.
 
 ## Invocation
 
 ```
-/spec:orchestrate [--dry-run] [--once] [manifest-path?]
+/spec:orchestrate [--dry-run] [--loop] [manifest-path?]
 ```
 
-- No arguments: reads `.specify/manifest.yaml`, loops until no eligible changes remain
-- `--once`: process a single change then stop (useful for supervised runs)
+- No arguments: reads `.specify/manifest.yaml`, processes a single change then stops (supervised mode)
+- `--loop`: process changes until no eligible changes remain (autonomous mode)
 - `--dry-run`: show what would run next without executing
 
 ## Core Loop
 
 ```text
-loop:
   1. Read manifest.yaml
   2. Select next eligible change (all depends-on are done, status is pending)
   3. If none eligible → stop (report blocked/remaining counts)
   4. Transition manifest entry: pending → in-progress
-  5. Run the kind-appropriate step sequence
+  5. Run the step sequence (define → build → merge, with field-presence adjustments)
   6. On success: transition in-progress → done
   7. On failure: drop the Specify change, transition in-progress → failed, record reason
   8. On deferred question: drop the Specify change, transition in-progress → blocked, record question
-  9. Continue loop
+  9. If --loop: continue from step 1; otherwise stop
 ```
 
 ## Non-Interactive Execution (Issue 2a)
@@ -120,8 +119,8 @@ The artifacts are the context. There is no separate context object or state bag.
 ```text
 ┌──────────────────────────────────────────────────────────────────┐
 │                                                                  │
-│  manifest.yaml         ← orchestrator reads: name, kind,        │
-│                           description, sources, depends-on       │
+│  manifest.yaml         ← orchestrator reads: name, description,  │
+│                           sources, affects, depends-on            │
 │                                                                  │
 │  /spec:extract                                                   │
 │    reads: source repos (from manifest sources map)               │
@@ -148,7 +147,7 @@ The orchestrator's responsibility is limited to:
 
 1. **Supplying initial arguments** to each skill invocation — derived from the manifest entry (name, source paths, description)
 2. **Checking preconditions** between steps — reading `.metadata.yaml` to confirm the previous step completed (status progressed to the expected value)
-3. **Deciding what to run next** — the kind determines the step sequence, the Specify `LifecycleStatus` determines where to resume if re-entering a partially-completed change
+3. **Deciding what to run next** — field presence (`sources`, `affects`) determines what context to pass to define; the Specify `LifecycleStatus` determines where to resume if re-entering a partially-completed change
 
 ### Resumption Within a Change
 
@@ -156,7 +155,7 @@ The existing `LifecycleStatus` values already encode which step ran last. The or
 
 ```text
 match change.lifecycle_status:
-  None           → start from the beginning (extract if feature+sources, else define)
+  None           → start from the beginning (define, which invokes extract if sources present)
   defining       → resume/restart define
   defined        → start build
   building       → resume build
@@ -165,20 +164,20 @@ match change.lifecycle_status:
 
 If the orchestrator crashes mid-change and is restarted, it picks up where it left off by reading the manifest (which change is `in-progress`) and the Specify change's `.metadata.yaml` (which step was last completed).
 
-## Step Sequence by Kind
+## Step Sequence by Field Presence
 
-The orchestrator selects the step sequence from the change's `kind`:
+The loop is always define → build → merge. The orchestrator adjusts what it passes to define based on which fields are present on the manifest entry:
 
 ```text
-feature (with sources):  define → build → merge
-feature (no sources):    define → build → merge
-fix:                     define (delta against affects) → build → merge
-refactor:                define (design-focused) → build → merge
+change with sources:    define (with extract) → build → merge
+change with affects:    define (delta against affected specs) → build → merge
+change (greenfield):    define → build → merge
 ```
 
-For `fix` and `refactor` kinds, the orchestrator passes additional context to define:
-- `affects` entries are resolved to baseline spec paths (`.specify/specs/<name>/spec.md`)
-- These are supplied as inputs so define creates delta specs against the right baseline
+These are not mutually exclusive — a change could have both `sources` and `affects`. The orchestrator passes both signals to define:
+
+- **`sources`** present: the orchestrator resolves source paths from the top-level `sources` map and supplies them so define invokes `/spec:extract` for source analysis.
+- **`affects`** present: the orchestrator passes the list of affected capability names so define loads the corresponding baseline specs as delta targets.
 
 ## Manifest Mutation and Crash Safety
 
@@ -193,7 +192,7 @@ If the orchestrator crashes between merge and manifest update, the manifest show
 
 ## Skill Invocation Model
 
-The orchestrator runs within the same agent session and invokes skills by their standard mechanism (e.g., `/spec:define change-name`). It is a long-running skill — it holds the agent for the duration of the initiative (or until `--once` completes, or until all eligible changes are processed).
+The orchestrator runs within the same agent session and invokes skills by their standard mechanism (e.g., `/spec:define change-name`). By default it processes a single change and stops, keeping the human in the loop. With `--loop`, it holds the agent for the duration of the initiative (or until all eligible changes are processed).
 
 ## Output and Observability
 
@@ -207,7 +206,7 @@ Progress: 3/10 changes done, 1 blocked, 6 pending
 
 ---
 
-### Processing: email-verification (feature, sources: [monolith])
+### Processing: email-verification (sources: [monolith])
 
 Step 1/4: extract
   Source: /path/to/legacy-codebase
@@ -225,13 +224,13 @@ Step 4/4: merge
 
 ---
 
-### Next: registration-duplicate-email-crash (fix, affects: [user-registration])
+### Next: registration-duplicate-email-crash (affects: [user-registration])
 ```
 
 For deferred changes:
 
 ```text
-### Processing: notification-preferences (feature, greenfield)
+### Processing: notification-preferences (greenfield)
 
 Step 2/4: define
   ⚠ Question recorded — change deferred to blocked

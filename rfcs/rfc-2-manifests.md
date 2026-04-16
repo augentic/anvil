@@ -16,7 +16,7 @@ By expressing the initiative as an ordered list of changes with dependency const
 
 ## Dependency on RFC-1
 
-The manifest orchestrator, manifest parsing, and change recommender are deterministic operations that belong in the CLI ([RFC-1](rfc-1-cli.md)). The skill-level loop (define → build → merge) already works today; what this RFC adds is the manifest-driven automation layer, implemented as `specify manifest` subcommands on top of the CLI foundation.
+The manifest orchestrator and manifest parsing are deterministic operations that belong in the CLI ([RFC-1](rfc-1-cli.md)). The skill-level loop (define → build → merge) already works today; what this RFC adds is the manifest-driven automation layer, implemented as `specify manifest` subcommands on top of the CLI foundation.
 
 ## Detailed Design
 
@@ -159,13 +159,14 @@ The manifest tracks coarse outcome; the Specify change tracks internal lifecycle
 #### `affects` vs `depends-on`
 
 - `**depends-on`** — ordering constraint. "Don't start this until those are `done`." Consumed by `specify manifest next`.
-- `**affects**` — impact annotation. "This change modifies behaviour defined by those changes." Consumed by the define step to know which baseline specs to load as delta targets, and by `specify manifest status` for impact reporting.
+- `**affects**` — impact annotation. "This change modifies behaviour defined by those changes." Consumed by the define step to know which baseline specs to load as delta targets, and by `specify manifest status` for impact reporting. The orchestrator passes `affects` entries to define as a list of capability names; define resolves them to `.specify/specs/<name>/` paths. The orchestrator does not need to understand the spec filesystem.
 
 #### Optional Fields
 
 
 | Field | Purpose |
 | ----- | ------- |
+| `kind` | Optional label (`feature`, `fix`, `refactor`) for human readers; does not affect execution |
 | `sources` | Which source repos to analyze; keys reference the top-level `sources` map. Absent → greenfield |
 | `affects` | Which existing changes or capabilities are touched |
 | `description`    | Free-text context; guides the define step when scoping within a source |
@@ -174,11 +175,7 @@ The manifest tracks coarse outcome; the Specify change tracks internal lifecycle
 
 Extraction changes (those with `sources`) and greenfield changes (those without) coexist in the same manifest. A change's `sources` is a list of keys referencing entries in the top-level `sources` map — it declares *which* repositories to analyze, not *which files*. File-level scoping within a source is the define step's responsibility; the change's `description` can provide hints when needed. A platform modernisation might extract core services from several legacy codebases while adding new capabilities and fixing defects discovered along the way — the manifest handles all of these in a single, ordered plan.
 
-The manifest can be:
-
-- **Human-authored** — a tech lead lists the changes they want and the order they want them in, encoding institutional knowledge about risk, priority, and dependencies
-- **Auto-generated** — `specify manifest init` analyses the source codebases' directory structure and import graph to propose change boundaries and a leaf-first ordering (see [Manifest Generation](#manifest-generation-specify-manifest-init) below)
-- **Hybrid** — the recommender proposes, the human reorders and prunes
+Manifests are human-authored — a tech lead lists the changes they want and the order they want them in, encoding institutional knowledge about risk, priority, and dependencies. Automated generation (`specify manifest init`) from source codebase analysis is a planned future capability.
 
 When no manifest exists, the loop runs in **ad-hoc mode**: the user picks the next change interactively at the start of each iteration, just like picking what to `/spec:define` next in normal development.
 
@@ -280,8 +277,6 @@ Not every part of a legacy system is equally suitable for early migration. Good 
 
 The `depends-on` field in the manifest encodes inter-change dependencies. The orchestrator (or `specify manifest next`) respects these: a change won't be selected until all its dependencies have status `done`. This prevents the loop from attempting to build a change that references specs that haven't been merged into the baseline yet.
 
-For teams without a clear ordering, `specify manifest init` analyses the legacy codebase's directory structure and import graph to suggest change boundaries and a leaf-first ordering (see [Manifest Generation](#manifest-generation-specify-manifest-init)).
-
 ### Multi-Repo Initiatives
 
 The manifest supports multi-repo initiatives on both the source and target sides:
@@ -290,58 +285,13 @@ The manifest supports multi-repo initiatives on both the source and target sides
 - **Multi-target implementation.** When a logical feature spans multiple build targets — for example, a backend API and a frontend UI — it is decomposed into separate changes with explicit `depends-on` edges between them.
 - **Cross-repo resolution.** Cross-repo spec references are resolved through the federation model defined in [RFC-3](rfc-3-multi-repo.md). The manifest provides the coordination layer (what changes, in what order, with what dependencies); federation provides the resolution layer (where specs live, how to validate cross-repo contracts).
 
-### Manifest Generation (`specify manifest init`)
+### Conventions
 
-`specify manifest init` bootstraps a draft `manifest.yaml` from one or more source codebases. The analysis is deliberately shallow — it identifies change boundaries, dependency edges, and a safe ordering. It does not analyse behaviour, generate specs, or make target design decisions; that work belongs to `/spec:define` (using `/spec:extract` for source analysis) when each change reaches the head of the loop.
-
-The generation is split into two layers: deterministic structural discovery (CLI) and optional LLM-assisted refinement (change recommender skill).
-
-#### Layer 1: Structural Discovery (CLI)
-
-Pure filesystem and import-graph analysis — no LLM involved.
-
-**Step 1 — Discover module boundaries.** Walk the source codebase(s) and identify natural groupings:
-
-- **Directory structure** — the strongest signal. Most codebases organise by domain at some level (`src/auth/`, `src/cart/`, `src/catalog/`). Directories that contain models, handlers, routes, or services are candidate change roots.
-- **Build system boundaries** — workspace members in `Cargo.toml`, `package.json` workspaces, Go module paths, Python packages with `__init__.py`. These are explicit module declarations by the original authors.
-- **Entry points** — route registrations, handler files, exported modules. These hint at what the codebase considers its public surface.
-
-**Step 2 — Build a coarse import graph.** Parse import/require/use statements across files — just the paths, not the symbols. This doesn't require a full AST; regex patterns per detected language handle the common cases:
-
-- TypeScript/JS: `import ... from '...'` / `require('...')`
-- Rust: `use crate::...` / `mod ...`
-- Go: `import "..."`
-- Python: `from ... import ...` / `import ...`
-
-Aggregate file-level imports to the cluster level. If any file in cluster A imports any file in cluster B, that's a dependency edge A → B.
-
-**Step 3 — Classify clusters.** Not every directory is a change. Utility clusters — directories imported by most other clusters but importing none of them (e.g., `shared/`, `utils/`, `lib/`) — are classified as infrastructure rather than changes. Infrastructure clusters are either absorbed into the changes that reference them or flagged as a prerequisite to migrate first.
-
-**Step 4 — Topological sort.** With clusters and dependency edges, topological sort produces a leaf-first ordering — the safest migration sequence since leaf changes have no downstream dependents. Cycles are detected and flagged for human review; they usually indicate the change boundaries need splitting.
-
-**Step 5 — Emit the manifest.** Write `manifest.yaml` with the discovered changes, their `sources` references, `depends-on` edges, and all statuses set to `pending`. Additional changes are typically added by hand as the initiative progresses.
-
-For multi-source initiatives the CLI runs structural discovery against each entry in the `sources` map independently, then merges the results into a single change list. Cross-source dependencies are unlikely (the sources are separate repos) but are flagged if detected.
-
-#### Layer 2: Change Recommender (Skill, Optional)
-
-The CLI output from Layer 1 uses directory-derived names (`auth`, `cart`, `catalog`). The change recommender skill can optionally refine the draft:
-
-- Propose human-readable change names from file contents (top-level exports, function signatures, route paths — not deep analysis)
-- Suggest splitting oversized clusters or merging trivially small ones
-- Flag ambiguous boundaries for human review
-
-Layer 2 is explicitly optional. The CLI produces a valid manifest from Layer 1 alone; the skill makes it more readable.
-
-#### Scope Boundary
-
-The manifest is a table of contents, not a design document. `specify manifest init` deliberately does not:
-
-- Analyse function bodies, generate specs, or create design documents — that's `/spec:define` (using `/spec:extract` when analysing source code)
-- Make target architecture decisions — that's the human + `/spec:define`
-- Resolve types or follow indirection — unnecessary for boundary detection
-
-Getting the boundaries roughly right and the dependency ordering defensible is enough. The human refines the draft, and the per-change loop does the real work.
+- **Location.** One manifest per project at `.specify/manifest.yaml`. Multiple manifests are a future concern.
+- **Name identity.** The manifest entry `name` becomes the Specify change name (the directory under `.specify/changes/`). This is the key that links the manifest to the Specify change lifecycle.
+- **List order.** The YAML list order is cosmetic. Execution order is determined solely by `depends-on` resolution. Reordering entries in the list has no effect on execution.
+- **Adding changes mid-initiative.** Edit `manifest.yaml` and add an entry with `status: pending`. No command required.
+- **Initiative completion.** The loop stops when no eligible changes remain. `specify manifest status` reports whether this means "all done" or "remaining changes are blocked/failed".
 
 ## Existing Infrastructure
 
@@ -357,16 +307,25 @@ Getting the boundaries roughly right and the dependency ordering defensible is e
 ## New Capabilities Required
 
 
-| Capability                 | Type  | Notes                                                                                                                            |
-| -------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Manifest (`manifest.yaml`) | CLI   | Ordered change list with dependencies and per-change status                                                                      |
-| `specify manifest init`    | CLI   | Structural discovery: directory walking, import-graph analysis, cluster classification, topological sort → draft `manifest.yaml` |
-| `specify manifest next`    | CLI   | Return the next pending change from the manifest (respecting `depends-on`)                                                       |
-| `specify manifest status`  | CLI   | Show initiative progress: N/M changes complete, current change, blockers                                                         |
-| Manifest orchestrator      | Skill | Reads the manifest, selects the next pending change, wires the define → build → merge loop                                       |
-| Change recommender         | Skill | Optional Layer 2 refinement: improve change names, suggest cluster splits/merges, flag ambiguous boundaries                      |
-| Behavioural diff           | CLI   | Compare legacy fixture output against new implementation output (migration mode)                                                 |
-| Cross-stack define         | Mode  | `/spec:define` with sources in one language and a target schema in another (e.g. TypeScript source → Omnia/Rust target)          |
+| Capability                    | Type  | Notes                                                                          |
+| ----------------------------- | ----- | ------------------------------------------------------------------------------ |
+| Manifest (`manifest.yaml`)    | CLI   | Ordered change list with dependencies and per-change status                    |
+| `specify manifest validate`   | CLI   | Cycle detection, referential integrity (`depends-on`, `affects`, `sources` keys), duplicate name check |
+| `specify manifest next`       | CLI   | Return the next pending change from the manifest (respecting `depends-on`)     |
+| `specify manifest status`     | CLI   | Show initiative progress: N/M changes complete, current change, blockers       |
+| Manifest orchestrator         | Skill | Reads the manifest, selects the next pending change, wires the define → build → merge loop. See [orchestrator addendum](rfc-2-orchestrator.md) |
+
+
+## Deferred Capabilities
+
+These are planned but not part of the initial implementation:
+
+| Capability | Rationale for deferral |
+| ---------- | ---------------------- |
+| `specify manifest init` | Humans write better initial manifests than automated structural discovery. Add when the volume of initiatives justifies the tooling. |
+| Change recommender | LLM-assisted refinement of auto-generated manifests. Depends on `manifest init`. |
+| Behavioural diff | Undesigned. The existing `replay-writer` already provides fixture-backed verification for migration use cases. |
+| Cross-stack define | A mode of `/spec:define`, not a manifest concern. Can be added to define independently. |
 
 
 ## References
