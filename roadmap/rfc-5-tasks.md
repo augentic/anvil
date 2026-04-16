@@ -20,19 +20,19 @@ Each chunk is a self-contained agent session. Per session:
 
 | # | Chunk | Status | Branch | Notes |
 |---|-------|--------|--------|-------|
-| 1 | Workspace + CLI skeleton | [ ] | | |
-| 2 | Prerequisites detection | [ ] | | |
+| 1 | Workspace + CLI skeleton | [x] | `vectis-cli` | Branch name `vectis-cli/chunk-1-skeleton` collides with existing `vectis-cli` parent branch (git refs are hierarchical); committed on `vectis-cli` instead. Future chunks must use a non-prefix name (e.g. `vectis-cli-chunk-N-slug`) or the parent branch must be renamed/deleted. Dispatcher uses a `CommandOutcome::{Success,Stub}` enum so handlers can stay stubbed without polluting `VectisError`. `VectisError` carries `#[allow(dead_code)]` until chunks 2/5/9 start constructing the unused variants. |
+| 2 | Prerequisites detection | [ ] | | When `MissingPrerequisites` is first constructed, narrow the `#[allow(dead_code)]` on `VectisError` (or drop it). |
 | 3a | Templates: core extraction | [ ] | | |
 | 3b | Templates: iOS extraction | [ ] | | |
 | 3c | Templates: Android extraction | [ ] | | |
-| 4 | Version resolution + embedded defaults | [ ] | | |
-| 5 | `vectis init` core, render-only | [ ] | | |
+| 4 | Version resolution + embedded defaults | [ ] | | `embedded/versions.toml` lives at `crates/vectis-cli/embedded/`, so `include_str!("../embedded/versions.toml")` resolves from any file inside `src/`. |
+| 5 | `vectis init` core, render-only | [ ] | | Handler must return `Ok(CommandOutcome::Success(value))`, not `Ok(value)`; remove the `Stub` return path. The `Init(_)` arm in `main::main` will need to pass `&InitArgs` through to `init::run` (currently discarded with `_`). |
 | 6 | `vectis init` core capability variants | [ ] | | |
-| 7 | `vectis init` iOS shell | [ ] | | |
-| 8 | `vectis init` Android shell | [ ] | | |
-| 9 | `vectis verify` | [ ] | | |
-| 10 | `vectis add-shell` (incl. `app.rs` parser) | [ ] | | |
-| 11 | `vectis update-versions` | [ ] | | |
+| 7 | `vectis init` iOS shell | [ ] | | Same handler-signature note as chunk 5: replace the `Stub` return with `Success` and pass `&InitArgs` through. |
+| 8 | `vectis init` Android shell | [ ] | | Same handler-signature note as chunks 5/7. |
+| 9 | `vectis verify` | [ ] | | Same handler-signature note as chunk 5; pass `&VerifyArgs`. Will start constructing `VectisError::Verify`. |
+| 10 | `vectis add-shell` (incl. `app.rs` parser) | [ ] | | Same handler-signature note as chunk 5; pass `&AddShellArgs`. |
+| 11 | `vectis update-versions` | [ ] | | Same handler-signature note as chunk 5; pass `&UpdateVersionsArgs`. |
 | 12 | Writer skill rewrites | [ ] | | |
 | 13 | `template-updater` skill | [ ] | | |
 
@@ -190,6 +190,60 @@ make checks                                           # still passes
 Capture the JSON outputs in the PR description.
 
 **Notes:**
+
+Completed on branch `vectis-cli` (see status row for the branch-naming rationale).
+
+Verification (all four subcommands exit 1 with valid JSON; `make checks` and `cargo clippy --release -p vectis-cli --all-targets -- -D warnings` both pass):
+
+```text
+$ ./target/release/vectis --help
+Vectis CLI -- scaffolds the deterministic 'Hello World' starting point for Crux apps (core + optional iOS/Android shells) and verifies that every assembly compiles. See RFC-5.
+
+Usage: vectis <COMMAND>
+
+Commands:
+  init             Scaffold a new Crux project (core, plus optional shells)
+  verify           Verify that the project's assemblies compile
+  add-shell        Add a platform shell to an existing project
+  update-versions  Resolve and pin coherent dependency versions
+  help             Print this message or the help of the given subcommand(s)
+
+$ ./target/release/vectis init Counter   ; echo "exit=$?"
+{
+  "command": "init",
+  "error": "not_implemented"
+}
+exit=1
+
+$ ./target/release/vectis verify   ; echo "exit=$?"
+{
+  "command": "verify",
+  "error": "not_implemented"
+}
+exit=1
+
+$ ./target/release/vectis add-shell ios   ; echo "exit=$?"
+{
+  "command": "add-shell",
+  "error": "not_implemented"
+}
+exit=1
+
+$ ./target/release/vectis update-versions --dry-run   ; echo "exit=$?"
+{
+  "command": "update-versions",
+  "error": "not_implemented"
+}
+exit=1
+```
+
+Implementation deviations from the chunk text, all minor:
+
+- Stub modules are folder modules (`init/mod.rs`, `add_shell/mod.rs`, …) rather than flat `*.rs` files. The chunk text lists folder paths and the RFC § Workspace Layout shows flat files — I followed the chunk's structure since later chunks (5-11) will grow these modules.
+- Added a `CommandOutcome::{Success, Stub { command }}` enum in `main.rs` so stub handlers can stay typed (`Result<CommandOutcome, VectisError>`) without inventing a `NotImplemented` variant on `VectisError` (the chunk pinned the error variant list). Future implementing chunks just return `Ok(CommandOutcome::Success(value))`.
+- Added a `[[bin]]` entry naming the binary `vectis` so `cargo build --release -p vectis-cli` produces `target/release/vectis` (matching the Makefile's `cp` and the verification commands). Without it, the binary would be `vectis-cli`.
+- Added `publish = false` and a license expression to `crates/vectis-cli/Cargo.toml` to silence packaging warnings — the crate is internal.
+- `VectisError` carries `#[allow(dead_code)]` (with a comment) because chunk 1 only constructs `Io` (transitively, via `#[from]`) and exercises the rest only in unit tests. Chunks 2/5/9 will start using the remaining variants and should narrow or drop the attribute.
 
 ---
 
@@ -693,4 +747,5 @@ make checks                          # frontmatter schema, link targets, marketp
 
 Append entries here when a chunk uncovers a question that needed a judgement call.
 
-- *(empty)*
+- **Chunk 1 — Branch naming.** The pre-existing `vectis-cli` branch (which carries the RFC and this tasks file) blocks creation of any `vectis-cli/<sub>` branch because git treats refs hierarchically. Chose to commit chunk 1 directly on `vectis-cli` rather than rename the parent. Future chunks should adopt a flat naming scheme like `vectis-cli-chunk-N-slug`. Updating the convention in "How to Use This File" can wait until chunk 2 starts and confirms the new pattern.
+- **Chunk 1 — Stub return shape.** The chunk text specified the `VectisError` variant list (no `NotImplemented`) and the stub JSON shape (`{"error": "not_implemented", "command": "<name>"}`). To reconcile these without duplicating `println!`/`exit` in each handler, introduced `CommandOutcome::{Success, Stub}` in `main.rs`. Stubs return `Ok(CommandOutcome::Stub { command })`; the dispatcher renders the JSON and exits 1. Real handlers in later chunks switch to `CommandOutcome::Success(value)` with no other dispatch changes.
