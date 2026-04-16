@@ -14,19 +14,19 @@ The CLI is the foundation everything else builds on. Migration commands, multi-r
 
 See also: [RFC-1a: Deferred Validation](rfc-1a-validation.md) — the three-way Pass/Fail/Deferred classification that lets the CLI handle structural checks while the agent evaluates semantic ones.
 
-## [RFC-2: Iterative Legacy Migration](rfc-2-migration.md)
+## [RFC-2: Feature Manifests](rfc-2-manifests.md)
 
-**Problem:** Legacy migration typically fails because the new system diverges from the old system's actual behaviour — the behaviour nobody wrote down. Big-bang rewrites take months before delivering value, and when they stall, everything is lost.
+**Problem:** Complex initiatives — multi-feature greenfield builds, legacy migrations, platform modernisations — lack a coordination artifact. The agent rediscovers scope, ordering, and dependencies on every iteration. There's no persistent plan that tracks what's done, what's next, and what's blocked.
 
-**Solution:** Reuse the same define-build-merge loop that powers greenfield development, feature by feature, driven by a migration manifest. Each slice of the legacy system is extracted, defined, built, and merged in a self-contained iteration. The baseline grows with every merge; progress is incremental and reversible. Existing skills (`/spec:extract`, `wiretapper`, `replay-writer`) provide the extraction and verification infrastructure.
+**Solution:** A feature manifest (`manifest.yaml`) that drives the same define-build-merge loop Specify already uses, feature by feature, with dependency tracking and progressive baseline accumulation. For legacy migration, the manifest adds `source-paths` and the loop starts with `/spec:extract`. For greenfield work, it starts at `/spec:define`. The loop is the same either way. Extracted and greenfield features coexist in a single manifest.
 
-The migration design is ready — the loop, manifest format, and slice strategy are fully specified. Implementation depends on the CLI from RFC-1: the deterministic operations (`specify migrate init`, `specify migrate next`, `specify migrate status`) are natural extensions of the CLI's subcommand surface. The skill-level orchestration (extract → define → build → merge) already works today; what's missing is the manifest-driven automation layer.
+The manifest design is ready — the loop, format, and dependency strategy are fully specified. Implementation depends on the CLI from RFC-1: the deterministic operations (`specify manifest init`, `specify manifest next`, `specify manifest status`) are natural extensions of the CLI's subcommand surface. The skill-level orchestration already works today; what's missing is the manifest-driven automation layer.
 
 ## [RFC-3: Multi-Repo Coordination](rfc-3-multi-repo.md)
 
-**Problem:** The `.specify/` directory is project-local. There is no concept of a spec reference that spans repositories, and conflict detection only works within a single workspace. A feature like "add OAuth login" that touches backend, frontend, and shared-types repos has no coordination point.
+**Problem:** The `.specify/` directory is project-local. There is no concept of a spec reference that spans repositories, and conflict detection only works within a single workspace. A feature like "add OAuth login" that touches backend, frontend, and shared-types repos has no resolution layer for cross-repo spec references.
 
-**Solution:** Extend `config.yaml` with a federation model — peer repositories declared in config, cross-repo spec references resolved by the CLI, and coordinated validation that catches contract mismatches across repo boundaries.
+**Solution:** A federation model — peer repositories declared in config, cross-repo spec references resolved by the CLI, and coordinated validation that catches contract mismatches across repo boundaries. Feature manifests (RFC-2) provide the coordination layer for multi-repo initiatives; federation provides the resolution and validation layer that makes cross-repo references work.
 
 ## [RFC-4: Type-Safe Skill Expression](rfc-4-dsl.md)
 

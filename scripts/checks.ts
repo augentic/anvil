@@ -513,7 +513,7 @@ async function checkSkillDirectives(): Promise<void> {
     }
   }
 
-  const SKIP_DIRS = [/node_modules/, /\.git/, /temp/, /roadmap/];
+  const SKIP_DIRS = [/node_modules/, /\.git/, /temp/, /rfcs/];
 
   for await (const entry of walk(REPO_ROOT, {
     exts: [".md"],

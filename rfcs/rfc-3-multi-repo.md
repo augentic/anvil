@@ -144,4 +144,4 @@ A good litmus test: "Would this command need to understand `.specify/` directory
 ## References
 
 - [RFC-1: `specify` CLI](rfc-1-cli.md) — prerequisite; federation subcommands extend the CLI
-- [RFC-2: Iterative Legacy Migration](rfc-2-migration.md) — complements federation for cross-repo migration
+- [RFC-2: Feature Manifests](rfc-2-manifests.md) — provides manifest-level coordination for multi-repo initiatives; federation provides the resolution layer

@@ -1,6 +1,6 @@
 # RFC-1: `specify` CLI
 
-> Status: Draft · Depends: — · Enables: [RFC-2](rfc-2-migration.md), [RFC-3](rfc-3-multi-repo.md), [RFC-4](rfc-4-dsl.md)
+> Status: Draft · Depends: — · Enables: [RFC-2](rfc-2-manifests.md), [RFC-3](rfc-3-multi-repo.md), [RFC-4](rfc-4-dsl.md)
 
 ## Abstract
 
@@ -10,7 +10,7 @@ Replace prose-interpreted deterministic operations (validation, task parsing, ar
 
 Every precision-critical operation — validation, task parsing, artifact structure checking — is currently performed by the LLM interpreting prose rules. This produces unreliable results for operations that are fundamentally structured decision trees.
 
-The CLI is the foundation everything else builds on. Migration commands ([RFC-2](rfc-2-migration.md)), multi-repo coordination ([RFC-3](rfc-3-multi-repo.md)), and skill validation ([RFC-4](rfc-4-dsl.md)) all require a binary that understands `.specify/` structure, spec format, and schema rules. Building the CLI first means every subsequent RFC extends an existing tool rather than creating a new one.
+The CLI is the foundation everything else builds on. Feature manifest commands ([RFC-2](rfc-2-manifests.md)), multi-repo coordination ([RFC-3](rfc-3-multi-repo.md)), and skill validation ([RFC-4](rfc-4-dsl.md)) all require a binary that understands `.specify/` structure, spec format, and schema rules. Building the CLI first means every subsequent RFC extends an existing tool rather than creating a new one.
 
 ## Design Principles
 
@@ -42,15 +42,15 @@ A good litmus test: "Would this command need to understand `.specify/` directory
 
 The first four items establish a working binary with immediate value. Items 5–6 close the loop on the core workflow. Item 7 is a natural migration that happens incrementally — each check ported from TypeScript to Rust is removed from `checks.ts` until the script is empty.
 
-#### Phase 2: Migration extensions ([RFC-2](rfc-2-migration.md))
+#### Phase 2: Feature manifest extensions ([RFC-2](rfc-2-manifests.md))
 
-8. **`specify migrate init`** — scaffold `migration.yaml` from a legacy codebase scan
-9. **`specify migrate next`** — select the next pending slice from the manifest (respecting `depends_on`)
-10. **`specify migrate status`** — track slice-level migration progress across iterations
-11. **Slice recommender** — analyse legacy dependency graph and suggest migration ordering
-12. **Behavioural diff** — compare legacy fixture output against new implementation output
+8. **`specify manifest init`** — scaffold `manifest.yaml` from a feature list or legacy codebase scan
+9. **`specify manifest next`** — select the next pending feature from the manifest (respecting `depends-on`)
+10. **`specify manifest status`** — track initiative progress across iterations
+11. **Feature recommender** — analyse legacy dependency graph and suggest feature ordering (migration mode)
+12. **Behavioural diff** — compare legacy fixture output against new implementation output (migration mode)
 
-These build on the existing `/spec:extract`, `wiretapper`, `replay-writer`, and core `/spec:*` skills. See [RFC-2](rfc-2-migration.md) for the full design.
+These build on the existing `/spec:extract`, `wiretapper`, `replay-writer`, and core `/spec:*` skills. See [RFC-2](rfc-2-manifests.md) for the full design.
 
 #### Phase 3: Federation extensions ([RFC-3](rfc-3-multi-repo.md))
 
@@ -441,6 +441,7 @@ fn design_references_exist(design: &str, specs_dir: &Path) -> bool;
 
 ```rust
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct ChangeMetadata {
     pub schema: String,
     pub status: LifecycleStatus,
@@ -533,6 +534,7 @@ The `init` function handles the mechanical parts (directory creation, config tem
 #### `drift.rs` (RFC-2/0003, initially stubbed)
 
 ```rust
+#[serde(rename_all = "kebab-case")]
 pub struct DriftEntry {
     pub requirement_id: String,
     pub requirement_name: String,
@@ -555,6 +557,7 @@ pub fn baseline_inventory(
 #### `federation.rs` (RFC-3, stubbed)
 
 ```rust
+#[serde(rename_all = "kebab-case")]
 pub struct PeerRepo {
     pub name: String,
     pub repo: String,
@@ -777,6 +780,6 @@ During migration, both `specify check` and `checks.ts` run. As checks migrate fr
 ## References
 
 - [RFC-1-A: Deferred Validation](rfc-1a-validation.md) — the three-way Pass/Fail/Deferred classification
-- [RFC-2: Iterative Legacy Migration](rfc-2-migration.md) — extends the CLI with `specify migrate` subcommands
+- [RFC-2: Feature Manifests](rfc-2-manifests.md) — extends the CLI with `specify manifest` subcommands
 - [RFC-3: Multi-Repo Coordination](rfc-3-multi-repo.md) — extends the CLI with `specify federation` subcommands
 - [RFC-4: Type-Safe Skill Expression](rfc-4-dsl.md) — extends `specify check` with skill validation
