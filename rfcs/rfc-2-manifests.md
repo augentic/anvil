@@ -25,7 +25,7 @@ The manifest orchestrator, manifest parsing, and feature recommender are determi
 A feature manifest is an ordered list of the features to implement, along with their dependencies and status. It is the initiative's table of contents: it tells the loop what to do next without requiring the agent to rediscover scope on every iteration.
 
 ```yaml
-# .specify/features.yaml
+# .specify/manifest.yaml
 name: platform-v2
 target-schema: omnia@v1
 
@@ -43,7 +43,7 @@ features:
     source-paths:                     # present → extract from legacy
       - src/auth/register.ts
       - src/auth/models/user.ts
-    status: migrated                  # migrated | in-progress | pending | skipped
+    status: migrated                  # migrated | in-progress | pending | ignored
 
   - name: email-verification
     source: monolith
@@ -261,16 +261,16 @@ Getting the boundaries roughly right and the dependency ordering defensible is e
 ## New Capabilities Required
 
 
-| Capability                         | Type  | Notes                                                                                        |
-| ---------------------------------- | ----- | -------------------------------------------------------------------------------------------- |
-| Feature manifest (`manifest.yaml`) | CLI   | Ordered feature list with dependencies and per-feature status                                |
+| Capability                         | Type  | Notes                                                                                                                            |
+| ---------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Feature manifest (`manifest.yaml`) | CLI   | Ordered feature list with dependencies and per-feature status                                                                    |
 | `specify manifest init`            | CLI   | Structural discovery: directory walking, import-graph analysis, cluster classification, topological sort → draft `features.yaml` |
-| `specify manifest next`            | CLI   | Return the next pending feature from the manifest (respecting `depends-on`)                  |
-| `specify manifest status`          | CLI   | Show initiative progress: N/M features complete, current feature, blockers                   |
-| Manifest orchestrator              | Skill | Reads the manifest, selects the next pending feature, wires the loop                         |
-| Feature recommender                | Skill | Optional Layer 2 refinement: improve feature names, suggest cluster splits/merges, flag ambiguous boundaries |
-| Behavioural diff                   | CLI   | Compare legacy fixture output against new implementation output (migration mode)             |
-| Cross-stack define                 | Skill | Extract from one stack (e.g. TypeScript) and define against another (e.g. Omnia/Rust)        |
+| `specify manifest next`            | CLI   | Return the next pending feature from the manifest (respecting `depends-on`)                                                      |
+| `specify manifest status`          | CLI   | Show initiative progress: N/M features complete, current feature, blockers                                                       |
+| Manifest orchestrator              | Skill | Reads the manifest, selects the next pending feature, wires the loop                                                             |
+| Feature recommender                | Skill | Optional Layer 2 refinement: improve feature names, suggest cluster splits/merges, flag ambiguous boundaries                     |
+| Behavioural diff                   | CLI   | Compare legacy fixture output against new implementation output (migration mode)                                                 |
+| Cross-stack define                 | Skill | Extract from one stack (e.g. TypeScript) and define against another (e.g. Omnia/Rust)                                            |
 
 
 ## References
