@@ -14,21 +14,26 @@ This pattern generalises. Any time you're tempted to add a complex heuristic to 
 
 ## Detailed Design
 
-### Classification Heuristic
+### Classification Is Declared, Not Inferred
 
-For each validation rule string in `schema.yaml`, the CLI applies a pattern-matching heuristic to decide whether it can handle the rule deterministically:
+Rules are hardcoded per brief id in `specify_validate::rules_for` (see [RFC-1](rfc-1-cli.md) `validate.rs` in `crates/specify-validate`). Each registered `Rule` carries an explicit `Classification::Structural` or `Classification::Semantic` tag alongside its checker, so the CLI never has to pattern-match on human-readable rule strings to decide what it can handle. This is a deliberate departure from deterministic frameworks that infer classification from rule prose — declaring it at the definition site eliminates a class of "the CLI silently passed a rule it didn't actually evaluate" bugs.
 
-| Rule pattern | Classification | Example |
-|---|---|---|
-| "Has a X section" | Structural — check heading exists | `Pass`/`Fail` |
-| "Has a X section with at least one Y" | Structural — check heading + content | `Pass`/`Fail` |
-| "Every requirement has at least one scenario" | Structural — parsed spec check | `Pass`/`Fail` |
-| "Uses X format" (WHEN/THEN, checkbox, etc.) | Structural — regex check | `Pass`/`Fail` |
-| "IDs use the REQ-XXX format" | Structural — regex check | `Pass`/`Fail` |
-| "Uses SHALL/MUST language" | Semantic — requires NLP | `Deferred` |
-| "Crate names are kebab-case" | Structural — regex check | `Pass`/`Fail` |
+Representative entries for the current brief set:
 
-Rules that don't match any known pattern default to `Deferred`. This ensures the CLI never silently passes a rule it doesn't understand.
+| Brief | Rule description | Classification | How the CLI decides |
+|---|---|---|---|
+| `proposal` | Has a `Why` section with at least one sentence | Structural | `has_content_after_heading` |
+| `proposal` | Has a `Crates`/`Features` section listing at least one entry | Structural | `has_content_after_heading` |
+| `proposal` | Uses imperative language for motivation | Semantic | always `Deferred` |
+| `specs` | Every requirement has at least one scenario | Structural | `all_requirements_have_scenarios` |
+| `specs` | IDs use the `REQ-[0-9]{3}` format | Structural | `ids_match_pattern` |
+| `specs` | Uses SHALL/MUST language for normative requirements | Semantic | always `Deferred` |
+| `design` | References only requirement ids present in specs | Structural | `design_references_exist` |
+| `tasks` | All tasks use checkbox format | Structural | `all_tasks_use_checkbox` |
+| `tasks` | Tasks grouped under headings | Structural | `tasks_grouped_under_headings` |
+| cross | Proposal deliverables have matching spec files | Structural | `proposal_deliverables_have_specs` |
+
+Semantic rules always emit `Deferred { reason: ... }`; their checker function is never called. A brief id with no registry entry yields no brief-scoped rules — only the generic checks (artifact exists, parses) run, so unknown brief types degrade gracefully rather than crashing the validator.
 
 ### What the Agent Receives
 
@@ -42,4 +47,4 @@ The agent never has to count sections, verify ID patterns, or check dependency g
 
 ## References
 
-- [RFC-1: `specify` CLI](rfc-1-cli.md) — parent RFC; `validate.rs` implements this classification
+- [RFC-1: `specify` CLI](rfc-1-cli.md) — parent RFC; `validate.rs` implements this classification via the hardcoded `rules_for` registry

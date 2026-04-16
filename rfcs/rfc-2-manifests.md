@@ -292,11 +292,11 @@ Validated status transitions. The command:
 5. Writes the manifest atomically
 6. Outputs the new state
 
-All manifest mutations go through this command, ensuring the state machine is always enforced. The future orchestrator will use the same command (or the underlying `specify-core` function) rather than editing YAML directly.
+All manifest mutations go through this command, ensuring the state machine is always enforced. The future orchestrator will use the same command (or the underlying `specify-change` crate function) rather than editing YAML directly.
 
-### `specify-core` Implementation
+### Library Implementation
 
-The manifest state machine is encoded in `specify-core` alongside the existing `LifecycleStatus`:
+The manifest state machine is encoded in the `specify-change` crate (see [RFC-1](rfc-1-cli.md) `Workspace Layout`), alongside the existing `LifecycleStatus`:
 
 ```rust
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
@@ -344,7 +344,7 @@ impl ManifestStatus {
 }
 ```
 
-Dependency resolution uses `petgraph` for topological sort and cycle detection. The `manifest.rs` module in `specify-core` provides:
+Dependency resolution uses `petgraph` for topological sort and cycle detection. The `manifest.rs` module (in `specify-change`, alongside the lifecycle state machine) provides:
 
 ```rust
 pub struct Manifest {
@@ -475,7 +475,7 @@ The manifest supports multi-repo initiatives on both the source and target sides
 | Capability                       | Type  | Notes                                                                          |
 | -------------------------------- | ----- | ------------------------------------------------------------------------------ |
 | Manifest format (`manifest.yaml`)| Schema| Ordered change list with dependencies and per-change status                    |
-| `manifest.rs` in `specify-core`  | Lib   | Parsing, validation, state machine, dependency graph, consistency checks       |
+| `manifest.rs` in `specify-change`| Lib   | Parsing, validation, state machine, dependency graph, consistency checks       |
 | `specify manifest validate`      | CLI   | Cycle detection, referential integrity, duplicate names, consistency check     |
 | `specify manifest next`          | CLI   | Return the next pending change (respecting `depends-on`, single in-progress)   |
 | `specify manifest status`        | CLI   | Initiative progress in dependency order: counts, blockers, next eligible       |
