@@ -76,6 +76,16 @@ pub fn default_android_package(app_name: &str) -> String {
 }
 
 /// Build the placeholder map from CLI args + resolved version pins.
+///
+/// The Android version placeholders (`agp`, `kotlin`, `compose_bom`,
+/// `ktor`, `koin`) are populated for every scaffold even when no Android
+/// shell is requested. They have no effect on the core templates today
+/// (no core file references them) but populating them here keeps the
+/// `Params` shape identical between core-only and core+android scaffolds,
+/// which simplifies the chunk-7/8 dispatcher. `__ANDROID_NDK_VERSION__`
+/// is not substituted at scaffold time -- chunk 8's pipeline resolves it
+/// from disk and patches `Android/shared/build.gradle.kts` before the
+/// build runs.
 fn build_params(app_name: &str, android_package: &str, versions: &Versions) -> Params {
     Params {
         app_name: app_name.to_string(),
@@ -90,6 +100,12 @@ fn build_params(app_name: &str, android_package: &str, versions: &Versions) -> P
         facet_version: versions.crux.facet.clone(),
         serde_version: versions.crux.serde.clone(),
         uniffi_version: versions.crux.uniffi.clone(),
+        agp_version: versions.android.agp.clone(),
+        kotlin_version: versions.android.kotlin.clone(),
+        compose_bom_version: versions.android.compose_bom.clone(),
+        ktor_version: versions.android.ktor.clone(),
+        koin_version: versions.android.koin.clone(),
+        android_ndk_version: "__ANDROID_NDK_VERSION__".to_string(),
     }
 }
 

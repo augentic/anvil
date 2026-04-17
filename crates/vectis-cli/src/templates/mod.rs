@@ -7,6 +7,7 @@
 //! actively constructed. iOS / Android registries follow in chunks 7 / 8
 //! (same engine, different `TEMPLATES` slice).
 
+pub mod android;
 pub mod core;
 pub mod ios;
 
@@ -70,6 +71,17 @@ pub struct Params {
     pub facet_version: String,
     pub serde_version: String,
     pub uniffi_version: String,
+    // Android-only placeholders (chunk 3c MANIFEST § Placeholder reference).
+    // These are substituted into `libs.versions.toml` and -- in the case of
+    // `__ANDROID_NDK_VERSION__` -- `shared-build.gradle.kts`. They have no
+    // effect on core / iOS templates because no core/iOS template references
+    // them, but the engine substitutes them unconditionally for simplicity.
+    pub agp_version: String,
+    pub kotlin_version: String,
+    pub compose_bom_version: String,
+    pub ktor_version: String,
+    pub koin_version: String,
+    pub android_ndk_version: String,
 }
 
 /// Render a template string with placeholder substitution and
@@ -98,16 +110,37 @@ pub fn render(template: &str, params: &Params, caps: &[Capability]) -> String {
 /// Substitute placeholders that may appear in a target *path* (rather than
 /// a file's contents).
 ///
-/// Today this is the path-segment subset used by iOS templates -- only
-/// `__APP_NAME__` and `__APP_NAME_LOWER__` are valid in path positions.
-/// Order matters: `__APP_NAME_LOWER__` is a strict superstring of
-/// `__APP_NAME__` and must be substituted first. Chunk 8 will extend this
-/// helper for `__ANDROID_PACKAGE_PATH__`-style placeholders, but they are
-/// derived at file-write time (`.` -> `/` translation), not stored on
-/// `Params`, so each shell handles its own derivations.
+/// Today the path-segment subset used by iOS templates is `__APP_NAME__` /
+/// `__APP_NAME_LOWER__`; Android additionally needs `__ANDROID_PACKAGE_PATH__`
+/// for the `Android/app/src/main/java/<pkg-path>/...` segment. Chunk 8
+/// extends this via [`substitute_path_with`] -- the package path is derived
+/// at file-write time (`.` -> `/` translation), not stored on `Params`, so
+/// each shell handles its own derivation and passes it in here.
+///
+/// Order matters across the chain: longer-name placeholders that are strict
+/// superstrings of shorter ones must come first. `__APP_NAME_LOWER__` is a
+/// superstring of `__APP_NAME__` and `__ANDROID_PACKAGE_PATH__` is a
+/// superstring of `__ANDROID_PACKAGE__` (which itself never appears in path
+/// positions today, but the rule keeps the chain robust to future
+/// additions).
 pub fn substitute_path(target: &str, params: &Params) -> String {
-    target
-        .replace("__APP_NAME_LOWER__", &params.app_name_lower)
+    substitute_path_with(target, params, None)
+}
+
+/// Path-segment substitution including `__ANDROID_PACKAGE_PATH__` when the
+/// caller supplies it. iOS callers pass `None`; Android callers compute the
+/// package path (`.` -> `/`) and pass `Some(...)` so the engine can splice
+/// it into `Android/app/src/main/java/__ANDROID_PACKAGE_PATH__/...` targets.
+pub fn substitute_path_with(
+    target: &str,
+    params: &Params,
+    android_package_path: Option<&str>,
+) -> String {
+    let mut out = target.to_string();
+    if let Some(pkg_path) = android_package_path {
+        out = out.replace("__ANDROID_PACKAGE_PATH__", pkg_path);
+    }
+    out.replace("__APP_NAME_LOWER__", &params.app_name_lower)
         .replace("__APP_NAME__", &params.app_name)
 }
 
@@ -132,6 +165,12 @@ fn substitute_placeholders(input: &str, params: &Params) -> String {
         .replace("__FACET_VERSION__", &params.facet_version)
         .replace("__SERDE_VERSION__", &params.serde_version)
         .replace("__UNIFFI_VERSION__", &params.uniffi_version)
+        .replace("__AGP_VERSION__", &params.agp_version)
+        .replace("__KOTLIN_VERSION__", &params.kotlin_version)
+        .replace("__COMPOSE_BOM_VERSION__", &params.compose_bom_version)
+        .replace("__KTOR_VERSION__", &params.ktor_version)
+        .replace("__KOIN_VERSION__", &params.koin_version)
+        .replace("__ANDROID_NDK_VERSION__", &params.android_ndk_version)
 }
 
 /// Walk a template line-by-line resolving CAP markers.
@@ -263,6 +302,12 @@ mod tests {
             facet_version: "=0.31".into(),
             serde_version: "1.0".into(),
             uniffi_version: "=0.29.4".into(),
+            agp_version: "8.13.2".into(),
+            kotlin_version: "2.3.0".into(),
+            compose_bom_version: "2026.01.01".into(),
+            ktor_version: "3.4.0".into(),
+            koin_version: "4.1.1".into(),
+            android_ndk_version: "27.0.12077973".into(),
         }
     }
 
@@ -367,5 +412,41 @@ mod tests {
         let target = "iOS/project.yml";
         let out = substitute_path(target, &sample_params());
         assert_eq!(out, "iOS/project.yml");
+    }
+
+    #[test]
+    fn substitute_path_with_android_package_path_substitutes_pkg_path() {
+        let target =
+            "Android/app/src/main/java/__ANDROID_PACKAGE_PATH__/__APP_NAME__Application.kt";
+        let out = substitute_path_with(target, &sample_params(), Some("com/vectis/counter"));
+        assert_eq!(
+            out,
+            "Android/app/src/main/java/com/vectis/counter/CounterApplication.kt"
+        );
+    }
+
+    #[test]
+    fn substitute_path_with_no_android_package_path_leaves_placeholder_alone() {
+        let target =
+            "Android/app/src/main/java/__ANDROID_PACKAGE_PATH__/__APP_NAME__Application.kt";
+        let out = substitute_path(target, &sample_params());
+        // iOS callers pass `None`; the engine must not substitute the
+        // package-path placeholder. Leaving it visible here means an
+        // accidental Android-target row in the iOS registry would surface
+        // as a malformed write path rather than a silent corruption.
+        assert!(out.contains("__ANDROID_PACKAGE_PATH__"));
+    }
+
+    #[test]
+    fn substitute_placeholders_substitutes_android_version_placeholders() {
+        let input = "agp=__AGP_VERSION__ kotlin=__KOTLIN_VERSION__ \
+                     compose=__COMPOSE_BOM_VERSION__ ktor=__KTOR_VERSION__ \
+                     koin=__KOIN_VERSION__ ndk=__ANDROID_NDK_VERSION__";
+        let out = substitute_placeholders(input, &sample_params());
+        assert_eq!(
+            out,
+            "agp=8.13.2 kotlin=2.3.0 compose=2026.01.01 ktor=3.4.0 \
+             koin=4.1.1 ndk=27.0.12077973"
+        );
     }
 }

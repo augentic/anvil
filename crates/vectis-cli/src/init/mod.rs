@@ -5,8 +5,13 @@
 //! `time`, `platform`, `sse` is honoured. Chunk 7 adds the iOS shell:
 //! `--shells ios` writes the chunk-3b iOS templates under
 //! `iOS/<AppName>/...` and (when prerequisites pass) drives `make typegen
-//! && make package && make xcode` from `iOS/`. Chunk 8 adds Android.
+//! && make package && make xcode` from `iOS/`. Chunk 8 adds the Android
+//! shell: `--shells android` writes the chunk-3c Android templates under
+//! `Android/...`, bootstraps the Gradle wrapper, writes
+//! `local.properties` from `$ANDROID_HOME`, and (when prerequisites pass)
+//! drives `make build` + `./gradlew :app:assembleDebug` from `Android/`.
 
+pub mod android;
 pub mod core;
 pub mod ios;
 
@@ -84,19 +89,23 @@ pub fn run(args: &InitArgs) -> Result<CommandOutcome, VectisError> {
                 shells_emitted.push("ios");
             }
             AssemblyKind::Android => {
-                // Chunk 8 lands Android scaffolding. Until then, accept
-                // the request through the prereq check (so the user gets
-                // an accurate "your toolchain is incomplete" report
-                // against android) but refuse the scaffold up-front
-                // before any iOS files have been touched. Returning here
-                // intentionally short-circuits any iOS work that has
-                // already happened earlier in the loop -- chunk-7
-                // ordering guarantees iOS comes first only when both are
-                // requested, but a future re-order will need to revisit
-                // the rollback story.
-                return Err(VectisError::InvalidProject {
-                    message: "--shells android requested but Android scaffolding lands in chunk 8; rerun without `android` to scaffold core (+ ios)".to_string(),
-                });
+                let android_result = android::scaffold(
+                    &project_dir,
+                    &android_package,
+                    &caps,
+                    &params,
+                    &versions,
+                    true,
+                )?;
+                assemblies_json.insert(
+                    "android".to_string(),
+                    serde_json::json!({
+                        "status": "created",
+                        "files": android_result.files,
+                        "build_steps": android_result.build_steps,
+                    }),
+                );
+                shells_emitted.push("android");
             }
             AssemblyKind::Core => {
                 // Core is already in `assemblies` for the prereq scope;
@@ -138,6 +147,19 @@ fn build_params(app_name: &str, android_package: &str, versions: &Versions) -> P
         facet_version: versions.crux.facet.clone(),
         serde_version: versions.crux.serde.clone(),
         uniffi_version: versions.crux.uniffi.clone(),
+        agp_version: versions.android.agp.clone(),
+        kotlin_version: versions.android.kotlin.clone(),
+        compose_bom_version: versions.android.compose_bom.clone(),
+        ktor_version: versions.android.ktor.clone(),
+        koin_version: versions.android.koin.clone(),
+        // `__ANDROID_NDK_VERSION__` is *not* substituted at scaffold time --
+        // chunk 8's `init::android::run_pipeline` resolves it (from
+        // `versions.android.ndk` or by scanning `$ANDROID_HOME/ndk/`) and
+        // patches `Android/shared/build.gradle.kts` just before the build
+        // pipeline runs. Leaving the placeholder visible here lets the
+        // scaffolded file round-trip through unit tests without depending
+        // on a per-machine NDK install.
+        android_ndk_version: "__ANDROID_NDK_VERSION__".to_string(),
     }
 }
 

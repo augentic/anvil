@@ -207,6 +207,12 @@ mod tests {
             facet_version: v.crux.facet,
             serde_version: v.crux.serde,
             uniffi_version: v.crux.uniffi,
+            agp_version: v.android.agp,
+            kotlin_version: v.android.kotlin,
+            compose_bom_version: v.android.compose_bom,
+            ktor_version: v.android.ktor,
+            koin_version: v.android.koin,
+            android_ndk_version: "__ANDROID_NDK_VERSION__".into(),
         }
     }
 
