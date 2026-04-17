@@ -1,0 +1,15 @@
+# Gradle
+.gradle/
+build/
+local.properties
+
+# Generated types and bindings
+generated/
+
+# IDE
+.idea/
+*.iml
+
+# Android
+*.apk
+*.aab
