@@ -108,7 +108,7 @@ run_one_chunk() {
 
   echo "=== $(date '+%H:%M:%S') running chunk ${chunk} ==="
   # shellcheck disable=SC2086  # intentional word-split of CURSOR_AGENT_ARGS
-  cursor-agent -p "$prompt" ${CURSOR_AGENT_ARGS:-}
+  cursor-agent -p "$prompt" ${CURSOR_AGENT_ARGS:-} --trust
 }
 
 processed=0
