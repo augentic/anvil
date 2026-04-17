@@ -1,6 +1,8 @@
 # Implementation plan: RFC-1 (`specify` CLI) + RFC-1a (Deferred Validation)
 
-> Companion to [rfc-1-cli.md](rfc-1-cli.md) and [rfc-1a-validation.md](rfc-1a-validation.md).
+> Status: Complete — all twelve Changes (A–L) landed in 2026-04.
+>
+> Companion to [rfc-1-cli.md](rfc-1-cli.md) and [rfc-1a-validation.md](rfc-1a-validation.md). Architectural decisions made during the build are recorded in [DECISIONS.md](../DECISIONS.md).
 
 Below is a change-based plan for Phase 1 of RFC-1. Each Change is sized to be deliverable by one sub-agent in a single session. Dependencies are explicit so Changes without shared upstream work can run in parallel.
 

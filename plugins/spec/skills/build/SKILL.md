@@ -1,9 +1,17 @@
 ---
 name: build
-description: Implement tasks from a Specify change. Use when the user wants to start implementing, continue implementation, or work through tasks.
+description: Implement tasks from a Specify change. Invokes `specify validate`, `specify task progress`, and `specify task mark`; agent owns the implementation loop. Use when the user wants to start implementing, continue implementation, or work through tasks.
 license: MIT
 argument-hint: "[change-name?]"
 ---
+
+## Prerequisites
+
+**If `specify` is not on PATH:** stop and instruct the user to install the
+CLI via `brew install specify` (preferred), `cargo install specify`, or
+the release script at https://specify.sh/install, then re-run. Do not
+attempt a prose fallback — validation rules have diverged past the point
+where the agent can reliably reproduce them.
 
 Implement tasks from a Specify change.
 
@@ -20,107 +28,95 @@ Implement tasks from a Specify change.
 
    Always announce: "Using change: <name>" and how to override (e.g., `/spec:build <other>`).
 
+   Set `$CHANGE_DIR = .specify/changes/<name>`.
+
 2. **Read project config and resolve schema**
 
    Read `.specify/project.yaml` for project domain and rule overrides.
 
-   Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status.
+   Read `$CHANGE_DIR/.metadata.yaml` for the schema value and status.
 
-   **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `briefs/build.md`. Read `schema.yaml` from the resolved location.
+   **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `briefs/build.md`.
 
-   **Resolve effective domain**: use the project's `domain` (from `.specify/project.yaml`) if present and non-empty, otherwise fall back to the schema's `domain` (from the resolved `schema.yaml`). **Resolve effective rules**: for each brief ID under `rules`, use the project's value (from `.specify/project.yaml`) if present and non-empty; rules are optional project-level overrides. Use effective domain and effective rules as constraints guiding your implementation -- do not copy them into code comments.
+   **Resolve effective domain**: use the project's `domain` (from `.specify/project.yaml`) if present and non-empty, otherwise fall back to the schema's `domain`. **Resolve effective rules**: for each brief ID under `rules`, use the project's value if present and non-empty. Use effective domain and effective rules as constraints guiding your implementation — do not copy them into code comments.
 
 3. **Check lifecycle status**
 
    Read `status` from `.metadata.yaml`:
-   - If `status` is `defining`: warn that artifacts may be incomplete — some may not have been generated yet. Suggest running `/spec:define` to complete them.
+   - If `status` is `defining`: warn that artifacts may be incomplete. Suggest `/spec:define` to complete them.
    - If `status` is `complete`: congratulate, all tasks already done. Suggest `/spec:merge`.
    - Otherwise: proceed.
 
-4. **Check brief completion**
+4. **Read context files**
 
-   For each brief in `pipeline.define` entries, check whether it is complete:
-   - Read each brief's frontmatter `generates` field. If it is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
-   - If `generates` is a glob pattern (e.g., `specs/**/*.md`), check if the directory contains at least one matching `.md` file.
+   Read all artifacts for the change. For each brief in `pipeline.define`, read the file(s) using the brief's frontmatter `generates` path. For glob patterns (e.g. `specs/**/*.md`), read all matching files.
 
-   **Handle states:**
-   - Read the build brief's frontmatter `needs` field (from the `pipeline.build` entry's brief). If any brief listed in `needs` is incomplete: show message listing missing artifacts, suggest using `/spec:define` to create them
-   - Otherwise: proceed to implementation
+5. **Validate needs**
 
-5. **Read context files**
+   Validate that every brief listed in the build brief's `needs` frontmatter has its generated artifact present and non-empty in the change directory. If any needed artifact is missing, halt and report which artifacts are missing — suggest `/spec:define` to create them.
 
-   Read all artifacts for the change. For each brief in `pipeline.define`, read the file(s) using the brief's frontmatter `generates` path. For glob patterns (e.g., `specs/**/*.md`), read all matching files in the directory.
+6. **Validate artifacts**
 
-6. **Validate needs**
-
-   Validate that all briefs listed in the build brief's `needs` frontmatter have their corresponding artifacts present and non-empty in the change directory.
-
-   For each needed brief ID, look up its `generates` path from its frontmatter. Check that the generated artifact exists at `.specify/changes/<name>/<generates>` and is non-empty (for glob patterns, at least one matching file must exist).
-
-   **If all needed artifacts are present**: report "Needs satisfied" and continue to step 7.
-
-   **If any needed artifact is missing**: halt and report which artifacts are missing.
-
-   ```text
-   ## Needs Not Met: <change-name>
-
-   Missing artifacts required by build:
-   - <brief-id>: expected <generates-path> — not found
-
-   Run `/spec:define` to create the missing artifacts.
+   ```bash
+   specify validate "$CHANGE_DIR" --format json
    ```
+
+   If `passed` is false: report failures to the user and suggest fixes.
+   If any results have `status: deferred`: apply your judgment for those rules.
+   Do not proceed to implementation until all non-deferred checks pass.
 
 7. **Show current progress**
 
-   Read the file tracked by the build brief's frontmatter `tracks` field and count:
-   - `- [ ] ` lines = incomplete tasks
-   - `- [x] ` or `- [X] ` lines = complete tasks
+   ```bash
+   specify task progress "$CHANGE_DIR" --format json
+   ```
 
-   Display:
-   - Progress: "N/M tasks complete"
-   - Remaining tasks overview
-
-   If all tasks are already complete: congratulate, suggest `/spec:merge`.
+   Display `complete/total` tasks and the remaining-tasks list from the `tasks` array. If `complete == total`: congratulate and suggest `/spec:merge`.
 
 8. **Update lifecycle status**
 
    If `status` in `.metadata.yaml` is `defined` (first time building):
    - Update `status` to `building`
    - Set `build_started_at` to current ISO-8601 timestamp
-   - **Verify**: re-read `.metadata.yaml` and confirm the `status` value is exactly `building`. Valid lifecycle values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped`. If `status` is not one of these, correct it to `building`.
+   - **Verify**: re-read `.metadata.yaml` and confirm the `status` value is exactly `building`. Valid lifecycle values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped`.
 
 9. **Implement tasks (loop until done or blocked)**
 
-   Read the build brief from the resolved schema directory (the file path is given by the `pipeline.build` entry's `brief` field in `schema.yaml`).
+   Read the build brief from the resolved schema directory.
 
-   **Skill directive tags**: Before starting each task, check whether it contains an HTML comment tag in the form `<!-- skill: plugin:skill-name -->`. If present, invoke that skill directly instead of following the default mode-detection logic. For example, a task tagged `<!-- skill: omnia:crate-writer -->` should be handled by running `/omnia:crate-writer` with the standard arguments. Tasks without a skill tag follow the instruction file's mode detection and step-by-step execution as before.
+   **Skill directive tags**: Before starting each task, check whether it contains an HTML comment in the form `<!-- skill: plugin:skill-name -->`. If present, invoke that skill directly instead of following default mode-detection logic. Tasks without a skill tag follow the instruction file's mode detection and step-by-step execution.
 
-   For each pending task:
+   For each pending task (discovered via `specify task progress`):
    - Check for a skill directive tag and invoke the named skill if present
    - Otherwise follow the instruction file (arguments, mode detection, step-by-step execution)
    - Show which task is being worked on
-   - Make the code changes required
-   - Keep changes minimal and focused
-   - Mark task complete in the tasks file: `- [ ]` -> `- [x]`
-   - Continue to next task
+   - Make the code changes required — keep changes minimal and focused
+   - Mark the task complete via the CLI:
+
+     ```bash
+     specify task mark "$CHANGE_DIR" "$TASK_NUMBER" --format json
+     ```
+
+     The response is idempotent (`idempotent: true` means the task was already complete — keep going).
+   - Continue to next task.
 
    **Pause if:**
-   - Task is unclear -> ask for clarification
-   - Implementation reveals a design issue -> suggest updating artifacts (use `/spec:define <name> <artifact-id>` to regenerate)
-   - Error or blocker encountered -> report and wait for guidance
+   - Task is unclear — ask for clarification
+   - Implementation reveals a design issue — suggest updating artifacts (`/spec:define <name> <artifact-id>` to regenerate)
+   - Error or blocker encountered — report and wait for guidance
    - User interrupts
 
 10. **On completion or pause, show status**
 
-   If all tasks are complete:
-   - Update `.metadata.yaml`: set `status` to `complete`, set `completed_at` to current ISO-8601 timestamp
-   - **Verify**: re-read `.metadata.yaml` and confirm the `status` value is exactly `complete`. Valid lifecycle values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped`. If `status` is not one of these (e.g., `built`), correct it to `complete`.
+    If all tasks are complete:
+    - Update `.metadata.yaml`: set `status` to `complete`, set `completed_at` to current ISO-8601 timestamp
+    - **Verify**: re-read `.metadata.yaml` and confirm the `status` value is exactly `complete`. Valid lifecycle values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped`.
 
-   Display:
-   - Tasks completed this session
-   - Overall progress: "N/M tasks complete"
-   - If all done: suggest `/spec:merge`
-   - If paused: explain why and wait for guidance
+    Display:
+    - Tasks completed this session
+    - Overall progress: "N/M tasks complete" (via `specify task progress`)
+    - If all done: suggest `/spec:merge`
+    - If paused: explain why and wait for guidance
 
 **Output During Implementation**
 
@@ -179,13 +175,12 @@ What would you like to do?
 - If task is ambiguous, pause and ask before implementing
 - If implementation reveals issues, pause and suggest artifact updates
 - Keep code changes minimal and scoped to each task
-- Update task checkbox immediately after completing each task
-- Pause on errors, blockers, or unclear requirements -- don't guess
-- Valid lifecycle status values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped` -- use these exact strings when updating `.metadata.yaml`, no other values are permitted
+- Use `specify task mark` to update checkboxes immediately after completing each task
+- Pause on errors, blockers, or unclear requirements — don't guess
+- Valid lifecycle status values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped` — use these exact strings when updating `.metadata.yaml`, no other values are permitted
 
 **Fluid Workflow Integration**
 
-This skill supports the "actions on a change" model:
+This skill is not phase-locked: it can be invoked before all artifacts are done, after partial implementation, or interleaved with other actions. If implementation reveals design issues, suggest updating artifacts and continue.
 
-- **Can be invoked anytime**: Before all artifacts are done (if tasks exist), after partial implementation, interleaved with other actions
-- **Allows artifact updates**: If implementation reveals design issues, suggest updating artifacts -- not phase-locked, work fluidly
+> Implements RFC-1 Phase 1 — the CLI handles deterministic operations.

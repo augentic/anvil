@@ -1,10 +1,18 @@
 ---
 name: init
-description: Initialize Specify in a project. Creates the .specify/ directory structure and project.yaml. Use when setting up a new project for spec-driven development.
+description: Initialize Specify in a project. Populates `.specify/.cache/` and invokes `specify init` to scaffold `.specify/` and write `project.yaml`. Use when setting up a new project for spec-driven development.
 license: MIT
 argument-hint: "[schema?]"
-allowed-tools: Read, Write, Shell, Grep, WebFetch
+allowed-tools: Read, Write, Shell, Grep, WebFetch, AskQuestion
 ---
+
+## Prerequisites
+
+**If `specify` is not on PATH:** stop and instruct the user to install the
+CLI via `brew install specify` (preferred), `cargo install specify`, or
+the release script at https://specify.sh/install, then re-run. Do not
+attempt a prose fallback — validation rules have diverged past the point
+where the agent can reliably reproduce them.
 
 ## Arguments
 
@@ -12,7 +20,7 @@ allowed-tools: Read, Write, Shell, Grep, WebFetch
 $SCHEMA         = $ARGUMENTS[0]
 ```
 
-I'll create the `.specify/` directory structure and install a starter `project.yaml` for you to customize.
+I'll populate `.specify/.cache/` with the schema and invoke `specify init` to install a starter `project.yaml`.
 
 ---
 
@@ -27,6 +35,7 @@ I'll create the `.specify/` directory structure and install a starter `project.y
    - If it exists, inform the user: "Specify is already initialized in this project. Your config is at `.specify/project.yaml`."
    - Use **AskQuestion tool** to confirm whether they want to reinitialize (which overwrites project.yaml).
    - If they decline, stop.
+   - If they confirm, treat the run as `$UPGRADE=true` so the CLI rewrites `specify_version` to the running binary.
 
 2. **Resolve schema**
 
@@ -34,75 +43,57 @@ I'll create the `.specify/` directory structure and install a starter `project.y
 
    Store the result as `$SCHEMA`.
 
-   Resolve `$SCHEMA` using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `briefs/*`.
+3. **Populate the schema cache**
 
-3. **Create directory structure**
-
-   ```bash
-   mkdir -p .specify/changes .specify/specs .specify/.cache
-   ```
-
-   If `.specify/.gitignore` does not exist, create it with:
-   ```
-   .cache/
-   ```
-
-4. **Populate schema cache**
-
-   Copy all resolved schema files into `.specify/.cache/`, mirroring the schema directory structure:
+   Per RFC-1 §`schema.rs` the agent owns all writes to `.specify/.cache/`. The CLI reads the cache but never fetches. Before invoking `specify init`, mirror the resolved schema tree under `.specify/.cache/<name>/` so the CLI can resolve it:
 
    ```text
    .specify/.cache/
    ├── .cache-meta.yaml
-   ├── schema.yaml
-   └── briefs/
-       ├── proposal.md
-       ├── specs.md
-       ├── design.md
-       ├── tasks.md
-       ├── build.md
-       └── merge.md
+   └── <schema-name>/
+       ├── schema.yaml
+       └── briefs/
+           ├── proposal.md
+           ├── specs.md
+           ├── design.md
+           ├── tasks.md
+           ├── build.md
+           └── merge.md
    ```
 
+   Use the **Schema Resolution** procedure (`references/schema-resolution.md`) to locate schema files. Files needed: `schema.yaml` and every file referenced by `pipeline.{define,build,merge}[].brief`. For URL-based schemas, fetch them with **WebFetch**; for bare-name schemas, copy from the local `schemas/<name>/` tree.
+
    Write `.specify/.cache/.cache-meta.yaml` with:
-   - `schema_url`: the full `$SCHEMA` value. For bare-name schemas (no `/`), use `local:<name>` (e.g., `local:omnia`). For URL-based schemas, use the full URL (including `@ref` if present).
-   - `fetched_at`: current ISO-8601 timestamp
+   - `schema_url`: the full `$SCHEMA` value. For bare-name schemas (no `/`), use `local:<name>` (e.g. `local:omnia`). For URL-based schemas, use the full URL (including `@ref` if present).
+   - `fetched_at`: current ISO-8601 timestamp.
 
-   If the resolved schema directory contains a `briefs/` subdirectory, create `.specify/.cache/briefs/` and copy all files from it.
+   If schema resolution or fetch fails, warn the user and stop — a valid schema is required before invoking the CLI.
 
-5. **Install project.yaml**
+4. **Collect project metadata**
 
-   Write a thin project config to `.specify/project.yaml` with:
-   - `name`: set to the project directory name (or the user's provided name)
-   - `domain`: set to the user's description if provided, otherwise a placeholder comment (`# Describe your project here`)
-   - `schema`: set to `$SCHEMA` (the resolved schema value — bare name or URL)
-   - `rules`: scaffold one key per brief defined in `pipeline.define` of the resolved `schema.yaml` (read each entry's `id`). Each key is an empty string (no override). Add a comment showing the file-path format so the user knows how to add rules later. For example, with the omnia schema the output is:
+   Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DOMAIN` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DOMAIN` if the user hasn't supplied one. An empty `$DOMAIN` is fine — the CLI omits the field.
 
-     ```yaml
-     name: my-project
-     domain: |
-       # Describe your project here
-     schema: omnia
+5. **Invoke `specify init`**
 
-     rules:
-       # proposal:  # e.g. rules/proposal.md
-       # specs:
-       # design:
-       # tasks: 
-     ```
+   ```bash
+   specify init "$SCHEMA" \
+     --schema-dir . \
+     --name "$PROJECT_NAME" \
+     ${DOMAIN:+--domain "$DOMAIN"} \
+     ${UPGRADE:+--upgrade} \
+     --format json
+   ```
 
-     Each value is a relative file path (from `.specify/`) to a markdown file containing additional rules for that brief. An empty string means no override — the schema brief's body text is used as-is. The schema `domain` in `.specify/.cache/schema.yaml` provides fallback context.
+   The CLI creates `.specify/{changes,specs,archive,.cache}/`, writes `.specify/project.yaml` with one empty `rules:` entry per `pipeline.define` brief, upserts `.specify/.cache/` into the project `.gitignore`, and records `specify_version`. Parse the JSON response to capture `config_path`, `schema_name`, `cache_present`, `directories_created`, `scaffolded_rule_keys`, and `specify_version` for reporting back to the user.
 
-   Do NOT copy the schema's domain wholesale. The project config is a thin overlay; the schema domain lives in `schema.yaml`.
-
-   If schema resolution failed (no matching directory, fetch error), warn the user and stop — a valid schema is required.
+   On non-zero exit, surface the JSON `error`/`message` fields. Do not attempt a prose fallback.
 
 6. **Prompt for customization**
 
    Tell the user:
    - "Specify initialized. Config written to `.specify/project.yaml`."
    - "Edit the `domain` field to describe your project's tech stack, architecture, and testing approach."
-   - "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/schema.yaml`."
+   - "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/<schema>/schema.yaml`."
 
    Do NOT print "Next steps" yet — Step 7 determines which output to show.
 
@@ -123,27 +114,25 @@ I'll create the `.specify/` directory structure and install a starter `project.y
    - **Yes, generate baseline specs** — proceed to create the change
    - **No, skip for now** — show the greenfield output and stop (user can run `/spec:extract` manually later)
 
-   If the user chooses **yes**:
+   If the user chooses **yes**, create the change directory and metadata:
 
-   a. Create the change directory and metadata:
+   ```bash
+   mkdir -p .specify/changes/initial-baseline/specs
+   ```
 
-      ```bash
-      mkdir -p .specify/changes/initial-baseline/specs
-      ```
+   Write `.specify/changes/initial-baseline/.metadata.yaml`:
 
-      Write `.specify/changes/initial-baseline/.metadata.yaml`:
+   ```yaml
+   schema: $SCHEMA
+   status: defining
+   created_at: <current ISO-8601 timestamp>
+   defined_at: null
+   build_started_at: null
+   completed_at: null
+   touched_specs: []
+   ```
 
-      ```yaml
-      schema: $SCHEMA
-      status: defining
-      created_at: <current ISO-8601 timestamp>
-      defined_at: null
-      build_started_at: null
-      completed_at: null
-      touched_specs: []
-      ```
-
-   b. Show the **brownfield output** and stop.
+   Show the **brownfield output** and stop.
 
 **Output (greenfield — no existing codebase, or user declined extraction)**
 
@@ -178,6 +167,7 @@ Next steps:
 
 **Guardrails**
 - Do not overwrite an existing project.yaml without user confirmation
-- Write a thin project config with `name`, `domain`, `schema`, and scaffolded `rules` keys (one per `pipeline.define` entry) — the schema `domain` in `schema.yaml` provides fallback context
-- Populate `.specify/.cache/` with the full schema so downstream skills resolve from cache
-- If schema resolution fails, stop and report the error rather than creating a project.yaml with unknown schema content
+- Populate `.specify/.cache/` before invoking `specify init` — the agent owns cache writes; the CLI only reads
+- If the CLI exits non-zero, surface the error and stop; do not hand-roll the scaffold
+
+> Implements RFC-1 Phase 1 — the CLI handles deterministic operations.

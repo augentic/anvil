@@ -6,6 +6,8 @@ Specify inverts the usual AI-assisted development model: an agent orchestrates s
 
 ## [RFC-1: `specify` CLI](rfc-1-cli.md)
 
+**Status:** Shipped (Phase 1, 2026-04). See the [implementation plan](rfc-1-plan.md) for the twelve-Change delivery and [DECISIONS.md](../DECISIONS.md) for the architectural calls made during the build.
+
 **Problem:** Every precision-critical operation — validation, task parsing, artifact structure checking — is performed by the LLM interpreting prose rules. This creates unreliable results for operations that are fundamentally structured decision trees.
 
 **Solution:** A Rust CLI binary (`specify`) that owns every deterministic operation. Skills invoke it via shell commands and get structured JSON or exit codes back. The agent keeps judgment; the CLI keeps correctness. Replaces `merge-specs.py`, the 40+ lines of prose validation in the build skill, and scattered mkdir/copy/write logic across init, define, and status.
