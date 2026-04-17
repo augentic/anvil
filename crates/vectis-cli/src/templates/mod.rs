@@ -8,6 +8,7 @@
 //! (same engine, different `TEMPLATES` slice).
 
 pub mod core;
+pub mod ios;
 
 /// A single capability the user can enable via `--caps`.
 ///
@@ -92,6 +93,22 @@ pub struct Params {
 pub fn render(template: &str, params: &Params, caps: &[Capability]) -> String {
     let stripped = process_caps(template, caps);
     substitute_placeholders(&stripped, params)
+}
+
+/// Substitute placeholders that may appear in a target *path* (rather than
+/// a file's contents).
+///
+/// Today this is the path-segment subset used by iOS templates -- only
+/// `__APP_NAME__` and `__APP_NAME_LOWER__` are valid in path positions.
+/// Order matters: `__APP_NAME_LOWER__` is a strict superstring of
+/// `__APP_NAME__` and must be substituted first. Chunk 8 will extend this
+/// helper for `__ANDROID_PACKAGE_PATH__`-style placeholders, but they are
+/// derived at file-write time (`.` -> `/` translation), not stored on
+/// `Params`, so each shell handles its own derivations.
+pub fn substitute_path(target: &str, params: &Params) -> String {
+    target
+        .replace("__APP_NAME_LOWER__", &params.app_name_lower)
+        .replace("__APP_NAME__", &params.app_name)
 }
 
 /// Apply substitutions for every placeholder field on `Params`.
@@ -328,5 +345,27 @@ mod tests {
     fn render_is_idempotent_for_files_without_markers_or_placeholders() {
         let input = "static content\nline 2\n";
         assert_eq!(render(input, &sample_params(), &[]), input);
+    }
+
+    #[test]
+    fn substitute_path_handles_app_name_in_dir_and_filename_positions() {
+        let target = "iOS/__APP_NAME__/__APP_NAME__App.swift";
+        let out = substitute_path(target, &sample_params());
+        assert_eq!(out, "iOS/Counter/CounterApp.swift");
+    }
+
+    #[test]
+    fn substitute_path_handles_app_name_lower_before_app_name() {
+        // `__APP_NAME_LOWER__` is a superstring of `__APP_NAME__`.
+        let target = "iOS/__APP_NAME__/__APP_NAME_LOWER__/x.swift";
+        let out = substitute_path(target, &sample_params());
+        assert_eq!(out, "iOS/Counter/counter/x.swift");
+    }
+
+    #[test]
+    fn substitute_path_leaves_static_paths_alone() {
+        let target = "iOS/project.yml";
+        let out = substitute_path(target, &sample_params());
+        assert_eq!(out, "iOS/project.yml");
     }
 }

@@ -2,13 +2,13 @@
 //!
 //! Chunk 5 landed the render-only core scaffold. Chunk 6 wires the
 //! `--caps` flag through the engine so any combination of `http`, `kv`,
-//! `time`, `platform`, `sse` is honoured. Chunks 7 / 8 will replace the
-//! `--shells` guard with iOS / Android scaffolding; today, requesting a
-//! shell platform passes the prereq check (so the user gets an accurate
-//! "your toolchain is incomplete" report) but is rejected with a
-//! structured `InvalidProject` error before any files are written.
+//! `time`, `platform`, `sse` is honoured. Chunk 7 adds the iOS shell:
+//! `--shells ios` writes the chunk-3b iOS templates under
+//! `iOS/<AppName>/...` and (when prerequisites pass) drives `make typegen
+//! && make package && make xcode` from `iOS/`. Chunk 8 adds Android.
 
 pub mod core;
+pub mod ios;
 
 use std::path::PathBuf;
 
@@ -16,7 +16,7 @@ use crate::{
     CommandOutcome, InitArgs,
     error::VectisError,
     prerequisites::{self, AssemblyKind},
-    templates::Capability,
+    templates::{Capability, Params},
     versions::Versions,
 };
 
@@ -50,36 +50,95 @@ pub fn run(args: &InitArgs) -> Result<CommandOutcome, VectisError> {
         &caps,
     )?;
 
-    // Chunk 5 only scaffolds core. iOS / Android shells listed via
-    // `--shells` are accepted by the prereq check (so the user gets an
-    // accurate "your toolchain is incomplete" report against the platforms
-    // they asked for) but the actual scaffold is not yet implemented. We
-    // surface this as a structured error rather than silently dropping the
-    // request.
-    if !shells.is_empty() {
-        return Err(VectisError::InvalidProject {
-            message: format!(
-                "--shells {} requested but iOS/Android scaffolding lands in chunks 7/8; rerun without --shells to scaffold core-only",
-                shells.iter().map(|a| a.tag()).collect::<Vec<_>>().join(",")
-            ),
-        });
+    let mut assemblies_json = serde_json::Map::new();
+    assemblies_json.insert(
+        "core".to_string(),
+        serde_json::json!({
+            "status": "created",
+            "files": core_result.files,
+        }),
+    );
+
+    let mut shells_emitted: Vec<&'static str> = Vec::new();
+
+    // Chunk 7 reuses the same Params placeholder map the core scaffold
+    // built. We rebuild it here rather than threading it out of
+    // `core::scaffold` because it is tiny and rebuilding decouples the
+    // public signatures of the per-shell scaffolders. Chunk 8 will reuse
+    // the same builder.
+    let params = build_params(&args.app_name, &android_package, &versions);
+
+    for shell in &shells {
+        match shell {
+            AssemblyKind::Ios => {
+                let ios_result =
+                    ios::scaffold(&project_dir, &args.app_name, &caps, &params, true)?;
+                assemblies_json.insert(
+                    "ios".to_string(),
+                    serde_json::json!({
+                        "status": "created",
+                        "files": ios_result.files,
+                        "build_steps": ios_result.build_steps,
+                    }),
+                );
+                shells_emitted.push("ios");
+            }
+            AssemblyKind::Android => {
+                // Chunk 8 lands Android scaffolding. Until then, accept
+                // the request through the prereq check (so the user gets
+                // an accurate "your toolchain is incomplete" report
+                // against android) but refuse the scaffold up-front
+                // before any iOS files have been touched. Returning here
+                // intentionally short-circuits any iOS work that has
+                // already happened earlier in the loop -- chunk-7
+                // ordering guarantees iOS comes first only when both are
+                // requested, but a future re-order will need to revisit
+                // the rollback story.
+                return Err(VectisError::InvalidProject {
+                    message: "--shells android requested but Android scaffolding lands in chunk 8; rerun without `android` to scaffold core (+ ios)".to_string(),
+                });
+            }
+            AssemblyKind::Core => {
+                // Core is already in `assemblies` for the prereq scope;
+                // it is never listed in `--shells`.
+                unreachable!("parse_shells filters out core");
+            }
+        }
     }
 
     let value = serde_json::json!({
         "app_name": args.app_name,
         "app_struct": args.app_name,
         "project_dir": project_dir.display().to_string(),
-        "assemblies": {
-            "core": {
-                "status": "created",
-                "files": core_result.files,
-            }
-        },
+        "assemblies": assemblies_json,
         "capabilities": caps.iter().map(|c| c.marker_tag()).collect::<Vec<_>>(),
-        "shells": serde_json::Value::Array(vec![]),
+        "shells": shells_emitted,
     });
 
     Ok(CommandOutcome::Success(value))
+}
+
+/// Build the placeholder map shared by every per-assembly scaffold.
+///
+/// Chunk 5 keeps an equivalent helper inside `init::core`; we rebuild it
+/// here so the shell scaffolders don't have to depend on that module's
+/// internals. The two copies must stay in lock-step -- if a new
+/// placeholder lands on `Params`, both helpers need to populate it.
+fn build_params(app_name: &str, android_package: &str, versions: &Versions) -> Params {
+    Params {
+        app_name: app_name.to_string(),
+        app_struct: app_name.to_string(),
+        app_name_lower: app_name.to_lowercase(),
+        android_package: android_package.to_string(),
+        crux_core_version: versions.crux.crux_core.clone(),
+        crux_http_version: versions.crux.crux_http.clone(),
+        crux_kv_version: versions.crux.crux_kv.clone(),
+        crux_time_version: versions.crux.crux_time.clone(),
+        crux_platform_version: versions.crux.crux_platform.clone(),
+        facet_version: versions.crux.facet.clone(),
+        serde_version: versions.crux.serde.clone(),
+        uniffi_version: versions.crux.uniffi.clone(),
+    }
 }
 
 /// Parse the `--caps` flag into the canonical `Capability` set.
