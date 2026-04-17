@@ -94,9 +94,13 @@ Notes for chunk 5/6:
   `shared-cargo.toml` deliberately sit inside an array literal so their content
   becomes inline list elements when retained -- the engine must not normalise
   whitespace inside or around marker lines.
-- The `sse` cap appears only in `shared-cargo.toml` today. Chunk 6 will decide
-  whether `app.rs` needs an `Sse(...)` Effect variant; if so, add the marker
-  here and bump this manifest.
+- The `sse` cap appears only in `shared-cargo.toml` today. Chunk 6 decided
+  **not** to add an `Sse(...)` Effect variant to `app.rs`: doing so would
+  cascade into chunks 7/8 (matching `<<<CAP:sse` blocks in `Core.swift`,
+  `Core.kt`, `libs.versions.toml`, `AndroidManifest.xml`) for no observable
+  benefit on the render-only baseline. Writer skills (chunk 12) can
+  introduce `Effect::Sse(...)` later if a real sse app needs it; if and
+  when that happens, add the marker here and bump this manifest.
 
 ## Self-check
 

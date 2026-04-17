@@ -60,10 +60,10 @@ enum Command {
 }
 
 // Fields below are populated by clap. `InitArgs` is fully consumed by
-// chunk 5 (`app_name`, `dir`, `version_file`) and chunk 5's render-only
-// guardrails (`caps`, `android_package` -- the latter as the source of the
-// default Android package even for core-only scaffolds, since
-// `__ANDROID_PACKAGE__` lives in `codegen.rs`). See roadmap/rfc-5-tasks.md.
+// chunk 5 (`app_name`, `dir`, `version_file`, `android_package` -- the
+// last as the source of the default Android package even for core-only
+// scaffolds, since `__ANDROID_PACKAGE__` lives in `codegen.rs`) and
+// chunk 6 (`caps`). See roadmap/rfc-5-tasks.md.
 #[derive(clap::Args, Debug)]
 pub(crate) struct InitArgs {
     /// App struct name (PascalCase, e.g. "Counter", "TodoApp").

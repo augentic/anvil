@@ -1,12 +1,14 @@
 //! Core assembly scaffolding for `vectis init`.
 //!
-//! Render-only baseline (chunk 5): no `--caps`, no `--shells`. The handler
-//! validates inputs, builds the placeholder map from chunk-4's resolved
-//! version pins, refuses to overwrite any pre-existing target file, then
+//! Chunk 5 landed the render-only baseline; chunk 6 wires the `--caps`
+//! flag through so the handler honours every combination of `http`,
+//! `kv`, `time`, `platform`, and `sse`. Inputs are validated, the
+//! placeholder map is built from chunk-4's resolved version pins, the
+//! function refuses to overwrite any pre-existing target file, then
 //! writes every embedded template under the project directory.
 //!
-//! Chunk 6 extends this module to honour `--caps`; chunks 7 / 8 add iOS /
-//! Android scaffolds called from the same `init::run` entry point.
+//! Chunks 7 / 8 add iOS / Android scaffolds called from the same
+//! `init::run` entry point.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -99,8 +101,9 @@ fn build_params(app_name: &str, android_package: &str, versions: &Versions) -> P
 /// half-scaffolded-project failure mode the RFC's "one command, working
 /// project" promise rules out.
 ///
-/// `caps` is empty for chunk 5 (render-only); chunk 6 will start passing
-/// real values.
+/// `caps` selects which capability-marked regions of the templates are
+/// kept. Chunk 6 wires this through from `--caps`; pass `&[]` for the
+/// render-only baseline.
 pub fn scaffold(
     project_dir: &Path,
     app_name: &str,
@@ -292,6 +295,61 @@ mod tests {
             assert!(
                 !body.contains("CAP:") || !body.contains(">>>"),
                 "leftover close marker in {}",
+                entry.target
+            );
+        }
+    }
+
+    #[test]
+    fn scaffold_includes_selected_capability_blocks() {
+        let dir = scratch_dir("with-caps");
+        scaffold(
+            &dir,
+            "Counter",
+            &default_android_package("Counter"),
+            &embedded_versions(),
+            &[Capability::Http, Capability::Kv, Capability::Sse],
+        )
+        .unwrap();
+
+        let workspace = fs::read_to_string(dir.join("Cargo.toml")).unwrap();
+        assert!(
+            workspace.contains("crux_http = \""),
+            "workspace dep missing for http: {workspace}"
+        );
+        assert!(
+            workspace.contains("crux_kv = \""),
+            "workspace dep missing for kv: {workspace}"
+        );
+        assert!(
+            !workspace.contains("crux_time"),
+            "time dep leaked when not requested: {workspace}"
+        );
+
+        let app_rs = fs::read_to_string(dir.join("shared/src/app.rs")).unwrap();
+        assert!(
+            app_rs.contains("FetchData"),
+            "http event missing from app.rs"
+        );
+        assert!(app_rs.contains("LoadData"), "kv event missing from app.rs");
+        assert!(
+            !app_rs.contains("PlatformRequest"),
+            "platform leaked when not requested"
+        );
+
+        let shared_cargo = fs::read_to_string(dir.join("shared/Cargo.toml")).unwrap();
+        assert!(
+            shared_cargo.contains("async-sse"),
+            "sse dep missing from shared Cargo.toml"
+        );
+
+        // Cap markers must never survive into rendered output, regardless
+        // of whether the cap was selected or stripped.
+        for entry in core::TEMPLATES {
+            let body = fs::read_to_string(dir.join(entry.target)).unwrap();
+            assert!(
+                !body.contains("<<<CAP:"),
+                "leftover open marker in {} with caps",
                 entry.target
             );
         }

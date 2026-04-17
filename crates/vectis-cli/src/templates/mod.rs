@@ -1,21 +1,20 @@
 //! Template engine -- placeholder substitution and capability-conditional
 //! sections, plus per-assembly template registries.
 //!
-//! Chunk 5 lands the engine and the core registry. iOS / Android registries
-//! follow in chunks 7 / 8 (same engine, different `TEMPLATES` slice). The
-//! capability evaluator stays a stub for chunk 5 (caps are always empty); the
-//! real evaluator arrives in chunk 6 and replaces the strip-everything
-//! behaviour with include-when-selected.
+//! Chunk 5 landed the engine (placeholder substitution + the include-when-
+//! selected evaluator) and the core registry. Chunk 6 wires the
+//! `Capability` enum through `init::run` so every variant is now
+//! actively constructed. iOS / Android registries follow in chunks 7 / 8
+//! (same engine, different `TEMPLATES` slice).
 
 pub mod core;
 
 /// A single capability the user can enable via `--caps`.
 ///
-/// Chunk 5 only ever sees an empty `&[Capability]` slice (render-only); chunk
-/// 6 wires the CLI flag through and starts populating it. The variants mirror
-/// the chunk-3a/3b/3c CAP markers and the RFC's enumerated values.
+/// The variants mirror the chunk-3a/3b/3c CAP markers and the RFC's
+/// enumerated values. Chunk 6 wires the CLI flag through `init::run` so
+/// every variant is now actively constructed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[allow(dead_code)] // populated by chunk 6
 pub enum Capability {
     Http,
     Kv,
@@ -26,7 +25,6 @@ pub enum Capability {
 
 impl Capability {
     /// Marker tag as it appears in the templates (e.g. `<<<CAP:http`).
-    #[allow(dead_code)] // consumed by chunk 6
     pub fn marker_tag(self) -> &'static str {
         match self {
             Capability::Http => "http",
@@ -34,6 +32,20 @@ impl Capability {
             Capability::Time => "time",
             Capability::Platform => "platform",
             Capability::Sse => "sse",
+        }
+    }
+
+    /// Parse the user-facing tag (as accepted on `--caps`) into a
+    /// `Capability`. Returns `None` for unknown tags so the caller can
+    /// produce a structured error referencing the offending value.
+    pub fn from_tag(tag: &str) -> Option<Self> {
+        match tag {
+            "http" => Some(Capability::Http),
+            "kv" => Some(Capability::Kv),
+            "time" => Some(Capability::Time),
+            "platform" => Some(Capability::Platform),
+            "sse" => Some(Capability::Sse),
+            _ => None,
         }
     }
 }
