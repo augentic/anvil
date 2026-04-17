@@ -22,8 +22,27 @@ serde           = "1.0"
 serde_json      = "1.0"
 
 # uniffi pin is coupled to cargo-swift. cargo-swift 0.9.x ships uniffi_bindgen 0.29.1;
-# 0.10.x ships 0.30.0; 0.11.x ships 0.31.0. The values below are the known-good
-# pair currently used by the writer skills.
+# 0.10.x ships 0.30.0; 0.11.x ships 0.31.0.
+#
+# Chunk 11 investigated the chunk-7 prescription to bump to `cargo_swift=0.11`
+# + `uniffi="=0.31.0"` and discovered the bump breaks the Kotlin codegen step
+# in `vectis verify`. crux_core 0.17.0's `cli` feature transitively pins
+# `uniffi_bindgen = "=0.29.4"`, so mixing a 0.31 runtime (shared crate) with a
+# 0.29 bindgen (invoked via `crux_core::cli::bindgen` inside
+# `templates/vectis/core/codegen.rs`) fails with "unresolved module path
+# shared::ffi". No version of Crux bumps bindgen to 0.31 today; this pair must
+# stay at 0.29.4 / 0.9 until either a newer Crux release tracks 0.31 bindgen or
+# the codegen template is rewritten to call uniffi_bindgen 0.31 directly (the
+# latter is chunk-13 `template-updater` territory).
+#
+# The chunk-7 iOS concern (cargo-swift 0.9 producing a `Package.swift` whose
+# binary target name doesn't match the module name under Xcode 26+/Swift 6) is
+# resolved instead via the *local* cargo-swift install: every chunk-7/8/9/10
+# verification passed on a machine with `brew install cargo-swift` at 0.11,
+# even with the embedded runtime pin at 0.29.4. cargo-swift 0.11's bindgen can
+# read the metadata emitted by uniffi 0.29.4's macros (the uniffi metadata
+# format is stable across 0.29 -> 0.31). Treat cargo-swift like xcodegen /
+# xcbeautify: a per-developer prereq, not a vendored runtime pin.
 uniffi      = "=0.29.4"
 cargo_swift = "0.9"        # version range that ships uniffi_bindgen 0.29.x
 

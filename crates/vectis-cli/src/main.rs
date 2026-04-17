@@ -131,12 +131,10 @@ pub(crate) struct UpdateVersionsArgs {
     /// override -- on the other subcommands the same flag overrides
     /// resolution.
     #[arg(long)]
-    #[allow(dead_code)] // consumed by chunk 11
     pub version_file: Option<std::path::PathBuf>,
 
     /// Show proposed changes without writing.
     #[arg(long)]
-    #[allow(dead_code)] // consumed by chunk 11
     pub dry_run: bool,
 
     /// Scaffold a scratch project and run `vectis verify` before committing pins.

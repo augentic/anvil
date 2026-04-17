@@ -133,7 +133,6 @@ impl Versions {
     /// Parse the embedded defaults. Public so chunks that legitimately want
     /// the baseline (e.g. `update-versions --dry-run` showing "current"
     /// when no file exists yet) can call it directly.
-    #[allow(dead_code)] // consumed by chunk 11
     pub fn embedded() -> Result<Versions, VectisError> {
         load_embedded()
     }
