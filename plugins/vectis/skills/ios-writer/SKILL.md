@@ -14,6 +14,14 @@ When an existing iOS shell is detected, the skill operates in **update mode**:
 it compares the current `app.rs` types against the existing Swift code and
 makes targeted edits rather than regenerating from scratch.
 
+When no iOS shell exists yet, the skill runs `vectis add-shell ios --dir {app-dir}`
+to scaffold the project. The CLI owns `iOS/project.yml`, `iOS/Makefile`, the
+Inject SPM wiring, the `{AppName}App.swift` entry point, a render-only
+`Core.swift` with CAP markers, a baseline `ContentView.swift`, and the starter
+`Views/LoadingScreen.swift` / `Views/HomeScreen.swift`. Once the scaffold
+exists this skill switches to **update mode** and layers spec-driven changes
+over the generated baseline.
+
 This skill targets **Swift 6** and **SwiftUI** with iOS 17+ deployment target.
 
 ## Arguments
@@ -64,314 +72,90 @@ When `change-dir` is provided, also read:
 
 ## Mode Detection
 
-- **Create Mode** -- `{project-dir}/` does **not** exist. Generate the entire
-  iOS shell from scratch (steps 1--11 below).
+- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes
+  `vectis add-shell ios` to scaffold the baseline, then proceeds directly
+  into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- `{project-dir}/` **does** exist and contains `.swift` files.
   Read existing code, diff against the core, and make targeted edits
   (steps U1--U8 below).
 
-Check for `{project-dir}/Core.swift` or `{project-dir}/*/Core.swift` to
-detect the mode. If found, switch to update mode.
+Detection rule: check for `{project-dir}/*/Core.swift`. If present, switch to
+update mode. If not, run:
 
-## Internal Sub-Agent Decomposition
+```bash
+vectis add-shell ios --dir {app-dir}
+```
 
-When invoked as a sub-agent from the build orchestrator, this skill
-can be further decomposed into two internal sub-agents to reduce
-per-agent context load. The orchestrator's sub-agent for ios-writer
-acts as a **coordinator** that runs step 1 (analysis) itself, then
-delegates the remaining work:
+`{app-dir}` is the parent directory of `shared/`; the CLI derives the `iOS/`
+sibling directory automatically. On non-zero exit, surface the CLI's structured
+error output to the user and stop -- do **not** attempt to hand-author
+`project.yml`, `Makefile`, or any of the baseline `.swift` files.
 
-### Phase 1: Scaffold (steps 1-6)
+If the command succeeds, switch to Update Mode. The scaffolded shell is a
+render-only baseline with CAP markers in `Core.swift` (one per optional
+capability: `http`, `kv`, `time`, `platform`, `sse`) and starter screens for
+`Loading` + `Home`. Update Mode replaces CAP markers and starter screens with
+real effect handlers and per-ViewModel-variant screen views derived from the
+current `app.rs`.
 
-A sub-agent that handles project infrastructure. It receives the
-analysis output from step 1 (type inventory, app name, design system
-availability) and generates:
+## Verification ownership
 
-- Directory structure (step 4)
-- `project.yml` (step 5) -- needs `references/ios-project-config.md`
-- `Makefile` (step 6) -- needs `references/ios-project-config.md`
-
-This sub-agent does not need `references/swiftui-view-patterns.md` or
-`references/crux-ios-shell-pattern.md`.
-
-### Phase 2: Shell (steps 7-10)
-
-A sub-agent that generates the Swift shell code. It receives the
-analysis output from step 1 and generates:
-
-- `Core.swift` (step 7) -- needs `references/crux-ios-shell-pattern.md`
-- `ContentView.swift` (step 8) -- needs `references/swiftui-view-patterns.md`
-- Screen views (step 9) -- needs `references/swiftui-view-patterns.md`
-  and `references/design-system-integration.md`
-- App entry point (step 10)
-
-This sub-agent does not need `references/ios-project-config.md`.
-
-### Coordinator handoff
-
-The coordinator (step 1) produces a **type inventory** passed to both
-phases:
-
-| Field | Content |
-| --- | --- |
-| `app_name` | Derived app name (step 3) |
-| `viewmodel_variants` | ViewModel enum variants with associated view structs |
-| `event_variants` | Shell-facing Event variants |
-| `effect_variants` | Effect enum variants |
-| `route_variants` | Route enum variants (if any) |
-| `supporting_types` | Structs/enums used in view structs |
-| `design_system` | Whether `tokens.yaml` exists and token categories found |
-| `capabilities` | Which capabilities the core uses (HTTP, KV, SSE, Time, Platform) |
-
-### Verification ownership
-
-When the orchestrator passes `skip_verification: true`, the writer
-stops after code generation (Phase 2: Shell completes) and does
-**not** run step 11 or U8. The orchestrator's dedicated iOS verify
-sub-agent handles formatting, `make build`, and `make sim-build`
-with its own repair loop and iteration limits.
+When the orchestrator passes `skip_verification: true`, the writer stops after
+code generation and does **not** run step U8. The orchestrator's dedicated iOS
+verify sub-agent handles formatting, `make build`, and `make sim-build` with
+its own repair loop and iteration limits.
 
 When invoked **standalone** (no `skip_verification` flag, or
-`skip_verification: false`), the writer runs its full process
-including step 11 / U8.
-
-In **update mode**, the coordinator runs steps U1-U4 (analysis, read
-Swift, inventory, diff) and produces a **change plan** that the shell
-sub-agent applies (steps U5-U7). Step U8 is skipped when
-`skip_verification: true`.
+`skip_verification: false`), the writer runs its full process including step U8.
 
 ---
 
 ## Process: Create Mode
 
-### 1. Read and analyze the Crux core
+Use this process when no iOS shell exists at `{project-dir}`. The CLI owns all
+iOS boilerplate (`project.yml`, `Makefile`, entry point, render-only baseline
+`Core.swift`, `ContentView.swift`, `Views/LoadingScreen.swift`,
+`Views/HomeScreen.swift`, and Inject/XcodeGen wiring). This skill's only
+Create-Mode responsibilities are: (1) read the Crux core to derive the app
+name and capability set, (2) invoke the CLI, (3) switch to Update Mode.
 
-Read `{app-dir}/shared/src/app.rs` and extract all types listed in the
-Input Analysis table above. Build a complete picture of:
+### 1. Read the Crux core
 
-- Which ViewModel variants exist (determines number of screens)
-- Which per-page view struct fields exist (determines screen layout)
-- Which shell-facing Event variants exist (determines user interaction points)
-- Which Effect variants exist (determines which platform capabilities to implement)
-- Which Route variants exist (determines navigation structure)
+Read `{app-dir}/shared/src/app.rs` and extract all types listed in the Input
+Analysis table above. In particular, derive the App struct name (used by the
+CLI to name the Xcode target, directory, and entry point file) and note which
+capabilities the core actually uses -- this drives which CAP markers Update
+Mode must replace in the scaffolded `Core.swift`. If `app.rs` cannot be read
+or parsed, report the error and stop.
 
-If `app.rs` cannot be read or parsed, report the error and stop.
+### 2. Invoke the CLI
 
-### 2. Read the design system
+Run:
 
-Read `design-system/tokens.yaml` for color, typography, spacing, and corner
-radius values. Read `design-system/spec.md` for usage rules.
-
-If the design system files do not exist, generate views without design system
-imports and note this in the output.
-
-### 3. Determine app name
-
-Derive the app name from the `App` struct in `app.rs`:
-
-| Rust struct | App name | Directory name |
-|---|---|---|
-| `TodoApp` | `Todo` | `Todo` |
-| `CounterApp` | `Counter` | `Counter` |
-| `NoteEditor` | `NoteEditor` | `NoteEditor` |
-
-The app name is used for the Xcode target, directory, and entry point file.
-
-### 4. Generate directory structure
-
-Create the following directories under `{project-dir}`:
-
-```
-{project-dir}/
-    {AppName}/
-        Views/
+```bash
+vectis add-shell ios --dir {app-dir}
 ```
 
-### 5. Generate `project.yml`
+The CLI derives the app name from `shared/Cargo.toml` / `app.rs` and
+produces `iOS/project.yml`, `iOS/Makefile`, `iOS/{AppName}/{AppName}App.swift`,
+`iOS/{AppName}/Core.swift` (with CAP markers for every optional capability),
+`iOS/{AppName}/ContentView.swift`, and the starter
+`iOS/{AppName}/Views/{Loading,Home}Screen.swift`. The output is structured
+JSON. On non-zero exit, surface the CLI's error output to the user and stop.
 
-Create `{project-dir}/project.yml` following the template in
-`references/ios-project-config.md`. Key adaptations:
+### 3. Switch to Update Mode
 
-- Set the project name to `{AppName}`
-- Set `bundleIdPrefix` based on the app name
-- Calculate the relative path from `{project-dir}` to `design-system/ios/`
-  for the VectisDesign package reference
-- Use Swift Packages (NOT `projectReferences` / `cargo xcode`):
+After the CLI returns green, treat the scaffolded iOS shell as an existing
+implementation and execute **Process: Update Mode** below to:
 
-```yaml
-packages:
-  SharedTypes:
-    path: ./generated/SharedTypes    # Domain types from codegen
-  Shared:
-    path: ./generated/Shared         # UniFFI bindings from cargo-swift
-  VectisDesign:
-    path: ../../../design-system/ios # adjust relative path as needed
-  Inject:
-    url: https://github.com/krzysztofzablocki/Inject.git
-    from: "1.5.2"
-targets:
-  {AppName}:
-    dependencies:
-      - package: SharedTypes
-      - package: Shared
-      - package: VectisDesign
-      - package: Inject
-```
-
-- Include Debug-only settings: `OTHER_LDFLAGS` with `-Xlinker -interposable`
-  and `EMIT_FRONTEND_COMMAND_LINES: "YES"` (required for InjectionIII)
-
-### 6. Generate `Makefile`
-
-Create `{project-dir}/Makefile` with the three-phase build pipeline.
-Replace `{AppName}` with the actual app name.
-
-The build has three sequential phases:
-
-**Phase 1: typegen** -- Generate SharedTypes (domain types as a Swift package):
-
-```makefile
-typegen:
-	@echo "Generating SharedTypes..."
-	@RUST_LOG=info cargo run --manifest-path $(SHARED_DIR)/Cargo.toml \
-		--bin codegen --features codegen,facet_typegen -- \
-		--language swift --output-dir generated
-```
-
-The codegen binary uses `TypeRegistry` from facet to extract types at compile
-time. It creates a Swift package at `generated/SharedTypes/`. No separate
-`cargo build` step is needed -- the `cargo run` command compiles what it needs.
-
-**Phase 2: package** -- Build Shared (UniFFI bindings as a Swift package):
-
-```makefile
-package:
-	@echo "Building Shared Swift package..."
-	@cd $(SHARED_DIR) && \
-		cargo swift package --name Shared --platforms ios \
-			--lib-type static --features uniffi && \
-		rm -rf ../iOS/generated/Shared && \
-		mkdir -p ../iOS/generated/Shared && \
-		cp -r Shared/* ../iOS/generated/Shared/ && \
-		rm -rf Shared
-```
-
-**Phase 3: xcode** -- Generate the Xcode project:
-
-```makefile
-xcode:
-	@echo "Generating Xcode project..."
-	@xcodegen
-```
-
-See `references/ios-project-config.md` for the complete Makefile template
-including `sim-build` and `clean` targets.
-
-### 7. Generate `Core.swift`
-
-Create `{project-dir}/{AppName}/Core.swift` following the pattern in
-`references/crux-ios-shell-pattern.md`.
-
-`Core.swift` must import both `Shared` (for `CoreFfi`) and `SharedTypes`
-(for domain types like `ViewModel`, `Event`, `Request`).
-
-#### Effect handlers
-
-The `processEffect` switch must have one case per Effect variant:
-
-| Effect variant | Handler |
-|---|---|
-| `Render` | Always included. Updates `@Published var view`. |
-| `Http` | Include if `Effect::Http(HttpRequest)` exists. Uses `URLSession`. |
-| `KeyValue` | Include if `Effect::KeyValue(KeyValueOperation)` exists. Uses `UserDefaults` or file storage. |
-| `ServerSentEvents` | Include if a custom SSE effect exists. Uses async stream. |
-| `Time` | Include if `Effect::Time(TimeRequest)` exists. Uses `Task.sleep`. |
-| `Platform` | Include if `Effect::Platform(PlatformRequest)` exists. Returns `UIDevice` info. |
-
-Include only the effect handlers that the app actually uses.
-
-#### KV Types (crux_kv)
-
-When generating the KeyValue handler, use these generated types:
-
-- `KeyValueOperation` with cases `.get(key:)`, `.set(key:value:)`,
-  `.delete(key:)`, `.exists(key:)`, `.listKeys(prefix:cursor:)`
-- `KeyValueResult` with `.ok(response:)` and `.err(error:)`
-- `KeyValueResponse` with `.get(value:)`, `.set(previous:)`,
-  `.delete(previous:)`, `.exists(isPresent:)`, `.listKeys(keys:nextCursor:)`
-- `Value` enum: `.none` / `.bytes([UInt8])` (NOT Swift Optional)
-
-Add HTTP helper functions if the HTTP capability is present. See
-`references/crux-ios-shell-pattern.md` for the full implementation.
-
-### 8. Generate `ContentView.swift`
-
-Create `{project-dir}/{AppName}/ContentView.swift` following the pattern in
-`references/swiftui-view-patterns.md`.
-
-The view body must be a `switch` on `core.view` with one case per
-ViewModel variant. Each case renders the corresponding screen view,
-passing the per-page view struct and an event callback.
-
-### 9. Generate screen views
-
-For each ViewModel variant, create a screen view file in
-`{project-dir}/{AppName}/Views/`:
-
-| ViewModel variant | Screen file | Content |
-|---|---|---|
-| `Loading` | `LoadingScreen.swift` | `ProgressView` with "Loading..." text |
-| `Main(MainView)` | `MainScreen.swift` | Layout driven by `MainView` fields |
-| `Error(ErrorView)` | `ErrorScreen.swift` | Error message with optional retry |
-| `{Name}({NameView})` | `{Name}Screen.swift` | Layout driven by `{NameView}` fields |
-
-For each screen:
-
-1. Import `SwiftUI`, `SharedTypes`, `VectisDesign`, and `Inject`.
-2. Accept the per-page view struct as a `let` property.
-3. Accept `let onEvent: (Event) -> Void` for user interactions.
-4. Use VectisDesign tokens for all colors, fonts, and spacing.
-5. Map each shell-facing Event variant that is relevant to this view to a
-   user interaction (button tap, swipe action, pull-to-refresh, etc.).
-6. Add a `#Preview` with sample data at the bottom of the file.
-7. Add `accessibilityLabel` to interactive icons.
-8. Add `@ObserveInjection var inject` property and `.enableInjection()` as
-   the outermost modifier in the body (for hot reloading support).
-
-Consult `references/swiftui-view-patterns.md` for layout patterns (lists,
-forms, navigation, swipe actions, pull-to-refresh).
-
-Consult `references/design-system-integration.md` for token usage.
-
-### 10. Generate app entry point
-
-Create `{project-dir}/{AppName}/{AppName}App.swift`:
-
-```swift
-import Inject
-import SwiftUI
-import VectisDesign
-
-@main
-struct {AppName}App: App {
-    @StateObject private var core = Core()
-    @ObserveInjection var inject
-
-    var body: some Scene {
-        WindowGroup {
-            ContentView(core: core)
-                .vectisTheme()
-        }
-    }
-}
-```
-
-### 11. Format and verify
-
-1. Run `swiftformat {project-dir}/{AppName}/` to format all generated Swift files.
-2. Run `make build` in `{project-dir}` to run the full pipeline (typegen → package → xcode).
-3. Run `make sim-build` to verify the project compiles for the iOS Simulator.
-4. If the build fails, read the error output, fix the issue, and re-run.
+- Strip CAP markers for capabilities the core does not use, and expand CAP
+  blocks (with real effect handlers + helpers) for capabilities the core does
+  use.
+- Replace the `HomeScreen` starter with real per-ViewModel-variant screen
+  files driven by the core's `ViewModel` enum + per-page view structs.
+- Rewrite `ContentView.swift`'s `switch` to cover every ViewModel variant.
+- Apply any `## iOS Shell Requirements` from the active Specify change (when
+  `change-dir` is provided).
 
 ## Process: Update Mode
 
@@ -379,7 +163,8 @@ Use this process when `{project-dir}/` already exists with Swift files.
 
 ### U1. Read and analyze the Crux core
 
-Same as create mode step 1. Extract all types from the current `app.rs`.
+Same as create mode step 1 (read `{app-dir}/shared/src/app.rs` and extract
+the full type inventory using the Input Analysis table above).
 
 When `change-dir` is provided, also read the `## iOS Shell Requirements` section
 from `{change-dir}/specs/{feature-name}/spec.md` and the `## iOS Shell Details`
@@ -457,11 +242,11 @@ Output the diff summary before making edits.
 
 ### U8. Format and verify
 
-Same as create mode step 11:
-
 1. Run `swiftformat` on modified files.
-2. Run `make build` to verify compilation.
-3. Fix any build errors.
+2. Run `make build` to verify compilation (the CLI-generated `Makefile` runs
+   the three-phase `typegen -> package -> xcode` pipeline).
+3. Run `make sim-build` to verify the project compiles for the iOS Simulator.
+4. Fix any build errors.
 
 ## Spec-to-Code Mapping
 
@@ -493,8 +278,14 @@ Same as create mode step 11:
 |---|---|
 | `references/crux-ios-shell-pattern.md` | Core.swift template, effect handling, serialization protocol |
 | `references/swiftui-view-patterns.md` | Screen patterns, lists, forms, navigation, accessibility |
-| `references/ios-project-config.md` | XcodeGen project.yml, Makefile, build configuration |
 | `references/design-system-integration.md` | VectisDesign token usage in views |
+
+XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell
+scaffolding (`project.yml` packages, Inject SPM wiring, CAP markers, starter
+screens) are owned by the CLI's embedded templates
+(`crates/vectis-cli/src/init/ios.rs` and
+`crates/vectis-cli/embedded/ios/`). Do not hand-edit those files in Create
+Mode; let `vectis add-shell ios` write them and then modify in Update Mode.
 
 ## Examples
 
@@ -578,7 +369,10 @@ Same as create mode step 11:
   reloading during development. Inject is a no-op in Release builds (stripped
   by LLVM), so the boilerplate can remain permanently. Each developer must
   install [InjectionIII](https://github.com/nicklama/InjectionIII/releases)
-  separately -- see `references/ios-project-config.md` for setup details.
+  separately. The CLI wires Inject into `project.yml` (SPM package +
+  Debug-only `OTHER_LDFLAGS: -Xlinker -interposable` +
+  `EMIT_FRONTEND_COMMAND_LINES: YES`); Update Mode only has to add
+  `@ObserveInjection`/`.enableInjection()` to new screen views.
 - **Specify integration**: When `change-dir` is provided, the skill reads
   the `## iOS Shell Requirements` section from the feature spec and the
   `## iOS Shell Details` section from design.md. The primary input remains

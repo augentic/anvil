@@ -14,8 +14,12 @@ When an existing project is detected, the skill operates in **update mode**: it
 compares the Specify artifacts against the current implementation and makes targeted
 edits rather than regenerating from scratch.
 
-This skill targets the current Crux release from crates.io. See
-`references/crux-versions.md` for the authoritative version pins.
+When no project exists yet, the skill runs `vectis init` (and `vectis verify`) to
+scaffold the workspace, shared crate, and toolchain using the embedded Crux version
+pins. The CLI is the single source of truth for Cargo manifests, `rust-toolchain.toml`,
+`.gitignore`, `ffi.rs`, `codegen.rs`, and the `lib.rs`/`app.rs` skeleton. Once the
+scaffold exists this skill switches to **update mode** and layers feature-specific
+changes over the generated baseline.
 
 ## Arguments
 
@@ -85,7 +89,8 @@ custom capability module following the pattern in `references/crux-custom-capabi
 The skill operates in one of two modes depending on whether an existing project is found:
 
 - **Create Mode** -- used when `{project-dir}/shared/src/app.rs` does **not** exist.
-  Generates the entire project from scratch (steps 1--13 below).
+  The skill invokes `vectis init` to scaffold the baseline, then proceeds directly
+  into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- used when `{project-dir}/shared/src/app.rs` **does** exist.
   Reads the existing code, diffs it against the artifacts, and makes targeted edits
   (steps U1--U8 below).
@@ -94,9 +99,25 @@ The Specify artifacts always represent the **full desired state** of the applica
 partial diff. In update mode the skill compares the full artifacts against the existing
 implementation to determine what changed.
 
-To detect the mode, check for the file `{project-dir}/shared/src/app.rs` before
-starting any generation work. If the file exists, switch to update mode. If not,
-proceed with create mode.
+Detection rule: check for the file `{project-dir}/shared/src/app.rs`. If the file
+exists, switch to update mode. If not, run:
+
+```bash
+vectis init {AppName} --dir {project-dir} --caps {detected-caps}
+vectis verify --dir {project-dir}
+```
+
+`{AppName}` is the derived App struct name (see Derived Arguments). `{detected-caps}`
+is the comma-separated list from Capability Detection (e.g. `http,kv`; omit the flag
+or pass an empty string when only Render is needed). If either command fails, report
+the CLI's structured error output to the user and stop -- do **not** attempt a manual
+scaffold as a fallback.
+
+If both commands succeed, switch to Update Mode (the just-scaffolded project is the
+"existing implementation" Update Mode diffs against). The baseline emitted by `vectis
+init` is a render-only scaffold with type aliases for each selected capability and
+placeholder `update()` arms; Update Mode fills in domain types, Model fields,
+Event/ViewModel variants, and real handler logic derived from the Specify artifacts.
 
 ### Repair mode
 
@@ -119,7 +140,12 @@ When invoked in repair mode:
 
 ## Process: Create Mode
 
-Use this process when no existing project is found at `{project-dir}`.
+Use this process when no existing project is found at `{project-dir}`. The CLI owns
+all boilerplate (workspace manifest, `shared/Cargo.toml`, `rust-toolchain.toml`,
+`.gitignore`, `clippy.toml`, `ffi.rs`, `codegen.rs`, `lib.rs`, and a render-only
+`app.rs` skeleton with type aliases for each selected capability). This skill's
+only Create-Mode responsibilities are: (1) read the Specify artifacts to derive the
+App name and capability set, (2) invoke the CLI, (3) switch to Update Mode.
 
 ### 1. Read and analyze the Specify artifacts
 
@@ -140,312 +166,49 @@ If a required section is missing or too vague to determine Model and Events, ask
 clarifying question. Use `[unknown]` tokens for anything genuinely ambiguous rather than
 guessing.
 
-### 2. Design the type system
+### 2. Invoke the CLI
 
-Before writing any code, design these types on paper:
+Derive `{AppName}` (see Derived Arguments § App struct name) and `{caps}` (see
+Capability Detection; comma-separated, lowercase, in artifact order). Then run:
 
-1. **Model** -- all internal state, including a `page: Page` field. Use newtypes and
-   enums for domain concepts. Fields should be `pub(crate)` unless needed externally.
-2. **Page (internal)** -- an enum with one variant per view. Derives `Default` only
-   (no `Facet`, no `Serialize`). The `#[default]` variant is the initial view
-   (typically `Loading`). Add to Model as `page: Page`.
-3. **Route (shell-facing)** -- an enum enumerating user-navigable destinations.
-   Derives `Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq`
-   and has `#[repr(C)]`. Includes only content views the shell can navigate to
-   (excludes internal states like `Loading` and `Error`). Use `#[default]` on the
-   primary content view. Can carry payload for parameterised views
-   (e.g. `ItemDetail(String)`).
-4. **Event** -- split into shell-facing variants (serializable, sent by UI) and
-   internal variants (marked `#[serde(skip)]` `#[facet(skip)]`, used as effect callbacks).
-   Include a `Navigate(Route)` shell-facing variant for shell-initiated view changes.
-5. **ViewModel** -- an enum with `#[repr(C)]`. One variant per view, matching the
-   `Page` enum 1:1. Variants without data (e.g. `Loading`) have no payload; variants
-   with data wrap a per-page view struct. Derive `Facet, Serialize, Deserialize,
-   Clone, Debug, Default`.
-6. **Per-page view structs** -- one struct per ViewModel variant that carries data
-   (e.g. `MainView`, `ErrorView`). Derive `Facet, Serialize, Deserialize, Clone,
-   Debug, Default`. All fields are `pub`. Use `String` for formatted display values.
-   `ErrorView` should have `message: String` and `can_retry: bool`.
-7. **Effect** -- one variant per capability. Annotate with `#[effect(facet_typegen)]`.
-8. **Supporting types** -- domain structs/enums used in Model, Event, or per-page
-   view structs.
-
-Consult `references/crux-app-pattern.md` for type conventions.
-
-### 3. Generate workspace files
-
-Create the workspace root files:
-
-**`{project-dir}/Cargo.toml`** -- workspace manifest:
-```toml
-[workspace]
-members = ["shared"]
-resolver = "3"
-
-[workspace.package]
-edition = "2024"
-rust-version = "1.88"
-
-[workspace.dependencies]
-# See references/crux-versions.md for current Crux and companion dependency versions
-crux_core = "{version from crux-versions.md}"
-serde = "{version from crux-versions.md}"
-facet = "{version from crux-versions.md}"
-thiserror = "2"
-
-[workspace.lints.rust]
-trivial_numeric_casts = "warn"
-unused_extern_crates = "warn"
-unsafe_op_in_unsafe_fn = "warn"
-
-[workspace.lints.clippy]
-all = "warn"
-nursery = "warn"
-pedantic = "warn"
-cargo = "warn"
-as_pointer_underscore = "warn"
-assertions_on_result_states = "warn"
-clone_on_ref_ptr = "warn"
-deref_by_slicing = "warn"
-disallowed_script_idents = "warn"
-empty_drop = "warn"
-empty_enum_variants_with_brackets = "warn"
-empty_structs_with_brackets = "warn"
-fn_to_numeric_cast_any = "warn"
-if_then_some_else_none = "warn"
-map_err_ignore = "warn"
-redundant_type_annotations = "warn"
-renamed_function_params = "warn"
-semicolon_outside_block = "warn"
-undocumented_unsafe_blocks = "warn"
-unnecessary_safety_comment = "warn"
-unnecessary_safety_doc = "warn"
-unneeded_field_pattern = "warn"
-unused_result_ok = "warn"
+```bash
+vectis init {AppName} --dir {project-dir} --caps {caps}
+vectis verify --dir {project-dir}
 ```
 
-Add capability crates to `[workspace.dependencies]` based on detected capabilities.
-See `references/crux-project-config.md` for the full dependency list.
+Both commands produce structured JSON. On non-zero exit, surface the CLI's error
+output to the user and stop -- do not attempt to hand-author any of the scaffolded
+files. The CLI's `init` is atomic (it refuses to overwrite a pre-existing workspace),
+and its `verify` step runs `cargo check`, `cargo clippy --all-targets -- -D warnings`,
+`cargo deny check`, `cargo vet`, and codegen for Swift + Kotlin; a green verify is a
+precondition for this skill to do useful Update-Mode work.
 
-**`{project-dir}/clippy.toml`** -- clippy configuration:
-```toml
-doc-valid-idents = []
+### 3. Switch to Update Mode
 
-allowed-duplicate-crates = []
-```
+After the CLI returns green, treat the scaffolded project as an existing
+implementation and execute **Process: Update Mode** below to fill in:
 
-Populate `allowed-duplicate-crates` after `cargo clippy` reports false-positive duplicate
-crate warnings from transitive dependencies. Run `cargo tree -d | grep '^[a-z]'` to discover
-which crates are duplicated.
+- Domain types (structs/enums from Design Domain Model)
+- Model fields
+- Page / Route / ViewModel variants + per-page view structs
+- Shell-facing and internal Event variants
+- `update()` match-arm logic and helper functions
+- `view()` model-to-ViewModel mapping
 
-**`{project-dir}/rust-toolchain.toml`** -- toolchain config:
-```toml
-[toolchain]
-channel = "stable"
-components = ["rustfmt", "rustc-dev"]
-targets = [
-    "aarch64-apple-darwin",
-    "aarch64-apple-ios",
-    "aarch64-apple-ios-sim",
-    "aarch64-linux-android",
-    "wasm32-unknown-unknown",
-    "x86_64-apple-ios",
-]
-profile = "minimal"
-```
+The scaffolded `app.rs` ships with placeholder `update()` arms (each capability's
+arm calls `render()` with a `#[allow(clippy::match_same_arms)]` on the function
+and `#[allow(dead_code)]` on each capability `type` alias). Update Mode replaces
+those placeholders with real logic; when the placeholder bodies are gone, drop
+the two render-only-baseline `#[allow(...)]` attributes -- leaving them in place
+is harmless under `-D warnings` but masks future regressions.
 
-**`{project-dir}/.gitignore`** -- multi-platform ignore rules. Include every
-section even if the project does not use all shells yet -- this future-proofs
-the repository for when new shells are added.
-
-```
-# OS
-.DS_Store
-
-# Environment / secrets
-.env
-.env.*
-!.env.example
-
-# Rust
-/target
-
-# Swift / Xcode
-*.xcodeproj/
-*.xcworkspace/
-DerivedData/
-build/
-iOS/generated/
-iOS/*.xcodeproj
-
-# TypeScript / Node
-node_modules/
-dist/
-*.tsbuildinfo
-
-# Kotlin / Gradle
-.gradle/
-*.apk
-*.aab
-local.properties
-```
-
-### 4. Generate `shared/Cargo.toml`
-
-Follow the template in `references/crux-project-config.md`. Key points:
-- `crate-type = ["cdylib", "lib", "staticlib"]`
-- Feature-gate `uniffi` and `wasm_bindgen` dependencies
-- Add a `codegen` feature for type generation
-- Include only the capability crates actually needed
-- Include `thiserror` as a non-optional dependency (used by `CoreError` in `ffi.rs`)
-- Add `[lints] workspace = true` to inherit workspace lint configuration
-- Add `#![allow(clippy::cargo_common_metadata)]` to `lib.rs` if the crate is not
-  intended for crates.io publication (e.g., example projects)
-
-### 5. Generate `shared/src/app.rs`
-
-This is the heart of the application. Follow `references/crux-app-pattern.md`:
-
-1. Define supporting types (domain structs/enums)
-2. Define internal `Page` enum with `#[derive(Default)]` and `#[default]` on the
-   initial variant (typically `Loading`)
-3. Define `Route` enum (shell-facing navigable destinations) with
-   `#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]`
-   and `#[repr(C)]`. Include only user-navigable content views (exclude `Loading`,
-   `Error`). Use `#[default]` on the primary content view.
-4. Define `Model` with `#[derive(Default)]`, including a `page: Page` field
-5. Define per-page view structs (e.g. `MainView`, `ErrorView`) with
-   `#[derive(Facet, Serialize, Deserialize, Clone, Debug, Default)]`
-6. Define `ViewModel` as an enum with `#[derive(Facet, Serialize, Deserialize,
-   Clone, Debug, Default)]` and `#[repr(C)]`. One variant per page, wrapping the
-   corresponding per-page view struct (or no payload for data-less views like `Loading`)
-7. Define `Event` with shell and internal variants. Include a `Navigate(Route)`
-   shell-facing variant for shell-initiated view changes.
-8. Define `Effect` enum with `#[effect(facet_typegen)]`
-9. If using HTTP, add type alias: `type Http = crux_http::Http<Effect, Event>;`
-10. If using KV, add type alias: `type KeyValue = crux_kv::KeyValue<Effect, Event>;`
-11. Implement `App` trait with `update()` and `view()`. The `view()` function must
-    match on `model.page` and return the corresponding `ViewModel` variant.
-    The `Navigate(route)` arm must be state-aware: navigating to a view that
-    requires data may trigger a load sequence rather than an immediate page switch.
-
-For `update()` logic, consult `references/crux-command-api.md` for command patterns.
-
-**Test generation**: Tests are generated separately by test-writer after
-core-writer completes. core-writer does not generate `#[cfg(test)]` modules.
-
-### 6. Generate `shared/src/ffi.rs`
-
-Follow `references/crux-ffi-scaffolding.md` exactly. The `CoreFFI` struct is identical
-across all apps except for the `Bridge<AppType>` generic parameter and the
-`use crate::MyApp` import. The file defines a `CoreError` type that wraps
-`BridgeError` for FFI transport -- all three methods (`update`, `resolve`, `view`)
-return `Result<Vec<u8>, CoreError>` instead of panicking.
-
-### 7. Generate custom capability modules (if needed)
-
-If SSE or other custom capabilities are needed, generate them as separate modules.
-Follow `references/crux-custom-capabilities.md` for the pattern.
-
-### 8. Generate `shared/src/bin/codegen.rs`
-
-Generate the type-generation binary following `references/crux-project-config.md` § Codegen Binary.
-Replace `MyApp` with the app struct name. The binary uses `TypeRegistry` from facet to
-extract types at compile time -- it does not depend on RustDoc JSON parsing.
-
-### 9. Generate `shared/src/lib.rs`
-
-Wire everything together. The FFI module is conditionally compiled behind the
-`uniffi` and `wasm_bindgen` features:
-```rust
-mod app;
-#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
-mod ffi;
-
-pub use app::*;
-pub use crux_core::Core;
-
-#[cfg(any(feature = "wasm_bindgen", feature = "uniffi"))]
-pub use ffi::CoreFFI;
-
-#[cfg(feature = "uniffi")]
-uniffi::setup_scaffolding!();
-```
-
-Add `pub mod {capability};` for any custom capability modules.
-
-### 10. Verify
-
-Run `cargo check` in the project directory. If it fails:
-1. Read the error output carefully
-2. Fix the issue in the relevant file
-3. Re-run `cargo check`
-4. Repeat until clean
-
-Full verification (fmt, clippy, test suite) runs at the orchestration level
-after test-writer completes.
-
-### 11. Lint with clippy
-
-Run `cargo clippy --all-targets`. The workspace lints (`all`, `nursery`, `pedantic`, `cargo`,
-plus restriction cherry-picks) are configured in the workspace `Cargo.toml`. Fix all warnings
-before proceeding. Common issues:
-
-- `use_self` -- use `Self` instead of the type name inside impl blocks
-- `match_same_arms` -- merge arms with identical bodies into one
-- `too_many_lines` -- extract helpers or allow on the function with a justification comment
-  (the `update()` match dispatch is commonly allowed)
-- `unnecessary_map_or` -- use `is_none_or` / `is_some_and` instead of `map_or`
-- `implicit_clone` -- use `.clone()` instead of `.to_string()` on `&String`
-- `unnested_or_patterns` -- nest patterns: `Event::X(Ok(None) | Err(_))` not
-  `Event::X(Ok(None)) | Event::X(Err(_))`
-- `needless_pass_by_value` -- take `&T` or `&[T]` when the function doesn't consume ownership
-- `doc_markdown` -- use backticks around type names in doc comments (e.g., `` `ViewModel` ``)
-- `cargo_common_metadata` -- add metadata or allow if the crate is not published
-- `multiple_crate_versions` -- add duplicate crate names to `clippy.toml`
-  `allowed-duplicate-crates` when they are transitive and cannot be resolved
-
-### 12. Review for unused dependencies
-
-After the build passes, audit `Cargo.toml` against actual usage:
-
-1. For every non-optional dependency in `[dependencies]`, search `src/` for a corresponding
-   `use {crate_name}` or a macro/derive from that crate. Remove any dependency that has no
-   matching usage.
-2. For every crate in `[dev-dependencies]`, search test modules for usage. Remove any that
-   are not referenced.
-3. Re-run `cargo check` after removals to confirm nothing was missed.
-
-### 13. Self-review for logic bugs
-
-After all mechanical checks pass, review the generated code for these common logic issues:
-
-1. **State consistency** -- when an event triggers a follow-up event (via `Command::event`),
-   verify the model state set before the follow-up is consistent with what the follow-up
-   handler expects. Example bug: setting `state = Connected` then dispatching `ConnectSse`
-   which sets `state = Connecting`.
-2. **Ownership in helpers** -- prefer `&T` and `&[T]` over owned `T` and `Vec<T>` in helper
-   function signatures when the function only reads the data (cloning internally as needed).
-3. **`expect()` in production paths** -- `expect()` panics like `unwrap()`. Only use it
-   for operations that are provably infallible (e.g., serializing a simple
-   `#[derive(Serialize)]` struct with no custom serializers). Add a descriptive message.
-4. **SSE reconnection flow** -- when SSE disconnects and the app re-fetches state then
-   reconnects, ensure the SSE connection state transitions are:
-   `Connected → Disconnected → (fetch items) → Connecting → Connected` (on first message).
-   Never set `Connected` before the stream is actually producing events.
-5. **KV event payload types** -- `KeyValue::set` and `KeyValue::delete` both return
-   `Result<Option<Vec<u8>>, KeyValueError>` (the previous value), **not** `Result<(), KeyValueError>`.
-   A common mistake is to declare the callback event variant as `Saved(Result<(), KeyValueError>)`
-   which causes a type mismatch. Always use `Result<Option<Vec<u8>>, KeyValueError>` for
-   `set`, `get`, and `delete` callbacks. Only `exists` returns `Result<bool, KeyValueError>`.
-6. **Pending op removal by ID, not index** -- when a queue of pending operations is synced
-   one-at-a-time via HTTP, never remove the completed op by position (`pending_ops.remove(0)`).
-   Concurrent events (SSE, fetch-all) can `retain(...)` the same op out of the queue while
-   the HTTP request is in-flight, shifting indices. Instead, store the in-flight op's item ID
-   in a `syncing_id: Option<String>` field on the model, set it in `start_sync`, and use
-   `retain(|op| op.item_id() != synced_id)` in the response handler. Clear `syncing_id` on
-   both success and error. See `references/crux-app-pattern.md` § "Pending Operation Sync
-   Queue" for the full pattern.
+`vectis init` also seeds `deny.toml` with a `[licenses] private = { ignore = true }`
+allowance and an `[advisories] ignore = [...]` list for today's unavoidable
+transitive advisories, plus `publish = false` in `shared/Cargo.toml`. Do not
+hand-seed `supply-chain/config.toml` exemptions -- `vectis verify` bootstraps them
+via `cargo vet regenerate exemptions` on the first run. If the user later decides
+to publish the `shared` crate, both `publish = false` **and** a matching
+`license = "..."` field must land in the same edit (they pair together).
 
 ## Test Generation
 
@@ -748,14 +511,17 @@ Consult these references during generation. Do not deviate from the patterns the
 
 | Reference | Purpose |
 |---|---|
-| `references/crux-versions.md` | Authoritative Crux crate version pins (single source of truth) |
 | `references/crux-app-pattern.md` | App trait, Model, Event, ViewModel (enum), Page management, Route/Navigate pattern, Effect type conventions |
 | `references/crux-command-api.md` | Command creation, chaining, combining, async context |
 | `references/crux-capabilities.md` | HTTP and KV capability APIs |
 | `references/crux-custom-capabilities.md` | Building custom Operation + capability (SSE example) |
 | `references/crux-testing-patterns.md` | Testing effects, events, resolving requests |
-| `references/crux-ffi-scaffolding.md` | CoreFFI struct, uniffi, wasm-bindgen |
-| `references/crux-project-config.md` | Cargo workspace, toolchain, features, dependencies |
+
+Version pins, Cargo workspace layout, `rust-toolchain.toml`, `ffi.rs`, `codegen.rs`,
+and `.gitignore` are owned by the CLI's embedded templates
+(`crates/vectis-cli/embedded/` and `crates/vectis-cli/src/scaffold/core.rs`). When a
+spec change requires updating a pinned version, run `vectis update-versions` rather
+than editing files in this crate by hand.
 
 ## Examples
 
@@ -847,15 +613,11 @@ all other items apply in both modes.
 
 ## Important Notes
 
-- **Crux versions**: See `references/crux-versions.md` for current version pins of all Crux dependencies.
-- **`facet` version pinning**: The `facet` crate must be pinned to `"=0.31"` exactly.
-  Other versions may be incompatible with `crux_core`.
-- **`uniffi` version pinning**: The `uniffi` crate must be pinned to `"=0.29.4"` exactly,
-  to match the `uniffi_bindgen` version bundled in `crux_core::cli`. Using a different
-  version causes symbol-name mismatches during iOS/Android code generation.
-- **Dependency version policy**: Use the latest published version of all Rust crate
-  dependencies by default. The exceptions are `facet` (pinned to `"=0.31"`) and `uniffi`
-  (pinned to `"=0.29.4"`) which must match versions expected by `crux_core`.
+- **Crux versions**: The CLI owns all version pins via its embedded `versions.toml`.
+  Use `vectis update-versions` to refresh the pinned set; never hand-edit Cargo
+  dependency versions in a generated project. `crux_core`, `facet`, `uniffi`, and
+  companion crates are selected by the CLI so that `crux_core`'s bundled
+  `uniffi_bindgen` matches the runtime `uniffi` crate.
 - **No `Capabilities` struct**: The 0.17 API does not use a `Capabilities` struct.
   Define `Effect` directly as an enum with `#[effect(facet_typegen)]`. The `App` trait
   requires `type Effect = Effect;`.
