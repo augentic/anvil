@@ -21,18 +21,18 @@ Each chunk is a self-contained agent session. Per session:
 | # | Chunk | Status | Branch | Notes |
 |---|-------|--------|--------|-------|
 | 1 | Workspace + CLI skeleton | [x] | `vectis-cli` | Branch name `vectis-cli/chunk-1-skeleton` collides with existing `vectis-cli` parent branch (git refs are hierarchical); committed on `vectis-cli` instead. Future chunks must use a non-prefix name (e.g. `vectis-cli-chunk-N-slug`) or the parent branch must be renamed/deleted. Dispatcher uses a `CommandOutcome::{Success,Stub}` enum so handlers can stay stubbed without polluting `VectisError`. `VectisError` carries `#[allow(dead_code)]` until chunks 2/5/9 start constructing the unused variants. |
-| 2 | Prerequisites detection | [ ] | | When `MissingPrerequisites` is first constructed, narrow the `#[allow(dead_code)]` on `VectisError` (or drop it). |
+| 2 | Prerequisites detection | [x] | `vectis-cli-chunk-2-prerequisites` | Args structs in `main.rs` are now `pub(crate)` and each handler signature is `run(args: &XxxArgs)` -- chunks 5/7/8/9/10/11 no longer need to plumb args through. `#[allow(dead_code)]` on `VectisError` was narrowed to per-variant on `Verify` and `Internal`; `MissingPrerequisites` and `InvalidProject` are now actively constructed. Each Args struct carries per-field `#[allow(dead_code)]` for fields not yet read; later chunks should drop the annotation as they read each field. |
 | 3a | Templates: core extraction | [ ] | | |
 | 3b | Templates: iOS extraction | [ ] | | |
 | 3c | Templates: Android extraction | [ ] | | |
 | 4 | Version resolution + embedded defaults | [ ] | | `embedded/versions.toml` lives at `crates/vectis-cli/embedded/`, so `include_str!("../embedded/versions.toml")` resolves from any file inside `src/`. |
-| 5 | `vectis init` core, render-only | [ ] | | Handler must return `Ok(CommandOutcome::Success(value))`, not `Ok(value)`; remove the `Stub` return path. The `Init(_)` arm in `main::main` will need to pass `&InitArgs` through to `init::run` (currently discarded with `_`). |
-| 6 | `vectis init` core capability variants | [ ] | | |
-| 7 | `vectis init` iOS shell | [ ] | | Same handler-signature note as chunk 5: replace the `Stub` return with `Success` and pass `&InitArgs` through. |
-| 8 | `vectis init` Android shell | [ ] | | Same handler-signature note as chunks 5/7. |
-| 9 | `vectis verify` | [ ] | | Same handler-signature note as chunk 5; pass `&VerifyArgs`. Will start constructing `VectisError::Verify`. |
-| 10 | `vectis add-shell` (incl. `app.rs` parser) | [ ] | | Same handler-signature note as chunk 5; pass `&AddShellArgs`. |
-| 11 | `vectis update-versions` | [ ] | | Same handler-signature note as chunk 5; pass `&UpdateVersionsArgs`. |
+| 5 | `vectis init` core, render-only | [ ] | | Handler must return `Ok(CommandOutcome::Success(value))`, not `Ok(CommandOutcome::Stub { .. })`; remove the `Stub` return path. `&InitArgs` is already plumbed through (chunk 2). When you start reading `args.app_name`/`args.dir`/`args.caps`/`args.android_package`, drop the per-field `#[allow(dead_code)]` annotations in `main::InitArgs`. |
+| 6 | `vectis init` core capability variants | [ ] | | Reuse the comma-splitting pattern from chunk 2's `init::run` (`split(',').map(str::trim).filter(...)`); consider lifting it into a small helper if both `--caps` and `--shells` end up needing it. |
+| 7 | `vectis init` iOS shell | [ ] | | Same `Stub` -> `Success` transition as chunk 5. `&InitArgs` is already plumbed through. |
+| 8 | `vectis init` Android shell | [ ] | | Same `Stub` -> `Success` transition as chunks 5/7. `&InitArgs` is already plumbed through. |
+| 9 | `vectis verify` | [ ] | | Same `Stub` -> `Success` transition; `&VerifyArgs` is already plumbed through. The on-disk assembly detection (`dir.join("iOS").is_dir()` / `Android`) is already implemented in `verify::run` for prereq scoping -- reuse it (or extract it alongside the per-assembly pipeline). Will start constructing `VectisError::Verify`; drop the per-variant `#[allow(dead_code)]` on `VectisError::Verify` then. |
+| 10 | `vectis add-shell` (incl. `app.rs` parser) | [ ] | | Same `Stub` -> `Success` transition; `&AddShellArgs` is already plumbed through, including the platform string -> `AssemblyKind` mapping that already lives in `add_shell::run` for prereq scoping (lift it if the parser also wants it). |
+| 11 | `vectis update-versions` | [ ] | | Same `Stub` -> `Success` transition; `&UpdateVersionsArgs` is already plumbed through. The `--verify` flag already widens the prereq scope to all three assemblies (chunk 2); when you implement `--verify`'s scaffold-and-build loop you can rely on those checks already having run. May start constructing `VectisError::Internal`; drop the per-variant allow then. |
 | 12 | Writer skill rewrites | [ ] | | |
 | 13 | `template-updater` skill | [ ] | | |
 
@@ -285,6 +285,92 @@ cargo test -p vectis-cli prerequisites    # unit tests cover version comparisons
 ```
 
 **Notes:**
+
+Completed on branch `vectis-cli-chunk-2-prerequisites` (flat naming as agreed in chunk 1's decision log).
+
+Verification (all clean):
+
+```text
+$ cargo build --release -p vectis-cli            # ok
+$ cargo clippy --release -p vectis-cli --all-targets -- -D warnings   # ok
+$ cargo test -p vectis-cli prerequisites
+running 19 tests
+test prerequisites::tests::assembly_tag_strings ... ok
+test error::tests::missing_prerequisites_json_shape ... ok
+test prerequisites::tests::extract_from_cargo_swift_output ... ok
+test prerequisites::tests::extract_from_gradle_output ... ok
+test prerequisites::tests::extract_from_modern_java_output ... ok
+test prerequisites::tests::extract_from_old_java_output ... ok
+test prerequisites::tests::extract_from_cargo_deny_output ... ok
+test prerequisites::tests::extract_from_xcodegen_output ... ok
+test prerequisites::tests::extract_returns_none_when_no_version ... ok
+test prerequisites::tests::extract_skips_year_like_tokens ... ok
+test prerequisites::tests::version_display ... ok
+test prerequisites::tests::version_ordering ... ok
+test prerequisites::tests::version_parse_basic ... ok
+test prerequisites::tests::version_parse_rejects_garbage ... ok
+test prerequisites::tests::version_parse_strips_suffix ... ok
+test prerequisites::tests::cmd_check_missing_program_fails ... ok
+test prerequisites::tests::env_check_empty_var_is_failure ... ok
+test prerequisites::tests::env_check_unset_var_is_failure ... ok
+test prerequisites::tests::cmd_check_min_version_too_low_fails ... ok
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 1 filtered out
+$ make checks                                    # All checks passed.
+```
+
+Smoke tests against the binary (with all workstation tools installed):
+
+```text
+$ ./target/release/vectis init Counter --shells ios,android   # exit 1 (not_implemented; prereqs ok)
+$ ./target/release/vectis verify                              # exit 1 (not_implemented; prereqs ok)
+$ ./target/release/vectis add-shell ios                       # exit 1 (not_implemented; prereqs ok)
+$ ./target/release/vectis update-versions --dry-run           # exit 1 (not_implemented; prereqs ok)
+```
+
+Missing-prereq path (sanitised PATH / unset env var):
+
+```text
+$ PATH=/usr/bin:/bin:/usr/sbin:/sbin:/Users/goldie/.cargo/bin \
+    ./target/release/vectis init Counter --shells ios
+{
+  "error": "missing_prerequisites",
+  "message": "Install the missing tools above and re-run the command.",
+  "missing": [
+    { "tool": "xcodegen",   "assembly": "ios", "check": "xcodegen --version",   "install": "brew install xcodegen" },
+    { "tool": "xcbeautify", "assembly": "ios", "check": "xcbeautify --version", "install": "brew install xcbeautify" }
+  ]
+}    # exit 2
+
+$ env -u ANDROID_HOME ./target/release/vectis init Counter --shells android
+{
+  "error": "missing_prerequisites",
+  ...
+  "missing": [
+    { "tool": "android-sdk", "assembly": "android", ... },
+    { "tool": "android-ndk", "assembly": "android", ... }
+  ]
+}    # exit 2
+```
+
+InvalidProject path for unknown shell platforms:
+
+```text
+$ ./target/release/vectis init Counter --shells nonsense
+{ "error": "invalid_project", "message": "unknown shell platform: \"nonsense\" ..." }    # exit 1
+```
+
+Implementation deviations and discoveries (all minor):
+
+- **Tool registry as a `static`, not a function.** The chunk text just says "Hard-code the table from RFC § Workstation Requirements"; I used a `static TOOLS: &[Tool] = &[...]` (with `all_tools()` returning it) so the slice has `'static` lifetime. Building the slice inside a function returns a reference to a temporary -- doesn't compile.
+- **Per-tool stable name, not the RFC's check command.** The RFC's table sometimes labels a row as "Xcode + Command Line Tools" or "Android SDK (`$ANDROID_HOME`)". I used flat identifiers (`xcode`, `android-sdk`, `rustup-android-targets`, `android-ndk`) for the `tool` field of the JSON payload so it's machine-readable. The `check` field carries the exact RFC string (`xcode-select -p`, `echo $ANDROID_HOME`, etc.) so users still see the same display.
+- **Args structs are now `pub(crate)` and passed to handlers.** Chunks 5/7/8/9/10/11 all carried a deferred note that said "the `Init(_)` arm in `main::main` will need to pass `&InitArgs` through to `init::run`". Doing this in chunk 2 was unavoidable because the prerequisite check needs `args.shells` (init), `args.dir` (verify), `args.platform` (add-shell), and `args.verify` (update-versions). I propagated this to the status row notes for those chunks so they aren't redoing the work.
+- **Per-field `#[allow(dead_code)]` on Args structs.** clap's derive populates every field, but fields not yet read by the (still-stub) handlers trigger dead-code warnings under `-D warnings`. Each unused field carries `#[allow(dead_code)] // consumed by chunk N` so the lint stays on by default. Later chunks should remove these as they start reading the fields.
+- **`VectisError` dead-code attribute narrowed.** Per the chunk 2 status-row instruction, the crate-wide `#[allow(dead_code)]` on `VectisError` was replaced with per-variant attributes on only the still-unused `Verify` and `Internal`. `MissingPrerequisites` is now constructed by `prerequisites::check`; `InvalidProject` is now constructed by `init::run` and `add_shell::run` for unknown platform inputs.
+- **Java version floor enforced; nothing else has one.** The RFC says "validates version minimums where they matter (e.g., Java 21, not Java 17)". Only Java has a `min_version` set today (21.0.0). Other tools just need to invoke successfully. The `extract_version` helper is generic enough that adding more floors is one literal per tool.
+- **`extract_version` is a tiny string scanner, not a regex.** Splits on any non-`[0-9.]` character and keeps the first dot-containing token that parses as `M.m[.p]`. Tested against real output samples from `cargo-swift`, `cargo-deny`, modern Java (21.0.10), legacy Java (1.8.0_221), Gradle, and XcodeGen. Year-like tokens (`2026`) are filtered because they have no dot.
+- **`run_check` swallows the per-tool reason.** The reason a check failed (e.g. "found 17.0.0 but need >= 21.0.0") is computed but discarded -- only the tool's name/install hint surface in the JSON. The RFC's example payload has the same shape (no per-tool diagnostic), so this is intentional. If we ever want richer diagnostics, the `MissingTool` struct can grow a `reason: Option<String>` field without breaking JSON consumers.
+- **`verify::run` does on-disk assembly detection inline.** Looking for `iOS/` and `Android/` directories under `--dir` was the simplest way to scope the prereq check correctly (per the RFC: "verify auto-detects which assemblies exist"). Chunk 9 will need the same detection for the actual pipeline; reuse or extract is an option then.
+- **Two `unsafe` blocks in tests.** `std::env::set_var` / `remove_var` are `unsafe` in Rust 2024 edition. They're scoped to the env-check tests and use a reserved variable name (`VECTIS_TEST_EMPTY`) to avoid colliding with anything real.
 
 ---
 
@@ -749,3 +835,6 @@ Append entries here when a chunk uncovers a question that needed a judgement cal
 
 - **Chunk 1 — Branch naming.** The pre-existing `vectis-cli` branch (which carries the RFC and this tasks file) blocks creation of any `vectis-cli/<sub>` branch because git treats refs hierarchically. Chose to commit chunk 1 directly on `vectis-cli` rather than rename the parent. Future chunks should adopt a flat naming scheme like `vectis-cli-chunk-N-slug`. Updating the convention in "How to Use This File" can wait until chunk 2 starts and confirms the new pattern.
 - **Chunk 1 — Stub return shape.** The chunk text specified the `VectisError` variant list (no `NotImplemented`) and the stub JSON shape (`{"error": "not_implemented", "command": "<name>"}`). To reconcile these without duplicating `println!`/`exit` in each handler, introduced `CommandOutcome::{Success, Stub}` in `main.rs`. Stubs return `Ok(CommandOutcome::Stub { command })`; the dispatcher renders the JSON and exits 1. Real handlers in later chunks switch to `CommandOutcome::Success(value)` with no other dispatch changes.
+- **Chunk 2 — Args plumbing brought forward.** Chunks 5/7/8/9/10/11 each carried a deferred note to "pass `&XxxArgs` through to the handler". The chunk 2 prereq check needs `args.shells` (init), `args.dir` (verify), `args.platform` (add-shell), and `args.verify` (update-versions), so this plumbing had to land now: the Args structs in `main.rs` were promoted to `pub(crate)` and every handler now accepts `args: &XxxArgs`. Status-row notes on the affected later chunks were updated to reflect that only the `Stub` -> `Success` transition remains for them.
+- **Chunk 2 — Per-field `#[allow(dead_code)]` over crate-wide.** clap derive populates every Args field, but only a subset are read by the chunk-2 handlers. Under the existing `-D warnings` clippy gate, the unused fields fail the build. Chose per-field `#[allow(dead_code)] // consumed by chunk N` annotations over a blanket `#![allow(dead_code)]` so the lint stays effective elsewhere; later chunks remove the annotation as they start reading each field.
+- **Chunk 2 — Tool name vs check-command labelling.** RFC § Workstation Requirements names some tools by category (e.g. "Xcode + Command Line Tools", "Android SDK (`$ANDROID_HOME`)"). The `tool` field of the JSON payload uses flat machine identifiers (`xcode`, `android-sdk`, `rustup-android-targets`, `android-ndk`); the `check` field carries the exact RFC display string. This keeps `tool` parseable while preserving the RFC's user-visible commands.

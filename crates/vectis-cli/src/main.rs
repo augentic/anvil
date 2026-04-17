@@ -59,72 +59,85 @@ enum Command {
     UpdateVersions(UpdateVersionsArgs),
 }
 
+// Fields below are populated by clap but several are not yet read -- the
+// chunk-2 prerequisite check only consumes a subset (shells, dir, platform,
+// verify). The unused fields are part of the chunk-5+ surface and carry
+// targeted `#[allow(dead_code)]` until those chunks land. See
+// roadmap/rfc-5-tasks.md.
 #[derive(clap::Args, Debug)]
-struct InitArgs {
+pub(crate) struct InitArgs {
     /// App struct name (PascalCase, e.g. "Counter", "TodoApp").
-    app_name: String,
+    #[allow(dead_code)] // consumed by chunk 5
+    pub app_name: String,
 
     /// Project directory (defaults to current directory).
     #[arg(long)]
-    dir: Option<std::path::PathBuf>,
+    #[allow(dead_code)] // consumed by chunk 5
+    pub dir: Option<std::path::PathBuf>,
 
     /// Comma-separated capabilities. Values: http, kv, time, platform, sse.
     #[arg(long)]
-    caps: Option<String>,
+    #[allow(dead_code)] // consumed by chunk 6
+    pub caps: Option<String>,
 
     /// Comma-separated shell platforms. Values: ios, android.
     #[arg(long)]
-    shells: Option<String>,
+    pub shells: Option<String>,
 
     /// Android package name (defaults to com.vectis.<appname lowercase>).
     #[arg(long)]
-    android_package: Option<String>,
+    #[allow(dead_code)] // consumed by chunk 8
+    pub android_package: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
-struct VerifyArgs {
+pub(crate) struct VerifyArgs {
     /// Project directory (defaults to current directory).
     #[arg(long)]
-    dir: Option<std::path::PathBuf>,
+    pub dir: Option<std::path::PathBuf>,
 }
 
 #[derive(clap::Args, Debug)]
-struct AddShellArgs {
+pub(crate) struct AddShellArgs {
     /// Shell platform to add. Values: ios, android.
-    platform: String,
+    pub platform: String,
 
     /// Project directory (defaults to current directory).
     #[arg(long)]
-    dir: Option<std::path::PathBuf>,
+    #[allow(dead_code)] // consumed by chunk 10
+    pub dir: Option<std::path::PathBuf>,
 
     /// Android package name (defaults to com.vectis.<appname lowercase>).
     #[arg(long)]
-    android_package: Option<String>,
+    #[allow(dead_code)] // consumed by chunk 10
+    pub android_package: Option<String>,
 }
 
 #[derive(clap::Args, Debug)]
-struct UpdateVersionsArgs {
+pub(crate) struct UpdateVersionsArgs {
     /// File to update (defaults to ~/.config/vectis/versions.toml).
     #[arg(long)]
-    version_file: Option<std::path::PathBuf>,
+    #[allow(dead_code)] // consumed by chunk 11
+    pub version_file: Option<std::path::PathBuf>,
 
     /// Show proposed changes without writing.
     #[arg(long)]
-    dry_run: bool,
+    #[allow(dead_code)] // consumed by chunk 11
+    pub dry_run: bool,
 
     /// Scaffold a scratch project and run `vectis verify` before committing pins.
     #[arg(long)]
-    verify: bool,
+    pub verify: bool,
 }
 
 fn main() {
     let cli = Cli::parse();
 
     let result: Result<CommandOutcome, VectisError> = match &cli.command {
-        Command::Init(_) => init::run(),
-        Command::Verify(_) => verify::run(),
-        Command::AddShell(_) => add_shell::run(),
-        Command::UpdateVersions(_) => update_versions::run(),
+        Command::Init(args) => init::run(args),
+        Command::Verify(args) => verify::run(args),
+        Command::AddShell(args) => add_shell::run(args),
+        Command::UpdateVersions(args) => update_versions::run(args),
     };
 
     match result {
