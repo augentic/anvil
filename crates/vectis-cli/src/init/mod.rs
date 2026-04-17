@@ -7,6 +7,7 @@ use crate::{
     CommandOutcome, InitArgs,
     error::VectisError,
     prerequisites::{self, AssemblyKind},
+    versions::Versions,
 };
 
 pub fn run(args: &InitArgs) -> Result<CommandOutcome, VectisError> {
@@ -28,6 +29,16 @@ pub fn run(args: &InitArgs) -> Result<CommandOutcome, VectisError> {
     }
 
     prerequisites::check(&assemblies)?;
+
+    // Resolve version pins so a bad `--version-file` is reported up-front
+    // (chunk 4 smoke test). Real consumption of the resolved struct lands
+    // in chunks 5/6 when the templates start needing it.
+    let project_dir = args
+        .dir
+        .clone()
+        .map(Ok)
+        .unwrap_or_else(std::env::current_dir)?;
+    let _versions = Versions::resolve(&project_dir, args.version_file.as_deref())?;
 
     Ok(CommandOutcome::Stub { command: "init" })
 }

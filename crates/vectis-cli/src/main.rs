@@ -88,6 +88,12 @@ pub(crate) struct InitArgs {
     #[arg(long)]
     #[allow(dead_code)] // consumed by chunk 8
     pub android_package: Option<String>,
+
+    /// Override version pins file. When set, the file MUST exist; resolution
+    /// otherwise falls back to `<project>/versions.toml`,
+    /// `~/.config/vectis/versions.toml`, then the embedded defaults.
+    #[arg(long)]
+    pub version_file: Option<std::path::PathBuf>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -95,6 +101,12 @@ pub(crate) struct VerifyArgs {
     /// Project directory (defaults to current directory).
     #[arg(long)]
     pub dir: Option<std::path::PathBuf>,
+
+    /// Override version pins file. When set, the file MUST exist; see
+    /// `vectis init --help` for the full resolution order.
+    #[arg(long)]
+    #[allow(dead_code)] // consumed by chunk 9
+    pub version_file: Option<std::path::PathBuf>,
 }
 
 #[derive(clap::Args, Debug)]
@@ -111,11 +123,20 @@ pub(crate) struct AddShellArgs {
     #[arg(long)]
     #[allow(dead_code)] // consumed by chunk 10
     pub android_package: Option<String>,
+
+    /// Override version pins file. When set, the file MUST exist; see
+    /// `vectis init --help` for the full resolution order.
+    #[arg(long)]
+    #[allow(dead_code)] // consumed by chunk 10
+    pub version_file: Option<std::path::PathBuf>,
 }
 
 #[derive(clap::Args, Debug)]
 pub(crate) struct UpdateVersionsArgs {
-    /// File to update (defaults to ~/.config/vectis/versions.toml).
+    /// File to update (defaults to ~/.config/vectis/versions.toml). For
+    /// `update-versions` this is the *write target*, not a resolution
+    /// override -- on the other subcommands the same flag overrides
+    /// resolution.
     #[arg(long)]
     #[allow(dead_code)] // consumed by chunk 11
     pub version_file: Option<std::path::PathBuf>,

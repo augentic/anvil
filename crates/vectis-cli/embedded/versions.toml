@@ -1,0 +1,54 @@
+# Embedded defaults -- overridden by ~/.config/vectis/versions.toml or
+# project-local versions.toml. See RFC-5 § Version Management.
+#
+# Sourced from the "Initial Version Pins" block in
+# roadmap/rfc-5-tasks.md, with Android pins bumped per the chunk-3c
+# verification (older pins do not produce a buildable APK against
+# Xcode 16 / Java 21 toolchains).
+
+[crux]
+crux_core     = "0.17.0"   # latest stable
+crux_http     = "0.16.0"   # latest stable; depends on crux_core ^0.17 + facet =0.31
+crux_kv       = "0.11.0"   # latest stable; same constraints
+crux_time     = "0.15.0"   # latest stable; same constraints
+crux_platform = "0.8.0"    # latest stable; same constraints
+
+# HARD PINS -- do not relax. Crux 0.17 specifies these exactly and will not
+# build with anything else. The `update-versions` command must lift the entire
+# Crux set in lock-step when these change.
+facet           = "=0.31"   # required by crux_core 0.17 and every cap crate
+facet_generate  = "=0.15"   # codegen feature; only 0.15 is compatible with facet 0.31
+serde           = "1.0"
+serde_json      = "1.0"
+
+# uniffi pin is coupled to cargo-swift. cargo-swift 0.9.x ships uniffi_bindgen 0.29.1;
+# 0.10.x ships 0.30.0; 0.11.x ships 0.31.0. The values below are the known-good
+# pair currently used by the writer skills.
+uniffi      = "=0.29.4"
+cargo_swift = "0.9"        # version range that ships uniffi_bindgen 0.29.x
+
+[android]
+# Bumped from the RFC's original block per chunk-3c verification (the older
+# pins -- agp 8.8.2 / kotlin 2.1.10 / compose_bom 2025.01.01 -- do not
+# produce a buildable APK against Xcode 16 / Java 21 toolchains). Chunk 11
+# (`update-versions`) will replace these with proven-coherent values pulled
+# from Google's Maven and Maven Central.
+compose_bom = "2026.01.01"
+koin        = "4.1.1"
+ktor        = "3.4.0"
+kotlin      = "2.3.0"
+agp         = "8.13.2"
+gradle      = "8.13"
+# `ndk` deliberately omitted: chunk 8 detects the installed NDK from
+# `$ANDROID_HOME/ndk/<version>/` rather than pinning a version that may
+# not be installed on the developer's machine. The field exists on
+# `Versions::android` for projects that want to pin explicitly.
+
+[ios]
+# No external SPM deps today -- VectisDesign and the generated SharedTypes /
+# Shared packages are all internal.
+
+[tooling]
+cargo_deny = "0.19.4"      # latest
+cargo_vet  = "0.10.2"      # latest
+xcodegen   = "2.42.0"      # per RFC; not currently queried automatically

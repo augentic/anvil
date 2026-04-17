@@ -26,11 +26,11 @@ pub struct MissingTool {
 /// variants. The dispatcher turns the variant into the RFC's structured JSON
 /// error shape via [`VectisError::to_json`].
 ///
-/// `MissingPrerequisites`, `Io`, and `InvalidProject` are constructed today
-/// (chunks 1-2). `Verify` and `Internal` are part of the planned API for
-/// chunks 9 and 11 respectively; the per-variant `#[allow(dead_code)]`
-/// suppresses the warning in the meantime and should be dropped when those
-/// chunks start using them.
+/// `MissingPrerequisites`, `Io`, `InvalidProject`, and `Internal` are all
+/// constructed today (chunks 1-2 and chunk 4 -- the latter constructs
+/// `Internal` from `versions::load_embedded` if the embedded defaults ever
+/// become malformed). `Verify` is part of the planned API for chunk 9 and
+/// carries a per-variant `#[allow(dead_code)]` until then.
 #[derive(Debug, Error)]
 pub enum VectisError {
     #[error("missing prerequisites: {message}")]
@@ -50,7 +50,6 @@ pub enum VectisError {
     Verify { message: String },
 
     #[error("internal error: {message}")]
-    #[allow(dead_code)] // constructed by chunks 9/11
     Internal { message: String },
 }
 
