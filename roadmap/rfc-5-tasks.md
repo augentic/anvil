@@ -25,12 +25,12 @@ All chunks land as a single linear commit on the `vectis-cli` branch (one commit
 | 1 | Workspace + CLI skeleton | [x] | Dispatcher uses a `CommandOutcome::{Success,Stub}` enum so handlers can stay stubbed without polluting `VectisError`. `VectisError` carries `#[allow(dead_code)]` until chunks 2/5/9 start constructing the unused variants. |
 | 2 | Prerequisites detection | [x] | Args structs in `main.rs` are now `pub(crate)` and each handler signature is `run(args: &XxxArgs)` -- chunks 5/7/8/9/10/11 no longer need to plumb args through. `#[allow(dead_code)]` on `VectisError` was narrowed to per-variant on `Verify` and `Internal`; `MissingPrerequisites` and `InvalidProject` are now actively constructed. Each Args struct carries per-field `#[allow(dead_code)]` for fields not yet read; later chunks should drop the annotation as they read each field. |
 | 3a | Templates: core extraction | [x] | Source filenames are flat (`workspace-cargo.toml`, `shared-cargo.toml`, `gitignore`, `supply-chain-config.toml`, ...); the source→target path mapping lives in `templates/vectis/core/MANIFEST.md`. Chunk 5's engine reads/embeds that mapping rather than reflecting the on-disk layout. Capability-version placeholders (`__CRUX_HTTP_VERSION__`, `__CRUX_KV_VERSION__`, `__CRUX_TIME_VERSION__`, `__CRUX_PLATFORM_VERSION__`) only appear inside CAP markers and are NOT in the RFC's placeholder table -- chunks 5/6 must include them when their cap is selected. `__ANDROID_PACKAGE__` is referenced from `codegen.rs` (Kotlin namespace), so chunk 5 must substitute it for core-only and iOS-only projects too -- default `com.vectis.<lower app name>`. `thiserror = "2"` added as an optional dep gated behind `uniffi` / `wasm_bindgen` features (the existing reference docs omit it but `ffi.rs` requires it). PartialEq/Eq dropped from the `Event` derive (capability payloads like `crux_http::Response<Vec<u8>>` don't impl `Eq`). |
-| 3b | Templates: iOS extraction | [ ] | The chunk's `cp -r ... *` flat-copy verification doesn't produce a cargo-check-able layout (targets are nested under `iOS/{AppName}/...`); use the MANIFEST source→target mapping convention established in 3a instead. Mirror the `MANIFEST.md` placement / cap-marker conventions documented in `templates/vectis/core/MANIFEST.md`. |
+| 3b | Templates: iOS extraction | [x] | Source filenames are flat (`project.yml`, `Makefile`, `App.swift`, `Core.swift`, `ContentView.swift`, `LoadingScreen.swift`, `HomeScreen.swift`); the source→target path mapping lives in `templates/vectis/ios/MANIFEST.md`. Target paths embed `__APP_NAME__` in **directory and file-name positions** (e.g. `iOS/__APP_NAME__/__APP_NAME__App.swift` -> `iOS/Counter/CounterApp.swift`) -- chunk 7's engine must apply placeholder substitution to the path it constructs from MANIFEST, not just to file contents. New placeholder `__APP_NAME_LOWER__` (the lowercase form of `--app-name`, no other transformation) is used for bundle ids in `project.yml`; chunk 7 derives it from `args.app_name` rather than asking the user. Templates intentionally **omit** `VectisDesign` and `Inject` from the SPM dependency list (rationale and reinstate paths in MANIFEST § Design system / Inject); writer skills layer them in during Update Mode. iOS Core.swift carries `<<<CAP:http/kv/time/platform>>>` markers but no `<<<CAP:sse>>>` -- matches today's `app.rs` (no `Effect::Sse` variant). Cap-conditional Swift content in `Core.swift` includes both the `case` arm in `processEffect(_:)` and any helper functions it relies on, all inside the same marker (Swift compiler enforces exhaustive switches; see MANIFEST notes for chunk 7). |
 | 3c | Templates: Android extraction | [ ] | Same MANIFEST convention as 3a/3b. Kotlin sources sit at paths derived from `__ANDROID_PACKAGE_PATH__` (chunk 8 substitutes); template filenames stay flat. The chunk text already calls this out for the `gradle wrapper` files (which are NOT templates). |
 | 4 | Version resolution + embedded defaults | [ ] | `embedded/versions.toml` lives at `crates/vectis-cli/embedded/`, so `include_str!("../embedded/versions.toml")` resolves from any file inside `src/`. The `Versions` struct must expose all five Crux crate versions (`crux_core`, `crux_http`, `crux_kv`, `crux_time`, `crux_platform`) since chunk 3a's templates use placeholders for each (`__CRUX_HTTP_VERSION__` etc.). The Initial Version Pins block already lists them; just make sure the deserialised struct field names match what chunk 5 hands to the template engine. |
 | 5 | `vectis init` core, render-only | [ ] | Handler must return `Ok(CommandOutcome::Success(value))`, not `Ok(CommandOutcome::Stub { .. })`; remove the `Stub` return path. `&InitArgs` is already plumbed through (chunk 2). When you start reading `args.app_name`/`args.dir`/`args.caps`/`args.android_package`, drop the per-field `#[allow(dead_code)]` annotations in `main::InitArgs`. The template engine must read `templates/vectis/core/MANIFEST.md`'s source→target mapping (or an embedded copy of it) -- source filenames are flat, target paths are nested. Always substitute `__ANDROID_PACKAGE__` in `codegen.rs` even when no Android shell is requested (default `com.vectis.<lower app name>`). The cap stripper for render-only must drop both the marker lines and everything between them; sed equivalent is `/<<<CAP:/,/CAP:.*>>>/d`. |
 | 6 | `vectis init` core capability variants | [ ] | Reuse the comma-splitting pattern from chunk 2's `init::run` (`split(',').map(str::trim).filter(...)`); consider lifting it into a small helper if both `--caps` and `--shells` end up needing it. When a cap is selected, drop only the marker lines (preserve content). The five-cap matrix from the RFC maps to chunk 3a's templates as follows: `http`/`kv`/`time`/`platform` each have CAP blocks in `workspace-cargo.toml`, `shared-cargo.toml`, and `app.rs`; `sse` only has a CAP block in `shared-cargo.toml` today (no Effect variant) -- decide here whether to add `Sse(...)` to the Effect enum and corresponding update arms. Capability-version placeholders (`__CRUX_HTTP_VERSION__` etc.) must be substituted from chunk 4's `Versions` struct. |
-| 7 | `vectis init` iOS shell | [ ] | Same `Stub` -> `Success` transition as chunk 5. `&InitArgs` is already plumbed through. Reuse the MANIFEST.md source→target mapping convention from chunk 3a. |
+| 7 | `vectis init` iOS shell | [ ] | Same `Stub` -> `Success` transition as chunk 5. `&InitArgs` is already plumbed through. Reuse the MANIFEST.md source→target mapping convention from chunk 3a/3b. Target paths in `templates/vectis/ios/MANIFEST.md` embed `__APP_NAME__` in **directory and file-name positions** (`iOS/__APP_NAME__/__APP_NAME__App.swift` -> `iOS/Counter/CounterApp.swift`); apply placeholder substitution to the constructed target path before writing, not only to file contents. Add `__APP_NAME_LOWER__` (lowercase `args.app_name`) to the `Params` struct -- it's used in `project.yml` for bundle id prefixes. Cap-conditional Swift in `Core.swift` requires both the matching switch arm and any helper functions inside the same marker (Swift's exhaustive switch); the engine must not split or reorder marker contents. After writing the iOS files, run `make typegen && make package && make xcode` from `iOS/` (gated on prereqs). **Tooling drift discovered during 3b verification:** `cargo swift package` with the chunk-3a/4 pinned `cargo_swift = "0.9"` (uniffi_bindgen 0.29.1) + `uniffi = "=0.29.4"` runtime produces a Swift package whose `import sharedFFI` fails to resolve under Xcode 16 / Swift 6 (`cannot find type 'RustBuffer' in scope`). This blocks `xcodebuild` of the Shared package. Investigate before relying on `make package` from the CLI: probable fixes are (a) bumping to `cargo_swift = "0.10"` / `uniffi = "=0.30.0"` (chunk 4 + 11 cascade), (b) tightening the `=0.29.4` pin to `=0.29.1` to match cargo-swift's bundled bindgen, or (c) carrying a small post-package patch on the generated `shared.swift`. xcodegen itself succeeds against the templates; the failure is downstream of `make package`. |
 | 8 | `vectis init` Android shell | [ ] | Same `Stub` -> `Success` transition as chunks 5/7. `&InitArgs` is already plumbed through. Reuse the MANIFEST.md source→target mapping convention; `__ANDROID_PACKAGE_PATH__` translation (`.` -> `/`) happens at file-write time, not in placeholder substitution. |
 | 9 | `vectis verify` | [ ] | Same `Stub` -> `Success` transition; `&VerifyArgs` is already plumbed through. The on-disk assembly detection (`dir.join("iOS").is_dir()` / `Android`) is already implemented in `verify::run` for prereq scoping -- reuse it (or extract it alongside the per-assembly pipeline). Will start constructing `VectisError::Verify`; drop the per-variant `#[allow(dead_code)]` on `VectisError::Verify` then. |
 | 10 | `vectis add-shell` (incl. `app.rs` parser) | [ ] | Same `Stub` -> `Success` transition; `&AddShellArgs` is already plumbed through, including the platform string -> `AssemblyKind` mapping that already lives in `add_shell::run` for prereq scoping (lift it if the parser also wants it). |
@@ -524,6 +524,119 @@ xcodebuild -project /tmp/vectis-3b-check/iOS/Counter.xcodeproj -scheme Counter \
 
 **Notes:**
 
+Committed on `vectis-cli` (single-branch policy).
+
+The 7 template files and their `MANIFEST.md` live at `templates/vectis/ios/`.
+Source filenames are flat (`project.yml`, `Makefile`, `App.swift`, `Core.swift`,
+`ContentView.swift`, `LoadingScreen.swift`, `HomeScreen.swift`); target paths
+(`iOS/project.yml`, `iOS/__APP_NAME__/__APP_NAME__App.swift`, ...) are recorded
+in `MANIFEST.md`.
+
+Verification (paired-core staging + xcodegen + Swift typecheck against synthetic
+SharedTypes/Shared stubs, exercised across three cap profiles):
+
+```text
+$ # render-only (no caps), HTTP cap, all four caps (http+kv+time+platform).
+$ # Each variant: stage chunk-3a + chunk-3b templates per MANIFEST source→target
+$ # mapping, sed-substitute placeholders, strip / unwrap CAP markers.
+$ cargo check                                          # core compiles in all 3 variants
+    Finished `dev` profile in ~15s
+$ make typegen                                         # SharedTypes Swift package generated
+    INFO  crux_core::type_generation::facet > Generating Swift types
+$ make package                                         # cargo-swift produces Shared/RustFramework.xcframework
+    Building Shared Swift package...
+$ make xcode                                           # xcodegen produces Counter.xcodeproj
+    Created project at /tmp/vectis-3b-check/iOS/Counter.xcodeproj
+$ swiftc -typecheck \                                  # iOS shell sources type-check vs. stubs
+    -target arm64-apple-ios17.0-simulator -sdk $(xcrun --sdk iphonesimulator --show-sdk-path) \
+    -I /tmp/.../modules-{render,http,allcaps} \
+    CounterApp.swift Core.swift ContentView.swift Views/LoadingScreen.swift Views/HomeScreen.swift
+    # exit=0 for all three cap profiles
+```
+
+The chunk text's `xcodebuild ... build` step is **partial** by the chunk's own
+admission ("full pipeline verification arrives in chunk 7"), and on this host
+it currently fails inside the `Shared` Swift package generated by `cargo swift
+package` -- the package's `shared.swift` fails to resolve `import sharedFFI`
+("cannot find type 'RustBuffer' in scope") under Xcode 16 / Swift 6 with the
+chunk-3a/4 pinned versions. This is a tooling-version drift issue (cargo-swift
+0.9.0 ships uniffi_bindgen 0.29.1, runtime is `=0.29.4`), not a problem with
+the iOS templates -- the templates themselves type-check cleanly against
+synthetic stubs of the FFI surface, and xcodegen consumes `project.yml`
+without complaint. Captured as a chunk-7 to-do in that chunk's status row;
+the chunk-3b deliverable (templates + MANIFEST) is unaffected.
+
+Implementation deviations and discoveries (all minor; status-row notes for
+chunks 5/6/7 updated to absorb them):
+
+- **`__APP_NAME__` substitution applies to target paths, not just file contents.**
+  The MANIFEST records targets like `iOS/__APP_NAME__/__APP_NAME__App.swift`,
+  which substitute to `iOS/Counter/CounterApp.swift` (two `__APP_NAME__`
+  occurrences in the path itself, one in the directory segment and one in the
+  file-name prefix). Chunk 7's engine must run the placeholder substitution
+  over the constructed target path before opening the file for write -- the
+  on-disk template layout deliberately stays flat. Chunk 3a's core targets
+  don't exercise this (their target paths are static), so this is the first
+  time path-level substitution lands. Status-row note on chunk 7 updated.
+
+- **New placeholder `__APP_NAME_LOWER__`.** The RFC's placeholder table lists
+  it (`__APP_NAME_LOWER__` example value `counter`), but chunk 3a didn't have
+  to use it (core templates don't carry per-app bundle/package strings). The
+  iOS `project.yml` uses it for `bundleIdPrefix` and per-config
+  `PRODUCT_BUNDLE_IDENTIFIER`. The engine derives it from `args.app_name`
+  via `to_lowercase()` -- it is not a CLI flag. Chunk 7 must add the field
+  to the `Params` struct alongside `__APP_NAME__` / `__APP_STRUCT__`.
+
+- **VectisDesign and Inject deliberately omitted.** The `ios-writer` reference
+  docs (`ios-project-config.md`, `swiftui-view-patterns.md`,
+  `crux-ios-shell-pattern.md`) reference both. The chunk-3b templates omit
+  them so the deterministic baseline always compiles -- `VectisDesign` lives
+  at `design-system/ios/` and is produced by a separate skill, and `Inject`
+  pulls a network SPM dep + requires the developer to install InjectionIII.
+  Both can come back as cap-style toggles in a future RFC. Rationale and
+  re-enable instructions captured in `templates/vectis/ios/MANIFEST.md`
+  § Design system / Inject.
+
+- **No `<<<CAP:sse>>>` block in `Core.swift`.** Mirrors today's `app.rs`
+  (chunk 3a deferred to chunk 6 the question of whether to add an
+  `Effect::Sse(...)` variant -- the `sse` cap currently only changes
+  `shared-cargo.toml`). When chunk 6 lands the Rust-side variant, chunk 7
+  (or a follow-up to 3b) needs to add the matching Swift case to the
+  template's `processEffect(_:)` switch, gated by `<<<CAP:sse`.
+
+- **Cap markers carry both case arms and helpers.** Swift enforces exhaustive
+  switches on enums, so each cap-conditional region in `Core.swift` includes
+  both the matching `case .http(...):` arm in `processEffect(_:)` and any
+  helper functions it relies on (e.g. `performHttpRequest`), all inside the
+  same `<<<CAP:http ... CAP:http>>>` block. The engine must not split or
+  reorder marker contents. Chunk 3a's marker semantics already cover this
+  (whole-region drop / marker-line strip); restated in the iOS MANIFEST so
+  chunk 7 doesn't have to derive it.
+
+- **Cargo-swift / uniffi version drift surfaced during verification.** With
+  chunk-3a/4's pinned `cargo_swift = "0.9"` (uniffi_bindgen 0.29.1) +
+  `uniffi = "=0.29.4"` runtime, `xcodebuild` against the cargo-swift-produced
+  `Shared` package fails at `import sharedFFI` ("cannot find type
+  'RustBuffer' in scope") under Xcode 16 / Swift 6. The iOS templates
+  themselves are clean (verified by typechecking against synthetic stubs in
+  three cap profiles); the failure is in the generated `shared.swift`
+  upstream of any vectis code. Documented as a chunk-7 to-do; possible
+  resolutions are bumping cargo-swift to 0.10/0.11 (cascades into chunks 4
+  and 11), tightening the `uniffi` pin to `=0.29.1` to match the bundled
+  bindgen, or carrying a post-package patch on `shared.swift`. None of the
+  options need to land before chunk 7 starts work, but chunk 7's first task
+  should be picking one.
+
+- **MANIFEST self-check tightened to filter the cap-marker reference table.**
+  Chunk 3a's awk pattern (`/^\| `[a-z]/`) matched lowercase identifiers,
+  which conflicted with the iOS file names (`App.swift`, `Core.swift` --
+  PascalCase). The iOS self-check accepts mixed-case identifiers but
+  filters the right-hand side to tokens that look like file names
+  (`\.[A-Za-z]+$|^Makefile$`), so cap names (`http`, `kv`, ...) from the
+  cap-marker table don't pollute the diff. `command ls -1` (instead of
+  bare `ls`) sidesteps the ambient `ls='ls -lpa'` alias that would
+  otherwise inject `./` / `../` rows. Same diff structure as chunk 3a.
+
 ---
 
 ## Chunk 3c — Templates: Android extraction
@@ -914,3 +1027,7 @@ Append entries here when a chunk uncovers a question that needed a judgement cal
 - **Chunk 3a — Capability-version placeholders.** RFC's placeholder table covers the always-on placeholders (`__CRUX_CORE_VERSION__`, `__FACET_VERSION__`, `__UNIFFI_VERSION__`, `__SERDE_VERSION__`) but not the per-capability versions. Added `__CRUX_HTTP_VERSION__`, `__CRUX_KV_VERSION__`, `__CRUX_TIME_VERSION__`, `__CRUX_PLATFORM_VERSION__` inside CAP-fenced regions of `workspace-cargo.toml`. Chunks 4-6 absorb the impact: chunk 4's `Versions` struct already exposes all five Crux crate fields; chunk 6's engine substitutes them when their cap is selected.
 - **Chunk 3a — `__ANDROID_PACKAGE__` referenced from core's codegen binary.** `shared/src/bin/codegen.rs` uses the placeholder as the Kotlin package namespace. Chunk 5 (core, render-only) must substitute it for every render even when no Android shell is requested. The default `com.vectis.<lower app name>` (per RFC § CLI Surface § `vectis init`) is unambiguous: it labels generated Kotlin types, never an installed Android package.
 - **Chunk 3a — `thiserror = "2"` is now an optional dep behind `uniffi`/`wasm_bindgen`.** The pre-RFC reference docs use `#[derive(thiserror::Error)]` on `CoreError` without listing `thiserror` in `[dependencies]`. The skill agents must have been adding it ad hoc on each scaffold. Pinning it here removes a recurring agent error mode.
+- **Chunk 3b — Path-segment placeholder substitution.** iOS targets like `iOS/__APP_NAME__/__APP_NAME__App.swift` substitute to `iOS/Counter/CounterApp.swift` -- the placeholder appears twice in a single path, once as a directory segment and once as a file-name prefix. Chunk 3a's core targets were all static (`Cargo.toml`, `shared/src/app.rs`, ...) so this didn't surface there. The convention adopted for chunk 7's engine: run placeholder substitution over the constructed target path (string-level) before opening the file for write. The on-disk template layout stays flat regardless. Status row on chunk 7 carries the explicit instruction.
+- **Chunk 3b — `__APP_NAME_LOWER__` is engine-derived, not a CLI flag.** The RFC's placeholder table lists it but its only consumers in the iOS templates (`bundleIdPrefix`, per-config `PRODUCT_BUNDLE_IDENTIFIER`) want the lowercase form of `--app-name` with no other transformation. Rather than adding a `--app-name-lower` flag, chunk 7 derives it via `args.app_name.to_lowercase()` and adds it to the `Params` struct. Chunk 3a's core templates didn't use it; chunk 3c's Android templates will (Android package, etc.) so the field stays in `Params` for both shells.
+- **Chunk 3b — VectisDesign / Inject deliberately left out of the iOS baseline.** Both appear in the `ios-writer` reference docs but pose problems for a "one command, working project" guarantee: `VectisDesign` lives at `design-system/ios/` and is produced by a separate writer skill (may not exist when `vectis init` runs); `Inject` requires a network SPM resolve plus a per-developer InjectionIII install. The chunk-3b templates ship without either; the writer skills layer them in during Update Mode when they detect them. Re-instate paths and rationale captured in `templates/vectis/ios/MANIFEST.md` § Design system / Inject.
+- **Chunk 3b — Cargo-swift / uniffi tooling drift caught during verification.** The chunk-3a/4 pinned versions (`cargo_swift = "0.9"` shipping uniffi_bindgen 0.29.1, runtime `uniffi = "=0.29.4"`) produce a Swift `Shared` package whose `import sharedFFI` fails to resolve `RustBuffer` and friends under Xcode 16 / Swift 6. The iOS templates themselves are clean (typecheck against synthetic FFI stubs in render-only / HTTP-only / all-caps profiles all pass). Logged as a chunk-7 first-task to-do because it blocks `make package` -> `xcodebuild` end-to-end; possible fixes (bump cargo-swift, tighten uniffi pin, or patch the generated `shared.swift`) all live under chunk 7's scope. Not blocking chunk 3b because the chunk's verification is explicitly partial ("full pipeline verification arrives in chunk 7").
