@@ -1108,15 +1108,15 @@ name = "specify"
 path = "src/lib.rs"
 
 [dependencies]
-specify-error       = { path = "crates/specify-error" }
-specify-schema      = { path = "crates/specify-schema" }
-specify-spec        = { path = "crates/specify-spec" }
-specify-merge       = { path = "crates/specify-merge" }
-specify-task        = { path = "crates/specify-task" }
-specify-validate    = { path = "crates/specify-validate" }
-specify-change      = { path = "crates/specify-change" }
-specify-drift       = { path = "crates/specify-drift" }
-specify-federation  = { path = "crates/specify-federation" }
+specify-error       = { path = "crates/error" }
+specify-schema      = { path = "crates/schema" }
+specify-spec        = { path = "crates/spec" }
+specify-merge       = { path = "crates/merge" }
+specify-task        = { path = "crates/task" }
+specify-validate    = { path = "crates/validate" }
+specify-change      = { path = "crates/change" }
+specify-drift       = { path = "crates/drift" }
+specify-federation  = { path = "crates/federation" }
 clap                = { version = "4", features = ["derive"] }
 serde_json          = "1"
 
