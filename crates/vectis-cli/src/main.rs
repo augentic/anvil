@@ -59,25 +59,22 @@ enum Command {
     UpdateVersions(UpdateVersionsArgs),
 }
 
-// Fields below are populated by clap but several are not yet read -- the
-// chunk-2 prerequisite check only consumes a subset (shells, dir, platform,
-// verify). The unused fields are part of the chunk-5+ surface and carry
-// targeted `#[allow(dead_code)]` until those chunks land. See
-// roadmap/rfc-5-tasks.md.
+// Fields below are populated by clap. `InitArgs` is fully consumed by
+// chunk 5 (`app_name`, `dir`, `version_file`) and chunk 5's render-only
+// guardrails (`caps`, `android_package` -- the latter as the source of the
+// default Android package even for core-only scaffolds, since
+// `__ANDROID_PACKAGE__` lives in `codegen.rs`). See roadmap/rfc-5-tasks.md.
 #[derive(clap::Args, Debug)]
 pub(crate) struct InitArgs {
     /// App struct name (PascalCase, e.g. "Counter", "TodoApp").
-    #[allow(dead_code)] // consumed by chunk 5
     pub app_name: String,
 
     /// Project directory (defaults to current directory).
     #[arg(long)]
-    #[allow(dead_code)] // consumed by chunk 5
     pub dir: Option<std::path::PathBuf>,
 
     /// Comma-separated capabilities. Values: http, kv, time, platform, sse.
     #[arg(long)]
-    #[allow(dead_code)] // consumed by chunk 6
     pub caps: Option<String>,
 
     /// Comma-separated shell platforms. Values: ios, android.
@@ -86,7 +83,6 @@ pub(crate) struct InitArgs {
 
     /// Android package name (defaults to com.vectis.<appname lowercase>).
     #[arg(long)]
-    #[allow(dead_code)] // consumed by chunk 8
     pub android_package: Option<String>,
 
     /// Override version pins file. When set, the file MUST exist; resolution
