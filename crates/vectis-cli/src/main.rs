@@ -25,6 +25,7 @@ use error::VectisError;
 /// placeholder for handlers that have not been implemented yet (chunks 5+
 /// replace these); it prints the RFC's `not_implemented` shape and exits 1.
 /// Real failures flow through `Err(VectisError)`.
+#[derive(Debug)]
 pub enum CommandOutcome {
     Success(serde_json::Value),
     Stub { command: &'static str },
@@ -111,18 +112,15 @@ pub(crate) struct AddShellArgs {
 
     /// Project directory (defaults to current directory).
     #[arg(long)]
-    #[allow(dead_code)] // consumed by chunk 10
     pub dir: Option<std::path::PathBuf>,
 
     /// Android package name (defaults to com.vectis.<appname lowercase>).
     #[arg(long)]
-    #[allow(dead_code)] // consumed by chunk 10
     pub android_package: Option<String>,
 
     /// Override version pins file. When set, the file MUST exist; see
     /// `vectis init --help` for the full resolution order.
     #[arg(long)]
-    #[allow(dead_code)] // consumed by chunk 10
     pub version_file: Option<std::path::PathBuf>,
 }
 

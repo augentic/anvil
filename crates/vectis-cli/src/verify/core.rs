@@ -1,6 +1,6 @@
 //! Core-assembly verify pipeline (RFC-5 § Verify Pipeline § Core).
 //!
-//! Six fixed steps, run from the project root, stopping at the first
+//! Seven fixed steps, run from the project root, stopping at the first
 //! failure:
 //!
 //! 1. `cargo check`
@@ -8,7 +8,10 @@
 //! 3. `cargo deny check`
 //! 4. `cargo vet`
 //! 5. `cargo run -p shared --bin codegen --features codegen,facet_typegen -- --language swift --output-dir <cache>/swift`
-//! 6. `cargo run -p shared --bin codegen --features codegen,facet_typegen -- --language kotlin --output-dir <cache>/kotlin`
+//! 6. `cargo build -p shared --features uniffi` (produce the cdylib
+//!    artefact uniffi's `generate_bindings` requires -- see the
+//!    rationale comment on the step itself)
+//! 7. `cargo run -p shared --bin codegen --features codegen,facet_typegen -- --language kotlin --output-dir <cache>/kotlin`
 //!
 //! The codegen output directories are scratch paths supplied by the
 //! caller -- verify owns their lifecycle (create before, remove after).
@@ -46,7 +49,7 @@ pub fn run_pipeline(
     codegen_swift_dir: &Path,
     codegen_kotlin_dir: &Path,
 ) -> Result<Vec<BuildStep>, VectisError> {
-    let mut steps: Vec<BuildStep> = Vec::with_capacity(6);
+    let mut steps: Vec<BuildStep> = Vec::with_capacity(7);
 
     let check = run_step(
         "cargo check",
@@ -133,6 +136,30 @@ pub fn run_pipeline(
     let swift_passed = swift.passed;
     steps.push(swift);
     if !swift_passed {
+        return Ok(steps);
+    }
+
+    // Build the shared cdylib so that the Kotlin codegen step (which
+    // runs uniffi's `generate_bindings` helper) can locate a
+    // `libshared.dylib` / `.so` to introspect. `cargo run --bin codegen`
+    // only builds the binary + its direct rlib dep on `shared`; it does
+    // NOT produce the cdylib artefact uniffi looks for at
+    // `target/debug/libshared.{dylib,so}`, so running codegen kotlin
+    // against a fresh scaffold fails with "library ... not found".
+    // Chunk 9's happy-path test scaffolded `--shells android` first,
+    // which pre-built the cdylib via rust-android-gradle; chunk-10
+    // add-shell flows (init core-only, then add-shell ios/android) hit
+    // the failure directly. Pre-building here makes verify hermetic
+    // regardless of which shells exist on disk.
+    let cdylib = run_step(
+        "cargo build shared cdylib",
+        Command::new("cargo")
+            .args(["build", "-p", "shared", "--features", "uniffi"])
+            .current_dir(project_dir),
+    )?;
+    let cdylib_passed = cdylib.passed;
+    steps.push(cdylib);
+    if !cdylib_passed {
         return Ok(steps);
     }
 

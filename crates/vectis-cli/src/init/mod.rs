@@ -133,7 +133,12 @@ pub fn run(args: &InitArgs) -> Result<CommandOutcome, VectisError> {
 /// here so the shell scaffolders don't have to depend on that module's
 /// internals. The two copies must stay in lock-step -- if a new
 /// placeholder lands on `Params`, both helpers need to populate it.
-fn build_params(app_name: &str, android_package: &str, versions: &Versions) -> Params {
+///
+/// Chunk 10 reuses this from `add_shell::run` so the parsed-from-`app.rs`
+/// invocation path and the `vectis init --shells` invocation path build
+/// identical `Params` maps -- there is only one correct placeholder
+/// table per project, not one per CLI entry point.
+pub(crate) fn build_params(app_name: &str, android_package: &str, versions: &Versions) -> Params {
     Params {
         app_name: app_name.to_string(),
         app_struct: app_name.to_string(),

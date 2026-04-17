@@ -317,6 +317,7 @@ dependencies = [
  "clap",
  "serde",
  "serde_json",
+ "syn",
  "thiserror",
  "toml",
 ]
