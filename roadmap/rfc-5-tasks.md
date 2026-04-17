@@ -22,14 +22,14 @@ Each chunk is a self-contained agent session. Per session:
 |---|-------|--------|--------|-------|
 | 1 | Workspace + CLI skeleton | [x] | `vectis-cli` | Branch name `vectis-cli/chunk-1-skeleton` collides with existing `vectis-cli` parent branch (git refs are hierarchical); committed on `vectis-cli` instead. Future chunks must use a non-prefix name (e.g. `vectis-cli-chunk-N-slug`) or the parent branch must be renamed/deleted. Dispatcher uses a `CommandOutcome::{Success,Stub}` enum so handlers can stay stubbed without polluting `VectisError`. `VectisError` carries `#[allow(dead_code)]` until chunks 2/5/9 start constructing the unused variants. |
 | 2 | Prerequisites detection | [x] | `vectis-cli-chunk-2-prerequisites` | Args structs in `main.rs` are now `pub(crate)` and each handler signature is `run(args: &XxxArgs)` -- chunks 5/7/8/9/10/11 no longer need to plumb args through. `#[allow(dead_code)]` on `VectisError` was narrowed to per-variant on `Verify` and `Internal`; `MissingPrerequisites` and `InvalidProject` are now actively constructed. Each Args struct carries per-field `#[allow(dead_code)]` for fields not yet read; later chunks should drop the annotation as they read each field. |
-| 3a | Templates: core extraction | [ ] | | |
-| 3b | Templates: iOS extraction | [ ] | | |
-| 3c | Templates: Android extraction | [ ] | | |
-| 4 | Version resolution + embedded defaults | [ ] | | `embedded/versions.toml` lives at `crates/vectis-cli/embedded/`, so `include_str!("../embedded/versions.toml")` resolves from any file inside `src/`. |
-| 5 | `vectis init` core, render-only | [ ] | | Handler must return `Ok(CommandOutcome::Success(value))`, not `Ok(CommandOutcome::Stub { .. })`; remove the `Stub` return path. `&InitArgs` is already plumbed through (chunk 2). When you start reading `args.app_name`/`args.dir`/`args.caps`/`args.android_package`, drop the per-field `#[allow(dead_code)]` annotations in `main::InitArgs`. |
-| 6 | `vectis init` core capability variants | [ ] | | Reuse the comma-splitting pattern from chunk 2's `init::run` (`split(',').map(str::trim).filter(...)`); consider lifting it into a small helper if both `--caps` and `--shells` end up needing it. |
-| 7 | `vectis init` iOS shell | [ ] | | Same `Stub` -> `Success` transition as chunk 5. `&InitArgs` is already plumbed through. |
-| 8 | `vectis init` Android shell | [ ] | | Same `Stub` -> `Success` transition as chunks 5/7. `&InitArgs` is already plumbed through. |
+| 3a | Templates: core extraction | [x] | `vectis-cli-chunk-3a-templates-core` | Source filenames are flat (`workspace-cargo.toml`, `shared-cargo.toml`, `gitignore`, `supply-chain-config.toml`, ...); the source→target path mapping lives in `templates/vectis/core/MANIFEST.md`. Chunk 5's engine reads/embeds that mapping rather than reflecting the on-disk layout. Capability-version placeholders (`__CRUX_HTTP_VERSION__`, `__CRUX_KV_VERSION__`, `__CRUX_TIME_VERSION__`, `__CRUX_PLATFORM_VERSION__`) only appear inside CAP markers and are NOT in the RFC's placeholder table -- chunks 5/6 must include them when their cap is selected. `__ANDROID_PACKAGE__` is referenced from `codegen.rs` (Kotlin namespace), so chunk 5 must substitute it for core-only and iOS-only projects too -- default `com.vectis.<lower app name>`. `thiserror = "2"` added as an optional dep gated behind `uniffi` / `wasm_bindgen` features (the existing reference docs omit it but `ffi.rs` requires it). PartialEq/Eq dropped from the `Event` derive (capability payloads like `crux_http::Response<Vec<u8>>` don't impl `Eq`). |
+| 3b | Templates: iOS extraction | [ ] | | The chunk's `cp -r ... *` flat-copy verification doesn't produce a cargo-check-able layout (targets are nested under `iOS/{AppName}/...`); use the MANIFEST source→target mapping convention established in 3a instead. Mirror the `MANIFEST.md` placement / cap-marker conventions documented in `templates/vectis/core/MANIFEST.md`. |
+| 3c | Templates: Android extraction | [ ] | | Same MANIFEST convention as 3a/3b. Kotlin sources sit at paths derived from `__ANDROID_PACKAGE_PATH__` (chunk 8 substitutes); template filenames stay flat. The chunk text already calls this out for the `gradle wrapper` files (which are NOT templates). |
+| 4 | Version resolution + embedded defaults | [ ] | | `embedded/versions.toml` lives at `crates/vectis-cli/embedded/`, so `include_str!("../embedded/versions.toml")` resolves from any file inside `src/`. The `Versions` struct must expose all five Crux crate versions (`crux_core`, `crux_http`, `crux_kv`, `crux_time`, `crux_platform`) since chunk 3a's templates use placeholders for each (`__CRUX_HTTP_VERSION__` etc.). The Initial Version Pins block already lists them; just make sure the deserialised struct field names match what chunk 5 hands to the template engine. |
+| 5 | `vectis init` core, render-only | [ ] | | Handler must return `Ok(CommandOutcome::Success(value))`, not `Ok(CommandOutcome::Stub { .. })`; remove the `Stub` return path. `&InitArgs` is already plumbed through (chunk 2). When you start reading `args.app_name`/`args.dir`/`args.caps`/`args.android_package`, drop the per-field `#[allow(dead_code)]` annotations in `main::InitArgs`. The template engine must read `templates/vectis/core/MANIFEST.md`'s source→target mapping (or an embedded copy of it) -- source filenames are flat, target paths are nested. Always substitute `__ANDROID_PACKAGE__` in `codegen.rs` even when no Android shell is requested (default `com.vectis.<lower app name>`). The cap stripper for render-only must drop both the marker lines and everything between them; sed equivalent is `/<<<CAP:/,/CAP:.*>>>/d`. |
+| 6 | `vectis init` core capability variants | [ ] | | Reuse the comma-splitting pattern from chunk 2's `init::run` (`split(',').map(str::trim).filter(...)`); consider lifting it into a small helper if both `--caps` and `--shells` end up needing it. When a cap is selected, drop only the marker lines (preserve content). The five-cap matrix from the RFC maps to chunk 3a's templates as follows: `http`/`kv`/`time`/`platform` each have CAP blocks in `workspace-cargo.toml`, `shared-cargo.toml`, and `app.rs`; `sse` only has a CAP block in `shared-cargo.toml` today (no Effect variant) -- decide here whether to add `Sse(...)` to the Effect enum and corresponding update arms. Capability-version placeholders (`__CRUX_HTTP_VERSION__` etc.) must be substituted from chunk 4's `Versions` struct. |
+| 7 | `vectis init` iOS shell | [ ] | | Same `Stub` -> `Success` transition as chunk 5. `&InitArgs` is already plumbed through. Reuse the MANIFEST.md source→target mapping convention from chunk 3a. |
+| 8 | `vectis init` Android shell | [ ] | | Same `Stub` -> `Success` transition as chunks 5/7. `&InitArgs` is already plumbed through. Reuse the MANIFEST.md source→target mapping convention; `__ANDROID_PACKAGE_PATH__` translation (`.` -> `/`) happens at file-write time, not in placeholder substitution. |
 | 9 | `vectis verify` | [ ] | | Same `Stub` -> `Success` transition; `&VerifyArgs` is already plumbed through. The on-disk assembly detection (`dir.join("iOS").is_dir()` / `Android`) is already implemented in `verify::run` for prereq scoping -- reuse it (or extract it alongside the per-assembly pipeline). Will start constructing `VectisError::Verify`; drop the per-variant `#[allow(dead_code)]` on `VectisError::Verify` then. |
 | 10 | `vectis add-shell` (incl. `app.rs` parser) | [ ] | | Same `Stub` -> `Success` transition; `&AddShellArgs` is already plumbed through, including the platform string -> `AssemblyKind` mapping that already lives in `add_shell::run` for prereq scoping (lift it if the parser also wants it). |
 | 11 | `vectis update-versions` | [ ] | | Same `Stub` -> `Success` transition; `&UpdateVersionsArgs` is already plumbed through. The `--verify` flag already widens the prereq scope to all three assemblies (chunk 2); when you implement `--verify`'s scaffold-and-build loop you can rely on those checks already having run. May start constructing `VectisError::Internal`; drop the per-variant allow then. |
@@ -420,6 +420,76 @@ cargo check                                # MUST pass
 Capture the output of `cargo check` in the PR.
 
 **Notes:**
+
+Completed on branch `vectis-cli-chunk-3a-templates-core`.
+
+The 13 template files and their `MANIFEST.md` live at `templates/vectis/core/`. Source filenames are flat (`workspace-cargo.toml`, `shared-cargo.toml`, `gitignore`, `lib.rs`, `app.rs`, `ffi.rs`, `codegen.rs`, `clippy.toml`, `rust-toolchain.toml`, `deny.toml`, `supply-chain-config.toml`, `supply-chain-audits.toml`, `supply-chain-imports.lock`); target paths (`Cargo.toml`, `shared/Cargo.toml`, `.gitignore`, `shared/src/lib.rs`, `shared/src/app.rs`, ...) are recorded in `MANIFEST.md`.
+
+Verification (`cargo check` on a Counter render-only render):
+
+```text
+$ rm -rf /tmp/vectis-3a-check && mkdir /tmp/vectis-3a-check && cd /tmp/vectis-3a-check
+$ # Stage templates per MANIFEST.md path mapping (see "Implementation deviations" below):
+$ mkdir -p shared/src/bin supply-chain
+$ cp $REPO/templates/vectis/core/workspace-cargo.toml      Cargo.toml
+$ cp $REPO/templates/vectis/core/clippy.toml               clippy.toml
+$ cp $REPO/templates/vectis/core/rust-toolchain.toml       rust-toolchain.toml
+$ cp $REPO/templates/vectis/core/gitignore                 .gitignore
+$ cp $REPO/templates/vectis/core/shared-cargo.toml         shared/Cargo.toml
+$ cp $REPO/templates/vectis/core/lib.rs                    shared/src/lib.rs
+$ cp $REPO/templates/vectis/core/app.rs                    shared/src/app.rs
+$ cp $REPO/templates/vectis/core/ffi.rs                    shared/src/ffi.rs
+$ cp $REPO/templates/vectis/core/codegen.rs                shared/src/bin/codegen.rs
+$ cp $REPO/templates/vectis/core/deny.toml                 deny.toml
+$ cp $REPO/templates/vectis/core/supply-chain-config.toml  supply-chain/config.toml
+$ cp $REPO/templates/vectis/core/supply-chain-audits.toml  supply-chain/audits.toml
+$ cp $REPO/templates/vectis/core/supply-chain-imports.lock supply-chain/imports.lock
+$ find . -type f \( -name '*.toml' -o -name '*.rs' -o -name '*.lock' -o -name '.gitignore' \) -exec sed -i '' \
+    -e 's/__APP_NAME__/Counter/g' \
+    -e 's/__APP_STRUCT__/Counter/g' \
+    -e 's/__CRUX_CORE_VERSION__/0.17.0/g' \
+    -e 's/__FACET_VERSION__/=0.31/g' \
+    -e 's/__UNIFFI_VERSION__/=0.29.4/g' \
+    -e 's/__SERDE_VERSION__/1.0/g' \
+    -e 's/__ANDROID_PACKAGE__/com.vectis.counter/g' {} \;
+$ find . -type f \( -name '*.toml' -o -name '*.rs' -o -name '*.lock' \) -exec sed -i '' '/<<<CAP:/,/CAP:.*>>>/d' {} \;
+$ cargo check
+    Updating crates.io index
+    ... (250 packages locked)
+    Checking shared v0.1.0 (/private/tmp/vectis-3a-check/shared)
+    Finished `dev` profile in 11.91s
+```
+
+Bonus checks (not required by the chunk verification, but they exercise paths chunks 5 and 9 will need):
+
+```text
+$ cargo check --features codegen,facet_typegen
+    Finished `dev` profile in 21.63s
+$ cargo run --bin codegen --features codegen,facet_typegen -- --language swift --output-dir /tmp/vectis-3a-codegen-swift
+     Running `target/debug/codegen --language swift ...`
+$ ls /tmp/vectis-3a-codegen-swift
+SharedTypes/
+$ cargo build --features uniffi --lib && cargo run --bin codegen --features codegen,facet_typegen -- --language kotlin --output-dir /tmp/vectis-3a-codegen-kotlin
+     Running `target/debug/codegen --language kotlin ...`
+Code generation complete, formatting with ktlint (use --no-format to disable)
+$ ls /tmp/vectis-3a-codegen-kotlin
+com/  uniffi/
+$ ls /tmp/vectis-3a-codegen-kotlin/com/vectis/counter
+Counter.kt  Requests.kt
+```
+
+(The ktlint formatting warning is benign -- ktlint is not on `$PATH` on the build host. The Kotlin codegen output is well-formed and namespaced under `com/vectis/counter` as expected from `__ANDROID_PACKAGE__` substitution.)
+
+Implementation deviations and discoveries (all minor; status-row notes for chunks 4-8 updated to absorb them):
+
+- **Verification recipe in the chunk text is under-specified.** The chunk says `cp -r $REPO/templates/vectis/core/* .` and then `cargo check`, but the source filenames are flat (`workspace-cargo.toml`, `shared-cargo.toml`, `lib.rs`, ...) while cargo expects nested target paths (`Cargo.toml`, `shared/Cargo.toml`, `shared/src/lib.rs`, ...). Followed `MANIFEST.md`'s source→target mapping when staging the verification project. Recommend tightening 3b/3c verification recipes the same way -- iOS templates land under `iOS/{AppName}/...`, Android under `Android/...`, neither matches the flat templates layout.
+- **Capability-version placeholders are not in the RFC's placeholder table.** `templates/vectis/core/workspace-cargo.toml` uses `__CRUX_HTTP_VERSION__`, `__CRUX_KV_VERSION__`, `__CRUX_TIME_VERSION__`, `__CRUX_PLATFORM_VERSION__` inside `<<<CAP:...>>>` blocks. They are stripped along with the cap markers in the render-only verification, so chunk 3a's `cargo check` doesn't exercise them. Chunk 6 (capability variants) must substitute them from chunk 4's `Versions` struct. The RFC's Initial Version Pins block already pins all five Crux crate versions, so no upstream RFC change is required -- only the placeholder table needs the additions.
+- **`__ANDROID_PACKAGE__` lives in core, not just Android.** `shared/src/bin/codegen.rs` uses it as the Kotlin package namespace (the equivalent of Swift's `"SharedTypes"` constant). For core-only or iOS-only renders, the codegen binary still has to compile, so chunk 5 must substitute `__ANDROID_PACKAGE__` with the default `com.vectis.<lower app name>` even when `--shells android` is absent. The default is unambiguous because the placeholder text is namespacing the generated Kotlin tree, not declaring a package the user runs against.
+- **`thiserror = "2"` added as an optional dep.** The chunk's reference docs (`crux-ffi-scaffolding.md`) use `#[derive(thiserror::Error)]` on `CoreError` but never list `thiserror` as a `[dependencies]` row. The previous skills must have been adding it ad hoc. Pinned `thiserror = "2"` in `shared-cargo.toml` and gated it behind both `uniffi` and `wasm_bindgen` features so the dependency only enters the dep graph when `ffi.rs` is actually compiled.
+- **`Event` derives drop `PartialEq, Eq`.** The reference example derives them, but the http capability variant carries a `crux_http::Response<Vec<u8>>` payload that isn't `Eq`. Render-only would compile either way; dropping these derives keeps the template forward-compatible with chunks 6+.
+- **`Effect` variants per-cap are placement-only.** Render-only's `Effect` is just `Render(RenderOperation)`. The CAP-fenced `Http(HttpRequest)` / `KeyValue(KeyValueOperation)` / `Time(TimeRequest)` / `Platform(PlatformRequest)` variants are present in the file but stripped for the render-only verification. Chunk 6 will exercise them. The `sse` cap has no Effect variant today (only a `[dependencies]` block in `shared-cargo.toml`); chunk 6 should decide whether to add `Sse(...)` and a matching `app.rs` block.
+- **CAP marker semantics fixed.** Markers must each occupy their own line (`<<<CAP:foo` opens, `CAP:foo>>>` closes). The `sed` recipe uses `/<<<CAP:/,/CAP:.*>>>/d` which deletes the entire fenced range inclusive of both markers. Chunk 5's engine should mirror that semantic when stripping; chunk 6's engine should drop only the marker lines (preserving content) when the cap is selected. Indentation inside markers is preserved verbatim, which matters for the `codegen` and `facet_typegen` feature arrays in `shared-cargo.toml` where retained CAP content becomes inline list elements.
+- **`MANIFEST.md` includes a CI self-check.** A short `diff` snippet at the bottom of the manifest validates that every file in `templates/vectis/core/` is listed exactly once. Worth wiring into `make checks` later, but out of scope for this chunk (the chunk text restricts this work to `templates/vectis/core/` only).
 
 ---
 
@@ -838,3 +908,7 @@ Append entries here when a chunk uncovers a question that needed a judgement cal
 - **Chunk 2 — Args plumbing brought forward.** Chunks 5/7/8/9/10/11 each carried a deferred note to "pass `&XxxArgs` through to the handler". The chunk 2 prereq check needs `args.shells` (init), `args.dir` (verify), `args.platform` (add-shell), and `args.verify` (update-versions), so this plumbing had to land now: the Args structs in `main.rs` were promoted to `pub(crate)` and every handler now accepts `args: &XxxArgs`. Status-row notes on the affected later chunks were updated to reflect that only the `Stub` -> `Success` transition remains for them.
 - **Chunk 2 — Per-field `#[allow(dead_code)]` over crate-wide.** clap derive populates every Args field, but only a subset are read by the chunk-2 handlers. Under the existing `-D warnings` clippy gate, the unused fields fail the build. Chose per-field `#[allow(dead_code)] // consumed by chunk N` annotations over a blanket `#![allow(dead_code)]` so the lint stays effective elsewhere; later chunks remove the annotation as they start reading each field.
 - **Chunk 2 — Tool name vs check-command labelling.** RFC § Workstation Requirements names some tools by category (e.g. "Xcode + Command Line Tools", "Android SDK (`$ANDROID_HOME`)"). The `tool` field of the JSON payload uses flat machine identifiers (`xcode`, `android-sdk`, `rustup-android-targets`, `android-ndk`); the `check` field carries the exact RFC display string. This keeps `tool` parseable while preserving the RFC's user-visible commands.
+- **Chunk 3a — Flat source filenames + MANIFEST.md mapping.** Templates under `templates/vectis/core/` use flat filenames (`workspace-cargo.toml`, `shared-cargo.toml`, `lib.rs`, ...), with `MANIFEST.md` recording the source→target path mapping. This avoids a duplicate folder hierarchy under `templates/`, keeps `include_str!` paths short for chunk 5, and lets the engine treat target paths as data rather than as walked directory layout. Chunks 3b and 3c should adopt the same convention.
+- **Chunk 3a — Capability-version placeholders.** RFC's placeholder table covers the always-on placeholders (`__CRUX_CORE_VERSION__`, `__FACET_VERSION__`, `__UNIFFI_VERSION__`, `__SERDE_VERSION__`) but not the per-capability versions. Added `__CRUX_HTTP_VERSION__`, `__CRUX_KV_VERSION__`, `__CRUX_TIME_VERSION__`, `__CRUX_PLATFORM_VERSION__` inside CAP-fenced regions of `workspace-cargo.toml`. Chunks 4-6 absorb the impact: chunk 4's `Versions` struct already exposes all five Crux crate fields; chunk 6's engine substitutes them when their cap is selected.
+- **Chunk 3a — `__ANDROID_PACKAGE__` referenced from core's codegen binary.** `shared/src/bin/codegen.rs` uses the placeholder as the Kotlin package namespace. Chunk 5 (core, render-only) must substitute it for every render even when no Android shell is requested. The default `com.vectis.<lower app name>` (per RFC § CLI Surface § `vectis init`) is unambiguous: it labels generated Kotlin types, never an installed Android package.
+- **Chunk 3a — `thiserror = "2"` is now an optional dep behind `uniffi`/`wasm_bindgen`.** The pre-RFC reference docs use `#[derive(thiserror::Error)]` on `CoreError` without listing `thiserror` in `[dependencies]`. The skill agents must have been adding it ad hoc on each scaffold. Pinning it here removes a recurring agent error mode.
