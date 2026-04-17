@@ -41,9 +41,9 @@ use std::process::Command;
 
 use crate::error::VectisError;
 use crate::templates::{Capability, Params, android, render, substitute_path_with};
+use crate::verify;
+use crate::verify::pipeline::{BuildStep, run_step};
 use crate::versions::Versions;
-
-use super::ios::BuildStep;
 
 /// Result of a successful Android scaffold.
 ///
@@ -287,8 +287,9 @@ fn run_pipeline(
     let body = body.replace("__ANDROID_NDK_VERSION__", &ndk_version);
     fs::write(&shared_build, body)?;
 
-    let mut results = Vec::with_capacity(3);
     let _ = project_dir;
+
+    let mut results = Vec::with_capacity(3);
 
     let gradle_pin = versions.android.gradle.clone();
     let wrapper_step = bootstrap_wrapper(android_root, &gradle_pin)?;
@@ -300,29 +301,15 @@ fn run_pipeline(
         });
     }
 
-    let make_step = run_step(
-        "make build",
-        Command::new("make").arg("build").current_dir(android_root),
-    )?;
-    let make_passed = make_step.passed;
-    results.push(make_step);
-    if !make_passed {
+    // The remaining two steps (`make build`, `./gradlew
+    // :app:assembleDebug`) are identical to the verify-time Android
+    // pipeline -- delegate so the step list cannot drift.
+    let verify_steps = verify::android::run_pipeline(android_root)?;
+    let failing = verify_steps.iter().find(|s| !s.passed).map(|s| s.name);
+    results.extend(verify_steps);
+    if let Some(name) = failing {
         return Err(VectisError::Verify {
-            message: "Android build step `make build` failed".to_string(),
-        });
-    }
-
-    let assemble_step = run_step(
-        "gradlew assembleDebug",
-        Command::new("./gradlew")
-            .arg(":app:assembleDebug")
-            .current_dir(android_root),
-    )?;
-    let assemble_passed = assemble_step.passed;
-    results.push(assemble_step);
-    if !assemble_passed {
-        return Err(VectisError::Verify {
-            message: "Android build step `./gradlew :app:assembleDebug` failed".to_string(),
+            message: format!("Android build step `{name}` failed"),
         });
     }
 
@@ -393,34 +380,6 @@ fn bootstrap_wrapper(android_root: &Path, gradle_pin: &str) -> Result<BuildStep,
 
     let _ = fs::remove_dir_all(&scratch);
     Ok(step)
-}
-
-/// Run a single build pipeline step and turn it into a [`BuildStep`].
-///
-/// Mirrors `init::ios::run_make_pipeline`'s per-step capture so the JSON
-/// shape under `assemblies.android.build_steps` matches `assemblies.ios`'s.
-fn run_step(name: &'static str, cmd: &mut Command) -> Result<BuildStep, VectisError> {
-    let output = cmd.output().map_err(|e| VectisError::Verify {
-        message: format!("failed to invoke `{name}`: {e}"),
-    })?;
-    if output.status.success() {
-        Ok(BuildStep {
-            name,
-            passed: true,
-            error: None,
-        })
-    } else {
-        let mut combined = String::from_utf8_lossy(&output.stdout).into_owned();
-        if !combined.is_empty() && !combined.ends_with('\n') {
-            combined.push('\n');
-        }
-        combined.push_str(&String::from_utf8_lossy(&output.stderr));
-        Ok(BuildStep {
-            name,
-            passed: false,
-            error: Some(combined.trim().to_string()),
-        })
-    }
 }
 
 #[cfg(test)]

@@ -14,10 +14,11 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 use crate::error::VectisError;
 use crate::templates::{Capability, Params, ios, render, substitute_path};
+use crate::verify;
+pub use crate::verify::pipeline::BuildStep;
 
 /// Result of a successful iOS scaffold.
 ///
@@ -31,18 +32,6 @@ pub struct IosScaffold {
     /// `make` is skipped (e.g. prerequisites missing under `--no-build`)
     /// the vector is empty.
     pub build_steps: Vec<BuildStep>,
-}
-
-/// One step of the post-scaffold `make` pipeline. Mirrors the JSON shape
-/// the user sees so the dispatcher can splice this into `assemblies.ios`.
-#[derive(Debug, Clone, serde::Serialize)]
-pub struct BuildStep {
-    pub name: &'static str,
-    pub passed: bool,
-    /// Combined stderr/stdout when the step fails. `None` on success
-    /// keeps the JSON output small for the happy path.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
 }
 
 /// Render and write the iOS templates under `project_dir`, then run the
@@ -105,7 +94,17 @@ pub fn scaffold(
     let _ = app_name;
 
     let build_steps = if run_build {
-        run_make_pipeline(&ios_root)?
+        let steps = verify::ios::run_pipeline(&ios_root, false)?;
+        if let Some(failing) = steps.iter().find(|s| !s.passed) {
+            // init's contract is "scaffold succeeds or we error out so
+            // the user fixes their toolchain". Per-step detail is lost
+            // on the Err path (matches chunk-7 behaviour); verify's
+            // flow keeps the full step vector intact for the user.
+            return Err(VectisError::Verify {
+                message: format!("iOS build step `{}` failed", failing.name),
+            });
+        }
+        steps
     } else {
         Vec::new()
     };
@@ -114,62 +113,6 @@ pub fn scaffold(
         files: written,
         build_steps,
     })
-}
-
-/// Run `make typegen`, `make package`, `make xcode` from `iOS/` in sequence.
-///
-/// The pipeline stops at the first failing step (the later steps depend on
-/// the earlier output). On failure the error step's combined stdout+stderr
-/// is captured into `BuildStep::error` and the rest of the steps are not
-/// attempted; the returned `Verify` carries a one-line summary.
-fn run_make_pipeline(ios_root: &Path) -> Result<Vec<BuildStep>, VectisError> {
-    let mut results = Vec::with_capacity(3);
-    for step in ["typegen", "package", "xcode"] {
-        let output = Command::new("make")
-            .arg(step)
-            .current_dir(ios_root)
-            .output()
-            .map_err(|e| VectisError::Verify {
-                message: format!("failed to invoke `make {step}` in {}: {e}", ios_root.display()),
-            })?;
-
-        if output.status.success() {
-            results.push(BuildStep {
-                name: leak(step),
-                passed: true,
-                error: None,
-            });
-        } else {
-            let mut combined = String::from_utf8_lossy(&output.stdout).into_owned();
-            if !combined.is_empty() && !combined.ends_with('\n') {
-                combined.push('\n');
-            }
-            combined.push_str(&String::from_utf8_lossy(&output.stderr));
-            results.push(BuildStep {
-                name: leak(step),
-                passed: false,
-                error: Some(combined.trim().to_string()),
-            });
-            return Err(VectisError::Verify {
-                message: format!("iOS build step `make {step}` failed"),
-            });
-        }
-    }
-    Ok(results)
-}
-
-/// `BuildStep::name` is a `&'static str` to keep the struct cheap to clone
-/// across the JSON splice. The step labels are a fixed tiny alphabet
-/// (`typegen`, `package`, `xcode`) so leaking once per process is fine.
-fn leak(s: &str) -> &'static str {
-    match s {
-        "typegen" => "typegen",
-        "package" => "package",
-        "xcode" => "xcode",
-        // Defensive: keep the function total. New step names should be
-        // added to the match above so the leak stays bounded.
-        other => Box::leak(other.to_string().into_boxed_str()),
-    }
 }
 
 #[cfg(test)]

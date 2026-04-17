@@ -3,6 +3,11 @@ name = "shared"
 version = "0.1.0"
 edition.workspace = true
 rust-version.workspace = true
+# Internal app crate -- not meant for crates.io. `publish = false`
+# also lets `cargo deny` skip the missing-license check via the
+# `[licenses] private = { ignore = true }` rule in `deny.toml`. Flip
+# to a valid registry + add `license = "..."` if you decide to publish.
+publish = false
 
 [lib]
 crate-type = ["cdylib", "lib", "staticlib"]

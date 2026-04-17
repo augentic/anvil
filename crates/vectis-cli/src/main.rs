@@ -101,7 +101,6 @@ pub(crate) struct VerifyArgs {
     /// Override version pins file. When set, the file MUST exist; see
     /// `vectis init --help` for the full resolution order.
     #[arg(long)]
-    #[allow(dead_code)] // consumed by chunk 9
     pub version_file: Option<std::path::PathBuf>,
 }
 
