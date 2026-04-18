@@ -1,0 +1,23 @@
+# .specify/changes/product-catalog/.metadata.yaml
+# Illustrative snapshot of product-catalog's on-disk state at the
+# moment the first /spec:execute --loop run was SIGKILL'd. /spec:build
+# had been running — some tasks were marked complete in tasks.md on
+# disk — but the phase had not yet reached its terminal `specify
+# change phase-outcome` call. No `outcome` field has been written.
+#
+# Self-heal on the second run reads this file, sees status=building
+# with no terminal outcome, and falls through to the mid-change
+# resume branch (§Self-heal on startup, step 3 → LifecycleStatus=building
+# → resume /spec:build).
+
+name: product-catalog
+status: building
+created-at: 2025-03-13T14:02:11Z
+defined-at: 2025-03-13T14:38:44Z
+built-at:   null
+
+touched-specs:
+  - { capability: product-catalog, classification: new }
+
+# No `outcome` field — /spec:build did not reach its
+# `specify change phase-outcome` call before SIGKILL arrived.

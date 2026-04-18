@@ -2,7 +2,7 @@
 name: define
 description: Define a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
 license: MIT
-argument-hint: "[description] [artifact-id?]"
+argument-hint: "[description] [artifact-id?] [--source <key>=<path-or-url>...] [--affects <change-name>...]"
 ---
 
 # Define Skill
@@ -22,6 +22,48 @@ artifact files those briefs describe.
 > See `rfcs/rfc-2-execution.md` §"Execution Model Overview" and
 > `rfcs/assets/specify-framework.png` for where this skill sits in the
 > `/spec:execute` driver loop.
+
+---
+
+## Driver-supplied arguments (new in RFC-2 L2.I)
+
+When invoked by `/spec:execute` from a plan entry, this skill accepts
+two repeatable flags that carry the plan-level `sources` and `affects`
+signals into the define phase:
+
+```
+/spec:define <name> [--source <key>=<path-or-url>...] [--affects <change-name>...]
+```
+
+- **`--source <key>=<path-or-url>`** — a resolved entry from the plan's
+  top-level `sources` map. The key is the kebab-case identifier used in
+  the plan entry's `sources` list; the value is either a local filesystem
+  path or a git URL. `/spec:execute` has already validated that the key
+  exists in the plan's top-level `sources` map; this skill treats the
+  `value` as opaque and forwards it to whichever define brief invokes
+  `/spec:extract` (which in turn consults `git-cloner` for URL values).
+  The driver never clones in L2.I; that stays inside the brief pipeline.
+- **`--affects <change-name>`** — a plan entry this change modifies.
+  For each `--affects` flag, the skill prepares to emit delta specs
+  under `.specify/changes/<this-change>/specs/<affects>/spec.md`,
+  sourced from the baseline at `.specify/specs/<affects>/spec.md`.
+  Multiple `--affects` flags are allowed; they are processed in the
+  order they were supplied.
+
+Both flags are **optional** and **additive**: a greenfield change has
+neither; a refactor targeting prior specs has `--affects` only; a
+migration from a legacy source has `--source` only; an authoring
+workflow that amends prior specs from a legacy source has both. When
+a human invokes `/spec:define` directly (outside `/spec:execute`), the
+flags remain available but are rarely supplied — the skill's existing
+question-asking flow still handles free-form descriptions.
+
+The authoritative contract for how `/spec:execute` builds these flag
+values lives in [`../execute/SKILL.md` → §Argument resolution
+(`sources` and `affects`)](../execute/SKILL.md). Fixtures under
+[`../execute/fixtures/field-wiring/`](../execute/fixtures/field-wiring/)
+pin the three possible argument shapes (sources-only, affects-only,
+combined).
 
 ---
 

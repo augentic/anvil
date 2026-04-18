@@ -1,0 +1,1 @@
+/spec:define registration-duplicate-email-crash --affects user-registration

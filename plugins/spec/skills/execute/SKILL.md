@@ -14,13 +14,16 @@ Drive an initiative through `.specify/plan.yaml` by automating the
 Layer 1 loop: `get next change` → `/spec:define` → `/spec:build` →
 `/spec:merge` (or `/spec:drop`) → `specify plan transition`.
 
-> **Scope note.** This revision (RFC-2 L2.E + L2.F + L2.G + L2.H)
-> ships the skill scaffold, the `--dry-run` path, the **supervised
-> single-change** path (one change end to end, then stop), the
-> **self-heal on startup** step that runs before every `get next
-> change`, and the **`--loop`** extension plus terminal summary and
-> SIGINT / SIGTERM handling. `sources` / `affects` execution wiring
-> lands in L2.I.
+> **Scope note.** This revision (RFC-2 L2.E + L2.F + L2.G + L2.H +
+> L2.I) ships the skill scaffold, the `--dry-run` path, the
+> **supervised single-change** path (one change end to end, then
+> stop), the **self-heal on startup** step that runs before every
+> `get next change`, the **`--loop`** extension plus terminal summary
+> and SIGINT / SIGTERM handling, and the **`sources` / `affects`
+> execution wiring** (resolving plan-entry `sources` keys against the
+> top-level `sources` map and passing them plus `affects` through to
+> `/spec:define`). L2.I is the Layer 2 exit gate — `/spec:execute`
+> can now drive the RFC-2 §"The Plan" example end to end.
 
 ## Overview
 
@@ -200,8 +203,10 @@ to `.specify/plan.yaml`, `.metadata.yaml`, or `journal.yaml` directly.
    Interpret the JSON:
      - `next != null`                → continue to step 5 with this
                                         name. Capture the entry's
-                                        `description` and `affects`
-                                        list for use in step 6.
+                                        `description`, `sources`,
+                                        and `affects` lists for use
+                                        in step 6 (see §Argument
+                                        resolution).
      - `reason == "in-progress"`     → an active entry exists that
                                         self-heal did not resolve
                                         (self-heal classified the
@@ -231,12 +236,16 @@ to `.specify/plan.yaml`, `.metadata.yaml`, or `journal.yaml` directly.
    plan briefly shows an in-progress entry with no matching change
    directory, which `specify plan validate` tolerates as a warning.
 
-6. Invoke /spec:define <name>. Pass the plan entry's `description`
-   and `affects` list as additional context when present. Source-path
-   resolution (the `sources` list → resolved paths for /spec:extract)
-   is deferred to L2.I; for L2.F the define phase receives only the
-   change name (and, optionally, the description / affects hints for
-   its own use).
+6. Resolve the plan entry's `sources` / `affects` into define
+   arguments (see §Argument resolution below) and invoke:
+
+     /spec:define <name> \
+         [--source <key>=<path-or-url> [--source ...]] \
+         [--affects <existing-change-name> [--affects ...]]
+
+   The `description` field on the plan entry is additional context
+   that define reads off the plan directly; the driver does not
+   re-plumb it through the command line.
 
    When /spec:define returns, read the phase outcome per step 9.
 
@@ -303,6 +312,102 @@ to `.specify/plan.yaml`, `.metadata.yaml`, or `journal.yaml` directly.
     step-4 in-progress stops and step-9 synthetic-deferred cases
     where human triage is required.
 ```
+
+#### Argument resolution (`sources` and `affects`)
+
+Step 6 of the supervised-run algorithm turns two plan-entry fields
+into command-line arguments for `/spec:define`:
+
+- **`sources`** — a list of keys into the plan's top-level `sources`
+  map. Each key resolves to either a local filesystem path or a git
+  URL. The resolved values are handed to `/spec:define` as
+  `--source <key>=<path-or-url>` tuples, preserving the key so
+  define's brief pipeline can retain provenance when it hands the
+  value to `/spec:extract` (via `git-cloner`) or an analogous plugin.
+- **`affects`** — a list of names of *other* plan entries whose
+  specs this change modifies. The list is passed through as
+  `--affects <name>` flags so define can locate
+  `.specify/specs/<affects>/spec.md` and prepare to emit delta specs
+  under the current change's `specs/<affects>/spec.md`.
+
+The two signals are independent: a plan entry may declare both (the
+canonical case is a refactor that analyzes a legacy source AND
+amends prior specs — e.g. `extract-shared-validation` in RFC-2
+§"The Plan" declares `sources: [monolith]` alongside `affects:
+[user-registration, email-verification]` in an authoring workflow;
+the fixture `fixtures/field-wiring/combined/` pins this pattern).
+Define handles them independently — a source-aware extract
+sub-step runs when `--source` is present, and delta targeting kicks
+in when `--affects` is present — so the driver does not need to
+coordinate between them; it just forwards both.
+
+##### Resolving each `sources` key
+
+For every key in the plan entry's `sources` list, look the key up
+in the plan's top-level `sources` map and classify the value:
+
+1. **Key absent from the top-level map** — unresolved reference. The
+   plan is internally inconsistent; this is an `Error::Config`-level
+   halt. Emit a diagnostic naming the offending `(change, key)`
+   pair, release the driver lock, exit non-zero. This should have
+   been caught earlier by `specify plan validate` via the
+   `unknown-source` diagnostic (RFC-2 Change L1.F), so reaching this
+   branch means either the plan was not validated or it was edited
+   out of band between validation and execution — either way, human
+   triage.
+2. **Value is a local filesystem path** (e.g. `/path/to/legacy`) —
+   pass through as-is. The driver does NOT stat the path or verify
+   it exists; `/spec:define` (and downstream `/spec:extract`) are
+   responsible for surfacing a missing-path error with the right
+   phase-level diagnostic.
+3. **Value is a git URL** (e.g.
+   `git@github.com:org/service.git` or `https://github.com/…`) —
+   pass through as-is. The driver does NOT clone here. Cloning is
+   `git-cloner`'s concern, invoked from inside `/spec:define`'s
+   brief pipeline when a brief needs the source tree materialized.
+   This keeps the clone cache under the phase's control and avoids
+   duplicating the clone logic in the driver.
+
+The path-vs-URL distinction is a content-level classification on
+the value string; neither `plan.schema.json` nor the plan library
+distinguishes them (both are validated as `type: string`). The
+driver emits the tuple as `--source <key>=<value>` unchanged — the
+classification matters only for the diagnostics rendered in the
+transcript (the `Source:` line under the extract sub-step reads the
+value verbatim).
+
+##### Passing `affects` through
+
+The plan entry's `affects` list is passed through as repeated
+`--affects <name>` flags in the order they appear in the plan entry.
+Define is responsible for translating each name into its
+internal delta-targeting mechanism — typically by locating
+`.specify/specs/<name>/spec.md` and preparing to emit delta specs
+under `specs/<name>/spec.md` in the current change. The driver
+does not inspect baseline specs itself; it only forwards the names.
+
+##### Fixtures
+
+Three authoring pins under [`fixtures/field-wiring/`](fixtures/field-wiring/)
+cover the three shapes:
+
+- `sources-only/` — one-entry plan with `sources: [monolith]` and
+  no `affects`. Pinned invocation: `/spec:define <name> --source
+  monolith=/path/to/legacy`.
+- `affects-only/` — one-entry plan with `affects:
+  [user-registration]` and no `sources`. Pinned invocation:
+  `/spec:define <name> --affects user-registration`.
+- `combined/` — one-entry plan declaring both `sources: [monolith]`
+  and `affects: [user-registration]`. Pinned invocation:
+  `/spec:define <name> --source monolith=/path/to/legacy
+  --affects user-registration`.
+
+Each fixture ships a `plan.yaml`, an `invocation.txt` with the
+pinned command line, and a `transcript.md` showing the rendered
+define step. These are authoring pins, not automated tests — a
+human reviewing a change to `/spec:execute`'s argument-resolution
+logic should be able to diff a new invocation rendering against
+these three.
 
 #### Subtleties
 
@@ -954,7 +1059,7 @@ safely again.
 | Invoke `/spec:define`, `/spec:build`, `/spec:merge`, or `/spec:drop` | Never in `--dry-run` (including dry-run self-heal, which is report-only); in supervised and `--loop` modes, exactly as the algorithms prescribe (define → build → merge on success paths; plus `/spec:drop` on failure / deferred, and on any writing-path self-heal reclaim of a `failure` or `deferred` outcome). |
 | Run self-heal on `in-progress` entries | Yes — §Self-heal on startup is the full contract. Five fixtures under `fixtures/self-heal/` pin the clean / done / failed / ambiguous-halt / mid-change-resume paths. Under `--dry-run` self-heal is report-only: same classification scan, no writes. |
 | Loop across changes | `--loop` iterates `specify plan next → execute change` until no eligible change remains. The driver lock is held for the entire run (not per iteration). Individual failures / deferrals do NOT halt the loop — `specify plan next` skips `failed` / `blocked` entries naturally. See §Loop mode (`--loop`). |
-| Resolve `sources` keys to paths / URLs and hand them to define | Deferred to L2.I. In L2.F / L2.H, `/spec:define` is invoked with the change name only; the plan entry's `description` and `affects` list are passed along when present, but `sources` resolution is not. |
+| Resolve `sources` keys to paths / URLs and hand them to define | Yes — §Argument resolution resolves every key in the plan entry's `sources` list against the plan's top-level `sources` map and forwards the tuples to `/spec:define` as `--source <key>=<path-or-url>`. The driver does NOT clone git URLs or stat local paths; it only forwards the values. An unresolved key halts the run with `Error::Config` (the plan is internally inconsistent — `specify plan validate` should have caught it earlier via `unknown-source`). The `affects` list travels as `--affects <name>` flags for define's delta targeting. |
 
 The state the skill mutates in this Change is:
 
@@ -1024,3 +1129,11 @@ No other on-disk state is written by `/spec:execute` itself.
   (`merged`, `dropped`) while `plan.yaml` still says `in-progress`,
   halt with exit code 1 and leave the plan entry as `in-progress`.
   A later run, after human triage, can re-enter self-heal safely.
+- Argument resolution never speculates over an unresolved `sources`
+  key. If a key on the plan entry is absent from the plan's
+  top-level `sources` map, halt with `Error::Config`, name the
+  offending `(change, key)` pair, release the lock, and exit
+  non-zero. Do NOT substitute a default, guess at a path, or drop
+  the key silently. The same rule applies whether the run is
+  `--dry-run`, supervised, or `--loop`: an internally-inconsistent
+  plan is the one thing the driver refuses to reason around.

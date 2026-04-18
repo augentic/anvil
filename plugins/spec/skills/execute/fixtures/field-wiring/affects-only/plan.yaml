@@ -1,0 +1,11 @@
+name: affects-only-initiative
+
+changes:
+  - name: user-registration
+    status: done
+
+  - name: registration-duplicate-email-crash
+    affects: [user-registration]
+    description: >
+      Duplicate email submission returns 500 instead of 409.
+    status: pending
