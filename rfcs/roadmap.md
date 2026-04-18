@@ -16,19 +16,19 @@ The CLI is the foundation everything else builds on. Migration commands, multi-r
 
 See also: [RFC-1a: Deferred Validation](rfc-1a-validation.md) — the three-way Pass/Fail/Deferred classification that lets the CLI handle structural checks while the agent evaluates semantic ones.
 
-## [RFC-2: Feature Manifests](rfc-2-manifests.md)
+## [RFC-2: Execution](rfc-2-execution.md)
 
 **Problem:** Complex initiatives — multi-feature greenfield builds, legacy migrations, platform modernisations — lack a coordination artifact. The agent rediscovers scope, ordering, and dependencies on every iteration. There's no persistent plan that tracks what's done, what's next, and what's blocked.
 
-**Solution:** A feature manifest (`manifest.yaml`) that drives the same define-build-merge loop Specify already uses, feature by feature, with dependency tracking and progressive baseline accumulation. For legacy migration, the manifest adds `source-paths` and the loop starts with `/spec:extract`. For greenfield work, it starts at `/spec:define`. The loop is the same either way. Extracted and greenfield features coexist in a single manifest.
+**Solution:** A Plan (`plan.yaml`) that drives the same define-build-merge loop Specify already uses, change by change, with dependency tracking and progressive baseline accumulation. For legacy migration, a change adds `sources` and define's extract sub-skill analyses them. For greenfield work, define starts from the description. The loop is the same either way. Extracted and greenfield changes coexist in a single plan. Layer 2 adds the `/spec:execute` driver skill (and the `/spec:plan` entry-writer skill) that automate the loop.
 
-The manifest design is ready — the loop, format, and dependency strategy are fully specified. Implementation depends on the CLI from RFC-1: the deterministic operations (`specify manifest init`, `specify manifest next`, `specify manifest status`) are natural extensions of the CLI's subcommand surface. The skill-level orchestration already works today; what's missing is the manifest-driven automation layer.
+The plan design is ready — the execution model, format, state machine, and dependency strategy are fully specified. Implementation depends on the CLI from RFC-1: the deterministic operations (`specify plan validate`, `specify plan next`, `specify plan status`, `specify plan transition`, `specify plan create`/`amend`) are natural extensions of the CLI's subcommand surface. The skill-level define → build → merge chain already works today; what's missing is the plan-driven coordination layer (Layer 1) and the `/spec:execute` / `/spec:plan` skills that automate it (Layer 2).
 
 ## [RFC-3: Multi-Repo Coordination](rfc-3-multi-repo.md)
 
 **Problem:** The `.specify/` directory is project-local. There is no concept of a spec reference that spans repositories, and conflict detection only works within a single workspace. A feature like "add OAuth login" that touches backend, frontend, and shared-types repos has no resolution layer for cross-repo spec references.
 
-**Solution:** A federation model — peer repositories declared in config, cross-repo spec references resolved by the CLI, and coordinated validation that catches contract mismatches across repo boundaries. Feature manifests (RFC-2) provide the coordination layer for multi-repo initiatives; federation provides the resolution and validation layer that makes cross-repo references work.
+**Solution:** A federation model — peer repositories declared in config, cross-repo spec references resolved by the CLI, and coordinated validation that catches contract mismatches across repo boundaries. Plans (RFC-2) provide the coordination layer for multi-repo initiatives; federation provides the resolution and validation layer that makes cross-repo references work.
 
 ## [RFC-4: Type-Safe Skill Expression](rfc-4-dsl.md)
 
