@@ -629,22 +629,35 @@ The existing skills use `AskQuestion` for confirmations, disambiguation, and war
 
 #### Design
 
-`/spec:execute` invokes each phase skill with pre-resolved arguments that eliminate the need for interactive prompts. Each skill's interactive decision points are handled as follows:
+Most of the skills' interactive decision points are now routed through
+the `specify` CLI and resolved without needing a prompt. In
+Option-2-style phase skills, lifecycle bookkeeping (existence checks,
+`touched_specs` scanning, overlap reports, status transitions, archive
+moves, spec merge preview and conflict detection) is performed by CLI
+subcommands with CLI flags — there is nothing for `/spec:execute` to
+pre-supply at that layer. What remains are genuinely agent-judgement
+questions.
 
-| Skill | Interactive Point | `/spec:execute` Strategy |
-|---|---|---|
-| **define** | "What do you want to build?" | Pre-supplied: change `name` + `description` from plan |
-| **define** | "Change already exists — continue or restart?" | Pre-resolved: if a prior Specify change exists for this plan entry and its status is `defining`, continue; otherwise create fresh |
-| **define** | Source path confirmation (for define's extract sub-skill, when `sources` is present) | Pre-supplied by `/spec:execute` to define; define forwards it to its extract-invoking brief |
-| **define** | Overlapping `touched_specs` warning | Logged to change journal, not blocking (already informational) |
-| **build** | "Task is unclear" pause | Recorded as a question, change deferred |
-| **build** | "Design issue discovered" pause | Recorded as a question, change deferred |
-| **merge** | "Confirm change before merging" | Pre-confirmed: `/spec:execute` only calls merge after build completes |
-| **merge** | "Incomplete tasks — proceed?" | Never reached: `/spec:execute` only merges when build status is `complete` |
-| **merge** | "Baseline conflict detected" | Recorded as a question, change deferred |
-| **drop** | "Confirm before dropping" | Pre-confirmed: `/spec:execute` only drops on failure/deferral |
+| Skill   | Interactive Point                          | `/spec:execute` strategy                                                                 |
+|---------|--------------------------------------------|------------------------------------------------------------------------------------------|
+| define  | "What do you want to build?"               | Pre-supplied: change `name` + `description` from plan.                                    |
+| define  | "Change already exists — continue or restart?" | CLI flag: `specify change create --if-exists continue` (or `restart`); no prompt fires. |
+| define  | Source path confirmation (extract)          | Pre-supplied by `/spec:execute` to define; define forwards it to its extract-invoking brief. |
+| define  | Overlapping `touched_specs` warning         | `specify change overlap` returns structured JSON; non-empty results are journaled as informational, never blocking. |
+| build   | "Task is unclear" pause                     | Recorded as a question, change deferred.                                                  |
+| build   | "Design issue discovered" pause             | Recorded as a question, change deferred.                                                  |
+| merge   | Artifact / needs / task warnings            | `specify validate` + `specify task progress` return structured JSON; the driver can thresh these without prompting. |
+| merge   | Merge preview confirmation                  | `specify spec preview` reports structured operations; pre-confirmed by the driver. |
+| merge   | Baseline conflict detected                  | `specify spec conflict-check` reports structured drift; for `/spec:execute`, any non-empty result defers the change. |
+| drop    | "Confirm before dropping"                   | Pre-confirmed: `/spec:execute` only drops on failure/deferral; reason plumbed via `specify change drop --reason ...`. |
 
-Skills don't need non-interactive variants. `/spec:execute` supplies deterministic answers to every decision point that it can resolve from the plan and artifact state. When it *can't* resolve a decision (a genuine question requiring human judgement), it defers the change rather than guessing. (Extract is not a peer phase — see the §Note on extract above.)
+Skills don't need non-interactive variants. The `specify` CLI is
+non-interactive by construction; `/spec:execute` supplies deterministic
+answers via CLI flags and by reading structured JSON from each call.
+When it *can't* resolve a decision (a genuine question requiring human
+judgement — the two `build` pauses above and an unexpected merge-time
+lifecycle state), it defers the change rather than guessing. (Extract
+is not a peer phase — see the §Note on extract above.)
 
 #### Question Recording
 
@@ -1037,8 +1050,8 @@ The plan format supports multi-repo initiatives on both the source and target si
 | Source code analysis for define | Exists | `/spec:extract` (invoked inside define by a brief when change has `sources`) |
 | Capture runtime fixtures       | Exists | `wiretapper`                                 |
 | Generate replay tests          | Exists | `replay-writer`                              |
-| Define → Build → Merge chain   | Exists | `/spec:define`, `/spec:build`, `/spec:merge` |
-| Drop partial change            | Exists | `/spec:drop` (Layer 1: invoked by humans on failure/deferral; Layer 2: invoked by `/spec:execute`) |
+| Define → Build → Merge chain   | Exists | `/spec:define`, `/spec:build`, `/spec:merge` — agent-side orchestrators. All deterministic work (status transitions, `.metadata.yaml` writes, schema + pipeline resolution, spec merge preview + coherence validation, baseline drift detection, archive move) is delegated to `specify change {create, transition, touched-specs, overlap, archive, drop}`, `specify schema {resolve, pipeline}`, `specify spec {preview, conflict-check}`, `specify validate`, `specify task {progress, mark}`, and `specify merge`. |
+| Drop partial change            | Exists | `/spec:drop` → `specify change drop <name> --reason` (Layer 1: invoked by humans on failure/deferral; Layer 2: invoked by `/spec:execute`) |
 
 
 ## New Capabilities Required

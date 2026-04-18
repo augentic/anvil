@@ -114,25 +114,13 @@ I'll populate `.specify/.cache/` with the schema and invoke `specify init` to in
    - **Yes, generate baseline specs** — proceed to create the change
    - **No, skip for now** — show the greenfield output and stop (user can run `/spec:extract` manually later)
 
-   If the user chooses **yes**, create the change directory and metadata:
+   If the user chooses **yes**, create the change via the CLI:
 
    ```bash
-   mkdir -p .specify/changes/initial-baseline/specs
+   specify change create initial-baseline --format json
    ```
 
-   Write `.specify/changes/initial-baseline/.metadata.yaml`:
-
-   ```yaml
-   schema: $SCHEMA
-   status: defining
-   created_at: <current ISO-8601 timestamp>
-   defined_at: null
-   build_started_at: null
-   completed_at: null
-   touched_specs: []
-   ```
-
-   Show the **brownfield output** and stop.
+   The CLI validates the name, creates `.specify/changes/initial-baseline/specs/`, and writes the initial `.metadata.yaml` (status `defining`, `created_at` timestamp). Show the **brownfield output** and stop.
 
 **Output (greenfield — no existing codebase, or user declined extraction)**
 

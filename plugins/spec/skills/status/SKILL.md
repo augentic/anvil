@@ -59,7 +59,7 @@ Optionally specify a change name to focus on. Otherwise show an overview.
 
 5. **List archived changes** (when showing the overview, not a single change)
 
-   List directories in `.specify/changes/archive/` if any exist. If an archived directory contains `.metadata.yaml`, read its `status` and show whether it was `merged` or `dropped`.
+   List directories in `.specify/archive/` if any exist. If an archived directory contains `.metadata.yaml`, read its `status` and show whether it was `merged` or `dropped`.
 
    If baseline specs exist at `.specify/specs/`, note: "Use `/spec:verify` at any time to detect drift between code and baseline specs."
 

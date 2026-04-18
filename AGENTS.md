@@ -20,6 +20,35 @@ Humans are expected to work through stock Specify:
 
 This repository provides specialist skills and references that support that workflow.
 
+### Skill / CLI responsibility split
+
+The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`,
+`/spec:status`, `/spec:init`) are agent-driven orchestrators. Every
+deterministic operation — kebab-case name validation, `.metadata.yaml`
+reads and writes, lifecycle transitions, schema and brief-pipeline
+resolution, artifact-completion checks, spec-merge preview, baseline
+conflict detection, delta merge, coherence validation, archive move —
+runs through the `specify` CLI. The skill markdown drives the agent-side
+work: eliciting user intent, reading brief bodies, writing artifacts,
+invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering
+summaries.
+
+CLI surface the skills depend on:
+
+- `specify init` — scaffold `.specify/` and write `project.yaml`.
+- `specify status` — list active changes and per-change progress.
+- `specify change {create, list, status, transition, touched-specs, overlap, archive, drop}` — lifecycle verbs.
+- `specify schema {resolve, check, pipeline}` — schema resolution and brief topology.
+- `specify spec {preview, conflict-check}` — dry-run merge operations and baseline drift detection.
+- `specify validate` — structural + semantic artifact checks.
+- `specify task {progress, mark}` — task progress and checkbox flips.
+- `specify merge` — commit spec merge + archive.
+
+Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never
+`mv` anything into `.specify/archive/`. Route through the CLI — it
+enforces the legal set of lifecycle states and validates inputs in one
+place for humans, agents, and CI alike.
+
 ### Commands
 
 All commands are run from the repository root:
