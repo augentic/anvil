@@ -1,0 +1,15 @@
+# Snapshot of .specify/changes/user-registration/.metadata.yaml after
+# /spec:merge returns success. The driver reads `.outcome.outcome`
+# (== success) and proceeds to step 10 (transition plan entry to done
+# via `specify plan transition user-registration done`).
+
+name: user-registration
+status: merged
+created-at: 2026-04-19T10:00:00Z
+updated-at: 2026-04-19T10:31:45Z
+schema: omnia
+outcome:
+  phase: merge
+  outcome: success
+  at: 2026-04-19T10:31:45Z
+  summary: "Baseline updated: .specify/specs/user-registration/spec.md; change archived."

@@ -19,7 +19,7 @@ Core workflow orchestration for spec-driven development.
 - **explore** -- Thinking partner for ideas, investigation, and requirements
 - **status** -- Check artifact completion, task progress, and active changes
 - **extract** -- Extract Specify artifacts from existing source code
-- **execute** -- Drive an initiative through `.specify/plan.yaml` by automating define → build → merge (RFC-2 Layer 2; `--dry-run` scaffold shipped, full-run behaviour pending)
+- **execute** -- Drive an initiative through `.specify/plan.yaml` by automating define → build → merge (RFC-2 Layer 2; `--dry-run` scaffold and supervised single-change run shipped, with three outcome paths — success → `done`, failure → `failed`, deferred → `blocked` — pinned by behavioural fixtures; self-heal, `--loop`, and `sources`/`affects` wiring pending)
 
 ## Omnia (`plugins/omnia/`)
 
