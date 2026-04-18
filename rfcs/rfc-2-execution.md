@@ -585,7 +585,7 @@ impl Plan {
 
 - **Location.** One *active* plan per project at `.specify/plan.yaml`. Multiple concurrent plans are a future concern.
 - **Lifecycle.** When an initiative completes (`specify plan status` reports no eligible changes, all non-terminal entries resolved), the plan is archived to `.specify/archive/plans/<plan-name>-<YYYYMMDD>.yaml` by `specify plan archive` (see [§`specify plan archive`](#specify-plan-archive) below). Starting a new initiative while a previous `plan.yaml` still exists is *not* automatic — run `specify plan archive` first to move the current plan out of the way, then author a fresh `plan.yaml`.
-- **Bootstrapping.** Until `specify plan init` exists (see §Future Capabilities), the initial `plan.yaml` is authored by hand. `specify plan validate` is the recommended first command after authoring.
+- **Bootstrapping.** A fresh `plan.yaml` can be authored with the `/spec:plan` skill (see [§Layer 3: Plan Authoring](#layer-3-plan-authoring)) or by hand. In either case, `specify plan validate` is the recommended first command after authoring.
 - **Name identity.** The plan entry `name` becomes the Specify change name (the directory under `.specify/changes/`). Names must be unique across the entire plan, including entries with terminal statuses (`done`, `skipped`).
 - **Name format.** Same as Specify change names: kebab-case (lowercase letters, digits, hyphens).
 - **List order.** YAML list order has **no effect** on the `pending → in-progress` transition whenever a single change is eligible — `depends-on` resolution is the primary ordering signal. It is used only as a deterministic tie-break when two or more changes are simultaneously eligible (in which case `plan next` returns the first in list order). Reordering entries with an unambiguous `depends-on` graph has no observable effect.
@@ -1049,6 +1049,205 @@ Layer 2 adds one new file (`journal.yaml` per change), one new lockfile (`.speci
 
 ---
 
+## Layer 3: Plan Authoring
+
+Layer 3 adds the **`/spec:plan`** skill that produces the initial `plan.yaml` for an initiative — closing the gap left by "author by hand" in §Conventions → Bootstrapping. `/spec:plan` is the authoring counterpart to `/spec:execute`: one *writes* the Plan, the other *runs* it. Both honour the single-writer invariant by shelling out to the same `specify plan create` / `specify plan amend` CLI — no new writer of `plan.yaml` is introduced.
+
+Like the phase skills, `/spec:plan` runs a brief pipeline declared by the active `schema.yaml` (a new `pipeline.plan`). The pipeline is schema-specific — a migration authoring run for Omnia uses different slice heuristics than one for Vectis — but the artifact it produces (`.specify/plan.yaml`) is schema-invariant, so Layer 1 tooling and `/spec:execute` consume it identically.
+
+Layer 3 depends only on Layer 1 (the plan format and the `specify plan` CLI). It is independently useful without Layer 2: a plan authored by `/spec:plan` can be executed by a human via the Layer 1 CLI, by `/spec:execute` under Layer 2, or by any combination.
+
+### Authoring modes
+
+The four original authoring intents — new build, major change to an existing system, migration, system optimisation — are not separate skills; they are input-shape variants of one skill selected by `--mode`. Each maps onto combinations of `sources` (which codebases to analyse) and `affects` (which baseline capabilities to treat as pre-existing):
+
+| Mode | Original intent | Inputs | Entry shape produced |
+|---|---|---|---|
+| `greenfield` | New build from artefacts | Product briefs, design docs, requirement sketches (`--from`) | Entries with neither `sources` nor `affects`; `description` populated from artefact excerpts |
+| `change` | Major change to an existing system | Artefacts (`--from`) + path to the current codebase (`--against`) | Mix of `affects: [...]` entries (deltas) and greenfield entries for net-new capabilities; synthetic `done` stand-ins created for baseline capabilities not yet under spec governance (see §`affects` vs `depends-on` → "Targeting pre-plan baseline") |
+| `migrate` | Migration from a legacy platform | One or more legacy repos as named sources (`--source`) + optional target-shape artefacts (`--from`) | Entries with `sources: [<source-key>]` and `depends-on` edges encoding slice order (leaf-first by default) |
+| `refactor` | System optimisation | Current codebase (`--against`) + optional focus area (`--focus`) | Entries with `affects: [...]` referencing baseline (or synthetic baseline) capabilities; typically no `sources` |
+
+The mode selects the brief pipeline's prompt emphasis and the input shape the skill validates; the output format is identical across modes.
+
+### Invocation
+
+```
+/spec:plan <initiative-name> --mode <greenfield|change|migrate|refactor>
+    [--from <path>...]              # artefact files or directories
+    [--against <path>]              # existing codebase (for change/refactor)
+    [--source <key>=<path-or-url>]  # named source(s) for migrate mode
+    [--focus <area>]                # optional scoping hint for refactor mode
+    [--extend]                      # add to an existing plan.yaml instead of refusing
+    [--dry-run]                     # draft to stdout, do not write
+```
+
+Constraints:
+
+- Refuses by default if `.specify/plan.yaml` already exists. `--extend` opts into adding entries to the existing plan — the skill calls `specify plan create` for each new entry; existing entries are not touched.
+- `--dry-run` emits the proposed plan to stdout and writes nothing. Useful for reviewing the decomposition before committing.
+- `<initiative-name>` is validated as a kebab-case identifier (same rules as change names) and becomes the plan's `name` field.
+- Mode-specific argument requirements are enforced at start: `greenfield` requires at least one `--from`; `change` requires both `--from` and `--against`; `migrate` requires at least one `--source`; `refactor` requires `--against`.
+
+### Core loop
+
+```text
+  1. Parse inputs; resolve source paths; assert plan.yaml absent (or --extend).
+  2. Scaffold plan: `specify plan init <initiative-name>` writes an empty plan
+     with just `name` and (for --source arguments) the top-level `sources` map.
+  3. Run the plan brief pipeline from schema.yaml:
+      a. discovery  — read artefacts and/or analyse codebases; write
+                      .specify/plans/<name>/discovery.md
+      b. propose    — decompose into changes with dependencies, materialise a
+                      draft, iterate with the human, and call
+                      `specify plan create` per accepted slice
+  4. Run `specify plan validate` as the final gate; report findings.
+  5. Exit with a summary pointing the human at `specify plan status` and
+     `/spec:execute`.
+```
+
+Step 3(b) is the single-writer edge: `/spec:plan` never edits `plan.yaml` directly. Every entry is added via `specify plan create`, the same code path `/spec:execute` (Layer 2) and hand-authoring (Layer 1) use. The invariant established in Rule 2 of §"Phase Boundary" is preserved without a new exception.
+
+### Plan pipeline briefs
+
+A new `pipeline.plan` declaration in `schema.yaml` names the briefs the authoring skill runs. Layer 3 ships with two briefs per schema:
+
+| Brief | `needs` | `generates` | Responsibility |
+|---|---|---|---|
+| `discovery.md` | — | `.specify/plans/<name>/discovery.md` | Read `--from` artefacts; invoke `/spec:extract` (via `git-cloner` + `analyze`) on any `--source` / `--against` codebase; emit a neutral capability inventory framed by `--mode`. |
+| `propose.md` | `discovery.md` | `.specify/plans/<name>/proposal.md` and (via CLI) new entries in `plan.yaml` | Decompose the inventory into change slices with `depends-on` edges using schema-specific heuristics (e.g. "one WASM crate per change" for Omnia, "leaf-service-first for migrations"). Present the draft to the human for accept/edit/reject review; for each accepted slice, shell out to `specify plan create` with the appropriate `--sources`, `--affects`, `--depends-on`, and `--description` flags. |
+
+Two briefs (rather than four) keeps the pipeline close in shape to `build.md` / `merge.md` while still separating analysis (read-only, no plan writes) from proposal (interactive, authorised to write). Schemas that want finer granularity may split `propose.md` further without any API change; Layer 3 does not prescribe a minimum count beyond the two.
+
+An Omnia instantiation of `pipeline.plan`:
+
+| Brief | Plugin skills invoked |
+|---|---|
+| `discovery.md` | `/spec:extract` (when `--source` or `--against` is present), which in turn uses `git-cloner` and `analyze` |
+| `propose.md` | — (prompt-driven; a future `decomposer` plugin skill could be added) |
+
+Other schemas declare their own `pipeline.plan` briefs — e.g. Vectis's `propose.md` would apply Crux-specific slice heuristics (shared-core-first, per-shell-last). The skill and CLI are unchanged; only the brief bodies differ.
+
+### Working directory
+
+Authoring artefacts live under `.specify/plans/<name>/` during authoring, mirroring the `.specify/changes/<name>/` pattern:
+
+```text
+.specify/
+├── plan.yaml                       # the authored plan
+└── plans/
+    └── <initiative-name>/
+        ├── discovery.md            # from discovery brief
+        └── proposal.md             # from propose brief
+```
+
+Persisting these artefacts provides three benefits:
+
+1. **Auditability** — a human (or a later reviewer) can read *why* the plan looks the way it does, not just what it says.
+2. **Resumption** — if `/spec:plan` crashes between briefs, a restarted run with `--extend` picks up from the last completed brief by reading `.specify/plans/<name>/` rather than re-doing discovery against freshly-cloned sources.
+3. **Consistency** — the `.specify/<artifact-kind>/<name>/` layout is already used for changes; Layer 3 reuses the convention rather than inventing a new one.
+
+The cost is a second directory tree; the tree is swept by `specify plan archive` alongside `plan.yaml` (see §"Archive integration" below) and is otherwise inert between authoring runs.
+
+### CLI support
+
+One new Layer 3 CLI command:
+
+```
+specify plan init <initiative-name> [--source <key>=<path-or-url>...]
+```
+
+Writes a minimal `.specify/plan.yaml`:
+
+```yaml
+name: <initiative-name>
+sources: {}
+changes: []
+```
+
+Refuses if `.specify/plan.yaml` already exists (no `--force`; humans run `specify plan archive` first, as today). Called by step 2 of `/spec:plan`'s core loop; also usable directly by humans who prefer hand-authoring from an empty plan.
+
+This promotes `specify plan init` from Layer 1's §Future Capabilities ("deferred") into Layer 3's scaffolding primitive.
+
+### Integration with `/spec:execute`
+
+`/spec:plan` and `/spec:execute` are strictly ordered: authoring produces `plan.yaml`, execution consumes it. There is no runtime interaction between them beyond the file. Consequences:
+
+- `/spec:plan` holds no locks that `/spec:execute` observes; the `.specify/plan.lock` driver lock is only relevant to the execute side.
+- `/spec:plan` takes the per-command `flock` on `plan.yaml` during each `specify plan create` call (same as any other CLI writer), so a human concurrently running `specify plan transition` during authoring blocks briefly but does not corrupt state.
+- `/spec:execute --loop` can be started immediately after `/spec:plan` exits; no hand-off step is required beyond `specify plan validate` (which `/spec:plan` already runs as its final step).
+
+### Iteration and revision
+
+Authoring is not one-shot. The `propose.md` brief presents the draft to the human and supports three actions per slice:
+
+- **accept** — call `specify plan create` with the proposed flags
+- **edit** — adjust the slice (name, dependencies, scope) and re-present
+- **reject** — drop the slice entirely
+
+After the initial authoring run, further revisions use the existing Layer 1 primitives:
+
+- Adding a missed change: re-run `/spec:plan --extend` (reopens the propose loop against the existing plan), or call `specify plan create` by hand.
+- Editing non-status fields on an existing entry: `specify plan amend`.
+- Changing status: `specify plan transition`.
+
+Layer 3 intentionally does not introduce a `specify plan delete` — removal of a pending entry is done via `specify plan transition <name> skipped --reason ...` to preserve audit history, consistent with how failed/unwanted work is already handled.
+
+### Crash safety
+
+Because every entry write goes through `specify plan create` (atomic, synchronous), `/spec:plan` inherits Layer 1's crash semantics: on crash mid-authoring, `plan.yaml` contains exactly those entries the skill had finished writing before the crash. The intermediate artefacts under `.specify/plans/<name>/` record progress through the brief pipeline, so a restarted `/spec:plan --extend` run resumes from the last completed brief (rather than re-running discovery against freshly-cloned sources).
+
+No new lockfile is required and no new self-heal rule is needed; Layer 1's file locking plus `specify plan validate` cover Layer 3.
+
+### Archive integration
+
+When `specify plan archive` moves `.specify/plan.yaml` to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`, it also moves the `.specify/plans/<name>/` working directory (if present) to `.specify/archive/plans/<name>-<YYYYMMDD>/`, preserving the authoring trail alongside the plan it produced. This is a small extension to the existing `Plan::archive` library function.
+
+### Invariants summary (Layer 3 additions)
+
+| Invariant | Enforced by |
+|---|---|
+| `/spec:plan` never writes `plan.yaml` directly | Skill shells out to `specify plan create` / `specify plan amend` exclusively |
+| Scaffolding refuses to clobber an existing plan | `specify plan init` aborts when `.specify/plan.yaml` is present |
+| Authoring artefacts stay co-located with the plan | `specify plan archive` moves `.specify/plans/<name>/` alongside the YAML |
+| Schema-specific heuristics do not leak into the plan format | Only brief *bodies* differ across schemas; the `PlanChange` struct is unchanged |
+
+### Worked example: migration authoring
+
+A user wants to migrate a legacy Rails monolith and two peripheral services into an Omnia stack.
+
+1. **Invocation.**
+    ```bash
+    /spec:plan platform-v2 --mode migrate \
+        --source monolith=/path/to/legacy-codebase \
+        --source orders=git@github.com:org/orders-service.git \
+        --source payments=git@github.com:org/payments-service.git
+    ```
+2. **Scaffolding.** `/spec:plan` runs `specify plan init platform-v2 --source monolith=... --source orders=... --source payments=...`. `.specify/plan.yaml` now exists with the three sources and `changes: []`.
+3. **Discovery.** `discovery.md` invokes `/spec:extract` against each source (cloning the git URLs via `git-cloner`), emitting a neutral capability inventory to `.specify/plans/platform-v2/discovery.md`.
+4. **Propose.** `propose.md` decomposes the inventory into a leaf-first slice: `user-registration` (monolith) → `email-verification` (monolith) → `product-catalog` (monolith) → `shopping-cart` (orders) → `checkout-api` (payments). For each slice the brief presents the proposed entry to the human; on accept it calls `specify plan create <name> --sources <key> --depends-on <preceding> --description "..."`. The full proposal is captured in `.specify/plans/platform-v2/proposal.md`.
+5. **Validate.** `/spec:plan` runs `specify plan validate`; no errors.
+6. **Hand-off.** Output: *"Plan authored. Run `specify plan status` to review, or `/spec:execute --loop` to start executing."*
+
+The resulting `plan.yaml` is identical in shape to the sample plan in §"The Plan" — Layer 3 produced it automatically, but Layer 1/2 treat it as they would a hand-authored file.
+
+### CLI namespace note
+
+`/spec:plan` (the skill) and `specify plan` (the CLI subcommand group) share the word "plan". This parallels `/spec:define` ~ `specify change` in Layer 1, but it reads less cleanly. Renaming the `specify plan` CLI group to avoid the namespace collision is worth considering before release and is tracked as a follow-up under §Future Capabilities.
+
+### New capabilities required (Layer 3)
+
+| Capability | Type | Notes |
+|---|---|---|
+| `/spec:plan` | Skill | Plan authoring driver; runs the `pipeline.plan` brief pipeline and writes entries via `specify plan create` |
+| `pipeline.plan` in `schema.yaml` | Schema | Declares the brief pipeline for authoring (`discovery.md` and `propose.md` at minimum) |
+| Schema `plan` briefs | Schema | Per-schema authoring briefs (Omnia + Vectis at launch; future schemas ship their own) |
+| `specify plan init` | CLI | Scaffolds an empty `.specify/plan.yaml`; promoted from Layer 1's §Future Capabilities |
+| `.specify/plans/<name>/` | Schema | Working directory for authoring artefacts; archived alongside the plan by `specify plan archive` |
+| `Plan::archive` co-move | Lib | Small extension to sweep the working directory when archiving the plan |
+
+---
+
 ## Future Capabilities
 
 These are supported by the plan format but not part of the initial implementation:
@@ -1074,10 +1273,10 @@ The plan format supports multi-repo initiatives on both the source and target si
 
 | Capability | Rationale for deferral |
 | ---------- | ---------------------- |
-| `specify plan init` | Humans write better initial plans than automated structural discovery. Add when the volume of initiatives justifies the tooling. |
 | `specify plan doctor` | Extended cross-check surface beyond `validate`: `affects` ↔ `.metadata.yaml:touched_specs` agreement, prior-attempt archive presence, orphan journal files, `affects` status coherence beyond the basic warning. Deferred because the checks depend on Layer 2 behaviours. |
 | Multiple concurrent plans | Requires a path argument on every `specify plan` subcommand plus a way to pick a default. Deferred until a use case appears; today, archive-then-create is the recommended pattern. |
-| Change recommender | LLM-assisted refinement of auto-generated plans. Depends on `plan init`. |
+| Rename `specify plan` CLI namespace | `/spec:plan` (Layer 3) and `specify plan` (Layer 1) share the word "plan". Renaming the CLI group to something distinct (e.g. `specify initiative`) would eliminate the collision. Deferred because it ripples through every Layer 1 CLI reference and is cosmetic; worth revisiting before a 1.0 release. |
+| Change recommender | LLM-assisted refinement of auto-generated plans beyond what `/spec:plan --extend` already offers. Depends on `/spec:plan`. |
 | Behavioural diff | Undesigned. The existing `replay-writer` already provides fixture-backed verification for migration use cases. |
 | Cross-stack define | A mode of `/spec:define`, not a plan concern. Can be added to define independently. |
 
@@ -1126,6 +1325,19 @@ The plan format supports multi-repo initiatives on both the source and target si
 | `last_phase_outcome` field       | Schema| New field in `.specify/changes/<name>/.metadata.yaml` carrying `success`/`failure`/`deferred`; written atomically by phase skills via a new `specify change phase-outcome` subcommand |
 | `journal.yaml`                   | Schema| Structured `type: question` / `type: failure` / `type: recovery` recording per change — pure audit log, never consumed as a signalling channel |
 | `.specify/plan.lock`             | Schema| PID-level advisory lockfile preventing concurrent `/spec:execute` drivers      |
+
+
+### Layer 3 (Plan Authoring)
+
+
+| Capability                       | Type  | Notes                                                                          |
+| -------------------------------- | ----- | ------------------------------------------------------------------------------ |
+| `/spec:plan`                     | Skill | Plan authoring driver: runs the `pipeline.plan` brief pipeline and writes entries via `specify plan create`. See §"Layer 3: Plan Authoring" above. |
+| `pipeline.plan` in `schema.yaml` | Schema| Declares the authoring brief pipeline (`discovery.md` and `propose.md` at minimum) |
+| Schema `plan` briefs             | Schema| Per-schema authoring briefs (Omnia + Vectis at launch; future schemas ship their own) |
+| `specify plan init`              | CLI   | Scaffolds an empty `.specify/plan.yaml`; promoted from Layer 1's §Future Capabilities |
+| `.specify/plans/<name>/`         | Schema| Working directory for authoring artefacts; archived alongside the plan by `specify plan archive` |
+| `Plan::archive` co-move          | Lib   | Small extension to sweep `.specify/plans/<name>/` when archiving the plan      |
 
 
 ## References
