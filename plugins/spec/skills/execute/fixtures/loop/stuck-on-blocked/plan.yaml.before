@@ -1,0 +1,21 @@
+name: platform-v2
+
+sources:
+  monolith: /path/to/legacy-codebase
+
+changes:
+  - name: user-registration
+    sources: [monolith]
+    status: done
+
+  - name: email-verification
+    sources: [monolith]
+    depends-on: [user-registration]
+    status: pending
+
+  - name: registration-duplicate-email-crash
+    affects: [user-registration]
+    description: >
+      Duplicate email submission returns 500 instead of 409. Discovered
+      during earlier triage of the user-registration rollout.
+    status: pending

@@ -504,11 +504,227 @@ The halt variant is followed by `Exit 1`; the other variants fall
 through to step 4 of the supervised run. Fixture-pinned examples of
 each line live under `fixtures/self-heal/`.
 
-### `--loop` (L2.H)
+#### Dry-run variant (report-only)
 
-Out of scope for this revision. `--loop` (L2.H) reuses steps 3–13
-unchanged and wraps them in an outer iteration whose terminating
-conditions are the step-4 `all-done` / `stuck` branches.
+Under `--dry-run`, self-heal runs the same classification scan as
+above but performs **no writes**: no `specify plan transition`, no
+`specify change journal-append`, no `/spec:drop`. Instead it prints
+what the writing path *would* do, using the "Would transition"
+wording below. This aligns self-heal with the overall `--dry-run`
+contract ("no writes to `plan.yaml`, `.metadata.yaml`, or
+`journal.yaml`") — dry-run is read-only end to end.
+
+```text
+Self-heal (dry-run): no in-progress entries found.
+Self-heal (dry-run): <name> → done (if executed) — merge success from prior run
+Self-heal (dry-run): <name> → failed (if executed) — build failure: "<outcome.summary verbatim>"
+Self-heal (dry-run): <name> → blocked (if executed) — define deferred: "<outcome.summary verbatim>"
+Self-heal (dry-run): <name> — would resume <phase> (LifecycleStatus=<lifecycle>)
+Self-heal (dry-run): <name> — would halt (ambiguous outcome=<outcome> phase=<phase>, LifecycleStatus=<lifecycle>)
+```
+
+Classification rules:
+
+- Terminal-resolution lines (`done` / `failed` / `blocked`) use
+  "(if executed)" to make clear that no transition was written. The
+  trailing clause is identical to the writing-path diagnostic so a
+  human comparing the two can verify what a non-dry-run invocation
+  would print.
+- The halt line still ends the run: dry-run self-heal emits it,
+  releases the lock, and exits non-zero. It is the one place
+  `--dry-run` exits non-zero on the happy startup path — the whole
+  point of the halt is to surface ambiguity, and hiding it behind a
+  zero exit because "dry-run doesn't write anyway" would defeat
+  that purpose.
+- Mid-change resume does nothing in dry-run anyway (the writing
+  path also emits no plan transition for this case — it only appends
+  a recovery journal entry and then drops into the phase). The
+  dry-run variant reports the phase it would resume and continues
+  to step 4 without the journal append.
+
+The report-only path never appends `type: recovery` entries to
+`journal.yaml`. Recovery entries are the writing path's observable
+side-effect; dry-run has no side-effects by contract.
+
+### Loop mode (`--loop`)
+
+`--loop` wraps the supervised-run algorithm (steps 3–13 of
+§Supervised single-change run) in an outer iteration. The driver
+holds the plan lock for the **entire loop run** — not per-iteration —
+and exits only when `specify plan next` reports no eligible change,
+or on SIGINT / SIGTERM.
+
+#### Algorithm
+
+```text
+1. Resolve the project directory (walk upward from CWD looking for
+   .specify/project.yaml). Exit non-zero with a clear diagnostic if
+   no Specify project is found.
+
+2. Acquire the driver lock ONCE for the whole run:
+     specify plan lock acquire --pid <agent-session-pid>
+   On Error::DriverBusy, report which PID holds the lock and exit 1
+   without touching the plan. (See fixtures/loop/driver-busy/.)
+
+3. Self-heal (writing path, as §Self-heal on startup specifies).
+   Runs once, before the outer loop body enters its first iteration.
+   Self-heal halt here exits the loop before any iteration runs —
+   Completion classification is `halted`. Self-heal resolve paths
+   fall through into the iteration loop below.
+
+4. Iteration loop:
+     loop:
+       a. specify plan next --format json
+       b. Interpret the response:
+            - next != null                → execute the named entry
+                                            using steps 5–12 of the
+                                            supervised-run algorithm
+                                            (transition in-progress,
+                                            /spec:define, /spec:build,
+                                            /spec:merge, read phase
+                                            outcome, terminal
+                                            transition, optional drop).
+                                            On return (step 13
+                                            equivalent: terminal plan
+                                            status reached), DO NOT
+                                            release the lock. Continue
+                                            to the next iteration.
+            - reason == "in-progress"     → defence-in-depth: the
+                                            self-heal pass already
+                                            resolved or halted on
+                                            in-progress entries, so
+                                            this branch should never
+                                            fire. If it does, emit a
+                                            diagnostic, break out of
+                                            the loop, classify as
+                                            halted.
+            - reason == "all-done"        → break out of the loop.
+                                            Classification: all-done.
+            - reason == "stuck"           → break out of the loop.
+                                            Classification: stuck.
+
+5. Emit the terminal summary (see §Terminal summary) reflecting the
+   Completion classification and final per-status counts.
+
+6. Release the driver lock:
+     specify plan lock release --pid <agent-session-pid>
+   Run release on EVERY exit path — normal loop completion, self-heal
+   halt in step 3, driver-interrupted early exit (see §SIGINT /
+   SIGTERM handling), or any uncaught error after step 2. Treat
+   release as the invariant trailing edge of the run; think of steps
+   3–5 as the body of a try / finally whose finally is step 6.
+
+7. Exit code:
+     - all-done                 → exit 0.
+     - stuck                    → exit 0 (partial success; operator
+                                  triage needed but the driver did
+                                  nothing wrong).
+     - halted (self-heal)       → exit 1.
+     - driver-interrupted       → exit non-zero (e.g. 130 for SIGINT,
+                                  143 for SIGTERM, or a shell-level
+                                  equivalent the skill inherits).
+```
+
+#### Invariants
+
+- **Lock is held for the entire run.** `specify plan lock acquire`
+  runs once at step 2; `specify plan lock release` runs once at step
+  6. The per-iteration body of step 4 neither acquires nor releases
+  the lock. A second `/spec:execute` (loop or otherwise) invoked
+  while the first is still iterating is refused with
+  `Error::DriverBusy { pid }`.
+- **Self-heal runs once.** The self-heal pass in step 3 happens
+  before the first iteration. Subsequent iterations do not re-run
+  self-heal because they are not startup — there are no stranded
+  in-progress entries to reclaim after step 4's own writes.
+- **`failure` does NOT stop the loop.** An individual change that
+  returns `outcome: failure` is transitioned to `failed` inside the
+  supervised-run steps 11a–c; the driver then continues to the next
+  `specify plan next` call. `specify plan next` naturally skips
+  `failed` entries (RFC-2 §`specify plan next`), so the loop
+  advances to the next eligible sibling without extra branching.
+- **`deferred` does NOT stop the loop.** Same shape as failure with
+  `blocked` instead of `failed`. `specify plan next` skips `blocked`
+  entries for the same reason.
+- **Loop stops only when `specify plan next` reports no eligible
+  change.** Terminal classifications are `all-done` (every entry in
+  `{done, skipped}`) or `stuck` (pending / blocked / failed entries
+  remain but no pending entry has its `depends-on` satisfied).
+- **`halted` is reserved for self-heal halts.** An earlier design
+  fired `halted` on every mid-loop failure / deferral; that is
+  obsoleted by the "`specify plan next` skips blocked/failed" rule
+  above. In practice `--loop` reaches `halted` only via the
+  self-heal ambiguity branch (step 3). Documented for future
+  readers trying to reconcile RFC-2 §"Output and Observability"
+  against this algorithm.
+- **No phase-level parallelism.** The loop is sequential: at most
+  one change is `in-progress` at a time, per the single-writer
+  invariant. The loop does not fan out into concurrent phase
+  invocations.
+
+#### SIGINT / SIGTERM handling
+
+The skill runs inside an agent session; the agent process (not this
+skill directly) traps SIGINT / SIGTERM. The contract the skill
+must honour when the agent surfaces an interrupt is:
+
+```text
+1. Finish the current PHASE. Do NOT tear a /spec:define, /spec:build,
+   or /spec:merge mid-invocation — doing so can leave change
+   artifacts in a half-written state that self-heal then has to
+   reconcile. The phase itself is a cohesive unit; let it complete
+   (or fail, or defer) normally.
+
+2. Skip subsequent phases of the CURRENT change. If build has not
+   yet started when the interrupt arrives, do NOT start it; if
+   build has just finished, do NOT invoke /spec:merge. The already-
+   completed phase has stamped its outcome on disk, so self-heal on
+   the next run will either resume (success on define/build) or
+   resolve terminally (success on merge, failure, deferred).
+
+3. Leave the active change entry as in-progress. Do NOT run
+   `specify plan transition` on interrupt — the write path is
+   reserved for normal outcomes. Self-heal on the next run will
+   reclaim the entry based on .metadata.yaml.outcome.
+
+4. Release the driver lock:
+     specify plan lock release --pid <agent-session-pid>
+   Run this before exit regardless of which phase was mid-flight.
+
+5. Emit the terminal summary with Completion: driver-interrupted
+   and Next action pointing the operator at `/spec:execute --loop`
+   to resume. The summary's Progress line reflects the state as of
+   the interrupt — the active entry still shows in-progress.
+
+6. Exit non-zero.
+```
+
+Key point: the skill cannot trap signals directly (agent-side shells
+handle signal delivery), but the above is the contract the skill's
+*logic* must satisfy so that the observable on-disk state after an
+interrupt is always recoverable by self-heal on the next run.
+
+#### Fixtures
+
+Five fixtures under [`fixtures/loop/`](fixtures/loop/) pin the
+`--loop` variants:
+
+- `all-done/` — multi-change plan, every entry runs to `done`.
+  Terminal summary carries `Completion: all-done`.
+- `halted-on-self-heal-ambiguity/` — self-heal hits a contradictory
+  `.metadata.yaml` on startup and halts before the iteration loop
+  begins. Terminal summary carries `Completion: halted`.
+- `stuck-on-blocked/` — mid-run deferral turns one entry into
+  `blocked`; subsequent iterations drain the remaining eligible
+  entry; the loop exits with one `blocked` entry that no other
+  entry depends on. Terminal summary carries `Completion: stuck`.
+- `driver-busy/` — a second `/spec:execute --loop` invocation while
+  the first still holds the lock. No plan change; the fixture pins
+  the diagnostic an operator sees.
+- `driver-interrupted/` — SIGINT arrives mid-build. The build phase
+  finishes, merge is not invoked, the plan entry stays
+  `in-progress`, the lock is released, the terminal summary carries
+  `Completion: driver-interrupted`.
 
 ## Output format
 
@@ -650,6 +866,83 @@ description-level fix; real phases may recommend a different remedy
 via the journal's `context` field, but the transcript itself stays on
 this shape.
 
+### Terminal summary (`--loop` exit)
+
+At the end of every `--loop` run — success, interruption, or halt —
+`/spec:execute` emits a single terminal summary block pinned by the
+shape below. The format follows RFC-2 §"Output and Observability".
+Fixtures under [`fixtures/loop/`](fixtures/loop/) pin one example per
+`Completion:` value.
+
+```text
+## /spec:execute — <plan-name> — terminated
+
+### Final state
+Progress: done <N>, in-progress <N>, pending <N>, blocked <N>, failed <N>, skipped <N> (total <N>)
+
+Completion: <all-done | stuck | halted | driver-interrupted>
+
+Blocked:
+  - <name> (status-reason: "<verbatim status-reason>")
+  - ...
+
+Failed:
+  - <name> (status-reason: "<verbatim status-reason>")
+  - ...
+
+Pending (dependencies not satisfied):
+  - <name> (waits on: <unmet-dep-name>[, <unmet-dep-name> ...])
+  - ...
+
+Next action: <context-sensitive instruction>
+```
+
+#### Section rules
+
+- The `Progress:` line always enumerates all six statuses in the
+  fixed order `done, in-progress, pending, blocked, failed, skipped`,
+  followed by `(total <N>)`. Zeros are rendered explicitly — the
+  downstream consumer sees a stable shape.
+- `Blocked:` / `Failed:` / `Pending (dependencies not satisfied):`
+  sections are omitted entirely (including the heading) when their
+  bucket is empty. An `all-done` run therefore renders only the
+  `Final state` / `Completion` / `Next action` lines.
+- `Blocked` and `Failed` entries quote their `status-reason`
+  byte-for-byte from the plan entry. Paraphrasing is forbidden; this
+  mirrors the per-change failure/deferred transcripts.
+- `Pending (dependencies not satisfied):` lists each pending entry
+  alongside the `depends-on` entries whose status is not `done`. If a
+  pending entry has multiple unmet deps, they are comma-separated.
+  Entries whose dependencies are all `done` do not appear here — they
+  would have been eligible and the loop would still be running.
+- `in-progress` count is zero on all classifications except
+  `driver-interrupted`, where the active change is preserved as
+  `in-progress` for self-heal to reclaim on the next run.
+
+#### `Completion:` classification
+
+| Classification | Condition | Next action template |
+|---|---|---|
+| `all-done` | Every entry's status is in `{done, skipped}`. | `Initiative complete — no further action needed.` |
+| `stuck` | Some entries remain in `{pending, blocked, failed}` but none are eligible (pending entries have unmet deps; no eligible sibling exists). | `Resolve blocked/failed entries (specify plan amend + specify plan transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify plan archive --force.` |
+| `halted` | Self-heal detected an ambiguous on-disk state on startup (step 3 of the loop algorithm) and refused to speculate. Individual mid-loop failures or deferrals do NOT reach `halted`; `specify plan next` skips `blocked`/`failed` and the loop continues. | `Manually triage the halted change: inspect .specify/changes/<name>/.metadata.yaml against plan.yaml, repair the contradiction, then re-run /spec:execute --loop.` |
+| `driver-interrupted` | SIGINT or SIGTERM arrived mid-run. The current phase finished (or no phase was in flight), subsequent phases were skipped, the active plan entry is still `in-progress`, the lock was released. | `Re-run /spec:execute --loop — self-heal will reclaim the interrupted change on the next startup.` |
+
+The distinction between `stuck` and `halted` matters for operator
+routing: `stuck` means the plan is well-formed but needs human-level
+scope/priority decisions; `halted` means the on-disk state itself is
+inconsistent and needs forensic triage before the loop can run
+safely again.
+
+#### Exit codes
+
+| Classification | Exit code |
+|---|---|
+| `all-done` | 0 |
+| `stuck` | 0 (driver did nothing wrong; partial completion is observable via the plan) |
+| `halted` | 1 |
+| `driver-interrupted` | non-zero (typically 130 for SIGINT, 143 for SIGTERM, inherited from the host shell's signal conventions) |
+
 ## What this skill does NOT do (in this Change)
 
 | Surface | Status |
@@ -658,10 +951,10 @@ this shape.
 | Write `.specify/plan.yaml` *status* (`transition`) | Only via `specify plan transition`, at exactly three points in a supervised run: `pending → in-progress` before step 6, and the terminal `in-progress → {done, failed, blocked}` in steps 10/11/12. |
 | Write `.specify/changes/<name>/.metadata.yaml` (including the `outcome` field) | Never — that is the phase skills' concern via `specify change phase-outcome`. |
 | Write `.specify/changes/<name>/journal.yaml` | Only via `specify change journal-append <name> <phase> recovery …` inside the §Self-heal on startup step — exactly one entry per reclaimed or resumed in-progress entry. Phases own the `type: question` / `type: failure` entries and the driver never touches those. |
-| Invoke `/spec:define`, `/spec:build`, `/spec:merge`, or `/spec:drop` | Never in `--dry-run`; in supervised mode, exactly as the algorithm above prescribes (define → build → merge on success paths; plus `/spec:drop` on failure / deferred, and on any self-heal reclaim of a `failure` or `deferred` outcome). |
-| Run self-heal on `in-progress` entries | Yes — §Self-heal on startup is the full contract. Four/five fixtures under `fixtures/self-heal/` pin the clean / done / failed / ambiguous-halt / mid-change-resume paths. |
-| Loop across changes | `--loop` lands in L2.H. |
-| Resolve `sources` keys to paths / URLs and hand them to define | Deferred to L2.I. In L2.F, `/spec:define` is invoked with the change name only; the plan entry's `description` and `affects` list are passed along when present, but `sources` resolution is not. |
+| Invoke `/spec:define`, `/spec:build`, `/spec:merge`, or `/spec:drop` | Never in `--dry-run` (including dry-run self-heal, which is report-only); in supervised and `--loop` modes, exactly as the algorithms prescribe (define → build → merge on success paths; plus `/spec:drop` on failure / deferred, and on any writing-path self-heal reclaim of a `failure` or `deferred` outcome). |
+| Run self-heal on `in-progress` entries | Yes — §Self-heal on startup is the full contract. Five fixtures under `fixtures/self-heal/` pin the clean / done / failed / ambiguous-halt / mid-change-resume paths. Under `--dry-run` self-heal is report-only: same classification scan, no writes. |
+| Loop across changes | `--loop` iterates `specify plan next → execute change` until no eligible change remains. The driver lock is held for the entire run (not per iteration). Individual failures / deferrals do NOT halt the loop — `specify plan next` skips `failed` / `blocked` entries naturally. See §Loop mode (`--loop`). |
+| Resolve `sources` keys to paths / URLs and hand them to define | Deferred to L2.I. In L2.F / L2.H, `/spec:define` is invoked with the change name only; the plan entry's `description` and `affects` list are passed along when present, but `sources` resolution is not. |
 
 The state the skill mutates in this Change is:
 
@@ -692,10 +985,21 @@ No other on-disk state is written by `/spec:execute` itself.
   keys, unknown `reason`) as a hard failure: print the raw JSON,
   release the lock, and exit non-zero. Do not speculate.
 - For `--dry-run` specifically: the skill MUST NOT invoke any phase
-  skill, MUST NOT shell out to `specify plan transition`, and MUST
-  prefix every line of its rendered output with `[dry-run] ` in the
-  first-line banner (the progress / next blocks do not need a
-  per-line prefix — the banner is enough).
+  skill, MUST NOT shell out to `specify plan transition`, MUST NOT
+  shell out to `specify change journal-append`, and MUST NOT invoke
+  `/spec:drop`. This prohibition extends to the self-heal step:
+  dry-run self-heal is report-only (§Self-heal on startup → §Dry-run
+  variant). The first-line banner prefixes the rendered output with
+  `[dry-run] ` (the progress / next blocks do not need a per-line
+  prefix — the banner is enough).
+- For `--loop` specifically: the driver lock is acquired ONCE at run
+  start and released ONCE at run end; never per iteration. Individual
+  change outcomes (success, failure, deferred) are handled by the
+  supervised-run steps inside the iteration body; they do not short-
+  circuit the outer loop. The loop exits only on `specify plan next`
+  reporting no eligible change, self-heal halt on startup, or SIGINT
+  / SIGTERM. On any exit path, the terminal summary (§Terminal
+  summary) is emitted before the lock is released.
 - For the supervised single-change run: the string passed to
   `specify plan transition <name> {failed,blocked} --reason "…"` is
   always `outcome.summary` from the phase's `.metadata.yaml`, copied
