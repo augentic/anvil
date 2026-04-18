@@ -12,66 +12,35 @@ This RFC is structured in three layers. **Layer 1** (the MVP) delivers the plan 
 
 ![Specify Framework execution model](assets/specify-framework.png)
 
-Specify at runtime is a three-phase loop (**define → build → merge**) driven by the `/spec:execute` skill over a long-lived **Plan** (`plan.yaml`). Per change, `/spec:execute` performs `get next change`, invokes the three phase skills in sequence, and updates `status` on the currently-active change entry. Each phase runs a *brief pipeline* declared by the active `schema.yaml`, and each brief delegates to one or more plugin skills. When a phase needs to add or modify change *entries* in the Plan, it shells out to `specify plan create` / `specify plan amend` — the same CLI commands a human would run in Layer 1. Both paths funnel into the same library entrypoints (`Plan::create`, `Plan::amend`), so the single-writer-of-entries property holds across layers.
+Specify at runtime is a three-phase loop (**define → build → merge**) driven by the `/spec:execute` skill over a long-lived **Plan** (`plan.yaml`). Per change, `/spec:execute` performs `get next change`, invokes the three phase skills in sequence, and updates `status` on the currently-active change entry. Each phase runs a *brief pipeline* declared by the active `schema.yaml`, and each brief delegates to one or more plugin skills.
 
-The diagram above is schema-agnostic: the `<briefs>` stacks and `<skills>` stacks inside each phase box are placeholders that a schema fills in. A concrete instantiation for the Omnia schema is shown in the table further down this section. Swapping the schema swaps the brief set, which swaps the plugin skill delegations inside each phase box; the surrounding structure is invariant.
+The diagram is schema-agnostic: the `<briefs>` and `<skills>` stacks inside each phase box are placeholders that a schema fills in. Swapping the schema swaps the brief set and the plugin skills they delegate to; the surrounding structure — Plan, driver, phase skills, CLI — is invariant.
 
-The diagram applies to both layers of this RFC. In Layer 1 a human plays the `execute` role and the `create/amend` role by running `/spec:define`, `/spec:build`, `/spec:merge`, `specify plan transition`, and (when a new entry is needed) `specify plan create`/`specify plan amend` directly. In Layer 2, `/spec:execute` performs the same loop automatically, and phase skills invoke the same `specify plan create` / `specify plan amend` CLI commands mid-run when they need to add or modify entries — there is no intermediate plan-mutation skill, just a CLI call like any other deterministic Specify operation. The `create/amend` box on the diagram resolves to the CLI in both layers. RFC-2's trajectory is toward full automation with manual fallback preserved.
+The diagram applies to Layers 1 and 2. In Layer 1 a human plays the `execute` role; in Layer 2, `/spec:execute` performs the same loop automatically. In both, plan *entry* writes go through `specify plan create` / `specify plan amend` (humans run the CLI in Layer 1, phase skills shell out to the same CLI in Layer 2) and plan *status* writes go through `specify plan transition`. No other code path writes `plan.yaml`. Layer 3 (`/spec:plan`) produces an initial plan and is covered separately.
 
-Phase outcomes (`success`/`failure`/`deferred`) are implicit in the return path of the `execute change` edge and are not drawn; their on-disk transport (a `last_phase_outcome` field in the change's `.metadata.yaml`) is specified in [§Phase Outcome Contract](#phase-outcome-contract). `create/amend` is a CLI invocation made by phases during a phase run (or by humans in Layer 1) and carries no outcome. Artifact flow between phases (define's outputs → build's inputs → merge's inputs) is a separate concern, covered in [§Context Threading](#context-threading).
+Phase outcomes (`success`/`failure`/`deferred`) travel on disk via a `last_phase_outcome` field in the change's `.metadata.yaml`; see [§Phase Outcome Contract](#phase-outcome-contract). Artifact flow between phases (define's outputs → build's inputs → merge's inputs) is covered in [§Context Threading](#context-threading).
 
-### The six moving parts
+### Diagram labels → skills and CLI
 
-- **Plan (`plan.yaml`).** The ordered, dependency-aware list of changes with status. Specified in full in §"The Plan" below. The Plan is the only artifact that persists across changes.
-- **Driver skill (`/spec:execute`).** Reads the Plan, selects the next eligible change, invokes the three phase skills in sequence, and updates `status` on the currently-active change entry via `specify plan transition`. Specified in full in §"Layer 2: Automated Execution" below. Does not create or amend change *entries* — that is done by phases (which shell out to `specify plan create` / `specify plan amend`) or by humans running the same CLI commands.
-- **Plan-mutation CLI (`specify plan create` / `specify plan amend`).** The commands phases invoke during a phase run when they need to add or modify change entries (for example, when define discovers a neighbouring defect). The same commands humans run in Layer 1. There is no wrapping skill; plan mutation is a deterministic CLI operation like every other Specify bookkeeping call.
-- **Drop skill (`/spec:drop`).** A peer control-plane skill, invoked by `/spec:execute` on `failure` or `deferred` to clean up partial artifacts for the currently-active change. It is not on the framework diagram (see §"Diagram label → skill/CLI counterpart"), not a phase skill, not a brief, and not invoked by phases directly.
-- **Phase skills (`/spec:define`, `/spec:build`, `/spec:merge`).** Each phase loads the brief pipeline named by the active `schema.yaml` (see [RFC-1](rfc-1-cli.md) §`brief.rs` and `PipelineView`) and runs every brief in declared order, honouring each brief's `needs` dependencies.
-- **Briefs and plugin skills.** A brief is a markdown file with YAML frontmatter (`id`, `needs`, `generates`, `tracks`) that configures one step of a phase. A brief's body is instructions for the agent — typically "invoke these plugin skills in this order." For example, the Omnia `build.md` brief delegates to `guest-writer`, `crate-writer`, `test-writer`, and `code-reviewer`; the Vectis `build.md` brief delegates to the equivalent Vectis writers and reviewers. The driver skill, drop skill, phase skills, and plan-mutation CLI are unchanged across schemas.
+| Diagram label     | Skill                                          | CLI                                                                           |
+| ----------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| `get next change` | —                                              | `specify plan next`                                                           |
+| `execute`         | `/spec:execute`                                | — (Layer 1 humans run the phase skills manually)                              |
+| `execute change`  | `/spec:define` → `/spec:build` → `/spec:merge` | —                                                                             |
+| `create/amend`    | — (phases shell out to the CLI)                | `specify plan create`, `specify plan amend`; `specify plan transition` for status updates |
+| Phase boxes       | `/spec:define`, `/spec:build`, `/spec:merge`   | —                                                                             |
+| `schema.yaml`     | —                                              | — (read by phase skills at load time)                                         |
+| (not drawn)       | `/spec:drop`                                   | — (invoked by humans in Layer 1, by `/spec:execute` in Layer 2)               |
 
-### Instantiating the diagram (Omnia example)
-
-Inside each phase box, the `<briefs>` stack represents the briefs that make up that phase's brief pipeline and the `<skills>` stack represents the plugin skills those briefs delegate to. For the Omnia schema these resolve as:
+Briefs and plugin skills are schema-provided. The Omnia schema's instantiation:
 
 | Phase | Briefs (pipeline) | Plugin skills invoked by the briefs |
 |---|---|---|
-| define | `proposal.md`, `specs.md`, `design.md`, `tasks.md` | `/spec:extract` (when `sources` present; invoked from `proposal.md` / `specs.md`, which in turn uses `git-cloner` and `analyze`) |
+| define | `proposal.md`, `specs.md`, `design.md`, `tasks.md` | `/spec:extract` (when `sources` present; uses `git-cloner` and `analyze`) |
 | build | `build.md` | `/omnia:guest-writer`, `/omnia:crate-writer`, `/omnia:test-writer`, `/omnia:code-reviewer` |
-| merge | `merge.md` | — (no plugin skills; the brief body drives git operations directly) |
+| merge | `merge.md` | — (brief body drives git operations directly) |
 
-Omnia's `pipeline.define` has four briefs, while `pipeline.build` and `pipeline.merge` each have a single brief. The same document name can appear both as a brief (under `schemas/<name>/briefs/`) and as an artifact (under `.specify/changes/<name>/`) — the brief's `generates` frontmatter names the artifact it produces.
-
-The dashed `schema.yaml` arrows on the diagram are the binding that tells each phase skill which briefs (and, transitively, which plugin skills) to load. Swapping the schema is how the same diagram instantiates a different stack — Omnia today, Vectis or any future schema tomorrow — while the Plan and the skills around it are invariant.
-
-> **Note on extract.** Extraction is not a fourth phase. It is work done inside the define phase — in the Omnia instantiation above it appears as the `git-cloner` and `analyze` plugin skills invoked by the define briefs (via `/spec:extract`) when the plan entry has `sources`. On the schema-agnostic diagram this is simply one of the `<skills>` invoked within define.
-
-#### Diagram label → skill/CLI counterpart
-
-Each diagram label has an explicit skill and/or CLI counterpart:
-
-| Diagram label     | Skill counterpart                              | CLI counterpart                                                                                                    |
-| ----------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `get next change` | (argument to `/spec:execute`)                  | `specify plan next`                                                                                                |
-| `execute`         | `/spec:execute`                                | — (Layer 1 humans run the phase skills manually)                                                                   |
-| `execute change`  | `/spec:define` → `/spec:build` → `/spec:merge` | —                                                                                                                  |
-| `create/amend`    | — (phases shell out to the CLI)                | `specify plan create`, `specify plan amend` (invoked by humans in Layer 1 and by phase skills in Layer 2; `specify plan transition` for state updates on the current entry) |
-| Phase boxes       | `/spec:define`, `/spec:build`, `/spec:merge`   | —                                                                                                                  |
-| `schema.yaml`     | —                                              | — (read by phase skills at load time)                                                                              |
-| (not drawn)       | `/spec:drop`                                   | — (Layer 1: invoked by humans on failure/deferral; Layer 2: invoked by `/spec:execute`)                            |
-
-### Data flow
-
-The Plan flows downward (from the Plan box into the Workflow box on the framework diagram): `/spec:execute` reads it (dashed `get next change` arrow on the diagram), picks a change, and runs define → build → merge in turn. Each phase reads the artifacts of the previous phase and writes new artifacts into `.specify/changes/<name>/` according to its briefs' `generates` globs.
-
-The Plan also flows upward (from the Workflow box back into the Plan box, via the `create/amend` arrow on the diagram). In both layers this goes through the same CLI commands: any phase that needs to add a new change entry or amend an existing one shells out to `specify plan create` / `specify plan amend`, and the CLI writes `plan.yaml` synchronously. In Layer 1 the same commands are run by a human. Both paths funnel into the same `Plan::create` / `Plan::amend` library functions, so the single-writer-of-entries property is enforced at the library layer regardless of who calls it. State updates on the currently-active change entry (e.g. `in-progress → done`) are performed by `/spec:execute` (Layer 2) or by a human (Layer 1) via `specify plan transition`. No other code path writes `plan.yaml`. The `registration-duplicate-email-crash` entry elsewhere in this RFC is an example of a phase-invoked `specify plan create` call that adds a new entry; see [§Worked Example](#worked-example-phase-invoked-plan-mutation) for the end-to-end trace.
-
-### Why this matters for the RFC
-
-Three invariants implied by the diagram remove ambiguity before implementation:
-
-1. **`/spec:execute`'s contract is with phases, not briefs.** It supplies arguments to `/spec:define`, `/spec:build`, and `/spec:merge` — not to individual briefs or plugin skills. Decisions inside a brief (e.g. which plugin skill to re-enter during a repair loop) are the phase's problem.
-2. **Phases own their verify-repair loops; only phase-level outcomes cross the phase boundary.** A brief-level failure (for instance a failed `cargo test` inside the Omnia `build.md` verify-repair loop) does not surface to `/spec:execute` until the phase skill has exhausted its own repair budget. `/spec:execute` sees exactly one of `success`, `failure`, or `deferred` per phase invocation, with the phase responsible for summarising what went wrong.
-3. **Entry writes go through one library entrypoint; state writes go through another.** Change *entries* are added or amended via `Plan::create` / `Plan::amend` — surfaced as `specify plan create` / `specify plan amend` on the CLI. Humans run the CLI in Layer 1; phase skills shell out to the same CLI in Layer 2. `status` updates on the currently-active entry are made via `Plan::transition` — surfaced as `specify plan transition` and used by humans (Layer 1) and `/spec:execute` (Layer 2). The single-writer property of `plan.yaml` is enforced at the library layer, not by a propose/apply discipline, and applies equally to Layer 1 and Layer 2.
+> **Note on extract.** Extraction is not a fourth phase; it is work done inside define by a plugin skill when the plan entry has `sources`.
 
 ## Motivation
 
@@ -228,22 +197,18 @@ The plan tracks coarse outcome; the Specify change tracks internal lifecycle (th
 | Plan status | Specify change state |
 | ----------- | -------------------- |
 | `pending` / `skipped` | No Specify change on disk |
-| `blocked` / `failed` | No *active* Specify change — prior attempts (if any) live under `.specify/changes/archive/<name>-<timestamp>/` and are consulted on retry (see [§Prior-attempt context on retry](#failure-and-resumption)) |
+| `blocked` / `failed` | No *active* Specify change — prior attempts (if any) live under `.specify/changes/archive/<name>-<timestamp>/` for human review |
 | `in-progress` | Change exists — `LifecycleStatus` ∈ {`defining`, `defined`, `building`, `complete`} |
 | `done` | Change reached `merged` and was archived |
 
 #### `affects` vs `depends-on`
 
 - **`depends-on`** — ordering constraint. "Don't start this until those are `done`." Consumed by `specify plan next`.
-- **`affects`** — impact annotation. "This change modifies behaviour defined by those changes." In the MVP, `affects` is parsed, validated (targets must exist as plan entries), and reported by `specify plan status` for impact visibility. Wiring `affects` into the define step as automatic delta-target resolution is a Layer 2 capability.
+- **`affects`** — impact annotation. "This change modifies behaviour defined by those changes." In the MVP, `affects` is parsed, validated (targets must exist as plan entries), and reported by `specify plan status`. Wiring `affects` into the define step as automatic delta-target resolution is a Layer 2 capability.
 
-**Scope.** `affects` targets are *plan entries* only — names that appear elsewhere in `changes`. Baseline capabilities that were merged by a prior plan (or never went through a plan at all) cannot be referenced from `affects` in this RFC; delta targeting against baseline-only capabilities is a future capability. `specify plan validate` enforces this: an `affects` target that does not resolve to a plan entry is a hard error.
+**Scope.** `affects` targets must resolve to entries in `changes`. Delta targeting against baseline capabilities that predate the current plan is deferred (see §Future Capabilities).
 
-**Targeting pre-plan baseline (workaround).** If an initiative needs to modify a baseline capability that predates the current plan, add a synthetic `status: done` entry to `changes` with the capability's name, then reference it from `affects`. The entry stands in for the external baseline; because it never transitions out of `done` it never triggers selection by `plan next`. This pattern is advisory only — there is no schema flag distinguishing synthetic-baseline entries from real ones, and `specify plan validate` does not warn on orphan-change-dir for `done` entries (see [§`specify plan validate`](#specify-plan-validate)).
-
-**Status of `affects` targets.** `specify plan validate` emits a *warning* (not an error) when an `affects` entry points at a target whose status is anything other than `done` or `in-progress`. Targeting a `skipped`, `failed`, `blocked`, or `pending` entry is semantically odd — the referenced behaviour isn't in the baseline yet — but the annotation is allowed because authors often draft plans top-down. The warning exists so reviewers can triage the intent.
-
-**Relationship to `.metadata.yaml:touched_specs`.** `affects` is a plan-level impact annotation; `touched_specs` is a per-change metadata field populated by define based on which baseline specs the generated artifacts actually edit. The two are related but not automatically synchronised in MVP — define is not required to seed `touched_specs` from `affects`, and `specify plan validate` does not cross-check them. Automatic seeding is a Layer 2 / Future concern.
+**Relationship to `.metadata.yaml:touched_specs`.** `affects` is a plan-level impact annotation; `touched_specs` is a per-change metadata field populated by define. The two are not automatically cross-checked in MVP; automatic seeding is a Layer 2 / Future concern.
 
 #### Fields
 
@@ -348,21 +313,17 @@ Structural validation of `plan.yaml`. This command is the CLI surface over `Plan
 - **Referential integrity** — every `depends-on` target, every `affects` target, and every `sources` key must reference an existing entry
 - **Status values** — every `status` must be a valid state machine value
 - **Single in-progress** — at most one change may have status `in-progress`
-- **Plan-to-change consistency** — any `in-progress` entry must have a corresponding `.specify/changes/<name>/` directory; report orphaned changes (directories without plan entries) as warnings. Skipped automatically when `validate` is run without access to the workspace changes directory (e.g. schema-only checks in CI).
+- **Plan-to-change consistency** — any `in-progress` entry must have a corresponding `.specify/changes/<name>/` directory; report orphaned changes (directories without plan entries) as warnings. Skipped automatically when `validate` is run without access to the workspace changes directory.
 
-**Not validated by MVP** (deliberately left out of Layer 1 to prevent scope creep in build):
+**Not validated by MVP:**
 
-- Whether `affects` targets are `done` or later — `affects` is an annotation, not an ordering constraint, and is purely informational at MVP.
-- Whether `sources` keys resolve to reachable paths — path resolution is a Layer 2 concern (source-aware execution).
-- Whether `affects` annotations agree with `.metadata.yaml:touched_specs` — see §`affects` vs `depends-on`.
-- Reconciling `done`/`failed`/`skipped`/`blocked` entries against their change directories. Only `in-progress` entries are reconciled; `done` entries with missing directories are not an error (they should be archived under `.specify/changes/archive/`).
+- Whether `sources` keys resolve to reachable paths (Layer 2 concern).
+- Whether `affects` annotations agree with `.metadata.yaml:touched_specs` (Layer 2 concern).
+- `done`/`failed`/`skipped`/`blocked` entries against their change directories; only `in-progress` is reconciled.
 
-**Output.** Human-readable text by default; structured JSON with `--format json`. The JSON shape is a flat array of `{level: "error"|"warning", code: "...", message: "...", entry: "..."?}` records. The `code` vocabulary (`duplicate-name`, `cycle`, `unknown-dep`, `unknown-affects`, `affects-status`, `unknown-source`, `invalid-status`, `multiple-in-progress`, `missing-change-dir`, `orphan-change-dir`) is stable and machine-consumable.
+**Output.** Human-readable text. A stable JSON output format (and a published `plan-validate-output.schema.json`) is deferred until a CI consumer materialises.
 
-**Plan schema.** Two JSON Schemas are published alongside the CLI release and kept versioned in-tree under `schemas/plan/`:
-
-1. `plan.schema.json` — the schema for `.specify/plan.yaml` itself, for editor integration (`# yaml-language-server: $schema=...` header) and author-time validation.
-2. `plan-validate-output.schema.json` — the schema for the `--format json` output above, for CI and dashboard consumers.
+**Plan schema.** A `plan.schema.json` for `.specify/plan.yaml` is published under `schemas/plan/` for editor integration (`# yaml-language-server: $schema=...`) and author-time validation.
 
 #### `specify plan next`
 
@@ -382,9 +343,9 @@ Initiative progress report:
 - Impact report: which `done` changes are referenced by `affects` entries still pending
 - Display in dependency order (topological sort), not list order
 
-**Cycle handling.** `specify plan status` is a diagnostic tool and must work even when `specify plan validate` reports a cycle. When the `depends-on` graph is cyclic, `status` falls back to list order, adds a prominent banner at the top (`⚠ plan has a dependency cycle — running in list order; run \`specify plan validate\` to see which entries are involved`), and includes the offending entry names in the JSON output under `cycle: [<name>, ...]`. Any other structural error short-circuits with a clear pointer to `validate`.
+**Cycle handling.** `specify plan status` is a diagnostic tool and must work even when `specify plan validate` reports a cycle. When the `depends-on` graph is cyclic, `status` falls back to list order and prints a banner pointing at `specify plan validate` for detail. Any other structural error short-circuits with a clear pointer to `validate`.
 
-**Output.** Human-readable text by default; structured JSON with `--format json`. The JSON shape mirrors the sections above so CI and dashboards can consume it without parsing prose.
+**Output.** Human-readable text. A structured output format is deferred until a CI consumer materialises.
 
 #### `specify plan create` and `specify plan amend`
 
@@ -591,12 +552,8 @@ impl Plan {
 - **List order.** YAML list order has **no effect** on the `pending → in-progress` transition whenever a single change is eligible — `depends-on` resolution is the primary ordering signal. It is used only as a deterministic tie-break when two or more changes are simultaneously eligible (in which case `plan next` returns the first in list order). Reordering entries with an unambiguous `depends-on` graph has no observable effect.
 - **Adding changes mid-initiative.** Run `specify plan create` / `specify plan amend` — the same CLI commands in both layers. Layer 1 humans invoke them directly; Layer 2 phase skills shell out to them mid-run. No other code path writes change *entries* to the plan.
 - **Initiative completion.** The initiative is complete when no eligible changes remain. `specify plan status` reports whether this means "all done" or "remaining changes are blocked/failed."
-- **Plan-to-change linkage and transient states.** `specify plan validate` checks that `in-progress` entries have corresponding `.specify/changes/<name>/` directories and reports orphaned change directories (present on disk but absent from the plan) as warnings. Three transient states where an `in-progress` entry legitimately has no active change directory are expected:
-  1. **Start-of-phase window.** `/spec:execute` transitions `pending → in-progress` *before* invoking `/spec:define`, so there is a brief interval before define creates the change directory where validate would see a mismatch. This is a warning, not an error.
-  2. **Pre-define crash window.** `/spec:execute` crashed after transitioning `pending → in-progress` but before `/spec:define` produced any artifacts. There is no archive and no live change directory. See [§Plan Mutation and Crash Safety](#plan-mutation-and-crash-safety).
-  3. **Post-phase crash window.** `/spec:execute` crashed between `/spec:drop` (or `/spec:merge`) and the follow-up `specify plan transition`. See [§Plan Mutation and Crash Safety](#plan-mutation-and-crash-safety) for self-heal semantics.
-- **Concurrent access — write-level locking.** `specify plan create`, `specify plan amend`, and `specify plan transition` acquire an exclusive advisory file lock (`flock`) on `plan.yaml` for the duration of the read-modify-write. The lock is process-scoped: a human running `specify plan transition` while `/spec:execute --loop` holds the lock will block until the driver's current write completes (and vice versa). Lock contention is never silent — commands that cannot acquire the lock within a short timeout fail with `Error::PlanLocked` and exit non-zero. **Note:** `flock` semantics are unreliable on network filesystems (NFS, SMB); Specify workspaces are expected to live on a local filesystem, and this RFC does not attempt to defend against cross-host concurrency.
-- **Concurrent access — driver-level locking.** `/spec:execute` (any mode, including `--dry-run`) acquires an exclusive advisory lock on `.specify/plan.lock` held for its entire lifetime. A second `/spec:execute` invocation refuses to start with `Error::DriverBusy`, naming the PID of the running driver. This prevents two drivers from simultaneously selecting "next eligible" against the same plan and racing on transitions — a hazard that per-command `flock` does not cover. The lockfile is removed cleanly on normal exit; stale locks (held by a dead PID) are detected on startup and reclaimed.
+- **Plan-to-change linkage.** `specify plan validate` checks that `in-progress` entries have corresponding `.specify/changes/<name>/` directories and reports orphaned change directories (present on disk but absent from the plan) as warnings. An `in-progress` entry may briefly have no change directory during phase start-up or crash recovery; this is a warning, not an error.
+- **Atomic writes.** `specify plan create`, `specify plan amend`, and `specify plan transition` write `plan.yaml` atomically (temp file + rename) so readers never observe a partial file. Cross-process locking is a Layer 2 concern — see [§Driver Concurrency](#driver-concurrency) under Layer 2.
 
 ---
 
@@ -606,19 +563,17 @@ Layer 2 adds the **`/spec:execute`** driver skill that automates the human-drive
 
 `/spec:execute` is the first skill that programmatically invokes other skills. All existing skills (extract, define, build, merge, drop) remain unchanged; `/spec:execute` invokes the phase skills with arguments and interprets their outputs. Its contract is with the **phase skills** (`/spec:define`, `/spec:build`, `/spec:merge`) — not with the briefs inside each phase's pipeline or the plugin skills those briefs delegate to. See §"Execution Model Overview" above for the full skill layering.
 
-### Invariants summary
+### Invariants
 
-The invariants below restate the rules from §"Why this matters" and §"Phase Boundary" in one table, showing which skill owns each.
-
-| Invariant | Enforced by | Source |
-|---|---|---|
-| Driver contracts with phases, not briefs | `/spec:execute` only invokes `/spec:define`, `/spec:build`, `/spec:merge` | Rule 1 |
-| Phases own verify-repair loops | Phase skills exhaust their repair budget before returning | Rule 1 |
-| Exactly one of `success`/`failure`/`deferred` per phase | Phase output contract (phase writes `last_phase_outcome` into the change's `.metadata.yaml` before returning; see [§Phase Outcome Contract](#phase-outcome-contract)) | Rule 1 |
-| Change *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify plan create` / `specify plan amend`; both callers funnel into the same library functions | Rule 2 |
-| Change *status* updates written only via `Plan::transition` | `/spec:execute` (Layer 2) or humans (Layer 1) run `specify plan transition` | Rule 2 |
-| Single `in-progress` at a time | `plan next` / `plan validate` | §Status State Machine |
-| Single `/spec:execute` driver at a time | `.specify/plan.lock` advisory lock | §Conventions |
+| Invariant | Enforced by |
+|---|---|
+| Driver contracts with phases, not briefs | `/spec:execute` only invokes `/spec:define`, `/spec:build`, `/spec:merge` |
+| Phases own verify-repair loops | Phase skills exhaust their repair budget before returning |
+| Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `last_phase_outcome` into `.metadata.yaml` before returning (see [§Phase Outcome Contract](#phase-outcome-contract)) |
+| Change *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify plan create` / `specify plan amend` |
+| Change *status* updates written only via `Plan::transition` | `/spec:execute` (Layer 2) or humans (Layer 1) run `specify plan transition` |
+| Single `in-progress` at a time | `plan next` / `plan validate` |
+| Single `/spec:execute` driver at a time | `.specify/plan.lock` advisory lock (see [§Driver Concurrency](#driver-concurrency)) |
 
 ### Invocation
 
@@ -631,6 +586,10 @@ The invariants below restate the rules from §"Why this matters" and §"Phase Bo
 - `--dry-run`: show what would run next without executing
 
 The plan path is fixed at `.specify/plan.yaml` (see §Conventions → Location). Multi-plan support is a future capability and would add an optional path argument at that time.
+
+### Driver Concurrency
+
+`/spec:execute` (any mode, including `--dry-run`) acquires an exclusive advisory lock on `.specify/plan.lock` held for its entire lifetime. A second `/spec:execute` invocation refuses to start with `Error::DriverBusy`, naming the PID of the running driver. This prevents two drivers from racing on `get next change` and transitions. The lockfile is removed on normal exit; stale locks held by a dead PID are detected on startup and reclaimed. `flock` semantics are unreliable on network filesystems (NFS, SMB); Specify workspaces are expected to live on a local filesystem.
 
 ### Core Loop
 
@@ -655,45 +614,11 @@ The following is the normative expansion of the `execute` box on the framework d
   9. If --loop: continue from step 1; otherwise stop
 ```
 
-Step 4 transitions `pending → in-progress` *before* `/spec:define` creates the change directory, so between steps 4 and 5 the plan briefly shows an `in-progress` entry with no matching `.specify/changes/<name>/` directory. This is the **start-of-phase transient window** documented in §Conventions; `specify plan validate` reports it as a warning, not an error. Self-heal for the analogous crash-recovery windows is covered in §Plan Mutation and Crash Safety.
+Step 4 transitions `pending → in-progress` *before* `/spec:define` creates the change directory, so between steps 4 and 5 the plan briefly shows an `in-progress` entry with no matching `.specify/changes/<name>/` directory. `specify plan validate` reports this as a warning, not an error. Crash recovery is covered in §Plan Mutation and Crash Safety.
 
 ### Non-Interactive Execution
 
-#### Problem
-
-The existing skills use `AskQuestion` for confirmations, disambiguation, and warnings. An automated loop can't stop and wait for human input on every change.
-
-#### Design
-
-Most of the skills' interactive decision points are now routed through
-the `specify` CLI and resolved without needing a prompt. In
-Option-2-style phase skills, lifecycle bookkeeping (existence checks,
-`touched_specs` scanning, overlap reports, status transitions, archive
-moves, spec merge preview and conflict detection) is performed by CLI
-subcommands with CLI flags — there is nothing for `/spec:execute` to
-pre-supply at that layer. What remains are genuinely agent-judgement
-questions.
-
-| Skill   | Interactive Point                          | `/spec:execute` strategy                                                                 |
-|---------|--------------------------------------------|------------------------------------------------------------------------------------------|
-| define  | "What do you want to build?"               | Pre-supplied: change `name` + `description` from plan.                                    |
-| define  | "Change already exists — continue or restart?" | CLI flag: `specify change create --if-exists continue` (or `restart`); no prompt fires. |
-| define  | Source path confirmation (extract)          | Pre-supplied by `/spec:execute` to define; define forwards it to its extract-invoking brief. |
-| define  | Overlapping `touched_specs` warning         | `specify change overlap` returns structured JSON; non-empty results are journaled as informational, never blocking. |
-| build   | "Task is unclear" pause                     | Recorded as a question, change deferred.                                                  |
-| build   | "Design issue discovered" pause             | Recorded as a question, change deferred.                                                  |
-| merge   | Artifact / needs / task warnings            | `specify validate` + `specify task progress` return structured JSON; the driver can thresh these without prompting. |
-| merge   | Merge preview confirmation                  | `specify spec preview` reports structured operations; pre-confirmed by the driver. |
-| merge   | Baseline conflict detected                  | `specify spec conflict-check` reports structured drift; for `/spec:execute`, any non-empty result defers the change. |
-| drop    | "Confirm before dropping"                   | Pre-confirmed: `/spec:execute` only drops on failure/deferral; reason plumbed via `specify change drop --reason ...`. |
-
-Skills don't need non-interactive variants. The `specify` CLI is
-non-interactive by construction; `/spec:execute` supplies deterministic
-answers via CLI flags and by reading structured JSON from each call.
-When it *can't* resolve a decision (a genuine question requiring human
-judgement — the two `build` pauses above and an unexpected merge-time
-lifecycle state), it defers the change rather than guessing. (Extract
-is not a peer phase — see the §Note on extract above.)
+The existing skills use `AskQuestion` for confirmations, disambiguation, and warnings; an automated loop cannot stop on every change. `/spec:execute` resolves deterministic decisions by passing CLI flags and reading structured JSON from the `specify` CLI — lifecycle bookkeeping, overlap reports, merge preview, conflict detection, and the like are already non-interactive by construction. What remains are genuine human-judgement questions: an ambiguous task during build, an unresolved design issue, an unexpected baseline merge conflict at merge-time. On these, the phase defers the change rather than guessing; `/spec:execute` transitions the plan entry to `blocked` with the question copied into `status-reason`.
 
 #### Question Recording
 
@@ -737,7 +662,7 @@ on failure at any phase:
 
 **Retry**: A human reviews the failure, optionally updates the plan entry's description or dependencies (via `specify plan amend`), then transitions `failed → pending`. On the next `/spec:execute` run, a fresh Specify change is created for that entry.
 
-**Prior-attempt context on retry.** When `/spec:execute` starts a change whose name already has archived attempts, it reads the **most recent** archive at `.specify/changes/archive/<name>-<timestamp>/` and passes its `last_phase_outcome` (from `.metadata.yaml`) plus any trailing `type: question` / `type: failure` entries from `journal.yaml` to `/spec:define` as an additional input. The define phase uses it as a "things to avoid" hint — e.g. "the previous attempt failed because the proposed schema was incompatible with baseline `X`". This is a best-effort context channel, not a formal protocol: the most recent attempt informed the decision to retry, so that's the attempt whose lessons are worth surfacing; deeper history remains in `.specify/changes/archive/` for humans who want to audit the full arc. The concrete shape of the argument is part of Layer 2's skill invocation model (see [§Skill Invocation Model](#skill-invocation-model)).
+Archived attempts remain on disk under `.specify/changes/archive/<name>-<timestamp>/` for humans who want to audit what went wrong before retrying; automatically feeding the previous attempt's outcome back into `/spec:define` as a "things to avoid" hint is deferred (see §Future Capabilities).
 
 #### Failure vs Deferral
 
@@ -890,21 +815,11 @@ These are not mutually exclusive — a change could have both `sources` and `aff
     3. `in-progress → failed`: **after** `/spec:drop` completes
     4. `in-progress → blocked`: **after** `/spec:drop` completes and question is journaled
 
-If `/spec:execute` crashes while a change is `in-progress`, the plan may show an active entry with no matching live change directory — or with one that is only partially populated. On restart, `/spec:execute` inspects (a) whether an active `.specify/changes/<name>/` exists, (b) whether an archive entry exists under `.specify/changes/archive/<name>-<timestamp>/`, and (c) the `last_phase_outcome` field in whichever `.metadata.yaml` is available. Three windows are possible, each with a deterministic resolution:
+On every run, before `get next change`, `/spec:execute` self-heals any `in-progress` entry from a prior run by reading `last_phase_outcome` from the most recent on-disk `.metadata.yaml` (active change dir or archive). If it's `success`/`failure`/`deferred`, the driver applies the matching plan transition (`done`/`failed`/`blocked`), copying the outcome `summary` into `status-reason` for the non-success cases, and appends a `type: recovery` entry to the journal. If an active change directory exists with no terminal outcome yet, resumption is per §[Context Threading → Resumption Within a Change](#resumption-within-a-change) using `LifecycleStatus` — no plan transition is needed.
 
-| Crash window | On-disk state | `last_phase_outcome` | Self-heal action |
-|---|---|---|---|
-| After `pending → in-progress`, before `/spec:define` produces any artifacts | No change dir, no archive | — | Re-invoke `/spec:define` for the entry (treat as `LifecycleStatus = None`; same as a cold start from step 5). Append a `type: recovery` entry to a freshly created `journal.yaml` recording the self-heal. |
-| Mid-phase crash while change dir exists | Live change dir; no archive | (unset by the most recent phase) | Resume per §[Context Threading → Resumption Within a Change](#resumption-within-a-change) using `LifecycleStatus`. No plan transition is necessary. |
-| After phase termination, before the follow-up plan transition | Archived | `success` / `failure` / `deferred` | Transition plan entry to `done` / `failed` / `blocked` respectively; on `failure` / `deferred` copy the outcome `summary` into `status-reason`. Append `type: recovery` to the archived journal. |
+If the on-disk state is ambiguous (no `last_phase_outcome`, malformed, or contradicts the lifecycle status), the driver stops with a non-zero exit and leaves the plan entry as `in-progress` for human triage. No speculative transition is made.
 
-The third row covers all three "phase finished, plan transition didn't land" cases in one rule — the target plan status is determined entirely by `last_phase_outcome`.
-
-Self-heal runs before `get next change` on every `/spec:execute` invocation, so the transient `in-progress`-without-active-change state (documented in §Conventions) is always cleaned up at the start of the next run. Every self-heal action appends a `type: recovery` entry to the affected `journal.yaml` so the recovery path is auditable after the fact.
-
-If a `/spec:execute` process cannot unambiguously classify the crash window (for example, the archived change's `.metadata.yaml` has no `last_phase_outcome`, a malformed one, or one that contradicts the on-disk state), it emits a diagnostic `type: recovery, outcome: unclassified` entry and stops with a non-zero exit code so a human can triage. The plan entry is left as `in-progress` — no speculative transition is made.
-
-Because `specify plan create` / `specify plan amend` write synchronously during a phase run (and the underlying `Plan::create` / `Plan::amend` writes atomically), no mutations are ever "in flight": on crash, any entry the phase already wrote is already in the plan, and any entry it had not yet written is simply absent. There is no mid-apply window to recover.
+Because `specify plan create` / `specify plan amend` write synchronously and atomically during a phase run, no mutations are ever "in flight": on crash, any entry the phase already wrote is in the plan, and any entry it had not yet written is simply absent.
 
 ### Skill Invocation Model
 
@@ -965,7 +880,7 @@ Step 3/3: merge
 ### Next: registration-duplicate-email-crash (affects: [user-registration])
 ```
 
-The progress line enumerates *every* status in the state machine so the output shape is stable even when some statuses have zero entries — matching `specify plan status --format json`.
+The progress line enumerates *every* status in the state machine so the output shape is stable even when some statuses have zero entries.
 
 For deferred changes:
 
@@ -986,7 +901,7 @@ Step 1/3: define
 ### Skipping to next eligible change...
 ```
 
-When `--loop` terminates (whether successfully, after a failure chain, or on unrecoverable deadlock), `/spec:execute` emits a terminal summary matching the stable JSON shape from `specify plan status --format json`:
+When `--loop` terminates (whether successfully, after a failure chain, or on unrecoverable deadlock), `/spec:execute` emits a terminal summary:
 
 ```text
 ## /spec:execute — platform-v2 — terminated
@@ -1006,7 +921,7 @@ Pending (dependencies not satisfied):
 Next action: resolve blocked changes (specify plan amend + specify plan transition notification-preferences blocked → pending) or wait for their dependencies to complete.
 ```
 
-The `Completion:` line is one of `all-done`, `stuck` (pending changes with unmet dependencies), `halted` (a failure or deferral stopped the loop), or `driver-interrupted` (SIGINT/SIGTERM). The same classification is emitted under `completion` in the JSON form.
+The `Completion:` line is one of `all-done`, `stuck` (pending changes with unmet dependencies), `halted` (a failure or deferral stopped the loop), or `driver-interrupted` (SIGINT/SIGTERM).
 
 ### Worked Example: Phase-invoked Plan Mutation
 
@@ -1037,8 +952,7 @@ There is no buffered mutation, no `plan_mutations` payload, no deferred-apply ed
 | Failure | `/spec:drop` the Specify change, mark `failed` with `status-reason`, advance |
 | Resumption | Plan `in-progress` + Specify `LifecycleStatus` encode exactly where to resume |
 | Context threading | Artifacts written by each phase are read by the next; plan supplies initial args |
-| Crash safety | `/spec:execute` classifies the on-disk state on restart and self-heals to `done`/`failed`/`blocked` by reading `last_phase_outcome` (three windows documented: pre-define, mid-phase, and post-phase-pre-transition) |
-| Retry context | The most recent archived attempt's `last_phase_outcome` and trailing journal entries are passed to `/spec:define` on `failed → pending` retry |
+| Crash safety | `/spec:execute` reads `last_phase_outcome` on restart and self-heals to `done`/`failed`/`blocked`, or stops for triage if the on-disk state is ambiguous |
 | Observability | Structured per-phase output + terminal summary on loop exit + `journal.yaml` for questions/failures/recoveries |
 | Brief-level errors | Phase skills own their verify-repair loops; only phase-level outcomes cross the boundary |
 | Phase outcome transport | `last_phase_outcome` field in `.metadata.yaml` (see [§Phase Outcome Contract](#phase-outcome-contract)); `journal.yaml` is a pure audit log |
@@ -1057,37 +971,25 @@ Like the phase skills, `/spec:plan` runs a brief pipeline declared by the active
 
 Layer 3 depends only on Layer 1 (the plan format and the `specify plan` CLI). It is independently useful without Layer 2: a plan authored by `/spec:plan` can be executed by a human via the Layer 1 CLI, by `/spec:execute` under Layer 2, or by any combination.
 
-### Authoring modes
-
-The four original authoring intents — new build, major change to an existing system, migration, system optimisation — are not separate skills; they are input-shape variants of one skill selected by `--mode`. Each maps onto combinations of `sources` (which codebases to analyse) and `affects` (which baseline capabilities to treat as pre-existing):
-
-| Mode | Original intent | Inputs | Entry shape produced |
-|---|---|---|---|
-| `greenfield` | New build from artefacts | Product briefs, design docs, requirement sketches (`--from`) | Entries with neither `sources` nor `affects`; `description` populated from artefact excerpts |
-| `change` | Major change to an existing system | Artefacts (`--from`) + path to the current codebase (`--against`) | Mix of `affects: [...]` entries (deltas) and greenfield entries for net-new capabilities; synthetic `done` stand-ins created for baseline capabilities not yet under spec governance (see §`affects` vs `depends-on` → "Targeting pre-plan baseline") |
-| `migrate` | Migration from a legacy platform | One or more legacy repos as named sources (`--source`) + optional target-shape artefacts (`--from`) | Entries with `sources: [<source-key>]` and `depends-on` edges encoding slice order (leaf-first by default) |
-| `refactor` | System optimisation | Current codebase (`--against`) + optional focus area (`--focus`) | Entries with `affects: [...]` referencing baseline (or synthetic baseline) capabilities; typically no `sources` |
-
-The mode selects the brief pipeline's prompt emphasis and the input shape the skill validates; the output format is identical across modes.
-
 ### Invocation
 
 ```
-/spec:plan <initiative-name> --mode <greenfield|change|migrate|refactor>
+/spec:plan <initiative-name>
     [--from <path>...]              # artefact files or directories
-    [--against <path>]              # existing codebase (for change/refactor)
-    [--source <key>=<path-or-url>]  # named source(s) for migrate mode
-    [--focus <area>]                # optional scoping hint for refactor mode
+    [--against <path>]              # existing codebase (for delta / refactor work)
+    [--source <key>=<path-or-url>]  # named source(s), for migration from legacy repos
+    [--focus <area>]                # optional scoping hint
     [--extend]                      # add to an existing plan.yaml instead of refusing
     [--dry-run]                     # draft to stdout, do not write
 ```
+
+The input flags together describe the initiative. A greenfield build supplies only `--from`; a legacy migration supplies `--source` (with optional `--from` for target shape); a delta or refactor against a current system supplies `--against`. At least one of `--from`, `--against`, or `--source` is required. The inferred shape selects the prompt emphasis for the propose brief; the output format is identical regardless.
 
 Constraints:
 
 - Refuses by default if `.specify/plan.yaml` already exists. `--extend` opts into adding entries to the existing plan — the skill calls `specify plan create` for each new entry; existing entries are not touched.
 - `--dry-run` emits the proposed plan to stdout and writes nothing. Useful for reviewing the decomposition before committing.
 - `<initiative-name>` is validated as a kebab-case identifier (same rules as change names) and becomes the plan's `name` field.
-- Mode-specific argument requirements are enforced at start: `greenfield` requires at least one `--from`; `change` requires both `--from` and `--against`; `migrate` requires at least one `--source`; `refactor` requires `--against`.
 
 ### Core loop
 
@@ -1114,7 +1016,7 @@ A new `pipeline.plan` declaration in `schema.yaml` names the briefs the authorin
 
 | Brief | `needs` | `generates` | Responsibility |
 |---|---|---|---|
-| `discovery.md` | — | `.specify/plans/<name>/discovery.md` | Read `--from` artefacts; invoke `/spec:extract` (via `git-cloner` + `analyze`) on any `--source` / `--against` codebase; emit a neutral capability inventory framed by `--mode`. |
+| `discovery.md` | — | `.specify/plans/<name>/discovery.md` | Read `--from` artefacts; invoke `/spec:extract` (via `git-cloner` + `analyze`) on any `--source` / `--against` codebase; emit a neutral capability inventory. |
 | `propose.md` | `discovery.md` | `.specify/plans/<name>/proposal.md` and (via CLI) new entries in `plan.yaml` | Decompose the inventory into change slices with `depends-on` edges using schema-specific heuristics (e.g. "one WASM crate per change" for Omnia, "leaf-service-first for migrations"). Present the draft to the human for accept/edit/reject review; for each accepted slice, shell out to `specify plan create` with the appropriate `--sources`, `--affects`, `--depends-on`, and `--description` flags. |
 
 Two briefs (rather than four) keeps the pipeline close in shape to `build.md` / `merge.md` while still separating analysis (read-only, no plan writes) from proposal (interactive, authorised to write). Schemas that want finer granularity may split `propose.md` further without any API change; Layer 3 does not prescribe a minimum count beyond the two.
@@ -1174,7 +1076,7 @@ This promotes `specify plan init` from Layer 1's §Future Capabilities ("deferre
 `/spec:plan` and `/spec:execute` are strictly ordered: authoring produces `plan.yaml`, execution consumes it. There is no runtime interaction between them beyond the file. Consequences:
 
 - `/spec:plan` holds no locks that `/spec:execute` observes; the `.specify/plan.lock` driver lock is only relevant to the execute side.
-- `/spec:plan` takes the per-command `flock` on `plan.yaml` during each `specify plan create` call (same as any other CLI writer), so a human concurrently running `specify plan transition` during authoring blocks briefly but does not corrupt state.
+- `/spec:plan` writes entries via atomic `specify plan create` calls (same as any other CLI writer), so a human concurrently running `specify plan transition` during authoring cannot corrupt state.
 - `/spec:execute --loop` can be started immediately after `/spec:plan` exits; no hand-off step is required beyond `specify plan validate` (which `/spec:plan` already runs as its final step).
 
 ### Iteration and revision
@@ -1197,20 +1099,11 @@ Layer 3 intentionally does not introduce a `specify plan delete` — removal of 
 
 Because every entry write goes through `specify plan create` (atomic, synchronous), `/spec:plan` inherits Layer 1's crash semantics: on crash mid-authoring, `plan.yaml` contains exactly those entries the skill had finished writing before the crash. The intermediate artefacts under `.specify/plans/<name>/` record progress through the brief pipeline, so a restarted `/spec:plan --extend` run resumes from the last completed brief (rather than re-running discovery against freshly-cloned sources).
 
-No new lockfile is required and no new self-heal rule is needed; Layer 1's file locking plus `specify plan validate` cover Layer 3.
+No new lockfile is required and no new self-heal rule is needed; Layer 1's atomic writes plus `specify plan validate` cover Layer 3.
 
 ### Archive integration
 
 When `specify plan archive` moves `.specify/plan.yaml` to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`, it also moves the `.specify/plans/<name>/` working directory (if present) to `.specify/archive/plans/<name>-<YYYYMMDD>/`, preserving the authoring trail alongside the plan it produced. This is a small extension to the existing `Plan::archive` library function.
-
-### Invariants summary (Layer 3 additions)
-
-| Invariant | Enforced by |
-|---|---|
-| `/spec:plan` never writes `plan.yaml` directly | Skill shells out to `specify plan create` / `specify plan amend` exclusively |
-| Scaffolding refuses to clobber an existing plan | `specify plan init` aborts when `.specify/plan.yaml` is present |
-| Authoring artefacts stay co-located with the plan | `specify plan archive` moves `.specify/plans/<name>/` alongside the YAML |
-| Schema-specific heuristics do not leak into the plan format | Only brief *bodies* differ across schemas; the `PlanChange` struct is unchanged |
 
 ### Worked example: migration authoring
 
@@ -1218,7 +1111,7 @@ A user wants to migrate a legacy Rails monolith and two peripheral services into
 
 1. **Invocation.**
     ```bash
-    /spec:plan platform-v2 --mode migrate \
+    /spec:plan platform-v2 \
         --source monolith=/path/to/legacy-codebase \
         --source orders=git@github.com:org/orders-service.git \
         --source payments=git@github.com:org/payments-service.git
@@ -1273,7 +1166,9 @@ The plan format supports multi-repo initiatives on both the source and target si
 
 | Capability | Rationale for deferral |
 | ---------- | ---------------------- |
-| `specify plan doctor` | Extended cross-check surface beyond `validate`: `affects` ↔ `.metadata.yaml:touched_specs` agreement, prior-attempt archive presence, orphan journal files, `affects` status coherence beyond the basic warning. Deferred because the checks depend on Layer 2 behaviours. |
+| `specify plan doctor` | Extended cross-check surface beyond `validate`: `affects` ↔ `.metadata.yaml:touched_specs` agreement, prior-attempt archive presence, orphan journal files. Deferred because the checks depend on Layer 2 behaviours. |
+| Prior-attempt context on retry | On `failed → pending` retry, feed the most recent archive's `last_phase_outcome` and trailing journal entries into `/spec:define` as a "things to avoid" hint. Deferred: valuable but orthogonal to the main loop, and an operator can pass the same context by editing the plan entry's description. |
+| Pre-plan baseline delta targeting | Allow `affects` to reference baseline capabilities that predate the current plan. Today, `affects` resolves only to plan entries. |
 | Multiple concurrent plans | Requires a path argument on every `specify plan` subcommand plus a way to pick a default. Deferred until a use case appears; today, archive-then-create is the recommended pattern. |
 | Rename `specify plan` CLI namespace | `/spec:plan` (Layer 3) and `specify plan` (Layer 1) share the word "plan". Renaming the CLI group to something distinct (e.g. `specify initiative`) would eliminate the collision. Deferred because it ripples through every Layer 1 CLI reference and is cosmetic; worth revisiting before a 1.0 release. |
 | Change recommender | LLM-assisted refinement of auto-generated plans beyond what `/spec:plan --extend` already offers. Depends on `/spec:plan`. |
@@ -1301,9 +1196,9 @@ The plan format supports multi-repo initiatives on both the source and target si
 | Capability                       | Type  | Notes                                                                          |
 | -------------------------------- | ----- | ------------------------------------------------------------------------------ |
 | Plan format (`plan.yaml`)        | Schema| Ordered change list with dependencies and per-change status                    |
-| Plan JSON Schemas                | Schema| `plan.schema.json` (authoring) + `plan-validate-output.schema.json` (tooling)  |
-| `plan.rs` in `specify-change`    | Lib   | Parsing, validation, state machine, dependency graph, consistency checks, advisory file locking |
-| `specify plan validate`          | CLI   | Cycle detection, referential integrity, duplicate names, consistency check; stable JSON output |
+| `plan.schema.json`               | Schema| JSON Schema for `.specify/plan.yaml` (editor integration + author-time validation) |
+| `plan.rs` in `specify-change`    | Lib   | Parsing, validation, state machine, dependency graph, consistency checks, atomic writes |
+| `specify plan validate`          | CLI   | Cycle detection, referential integrity, duplicate names, consistency check    |
 | `specify plan next`              | CLI   | Return the next pending change (respecting `depends-on`, single in-progress)   |
 | `specify plan status`            | CLI   | Initiative progress in dependency order: counts, blockers, next eligible; cycle-safe fallback to list order |
 | `specify plan create`            | CLI   | Add a new change entry (state machine enforced; plan validated before write)   |
