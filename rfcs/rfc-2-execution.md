@@ -6,7 +6,7 @@
 
 Drive complex, multi-change initiatives through Specify's define-build-merge loop using a **Plan** (`plan.yaml`) — an ordered, dependency-aware list of changes with status tracking and progressive baseline accumulation. The plan format supports greenfield builds, legacy migrations, and platform modernisations; the only difference is where the input to `/spec:define` comes from.
 
-This RFC is structured in two layers. **Layer 1** (the MVP) delivers the plan format and CLI commands — enough for a human to drive a plan-based initiative using the existing skill chain. **Layer 2** adds the `/spec:execute` driver skill that automates the loop. Layer 1 is immediately useful without Layer 2, and the manual Layer 1 commands remain available as fallback under Layer 2.
+This RFC is structured in three layers. **Layer 1** (the MVP) delivers the plan format and CLI commands — enough for a human to drive a plan-based initiative using the existing skill chain. **Layer 2** adds the `/spec:execute` driver skill that automates the execution loop. **Layer 3** adds the `/spec:plan` skill for assisted authoring of the initial plan. Each layer is independently useful: Layer 1 needs no automation; Layer 2 works against hand-authored plans; Layer 3 feeds plans into either Layer 1 or Layer 2. The manual Layer 1 commands remain available as fallback under both higher layers.
 
 ## Execution Model Overview
 
