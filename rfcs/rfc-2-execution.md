@@ -156,7 +156,7 @@ changes:
     sources: [payments]
     depends-on: [shopping-cart]
     status: failed
-    failure-reason: >
+    status-reason: >
       Type mismatch between cart line-item schema and payment gateway contract.
       Needs design revision after shopping-cart specs are updated.
 
@@ -195,9 +195,9 @@ changes:
 - **`pending`** — not started; eligible for selection by `plan next` if all `depends-on` entries are `done`
 - **`in-progress`** — a Specify change has been created; define/build/merge is underway
 - **`done`** — change merged successfully; specs are in baseline. **Terminal**: no transitions leave `done`. Corrections to merged behaviour are made by adding a new plan entry with `affects` referencing the `done` entry.
-- **`blocked`** — manually flagged as unable to proceed (with a reason in `block-reason`). Dependency ordering is *not* modelled as `blocked` — `plan next` enforces `depends-on` at query time by only returning `pending` changes whose dependencies are all `done`
+- **`blocked`** — manually flagged as unable to proceed (with a reason in `status-reason`). Dependency ordering is *not* modelled as `blocked` — `plan next` enforces `depends-on` at query time by only returning `pending` changes whose dependencies are all `done`
 - **`failed`** — attempted but unsuccessful; the Specify change was dropped. Distinct from `skipped`, which is a deliberate exclusion
-- **`skipped`** — deliberately excluded from this initiative (with a reason in `skip-reason`); never attempted or no longer needed
+- **`skipped`** — deliberately excluded from this initiative (with a reason in `status-reason`); never attempted or no longer needed
 
 #### Transition Rules
 
@@ -252,12 +252,12 @@ The plan tracks coarse outcome; the Specify change tracks internal lifecycle (th
 | `name` | Yes | Kebab-case identifier; becomes the Specify change directory name. Must be unique across the entire plan. |
 | `status` | Yes | Current state in the status state machine |
 | `depends-on` | No | List of change names that must be `done` before this change is eligible |
-| `description` | No | Free-text scoping hint; guides the define step when scoping. Distinct from the operational reason fields below. |
+| `description` | No | Free-text scoping hint; guides the define step when scoping. Distinct from the operational `status-reason` field below. |
 | `sources` | Yes | Which source repos to analyze; keys reference the top-level `sources` map. Absent or `[]` → greenfield (both forms are equivalent; validate does not distinguish them). Parsed and validated in Layer 1; source-aware execution in Layer 2. |
 | `affects` | No | Which existing changes or capabilities are touched. Parsed and validated in Layer 1; automatic delta-target wiring in Layer 2. |
 | `status-reason` | No | Why the change failed/is blocked/is skipped; populated when `status = failed`/`blocked`/`skipped` |
 
-The `status-reason` field is used to populate the reason field matching the target status. `description` is kept exclusively for scoping intent so the define step has a stable hint that is not clobbered by operational bookkeeping. `specify plan transition --reason "..."` writes to the reason field matching the target status.
+`status-reason` holds the operational explanation for the current non-terminal/terminal status (`failed`, `blocked`, or `skipped`) and is overwritten on each status transition. `description` is kept exclusively for scoping intent so the define step has a stable hint that is not clobbered by operational bookkeeping. `specify plan transition --reason "..."` writes to `status-reason`.
 
 ### The Loop (Human-Driven)
 
@@ -408,7 +408,7 @@ Validated status transitions. The command:
 1. Reads `plan.yaml`
 2. Validates the transition is legal per the state machine
 3. Updates the entry's `status`
-4. If `--reason` is provided, writes it to the reason field matching the target status (`failure-reason` for `failed`, `block-reason` for `blocked`, `skip-reason` for `skipped`). `description` is never touched by `transition`.
+4. If `--reason` is provided, writes it to `status-reason` (valid when the target status is `failed`, `blocked`, or `skipped`). `description` is never touched by `transition`.
 5. Writes the plan atomically
 6. Outputs the new state
 
@@ -614,8 +614,8 @@ The following is the normative expansion of the `execute` box on the framework d
      /spec:plan mid-run to add or amend other change entries; those writes are
      synchronous and visible to every subsequent `get next change` call.
   6. On success: transition in-progress → done
-  7. On failure: invoke /spec:drop, transition in-progress → failed, record failure-reason
-  8. On deferred question: invoke /spec:drop, transition in-progress → blocked, record block-reason
+  7. On failure: invoke /spec:drop, transition in-progress → failed, record status-reason
+  8. On deferred question: invoke /spec:drop, transition in-progress → blocked, record status-reason
   9. If --loop: continue from step 1; otherwise stop
 ```
 
@@ -675,7 +675,7 @@ entries:
       design.md or upstream specs.
 ```
 
-The plan entry transitions to `blocked` with a `block-reason` populated from the **most recent** `type: question` entry in the journal — if a phase records multiple questions before returning `deferred`, only the last one is summarised into `block-reason`; the full list remains in `journal.yaml` for human review. This reuses the existing `blocked` status and its manual `blocked → pending` transition — a human reviews the journal, resolves the question (perhaps by updating the plan description via `specify plan amend`, adding to the spec, or refining the design), and unflags the change.
+The plan entry transitions to `blocked` with `status-reason` populated from the **most recent** `type: question` entry in the journal — if a phase records multiple questions before returning `deferred`, only the last one is summarised into `status-reason`; the full list remains in `journal.yaml` for human review. This reuses the existing `blocked` status and its manual `blocked → pending` transition — a human reviews the journal, resolves the question (perhaps by updating the plan description via `specify plan amend`, adding to the spec, or refining the design), and unflags the change.
 
 ### Failure and Resumption
 
@@ -693,7 +693,7 @@ on failure at any phase:
      - timestamp, phase, type: failure, summary, context (stderr, test output, etc.)
   2. Drop the Specify change via /spec:drop (archives partial artifacts)
   3. Transition plan entry: in-progress → failed
-  4. Set failure-reason on the plan entry from the summary
+  4. Set status-reason on the plan entry from the summary
   5. Continue to next eligible change
 ```
 
@@ -707,8 +707,8 @@ Failure means the step ran and produced an error. Deferral means the step couldn
 
 | | Plan status | Reason field | Cause | Resolution |
 |---|---|---|---|---|
-| Failure | `failed` | `failure-reason` | Step error (tests, merge conflict, bad extraction) | Fix the issue, retry (`failed → pending`) |
-| Deferral | `blocked` | `block-reason` | Needs human decision (ambiguous requirement, design question) | Answer the question, unflag (`blocked → pending`) |
+| Failure | `failed` | `status-reason` | Step error (tests, merge conflict, bad extraction) | Fix the issue, retry (`failed → pending`) |
+| Deferral | `blocked` | `status-reason` | Needs human decision (ambiguous requirement, design question) | Answer the question, unflag (`blocked → pending`) |
 
 ### Phase Boundary
 
@@ -759,8 +759,7 @@ entries:
     context: |
       (optional; present on failure/deferred — stderr, failing test name,
       ambiguous-requirement text, etc. Rendered verbatim into the plan's
-      failure-reason or block-reason when /spec:execute records the
-      transition.)
+      status-reason when /spec:execute records the transition.)
 ```
 
 `/spec:execute` reads the terminal entry by convention (last entry in `entries`), classifies the outcome, and reacts per the table in Rule 1. If the terminal entry is missing or its `type` is not `outcome`, `/spec:execute` treats the phase as `deferred` with a diagnostic summary — this matches the unclassifiable-crash-window behaviour at the end of [§Plan Mutation and Crash Safety](#plan-mutation-and-crash-safety) and keeps the driver self-consistent.
@@ -857,8 +856,8 @@ If `/spec:execute` crashes while a change is `in-progress`, the plan may show an
 | After `pending → in-progress`, before `/spec:define` produces any artifacts | No change dir, no archive | — | Re-invoke `/spec:define` for the entry (treat as `LifecycleStatus = None`; same as a cold start from step 5). Append a `type: recovery` entry to a freshly created `journal.yaml` recording the self-heal. |
 | Mid-phase crash while change dir exists | Live change dir; no archive | (none, or non-terminal) | Resume per §[Context Threading → Resumption Within a Change](#resumption-within-a-change) using `LifecycleStatus`. No plan transition is necessary. |
 | After `/spec:merge`, before `transition → done` | Archived | `type: outcome, outcome: success` | Transition plan entry to `done`. Append `type: recovery` to the archived journal. |
-| After `/spec:drop` following a failure, before `transition → failed` | Archived | `type: outcome, outcome: failure` | Transition plan entry to `failed`; copy the journal `summary` into `failure-reason`. |
-| After `/spec:drop` following a deferral, before `transition → blocked` | Archived | `type: outcome, outcome: deferred` | Transition plan entry to `blocked`; copy the journal `summary` into `block-reason`. |
+| After `/spec:drop` following a failure, before `transition → failed` | Archived | `type: outcome, outcome: failure` | Transition plan entry to `failed`; copy the journal `summary` into `status-reason`. |
+| After `/spec:drop` following a deferral, before `transition → blocked` | Archived | `type: outcome, outcome: deferred` | Transition plan entry to `blocked`; copy the journal `summary` into `status-reason`. |
 
 Self-heal runs before `get next change` on every `/spec:execute` invocation, so the transient `in-progress`-without-active-change state (documented in §Conventions) is always cleaned up at the start of the next run. Every self-heal action appends a `type: recovery` entry to the affected `journal.yaml` so the recovery path is auditable after the fact.
 
@@ -956,7 +955,7 @@ Progress: done 6, in-progress 0, pending 2, blocked 1, failed 0, skipped 0 (tota
 Completion: stuck (2 pending changes remain but their dependencies are not all done; 1 change is blocked)
 
 Blocked:
-  - notification-preferences (block-reason: "Channel scope not specified in description.")
+  - notification-preferences (status-reason: "Channel scope not specified in description.")
 
 Pending (dependencies not satisfied):
   - product-catalog (waits on: extract-shared-validation)
@@ -993,7 +992,7 @@ There is no buffered mutation, no `plan_mutations` payload, no deferred-apply ed
 | Concern | Resolution |
 |---|---|
 | Interactive skills | `/spec:execute` pre-resolves arguments; genuine questions defer the change |
-| Failure | `/spec:drop` the Specify change, mark `failed` with `failure-reason`, advance |
+| Failure | `/spec:drop` the Specify change, mark `failed` with `status-reason`, advance |
 | Resumption | Plan `in-progress` + Specify `LifecycleStatus` encode exactly where to resume |
 | Context threading | Artifacts written by each phase are read by the next; plan supplies initial args |
 | Crash safety | `/spec:execute` classifies the on-disk state on restart and self-heals to `done`/`failed`/`blocked` (five windows documented, including pre-define, mid-phase, and unclassifiable) |
