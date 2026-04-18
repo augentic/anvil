@@ -24,6 +24,102 @@ specify plan transition <name> done
 
 This is an advisory note — this skill does not run the command itself. RFC-2 Layer 2's `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
 
+> See `rfcs/rfc-2-execution.md` §"Execution Model Overview" and
+> `rfcs/assets/specify-framework.png` for where this skill sits in the
+> `/spec:execute` driver loop.
+
+## Phase outcome contract (RFC-2 §"Phase Outcome Contract")
+
+This skill is the **merge** phase of the `/spec:execute` driver loop.
+Before returning control to the caller, always record the phase's outcome
+via:
+
+```bash
+specify change phase-outcome <name> merge <outcome> --summary "..." [--context "..."]
+```
+
+where `<outcome>` is exactly one of:
+
+- `success`  — `specify merge` completed, every delta was applied to
+  the baseline, and the change directory has been moved to
+  `.specify/archive/YYYY-MM-DD-<name>/`.
+- `failure`  — `specify merge` exited non-zero for a non-recoverable
+  reason (baseline coherence check failed even after the user declined
+  to retry, filesystem error, etc.). Use `--summary` to name the
+  failing capability and the load-bearing stderr line; use `--context`
+  for verbatim detail.
+- `deferred` — human judgement is needed (baseline drift surfaced by
+  `spec conflict-check` that requires human arbitration, the user
+  declined to confirm the merge preview, or the lifecycle status
+  disagrees with the expected `Complete`). Use `--summary` to name the
+  question.
+
+`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome`
+on return and translates the outcome into a plan transition
+(`done` / `failed` / `blocked`). If the field is missing or malformed,
+`/spec:execute` treats the phase as `deferred` and stops for triage —
+do not skip the CLI call. This `phase-outcome` invocation is the
+**last action** the skill takes before returning control, and it must
+happen whether or not `specify merge` itself ran (e.g. a user-declined
+preview still returns `deferred`).
+
+## Journal entries during the run (RFC-2 §"Question Recording")
+
+Whenever the skill encounters a situation the human should see — a
+genuine question, a repair attempt that failed, or a notable recovery —
+append to `.specify/changes/<name>/journal.yaml` **during** the run,
+not just at the end:
+
+```bash
+specify change journal-append <name> merge <kind> --summary "..." [--context "..."]
+```
+
+Kinds:
+
+- `question` — baseline drift detected by `spec conflict-check`, the
+  user was asked to confirm proceeding, or anything that might produce
+  a `deferred` outcome at the end of the phase. Write one entry per
+  question so the human sees the full trail when triaging.
+- `failure` — `specify merge` returned an error, or a validation step
+  surfaced a problem that blocked the merge. Write one entry per
+  failure; the final `phase-outcome` summary rolls up only the
+  load-bearing one, but auditors still see every attempt.
+- `recovery` — a self-heal / recovery step happened. (Typically written
+  by `/spec:execute` itself; phases rarely need to append this kind.)
+
+`journal.yaml` is a pure append-only audit log; `/spec:execute` never
+consumes it as a signalling channel. The `outcome` field in
+`.metadata.yaml` is the only state `/spec:execute` reads on phase
+return.
+
+## Mutating the plan mid-run (RFC-2 §"Phase Boundary → Rule 2")
+
+Phases may shell out to `specify plan create` / `specify plan amend`
+mid-run when they discover something structural about the initiative.
+Both commands write `.specify/plan.yaml` synchronously — the new or
+updated entry is visible to every subsequent `/spec:execute` iteration.
+
+Allowed:
+
+- `specify plan create <new-name> --affects <current-name> --description "..."`
+  when, for example, baseline conflict-check surfaces a neighbouring
+  change that must land before this one can merge cleanly.
+- `specify plan amend <current-name> --depends-on <newly-needed>` when
+  the phase discovers a dependency on another plan entry (e.g. a
+  sibling change that should merge first). `amend` may target the
+  currently-active entry — non-`status` fields on an `in-progress`
+  entry are fair game.
+
+Forbidden:
+
+- Writing `status` through `amend`. The `PlanChangePatch` type has no
+  `status` field — this is a type-system guarantee. Status transitions
+  are `/spec:execute`'s sole prerogative via `specify plan transition`.
+- Hand-editing `.specify/plan.yaml` or
+  `.specify/changes/<name>/.metadata.yaml`. Always route through the
+  CLI so the single-writer invariant in RFC-2 §"Plan Mutation and
+  Crash Safety" holds.
+
 ## Input
 
 Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.

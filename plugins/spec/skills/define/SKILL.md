@@ -19,6 +19,98 @@ delegated to the `specify` CLI. This skill only drives the agent-side work:
 eliciting intent from the user, reading brief bodies, and writing the
 artifact files those briefs describe.
 
+> See `rfcs/rfc-2-execution.md` §"Execution Model Overview" and
+> `rfcs/assets/specify-framework.png` for where this skill sits in the
+> `/spec:execute` driver loop.
+
+---
+
+## Phase outcome contract (RFC-2 §"Phase Outcome Contract")
+
+This skill is the **define** phase of the `/spec:execute` driver loop.
+Before returning control to the caller, always record the phase's outcome
+via:
+
+```bash
+specify change phase-outcome <name> define <outcome> --summary "..." [--context "..."]
+```
+
+where `<outcome>` is exactly one of:
+
+- `success`  — every define brief produced its `generates` artefacts and
+  any verify-repair loop converged. The change is ready for
+  `/spec:build`.
+- `failure`  — a brief failed after the repair budget was exhausted
+  (e.g. extraction's fixture-capture sub-step crashed, a writer brief
+  could not converge). Use `--summary` to name which brief and the
+  load-bearing stderr line; use `--context` for verbatim detail
+  (stderr tail, failing assertion, etc.).
+- `deferred` — human judgement is needed (ambiguous requirement,
+  missing scope, unresolvable conflict between sources and existing
+  baselines). Use `--summary` to name the question; use `--context`
+  for the ambiguous-requirement text itself.
+
+`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome`
+on return and translates the outcome into a plan transition
+(`done` / `failed` / `blocked`). If the field is missing or malformed,
+`/spec:execute` treats the phase as `deferred` and stops for triage —
+do not skip the CLI call. This `phase-outcome` invocation is the
+**last action** the skill takes before returning control.
+
+## Journal entries during the run (RFC-2 §"Question Recording")
+
+Whenever the skill encounters a situation the human should see — a
+genuine question, a repair attempt that failed, or a notable recovery —
+append to `.specify/changes/<name>/journal.yaml` **during** the run,
+not just at the end:
+
+```bash
+specify change journal-append <name> define <kind> --summary "..." [--context "..."]
+```
+
+Kinds:
+
+- `question` — ambiguous requirement, missing scope, or anything that
+  might produce a `deferred` outcome at the end of the phase. Write one
+  entry per question so the human sees the full trail when triaging.
+- `failure` — a brief returned an error after retry. Write one entry
+  per failure; the final `phase-outcome` summary rolls up only the
+  load-bearing one, but auditors still see every attempt.
+- `recovery` — a self-heal / recovery step happened. (Typically written
+  by `/spec:execute` itself; phases rarely need to append this kind.)
+
+`journal.yaml` is a pure append-only audit log; `/spec:execute` never
+consumes it as a signalling channel. The `outcome` field in
+`.metadata.yaml` is the only state `/spec:execute` reads on phase
+return.
+
+## Mutating the plan mid-run (RFC-2 §"Phase Boundary → Rule 2")
+
+Phases may shell out to `specify plan create` / `specify plan amend`
+mid-run when they discover something structural about the initiative.
+Both commands write `.specify/plan.yaml` synchronously — the new or
+updated entry is visible to every subsequent `/spec:execute` iteration.
+
+Allowed:
+
+- `specify plan create <new-name> --affects <current-name> --description "..."`
+  when, for example, an extract sub-step surfaces a neighbouring defect
+  (the canonical `registration-duplicate-email-crash` case).
+- `specify plan amend <current-name> --depends-on <newly-needed>` when
+  the phase discovers a dependency on another plan entry while designing.
+  `amend` may target the currently-active entry — non-`status` fields
+  on an `in-progress` entry are fair game.
+
+Forbidden:
+
+- Writing `status` through `amend`. The `PlanChangePatch` type has no
+  `status` field — this is a type-system guarantee. Status transitions
+  are `/spec:execute`'s sole prerogative via `specify plan transition`.
+- Hand-editing `.specify/plan.yaml` or
+  `.specify/changes/<name>/.metadata.yaml`. Always route through the
+  CLI so the single-writer invariant in RFC-2 §"Plan Mutation and
+  Crash Safety" holds.
+
 ---
 
 ## Input
