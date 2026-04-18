@@ -17,6 +17,7 @@ Humans are expected to work through stock Specify:
 - `/spec:explore` (thinking partner for ideas and requirements)
 - `/spec:status` (check artifact completion and task progress)
 - `/spec:extract` (extract Specify artifacts from existing source code)
+- `/spec:execute` (drive an initiative's `.specify/plan.yaml` through define → build → merge; RFC-2 Layer 2 — `--dry-run` scaffold only in this revision, full-run forthcoming)
 
 This repository provides specialist skills and references that support that workflow.
 
@@ -38,7 +39,7 @@ CLI surface the skills depend on:
 - `specify init` — scaffold `.specify/` and write `project.yaml`.
 - `specify status` — list active changes and per-change progress.
 - `specify change {create, list, status, transition, touched-specs, overlap, archive, drop}` — lifecycle verbs.
-- `specify plan {validate, next, status, create, amend, transition, archive}` — plan-level verbs backing RFC-2 Layer 1 (humans drive today; `/spec:execute` will drive in Layer 2).
+- `specify plan {validate, next, status, create, amend, transition, archive, lock}` — plan-level verbs backing RFC-2 Layer 1 (humans drive today; `/spec:execute` will drive in Layer 2). `plan lock {acquire, release, status}` manages the `.specify/plan.lock` PID stamp that the `/spec:execute` driver takes for the duration of a run.
 - `specify schema {resolve, check, pipeline}` — schema resolution and brief topology.
 - `specify spec {preview, conflict-check}` — dry-run merge operations and baseline drift detection.
 - `specify validate` — structural + semantic artifact checks.
