@@ -38,6 +38,7 @@ CLI surface the skills depend on:
 - `specify init` — scaffold `.specify/` and write `project.yaml`.
 - `specify status` — list active changes and per-change progress.
 - `specify change {create, list, status, transition, touched-specs, overlap, archive, drop}` — lifecycle verbs.
+- `specify plan {validate, next, status, create, amend, transition, archive}` — plan-level verbs backing RFC-2 Layer 1 (humans drive today; `/spec:execute` will drive in Layer 2).
 - `specify schema {resolve, check, pipeline}` — schema resolution and brief topology.
 - `specify spec {preview, conflict-check}` — dry-run merge operations and baseline drift detection.
 - `specify validate` — structural + semantic artifact checks.
@@ -48,6 +49,26 @@ Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never
 `mv` anything into `.specify/archive/`. Route through the CLI — it
 enforces the legal set of lifecycle states and validates inputs in one
 place for humans, agents, and CI alike.
+
+### Plan-driven loop (RFC-2 Layer 1)
+
+When an initiative is coordinated through a `.specify/plan.yaml`, the
+loop is hand-driven today:
+
+1. `specify plan next` — pick the next eligible entry.
+2. `specify plan transition <name> in-progress` — claim it.
+3. `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) as usual.
+4. `specify plan transition <name> {done, failed, blocked}` — close the loop.
+
+The phase skills themselves stay unaware of the plan — they operate
+change-by-change. Plan *entries* are only ever written via `specify
+plan create` / `specify plan amend`; plan *status* is only ever written
+via `specify plan transition`. A phase that discovers a neighbouring
+change mid-run (e.g. a define brief uncovering a bug fix that should be
+tracked) may shell out to `specify plan create` / `specify plan amend`
+— the same commands humans run. RFC-2 Layer 2 will land `/spec:execute`
+as an automated driver against this same CLI surface; the hand-driven
+path remains the fallback. See [rfcs/rfc-2-execution.md](rfcs/rfc-2-execution.md).
 
 ### Commands
 

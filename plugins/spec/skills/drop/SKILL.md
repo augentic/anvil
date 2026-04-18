@@ -13,6 +13,15 @@ Deterministic bookkeeping — change selection, lifecycle transition, archive
 move — is delegated to the `specify` CLI. This skill drives the confirmation
 flow and the summary.
 
+When working plan-driven (a `.specify/plan.yaml` exists), after `specify change drop` succeeds the plan entry should transition to `failed` or `blocked` per RFC-2 semantics — `failed` for a build/test failure the human does not intend to retry automatically, `blocked` when a design question needs resolving before the entry is re-entered as `pending`:
+
+```bash
+specify plan transition <name> failed  --reason "<short rationale>"
+specify plan transition <name> blocked --reason "<short rationale>"
+```
+
+This is an advisory note — this skill does not run the command itself. RFC-2 Layer 2's `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
+
 ## Input
 
 Optionally specify a change name. If omitted, check whether it can be inferred from conversation context. If vague or ambiguous, you MUST prompt for available changes.

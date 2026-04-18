@@ -16,6 +16,14 @@ move — is delegated to the `specify` CLI. This skill drives the agent-side
 work: reading the merge preview, coordinating the `AskQuestion` confirmation
 flow, and summarising results.
 
+When working plan-driven (a `.specify/plan.yaml` exists), after `specify merge` returns successfully the plan entry should be transitioned to `done`:
+
+```bash
+specify plan transition <name> done
+```
+
+This is an advisory note — this skill does not run the command itself. RFC-2 Layer 2's `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
+
 ## Input
 
 Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.

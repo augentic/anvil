@@ -73,6 +73,22 @@ Additional commands:
 - `/spec:explore` -- Think through ideas and investigate problems before or during a change.
 - `/spec:extract` -- Extract Specify artifacts from existing source code.
 
+### Plans
+
+A **plan** (`.specify/plan.yaml`) is an initiative's table of contents — an ordered, dependency-aware list of changes with per-entry status. It turns a sprawling effort (greenfield build, legacy migration, platform modernisation) into a series of self-contained Specify changes that accumulate in the baseline as each one merges. Humans drive a plan-based initiative with the `specify plan` CLI and the existing `/spec:define`, `/spec:build`, `/spec:merge`, and `/spec:drop` skills — no extra skill is required today.
+
+Layer 1 CLI verbs:
+
+- `specify plan validate` -- Structural and referential integrity checks (duplicate names, dependency cycles, unknown `depends-on` / `affects` / `sources`, at most one `in-progress`).
+- `specify plan next` -- Report the next eligible entry (first `pending` whose `depends-on` is all `done`).
+- `specify plan status` -- Render progress in topological order with per-status counts, the active `in-progress` entry, and any `status-reason`.
+- `specify plan create <name>` -- Append a new entry (starts `pending`).
+- `specify plan amend <name>` -- Edit non-status fields on an existing entry.
+- `specify plan transition <name> <target>` -- Move an entry through the status state machine (`pending → in-progress → done`, plus `blocked`, `failed`, `skipped`).
+- `specify plan archive` -- Move a completed `plan.yaml` to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`.
+
+See [rfcs/rfc-2-execution.md](rfcs/rfc-2-execution.md) for the full design. Layer 1 is the MVP: a human drives `get next change → define → build → merge → transition` by hand. Layer 2's `/spec:execute` driver skill — which automates the same loop against the same CLI — is forthcoming.
+
 ## Plugins
 
 Specify ships as a Cursor plugin marketplace with five plugins:
