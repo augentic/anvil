@@ -1,0 +1,19 @@
+# .specify/changes/email-verification/journal.yaml after self-heal
+# appends its one type: recovery entry. The prior entries in the file
+# (whatever /spec:define, /spec:build, /spec:merge wrote during the
+# interrupted run) are preserved untouched above the recovery entry.
+# This fixture ships just the appended entry — the rest of the file
+# is out of self-heal's concern.
+
+entries:
+  - timestamp: 2026-04-19T10:02:17Z
+    step: merge
+    type: recovery
+    summary: "Self-heal on startup: applied terminal transition done after finding success outcome on merge."
+    context: |
+      before=plan:in-progress / lifecycle:merged
+      after=plan:done / lifecycle:merged
+      Diagnostic: .metadata.yaml had outcome{phase: merge, outcome: success}
+      but plan.yaml still listed email-verification as in-progress. Driver
+      applied `specify plan transition email-verification done` without
+      re-running any phase; the change completed on the prior run.
