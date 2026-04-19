@@ -1,0 +1,73 @@
+# Embedded defaults -- overridden by ~/.config/vectis/versions.toml or
+# project-local versions.toml. See RFC-6 § Version Management.
+#
+# Sourced from the "Initial Version Pins" block in
+# rfcs/rfc-6-tasks.md, with Android pins bumped per the chunk-3c
+# verification (older pins do not produce a buildable APK against
+# Xcode 16 / Java 21 toolchains).
+
+[crux]
+crux_core     = "0.17.0"   # latest stable
+crux_http     = "0.16.0"   # latest stable; depends on crux_core ^0.17 + facet =0.31
+crux_kv       = "0.11.0"   # latest stable; same constraints
+crux_time     = "0.15.0"   # latest stable; same constraints
+crux_platform = "0.8.0"    # latest stable; same constraints
+
+# HARD PINS -- do not relax. Crux 0.17 specifies these exactly and will not
+# build with anything else. The `update-versions` command must lift the entire
+# Crux set in lock-step when these change.
+facet           = "=0.31"   # required by crux_core 0.17 and every cap crate
+facet_generate  = "=0.15"   # codegen feature; only 0.15 is compatible with facet 0.31
+serde           = "1.0"
+serde_json      = "1.0"
+
+# uniffi pin is coupled to cargo-swift. cargo-swift 0.9.x ships uniffi_bindgen 0.29.1;
+# 0.10.x ships 0.30.0; 0.11.x ships 0.31.0.
+#
+# Chunk 11 investigated the chunk-7 prescription to bump to `cargo_swift=0.11`
+# + `uniffi="=0.31.0"` and discovered the bump breaks the Kotlin codegen step
+# in `vectis verify`. crux_core 0.17.0's `cli` feature transitively pins
+# `uniffi_bindgen = "=0.29.4"`, so mixing a 0.31 runtime (shared crate) with a
+# 0.29 bindgen (invoked via `crux_core::cli::bindgen` inside
+# `templates/vectis/core/codegen.rs`) fails with "unresolved module path
+# shared::ffi". No version of Crux bumps bindgen to 0.31 today; this pair must
+# stay at 0.29.4 / 0.9 until either a newer Crux release tracks 0.31 bindgen or
+# the codegen template is rewritten to call uniffi_bindgen 0.31 directly (the
+# latter is chunk-13 `template-updater` territory).
+#
+# The chunk-7 iOS concern (cargo-swift 0.9 producing a `Package.swift` whose
+# binary target name doesn't match the module name under Xcode 26+/Swift 6) is
+# resolved instead via the *local* cargo-swift install: every chunk-7/8/9/10
+# verification passed on a machine with `brew install cargo-swift` at 0.11,
+# even with the embedded runtime pin at 0.29.4. cargo-swift 0.11's bindgen can
+# read the metadata emitted by uniffi 0.29.4's macros (the uniffi metadata
+# format is stable across 0.29 -> 0.31). Treat cargo-swift like xcodegen /
+# xcbeautify: a per-developer prereq, not a vendored runtime pin.
+uniffi      = "=0.29.4"
+cargo_swift = "0.9"        # version range that ships uniffi_bindgen 0.29.x
+
+[android]
+# Bumped from the RFC's original block per chunk-3c verification (the older
+# pins -- agp 8.8.2 / kotlin 2.1.10 / compose_bom 2025.01.01 -- do not
+# produce a buildable APK against Xcode 16 / Java 21 toolchains). Chunk 11
+# (`update-versions`) will replace these with proven-coherent values pulled
+# from Google's Maven and Maven Central.
+compose_bom = "2026.01.01"
+koin        = "4.1.1"
+ktor        = "3.4.0"
+kotlin      = "2.3.0"
+agp         = "8.13.2"
+gradle      = "8.13"
+# `ndk` deliberately omitted: chunk 8 detects the installed NDK from
+# `$ANDROID_HOME/ndk/<version>/` rather than pinning a version that may
+# not be installed on the developer's machine. The field exists on
+# `Versions::android` for projects that want to pin explicitly.
+
+[ios]
+# No external SPM deps today -- VectisDesign and the generated SharedTypes /
+# Shared packages are all internal.
+
+[tooling]
+cargo_deny = "0.19.4"      # latest
+cargo_vet  = "0.10.2"      # latest
+xcodegen   = "2.42.0"      # per RFC; not currently queried automatically

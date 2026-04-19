@@ -1,3 +1,6 @@
 .env
 .DS_Store
+__pycache__/
 specify
+/target
+/vectis

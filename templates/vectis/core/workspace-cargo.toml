@@ -1,0 +1,65 @@
+[workspace]
+members = ["shared"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.88"
+
+[workspace.dependencies]
+crux_core = "__CRUX_CORE_VERSION__"
+serde = "__SERDE_VERSION__"
+facet = "__FACET_VERSION__"
+<<<CAP:http
+crux_http = "__CRUX_HTTP_VERSION__"
+CAP:http>>>
+<<<CAP:kv
+crux_kv = "__CRUX_KV_VERSION__"
+CAP:kv>>>
+<<<CAP:time
+crux_time = "__CRUX_TIME_VERSION__"
+CAP:time>>>
+<<<CAP:platform
+crux_platform = "__CRUX_PLATFORM_VERSION__"
+CAP:platform>>>
+
+[workspace.lints.rust]
+trivial_numeric_casts = "warn"
+unused_extern_crates = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+
+[workspace.lints.clippy]
+# Lint groups carry an explicit lower priority so the per-lint overrides
+# below take precedence (without this, `clippy::lint_groups_priority`
+# itself fires under `-D warnings`).
+all = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+# Suppress two cargo-group lints that fire on every internal scaffolded
+# project: the shared crate is not published to crates.io (so it has no
+# description/license/repository metadata), and the Crux dependency tree
+# brings transitive `syn 1`/`syn 2` and similar duplicates the user
+# cannot deduplicate. Both fire under `cargo clippy --all-targets --
+# -D warnings` and would otherwise block `vectis verify`.
+cargo_common_metadata = "allow"
+multiple_crate_versions = "allow"
+as_pointer_underscore = "warn"
+assertions_on_result_states = "warn"
+clone_on_ref_ptr = "warn"
+deref_by_slicing = "warn"
+disallowed_script_idents = "warn"
+empty_drop = "warn"
+empty_enum_variants_with_brackets = "warn"
+empty_structs_with_brackets = "warn"
+fn_to_numeric_cast_any = "warn"
+if_then_some_else_none = "warn"
+map_err_ignore = "warn"
+redundant_type_annotations = "warn"
+renamed_function_params = "warn"
+semicolon_outside_block = "warn"
+undocumented_unsafe_blocks = "warn"
+unnecessary_safety_comment = "warn"
+unnecessary_safety_doc = "warn"
+unneeded_field_pattern = "warn"
+unused_result_ok = "warn"

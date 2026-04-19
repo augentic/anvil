@@ -14,6 +14,7 @@ Cross-platform Crux application generation: Rust shared core, SwiftUI iOS shell,
 | [android-writer](skills/android-writer/SKILL.md) | `/vectis:android-writer` | Generate or update Kotlin/Jetpack Compose Android shells |
 | [android-reviewer](skills/android-reviewer/SKILL.md) | `/vectis:android-reviewer` | Review generated Android shells |
 | [design-system-writer](skills/design-system-writer/SKILL.md) | `/vectis:design-system-writer` | Generate VectisDesign from tokens.yaml |
+| [template-updater](skills/template-updater/SKILL.md) | `/vectis:template-updater` | Fix CLI templates + pins when an upstream bump breaks a fresh scaffold |
 
 ## References
 

@@ -1,0 +1,5 @@
+# cargo-vet audit ledger. New audits added by hand or via `cargo vet certify`.
+
+[criteria]
+
+[audits]
