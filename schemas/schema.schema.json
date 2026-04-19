@@ -34,6 +34,12 @@
       "additionalProperties": false,
       "description": "Pipeline phases with brief references.",
       "properties": {
+        "plan": {
+          "type": "array",
+          "minItems": 1,
+          "description": "Optional Layer 3 authoring-phase briefs driven by /spec:plan.",
+          "items": { "$ref": "#/$defs/pipelineEntry" }
+        },
         "define": {
           "type": "array",
           "minItems": 1,
