@@ -1,0 +1,50 @@
+name: platform-v2
+sources:
+  monolith: /path/to/legacy-codebase
+  orders: git@github.com:org/orders-service.git
+  payments: git@github.com:org/payments-service.git
+changes:
+- name: user-registration
+  status: pending
+  depends-on: []
+  affects: []
+  sources:
+  - monolith
+  description: User sign-up flow; creates a new user record.
+  status-reason: null
+- name: email-verification
+  status: pending
+  depends-on:
+  - user-registration
+  affects: []
+  sources:
+  - monolith
+  description: Verify user email via a one-time link.
+  status-reason: null
+- name: product-catalog
+  status: pending
+  depends-on: []
+  affects: []
+  sources:
+  - monolith
+  description: Browse and search the product catalogue.
+  status-reason: null
+- name: shopping-cart
+  status: pending
+  depends-on:
+  - product-catalog
+  - user-registration
+  affects: []
+  sources:
+  - orders
+  description: Add/remove items from the user's cart.
+  status-reason: null
+- name: checkout-api
+  status: pending
+  depends-on:
+  - shopping-cart
+  affects: []
+  sources:
+  - payments
+  description: Complete payment for a cart.
+  status-reason: null

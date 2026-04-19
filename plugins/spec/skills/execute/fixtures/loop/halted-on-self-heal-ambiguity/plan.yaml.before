@@ -1,0 +1,14 @@
+name: platform-v2
+
+sources:
+  orders: git@github.com:org/orders-service.git
+
+changes:
+  - name: shopping-cart
+    sources: [orders]
+    status: in-progress
+
+  - name: checkout-api
+    sources: [orders]
+    depends-on: [shopping-cart]
+    status: pending

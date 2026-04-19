@@ -1,0 +1,1 @@
+/spec:define user-registration --source monolith=/path/to/legacy-codebase

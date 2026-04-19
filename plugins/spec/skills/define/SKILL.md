@@ -2,14 +2,156 @@
 name: define
 description: Define a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
 license: MIT
-argument-hint: "[description] [artifact-id?]"
+argument-hint: "[description] [artifact-id?] [--source <key>=<path-or-url>...] [--affects <change-name>...]"
 ---
 
 # Define Skill
 
 Define a new change - create the change and generate all artifacts in one step.
 
-When ready to implement, run /spec:build
+When ready to implement, run `/spec:build`.
+
+When working plan-driven (a `.specify/plan.yaml` exists), `specify initiative next` can be run to pick the next eligible entry, and `specify initiative transition <name> in-progress` claims it before `/spec:define` starts. If this skill uncovers a neighbouring change that should be tracked (e.g. a bug fix spotted during extraction), shell out to `specify initiative create <name> ...` — it is the only supported way to add a new entry. Use `specify initiative amend <name> ...` to edit non-status fields on the active or a pending entry; `status` stays off-limits to `amend` by design.
+
+Deterministic bookkeeping — name validation, `.metadata.yaml` writes, schema
+resolution, pipeline topology, touched-specs scanning, overlap detection — is
+delegated to the `specify` CLI. This skill only drives the agent-side work:
+eliciting intent from the user, reading brief bodies, and writing the
+artifact files those briefs describe.
+
+> See `rfcs/archive/rfc-2-execution.md` §"Execution Model Overview" and
+> `rfcs/assets/specify-framework.png` for where this skill sits in the
+> `/spec:execute` driver loop.
+
+---
+
+## Driver-supplied arguments (new in RFC-2 L2.I)
+
+When invoked by `/spec:execute` from a plan entry, this skill accepts
+two repeatable flags that carry the plan-level `sources` and `affects`
+signals into the define phase:
+
+```
+/spec:define <name> [--source <key>=<path-or-url>...] [--affects <change-name>...]
+```
+
+- **`--source <key>=<path-or-url>`** — a resolved entry from the plan's
+  top-level `sources` map. The key is the kebab-case identifier used in
+  the plan entry's `sources` list; the value is either a local filesystem
+  path or a git URL. `/spec:execute` has already validated that the key
+  exists in the plan's top-level `sources` map; this skill treats the
+  `value` as opaque and forwards it to whichever define brief invokes
+  `/spec:extract` (which in turn consults `git-cloner` for URL values).
+  The driver never clones in L2.I; that stays inside the brief pipeline.
+- **`--affects <change-name>`** — a plan entry this change modifies.
+  For each `--affects` flag, the skill prepares to emit delta specs
+  under `.specify/changes/<this-change>/specs/<affects>/spec.md`,
+  sourced from the baseline at `.specify/specs/<affects>/spec.md`.
+  Multiple `--affects` flags are allowed; they are processed in the
+  order they were supplied.
+
+Both flags are **optional** and **additive**: a greenfield change has
+neither; a refactor targeting prior specs has `--affects` only; a
+migration from a legacy source has `--source` only; an authoring
+workflow that amends prior specs from a legacy source has both. When
+a human invokes `/spec:define` directly (outside `/spec:execute`), the
+flags remain available but are rarely supplied — the skill's existing
+question-asking flow still handles free-form descriptions.
+
+The authoritative contract for how `/spec:execute` builds these flag
+values lives in [`../execute/SKILL.md` → §Argument resolution
+(`sources` and `affects`)](../execute/SKILL.md). Fixtures under
+[`../execute/fixtures/field-wiring/`](../execute/fixtures/field-wiring/)
+pin the three possible argument shapes (sources-only, affects-only,
+combined).
+
+---
+
+## Phase outcome contract (RFC-2 §"Phase Outcome Contract")
+
+This skill is the **define** phase of the `/spec:execute` driver loop.
+Before returning control to the caller, always record the phase's outcome
+via:
+
+```bash
+specify change phase-outcome <name> define <outcome> --summary "..." [--context "..."]
+```
+
+where `<outcome>` is exactly one of:
+
+- `success`  — every define brief produced its `generates` artefacts and
+  any verify-repair loop converged. The change is ready for
+  `/spec:build`.
+- `failure`  — a brief failed after the repair budget was exhausted
+  (e.g. extraction's fixture-capture sub-step crashed, a writer brief
+  could not converge). Use `--summary` to name which brief and the
+  load-bearing stderr line; use `--context` for verbatim detail
+  (stderr tail, failing assertion, etc.).
+- `deferred` — human judgement is needed (ambiguous requirement,
+  missing scope, unresolvable conflict between sources and existing
+  baselines). Use `--summary` to name the question; use `--context`
+  for the ambiguous-requirement text itself.
+
+`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome`
+on return and translates the outcome into a plan transition
+(`done` / `failed` / `blocked`). If the field is missing or malformed,
+`/spec:execute` treats the phase as `deferred` and stops for triage —
+do not skip the CLI call. This `phase-outcome` invocation is the
+**last action** the skill takes before returning control.
+
+## Journal entries during the run (RFC-2 §"Question Recording")
+
+Whenever the skill encounters a situation the human should see — a
+genuine question, a repair attempt that failed, or a notable recovery —
+append to `.specify/changes/<name>/journal.yaml` **during** the run,
+not just at the end:
+
+```bash
+specify change journal-append <name> define <kind> --summary "..." [--context "..."]
+```
+
+Kinds:
+
+- `question` — ambiguous requirement, missing scope, or anything that
+  might produce a `deferred` outcome at the end of the phase. Write one
+  entry per question so the human sees the full trail when triaging.
+- `failure` — a brief returned an error after retry. Write one entry
+  per failure; the final `phase-outcome` summary rolls up only the
+  load-bearing one, but auditors still see every attempt.
+- `recovery` — a self-heal / recovery step happened. (Typically written
+  by `/spec:execute` itself; phases rarely need to append this kind.)
+
+`journal.yaml` is a pure append-only audit log; `/spec:execute` never
+consumes it as a signalling channel. The `outcome` field in
+`.metadata.yaml` is the only state `/spec:execute` reads on phase
+return.
+
+## Mutating the plan mid-run (RFC-2 §"Phase Boundary → Rule 2")
+
+Phases may shell out to `specify initiative create` / `specify initiative amend`
+mid-run when they discover something structural about the initiative.
+Both commands write `.specify/plan.yaml` synchronously — the new or
+updated entry is visible to every subsequent `/spec:execute` iteration.
+
+Allowed:
+
+- `specify initiative create <new-name> --affects <current-name> --description "..."`
+  when, for example, an extract sub-step surfaces a neighbouring defect
+  (the canonical `registration-duplicate-email-crash` case).
+- `specify initiative amend <current-name> --depends-on <newly-needed>` when
+  the phase discovers a dependency on another plan entry while designing.
+  `amend` may target the currently-active entry — non-`status` fields
+  on an `in-progress` entry are fair game.
+
+Forbidden:
+
+- Writing `status` through `amend`. The `PlanChangePatch` type has no
+  `status` field — this is a type-system guarantee. Status transitions
+  are `/spec:execute`'s sole prerogative via `specify initiative transition`.
+- Hand-editing `.specify/plan.yaml` or
+  `.specify/changes/<name>/.metadata.yaml`. Always route through the
+  CLI so the single-writer invariant in RFC-2 §"Plan Mutation and
+  Crash Safety" holds.
 
 ---
 
@@ -28,38 +170,30 @@ The user's request should include a change name (kebab-case) OR a description of
 
    **IMPORTANT**: Do NOT proceed without understanding what the user wants to build.
 
-2. **Validate the change name**
+2. **Read project config**
 
-   The name must be kebab-case: lowercase letters, digits, and hyphens only. No leading or trailing hyphens. No spaces or uppercase.
+   Read `.specify/project.yaml` (use the Read tool) for `schema`, `domain`, and `rules`:
 
-   Good: `add-dark-mode`, `fix-export-bug`, `user-auth-v2`
-   Bad: `Add-Dark-Mode`, `add dark mode`, `-leading`, `trailing-`
+   - `schema`: Schema identifier. If `.specify/project.yaml` is missing, run `/spec:init` first and stop.
+   - `domain`: Project-level domain context. If absent or a placeholder, fall back to the schema's `domain` (available at `<resolved_schema_dir>/schema.yaml`, where `<resolved_schema_dir>` comes from any brief `path` returned by step 6).
+   - `rules`: Per-brief rule overrides. Optional; empty values mean "no rules apply."
 
-3. **Check initialization, resolve schema, and read config**
+   **IMPORTANT**: `domain` and `rules` guide how you write artifacts. Do NOT copy them into any artifact output.
 
-   - Verify `.specify/project.yaml` exists. If not, tell the user to run `/spec:init` first.
-   - Read `.specify/project.yaml` to get:
-     - `schema`: the schema value. Default to `omnia` if not found.
-     - `domain`: Project-level domain context (may be empty or a placeholder)
-     - `rules`: Per-brief rule overrides (constraints for you - do NOT include in artifact output)
-   - **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `briefs/*`.
-   - Read `schema.yaml` from the resolved schema directory. This defines the pipeline phases and brief references. **All pipeline and brief knowledge comes from the schema** — do not assume fixed brief IDs or output paths.
-   - Read `domain` from the resolved `schema.yaml` for default domain context. **Resolve effective domain**: use the project's `domain` if present and non-empty (not just a comment placeholder), otherwise fall back to the schema's `domain`. **Resolve effective rules** per brief: for each brief ID, use the project's `rules.<id>` if present and non-empty, otherwise no rules apply (rules are optional project-level overrides). These are constraints for you — do NOT include them in artifact output.
+   Schema resolution and pipeline topology are handled by the CLI in later steps — there is no need to invoke `specify schema resolve` explicitly here.
 
-4. **Check for regenerate mode**
+3. **Check for regenerate mode**
 
    If the user specified an artifact ID (e.g., `design`):
 
-   a. Verify the change exists at `.specify/changes/<name>/`
-   b. Read `.metadata.yaml` and confirm `status` is `defined` or `building`
-   c. Look up the brief by `id` in `schema.yaml`'s `pipeline.define` entries
-   d. Verify all briefs listed in its frontmatter `needs` exist in the change directory
-   e. Read the required artifacts for context
-   f. Read the brief file at the path given by the pipeline entry's `brief` field in the resolved schema directory
-   g. Regenerate ONLY the specified artifact following the brief
-   i. Apply `domain` and effective rules as constraints
-   j. Do NOT change the `status` field
-   l. Show output:
+   a. Run `specify change status <name> --format json` to confirm the change exists and its `status` is `defined` or `building`. If the CLI errors with `not_found`, the change is missing; if `status` is some other value, warn before proceeding.
+   b. Run `specify schema pipeline define --change .specify/changes/<name> --format json` to resolve the brief for the target artifact ID. The returned `briefs[]` array lists every define brief in topological order with each brief's `path`, `needs`, and `generates`.
+   c. For the brief matching the requested artifact ID, verify each entry in its `needs` is already present (the `present` field on the pipeline response).
+   d. Read the required dependency artifacts for context (their paths come from each brief's `generates` joined to `.specify/changes/<name>/`).
+   e. Read the brief file itself from the returned `path`.
+   f. Regenerate ONLY the specified artifact following the brief, applying `domain` and effective rules as constraints.
+   g. Do NOT change the `.metadata.yaml` status — there is no `specify change transition` call in regenerate mode.
+   h. Show output:
 
       ```markdown
       ## Artifact Regenerated
@@ -69,55 +203,63 @@ The user's request should include a change name (kebab-case) OR a description of
       **Dependencies read:** <list of needs artifacts>
 
       The artifact has been updated. Other artifacts are unchanged.
-
       ```
 
-   m. Stop — do not proceed to full define flow
+   i. Stop — do not proceed to full define flow.
 
-5. **Create the change directory**
+4. **Create the change**
 
-   - Check if `.specify/changes/<name>/` already exists. If so:
-     - Read `.metadata.yaml` — if `status` is `defining`, offer to continue or restart
-     - Otherwise ask if user wants to continue it or create a new one with a different name
+   Run:
 
    ```bash
-   mkdir -p .specify/changes/<name>/specs
+   specify change create <name> --if-exists continue --format json
    ```
 
-   Write `.specify/changes/<name>/.metadata.yaml`:
+   The CLI handles kebab-case validation, directory creation (`.specify/changes/<name>/specs/`), and the initial `.metadata.yaml` write (status `defining`, `created_at` timestamp). With `--if-exists continue`:
 
-   ```yaml
-   schema: <schema_from_config>
-   status: defining
-   created_at: <current ISO-8601 timestamp>
-   defined_at: null
-   build_started_at: null
-   completed_at: null
-   touched_specs: []
+   - If the directory does not exist, it is created fresh (`created: true`).
+   - If it exists with a valid `.metadata.yaml`, the CLI reuses it (`created: false`) — ask the user whether they want to continue the in-flight change or pick a different name before proceeding.
+   - If it exists without `.metadata.yaml`, the CLI errors — rename or remove the stray directory.
+
+   To start fresh over an existing change (destructive), pass `--if-exists restart` instead.
+
+5. **Check for overlapping changes**
+
+   Run:
+
+   ```bash
+   specify change overlap <name> --format json
    ```
 
-6. **Check for overlapping changes**
+   For each entry in the `overlaps` array, warn:
 
-   Before creating specs, check if any other active change (in `.specify/changes/`, skipping `archive/`) also touches the same capabilities. Read each active change's `.metadata.yaml` for its `touched_specs` list. If any capability appears in both the current proposal's crates/capabilities list and another change's `touched_specs`:
-   - Warn: "The capability `<name>` is also being modified by change `<other-change>`. This may cause conflicts at merge time."
-   - This is informational only — do not block the proposal.
+   > "The capability `<capability>` is also being modified by change `<other-change>`. This may cause conflicts at merge time."
+
+   This is informational only — do not block the proposal. The CLI only reports overlaps against the change's current `touched-specs`; step 7 updates those after artifacts are created.
+
+6. **Read the brief pipeline**
+
+   Run:
+
+   ```bash
+   specify schema pipeline define --change .specify/changes/<name> --format json
+   ```
+
+   The response lists every define brief in topological order with its absolute `path`, `needs` edges, `generates` target, and current `present` flag relative to this change. Use this list — not `schema.yaml` directly — to drive the generation loop.
 
 7. **Create artifacts in dependency order**
 
-   Use the **TodoWrite tool** to track progress through the artifacts.
+   Use the **TodoWrite tool** to track progress through the briefs.
 
-   Build the dependency graph from the `needs` field in each brief's YAML frontmatter. Read `pipeline.define` entries from `schema.yaml`, then for each entry read the brief file's frontmatter to get `id`, `needs`, `generates`, and `description`. Topologically sort: a brief is ready when all briefs listed in its `needs` are complete. Briefs with no `needs` come first; briefs sharing the same dependency level can be created in parallel or any order.
+   For each brief from step 6 (in the order the CLI returned — topologically sorted):
 
-   For each brief (in dependency order):
-
-   - Read any completed dependency files (the briefs listed in `needs`) for context
-   - Read the brief file at the path given by the pipeline entry's `brief` field in the resolved schema directory
-   - Determine the output path from the brief's frontmatter `generates` field, relative to `.specify/changes/<name>/`:
-     - Simple filename (e.g., `proposal.md`): write to `.specify/changes/<name>/<generates>`
-     - Glob pattern (e.g., `specs/**/*.md`): the brief determines how many files to create and where within the pattern
-   - Create the artifact file following the brief, applying the format conventions below for the matching artifact type
-   - Apply `domain` and effective rules as constraints — but do NOT copy them into the file
-   - Verify the file exists after writing before proceeding to next
+   - Read any completed dependency files (each brief in `needs`'s `generates` path joined to `.specify/changes/<name>/`).
+   - Read the brief file itself from its `path`.
+   - Resolve the output path from the brief's `generates` field, relative to `.specify/changes/<name>/`:
+     - Simple filename (e.g., `proposal.md`): write to `.specify/changes/<name>/<generates>`.
+     - Glob pattern (e.g., `specs/**/*.md`): the brief determines how many files to create and where within the pattern.
+   - Create the artifact file following the brief, applying `domain` and effective rules as constraints.
+   - Verify the file exists after writing before proceeding to the next brief.
 
    ### Spec format conventions
 
@@ -170,25 +312,30 @@ The user's request should include a change name (kebab-case) OR a description of
 
 8. **Finalize and show status**
 
-   Update `.specify/changes/<name>/.metadata.yaml`:
-   - Set `status: defined`
-   - Set `defined_at` to current ISO-8601 timestamp
-   - Set `touched_specs` from the spec files created — for each subdirectory in `.specify/changes/<name>/specs/`, record an entry with `name` (the directory name) and `type` (`new` if no baseline exists at `.specify/specs/<name>/spec.md`, `modified` if one does)
-   - **Verify**: re-read `.metadata.yaml` and confirm the `status` value is exactly `defined`. Valid lifecycle values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped`. If `status` is not one of these, correct it to `defined`.
+   Scan the specs directory and record classifications, then transition to `defined`:
+
+   ```bash
+   specify change touched-specs <name> --scan --format json
+   specify change transition <name> defined --format json
+   ```
+
+   `touched-specs --scan` walks `.specify/changes/<name>/specs/*`, classifies each capability as `new` (no baseline under `.specify/specs/`) or `modified` (baseline exists), and writes the list into `.metadata.yaml`. `change transition` stamps `defined-at` and enforces the `defining → defined` edge.
 
    Summarize:
+
    - Change name and location
    - List of artifacts created with brief descriptions
+   - Any `touched-specs` classified as `modified` (these will surface in conflict checks at merge time)
    - What's ready: "All artifacts created! Ready for implementation."
    - Prompt: "Run `/spec:build` or ask me to implement to start working on the tasks."
 
 ## Guardrails
 
-- Create all artifacts for briefs defined in `pipeline.define` before declaring the change ready
-- Always read dependency artifacts (from `needs`) before creating a new one
-- **All artifacts MUST be written under `.specify/changes/<name>/`**. 
-- If context is critically unclear, ask the user -- but prefer making reasonable decisions to keep momentum
-- If a change with that name already exists, check its status before deciding how to proceed
-- Verify each artifact file exists after writing before proceeding to next
+- Create all artifacts for briefs returned by `specify schema pipeline define` before declaring the change ready.
+- Always read dependency artifacts (from each brief's `needs`) before creating a new one.
+- **All artifacts MUST be written under `.specify/changes/<name>/`**.
+- If context is critically unclear, ask the user -- but prefer making reasonable decisions to keep momentum.
+- Never hand-edit `.metadata.yaml`. All status transitions and timestamp writes go through `specify change transition`; all `touched-specs` updates go through `specify change touched-specs`. The CLI enforces the legal set of lifecycle values — you do not need to track them yourself.
+- If a change with that name already exists, use `specify change status <name>` to decide how to proceed.
+- Verify each artifact file exists after writing before proceeding to next.
 - **IMPORTANT**: `domain` and effective rules (project config overrides) are constraints for YOU, not content for the file. Do NOT copy `<domain>`, `<rules>`, `<project_context>` blocks into any artifact.
-- Valid lifecycle status values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped` -- use these exact strings when updating `.metadata.yaml`, no other values are permitted

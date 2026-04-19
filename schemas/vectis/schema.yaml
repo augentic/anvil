@@ -8,6 +8,11 @@ domain: |
   Testing: Rust integration tests (cargo test), Xcode build verification (make build), Gradle build verification (./gradlew :app:assembleDebug)
 
 pipeline:
+  plan:
+    - id: discovery
+      brief: briefs/plan/discovery.md
+    - id: propose
+      brief: briefs/plan/propose.md
   define:
     - id: proposal
       brief: briefs/proposal.md

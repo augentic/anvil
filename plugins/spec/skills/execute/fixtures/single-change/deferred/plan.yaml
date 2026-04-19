@@ -1,0 +1,7 @@
+name: platform-v2
+
+changes:
+  - name: notification-preferences
+    description: >
+      Greenfield — user-facing notification channel and frequency settings.
+    status: pending

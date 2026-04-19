@@ -1,0 +1,16 @@
+name: platform-v2
+
+sources:
+  orders: git@github.com:org/orders-service.git
+  payments: git@github.com:org/payments-service.git
+
+changes:
+  - name: shopping-cart
+    sources: [orders]
+    status: done
+
+  - name: checkout-api
+    sources: [payments]
+    depends-on: [shopping-cart]
+    status: failed
+    status-reason: "cargo test failed: 1/7 tests red (checkout_gateway::line_item_round_trip)."

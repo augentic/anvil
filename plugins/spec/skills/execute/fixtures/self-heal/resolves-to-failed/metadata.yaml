@@ -1,0 +1,31 @@
+# Snapshot of .specify/changes/checkout-api/.metadata.yaml as self-heal
+# reads it on startup. /spec:build exhausted its verify-repair budget
+# and stamped outcome: build failure before returning; the prior
+# /spec:execute run crashed before reaching the step-11 drop path
+# (`/spec:drop checkout-api --reason "..."` then `specify initiative
+# transition checkout-api failed --reason "..."`).
+#
+# Self-heal reads this file, classifies the outcome as `failure`, and
+# walks the same drop-then-transition sequence the live-run failure
+# path does — `outcome.summary` becomes `--reason` verbatim, so
+# `plan.yaml.after:status-reason` matches this file's `summary` byte
+# for byte.
+
+name: checkout-api
+status: building
+schema: omnia
+created-at: 2026-04-19T11:00:00Z
+defined-at: 2026-04-19T11:07:15Z
+build-started-at: 2026-04-19T11:07:58Z
+outcome:
+  phase: build
+  outcome: failure
+  at: 2026-04-19T11:23:47Z
+  summary: "cargo test failed: 1/7 tests red (checkout_gateway::line_item_round_trip)."
+  context: |
+    crates/checkout/src/gateway.rs line 42: line_item.quantity is u32
+    but the payment gateway's OpenAPI contract expects i64. The
+    verify-repair loop iterated three times; neither widening the cart
+    schema to i64 (breaks round-trip serialization) nor patching the
+    gateway contract (rejected by schema compatibility check) converged.
+    See journal.yaml for per-iteration detail.

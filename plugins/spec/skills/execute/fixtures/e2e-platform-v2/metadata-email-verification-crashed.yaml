@@ -1,0 +1,24 @@
+# .specify/changes/email-verification/.metadata.yaml
+# Illustrative snapshot of the seeded workspace. The prior
+# /spec:execute --loop run merged email-verification successfully
+# but crashed after /spec:merge stamped outcome: success, before it
+# could run `specify initiative transition email-verification done`. Self-
+# heal on startup reclaims this entry by applying the terminal
+# transition.
+
+name: email-verification
+status: merged
+created-at: 2025-03-12T09:14:07Z
+defined-at: 2025-03-12T09:41:22Z
+built-at:   2025-03-12T10:22:55Z
+complete-at: 2025-03-12T10:58:03Z
+merged-at:  2025-03-12T11:04:41Z
+
+touched-specs:
+  - { capability: email-verification, classification: new }
+
+outcome:
+  outcome: success
+  phase: merge
+  summary: "email-verification merged; baseline updated at .specify/specs/email-verification/spec.md."
+  recorded-at: 2025-03-12T11:04:41Z
