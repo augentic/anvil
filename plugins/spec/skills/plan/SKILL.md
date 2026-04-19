@@ -15,14 +15,16 @@ Author `.specify/plan.yaml` for a new initiative by running the
 `schema.yaml`. `/spec:plan` is the Layer 3 authoring counterpart to
 `/spec:execute`: one *writes* the plan, the other *runs* it.
 
-> **Scope note.** This revision (RFC-2 L3.E) ships the skill scaffold:
-> invocation surface, the five-step core loop shape, the single-writer
-> invariant, working-directory layout, and a `--dry-run` readiness
-> report. **Discovery brief wiring lands in L3.F; propose brief
-> wiring lands in L3.G.** Today `/spec:plan` runs steps 1, 2, and 4
-> of the core loop end-to-end; steps 3(a) and 3(b) are pipeline-
-> shaped placeholders that invoke the briefs declared in
-> `schema.yaml` but do not yet contain their full bodies.
+> **Scope note.** This revision (RFC-2 L3.F) wires the discovery
+> step on top of the L3.E scaffold. Step 3(a) now reads `--from`
+> artefacts directly, invokes `/spec:extract` once per `--source`
+> and `--against` input, merges the results, and writes a
+> consolidated capability inventory to
+> `.specify/plans/<name>/discovery.md`. **Propose brief wiring
+> still lands in L3.G.** Today `/spec:plan` runs steps 1, 2, 3(a),
+> and 4 of the core loop end-to-end; step 3(b) is a pipeline-
+> shaped placeholder that invokes the propose brief declared in
+> `schema.yaml` but does not yet contain its full body.
 
 ## Overview
 
@@ -93,7 +95,12 @@ Flags:
 - **`--extend`** — add to an existing `.specify/plan.yaml` instead of
   refusing. Skips step 2 (scaffold) and reopens the propose loop
   against the existing plan; existing entries are never modified —
-  `--extend` is additive-only.
+  `--extend` is additive-only. If
+  `.specify/plans/<initiative-name>/discovery.md` already exists,
+  step 3(a) is also skipped and the existing inventory is reused;
+  otherwise step 3(a) runs normally. To refresh the inventory,
+  archive the plan (`specify plan archive`) and re-run without
+  `--extend`.
 - **`--dry-run`** — emit the readiness report and the proposed plan to
   stdout; write nothing. See §"Dry-run output".
 
@@ -151,13 +158,13 @@ skill writes nothing to `.specify/plan.yaml` directly.
 
    Then run each brief in order:
 
-     a. discovery  — read --from artefacts and/or analyse
-                     --against / --source codebases; write the
-                     consolidated capability inventory to
-                     .specify/plans/<name>/discovery.md.
-                     (L3.F fleshes this step out; the current
-                     revision exposes the step shape but does not
-                     yet wire /spec:extract or git-cloner.)
+     a. discovery  — read --from artefacts directly; invoke
+                     /spec:extract once per --source and --against
+                     input; merge the results into a consolidated
+                     capability inventory at
+                     .specify/plans/<name>/discovery.md. See
+                     §"Step 3(a) — Discovery" below for the full
+                     algorithm.
 
      b. propose    — read discovery.md; decompose into change
                      slices with `depends-on` edges using the
@@ -199,6 +206,170 @@ skill writes nothing to `.specify/plan.yaml` directly.
    Non-zero exit on any earlier step's hard failure; zero exit on
    a clean validate.
 ```
+
+## Step 3(a) — Discovery
+
+Step 3(a) invokes the discovery brief declared in `pipeline.plan`
+(for Omnia, [`schemas/omnia/briefs/plan/discovery.md`](../../../../schemas/omnia/briefs/plan/discovery.md)
+from L3.D) and produces the neutral capability inventory that step
+3(b) will decompose. Discovery is read-only with respect to
+`plan.yaml` — its only output is
+`.specify/plans/<initiative-name>/discovery.md`.
+
+### Algorithm
+
+1. **Create the working directory.** Create
+   `.specify/plans/<initiative-name>/` if it doesn't already exist.
+   Skipped under `--dry-run` — see §"Dry-run output".
+
+2. **Analyse each `--source` input.** For each
+   `--source <key>=<path-or-url>` argument:
+   - If `<path-or-url>` looks like a git URL, invoke
+     `/spec:extract <url> .specify/plans/<name>/extract/<key>/`.
+     `/spec:extract` composes Omnia's `git-cloner` (to clone the
+     repo into a working location) and `analyze` (to parse and
+     emit capabilities) plugins internally; discovery never calls
+     those plugins directly.
+   - If `<path-or-url>` is a local filesystem path, invoke
+     `/spec:extract <path> .specify/plans/<name>/extract/<key>/`
+     directly (no clone).
+   - Capture the capabilities emitted by extract per source,
+     tagged with the source `<key>`.
+
+3. **Analyse the `--against` input (if any).** Treat `--against
+   <path>` as a synonym for `--source against=<path>` with a
+   downstream hint to the brief that the initiative is a delta
+   against an existing codebase rather than a greenfield
+   migration. Invoke `/spec:extract <path>
+   .specify/plans/<name>/extract/against/` the same way. The
+   `--against` input is always interpreted as a local path —
+   against-a-remote is out of scope.
+
+4. **Read each `--from` artefact.** For each `--from <path>`,
+   open the file (or every file under a `--from` directory)
+   directly. These are human-authored artefacts (briefs, RFCs,
+   product docs, ADRs); `/spec:extract` is not invoked. Parse
+   any clearly-delimited capability structure (headings,
+   bulleted capability lists); otherwise treat each top-level
+   heading as a capability candidate and record the accompanying
+   prose verbatim as its description.
+
+5. **Merge into a single inventory.** Deduplicate capabilities
+   by name across sources — a capability mentioned in both a
+   `--from` brief and a `--source` extract surfaces once, with
+   every source that mentioned it listed on the entry. Order
+   the inventory stably: capabilities group by the source they
+   first appeared in (invocation order of `--source` / `--from` /
+   `--against`), and within a source they keep the order
+   `/spec:extract` (or the `--from` file parser) emitted them.
+   This yields a deterministic output without requiring
+   per-source alphabetic sorting — the on-disk order reflects the
+   shape of the source tree, which is what human reviewers expect
+   when skimming the inventory alongside the legacy code.
+
+6. **Write `.specify/plans/<initiative-name>/discovery.md`.**
+   Shape:
+
+   ```markdown
+   # Discovery — <initiative-name>
+
+   ## Capability inventory
+
+   ### <capability-name>
+   Source: <key> (<path-or-url>)[, <key2> (<path2>)...]
+   Description: <one or two sentences, source-neutral>
+   Depends-on hints: <other-capability>, <...>  (omit if none)
+   Scope hints: <free-form>  (omit if none)
+
+   ## Open questions
+
+   - <question requiring human input before propose>
+   - <...>
+   ```
+
+   The header is exactly `# Discovery — <initiative-name>` — no
+   date, no run ID, no working-directory paths. This is a hard
+   idempotency requirement: running discovery twice on the same
+   inputs MUST produce byte-equivalent output (see
+   [`schemas/omnia/briefs/plan/discovery.md`](../../../../schemas/omnia/briefs/plan/discovery.md)
+   §"Idempotency"). Any existing `discovery.md` is overwritten.
+
+7. **Emit a one-line-per-input summary to stdout.** Shape:
+
+   ```text
+   Discovery:
+     - <path-or-url> (--source <key>): <N> capabilities
+     - <path-or-url> (--source <key>): <N> capabilities
+     - <path> (--from): <N> capability hints
+   Inventory written to .specify/plans/<initiative-name>/discovery.md
+   ```
+
+   One line per input in invocation order; counts are taken from
+   the merged inventory, not the per-source extract output (a
+   capability that recurs in three inputs counts once per input
+   line but appears once in the inventory).
+
+### Idempotency
+
+Running step 3(a) twice on the same inputs MUST produce a
+byte-equivalent `discovery.md`. This is enforced by:
+
+- Stable capability ordering (grouped by source in invocation
+  order; within a source, the extract/parser emission order is
+  preserved — see algorithm step 5).
+- No timestamps, run IDs, or working-directory paths in the
+  output (the header is `# Discovery — <initiative-name>`
+  exactly).
+- `/spec:extract` re-runs on unchanged sources produce
+  equivalent inventory text; if a re-extract surfaces new
+  detail, it replaces the prior inventory entry wholesale rather
+  than appending.
+
+The acceptance gate for this step (RFC-2 L3.F) is: running the
+discovery step twice in a row overwrites `discovery.md` with
+equivalent content.
+
+### `--extend` and existing `discovery.md`
+
+When `--extend` is set AND
+`.specify/plans/<initiative-name>/discovery.md` already exists,
+step 3(a) is SKIPPED. The skill logs:
+
+```text
+Discovery already present; reusing existing inventory.
+```
+
+and proceeds directly to step 3(b) against the existing file.
+`--extend` is additive-only at the `plan.yaml` level (§"Single-
+writer invariant"); re-running discovery automatically would
+churn the inventory every time an operator added a single slice.
+Operators who want to refresh the inventory archive the plan
+(`specify plan archive`) and re-run `/spec:plan` without
+`--extend`.
+
+When `--extend` is set but `discovery.md` does not yet exist
+(e.g. the plan was authored by hand, or an earlier `/spec:plan`
+run aborted mid-way), step 3(a) runs normally and writes a fresh
+inventory. The skill does not refuse; the absence of
+`discovery.md` under `--extend` is interpreted as "fill in the
+missing inventory", not as a hard error.
+
+No new flag is introduced by this Change — the `--extend` switch
+is sufficient. A future Change may add a `--force-discovery`
+flag if refreshing the inventory mid-plan becomes a real need;
+RFC-2 L3.F explicitly does not.
+
+### Reference fixture
+
+The shape of a single-`--source` inventory against a small
+pre-seeded source tree is pinned by
+[`fixtures/discovery/expected-discovery.md`](fixtures/discovery/expected-discovery.md)
+against the `legacy/` source tree under
+[`fixtures/discovery/legacy/`](fixtures/discovery/legacy/). The
+golden is pinned by hand (there is no automated test harness in
+this Change); it captures the intent of the algorithm above and
+serves as a reference for what a brief-driven run on that input
+should produce.
 
 ## Single-writer invariant (RFC-2 §"Phase Boundary → Rule 2")
 
@@ -246,15 +417,13 @@ preserving the authoring trail with the plan it produced.
 
 ## Dry-run output
 
-Under `--dry-run`, the skill emits a pre-authoring **readiness
-report** and exits without writing anything. The report confirms
-that the inputs parsed, the pipeline resolved, and the skill is
-ready to run — it does not include a proposed plan (that comes out
-of the discovery/propose briefs, which do not run under `--dry-run`
-in this revision).
+Under `--dry-run`, the skill emits a **readiness report** followed
+by the **would-be-produced capability inventory** and exits without
+writing anything. Dry-run now folds the L3.E readiness gate and the
+L3.F discovery preview into a single rendering: inputs PLUS the
+inventory the briefs would emit against those inputs.
 
-The report shape, pinned by
-[`fixtures/dry-run/expected-output.md`](fixtures/dry-run/expected-output.md):
+The combined shape:
 
 ```text
 [dry-run] /spec:plan — <initiative-name>
@@ -265,6 +434,24 @@ Sources:
   - ...
 Pipeline: pipeline.plan (<brief-id>, <brief-id>...)
 
+Would write .specify/plans/<initiative-name>/discovery.md:
+
+# Discovery — <initiative-name>
+
+## Capability inventory
+
+### <capability-name>
+Source: <key> (<path-or-url>)
+Description: ...
+Depends-on hints: ...
+
+<!-- one subsection per merged capability -->
+
+## Open questions
+
+- <question>
+- <...>
+
 No files written. Remove --dry-run to run the pipeline.
 ```
 
@@ -272,18 +459,39 @@ Section rules:
 
 - The `Sources:` block is omitted entirely when `--source` was not
   supplied. `--from` and `--against` inputs do not surface here — the
-  report pins the top-level `sources` map shape that step 2 would
-  write to `plan.yaml`, not the full set of discovery inputs.
+  `Sources:` block pins the top-level `sources` map shape that step 2
+  would write to `plan.yaml`, not the full set of discovery inputs.
 - The `Pipeline:` line names `pipeline.plan` and lists the brief IDs
   in the order `specify schema pipeline --phase plan` returns.
 - Every line prefixed with `[dry-run]` on the banner is enough — the
   body lines do not need a per-line prefix.
+- The `Would write ...:` preamble is emitted before the inventory
+  body to make it obvious the content is a preview rather than
+  written output.
+- The readiness-report portion (banner through `Pipeline:` line) is
+  pinned by [`fixtures/dry-run/expected-output.md`](fixtures/dry-run/expected-output.md).
+  The inventory portion is pinned by
+  [`fixtures/discovery/expected-discovery.md`](fixtures/discovery/expected-discovery.md)
+  against the [`fixtures/discovery/legacy/`](fixtures/discovery/legacy/)
+  source tree; under `--dry-run` the same content is emitted to
+  stdout instead of written to disk.
 
-Discovery and propose have their own dry-run rendering (proposed
-entries, preview diff against the existing plan for `--extend`, etc.)
-and those render in L3.F / L3.G alongside the brief wiring that
-produces them. The L3.E dry-run output is the readiness gate that
-precedes all of that.
+Under `--dry-run` the skill MUST NOT:
+
+- create `.specify/plans/<initiative-name>/`;
+- shell out to `specify plan init`, `specify plan create`, `specify
+  plan amend`, or `specify plan transition`;
+- write any file under `.specify/`.
+
+The discovery brief's input-reading side (reading `--from` files,
+invoking `/spec:extract` to parse `--source` / `--against` inputs)
+runs under `--dry-run` so the preview inventory is real; only the
+write to `discovery.md` and the `.specify/plans/<name>/` directory
+creation are suppressed.
+
+Propose has its own dry-run rendering (proposed entries, preview
+diff against the existing plan for `--extend`, etc.) and that lands
+in L3.G alongside the propose brief wiring that produces it.
 
 ## Constraints
 
@@ -295,6 +503,11 @@ precedes all of that.
   pointing at re-running without `--extend`. The skill never
   silently creates a fresh plan under `--extend` — the flag is an
   explicit "I know there's a plan here" signal.
+- **`--extend` with an existing `discovery.md`.** Skip step 3(a)
+  and reuse the existing inventory (see §"Step 3(a) — Discovery
+  → `--extend` and existing `discovery.md`"). This is a skip, not
+  a refusal — discovery is explicitly a one-shot artefact; an
+  operator who wants to refresh it archives the plan first.
 - **`--dry-run` writes nothing.** No `specify plan init`, no
   `specify plan create`, no `discovery.md`, no `proposal.md`. The
   dry-run contract is read-only end to end; an editor watching the
@@ -323,8 +536,7 @@ precedes all of that.
 | Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/spec:execute` | Never. `/spec:plan` only invokes the briefs declared in `schema.yaml`'s `pipeline.plan`, plus the `specify plan` CLI for scaffolding, entry creation, and validation. |
 | Hold a driver lock | Never. `.specify/plan.lock` is reserved for `/spec:execute`; authoring runs outside that lock. |
 | Write `.specify/plan.yaml` directly | Never. Every write goes through `specify plan init` (step 2, skipped under `--extend`) or `specify plan create` (step 3b, one call per accepted slice). |
-| Clone git URLs | Never. `--source` values that are git URLs are passed through to the discovery brief verbatim; cloning (if any) happens inside `/spec:extract` via `git-cloner` (RFC-2 L3.F). |
-| Fill in discovery brief bodies | Not in this Change. The discovery step shape is pinned here; full wiring (artefact reading, `/spec:extract` invocation, `discovery.md` emission) lands in L3.F. |
+| Clone git URLs | Never. `--source` values that are git URLs are passed through to `/spec:extract` verbatim; cloning (if any) happens inside `/spec:extract` via `git-cloner`. |
 | Fill in propose brief bodies | Not in this Change. The propose step shape is pinned here; full wiring (slice decomposition, accept/edit/reject loop, per-slice `specify plan create` calls) lands in L3.G. |
 
 The state the skill mutates in this Change:
@@ -333,7 +545,8 @@ The state the skill mutates in this Change:
    under `--extend`) and `specify plan create` (step 3b; once per
    accepted slice, wired fully in L3.G).
 2. `.specify/plans/<initiative-name>/discovery.md` written by the
-   discovery brief (step 3a; wired fully in L3.F).
+   discovery brief (step 3a; wired in this Change — see §"Step
+   3(a) — Discovery").
 3. `.specify/plans/<initiative-name>/proposal.md` written by the
    propose brief (step 3b; wired fully in L3.G).
 
@@ -353,11 +566,15 @@ No other on-disk state is written by `/spec:plan` itself.
   behind.
 - For `--dry-run` specifically: the skill MUST NOT shell out to
   `specify plan init`, `specify plan create`, `specify plan amend`,
-  or `specify plan transition`; MUST NOT invoke the discovery or
-  propose briefs (they would write to `.specify/plans/<name>/`);
-  MUST NOT create `.specify/plans/<name>/` at all. The first-line
-  banner prefixes the rendered output with `[dry-run] ` (the body
-  lines do not need a per-line prefix — the banner is enough).
+  or `specify plan transition`; MUST NOT create
+  `.specify/plans/<name>/`; MUST NOT write `discovery.md` or any
+  other file under `.specify/`. The discovery brief's input-reading
+  side (reading `--from` files, invoking `/spec:extract` against
+  `--source` / `--against` inputs) still runs so the stdout
+  inventory preview is real; only the write-out and directory
+  creation are suppressed. The first-line banner prefixes the
+  rendered output with `[dry-run] ` (the body lines do not need a
+  per-line prefix — the banner is enough).
 - For `--extend` specifically: step 2 is skipped in full; step 3(b)
   only appends entries via `specify plan create` — it never calls
   `specify plan amend` or `specify plan transition` on existing
