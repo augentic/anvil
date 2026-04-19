@@ -4,9 +4,9 @@ Specify inverts the usual AI-assisted development model: an agent orchestrates s
 
 ---
 
-## [RFC-1: `specify` CLI](rfc-1-cli.md)
+## [RFC-1: `specify` CLI](archive/rfc-1-cli.md)
 
-**Status:** Shipped (Phase 1, 2026-04). See the [implementation plan](rfc-1-plan.md) for the twelve-Change delivery and [DECISIONS.md](../DECISIONS.md) for the architectural calls made during the build.
+**Status:** Shipped (Phase 1, 2026-04). See [DECISIONS.md](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) in `augentic/specify-cli` for the architectural calls made during the build.
 
 **Problem:** Every precision-critical operation — validation, task parsing, artifact structure checking — is performed by the LLM interpreting prose rules. This creates unreliable results for operations that are fundamentally structured decision trees.
 
@@ -14,7 +14,7 @@ Specify inverts the usual AI-assisted development model: an agent orchestrates s
 
 The CLI is the foundation everything else builds on. Migration commands, multi-repo coordination, and skill validation all require a binary that understands `.specify/` structure, spec format, and schema rules. Building the CLI first means every subsequent RFC extends an existing tool rather than creating a new one.
 
-See also: [RFC-1a: Deferred Validation](rfc-1a-validation.md) — the three-way Pass/Fail/Deferred classification that lets the CLI handle structural checks while the agent evaluates semantic ones.
+See also: [RFC-1a: Deferred Validation](archive/rfc-1a-validation.md) — the three-way Pass/Fail/Deferred classification that lets the CLI handle structural checks while the agent evaluates semantic ones.
 
 ## [RFC-2: Execution](archive/rfc-2-execution.md)
 

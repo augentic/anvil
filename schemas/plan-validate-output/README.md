@@ -2,8 +2,7 @@
 
 Canonical JSON Schema (2020-12) for the response body emitted by `specify
 plan validate --format json` under the v2 JSON contract (see
-[RFC-2](../../rfcs/archive/rfc-2-execution.md) and
-[`rfc-2-cleanup-plan.md`](../../rfcs/rfc-2-cleanup-plan.md) §2).
+[RFC-2](../../rfcs/archive/rfc-2-execution.md)).
 
 ## Producer
 

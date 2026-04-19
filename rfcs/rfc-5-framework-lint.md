@@ -1,6 +1,6 @@
 # RFC-5: Framework Linter
 
-> Status: Draft · Depends: [RFC-1](rfc-1-cli.md) · Enables: [RFC-4](rfc-4-dsl.md)
+> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md) · Enables: [RFC-4](rfc-4-dsl.md)
 
 ## Abstract
 
@@ -10,7 +10,7 @@ Port the repo's existing `scripts/checks.ts` Deno framework linter into a Rust `
 
 `checks.ts` is the framework-level linter for this repo. It runs in CI and enforces invariants the runtime CLI does not need to know about: `schema.yaml` ↔ JSON Schema conformance, brief frontmatter integrity, marketplace.json alignment, SKILL.md reference resolution, cross-skill directive validity, and `docs/plugins.md` inventory coverage.
 
-The script works. At ~650 lines across 11 modules it is not broken, not blocking RFC-2/RFC-3/RFC-4, and not on the critical path for the `specify` CLI's runtime surface. Earlier drafts of [RFC-1](rfc-1-cli.md) bundled the port into Phase 1; that bundling roughly doubled Phase 1's scope without improving the runtime story downstream skills consume. Separating the port into its own RFC lets RFC-1 ship the runtime CLI quickly and lets the `checks.ts` migration proceed as a focused, message-preserving rollout once the workspace foundation is in place.
+The script works. At ~650 lines across 11 modules it is not broken, not blocking RFC-2/RFC-3/RFC-4, and not on the critical path for the `specify` CLI's runtime surface. Earlier drafts of [RFC-1](archive/rfc-1-cli.md) bundled the port into Phase 1; that bundling roughly doubled Phase 1's scope without improving the runtime story downstream skills consume. Separating the port into its own RFC lets RFC-1 ship the runtime CLI quickly and lets the `checks.ts` migration proceed as a focused, message-preserving rollout once the workspace foundation is in place.
 
 The port itself is still worth doing:
 
@@ -28,7 +28,7 @@ The boundary against the runtime crates is unchanged from RFC-1: the `specify-va
 
 ### Workspace Layout
 
-`specify-check` is added as a third crate to the workspace defined by [RFC-1](rfc-1-cli.md):
+`specify-check` is added as a third crate to the workspace defined by [RFC-1](archive/rfc-1-cli.md):
 
 ```
 specify/
@@ -86,7 +86,7 @@ For every `schemas/*/schema.yaml` it MUST, at minimum:
 
 `links.rs`, `skill_frontmatter.rs`, `skill_references.rs`, `skill_variables.rs`, `skill_directives.rs`, `marketplace.rs`, and `plugins_doc.rs` each port one of the remaining sections from `checks.ts` (links, skill frontmatter, symlink-aware references, variable consistency, skill directives, marketplace/plugin.json alignment, `docs/plugins.md` inventory). Behaviour for each is captured in the corresponding `checks.ts` function; the port mandate is identical — preserve failure messages and semantics so `checks.ts` can be retired incrementally.
 
-`links.rs` in particular carries load-bearing symlink behaviour (the existing `isUnderSymlink` gate governs how shared reference docs under `plugins/spec/references/` are traversed). The port MUST preserve it; see [N14 in the RFC-1 remediation checklist](rfc-1-remediation.md) for context.
+`links.rs` in particular carries load-bearing symlink behaviour (the existing `isUnderSymlink` gate governs how shared reference docs under `plugins/spec/references/` are traversed). The port MUST preserve it; see **N14 in the RFC-1 remediation checklist** for context.
 
 ### `specify check` Subcommand
 
@@ -119,7 +119,7 @@ serde_json = "1"
 jsonschema = "0.29"
 ```
 
-`jsonschema` pulls in `fancy-regex`, `ahash`, `url`, and a handful of transitive crates. This is acceptable because `specify-check` is CI-only — none of that weight leaks into the root `specify` binary or the runtime domain crates. `valico` or a minimal hand-rolled validator are viable alternatives if the footprint becomes a problem later (see [N15 in the RFC-1 remediation checklist](rfc-1-remediation.md)).
+`jsonschema` pulls in `fancy-regex`, `ahash`, `url`, and a handful of transitive crates. This is acceptable because `specify-check` is CI-only — none of that weight leaks into the root `specify` binary or the runtime domain crates. `valico` or a minimal hand-rolled validator are viable alternatives if the footprint becomes a problem later (see **N15 in the RFC-1 remediation checklist**).
 
 ### Migration Strategy
 
@@ -128,7 +128,7 @@ The port is a rolling migration, not a flag day:
 1. **Land `specify-check` as a stub.** `specify check` wires up the CLI subcommand, depends on `specify-schema` (for schema + brief parsers) and `specify-error`, and has empty-but-compiling modules. The Makefile runs both tools; both pass trivially. This change is mechanical and self-contained.
 2. **Port `schema_structure` and `schema_integrity` first.** They are the largest sections of `checks.ts` and the only ones that share code with `specify-schema` (`schema`, `brief`). Porting them first validates the parser reuse story before investing in the smaller modules.
 3. **Port the remaining modules one at a time.** Each port deletes the corresponding function (or block) from `checks.ts`. Failure messages MUST match during the overlap period so CI diffs stay readable.
-4. **Retire `checks.ts`.** When the script is empty, delete the file, remove the Deno dependency from the Makefile, and switch CI to `specify check` only. Document the sunset in the Makefile (see [N18 in the RFC-1 remediation checklist](rfc-1-remediation.md)).
+4. **Retire `checks.ts`.** When the script is empty, delete the file, remove the Deno dependency from the Makefile, and switch CI to `specify check` only. Document the sunset in the Makefile (see **N18 in the RFC-1 remediation checklist**).
 
 Each step is independently mergeable and leaves CI green.
 
@@ -142,18 +142,18 @@ checks: build
 	@$(DENO) run --allow-read scripts/checks.ts  # keep during migration
 ```
 
-`build` is defined by [RFC-1](rfc-1-cli.md). The second line is removed once `checks.ts` is empty; until then both tools run side-by-side and any discrepancy between them is treated as a port regression.
+`build` is defined by [RFC-1](archive/rfc-1-cli.md). The second line is removed once `checks.ts` is empty; until then both tools run side-by-side and any discrepancy between them is treated as a port regression.
 
 ## Alternatives Considered
 
 **Keep `checks.ts` indefinitely.** Rejected because maintaining a second toolchain (Deno) for a single script adds CI friction and duplicates the schema / brief parsing logic `specify-schema` already owns. The duplication is small today, but every new schema-level invariant doubles the implementation work until the port is done.
 
-**Stub `specify-check` in Phase 1 of RFC-1, migrate modules continuously.** This is option (ii) from the [RFC-1 remediation checklist](rfc-1-remediation.md) M6. It works, but leaves RFC-1's scope ambiguous ("done when?") and muddies the `specify` CLI release story downstream consumers track. Separating the port into its own RFC makes each milestone self-contained.
+**Stub `specify-check` in Phase 1 of RFC-1, migrate modules continuously.** This is option (ii) from the **RFC-1 remediation checklist** M6. It works, but leaves RFC-1's scope ambiguous ("done when?") and muddies the `specify` CLI release story downstream consumers track. Separating the port into its own RFC makes each milestone self-contained.
 
 **Rewrite the linter from scratch.** Skips the fidelity constraints but throws away the invariants the current script already encodes. Those invariants capture real lessons about repo drift; preserving them verbatim is cheaper than re-deriving them, and the message-preserving migration lets CI act as a regression test for the port itself.
 
 ## References
 
-- [RFC-1: `specify` CLI](rfc-1-cli.md) — the Cargo workspace, `specify_schema::schema`, and `specify_schema::brief` this RFC builds on
-- [RFC-1 Remediation](rfc-1-remediation.md) — M6 (split rationale), N14 (symlink handling), N15 (jsonschema weight), N18 (Makefile sunset)
+- [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — the Cargo workspace, `specify_schema::schema`, and `specify_schema::brief` this RFC builds on
+- **RFC-1 Remediation checklist** — M6 (split rationale), N14 (symlink handling), N15 (jsonschema weight), N18 (Makefile sunset)
 - [RFC-4: Type-Safe Skill Expression](rfc-4-dsl.md) — Option 1 is satisfied once this port is complete

@@ -1,6 +1,6 @@
 # RFC-4: Type-Safe Skill Expression
 
-> Status: Draft · Depends: [RFC-1](rfc-1-cli.md)
+> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md)
 
 ## Abstract
 
@@ -20,7 +20,7 @@ Today both layers live in untyped markdown. YAML frontmatter has no schema enfor
 
 ### Relationship to RFC-1 and `checks.ts`
 
-[RFC-1](rfc-1-cli.md) addresses the most acute validation gaps — artifact structure, spec format, task tracking — through `specify validate`. That work is prerequisite. This RFC extends the same principle to skill authoring itself: deterministic checks for the structural layer, agent judgment for the behavioral layer.
+[RFC-1](archive/rfc-1-cli.md) addresses the most acute validation gaps — artifact structure, spec format, task tracking — through `specify validate`. That work is prerequisite. This RFC extends the same principle to skill authoring itself: deterministic checks for the structural layer, agent judgment for the behavioral layer.
 
 Importantly, `checks.ts` (the existing Deno validation script) already implements the core of Option 1 below: frontmatter schema enforcement, reference resolution, variable consistency, skill directive validation, marketplace consistency, and docs inventory checks. The primary gap for this RFC is not designing these checks but porting them from TypeScript into the `specify-check` crate — a migration that happens naturally as part of RFC-1's `specify check` subcommand. Once that port is complete, the incremental work for this RFC is small.
 
@@ -62,5 +62,5 @@ Revisit options 2 and 3 when the ported validation catches real bugs and the fai
 
 ## References
 
-- [RFC-1: `specify` CLI](rfc-1-cli.md) — prerequisite; `specify-check` crate provides the validation infrastructure
+- [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — prerequisite; `specify-check` crate provides the validation infrastructure
 - `checks.ts` — existing Deno implementation of Option 1 checks

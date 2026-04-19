@@ -12,7 +12,7 @@ This RFC is structured in three layers. **Layer 1** (the MVP) delivers the plan 
 
 ## Execution Model Overview
 
-![Specify Framework execution model](assets/specify-framework.png)
+![Specify Framework execution model](../assets/specify-framework.png)
 
 Specify at runtime is a three-phase loop (**define → build → merge**) driven by the `/spec:execute` skill over a long-lived **Plan** (`plan.yaml`). Per change, `/spec:execute` performs `get next change`, invokes the three phase skills in sequence, and updates `status` on the currently-active change entry. Each phase runs a *brief pipeline* declared by the active `schema.yaml`, and each brief delegates to one or more plugin skills.
 

@@ -46,12 +46,12 @@ The on-disk contracts the authoring skill depends on are:
 | `.specify/plans/<name>/` | schema (`pipeline.plan` briefs) | Working directory for authoring artefacts — `discovery.md` from the discovery brief, `proposal.md` from the propose brief. Swept by `specify initiative archive` alongside the plan itself (RFC-2 L3.B). |
 | `schema.yaml:pipeline.plan` | schema (`Phase::Plan`) | Declares the ordered list of authoring briefs for the project's schema. Resolved via `specify schema pipeline --phase plan`. |
 
-See [RFC-2 §"Layer 3: Plan Authoring"](../../docs/links.md#rfc-2-layer-3)
+See [RFC-2 §"Layer 3: Plan Authoring"](../docs/links.md#rfc-2-layer-3)
 for the full design, including the
-[Core loop](../../docs/links.md#rfc-2-layer-3),
-[Plan pipeline briefs](../../docs/links.md#rfc-2-layer-3),
-[Working directory](../../docs/links.md#rfc-2-layer-3), and
-[Integration with `/spec:execute`](../../docs/links.md#rfc-2-layer-3)
+[Core loop](../docs/links.md#rfc-2-layer-3),
+[Plan pipeline briefs](../docs/links.md#rfc-2-layer-3),
+[Working directory](../docs/links.md#rfc-2-layer-3), and
+[Integration with `/spec:execute`](../docs/links.md#rfc-2-layer-3)
 sections.
 
 ## Invocation
@@ -178,7 +178,7 @@ skill writes nothing to `.specify/plan.yaml` directly.
 ## Step 3(a) — Discovery
 
 Step 3(a) invokes the discovery brief declared in `pipeline.plan` (for
-Omnia, [`schemas/omnia/briefs/plan/discovery.md`](../../docs/links.md#omnia-discovery);
+Omnia, [`schemas/omnia/briefs/plan/discovery.md`](../docs/links.md#omnia-discovery);
 other schemas ship their own). Discovery consumes the `--from`,
 `--against`, and `--source` inputs, invoking `/spec:extract` where a
 source tree needs to be parsed, and merges the results into a single
@@ -186,7 +186,7 @@ neutral capability inventory at
 `.specify/plans/<initiative-name>/discovery.md`. The skill's job is
 to faithfully run the brief and pass inputs through; the algorithm
 (per-input handling, dedup rules, ordering) lives in the brief — see
-[`schemas/omnia/briefs/plan/discovery.md`](../../docs/links.md#omnia-discovery)
+[`schemas/omnia/briefs/plan/discovery.md`](../docs/links.md#omnia-discovery)
 for the authoritative contract.
 
 Discovery is read-only with respect to `plan.yaml`. The output header
@@ -203,8 +203,8 @@ against [`fixtures/discovery/legacy/`](fixtures/discovery/legacy/).
 ## Step 3(b) — Propose
 
 Step 3(b) invokes the propose brief declared in `pipeline.plan` (for
-Omnia, [`schemas/omnia/briefs/plan/propose.md`](../../docs/links.md#omnia-propose);
-for Vectis, [`schemas/vectis/briefs/plan/propose.md`](../../docs/links.md#vectis-propose);
+Omnia, [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose);
+for Vectis, [`schemas/vectis/briefs/plan/propose.md`](../docs/links.md#vectis-propose);
 other schemas ship their own). Propose reads `discovery.md`, applies
 the schema's slice heuristics to decompose the inventory into draft
 change slices with `depends-on` / `affects` edges, and iterates with
@@ -230,7 +230,7 @@ as `discovery.md`. The per-slice prompt shape, the four legal actions
 (`y` / `edit` / `no` / `abort`), the edit sub-loop, and the rules
 governing dropped `depends-on` edges when a slice is rejected all
 live in the propose brief — see
-[`schemas/omnia/briefs/plan/propose.md`](../../docs/links.md#omnia-propose)
+[`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose)
 for the authoritative contract. The shape of a five-slice migration
 authoring run is pinned by
 [`fixtures/propose/expected-plan.yaml`](fixtures/propose/expected-plan.yaml)
@@ -270,7 +270,7 @@ The skill has no path that calls `specify initiative amend` or
 initiative (humans in Layer 1, `/spec:execute` in Layer 2), not to
 the authoring step.
 
-See [RFC-2 §"Phase Boundary → Rule 2"](../../docs/links.md#rfc-2-phase-boundary-rule-2)
+See [RFC-2 §"Phase Boundary → Rule 2"](../docs/links.md#rfc-2-phase-boundary-rule-2)
 for the full contract.
 
 ## Working directory (`.specify/plans/<name>/`)
@@ -480,7 +480,7 @@ Section rules:
   happens inside `/spec:extract` via `git-cloner`.
 - **Author propose brief bodies.** Never. The propose brief body is
   owned by the schema (for Omnia,
-  [`schemas/omnia/briefs/plan/propose.md`](../../docs/links.md#omnia-propose)
+  [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose)
   from L3.D); the skill only drives the accept / edit / reject loop
   against whatever the brief emits.
 - **Auto-repair a failing `specify initiative validate`.** Never.

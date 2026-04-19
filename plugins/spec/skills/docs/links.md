@@ -9,7 +9,7 @@ fixture file, and lets the real target move (e.g. an RFC relocating between
 To reference an anchor from a skill file use
 
 ```markdown
-[RFC-2](../../docs/links.md#rfc-2)     <!-- from plugins/spec/skills/<skill>/SKILL.md -->
+[RFC-2](../docs/links.md#rfc-2)        <!-- from plugins/spec/skills/<skill>/SKILL.md -->
 ```
 
 or, from a fixture two levels further down:

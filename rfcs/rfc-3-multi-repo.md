@@ -1,6 +1,6 @@
 # RFC-3: Multi-Repo Coordination
 
-> Status: Draft · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md)
+> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md)
 
 ## Abstract
 
@@ -145,5 +145,5 @@ A good litmus test: "Would this command need to understand `.specify/` directory
 
 ## References
 
-- [RFC-1: `specify` CLI](rfc-1-cli.md) — prerequisite; federation subcommands extend the CLI
+- [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — prerequisite; federation subcommands extend the CLI
 - [RFC-2: Execution](archive/rfc-2-execution.md) — provides plan-level coordination for multi-repo initiatives; federation provides the resolution layer

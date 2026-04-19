@@ -19,7 +19,7 @@ Layer 1 loop: `get next change` → `/spec:define` → `/spec:build` →
 > self-heal pass on startup, `--loop` mode with terminal summary and
 > SIGINT / SIGTERM handling, and the `sources` / `affects` execution
 > wiring. `/spec:execute --loop` drives the
-> [RFC-2 §"The Plan"](../../docs/links.md#rfc-2-the-plan) example
+> [RFC-2 §"The Plan"](../docs/links.md#rfc-2-the-plan) example
 > end-to-end against a plan authored by `/spec:plan` — see the
 > [§Fixtures](#fixtures) table for the exit-gate meta-fixture.
 
@@ -49,11 +49,11 @@ read in Layer 1 — `/spec:execute` introduces no new storage of its own:
 | `.specify/changes/<name>/journal.yaml` | library (`Journal::append` + `specify change journal-append`) | Append-only audit log of `question` / `failure` / `recovery` entries. Never consumed as a signalling channel — `.metadata.yaml:outcome` is the only state the driver reads. |
 | `.specify/plan.lock` | library (`PlanLockStamp`) | Advisory PID stamp held by the running driver. Prevents two `/spec:execute` invocations racing on the same plan. |
 
-See [RFC-2 §"Layer 2: Automated Execution"](../../docs/links.md#rfc-2-layer-2)
+See [RFC-2 §"Layer 2: Automated Execution"](../docs/links.md#rfc-2-layer-2)
 for the full design, including the
-[Phase Outcome Contract](../../docs/links.md#rfc-2-phase-outcome-contract),
-[Plan Mutation and Crash Safety](../../docs/links.md#rfc-2-plan-mutation),
-and [Driver Concurrency](../../docs/links.md#rfc-2-driver-concurrency)
+[Phase Outcome Contract](../docs/links.md#rfc-2-phase-outcome-contract),
+[Plan Mutation and Crash Safety](../docs/links.md#rfc-2-plan-mutation),
+and [Driver Concurrency](../docs/links.md#rfc-2-driver-concurrency)
 sections.
 
 ## Invariants (RFC-2 §"Invariants")
@@ -66,11 +66,11 @@ the skill file.
 |---|---|
 | Driver contracts with phases, not briefs | `/spec:execute` only invokes `/spec:define`, `/spec:build`, `/spec:merge` |
 | Phases own verify-repair loops | Phase skills exhaust their repair budget before returning |
-| Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `outcome` into `.metadata.yaml` before returning (see [§Phase Outcome Contract](../../docs/links.md#rfc-2-phase-outcome-contract)) |
+| Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `outcome` into `.metadata.yaml` before returning (see [§Phase Outcome Contract](../docs/links.md#rfc-2-phase-outcome-contract)) |
 | Change *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify initiative create` / `specify initiative amend` |
 | Change *status* updates written only via `Plan::transition` | `/spec:execute` (Layer 2) or humans (Layer 1) run `specify initiative transition` |
 | Single `in-progress` at a time | `plan next` / `plan validate` |
-| Single `/spec:execute` driver at a time | `.specify/plan.lock` advisory lock (see [§Driver Concurrency](../../docs/links.md#rfc-2-driver-concurrency)) |
+| Single `/spec:execute` driver at a time | `.specify/plan.lock` advisory lock (see [§Driver Concurrency](../docs/links.md#rfc-2-driver-concurrency)) |
 
 ## Invocation
 
