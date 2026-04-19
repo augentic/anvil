@@ -19,5 +19,5 @@ Step 2/3: build
   Summary: Type mismatch between cart line-item schema and payment gateway contract.
   Journal: .specify/changes/checkout-api/journal.yaml
   Action needed: Fix the underlying error, then retry via
-    specify plan transition checkout-api pending
+    specify initiative transition checkout-api pending
   Status: failed

@@ -43,4 +43,4 @@
     sibling module or a published artifact?* — sibling module
     in the counter app's Gradle build for this initiative; a
     standalone publication is deferred.
-- `specify plan validate` — no errors.
+- `specify initiative validate` — no errors.

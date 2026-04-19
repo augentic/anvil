@@ -11,7 +11,7 @@ Define a new change - create the change and generate all artifacts in one step.
 
 When ready to implement, run `/spec:build`.
 
-When working plan-driven (a `.specify/plan.yaml` exists), `specify plan next` can be run to pick the next eligible entry, and `specify plan transition <name> in-progress` claims it before `/spec:define` starts. If this skill uncovers a neighbouring change that should be tracked (e.g. a bug fix spotted during extraction), shell out to `specify plan create <name> ...` — it is the only supported way to add a new entry. Use `specify plan amend <name> ...` to edit non-status fields on the active or a pending entry; `status` stays off-limits to `amend` by design.
+When working plan-driven (a `.specify/plan.yaml` exists), `specify initiative next` can be run to pick the next eligible entry, and `specify initiative transition <name> in-progress` claims it before `/spec:define` starts. If this skill uncovers a neighbouring change that should be tracked (e.g. a bug fix spotted during extraction), shell out to `specify initiative create <name> ...` — it is the only supported way to add a new entry. Use `specify initiative amend <name> ...` to edit non-status fields on the active or a pending entry; `status` stays off-limits to `amend` by design.
 
 Deterministic bookkeeping — name validation, `.metadata.yaml` writes, schema
 resolution, pipeline topology, touched-specs scanning, overlap detection — is
@@ -128,17 +128,17 @@ return.
 
 ## Mutating the plan mid-run (RFC-2 §"Phase Boundary → Rule 2")
 
-Phases may shell out to `specify plan create` / `specify plan amend`
+Phases may shell out to `specify initiative create` / `specify initiative amend`
 mid-run when they discover something structural about the initiative.
 Both commands write `.specify/plan.yaml` synchronously — the new or
 updated entry is visible to every subsequent `/spec:execute` iteration.
 
 Allowed:
 
-- `specify plan create <new-name> --affects <current-name> --description "..."`
+- `specify initiative create <new-name> --affects <current-name> --description "..."`
   when, for example, an extract sub-step surfaces a neighbouring defect
   (the canonical `registration-duplicate-email-crash` case).
-- `specify plan amend <current-name> --depends-on <newly-needed>` when
+- `specify initiative amend <current-name> --depends-on <newly-needed>` when
   the phase discovers a dependency on another plan entry while designing.
   `amend` may target the currently-active entry — non-`status` fields
   on an `in-progress` entry are fair game.
@@ -147,7 +147,7 @@ Forbidden:
 
 - Writing `status` through `amend`. The `PlanChangePatch` type has no
   `status` field — this is a type-system guarantee. Status transitions
-  are `/spec:execute`'s sole prerogative via `specify plan transition`.
+  are `/spec:execute`'s sole prerogative via `specify initiative transition`.
 - Hand-editing `.specify/plan.yaml` or
   `.specify/changes/<name>/.metadata.yaml`. Always route through the
   CLI so the single-writer invariant in RFC-2 §"Plan Mutation and
@@ -233,9 +233,9 @@ The user's request should include a change name (kebab-case) OR a description of
 
    For each entry in the `overlaps` array, warn:
 
-   > "The capability `<capability>` is also being modified by change `<other_change>`. This may cause conflicts at merge time."
+   > "The capability `<capability>` is also being modified by change `<other-change>`. This may cause conflicts at merge time."
 
-   This is informational only — do not block the proposal. The CLI only reports overlaps against the change's current `touched_specs`; step 7 updates those after artifacts are created.
+   This is informational only — do not block the proposal. The CLI only reports overlaps against the change's current `touched-specs`; step 7 updates those after artifacts are created.
 
 6. **Read the brief pipeline**
 
@@ -319,13 +319,13 @@ The user's request should include a change name (kebab-case) OR a description of
    specify change transition <name> defined --format json
    ```
 
-   `touched-specs --scan` walks `.specify/changes/<name>/specs/*`, classifies each capability as `new` (no baseline under `.specify/specs/`) or `modified` (baseline exists), and writes the list into `.metadata.yaml`. `change transition` stamps `defined_at` and enforces the `defining → defined` edge.
+   `touched-specs --scan` walks `.specify/changes/<name>/specs/*`, classifies each capability as `new` (no baseline under `.specify/specs/`) or `modified` (baseline exists), and writes the list into `.metadata.yaml`. `change transition` stamps `defined-at` and enforces the `defining → defined` edge.
 
    Summarize:
 
    - Change name and location
    - List of artifacts created with brief descriptions
-   - Any `touched_specs` classified as `modified` (these will surface in conflict checks at merge time)
+   - Any `touched-specs` classified as `modified` (these will surface in conflict checks at merge time)
    - What's ready: "All artifacts created! Ready for implementation."
    - Prompt: "Run `/spec:build` or ask me to implement to start working on the tasks."
 
@@ -335,7 +335,7 @@ The user's request should include a change name (kebab-case) OR a description of
 - Always read dependency artifacts (from each brief's `needs`) before creating a new one.
 - **All artifacts MUST be written under `.specify/changes/<name>/`**.
 - If context is critically unclear, ask the user -- but prefer making reasonable decisions to keep momentum.
-- Never hand-edit `.metadata.yaml`. All status transitions and timestamp writes go through `specify change transition`; all `touched_specs` updates go through `specify change touched-specs`. The CLI enforces the legal set of lifecycle values — you do not need to track them yourself.
+- Never hand-edit `.metadata.yaml`. All status transitions and timestamp writes go through `specify change transition`; all `touched-specs` updates go through `specify change touched-specs`. The CLI enforces the legal set of lifecycle values — you do not need to track them yourself.
 - If a change with that name already exists, use `specify change status <name>` to decide how to proceed.
 - Verify each artifact file exists after writing before proceeding to next.
 - **IMPORTANT**: `domain` and effective rules (project config overrides) are constraints for YOU, not content for the file. Do NOT copy `<domain>`, `<rules>`, `<project_context>` blocks into any artifact.

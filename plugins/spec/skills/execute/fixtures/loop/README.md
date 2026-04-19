@@ -60,7 +60,7 @@ only the diagnostic an operator sees and the exit code.
 
 ## Invariants every fixture asserts
 
-1. **Lock held once, across all iterations.** `specify plan lock
+1. **Lock held once, across all iterations.** `specify initiative lock
    acquire` runs once at step 2 of the `--loop` algorithm; `specify
    plan lock release` runs once at step 6. Per-iteration lock churn
    is visible nowhere in any transcript.
@@ -71,14 +71,14 @@ only the diagnostic an operator sees and the exit code.
    `stuck-on-blocked/` fixture pins this: an `outcome: deferred` on
    `email-verification` transitions the entry to `blocked` via the
    supervised-run defer path (steps 12a–c), and the outer loop
-   simply iterates again. `specify plan next` skips `blocked` on
+   simply iterates again. `specify initiative next` skips `blocked` on
    the next iteration.
 4. **`Completion: halted` is reserved for self-heal ambiguity.**
    `halted-on-self-heal-ambiguity/` is the only fixture that
    reaches `halted`. A mid-loop deferral (per `stuck-on-blocked/`)
    becomes `stuck`, not `halted`.
 5. **`driver-interrupted` leaves the active entry as `in-progress`.**
-   The interrupt handler does NOT run `specify plan transition` on
+   The interrupt handler does NOT run `specify initiative transition` on
    the active entry; self-heal on the next run is responsible for
    reclaiming it based on `.metadata.yaml:outcome`.
 6. **Verbatim `outcome.summary` → `status-reason` → terminal

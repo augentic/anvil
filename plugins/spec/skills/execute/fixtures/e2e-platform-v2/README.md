@@ -2,7 +2,7 @@
 
 This is the Layer 2 exit-gate meta-fixture for RFC-2 Change L2.I. It
 pins the behaviour of `/spec:execute --loop` driven against the full
-nine-entry `platform-v2` plan from [RFC-2 §"The Plan"](../../../../../../rfcs/archive/rfc-2-execution.md),
+nine-entry `platform-v2` plan from [RFC-2 §"The Plan"](../../../docs/links.md#rfc-2-the-plan),
 exercising every argument-resolution shape end to end:
 
 - greenfield (`notification-preferences`)
@@ -23,7 +23,7 @@ exist as a separate set.
 | File | Role |
 |---|---|
 | `plan.yaml.before` | Seed — RFC-2 §"The Plan" YAML verbatim. |
-| `metadata-email-verification-crashed.yaml` | Illustrative `.specify/changes/email-verification/.metadata.yaml` the seeded workspace carries — outcome: success on merge, stamped by a prior driver that crashed before running `specify plan transition`. |
+| `metadata-email-verification-crashed.yaml` | Illustrative `.specify/changes/email-verification/.metadata.yaml` the seeded workspace carries — outcome: success on merge, stamped by a prior driver that crashed before running `specify initiative transition`. |
 | `plan.yaml.after` | Terminal plan state — seven entries `done`, `checkout-api` still `failed`, `checkout-ui` still `pending` (unmet dep on `checkout-api`). |
 | `transcript.md` | Narrative timeline: self-heal + five iterations + terminal summary. |
 
@@ -48,7 +48,7 @@ an analogous plan shape, see
 - `transcript.md` — the interactive accept / edit / reject loop.
 - `expected-proposal.md` — the authoring audit trail.
 - `expected-plan.yaml` — the final `.specify/plan.yaml` after the
-  five `specify plan create` calls.
+  five `specify initiative create` calls.
 
 Together the two fixture sets pin the full `/spec:plan → /spec:execute
 --loop` path: authoring turns `--source` / `--from` inputs into a

@@ -18,7 +18,7 @@ See also: [RFC-1a: Deferred Validation](rfc-1a-validation.md) — the three-way 
 
 ## [RFC-2: Execution](archive/rfc-2-execution.md)
 
-**Status:** Implemented (Layers 1–3, 2026-04). Plan format, `specify plan` CLI, `/spec:execute` driver skill, and `/spec:plan` authoring skill are all live. See [DECISIONS.md](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) in `augentic/specify-cli` for the architectural calls made during the build.
+**Status:** Implemented (Layers 1–3, 2026-04). Plan format, `specify initiative` CLI, `/spec:execute` driver skill, and `/spec:plan` authoring skill are all live. See [DECISIONS.md](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) in `augentic/specify-cli` for the architectural calls made during the build.
 
 **Problem:** Complex initiatives — multi-feature greenfield builds, legacy migrations, platform modernisations — lack a coordination artifact. The agent rediscovers scope, ordering, and dependencies on every iteration. There's no persistent plan that tracks what's done, what's next, and what's blocked.
 

@@ -45,6 +45,6 @@ entries:
       Diagnostic: .metadata.yaml had outcome{phase: build, outcome: failure}
       but plan.yaml still listed checkout-api as in-progress. Driver ran
       `/spec:drop checkout-api --reason "<outcome.summary>"` then
-      `specify plan transition checkout-api failed --reason
+      `specify initiative transition checkout-api failed --reason
       "<outcome.summary>"`, copying `outcome.summary` verbatim into
       `status-reason`.

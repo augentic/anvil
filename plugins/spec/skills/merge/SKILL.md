@@ -19,7 +19,7 @@ flow, and summarising results.
 When working plan-driven (a `.specify/plan.yaml` exists), after `specify merge` returns successfully the plan entry should be transitioned to `done`:
 
 ```bash
-specify plan transition <name> done
+specify initiative transition <name> done
 ```
 
 This is an advisory note — this skill does not run the command itself. RFC-2 Layer 2's `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
@@ -94,17 +94,17 @@ return.
 
 ## Mutating the plan mid-run (RFC-2 §"Phase Boundary → Rule 2")
 
-Phases may shell out to `specify plan create` / `specify plan amend`
+Phases may shell out to `specify initiative create` / `specify initiative amend`
 mid-run when they discover something structural about the initiative.
 Both commands write `.specify/plan.yaml` synchronously — the new or
 updated entry is visible to every subsequent `/spec:execute` iteration.
 
 Allowed:
 
-- `specify plan create <new-name> --affects <current-name> --description "..."`
+- `specify initiative create <new-name> --affects <current-name> --description "..."`
   when, for example, baseline conflict-check surfaces a neighbouring
   change that must land before this one can merge cleanly.
-- `specify plan amend <current-name> --depends-on <newly-needed>` when
+- `specify initiative amend <current-name> --depends-on <newly-needed>` when
   the phase discovers a dependency on another plan entry (e.g. a
   sibling change that should merge first). `amend` may target the
   currently-active entry — non-`status` fields on an `in-progress`
@@ -114,7 +114,7 @@ Forbidden:
 
 - Writing `status` through `amend`. The `PlanChangePatch` type has no
   `status` field — this is a type-system guarantee. Status transitions
-  are `/spec:execute`'s sole prerogative via `specify plan transition`.
+  are `/spec:execute`'s sole prerogative via `specify initiative transition`.
 - Hand-editing `.specify/plan.yaml` or
   `.specify/changes/<name>/.metadata.yaml`. Always route through the
   CLI so the single-writer invariant in RFC-2 §"Plan Mutation and
@@ -148,7 +148,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    Interpret:
 
    - **Status**: `complete` is the expected value. Warn on anything else (e.g., `building`, `defining`), and use **AskQuestion** to confirm proceeding. `merge` will fail later if status isn't `Complete`, so this is a courtesy early exit.
-   - **Validate**: if `passed` is `false`, surface the `brief_results` and `cross_checks` failures. Use **AskQuestion** to let the user proceed or abort. Failures in merge-phase needs (usually missing/incomplete artifacts) are the typical blocker.
+   - **Validate**: if `passed` is `false`, surface the `brief-results` and `cross-checks` failures. Use **AskQuestion** to let the user proceed or abort. Failures in merge-phase needs (usually missing/incomplete artifacts) are the typical blocker.
    - **Tasks**: if `pending > 0`, warn with the count and use **AskQuestion** to confirm proceeding. If there is no tasks file, proceed without warning.
 
    `specify validate` already runs baseline coherence checks, so the explicit "Baseline coherence check" step from the previous version of this skill is folded in here.
@@ -178,9 +178,9 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    If `spec preview` returns an empty `specs` array, report "No delta specs to merge" and stop.
 
-   If `spec conflict-check` returns any entries under `conflicts`, surface them clearly — each entry names the capability, the change's `defined_at`, and the baseline's `baseline_modified_at`:
+   If `spec conflict-check` returns any entries under `conflicts`, surface them clearly — each entry names the capability, the change's `defined-at`, and the baseline's `baseline-modified-at`:
 
-   > "The baseline for `<capability>` was modified at `<baseline_modified_at>` (after this change was defined at `<defined_at>`). Another change may have already touched it."
+   > "The baseline for `<capability>` was modified at `<baseline-modified-at>` (after this change was defined at `<defined-at>`). Another change may have already touched it."
 
    Use the **AskQuestion tool** to let the user:
 
@@ -204,14 +204,14 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - Computes the same operations as `spec preview`.
    - Runs baseline coherence validation on every merged output (`specify validate` semantics).
    - Writes each merged baseline under `.specify/specs/<capability>/spec.md`.
-   - Transitions `.metadata.yaml` to `merged` and stamps `merged_at` / `completed_at`.
+   - Transitions `.metadata.yaml` to `merged` and stamps `merged-at` / `completed-at`.
    - Moves `.specify/changes/<name>/` into `.specify/archive/YYYY-MM-DD-<name>/`.
 
    **If the call exits non-zero**: the filesystem is unchanged (baselines not written, change dir not moved). Report the error and stop — do not retry until the user has edited the failing delta or addressed the lifecycle state.
 
 5. **Display summary**
 
-   On success, the CLI returns `merged_specs[]` with the same operation list. Render a completion summary:
+   On success, the CLI returns `merged-specs[]` with the same operation list. Render a completion summary:
 
 ## Output On Success
 

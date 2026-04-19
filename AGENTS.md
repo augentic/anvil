@@ -40,7 +40,7 @@ CLI surface the skills depend on:
 - `specify init` — scaffold `.specify/` and write `project.yaml`.
 - `specify status` — list active changes and per-change progress.
 - `specify change {create, list, status, transition, touched-specs, overlap, archive, drop, phase-outcome, journal-append}` — lifecycle verbs. `phase-outcome` stamps the `.metadata.yaml:outcome` that `/spec:execute` reads; `journal-append` writes `question` / `failure` / `recovery` entries into `journal.yaml`.
-- `specify plan {init, validate, next, status, create, amend, transition, archive, lock}` — plan-level verbs backing RFC-2 Layer 1. Both humans (Layer 1) and `/spec:execute` (Layer 2) / `/spec:plan` (Layer 3) drive through this same CLI surface. `plan init` scaffolds an empty plan; `plan lock {acquire, release, status}` manages the `.specify/plan.lock` PID stamp that the `/spec:execute` driver takes for the duration of a run.
+- `specify initiative {init, validate, next, status, create, amend, transition, archive, lock}` — plan-level verbs backing RFC-2 Layer 1. Both humans (Layer 1) and `/spec:execute` (Layer 2) / `/spec:plan` (Layer 3) drive through this same CLI surface. `plan init` scaffolds an empty plan; `plan lock {acquire, release, status}` manages the `.specify/plan.lock` PID stamp that the `/spec:execute` driver takes for the duration of a run.
 - `specify schema {resolve, check, pipeline}` — schema resolution and brief topology.
 - `specify spec {preview, conflict-check}` — dry-run merge operations and baseline drift detection.
 - `specify validate` — structural + semantic artifact checks.
@@ -57,18 +57,18 @@ place for humans, agents, and CI alike.
 When an initiative is coordinated through a `.specify/plan.yaml`, the
 recommended path is:
 
-1. **Author.** `/spec:plan <initiative-name> --source <key>=<path-or-url> ...` — Layer 3 authoring skill that runs the schema's `pipeline.plan` briefs and writes `.specify/plan.yaml` via `specify plan init` + one `specify plan create` per accepted slice.
-2. **Execute.** `/spec:execute --loop` — Layer 2 driver that repeatedly picks `specify plan next`, runs `/spec:define → /spec:build → /spec:merge` on the chosen entry, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
-3. **Archive.** `specify plan archive` sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+1. **Author.** `/spec:plan <initiative-name> --source <key>=<path-or-url> ...` — Layer 3 authoring skill that runs the schema's `pipeline.plan` briefs and writes `.specify/plan.yaml` via `specify initiative init` + one `specify initiative create` per accepted slice.
+2. **Execute.** `/spec:execute --loop` — Layer 2 driver that repeatedly picks `specify initiative next`, runs `/spec:define → /spec:build → /spec:merge` on the chosen entry, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
+3. **Archive.** `specify initiative archive` sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
-Hand-driven fallback (RFC-2 Layer 1): skip `/spec:plan` and `/spec:execute`, author `plan.yaml` entry-by-entry with `specify plan {init, create, amend}`, and drive the loop yourself via `specify plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
+Hand-driven fallback (RFC-2 Layer 1): skip `/spec:plan` and `/spec:execute`, author `plan.yaml` entry-by-entry with `specify initiative {init, create, amend}`, and drive the loop yourself via `specify initiative next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
 
 The phase skills themselves stay unaware of the plan — they operate
 change-by-change. Plan *entries* are only ever written via `specify
-plan create` / `specify plan amend`; plan *status* is only ever written
-via `specify plan transition`. A phase that discovers a neighbouring
+plan create` / `specify initiative amend`; plan *status* is only ever written
+via `specify initiative transition`. A phase that discovers a neighbouring
 change mid-run (e.g. a define brief uncovering a bug fix that should be
-tracked) may shell out to `specify plan create` / `specify plan amend`
+tracked) may shell out to `specify initiative create` / `specify initiative amend`
 — the same commands humans run. See [rfcs/archive/rfc-2-execution.md](rfcs/archive/rfc-2-execution.md) for the full design.
 
 ### Commands

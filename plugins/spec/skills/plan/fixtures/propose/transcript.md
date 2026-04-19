@@ -10,7 +10,7 @@ shelled-out CLI invocation.
 Slices are presented in the draft order the propose brief emits;
 the skill drops stale `depends-on` edges from *upcoming* drafts
 after a reject, so no downstream amend is ever needed (the skill
-never calls `specify plan amend` — that is a human verb).
+never calls `specify initiative amend` — that is a human verb).
 
 ## Slice 1/6: user-registration
 
@@ -28,7 +28,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create user-registration \
+$ specify initiative create user-registration \
     --sources monolith \
     --description "User sign-up flow; creates a new user record."
 Created plan entry 'user-registration' with status 'pending'.
@@ -52,7 +52,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create email-verification \
+$ specify initiative create email-verification \
     --sources monolith \
     --depends-on user-registration \
     --description "Verify user email via a one-time link."
@@ -80,8 +80,8 @@ Accept? [y / edit / no / abort]
 > is visible.
 ```
 
-Decision: **reject**. Plan entry: — (no `specify plan create`
-call; no `specify plan amend` either — the skill only trims
+Decision: **reject**. Plan entry: — (no `specify initiative create`
+call; no `specify initiative amend` either — the skill only trims
 `extract-shared-validation` from *upcoming* slice drafts, never
 from already-written entries).
 
@@ -106,7 +106,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create product-catalog \
+$ specify initiative create product-catalog \
     --sources monolith \
     --description "Browse and search the product catalogue."
 Created plan entry 'product-catalog' with status 'pending'.
@@ -169,7 +169,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create shopping-cart \
+$ specify initiative create shopping-cart \
     --sources orders \
     --depends-on product-catalog \
     --depends-on user-registration \
@@ -234,7 +234,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create checkout-api \
+$ specify initiative create checkout-api \
     --sources payments \
     --depends-on shopping-cart \
     --description "Complete payment for a cart."
@@ -246,7 +246,7 @@ Decision: **edit → accept**. Plan entry: `checkout-api`.
 ## Final validation
 
 ```text
-$ specify plan validate
+$ specify initiative validate
 OK (no findings)
 ```
 
@@ -259,6 +259,6 @@ Proposal: .specify/plans/platform-v2/proposal.md
 Validate: OK
 
 Next:
-  - Review: specify plan status
+  - Review: specify initiative status
   - Execute: /spec:execute --loop
 ```

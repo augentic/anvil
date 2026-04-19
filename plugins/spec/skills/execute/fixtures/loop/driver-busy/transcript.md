@@ -28,10 +28,10 @@ $ /spec:execute --loop
 # success.
 
 # step 2: acquire the driver lock.
-#   specify plan lock acquire --pid <agent-session-pid>
+#   specify initiative lock acquire --pid <agent-session-pid>
 #     → Error::DriverBusy { pid: 48217 }
 #
-# The CLI's `specify plan lock acquire` verb does the full
+# The CLI's `specify initiative lock acquire` verb does the full
 # liveness check (is PID 48217 alive? is .specify/plan.lock a
 # sensible PID file?) before returning DriverBusy. This skill does
 # not re-check.
@@ -41,7 +41,7 @@ $ /spec:execute --loop
   lock file: .specify/plan.lock
 
 Nothing was changed. Wait for the running driver to finish, or
-if you believe PID 48217 is stale, re-run `specify plan lock
+if you believe PID 48217 is stale, re-run `specify initiative lock
 status` to confirm and then retry.
 
 Exit 1
@@ -79,6 +79,6 @@ The whole run is strictly read-only against the plan.
    (exit 1 with DriverBusy).
 5. **Lock release not run.** The refused invocation never acquired
    the lock; it must not release it either. Running
-   `specify plan lock release` on a lock held by another PID would
+   `specify initiative lock release` on a lock held by another PID would
    be an authentication failure (the release verb checks `--pid`
    against the stamp).

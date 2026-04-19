@@ -17,6 +17,6 @@ entries:
       None is clearly in or out of scope from the available inputs.
 
       Suggested resolution: update the plan description via
-      `specify plan amend notification-preferences --description "..."`
+      `specify initiative amend notification-preferences --description "..."`
       with the channel enumeration, then transition (blocked → pending)
       to retry.

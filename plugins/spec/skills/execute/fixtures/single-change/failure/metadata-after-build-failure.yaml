@@ -4,7 +4,7 @@
 # driver reads `.outcome.outcome` (== failure) and enters the drop path
 # (step 11):
 #   1. run `/spec:drop checkout-api --reason "<outcome.summary>"`
-#   2. run `specify plan transition checkout-api failed --reason "<outcome.summary>"`
+#   2. run `specify initiative transition checkout-api failed --reason "<outcome.summary>"`
 # The `--reason` argument is byte-identical to `outcome.summary` below;
 # drift between this field and `plan.yaml.after:status-reason` is a
 # regression. `outcome.context` is preserved on disk for human triage

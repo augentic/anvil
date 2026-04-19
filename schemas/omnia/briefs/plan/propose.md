@@ -7,9 +7,9 @@ generates: .specify/plans/<name>/proposal.md
 
 Decompose the capability inventory produced by `discovery.md` into a
 concrete set of plan entries, presenting each to the human for
-accept/edit/reject review and shelling out to `specify plan create`
+accept/edit/reject review and shelling out to `specify initiative create`
 for every accepted slice. This is the single-writer edge for
-`plan.yaml`: every entry is added via `specify plan create` — the
+`plan.yaml`: every entry is added via `specify initiative create` — the
 brief never edits `plan.yaml` directly.
 
 ## Input
@@ -52,7 +52,7 @@ one of three actions:
 
 - **accept** — shell out to:
   ```
-  specify plan create <slice-name> \
+  specify initiative create <slice-name> \
       --sources <key> [--sources <key>...] \
       --depends-on <preceding> [--depends-on <preceding>...] \
       --affects <area> [--affects <area>...] \
@@ -100,7 +100,7 @@ reconstructs the decision trail.
 
 ## Final step
 
-After the last accepted slice, run `specify plan validate`. If it
+After the last accepted slice, run `specify initiative validate`. If it
 reports any errors, write the error block into the "Notes" section
 of `proposal.md` and stop — human triage is required before
 execution can begin. Do not attempt to auto-repair plan errors from
@@ -111,16 +111,16 @@ within this brief.
 Emit the proposed plan to stdout as a preview of the same table
 structure that would be written to `proposal.md`. Do NOT:
 
-- call `specify plan create`,
+- call `specify initiative create`,
 - write `proposal.md`,
-- run `specify plan validate`.
+- run `specify initiative validate`.
 
 `--dry-run` is read-only; it is safe to invoke repeatedly against
 the same discovery output.
 
 ## `--extend` behaviour
 
-Skip the `specify plan init` step (the caller, typically the
+Skip the `specify initiative init` step (the caller, typically the
 `/spec:plan` skill, or the human, has already ensured
 `.specify/plan.yaml` exists). Still run propose against the
 existing plan: slices whose names collide with existing plan
@@ -146,5 +146,5 @@ through the usual accept/edit/reject loop.
 
 - Slice 2 renamed from `email-verification` to `email-verify` to
   match the existing module naming convention.
-- `specify plan validate` — no errors.
+- `specify initiative validate` — no errors.
 ```

@@ -36,8 +36,8 @@
       "properties": {
         "plan": {
           "type": "array",
-          "minItems": 1,
-          "description": "Optional Layer 3 authoring-phase briefs driven by /spec:plan.",
+          "minItems": 2,
+          "description": "Optional Layer 3 authoring-phase briefs driven by /spec:plan. When present, the array MUST contain at least two briefs (discovery + propose); single-brief pipelines are rejected.",
           "items": { "$ref": "#/$defs/pipelineEntry" }
         },
         "define": {

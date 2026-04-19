@@ -13,11 +13,26 @@ Deterministic bookkeeping — change selection, lifecycle transition, archive
 move — is delegated to the `specify` CLI. This skill drives the confirmation
 flow and the summary.
 
+## Non-interactive mode
+
+When invoked with `--reason`, skip the confirmation `AskQuestion` calls
+in steps 1–3; proceed directly to step 4 with the supplied reason. The
+change name must be provided explicitly as the positional argument.
+Exit code is 0 on a clean drop, non-zero only on CLI failure.
+
+Non-interactive mode is how `/spec:execute` invokes this skill during
+`--loop`, supervised single-change runs, and self-heal reclaim of a
+`failure` / `deferred` outcome (see
+[`../execute/SKILL.md`](../execute/SKILL.md) steps 11b, 12b, and
+§"Self-heal on startup" step 2). The driver copies
+`outcome.summary` verbatim into `--reason`; this skill forwards the
+same string to `specify change drop` without prompting.
+
 When working plan-driven (a `.specify/plan.yaml` exists), after `specify change drop` succeeds the plan entry should transition to `failed` or `blocked` per RFC-2 semantics — `failed` for a build/test failure the human does not intend to retry automatically, `blocked` when a design question needs resolving before the entry is re-entered as `pending`:
 
 ```bash
-specify plan transition <name> failed  --reason "<short rationale>"
-specify plan transition <name> blocked --reason "<short rationale>"
+specify initiative transition <name> failed  --reason "<short rationale>"
+specify initiative transition <name> blocked --reason "<short rationale>"
 ```
 
 This is an advisory note — this skill does not run the command itself. RFC-2 Layer 2's `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
@@ -37,6 +52,10 @@ Optionally specify a change name. If omitted, check whether it can be inferred f
 
    **IMPORTANT**: Always confirm the change name before dropping it.
 
+   If `--reason` was supplied (non-interactive mode — see above), the
+   change name must be the positional argument; skip the prompting
+   fallback and the confirmation.
+
 2. **Check lifecycle status**
 
    Run `specify status <name> --format json` and inspect `status`:
@@ -45,7 +64,11 @@ Optionally specify a change name. If omitted, check whether it can be inferred f
    - `merged` or `dropped`: stop and tell the user the change is already finalized (the CLI would error with `lifecycle`, but surface it clearly before attempting).
    - Any other status: explain that dropping will discard the working change without promoting its specs.
 
-   Use the **AskQuestion tool** to confirm the user wants to drop the change.
+   If `--reason` was NOT supplied, use the **AskQuestion tool** to
+   confirm the user wants to drop the change. In non-interactive
+   mode skip the prompt and proceed (the CLI still enforces the
+   terminal-status check in step 4 — a `merged` / `dropped` change
+   surfaces `Error::Lifecycle` there).
 
 3. **Summarize what will happen**
 
@@ -60,10 +83,15 @@ Optionally specify a change name. If omitted, check whether it can be inferred f
    - Existing baseline specs remain unchanged
    ```
 
-   Use the **AskQuestion tool** to confirm:
+   If `--reason` was NOT supplied, use the **AskQuestion tool** to
+   confirm:
 
    - **Proceed**: drop the change
    - **Cancel**: keep the change as-is
+
+   In non-interactive mode skip this confirmation too; the preview
+   may still be printed as an informational line but the skill does
+   not wait for input.
 
 4. **Drop and archive**
 
@@ -74,10 +102,10 @@ Optionally specify a change name. If omitted, check whether it can be inferred f
    ```
 
    The CLI performs the lifecycle transition (enforcing the legal
-   non-terminal → `dropped` edge), stamps `dropped_at`, records the
-   optional reason in `.metadata.yaml.drop_reason`, and moves the
+   non-terminal → `dropped` edge), stamps `dropped-at`, records the
+   optional reason in `.metadata.yaml.drop-reason`, and moves the
    directory under `.specify/archive/YYYY-MM-DD-<name>/`. The
-   `archive_path` field in the JSON response names the final location.
+   `archive-path` field in the JSON response names the final location.
 
 5. **Display summary**
 
@@ -88,7 +116,7 @@ Optionally specify a change name. If omitted, check whether it can be inferred f
 
 **Change:** <change-name>
 **Archived to:** .specify/archive/YYYY-MM-DD-<change-name>/
-**Reason:** <drop_reason>
+**Reason:** <drop-reason>
 
 No specs were merged into `.specify/specs/`.
 The baseline remains unchanged.

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/schemas/plan/plan.schema.json",
   "title": "Specify plan.yaml",
-  "description": "Validates the structure of `.specify/plan.yaml`: the initiative name, the optional named-sources map, and the ordered list of plan changes with their dependencies and status. Strict schema — unknown fields are rejected. Written by `specify plan {init,create,amend,transition,archive}`; read by `/spec:execute` and by humans driving the Layer 1 loop.",
+  "description": "Validates the structure of `.specify/plan.yaml`: the initiative name, the optional named-sources map, and the ordered list of plan changes with their dependencies and status. Strict schema — unknown fields are rejected. Written by `specify initiative {init,create,amend,transition,archive}`; read by `/spec:execute` and by humans driving the Layer 1 loop.",
   "type": "object",
   "required": ["name", "changes"],
   "additionalProperties": false,
@@ -22,15 +22,15 @@
     },
     "changes": {
       "type": "array",
-      "description": "Ordered list of plan changes. Order is the tie-breaker for `specify plan next` when multiple entries are eligible.",
+      "description": "Ordered list of plan changes. Order is the tie-breaker for `specify initiative next` when multiple entries are eligible.",
       "items": { "$ref": "#/$defs/planChange" }
     }
   },
   "$defs": {
     "kebabName": {
       "type": "string",
-      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$",
-      "description": "Kebab-case identifier: lowercase letters, digits, and internal hyphens; must start with a letter and end with a letter or digit."
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Kebab-case identifier: lowercase letters and digits grouped by single internal hyphens; no leading, trailing, or consecutive hyphens. Matches `specify_change::actions::validate_name`."
     },
     "planChange": {
       "type": "object",
@@ -55,7 +55,7 @@
         },
         "depends-on": {
           "type": "array",
-          "description": "Change names that must be `done` before this change is eligible. Consumed by `specify plan next`.",
+          "description": "Change names that must be `done` before this change is eligible. Consumed by `specify initiative next`.",
           "items": { "$ref": "#/$defs/kebabName" },
           "uniqueItems": true
         },

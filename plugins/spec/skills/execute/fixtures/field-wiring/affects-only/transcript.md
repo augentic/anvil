@@ -72,6 +72,6 @@ of the define skill.
    `done`, so its baseline specs live under `.specify/specs/`.
    Define's delta-targeting machinery needs that baseline to
    exist; a plan that `affects` a `pending` entry would be caught
-   by `specify plan validate` (the `unknown-affects` diagnostic
+   by `specify initiative validate` (the `unknown-affects` diagnostic
    checks for entry existence, but the *baseline spec existence*
    check is deferred to define's own phase-level error handling).

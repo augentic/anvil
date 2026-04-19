@@ -3,7 +3,7 @@
 The prior `/spec:execute` run saw `/spec:build checkout-api` exhaust
 its verify-repair budget and stamp `outcome: build failure` with a
 type-mismatch summary, but crashed before reaching step 11 of the
-supervised run (`/spec:drop checkout-api …` then `specify plan
+supervised run (`/spec:drop checkout-api …` then `specify initiative
 transition checkout-api failed …`).
 
 On the next startup, self-heal:
@@ -15,7 +15,7 @@ On the next startup, self-heal:
    archive the partial artifacts (idempotent against an already-
    dropped change; in this fixture the change dir is still active so
    the drop actually runs).
-4. Runs `specify plan transition checkout-api failed --reason
+4. Runs `specify initiative transition checkout-api failed --reason
    "<outcome.summary>"`. The `--reason` string is byte-identical to
    `outcome.summary` in `metadata.yaml`; `plan.yaml.after`'s
    `status-reason` pins that equality.

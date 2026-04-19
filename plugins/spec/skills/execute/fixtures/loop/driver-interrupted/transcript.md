@@ -13,7 +13,7 @@ Per §Loop mode → SIGINT / SIGTERM handling:
   no phase is mid-invocation, nothing to finish.
 - Rule 2: skip `/spec:merge`. Do NOT invoke it.
 - Rule 3: leave `email-verification` as `in-progress`. Do NOT call
-  `specify plan transition`.
+  `specify initiative transition`.
 - Rule 4: release the driver lock.
 - Rule 5: emit the terminal summary with `Completion:
   driver-interrupted`.
@@ -41,8 +41,8 @@ $ /spec:execute --loop
 Self-heal: no in-progress entries found.
 
 # step 4 iteration 1: pick next.
-#   specify plan next → { "next": "email-verification" }
-#   specify plan transition email-verification in-progress
+#   specify initiative next → { "next": "email-verification" }
+#   specify initiative transition email-verification in-progress
 
 ## /spec:execute — platform-v2
 
@@ -71,7 +71,7 @@ Step 2/3: build
 #   Rule 1 — no phase is mid-invocation; trivially satisfied.
 #   Rule 2 — skip /spec:merge. Do NOT invoke it.
 #   Rule 3 — leave email-verification as in-progress. Do NOT call
-#            specify plan transition. The on-disk state at this
+#            specify initiative transition. The on-disk state at this
 #            moment:
 #              plan.yaml: email-verification status: in-progress
 #              .metadata.yaml: LifecycleStatus: complete
@@ -80,7 +80,7 @@ Step 2/3: build
 #            using the mid-change-resume branch of the self-heal
 #            algorithm.
 #   Rule 4 — release the driver lock:
-#            specify plan lock release --pid <agent-session-pid>
+#            specify initiative lock release --pid <agent-session-pid>
 #   Rule 5 — emit terminal summary with Completion:
 #            driver-interrupted.
 #   Rule 6 — exit 130.
@@ -134,7 +134,7 @@ Next action: Re-run /spec:execute --loop — self-heal will reclaim the interrup
    ambiguity `halted` also has `in-progress 1` in its progress
    line, but its `Completion:` value differentiates.)
 7. **No terminal plan transition on interrupt.** The driver does
-   NOT call `specify plan transition email-verification failed` (or
+   NOT call `specify initiative transition email-verification failed` (or
    anything similar). The phase succeeded; the driver simply ran
    out of wall-clock before invoking the next phase. Self-heal on
    the next run is the correct actor to advance the plan.

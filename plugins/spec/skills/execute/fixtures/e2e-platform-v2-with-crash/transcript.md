@@ -35,7 +35,7 @@ $ /spec:execute --loop
 # step 3: self-heal (writing path).
 #   email-verification was in-progress with outcome: success on merge.
 Self-heal: email-verification → done (merge success from prior run)
-#   specify plan transition email-verification done
+#   specify initiative transition email-verification done
 #   specify change journal-append email-verification merge recovery \
 #       --summary "Self-heal on startup: applied terminal transition done after finding success outcome on merge" \
 #       --context "before=in-progress/merged, after=done"
@@ -48,13 +48,13 @@ Self-heal: email-verification → done (merge success from prior run)
 # ───────────────────────────────────────────────────────────
 # Iteration 4 — product-catalog (crashes mid-/spec:build)
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "product-catalog" }
+# specify initiative next → { "next": "product-catalog" }
 
 # Argument resolution:
 #   sources: [monolith] → --source monolith=/path/to/legacy-codebase
 #   affects: []         → no --affects flags
 
-# specify plan transition product-catalog in-progress
+# specify initiative transition product-catalog in-progress
 # /spec:define product-catalog --source monolith=/path/to/legacy-codebase → success
 #   .specify/changes/product-catalog/.metadata.yaml:
 #     status: defined
@@ -96,7 +96,7 @@ $ /spec:execute --loop
 # step 1: project resolution.
 
 # step 2: acquire the driver lock.
-#   specify plan lock acquire --pid <new-agent-session-pid>
+#   specify initiative lock acquire --pid <new-agent-session-pid>
 #   The lock CLI's liveness check notices the stamped PID from Run 1
 #   is no longer alive, reclaims the stale stamp, and stamps the new
 #   PID. No Error::DriverBusy surfaces.
@@ -131,7 +131,7 @@ Self-heal: product-catalog — resuming build (LifecycleStatus=building)
 #   Run 1; /spec:build resumes at task 4).
 #   /spec:build stamps outcome: success on completion.
 # /spec:merge product-catalog → success
-# specify plan transition product-catalog done
+# specify initiative transition product-catalog done
 
 ### Processing: product-catalog (sources: [monolith])  [resumed]
 
@@ -150,7 +150,7 @@ Step 3/3: merge
 # correlate with self-heal's recovery journal entry.
 
 # Iteration 5 (in the outer loop): back to the normal §Loop mode
-# body — specify plan next returns shopping-cart.
+# body — specify initiative next returns shopping-cart.
 # ───────────────────────────────────────────────────────────
 # Iteration 5 — shopping-cart (git-URL source)
 # ───────────────────────────────────────────────────────────
@@ -158,7 +158,7 @@ Step 3/3: merge
 # (see ../e2e-platform-v2/transcript.md iteration 5 for detail)
 # … runs through to done …
 
-# Iteration 6 (terminating): specify plan next → stuck
+# Iteration 6 (terminating): specify initiative next → stuck
 #   checkout-api is failed; checkout-ui's dep (checkout-api) is not
 #   done. Same terminal classification as ../e2e-platform-v2/.
 ```
@@ -181,7 +181,7 @@ Failed:
 Pending (dependencies not satisfied):
   - checkout-ui (waits on: checkout-api)
 
-Next action: Resolve blocked/failed entries (specify plan amend + specify plan transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify plan archive --force.
+Next action: Resolve blocked/failed entries (specify initiative amend + specify initiative transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify initiative archive --force.
 ```
 
 Exit code: 0.
@@ -218,7 +218,7 @@ preserved unchanged; the driver only appends, never rewrites.
 ## Invariants pinned by this fixture
 
 1. **Stale lock stamps are reclaimed by the CLI.** Run 2's
-   `specify plan lock acquire` does not fail with `Error::DriverBusy`
+   `specify initiative lock acquire` does not fail with `Error::DriverBusy`
    — the CLI-level liveness check notices Run 1's PID is gone and
    reclaims the stamp before the skill sees it.
 2. **Mid-build crash leaves `.metadata.yaml.outcome` absent.** The

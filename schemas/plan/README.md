@@ -20,6 +20,13 @@ Semantic checks (cycle detection, referential integrity of `depends-on` /
 by `Plan::validate` in [`specify-change`](https://github.com/augentic/specify-cli/tree/main/crates/change);
 this schema covers shape only.
 
+The JSON response produced by `specify initiative validate --format json` (both
+the shape checks above and the semantic ones) is itself covered by a
+sibling schema at
+[`../plan-validate-output/schema.json`](../plan-validate-output/schema.json);
+skill authors consuming the validator should match the response against
+that schema.
+
 ## Editor integration
 
 Add the following header to `.specify/plan.yaml` to opt in to autocomplete and

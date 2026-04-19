@@ -13,7 +13,7 @@ is delegated to the `specify` CLI. This skill drives the agent-side work:
 reading the build brief body, dispatching skill directives, and making code
 changes.
 
-When working plan-driven (a `.specify/plan.yaml` exists), the corresponding plan entry should already be `in-progress` — the human runs `specify plan transition <name> in-progress` once before `/spec:build` starts. `/spec:build` itself does not touch `plan.yaml`; the plan transition out of `in-progress` happens from `/spec:merge` (→ `done`) or `/spec:drop` (→ `failed` / `blocked`).
+When working plan-driven (a `.specify/plan.yaml` exists), the corresponding plan entry should already be `in-progress` — the human runs `specify initiative transition <name> in-progress` once before `/spec:build` starts. `/spec:build` itself does not touch `plan.yaml`; the plan transition out of `in-progress` happens from `/spec:merge` (→ `done`) or `/spec:drop` (→ `failed` / `blocked`).
 
 > See `rfcs/archive/rfc-2-execution.md` §"Execution Model Overview" and
 > `rfcs/assets/specify-framework.png` for where this skill sits in the
@@ -83,17 +83,17 @@ return.
 
 ## Mutating the plan mid-run (RFC-2 §"Phase Boundary → Rule 2")
 
-Phases may shell out to `specify plan create` / `specify plan amend`
+Phases may shell out to `specify initiative create` / `specify initiative amend`
 mid-run when they discover something structural about the initiative.
 Both commands write `.specify/plan.yaml` synchronously — the new or
 updated entry is visible to every subsequent `/spec:execute` iteration.
 
 Allowed:
 
-- `specify plan create <new-name> --affects <current-name> --description "..."`
+- `specify initiative create <new-name> --affects <current-name> --description "..."`
   when implementation uncovers a neighbouring defect or a prerequisite
   refactor that warrants its own change.
-- `specify plan amend <current-name> --depends-on <newly-needed>` when
+- `specify initiative amend <current-name> --depends-on <newly-needed>` when
   the phase discovers a dependency on another plan entry. `amend` may
   target the currently-active entry — non-`status` fields on an
   `in-progress` entry are fair game.
@@ -102,7 +102,7 @@ Forbidden:
 
 - Writing `status` through `amend`. The `PlanChangePatch` type has no
   `status` field — this is a type-system guarantee. Status transitions
-  are `/spec:execute`'s sole prerogative via `specify plan transition`.
+  are `/spec:execute`'s sole prerogative via `specify initiative transition`.
 - Hand-editing `.specify/plan.yaml` or
   `.specify/changes/<name>/.metadata.yaml`. Always route through the
   CLI so the single-writer invariant in RFC-2 §"Plan Mutation and
@@ -148,7 +148,7 @@ Forbidden:
 
    `specify schema pipeline build --change .specify/changes/<name> --format json` returns the build brief's `path`, `needs`, and `tracks`. Read the brief body from that path; the build loop follows it step-by-step.
 
-   Read the tracked tasks file (its path comes from `specify task progress` below) and every define-phase artifact you need for context (paths available via `specify schema pipeline define --change <change_dir> --format json`).
+   Read the tracked tasks file (its path comes from `specify task progress` below) and every define-phase artifact you need for context (paths available via `specify schema pipeline define --change <change-dir> --format json`).
 
 6. **Show current progress**
 
@@ -168,13 +168,13 @@ Forbidden:
    specify change transition <name> building --format json
    ```
 
-   The CLI stamps `build_started_at` and enforces the `defined → building` edge. If the status is already `building`, skip this step. Never hand-edit `.metadata.yaml`.
+   The CLI stamps `build-started-at` and enforces the `defined → building` edge. If the status is already `building`, skip this step. Never hand-edit `.metadata.yaml`.
 
 8. **Implement tasks (loop until done or blocked)**
 
    For each pending task returned by `specify task progress`:
 
-   - Inspect the task's `skill_directive` field. When present (`plugin`/`skill` pair), invoke that skill directly with the standard arguments (e.g. `/omnia:crate-writer $CRATE_PATH`). When absent, follow the build brief body's step-by-step execution (mode detection, verification loop, etc.).
+   - Inspect the task's `skill-directive` field. When present (`plugin`/`skill` pair), invoke that skill directly with the standard arguments (e.g. `/omnia:crate-writer $CRATE_PATH`). When absent, follow the build brief body's step-by-step execution (mode detection, verification loop, etc.).
    - Announce which task is being worked on.
    - Make the code changes required. Keep changes minimal and focused.
    - Mark the task complete: `specify task mark .specify/changes/<name> <task-number> --format json`. The call is idempotent — a re-mark on an already-completed task is a no-op.
@@ -195,7 +195,7 @@ Forbidden:
    specify change transition <name> complete --format json
    ```
 
-   The CLI stamps `completed_at` and enforces the `building → complete` edge.
+   The CLI stamps `completed-at` and enforces the `building → complete` edge.
 
    Display:
 

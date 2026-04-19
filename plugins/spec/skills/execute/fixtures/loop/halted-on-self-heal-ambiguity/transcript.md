@@ -29,7 +29,7 @@ $ /spec:execute --loop
 #   Classifies: outcome.phase == merge, outcome: success BUT
 #   status: defining. Contradiction — no lifecycle transition
 #   reaches this state. HALT.
-#   - Does NOT call specify plan transition.
+#   - Does NOT call specify initiative transition.
 #   - Does NOT call /spec:drop.
 #   - Does NOT append a type: recovery journal entry.
 
@@ -63,7 +63,7 @@ Next action: Manually triage the halted change: inspect .specify/changes/shoppin
 1. **Self-heal halt is the only path to `Completion: halted` under
    `--loop`.** Individual mid-loop failures / deferrals transition
    the plan entry to `failed` / `blocked` and the loop continues;
-   `specify plan next` skips those entries. Only a self-heal
+   `specify initiative next` skips those entries. Only a self-heal
    ambiguity halt reaches `halted`.
 2. **Halted runs still emit the terminal summary.** The summary is
    emitted in step 5 regardless of whether the loop body ran or

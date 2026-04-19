@@ -35,7 +35,7 @@ I'll populate `.specify/.cache/` with the schema and invoke `specify init` to in
    - If it exists, inform the user: "Specify is already initialized in this project. Your config is at `.specify/project.yaml`."
    - Use **AskQuestion tool** to confirm whether they want to reinitialize (which overwrites project.yaml).
    - If they decline, stop.
-   - If they confirm, treat the run as `$UPGRADE=true` so the CLI rewrites `specify_version` to the running binary.
+   - If they confirm, treat the run as `$UPGRADE=true` so the CLI rewrites `specify-version` to the running binary.
 
 2. **Resolve schema**
 
@@ -84,7 +84,7 @@ I'll populate `.specify/.cache/` with the schema and invoke `specify init` to in
      --format json
    ```
 
-   The CLI creates `.specify/{changes,specs,archive,.cache}/`, writes `.specify/project.yaml` with one empty `rules:` entry per `pipeline.define` brief, upserts `.specify/.cache/` into the project `.gitignore`, and records `specify_version`. Parse the JSON response to capture `config_path`, `schema_name`, `cache_present`, `directories_created`, `scaffolded_rule_keys`, and `specify_version` for reporting back to the user.
+   The CLI creates `.specify/{changes,specs,archive,.cache}/`, writes `.specify/project.yaml` with one empty `rules:` entry per `pipeline.define` brief, upserts `.specify/.cache/` into the project `.gitignore`, and records `specify-version`. Parse the JSON response to capture `config-path`, `schema-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, and `specify-version` for reporting back to the user.
 
    On non-zero exit, surface the JSON `error`/`message` fields. Do not attempt a prose fallback.
 

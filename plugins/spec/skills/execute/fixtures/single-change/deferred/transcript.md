@@ -12,6 +12,6 @@ Step 1/3: define
 
   Question: The description says "notification channel and frequency settings" but doesn't specify which channels are in scope.
   Journal: .specify/changes/notification-preferences/journal.yaml
-  Action needed: Update the plan description (specify plan amend …) with the missing
+  Action needed: Update the plan description (specify initiative amend …) with the missing
     scope, then unflag (blocked → pending) to retry.
   Status: blocked

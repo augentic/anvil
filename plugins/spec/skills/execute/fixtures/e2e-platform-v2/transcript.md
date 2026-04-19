@@ -1,7 +1,7 @@
 # e2e-platform-v2 — `/spec:execute --loop` drains RFC-2 §"The Plan"
 
 This is the Layer 2 exit-gate meta-fixture. The seed is the full
-`platform-v2` plan from [RFC-2 §"The Plan"](../../../../../../rfcs/archive/rfc-2-execution.md)
+`platform-v2` plan from [RFC-2 §"The Plan"](../../../docs/links.md#rfc-2-the-plan)
 verbatim — nine entries spanning every shape the driver must handle:
 greenfield, `sources`-only, `affects`-only, combined, pre-failed,
 mid-run-crashed. `/spec:execute --loop` starts against this seed and
@@ -16,7 +16,7 @@ argument-resolution plumbing introduced in L2.I end-to-end.
   - `user-registration`: **done** — specs merged in a prior run.
   - `email-verification`: **in-progress** — the prior driver's
     `/spec:merge` stamped `outcome: success` then crashed before
-    running `specify plan transition done`.
+    running `specify initiative transition done`.
     `metadata-email-verification-crashed.yaml` is the illustrative
     `.metadata.yaml` snapshot that self-heal reads.
   - `registration-duplicate-email-crash`: pending,
@@ -64,7 +64,7 @@ $ /spec:execute --loop
 #   outcome.phase=merge.
 #   Self-heal applies the terminal transition.
 Self-heal: email-verification → done (merge success from prior run)
-#   specify plan transition email-verification done
+#   specify initiative transition email-verification done
 #   specify change journal-append email-verification merge recovery
 #       --summary "Self-heal on startup: applied terminal transition done after finding success outcome on merge"
 #       --context "before=in-progress/merged, after=done"
@@ -76,7 +76,7 @@ Self-heal: email-verification → done (merge success from prior run)
 # ───────────────────────────────────────────────────────────
 # Iteration 1 — registration-duplicate-email-crash
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "registration-duplicate-email-crash" }
+# specify initiative next → { "next": "registration-duplicate-email-crash" }
 # Tie-break: plan list order. Both registration-duplicate-email-crash
 # and notification-preferences are eligible (user-registration is done);
 # the former appears first in plan list order.
@@ -87,11 +87,11 @@ Self-heal: email-verification → done (merge success from prior run)
 # Pinned invocation (see fixtures/field-wiring/affects-only/):
 #   /spec:define registration-duplicate-email-crash --affects user-registration
 
-# specify plan transition registration-duplicate-email-crash in-progress
+# specify initiative transition registration-duplicate-email-crash in-progress
 # /spec:define registration-duplicate-email-crash --affects user-registration → success
 # /spec:build  registration-duplicate-email-crash                             → success
 # /spec:merge  registration-duplicate-email-crash                             → success
-# specify plan transition registration-duplicate-email-crash done
+# specify initiative transition registration-duplicate-email-crash done
 
 ### Processing: registration-duplicate-email-crash (affects: [user-registration])
 
@@ -106,18 +106,18 @@ Step 3/3: merge
 # ───────────────────────────────────────────────────────────
 # Iteration 2 — notification-preferences (greenfield)
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "notification-preferences" }
+# specify initiative next → { "next": "notification-preferences" }
 
 # Argument resolution:
 #   sources: []  →  no --source flags
 #   affects: []  →  no --affects flags
 # Invocation: /spec:define notification-preferences
 
-# specify plan transition notification-preferences in-progress
+# specify initiative transition notification-preferences in-progress
 # /spec:define notification-preferences → success
 # /spec:build  notification-preferences → success
 # /spec:merge  notification-preferences → success
-# specify plan transition notification-preferences done
+# specify initiative transition notification-preferences done
 
 ### Processing: notification-preferences (greenfield)
 
@@ -132,7 +132,7 @@ Step 3/3: merge
 # ───────────────────────────────────────────────────────────
 # Iteration 3 — extract-shared-validation
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "extract-shared-validation" }
+# specify initiative next → { "next": "extract-shared-validation" }
 # (email-verification is done now, so this entry's dep is satisfied.)
 
 # Argument resolution:
@@ -142,11 +142,11 @@ Step 3/3: merge
 # Invocation:
 #   /spec:define extract-shared-validation --affects user-registration --affects email-verification
 
-# specify plan transition extract-shared-validation in-progress
+# specify initiative transition extract-shared-validation in-progress
 # /spec:define … → success
 # /spec:build  … → success
 # /spec:merge  … → success
-# specify plan transition extract-shared-validation done
+# specify initiative transition extract-shared-validation done
 
 ### Processing: extract-shared-validation (affects: [user-registration, email-verification])
 
@@ -162,7 +162,7 @@ Step 3/3: merge
 # ───────────────────────────────────────────────────────────
 # Iteration 4 — product-catalog (local-path source)
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "product-catalog" }
+# specify initiative next → { "next": "product-catalog" }
 
 # Argument resolution:
 #   sources: [monolith] — resolve "monolith" against top-level map:
@@ -172,13 +172,13 @@ Step 3/3: merge
 # Invocation:
 #   /spec:define product-catalog --source monolith=/path/to/legacy-codebase
 
-# specify plan transition product-catalog in-progress
+# specify initiative transition product-catalog in-progress
 # /spec:define product-catalog --source monolith=/path/to/legacy-codebase → success
 #   (define's brief pipeline invokes /spec:extract with the resolved
 #    path; no clone — path is local.)
 # /spec:build  product-catalog → success
 # /spec:merge  product-catalog → success
-# specify plan transition product-catalog done
+# specify initiative transition product-catalog done
 
 ### Processing: product-catalog (sources: [monolith])
 
@@ -196,7 +196,7 @@ Step 3/3: merge
 # ───────────────────────────────────────────────────────────
 # Iteration 5 — shopping-cart (git-URL source)
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "shopping-cart" }
+# specify initiative next → { "next": "shopping-cart" }
 
 # Argument resolution:
 #   sources: [orders] — resolve "orders" against top-level map:
@@ -211,11 +211,11 @@ Step 3/3: merge
 # materialize the tree into its clone cache. The --source value
 # travels through as a URL string.
 
-# specify plan transition shopping-cart in-progress
+# specify initiative transition shopping-cart in-progress
 # /spec:define shopping-cart --source orders=… → success
 # /spec:build  shopping-cart → success
 # /spec:merge  shopping-cart → success
-# specify plan transition shopping-cart done
+# specify initiative transition shopping-cart done
 
 ### Processing: shopping-cart (sources: [orders])
 
@@ -233,13 +233,13 @@ Step 3/3: merge
 # ───────────────────────────────────────────────────────────
 # Iteration 6 (terminating) — no eligible change remains
 # ───────────────────────────────────────────────────────────
-# specify plan next →
+# specify initiative next →
 #   { "next": null, "reason": "stuck",
 #     "pending": ["checkout-ui"],
 #     "failed":  ["checkout-api"] }
 #
 # checkout-api is failed; checkout-ui's only dep is checkout-api.
-# No pending entry has all deps done; specify plan next classifies
+# No pending entry has all deps done; specify initiative next classifies
 # this as "stuck". The loop breaks.
 
 # step 5: emit terminal summary.
@@ -262,7 +262,7 @@ Failed:
 Pending (dependencies not satisfied):
   - checkout-ui (waits on: checkout-api)
 
-Next action: Resolve blocked/failed entries (specify plan amend + specify plan transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify plan archive --force.
+Next action: Resolve blocked/failed entries (specify initiative amend + specify initiative transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify initiative archive --force.
 ```
 
 Exit code: 0 (stuck is a partial-success terminal state; the driver
@@ -302,14 +302,14 @@ with no pre-failed entries.
    fixture; no entry in RFC-2 §"The Plan" as written declares both
    `sources` and `affects` on the same entry.
 3. **Lock held once, across the whole run.** Five successful
-   iterations share the single `specify plan lock acquire` from
+   iterations share the single `specify initiative lock acquire` from
    step 2 of the `--loop` algorithm; the release happens once at
    step 6, after the terminal summary.
 4. **`checkout-api` stays `failed`** — the driver never retries a
    `failed` entry unconditionally. Retries go through a human-
-   initiated `specify plan transition failed → pending`.
+   initiated `specify initiative transition failed → pending`.
 5. **`checkout-ui` stays `pending`** — its only dep is `failed`.
-   `specify plan next` does not return a pending entry whose deps
+   `specify initiative next` does not return a pending entry whose deps
    are unmet; the loop treats this as `stuck` rather than halting.
 6. **Verbatim `status-reason` in the terminal summary.** The
    multi-line `status-reason` on `checkout-api` is rendered into

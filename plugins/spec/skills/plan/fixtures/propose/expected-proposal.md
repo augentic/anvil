@@ -39,4 +39,4 @@
     yes, kept separate (slice 2).
   - *Does the new `shopping-cart` crate need to absorb `order-create`?*
     — no, `order-create` is deferred to a follow-up plan.
-- `specify plan validate` — no errors.
+- `specify initiative validate` — no errors.

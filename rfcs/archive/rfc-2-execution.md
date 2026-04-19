@@ -1,5 +1,7 @@
 # RFC-2: Execution
 
+> Note: CLI group renamed to `specify initiative` post-RFC-2; see `rfcs/rfc-2-cleanup-plan.md` §3.
+
 > Status: Implemented · Depends: [RFC-1](rfc-1-cli.md)
 
 ## Abstract
