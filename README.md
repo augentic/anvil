@@ -87,7 +87,7 @@ Layer 1 CLI verbs:
 - `specify plan transition <name> <target>` -- Move an entry through the status state machine (`pending → in-progress → done`, plus `blocked`, `failed`, `skipped`).
 - `specify plan archive` -- Move a completed `plan.yaml` to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`.
 
-See [rfcs/rfc-2-execution.md](rfcs/rfc-2-execution.md) for the full design. Layer 1 is the MVP: a human drives `get next change → define → build → merge → transition` by hand. Layer 2's `/spec:execute` driver skill automates the same loop against the same CLI — `--dry-run` previews the next change, and a supervised single-change run drives one entry end-to-end through the three outcome paths (success → `done`, failure → `failed`, deferred → `blocked`). Self-heal on startup, `--loop`, and `sources`/`affects` wiring land in subsequent Changes.
+See [rfcs/rfc-2-execution.md](rfcs/rfc-2-execution.md) for the full design. Layer 1 is the MVP: a human drives `get next change → define → build → merge → transition` by hand. Layer 2's `/spec:execute` driver skill automates the same loop against the same CLI — `--dry-run` previews the next change, and a supervised single-change run drives one entry end-to-end through the three outcome paths (success → `done`, failure → `failed`, deferred → `blocked`). Self-heal on startup, `--loop`, and `sources`/`affects` wiring land in subsequent Changes. Layer 3's `/spec:plan` authoring skill closes the gap on the producing side — `/spec:plan <initiative> --dry-run` emits a pre-authoring readiness report today (L3.E scaffold); discovery and propose brief wiring land in L3.F / L3.G.
 
 ## Plugins
 

@@ -18,6 +18,7 @@ Humans are expected to work through stock Specify:
 - `/spec:status` (check artifact completion and task progress)
 - `/spec:extract` (extract Specify artifacts from existing source code)
 - `/spec:execute` (drive an initiative's `.specify/plan.yaml` through define → build → merge; RFC-2 Layer 2 — `--dry-run` scaffold + supervised single-change run, with three outcome paths: success → `done`, failure → `failed`, deferred → `blocked`. Self-heal on startup, `--loop`, and `sources`/`affects` wiring forthcoming.)
+- `/spec:plan` (author the initial `.specify/plan.yaml` for an initiative via the `pipeline.plan` brief pipeline; RFC-2 Layer 3 — L3.E ships the skill scaffold with the five-step core loop shape and a `--dry-run` readiness report. Discovery and propose brief wiring land in L3.F / L3.G.)
 
 This repository provides specialist skills and references that support that workflow.
 
