@@ -46,11 +46,11 @@ The on-disk contracts the authoring skill depends on are:
 | `.specify/plans/<name>/` | schema (`pipeline.plan` briefs) | Working directory for authoring artefacts — `discovery.md` from the discovery brief, `proposal.md` from the propose brief. Swept by `specify plan archive` alongside the plan itself (RFC-2 L3.B). |
 | `schema.yaml:pipeline.plan` | schema (`Phase::Plan`) | Declares the ordered list of authoring briefs for the project's schema. Resolved via `specify schema pipeline --phase plan`. |
 
-See [RFC-2 §"Layer 3: Plan Authoring"](../../../../rfcs/rfc-2-execution.md)
-for the full design, including the [Core loop](../../../../rfcs/rfc-2-execution.md),
-[Plan pipeline briefs](../../../../rfcs/rfc-2-execution.md),
-[Working directory](../../../../rfcs/rfc-2-execution.md), and
-[Integration with `/spec:execute`](../../../../rfcs/rfc-2-execution.md)
+See [RFC-2 §"Layer 3: Plan Authoring"](../../../../rfcs/archive/rfc-2-execution.md)
+for the full design, including the [Core loop](../../../../rfcs/archive/rfc-2-execution.md),
+[Plan pipeline briefs](../../../../rfcs/archive/rfc-2-execution.md),
+[Working directory](../../../../rfcs/archive/rfc-2-execution.md), and
+[Integration with `/spec:execute`](../../../../rfcs/archive/rfc-2-execution.md)
 sections.
 
 ## Invocation
@@ -612,7 +612,7 @@ transition` — those verbs belong to the running initiative
 (humans in Layer 1, `/spec:execute` in Layer 2), not to the authoring
 step.
 
-See [RFC-2 §"Phase Boundary → Rule 2"](../../../../rfcs/rfc-2-execution.md)
+See [RFC-2 §"Phase Boundary → Rule 2"](../../../../rfcs/archive/rfc-2-execution.md)
 for the full contract.
 
 ## Working directory (`.specify/plans/<name>/`)

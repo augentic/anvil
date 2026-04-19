@@ -24,7 +24,7 @@ specify plan transition <name> done
 
 This is an advisory note — this skill does not run the command itself. RFC-2 Layer 2's `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
 
-> See `rfcs/rfc-2-execution.md` §"Execution Model Overview" and
+> See `rfcs/archive/rfc-2-execution.md` §"Execution Model Overview" and
 > `rfcs/assets/specify-framework.png` for where this skill sits in the
 > `/spec:execute` driver loop.
 

@@ -52,10 +52,10 @@ read in Layer 1 — `/spec:execute` introduces no new storage of its own:
 | `.specify/changes/<name>/journal.yaml` | library (`Journal::append` + `specify change journal-append`) | Append-only audit log of `question` / `failure` / `recovery` entries. Never consumed as a signalling channel — `.metadata.yaml:outcome` is the only state the driver reads. |
 | `.specify/plan.lock` | library (`PlanLockStamp`) | Advisory PID stamp held by the running driver. Prevents two `/spec:execute` invocations racing on the same plan. |
 
-See [RFC-2 §"Layer 2: Automated Execution"](../../../../rfcs/rfc-2-execution.md)
-for the full design, including the [Phase Outcome Contract](../../../../rfcs/rfc-2-execution.md),
-[Plan Mutation and Crash Safety](../../../../rfcs/rfc-2-execution.md),
-and [Driver Concurrency](../../../../rfcs/rfc-2-execution.md) sections.
+See [RFC-2 §"Layer 2: Automated Execution"](../../../../rfcs/archive/rfc-2-execution.md)
+for the full design, including the [Phase Outcome Contract](../../../../rfcs/archive/rfc-2-execution.md),
+[Plan Mutation and Crash Safety](../../../../rfcs/archive/rfc-2-execution.md),
+and [Driver Concurrency](../../../../rfcs/archive/rfc-2-execution.md) sections.
 
 ## Invariants (RFC-2 §"Invariants")
 
@@ -67,11 +67,11 @@ without leaving the skill file.
 |---|---|
 | Driver contracts with phases, not briefs | `/spec:execute` only invokes `/spec:define`, `/spec:build`, `/spec:merge` |
 | Phases own verify-repair loops | Phase skills exhaust their repair budget before returning |
-| Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `outcome` into `.metadata.yaml` before returning (see [§Phase Outcome Contract](../../../../rfcs/rfc-2-execution.md)) |
+| Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `outcome` into `.metadata.yaml` before returning (see [§Phase Outcome Contract](../../../../rfcs/archive/rfc-2-execution.md)) |
 | Change *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify plan create` / `specify plan amend` |
 | Change *status* updates written only via `Plan::transition` | `/spec:execute` (Layer 2) or humans (Layer 1) run `specify plan transition` |
 | Single `in-progress` at a time | `plan next` / `plan validate` |
-| Single `/spec:execute` driver at a time | `.specify/plan.lock` advisory lock (see [§Driver Concurrency](../../../../rfcs/rfc-2-execution.md)) |
+| Single `/spec:execute` driver at a time | `.specify/plan.lock` advisory lock (see [§Driver Concurrency](../../../../rfcs/archive/rfc-2-execution.md)) |
 
 ## Invocation
 

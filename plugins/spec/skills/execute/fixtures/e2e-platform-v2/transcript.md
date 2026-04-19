@@ -1,7 +1,7 @@
 # e2e-platform-v2 — `/spec:execute --loop` drains RFC-2 §"The Plan"
 
 This is the Layer 2 exit-gate meta-fixture. The seed is the full
-`platform-v2` plan from [RFC-2 §"The Plan"](../../../../../../rfcs/rfc-2-execution.md)
+`platform-v2` plan from [RFC-2 §"The Plan"](../../../../../../rfcs/archive/rfc-2-execution.md)
 verbatim — nine entries spanning every shape the driver must handle:
 greenfield, `sources`-only, `affects`-only, combined, pre-failed,
 mid-run-crashed. `/spec:execute --loop` starts against this seed and

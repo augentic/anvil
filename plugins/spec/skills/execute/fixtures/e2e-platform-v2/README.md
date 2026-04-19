@@ -2,7 +2,7 @@
 
 This is the Layer 2 exit-gate meta-fixture for RFC-2 Change L2.I. It
 pins the behaviour of `/spec:execute --loop` driven against the full
-nine-entry `platform-v2` plan from [RFC-2 §"The Plan"](../../../../../../rfcs/rfc-2-execution.md),
+nine-entry `platform-v2` plan from [RFC-2 §"The Plan"](../../../../../../rfcs/archive/rfc-2-execution.md),
 exercising every argument-resolution shape end to end:
 
 - greenfield (`notification-preferences`)

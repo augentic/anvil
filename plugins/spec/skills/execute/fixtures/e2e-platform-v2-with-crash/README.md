@@ -4,7 +4,7 @@ This meta-fixture pins the crash-recovery acceptance of RFC-2 Change
 L2.I: "An injected mid-build SIGKILL, followed by a re-run, recovers
 via self-heal and completes the initiative."
 
-The seed is the same full `platform-v2` plan from [RFC-2 §"The Plan"](../../../../../../rfcs/rfc-2-execution.md)
+The seed is the same full `platform-v2` plan from [RFC-2 §"The Plan"](../../../../../../rfcs/archive/rfc-2-execution.md)
 used by the sibling `../e2e-platform-v2/`. The only difference is
 the scenario: a SIGKILL arrives mid-iteration-4 while `/spec:build
 product-catalog` is running. A second `/spec:execute --loop` run,

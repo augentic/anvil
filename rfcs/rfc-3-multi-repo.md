@@ -1,6 +1,6 @@
 # RFC-3: Multi-Repo Coordination
 
-> Status: Draft · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](rfc-2-execution.md)
+> Status: Draft · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md)
 
 ## Abstract
 
@@ -10,7 +10,7 @@ Extend `config.yaml` with a federation model — peer repositories declared in c
 
 The `.specify/` directory is project-local. There is no concept of a spec reference that spans repositories, and conflict detection only works within a single workspace. A feature like "add OAuth login" that touches backend, frontend, and shared-types repos has no coordination point.
 
-RFC-3 builds on [RFC-2](rfc-2-execution.md)'s plan / `/spec:execute` primitives. A federated feature manifest is the cross-repo analogue of a single-repo `plan.yaml`: the same `get next change → define → build → merge` loop runs in each repo, the federation layer only adds *coordination* (peer resolution, cross-repo spec references, contract reconciliation). Everywhere this RFC mentions plans, change coordination, or execution, the underlying primitives are RFC-2's.
+RFC-3 builds on [RFC-2](archive/rfc-2-execution.md)'s plan / `/spec:execute` primitives. A federated feature manifest is the cross-repo analogue of a single-repo `plan.yaml`: the same `get next change → define → build → merge` loop runs in each repo, the federation layer only adds *coordination* (peer resolution, cross-repo spec references, contract reconciliation). Everywhere this RFC mentions plans, change coordination, or execution, the underlying primitives are RFC-2's.
 
 ## Detailed Design
 
@@ -84,7 +84,7 @@ using the endpoint defined in @shared-types:oauth/spec.md#REQ-002.
 
 **Phase A: Peer awareness.** Each repo's `config.yaml` declares its peers. `specify federation sync` pulls peer specs locally. Cross-repo spec references use `@peer:capability` syntax. This is enough for a small team working across 2-3 repos.
 
-**Phase B: Change coordination.** When a feature spans repos, you create a "feature manifest" — a YAML file that lives in whichever repo initiates the feature. Each referenced repo still runs its own [RFC-2](rfc-2-execution.md) `plan.yaml` / `/spec:execute` loop; the feature manifest is the federation-level glue that links the per-repo plan entries together. The `contracts` section declares cross-repo dependencies explicitly:
+**Phase B: Change coordination.** When a feature spans repos, you create a "feature manifest" — a YAML file that lives in whichever repo initiates the feature. Each referenced repo still runs its own [RFC-2](archive/rfc-2-execution.md) `plan.yaml` / `/spec:execute` loop; the feature manifest is the federation-level glue that links the per-repo plan entries together. The `contracts` section declares cross-repo dependencies explicitly:
 
 ```yaml
 feature: add-oauth-login
@@ -146,4 +146,4 @@ A good litmus test: "Would this command need to understand `.specify/` directory
 ## References
 
 - [RFC-1: `specify` CLI](rfc-1-cli.md) — prerequisite; federation subcommands extend the CLI
-- [RFC-2: Execution](rfc-2-execution.md) — provides plan-level coordination for multi-repo initiatives; federation provides the resolution layer
+- [RFC-2: Execution](archive/rfc-2-execution.md) — provides plan-level coordination for multi-repo initiatives; federation provides the resolution layer

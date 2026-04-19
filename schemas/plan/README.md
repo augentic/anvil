@@ -1,7 +1,7 @@
 # `plan.schema.json`
 
 Canonical JSON Schema (2020-12) for `.specify/plan.yaml` — the initiative plan
-described in [RFC-2](../../rfcs/rfc-2-execution.md) §"The Plan".
+described in [RFC-2](../../rfcs/archive/rfc-2-execution.md) §"The Plan".
 
 ## What it validates
 

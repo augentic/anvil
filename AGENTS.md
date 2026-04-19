@@ -69,7 +69,7 @@ plan create` / `specify plan amend`; plan *status* is only ever written
 via `specify plan transition`. A phase that discovers a neighbouring
 change mid-run (e.g. a define brief uncovering a bug fix that should be
 tracked) may shell out to `specify plan create` / `specify plan amend`
-— the same commands humans run. See [rfcs/rfc-2-execution.md](rfcs/rfc-2-execution.md) for the full design.
+— the same commands humans run. See [rfcs/archive/rfc-2-execution.md](rfcs/archive/rfc-2-execution.md) for the full design.
 
 ### Commands
 

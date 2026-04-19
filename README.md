@@ -77,7 +77,7 @@ Additional commands:
 
 ### Initiative authoring + execution (plans)
 
-A **plan** (`.specify/plan.yaml`) is an initiative's table of contents — an ordered, dependency-aware list of changes with per-entry status. It turns a sprawling effort (greenfield build, legacy migration, platform modernisation) into a series of self-contained Specify changes that accumulate in the baseline as each one merges. See [rfcs/rfc-2-execution.md](rfcs/rfc-2-execution.md) (status: **Implemented**) for the full design.
+A **plan** (`.specify/plan.yaml`) is an initiative's table of contents — an ordered, dependency-aware list of changes with per-entry status. It turns a sprawling effort (greenfield build, legacy migration, platform modernisation) into a series of self-contained Specify changes that accumulate in the baseline as each one merges. See [rfcs/archive/rfc-2-execution.md](rfcs/archive/rfc-2-execution.md) (status: **Implemented**) for the full design.
 
 Three layers, independently useful, stacked top to bottom:
 

@@ -16,13 +16,13 @@ The CLI is the foundation everything else builds on. Migration commands, multi-r
 
 See also: [RFC-1a: Deferred Validation](rfc-1a-validation.md) — the three-way Pass/Fail/Deferred classification that lets the CLI handle structural checks while the agent evaluates semantic ones.
 
-## [RFC-2: Execution](rfc-2-execution.md)
+## [RFC-2: Execution](archive/rfc-2-execution.md)
+
+**Status:** Implemented (Layers 1–3, 2026-04). Plan format, `specify plan` CLI, `/spec:execute` driver skill, and `/spec:plan` authoring skill are all live. See [DECISIONS.md](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) in `augentic/specify-cli` for the architectural calls made during the build.
 
 **Problem:** Complex initiatives — multi-feature greenfield builds, legacy migrations, platform modernisations — lack a coordination artifact. The agent rediscovers scope, ordering, and dependencies on every iteration. There's no persistent plan that tracks what's done, what's next, and what's blocked.
 
-**Solution:** A Plan (`plan.yaml`) that drives the same define-build-merge loop Specify already uses, change by change, with dependency tracking and progressive baseline accumulation. For legacy migration, a change adds `sources` and define's extract sub-skill analyses them. For greenfield work, define starts from the description. The loop is the same either way. Extracted and greenfield changes coexist in a single plan. Layer 2 adds the `/spec:execute` driver skill (and the `/spec:plan` entry-writer skill) that automate the loop.
-
-The plan design is ready — the execution model, format, state machine, and dependency strategy are fully specified. Implementation depends on the CLI from RFC-1: the deterministic operations (`specify plan validate`, `specify plan next`, `specify plan status`, `specify plan transition`, `specify plan create`/`amend`) are natural extensions of the CLI's subcommand surface. The skill-level define → build → merge chain already works today; what's missing is the plan-driven coordination layer (Layer 1) and the `/spec:execute` / `/spec:plan` skills that automate it (Layer 2).
+**Solution:** A Plan (`plan.yaml`) that drives the same define-build-merge loop Specify already uses, change by change, with dependency tracking and progressive baseline accumulation. For legacy migration, a change adds `sources` and define's extract sub-skill analyses them. For greenfield work, define starts from the description. The loop is the same either way. Extracted and greenfield changes coexist in a single plan. Layer 2 adds the `/spec:execute` driver skill (and Layer 3's `/spec:plan` entry-writer skill) that automate the loop.
 
 ## [RFC-3: Multi-Repo Coordination](rfc-3-multi-repo.md)
 
