@@ -28,7 +28,7 @@ pub struct CoreScaffold {
 }
 
 /// Validate `app_name` against the PascalCase pattern documented in
-/// RFC-5 § CLI Surface § `vectis init`.
+/// RFC-6 § CLI Surface § `vectis init`.
 ///
 /// A name is valid iff:
 /// - The first character is an ASCII uppercase letter.

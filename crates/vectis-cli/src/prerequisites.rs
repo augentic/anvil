@@ -1,4 +1,4 @@
-//! Workstation toolchain detection (RFC-5 § Prerequisite Detection).
+//! Workstation toolchain detection (RFC-6 § Prerequisite Detection).
 //!
 //! Every subcommand calls [`check`] before doing any other work. The set of
 //! tools verified is scoped to the [`AssemblyKind`]s the command will touch:
@@ -117,7 +117,7 @@ fn all_tools() -> &'static [Tool] {
     TOOLS
 }
 
-// Sourced verbatim from RFC-5 § Workstation Requirements.
+// Sourced verbatim from RFC-6 § Workstation Requirements.
 static TOOLS: &[Tool] = &[
         // ---- Core --------------------------------------------------------
         Tool {

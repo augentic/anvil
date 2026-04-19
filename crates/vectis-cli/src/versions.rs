@@ -1,7 +1,7 @@
 //! Version pin resolution -- embedded defaults, user config, project file,
 //! and an explicit `--version-file` override.
 //!
-//! See RFC-5 § Version Management. Resolution order (top to bottom, first
+//! See RFC-6 § Version Management. Resolution order (top to bottom, first
 //! hit wins):
 //!
 //! 1. `--version-file <path>` (explicit override; must exist)

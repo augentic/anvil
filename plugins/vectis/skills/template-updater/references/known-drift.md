@@ -1,6 +1,6 @@
 # Known drift backlog
 
-Concrete fix items carried into this skill from earlier RFC-5 chunks. Each
+Concrete fix items carried into this skill from earlier RFC-6 chunks. Each
 item is reproducible today via `./target/release/vectis update-versions
 --dry-run --verify` against live registries. When the skill runs against a
 new bump, it should check this list **first**: if the reproduced failure
@@ -127,8 +127,8 @@ is `=0.15`. Cargo treats them as equivalent; the diff is purely textual.
 
 **Fix path** (choose one):
 
-- **Normalise on query**: in `update_versions::query::crates_io_latest_stable` (or a wrapper), convert `^0.x` / `^0.x.y` to `=0.x.y` before emitting. This preserves the RFC-5 hard-pin convention for every Crux-adjacent coordinate.
-- **Document the exception**: if `facet_generate` is legitimately minor-pinned upstream, change `embedded/versions.toml` to carry `= "^0.15"` and update the RFC-5 "hard pins" block to note that `facet_generate` tracks semver-minor. The hard-pin set in the RFC was vetted for `facet` + `crux_core` co-dependencies; `facet_generate` may follow a different policy.
+- **Normalise on query**: in `update_versions::query::crates_io_latest_stable` (or a wrapper), convert `^0.x` / `^0.x.y` to `=0.x.y` before emitting. This preserves the RFC-6 hard-pin convention for every Crux-adjacent coordinate.
+- **Document the exception**: if `facet_generate` is legitimately minor-pinned upstream, change `embedded/versions.toml` to carry `= "^0.15"` and update the RFC-6 "hard pins" block to note that `facet_generate` tracks semver-minor. The hard-pin set in the RFC was vetted for `facet` + `crux_core` co-dependencies; `facet_generate` may follow a different policy.
 
 This item is purely cosmetic -- no build or verify step actually fails. It
 is listed so `update-versions` runs don't emit a noisy "changed" entry on

@@ -1,4 +1,4 @@
-//! Android-assembly verify pipeline (RFC-5 § Verify Pipeline § Android).
+//! Android-assembly verify pipeline (RFC-6 § Verify Pipeline § Android).
 //!
 //! Two fixed steps, run from `Android/`, stopping at the first failure:
 //!

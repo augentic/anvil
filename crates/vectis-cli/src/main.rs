@@ -38,7 +38,7 @@ pub enum CommandOutcome {
     about = "Bootstrap and verify Crux cross-platform projects",
     long_about = "Vectis CLI -- scaffolds the deterministic 'Hello World' starting \
                   point for Crux apps (core + optional iOS/Android shells) and \
-                  verifies that every assembly compiles. See RFC-5."
+                  verifies that every assembly compiles. See RFC-6."
 )]
 struct Cli {
     #[command(subcommand)]
@@ -64,7 +64,7 @@ enum Command {
 // chunk 5 (`app_name`, `dir`, `version_file`, `android_package` -- the
 // last as the source of the default Android package even for core-only
 // scaffolds, since `__ANDROID_PACKAGE__` lives in `codegen.rs`) and
-// chunk 6 (`caps`). See roadmap/rfc-5-tasks.md.
+// chunk 6 (`caps`). See rfcs/rfc-6-tasks.md.
 #[derive(clap::Args, Debug)]
 pub(crate) struct InitArgs {
     /// App struct name (PascalCase, e.g. "Counter", "TodoApp").

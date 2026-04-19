@@ -11,7 +11,7 @@ use thiserror::Error;
 
 /// A single missing tool reported by the prerequisite checker.
 ///
-/// Matches the shape documented in RFC-5 § Prerequisite Detection.
+/// Matches the shape documented in RFC-6 § Prerequisite Detection.
 #[derive(Debug, Clone, Serialize)]
 pub struct MissingTool {
     pub tool: String,
@@ -64,7 +64,7 @@ impl VectisError {
         }
     }
 
-    /// Render the error as the structured JSON shape defined in RFC-5.
+    /// Render the error as the structured JSON shape defined in RFC-6.
     pub fn to_json(&self) -> serde_json::Value {
         match self {
             VectisError::MissingPrerequisites { missing, message } => serde_json::json!({

@@ -1,4 +1,4 @@
-//! Core-assembly verify pipeline (RFC-5 § Verify Pipeline § Core).
+//! Core-assembly verify pipeline (RFC-6 § Verify Pipeline § Core).
 //!
 //! Seven fixed steps, run from the project root, stopping at the first
 //! failure:

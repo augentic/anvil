@@ -175,7 +175,7 @@ mod tests {
 
     #[test]
     fn registry_matches_rfc_android_file_count() {
-        // RFC-5 § File Manifests § Android Assembly enumerates 19 files.
+        // RFC-6 § File Manifests § Android Assembly enumerates 19 files.
         assert_eq!(TEMPLATES.len(), 19);
     }
 

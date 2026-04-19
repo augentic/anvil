@@ -1,8 +1,8 @@
 # Embedded defaults -- overridden by ~/.config/vectis/versions.toml or
-# project-local versions.toml. See RFC-5 § Version Management.
+# project-local versions.toml. See RFC-6 § Version Management.
 #
 # Sourced from the "Initial Version Pins" block in
-# roadmap/rfc-5-tasks.md, with Android pins bumped per the chunk-3c
+# rfcs/rfc-6-tasks.md, with Android pins bumped per the chunk-3c
 # verification (older pins do not produce a buildable APK against
 # Xcode 16 / Java 21 toolchains).
 

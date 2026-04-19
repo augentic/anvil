@@ -1,6 +1,6 @@
-# RFC-5 Implementation Tasks
+# RFC-6 Implementation Tasks
 
-> Source RFC: [rfc-5-vectis-bootstrap.md](rfc-5-vectis-bootstrap.md)
+> Source RFC: [rfc-6-vectis-bootstrap.md](rfc-6-vectis-bootstrap.md)
 > Owner: vectis CLI binary and the writer skills it replaces
 > Scope: **vectis only**. A future top-level workspace CLI (RFC-1) will be folded in as a sibling member; nothing in this plan should require touching anything outside the vectis surface.
 
@@ -13,7 +13,7 @@ Each chunk is a self-contained agent session. Per session:
 3. Read **only** the RFC sections and reference docs listed in that chunk.
 4. Work directly on the `vectis-cli` branch. Chunks are constructed in dependency order and land as a single linear commit each -- do **not** create per-chunk branches (multiple branches diverge faster than they can be reconciled). Pull `vectis-cli` first, then rebase if needed.
 5. Run the chunk's verification commands. They are gates, not suggestions.
-6. Update the status row, append any deviations to the chunk's "Notes", make exactly one commit on `vectis-cli` with subject `RFC-5 chunk <N>: <short title>`, then push.
+6. Update the status row, append any deviations to the chunk's "Notes", make exactly one commit on `vectis-cli` with subject `RFC-6 chunk <N>: <short title>`, then push.
 7. Do **not** expand scope. If you discover work belonging to a later chunk, add it to that chunk's "Notes" column and stop.
 
 ## Status
@@ -90,7 +90,7 @@ specify/                          # repo root (existing)
 
 **Scoping rules for every chunk in this plan:**
 
-- Files outside `crates/vectis-cli/`, `templates/vectis/`, `roadmap/rfc-5-tasks.md`, the workspace `Cargo.toml`/`Cargo.lock`, and the `Makefile` are off-limits — **except** chunk 12, which intentionally edits `plugins/vectis/skills/{core,ios,android}-writer/`, and chunk 13, which adds `plugins/vectis/skills/template-updater/`.
+- Files outside `crates/vectis-cli/`, `templates/vectis/`, `rfcs/rfc-6-tasks.md`, the workspace `Cargo.toml`/`Cargo.lock`, and the `Makefile` are off-limits — **except** chunk 12, which intentionally edits `plugins/vectis/skills/{core,ios,android}-writer/`, and chunk 13, which adds `plugins/vectis/skills/template-updater/`.
 - Do not edit `scripts/checks.ts`. The new files live under directories `checks.ts` does not enforce schema on.
 - Do not introduce shared crates (`crates/common/` etc.) in this phase. Anything reusable later belongs inside `crates/vectis-cli/src/` for now and can be lifted when the workspace CLI lands.
 
@@ -100,7 +100,7 @@ These are the values chunk 4 should embed in `crates/vectis-cli/embedded/version
 
 ```toml
 # Embedded defaults — overridden by ~/.config/vectis/versions.toml or
-# project-local versions.toml. See RFC-5 § Version Management.
+# project-local versions.toml. See RFC-6 § Version Management.
 
 [crux]
 crux_core     = "0.17.0"   # latest stable
@@ -124,7 +124,7 @@ uniffi      = "=0.29.4"
 cargo_swift = "0.9"        # version range that ships uniffi_bindgen 0.29.x
 
 [android]
-# Initial values copied from RFC-5; chunk 11 (`update-versions`) will pull
+# Initial values copied from RFC-6; chunk 11 (`update-versions`) will pull
 # fresher values from Google's Maven and prove coherence via `--verify`.
 compose_bom = "2025.01.01"
 koin        = "4.0.4"
@@ -199,7 +199,7 @@ Verification (all four subcommands exit 1 with valid JSON; `make checks` and `ca
 
 ```text
 $ ./target/release/vectis --help
-Vectis CLI -- scaffolds the deterministic 'Hello World' starting point for Crux apps (core + optional iOS/Android shells) and verifies that every assembly compiles. See RFC-5.
+Vectis CLI -- scaffolds the deterministic 'Hello World' starting point for Crux apps (core + optional iOS/Android shells) and verifies that every assembly compiles. See RFC-6.
 
 Usage: vectis <COMMAND>
 

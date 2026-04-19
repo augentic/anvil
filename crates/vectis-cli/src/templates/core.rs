@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn registry_matches_rfc_core_file_count() {
-        // RFC-5 § File Manifests § Core Assembly enumerates 13 files.
+        // RFC-6 § File Manifests § Core Assembly enumerates 13 files.
         assert_eq!(TEMPLATES.len(), 13);
     }
 

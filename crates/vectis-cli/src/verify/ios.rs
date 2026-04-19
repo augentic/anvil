@@ -1,4 +1,4 @@
-//! iOS-assembly pipeline (RFC-5 § Verify Pipeline § iOS).
+//! iOS-assembly pipeline (RFC-6 § Verify Pipeline § iOS).
 //!
 //! Four fixed steps, run from `iOS/`, stopping at the first failure:
 //!

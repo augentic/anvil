@@ -92,7 +92,7 @@ Notes for chunk 4 / 8 / 11:
   cover the same need: chunk 4's `Versions::android` struct already carries
   `compose_bom`, `koin`, `ktor`, `kotlin`, `agp`, so chunk 8 substitutes them
   from there. Update the placeholder table in any future RFC revision.
-- **The "Initial Version Pins" block in `roadmap/rfc-5-tasks.md` is stale
+- **The "Initial Version Pins" block in `rfcs/rfc-6-tasks.md` is stale
   versus the values that actually compile today.** The block lists
   `agp = "8.8.2"`, `kotlin = "2.1.10"`, `compose_bom = "2025.01.01"` -- the
   reference doc and the verified-working values used by chunk 3c are
@@ -195,7 +195,7 @@ landed during verification:
   `/usr/libexec/java_home -v 21` (macOS) or equivalent, and writing the line
   into `gradle.properties` at scaffold time so the project remains
   hermetic.
-- The "Initial Version Pins" block in `roadmap/rfc-5-tasks.md` is stale for
+- The "Initial Version Pins" block in `rfcs/rfc-6-tasks.md` is stale for
   Android. The verification staging substituted the working values from the
   reference doc (`agp = "8.13.2"`, `kotlin = "2.3.0"`,
   `compose_bom = "2026.01.01"`, `ktor = "3.4.0"`, `koin = "4.1.1"`,

@@ -2,7 +2,7 @@
 name = "vectis-cli"
 version = "0.1.0"
 edition = "2024"
-description = "Vectis bootstrap CLI for scaffolding and verifying Crux cross-platform projects (RFC-5)"
+description = "Vectis bootstrap CLI for scaffolding and verifying Crux cross-platform projects (RFC-6)"
 license = "Apache-2.0 OR MIT"
 publish = false
 
