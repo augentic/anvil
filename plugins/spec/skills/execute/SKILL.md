@@ -14,16 +14,17 @@ Drive an initiative through `.specify/plan.yaml` by automating the
 Layer 1 loop: `get next change` → `/spec:define` → `/spec:build` →
 `/spec:merge` (or `/spec:drop`) → `specify plan transition`.
 
-> **Scope note.** This revision (RFC-2 L2.E + L2.F + L2.G + L2.H +
-> L2.I) ships the skill scaffold, the `--dry-run` path, the
-> **supervised single-change** path (one change end to end, then
-> stop), the **self-heal on startup** step that runs before every
-> `get next change`, the **`--loop`** extension plus terminal summary
-> and SIGINT / SIGTERM handling, and the **`sources` / `affects`
-> execution wiring** (resolving plan-entry `sources` keys against the
-> top-level `sources` map and passing them plus `affects` through to
-> `/spec:define`). L2.I is the Layer 2 exit gate — `/spec:execute`
-> can now drive the RFC-2 §"The Plan" example end to end.
+> **Status.** Layer 2 is fully landed as of RFC-2 closeout. This
+> skill ships the `--dry-run` preview, the supervised
+> single-change run, the self-heal pass on startup, `--loop` mode
+> with terminal summary and SIGINT / SIGTERM handling, and the
+> `sources` / `affects` execution wiring (resolving plan-entry
+> `sources` keys against the top-level `sources` map and passing
+> them plus `affects` through to `/spec:define`). `/spec:execute
+> --loop` drives the RFC-2 §"The Plan" example end-to-end against
+> a plan authored by `/spec:plan` — see
+> [`fixtures/e2e-platform-v2/`](fixtures/e2e-platform-v2/) for the
+> exit-gate meta-fixture.
 
 ## Overview
 
@@ -75,9 +76,9 @@ without leaving the skill file.
 ## Invocation
 
 ```text
-/spec:execute              # supervised mode: run one change, stop (L2.F)
+/spec:execute              # supervised mode: run one change, stop
 /spec:execute --dry-run    # preview next change + progress; no writes
-/spec:execute --loop       # run until no eligible change remains (L2.H)
+/spec:execute --loop       # run until no eligible change remains
 ```
 
 The plan path is fixed at `.specify/plan.yaml`; multi-plan support
@@ -169,8 +170,8 @@ Notes on the protocol:
 
 Supervised mode runs exactly one change to a terminal plan status
 (`done` / `failed` / `blocked`) and stops. The driver never iterates
-to a second change in this mode — the `--loop` extension lands in
-L2.H and layers on top of this same per-change algorithm.
+to a second change in this mode — `--loop` (see §Loop mode) layers on
+top of this same per-change algorithm.
 
 The algorithm below is normative. Follow it step by step. Every
 shell-out is to the Layer 1 `specify` CLI; this skill writes nothing
@@ -225,8 +226,8 @@ to `.specify/plan.yaml`, `.metadata.yaml`, or `journal.yaml` directly.
      - `reason == "stuck"`           → emit the terminal "stuck"
                                         summary (pending / blocked /
                                         failed buckets), release the
-                                        lock, exit 0. `--loop` in L2.H
-                                        treats this the same way.
+                                        lock, exit 0. `--loop` treats
+                                        this the same way (§Loop mode).
 
 5. Transition the selected entry:
      specify plan transition <name> in-progress

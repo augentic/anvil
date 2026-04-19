@@ -72,22 +72,30 @@ Additional commands:
 - `/spec:status` -- Check artifact completion, task progress, and active changes.
 - `/spec:explore` -- Think through ideas and investigate problems before or during a change.
 - `/spec:extract` -- Extract Specify artifacts from existing source code.
+- `/spec:plan` -- Author the initial `.specify/plan.yaml` for a multi-change initiative (RFC-2 Layer 3).
+- `/spec:execute` -- Drive an initiative's `plan.yaml` through `define → build → merge` automatically (RFC-2 Layer 2; `--loop` runs until `all-done`). See [Initiative authoring + execution](#initiative-authoring--execution-plans) below for the full workflow.
 
-### Plans
+### Initiative authoring + execution (plans)
 
-A **plan** (`.specify/plan.yaml`) is an initiative's table of contents — an ordered, dependency-aware list of changes with per-entry status. It turns a sprawling effort (greenfield build, legacy migration, platform modernisation) into a series of self-contained Specify changes that accumulate in the baseline as each one merges. Humans drive a plan-based initiative with the `specify plan` CLI and the existing `/spec:define`, `/spec:build`, `/spec:merge`, and `/spec:drop` skills — no extra skill is required today.
+A **plan** (`.specify/plan.yaml`) is an initiative's table of contents — an ordered, dependency-aware list of changes with per-entry status. It turns a sprawling effort (greenfield build, legacy migration, platform modernisation) into a series of self-contained Specify changes that accumulate in the baseline as each one merges. See [rfcs/rfc-2-execution.md](rfcs/rfc-2-execution.md) (status: **Implemented**) for the full design.
 
-Layer 1 CLI verbs:
+Three layers, independently useful, stacked top to bottom:
 
-- `specify plan validate` -- Structural and referential integrity checks (duplicate names, dependency cycles, unknown `depends-on` / `affects` / `sources`, at most one `in-progress`).
-- `specify plan next` -- Report the next eligible entry (first `pending` whose `depends-on` is all `done`).
-- `specify plan status` -- Render progress in topological order with per-status counts, the active `in-progress` entry, and any `status-reason`.
-- `specify plan create <name>` -- Append a new entry (starts `pending`).
-- `specify plan amend <name>` -- Edit non-status fields on an existing entry.
-- `specify plan transition <name> <target>` -- Move an entry through the status state machine (`pending → in-progress → done`, plus `blocked`, `failed`, `skipped`).
-- `specify plan archive` -- Move a completed `plan.yaml` to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`.
+- **`/spec:plan <initiative-name> --source <key>=<path-or-url> ...`** authors `plan.yaml` (Layer 3). Runs the schema's `pipeline.plan` briefs — discovery + propose — with an interactive accept / edit / reject loop per slice.
+- **`/spec:execute --loop`** drives the plan to completion (Layer 2). Picks the next eligible entry, runs `/spec:define → /spec:build → /spec:merge`, transitions status, repeats until `all-done` or `stuck`. `--dry-run` previews; a bare invocation runs one change then stops.
+- **`specify plan {init, validate, next, status, create, amend, transition, archive, lock}`** are the Layer 1 CLI primitives both skills shell out to. They stay available for hand-driven initiatives where automation is overkill:
 
-See [rfcs/rfc-2-execution.md](rfcs/rfc-2-execution.md) for the full design. Layer 1 is the MVP: a human drives `get next change → define → build → merge → transition` by hand. Layer 2's `/spec:execute` driver skill automates the same loop against the same CLI — `--dry-run` previews the next change, and a supervised single-change run drives one entry end-to-end through the three outcome paths (success → `done`, failure → `failed`, deferred → `blocked`). Self-heal on startup, `--loop`, and `sources`/`affects` wiring land in subsequent Changes. Layer 3's `/spec:plan` authoring skill closes the gap on the producing side — `/spec:plan <initiative> --dry-run` emits a pre-authoring readiness report today (L3.E scaffold); discovery and propose brief wiring land in L3.F / L3.G.
+  - `specify plan init <name> [--source ...]` -- Scaffold `.specify/plan.yaml` with an empty `changes:` list.
+  - `specify plan validate` -- Structural and referential integrity checks (duplicate names, dependency cycles, unknown `depends-on` / `affects` / `sources`, at most one `in-progress`).
+  - `specify plan next` -- Report the next eligible entry (first `pending` whose `depends-on` is all `done`).
+  - `specify plan status` -- Render progress in topological order with per-status counts, the active `in-progress` entry, and any `status-reason`.
+  - `specify plan create <name>` -- Append a new entry (starts `pending`).
+  - `specify plan amend <name>` -- Edit non-status fields on an existing entry.
+  - `specify plan transition <name> <target>` -- Move an entry through the status state machine (`pending → in-progress → done`, plus `blocked`, `failed`, `skipped`).
+  - `specify plan archive` -- Move a completed `plan.yaml` (and its `.specify/plans/<name>/` working directory) to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+  - `specify plan lock {acquire, release, status}` -- Advisory `.specify/plan.lock` PID stamp held by the `/spec:execute` driver.
+
+A typical initiative: `/spec:plan migrate-to-v2 --source monolith=/path/to/legacy` → review the authored plan with `specify plan status` → `/spec:execute --loop` until it reports `all-done`.
 
 ## Plugins
 

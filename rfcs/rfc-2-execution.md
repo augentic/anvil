@@ -1,6 +1,6 @@
 # RFC-2: Execution
 
-> Status: Draft · Depends: [RFC-1](rfc-1-cli.md)
+> Status: Implemented · Depends: [RFC-1](rfc-1-cli.md)
 
 ## Abstract
 

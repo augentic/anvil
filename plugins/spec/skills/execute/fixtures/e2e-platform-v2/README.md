@@ -37,6 +37,25 @@ two `plan.yaml.after` files in these fixtures are byte-for-byte
 identical — crash recovery is observably indistinguishable from the
 uncrashed run at the plan level.
 
+## Authoring → execution path
+
+The `plan.yaml.before` seed here is the *output* of an authoring run
+of `/spec:plan`. For a pinned five-slice authoring run that produces
+an analogous plan shape, see
+[`../../../plan/fixtures/propose/`](../../../plan/fixtures/propose/):
+
+- `discovery.md` — the inventory `/spec:plan` step 3(a) wrote.
+- `transcript.md` — the interactive accept / edit / reject loop.
+- `expected-proposal.md` — the authoring audit trail.
+- `expected-plan.yaml` — the final `.specify/plan.yaml` after the
+  five `specify plan create` calls.
+
+Together the two fixture sets pin the full `/spec:plan → /spec:execute
+--loop` path: authoring turns `--source` / `--from` inputs into a
+validated `plan.yaml`, and execution drives that plan to `all-done`
+(or `stuck`, or a self-healable interrupt) without further human
+intervention.
+
 ## Terminal classification note
 
 The RFC-2 Change L2.I acceptance says "drives… to `all-done`" but

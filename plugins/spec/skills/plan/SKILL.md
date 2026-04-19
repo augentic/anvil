@@ -15,17 +15,12 @@ Author `.specify/plan.yaml` for a new initiative by running the
 `schema.yaml`. `/spec:plan` is the Layer 3 authoring counterpart to
 `/spec:execute`: one *writes* the plan, the other *runs* it.
 
-> **Scope note.** This revision (RFC-2 L3.G) wires the propose
-> step on top of the L3.F discovery wiring. Step 3(b) now reads
-> `discovery.md`, decomposes into slices using the schema's
-> propose heuristics, iterates with the human per slice
-> (accept / edit / reject / abort), calls `specify plan create`
-> for every accepted slice, writes `.specify/plans/<name>/proposal.md`
-> as the authoring audit trail, and runs `specify plan validate`
-> as the final gate. Together with steps 1, 2, 3(a), and 4 this
-> completes the `/spec:plan` core loop end-to-end against the
-> Omnia schema. Vectis briefs (L3.H) and RFC-2 closeout (L3.I) are
-> the remaining Layer 3 changes.
+> **Status.** Layer 3 is fully landed as of RFC-2 closeout.
+> Discovery (step 3(a)) and propose (step 3(b)) both ship with
+> brief wiring for the Omnia and Vectis schemas; the core loop
+> runs end-to-end against either. Authoring a plan with
+> `/spec:plan` and then driving it with `/spec:execute --loop`
+> is the supported happy path.
 
 ## Overview
 
@@ -406,9 +401,11 @@ the skill never edits `plan.yaml` directly.
      key the slice migrates from (or `against` for delta
      initiatives; greenfield slices reference the literal
      `--from` artefact path).
-   - **Vectis** (L3.H, not in this Change): shared-core-first,
-     per-shell-last; mirror of the Omnia heuristic for the
-     Crux stack.
+   - **Vectis** ([`schemas/vectis/briefs/plan/propose.md`](../../../../schemas/vectis/briefs/plan/propose.md)):
+     shared-core-first, per-shell-last — mirror of the Omnia
+     heuristic for the Crux stack. See the brief for the full
+     heuristic (core crate slices before iOS / Android / design-
+     system slices; cross-shell refactors as standalone entries).
    - **Other schemas** ship their own `propose.md`; the
      decomposition rules come from there. The skill never
      second-guesses a schema brief.
