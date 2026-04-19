@@ -14,7 +14,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::VectisError;
-use crate::templates::{Capability, Params, core, render};
+use crate::templates::{Capability, core, render};
 use crate::versions::Versions;
 
 /// Result of a successful core scaffold.
@@ -75,40 +75,6 @@ pub fn default_android_package(app_name: &str) -> String {
     format!("com.vectis.{}", app_name.to_lowercase())
 }
 
-/// Build the placeholder map from CLI args + resolved version pins.
-///
-/// The Android version placeholders (`agp`, `kotlin`, `compose_bom`,
-/// `ktor`, `koin`) are populated for every scaffold even when no Android
-/// shell is requested. They have no effect on the core templates today
-/// (no core file references them) but populating them here keeps the
-/// `Params` shape identical between core-only and core+android scaffolds,
-/// which simplifies the chunk-7/8 dispatcher. `__ANDROID_NDK_VERSION__`
-/// is not substituted at scaffold time -- chunk 8's pipeline resolves it
-/// from disk and patches `Android/shared/build.gradle.kts` before the
-/// build runs.
-fn build_params(app_name: &str, android_package: &str, versions: &Versions) -> Params {
-    Params {
-        app_name: app_name.to_string(),
-        app_struct: app_name.to_string(),
-        app_name_lower: app_name.to_lowercase(),
-        android_package: android_package.to_string(),
-        crux_core_version: versions.crux.crux_core.clone(),
-        crux_http_version: versions.crux.crux_http.clone(),
-        crux_kv_version: versions.crux.crux_kv.clone(),
-        crux_time_version: versions.crux.crux_time.clone(),
-        crux_platform_version: versions.crux.crux_platform.clone(),
-        facet_version: versions.crux.facet.clone(),
-        serde_version: versions.crux.serde.clone(),
-        uniffi_version: versions.crux.uniffi.clone(),
-        agp_version: versions.android.agp.clone(),
-        kotlin_version: versions.android.kotlin.clone(),
-        compose_bom_version: versions.android.compose_bom.clone(),
-        ktor_version: versions.android.ktor.clone(),
-        koin_version: versions.android.koin.clone(),
-        android_ndk_version: "__ANDROID_NDK_VERSION__".to_string(),
-    }
-}
-
 /// Render and write the core templates under `project_dir`.
 ///
 /// Atomic refusal: the function walks every target path *first* and
@@ -132,7 +98,7 @@ pub fn scaffold(
     let mut planned: Vec<(PathBuf, &'static str, String)> =
         Vec::with_capacity(core::TEMPLATES.len());
 
-    let params = build_params(app_name, android_package, versions);
+    let params = super::build_params(app_name, android_package, versions);
 
     for entry in core::TEMPLATES {
         let target = project_dir.join(entry.target);

@@ -235,11 +235,12 @@ fn resolve_ndk_version(versions: &Versions) -> Result<String, VectisError> {
             ),
         });
     }
-    // Sort the version-like directory names. A lexical sort over
-    // `MAJOR.MINOR.PATCH`-style names matches numeric order so long as
-    // every component has the same digit count (NDK versions today follow
-    // this -- e.g. `27.0.12077973`, `28.0.12433566`).
-    versions_found.sort();
+    versions_found.sort_by(|a, b| {
+        let parse = |s: &str| -> Vec<u64> {
+            s.split('.').map(|c| c.parse::<u64>().unwrap_or(0)).collect()
+        };
+        parse(a).cmp(&parse(b))
+    });
     Ok(versions_found.pop().expect("non-empty by check above"))
 }
 
