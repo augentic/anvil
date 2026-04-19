@@ -16,7 +16,7 @@ changes.
 When working plan-driven (a `.specify/plan.yaml` exists), the corresponding plan entry should already be `in-progress` — the human runs `specify initiative transition <name> in-progress` once before `/spec:build` starts. `/spec:build` itself does not touch `plan.yaml`; the plan transition out of `in-progress` happens from `/spec:merge` (→ `done`) or `/spec:drop` (→ `failed` / `blocked`).
 
 > See `rfcs/archive/rfc-2-execution.md` §"Execution Model Overview" and
-> `rfcs/assets/specify-framework.png` for where this skill sits in the
+> `rfcs/assets/execution.png` for where this skill sits in the
 > `/spec:execute` driver loop.
 
 ## Phase outcome contract (RFC-2 §"Phase Outcome Contract")

@@ -12,7 +12,7 @@ This RFC is structured in three layers. **Layer 1** (the MVP) delivers the plan 
 
 ## Execution Model Overview
 
-![Specify Framework execution model](../assets/specify-framework.png)
+![Specify Framework execution model](../assets/execution.png)
 
 Specify at runtime is a three-phase loop (**define → build → merge**) driven by the `/spec:execute` skill over a long-lived **Plan** (`plan.yaml`). Per change, `/spec:execute` performs `get next change`, invokes the three phase skills in sequence, and updates `status` on the currently-active change entry. Each phase runs a *brief pipeline* declared by the active `schema.yaml`, and each brief delegates to one or more plugin skills.
 
@@ -24,23 +24,23 @@ Phase outcomes (`success`/`failure`/`deferred`) travel on disk via a `outcome` f
 
 ### Diagram labels → skills and CLI
 
-| Diagram label     | Skill                                          | CLI                                                                           |
-| ----------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
-| `get next change` | —                                              | `specify plan next`                                                           |
-| `execute`         | `/spec:execute`                                | — (Layer 1 humans run the phase skills manually)                              |
-| `execute change`  | `/spec:define` → `/spec:build` → `/spec:merge` | —                                                                             |
+| Diagram label     | Skill                                          | CLI                                                                                       |
+| ----------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `get next change` | —                                              | `specify plan next`                                                                       |
+| `execute`         | `/spec:execute`                                | — (Layer 1 humans run the phase skills manually)                                          |
+| `execute change`  | `/spec:define` → `/spec:build` → `/spec:merge` | —                                                                                         |
 | `create/amend`    | — (phases shell out to the CLI)                | `specify plan create`, `specify plan amend`; `specify plan transition` for status updates |
-| Phase boxes       | `/spec:define`, `/spec:build`, `/spec:merge`   | —                                                                             |
-| `schema.yaml`     | —                                              | — (read by phase skills at load time)                                         |
-| (not drawn)       | `/spec:drop`                                   | — (invoked by humans in Layer 1, by `/spec:execute` in Layer 2)               |
+| Phase boxes       | `/spec:define`, `/spec:build`, `/spec:merge`   | —                                                                                         |
+| `schema.yaml`     | —                                              | — (read by phase skills at load time)                                                     |
+| (not drawn)       | `/spec:drop`                                   | — (invoked by humans in Layer 1, by `/spec:execute` in Layer 2)                           |
 
 Briefs and plugin skills are schema-provided. The Omnia schema's instantiation:
 
-| Phase | Briefs (pipeline) | Plugin skills invoked by the briefs |
-|---|---|---|
-| define | `proposal.md`, `specs.md`, `design.md`, `tasks.md` | `/spec:extract` (when `sources` present; uses `git-cloner` and `analyze`) |
-| build | `build.md` | `/omnia:guest-writer`, `/omnia:crate-writer`, `/omnia:test-writer`, `/omnia:code-reviewer` |
-| merge | `merge.md` | — (brief body drives git operations directly) |
+| Phase  | Briefs (pipeline)                                  | Plugin skills invoked by the briefs                                                        |
+| ------ | -------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| define | `proposal.md`, `specs.md`, `design.md`, `tasks.md` | `/spec:extract` (when `sources` present; uses `git-cloner` and `analyze`)                  |
+| build  | `build.md`                                         | `/omnia:guest-writer`, `/omnia:crate-writer`, `/omnia:test-writer`, `/omnia:code-reviewer` |
+| merge  | `merge.md`                                         | — (brief body drives git operations directly)                                              |
 
 > **Note on extract.** Extraction is not a fourth phase; it is work done inside define by a plugin skill when the plan entry has `sources`.
 
@@ -173,18 +173,18 @@ changes:
 #### Transition Rules
 
 
-| Transition | Trigger | Who |
-| ---------- | ------- | --- |
-| `pending → in-progress` | Specify change directory created for this entry | `specify plan transition` (user or `/spec:execute`) |
-| `pending → blocked`     | Flagged with a reason — design uncertainty, external dependency, etc. | `specify plan transition` (manual) |
-| `pending → skipped` | Deliberately excluded before attempting | `specify plan transition` (manual) |
-| `blocked → pending` | Flag removed | `specify plan transition` (manual) |
-| `in-progress → done` | Specify change reaches `merged` (`/spec:merge` completes) | `specify plan transition` (user or `/spec:execute`) |
-| `in-progress → failed` | Build or test failure; Specify change is dropped (`/spec:drop`) | `specify plan transition` (user or `/spec:execute`) |
+| Transition              | Trigger                                                                                                                                                    | Who                                                 |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `pending → in-progress` | Specify change directory created for this entry                                                                                                            | `specify plan transition` (user or `/spec:execute`) |
+| `pending → blocked`     | Flagged with a reason — design uncertainty, external dependency, etc.                                                                                      | `specify plan transition` (manual)                  |
+| `pending → skipped`     | Deliberately excluded before attempting                                                                                                                    | `specify plan transition` (manual)                  |
+| `blocked → pending`     | Flag removed                                                                                                                                               | `specify plan transition` (manual)                  |
+| `in-progress → done`    | Specify change reaches `merged` (`/spec:merge` completes)                                                                                                  | `specify plan transition` (user or `/spec:execute`) |
+| `in-progress → failed`  | Build or test failure; Specify change is dropped (`/spec:drop`)                                                                                            | `specify plan transition` (user or `/spec:execute`) |
 | `in-progress → blocked` | Needs human decision mid-change; Specify change is dropped (`/spec:drop`). Layer 1: human parks the change. Layer 2: `/spec:execute` defers automatically. | `specify plan transition` (user or `/spec:execute`) |
-| `failed → pending` | User decides to retry; a fresh Specify change will be created on next selection | `specify plan transition` (manual) |
-| `failed → skipped` | User decides not to retry | `specify plan transition` (manual) |
-| `skipped → pending` | Previously excluded change re-included | `specify plan transition` (manual) |
+| `failed → pending`      | User decides to retry; a fresh Specify change will be created on next selection                                                                            | `specify plan transition` (manual)                  |
+| `failed → skipped`      | User decides not to retry                                                                                                                                  | `specify plan transition` (manual)                  |
+| `skipped → pending`     | Previously excluded change re-included                                                                                                                     | `specify plan transition` (manual)                  |
 
 
 Only **one** change may be `in-progress` at a time per plan (single-threaded loop). `plan next` refuses to return a new change while one is already `in-progress`.
@@ -196,12 +196,12 @@ On failure, the Specify change is **dropped** via `/spec:drop`, cleaning up part
 The plan tracks coarse outcome; the Specify change tracks internal lifecycle (the `LifecycleStatus` enum defined in the `specify-change` crate — see [RFC-1](rfc-1-cli.md) §`lifecycle.rs` for the authoritative value list). When `/spec:execute` reads a change's `LifecycleStatus` to decide which loop step to run next, the plan only records whether the change is finished.
 
 
-| Plan status | Specify change state |
-| ----------- | -------------------- |
-| `pending` / `skipped` | No Specify change on disk |
-| `blocked` / `failed` | No *active* Specify change — prior attempts (if any) live under `.specify/changes/archive/<name>-<timestamp>/` for human review |
-| `in-progress` | Change exists — `LifecycleStatus` ∈ {`defining`, `defined`, `building`, `complete`} |
-| `done` | Change reached `merged` and was archived |
+| Plan status           | Specify change state                                                                                                            |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `pending` / `skipped` | No Specify change on disk                                                                                                       |
+| `blocked` / `failed`  | No *active* Specify change — prior attempts (if any) live under `.specify/changes/archive/<name>-<timestamp>/` for human review |
+| `in-progress`         | Change exists — `LifecycleStatus` ∈ {`defining`, `defined`, `building`, `complete`}                                             |
+| `done`                | Change reached `merged` and was archived                                                                                        |
 
 #### `affects` vs `depends-on`
 
@@ -214,15 +214,15 @@ The plan tracks coarse outcome; the Specify change tracks internal lifecycle (th
 
 #### Fields
 
-| Field | Required | Purpose |
-| ----- | -------- | ------- |
-| `name` | Yes | Kebab-case identifier; becomes the Specify change directory name. Must be unique across the entire plan. |
-| `status` | Yes | Current state in the status state machine |
-| `depends-on` | No | List of change names that must be `done` before this change is eligible |
-| `description` | No | Free-text scoping hint; guides the define step when scoping. Distinct from the operational `status-reason` field below. |
-| `sources` | No | Which source repos to analyze; keys reference the top-level `sources` map. Absent or `[]` → greenfield (both forms are equivalent; validate does not distinguish them). Parsed and validated in Layer 1; source-aware execution in Layer 2. |
-| `affects` | No | Which existing changes or capabilities are touched. Parsed and validated in Layer 1; automatic delta-target wiring in Layer 2. |
-| `status-reason` | No | Why the change failed/is blocked/is skipped; populated when `status = failed`/`blocked`/`skipped` |
+| Field           | Required | Purpose                                                                                                                                                                                                                                     |
+| --------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`          | Yes      | Kebab-case identifier; becomes the Specify change directory name. Must be unique across the entire plan.                                                                                                                                    |
+| `status`        | Yes      | Current state in the status state machine                                                                                                                                                                                                   |
+| `depends-on`    | No       | List of change names that must be `done` before this change is eligible                                                                                                                                                                     |
+| `description`   | No       | Free-text scoping hint; guides the define step when scoping. Distinct from the operational `status-reason` field below.                                                                                                                     |
+| `sources`       | No       | Which source repos to analyze; keys reference the top-level `sources` map. Absent or `[]` → greenfield (both forms are equivalent; validate does not distinguish them). Parsed and validated in Layer 1; source-aware execution in Layer 2. |
+| `affects`       | No       | Which existing changes or capabilities are touched. Parsed and validated in Layer 1; automatic delta-target wiring in Layer 2.                                                                                                              |
+| `status-reason` | No       | Why the change failed/is blocked/is skipped; populated when `status = failed`/`blocked`/`skipped`                                                                                                                                           |
 
 `status-reason` holds the operational explanation for the current non-terminal/terminal status (`failed`, `blocked`, or `skipped`) and is overwritten on each status transition. `description` is kept exclusively for scoping intent so the define step has a stable hint that is not clobbered by operational bookkeeping. `specify plan transition --reason "..."` writes to `status-reason`.
 
@@ -567,15 +567,15 @@ Layer 2 adds the **`/spec:execute`** driver skill that automates the human-drive
 
 ### Invariants
 
-| Invariant | Enforced by |
-|---|---|
-| Driver contracts with phases, not briefs | `/spec:execute` only invokes `/spec:define`, `/spec:build`, `/spec:merge` |
-| Phases own verify-repair loops | Phase skills exhaust their repair budget before returning |
-| Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `outcome` into `.metadata.yaml` before returning (see [§Phase Outcome Contract](#phase-outcome-contract)) |
-| Change *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify plan create` / `specify plan amend` |
-| Change *status* updates written only via `Plan::transition` | `/spec:execute` (Layer 2) or humans (Layer 1) run `specify plan transition` |
-| Single `in-progress` at a time | `plan next` / `plan validate` |
-| Single `/spec:execute` driver at a time | `.specify/plan.lock` advisory lock (see [§Driver Concurrency](#driver-concurrency)) |
+| Invariant                                                        | Enforced by                                                                                                            |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Driver contracts with phases, not briefs                         | `/spec:execute` only invokes `/spec:define`, `/spec:build`, `/spec:merge`                                              |
+| Phases own verify-repair loops                                   | Phase skills exhaust their repair budget before returning                                                              |
+| Exactly one of `success`/`failure`/`deferred` per phase          | Phase writes `outcome` into `.metadata.yaml` before returning (see [§Phase Outcome Contract](#phase-outcome-contract)) |
+| Change *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify plan create` / `specify plan amend`                                                |
+| Change *status* updates written only via `Plan::transition`      | `/spec:execute` (Layer 2) or humans (Layer 1) run `specify plan transition`                                            |
+| Single `in-progress` at a time                                   | `plan next` / `plan validate`                                                                                          |
+| Single `/spec:execute` driver at a time                          | `.specify/plan.lock` advisory lock (see [§Driver Concurrency](#driver-concurrency))                                    |
 
 ### Invocation
 
@@ -670,10 +670,10 @@ Archived attempts remain on disk under `.specify/changes/archive/<name>-<timesta
 
 Failure means the step ran and produced an error. Deferral means the step couldn't proceed without human input. Both result in the Specify change being dropped and archived, but the distinction matters for triage:
 
-| | Plan status | Reason field | Cause | Resolution |
-|---|---|---|---|---|
-| Failure | `failed` | `status-reason` | Step error (tests, merge conflict, bad extraction) | Fix the issue, retry (`failed → pending`) |
-| Deferral | `blocked` | `status-reason` | Needs human decision (ambiguous requirement, design question) | Answer the question, unflag (`blocked → pending`) |
+|          | Plan status | Reason field    | Cause                                                         | Resolution                                        |
+| -------- | ----------- | --------------- | ------------------------------------------------------------- | ------------------------------------------------- |
+| Failure  | `failed`    | `status-reason` | Step error (tests, merge conflict, bad extraction)            | Fix the issue, retry (`failed → pending`)         |
+| Deferral | `blocked`   | `status-reason` | Needs human decision (ambiguous requirement, design question) | Answer the question, unflag (`blocked → pending`) |
 
 ### Phase Boundary
 
@@ -685,10 +685,10 @@ A phase skill is responsible for all recovery that lives inside its brief pipeli
 
 A phase returns one of exactly three outcomes to `/spec:execute`:
 
-| Outcome | Meaning | `/spec:execute` reaction |
-|---|---|---|
-| `success` | Phase stamps `outcome: success` in `.metadata.yaml`; all briefs produced their `generates` artifacts and any verify-repair loops converged. | Proceed to the next phase (or, after merge, transition plan entry to `done`). |
-| `failure` | Phase stamps `outcome: failure` in `.metadata.yaml` after exhausting its internal repair budget, with a `summary` naming which brief failed and the final stderr/test output. The phase has already appended `type: failure` entries to `journal.yaml` along the way. | Drop the Specify change, transition plan entry to `failed`, copy the outcome `summary` into `status-reason`. |
+| Outcome    | Meaning                                                                                                                                                                                                                                                                                 | `/spec:execute` reaction                                                                                      |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `success`  | Phase stamps `outcome: success` in `.metadata.yaml`; all briefs produced their `generates` artifacts and any verify-repair loops converged.                                                                                                                                             | Proceed to the next phase (or, after merge, transition plan entry to `done`).                                 |
+| `failure`  | Phase stamps `outcome: failure` in `.metadata.yaml` after exhausting its internal repair budget, with a `summary` naming which brief failed and the final stderr/test output. The phase has already appended `type: failure` entries to `journal.yaml` along the way.                   | Drop the Specify change, transition plan entry to `failed`, copy the outcome `summary` into `status-reason`.  |
 | `deferred` | Phase stamps `outcome: deferred` in `.metadata.yaml` because it needs human judgement (ambiguous requirement, design question, baseline merge conflict), with a `summary` naming the question. The phase has already appended `type: question` entries to `journal.yaml` along the way. | Drop the Specify change, transition plan entry to `blocked`, copy the outcome `summary` into `status-reason`. |
 
 This keeps `/spec:execute` free of brief-specific knowledge and avoids double-booked repair logic.
@@ -948,18 +948,18 @@ There is no buffered mutation, no `plan-mutations` payload, no deferred-apply ed
 
 ### Layer 2 Concerns Summary
 
-| Concern | Resolution |
-|---|---|
-| Interactive skills | `/spec:execute` pre-resolves arguments; genuine questions defer the change |
-| Failure | `/spec:drop` the Specify change, mark `failed` with `status-reason`, advance |
-| Resumption | Plan `in-progress` + Specify `LifecycleStatus` encode exactly where to resume |
-| Context threading | Artifacts written by each phase are read by the next; plan supplies initial args |
-| Crash safety | `/spec:execute` reads `outcome` on restart and self-heals to `done`/`failed`/`blocked`, or stops for triage if the on-disk state is ambiguous |
-| Observability | Structured per-phase output + terminal summary on loop exit + `journal.yaml` for questions/failures/recoveries |
-| Brief-level errors | Phase skills own their verify-repair loops; only phase-level outcomes cross the boundary |
-| Phase outcome transport | `outcome` field in `.metadata.yaml` (see [§Phase Outcome Contract](#phase-outcome-contract)); `journal.yaml` is a pure audit log |
-| Plan entry writes | Phases shell out to `specify plan create` / `specify plan amend` directly (same CLI humans use in Layer 1); `/spec:execute` only writes `status` transitions via `specify plan transition`. No intermediate plan-mutation skill. |
-| Driver concurrency | `.specify/plan.lock` PID-level advisory lock prevents two `/spec:execute` processes running simultaneously |
+| Concern                 | Resolution                                                                                                                                                                                                                       |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Interactive skills      | `/spec:execute` pre-resolves arguments; genuine questions defer the change                                                                                                                                                       |
+| Failure                 | `/spec:drop` the Specify change, mark `failed` with `status-reason`, advance                                                                                                                                                     |
+| Resumption              | Plan `in-progress` + Specify `LifecycleStatus` encode exactly where to resume                                                                                                                                                    |
+| Context threading       | Artifacts written by each phase are read by the next; plan supplies initial args                                                                                                                                                 |
+| Crash safety            | `/spec:execute` reads `outcome` on restart and self-heals to `done`/`failed`/`blocked`, or stops for triage if the on-disk state is ambiguous                                                                                    |
+| Observability           | Structured per-phase output + terminal summary on loop exit + `journal.yaml` for questions/failures/recoveries                                                                                                                   |
+| Brief-level errors      | Phase skills own their verify-repair loops; only phase-level outcomes cross the boundary                                                                                                                                         |
+| Phase outcome transport | `outcome` field in `.metadata.yaml` (see [§Phase Outcome Contract](#phase-outcome-contract)); `journal.yaml` is a pure audit log                                                                                                 |
+| Plan entry writes       | Phases shell out to `specify plan create` / `specify plan amend` directly (same CLI humans use in Layer 1); `/spec:execute` only writes `status` transitions via `specify plan transition`. No intermediate plan-mutation skill. |
+| Driver concurrency      | `.specify/plan.lock` PID-level advisory lock prevents two `/spec:execute` processes running simultaneously                                                                                                                       |
 
 Layer 2 adds one new file (`journal.yaml` per change), one new lockfile (`.specify/plan.lock`), one new field on the existing `.metadata.yaml` (`outcome`), and no new plan statuses — it works entirely within the existing status state machine and Specify lifecycle.
 
@@ -1016,19 +1016,19 @@ Step 3(b) is the single-writer edge: `/spec:plan` never edits `plan.yaml` direct
 
 A new `pipeline.plan` declaration in `schema.yaml` names the briefs the authoring skill runs. Layer 3 ships with two briefs per schema:
 
-| Brief | `needs` | `generates` | Responsibility |
-|---|---|---|---|
-| `discovery.md` | — | `.specify/plans/<name>/discovery.md` | Read `--from` artefacts; invoke `/spec:extract` (via `git-cloner` + `analyze`) on any `--source` / `--against` codebase; emit a neutral capability inventory. |
-| `propose.md` | `discovery.md` | `.specify/plans/<name>/proposal.md` and (via CLI) new entries in `plan.yaml` | Decompose the inventory into change slices with `depends-on` edges using schema-specific heuristics (e.g. "one WASM crate per change" for Omnia, "leaf-service-first for migrations"). Present the draft to the human for accept/edit/reject review; for each accepted slice, shell out to `specify plan create` with the appropriate `--sources`, `--affects`, `--depends-on`, and `--description` flags. |
+| Brief          | `needs`        | `generates`                                                                  | Responsibility                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------- | -------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `discovery.md` | —              | `.specify/plans/<name>/discovery.md`                                         | Read `--from` artefacts; invoke `/spec:extract` (via `git-cloner` + `analyze`) on any `--source` / `--against` codebase; emit a neutral capability inventory.                                                                                                                                                                                                                                              |
+| `propose.md`   | `discovery.md` | `.specify/plans/<name>/proposal.md` and (via CLI) new entries in `plan.yaml` | Decompose the inventory into change slices with `depends-on` edges using schema-specific heuristics (e.g. "one WASM crate per change" for Omnia, "leaf-service-first for migrations"). Present the draft to the human for accept/edit/reject review; for each accepted slice, shell out to `specify plan create` with the appropriate `--sources`, `--affects`, `--depends-on`, and `--description` flags. |
 
 Two briefs (rather than four) keeps the pipeline close in shape to `build.md` / `merge.md` while still separating analysis (read-only, no plan writes) from proposal (interactive, authorised to write). Schemas that want finer granularity may split `propose.md` further without any API change; Layer 3 does not prescribe a minimum count beyond the two.
 
 An Omnia instantiation of `pipeline.plan`:
 
-| Brief | Plugin skills invoked |
-|---|---|
+| Brief          | Plugin skills invoked                                                                                      |
+| -------------- | ---------------------------------------------------------------------------------------------------------- |
 | `discovery.md` | `/spec:extract` (when `--source` or `--against` is present), which in turn uses `git-cloner` and `analyze` |
-| `propose.md` | — (prompt-driven; a future `decomposer` plugin skill could be added) |
+| `propose.md`   | — (prompt-driven; a future `decomposer` plugin skill could be added)                                       |
 
 Other schemas declare their own `pipeline.plan` briefs — e.g. Vectis's `propose.md` would apply Crux-specific slice heuristics (shared-core-first, per-shell-last). The skill and CLI are unchanged; only the brief bodies differ.
 
@@ -1132,14 +1132,14 @@ The resulting `plan.yaml` is identical in shape to the sample plan in §"The Pla
 
 ### New capabilities required (Layer 3)
 
-| Capability | Type | Notes |
-|---|---|---|
-| `/spec:plan` | Skill | Plan authoring driver; runs the `pipeline.plan` brief pipeline and writes entries via `specify plan create` |
-| `pipeline.plan` in `schema.yaml` | Schema | Declares the brief pipeline for authoring (`discovery.md` and `propose.md` at minimum) |
-| Schema `plan` briefs | Schema | Per-schema authoring briefs (Omnia + Vectis at launch; future schemas ship their own) |
-| `specify plan init` | CLI | Scaffolds an empty `.specify/plan.yaml`; promoted from Layer 1's §Future Capabilities |
-| `.specify/plans/<name>/` | Schema | Working directory for authoring artefacts; archived alongside the plan by `specify plan archive` |
-| `Plan::archive` co-move | Lib | Small extension to sweep the working directory when archiving the plan |
+| Capability                       | Type   | Notes                                                                                                       |
+| -------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------- |
+| `/spec:plan`                     | Skill  | Plan authoring driver; runs the `pipeline.plan` brief pipeline and writes entries via `specify plan create` |
+| `pipeline.plan` in `schema.yaml` | Schema | Declares the brief pipeline for authoring (`discovery.md` and `propose.md` at minimum)                      |
+| Schema `plan` briefs             | Schema | Per-schema authoring briefs (Omnia + Vectis at launch; future schemas ship their own)                       |
+| `specify plan init`              | CLI    | Scaffolds an empty `.specify/plan.yaml`; promoted from Layer 1's §Future Capabilities                       |
+| `.specify/plans/<name>/`         | Schema | Working directory for authoring artefacts; archived alongside the plan by `specify plan archive`            |
+| `Plan::archive` co-move          | Lib    | Small extension to sweep the working directory when archiving the plan                                      |
 
 ---
 
@@ -1166,28 +1166,28 @@ The plan format supports multi-repo initiatives on both the source and target si
 ### Other Deferred Capabilities
 
 
-| Capability | Rationale for deferral |
-| ---------- | ---------------------- |
-| `specify plan doctor` | Extended cross-check surface beyond `validate`: `affects` ↔ `.metadata.yaml:touched-specs` agreement, prior-attempt archive presence, orphan journal files. Deferred because the checks depend on Layer 2 behaviours. |
-| Prior-attempt context on retry | On `failed → pending` retry, feed the most recent archive's `outcome` and trailing journal entries into `/spec:define` as a "things to avoid" hint. Deferred: valuable but orthogonal to the main loop, and an operator can pass the same context by editing the plan entry's description. |
-| Pre-plan baseline delta targeting | Allow `affects` to reference baseline capabilities that predate the current plan. Today, `affects` resolves only to plan entries. |
-| Multiple concurrent plans | Requires a path argument on every `specify plan` subcommand plus a way to pick a default. Deferred until a use case appears; today, archive-then-create is the recommended pattern. |
+| Capability                          | Rationale for deferral                                                                                                                                                                                                                                                                                     |
+| ----------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `specify plan doctor`               | Extended cross-check surface beyond `validate`: `affects` ↔ `.metadata.yaml:touched-specs` agreement, prior-attempt archive presence, orphan journal files. Deferred because the checks depend on Layer 2 behaviours.                                                                                      |
+| Prior-attempt context on retry      | On `failed → pending` retry, feed the most recent archive's `outcome` and trailing journal entries into `/spec:define` as a "things to avoid" hint. Deferred: valuable but orthogonal to the main loop, and an operator can pass the same context by editing the plan entry's description.                 |
+| Pre-plan baseline delta targeting   | Allow `affects` to reference baseline capabilities that predate the current plan. Today, `affects` resolves only to plan entries.                                                                                                                                                                          |
+| Multiple concurrent plans           | Requires a path argument on every `specify plan` subcommand plus a way to pick a default. Deferred until a use case appears; today, archive-then-create is the recommended pattern.                                                                                                                        |
 | Rename `specify plan` CLI namespace | `/spec:plan` (Layer 3) and `specify plan` (Layer 1) share the word "plan". Renaming the CLI group to something distinct (e.g. `specify initiative`) would eliminate the collision. Deferred because it ripples through every Layer 1 CLI reference and is cosmetic; worth revisiting before a 1.0 release. |
-| Change recommender | LLM-assisted refinement of auto-generated plans beyond what `/spec:plan --extend` already offers. Depends on `/spec:plan`. |
-| Behavioural diff | Undesigned. The existing `replay-writer` already provides fixture-backed verification for migration use cases. |
-| Cross-stack define | A mode of `/spec:define`, not a plan concern. Can be added to define independently. |
+| Change recommender                  | LLM-assisted refinement of auto-generated plans beyond what `/spec:plan --extend` already offers. Depends on `/spec:plan`.                                                                                                                                                                                 |
+| Behavioural diff                    | Undesigned. The existing `replay-writer` already provides fixture-backed verification for migration use cases.                                                                                                                                                                                             |
+| Cross-stack define                  | A mode of `/spec:define`, not a plan concern. Can be added to define independently.                                                                                                                                                                                                                        |
 
 
 ## Existing Infrastructure
 
 
-| Capability                     | Status | Notes                                        |
-| ------------------------------ | ------ | -------------------------------------------- |
-| Source code analysis for define | Exists | `/spec:extract` (invoked inside define by a brief when change has `sources`) |
-| Capture runtime fixtures       | Exists | `wiretapper`                                 |
-| Generate replay tests          | Exists | `replay-writer`                              |
-| Define → Build → Merge chain   | Exists | `/spec:define`, `/spec:build`, `/spec:merge` — agent-side orchestrators. All deterministic work (status transitions, `.metadata.yaml` writes, schema + pipeline resolution, spec merge preview + coherence validation, baseline drift detection, archive move) is delegated to `specify change {create, transition, touched-specs, overlap, archive, drop}`, `specify schema {resolve, pipeline}`, `specify spec {preview, conflict-check}`, `specify validate`, `specify task {progress, mark}`, and `specify merge`. |
-| Drop partial change            | Exists | `/spec:drop` → `specify change drop <name> --reason` (Layer 1: invoked by humans on failure/deferral; Layer 2: invoked by `/spec:execute`) |
+| Capability                      | Status | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source code analysis for define | Exists | `/spec:extract` (invoked inside define by a brief when change has `sources`)                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Capture runtime fixtures        | Exists | `wiretapper`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Generate replay tests           | Exists | `replay-writer`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Define → Build → Merge chain    | Exists | `/spec:define`, `/spec:build`, `/spec:merge` — agent-side orchestrators. All deterministic work (status transitions, `.metadata.yaml` writes, schema + pipeline resolution, spec merge preview + coherence validation, baseline drift detection, archive move) is delegated to `specify change {create, transition, touched-specs, overlap, archive, drop}`, `specify schema {resolve, pipeline}`, `specify spec {preview, conflict-check}`, `specify validate`, `specify task {progress, mark}`, and `specify merge`. |
+| Drop partial change             | Exists | `/spec:drop` → `specify change drop <name> --reason` (Layer 1: invoked by humans on failure/deferral; Layer 2: invoked by `/spec:execute`)                                                                                                                                                                                                                                                                                                                                                                             |
 
 
 ## New Capabilities Required
@@ -1195,46 +1195,46 @@ The plan format supports multi-repo initiatives on both the source and target si
 ### Layer 1 (MVP)
 
 
-| Capability                       | Type  | Notes                                                                          |
-| -------------------------------- | ----- | ------------------------------------------------------------------------------ |
-| Plan format (`plan.yaml`)        | Schema| Ordered change list with dependencies and per-change status                    |
-| `plan.schema.json`               | Schema| JSON Schema for `.specify/plan.yaml` (editor integration + author-time validation) |
-| `plan.rs` in `specify-change`    | Lib   | Parsing, validation, state machine, dependency graph, consistency checks, atomic writes |
-| `specify plan validate`          | CLI   | Cycle detection, referential integrity, duplicate names, consistency check    |
-| `specify plan next`              | CLI   | Return the next pending change (respecting `depends-on`, single in-progress)   |
-| `specify plan status`            | CLI   | Initiative progress in dependency order: counts, blockers, next eligible; cycle-safe fallback to list order |
-| `specify plan create`            | CLI   | Add a new change entry (state machine enforced; plan validated before write)   |
-| `specify plan amend`             | CLI   | Edit non-status fields on an existing entry                                    |
-| `specify plan transition`        | CLI   | Validated status transitions; the optional `--reason` writes to the unified `status-reason` field |
-| `specify plan archive`           | CLI   | Move a completed plan to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`       |
+| Capability                    | Type   | Notes                                                                                                       |
+| ----------------------------- | ------ | ----------------------------------------------------------------------------------------------------------- |
+| Plan format (`plan.yaml`)     | Schema | Ordered change list with dependencies and per-change status                                                 |
+| `plan.schema.json`            | Schema | JSON Schema for `.specify/plan.yaml` (editor integration + author-time validation)                          |
+| `plan.rs` in `specify-change` | Lib    | Parsing, validation, state machine, dependency graph, consistency checks, atomic writes                     |
+| `specify plan validate`       | CLI    | Cycle detection, referential integrity, duplicate names, consistency check                                  |
+| `specify plan next`           | CLI    | Return the next pending change (respecting `depends-on`, single in-progress)                                |
+| `specify plan status`         | CLI    | Initiative progress in dependency order: counts, blockers, next eligible; cycle-safe fallback to list order |
+| `specify plan create`         | CLI    | Add a new change entry (state machine enforced; plan validated before write)                                |
+| `specify plan amend`          | CLI    | Edit non-status fields on an existing entry                                                                 |
+| `specify plan transition`     | CLI    | Validated status transitions; the optional `--reason` writes to the unified `status-reason` field           |
+| `specify plan archive`        | CLI    | Move a completed plan to `.specify/archive/plans/<name>-<YYYYMMDD>.yaml`                                    |
 
 
 ### Layer 2 (Automated Execution)
 
 
-| Capability                       | Type  | Notes                                                                          |
-| -------------------------------- | ----- | ------------------------------------------------------------------------------ |
-| `/spec:execute`                  | Skill | Driver skill: automated define → build → merge loop. See §"Layer 2: Automated Execution" above |
-| Skill invocation model           | Design| How one skill programmatically invokes another and passes arguments (per-invocation return values remain open; outcome-on-disk is resolved by the Phase Outcome Contract). Plan mutation is deliberately *not* a skill — phases shell out to `specify plan create` / `specify plan amend` directly. |
-| Phase outcome contract           | Design| Phases return exactly one of `success`/`failure`/`deferred`; mirrored as the `outcome` field in the change's `.metadata.yaml`; brief-level errors stay inside the phase |
-| `sources` execution wiring       | Skill | `/spec:execute` resolves source paths and passes them through define to extract |
-| `affects` execution wiring       | Skill | `/spec:execute` passes affected capability names to define for delta targeting  |
-| `outcome` field       | Schema| New field in `.specify/changes/<name>/.metadata.yaml` carrying `success`/`failure`/`deferred`; written atomically by phase skills via a new `specify change phase-outcome` subcommand |
-| `journal.yaml`                   | Schema| Structured `type: question` / `type: failure` / `type: recovery` recording per change — pure audit log, never consumed as a signalling channel |
-| `.specify/plan.lock`             | Schema| PID-level advisory lockfile preventing concurrent `/spec:execute` drivers      |
+| Capability                 | Type   | Notes                                                                                                                                                                                                                                                                                               |
+| -------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/spec:execute`            | Skill  | Driver skill: automated define → build → merge loop. See §"Layer 2: Automated Execution" above                                                                                                                                                                                                      |
+| Skill invocation model     | Design | How one skill programmatically invokes another and passes arguments (per-invocation return values remain open; outcome-on-disk is resolved by the Phase Outcome Contract). Plan mutation is deliberately *not* a skill — phases shell out to `specify plan create` / `specify plan amend` directly. |
+| Phase outcome contract     | Design | Phases return exactly one of `success`/`failure`/`deferred`; mirrored as the `outcome` field in the change's `.metadata.yaml`; brief-level errors stay inside the phase                                                                                                                             |
+| `sources` execution wiring | Skill  | `/spec:execute` resolves source paths and passes them through define to extract                                                                                                                                                                                                                     |
+| `affects` execution wiring | Skill  | `/spec:execute` passes affected capability names to define for delta targeting                                                                                                                                                                                                                      |
+| `outcome` field            | Schema | New field in `.specify/changes/<name>/.metadata.yaml` carrying `success`/`failure`/`deferred`; written atomically by phase skills via a new `specify change phase-outcome` subcommand                                                                                                               |
+| `journal.yaml`             | Schema | Structured `type: question` / `type: failure` / `type: recovery` recording per change — pure audit log, never consumed as a signalling channel                                                                                                                                                      |
+| `.specify/plan.lock`       | Schema | PID-level advisory lockfile preventing concurrent `/spec:execute` drivers                                                                                                                                                                                                                           |
 
 
 ### Layer 3 (Plan Authoring)
 
 
-| Capability                       | Type  | Notes                                                                          |
-| -------------------------------- | ----- | ------------------------------------------------------------------------------ |
-| `/spec:plan`                     | Skill | Plan authoring driver: runs the `pipeline.plan` brief pipeline and writes entries via `specify plan create`. See §"Layer 3: Plan Authoring" above. |
-| `pipeline.plan` in `schema.yaml` | Schema| Declares the authoring brief pipeline (`discovery.md` and `propose.md` at minimum) |
-| Schema `plan` briefs             | Schema| Per-schema authoring briefs (Omnia + Vectis at launch; future schemas ship their own) |
-| `specify plan init`              | CLI   | Scaffolds an empty `.specify/plan.yaml`; promoted from Layer 1's §Future Capabilities |
-| `.specify/plans/<name>/`         | Schema| Working directory for authoring artefacts; archived alongside the plan by `specify plan archive` |
-| `Plan::archive` co-move          | Lib   | Small extension to sweep `.specify/plans/<name>/` when archiving the plan      |
+| Capability                       | Type   | Notes                                                                                                                                              |
+| -------------------------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/spec:plan`                     | Skill  | Plan authoring driver: runs the `pipeline.plan` brief pipeline and writes entries via `specify plan create`. See §"Layer 3: Plan Authoring" above. |
+| `pipeline.plan` in `schema.yaml` | Schema | Declares the authoring brief pipeline (`discovery.md` and `propose.md` at minimum)                                                                 |
+| Schema `plan` briefs             | Schema | Per-schema authoring briefs (Omnia + Vectis at launch; future schemas ship their own)                                                              |
+| `specify plan init`              | CLI    | Scaffolds an empty `.specify/plan.yaml`; promoted from Layer 1's §Future Capabilities                                                              |
+| `.specify/plans/<name>/`         | Schema | Working directory for authoring artefacts; archived alongside the plan by `specify plan archive`                                                   |
+| `Plan::archive` co-move          | Lib    | Small extension to sweep `.specify/plans/<name>/` when archiving the plan                                                                          |
 
 
 ## References
