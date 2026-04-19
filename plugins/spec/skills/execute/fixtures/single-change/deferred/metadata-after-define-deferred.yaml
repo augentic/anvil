@@ -1,0 +1,32 @@
+# Snapshot of .specify/changes/notification-preferences/.metadata.yaml
+# after /spec:define stamps outcome: deferred via `specify change
+# phase-outcome notification-preferences define deferred --summary "..."
+# --context "..."`. The driver reads `.outcome.outcome` (== deferred)
+# and enters the defer path (step 12):
+#   1. run `/spec:drop notification-preferences --reason "<outcome.summary>"`
+#   2. run `specify initiative transition notification-preferences blocked
+#          --reason "<outcome.summary>"`
+# The `--reason` argument is byte-identical to `outcome.summary` below;
+# drift between this field and `plan.yaml.after:status-reason` is a
+# regression. `outcome.context` is preserved on disk for human triage
+# but is NOT copied into the plan entry.
+
+name: notification-preferences
+status: defining
+created-at: 2026-04-19T12:00:00Z
+updated-at: 2026-04-19T12:08:55Z
+schema: omnia
+outcome:
+  phase: define
+  outcome: deferred
+  at: 2026-04-19T12:08:55Z
+  summary: 'The description says "notification channel and frequency settings" but doesn''t specify which channels are in scope.'
+  context: |
+    The baseline has no notification infrastructure to reference. Candidate
+    channel set derived from domain norms: { email, SMS, in-app push,
+    webhook }. None is clearly in or out of scope from the available inputs;
+    the define pipeline cannot pick among them without an authoritative
+    scope from the human. Suggested resolution: update the plan description
+    via `specify initiative amend notification-preferences --description "..."`
+    with the channel enumeration, then transition (blocked → pending) to
+    retry.

@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify/schemas/plan/plan.schema.json",
+  "title": "Specify plan.yaml",
+  "description": "Validates the structure of `.specify/plan.yaml`: the initiative name, the optional named-sources map, and the ordered list of plan changes with their dependencies and status. Strict schema — unknown fields are rejected. Written by `specify initiative {init,create,amend,transition,archive}`; read by `/spec:execute` and by humans driving the Layer 1 loop.",
+  "type": "object",
+  "required": ["name", "changes"],
+  "additionalProperties": false,
+  "properties": {
+    "name": {
+      "$ref": "#/$defs/kebabName",
+      "description": "Initiative name. Kebab-case; becomes the archive filename prefix."
+    },
+    "sources": {
+      "type": "object",
+      "description": "Named source repositories. Keys are kebab-case identifiers referenced by each change's `sources` list; values are paths or URLs. Parsed and validated in Layer 1; resolved to define-step arguments in Layer 2.",
+      "propertyNames": { "$ref": "#/$defs/kebabName" },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "changes": {
+      "type": "array",
+      "description": "Ordered list of plan changes. Order is the tie-breaker for `specify initiative next` when multiple entries are eligible.",
+      "items": { "$ref": "#/$defs/planChange" }
+    }
+  },
+  "$defs": {
+    "kebabName": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "description": "Kebab-case identifier: lowercase letters and digits grouped by single internal hyphens; no leading, trailing, or consecutive hyphens. Matches `specify_change::actions::validate_name`."
+    },
+    "planChange": {
+      "type": "object",
+      "required": ["name", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/kebabName",
+          "description": "Change name. Unique across the plan; becomes the Specify change directory name when the entry transitions to `in-progress`."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "pending",
+            "in-progress",
+            "done",
+            "blocked",
+            "failed",
+            "skipped"
+          ],
+          "description": "Current state in the plan status state machine."
+        },
+        "depends-on": {
+          "type": "array",
+          "description": "Change names that must be `done` before this change is eligible. Consumed by `specify initiative next`.",
+          "items": { "$ref": "#/$defs/kebabName" },
+          "uniqueItems": true
+        },
+        "affects": {
+          "type": "array",
+          "description": "Change names whose merged behaviour this change modifies. Impact annotation only in Layer 1; used for delta targeting in Layer 2.",
+          "items": { "$ref": "#/$defs/kebabName" },
+          "uniqueItems": true
+        },
+        "sources": {
+          "type": "array",
+          "description": "Keys into the plan's top-level `sources` map indicating which source repositories to analyze. Absent or `[]` → greenfield.",
+          "items": { "$ref": "#/$defs/kebabName" },
+          "uniqueItems": true
+        },
+        "description": {
+          "type": ["string", "null"],
+          "description": "Free-text scoping hint for the define step. Distinct from the operational `status-reason` below."
+        },
+        "status-reason": {
+          "type": ["string", "null"],
+          "description": "Why the change is `failed`/`blocked`/`skipped`. Overwritten on each status transition; cleared when re-entering `pending`/`in-progress`/`done`."
+        }
+      }
+    }
+  }
+}

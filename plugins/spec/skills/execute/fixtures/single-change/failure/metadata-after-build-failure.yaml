@@ -1,0 +1,29 @@
+# Snapshot of .specify/changes/checkout-api/.metadata.yaml after
+# /spec:build stamps outcome: failure via `specify change phase-outcome
+# checkout-api build failure --summary "..." --context "..."`. The
+# driver reads `.outcome.outcome` (== failure) and enters the drop path
+# (step 11):
+#   1. run `/spec:drop checkout-api --reason "<outcome.summary>"`
+#   2. run `specify initiative transition checkout-api failed --reason "<outcome.summary>"`
+# The `--reason` argument is byte-identical to `outcome.summary` below;
+# drift between this field and `plan.yaml.after:status-reason` is a
+# regression. `outcome.context` is preserved on disk for human triage
+# but is NOT copied into the plan entry.
+
+name: checkout-api
+status: building
+created-at: 2026-04-19T11:00:00Z
+updated-at: 2026-04-19T11:23:47Z
+schema: omnia
+outcome:
+  phase: build
+  outcome: failure
+  at: 2026-04-19T11:23:47Z
+  summary: "Type mismatch between cart line-item schema and payment gateway contract."
+  context: |
+    crates/checkout/src/gateway.rs line 42: line_item.quantity is u32
+    but the payment gateway's OpenAPI contract expects i64. The
+    verify-repair loop iterated three times; neither widening the cart
+    schema to i64 (breaks round-trip serialization) nor patching the
+    gateway contract (rejected by schema compatibility check) converged.
+    See journal.yaml for per-iteration detail.

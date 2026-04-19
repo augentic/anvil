@@ -1,0 +1,26 @@
+# Snapshot of .specify/changes/shopping-cart/.metadata.yaml as self-heal
+# reads it. The file is internally contradictory:
+#
+#   status == defining     → /spec:define has not yet stamped `defined`;
+#                            /spec:build has never run; /spec:merge has
+#                            never run.
+#   outcome.phase == merge → something claims /spec:merge finished.
+#
+# There is no sequence of legitimate state transitions that reaches
+# this combination — it is either file corruption or a concurrent-
+# writer bug. Self-heal refuses to speculate. It halts, releases the
+# driver lock, and exits 1 without touching plan.yaml or
+# journal.yaml. A human must triage (e.g. compare the file against
+# git history, decide whether to trust LifecycleStatus or the outcome
+# field, and either repair .metadata.yaml or manually retransition
+# the plan entry).
+
+name: shopping-cart
+status: defining
+schema: omnia
+created-at: 2026-04-19T13:00:00Z
+outcome:
+  phase: merge
+  outcome: success
+  at: 2026-04-19T13:00:04Z
+  summary: "Baseline updated: .specify/specs/shopping-cart/spec.md."

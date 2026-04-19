@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify/schemas/plan-validate-output/schema.json",
+  "title": "specify initiative validate --format json response",
+  "description": "Validates the JSON response body emitted by `specify initiative validate --format json` under the v2 JSON contract (RFC-2 §2). The CLI exits 0 when `passed` is true and 2 (EXIT_VALIDATION_FAILED) otherwise; downstream skills should match on the structured payload rather than the exit code alone.",
+  "type": "object",
+  "required": ["schema-version", "plan", "results", "passed"],
+  "additionalProperties": false,
+  "properties": {
+    "schema-version": {
+      "const": 2,
+      "description": "JSON contract version (RFC-2 §2.2). Bumped in lockstep with breaking changes to the CLI's JSON payloads."
+    },
+    "plan": {
+      "type": "object",
+      "required": ["name", "path"],
+      "additionalProperties": false,
+      "description": "Identity of the plan that was validated.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Initiative name lifted from `.specify/plan.yaml`. Expected to be kebab-case per `schemas/plan/plan.schema.json#/$defs/kebabName`."
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Filesystem path the plan was loaded from (typically `.specify/plan.yaml`, rendered relative to the caller's cwd)."
+        }
+      }
+    },
+    "results": {
+      "type": "array",
+      "description": "Every structural and semantic finding produced by `Plan::validate`. Empty when the plan is clean. Warnings do not affect `passed`; only `error`-level findings cause `passed` to be false.",
+      "items": { "$ref": "#/$defs/validationResult" }
+    },
+    "passed": {
+      "type": "boolean",
+      "description": "True when no `error`-level result is present. Warnings (e.g. `in-progress` entries with no change-dir) do not flip this to false."
+    }
+  },
+  "$defs": {
+    "validationResult": {
+      "type": "object",
+      "required": ["level", "code", "message"],
+      "additionalProperties": false,
+      "description": "One finding from `Plan::validate`. See `crates/change/src/plan.rs::PlanValidationResult` for the canonical producer type.",
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["error", "warning"],
+          "description": "Severity bucket. `error` blocks the plan from being used as-is; `warning` is advisory."
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stable machine-readable identifier (e.g. `duplicate-name`, `dependency-cycle`, `missing-change-dir-for-in-progress`). Skills may pattern-match on this value."
+        },
+        "entry": {
+          "type": ["string", "null"],
+          "description": "Name of the offending plan entry when the finding is entry-local; `null` for plan-wide findings."
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable rendering of the finding. Not a machine contract — match on `code`."
+        }
+      }
+    }
+  }
+}

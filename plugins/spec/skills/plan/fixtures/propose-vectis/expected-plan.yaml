@@ -1,0 +1,53 @@
+name: counter-migration
+sources:
+  legacy-android: legacy/counter-android
+  legacy-ios: legacy/counter-ios
+  legacy-tokens: legacy/design-tokens.yaml
+changes:
+- name: counter-core
+  status: pending
+  depends-on: []
+  affects: []
+  sources:
+  - legacy-ios
+  - legacy-android
+  description: Increment/decrement a single integer with persistent storage, lifted into a Crux App trait.
+  status-reason: null
+- name: theme-core
+  status: pending
+  depends-on: []
+  affects: []
+  sources:
+  - legacy-ios
+  - legacy-android
+  description: Resolve the active light/dark theme and emit theme tokens to the shell via ViewModel.
+  status-reason: null
+- name: design-tokens
+  status: pending
+  depends-on:
+  - theme-core
+  affects: []
+  sources:
+  - legacy-tokens
+  description: Colour, typography, and spacing tokens generated into the iOS Swift Package and the Android vectis-design Compose library.
+  status-reason: null
+- name: counter-ios-view
+  status: pending
+  depends-on:
+  - counter-core
+  - design-tokens
+  affects: []
+  sources:
+  - legacy-ios
+  description: SwiftUI view that binds to the counter App trait and renders with the iOS design-tokens Swift Package.
+  status-reason: null
+- name: counter-android-view
+  status: pending
+  depends-on:
+  - counter-core
+  - design-tokens
+  affects: []
+  sources:
+  - legacy-android
+  description: Jetpack Compose Material 3 screen that binds to the counter App trait and renders with the Android vectis-design library.
+  status-reason: null

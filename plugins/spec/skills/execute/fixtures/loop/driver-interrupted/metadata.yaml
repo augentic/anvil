@@ -1,0 +1,28 @@
+# Snapshot of .specify/changes/email-verification/.metadata.yaml at
+# the moment the SIGINT arrives. /spec:build has just stamped its
+# outcome (success) but the driver has NOT yet invoked /spec:merge.
+# Per the SIGINT handling contract (§Loop mode → SIGINT / SIGTERM
+# handling, rule 2), /spec:execute skips the merge phase and exits.
+#
+# Self-heal on the next run will read this file, see
+# outcome.outcome == success and outcome.phase == build, and resume
+# by invoking /spec:merge (step 3 of the self-heal algorithm, RFC-2
+# §"Context Threading → Resumption Within a Change").
+#
+# This file is illustrative; the real on-disk form is whatever
+# `specify change phase-outcome email-verification build success
+#   --summary "..."` writes, shaped per
+# crates/change/src/lib.rs::ChangeMetadata in augentic/specify-cli.
+
+name: email-verification
+status: complete
+schema: omnia
+created-at: 2026-04-19T14:02:00Z
+defined-at: 2026-04-19T14:07:12Z
+build-started-at: 2026-04-19T14:07:44Z
+completed-at: 2026-04-19T14:17:55Z
+outcome:
+  phase: build
+  outcome: success
+  at: 2026-04-19T14:17:55Z
+  summary: "4/4 tasks complete; ready for merge."

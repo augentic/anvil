@@ -9,6 +9,117 @@ argument-hint: "[change-name?]"
 
 Merge a completed change.
 
+Deterministic bookkeeping — change selection, prerequisite validation, merge
+operation computation, baseline conflict detection, the per-capability merge
+itself, baseline coherence validation, status transitions, and the archive
+move — is delegated to the `specify` CLI. This skill drives the agent-side
+work: reading the merge preview, coordinating the `AskQuestion` confirmation
+flow, and summarising results.
+
+When working plan-driven (a `.specify/plan.yaml` exists), after `specify merge` returns successfully the plan entry should be transitioned to `done`:
+
+```bash
+specify initiative transition <name> done
+```
+
+This is an advisory note — this skill does not run the command itself. RFC-2 Layer 2's `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
+
+> See `rfcs/archive/rfc-2-execution.md` §"Execution Model Overview" and
+> `rfcs/assets/specify-framework.png` for where this skill sits in the
+> `/spec:execute` driver loop.
+
+## Phase outcome contract (RFC-2 §"Phase Outcome Contract")
+
+This skill is the **merge** phase of the `/spec:execute` driver loop.
+Before returning control to the caller, always record the phase's outcome
+via:
+
+```bash
+specify change phase-outcome <name> merge <outcome> --summary "..." [--context "..."]
+```
+
+where `<outcome>` is exactly one of:
+
+- `success`  — `specify merge` completed, every delta was applied to
+  the baseline, and the change directory has been moved to
+  `.specify/archive/YYYY-MM-DD-<name>/`.
+- `failure`  — `specify merge` exited non-zero for a non-recoverable
+  reason (baseline coherence check failed even after the user declined
+  to retry, filesystem error, etc.). Use `--summary` to name the
+  failing capability and the load-bearing stderr line; use `--context`
+  for verbatim detail.
+- `deferred` — human judgement is needed (baseline drift surfaced by
+  `spec conflict-check` that requires human arbitration, the user
+  declined to confirm the merge preview, or the lifecycle status
+  disagrees with the expected `Complete`). Use `--summary` to name the
+  question.
+
+`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome`
+on return and translates the outcome into a plan transition
+(`done` / `failed` / `blocked`). If the field is missing or malformed,
+`/spec:execute` treats the phase as `deferred` and stops for triage —
+do not skip the CLI call. This `phase-outcome` invocation is the
+**last action** the skill takes before returning control, and it must
+happen whether or not `specify merge` itself ran (e.g. a user-declined
+preview still returns `deferred`).
+
+## Journal entries during the run (RFC-2 §"Question Recording")
+
+Whenever the skill encounters a situation the human should see — a
+genuine question, a repair attempt that failed, or a notable recovery —
+append to `.specify/changes/<name>/journal.yaml` **during** the run,
+not just at the end:
+
+```bash
+specify change journal-append <name> merge <kind> --summary "..." [--context "..."]
+```
+
+Kinds:
+
+- `question` — baseline drift detected by `spec conflict-check`, the
+  user was asked to confirm proceeding, or anything that might produce
+  a `deferred` outcome at the end of the phase. Write one entry per
+  question so the human sees the full trail when triaging.
+- `failure` — `specify merge` returned an error, or a validation step
+  surfaced a problem that blocked the merge. Write one entry per
+  failure; the final `phase-outcome` summary rolls up only the
+  load-bearing one, but auditors still see every attempt.
+- `recovery` — a self-heal / recovery step happened. (Typically written
+  by `/spec:execute` itself; phases rarely need to append this kind.)
+
+`journal.yaml` is a pure append-only audit log; `/spec:execute` never
+consumes it as a signalling channel. The `outcome` field in
+`.metadata.yaml` is the only state `/spec:execute` reads on phase
+return.
+
+## Mutating the plan mid-run (RFC-2 §"Phase Boundary → Rule 2")
+
+Phases may shell out to `specify initiative create` / `specify initiative amend`
+mid-run when they discover something structural about the initiative.
+Both commands write `.specify/plan.yaml` synchronously — the new or
+updated entry is visible to every subsequent `/spec:execute` iteration.
+
+Allowed:
+
+- `specify initiative create <new-name> --affects <current-name> --description "..."`
+  when, for example, baseline conflict-check surfaces a neighbouring
+  change that must land before this one can merge cleanly.
+- `specify initiative amend <current-name> --depends-on <newly-needed>` when
+  the phase discovers a dependency on another plan entry (e.g. a
+  sibling change that should merge first). `amend` may target the
+  currently-active entry — non-`status` fields on an `in-progress`
+  entry are fair game.
+
+Forbidden:
+
+- Writing `status` through `amend`. The `PlanChangePatch` type has no
+  `status` field — this is a type-system guarantee. Status transitions
+  are `/spec:execute`'s sole prerogative via `specify initiative transition`.
+- Hand-editing `.specify/plan.yaml` or
+  `.specify/changes/<name>/.metadata.yaml`. Always route through the
+  CLI so the single-writer invariant in RFC-2 §"Plan Mutation and
+  Crash Safety" holds.
+
 ## Input
 
 Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
@@ -17,68 +128,41 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
 1. **Select the change**
 
-   If a name is provided, use it. Otherwise:
-   - List directories in `.specify/changes/`, skipping `archive/`, looking for dirs with `.metadata.yaml`
-   - If only one active change exists, use it but confirm with the user
-   - If multiple, use the **AskQuestion tool** to let the user select
+   If a name is provided, use it. Otherwise run `specify status --format json` to enumerate active changes:
+
+   - If only one entry exists, use it but confirm with the user.
+   - If multiple, use the **AskQuestion tool** to let the user select.
 
    **IMPORTANT**: Always confirm the change name before merging.
 
-   Read `.specify/changes/<name>/.metadata.yaml` for the schema value and status. **Resolve the schema** using the **Schema Resolution** procedure (`references/schema-resolution.md`). Files needed: `schema.yaml`, `briefs/merge.md`.
+2. **Check prerequisites (status, needs, artifacts, tasks)**
 
-   Read `schema.yaml` for pipeline definitions. Read the merge brief's frontmatter for `needs`. Read `references/spec-format.md` for heading conventions.
+   Run in order:
 
-2. **Validate merge needs**
+   ```bash
+   specify status <name> --format json
+   specify validate .specify/changes/<name> --format json
+   specify task progress .specify/changes/<name> --format json
+   ```
 
-   Read the merge brief's frontmatter `needs` field (e.g., `[build]`). For each needed ID, verify the condition is met:
-   - For `build`: check that `.metadata.yaml` status is `complete` or that all tasks are done (all checkboxes marked `[x]` or `[X]`)
+   Interpret:
 
-   **If any needs are not met:**
-   - Display warning listing which needs are unsatisfied and why
-   - Use **AskQuestion tool** to let the user choose to proceed or abort
-   - Proceed only if user confirms
+   - **Status**: `complete` is the expected value. Warn on anything else (e.g., `building`, `defining`), and use **AskQuestion** to confirm proceeding. `merge` will fail later if status isn't `Complete`, so this is a courtesy early exit.
+   - **Validate**: if `passed` is `false`, surface the `brief-results` and `cross-checks` failures. Use **AskQuestion** to let the user proceed or abort. Failures in merge-phase needs (usually missing/incomplete artifacts) are the typical blocker.
+   - **Tasks**: if `pending > 0`, warn with the count and use **AskQuestion** to confirm proceeding. If there is no tasks file, proceed without warning.
 
-3. **Check lifecycle status**
+   `specify validate` already runs baseline coherence checks, so the explicit "Baseline coherence check" step from the previous version of this skill is folded in here.
 
-   Read `status` from `.metadata.yaml`:
-   - If `status` is not `complete`: display warning (e.g., "This change has status `<status>` — it may not be fully implemented.")
-   - Use **AskQuestion tool** to confirm user wants to proceed despite the status
-   - Proceed if user confirms
+3. **Preview the merge and check for baseline drift**
 
-4. **Check artifact completion**
+   Run:
 
-   For each brief in `pipeline.define` entries from `schema.yaml`, read the brief's frontmatter `generates` field and check whether it is complete:
-   - If `generates` is a simple filename (e.g., `proposal.md`), check if `.specify/changes/<name>/<generates>` exists.
-   - If `generates` is a glob pattern (e.g., `specs/**/*.md`), check if the directory contains at least one matching `.md` file.
+   ```bash
+   specify spec preview .specify/changes/<name> --format json
+   specify spec conflict-check .specify/changes/<name> --format json
+   ```
 
-   **If any artifacts are missing:**
-   - Display warning listing incomplete artifacts
-   - Use **AskQuestion tool** to confirm user wants to proceed
-   - Proceed if user confirms
-
-5. **Check task completion**
-
-   Read the build brief (from `pipeline.build` entry) and check its frontmatter `tracks` field to determine which file tracks build progress. Read that file and count:
-   - `- [ ]` lines = incomplete tasks
-   - `- [x]` or `- [X]` lines = complete tasks
-
-   **If incomplete tasks found:**
-   - Display warning showing count of incomplete tasks
-   - Use **AskQuestion tool** to confirm user wants to proceed
-   - Proceed if user confirms
-
-   **If no tasks file exists:** Proceed without task-related warning.
-
-6. **Preview merge operations**
-
-   For each subdirectory in `.specify/changes/<name>/specs/`:
-   - The subdirectory name is the **capability name**
-   - The file at `specs/<capability>/spec.md` is the **delta spec**
-   - The baseline is at `.specify/specs/<capability>/spec.md`
-
-   Read `references/spec-format.md` for heading conventions (requirement headings, ID prefix, delta operation headings).
-
-   For each capability with a delta spec, show what will happen WITHOUT performing the merge:
+   Render the preview in a human-friendly summary using the `operations[]` array from `spec preview`. For each spec, operations are typed as `added`, `modified`, `removed`, `renamed`, or `created_baseline`:
 
    ```text
    ## Merge Preview: <change-name>
@@ -89,83 +173,45 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - ADDING: REQ-003 — <name>
 
    ### <capability-2>/spec.md (new baseline)
-   - Creating new baseline with N requirements
+   - CREATING baseline with N requirements
    ```
 
-   **Conflict detection**: For each capability with `type: modified` in `.metadata.yaml`'s `touched_specs` (if present), check if `.specify/specs/<capability>/spec.md` has been modified since `defined_at` (compare file modification time). If the baseline has changed since the change was defined:
-   - Warn: "The baseline for `<capability>` has been modified since this change was defined (possibly by merging another change)."
-   - Use **AskQuestion tool**: proceed anyway, or cancel
+   If `spec preview` returns an empty `specs` array, report "No delta specs to merge" and stop.
 
-   Use the **AskQuestion tool** to confirm:
-   - **Proceed**: apply all merges
-   - **Show full content**: display the complete merged baseline for each capability before writing
-   - **Cancel**: abort merge
+   If `spec conflict-check` returns any entries under `conflicts`, surface them clearly — each entry names the capability, the change's `defined-at`, and the baseline's `baseline-modified-at`:
 
-   Only proceed to the actual merge after user confirms.
+   > "The baseline for `<capability>` was modified at `<baseline-modified-at>` (after this change was defined at `<defined-at>`). Another change may have already touched it."
 
-7. **Merge delta specs into baseline**
+   Use the **AskQuestion tool** to let the user:
 
-   **For each capability with a delta spec**, invoke the deterministic merge tool:
+   - **Proceed**: apply the merge (step 4)
+   - **Show full content**: display the merged baseline that would be written (re-run `spec preview --format json` and extract the operations list, or read each delta/baseline pair from disk)
+   - **Cancel**: abort
 
-   a. **Set paths**:
-      - `SCHEMA` = resolved `schema.yaml` path
-      - `DELTA` = `.specify/changes/<name>/specs/<capability>/spec.md`
-      - `BASELINE` = `.specify/specs/<capability>/spec.md` (may not exist yet)
-      - `OUTPUT` = same as `BASELINE`
+   Only proceed after the user confirms.
 
-   b. **If NO baseline exists** (new capability): create the `.specify/specs/<capability>/` directory.
+4. **Apply the merge**
 
-   c. **Run the merge tool** (co-located at `scripts/merge-specs.py` relative to this skill):
-
-      ```bash
-      python3 scripts/merge-specs.py \
-        --delta "$DELTA" \
-        --baseline "$BASELINE" \
-        --output "$OUTPUT"
-      ```
-
-      If the baseline does not exist yet, omit `--baseline` and the tool creates a new baseline from the delta's ADDED section (or copies the delta verbatim when it has no delta operation headers).
-
-   d. **Check the exit code**:
-      - Exit 0: merge succeeded. Proceed to the next capability.
-      - Exit 1: merge failed. Display the error messages from stderr and stop. Use the **AskQuestion tool** to let the user decide whether to fix the delta and retry, or abort the merge.
-
-8. **Baseline coherence check**
-
-   After all merges complete, validate every spec file that was created or updated. For each file, run:
+   Run:
 
    ```bash
-   python3 scripts/merge-specs.py \
-     --validate ".specify/specs/<capability>/spec.md" \
-     --design ".specify/changes/<name>/design.md"
+   specify merge .specify/changes/<name> --format json
    ```
 
-   Omit `--design` if `design.md` does not exist.
+   This single call:
 
-   The tool checks: no duplicate IDs, no duplicate requirement names, valid heading structure (ID line after each requirement heading, ID matches pattern, at least one scenario per requirement), and no orphaned design references.
+   - Gates on `.metadata.yaml.status == Complete` (errors with `lifecycle` if not).
+   - Computes the same operations as `spec preview`.
+   - Runs baseline coherence validation on every merged output (`specify validate` semantics).
+   - Writes each merged baseline under `.specify/specs/<capability>/spec.md`.
+   - Transitions `.metadata.yaml` to `merged` and stamps `merged-at` / `completed-at`.
+   - Moves `.specify/changes/<name>/` into `.specify/archive/YYYY-MM-DD-<name>/`.
 
-   **If any check fails** (exit code 1):
-   - Display the failures from stderr
-   - Use the **AskQuestion tool**:
-     - **Proceed anyway**: continue to merge despite the issues
-     - **Abort**: leave the change in its current directory for manual correction (the merged baseline files are already written; the user can edit them before re-running merge)
+   **If the call exits non-zero**: the filesystem is unchanged (baselines not written, change dir not moved). Report the error and stop — do not retry until the user has edited the failing delta or addressed the lifecycle state.
 
-   Only proceed to step 9 after user confirms.
+5. **Display summary**
 
-9. **Update metadata and move to archive**
-
-   Update `.specify/changes/<name>/.metadata.yaml`:
-   - Set `status` to `merged`
-   - **Verify**: re-read `.metadata.yaml` and confirm the `status` value is exactly `merged`. Valid lifecycle values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped`. If `status` is not one of these, correct it to `merged`.
-
-   ```bash
-   mkdir -p .specify/changes/archive
-   mv .specify/changes/<name> .specify/changes/archive/YYYY-MM-DD-<name>
-   ```
-
-   Use today's date in `YYYY-MM-DD` format.
-
-10. **Display summary**
+   On success, the CLI returns `merged-specs[]` with the same operation list. Render a completion summary:
 
 ## Output On Success
 
@@ -173,25 +219,23 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 ## Merge Complete
 
 **Change:** <change-name>
-**Merged to:** .specify/changes/archive/YYYY-MM-DD-<name>/
+**Merged to:** .specify/archive/YYYY-MM-DD-<name>/
 
 ### Specs Merged
 - <capability-1>: merged into .specify/specs/<capability-1>/spec.md
 - <capability-2>: new baseline created at .specify/specs/<capability-2>/spec.md
 
-(or "No delta specs to merge" if specs/ was empty)
+(or "No delta specs to merge" if `spec preview` returned an empty `specs` array)
 
 All artifacts complete. All tasks complete.
 ```
 
 ## Guardrails
 
-- Always confirm the change before merging
-- Validate merge needs before proceeding — warn but don't block if needs are unmet
-- Warn on incomplete artifacts or tasks but don't block
-- Use `scripts/merge-specs.py` for all merge and validation operations — do not perform merges inline
-- If the merge tool is unavailable (e.g., `python3` not installed), fall back to manual merge following the algorithm in `delta-merge.md`
-- If the merge tool reports errors, stop and ask the user before proceeding
-- Valid lifecycle status values are: `defining`, `defined`, `building`, `complete`, `merged`, `dropped` -- use these exact strings when updating `.metadata.yaml`, no other values are permitted
+- Always confirm the change before merging.
+- Validate prerequisites via the CLI before running `specify merge`; warn but don't block if the user explicitly accepts.
+- All spec-level operations (preview, merge, validate, conflict-check) go through the `specify` CLI. Never hand-merge delta sections or re-implement the algorithm — the CLI is the sole implementation.
+- Never hand-edit `.metadata.yaml` or the archive directory. `specify merge` handles the status transition and archive move atomically; on failure the filesystem is left untouched.
+- If `specify merge` reports an error, stop and ask the user before retrying.
 
 For the merge algorithm and a worked example, see `delta-merge.md`.

@@ -1,0 +1,20 @@
+name: platform-v2
+
+sources:
+  monolith: /path/to/legacy-codebase
+
+changes:
+  - name: user-registration
+    sources: [monolith]
+    status: done
+
+  - name: email-verification
+    sources: [monolith]
+    depends-on: [user-registration]
+    status: in-progress
+
+  - name: notification-preferences
+    depends-on: [user-registration]
+    description: >
+      Greenfield — user-facing notification channel and frequency settings.
+    status: pending
