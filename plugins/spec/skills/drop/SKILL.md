@@ -58,7 +58,7 @@ Optionally specify a change name. If omitted, check whether it can be inferred f
 
 2. **Check lifecycle status**
 
-   Run `specify status <name> --format json` and inspect `status`:
+   Run `specify change status <name> --format json` and inspect `status`:
 
    - `complete`: warn that the change appears ready to merge normally — `/spec:merge` may be the intended action.
    - `merged` or `dropped`: stop and tell the user the change is already finalized (the CLI would error with `lifecycle`, but surface it clearly before attempting).

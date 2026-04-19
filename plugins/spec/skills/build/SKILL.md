@@ -127,7 +127,7 @@ Forbidden:
 
 3. **Check lifecycle status and progress**
 
-   Run `specify status <name> --format json`. Handle the reported `status`:
+   Run `specify change status <name> --format json`. Handle the reported `status`:
 
    - `defining`: warn that artifacts may be incomplete — some may not have been generated yet. Suggest running `/spec:define` to complete them. Optionally abort.
    - `complete`: congratulate, all tasks already done. Suggest `/spec:merge` and stop.
