@@ -15,16 +15,17 @@ Author `.specify/plan.yaml` for a new initiative by running the
 `schema.yaml`. `/spec:plan` is the Layer 3 authoring counterpart to
 `/spec:execute`: one *writes* the plan, the other *runs* it.
 
-> **Scope note.** This revision (RFC-2 L3.F) wires the discovery
-> step on top of the L3.E scaffold. Step 3(a) now reads `--from`
-> artefacts directly, invokes `/spec:extract` once per `--source`
-> and `--against` input, merges the results, and writes a
-> consolidated capability inventory to
-> `.specify/plans/<name>/discovery.md`. **Propose brief wiring
-> still lands in L3.G.** Today `/spec:plan` runs steps 1, 2, 3(a),
-> and 4 of the core loop end-to-end; step 3(b) is a pipeline-
-> shaped placeholder that invokes the propose brief declared in
-> `schema.yaml` but does not yet contain its full body.
+> **Scope note.** This revision (RFC-2 L3.G) wires the propose
+> step on top of the L3.F discovery wiring. Step 3(b) now reads
+> `discovery.md`, decomposes into slices using the schema's
+> propose heuristics, iterates with the human per slice
+> (accept / edit / reject / abort), calls `specify plan create`
+> for every accepted slice, writes `.specify/plans/<name>/proposal.md`
+> as the authoring audit trail, and runs `specify plan validate`
+> as the final gate. Together with steps 1, 2, 3(a), and 4 this
+> completes the `/spec:plan` core loop end-to-end against the
+> Omnia schema. Vectis briefs (L3.H) and RFC-2 closeout (L3.I) are
+> the remaining Layer 3 changes.
 
 ## Overview
 
@@ -98,9 +99,14 @@ Flags:
   `--extend` is additive-only. If
   `.specify/plans/<initiative-name>/discovery.md` already exists,
   step 3(a) is also skipped and the existing inventory is reused;
-  otherwise step 3(a) runs normally. To refresh the inventory,
-  archive the plan (`specify plan archive`) and re-run without
-  `--extend`.
+  otherwise step 3(a) runs normally. In step 3(b), each draft
+  slice whose proposed `name` collides with an existing plan
+  entry is skipped without prompting the human — the existing
+  entry stands, and the collision is recorded in `proposal.md` as
+  decision `skip-existing`. Only slices with fresh names run
+  through the accept / edit / reject loop. To refresh the
+  inventory, archive the plan (`specify plan archive`) and re-run
+  without `--extend`.
 - **`--dry-run`** — emit the readiness report and the proposed plan to
   stdout; write nothing. See §"Dry-run output".
 
@@ -170,8 +176,8 @@ skill writes nothing to `.specify/plan.yaml` directly.
                      slices with `depends-on` edges using the
                      schema's slice heuristics; materialise a
                      draft; iterate with the human (accept /
-                     edit / reject per slice); for each accepted
-                     slice, shell out to:
+                     edit / reject / abort per slice); for each
+                     accepted slice, shell out to:
 
                        specify plan create <name> \
                            [--sources <key> ...] \
@@ -181,11 +187,8 @@ skill writes nothing to `.specify/plan.yaml` directly.
 
                      The full proposal is captured in
                      .specify/plans/<name>/proposal.md regardless
-                     of per-slice decisions.
-                     (L3.G fleshes this step out; the current
-                     revision exposes the step shape but does not
-                     yet implement the accept/edit/reject loop or
-                     the per-slice `specify plan create` calls.)
+                     of per-slice decisions. See §"Step 3(b) —
+                     Propose" below for the full algorithm.
 
 4. Final validation gate.
 
@@ -371,6 +374,229 @@ this Change); it captures the intent of the algorithm above and
 serves as a reference for what a brief-driven run on that input
 should produce.
 
+## Step 3(b) — Propose
+
+Step 3(b) invokes the propose brief declared in `pipeline.plan`
+(for Omnia, [`schemas/omnia/briefs/plan/propose.md`](../../../../schemas/omnia/briefs/plan/propose.md)
+from L3.D) and produces the final `plan.yaml` via per-slice
+`specify plan create` calls. Propose is the single-writer edge
+for plan entries — every entry lands via `specify plan create`;
+the skill never edits `plan.yaml` directly.
+
+### Algorithm
+
+1. **Read the discovery inventory.** Open
+   `.specify/plans/<initiative-name>/discovery.md` (written by
+   step 3(a)). If the file is absent, exit non-zero with a
+   diagnostic pointing at re-running without `--extend`, or at
+   archiving the plan if the operator intended a refresh.
+
+2. **Apply schema-specific slice heuristics.** The brief itself
+   owns the heuristics; the skill faithfully follows whatever
+   the propose brief emits:
+
+   - **Omnia** ([`schemas/omnia/briefs/plan/propose.md`](../../../../schemas/omnia/briefs/plan/propose.md),
+     L3.D): one plan entry per WASM crate or cohesive handler
+     group; leaf services first (favour entries with few
+     dependents); cross-cutting refactors ("extract shared
+     validation", "consolidate error types", etc.) become
+     standalone entries with explicit `depends-on` edges from
+     the feature slices that need them — never folded into a
+     feature slice. `sources` points at the discovery `--source`
+     key the slice migrates from (or `against` for delta
+     initiatives; greenfield slices reference the literal
+     `--from` artefact path).
+   - **Vectis** (L3.H, not in this Change): shared-core-first,
+     per-shell-last; mirror of the Omnia heuristic for the
+     Crux stack.
+   - **Other schemas** ship their own `propose.md`; the
+     decomposition rules come from there. The skill never
+     second-guesses a schema brief.
+
+3. **Materialise a draft proposal.** Derive an ordered list of
+   slices (leaves first per the active brief), each with:
+
+   - Proposed `name` (kebab-case).
+   - Proposed `sources` (keys from the plan's top-level
+     `sources` map; empty list for greenfield).
+   - Proposed `depends-on` (names of preceding slices in the
+     draft, seeded from discovery's depends-on hints).
+   - Proposed `affects` (for cross-cutting slices).
+   - A one-sentence `description`.
+
+4. **Iterate with the human.** For each slice in draft order,
+   present the proposal and read an action:
+
+   ```text
+   Slice 2/5: email-verification
+     sources: [monolith]
+     depends-on: [user-registration]
+     description: Verify user email via a one-time link.
+
+   Accept? [y / edit / no / abort]
+   ```
+
+   Four actions are legal:
+
+   - **accept (`y`)** → step 5.
+   - **edit** → step 6.
+   - **reject (`no`)** → step 7.
+   - **abort** → step 8.
+
+   Slices are presented in the heuristic order produced by
+   step 3; decisions on earlier slices never re-order later
+   ones beyond dropping stale `depends-on` edges (see step 7).
+
+5. **Accept.** Shell out to:
+
+   ```text
+   specify plan create <name> \
+       [--sources <key> ...] \
+       [--depends-on <name> ...] \
+       [--affects <name> ...] \
+       [--description "..."]
+   ```
+
+   One flag repetition per list value. `specify plan create`
+   writes the entry atomically and re-runs `Plan::validate`
+   before saving, so a write that would break the plan is
+   refused at this point (propose keeps going with the next
+   slice — the rejected entry is recorded with decision
+   `create-failed` in the proposal's Notes section). Record the
+   final entry name in the proposal table.
+
+6. **Edit.** Re-prompt for the changed field(s) (`name`,
+   `sources`, `depends-on`, `affects`, `description`); update
+   the draft slice in place and loop back to step 4 against the
+   updated slice. The edit count on a single slice is unbounded
+   in principle; in practice the human accepts or rejects after
+   a small number of passes. Record the decision as
+   `edit → accept` (or `edit → reject`) in the proposal table,
+   capturing the delta between the original draft and the final
+   form.
+
+7. **Reject.** Drop the slice entirely. Later slices that held
+   an implicit `depends-on` on the rejected slice lose that
+   edge; if a later slice is semantically blocked by the
+   rejection (the brief flags it during that slice's review),
+   the human decides whether to reject the dependent slice too
+   or carry on with a reduced set. Record the decision as
+   `reject` in the proposal table.
+
+8. **Abort.** Stop the slice loop immediately. Partial plan
+   entries remain on disk — they were written synchronously by
+   `specify plan create` as each earlier slice was accepted,
+   and the skill never rolls those writes back. The skill then:
+
+   - Writes `proposal.md` with the slices decided so far
+     (accepted + edited + rejected) and a Notes entry recording
+     the abort at slice `<N>/<total>`.
+   - Skips step 9's validate (the plan is explicitly incomplete
+     — running validate now would surface expected errors from
+     dangling `depends-on` edges, which is noise rather than
+     signal).
+   - Exits non-zero with a summary that points the operator at
+     `/spec:plan --extend` to resume.
+
+9. **Write `.specify/plans/<initiative-name>/proposal.md`.** Once
+   every slice has a decision (including a clean abort), write
+   the proposal regardless of per-slice outcomes. Shape:
+
+   ```markdown
+   # Proposal — <initiative-name>
+
+   ## Slices
+
+   | # | Slice | Source(s) | Depends on | Decision | Plan entry |
+   |---|---|---|---|---|---|
+   | 1 | <proposed name> | <keys> | <slice names or —> | accept | <final name> |
+   | 2 | ... | ... | ... | edit → accept | <final name> |
+   | 3 | ... | ... | ... | reject | — |
+
+   ## Notes
+
+   - <free-form notes: why slices were edited, why rejected,
+     deferred work, unresolved open questions from discovery,
+     abort context if applicable>
+   ```
+
+   The table MUST list every slice presented to the human —
+   edited and rejected rows alongside accepted ones — so the
+   proposal reconstructs the full decision trail. The heading is
+   exactly `# Proposal — <initiative-name>`; no dates, run IDs,
+   or working-directory paths (same idempotency contract as
+   `discovery.md`).
+
+10. **Validate the authored plan.** Run:
+
+    ```text
+    specify plan validate
+    ```
+
+    Print every `ValidationResult` verbatim. On any `Error`-level
+    finding, recommend `specify plan amend <name> ...` to fix the
+    offending entry (or `specify plan transition <name> skipped
+    --reason "..."` to exclude it) and exit non-zero. Do NOT
+    auto-repair plan errors from within the skill — human triage
+    is required. A clean validate is the final acceptance gate.
+
+11. **Exit with a hand-off summary.** Shape:
+
+    ```text
+    Plan authored: <initiative-name>
+    Entries: <A> accepted (<E> edited, <R> rejected, <B> aborted)
+    Proposal: .specify/plans/<initiative-name>/proposal.md
+    Validate: OK           (or: N errors — see above)
+
+    Next:
+      - Review: specify plan status
+      - Execute: /spec:execute --loop
+    ```
+
+    `<A>` is the count of accepted slices (including edited-then-
+    accepted); `<E>` is the subset of accepted slices that went
+    through at least one edit; `<R>` is the count of rejected
+    slices; `<B>` is the count of slices not presented because
+    of a mid-loop abort (or `0` on a clean run).
+
+### `--dry-run` and `--extend`
+
+Propose's dry-run and extend behaviours are folded into the
+skill-level §"Dry-run output" and §"Constraints → `--extend`..."
+sections — see those for the full rules. Summary:
+
+- **`--dry-run`**: skip steps 4–10 entirely. Emit the proposed
+  plan shape (slice names, `depends-on` edges, descriptions) and
+  the `proposal.md` *preview* to stdout, prefixed with
+  `Dry-run — no specify plan create calls made.`. Write nothing
+  to disk; make no `specify plan create` calls.
+- **`--extend`**: step 2 (`specify plan init`) is already skipped
+  at the skill level; within propose, compare each draft slice's
+  proposed `name` against existing `plan.yaml` entries. For each
+  collision, skip the slice (do not re-present to the human) and
+  record decision `skip-existing` in the proposal with the
+  existing entry's name in the "Plan entry" column. Slices whose
+  names do NOT collide run through the usual accept / edit /
+  reject / abort loop.
+
+### Reference fixture
+
+The shape of a five-slice migration authoring run is pinned by
+[`fixtures/propose/expected-plan.yaml`](fixtures/propose/expected-plan.yaml)
+(final `.specify/plan.yaml` after the five `specify plan create`
+calls), [`fixtures/propose/expected-proposal.md`](fixtures/propose/expected-proposal.md)
+(the authoring audit trail), [`fixtures/propose/discovery.md`](fixtures/propose/discovery.md)
+(the step 3(a) inventory the brief consumes), and
+[`fixtures/propose/transcript.md`](fixtures/propose/transcript.md)
+(the interactive accept / edit / reject transcript that produced
+the plan). The expected plan is byte-identical to what
+`serde_yaml` + `Plan::save` emits, so it doubles as a regression
+pin for the Layer 1 serialization format. It mirrors RFC-2
+§"Worked example: migration authoring" and the shape of RFC-2
+§"The Plan" for the five equivalent slices (the RFC's
+`platform-v2` plan has additional cross-cutting entries that
+this fixture deliberately simplifies out).
+
 ## Single-writer invariant (RFC-2 §"Phase Boundary → Rule 2")
 
 Every plan entry this skill writes goes through **`specify plan
@@ -418,10 +644,13 @@ preserving the authoring trail with the plan it produced.
 ## Dry-run output
 
 Under `--dry-run`, the skill emits a **readiness report** followed
-by the **would-be-produced capability inventory** and exits without
-writing anything. Dry-run now folds the L3.E readiness gate and the
-L3.F discovery preview into a single rendering: inputs PLUS the
-inventory the briefs would emit against those inputs.
+by the **would-be-produced capability inventory** and the
+**would-be-proposed plan** in one rendering, then exits without
+writing anything. Dry-run folds the L3.E readiness gate, the L3.F
+discovery preview, and the L3.G propose preview into a single
+pass: inputs PLUS the inventory the briefs would emit PLUS the
+plan decomposition the propose brief would offer against that
+inventory.
 
 The combined shape:
 
@@ -452,6 +681,31 @@ Depends-on hints: ...
 - <question>
 - <...>
 
+Would propose plan entries (not written):
+
+  1. <slice-name>
+       sources:     [<key> ...]
+       depends-on:  [<name> ...]
+       description: <one-line summary>
+  2. ...
+
+Dry-run — no specify plan create calls made.
+
+Would write .specify/plans/<initiative-name>/proposal.md:
+
+# Proposal — <initiative-name>
+
+## Slices
+
+| # | Slice | Source(s) | Depends on | Decision | Plan entry |
+|---|---|---|---|---|---|
+| 1 | <slice> | <keys> | <names or —> | dry-run | — |
+| 2 | ... | ... | ... | dry-run | — |
+
+## Notes
+
+- Dry-run: no specify plan create calls made; no entries written.
+
 No files written. Remove --dry-run to run the pipeline.
 ```
 
@@ -475,6 +729,13 @@ Section rules:
   against the [`fixtures/discovery/legacy/`](fixtures/discovery/legacy/)
   source tree; under `--dry-run` the same content is emitted to
   stdout instead of written to disk.
+- The proposal preview portion mirrors the shape of
+  [`fixtures/propose/expected-proposal.md`](fixtures/propose/expected-proposal.md)
+  but with every slice's `Decision` column set to `dry-run` and
+  the `Plan entry` column set to `—` (no `specify plan create`
+  call is made, so no final entry name exists). The Notes section
+  is replaced with the stock `Dry-run: no specify plan create
+  calls made; no entries written.` line.
 
 Under `--dry-run` the skill MUST NOT:
 
@@ -487,11 +748,10 @@ The discovery brief's input-reading side (reading `--from` files,
 invoking `/spec:extract` to parse `--source` / `--against` inputs)
 runs under `--dry-run` so the preview inventory is real; only the
 write to `discovery.md` and the `.specify/plans/<name>/` directory
-creation are suppressed.
-
-Propose has its own dry-run rendering (proposed entries, preview
-diff against the existing plan for `--extend`, etc.) and that lands
-in L3.G alongside the propose brief wiring that produces it.
+creation are suppressed. The propose brief's slice-decomposition
+pass also runs (the preview plan shape is real against the
+previewed inventory); the accept / edit / reject loop and every
+`specify plan create` call are skipped.
 
 ## Constraints
 
@@ -537,18 +797,18 @@ in L3.G alongside the propose brief wiring that produces it.
 | Hold a driver lock | Never. `.specify/plan.lock` is reserved for `/spec:execute`; authoring runs outside that lock. |
 | Write `.specify/plan.yaml` directly | Never. Every write goes through `specify plan init` (step 2, skipped under `--extend`) or `specify plan create` (step 3b, one call per accepted slice). |
 | Clone git URLs | Never. `--source` values that are git URLs are passed through to `/spec:extract` verbatim; cloning (if any) happens inside `/spec:extract` via `git-cloner`. |
-| Fill in propose brief bodies | Not in this Change. The propose step shape is pinned here; full wiring (slice decomposition, accept/edit/reject loop, per-slice `specify plan create` calls) lands in L3.G. |
+| Author propose brief bodies | Never. The propose brief body is owned by the schema (for Omnia, [`schemas/omnia/briefs/plan/propose.md`](../../../../schemas/omnia/briefs/plan/propose.md) from L3.D); the skill only drives the accept / edit / reject loop against whatever the brief emits. |
+| Auto-repair a failing `specify plan validate` | Never. Step 4's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify plan amend` / `specify plan transition skipped` fix, never an in-skill edit. |
 
-The state the skill mutates in this Change:
+The state the skill mutates:
 
 1. `.specify/plan.yaml` via `specify plan init` (step 2; skipped
    under `--extend`) and `specify plan create` (step 3b; once per
-   accepted slice, wired fully in L3.G).
+   accepted slice).
 2. `.specify/plans/<initiative-name>/discovery.md` written by the
-   discovery brief (step 3a; wired in this Change — see §"Step
-   3(a) — Discovery").
+   discovery brief (step 3a — see §"Step 3(a) — Discovery").
 3. `.specify/plans/<initiative-name>/proposal.md` written by the
-   propose brief (step 3b; wired fully in L3.G).
+   propose brief (step 3b — see §"Step 3(b) — Propose").
 
 No other on-disk state is written by `/spec:plan` itself.
 
@@ -578,9 +838,12 @@ No other on-disk state is written by `/spec:plan` itself.
 - For `--extend` specifically: step 2 is skipped in full; step 3(b)
   only appends entries via `specify plan create` — it never calls
   `specify plan amend` or `specify plan transition` on existing
-  entries. A propose-time decision to modify an existing entry is
-  surfaced to the human, who runs `specify plan amend` by hand
-  outside the authoring loop.
+  entries. Draft slices whose names collide with existing plan
+  entries are skipped with decision `skip-existing` in
+  `proposal.md`; the human is not re-prompted for those. A
+  propose-time decision to modify an existing entry is surfaced
+  to the human, who runs `specify plan amend` by hand outside the
+  authoring loop.
 - Treat an unexpected `specify schema pipeline --phase plan`
   response shape (missing keys, unknown brief IDs, empty pipeline)
   as a hard failure: print the raw JSON and exit non-zero. Do not
