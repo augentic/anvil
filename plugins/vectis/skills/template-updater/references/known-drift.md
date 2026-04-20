@@ -1,12 +1,17 @@
 # Known drift backlog
 
 Concrete fix items carried into this skill from earlier RFC-6 chunks. Each
-item is reproducible today via `specify vectis update-versions --dry-run
---verify` (run via `<specify-cli>/target/debug/specify` after `cargo build -p
-specify` in the `specify-cli` checkout, or via an installed `specify`
-binary) against live registries. When the skill runs against a new bump, it
-should check this list **first**: if the reproduced failure matches an item
-below, follow that item's playbook rather than re-diagnosing from scratch.
+item is reproducible today via:
+
+```sh
+specify vectis update-versions --dry-run --verify
+```
+
+Run via `<specify-cli>/target/debug/specify` after `cargo build -p specify`
+in the `specify-cli` checkout, or via an installed `specify` binary,
+against live registries. When the skill runs against a new bump, it should
+check this list **first**: if the reproduced failure matches an item below,
+follow that item's playbook rather than re-diagnosing from scratch.
 
 When a fix ships, remove the item from this file in the same commit that
 lands the fix. Stale entries make the skill softer than intended.
@@ -94,15 +99,18 @@ check` with:
 
 **Fix path**:
 
-1. Extend `<specify-cli>/templates/vectis/core/deny.toml`'s `[advisories] ignore` list:
+1. Extend `<specify-cli>/templates/vectis/core/deny.toml`'s `[advisories] ignore` array with the two entries below (preserve any existing entries):
 
    ```toml
-   # transitive via async-sse -> http-types -> rand 0.7.3 when the sse cap
-   # is enabled; no maintained upstream replacement today.
-   RUSTSEC-2026-0097,
-   # transitive via async-sse -> futures-lite 1.13 -> instant; no maintained
-   # upstream replacement today.
-   RUSTSEC-2024-0384,
+   [advisories]
+   ignore = [
+       # transitive via async-sse -> http-types -> rand 0.7.3 when the sse
+       # cap is enabled; no maintained upstream replacement today.
+       "RUSTSEC-2026-0097",
+       # transitive via async-sse -> futures-lite 1.13 -> instant; no
+       # maintained upstream replacement today.
+       "RUSTSEC-2024-0384",
+   ]
    ```
 
    Preserve the existing `RUSTSEC-2024-0370` (`proc-macro-error`) and
