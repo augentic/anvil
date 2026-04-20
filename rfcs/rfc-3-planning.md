@@ -6,9 +6,9 @@
 
 Extend RFC-2's `/spec:plan` into a **registry-aware** authoring skill that scales unchanged from a single repo to 100+ repos.
 
-One new, optional file scopes the initiative: `.specify/registry.yaml` declares the projects in scope and the seed inputs to analyse. Its absence is the signal for "single-repo system" and requires no operator action.
+Two new, optional files scope the initiative. `.specify/registry.yaml` is the **platform catalogue** — the repos that comprise the system and the schemas they use. `.specify/initiative.md` is the **operator-authored brief** — intent as prose, seed inputs as YAML frontmatter. The registry answers "what's in the platform?"; the brief answers "what am I trying to do this cycle, and from what material?". Either or both may be absent: a bare `/spec:plan` with CLI-only inputs remains valid, and a single-repo system needs no registry at all.
 
-Internally, `/spec:plan` runs a fixed three-phase flow: *analyse inputs* → *(sync peers)* → *generate plan*. The middle phase runs automatically when `registry.yaml` is present and clones every listed repo into `.specify/workspace/<project>/` for read-only inventory. Discovery dispatches every input to `/spec:analyze` — a new skill introduced by this RFC — which branches internally on `kind` (`legacy-code` or `documentation`) and emits a single merged `discovery.md`; any other kind is a hard error. `/spec:extract` (unchanged from RFC-2) moves to `/spec:define` time, where it runs per-change against the scope each change owns. `/spec:plan` remains the single operator-facing entry point — the invocation shape, core loop, and single-writer invariant are unchanged.
+Internally, `/spec:plan` runs a fixed three-phase flow: *analyse inputs* → *(sync peers)* → *generate plan*. The middle phase runs automatically when `registry.yaml` declares more than one project, and clones every listed repo into `.specify/workspace/<project>/` for read-only inventory. Discovery dispatches every input to `/spec:analyze` — a new skill introduced by this RFC — which branches internally on `kind` (`legacy-code` or `documentation`) and emits a single merged `discovery.md`; any other kind is a hard error. `/spec:extract` (unchanged from RFC-2) moves to `/spec:define` time, where it runs per-change against the scope each change owns. `/spec:plan` remains the single operator-facing entry point — the invocation shape, core loop, and single-writer invariant are unchanged.
 
 There is no pipeline declaration file. RFC-3 does not move `pipeline.plan` anywhere: it eliminates the configuration surface entirely for v1 so the fixed shape is the only shape. `schema.yaml` retains its Layer 1 role (`define/build/merge`); no planning config lives there. Configurability is re-addable in a later RFC without migration (see *Alternatives Considered*).
 
@@ -20,27 +20,28 @@ In parallel, RFC-3 scales `/spec:plan` *down* into large monoliths by splitting 
 
 Specify planning model
 
-`/spec:plan` runs a fixed internal flow. For single-repo initiatives the flow is *analyse inputs → generate plan*; for multi-repo initiatives (registry present) a *sync peers* phase is inserted between them. The three diagram phases correspond to:
+`/spec:plan` runs a fixed internal flow. For single-repo initiatives the flow is *analyse inputs → generate plan*; for multi-repo initiatives (registry declares more than one project) a *sync peers* phase is inserted between them. The three diagram phases correspond to:
 
 1. **Analyse inputs.** Read seed material — legacy code, documentation — and extract candidate capabilities, constraints, and open questions. Dispatches every input to `/spec:analyze`, which branches internally on the declared `kind` (`legacy-code` → module inventory; `documentation` → capabilities / constraints / open questions). Emits `discovery.md`.
-2. **Sync peers.** *(Runs iff `registry.yaml` is present.)* Clone every project declared in `registry.yaml` into `.specify/workspace/<project>/` (local, read-only cache), then inventory each repo's existing `.specify/` tree (baseline specs, in-flight plans, schema). Emits `workspace.md`.
+2. **Sync peers.** *(Runs iff `registry.yaml` declares more than one project.)* Clone every project declared in `registry.yaml` into `.specify/workspace/<project>/` (local, read-only cache), then inventory each repo's existing `.specify/` tree (baseline specs, in-flight plans, schema). Emits `workspace.md`.
 3. **Generate plan.** Combine the input inventory (`discovery.md`) and — when present — the peer inventory (`workspace.md`) into the **Plan**: the ordered, dependency-aware list of changes RFC-2 drains with `specify initiative next`. Emits `plan.yaml`.
 
 The `Plan` box in this diagram is the same `Plan` box on the left of RFC-2's execution diagram. Planning produces it; execution consumes it and amends it back.
 
-The flow is fixed: phases run in order, and the *sync peers* phase is present if and only if `registry.yaml` is. There is no operator-visible step ID surface, no configuration file, and no auto-insert policy to diagnose. The diagram labels (`discovery`, `workspace`, `propose`) and artifact filenames (`discovery.md`, `workspace.md`) retain those names for continuity; the RFC prose uses the activity-oriented descriptions above.
+The flow is fixed: phases run in order, and the *sync peers* phase is present if and only if `registry.yaml` declares more than one project. There is no operator-visible step ID surface, no configuration file, and no auto-insert policy to diagnose. The diagram labels (`discovery`, `workspace`, `propose`) and artifact filenames (`discovery.md`, `workspace.md`) retain those names for continuity; the RFC prose uses the activity-oriented descriptions above.
 
 ### Diagram labels → skills and CLI
 
 
 | Diagram label                     | Phase / skill                                 | CLI                                                                         |
 | --------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------- |
-| `plan` (centre)                   | `/spec:plan` (registry-aware)                 | `specify initiative {init, create, amend, validate}` (unchanged from RFC-2) |
+| `plan` (centre)                   | `/spec:plan` (registry- and brief-aware)      | `specify initiative {init, create, amend, validate}` (unchanged from RFC-2) |
 | `registry.yaml` (read)            | —                                             | `specify initiative registry {show, validate}` *(TBD)*                      |
-| Step ① — analyse inputs           | Discovery → `/spec:analyze`                   | — (phase reads `--from` / `--against` / `--source` + registry inputs)       |
+| `initiative.md` (read)            | —                                             | `specify initiative brief {init, show}` *(TBD)*                             |
+| Step ① — analyse inputs           | Discovery → `/spec:analyze`                   | — (phase reads `--from` / `--against` / `--source` + brief inputs)          |
 | Step ② — sync peers               | Workspace (CLI-driven)                        | `specify initiative workspace {sync, status}` *(TBD)*                       |
 | Step ③ — generate plan            | Propose                                       | `specify initiative create` (per accepted slice; unchanged from RFC-2)      |
-| `Inputs` box (legacy code, docs)  | —                                             | — (filesystem paths under `--from` / `--source` or `registry.yaml:inputs`)  |
+| `Inputs` box (legacy code, docs)  | —                                             | — (filesystem paths under `--from` / `--source` or `initiative.md:inputs`)  |
 | `Workspace` box (cloned repos)    | —                                             | `.specify/workspace/<project>/`                                             |
 | `Plan` box (output)               | —                                             | `.specify/plan.yaml` (RFC-2 format, unchanged)                              |
 
@@ -53,57 +54,80 @@ RFC-2 assumes you already know the changes. For three common cases, you don't:
 - **Greenfield across multiple repos.** Backend, frontend, and shared-types need coordinated changes, but the per-repo plans don't exist yet.
 - **Platform initiatives.** A feature like "add OAuth login" must be decomposed across repos before any per-repo loop can run.
 
-RFC-2's Layer 3 `/spec:plan` skill addresses the first case for a single repo. The multi-repo case has no equivalent — no declared scope of "the repos this initiative spans", no shared workspace for cross-repo analysis. The gap isn't a new skill; it's an initiative-scoped `registry.yaml` and a *sync peers* phase that `/spec:plan` runs automatically when the registry is present.
+RFC-2's Layer 3 `/spec:plan` skill addresses the first case for a single repo. The multi-repo case has no equivalent — no declared scope of "the repos this initiative spans", no shared workspace for cross-repo analysis. The gap isn't a new skill; it's a platform-scoped `registry.yaml` of peer projects (alongside a per-initiative `initiative.md` brief), and a *sync peers* phase that `/spec:plan` runs automatically when the registry declares more than one project.
 
 ## Dependency on RFC-1 and RFC-2
 
-- **RFC-1 (CLI):** registry parsing, clone orchestration, workspace layout, and plan writes all go through `specify` subcommands. No hand-edited plans. Cloning is deterministic CLI work — `/spec:plan` shells out to `specify initiative workspace sync` rather than delegating to a cloning skill.
-- **RFC-2 (Plans):** the Plan format is unchanged. The `/spec:plan` skill — its invocation, its core loop, and its single-writer invariant — is unchanged. RFC-3 adds registry awareness, a fixed internal *sync peers* phase, and a documentation-analysis skill; the operator-facing contract is the same.
+- **RFC-1 (CLI):** registry parsing, initiative-brief parsing, clone orchestration, workspace layout, and plan writes all go through `specify` subcommands. No hand-edited plans. Cloning is deterministic CLI work — `/spec:plan` shells out to `specify initiative workspace sync` rather than delegating to a cloning skill.
+- **RFC-2 (Plans):** the Plan format is unchanged. The `/spec:plan` skill — its invocation, its core loop, and its single-writer invariant — is unchanged. RFC-3 adds registry and initiative-brief awareness, a fixed internal *sync peers* phase, and a documentation-analysis skill; the operator-facing contract is the same.
 - **No planning configuration.** RFC-2 Layer 3 placed `pipeline.plan` inside `schema.yaml`. RFC-3 does not relocate that declaration to a new file — it eliminates it. `/spec:plan`'s internal flow is fixed for v1. `schema.yaml` retains its Layer 1 role (`define/build/merge`). Stack-specific planning helpers (e.g. slice-heuristic prose) may still ship in schema directories and be consumed directly by the *generate plan* phase.
 
 RFC-3 is structured in three layers; each layer describes a feature added to the planning flow (or, for Layer 3, the per-repo execution loop), not a separate skill or invocation path. **Layer 1** makes `/spec:plan` registry-aware and fixes the discovery-dispatch rule for code vs. documentation inputs. **Layer 2** adds the *sync peers* phase. **Layer 3** adds federation at execution time on top of the workspace Layer 2 materialises. A parallel §*Large-Monolith Decomposition* adds the two-skill analyze/extract split (plan-time vs define-time) and the `scope` field; it composes with all three layers but sits outside their progression.
 
 ---
 
-## Layer 1: Registry-aware `/spec:plan`
+## Layer 1: Registry- and brief-aware `/spec:plan`
 
-Layer 1 adds one optional file to `/spec:plan`'s input surface: `.specify/registry.yaml` (initiative scope). Absent → the skill behaves exactly as today, running *analyse inputs → generate plan* against the current repo with no remote peers.
+Layer 1 adds two optional files to `/spec:plan`'s input surface:
 
-### When is `registry.yaml` required?
+- `.specify/registry.yaml` — **platform catalogue** (`projects[]`: the repos that comprise the system).
+- `.specify/initiative.md` — **operator-authored brief** (frontmatter `name` + `inputs[]`; body = prose describing intent).
 
-`registry.yaml` is **optional**. Its absence is the canonical signal for a single-repo system; no operator action — no file, no flag, no template — is needed to opt out of multi-repo planning.
+Both absent → the skill behaves exactly as today, running *analyse inputs → generate plan* against the current repo with CLI-supplied inputs only.
+
+### When are `registry.yaml` and `initiative.md` required?
+
+Both files are **optional**. They cover orthogonal concerns:
 
 
-| Situation       | `registry.yaml`                                                                                   |
-| --------------- | ------------------------------------------------------------------------------------------------- |
-| Single repo     | **Absent.** `/spec:plan` treats the current repo as the one in-scope project implicitly.         |
-| Multiple repos  | **Required.** The *sync peers* phase (Layer 2) reads it to clone peers; absence is a hard error. |
+| File               | Carries                                                            | When required                                                                                                                                                |
+| ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `registry.yaml`    | Platform catalogue (`projects[]`).                                 | Only when the platform spans more than one repo. Absent or single-entry → single-repo flow; multi-entry → *sync peers* phase (Layer 2) activates.           |
+| `initiative.md`    | Current initiative's name + seed inputs (frontmatter) + intent (body). | Whenever inputs would otherwise be supplied entirely via CLI flags, or the operator wants a durable home for the initiative's framing. Optional even then. |
 
 
-A single-repo degenerate form (`registry.yaml` present with one `projects[]` entry, `url: .`) is supported but redundant; its only practical use is pinning `inputs` in-tree.
+The multi-repo toggle is **`len(projects) > 1`** on `registry.yaml`, not the file's presence. A single-entry registry runs the same flow as no registry at all; `initiative.md`'s presence has no bearing on whether peers are synced.
 
-The RFC-2 readiness gate — "at least one of `--from`, `--against`, or `--source` must be supplied" — widens under Layer 1 to **"...or `registry.yaml:inputs` is non-empty."** A bare `/spec:plan <name>` with no CLI inputs but a populated `registry.yaml:inputs` is valid; a bare `/spec:plan <name>` with neither is still a hard exit, as today.
+The RFC-2 readiness gate — "at least one of `--from`, `--against`, or `--source` must be supplied" — widens under Layer 1 to **"...or `initiative.md:inputs` is non-empty."** A bare `/spec:plan <name>` with no CLI inputs but a populated `initiative.md:inputs` is valid; a bare `/spec:plan <name>` with neither is still a hard exit, as today.
 
 ### The Registry
 
 ```yaml
 # .specify/registry.yaml
-name: traffic-modernisation
 version: 1
-
 projects:
   - name: traffic
-    url: .                # Layer 1 degenerate case: the only project is this repo
+    url: .
     schema: omnia@v1
+```
 
+`projects[]` enumerates the repos that comprise the platform. The registry exists to answer the platform question ("what repos are in scope, and what's already specified in them?"); it is deliberately free of initiative-specific state — no `name`, no `inputs`, no cycle-scoped fields. This keeps the file stable across initiatives and makes a later move to a shared registry (§*Alternatives Considered — Registry repo*) a mechanical lift rather than a schema rethink.
+
+### The Initiative Brief
+
+```markdown
+---
+# .specify/initiative.md
+name: traffic-modernisation
 inputs:
   - path: ./inputs/legacy-traffic/
     kind: legacy-code
   - path: ./inputs/ops-runbook.pdf
     kind: documentation
+---
+
+# Traffic modernisation
+
+Move the legacy traffic system onto Omnia, preserving the ops-runbook's
+escalation paths and the existing Kafka ingress contract. Priority is parity
+over feature work; the big open questions are around state migration.
 ```
 
-`projects` enumerates the repos in scope. `inputs` enumerates seed material the *analyse inputs* phase dispatches on. Both are optional.
+`initiative.md` is the operator-authored starting point for one planning cycle. Frontmatter carries the structured bits the CLI and `/spec:analyze` need (`name`, `inputs[]`); the body carries the operator's framing for the agent dialogue `/spec:plan` drives.
+
+The `inputs[]` list and its closed `kind` vocabulary are unchanged from the earlier draft — only their home has moved. The body prose is **not** an input to `/spec:analyze` in v1; if it later becomes useful to feed in, the closed `kind` vocabulary forces that addition through a schema + RFC update (e.g. a new `kind: initiative-brief`) rather than a silent behaviour change.
+
+`specify initiative brief init <name>` scaffolds `initiative.md` from a template at the start of a cycle; `specify initiative archive` sweeps it into the archive alongside `plan.yaml` when the cycle ends. Neither command is operator-facing beyond that scaffolding — once `initiative.md` exists, it's a plain-text file the operator edits directly.
 
 ### Discovery dispatch
 
@@ -122,9 +146,9 @@ The `kind` vocabulary is a **closed enum** for v1. An input with any other `kind
 
 `/spec:extract` (RFC-2 Layer 3, unchanged) moves to `/spec:define` time. It produces `specs/<change>/` + `design.md` for a single change, scoped by the change's `scope` field. See §*Large-Monolith Decomposition* for the plan-time / define-time split.
 
-### `--source` flags and the registry
+### `--source` flags and the brief
 
-`/spec:plan`'s existing `--source <key>=<path-or-url>` / `--from` / `--against` flags continue to work unchanged. They're additive with `registry.yaml:inputs` — the *analyse inputs* phase reads both and merges them into `discovery.md`. Inputs supplied via CLI flags carry an explicit kind (e.g. `--source legacy=./old/:legacy-code`) so they route through the same closed-enum dispatch as registry inputs.
+`/spec:plan`'s existing `--source <key>=<path-or-url>` / `--from` / `--against` flags continue to work unchanged. They're additive with `initiative.md:inputs` — the *analyse inputs* phase reads both and merges them into `discovery.md`. Inputs supplied via CLI flags carry an explicit kind (e.g. `--source legacy=./old/:legacy-code`) so they route through the same closed-enum dispatch as brief inputs.
 
 ### The flow
 
@@ -132,7 +156,7 @@ The `kind` vocabulary is a **closed enum** for v1. An input with any other `kind
 analyse inputs ──▶ generate plan ──▶ plan.yaml
 ```
 
-Unchanged from today. The *sync peers* phase is absent because `registry.yaml` is absent.
+Unchanged from today. The *sync peers* phase is absent because `registry.yaml` either is absent or declares a single project.
 
 ---
 
@@ -262,17 +286,15 @@ Stages compose with RFC-3's other features: Layer 2's *sync peers* phase runs un
 
 ## Layer 2: Multi-repo planning with the workspace
 
-Layer 2 is the case the diagram describes: `registry.yaml` declares several repos, the *sync peers* phase clones them and inventories their specs, and *generate plan* consumes both the input inventory and the peer inventory.
+Layer 2 is the case the diagram describes: `registry.yaml` declares more than one repo, the *sync peers* phase clones them and inventories their specs, and *generate plan* consumes both the input inventory and the peer inventory.
 
-`registry.yaml` is **required** in this layer — the *sync peers* phase has nothing to do without a registry, and is only present in the flow when the registry is. A single-repo run (no registry) never reaches this requirement.
+A `registry.yaml` with `len(projects) > 1` is **required** in this layer — the *sync peers* phase has nothing to do without peers to inventory, and is only present in the flow when the registry declares them. A single-repo run (no registry, or a registry with a single project) never reaches this requirement. `initiative.md` is orthogonal: it carries the cycle's name and inputs in Layer 2 exactly as it does in Layer 1.
 
 ### The Registry (multi-project)
 
 ```yaml
 # .specify/registry.yaml
-name: realtime
 version: 1
-
 projects:
   - name: traffic
     url: git@github.com:org/traffic.git
@@ -281,13 +303,9 @@ projects:
   - name: command-centre
     url: git@github.com:org/command-centre.git
     schema: omnia@v1
-
-inputs:
-  - path: ./inputs/legacy-traffic/
-    kind: legacy-code
-  - path: ./inputs/ops-runbook.pdf
-    kind: documentation
 ```
+
+The accompanying `initiative.md` is identical in shape to the Layer 1 example — it declares the initiative's `name` and `inputs[]` in frontmatter, and the operator's framing in the body. Peer projects are declared in `registry.yaml`; seed material for this cycle is declared in `initiative.md`. The two files never overlap.
 
 ### The flow
 
@@ -295,7 +313,7 @@ inputs:
 analyse inputs ──▶ sync peers ──▶ generate plan ──▶ plan.yaml
 ```
 
-Nothing about the `/spec:plan` invocation changes — the skill runs the fixed flow, and the presence of `registry.yaml` decides whether the *sync peers* phase is included.
+Nothing about the `/spec:plan` invocation changes — the skill runs the fixed flow, and `len(projects) > 1` on `registry.yaml` decides whether the *sync peers* phase is included.
 
 ### The sync-peers phase
 
@@ -310,7 +328,8 @@ Executed between *analyse inputs* and *generate plan*:
 
 ```
 .specify/
-  registry.yaml         # required in Layer 2
+  registry.yaml         # required when len(projects) > 1
+  initiative.md         # operator-authored brief (optional in Layer 1, typical in Layer 2)
   workspace/
     traffic/            # clone of org/traffic (read-only)
     command-centre/     # clone of org/command-centre
@@ -333,11 +352,12 @@ Per-repo `plan.yaml`s linked by a feature manifest — staged under `.specify/pl
 ### CLI surface additions
 
 
-| Operation                 | CLI                                                    |
-| ------------------------- | ------------------------------------------------------ |
-| Read / verify registry    | `specify initiative registry {show, validate}` *(TBD)* |
-| Clone / refresh workspace | `specify initiative workspace sync` *(TBD)*            |
-| Inspect workspace state   | `specify initiative workspace status` *(TBD)*          |
+| Operation                        | CLI                                                    |
+| -------------------------------- | ------------------------------------------------------ |
+| Scaffold / show initiative brief | `specify initiative brief {init, show}` *(TBD)*        |
+| Read / verify registry           | `specify initiative registry {show, validate}` *(TBD)* |
+| Clone / refresh workspace        | `specify initiative workspace sync` *(TBD)*            |
+| Inspect workspace state          | `specify initiative workspace status` *(TBD)*          |
 
 
 These are all machinery the *sync peers* / *generate plan* phases shell out to; none are operator-facing entry points. `/spec:plan` remains the only command humans invoke.
@@ -367,13 +387,21 @@ Layer 3 reads the same `.specify/workspace/` that Layer 2 materialises, so no ne
 
 ## Relation to RFC-2
 
-- RFC-2's `/spec:plan` skill is unchanged in invocation, core loop, working directory, and single-writer invariant. RFC-3's contribution is registry awareness, a fixed internal *sync peers* phase that runs automatically when `registry.yaml` is present, and a new `/spec:analyze` skill that owns plan-time discovery for both code and documentation inputs; the skill picks up all three automatically. `/spec:extract` is otherwise unchanged from RFC-2 but moves from plan-time to `/spec:define` time, where it runs per-change against the change's `scope` field.
+- RFC-2's `/spec:plan` skill is unchanged in invocation, core loop, working directory, and single-writer invariant. RFC-3's contribution is registry and initiative-brief awareness, a fixed internal *sync peers* phase that runs automatically when `registry.yaml` declares more than one project, and a new `/spec:analyze` skill that owns plan-time discovery for both code and documentation inputs; the skill picks up all three automatically. `/spec:extract` is otherwise unchanged from RFC-2 but moves from plan-time to `/spec:define` time, where it runs per-change against the change's `scope` field.
 - RFC-2 Layer 3 placed `pipeline.plan` inside `schema.yaml`. RFC-3 does not relocate that declaration to any new file — it removes the configuration surface. `schema.yaml` returns to its Layer 1 role (per-repo `define/build/merge`). Stack-specific planning helpers may still ship in schema directories and be consumed directly by the *generate plan* phase; that is a separate concern from a pipeline-shape declaration, which no longer exists.
 - The Plan format gains one optional field: `scope` on change entries (`scope.<source>.{include,exclude}` globs, or `manifest` pointer) for large-monolith slicing. Changes without `scope` are unaffected and behave exactly as in RFC-2. RFC-3's only other semantic extension on the Plan itself is that `sources` and `affects` may reference peer projects by registry name (resolved via `registry.yaml`). See §*Large-Monolith Decomposition*.
 - The `amend` edge in RFC-2's execution diagram — a phase discovering a neighbouring change and calling `specify initiative amend` — continues to work identically on RFC-3-produced plans.
-- `specify initiative archive` sweeps `.specify/plans/<name>/` alongside `plan.yaml` as today; the new `workspace.md` artifact is archived with the rest, no code change required.
+- `specify initiative archive` sweeps `.specify/plans/<name>/` alongside `plan.yaml` as today; the new `workspace.md` artifact and `initiative.md` brief are archived with the rest, no code change required.
 
 ## Alternatives Considered
+
+### Combined registry + initiative file
+
+An earlier draft put `projects[]` and `inputs[]` in the same `.specify/registry.yaml`, keyed by an initiative `name:` at the top. Rejected: the file conflated three independent concerns — platform catalogue (long-lived, slow-changing), initiative identity (ephemeral), initiative seed material (ephemeral) — and forced one presence/absence signal to double as both "multi-repo mode" and "this initiative has inputs". The split lets `registry.yaml` describe the platform honestly (what repos exist, what they're called, what schemas they use), `initiative.md` describe one cycle's intent as prose alongside its structured seed inputs, and the multi-repo toggle become what it actually is: `len(projects) > 1`. It also gives operator intent a first-class home (the prose body of `initiative.md`), where previously it tended to be lost in commit messages or reinvented in `proposal.md`. The split is additionally forward-compatible with a later move to a shared registry repo (§*Registry repo*, below): only `registry.yaml` relocates; `initiative.md` stays with whichever repo drives the cycle.
+
+### Per-initiative brief files (`initiatives/<name>.md`)
+
+An alternative shape was `.specify/initiatives/<initiative-name>.md`, mirroring RFC-2's `changes/<change>/` pattern and permitting multiple briefs in flight simultaneously. Rejected for v1: RFC-2 already assumes one active plan per repo (single `plan.yaml`, single `.specify/plans/<name>/` working dir), and a singular `initiative.md` co-located with `plan.yaml` matches that shape. If multi-initiative-in-flight becomes a real need, promoting `initiative.md` → `initiatives/<name>/brief.md` is a mechanical lift, not a schema rethink. YAGNI.
 
 ### Configurable planning pipeline (`planning.yaml`)
 
@@ -381,7 +409,7 @@ An earlier draft introduced `.specify/planning.yaml` declaring the authoring pip
 
 ### Registry repo
 
-A separate dedicated registry repo creates a coordination bottleneck. Every change requires commits to the registry, and the registry becomes a merge-conflict magnet. The chosen model keeps `registry.yaml` in whichever repo initiates the initiative (typically a dedicated platform / coordination repo), with peers autonomous. If you later need a central dashboard or CI check, you can build it on top of RFC-3 artifacts without requiring a separate write path.
+A separate dedicated registry repo creates a coordination bottleneck. Every change requires commits to the registry, and the registry becomes a merge-conflict magnet. The chosen model keeps `registry.yaml` in whichever repo initiates the initiative (typically a dedicated platform / coordination repo), with peers autonomous. If you later need a central dashboard or CI check, you can build it on top of RFC-3 artifacts without requiring a separate write path. The registry/brief split makes this move cheaper when it does come: only `registry.yaml` would relocate (it is already initiative-free); `initiative.md` stays with whichever repo drives the cycle.
 
 ### Cross-organisation coordination
 
