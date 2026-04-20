@@ -23,7 +23,7 @@ Specify planning model
 `/spec:plan` runs a fixed internal flow. For single-repo initiatives the flow is *analyse inputs → generate plan*; for multi-repo initiatives (registry declares more than one project) a *sync peers* phase is inserted between them. The three diagram phases correspond to:
 
 1. **Analyse inputs.** Read seed material — legacy code, documentation — and extract candidate capabilities, constraints, and open questions. Dispatches every input to `/spec:analyze`, which branches internally on the declared `kind` (`legacy-code` → module inventory; `documentation` → capabilities / constraints / open questions). Emits `discovery.md`.
-2. **Sync peers.** *(Runs iff `registry.yaml` declares more than one project.)* Clone every project declared in `registry.yaml` into `.specify/workspace/<project>/` (local, read-only cache), then inventory each repo's existing `.specify/` tree (baseline specs, in-flight plans, schema). Emits `workspace.md`.
+2. **Sync peers.** *(Runs if* `registry.yaml` *declares more than one project.)* Clone every project declared in `registry.yaml` into `.specify/workspace/<project>/` (local, read-only cache), then inventory each repo's existing `.specify/` tree (baseline specs, in-flight plans, schema). Emits `workspace.md`.
 3. **Generate plan.** Combine the input inventory (`discovery.md`) and — when present — the peer inventory (`workspace.md`) into the **Plan**: the ordered, dependency-aware list of changes RFC-2 drains with `specify initiative next`. Emits `plan.yaml`.
 
 The `Plan` box in this diagram is the same `Plan` box on the left of RFC-2's execution diagram. Planning produces it; execution consumes it and amends it back.
@@ -33,17 +33,17 @@ The flow is fixed: phases run in order, and the *sync peers* phase is present if
 ### Diagram labels → skills and CLI
 
 
-| Diagram label                     | Phase / skill                                 | CLI                                                                         |
-| --------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------- |
-| `plan` (centre)                   | `/spec:plan` (registry- and brief-aware)      | `specify initiative {init, create, amend, validate}` (unchanged from RFC-2) |
-| `registry.yaml` (read)            | —                                             | `specify initiative registry {show, validate}` *(TBD)*                      |
-| `initiative.md` (read)            | —                                             | `specify initiative brief {init, show}` *(TBD)*                             |
-| Step ① — analyse inputs           | Discovery → `/spec:analyze`                   | — (phase reads `--from` / `--against` / `--source` + brief inputs)          |
-| Step ② — sync peers               | Workspace (CLI-driven)                        | `specify initiative workspace {sync, status}` *(TBD)*                       |
-| Step ③ — generate plan            | Propose                                       | `specify initiative create` (per accepted slice; unchanged from RFC-2)      |
-| `Inputs` box (legacy code, docs)  | —                                             | — (filesystem paths under `--from` / `--source` or `initiative.md:inputs`)  |
-| `Workspace` box (cloned repos)    | —                                             | `.specify/workspace/<project>/`                                             |
-| `Plan` box (output)               | —                                             | `.specify/plan.yaml` (RFC-2 format, unchanged)                              |
+| Diagram label                    | Phase / skill                            | CLI                                                                         |
+| -------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------- |
+| `plan` (centre)                  | `/spec:plan` (registry- and brief-aware) | `specify initiative {init, create, amend, validate}` (unchanged from RFC-2) |
+| `registry.yaml` (read)           | —                                        | `specify initiative registry {show, validate}` *(TBD)*                      |
+| `initiative.md` (read)           | —                                        | `specify initiative brief {init, show}` *(TBD)*                             |
+| Step ① — analyse inputs          | Discovery → `/spec:analyze`              | — (phase reads `--from` / `--against` / `--source` + brief inputs)          |
+| Step ② — sync peers              | Workspace (CLI-driven)                   | `specify initiative workspace {sync, status}` *(TBD)*                       |
+| Step ③ — generate plan           | Propose                                  | `specify initiative create` (per accepted slice; unchanged from RFC-2)      |
+| `Inputs` box (legacy code, docs) | —                                        | — (filesystem paths under `--from` / `--source` or `initiative.md:inputs`)  |
+| `Workspace` box (cloned repos)   | —                                        | `.specify/workspace/<project>/`                                             |
+| `Plan` box (output)              | —                                        | `.specify/plan.yaml` (RFC-2 format, unchanged)                              |
 
 
 ## Motivation
@@ -80,13 +80,13 @@ Both absent → the skill behaves exactly as today, running *analyse inputs → 
 Both files are **optional**. They cover orthogonal concerns:
 
 
-| File               | Carries                                                            | When required                                                                                                                                                |
-| ------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `registry.yaml`    | Platform catalogue (`projects[]`).                                 | Only when the platform spans more than one repo. Absent or single-entry → single-repo flow; multi-entry → *sync peers* phase (Layer 2) activates.           |
-| `initiative.md`    | Current initiative's name + seed inputs (frontmatter) + intent (body). | Whenever inputs would otherwise be supplied entirely via CLI flags, or the operator wants a durable home for the initiative's framing. Optional even then. |
+| File            | Carries                                                                | When required                                                                                                                                              |
+| --------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `registry.yaml` | Platform catalogue (`projects[]`).                                     | Only when the platform spans more than one repo. Absent or single-entry → single-repo flow; multi-entry → *sync peers* phase (Layer 2) activates.          |
+| `initiative.md` | Current initiative's name + seed inputs (frontmatter) + intent (body). | Whenever inputs would otherwise be supplied entirely via CLI flags, or the operator wants a durable home for the initiative's framing. Optional even then. |
 
 
-The multi-repo toggle is **`len(projects) > 1`** on `registry.yaml`, not the file's presence. A single-entry registry runs the same flow as no registry at all; `initiative.md`'s presence has no bearing on whether peers are synced.
+The multi-repo toggle is `**len(projects) > 1`** on `registry.yaml`, not the file's presence. A single-entry registry runs the same flow as no registry at all; `initiative.md`'s presence has no bearing on whether peers are synced.
 
 The RFC-2 readiness gate — "at least one of `--from`, `--against`, or `--source` must be supplied" — widens under Layer 1 to **"...or `initiative.md:inputs` is non-empty."** A bare `/spec:plan <name>` with no CLI inputs but a populated `initiative.md:inputs` is valid; a bare `/spec:plan <name>` with neither is still a hard exit, as today.
 
@@ -134,10 +134,10 @@ The `inputs[]` list and its closed `kind` vocabulary are unchanged from the earl
 The *analyse inputs* phase routes each input to a skill based on its declared `kind`:
 
 
-| `kind`          | Dispatch target  | Purpose                                                                                           |
-| --------------- | ---------------- | ------------------------------------------------------------------------------------------------- |
-| `legacy-code`   | `/spec:analyze`  | Produce a module-level inventory (entry points, dependencies, candidate capability hints).        |
-| `documentation` | `/spec:analyze`  | Extract capabilities, constraints, and open questions from prose, PDFs, runbooks, and API docs.   |
+| `kind`          | Dispatch target | Purpose                                                                                         |
+| --------------- | --------------- | ----------------------------------------------------------------------------------------------- |
+| `legacy-code`   | `/spec:analyze` | Produce a module-level inventory (entry points, dependencies, candidate capability hints).      |
+| `documentation` | `/spec:analyze` | Extract capabilities, constraints, and open questions from prose, PDFs, runbooks, and API docs. |
 
 
 The `kind` vocabulary is a **closed enum** for v1. An input with any other `kind` is a hard error at the *analyse inputs* phase; extending the vocabulary requires a new skill and an RFC update. This keeps discovery auditable ("which skill produced this line of `discovery.md`?") and forces any future ambiguity in source material to be resolved at the RFC level rather than by a generic fallback.
@@ -170,8 +170,8 @@ This section is orthogonal to the Layer 1 / 2 / 3 progression. It extends Layer 
 
 The monolith case is handled by splitting plan-time and define-time across two different skills:
 
-1. **`/spec:analyze` (plan-time, whole monolith).** Reads the whole code tree and emits a module-level inventory — entry points, outbound dependencies, import-graph edges between modules, candidate capability hints derived from docstrings, endpoint names, and READMEs — not full specs. Output size grows with module count, not LOC. The code-branch output contract (artifact shape, idempotency, header rules) matches the documentation-branch contract so both feed `discovery.md` in the same shape, and the propose brief does not care which kind of input produced a given section.
-2. **`/spec:extract` (define-time, one slice).** Runs per-change under `/spec:execute`, scoped to the files the change owns via its `scope` field. Produces `specs/<change>/` + `design.md` for that slice only. No single invocation ever sees more than one slice's worth of source.
+1. `**/spec:analyze` (plan-time, whole monolith).** Reads the whole code tree and emits a module-level inventory — entry points, outbound dependencies, import-graph edges between modules, candidate capability hints derived from docstrings, endpoint names, and READMEs — not full specs. Output size grows with module count, not LOC. The code-branch output contract (artifact shape, idempotency, header rules) matches the documentation-branch contract so both feed `discovery.md` in the same shape, and the propose brief does not care which kind of input produced a given section.
+2. `**/spec:extract` (define-time, one slice).** Runs per-change under `/spec:execute`, scoped to the files the change owns via its `scope` field. Produces `specs/<change>/` + `design.md` for that slice only. No single invocation ever sees more than one slice's worth of source.
 
 The split is on the skill boundary, not a mode flag: the discovery brief under `/spec:plan` calls `/spec:analyze` on every input; the define pipeline under `/spec:execute` calls `/spec:extract` on the current change's scope. Neither skill has a mode flag that changes its output shape — `/spec:analyze` always emits `discovery.md`, `/spec:extract` always emits `specs/` + `design.md`. The detailed code-branch algorithm inside `/spec:analyze` — module-detection rules, entry-point discovery, hint derivation — is deferred to a follow-up skill RFC; RFC-3 fixes only the skill boundary and the output contract.
 
@@ -345,7 +345,7 @@ Executed between *analyse inputs* and *generate plan*:
 
 ### Plan output shape
 
-The *generate plan* phase emits a **single cross-repo `plan.yaml`** in the initiating repo. Entries whose work spans peer projects reference them by registry name in `sources` / `affects`; execution of those entries requires Layer 3.
+The *generate plan* phase emits a **single cross-repo `plan.yaml*`* in the initiating repo. Entries whose work spans peer projects reference them by registry name in `sources` / `affects`; execution of those entries requires Layer 3.
 
 Per-repo `plan.yaml`s linked by a feature manifest — staged under `.specify/plans/<initiative-name>/<peer>/` and delivered out-of-band — is a plausible alternative output shape, but it is deferred (see *Alternatives Considered*). RFC-3 ships with exactly one shape.
 
@@ -364,8 +364,8 @@ These are all machinery the *sync peers* / *generate plan* phases shell out to; 
 
 ### `--dry-run` and `--extend` under Layer 2
 
-- **`--dry-run`.** The *sync peers* phase's read side may run (inventory whatever is already cloned) but MUST NOT clone new repos, write to `.specify/workspace/`, or write `workspace.md`. Mirrors the *analyse inputs* dry-run rule.
-- **`--extend`.** When `.specify/workspace/` is already present, the *sync peers* phase may skip re-sync; `workspace.md` is regenerated from the existing cache. Refresh-on-`--extend` policy is *(TBD)*.
+- `**--dry-run`.** The *sync peers* phase's read side may run (inventory whatever is already cloned) but MUST NOT clone new repos, write to `.specify/workspace/`, or write `workspace.md`. Mirrors the *analyse inputs* dry-run rule.
+- `**--extend`.** When `.specify/workspace/` is already present, the *sync peers* phase may skip re-sync; `workspace.md` is regenerated from the existing cache. Refresh-on-`--extend` policy is *(TBD)*.
 
 The single-writer invariant is unaffected: *sync peers* writes `workspace.md` under `.specify/plans/<name>/` and clones into `.specify/workspace/`; neither path touches `.specify/plan.yaml`.
 
@@ -427,9 +427,9 @@ An input `kind` not in the closed enum (`legacy-code`, `documentation`) is a har
 
 The *sync peers* phase could delegate cloning to the existing `/rt:git-cloner` skill. RFC-3 does not: cloning is deterministic work with no judgment in it, which per RFC-1 belongs in the CLI (`specify initiative workspace sync`). Routing it through a skill would also couple a core Specify flow to the `rt` plugin, which is the wrong layering.
 
-### `/spec:survey` as a separate skill
+### `/spec:scope` as a separate skill
 
-An earlier draft introduced `/spec:survey` as a dedicated code-only discovery skill, distinct from both `/spec:extract` and `/spec:analyze`. Rejected: it would fragment plan-time discovery across two skills (one for code, one for documentation) that emit the same artifact (`discovery.md`) and are invoked at the same phase. Folding both modalities into a single `/spec:analyze` with an internal kind branch gives one plan-time skill, one output contract, and one fixture tree. If the code and documentation branches ever diverge enough to justify splitting, the skill can be split later without changing the Plan schema, the discovery-dispatch vocabulary, or the propose-brief contract.
+An earlier draft introduced `/spec:scope` as a dedicated code-only discovery skill, distinct from both `/spec:extract` and `/spec:analyze`. Rejected: it would fragment plan-time discovery across two skills (one for code, one for documentation) that emit the same artifact (`discovery.md`) and are invoked at the same phase. Folding both modalities into a single `/spec:analyze` with an internal kind branch gives one plan-time skill, one output contract, and one fixture tree. If the code and documentation branches ever diverge enough to justify splitting, the skill can be split later without changing the Plan schema, the discovery-dispatch vocabulary, or the propose-brief contract.
 
 ### `--mode=survey` flag on `/spec:extract`
 
@@ -451,3 +451,4 @@ An alternative to the dedicated shared-infrastructure change is to permit scope 
 
 - [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — CLI surface this RFC extends.
 - [RFC-2: Execution](archive/rfc-2-execution.md) — consumer of the Plan this RFC produces; introduces the `/spec:plan` skill RFC-3 extends.
+
