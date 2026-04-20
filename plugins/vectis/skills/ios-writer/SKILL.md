@@ -14,7 +14,7 @@ When an existing iOS shell is detected, the skill operates in **update mode**:
 it compares the current `app.rs` types against the existing Swift code and
 makes targeted edits rather than regenerating from scratch.
 
-When no iOS shell exists yet, the skill runs `vectis add-shell ios --dir {app-dir}`
+When no iOS shell exists yet, the skill runs `specify vectis add-shell ios --dir {app-dir}`
 to scaffold the project. The CLI owns `iOS/project.yml`, `iOS/Makefile`, the
 Inject SPM wiring, the `{AppName}App.swift` entry point, a render-only
 `Core.swift` with CAP markers, a baseline `ContentView.swift`, and the starter
@@ -73,7 +73,7 @@ When `change-dir` is provided, also read:
 ## Mode Detection
 
 - **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes
-  `vectis add-shell ios` to scaffold the baseline, then proceeds directly
+  `specify vectis add-shell ios` to scaffold the baseline, then proceeds directly
   into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- `{project-dir}/` **does** exist and contains `.swift` files.
   Read existing code, diff against the core, and make targeted edits
@@ -83,7 +83,7 @@ Detection rule: check for `{project-dir}/*/Core.swift`. If present, switch to
 update mode. If not, run:
 
 ```bash
-vectis add-shell ios --dir {app-dir}
+specify vectis add-shell ios --dir {app-dir}
 ```
 
 `{app-dir}` is the parent directory of `shared/`; the CLI derives the `iOS/`
@@ -133,7 +133,7 @@ or parsed, report the error and stop.
 Run:
 
 ```bash
-vectis add-shell ios --dir {app-dir}
+specify vectis add-shell ios --dir {app-dir}
 ```
 
 The CLI derives the app name from `shared/Cargo.toml` / `app.rs` and
@@ -282,10 +282,12 @@ Output the diff summary before making edits.
 
 XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell
 scaffolding (`project.yml` packages, Inject SPM wiring, CAP markers, starter
-screens) are owned by the CLI's embedded templates
-(`crates/vectis-cli/src/init/ios.rs` and
-`crates/vectis-cli/embedded/ios/`). Do not hand-edit those files in Create
-Mode; let `vectis add-shell ios` write them and then modify in Update Mode.
+screens) are owned by the CLI's embedded templates in the
+[`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo
+(`<specify-cli>/crates/vectis/src/init/ios.rs` and
+`<specify-cli>/templates/vectis/ios/`). Do not hand-edit those files in
+Create Mode; let `specify vectis add-shell ios` write them and then modify
+in Update Mode.
 
 ## Examples
 
