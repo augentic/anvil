@@ -20,7 +20,7 @@ eliciting intent from the user, reading brief bodies, and writing the
 artifact files those briefs describe.
 
 > See `rfcs/archive/rfc-2-execution.md` §"Execution Model Overview" and
-> `rfcs/assets/specify-framework.png` for where this skill sits in the
+> `rfcs/assets/execution.png` for where this skill sits in the
 > `/spec:execute` driver loop.
 
 ---

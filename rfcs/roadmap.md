@@ -24,11 +24,11 @@ See also: [RFC-1a: Deferred Validation](archive/rfc-1a-validation.md) — the th
 
 **Solution:** A Plan (`plan.yaml`) that drives the same define-build-merge loop Specify already uses, change by change, with dependency tracking and progressive baseline accumulation. For legacy migration, a change adds `sources` and define's extract sub-skill analyses them. For greenfield work, define starts from the description. The loop is the same either way. Extracted and greenfield changes coexist in a single plan. Layer 2 adds the `/spec:execute` driver skill (and Layer 3's `/spec:plan` entry-writer skill) that automate the loop.
 
-## [RFC-3: Multi-Repo Coordination](rfc-3-multi-repo.md)
+## [RFC-3: Multi-Repo Planning](rfc-3-planning.md)
 
-**Problem:** The `.specify/` directory is project-local. There is no concept of a spec reference that spans repositories, and conflict detection only works within a single workspace. A feature like "add OAuth login" that touches backend, frontend, and shared-types repos has no resolution layer for cross-repo spec references.
+**Problem:** RFC-2 assumes you already know the changes. For legacy modernisation, greenfield builds across multiple repos, and platform-wide initiatives, the agent has to *derive* the changes from inputs (legacy code, documentation) and coordinate them across a set of repos whose scope isn't declared anywhere. RFC-2's `/spec:plan` handles single-repo plan authoring; the multi-repo case has no equivalent.
 
-**Solution:** A federation model — peer repositories declared in config, cross-repo spec references resolved by the CLI, and coordinated validation that catches contract mismatches across repo boundaries. Plans (RFC-2) provide the coordination layer for multi-repo initiatives; federation provides the resolution and validation layer that makes cross-repo references work.
+**Solution:** Extend `/spec:plan` to be registry-aware, and add a fixed *sync peers* phase that runs automatically when `registry.yaml` is present, cloning peer repos into `.specify/workspace/` and inventorying their specs. Inputs are dispatched by `kind`: legacy code to `/spec:extract`, documentation to a new `/spec:analyze` skill; the vocabulary is a closed enum. The same `/spec:plan <name>` command scales unchanged from a single repo to 100+ repos, with no planning configuration file. Layer 1 introduces `registry.yaml` and the discovery-dispatch contract; Layer 2 adds the sync-peers phase for multi-repo runs; Layer 3 adds federation at execution time (cross-repo spec references, contract reconciliation) on top of the same workspace.
 
 ## [RFC-4: Type-Safe Skill Expression](rfc-4-dsl.md)
 

@@ -1,6 +1,6 @@
 # RFC-1: `specify` CLI
 
-> Status: Draft · Depends: — · Enables: [RFC-2](../archive/rfc-2-execution.md), [RFC-3](../rfc-3-multi-repo.md), [RFC-4](../rfc-4-dsl.md), [RFC-5](../rfc-5-framework-lint.md)
+> Status: Draft · Depends: — · Enables: [RFC-2](../archive/rfc-2-execution.md), [RFC-3](../rfc-3-planning.md), [RFC-4](../rfc-4-dsl.md), [RFC-5](../rfc-5-framework-lint.md)
 
 ## Abstract
 
@@ -10,7 +10,7 @@ Replace prose-interpreted deterministic operations (validation, task parsing, ar
 
 Every precision-critical operation — validation, task parsing, artifact structure checking — is currently performed by the LLM interpreting prose rules. This produces unreliable results for operations that are fundamentally structured decision trees.
 
-The CLI is the foundation everything else builds on. Feature manifest commands ([RFC-2](../archive/rfc-2-execution.md)), multi-repo coordination ([RFC-3](../rfc-3-multi-repo.md)), and skill validation ([RFC-4](../rfc-4-dsl.md)) all require a binary that understands `.specify/` structure, spec format, and schema rules. Building the CLI first means every subsequent RFC extends an existing tool rather than creating a new one.
+The CLI is the foundation everything else builds on. Feature manifest commands ([RFC-2](../archive/rfc-2-execution.md)), multi-repo coordination ([RFC-3](../rfc-3-planning.md)), and skill validation ([RFC-4](../rfc-4-dsl.md)) all require a binary that understands `.specify/` structure, spec format, and schema rules. Building the CLI first means every subsequent RFC extends an existing tool rather than creating a new one.
 
 ## Design Principles
 
@@ -53,12 +53,12 @@ The first four items establish a working binary with immediate value. Items 5–
 
 These build on the existing `/spec:extract`, `wiretapper`, `replay-writer`, and core `/spec:*` skills. See [RFC-2](../archive/rfc-2-execution.md) for the full design.
 
-#### Phase 3: Federation extensions ([RFC-3](../rfc-3-multi-repo.md))
+#### Phase 3: Federation extensions ([RFC-3](../rfc-3-planning.md))
 
 12. **Federation config** and `specify federation sync` for multi-repo
 13. **Cross-repo spec references** and `specify federation validate`
 
-See [RFC-3](../rfc-3-multi-repo.md) for the full design.
+See [RFC-3](../rfc-3-planning.md) for the full design.
 
 ### Impact on Existing Skills
 
@@ -1191,6 +1191,6 @@ Upgrading `specify_version` is user-driven: running `specify init --upgrade` rew
 
 - [RFC-1-A: Deferred Validation](rfc-1a-validation.md) — the three-way Pass/Fail/Deferred classification
 - [RFC-2: Feature Manifests](../archive/rfc-2-execution.md) — extends the CLI with `specify manifest` subcommands
-- [RFC-3: Multi-Repo Coordination](../rfc-3-multi-repo.md) — extends the CLI with `specify federation` subcommands
+- [RFC-3: Multi-Repo Coordination](../rfc-3-planning.md) — extends the CLI with `specify federation` subcommands
 - [RFC-4: Type-Safe Skill Expression](../rfc-4-dsl.md) — extends the framework linter with skill validation
 - [RFC-5: Framework Linter](../rfc-5-framework-lint.md) — ports `checks.ts` into a `specify-check` crate and adds `specify check`
