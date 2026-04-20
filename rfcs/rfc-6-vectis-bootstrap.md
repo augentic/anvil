@@ -1,5 +1,13 @@
 # RFC-6: Vectis Bootstrap CLI
 
+> **Status: Superseded.** The standalone `vectis` binary described here has
+> been folded into the `specify` CLI as the `specify vectis ...` subcommand
+> tree, living in [`augentic/specify-cli`](https://github.com/augentic/specify-cli)
+> (`crates/vectis/` library + `templates/vectis/`). This RFC documents the
+> original standalone-binary design and is preserved for historical context;
+> for current invocation, paths, and JSON contract see the vectis plugin
+> SKILLs (`plugins/vectis/skills/{template-updater,core-writer,ios-writer,android-writer}/`).
+
 > Status: Draft · Depends: — · Enables: skill simplification for `core-writer`, `ios-writer`, `android-writer`
 
 ## Abstract

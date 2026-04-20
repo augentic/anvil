@@ -14,7 +14,7 @@ When an existing project is detected, the skill operates in **update mode**: it
 compares the Specify artifacts against the current implementation and makes targeted
 edits rather than regenerating from scratch.
 
-When no project exists yet, the skill runs `vectis init` (and `vectis verify`) to
+When no project exists yet, the skill runs `specify vectis init` (and `specify vectis verify`) to
 scaffold the workspace, shared crate, and toolchain using the embedded Crux version
 pins. The CLI is the single source of truth for Cargo manifests, `rust-toolchain.toml`,
 `.gitignore`, `ffi.rs`, `codegen.rs`, and the `lib.rs`/`app.rs` skeleton. Once the
@@ -89,7 +89,7 @@ custom capability module following the pattern in `references/crux-custom-capabi
 The skill operates in one of two modes depending on whether an existing project is found:
 
 - **Create Mode** -- used when `{project-dir}/shared/src/app.rs` does **not** exist.
-  The skill invokes `vectis init` to scaffold the baseline, then proceeds directly
+  The skill invokes `specify vectis init` to scaffold the baseline, then proceeds directly
   into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- used when `{project-dir}/shared/src/app.rs` **does** exist.
   Reads the existing code, diffs it against the artifacts, and makes targeted edits
@@ -103,8 +103,8 @@ Detection rule: check for the file `{project-dir}/shared/src/app.rs`. If the fil
 exists, switch to update mode. If not, run:
 
 ```bash
-vectis init {AppName} --dir {project-dir} --caps {detected-caps}
-vectis verify --dir {project-dir}
+specify vectis init {AppName} --dir {project-dir} --caps {detected-caps}
+specify vectis verify --dir {project-dir}
 ```
 
 `{AppName}` is the derived App struct name (see Derived Arguments). `{detected-caps}`
@@ -172,8 +172,8 @@ Derive `{AppName}` (see Derived Arguments § App struct name) and `{caps}` (see
 Capability Detection; comma-separated, lowercase, in artifact order). Then run:
 
 ```bash
-vectis init {AppName} --dir {project-dir} --caps {caps}
-vectis verify --dir {project-dir}
+specify vectis init {AppName} --dir {project-dir} --caps {caps}
+specify vectis verify --dir {project-dir}
 ```
 
 Both commands produce structured JSON. On non-zero exit, surface the CLI's error
@@ -202,10 +202,10 @@ those placeholders with real logic; when the placeholder bodies are gone, drop
 the two render-only-baseline `#[allow(...)]` attributes -- leaving them in place
 is harmless under `-D warnings` but masks future regressions.
 
-`vectis init` also seeds `deny.toml` with a `[licenses] private = { ignore = true }`
+`specify vectis init` also seeds `deny.toml` with a `[licenses] private = { ignore = true }`
 allowance and an `[advisories] ignore = [...]` list for today's unavoidable
 transitive advisories, plus `publish = false` in `shared/Cargo.toml`. Do not
-hand-seed `supply-chain/config.toml` exemptions -- `vectis verify` bootstraps them
+hand-seed `supply-chain/config.toml` exemptions -- `specify vectis verify` bootstraps them
 via `cargo vet regenerate exemptions` on the first run. If the user later decides
 to publish the `shared` crate, both `publish = false` **and** a matching
 `license = "..."` field must land in the same edit (they pair together).
@@ -518,10 +518,12 @@ Consult these references during generation. Do not deviate from the patterns the
 | `references/crux-testing-patterns.md` | Testing effects, events, resolving requests |
 
 Version pins, Cargo workspace layout, `rust-toolchain.toml`, `ffi.rs`, `codegen.rs`,
-and `.gitignore` are owned by the CLI's embedded templates
-(`crates/vectis-cli/embedded/` and `crates/vectis-cli/src/scaffold/core.rs`). When a
-spec change requires updating a pinned version, run `vectis update-versions` rather
-than editing files in this crate by hand.
+and `.gitignore` are owned by the CLI's embedded templates in the
+[`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo
+(`<specify-cli>/crates/vectis/embedded/` and
+`<specify-cli>/crates/vectis/src/init/core.rs`). When a spec change
+requires updating a pinned version, run `specify vectis update-versions`
+rather than editing files in this crate by hand.
 
 ## Examples
 
@@ -614,7 +616,7 @@ all other items apply in both modes.
 ## Important Notes
 
 - **Crux versions**: The CLI owns all version pins via its embedded `versions.toml`.
-  Use `vectis update-versions` to refresh the pinned set; never hand-edit Cargo
+  Use `specify vectis update-versions` to refresh the pinned set; never hand-edit Cargo
   dependency versions in a generated project. `crux_core`, `facet`, `uniffi`, and
   companion crates are selected by the CLI so that `crux_core`'s bundled
   `uniffi_bindgen` matches the runtime `uniffi` crate.
