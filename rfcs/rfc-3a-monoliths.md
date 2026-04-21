@@ -1,4 +1,4 @@
-# RFC-3: Initiative Planning
+# RFC-3a: Monolith Migration Planning
 
 > Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md)
 
@@ -12,7 +12,7 @@ Internally, `/spec:plan` runs a fixed three-phase flow: *analyse inputs* → *(s
 
 There is no pipeline declaration file. RFC-3 does not move `pipeline.plan` anywhere: it eliminates the configuration surface entirely for v1 so the fixed shape is the only shape. `schema.yaml` retains its Layer 1 role (`define/build/merge`); no planning config lives there. Configurability is re-addable in a later RFC without migration (see *Alternatives Considered*).
 
-RFC-3 addresses initiative planning across repos. Cross-repo spec references and contract validation are an execution-time concern that sits downstream of the planning flow introduced here. They are captured as Layer 3 and detailed in a follow-up revision.
+RFC-3 addresses initiative planning across repos. Cross-repo spec references and contract validation are an execution-time concern that sits downstream of the planning flow introduced here. They are explicitly out of scope for RFC-3 and captured separately in [RFC-3b](rfc-3b-layer-3.md).
 
 In parallel, RFC-3 scales `/spec:plan` *down* into large monoliths by splitting the code-handling pipeline across two skills — a cheap whole-source analysis via `/spec:analyze` at plan-authoring time (emitting capability summaries whose `sources:` lists propose scope directly), and a deep per-slice extraction via `/spec:extract` at `/spec:define` time — and by adding an optional `scope` field to plan entries so each change's define runs against only the files that change owns. See §*Large-Monolith Decomposition*.
 
@@ -36,14 +36,16 @@ The flow is fixed: phases run in order, and the *sync peers* phase is present if
 | Diagram label                    | Phase / skill                            | CLI                                                                         |
 | -------------------------------- | ---------------------------------------- | --------------------------------------------------------------------------- |
 | `plan` (centre)                  | `/spec:plan` (registry- and brief-aware) | `specify initiative {init, create, amend, validate}` (unchanged from RFC-2) |
-| `registry.yaml` (read)           | —                                        | `specify initiative registry {show, validate}` *(TBD)*                      |
-| `initiative.md` (read)           | —                                        | `specify initiative brief {init, show}` *(TBD)*                             |
+| `registry.yaml` (read)           | —                                        | `specify initiative registry {show, validate}`                              |
+| `initiative.md` (read)           | —                                        | `specify initiative brief {init, show}`                                     |
 | Step ① — analyse inputs          | Discovery → `/spec:analyze`              | — (phase reads `--from` / `--against` / `--source` + brief inputs)          |
-| Step ② — sync peers              | Workspace (CLI-driven)                   | `specify initiative workspace {sync, status}` *(TBD)*                       |
+| Step ② — sync peers              | Workspace (CLI-driven)                   | `specify initiative workspace {sync, status}`                               |
 | Step ③ — generate plan           | Propose                                  | `specify initiative create` (per accepted slice; unchanged from RFC-2)      |
 | `Inputs` box (legacy code, docs) | —                                        | — (filesystem paths under `--from` / `--source` or `initiative.md:inputs`)  |
 | `Workspace` box (cloned repos)   | —                                        | `.specify/workspace/<project>/`                                             |
 | `Plan` box (output)              | —                                        | `.specify/plan.yaml` (RFC-2 format, unchanged)                              |
+
+CLI verb names listed above are normative for this RFC. They have not yet shipped in `specify-cli` but are the contract new code under RFC-3 should implement against; a future CLI RFC may rename them, with migration notes at that point.
 
 
 ## Motivation
@@ -62,7 +64,7 @@ RFC-2's Layer 3 `/spec:plan` skill addresses the first case for a single repo. T
 - **RFC-2 (Plans):** the Plan format is unchanged. The `/spec:plan` skill — its invocation, its core loop, and its single-writer invariant — is unchanged. RFC-3 adds registry and initiative-brief awareness, a fixed internal *sync peers* phase, and a documentation-analysis skill; the operator-facing contract is the same.
 - **No planning configuration.** RFC-2 Layer 3 placed `pipeline.plan` inside `schema.yaml`. RFC-3 does not relocate that declaration to a new file — it eliminates it. `/spec:plan`'s internal flow is fixed for v1. `schema.yaml` retains its Layer 1 role (`define/build/merge`). Stack-specific planning helpers (e.g. slice-heuristic prose) may still ship in schema directories and be consumed directly by the *generate plan* phase.
 
-RFC-3 is structured in three layers; each layer describes a feature added to the planning flow (or, for Layer 3, the per-repo execution loop), not a separate skill or invocation path. **Layer 1** makes `/spec:plan` registry-aware and fixes the discovery-dispatch rule for code vs. documentation inputs. **Layer 2** adds the *sync peers* phase. **Layer 3** adds federation at execution time on top of the workspace Layer 2 materialises. A parallel §*Large-Monolith Decomposition* adds the two-skill analyze/extract split (plan-time vs define-time) and the `scope` field; it composes with all three layers but sits outside their progression.
+RFC-3 is structured in two layers; each layer describes a feature added to the planning flow. **Layer 1** makes `/spec:plan` registry-aware and fixes the discovery-dispatch rule for code vs. documentation inputs. **Layer 2** adds the *sync peers* phase. A parallel §*Large-Monolith Decomposition* adds the two-skill analyze/extract split (plan-time vs define-time) and the `scope` field; it composes with both layers but sits outside their progression. Federation at execution time (`@peer:capability` references, contract reconciliation, peer status roll-up) is deferred to [RFC-3b](rfc-3b-layer-3.md).
 
 ---
 
@@ -102,6 +104,8 @@ projects:
 ```
 
 `projects[]` enumerates the repos that comprise the platform. The registry exists to answer the platform question ("what repos are in scope, and what's already specified in them?"); it is deliberately free of initiative-specific state — no `name`, no `inputs`, no cycle-scoped fields. This keeps the file stable across initiatives and makes a later move to a shared registry (§*Alternatives Considered — Registry repo*) a mechanical lift rather than a schema rethink.
+
+A formal JSON schema for `registry.yaml` is deferred for v1 — the example above is normative, and `specify initiative registry validate` is expected to enforce that shape directly until a schema file lands alongside `plan.schema.json`. Same posture for `initiative.md` frontmatter (§*The Initiative Brief* below).
 
 ### The Initiative Brief
 
@@ -144,11 +148,13 @@ The `kind` vocabulary is a **closed enum** for v1. An input with any other `kind
 
 `/spec:analyze` is **new in RFC-3** and is the sole plan-time discovery skill. It accepts both code and documentation inputs, branches internally on `kind`, and contributes a merged **capability inventory** to `discovery.md`. Both branches emit the same shape — capability summaries carrying name, one-line description, `sources:` file-hint list (inferred from code clustering or extracted from prose references), `depends-on:` capability edges, optional structural hints (entry points, external dependencies), and a `confidence` marker — so the propose brief downstream does not distinguish which branch produced a given capability. For code inputs the clustering step (going from import graph + endpoint names + docstrings + READMEs to capability boundaries) is where output scaling lives: summaries grow with capability count (typically 10–40 for a large monolith), not LOC. For documentation inputs the extraction step identifies capabilities the docs describe, alongside the constraints and open questions the body carries. Both branches share one output artifact (`discovery.md`), one idempotency contract, and one fixture tree; the detailed per-kind clustering / extraction prompts are schema-owned and ship in the dispatching `schemas/<schema>/briefs/plan/discovery.md` brief. RFC-3 fixes only the skill boundary (one plan-time skill, one artifact), the output shape (capability summaries), and the closed `kind` vocabulary.
 
+**On-disk shape of capability summaries.** Each capability is emitted as a markdown heading (`### <capability-name>`) followed by a fenced YAML block carrying the structured fields (`summary`, `sources`, `depends-on`, `hints`, `confidence`). The heading keeps `discovery.md` human-scannable with existing tools; the YAML block makes the fields mechanically parseable by the propose brief without markdown-specific heuristics. See §*Plan-time analysis, define-time extraction* for the full example.
+
 `/spec:extract` (RFC-2 Layer 3, unchanged) moves to `/spec:define` time. It produces `specs/<change>/` + `design.md` for a single change, scoped by the change's `scope` field. See §*Large-Monolith Decomposition* for the plan-time / define-time split.
 
 ### `--source` flags and the brief
 
-`/spec:plan`'s existing `--source <key>=<path-or-url>` / `--from` / `--against` flags continue to work unchanged. They're additive with `initiative.md:inputs` — the *analyse inputs* phase reads both and merges them into `discovery.md`. Inputs supplied via CLI flags carry an explicit kind (e.g. `--source legacy=./old/:legacy-code`) so they route through the same closed-enum dispatch as brief inputs.
+`/spec:plan`'s existing `--source <key>=<path-or-url>` / `--from` / `--against` flags continue to work unchanged. They're additive with `initiative.md:inputs` — the *analyse inputs* phase reads both and merges them into `discovery.md`. Inputs supplied via CLI flags may carry an explicit kind (e.g. `--source legacy=./old/:legacy-code`) so they route through the same closed-enum dispatch as brief inputs. **A `--source` with no `:<kind>` suffix defaults to `kind: legacy-code`**, preserving RFC-2 `--source` semantics (every existing `--source` call site today is legacy code). `--from` defaults to `kind: documentation`; `--against` defaults to `kind: legacy-code`.
 
 ### The flow
 
@@ -164,7 +170,7 @@ Unchanged from today. The *sync peers* phase is absent because `registry.yaml` e
 
 A deep extraction over a whole monolith via `/spec:extract` is intractable: for 100k+ LOC with dozens of modules, the output overflows context, the resulting specs are unwieldy, and the human has no chance to draw slice boundaries before the extractor commits to them. RFC-3 solves this by keeping plan-time discovery cheap (`/spec:analyze` emits capability summaries — name, source-file hints, dependencies, confidence — not full specs) and deferring deep extraction (`/spec:extract`) to `/spec:define` time, where it runs per-slice against the scope each change owns.
 
-This section is orthogonal to the Layer 1 / 2 / 3 progression. It extends Layer 1's discovery dispatch and the Plan schema, composes with Layer 2's *sync peers* phase (per-peer decomposition works identically), and does not interact with Layer 3. It introduces no new operator-facing skill: `/spec:plan` remains the sole human entry point.
+This section is orthogonal to the Layer 1 / 2 progression. It extends Layer 1's discovery dispatch and the Plan schema, and composes with Layer 2's *sync peers* phase (per-peer decomposition works identically). It introduces no new operator-facing skill: `/spec:plan` remains the sole human entry point.
 
 ### Plan-time analysis, define-time extraction
 
@@ -218,7 +224,7 @@ changes:
 - A change with no `scope` entry for a given source hands the whole source to `/spec:extract` — behaves exactly as today. Backwards compatible and valid indefinitely: "no scope" means "the whole `sources[<key>]` tree is this slice". Making scope mandatory for legacy-code sources would break small-legacy changes, break pre-RFC-3 plans on amend, and make the Stage A ramp (humans author scope by hand) harder; the monolith-scale lint under §*Validation* captures the soundness concern without a hard rule.
 - A change with a `scope` hands only the filtered subset to `/spec:extract`.
 
-The field lands as a structural extension to `plan.schema.json` and to the RFC-1 Plan library types (an additional `BTreeMap<String, Scope>` on `PlanChange`, where `Scope` carries `include`, `exclude`, and `manifest`). No semantic changes to `sources`, `depends-on`, or `affects`; no change to the status state machine.
+The field lands as a structural extension to `plan.schema.json` and to the RFC-1 Plan library types (an additional `BTreeMap<String, Scope>` on `PlanChange`, where `Scope` carries `include`, `exclude`, and `manifest`). Because `plan.schema.json` is strict (`additionalProperties: false`), the schema update MUST land in the same change as the library type addition — a plan written with `scope` will fail validation until the schema accepts the new field. No semantic changes to `sources`, `depends-on`, or `affects`; no change to the status state machine.
 
 ### How `scope` travels through the pipeline
 
@@ -426,7 +432,7 @@ RFC-3 lands monolith decomposition in three stages; each stage is independently 
 
 **Stage C — tangled-case manifest emission.** For capabilities whose inferred `sources:` lists overlap with another capability's, or whose structure doesn't permit clean glob-based scoping (the `confidence: low` cases from Stage B), the propose brief emits **manifest-based** slices (§*Manifest shape*) — writing the explicit file list under `slices/<change>.yaml` and setting `scope.<src>.manifest` on the plan entry instead of `scope.<src>.include`. Stage B's glob-based output handles the 95% case; Stage C handles the tangled 5% without requiring hand-authored manifests.
 
-Stages compose with RFC-3's other features: Layer 2's *sync peers* phase runs unchanged (peer inventory is orthogonal to within-peer decomposition); Layer 3's federation is unchanged (cross-repo reference resolution is orthogonal to slice scope).
+Stages compose with RFC-3's other features: Layer 2's *sync peers* phase runs unchanged (peer inventory is orthogonal to within-peer decomposition). Federation at execution time (RFC-3b, cross-repo reference resolution) remains orthogonal to slice scope when it eventually lands.
 
 ### Non-goals
 
@@ -493,23 +499,23 @@ Executed between *analyse inputs* and *generate plan*:
   plan.yaml             # authored plan (RFC-2 format)
 ```
 
-`.specify/workspace/` is `.gitignore`d by default and rebuilt by `specify initiative workspace sync`.
+`.specify/workspace/` is `.gitignore`d by default — `specify init` appends `.specify/workspace/` to the project's `.gitignore` when it scaffolds `.specify/`, and `specify initiative workspace sync` asserts the entry is present (appending it if missing) before any clone writes land. The directory is rebuilt by `specify initiative workspace sync`; nothing else writes to it.
 
 ### Plan output shape
 
-The *generate plan* phase emits a **single cross-repo `plan.yaml*`* in the initiating repo. Entries whose work spans peer projects reference them by registry name in `sources` / `affects`; execution of those entries requires Layer 3.
+The *generate plan* phase emits a **single cross-repo `plan.yaml*`* in the initiating repo. Entries whose work spans peer projects reference them by registry name in `sources` / `affects`; execution of those entries requires the federation layer deferred to [RFC-3b](rfc-3b-layer-3.md).
 
 Per-repo `plan.yaml`s linked by a feature manifest — staged under `.specify/plans/<initiative-name>/<peer>/` and delivered out-of-band — is a plausible alternative output shape, but it is deferred (see *Alternatives Considered*). RFC-3 ships with exactly one shape.
 
 ### CLI surface additions
 
 
-| Operation                        | CLI                                                    |
-| -------------------------------- | ------------------------------------------------------ |
-| Scaffold / show initiative brief | `specify initiative brief {init, show}` *(TBD)*        |
-| Read / verify registry           | `specify initiative registry {show, validate}` *(TBD)* |
-| Clone / refresh workspace        | `specify initiative workspace sync` *(TBD)*            |
-| Inspect workspace state          | `specify initiative workspace status` *(TBD)*          |
+| Operation                        | CLI                                             |
+| -------------------------------- | ----------------------------------------------- |
+| Scaffold / show initiative brief | `specify initiative brief {init, show}`         |
+| Read / verify registry           | `specify initiative registry {show, validate}`  |
+| Clone / refresh workspace        | `specify initiative workspace sync`             |
+| Inspect workspace state          | `specify initiative workspace status`           |
 
 
 These are all machinery the *sync peers* / *generate plan* phases shell out to; none are operator-facing entry points. `/spec:plan` remains the only command humans invoke.
@@ -517,23 +523,9 @@ These are all machinery the *sync peers* / *generate plan* phases shell out to; 
 ### `--dry-run` and `--extend` under Layer 2
 
 - `**--dry-run`.** The *sync peers* phase's read side may run (inventory whatever is already cloned) but MUST NOT clone new repos, write to `.specify/workspace/`, or write `workspace.md`. Mirrors the *analyse inputs* dry-run rule.
-- `**--extend`.** When `.specify/workspace/` is already present, the *sync peers* phase may skip re-sync; `workspace.md` is regenerated from the existing cache. Refresh-on-`--extend` policy is *(TBD)*.
+- `**--extend`.** When `.specify/workspace/` is already present, the *sync peers* phase reuses the existing clones — no new clone or fetch is performed — and regenerates `workspace.md` from the existing cache. Operators refresh peer clones explicitly via `specify initiative workspace sync` between runs; `/spec:plan --extend` never implicitly pulls from remotes. This keeps amend-style re-runs fast and deterministic, and makes the "is the workspace current?" question an explicit CLI action rather than a hidden side effect of `--extend`.
 
 The single-writer invariant is unaffected: *sync peers* writes `workspace.md` under `.specify/plans/<name>/` and clones into `.specify/workspace/`; neither path touches `.specify/plan.yaml`.
-
----
-
-## Layer 3: Federation at Execution Time
-
-Layer 3 is the smallest possible addition to RFC-2's per-repo execution loop once the workspace exists:
-
-- **Cross-repo spec references.** `@peer:capability` syntax in spec bodies. The CLI resolves against `.specify/workspace/<peer>/specs/`.
-- **Contract reconciliation.** `specify federation validate` compares provider / consumer contracts declared across repos and flags mismatches across the workspace.
-- **Peer status aggregation.** Read-only roll-up of peer change statuses into the initiating repo.
-
-Layer 3 reads the same `.specify/workspace/` that Layer 2 materialises, so no new cloning, config, or peer discovery is required.
-
-*(Detail TBD — ported from the federation draft.)*
 
 ---
 
@@ -607,4 +599,5 @@ An alternative to the dedicated shared-infrastructure change is to permit scope 
 
 - [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — CLI surface this RFC extends.
 - [RFC-2: Execution](archive/rfc-2-execution.md) — consumer of the Plan this RFC produces; introduces the `/spec:plan` skill RFC-3 extends.
+- [RFC-3b: Federation at Execution Time (Layer 3)](rfc-3b-layer-3.md) — execution-time cross-repo references, contract reconciliation, and peer status roll-up; out of scope for this RFC.
 
