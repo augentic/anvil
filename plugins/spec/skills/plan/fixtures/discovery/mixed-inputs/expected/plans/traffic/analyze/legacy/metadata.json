@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "source_key": "legacy",
+  "language": "rust",
+  "loc": 24,
+  "module_count": 2,
+  "top_level_modules": [
+    "src"
+  ]
+}

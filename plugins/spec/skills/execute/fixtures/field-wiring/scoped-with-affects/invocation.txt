@@ -1,0 +1,1 @@
+/spec:define extract-shared-validation --source monolith=./legacy/monolith --affects user-registration --affects email-verification --scope-include monolith=src/common/validation/**

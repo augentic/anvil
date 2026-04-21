@@ -18,7 +18,7 @@ Humans are expected to work through stock Specify:
 - `/spec:status` (check artifact completion and task progress)
 - `/spec:extract` (extract Specify artifacts from existing source code)
 - `/spec:execute` (drive an initiative's `.specify/plan.yaml` through define → build → merge; RFC-2 Layer 2, fully landed — `--dry-run` preview, supervised single-change run, self-heal on startup, `--loop` mode with terminal summary + SIGINT/SIGTERM handling, and `sources` / `affects` execution wiring)
-- `/spec:plan` (author the initial `.specify/plan.yaml` for an initiative via the `pipeline.plan` brief pipeline; RFC-2 Layer 3, fully landed — discovery + propose briefs for Omnia and Vectis, interactive accept / edit / reject loop, `.specify/plans/<name>/` working directory archived alongside the plan)
+- `/spec:plan` (author `.specify/plan.yaml` via `pipeline.plan`; RFC-2 Layer 3 + RFC-3a — discovery through `/spec:analyze`, optional **sync-peers** when `.specify/registry.yaml` declares multiple projects (`specify initiative workspace sync` + `workspace.md`), propose with glob or **manifest** scopes (Stage C), `.specify/plans/<name>/` artefacts archived with the plan; see [rfcs/rfc-3a-monoliths.md](rfcs/rfc-3a-monoliths.md) and [rfcs/rfc-3b-layer-3.md](rfcs/rfc-3b-layer-3.md))
 
 This repository provides specialist skills and references that support that workflow.
 
@@ -40,7 +40,7 @@ CLI surface the skills depend on:
 - `specify init` — scaffold `.specify/` and write `project.yaml`.
 - `specify status` — list active changes and per-change progress.
 - `specify change {create, list, status, transition, touched-specs, overlap, archive, drop, phase-outcome, journal-append}` — lifecycle verbs. `phase-outcome` stamps the `.metadata.yaml:outcome` that `/spec:execute` reads; `journal-append` writes `question` / `failure` / `recovery` entries into `journal.yaml`.
-- `specify initiative {init, validate, next, status, create, amend, transition, archive, lock}` — plan-level verbs backing RFC-2 Layer 1. Both humans (Layer 1) and `/spec:execute` (Layer 2) / `/spec:plan` (Layer 3) drive through this same CLI surface. `plan init` scaffolds an empty plan; `plan lock {acquire, release, status}` manages the `.specify/plan.lock` PID stamp that the `/spec:execute` driver takes for the duration of a run.
+- `specify initiative {init, validate, next, status, create, amend, transition, archive, lock, brief, registry, workspace}` — plan-level verbs (RFC-2 Layer 1 + RFC-3a). `init` scaffolds an empty plan; `brief {init, show}` owns `.specify/initiative.md`; `registry {show, validate}` owns `.specify/registry.yaml`; **`workspace {sync, status}`** materialises `.specify/workspace/<peer>/` for multi-repo planning; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/spec:execute`.
 - `specify schema {resolve, check, pipeline}` — schema resolution and brief topology.
 - `specify spec {preview, conflict-check}` — dry-run merge operations and baseline drift detection.
 - `specify validate` — structural + semantic artifact checks.
@@ -57,15 +57,15 @@ place for humans, agents, and CI alike.
 When an initiative is coordinated through a `.specify/plan.yaml`, the
 recommended path is:
 
-1. **Author.** `/spec:plan <initiative-name> --source <key>=<path-or-url> ...` — Layer 3 authoring skill that runs the schema's `pipeline.plan` briefs and writes `.specify/plan.yaml` via `specify initiative init` + one `specify initiative create` per accepted slice.
+1. **Author.** `/spec:plan <initiative-name> --source <key>=<path-or-url> ...` — Layer 3 skill runs `pipeline.plan` briefs, optionally **sync-peers** + `workspace.md` when the registry is multi-project, then `specify initiative init` + one `specify initiative create` per accepted slice (globs or `--scope-manifest` per RFC-3a Stage C).
 2. **Execute.** `/spec:execute --loop` — Layer 2 driver that repeatedly picks `specify initiative next`, runs `/spec:define → /spec:build → /spec:merge` on the chosen entry, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
 3. **Archive.** `specify initiative archive` sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
 Hand-driven fallback (RFC-2 Layer 1): skip `/spec:plan` and `/spec:execute`, author `plan.yaml` entry-by-entry with `specify initiative {init, create, amend}`, and drive the loop yourself via `specify initiative next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
 
 The phase skills themselves stay unaware of the plan — they operate
-change-by-change. Plan *entries* are only ever written via `specify
-plan create` / `specify initiative amend`; plan *status* is only ever written
+change-by-change. Plan *entries* are only ever written via `specify initiative create` /
+`specify initiative amend`; plan *status* is only ever written
 via `specify initiative transition`. A phase that discovers a neighbouring
 change mid-run (e.g. a define brief uncovering a bug fix that should be
 tracked) may shell out to `specify initiative create` / `specify initiative amend`

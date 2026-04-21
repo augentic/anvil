@@ -1,0 +1,9 @@
+changes:
+  - name: extract-shared-validation
+    sources: [monolith]
+    affects: [user-registration, email-verification]
+    scope:
+      monolith:
+        include:
+          - src/common/validation/**
+    status: pending

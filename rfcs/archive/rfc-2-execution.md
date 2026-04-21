@@ -1161,7 +1161,7 @@ The plan format supports multi-repo initiatives on both the source and target si
 
 - **Multi-source extraction.** A change's `sources` list declares which repos to extract from; a change may reference multiple sources. In scope for Layer 2.
 - **Multi-target implementation.** Features spanning multiple build targets are decomposed into separate changes with `depends-on` edges. In scope today.
-- **Cross-repo spec resolution.** Cross-repo spec references (distinct from cloning source repos) are resolved through the federation model defined in [RFC-3](../rfc-3-planning.md). Deferred.
+- **Cross-repo spec resolution.** Cross-repo spec references (distinct from cloning source repos) are resolved through the federation model defined in [RFC-3](../rfc-3a-plan.md). Deferred.
 
 ### Other Deferred Capabilities
 
@@ -1240,4 +1240,4 @@ The plan format supports multi-repo initiatives on both the source and target si
 ## References
 
 - [RFC-1: `specify` CLI](rfc-1-cli.md) — prerequisite; `specify plan` subcommands extend the CLI
-- [RFC-3: Multi-Repo Coordination](../rfc-3-planning.md) — provides federation resolution for plans that span repositories
+- [RFC-3: Multi-Repo Coordination](../rfc-3a-plan.md) — provides federation resolution for plans that span repositories

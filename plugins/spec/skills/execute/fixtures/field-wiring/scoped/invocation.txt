@@ -1,0 +1,1 @@
+/spec:define ingest-pipeline --source monolith=./legacy --scope-include monolith=src/ingest/** --scope-include monolith=src/kafka/** --scope-exclude monolith=src/ingest/_deprecated/**

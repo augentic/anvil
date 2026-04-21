@@ -1,0 +1,4 @@
+changes:
+  - name: lift-small-legacy
+    sources: [legacy]
+    status: pending

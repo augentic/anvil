@@ -1,6 +1,6 @@
 # RFC-3b: Federation at Execution Time (Layer 3)
 
-> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-3](rfc-3-monoliths.md)
+> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-3](rfc-3a-monoliths.md)
 > Out of scope for RFC-3. This document exists as a placeholder for the
 > contract; the design is not yet ready to implement.
 
@@ -79,4 +79,4 @@ specification:
 
 - [RFC-1: `specify` CLI](archive/rfc-1-cli.md)
 - [RFC-2: Execution](archive/rfc-2-execution.md)
-- [RFC-3: Initiative Planning](rfc-3-monoliths.md)
+- [RFC-3: Initiative Planning](rfc-3a-monoliths.md)

@@ -3,7 +3,10 @@ name: plan
 description: |
   Author the initial .specify/plan.yaml for an initiative via the
   pipeline.plan brief pipeline. Layer 3 counterpart to /spec:execute:
-  /spec:plan writes the plan, /spec:execute runs it.
+  /spec:plan writes the plan, /spec:execute runs it. When
+  `.specify/registry.yaml` declares more than one project, runs the
+  RFC-3a sync-peers phase (`specify initiative workspace sync`) before
+  propose and emits `workspace.md` for cross-repo planning.
 license: MIT
 argument-hint: "<initiative-name> [--from <path>...] [--against <path>] [--source <key>=<path-or-url>...] [--focus <area>] [--extend] [--dry-run]"
 ---
@@ -15,11 +18,14 @@ Author `.specify/plan.yaml` for a new initiative by running the
 `schema.yaml`. `/spec:plan` is the Layer 3 authoring counterpart to
 `/spec:execute`: one *writes* the plan, the other *runs* it.
 
-> **Status.** Layer 3 is fully landed as of RFC-2 closeout. Discovery
-> (step 3(a)) and propose (step 3(b)) both ship with brief wiring for
-> the Omnia and Vectis schemas; the core loop runs end-to-end against
-> either. Authoring a plan with `/spec:plan` and then driving it with
-> `/spec:execute --loop` is the supported happy path.
+> **Status.** Layer 3 is fully landed as of RFC-2 closeout, with
+> RFC-3a extensions: discovery (step 3(a)) routes through `/spec:analyze`;
+> when the registry declares **more than one project**, a **sync-peers**
+> step (3(a½)) runs `specify initiative workspace sync` and authors
+> `workspace.md` before propose (step 3(b)). See
+> [rfc-3a-monoliths.md](../../../../rfcs/rfc-3a-monoliths.md) and
+> [rfc-3b-layer-3.md](../../../../rfcs/rfc-3b-layer-3.md) for the wider platform
+> story (Layer 2 workspace vs Layer 3 federation deferrals).
 
 ## Overview
 
@@ -43,7 +49,7 @@ The on-disk contracts the authoring skill depends on are:
 | File / directory | Owner | Role |
 |---|---|---|
 | `.specify/plan.yaml` | library (`Plan::{init, create, amend, transition, archive}`) | Ordered change list with per-entry status. `/spec:plan` writes only via `specify initiative init` (step 2) and `specify initiative create` (step 3b). |
-| `.specify/plans/<name>/` | schema (`pipeline.plan` briefs) | Working directory for authoring artefacts — `discovery.md` from the discovery brief, `proposal.md` from the propose brief. Swept by `specify initiative archive` alongside the plan itself (RFC-2 L3.B). |
+| `.specify/plans/<name>/` | schema (`pipeline.plan` briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, optional `slices/*.yaml` (Stage C manifests), `analyze/<key>/metadata.json` (legacy-code). Swept by `specify initiative archive` alongside the plan itself (RFC-2 L3.B + RFC-3a C33). |
 | `schema.yaml:pipeline.plan` | schema (`Phase::Plan`) | Declares the ordered list of authoring briefs for the project's schema. Resolved via `specify schema pipeline --phase plan`. |
 
 See [RFC-2 §"Layer 3: Plan Authoring"](../docs/links.md#rfc-2-layer-3)
@@ -75,17 +81,20 @@ Flags:
   rewrites or "helps" the name.
 - **`--from <path>`** — artefact file(s) or directory describing the
   target shape for greenfield authoring. Repeatable. Consumed by the
-  discovery brief (L3.F).
+  discovery brief (L3.F). Kind defaults to `documentation`; override
+  via `:<kind>` suffix (see §*Kind defaults for CLI flags*).
 - **`--against <path>`** — an existing codebase to delta against, used
   for refactor or modernisation initiatives. Consumed by the discovery
-  brief (L3.F).
+  brief (L3.F). Kind defaults to `legacy-code`; override via `:<kind>`
+  suffix (see §*Kind defaults for CLI flags*).
 - **`--source <key>=<path-or-url>`** — a named source for migration.
   Repeatable. The `key` is a kebab-case identifier recorded in the
   plan's top-level `sources` map and referenced by individual plan
   entries via their `sources` list; the `value` is either a local
   filesystem path or a git URL. The skill forwards the tuple verbatim;
-  cloning (if any) is the discovery brief's concern via
-  `/spec:extract` and `git-cloner`.
+  cloning (if any) is the discovery brief's concern via `/spec:analyze`
+  and `git-cloner`. Kind defaults to `legacy-code`; override via
+  `:<kind>` suffix (see §*Kind defaults for CLI flags*).
 - **`--focus <area>`** — optional scoping hint for the propose brief
   (L3.G). Free-form string; the propose brief decides how to interpret
   it.
@@ -98,9 +107,65 @@ Flags:
 - **`--dry-run`** — emit the readiness report and the proposed plan
   to stdout; write nothing. See [§Modes → `--dry-run`](#--dry-run).
 
-At least one of `--from`, `--against`, or `--source` must be supplied.
-A bare `/spec:plan <name>` is a hard exit — the skill cannot decide
-the initiative's shape without at least one input.
+At least one of `--from`, `--against`, `--source`, or a populated
+`initiative.md:inputs` list must be supplied. A bare
+`/spec:plan <name>` with no CLI inputs **and** no `initiative.md` (or
+`initiative.md` with empty `inputs`) is a hard exit — the skill cannot
+decide the initiative's shape without at least one input.
+
+When `initiative.md:inputs` is the only source of inputs, the skill
+reads them via `specify initiative brief show --format json` before
+entering the core loop and treats each entry as if it had been
+supplied on the command line: `kind: legacy-code` entries route
+through the same path as `--source <k>=<path>:legacy-code`, and
+`kind: documentation` entries route through the `--from` path. The
+closed `kind` enum and default-kind mapping for CLI flags are pinned
+under §*Input kinds* and §*Kind defaults for CLI flags* below.
+Both documentation and legacy-code dispatch are now live via
+`/spec:analyze` (RFC-3a C19 + C23). Plan-time `/spec:extract` call
+sites have been fully retired; `/spec:extract` now runs only at
+`/spec:define` time against the current change's scope. See RFC-3a
+§*Discovery dispatch* for the full story.
+
+## Input kinds (normative, RFC-3a v1)
+
+Every input eventually analysed by the plan flow — whether
+CLI-supplied (`--from` / `--against` / `--source`) or brief-supplied
+(`initiative.md:inputs[].kind`) — is classified by a **closed kind
+enum**:
+
+| kind            | Purpose                                                                                                 |
+| --------------- | ------------------------------------------------------------------------------------------------------- |
+| `legacy-code`   | Source code to be inferred into capability summaries at plan time and extracted per-change at define time. |
+| `documentation` | Prose, PDFs, runbooks, API specs — parsed for capability summaries, constraints, and open questions.    |
+
+The enum is closed: any other value is a hard error at the analyse
+phase (see `/spec:analyze`). Extending the vocabulary requires a new
+skill and an RFC update. This keeps the plan-time discovery contract
+auditable — every line in `discovery.md` is traceable to the
+kind-branch that produced it.
+
+## Kind defaults for CLI flags
+
+When an input is supplied via a CLI flag, its kind is determined as
+follows. The suffix syntax applies to `--source`, `--from`, and
+`--against` identically, though in practice only `--source` tends to
+carry explicit suffixes.
+
+| CLI flag            | Default kind    | Explicit override                |
+| ------------------- | --------------- | -------------------------------- |
+| `--source <k>=<p>`  | `legacy-code`   | `--source <k>=<p>:<kind>`        |
+| `--from <p>`        | `documentation` | `--from <p>:<kind>`              |
+| `--against <p>`     | `legacy-code`   | `--against <p>:<kind>`           |
+
+Inputs supplied via `initiative.md:inputs` carry their `kind:`
+explicitly in the frontmatter; no default is applied.
+
+An explicit `:<kind>` suffix whose value is not in the closed enum is
+a hard exit before the core loop begins (same diagnostic as
+`/spec:analyze`'s unknown-kind error). The suffix grammar is
+`<value>[:<kind>]`, where `<kind>` is one of `legacy-code` or
+`documentation` (kebab-case, case-sensitive).
 
 ## Core loop (five steps)
 
@@ -114,8 +179,16 @@ skill writes nothing to `.specify/plan.yaml` directly.
 
    - Validate <initiative-name> as kebab-case. Reject with a hard
      exit on failure.
-   - Require at least one of --from, --against, --source. Reject
-     with a hard exit on failure.
+   - Require at least one of --from, --against, --source, or a
+     populated `initiative.md:inputs` list. Discover the brief's
+     inputs via `specify initiative brief show --format json`
+     (exit 0 and `"brief": null` ⇒ brief absent ⇒ no brief inputs;
+     `"frontmatter.inputs": []` ⇒ present but empty ⇒ no brief
+     inputs). Reject with a hard exit on failure. A bare
+     /spec:plan <name> with neither CLI inputs nor a populated
+     initiative.md:inputs is still a hard exit — the diagnostic
+     MUST mention both possibilities so the operator knows the
+     two alternatives.
    - If .specify/plan.yaml exists and --extend was NOT supplied,
      refuse with a diagnostic pointing at `specify initiative
      archive`. (There is no --force. The refusal is deliberate:
@@ -153,6 +226,8 @@ skill writes nothing to `.specify/plan.yaml` directly.
    Then run each brief in order:
 
      a. discovery — see §"Step 3(a) — Discovery" below.
+     a½. sync-peers — see §"Step 3(a½) — Sync peers" below (multi-repo
+         only; skipped when the registry is absent or single-project).
      b. propose   — see §"Step 3(b) — Propose" below.
 
 4. Final validation gate.
@@ -180,9 +255,10 @@ skill writes nothing to `.specify/plan.yaml` directly.
 Step 3(a) invokes the discovery brief declared in `pipeline.plan` (for
 Omnia, [`schemas/omnia/briefs/plan/discovery.md`](../docs/links.md#omnia-discovery);
 other schemas ship their own). Discovery consumes the `--from`,
-`--against`, and `--source` inputs, invoking `/spec:extract` where a
-source tree needs to be parsed, and merges the results into a single
-neutral capability inventory at
+`--against`, and `--source` inputs, dispatching each input per its
+`kind` through `/spec:analyze` (both `documentation` and
+`legacy-code` branches live as of RFC-3a C19 + C23), and merges the
+results into a single neutral capability inventory at
 `.specify/plans/<initiative-name>/discovery.md`. The skill's job is
 to faithfully run the brief and pass inputs through; the algorithm
 (per-input handling, dedup rules, ordering) lives in the brief — see
@@ -199,6 +275,64 @@ ordering, the skill does not impose its own. An existing
 inventory against a small pre-seeded source tree is pinned by
 [`fixtures/discovery/expected-discovery.md`](fixtures/discovery/expected-discovery.md)
 against [`fixtures/discovery/legacy/`](fixtures/discovery/legacy/).
+
+## Step 3(a½) — Sync peers (multi-repo only)
+
+When **`.specify/registry.yaml`** exists and declares **more than one**
+project (`projects.length > 1` in the JSON from
+`specify initiative registry show --format json`), `/spec:plan` enters
+the RFC-3a **sync-peers** phase between discovery and propose. Single-
+repo initiatives (absent registry or `projects.length ≤ 1`) skip this
+step entirely.
+
+**Normative sequence**
+
+1. Shell out to **`specify initiative workspace sync`** from the
+   project root. This materialises `.specify/workspace/<project-name>/`
+   (symlink for local / relative `url:` values; shallow `git clone` /
+   `git fetch` for remotes — see the CLI). Treat a non-zero exit as a
+   hard failure for `/spec:plan`.
+2. Walk each materialised peer root read-only and author
+   **`.specify/plans/<initiative-name>/workspace.md`** — the peer
+   inventory the propose brief consumes alongside `discovery.md`.
+
+**`workspace.md` shape (pin for idempotency)**
+
+```markdown
+# Workspace — <initiative-name>
+
+## <registry-project-name>
+
+- **Slot:** `.specify/workspace/<registry-project-name>/`
+- **Materialisation:** `symlink` \| `git-clone` \| `missing` (mirror
+  `specify initiative workspace status`).
+- **Head:** `<40-char sha or —>` when the slot is a git work tree.
+- **Dirty:** `yes` \| `no` \| `—`
+- **Specify tree:** one bullet each if present: `plan.yaml`, active
+  changes under `changes/`, baseline specs under `specs/`, cached
+  schema under `.specify/.cache/` — paths relative to the peer slot.
+
+<!-- one `##` section per registry project, alphabetically by name -->
+```
+
+Re-running on an unchanged registry + workspace cache MUST yield
+byte-identical `workspace.md` (stable ordering throughout).
+
+**`--dry-run` (C32).** Do **not** shell `specify initiative workspace
+sync`; do **not** write `workspace.md`. You MAY print a short preview of
+what `workspace.md` *would* contain after a real sync, but only to
+stdout — no writes under `.specify/workspace/` or `.specify/plans/`.
+
+**`--extend` (C32).** Do **not** shell `specify initiative workspace
+sync` during the sync-peers step — operators refresh clones explicitly
+between runs. If `.specify/workspace/` already exists, still **rewrite**
+`workspace.md` from the current on-disk cache (read-only walk) so
+propose sees an up-to-date peer inventory without an implicit `git
+fetch`.
+
+Fixture for the inventory shape lives at
+[`fixtures/plan-layer2/workspace.md`](fixtures/plan-layer2/workspace.md)
+(placeholder peer names; copy the heading / bullet contract verbatim).
 
 ## Step 3(b) — Propose
 
@@ -285,7 +419,9 @@ skills:
 └── plans/
     └── <initiative-name>/
         ├── discovery.md            # from the discovery brief (step 3a)
-        └── proposal.md             # from the propose brief (step 3b)
+        ├── proposal.md             # from the propose brief (step 3b)
+        ├── analyze/                # `/spec:analyze` sidecars (legacy-code): `<source-key>/metadata.json`
+        └── slices/                 # per-change slice manifests when `scope.*.manifest` is used (`<change>.yaml`)
 ```
 
 The working directory is created lazily — by the discovery brief
@@ -334,6 +470,11 @@ skill-level contract is:
   entry's name in the "Plan entry" column; the human is not
   re-prompted. Slices whose names do not collide run through the
   usual accept / edit / reject / abort loop.
+- **Sync-peers (step 3(a½)):** when the registry declares more than
+  one project, **do not** shell `specify initiative workspace sync`.
+  Still regenerate `.specify/plans/<initiative-name>/workspace.md`
+  from the existing `.specify/workspace/` cache (read-only walk) so
+  propose stays deterministic without an implicit `git fetch`.
 - **Pre-existing entries are never modified.** The skill has no path
   that calls `specify initiative amend` or `specify initiative
   transition` — a propose-time decision to modify an existing entry
@@ -356,10 +497,13 @@ Under `--dry-run` the skill MUST NOT:
 - create `.specify/plans/<initiative-name>/`;
 - shell out to `specify initiative init`, `specify initiative create`,
   `specify initiative amend`, or `specify initiative transition`;
-- write any file under `.specify/`.
+- shell out to **`specify initiative workspace sync`** or write
+  **`.specify/plans/<initiative-name>/workspace.md`** (RFC-3a Layer 2
+  sync-peers dry-run rule);
+- write any file under `.specify/` (including under `.specify/workspace/`).
 
 The discovery brief's input-reading side (reading `--from` files,
-invoking `/spec:extract` against `--source` / `--against` inputs)
+invoking `/spec:analyze` against `--source` / `--against` inputs)
 runs under `--dry-run` so the preview inventory is real; only the
 write to `discovery.md` and the `.specify/plans/<name>/` directory
 creation are suppressed. The propose brief's slice-decomposition pass
@@ -475,9 +619,11 @@ Section rules:
   through `specify initiative init` (step 2, skipped under `--extend`)
   or `specify initiative create` (step 3b, one call per accepted
   slice).
-- **Clone git URLs.** Never. `--source` values that are git URLs are
-  passed through to `/spec:extract` verbatim; cloning (if any)
-  happens inside `/spec:extract` via `git-cloner`.
+- **Clone git URLs from this skill.** Never for **discovery** inputs:
+  `--source` git URLs are passed through to `/spec:analyze` verbatim.
+  Multi-repo **workspace** materialisation is exclusively
+  `specify initiative workspace sync` (Layer 1 CLI), invoked only in
+  the sync-peers step when `len(registry.projects) > 1`.
 - **Author propose brief bodies.** Never. The propose brief body is
   owned by the schema (for Omnia,
   [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose)

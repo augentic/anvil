@@ -8,41 +8,37 @@ Sections:
 
 - **Why**: 1-2 sentences on the problem or opportunity. What problem does
   this solve? Why now?
-- **Source**: Identify where the requirements come from. Pick ONE:
-  - **Repository**: URL of the repository to migrate (e.g.,
-    `https://github.com/org/repo`). The specs phase will clone the
-    repo and run `/spec:extract` to produce artifacts.
-  - **Source-code**: Local path to existing source code (e.g.,
-    `/path/to/legacy/crate`). The specs phase will run `/spec:extract`
-    to produce artifacts.
-  - **Epic**: JIRA/ADO/Linear epic key (e.g., `ATR-7102`). This triggers
-    the Omnia workflow — the specs phase will run epic-analyzer.
-  - **Manual**: Requirements are described directly in this proposal.
-    This is the default workflow — specs and design are written by hand.
+- **Source**: One line describing where the change's material comes from —
+  a code path, repository URL, documentation artefact (e.g. an epic key),
+  or **Manual** for greenfield / handwritten changes. The line is
+  descriptive; the pipeline is driven by the plan entry's `sources:`
+  list, which `/spec:execute` forwards to `/spec:define` as
+  `--source <key>=<path-or-url>` flags. **Manual** means no `--source`
+  flag is supplied and the specs brief's manual branch runs — see
+  `schemas/omnia/briefs/specs.md`.
 - **What Changes**: Bullet list of changes. Be specific about new
   capabilities, modifications, or removals. Mark breaking changes with
   **BREAKING**.
 - **Crates**: Identify which specs will be created or modified:
   - **New Crates**: List crates being introduced. Each
-    becomes a new `specs/<name>/spec.md`. Use kebab-case names 
+    becomes a new `specs/<name>/spec.md`. Use kebab-case names
     (e.g., `user-auth`, `data-export`).
-  - **Modified Crates**: List existing crates whose 
+  - **Modified Crates**: List existing crates whose
     REQUIREMENTS are changing. Only include if spec-level behavior
     changes (not just implementation details). Each needs a delta spec
     file. Check `.specify/specs/` for existing spec names. Leave empty if
     no requirement changes.
-  - For **Repository** or **Source-code** sources, crates
-    will be determined by the analyzer skill. List expected crates if
-    known, but analyzer output takes precedence.
+
+  (For source-driven runs, the final crate set emerges from
+  `/spec:extract`; the Crates section is the operator's intent, not a
+  final contract.)
 - **Impact**: Affected code, APIs, dependencies, or systems.
 
-IMPORTANT: The Crates section creates the contract between proposal
-and specs phases. For manual sources, research existing specs before
-filling this in — each crate listed will need a corresponding spec
-file. For repository sources, the analyzer discovers crates
-automatically.
+IMPORTANT: The Crates section creates the contract between proposal and
+specs phases. For manual changes, research existing specs before filling
+this in — each crate listed will need a corresponding spec file.
 
-Keep it concise (1-2 pages). Focus on the "why" not the "how" - 
+Keep it concise (1-2 pages). Focus on the "why" not the "how" -
 implementation details belong in design.md.
 
 This is the foundation - specs, design, and tasks all build on this.
@@ -56,7 +52,9 @@ This is the foundation - specs, design, and tasks all build on this.
 
 ## Source
 
-<!-- Pick ONE: Repository URL, Source-code path, Epic key, or Manual -->
+<!-- One line: code path / URL / doc artefact / "Manual". Descriptive only;
+     the plan entry's `sources:` list drives the pipeline (forwarded as
+     --source flags to /spec:define). "Manual" = greenfield / handwritten. -->
 
 ## What Changes
 

@@ -1,10 +1,11 @@
-# `/spec:execute` — `sources` / `affects` argument-wiring fixtures
+# `/spec:execute` — `sources` / `affects` / `scope` argument-wiring fixtures
 
-These fixtures pin the three argument-shape variants `/spec:execute`
-builds for `/spec:define` from a plan entry's `sources` and `affects`
-lists. They correspond to RFC-2 Change L2.I (the Layer 2 exit gate);
-the algorithm they illustrate lives in
-[`../../SKILL.md` → §Argument resolution (`sources` and `affects`)](../../SKILL.md).
+These fixtures pin the five argument-shape variants `/spec:execute`
+builds for `/spec:define` from a plan entry's `sources`, `affects`,
+and `scope` fields. They correspond to RFC-2 Change L2.I (the Layer
+2 exit gate) and RFC-3a (scope plumbing); the algorithm they
+illustrate lives in
+[`../../SKILL.md` → §Argument resolution (`sources`, `affects`, and `scope`)](../../SKILL.md).
 
 There is no automated harness that runs these fixtures. They are
 prose artefacts: a human reviewing a change to `/spec:execute`'s
@@ -24,19 +25,29 @@ field-wiring/
 │   ├── plan.yaml          # one-entry plan, affects: [user-registration], no sources
 │   ├── invocation.txt     # pinned command line
 │   └── transcript.md      # rendered define step (no extract sub-step; delta targeting)
-└── combined/
-    ├── plan.yaml          # one-entry plan, sources + affects on the same entry
-    ├── invocation.txt     # pinned command line
-    └── transcript.md      # rendered define step (both extract and delta targeting)
+├── combined/
+│   ├── plan.yaml          # one-entry plan, sources + affects on the same entry
+│   ├── invocation.txt     # pinned command line
+│   └── transcript.md      # rendered define step (both extract and delta targeting)
+├── scoped/
+│   ├── plan.yaml          # one-entry plan, sources + scope.include/exclude
+│   ├── invocation.txt     # pinned command line (per-glob --scope-* flags)
+│   └── transcript.md      # rendered define step (filter visible in extract sub-step)
+└── scoped-with-affects/
+    ├── plan.yaml          # three-signal plan (sources + affects + scope.include)
+    ├── invocation.txt     # pinned command line (all three flag families)
+    └── transcript.md      # canonical extract-shared-validation rendering
 ```
 
 ## Argument-shape matrix
 
-| Fixture | `sources` | `affects` | `/spec:define` extra flags |
-|---|---|---|---|
-| `sources-only/` | `[monolith]` | (empty) | `--source monolith=/path/to/legacy` |
-| `affects-only/` | (empty) | `[user-registration]` | `--affects user-registration` |
-| `combined/` | `[monolith]` | `[user-registration]` | `--source monolith=/path/to/legacy --affects user-registration` |
+| Fixture | `sources` | `affects` | `scope` | `/spec:define` extra flags |
+|---|---|---|---|---|
+| `sources-only/` | `[monolith]` | (empty) | (empty) | `--source monolith=/path/to/legacy` |
+| `affects-only/` | (empty) | `[user-registration]` | (empty) | `--affects user-registration` |
+| `combined/` | `[monolith]` | `[user-registration]` | (empty) | `--source monolith=/path/to/legacy --affects user-registration` |
+| `scoped/` | `[monolith]` | (empty) | `monolith: {include: [src/ingest/**, src/kafka/**], exclude: [src/ingest/_deprecated/**]}` | `--source monolith=./legacy --scope-include monolith=src/ingest/** --scope-include monolith=src/kafka/** --scope-exclude monolith=src/ingest/_deprecated/**` |
+| `scoped-with-affects/` | `[monolith]` | `[user-registration, email-verification]` | `monolith: {include: [src/common/validation/**]}` | `--source monolith=./legacy/monolith --affects user-registration --affects email-verification --scope-include monolith=src/common/validation/**` |
 
 ## Invariants every fixture asserts
 
@@ -59,9 +70,22 @@ field-wiring/
    values. None of the three fixtures here demonstrate this case;
    the pre-existing greenfield fixtures under
    `../single-change/success/` and `../loop/all-done/` cover it.
-5. **Both signals are independent.** The `combined/` fixture shows
-   that a single entry can carry both; define handles each
-   independently. The driver does not coordinate between them.
+5. **All three signals are independent.** The `combined/` fixture
+   shows that a single entry can carry both `sources` and `affects`;
+   `scoped-with-affects/` shows all three — `sources`, `affects`,
+   AND `scope` — on one entry. Define handles each independently.
+   The driver does not coordinate between them.
+6. **One flag per glob, one flag per manifest.** The `scoped/`
+   fixture asserts that two `scope.<key>.include` globs become two
+   separate `--scope-include <key>=<glob>` flags, never a
+   comma-joined value. Same for `--scope-exclude`. `--scope-manifest`
+   is emitted at most once per key and is mutually exclusive with
+   `--scope-include` / `--scope-exclude` for that key (enforced by
+   `specify initiative validate`).
+7. **Scope strings are opaque to the driver.** Globs are forwarded
+   verbatim; the driver does not walk the source tree, stat the
+   source path, or cross-check that any file matches. Zero-match
+   outcomes are `/spec:extract`'s concern (RFC-3a C06).
 
 ## Using these fixtures
 

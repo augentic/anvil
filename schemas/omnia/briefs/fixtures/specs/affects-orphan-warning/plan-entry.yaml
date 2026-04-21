@@ -1,0 +1,9 @@
+changes:
+  - name: extract-shared-validation
+    sources: [monolith]
+    affects: [user-registration, stale-flag-never-used]
+    scope:
+      monolith:
+        include:
+          - src/common/validation/**
+    status: pending

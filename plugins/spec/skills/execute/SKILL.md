@@ -154,8 +154,8 @@ or `journal.yaml` directly.
      - `next != null`                → continue to step 5 with this
                                         name. Capture the entry's
                                         `description`, `sources`,
-                                        and `affects` lists for use
-                                        in step 6 (see §Argument
+                                        `affects`, and `scope` for
+                                        use in step 6 (see §Argument
                                         resolution).
      - `reason == "in-progress"`     → defence in depth: an active
                                         entry exists that self-heal
@@ -183,12 +183,17 @@ or `journal.yaml` directly.
    directory, which `specify initiative validate` tolerates as a
    warning.
 
-6. Resolve the plan entry's `sources` / `affects` into define
-   arguments (see §Argument resolution below) and invoke:
+6. Resolve the plan entry's `sources` / `affects` / `scope` into
+   define arguments (see §Argument resolution below) and invoke:
 
      /spec:define <name> \
          [--source <key>=<path-or-url> [--source ...]] \
-         [--affects <existing-change-name> [--affects ...]]
+         [--affects <existing-change-name> [--affects ...]] \
+         [--scope-include <key>=<glob> [--scope-include ...]] \
+         [--scope-exclude <key>=<glob> [--scope-exclude ...]] \
+         [--scope-manifest <key>=<path>]   # mutually exclusive with
+                                           # --scope-include / --scope-exclude
+                                           # for the same source key
 
    The `description` field on the plan entry is additional context
    that define reads off the plan directly; the driver does not
@@ -259,9 +264,9 @@ or `journal.yaml` directly.
     where human triage is required.
 ```
 
-### Argument resolution (`sources` and `affects`)
+### Argument resolution (`sources`, `affects`, and `scope`)
 
-Step 6 of the per-change algorithm turns two plan-entry fields into
+Step 6 of the per-change algorithm turns three plan-entry fields into
 command-line arguments for `/spec:define`:
 
 - **`sources`** — a list of keys into the plan's top-level `sources`
@@ -275,15 +280,34 @@ command-line arguments for `/spec:define`:
   flags so define can locate `.specify/specs/<affects>/spec.md` and
   prepare to emit delta specs under the current change's
   `specs/<affects>/spec.md`.
+- **`scope`** — a map `{<source-key>: { include?, exclude?, manifest? }}`
+  declared on the plan entry. For each key, the driver emits one
+  `--scope-include <key>=<glob>` per glob in `scope.<key>.include`, one
+  `--scope-exclude <key>=<glob>` per glob in `scope.<key>.exclude`, and
+  one `--scope-manifest <key>=<path>` when `scope.<key>.manifest` is
+  present. The flags are forwarded verbatim; the driver does NOT read
+  or expand the globs, stat the manifest file, or validate that the
+  referenced globs match any files. Glob expansion happens inside
+  `/spec:extract` (after `/spec:define`'s per-source translation of
+  `--scope-*` into extract's native `--include` / `--exclude` /
+  `--manifest` flags), and the referential integrity of scope keys
+  against `sources` is already guaranteed by `specify initiative
+  validate` via the `scope-key-not-in-sources` diagnostic (see RFC-3a
+  §"How `scope` travels through the pipeline").
 
-The two signals are independent: a plan entry may declare both (the
-canonical case is a refactor that analyzes a legacy source AND amends
-prior specs — e.g. `extract-shared-validation` in RFC-2 §"The Plan"
-declares `sources: [monolith]` alongside `affects: [user-registration,
-email-verification]`). Define handles them independently — a
-source-aware extract sub-step runs when `--source` is present, and
-delta targeting kicks in when `--affects` is present — so the driver
-does not need to coordinate between them; it just forwards both.
+The three signals are independent: a plan entry may declare any
+combination of them (the canonical three-signal case is a refactor
+that analyzes a legacy source, amends prior specs, AND narrows the
+extracted slice — e.g. `extract-shared-validation` in RFC-3a §"`--affects` composition
+with scope" declares `sources: [monolith]`
+alongside `affects: [user-registration, email-verification]` and
+`scope.monolith.include: [src/common/validation/**]`). Define handles
+each signal independently — a source-aware extract sub-step runs when
+`--source` is present, delta targeting kicks in when `--affects` is
+present, and the per-source `--scope-*` flags are translated into
+`/spec:extract`'s native filters when scope is present — so the
+driver does not need to coordinate between them; it just forwards
+all three.
 
 For every key in the plan entry's `sources` list, look it up in the
 plan's top-level `sources` map and classify the value:
@@ -323,9 +347,41 @@ delta-targeting mechanism — typically by locating
 `specs/<name>/spec.md` in the current change. The driver does not
 inspect baseline specs itself; it only forwards the names.
 
-Three authoring pins under
-[`fixtures/field-wiring/`](fixtures/field-wiring/) cover the three
-shapes (`sources-only/`, `affects-only/`, `combined/`) — see the
+For each key in the plan entry's `scope` map, emit zero or more flags:
+
+1. **`scope.<key>.include`** — emit one `--scope-include <key>=<glob>`
+   per glob in the list, in declaration order. Empty list ⇒ zero flags.
+2. **`scope.<key>.exclude`** — symmetric with `include`.
+3. **`scope.<key>.manifest`** — when present, emit a single
+   `--scope-manifest <key>=<path>`. The path is forwarded as-is; the
+   driver does NOT stat it. Mutually exclusive with `include` /
+   `exclude` for the same key (enforced by `specify initiative
+   validate`).
+4. **Scope key missing from the entry's `sources` list** — the plan is
+   internally inconsistent; this is an `Error::Config`-level halt,
+   mirroring the unresolved-`sources` case above. `specify initiative
+   validate` should have caught this via `scope-key-not-in-sources`
+   (RFC-3a §*Validation*); reaching this branch means the plan was
+   edited out of band between validation and execution. Emit a
+   diagnostic naming the offending `(change, key)` pair, release the
+   driver lock, exit non-zero.
+5. **Source key without a scope entry** — zero flags for that key.
+   This is the back-compat path: pre-RFC-3a plans, small-legacy
+   changes, and greenfield entries produce the same command line they
+   always have.
+
+The driver does not interpret scope semantics: it does not expand
+globs, does not read the manifest file, does not cross-check globs
+against the source tree. The strings travel from `plan.yaml` to
+`/spec:define` unchanged. Translation into `/spec:extract`'s native
+`--include` / `--exclude` / `--manifest` flags happens inside
+`/spec:define`'s per-source brief loop; glob expansion and file-list
+resolution happen inside `/spec:extract` itself.
+
+Five authoring pins under
+[`fixtures/field-wiring/`](fixtures/field-wiring/) cover the five
+shapes — `sources-only/`, `affects-only/`, `combined/`, `scoped/`,
+and the three-signal `scoped-with-affects/` — see the
 [§Fixtures](#fixtures) table for the invocation each one pins.
 
 ### Subtleties
@@ -870,6 +926,7 @@ again.
 | Run self-heal on `in-progress` entries | Yes — §Self-heal on startup is the full contract. Five fixtures under `fixtures/self-heal/` pin the clean / done / failed / ambiguous-halt / mid-change-resume paths. Under `--dry-run` self-heal is report-only: same classification scan, no writes. |
 | Loop across changes | `--loop` iterates `specify initiative next → execute change` until no eligible change remains. The driver lock is held for the entire run (not per iteration). Individual failures / deferrals do NOT halt the loop — `specify initiative next` skips `failed` / `blocked` entries naturally. |
 | Resolve `sources` keys to paths / URLs and hand them to define | Yes — §Argument resolution resolves every key in the plan entry's `sources` list against the plan's top-level `sources` map and forwards the tuples to `/spec:define` as `--source <key>=<path-or-url>`. The driver does NOT clone git URLs or stat local paths; it only forwards the values. An unresolved key halts the run with `Error::Config`. The `affects` list travels as `--affects <name>` flags for define's delta targeting. |
+| Resolve `scope.<key>` entries to `--scope-*` flags and hand them to define | Yes — §Argument resolution walks every key in the plan entry's `scope` map and emits one `--scope-include <key>=<glob>` per `include` glob, one `--scope-exclude <key>=<glob>` per `exclude` glob, and one `--scope-manifest <key>=<path>` per `manifest` entry, forwarded verbatim to `/spec:define`. The driver does NOT expand globs, stat the manifest, or cross-check against the source tree — glob expansion and file-list resolution are `/spec:extract`'s concern, reached via `/spec:define`'s per-source translation into extract's native `--include` / `--exclude` / `--manifest` flags. A scope key absent from the entry's `sources` list halts the run with `Error::Config`. |
 
 The state the skill mutates is:
 
@@ -945,6 +1002,12 @@ No other on-disk state is written by `/spec:execute` itself.
   substitute a default, guess at a path, or drop the key silently.
   The same rule applies whether the run is `--dry-run`, supervised,
   or `--loop`.
+- Argument resolution never speculates over scope globs or manifest
+  paths — the driver forwards the strings unchanged; glob expansion
+  and file-list resolution are `/spec:extract`'s concern. A scope
+  key missing from the entry's `sources` list halts with
+  `Error::Config` under the same pattern as the unresolved-`sources`
+  case above.
 
 ## Fixtures
 
@@ -958,6 +1021,6 @@ directory are named inline.
 | [`fixtures/single-change/`](fixtures/single-change/) | Supervised per-change transcripts: success / failure / deferred. Each `plan.yaml.after` carries `status-reason` byte-identical to the phase's `outcome.summary` (drift is a regression). |
 | [`fixtures/self-heal/`](fixtures/self-heal/) | Five self-heal paths — clean-start / done-resolution / failed-resolution / ambiguous-halt / mid-change-resume. The writing path copies `outcome.summary` verbatim into `--reason`. |
 | [`fixtures/loop/`](fixtures/loop/) | Five `--loop` classifications: `all-done/` (every entry runs to `done`), `halted-on-self-heal-ambiguity/` (self-heal halt on startup), `stuck-on-blocked/` (loop drains eligible entries, exits with an unreachable `blocked` remainder), `driver-busy/` (second invocation refused by the lock), `driver-interrupted/` (SIGINT mid-build; build finishes, merge skipped, entry stays `in-progress`, lock released). |
-| [`fixtures/field-wiring/`](fixtures/field-wiring/) | Argument-resolution pins for the three `sources` / `affects` shapes — `sources-only/` (`/spec:define <name> --source monolith=/path/to/legacy`), `affects-only/` (`/spec:define <name> --affects user-registration`), `combined/` (both flags together). Each ships `plan.yaml`, `invocation.txt`, and `transcript.md`; these are authoring pins, not automated tests. |
+| [`fixtures/field-wiring/`](fixtures/field-wiring/) | Argument-resolution pins for the five `sources` / `affects` / `scope` shapes — `sources-only/` (`/spec:define <name> --source monolith=/path/to/legacy`), `affects-only/` (`/spec:define <name> --affects user-registration`), `combined/` (source + affects together), `scoped/` (source + `--scope-include` / `--scope-exclude` flags), and `scoped-with-affects/` (the canonical three-signal `extract-shared-validation` case from RFC-3a §*`--affects` composition with scope*). Each ships `plan.yaml`, `invocation.txt`, and `transcript.md`; these are authoring pins, not automated tests. |
 | [`fixtures/e2e-platform-v2/`](fixtures/e2e-platform-v2/) | End-to-end exit-gate meta-fixture: `/spec:execute --loop` driving the full RFC-2 §"The Plan" `platform-v2` example against a plan authored by `/spec:plan`. |
 | [`fixtures/e2e-platform-v2-with-crash/`](fixtures/e2e-platform-v2-with-crash/) | Same `platform-v2` plan as above with a simulated mid-change crash; exercises the self-heal-on-startup reclaim path end-to-end. |

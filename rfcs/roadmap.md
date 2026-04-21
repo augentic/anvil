@@ -24,7 +24,7 @@ See also: [RFC-1a: Deferred Validation](archive/rfc-1a-validation.md) — the th
 
 **Solution:** A Plan (`plan.yaml`) that drives the same define-build-merge loop Specify already uses, change by change, with dependency tracking and progressive baseline accumulation. For legacy migration, a change adds `sources` and define's extract sub-skill analyses them. For greenfield work, define starts from the description. The loop is the same either way. Extracted and greenfield changes coexist in a single plan. Layer 2 adds the `/spec:execute` driver skill (and Layer 3's `/spec:plan` entry-writer skill) that automate the loop.
 
-## [RFC-3: Multi-Repo Planning](rfc-3-planning.md)
+## [RFC-3: Multi-Repo Planning](rfc-3a-plan.md)
 
 **Problem:** RFC-2 assumes you already know the changes. For legacy modernisation, greenfield builds across multiple repos, and platform-wide initiatives, the agent has to *derive* the changes from inputs (legacy code, documentation) and coordinate them across a set of repos whose scope isn't declared anywhere. RFC-2's `/spec:plan` handles single-repo plan authoring; the multi-repo case has no equivalent.
 

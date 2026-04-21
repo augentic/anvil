@@ -1,11 +1,15 @@
 ---
 name: extract
-description: Extract Specify artifacts (specs + design.md) from existing source code. Produces reconstruction-grade, language-agnostic artifacts capturing domain-level business logic.
-argument-hint: "[source-path] [change-dir]"
+description: Extract Specify artifacts (specs + design.md) from existing source code. Produces reconstruction-grade, language-agnostic artifacts capturing domain-level business logic. Supports optional `--include` / `--exclude` / `--manifest` filters that scope which source files are read for business-logic extraction without changing the artifact output shape.
+argument-hint: "<source-path> <change-dir> [--include <glob>...] [--exclude <glob>...] [--manifest <path>]"
 allowed-tools: Read, Write, StrReplace, Shell, Grep
 ---
 
 # Extract
+
+> See also [`../analyze/SKILL.md`](../analyze/SKILL.md) for plan-time
+> capability inference — the sibling skill that emits capability
+> summaries into `discovery.md`, not full `specs/` + `design.md`.
 
 ## Overview
 
@@ -17,13 +21,65 @@ Analyze a source codebase to produce reconstruction-grade, **language-agnostic**
 
 1. **Source Path** (`$SOURCE_PATH`): Path to the source codebase
 2. **Change Directory** (`$CHANGE_DIR`): Specify change directory (e.g., `./.specify/changes/component/`)
+3. **Include globs** (`$INCLUDE`): Zero or more `--include <glob>` values that narrow the read set for business-logic extraction. Empty ≡ today's behaviour.
+4. **Exclude globs** (`$EXCLUDE`): Zero or more `--exclude <glob>` values that remove paths from the read set for business-logic extraction. Empty ≡ today's behaviour.
+5. **Manifest path** (`$MANIFEST`): Optional single `--manifest <path>` pointing at a slice manifest (see §*Manifest shape*). Mutually exclusive with `$INCLUDE` / `$EXCLUDE`.
 
 ```text
 $SOURCE_PATH = $ARGUMENTS[0]
 $CHANGE_DIR  = $ARGUMENTS[1]
 $SPECS_DIR   = $CHANGE_DIR/specs
 $DESIGN_PATH = $CHANGE_DIR/design.md
+$INCLUDE     = [--include <glob> ...]       # repeatable; possibly empty
+$EXCLUDE     = [--exclude <glob> ...]       # repeatable; possibly empty
+$MANIFEST    = --manifest <path>            # single; mutually exclusive with $INCLUDE/$EXCLUDE
 ```
+
+`$MANIFEST` is mutually exclusive with `$INCLUDE` / `$EXCLUDE`. Invoking extract with a `$MANIFEST` alongside any `$INCLUDE` or `$EXCLUDE` flag is a hard error — the driver (`/spec:execute`) and the schema's define brief should have caught it upstream at `specify initiative validate` time. Extract fails fast with a clear message rather than trying to reconcile the two modes.
+
+## Scope filters
+
+Scope filters restrict **which source files are read for business-logic extraction** (Step 2 onward). They never touch Step 1 — language detection and dependency version pinning always run against the full set of sentinel files listed in §*Sentinels always read*.
+
+- Globs are gitignore-style, with `**` for recursive match.
+- Globs resolve relative to `$SOURCE_PATH`.
+- Empty `$INCLUDE`, `$EXCLUDE`, and `$MANIFEST` ≡ today's behaviour: extract reads the full source tree. Small-legacy and greenfield callers see no change.
+- With `$INCLUDE` non-empty: the read set for business-logic extraction is the union of `$INCLUDE` glob matches, minus any paths that also match a glob in `$EXCLUDE`.
+- With `$MANIFEST` set: the read set is the verbatim file list from the manifest (see §*Manifest shape*). `$INCLUDE` and `$EXCLUDE` are absent in this mode.
+- A filter set that matches zero files under `$SOURCE_PATH` is a hard error — extract fails fast rather than emitting empty artifacts.
+
+### Sentinels always read
+
+Extract reads a fixed set of files regardless of the filter, for language / dependency detection:
+
+- `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`
+- `Cargo.toml`, `Cargo.lock`
+- `go.mod`, `go.sum`
+- `pyproject.toml`, `poetry.lock`, `requirements.txt`
+- `pom.xml`, `build.gradle[.kts]`, `gradle.lockfile`
+- `*.csproj`, `packages.lock.json`
+- top-level `README*`
+
+`$INCLUDE` cannot subtract sentinels; `$EXCLUDE` cannot hide them. Scope filters *business-logic extraction* (Step 2), not *manifest / language discovery* (Step 1).
+
+### Manifest shape
+
+v1 ships a minimal YAML manifest with `include` only:
+
+```yaml
+version: 1
+include:
+  - relative/path/to/file.ts
+  - another/file.rs
+```
+
+- Paths are **literal file paths**, resolved relative to `$SOURCE_PATH`. No globs inside a manifest — globbing lives in `$INCLUDE` / `$EXCLUDE`.
+- v1 is exactly `version` + `include` — no other top-level keys (`deny_unknown_fields`); `specify initiative validate` rejects unknown keys, wrong `version`, empty `include`, `..` segments, and absolute paths in `include` (see `specify-change` `Plan::validate` / `manifest-invalid`, `manifest-empty`, `manifest-path-escape`).
+- v1 ships `include` only. Line-range subsets per file, `exclude`, and per-file symbol filters are out of scope for v1 and are the natural v2 extensions.
+- A `$MANIFEST` that is missing, malformed, or references a file that does not exist under `$SOURCE_PATH` is a hard error — fail early with a clear message.
+- Manifests are authored at plan time (by the propose brief, per RFC-3a §*Manifest shape*) and referenced from the Plan's `scope.<src>.manifest` field. Extract consumes manifests; it does not author them. On disk they typically live under `.specify/plans/<initiative>/slices/` — see [`/spec:plan` working directory](../plan/SKILL.md) (§*Working directory*).
+
+For a walk-through, see [fixtures/scoped-monolith/](fixtures/scoped-monolith/).
 
 ## Principles (Non-Negotiable)
 
@@ -65,6 +121,8 @@ See complete definitions in [Specify Artifact Format Specification - Tags Refere
 6. Type definitions (interfaces, types, classes, structs, enums)
 7. **Guest/entry-point layer**: Middleware (CORS, auth), error code → HTTP status mapping, body injection/transformation, parameter sourcing, and any validation performed before the domain handler. See [Entry Point Patterns](../../references/entry-point-patterns.md) for framework-specific guidance.
 
+Scope filters never hide manifest files from this step — see §*Sentinels always read*. Language detection and dependency extraction always run against the full set of sentinel files regardless of `$INCLUDE` / `$EXCLUDE` / `$MANIFEST`.
+
 **Dependency Version Pinning**:
 
 Dependency version drift is a leading cause of build failures when regenerating from a specification. Capture dependency versions from the source project's **lock file**, not just the manifest.
@@ -99,6 +157,8 @@ In the design.md Dependencies section, list the **manifest version specifier** (
 - [ ] I've read the lock file for dependency versions (or flagged its absence)
 
 ### Step 2: Extract Business Logic
+
+When `$INCLUDE` / `$EXCLUDE` / `$MANIFEST` are set, restrict the read set for this step and every subsequent step accordingly. Files outside the scoped read set are not analyzed here — business-logic extraction, external-surface documentation, and type capture operate only on the filtered tree. Sentinel files (§*Sentinels always read*) remain available to Step 1 but do not feed Step 2's business-logic pass unless they also match the scope filter.
 
 **SEMANTIC DISCOVERY** (Optional but Recommended):
 
