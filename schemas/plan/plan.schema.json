@@ -39,14 +39,16 @@
       "properties": {
         "include": {
           "type": "array",
-          "description": "Gitignore-style glob patterns, resolved relative to the source's path, selecting which files `/spec:extract` reads for business-logic extraction. Sentinel manifest / lockfile discovery is unaffected (see RFC-3a §*Sentinels always read*).",
+          "description": "Gitignore-style glob patterns, resolved relative to the source's path, selecting which files `/spec:extract` reads for business-logic extraction. Sentinel manifest / lockfile discovery is unaffected (see RFC-3a §*Sentinels always read*). When present, must list at least one pattern; omit the key entirely to mean \"unset\".",
           "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
           "uniqueItems": true
         },
         "exclude": {
           "type": "array",
-          "description": "Gitignore-style glob patterns subtracted from the include set (or from the full source tree when `include` is absent). Cannot hide sentinel files.",
+          "description": "Gitignore-style glob patterns subtracted from the include set (or from the full source tree when `include` is absent). Cannot hide sentinel files. When present, must list at least one pattern; omit the key entirely to mean \"unset\".",
           "items": { "type": "string", "minLength": 1 },
+          "minItems": 1,
           "uniqueItems": true
         },
         "manifest": {

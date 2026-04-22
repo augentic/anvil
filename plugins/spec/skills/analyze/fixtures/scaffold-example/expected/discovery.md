@@ -5,7 +5,7 @@
 summary: Verify a newly registered account via a one-time email token.
 sources:
   - src/auth/verify.ts
-depends-on: [user-registration]
+depends-on: []
 hints:
   entry_points: [GET /auth/verify]
   external_deps: [postgres]
