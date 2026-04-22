@@ -1,0 +1,41 @@
+name: traffic
+sources:
+  monolith: ./inputs
+changes:
+- name: email-verification
+  status: pending
+  depends-on: []
+  affects: []
+  sources:
+  - monolith
+  scope:
+    monolith:
+      include:
+      - src/auth/verify.ts
+  description: Verify a newly registered account via a one-time email token.
+  status-reason: null
+- name: shared-validation
+  status: pending
+  depends-on: []
+  affects: []
+  sources:
+  - monolith
+  scope:
+    monolith:
+      include:
+      - src/common/validation.ts
+  description: Validate common user-facing inputs with reusable primitives.
+  status-reason: null
+- name: user-registration
+  status: pending
+  depends-on:
+  - email-verification
+  - shared-validation
+  affects: []
+  sources:
+  - monolith
+  scope:
+    monolith:
+      manifest: .specify/plans/traffic/slices/user-registration.yaml
+  description: Create new user accounts with email verification.
+  status-reason: null

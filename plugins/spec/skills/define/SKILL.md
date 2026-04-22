@@ -2,7 +2,7 @@
 name: define
 description: Define a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
 license: MIT
-argument-hint: "[description] [artifact-id?] [--source <key>=<path-or-url>...] [--affects <change-name>...]"
+argument-hint: "[description] [artifact-id?] [--source <key>=<path-or-url>...] [--affects <change-name>...] [--scope-include <key>=<glob>...] [--scope-exclude <key>=<glob>...] [--scope-manifest <key>=<path>...]"
 ---
 
 # Define Skill
@@ -25,14 +25,19 @@ artifact files those briefs describe.
 
 ---
 
-## Driver-supplied arguments (new in RFC-2 L2.I)
+## Driver-supplied arguments (RFC-2 L2.I + RFC-3a C08)
 
 When invoked by `/spec:execute` from a plan entry, this skill accepts
-two repeatable flags that carry the plan-level `sources` and `affects`
-signals into the define phase:
+repeatable flags that carry the plan-level `sources`, `affects`, and
+`scope` signals into the define phase:
 
 ```
-/spec:define <name> [--source <key>=<path-or-url>...] [--affects <change-name>...]
+/spec:define <name> \
+    [--source <key>=<path-or-url>...] \
+    [--affects <change-name>...] \
+    [--scope-include <key>=<glob>...] \
+    [--scope-exclude <key>=<glob>...] \
+    [--scope-manifest <key>=<path>...]
 ```
 
 - **`--source <key>=<path-or-url>`** — a resolved entry from the plan's
@@ -49,21 +54,86 @@ signals into the define phase:
   sourced from the baseline at `.specify/specs/<affects>/spec.md`.
   Multiple `--affects` flags are allowed; they are processed in the
   order they were supplied.
+- **`--scope-include <key>=<glob>`** — a scope-include filter the driver
+  resolved from `plan.yaml:scope.<key>.include`. Multiple flags may
+  share a key (one per glob), and multiple keys may appear in one
+  invocation. The skill does NOT expand the glob; it groups flags by
+  key and hands each group to the brief's per-source extract loop,
+  which forwards them to `/spec:extract` as `--include <glob>`
+  (extract's native filter flag, see
+  [`../extract/SKILL.md`](../extract/SKILL.md) → §Scope filters).
+- **`--scope-exclude <key>=<glob>`** — symmetric with `--scope-include`.
+  Forwards to `/spec:extract` as `--exclude <glob>`.
+- **`--scope-manifest <key>=<path>`** — at most one per key. Resolves
+  to `--manifest <path>` on `/spec:extract`. Mutually exclusive with
+  `--scope-include` / `--scope-exclude` for the same key: receiving
+  both for one key is a hard error the skill raises before invoking
+  extract. The authoritative contract for manifest shape lives in
+  `/spec:extract`'s SKILL (see
+  [`../extract/SKILL.md`](../extract/SKILL.md) → §Manifest shape);
+  this skill forwards the path verbatim.
 
-Both flags are **optional** and **additive**: a greenfield change has
-neither; a refactor targeting prior specs has `--affects` only; a
-migration from a legacy source has `--source` only; an authoring
-workflow that amends prior specs from a legacy source has both. When
-a human invokes `/spec:define` directly (outside `/spec:execute`), the
-flags remain available but are rarely supplied — the skill's existing
+### Per-source scope collection
+
+Before invoking the schema's define brief, group the scope flags by
+source key:
+
+1. For each distinct `<k>` appearing in any `--scope-*=<k>=…` flag,
+   collect the (ordered) lists of includes, excludes, and the at-most-one
+   manifest path. This is the **scope bundle** for `<k>`.
+2. For each key `<k>` present in **both** the `--source` flag set and
+   the scope-bundle map, pass the bundle into the brief's per-source
+   extract loop. The brief invokes
+   `/spec:extract <path> <change-dir>/.extract/<k>/` and translates the
+   bundle into extract's native flags:
+   - each include glob → `--include <glob>`
+   - each exclude glob → `--exclude <glob>`
+   - the manifest, if any → `--manifest <path>`
+3. For keys present in `--scope-*` but not in `--source`, raise the
+   defensive `scope-key-not-in-sources` error (RFC-3a §*Validation*).
+   This should have been caught upstream by `specify initiative
+   validate` and the `/spec:execute` driver's argument resolution step
+   (see [`../execute/SKILL.md`](../execute/SKILL.md) → §Argument
+   resolution (`sources`, `affects`, and `scope`)); reaching this
+   branch means the invocation was hand-crafted or the plan was edited
+   out of band.
+4. For keys with both a manifest and an include or exclude entry in the
+   same bundle, raise a hard error. The validator rejects this at plan
+   time; the skill mirrors the check defensively.
+
+Keys present in `--source` but absent from the scope-bundle map emit
+zero scope flags on their `/spec:extract` invocation — the back-compat
+path for small-legacy, greenfield, and pre-RFC-3a plans.
+
+All three flag families are **optional** and **additive**, and they
+compose with any combination of `--source` / `--affects`: a greenfield
+change has none; a refactor targeting prior specs has `--affects`
+only; a migration from a legacy source has `--source` only; a refactor
+extracting shared validation from a legacy monolith declares
+`sources: [monolith]`, `affects: [user-registration,
+email-verification]`, and `scope.monolith.include:
+[src/common/validation/**]` — so define receives `--source`,
+`--affects`, and `--scope-include` together (mirrors RFC-3a
+§*`--affects` composition with scope*). When a human invokes
+`/spec:define` directly (outside `/spec:execute`), the flags remain
+available but are rarely supplied — the skill's existing
 question-asking flow still handles free-form descriptions.
 
 The authoritative contract for how `/spec:execute` builds these flag
 values lives in [`../execute/SKILL.md` → §Argument resolution
-(`sources` and `affects`)](../execute/SKILL.md). Fixtures under
-[`../execute/fixtures/field-wiring/`](../execute/fixtures/field-wiring/)
-pin the three possible argument shapes (sources-only, affects-only,
-combined).
+(`sources`, `affects`, and `scope`)](../execute/SKILL.md). Fixtures
+under [`../execute/fixtures/field-wiring/`](../execute/fixtures/field-wiring/)
+pin the five possible argument shapes (`sources-only`, `affects-only`,
+`combined`, `scoped`, `scoped-with-affects`). The downstream contract
+for how per-source scope is consumed by extract lives in
+[`../extract/SKILL.md`](../extract/SKILL.md) (§Scope filters,
+§Sentinels always read, §Manifest shape).
+
+### Fixtures
+
+- [`fixtures/two-source-scope/`](fixtures/two-source-scope/) — pins the
+  per-source scope-bundle collection rule on a change that mixes
+  glob-based scope on one source with a manifest-based scope on another.
 
 ---
 

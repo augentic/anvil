@@ -1,0 +1,1 @@
+/spec:extract ./legacy <change-dir>/.extract/legacy/

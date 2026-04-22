@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "source_key": "monolith",
+  "language": "typescript",
+  "loc": 187,
+  "module_count": 3,
+  "top_level_modules": [
+    "src/auth",
+    "src/users"
+  ]
+}

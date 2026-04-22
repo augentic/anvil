@@ -1,0 +1,2 @@
+/spec:extract ./legacy/shared <change-dir>/.extract/shared-lib/ \
+    --manifest ./slices/shared-lib.yaml

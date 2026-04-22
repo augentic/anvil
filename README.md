@@ -72,7 +72,7 @@ Additional commands:
 - `/spec:status` -- Check artifact completion, task progress, and active changes.
 - `/spec:explore` -- Think through ideas and investigate problems before or during a change.
 - `/spec:extract` -- Extract Specify artifacts from existing source code.
-- `/spec:plan` -- Author the initial `.specify/plan.yaml` for a multi-change initiative (RFC-2 Layer 3).
+- `/spec:plan` -- Author `.specify/plan.yaml` for a multi-change initiative (RFC-2 Layer 3 + RFC-3a: `/spec:analyze` discovery, optional multi-repo workspace sync, manifest scopes when tangled).
 - `/spec:execute` -- Drive an initiative's `plan.yaml` through `define → build → merge` automatically (RFC-2 Layer 2; `--loop` runs until `all-done`). See [Initiative authoring + execution](#initiative-authoring--execution-plans) below for the full workflow.
 
 ### Initiative authoring + execution (plans)
@@ -81,9 +81,9 @@ A **plan** (`.specify/plan.yaml`) is an initiative's table of contents — an or
 
 Three layers, independently useful, stacked top to bottom:
 
-- **`/spec:plan <initiative-name> --source <key>=<path-or-url> ...`** authors `plan.yaml` (Layer 3). Runs the schema's `pipeline.plan` briefs — discovery + propose — with an interactive accept / edit / reject loop per slice.
+- **`/spec:plan <initiative-name> --source <key>=<path-or-url> ...`** authors `plan.yaml` (Layer 3). Runs `pipeline.plan` — discovery (`/spec:analyze`), optional **sync-peers** + `workspace.md` when `.specify/registry.yaml` lists multiple projects, then propose — with an interactive accept / edit / reject loop per slice. See [rfcs/rfc-3a-monoliths.md](rfcs/rfc-3a-monoliths.md).
 - **`/spec:execute --loop`** drives the plan to completion (Layer 2). Picks the next eligible entry, runs `/spec:define → /spec:build → /spec:merge`, transitions status, repeats until `all-done` or `stuck`. `--dry-run` previews; a bare invocation runs one change then stops.
-- **`specify initiative {init, validate, next, status, create, amend, transition, archive, lock}`** are the Layer 1 CLI primitives both skills shell out to. They stay available for hand-driven initiatives where automation is overkill:
+- **`specify initiative {init, validate, next, status, create, amend, transition, archive, lock, brief, registry, workspace}`** are the Layer 1 CLI primitives both skills shell out to. They stay available for hand-driven initiatives where automation is overkill:
 
   - `specify initiative init <name> [--source ...]` -- Scaffold `.specify/plan.yaml` with an empty `changes:` list.
   - `specify initiative validate` -- Structural and referential integrity checks (duplicate names, dependency cycles, unknown `depends-on` / `affects` / `sources`, at most one `in-progress`).

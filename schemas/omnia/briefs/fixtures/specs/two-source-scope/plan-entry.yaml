@@ -1,0 +1,13 @@
+changes:
+  - name: cross-source-refactor
+    sources: [monolith, shared-lib]
+    scope:
+      monolith:
+        include:
+          - src/ingest/**
+          - src/kafka/**
+        exclude:
+          - src/ingest/_deprecated/**
+      shared-lib:
+        manifest: ./slices/shared-lib.yaml
+    status: pending

@@ -1,0 +1,4 @@
+/spec:define extract-shared-validation \
+    --source monolith=./legacy/monolith \
+    --affects user-registration --affects stale-flag-never-used \
+    --scope-include monolith=src/common/validation/**

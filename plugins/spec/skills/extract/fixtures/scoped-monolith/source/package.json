@@ -1,0 +1,16 @@
+{
+  "name": "scoped-monolith",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Two-capability TypeScript monolith used as an /spec:extract scope-filter fixture.",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "typescript": "5.4.5"
+  }
+}
