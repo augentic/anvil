@@ -79,12 +79,14 @@ attempted.
 
 ### Contract summary
 
-`/spec:execute` reads `.metadata.yaml:outcome` on return and
-translates it into a plan transition (`done` / `failed` / `blocked`).
-If the field is missing or malformed, `/spec:execute` treats the phase
-as `deferred` and stops for triage. The `phase-outcome` call (for
-failure and deferred) is the **last action** the skill takes before
-returning control.
+`/spec:execute` reads the outcome on return via
+`specify change outcome <name> --format json` and translates it into a
+plan transition (`done` / `failed` / `blocked`). After a successful
+merge the active change directory is absent, so the CLI falls back to
+the archive. If the outcome is missing or malformed, `/spec:execute`
+treats the phase as `deferred` and stops for triage. The
+`phase-outcome` call (for failure and deferred) is the **last action**
+the skill takes before returning control.
 
 ## Journal entries during the run (RFC-2 §"Question Recording")
 

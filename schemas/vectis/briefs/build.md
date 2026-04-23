@@ -486,9 +486,14 @@ Specify change.
 2. **Check if any findings exist.** If the merged list is empty, skip
    the rest of this section.
 
-3. **Classify each finding** as `code-fix` or `spec-change` using the
-   criteria from the reviewer skills (spec is clear but code is wrong →
-   code-fix; spec is silent, ambiguous, or problematic → spec-change).
+3. **Validate classifications.** Each `design_findings` entry already
+   carries a `classification` (`code-fix` or `spec-change`) assigned by
+   the reviewer. Treat these as the source of truth. Only assign or
+   revise a classification when it is missing or when two reviewers
+   disagree on a deduplicated finding (from step 1). In those cases,
+   apply the criteria from the reviewer skills (spec is clear but code
+   is wrong → `code-fix`; spec is silent, ambiguous, or problematic →
+   `spec-change`).
 
 4. **Derive a change name.** When findings span both platforms, use:
 
