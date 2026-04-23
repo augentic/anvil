@@ -10,6 +10,7 @@ Build cross-platform applications with a shared Rust core and native platform sh
 
 Crux is written in Rust and documented at [docs.rs/crux_core](https://docs.rs/crux_core/latest/crux_core/).
 
+
 ## Prerequisites
 
 ### Rust Toolchain

@@ -5,38 +5,31 @@ is accepted without edit. Emit order is dependency-order + within-
 layer alphabetical (see
 [`schemas/omnia/briefs/plan/propose.md` §Emit order](../../../../../../../../schemas/omnia/briefs/plan/propose.md)):
 
-1. `email-verification` — leaf (no `--depends-on`), single scope
-   hint lifted verbatim from the capability's `sources:`.
-2. `shared-validation` — leaf (no `--depends-on`), single scope
-   hint lifted verbatim.
+1. `email-verification` — leaf (no `--depends-on`), description
+   carries path hints from the capability's `sources:` list.
+2. `shared-validation` — leaf (no `--depends-on`), description
+   carries path hints.
 3. `user-registration` — layer 1 (two `--depends-on` edges to the
-   leaves above), three scope hints lifted verbatim, one of which
-   (`src/auth/verify.ts`) overlaps `email-verification`'s scope
-   and is expected to trip a `scope-overlap` warning at validate
-   time.
+   leaves above), description carries path hints and delta-targeting
+   intent.
 
 ```text
 specify initiative create email-verification \
     --sources monolith \
-    --scope-include monolith=src/auth/verify.ts \
-    --description "Verify a newly registered account via a one-time email token."
+    --description "Verify a newly registered account via a one-time email token. Focus on src/auth/verify.ts."
 ```
 
 ```text
 specify initiative create shared-validation \
     --sources monolith \
-    --scope-include monolith=src/common/validation.ts \
-    --description "Validate common user-facing inputs with reusable primitives."
+    --description "Validate common user-facing inputs with reusable primitives. Focus on src/common/validation.ts."
 ```
 
 ```text
 specify initiative create user-registration \
     --sources monolith \
     --depends-on email-verification --depends-on shared-validation \
-    --scope-include monolith=src/auth/verify.ts \
-    --scope-include monolith=src/users/register.ts \
-    --scope-include monolith=src/users/validation.ts \
-    --description "Create new user accounts with email verification."
+    --description "Create new user accounts with email verification. Focus on src/auth/verify.ts, src/users/register.ts, src/users/validation.ts. Delta-targets email-verification and shared-validation."
 ```
 
 The resulting `plan.yaml` is pinned byte-for-byte in

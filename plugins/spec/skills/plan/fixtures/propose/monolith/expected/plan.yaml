@@ -5,40 +5,29 @@ changes:
 - name: email-verification
   status: pending
   depends-on: []
-  affects: []
   sources:
   - monolith
-  scope:
-    monolith:
-      include:
-      - src/auth/verify.ts
-  description: Verify a newly registered account via a one-time email token.
+  description: >
+    Verify a newly registered account via a one-time email token.
+    Focus on src/auth/verify.ts.
   status-reason: null
 - name: shared-validation
   status: pending
   depends-on: []
-  affects: []
   sources:
   - monolith
-  scope:
-    monolith:
-      include:
-      - src/common/validation.ts
-  description: Validate common user-facing inputs with reusable primitives.
+  description: >
+    Validate common user-facing inputs with reusable primitives.
+    Focus on src/common/validation.ts.
   status-reason: null
 - name: user-registration
   status: pending
   depends-on:
   - email-verification
   - shared-validation
-  affects: []
   sources:
   - monolith
-  scope:
-    monolith:
-      include:
-      - src/auth/verify.ts
-      - src/users/register.ts
-      - src/users/validation.ts
-  description: Create new user accounts with email verification.
+  description: >
+    Create new user accounts with email verification.
+    Focus on src/auth/verify.ts, src/users/register.ts, src/users/validation.ts.
   status-reason: null

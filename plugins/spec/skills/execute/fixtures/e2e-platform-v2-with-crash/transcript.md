@@ -41,9 +41,9 @@ Self-heal: email-verification → done (merge success from prior run)
 #       --context "before=in-progress/merged, after=done"
 
 # Iterations 1–3 run exactly as in ../e2e-platform-v2/transcript.md:
-#   - registration-duplicate-email-crash → done (--affects user-registration)
+#   - registration-duplicate-email-crash → done (description-driven delta targeting)
 #   - notification-preferences           → done (greenfield)
-#   - extract-shared-validation          → done (--affects user-registration --affects email-verification)
+#   - extract-shared-validation          → done (description-driven delta targeting)
 
 # ───────────────────────────────────────────────────────────
 # Iteration 4 — product-catalog (crashes mid-/spec:build)
@@ -52,7 +52,6 @@ Self-heal: email-verification → done (merge success from prior run)
 
 # Argument resolution:
 #   sources: [monolith] → --source monolith=/path/to/legacy-codebase
-#   affects: []         → no --affects flags
 
 # specify initiative transition product-catalog in-progress
 # /spec:define product-catalog --source monolith=/path/to/legacy-codebase → success

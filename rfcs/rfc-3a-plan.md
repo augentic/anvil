@@ -6,6 +6,15 @@
 > states a crisp "done when" so a subagent can pick it up cold without having
 > to re-read the whole RFC.
 
+> **Supersession note.** The `scope` and `affects` fields introduced by
+> RFC-3a have been removed from `plan.yaml`. Scope and delta-targeting
+> intent are now carried in the `description` field and inferred by the
+> define skill at execution time. The following chunks are superseded:
+> C01–C05 (scope schema, types, validation), C07–C08 (scope flag
+> forwarding through execute/define), C25 (monolith-scale scope lint),
+> C26–C27 (manifest-based slices). The `/spec:analyze` skill, registry,
+> and multi-repo planning work from the remaining chunks is unaffected.
+
 ## Conventions
 
 - **Repos.** `specify/` is the docs/prompt-engineering repo (RFC, skills,

@@ -101,7 +101,7 @@ updated entry is visible to every subsequent `/spec:execute` iteration.
 
 Allowed:
 
-- `specify initiative create <new-name> --affects <current-name> --description "..."`
+- `specify initiative create <new-name> --description "...modifies <current-name>..."`
   when, for example, baseline conflict-check surfaces a neighbouring
   change that must land before this one can merge cleanly.
 - `specify initiative amend <current-name> --depends-on <newly-needed>` when

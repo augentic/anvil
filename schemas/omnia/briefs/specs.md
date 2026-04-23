@@ -5,9 +5,6 @@ generates: specs/**/*.md
 needs: [proposal]
 ---
 
-This brief implements RFC-3a §*How `scope` travels through the pipeline* for
-the specs phase.
-
 Branch on the flag surface handed to `/spec:define`:
 
 - **Source-driven** — at least one `--source <key>=<path>` flag is present.
@@ -28,46 +25,35 @@ Branch on the flag surface handed to `/spec:define`:
 
 For each `--source <key>=<path>` flag, processed in declaration order:
 
-1. **Collect the scope bundle for `<key>`.**
+1. **Infer scope from the change description.**
+
+   Read the plan entry's `description` and look for file-path hints
+   (e.g. `src/common/validation/`, `src/auth/**`). Build the extract
+   filter set:
+
+   - When the description contains path-like references for this source,
+     use each as an `--include` glob on `/spec:extract`. Treat bare
+     directory names as recursive globs (e.g. `src/auth/` becomes
+     `src/auth/**`).
+   - When the description contains no path hints for this source, run
+     extract on the full source tree (no filter flags).
+
+   Log the inferred scope in the journal via
+   `specify change journal-append <name> define question --summary "Inferred scope for <key>: <filters>"`.
+   This gives operators an audit trail of what was extracted.
+
+2. **Invoke `/spec:extract`:**
 
    ```text
-   includes  = every --scope-include <key>=<glob>    (order-preserving)
-   excludes  = every --scope-exclude <key>=<glob>    (order-preserving)
-   manifest  = the --scope-manifest <key>=<path>, if any
+   /spec:extract <path> <change-dir>/.extract/<key>/ [inferred filters]
    ```
 
-   Bundle invariant: `manifest` is set XOR (`includes` OR `excludes`) is
-   non-empty. `/spec:define` enforces this defensively; assert it here too
-   so a hand-crafted invocation cannot slip through. If both are present,
-   halt with a brief-level error naming the offending key.
+   `/spec:extract` resolves globs relative to `<path>`, applies the
+   *sentinels always read* rule, and treats a zero-match filter as a
+   hard error. See `plugins/spec/skills/extract/SKILL.md` for the full
+   contract.
 
-   If the bundle is empty for this key (no `--scope-*` flags referenced
-   `<key>`), skip the translation step — this is the back-compat /
-   small-legacy path and simply hands the whole source tree to extract.
-
-2. **Translate the bundle to extract's native flags.**
-
-   ```text
-   --include <glob>     for each entry in includes      (repeat)
-   --exclude <glob>     for each entry in excludes      (repeat)
-   --manifest <path>    when manifest is set
-   ```
-
-   Forward globs and manifest paths verbatim — no expansion, no stat.
-   Path-shape and existence diagnostics are `/spec:extract`'s concern.
-
-3. **Invoke `/spec:extract`:**
-
-   ```text
-   /spec:extract <path> <change-dir>/.extract/<key>/ [translated flags]
-   ```
-
-   `/spec:extract` resolves globs relative to `<path>`, reads the manifest
-   (paths also relative to `<path>`), applies the *sentinels always read*
-   rule, and treats a zero-match filter as a hard error. See
-   `plugins/spec/skills/extract/SKILL.md` for the full contract.
-
-4. **Merge the per-source output into the change root.**
+3. **Merge the per-source output into the change root.**
 
    ```text
    <change-dir>/.extract/<key>/specs/    →  <change-dir>/specs/
@@ -106,13 +92,24 @@ output.
   as operator-disciplined local-only state; `.gitignore` wiring is a
   downstream concern and not handled by this brief.
 
-### Affects composition
+### Delta composition (affects inference)
 
-When the driver supplies `--affects <name>` flags alongside `--source`
-(forwarded from the plan entry's `affects:` list), run the following
-four-step pass **after** the per-source loop has merged its extracted
-specs into `<change-dir>/specs/`. The RFC pins exactly four steps; keep
-the numbering intact.
+After the per-source loop has merged its extracted specs into
+`<change-dir>/specs/`, determine whether this change modifies existing
+baselines by reading the plan entry's `description` for references to
+prior change names (e.g. "delta-target user-registration",
+"modifies email-verification", "refactors out of user-registration and
+email-verification").
+
+For each referenced name, check whether a baseline exists at
+`.specify/specs/<name>/spec.md`. Collect the confirmed names into the
+**inferred affects set**. Log the inferred set in the journal via
+`specify change journal-append <name> define question --summary "Inferred delta targets: <names>"`.
+
+If the inferred affects set is non-empty, run the following four-step
+pass. If the description does not reference any existing baselines, skip
+this section entirely — all extracted specs remain in fresh new-crate
+form.
 
 1. **Reuse the merged extract output — do not re-invoke extract.** The
    per-source loop above has already written one
@@ -121,8 +118,8 @@ the numbering intact.
    step; no additional `/spec:extract` call is needed here. Extract
    remains baseline-unaware — it never reads `.specify/specs/`.
 
-2. **Rewrite matched capabilities in DELTA form.** For each
-   `--affects <name>`, check for a merged spec at
+2. **Rewrite matched capabilities in DELTA form.** For each name in the
+   inferred affects set, check for a merged spec at
    `<change-dir>/specs/<name>/spec.md`. When one exists:
 
    - Read the baseline at `.specify/specs/<name>/spec.md`.
@@ -137,28 +134,23 @@ the numbering intact.
      the change merges.
 
 3. **Leave unmatched capabilities as fresh specs.** Capabilities whose
-   names do not match any supplied `--affects <name>` keep the
+   names do not match any inferred affects target keep the
    new-crate spec form already written by the per-source merge. No
    rewrite, no additional work.
 
-4. **Warn on `--affects` names with no extract match.** For each
-   `--affects <name>` flag with no corresponding
+4. **Warn on inferred targets with no extract match.** For each name in
+   the inferred affects set with no corresponding
    `<change-dir>/specs/<name>/spec.md` after the merge, emit a
-   brief-level warning that names the orphan flag and surfaces both
-   remediations:
-
-   - The baseline is untouched by this slice — drop the flag via
-     `specify initiative amend <change> --affects-rm <name>`.
-   - The scope is too narrow to see the file that would change the
-     baseline's behaviour — widen `scope.<key>.include` (or switch to
-     `scope.<key>.manifest`) via `specify initiative amend`.
+   brief-level warning naming the orphan target. Suggest that the
+   description may be inaccurate — the operator can amend it via
+   `specify initiative amend <change> --description "..."`.
 
    The warning is informational; the brief continues.
 
 After this pass, `<change-dir>/specs/<name>/spec.md` is in delta form
-for every matched `--affects <name>`, in fresh new-crate form for
-every unmatched extracted capability, and absent for every
-unmatched `--affects` name (with a warning logged).
+for every matched inferred target, in fresh new-crate form for every
+unmatched extracted capability, and absent for every unmatched inferred
+target (with a warning logged).
 
 ---
 
@@ -252,15 +244,14 @@ operations, format rules, and the MODIFIED/ADDED workflows.
 
 Worked walkthroughs live under `fixtures/specs/` next to this brief:
 
-- `extract-shared-validation/` — single-source run with `--scope-include`
-  and two `--affects` flags (the RFC-3a canonical case). Pins the full
-  extract → merge → Affects-composition path, with both `--affects`
-  names matched (silent-when-matched behaviour).
-- `affects-orphan-warning/` — sibling case pinning step 4 of the
-  Affects composition pass: one matched `--affects`, one orphan
-  `--affects` that fires a warning.
-- `single-source-no-scope/` — back-compat path: one source, no scope
-  flags.
-- `two-source-scope/` — two sources, one glob-filtered and one
-  manifest-based; demonstrates the `## Source: <key>` design wrapper and
+- `extract-shared-validation/` — single-source run with path hints in
+  description and delta-target inference (the canonical refactor case).
+  Pins the full extract → merge → delta-composition path.
+- `affects-orphan-warning/` — sibling case pinning step 4 of the delta
+  composition pass: one matched inferred target, one orphan that fires a
+  warning.
+- `single-source-no-scope/` — full-tree path: one source, description
+  without path hints.
+- `description-driven-multi-source/` — two sources with description-
+  inferred scope; demonstrates the `## Source: <key>` design wrapper and
   the name-collision merge rule's trigger conditions.

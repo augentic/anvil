@@ -9,14 +9,19 @@ described in [RFC-2](../../rfcs/archive/rfc-2-execution.md) §"The Plan".
 - Optional top-level `sources` map (kebab-case keys → path-or-URL values).
 - Each change carries a required kebab-case `name`, a required `status`
   drawn from `{pending, in-progress, done, blocked, failed, skipped}`, plus
-  optional `depends-on`, `affects`, `sources`, `description`, and
-  `status-reason` fields.
+  optional `depends-on`, `sources`, `description`, and `status-reason` fields.
 - `additionalProperties: false` everywhere — unknown fields are a hard error.
   The schema is strict, not forward-extensible; new fields land via schema
   version bumps.
 
+Scope and delta-targeting intent are carried in the `description` field as
+prose. The define skill infers extract filters and baseline targets from the
+description at execution time. The former `scope` and `affects` structured
+fields (introduced by RFC-3a) have been removed in favour of this
+description-driven approach.
+
 Semantic checks (cycle detection, referential integrity of `depends-on` /
-`affects` / `sources` targets, at-most-one `in-progress`, etc.) are performed
+`sources` targets, at-most-one `in-progress`, etc.) are performed
 by `Plan::validate` in [`specify-change`](https://github.com/augentic/specify-cli/tree/main/crates/change);
 this schema covers shape only.
 

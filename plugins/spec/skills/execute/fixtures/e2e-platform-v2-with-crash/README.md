@@ -35,7 +35,7 @@ uncrashed sibling.
    acquire` does not fail with `Error::DriverBusy` — the CLI's
    liveness check notices Run 1's PID is gone and reclaims the stamp.
 3. **The argument-resolution plumbing is stateless.** `/spec:execute`
-   does not persist the resolved `(--source, --affects)` flag set
+   does not persist the resolved `--source` flags
    across runs. When the outer loop in Run 2 advances past the
    resumed `product-catalog` iteration to `shopping-cart`, it
    resolves that entry's `sources: [orders]` fresh from the plan's

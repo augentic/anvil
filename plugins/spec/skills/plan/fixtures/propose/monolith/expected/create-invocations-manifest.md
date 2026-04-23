@@ -1,40 +1,31 @@
-# Emitted `specify initiative create` invocations — monolith (manifest branch)
+# Emitted `specify initiative create` invocations — monolith (description-driven)
 
 Same emit order as
-[`create-invocations.md`](create-invocations.md), but when
-`user-registration` is `confidence: low` and shares
-`src/auth/verify.ts` with `email-verification`, Stage C emits a v1
-slice manifest and a single `--scope-manifest` for `monolith`
-instead of three `--scope-include` flags. The first two slices stay
-glob-scoped in the same run.
+[`create-invocations.md`](create-invocations.md). All scope and
+delta-targeting intent is carried in the `description` field. The
+define skill infers extract filters and baseline targets from the
+description at execution time.
 
-1. `email-verification` — unchanged glob invocation.
-2. `shared-validation` — unchanged glob invocation.
-3. `user-registration` — manifest pointer; the brief writes
-   `.specify/plans/traffic/slices/user-registration.yaml` before
-   shelling out.
+1. `email-verification` — description carries path hints.
+2. `shared-validation` — description carries path hints.
+3. `user-registration` — description carries path hints and
+   delta-targeting intent for both leaves.
 
 ```text
 specify initiative create email-verification \
     --sources monolith \
-    --scope-include monolith=src/auth/verify.ts \
-    --description "Verify a newly registered account via a one-time email token."
+    --description "Verify a newly registered account via a one-time email token. Focus on src/auth/verify.ts."
 ```
 
 ```text
 specify initiative create shared-validation \
     --sources monolith \
-    --scope-include monolith=src/common/validation.ts \
-    --description "Validate common user-facing inputs with reusable primitives."
+    --description "Validate common user-facing inputs with reusable primitives. Focus on src/common/validation.ts."
 ```
 
 ```text
 specify initiative create user-registration \
     --sources monolith \
     --depends-on email-verification --depends-on shared-validation \
-    --scope-manifest monolith=.specify/plans/traffic/slices/user-registration.yaml \
-    --description "Create new user accounts with email verification."
+    --description "Create new user accounts with email verification. Focus on src/auth/verify.ts, src/users/register.ts, src/users/validation.ts. Delta-targets email-verification and shared-validation."
 ```
-
-Pinned plan: [`plan-manifest.yaml`](plan-manifest.yaml). Manifest
-body: [`slices/user-registration.yaml`](slices/user-registration.yaml).

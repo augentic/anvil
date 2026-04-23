@@ -1,25 +1,22 @@
 # affects-orphan-warning — merged output walkthrough
 
 Sister fixture to `extract-shared-validation/`. Pins the **step-4
-warning path** of the specs brief's Affects composition pass: an
-`--affects <name>` flag whose `<name>` does not match any merged
+warning path** of the specs brief's delta composition pass: the
+description references a change name that does not match any merged
 extract capability.
 
-The plan entry declares one extra `--affects` name
-(`stale-flag-never-used`) that the scoped extract cannot possibly
-touch, because `src/common/validation/**` contains no file that
-implements that capability. The other `--affects` name
-(`user-registration`) matches normally.
+The plan entry's description references both `user-registration`
+(which matches a merged capability) and `stale-flag-never-used`
+(which no extracted capability produces), because the inferred
+scope (`src/common/validation/**`) contains no file that implements
+that capability.
+
+## Scope inference
+
+The description contains the path hint `src/common/validation/`.
+The brief infers `--include src/common/validation/**`.
 
 ## Per-source loop (one iteration)
-
-```text
-key        include                      exclude   manifest
-----------------------------------------------------------
-monolith   src/common/validation/**     —         —
-```
-
-Translated to extract's native flags:
 
 ```text
 /spec:extract ./legacy/monolith <change-dir>/.extract/monolith/ \
@@ -45,9 +42,9 @@ any file that would produce one.
 <change-dir>/design.md                            ← from .extract/monolith/design.md
 ```
 
-## After Affects composition
+## After delta composition
 
-Matching each `--affects <name>` against `<change-dir>/specs/`:
+Matching each inferred delta target against `<change-dir>/specs/`:
 
 ```text
 <change-dir>/specs/user-registration/spec.md
@@ -56,7 +53,7 @@ Matching each `--affects <name>` against `<change-dir>/specs/`:
 
 <change-dir>/specs/shared-validation/spec.md
   └─ NEW-CRATE spec for the extracted validation capability
-     (no --affects match — step 3)
+     (no inferred target match — step 3)
 
 <change-dir>/specs/stale-flag-never-used/spec.md
   └─ ABSENT — no matching extract capability (step 4)
@@ -64,20 +61,16 @@ Matching each `--affects <name>` against `<change-dir>/specs/`:
 
 ### Warnings
 
-Step 4 fires exactly one brief-level warning, naming the orphan flag
-and surfacing both remediations:
+Step 4 fires exactly one brief-level warning, naming the orphan
+inferred target and suggesting the description may be inaccurate:
 
 ```text
-warn: --affects stale-flag-never-used had no matching extract
-      capability in <change-dir>/specs/ after the per-source merge.
-      Either:
-        - the baseline is untouched by this slice — drop the flag via
-          `specify initiative amend extract-shared-validation \
-              --affects-rm stale-flag-never-used`; or
-        - the scope is too narrow to see the file that would change
-          the baseline's behaviour — widen `scope.monolith.include`
-          (or switch to `scope.monolith.manifest`) via
-          `specify initiative amend`.
+warn: inferred delta target stale-flag-never-used had no matching
+      extract capability in <change-dir>/specs/ after the per-source
+      merge. The description may reference a change that this slice
+      does not actually modify — amend the description via
+      `specify initiative amend extract-shared-validation \
+          --description "..."`.
 ```
 
 The warning is informational; the brief continues and returns normally.

@@ -1,9 +1,7 @@
 changes:
   - name: extract-shared-validation
     sources: [monolith]
-    affects: [user-registration, stale-flag-never-used]
-    scope:
-      monolith:
-        include:
-          - src/common/validation/**
+    description: >
+      Extract shared validation helpers; focus on src/common/validation/.
+      Delta-targets user-registration, stale-flag-never-used.
     status: pending

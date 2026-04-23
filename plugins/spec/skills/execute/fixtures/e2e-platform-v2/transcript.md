@@ -3,7 +3,7 @@
 This is the Layer 2 exit-gate meta-fixture. The seed is the full
 `platform-v2` plan from [RFC-2 §"The Plan"](../../../docs/links.md#rfc-2-the-plan)
 verbatim — nine entries spanning every shape the driver must handle:
-greenfield, `sources`-only, `affects`-only, combined, pre-failed,
+greenfield, `sources`-only, description-driven, combined, pre-failed,
 mid-run-crashed. `/spec:execute --loop` starts against this seed and
 drives the plan until no eligible change remains.
 
@@ -19,13 +19,13 @@ argument-resolution plumbing introduced in L2.I end-to-end.
     running `specify initiative transition done`.
     `metadata-email-verification-crashed.yaml` is the illustrative
     `.metadata.yaml` snapshot that self-heal reads.
-  - `registration-duplicate-email-crash`: pending,
-    `affects: [user-registration]`, no `sources`.
-  - `notification-preferences`: pending, greenfield (neither
-    `sources` nor `affects`), description-only.
-  - `extract-shared-validation`: pending,
-    `affects: [user-registration, email-verification]`, no `sources`,
-    depends on `email-verification`.
+  - `registration-duplicate-email-crash`: pending, no `sources`;
+    description mentions `user-registration`.
+  - `notification-preferences`: pending, greenfield (no `sources`,
+    description does not reference existing specs).
+  - `extract-shared-validation`: pending, no `sources`;
+    description mentions `user-registration` and
+    `email-verification`, depends on `email-verification`.
   - `product-catalog`: pending, `sources: [monolith]`,
     depends on `extract-shared-validation`.
   - `shopping-cart`: pending, `sources: [orders]` (git URL),
@@ -83,17 +83,17 @@ Self-heal: email-verification → done (merge success from prior run)
 
 # Argument resolution:
 #   sources: []                 → no --source flags
-#   affects: [user-registration] → --affects user-registration
-# Pinned invocation (see fixtures/field-wiring/affects-only/):
-#   /spec:define registration-duplicate-email-crash --affects user-registration
+#   description carries delta-targeting intent (inferred by define skill)
+# Pinned invocation (see fixtures/field-wiring/description-driven/):
+#   /spec:define registration-duplicate-email-crash
 
 # specify initiative transition registration-duplicate-email-crash in-progress
-# /spec:define registration-duplicate-email-crash --affects user-registration → success
+# /spec:define registration-duplicate-email-crash → success
 # /spec:build  registration-duplicate-email-crash                             → success
 # /spec:merge  registration-duplicate-email-crash                             → success
 # specify initiative transition registration-duplicate-email-crash done
 
-### Processing: registration-duplicate-email-crash (affects: [user-registration])
+### Processing: registration-duplicate-email-crash
 
 Step 1/3: define
   Artifacts: proposal.md, specs, design.md, tasks.md ✓
@@ -110,7 +110,7 @@ Step 3/3: merge
 
 # Argument resolution:
 #   sources: []  →  no --source flags
-#   affects: []  →  no --affects flags
+#   (greenfield — no delta-targeting signals in description)
 # Invocation: /spec:define notification-preferences
 
 # specify initiative transition notification-preferences in-progress
@@ -137,10 +137,9 @@ Step 3/3: merge
 
 # Argument resolution:
 #   sources: []                               → no --source flags
-#   affects: [user-registration, email-verification]
-#                                             → --affects user-registration --affects email-verification
+#   description carries delta-targeting intent (inferred by define skill)
 # Invocation:
-#   /spec:define extract-shared-validation --affects user-registration --affects email-verification
+#   /spec:define extract-shared-validation
 
 # specify initiative transition extract-shared-validation in-progress
 # /spec:define … → success
@@ -148,7 +147,7 @@ Step 3/3: merge
 # /spec:merge  … → success
 # specify initiative transition extract-shared-validation done
 
-### Processing: extract-shared-validation (affects: [user-registration, email-verification])
+### Processing: extract-shared-validation
 
 Step 1/3: define
   Artifacts: proposal.md, specs, design.md, tasks.md ✓
@@ -168,7 +167,6 @@ Step 3/3: merge
 #   sources: [monolith] — resolve "monolith" against top-level map:
 #                         /path/to/legacy-codebase (local filesystem path)
 #                         → --source monolith=/path/to/legacy-codebase
-#   affects: [] → no --affects flags
 # Invocation:
 #   /spec:define product-catalog --source monolith=/path/to/legacy-codebase
 
@@ -202,7 +200,6 @@ Step 3/3: merge
 #   sources: [orders] — resolve "orders" against top-level map:
 #                        git@github.com:org/orders-service.git (git URL)
 #                        → --source orders=git@github.com:org/orders-service.git
-#   affects: [] → no --affects flags
 # Invocation:
 #   /spec:define shopping-cart --source orders=git@github.com:org/orders-service.git
 
@@ -294,13 +291,14 @@ with no pre-failed entries.
    `email-verification` in-progress entry is reconciled to `done`
    inside the single pre-iteration self-heal pass.
 2. **Every plan-entry shape is exercised.** Greenfield
-   (`notification-preferences`), `affects`-only
-   (`registration-duplicate-email-crash`), `affects` with multiple
-   targets (`extract-shared-validation`), local-path `sources`
-   (`product-catalog`), git-URL `sources` (`shopping-cart`). The
-   `combined/` shape is pinned by the dedicated field-wiring
-   fixture; no entry in RFC-2 §"The Plan" as written declares both
-   `sources` and `affects` on the same entry.
+   (`notification-preferences`), description-driven delta targeting
+   (`registration-duplicate-email-crash`), description-driven with
+   multiple targets (`extract-shared-validation`), local-path
+   `sources` (`product-catalog`), git-URL `sources`
+   (`shopping-cart`). The `combined/` shape is pinned by the
+   dedicated field-wiring fixture; no entry in RFC-2 §"The Plan"
+   as written declares both `sources` and description-driven delta
+   targeting on the same entry.
 3. **Lock held once, across the whole run.** Five successful
    iterations share the single `specify initiative lock acquire` from
    step 2 of the `--loop` algorithm; the release happens once at

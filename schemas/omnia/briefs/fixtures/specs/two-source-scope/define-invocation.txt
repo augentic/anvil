@@ -1,7 +1,0 @@
-/spec:define cross-source-refactor \
-    --source monolith=./legacy/monolith \
-    --source shared-lib=./legacy/shared \
-    --scope-include monolith=src/ingest/** \
-    --scope-include monolith=src/kafka/** \
-    --scope-exclude monolith=src/ingest/_deprecated/** \
-    --scope-manifest shared-lib=./slices/shared-lib.yaml

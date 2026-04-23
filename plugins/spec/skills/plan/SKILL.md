@@ -49,7 +49,7 @@ The on-disk contracts the authoring skill depends on are:
 | File / directory | Owner | Role |
 |---|---|---|
 | `.specify/plan.yaml` | library (`Plan::{init, create, amend, transition, archive}`) | Ordered change list with per-entry status. `/spec:plan` writes only via `specify initiative init` (step 2) and `specify initiative create` (step 3b). |
-| `.specify/plans/<name>/` | schema (`pipeline.plan` briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, optional `slices/*.yaml` (Stage C manifests), `analyze/<key>/metadata.json` (legacy-code). Swept by `specify initiative archive` alongside the plan itself (RFC-2 L3.B + RFC-3a C33). |
+| `.specify/plans/<name>/` | schema (`pipeline.plan` briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify initiative archive` alongside the plan itself (RFC-2 L3.B + RFC-3a C33). |
 | `schema.yaml:pipeline.plan` | schema (`Phase::Plan`) | Declares the ordered list of authoring briefs for the project's schema. Resolved via `specify schema pipeline --phase plan`. |
 
 See [RFC-2 §"Layer 3: Plan Authoring"](../docs/links.md#rfc-2-layer-3)
@@ -124,7 +124,7 @@ under §*Input kinds* and §*Kind defaults for CLI flags* below.
 Both documentation and legacy-code dispatch are now live via
 `/spec:analyze` (RFC-3a C19 + C23). Plan-time `/spec:extract` call
 sites have been fully retired; `/spec:extract` now runs only at
-`/spec:define` time against the current change's scope. See RFC-3a
+`/spec:define` time with scope inferred from the change's description. See RFC-3a
 §*Discovery dispatch* for the full story.
 
 ## Input kinds (normative, RFC-3a v1)
@@ -341,7 +341,7 @@ Omnia, [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose);
 for Vectis, [`schemas/vectis/briefs/plan/propose.md`](../docs/links.md#vectis-propose);
 other schemas ship their own). Propose reads `discovery.md`, applies
 the schema's slice heuristics to decompose the inventory into draft
-change slices with `depends-on` / `affects` edges, and iterates with
+change slices with `depends-on` edges, and iterates with
 the human on each slice (accept / edit / reject / abort). For every
 accepted slice, the skill shells out to:
 
@@ -349,9 +349,12 @@ accepted slice, the skill shells out to:
 specify initiative create <name> \
     [--sources <key> ...] \
     [--depends-on <name> ...] \
-    [--affects <name> ...] \
     [--description "..."]
 ```
+
+The `--description` carries scope and delta-targeting intent in prose;
+scoping is inferred from the description by the define skill at
+execution time.
 
 Propose is the single-writer edge for plan entries — every entry
 lands via `specify initiative create`; the skill never edits
@@ -420,8 +423,7 @@ skills:
     └── <initiative-name>/
         ├── discovery.md            # from the discovery brief (step 3a)
         ├── proposal.md             # from the propose brief (step 3b)
-        ├── analyze/                # `/spec:analyze` sidecars (legacy-code): `<source-key>/metadata.json`
-        └── slices/                 # per-change slice manifests when `scope.*.manifest` is used (`<change>.yaml`)
+        └── analyze/                # `/spec:analyze` sidecars (legacy-code): `<source-key>/metadata.json`
 ```
 
 The working directory is created lazily — by the discovery brief

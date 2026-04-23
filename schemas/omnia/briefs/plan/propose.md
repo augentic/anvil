@@ -49,9 +49,8 @@ For each `### <capability-name>` block:
 | Capability field       | Plan entry field                                         |
 | ---------------------- | -------------------------------------------------------- |
 | `name`                 | `name`                                                   |
-| `summary`              | `description` (free-text scoping hint for define)        |
+| `summary` + `sources:` | `description` (rich prose — see §Rich description generation) |
 | `<!-- source-key -->`  | `sources: [<key>]` (single-element list)                 |
-| `sources:`             | `scope.<key>.include: [...]` (verbatim, alphabetical)    |
 | `depends-on:`          | `depends-on: [...]` (verbatim)                           |
 | `hints.*`              | Retained in `discovery.md` for operator reference; not carried into `plan.yaml`. |
 | `confidence`           | Drives the interactive flag (see §Confidence handling).  |
@@ -70,8 +69,7 @@ the initiative plan's top-level `sources:` map (the single-writer
 CLI enforces this today). Use `workspace.md` when deciding *how* to
 word `description` / `depends-on` for work that touches shared
 contracts across repos; actually pointing a plan entry at a peer
-checkout path belongs to **RFC-3b** (federation) — do not invent peer
-`scope.*` paths here.
+checkout path belongs to **RFC-3b** (federation).
 
 ### Documentation capabilities (no source-key marker for code)
 
@@ -81,11 +79,10 @@ carry `sources:` pointing at prose references
 `<!-- source-key -->` marker still names the documentation input
 the capability came from. For these:
 - Plan entry `sources:` stays `[<doc-key>]`.
-- No `scope.<key>.include` is pre-filled — documentation inputs
-  have no extractable file tree to scope.
 - `depends-on` still carries over.
 - `description` is `[from docs] <summary>` so the operator knows
-  the intent source.
+  the intent source. No file-path hints are included since
+  documentation inputs have no extractable file tree.
 
 ### Emit order
 
@@ -94,6 +91,32 @@ transitive dependents later. Within a layer, emit alphabetically by
 `name`. This mirrors the topological order `specify initiative next`
 walks at execution time.
 
+### Rich description generation
+
+The `description` field carries all scoping and delta-targeting
+intent as free-form prose. For each capability, assemble the
+description from these inputs:
+
+1. **Capability summary** — the `summary` text from discovery,
+   forming the opening sentence(s).
+2. **File-path hints** — if the capability's `sources:` list
+   contains file paths, append a sentence such as
+   "Focus on `src/common/validation/`." or "Relevant files:
+   `src/auth/verify.ts`, `src/users/register.ts`." Use directory
+   prefixes when multiple files share a common parent; use
+   individual paths when the list is short (≤ 3 entries).
+3. **Delta-targeting intent** — when the capability overlaps with
+   a prior baseline (an existing spec set from a merged change),
+   append "Delta-targets `<prior-change-name>`." so the define
+   brief knows to produce deltas, not a full extraction.
+4. **Scope-narrowing language** — incorporate any narrowing hints
+   from the discovery phase's `hints` or `constraints` (e.g.
+   "Excludes legacy migration paths." or "Limited to the v2 API
+   surface.").
+
+The generated description is presented to the operator in the
+interactive loop and can be refined during an edit action.
+
 ### Confidence handling
 
 - `confidence: high` / `medium` → ordinary candidate in the
@@ -101,43 +124,8 @@ walks at execution time.
 - `confidence: low` → surface with a **⚠ review before accepting**
   flag on the first line of the prompt. The flag is advisory; it
   never auto-rejects. Low-confidence capabilities are where
-  clustering was least certain — typical triggers for a rename, a
-  scope edit, or (at Stage C) a manifest pointer.
-
-### Tangled / overlapping capabilities
-
-Where two capabilities' `sources:` lists overlap (the same file
-path appears under more than one capability on the same source
-key), the default is still **glob-based** emission: verbatim
-per-file paths in `scope.<key>.include` and one `--scope-include`
-per hint, same as non-overlapping `high` / `medium` capabilities.
-`specify initiative validate` surfaces the overlap as a
-`scope-overlap` warning (RFC-3a §*Validation*); the human may
-narrow scope, split the shared file, or defer cleanup during the
-accept/edit/reject loop.
-
-**Stage C — manifest escape hatch.** When **`confidence: low`**
-*and* either (a) that capability's file hints overlap another
-capability's `sources:` on the same path for the same source key,
-or (b) a clean 1:1 mapping from `sources:` entries to
-`--scope-include` globs is ambiguous, the brief MUST **not** rely
-on repeated `--scope-include` for that source key on the affected
-slice. Instead it MUST:
-
-1. Write a v1 slice manifest to
-   `.specify/plans/<initiative>/slices/<change-name>.yaml` (`version:
-   1` and `include:` — each path relative to that source key's
-   root in the plan's `sources` map), enumerating the exact files
-   for extraction.
-2. Shell out to `specify initiative create` with
-   **`--scope-manifest <source-key>=<project-relative-path-to-yaml>`**
-   (exactly once per scoped source key on that invocation) instead
-   of multiple `--scope-include` flags for that key.
-
-Shape and validation errors (`manifest-invalid`, `manifest-empty`,
-`manifest-path-escape`, etc.) match `/spec:extract` §*Manifest
-shape* ([`plugins/spec/skills/extract/SKILL.md`](../../../../plugins/spec/skills/extract/SKILL.md#manifest-shape))
-and `specify initiative validate` in `specify-cli`.
+  clustering was least certain — typical triggers for a rename or
+  a description edit.
 
 ## Omnia carry-through
 
@@ -155,36 +143,19 @@ For each accepted slice, shell out once:
 specify initiative create <name> \
     --sources <source-key> \
     --depends-on <dep1> [--depends-on <dep2> ...] \
-    --scope-include <source-key>=<glob1> \
-    [--scope-include <source-key>=<glob2> ...] \
-    [--scope-manifest <source-key>=<project-relative-yaml> ...] \
-    --description "<summary>"
+    --description "<rich prose>"
 ```
 
-- One `--scope-include` flag per file-hint, verbatim, when Stage C
-  does not require a manifest for that source key (see §*Tangled /
-  overlapping capabilities*). Per-file globs are the 1:1 default;
-  the operator may widen to a directory glob (`src/users/**`)
-  during edit.
-- **`--scope-manifest <source-key>=<path>`** — mutually exclusive
-  with `--scope-include` / `--scope-exclude` for the same source
-  key on one invocation. Use exactly one flag per affected key when
-  the brief emits a slice manifest (Stage C); `<path>` is relative
-  to the project root (the same path stored in
-  `plan.yaml` as `scope.<key>.manifest`).
-- Omit `--scope-include` entirely for documentation capabilities
-  (no file tree to scope).
-- `--scope-exclude` is not emitted automatically; it is reachable
-  through edit. `--scope-manifest` is emitted only under the Stage C
-  rules in §*Tangled / overlapping capabilities*.
+- `--description` carries the rich prose generated per §Rich
+  description generation — file-path hints, delta-targeting intent,
+  and scope-narrowing language all live here.
 
 ## Interactive loop
 
 For each candidate slice in emit order:
 
-1. Present **name** + schema-canonical `summary`.
-2. Show **sources** (source key) and **scope.include**
-   (file-hint list).
+1. Present **name** + generated `description` (rich prose).
+2. Show **sources** (source key).
 3. Show **depends-on** graph preview.
 4. If `confidence: low`, prepend **⚠ review before accepting** to
    the first line of the prompt.
@@ -193,11 +164,9 @@ For each candidate slice in emit order:
      the mapped flags above. Record the entry in the proposal
      table.
    - **edit** — reprompt for changed field(s) (name, sources,
-     depends-on, scope-include, scope-exclude, scope-manifest,
-     description) and re-present. Loop until accept or reject.
-     Edits may widen or narrow scope globs, rename the capability,
-     drop a dependency edge, switch a per-file glob to a directory
-     glob, or move between glob scope and a slice manifest (Stage C).
+     depends-on, description) and re-present. Loop until accept
+     or reject. Edits may rename the capability, drop a dependency
+     edge, or refine the description prose.
    - **reject** — drop the slice. Upcoming slices with an
      implicit `depends-on` on this slice lose that edge before
      they are presented; if a later slice is semantically blocked
@@ -232,8 +201,7 @@ Shape:
 ## Notes
 
 - <free-form notes: why slices were edited, why rejected, deferred
-  work, scope-overlap warnings seen, unresolved open questions
-  from discovery>
+  work, unresolved open questions from discovery>
 ```
 
 The table MUST include every slice presented to the human — edited
@@ -245,9 +213,7 @@ reconstructs the decision trail.
 After the last accepted slice, run `specify initiative validate`.
 If it reports errors, write the error block into the "Notes"
 section of `proposal.md` and stop — human triage is required
-before execution can begin. `scope-overlap` warnings (see
-§Tangled / overlapping capabilities) are copied into "Notes" but
-do not block completion. Do not attempt to auto-repair plan
+before execution can begin. Do not attempt to auto-repair plan
 errors from within this brief.
 
 ## Example — monolith fixture
@@ -264,30 +230,27 @@ Propose emits (dependency order, alphabetical within layer):
 1. ```text
    specify initiative create email-verification \
        --sources monolith \
-       --scope-include monolith=src/auth/verify.ts \
-       --description "Verify a newly registered account via a one-time email token."
+       --description "Verify a newly registered account via a one-time email token. Focus on src/auth/verify.ts."
    ```
 2. ```text
    specify initiative create shared-validation \
        --sources monolith \
-       --scope-include monolith=src/common/validation.ts \
-       --description "Validate common user-facing inputs with reusable primitives."
+       --description "Validate common user-facing inputs with reusable primitives. Focus on src/common/validation/."
    ```
 3. ```text
    specify initiative create user-registration \
        --sources monolith \
        --depends-on email-verification --depends-on shared-validation \
-       --scope-include monolith=src/auth/verify.ts \
-       --scope-include monolith=src/users/register.ts \
-       --scope-include monolith=src/users/validation.ts \
-       --description "Create new user accounts with email verification."
+       --description "Create new user accounts with email verification. Relevant files: src/auth/verify.ts, src/users/register.ts, src/users/validation.ts. Delta-targets email-verification."
    ```
 
-`src/auth/verify.ts` appears under two capabilities — an
-intentional overlap. `specify initiative validate` surfaces it as a
-`scope-overlap` warning; the human resolves during the loop (the
-usual fix is to narrow `user-registration`'s scope to
-`src/users/**` on the edit step).
+`src/auth/verify.ts` appears under two capabilities.
+`user-registration`'s description carries a delta-targeting hint
+(`Delta-targets email-verification.`) so the define brief knows
+to produce deltas against the already-extracted baseline from
+`email-verification`. The operator may refine the description
+prose during the edit step (e.g. narrowing to
+"Focus on `src/users/`.").
 
 ## `--dry-run` behaviour
 
