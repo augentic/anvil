@@ -31,37 +31,60 @@ This is an advisory note — this skill does not run the command itself. RFC-2 L
 ## Phase outcome contract (RFC-2 §"Phase Outcome Contract")
 
 This skill is the **merge** phase of the `/spec:execute` driver loop.
-Before returning control to the caller, always record the phase's outcome
-via:
+The merge outcome is recorded differently depending on the path taken:
+
+### Success path (CLI-stamped — no `phase-outcome` call)
+
+When `specify merge` exits zero, the CLI has already stamped
+`PhaseOutcome { phase: merge, outcome: success }` into
+`.metadata.yaml` atomically with the `Merged` status transition,
+**before** the archive move. The archived `.metadata.yaml` carries
+the outcome. **Do not call `specify change phase-outcome` on the
+success path** — the change directory no longer exists under
+`.specify/changes/` after archiving, so the call would fail with
+"not found".
+
+`/spec:execute` reads the outcome via `specify change outcome <name>`,
+which falls back to the archive when the active change directory is
+absent.
+
+### Failure path (skill-stamped)
+
+When `specify merge` exits non-zero, the filesystem is unchanged
+(the change directory still exists under `.specify/changes/`). Record
+the outcome:
 
 ```bash
-specify change phase-outcome <name> merge <outcome> --summary "..." [--context "..."]
+specify change phase-outcome <name> merge failure --summary "..." [--context "..."]
 ```
 
-where `<outcome>` is exactly one of:
+Use `--summary` to name the failing capability and the load-bearing
+stderr line; use `--context` for verbatim detail (coherence check
+output, lifecycle error, etc.).
 
-- `success`  — `specify merge` completed, every delta was applied to
-  the baseline, and the change directory has been moved to
-  `.specify/archive/YYYY-MM-DD-<name>/`.
-- `failure`  — `specify merge` exited non-zero for a non-recoverable
-  reason (baseline coherence check failed even after the user declined
-  to retry, filesystem error, etc.). Use `--summary` to name the
-  failing capability and the load-bearing stderr line; use `--context`
-  for verbatim detail.
-- `deferred` — human judgement is needed (baseline drift surfaced by
-  `spec conflict-check` that requires human arbitration, the user
-  declined to confirm the merge preview, or the lifecycle status
-  disagrees with the expected `Complete`). Use `--summary` to name the
-  question.
+### Deferred path (skill-stamped)
 
-`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome`
-on return and translates the outcome into a plan transition
-(`done` / `failed` / `blocked`). If the field is missing or malformed,
-`/spec:execute` treats the phase as `deferred` and stops for triage —
-do not skip the CLI call. This `phase-outcome` invocation is the
-**last action** the skill takes before returning control, and it must
-happen whether or not `specify merge` itself ran (e.g. a user-declined
-preview still returns `deferred`).
+When `specify merge` was never invoked — the user declined to confirm
+the merge preview, baseline drift surfaced by `spec conflict-check`
+requires human arbitration, or the lifecycle status disagrees with the
+expected `Complete` — the change directory still exists. Record the
+outcome:
+
+```bash
+specify change phase-outcome <name> merge deferred --summary "..."
+```
+
+Use `--summary` to name the question or the reason the merge was not
+attempted.
+
+### Contract summary
+
+`/spec:execute` reads `.metadata.yaml:outcome` on return and
+translates it into a plan transition (`done` / `failed` / `blocked`).
+If the field is missing or malformed, `/spec:execute` treats the phase
+as `deferred` and stops for triage. The `phase-outcome` call (for
+failure and deferred) is the **last action** the skill takes before
+returning control.
 
 ## Journal entries during the run (RFC-2 §"Question Recording")
 
@@ -204,10 +227,12 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
    - Computes the same operations as `spec preview`.
    - Runs baseline coherence validation on every merged output (`specify validate` semantics).
    - Writes each merged baseline under `.specify/specs/<capability>/spec.md`.
-   - Transitions `.metadata.yaml` to `merged` and stamps `merged-at` / `completed-at`.
+   - Transitions `.metadata.yaml` to `merged`, stamps `merged-at` / `completed-at`, and stamps `PhaseOutcome { phase: merge, outcome: success }`.
    - Moves `.specify/changes/<name>/` into `.specify/archive/YYYY-MM-DD-<name>/`.
 
-   **If the call exits non-zero**: the filesystem is unchanged (baselines not written, change dir not moved). Report the error and stop — do not retry until the user has edited the failing delta or addressed the lifecycle state.
+   On success, the outcome is already recorded — **do not call `phase-outcome`** (see §Phase outcome contract above).
+
+   **If the call exits non-zero**: the filesystem is unchanged (baselines not written, change dir not moved). Record the failure via `specify change phase-outcome` (the change directory still exists). Report the error and stop — do not retry until the user has edited the failing delta or addressed the lifecycle state.
 
 5. **Display summary**
 
