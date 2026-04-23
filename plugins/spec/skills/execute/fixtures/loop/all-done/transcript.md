@@ -1,9 +1,6 @@
 # all-done — `--loop` drives a clean plan to completion
 
-A three-entry `platform-v2` plan with `user-registration` as root and
-two siblings depending on it. Every phase on every change returns
-`outcome: success`. `--loop` picks each eligible entry in turn and
-exits with `Completion: all-done`.
+A three-entry `platform-v2` plan with `user-registration` as root and two siblings depending on it. Every phase on every change returns `outcome: success`. `--loop` picks each eligible entry in turn and exits with `Completion: all-done`.
 
 ## Driver timeline
 
@@ -132,17 +129,7 @@ Next action: Initiative complete — no further action needed.
 
 ## Invariants pinned
 
-1. **Lock held once, across all iterations.** `specify initiative lock
-   acquire` runs once at step 2 of the `--loop` algorithm; `specify
-   plan lock release` runs once at step 6. No per-iteration lock
-   churn appears anywhere in the timeline.
-2. **Self-heal runs once.** The `Self-heal: no in-progress entries
-   found.` line fires a single time, before any iteration starts. It
-   is not repeated between iterations.
-3. **`Blocked:` / `Failed:` / `Pending:` sections omitted when empty.**
-   The `all-done` terminal summary has only `Final state`,
-   `Completion`, and `Next action`. The summary renderer must not
-   emit empty list headings.
-4. **Progress line enumerates all six statuses in fixed order.**
-   Even when a status bucket is zero, it appears in the line as
-   `<status> 0`. Downstream parsers see a stable shape.
+1. **Lock held once, across all iterations.** `specify initiative lock acquire` runs once at step 2 of the `--loop` algorithm; `specify plan lock release` runs once at step 6. No per-iteration lock churn appears anywhere in the timeline.
+2. **Self-heal runs once.** The `Self-heal: no in-progress entries found.` line fires a single time, before any iteration starts. It is not repeated between iterations.
+3. **`Blocked:` / `Failed:` / `Pending:` sections omitted when empty.** The `all-done` terminal summary has only `Final state`, `Completion`, and `Next action`. The summary renderer must not emit empty list headings.
+4. **Progress line enumerates all six statuses in fixed order.** Even when a status bucket is zero, it appears in the line as `<status> 0`. Downstream parsers see a stable shape.

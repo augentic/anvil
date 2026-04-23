@@ -5,22 +5,11 @@ description: Generate or update a SwiftUI iOS shell for a Crux application from 
 
 # Crux iOS Shell Generator
 
-Generate or update a buildable SwiftUI iOS shell for an existing Crux core
-application. The shell renders the core's `ViewModel`, dispatches `Event`
-values from user interactions, and handles platform side-effects (HTTP, KV,
-SSE) on behalf of the core.
+Generate or update a buildable SwiftUI iOS shell for an existing Crux core application. The shell renders the core's `ViewModel`, dispatches `Event` values from user interactions, and handles platform side-effects (HTTP, KV, SSE) on behalf of the core.
 
-When an existing iOS shell is detected, the skill operates in **update mode**:
-it compares the current `app.rs` types against the existing Swift code and
-makes targeted edits rather than regenerating from scratch.
+When an existing iOS shell is detected, the skill operates in **update mode**: it compares the current `app.rs` types against the existing Swift code and makes targeted edits rather than regenerating from scratch.
 
-When no iOS shell exists yet, the skill runs `specify vectis add-shell ios --dir {app-dir}`
-to scaffold the project. The CLI owns `iOS/project.yml`, `iOS/Makefile`, the
-Inject SPM wiring, the `{AppName}App.swift` entry point, a render-only
-`Core.swift` with CAP markers, a baseline `ContentView.swift`, and the starter
-`Views/LoadingScreen.swift` / `Views/HomeScreen.swift`. Once the scaffold
-exists this skill switches to **update mode** and layers spec-driven changes
-over the generated baseline.
+When no iOS shell exists yet, the skill runs `specify vectis add-shell ios --dir {app-dir}` to scaffold the project. The CLI owns `iOS/project.yml`, `iOS/Makefile`, the Inject SPM wiring, the `{AppName}App.swift` entry point, a render-only `Core.swift` with CAP markers, a baseline `ContentView.swift`, and the starter `Views/LoadingScreen.swift` / `Views/HomeScreen.swift`. Once the scaffold exists this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
 
 This skill targets **Swift 6** and **SwiftUI** with iOS 17+ deployment target.
 
@@ -45,8 +34,7 @@ The following tools must be installed (see README.md for installation):
 
 ## Input Analysis
 
-The ios-writer reads the Crux core source to determine what the shell must
-render and handle. Read `{app-dir}/shared/src/app.rs` and extract:
+The ios-writer reads the Crux core source to determine what the shell must render and handle. Read `{app-dir}/shared/src/app.rs` and extract:
 
 | Extract | Source | Maps to |
 |---|---|---|
@@ -65,68 +53,38 @@ Also read:
 - `design-system/spec.md` -- design system usage rules
 
 When `change-dir` is provided, also read:
-- `{change-dir}/specs/{feature-name}/spec.md` -- read the `## iOS Shell Requirements`
-  section for platform-specific behavioral requirements (navigation style, gestures,
-  haptics, accessibility). Also read the `## iOS Shell Details` section of
-  `{change-dir}/design.md` for platform design decisions.
+- `{change-dir}/specs/{feature-name}/spec.md` -- read the `## iOS Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## iOS Shell Details` section of `{change-dir}/design.md` for platform design decisions.
 
 ## Mode Detection
 
-- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes
-  `specify vectis add-shell ios` to scaffold the baseline, then proceeds directly
-  into Update Mode to apply feature-specific changes from the Specify artifacts.
-- **Update Mode** -- `{project-dir}/` **does** exist and contains `.swift` files.
-  Read existing code, diff against the core, and make targeted edits
-  (steps U1--U8 below).
+- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes `specify vectis add-shell ios` to scaffold the baseline, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
+- **Update Mode** -- `{project-dir}/` **does** exist and contains `.swift` files. Read existing code, diff against the core, and make targeted edits (steps U1--U8 below).
 
-Detection rule: check for `{project-dir}/*/Core.swift`. If present, switch to
-update mode. If not, run:
+Detection rule: check for `{project-dir}/*/Core.swift`. If present, switch to update mode. If not, run:
 
 ```bash
 specify vectis add-shell ios --dir {app-dir}
 ```
 
-`{app-dir}` is the parent directory of `shared/`; the CLI derives the `iOS/`
-sibling directory automatically. On non-zero exit, surface the CLI's structured
-error output to the user and stop -- do **not** attempt to hand-author
-`project.yml`, `Makefile`, or any of the baseline `.swift` files.
+`{app-dir}` is the parent directory of `shared/`; the CLI derives the `iOS/` sibling directory automatically. On non-zero exit, surface the CLI's structured error output to the user and stop -- do **not** attempt to hand-author `project.yml`, `Makefile`, or any of the baseline `.swift` files.
 
-If the command succeeds, switch to Update Mode. The scaffolded shell is a
-render-only baseline with CAP markers in `Core.swift` (one per optional
-capability: `http`, `kv`, `time`, `platform`, `sse`) and starter screens for
-`Loading` + `Home`. Update Mode replaces CAP markers and starter screens with
-real effect handlers and per-ViewModel-variant screen views derived from the
-current `app.rs`.
+If the command succeeds, switch to Update Mode. The scaffolded shell is a render-only baseline with CAP markers in `Core.swift` (one per optional capability: `http`, `kv`, `time`, `platform`, `sse`) and starter screens for `Loading` + `Home`. Update Mode replaces CAP markers and starter screens with real effect handlers and per-ViewModel-variant screen views derived from the current `app.rs`.
 
 ## Verification ownership
 
-When the orchestrator passes `skip_verification: true`, the writer stops after
-code generation and does **not** run step U8. The orchestrator's dedicated iOS
-verify sub-agent handles formatting, `make build`, and `make sim-build` with
-its own repair loop and iteration limits.
+When the orchestrator passes `skip_verification: true`, the writer stops after code generation and does **not** run step U8. The orchestrator's dedicated iOS verify sub-agent handles formatting, `make build`, and `make sim-build` with its own repair loop and iteration limits.
 
-When invoked **standalone** (no `skip_verification` flag, or
-`skip_verification: false`), the writer runs its full process including step U8.
+When invoked **standalone** (no `skip_verification` flag, or `skip_verification: false`), the writer runs its full process including step U8.
 
 ---
 
 ## Process: Create Mode
 
-Use this process when no iOS shell exists at `{project-dir}`. The CLI owns all
-iOS boilerplate (`project.yml`, `Makefile`, entry point, render-only baseline
-`Core.swift`, `ContentView.swift`, `Views/LoadingScreen.swift`,
-`Views/HomeScreen.swift`, and Inject/XcodeGen wiring). This skill's only
-Create-Mode responsibilities are: (1) read the Crux core to derive the app
-name and capability set, (2) invoke the CLI, (3) switch to Update Mode.
+Use this process when no iOS shell exists at `{project-dir}`. The CLI owns all iOS boilerplate (`project.yml`, `Makefile`, entry point, render-only baseline `Core.swift`, `ContentView.swift`, `Views/LoadingScreen.swift`, `Views/HomeScreen.swift`, and Inject/XcodeGen wiring). This skill's only Create-Mode responsibilities are: (1) read the Crux core to derive the app name and capability set, (2) invoke the CLI, (3) switch to Update Mode.
 
 ### 1. Read the Crux core
 
-Read `{app-dir}/shared/src/app.rs` and extract all types listed in the Input
-Analysis table above. In particular, derive the App struct name (used by the
-CLI to name the Xcode target, directory, and entry point file) and note which
-capabilities the core actually uses -- this drives which CAP markers Update
-Mode must replace in the scaffolded `Core.swift`. If `app.rs` cannot be read
-or parsed, report the error and stop.
+Read `{app-dir}/shared/src/app.rs` and extract all types listed in the Input Analysis table above. In particular, derive the App struct name (used by the CLI to name the Xcode target, directory, and entry point file) and note which capabilities the core actually uses -- this drives which CAP markers Update Mode must replace in the scaffolded `Core.swift`. If `app.rs` cannot be read or parsed, report the error and stop.
 
 ### 2. Invoke the CLI
 
@@ -136,26 +94,16 @@ Run:
 specify vectis add-shell ios --dir {app-dir}
 ```
 
-The CLI derives the app name from `shared/Cargo.toml` / `app.rs` and
-produces `iOS/project.yml`, `iOS/Makefile`, `iOS/{AppName}/{AppName}App.swift`,
-`iOS/{AppName}/Core.swift` (with CAP markers for every optional capability),
-`iOS/{AppName}/ContentView.swift`, and the starter
-`iOS/{AppName}/Views/{Loading,Home}Screen.swift`. The output is structured
-JSON. On non-zero exit, surface the CLI's error output to the user and stop.
+The CLI derives the app name from `shared/Cargo.toml` / `app.rs` and produces `iOS/project.yml`, `iOS/Makefile`, `iOS/{AppName}/{AppName}App.swift`, `iOS/{AppName}/Core.swift` (with CAP markers for every optional capability), `iOS/{AppName}/ContentView.swift`, and the starter `iOS/{AppName}/Views/{Loading,Home}Screen.swift`. The output is structured JSON. On non-zero exit, surface the CLI's error output to the user and stop.
 
 ### 3. Switch to Update Mode
 
-After the CLI returns green, treat the scaffolded iOS shell as an existing
-implementation and execute **Process: Update Mode** below to:
+After the CLI returns green, treat the scaffolded iOS shell as an existing implementation and execute **Process: Update Mode** below to:
 
-- Strip CAP markers for capabilities the core does not use, and expand CAP
-  blocks (with real effect handlers + helpers) for capabilities the core does
-  use.
-- Replace the `HomeScreen` starter with real per-ViewModel-variant screen
-  files driven by the core's `ViewModel` enum + per-page view structs.
+- Strip CAP markers for capabilities the core does not use, and expand CAP blocks (with real effect handlers + helpers) for capabilities the core does use.
+- Replace the `HomeScreen` starter with real per-ViewModel-variant screen files driven by the core's `ViewModel` enum + per-page view structs.
 - Rewrite `ContentView.swift`'s `switch` to cover every ViewModel variant.
-- Apply any `## iOS Shell Requirements` from the active Specify change (when
-  `change-dir` is provided).
+- Apply any `## iOS Shell Requirements` from the active Specify change (when `change-dir` is provided).
 
 ## Process: Update Mode
 
@@ -163,12 +111,9 @@ Use this process when `{project-dir}/` already exists with Swift files.
 
 ### U1. Read and analyze the Crux core
 
-Same as create mode step 1 (read `{app-dir}/shared/src/app.rs` and extract
-the full type inventory using the Input Analysis table above).
+Same as create mode step 1 (read `{app-dir}/shared/src/app.rs` and extract the full type inventory using the Input Analysis table above).
 
-When `change-dir` is provided, also read the `## iOS Shell Requirements` section
-from `{change-dir}/specs/{feature-name}/spec.md` and the `## iOS Shell Details`
-section from `{change-dir}/design.md` for platform-specific requirements.
+When `change-dir` is provided, also read the `## iOS Shell Requirements` section from `{change-dir}/specs/{feature-name}/spec.md` and the `## iOS Shell Details` section from `{change-dir}/design.md` for platform-specific requirements.
 
 ### U2. Read existing Swift code
 
@@ -179,9 +124,7 @@ Read all `.swift` files in `{project-dir}/{AppName}/`:
 - `Views/*.swift` -- current screen views
 - `{AppName}App.swift` -- app entry point
 
-Also check for existing Inject integration: look for `import Inject` and
-`@ObserveInjection` in view files. Record whether Inject is already present
-so step U6 knows whether to add it.
+Also check for existing Inject integration: look for `import Inject` and `@ObserveInjection` in view files. Record whether Inject is already present so step U6 knows whether to add it.
 
 ### U3. Build implementation inventory
 
@@ -198,18 +141,15 @@ Extract from existing Swift code:
 
 ### U4. Diff analysis
 
-Compare the Rust core types (from U1) against the Swift inventory (from U3).
-For each category, classify items as Added, Removed, Modified, or Unchanged.
+Compare the Rust core types (from U1) against the Swift inventory (from U3). For each category, classify items as Added, Removed, Modified, or Unchanged.
 
 Walk through in this order:
 
 1. **Effect variants** -- new or removed capabilities affect Core.swift.
-2. **ViewModel variants** -- new or removed views affect ContentView and
-   screen view files.
+2. **ViewModel variants** -- new or removed views affect ContentView and screen view files.
 3. **Per-page view struct fields** -- changed display data affects screen views.
 4. **Event variants** -- new or removed user actions affect screen views.
-5. **Route variants** -- new or removed navigation destinations affect
-   navigation code.
+5. **Route variants** -- new or removed navigation destinations affect navigation code.
 
 Output the diff summary before making edits.
 
@@ -226,25 +166,18 @@ Output the diff summary before making edits.
 - Update ContentView.swift switch to add/remove cases.
 - Update existing screen views for changed per-page view struct fields.
 - Add/remove event dispatch calls for changed Event variants.
-- If Inject is missing from any view file (including `ContentView.swift`,
-  `{AppName}App.swift`, and all screen views), add the boilerplate:
-  `import Inject`, `@ObserveInjection var inject` property, and
-  `.enableInjection()` as the outermost body modifier.
+- If Inject is missing from any view file (including `ContentView.swift`, `{AppName}App.swift`, and all screen views), add the boilerplate: `import Inject`, `@ObserveInjection var inject` property, and `.enableInjection()` as the outermost body modifier.
 
 ### U7. Update build configuration
 
 - Update `project.yml` if new dependencies are needed.
 - Update `Makefile` if build targets changed.
-- If `project.yml` lacks the `Inject` SPM package, add it along with the
-  `- package: Inject` target dependency, Debug-only `OTHER_LDFLAGS`
-  (`["-w", "-Xlinker", "-interposable"]`), and
-  `EMIT_FRONTEND_COMMAND_LINES: "YES"` in the Debug config.
+- If `project.yml` lacks the `Inject` SPM package, add it along with the `- package: Inject` target dependency, Debug-only `OTHER_LDFLAGS` (`["-w", "-Xlinker", "-interposable"]`), and `EMIT_FRONTEND_COMMAND_LINES: "YES"` in the Debug config.
 
 ### U8. Format and verify
 
 1. Run `swiftformat` on modified files.
-2. Run `make build` to verify compilation (the CLI-generated `Makefile` runs
-   the three-phase `typegen -> package -> xcode` pipeline).
+2. Run `make build` to verify compilation (the CLI-generated `Makefile` runs the three-phase `typegen -> package -> xcode` pipeline).
 3. Run `make sim-build` to verify the project compiles for the iOS Simulator.
 4. Fix any build errors.
 
@@ -262,15 +195,11 @@ Output the diff summary before making edits.
 ## Preservation Rules (Update Mode)
 
 1. **Never regenerate a file from scratch.** Make targeted edits.
-2. **Preserve custom styling** that the developer added beyond the design
-   system defaults.
-3. **Preserve custom view logic** (e.g., animations, gestures) that is not
-   driven by the ViewModel.
+2. **Preserve custom styling** that the developer added beyond the design system defaults.
+3. **Preserve custom view logic** (e.g., animations, gestures) that is not driven by the ViewModel.
 4. **Preserve `#Preview` blocks** on unchanged views.
-5. **Preserve `project.yml` customizations** (signing, entitlements, custom
-   build phases).
-6. **Preserve `Makefile` customizations** (additional targets, environment
-   variables).
+5. **Preserve `project.yml` customizations** (signing, entitlements, custom build phases).
+6. **Preserve `Makefile` customizations** (additional targets, environment variables).
 
 ## Reference Documentation
 
@@ -280,14 +209,7 @@ Output the diff summary before making edits.
 | `references/swiftui-view-patterns.md` | Screen patterns, lists, forms, navigation, accessibility |
 | `references/design-system-integration.md` | VectisDesign token usage in views |
 
-XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell
-scaffolding (`project.yml` packages, Inject SPM wiring, CAP markers, starter
-screens) are owned by the CLI's embedded templates in the
-[`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo
-(`<specify-cli>/crates/vectis/src/init/ios.rs` and
-`<specify-cli>/templates/vectis/ios/`). Do not hand-edit those files in
-Create Mode; let `specify vectis add-shell ios` write them and then modify
-in Update Mode.
+XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffolding (`project.yml` packages, Inject SPM wiring, CAP markers, starter screens) are owned by the CLI's embedded templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/src/init/ios.rs` and `<specify-cli>/templates/vectis/ios/`). Do not hand-edit those files in Create Mode; let `specify vectis add-shell ios` write them and then modify in Update Mode.
 
 ## Examples
 
@@ -353,32 +275,9 @@ in Update Mode.
 
 ## Important Notes
 
-- **Core only must exist first**: This skill generates the iOS shell for an
-  existing Crux core. Run the core-writer skill first to generate the
-  `shared` crate.
-- **Shell is thin**: All business logic lives in the Rust core. The shell
-  only renders views and performs platform I/O. Never add business logic
-  to Swift code.
-- **UniFFI bridging**: The shared crate must have `crate-type = ["staticlib"]`
-  and the `uniffi` feature gate. The ios-writer assumes this is already
-  configured by the core-writer. The `uniffi` crate must be pinned to
-  `"=0.29.4"` to match `crux_core::cli::bindgen`'s bundled `uniffi_bindgen`.
-- **Generated types**: Two Swift packages are produced: `SharedTypes` (domain
-  types via facet_typegen) and `Shared` (UniFFI bindings + XCFramework via
-  cargo-swift).
-- **Hot reloading**: All generated shells include the
-  [Inject](https://github.com/krzysztofzablocki/Inject) library for hot
-  reloading during development. Inject is a no-op in Release builds (stripped
-  by LLVM), so the boilerplate can remain permanently. Each developer must
-  install [InjectionIII](https://github.com/nicklama/InjectionIII/releases)
-  separately. The CLI wires Inject into `project.yml` (SPM package +
-  Debug-only `OTHER_LDFLAGS: -Xlinker -interposable` +
-  `EMIT_FRONTEND_COMMAND_LINES: YES`); Update Mode only has to add
-  `@ObserveInjection`/`.enableInjection()` to new screen views.
-- **Specify integration**: When `change-dir` is provided, the skill reads
-  the `## iOS Shell Requirements` section from the feature spec and the
-  `## iOS Shell Details` section from design.md. The primary input remains
-  `app.rs` from the core; the feature spec's platform section supplements
-  with requirements that may not be expressed in the Rust types alone
-  (e.g., navigation style, specific UX behaviors, accessibility
-  requirements, layout constraints).
+- **Core only must exist first**: This skill generates the iOS shell for an existing Crux core. Run the core-writer skill first to generate the `shared` crate.
+- **Shell is thin**: All business logic lives in the Rust core. The shell only renders views and performs platform I/O. Never add business logic to Swift code.
+- **UniFFI bridging**: The shared crate must have `crate-type = ["staticlib"]` and the `uniffi` feature gate. The ios-writer assumes this is already configured by the core-writer. The `uniffi` crate must be pinned to `"=0.29.4"` to match `crux_core::cli::bindgen`'s bundled `uniffi_bindgen`.
+- **Generated types**: Two Swift packages are produced: `SharedTypes` (domain types via facet_typegen) and `Shared` (UniFFI bindings + XCFramework via cargo-swift).
+- **Hot reloading**: All generated shells include the [Inject](https://github.com/krzysztofzablocki/Inject) library for hot reloading during development. Inject is a no-op in Release builds (stripped by LLVM), so the boilerplate can remain permanently. Each developer must install [InjectionIII](https://github.com/nicklama/InjectionIII/releases) separately. The CLI wires Inject into `project.yml` (SPM package + Debug-only `OTHER_LDFLAGS: -Xlinker -interposable` + `EMIT_FRONTEND_COMMAND_LINES: YES`); Update Mode only has to add `@ObserveInjection`/`.enableInjection()` to new screen views.
+- **Specify integration**: When `change-dir` is provided, the skill reads the `## iOS Shell Requirements` section from the feature spec and the `## iOS Shell Details` section from design.md. The primary input remains `app.rs` from the core; the feature spec's platform section supplements with requirements that may not be expressed in the Rust types alone (e.g., navigation style, specific UX behaviors, accessibility requirements, layout constraints).

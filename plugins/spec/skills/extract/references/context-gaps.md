@@ -371,20 +371,7 @@ Flattening nested types or not documenting all fields.
 **Show full nesting:**
 ```markdown
 ✓ Output Types:
-  ```
-  User
-    {
-      "id": "string",
-      "name": "string",
-      "profile": {
-        "age": "number",
-        "location": "string",
-        "preferences": {
-          "theme": "string",
-          "notifications": "boolean"
-        }
-      }
-    }
+  ``` User { "id": "string", "name": "string", "profile": { "age": "number", "location": "string", "preferences": { "theme": "string", "notifications": "boolean" } } }
   ```
 ```
 

@@ -1,11 +1,8 @@
 # Swift Token Templates
 
-Concrete Swift code templates for each token value shape. The design-system-writer
-skill uses these templates to generate the VectisDesign Swift Package from
-`tokens.yaml`.
+Concrete Swift code templates for each token value shape. The design-system-writer skill uses these templates to generate the VectisDesign Swift Package from `tokens.yaml`.
 
-All generated token files share this structure (Theme.swift uses a separate
-template -- see the Theme Template section below):
+All generated token files share this structure (Theme.swift uses a separate template -- see the Theme Template section below):
 
 ```
 import SwiftUI
@@ -32,8 +29,7 @@ Each entry:
 public static let {name} = Color(light: "{light}", dark: "{dark}")
 ```
 
-Group entries with a blank line between semantic groups. Groups are determined
-by name prefix root:
+Group entries with a blank line between semantic groups. Groups are determined by name prefix root:
 
 | Prefix root | Tokens |
 |---|---|
@@ -45,14 +41,9 @@ by name prefix root:
 
 ### Required Extensions
 
-The color file must include these extensions after the enum. They provide
-the `Color(light:dark:)` initializer used by every color token.
+The color file must include these extensions after the enum. They provide the `Color(light:dark:)` initializer used by every color token.
 
-The `Package.swift` declares both `.iOS(.v17)` and `.macOS(.v14)`, so
-generated code must compile on both platforms. Use `#if canImport(UIKit)` /
-`#elseif canImport(AppKit)` to branch between `UIColor` (iOS) and `NSColor`
-(macOS). `swift build` on a macOS host compiles for macOS by default, so
-without this guard the build fails with "cannot find type UIColor."
+The `Package.swift` declares both `.iOS(.v17)` and `.macOS(.v14)`, so generated code must compile on both platforms. Use `#if canImport(UIKit)` / `#elseif canImport(AppKit)` to branch between `UIColor` (iOS) and `NSColor` (macOS). `swift build` on a macOS host compiles for macOS by default, so without this guard the build fails with "cannot find type UIColor."
 
 ```swift
 // MARK: - Color Initializer from Hex
@@ -263,13 +254,11 @@ Each entry:
 public static let {name}: CGFloat = {value}
 ```
 
-Values are written as integers when the YAML value is a whole number (e.g., `16`
-not `16.0`). If the YAML value has a decimal component, preserve it (e.g., `1.5`).
+Values are written as integers when the YAML value is a whole number (e.g., `16` not `16.0`). If the YAML value has a decimal component, preserve it (e.g., `1.5`).
 
 ### Colocated Scalars
 
-`spacing` and `cornerRadius` share `Spacing.swift`. They are written as two
-separate enums separated by a blank line and a MARK comment:
+`spacing` and `cornerRadius` share `Spacing.swift`. They are written as two separate enums separated by a blank line and a MARK comment:
 
 ```swift
 import SwiftUI
@@ -299,8 +288,7 @@ public enum VectisCornerRadius {
 }
 ```
 
-New scalar categories (e.g., `elevation`, `opacity`) get their own file
-unless explicitly colocated.
+New scalar categories (e.g., `elevation`, `opacity`) get their own file unless explicitly colocated.
 
 ## Theme Template
 

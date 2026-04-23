@@ -26,12 +26,7 @@ In this repository:
 
 ## Skill / CLI responsibility split
 
-Phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`)
-are agent-driven orchestrators; every deterministic operation they need —
-`.metadata.yaml` reads and writes, lifecycle transitions, schema/brief
-resolution, pipeline topology, artifact-completion checks, spec-merge
-preview, baseline conflict detection, delta merge, coherence validation,
-archive move — is delegated to the `specify` CLI.
+Phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`) are agent-driven orchestrators; every deterministic operation they need — `.metadata.yaml` reads and writes, lifecycle transitions, schema/brief resolution, pipeline topology, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — is delegated to the `specify` CLI.
 
 | Concern                                   | CLI surface                                                    |
 |-------------------------------------------|----------------------------------------------------------------|
@@ -49,7 +44,4 @@ archive move — is delegated to the `specify` CLI.
 | Baseline drift detection                  | `specify spec conflict-check <change-dir>`                     |
 | Commit merge + archive                    | `specify merge <change-dir>`                                   |
 
-Skills never `mkdir -p .specify/...`, `mv ... .specify/archive/...`, or
-hand-edit `.metadata.yaml`. All such writes flow through the CLI, which
-enforces the legal lifecycle transitions and `.metadata.yaml` shape in a
-single place.
+Skills never `mkdir -p .specify/...`, `mv ... .specify/archive/...`, or hand-edit `.metadata.yaml`. All such writes flow through the CLI, which enforces the legal lifecycle transitions and `.metadata.yaml` shape in a single place.

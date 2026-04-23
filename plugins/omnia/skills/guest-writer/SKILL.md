@@ -140,9 +140,7 @@ See [Configuration](references/configuration.md#github-workflows) for templates 
 
 Generate dependency compliance configuration for Cargo Deny and Cargo Vet:
 
-1. **`deny.toml`** -- Cargo Deny configuration for license, advisory, ban, and source checks.
-   Use the standard template from [Configuration](references/configuration.md#denytom).
-   Customize `[sources].private` to match the project's private registry URL(s) from `.cargo/config.toml`.
+1. **`deny.toml`** -- Cargo Deny configuration for license, advisory, ban, and source checks. Use the standard template from [Configuration](references/configuration.md#denytom). Customize `[sources].private` to match the project's private registry URL(s) from `.cargo/config.toml`.
 
 2. **`supply-chain/README.md`** -- Instructions for updating vetted dependencies after code changes.
 

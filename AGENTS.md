@@ -24,16 +24,7 @@ This repository provides specialist skills and references that support that work
 
 ### Skill / CLI responsibility split
 
-The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`,
-`/spec:status`, `/spec:init`) are agent-driven orchestrators. Every
-deterministic operation — kebab-case name validation, `.metadata.yaml`
-reads and writes, lifecycle transitions, schema and brief-pipeline
-resolution, artifact-completion checks, spec-merge preview, baseline
-conflict detection, delta merge, coherence validation, archive move —
-runs through the `specify` CLI. The skill markdown drives the agent-side
-work: eliciting user intent, reading brief bodies, writing artifacts,
-invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering
-summaries.
+The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:status`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, lifecycle transitions, schema and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
 CLI surface the skills depend on:
 
@@ -47,15 +38,11 @@ CLI surface the skills depend on:
 - `specify task {progress, mark}` — task progress and checkbox flips.
 - `specify merge` — commit spec merge + archive.
 
-Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never
-`mv` anything into `.specify/archive/`. Route through the CLI — it
-enforces the legal set of lifecycle states and validates inputs in one
-place for humans, agents, and CI alike.
+Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 
 ### Plan-driven loop (RFC-2, all three layers landed)
 
-When an initiative is coordinated through a `.specify/plan.yaml`, the
-recommended path is:
+When an initiative is coordinated through a `.specify/plan.yaml`, the recommended path is:
 
 1. **Author.** `/spec:plan <initiative-name> --source <key>=<path-or-url> ...` — Layer 3 skill runs `pipeline.plan` briefs, optionally **sync-peers** + `workspace.md` when the registry is multi-project, then `specify initiative init` + one `specify initiative create` per accepted slice (globs or `--scope-manifest` per RFC-3a Stage C).
 2. **Execute.** `/spec:execute --loop` — Layer 2 driver that repeatedly picks `specify initiative next`, runs `/spec:define → /spec:build → /spec:merge` on the chosen entry, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
@@ -63,13 +50,7 @@ recommended path is:
 
 Hand-driven fallback (RFC-2 Layer 1): skip `/spec:plan` and `/spec:execute`, author `plan.yaml` entry-by-entry with `specify initiative {init, create, amend}`, and drive the loop yourself via `specify initiative next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
 
-The phase skills themselves stay unaware of the plan — they operate
-change-by-change. Plan *entries* are only ever written via `specify initiative create` /
-`specify initiative amend`; plan *status* is only ever written
-via `specify initiative transition`. A phase that discovers a neighbouring
-change mid-run (e.g. a define brief uncovering a bug fix that should be
-tracked) may shell out to `specify initiative create` / `specify initiative amend`
-— the same commands humans run. See [rfcs/archive/rfc-2-execution.md](rfcs/archive/rfc-2-execution.md) for the full design.
+The phase skills themselves stay unaware of the plan — they operate change-by-change. Plan *entries* are only ever written via `specify initiative create` / `specify initiative amend`; plan *status* is only ever written via `specify initiative transition`. A phase that discovers a neighbouring change mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify initiative create` / `specify initiative amend` — the same commands humans run. See [rfcs/archive/rfc-2-execution.md](rfcs/archive/rfc-2-execution.md) for the full design.
 
 ### Commands
 

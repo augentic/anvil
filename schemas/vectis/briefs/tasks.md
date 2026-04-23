@@ -5,16 +5,11 @@ generates: tasks.md
 needs: [specs, design]
 ---
 
-Follow the task format conventions defined in the define skill for
-checkbox format, grouping, ordering, and skill directive tags.
+Follow the task format conventions defined in the define skill for checkbox format, grouping, ordering, and skill directive tags.
 
-Tasks are organized by build phase, not by feature. All features in
-the change share a single task list ordered:
-design-system first, core second, shells last.
+Tasks are organized by build phase, not by feature. All features in the change share a single task list ordered: design-system first, core second, shells last.
 
-Each task references the single feature spec at
-`specs/<feature>/spec.md`. The spec contains both core requirements
-and any platform-specific requirements in dedicated sections.
+Each task references the single feature spec at `specs/<feature>/spec.md`. The spec contains both core requirements and any platform-specific requirements in dedicated sections.
 
 ## Available Skills
 

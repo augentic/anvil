@@ -5,10 +5,7 @@ generates: design.md
 needs: [proposal]
 ---
 
-Include sections based on the platforms declared in the proposal.
-The Domain Model and Capabilities sections are always present (core
-is always in scope). Platform-specific sections are included only when
-the corresponding platform is listed in the proposal.
+Include sections based on the platforms declared in the proposal. The Domain Model and Capabilities sections are always present (core is always in scope). Platform-specific sections are included only when the corresponding platform is listed in the proposal.
 
 ## Output Structure
 

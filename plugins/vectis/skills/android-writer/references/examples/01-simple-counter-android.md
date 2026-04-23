@@ -1,11 +1,8 @@
 # Example: Simple Counter Android Shell (Render Only)
 
-A minimal Android shell for a Crux counter app with local state and no external
-side-effects. Demonstrates Core.kt, MainActivity.kt, screen composables,
-Gradle configuration, and Makefile.
+A minimal Android shell for a Crux counter app with local state and no external side-effects. Demonstrates Core.kt, MainActivity.kt, screen composables, Gradle configuration, and Makefile.
 
-This shell pairs with the core-writer example `01-simple-counter.md`. The
-shared crate defines:
+This shell pairs with the core-writer example `01-simple-counter.md`. The shared crate defines:
 
 - `ViewModel::Counter(CounterView)` variant (single-variant enum)
 - `CounterView { count: String }` per-page view struct
@@ -496,12 +493,9 @@ fun CounterScreenPreview() {
 ## Key Patterns Demonstrated
 
 1. **Simple Core pattern** -- `Core` extends `ViewModel`, uses `mutableStateOf`.
-2. **Enum ViewModel with `when` branching** -- even a single-variant enum uses
-   `when` in the root composable to destructure the per-page view struct.
-3. **Per-page view struct as screen parameter** -- `CounterScreen` accepts
-   `CounterView`, not `ViewModel`. The `when` branch extracts `state.value`.
-4. **Application class** -- `CounterApplication` sets the UniFFI library override
-   before any UniFFI class loads. Required even without Koin.
+2. **Enum ViewModel with `when` branching** -- even a single-variant enum uses `when` in the root composable to destructure the per-page view struct.
+3. **Per-page view struct as screen parameter** -- `CounterScreen` accepts `CounterView`, not `ViewModel`. The `when` branch extracts `state.value`.
+4. **Application class** -- `CounterApplication` sets the UniFFI library override before any UniFFI class loads. Required even without Koin.
 5. **Event callback pattern** -- screens receive `(Event) -> Unit`, not the `Core`.
 6. **Material 3 theming** -- colors from `MaterialTheme.colorScheme`.
 7. **Preview support** -- every screen has a `@Preview` with sample data.

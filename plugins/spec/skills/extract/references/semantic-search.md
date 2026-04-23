@@ -167,26 +167,22 @@ Before analyzing individual functions, use semantic search to identify:
 1. **Business logic patterns**:
    ```bash
    semantic-search "business rules and domain logic" $SOURCE_PATH
-   ```
-   Results guide which functions contain core business logic.
+   ``` Results guide which functions contain core business logic.
 
 2. **Validation patterns**:
    ```bash
    semantic-search "input validation and data checks" $SOURCE_PATH
-   ```
-   Helps identify [domain] vs [mechanical] validation.
+   ``` Helps identify [domain] vs [mechanical] validation.
 
 3. **External dependencies**:
    ```bash
    semantic-search "HTTP API calls and external services" $SOURCE_PATH
-   ```
-   Reveals all external I/O for provider mapping.
+   ``` Reveals all external I/O for provider mapping.
 
 4. **Error handling**:
    ```bash
    semantic-search "error handling and exception patterns" $SOURCE_PATH
-   ```
-   Ensures comprehensive error capture.
+   ``` Ensures comprehensive error capture.
 
 **ANALYZE** (Existing - Enhanced with Semantic Context):
 

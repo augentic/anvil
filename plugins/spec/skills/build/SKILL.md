@@ -7,23 +7,15 @@ argument-hint: "[change-name?]"
 
 Implement tasks from a Specify change.
 
-Deterministic bookkeeping — change selection, lifecycle transitions, schema
-resolution, brief completion checks, task progress counting, checkbox flips —
-is delegated to the `specify` CLI. This skill drives the agent-side work:
-reading the build brief body, dispatching skill directives, and making code
-changes.
+Deterministic bookkeeping — change selection, lifecycle transitions, schema resolution, brief completion checks, task progress counting, checkbox flips — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the build brief body, dispatching skill directives, and making code changes.
 
 When working plan-driven (a `.specify/plan.yaml` exists), the corresponding plan entry should already be `in-progress` — the human runs `specify initiative transition <name> in-progress` once before `/spec:build` starts. `/spec:build` itself does not touch `plan.yaml`; the plan transition out of `in-progress` happens from `/spec:merge` (→ `done`) or `/spec:drop` (→ `failed` / `blocked`).
 
-> See `rfcs/archive/rfc-2-execution.md` §"Execution Model Overview" and
-> `rfcs/assets/execution.png` for where this skill sits in the
-> `/spec:execute` driver loop.
+> See `rfcs/archive/rfc-2-execution.md` §"Execution Model Overview" and `rfcs/assets/execution.png` for where this skill sits in the `/spec:execute` driver loop.
 
 ## Phase outcome contract (RFC-2 §"Phase Outcome Contract")
 
-This skill is the **build** phase of the `/spec:execute` driver loop.
-Before returning control to the caller, always record the phase's outcome
-via:
+This skill is the **build** phase of the `/spec:execute` driver loop. Before returning control to the caller, always record the phase's outcome via:
 
 ```bash
 specify change phase-outcome <name> build <outcome> --summary "..." [--context "..."]
@@ -31,33 +23,15 @@ specify change phase-outcome <name> build <outcome> --summary "..." [--context "
 
 where `<outcome>` is exactly one of:
 
-- `success`  — every build brief produced its `generates` artefacts, the
-  verify-repair loop converged, and `specify task progress` reports
-  `pending == 0`. The change is ready for `/spec:merge`.
-- `failure`  — a brief failed after the repair budget was exhausted
-  (e.g. the Omnia `build.md` 3-iteration verify-repair loop could not
-  converge; a specialist writer skill returned a non-recoverable error).
-  Use `--summary` to name which brief and the load-bearing stderr/test
-  line; use `--context` for verbatim detail (failing test name, compiler
-  error tail, etc.).
-- `deferred` — human judgement is needed (task is ambiguous,
-  implementation reveals a design issue that must be resolved before
-  coding, artefact updates are required but not safe to do
-  unattended). Use `--summary` to name the question.
+- `success`  — every build brief produced its `generates` artefacts, the verify-repair loop converged, and `specify task progress` reports `pending == 0`. The change is ready for `/spec:merge`.
+- `failure`  — a brief failed after the repair budget was exhausted (e.g. the Omnia `build.md` 3-iteration verify-repair loop could not converge; a specialist writer skill returned a non-recoverable error). Use `--summary` to name which brief and the load-bearing stderr/test line; use `--context` for verbatim detail (failing test name, compiler error tail, etc.).
+- `deferred` — human judgement is needed (task is ambiguous, implementation reveals a design issue that must be resolved before coding, artefact updates are required but not safe to do unattended). Use `--summary` to name the question.
 
-`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome`
-on return and translates the outcome into a plan transition
-(`done` / `failed` / `blocked`). If the field is missing or malformed,
-`/spec:execute` treats the phase as `deferred` and stops for triage —
-do not skip the CLI call. This `phase-outcome` invocation is the
-**last action** the skill takes before returning control.
+`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome` on return and translates the outcome into a plan transition (`done` / `failed` / `blocked`). If the field is missing or malformed, `/spec:execute` treats the phase as `deferred` and stops for triage — do not skip the CLI call. This `phase-outcome` invocation is the **last action** the skill takes before returning control.
 
 ## Journal entries during the run (RFC-2 §"Question Recording")
 
-Whenever the skill encounters a situation the human should see — a
-genuine question, a repair attempt that failed, or a notable recovery —
-append to `.specify/changes/<name>/journal.yaml` **during** the run,
-not just at the end:
+Whenever the skill encounters a situation the human should see — a genuine question, a repair attempt that failed, or a notable recovery — append to `.specify/changes/<name>/journal.yaml` **during** the run, not just at the end:
 
 ```bash
 specify change journal-append <name> build <kind> --summary "..." [--context "..."]
@@ -65,48 +39,25 @@ specify change journal-append <name> build <kind> --summary "..." [--context "..
 
 Kinds:
 
-- `question` — task is ambiguous, implementation reveals a design
-  issue, or anything that might produce a `deferred` outcome at the end
-  of the phase. Write one entry per question so the human sees the full
-  trail when triaging.
-- `failure` — a brief (or its specialist writer) returned an error
-  after retry. Write one entry per failure; the final `phase-outcome`
-  summary rolls up only the load-bearing one, but auditors still see
-  every attempt inside the verify-repair loop.
-- `recovery` — a self-heal / recovery step happened. (Typically written
-  by `/spec:execute` itself; phases rarely need to append this kind.)
+- `question` — task is ambiguous, implementation reveals a design issue, or anything that might produce a `deferred` outcome at the end of the phase. Write one entry per question so the human sees the full trail when triaging.
+- `failure` — a brief (or its specialist writer) returned an error after retry. Write one entry per failure; the final `phase-outcome` summary rolls up only the load-bearing one, but auditors still see every attempt inside the verify-repair loop.
+- `recovery` — a self-heal / recovery step happened. (Typically written by `/spec:execute` itself; phases rarely need to append this kind.)
 
-`journal.yaml` is a pure append-only audit log; `/spec:execute` never
-consumes it as a signalling channel. The `outcome` field in
-`.metadata.yaml` is the only state `/spec:execute` reads on phase
-return.
+`journal.yaml` is a pure append-only audit log; `/spec:execute` never consumes it as a signalling channel. The `outcome` field in `.metadata.yaml` is the only state `/spec:execute` reads on phase return.
 
 ## Mutating the plan mid-run (RFC-2 §"Phase Boundary → Rule 2")
 
-Phases may shell out to `specify initiative create` / `specify initiative amend`
-mid-run when they discover something structural about the initiative.
-Both commands write `.specify/plan.yaml` synchronously — the new or
-updated entry is visible to every subsequent `/spec:execute` iteration.
+Phases may shell out to `specify initiative create` / `specify initiative amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
 
 Allowed:
 
-- `specify initiative create <new-name> --description "...modifies <current-name>..."`
-  when implementation uncovers a neighbouring defect or a prerequisite
-  refactor that warrants its own change.
-- `specify initiative amend <current-name> --depends-on <newly-needed>` when
-  the phase discovers a dependency on another plan entry. `amend` may
-  target the currently-active entry — non-`status` fields on an
-  `in-progress` entry are fair game.
+- `specify initiative create <new-name> --description "...modifies <current-name>..."` when implementation uncovers a neighbouring defect or a prerequisite refactor that warrants its own change.
+- `specify initiative amend <current-name> --depends-on <newly-needed>` when the phase discovers a dependency on another plan entry. `amend` may target the currently-active entry — non-`status` fields on an `in-progress` entry are fair game.
 
 Forbidden:
 
-- Writing `status` through `amend`. The `PlanChangePatch` type has no
-  `status` field — this is a type-system guarantee. Status transitions
-  are `/spec:execute`'s sole prerogative via `specify initiative transition`.
-- Hand-editing `.specify/plan.yaml` or
-  `.specify/changes/<name>/.metadata.yaml`. Always route through the
-  CLI so the single-writer invariant in RFC-2 §"Plan Mutation and
-  Crash Safety" holds.
+- Writing `status` through `amend`. The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/spec:execute`'s sole prerogative via `specify initiative transition`.
+- Hand-editing `.specify/plan.yaml` or `.specify/changes/<name>/.metadata.yaml`. Always route through the CLI so the single-writer invariant in RFC-2 §"Plan Mutation and Crash Safety" holds.
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 

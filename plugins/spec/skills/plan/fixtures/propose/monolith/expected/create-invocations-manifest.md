@@ -1,15 +1,10 @@
 # Emitted `specify initiative create` invocations — monolith (description-driven)
 
-Same emit order as
-[`create-invocations.md`](create-invocations.md). All scope and
-delta-targeting intent is carried in the `description` field. The
-define skill infers extract filters and baseline targets from the
-description at execution time.
+Same emit order as [`create-invocations.md`](create-invocations.md). All scope and delta-targeting intent is carried in the `description` field. The define skill infers extract filters and baseline targets from the description at execution time.
 
 1. `email-verification` — description carries path hints.
 2. `shared-validation` — description carries path hints.
-3. `user-registration` — description carries path hints and
-   delta-targeting intent for both leaves.
+3. `user-registration` — description carries path hints and delta-targeting intent for both leaves.
 
 ```text
 specify initiative create email-verification \

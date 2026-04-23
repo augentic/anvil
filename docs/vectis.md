@@ -225,9 +225,7 @@ When Android is in scope, the android-writer skill produces:
 | `app/.../ui/screens/*.kt`    | One screen composable per ViewModel variant                |
 | `app/.../ui/theme/*.kt`      | Material 3 theme (full Color/Theme/Type or thin `Theme.kt` + `vectis-design`) |
 
-All composables use Material 3 theme tokens; when `design-system/tokens.yaml`
-exists, the `vectis-design` library supplies token-derived `ColorScheme` and
-`Typography` via `VectisTheme`.
+All composables use Material 3 theme tokens; when `design-system/tokens.yaml` exists, the `vectis-design` library supplies token-derived `ColorScheme` and `Typography` via `VectisTheme`.
 
 ## Platforms
 
@@ -289,11 +287,7 @@ spec.md (describes intent) → tokens.yaml (defines values) → iOS Swift + Andr
 
 > Use the design-system-writer skill to regenerate the design system from tokens
 
-The skill reads `tokens.yaml` and overwrites Swift under
-`design-system/ios/Sources/VectisDesign/` and Kotlin under
-`design-system/android/src/main/kotlin/...`. It runs `swift build` for the
-iOS package and documents `./gradlew :vectis-design:compileDebugKotlin` for
-the Android module (after the shell includes `:vectis-design`).
+The skill reads `tokens.yaml` and overwrites Swift under `design-system/ios/Sources/VectisDesign/` and Kotlin under `design-system/android/src/main/kotlin/...`. It runs `swift build` for the iOS package and documents `./gradlew :vectis-design:compileDebugKotlin` for the Android module (after the shell includes `:vectis-design`).
 
 Generated token files carry a "do not edit manually" comment. All customization goes through `tokens.yaml`.
 

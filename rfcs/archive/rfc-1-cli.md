@@ -1069,10 +1069,7 @@ The skill prose shrinks from 40 lines of validation instructions to:
 6. **Validate artifacts**
    ```bash
    specify validate "$CHANGE_DIR" --format json
-   ```
-   If `passed` is false: report failures to the user and suggest fixes.
-   If any results have `status: deferred`: apply your judgment for those rules.
-   Do not proceed to implementation until all non-deferred checks pass.
+   ``` If `passed` is false: report failures to the user and suggest fixes. If any results have `status: deferred`: apply your judgment for those rules. Do not proceed to implementation until all non-deferred checks pass.
 ```
 
 ### Dependencies (conservative)
@@ -1163,12 +1160,7 @@ Downstream projects need a deterministic story for getting the `specify` binary,
 1. **Validate artifacts**
    ```bash
    specify validate "$CHANGE_DIR" --format json
-   ```
-   If the command is not found, stop and instruct the user to install the
-   CLI via `brew install specify` (preferred), `cargo install specify`, or
-   the release script at https://specify.sh/install, then re-run. Do not
-   attempt a prose fallback — validation rules have diverged past the
-   point where the agent can reliably reproduce them.
+   ``` If the command is not found, stop and instruct the user to install the CLI via `brew install specify` (preferred), `cargo install specify`, or the release script at https://specify.sh/install, then re-run. Do not attempt a prose fallback — validation rules have diverged past the point where the agent can reliably reproduce them.
 ```
 
 This is a deliberate break from the current `merge` skill's "if `python3` is unavailable, follow the algorithm in `delta-merge.md`" pattern. The prose fallback worked when the CLI was a 120-line Python script; it does not scale to the validator + parser + merger + task engine. Maintaining a second implementation in skill prose would reintroduce exactly the unreliable-interpretation problem this RFC exists to solve. `specify init` (the one skill that runs before the CLI has been exercised against the project) must carry the same hard-fail guard so projects never enter a state where `project.yaml` exists but no downstream skill can read it.

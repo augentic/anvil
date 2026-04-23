@@ -1,16 +1,8 @@
 # Transcript — platform-v2 propose
 
-Interactive record of the five-slice migration authoring run pinned
-by the companion fixtures
-([`discovery.md`](discovery.md), [`expected-proposal.md`](expected-proposal.md),
-[`expected-plan.yaml`](expected-plan.yaml)). Prefix legend: `>` is
-operator input; lines without `>` are the skill's output or a
-shelled-out CLI invocation.
+Interactive record of the five-slice migration authoring run pinned by the companion fixtures ([`discovery.md`](discovery.md), [`expected-proposal.md`](expected-proposal.md), [`expected-plan.yaml`](expected-plan.yaml)). Prefix legend: `>` is operator input; lines without `>` are the skill's output or a shelled-out CLI invocation.
 
-Slices are presented in the draft order the propose brief emits;
-the skill drops stale `depends-on` edges from *upcoming* drafts
-after a reject, so no downstream amend is ever needed (the skill
-never calls `specify initiative amend` — that is a human verb).
+Slices are presented in the draft order the propose brief emits; the skill drops stale `depends-on` edges from *upcoming* drafts after a reject, so no downstream amend is ever needed (the skill never calls `specify initiative amend` — that is a human verb).
 
 ## Slice 1/6: user-registration
 
@@ -80,15 +72,9 @@ Accept? [y / edit / no / abort]
 > is visible.
 ```
 
-Decision: **reject**. Plan entry: — (no `specify initiative create`
-call; no `specify initiative amend` either — the skill only trims
-`extract-shared-validation` from *upcoming* slice drafts, never
-from already-written entries).
+Decision: **reject**. Plan entry: — (no `specify initiative create` call; no `specify initiative amend` either — the skill only trims `extract-shared-validation` from *upcoming* slice drafts, never from already-written entries).
 
-The brief's remaining drafts had seeded
-`depends-on: [extract-shared-validation]` on slices 4
-(`product-catalog`) and 5 (`cart-management`). The skill drops
-that edge from both draft slices before presenting them.
+The brief's remaining drafts had seeded `depends-on: [extract-shared-validation]` on slices 4 (`product-catalog`) and 5 (`cart-management`). The skill drops that edge from both draft slices before presenting them.
 
 ## Slice 4/6: product-catalog
 

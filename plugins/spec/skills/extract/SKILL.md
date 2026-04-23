@@ -7,9 +7,7 @@ allowed-tools: Read, Write, StrReplace, Shell, Grep
 
 # Extract
 
-> See also [`../analyze/SKILL.md`](../analyze/SKILL.md) for plan-time
-> capability inference — the sibling skill that emits capability
-> summaries into `discovery.md`, not full `specs/` + `design.md`.
+> See also [`../analyze/SKILL.md`](../analyze/SKILL.md) for plan-time capability inference — the sibling skill that emits capability summaries into `discovery.md`, not full `specs/` + `design.md`.
 
 ## Overview
 
@@ -514,8 +512,7 @@ Write `$DESIGN_PATH` with the following sections (see [specify.md](references/sp
     - `[runtime]` Source uses in-memory cache with startup/background loading
     - `[runtime]` Source uses `setTimeout`/`setInterval` for periodic cache refresh
     - `[runtime]` Source uses circuit breaker library for outbound HTTP
-    - `[runtime]` Source caches OAuth tokens in process memory
-    When API response parity matters, fill **Serialization & API Fidelity** (optional fields, DateTime format, field naming, concurrency)
+    - `[runtime]` Source caches OAuth tokens in process memory When API response parity matters, fill **Serialization & API Fidelity** (optional fields, DateTime format, field naming, concurrency)
 11. **Source Capabilities Summary** — derive from External Services; checklist of generic capability categories (Configuration, Outbound HTTP, Message publishing, Key-value state, Authentication/Identity, Table/database access, Real-time messaging, Blob storage, Document storage)
 12. **Dependencies** — external packages with manifest version specifier (for generated project dependency declaration) and lock file resolved version (for API compatibility reference). Include feature flags / optional features enabled.
 13. **Risks / Open Questions** — unknowns, `[unknown]` items, missing lock file, ambiguous source patterns

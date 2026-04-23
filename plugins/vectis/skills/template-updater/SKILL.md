@@ -5,25 +5,11 @@ description: Fix Vectis CLI templates and version pins when upstream crate or to
 
 # Vectis Template Updater
 
-Close the loop on version bumps. When `specify vectis update-versions`
-proposes new crate pins but the scratch scaffold produced from those pins no
-longer compiles (or `cargo clippy --all-targets -- -D warnings`, `cargo deny
-check`, `cargo vet`, `codegen swift`, `codegen kotlin`, iOS `xcodebuild`, or
-Android `assembleDebug` fails), this skill diagnoses the breakage, edits the
-right template files + template modules, and proves the fix by re-running the
-full cap matrix.
+Close the loop on version bumps. When `specify vectis update-versions` proposes new crate pins but the scratch scaffold produced from those pins no longer compiles (or `cargo clippy --all-targets -- -D warnings`, `cargo deny check`, `cargo vet`, `codegen swift`, `codegen kotlin`, iOS `xcodebuild`, or Android `assembleDebug` fails), this skill diagnoses the breakage, edits the right template files + template modules, and proves the fix by re-running the full cap matrix.
 
-The deterministic machinery (scaffold, verify, registry queries, atomic
-writes) lives in the `specify vectis` subtree itself (now a library crate
-inside [`augentic/specify-cli`](https://github.com/augentic/specify-cli)).
-What remains is judgement work: reading compiler errors, mapping them to the
-upstream changelog, deciding whether the fix is a template edit, a conditional
-in `<specify-cli>/crates/vectis/src/templates/`, an `embedded/versions.toml`
-pin tweak, or a parser update.
+The deterministic machinery (scaffold, verify, registry queries, atomic writes) lives in the `specify vectis` subtree itself (now a library crate inside [`augentic/specify-cli`](https://github.com/augentic/specify-cli)). What remains is judgement work: reading compiler errors, mapping them to the upstream changelog, deciding whether the fix is a template edit, a conditional in `<specify-cli>/crates/vectis/src/templates/`, an `embedded/versions.toml` pin tweak, or a parser update.
 
-This skill is invoked after `specify vectis update-versions` proposes or
-writes new pins. It never runs the version query itself -- that is the CLI's
-job.
+This skill is invoked after `specify vectis update-versions` proposes or writes new pins. It never runs the version query itself -- that is the CLI's job.
 
 ## Arguments
 
@@ -37,14 +23,10 @@ job.
 
 ## Inputs the skill relies on
 
-All paths below are rooted at the `specify-cli` checkout (`{repo-dir}`); the
-vectis library and its templates moved into that repo when the standalone
-`vectis` binary was folded into `specify` as the `specify vectis ...`
-subcommand tree.
+All paths below are rooted at the `specify-cli` checkout (`{repo-dir}`); the vectis library and its templates moved into that repo when the standalone `vectis` binary was folded into `specify` as the `specify vectis ...` subcommand tree.
 
 - **Current embedded pins** at `{repo-dir}/crates/vectis/embedded/versions.toml`.
-- **Template files** at `{repo-dir}/templates/vectis/{core,ios,android}/`, with
-  target-path mapping in each folder's `MANIFEST.md`.
+- **Template files** at `{repo-dir}/templates/vectis/{core,ios,android}/`, with target-path mapping in each folder's `MANIFEST.md`.
 - **Template engine + registries** at `{repo-dir}/crates/vectis/src/templates/{mod.rs,core.rs,ios.rs,android.rs}` (placeholder chain, cap-conditional logic, per-file target paths).
 - **Add-shell parser** at `{repo-dir}/crates/vectis/src/add_shell/parser.rs` -- the only place where capability crate names (`crux_http`, `crux_http::sse`, `crux_kv`, `crux_time`, `crux_platform`) are hard-coded outside the templates. When a Crux bump renames a capability crate, this file must be edited in lockstep with the `app.rs` template.
 - **Verify pipeline** at `{repo-dir}/crates/vectis/src/verify/{core,ios,android}.rs` -- the ordered build/check steps per assembly. The JSON emitted by `specify vectis verify` lists each step by name; failures include the first N lines of combined stdout/stderr and are the primary signal this skill works from.
@@ -54,17 +36,8 @@ subcommand tree.
 
 Before starting, make sure:
 
-1. The `specify-cli` working tree is clean. `git status` shows no unstaged
-   changes. This skill makes small, verifiable edits; mixing them with
-   unrelated WIP will cause the validation matrix to attribute unrelated
-   failures to the bump.
-2. A debug `specify` binary is available. From `{repo-dir}` run
-   `cargo build -p specify` (the binary at `{repo-dir}/target/debug/specify`
-   ships the `specify vectis ...` subcommand tree). All bash blocks below
-   assume `{repo-dir}/target/debug/specify` is the binary under test;
-   substitute an installed `specify` (e.g. via `cargo install --path .
-   --bin specify` or `brew install augentic/specify`) when iterating against
-   a released build.
+1. The `specify-cli` working tree is clean. `git status` shows no unstaged changes. This skill makes small, verifiable edits; mixing them with unrelated WIP will cause the validation matrix to attribute unrelated failures to the bump.
+2. A debug `specify` binary is available. From `{repo-dir}` run `cargo build -p specify` (the binary at `{repo-dir}/target/debug/specify` ships the `specify vectis ...` subcommand tree). All bash blocks below assume `{repo-dir}/target/debug/specify` is the binary under test; substitute an installed `specify` (e.g. via `cargo install --path . --bin specify` or `brew install augentic/specify`) when iterating against a released build.
 3. Platform prerequisites for each shell being validated (`xcodegen`, `cargo-swift ≥ 0.10`, `$ANDROID_HOME` with NDK, Gradle 8.x on `PATH`). Re-run `specify vectis verify` on a known-good scaffold if unsure -- the skill's first action must not be to paper over a missing prereq.
 
 ---
@@ -95,9 +68,7 @@ The skill runs the five-step RFC flow (Detect → Diagnose → Update → Valida
 
 ### D2. Diagnose the failure
 
-For each distinct error the skill collected in D1, pick one of these paths and
-commit to it before starting to edit. Do not speculatively rewrite templates
-that are not covered by at least one reproduced failure.
+For each distinct error the skill collected in D1, pick one of these paths and commit to it before starting to edit. Do not speculatively rewrite templates that are not covered by at least one reproduced failure.
 
 1. **Look it up first.** Check [`references/known-drift.md`](references/known-drift.md). If the failure matches a listed item (uniffi/cargo-swift decoupling, AGP 9.x + Gradle 9.x, new RUSTSEC advisories in the full-caps combo, `facet_generate` req-string cosmetic), follow the playbook there -- it is already tied to a concrete fix path.
 2. **Match the error to the upstream crate.** `unresolved module path shared::ffi` / `cannot find type RustBuffer in scope` → uniffi or cargo-swift. `error[E0432]: unresolved import crux_core::Render` → crux_core rename or capability-crate rename. `RUSTSEC-YYYY-NNNN` in a `cargo deny check` failure → supply-chain advisory. `setFileMode(Integer)` in a Gradle trace → rust-android-gradle vs Gradle major. `unresolved reference: something` under Kotlin → Android library API drift (Compose BOM, Koin, Ktor).
@@ -115,42 +86,21 @@ that are not covered by at least one reproduced failure.
 | Android Kotlin unresolved reference after Compose BOM or Koin or Ktor bump | `<specify-cli>/templates/vectis/android/libs.versions.toml` (pin rollback / new artifact name) and/or `<specify-cli>/templates/vectis/android/Core.kt` (API call site inside `<<<CAP:http>>>` block) |
 | iOS `xcodebuild` fails with missing type after cargo-swift bump | `<specify-cli>/templates/vectis/ios/Core.swift` or the per-cap Swift arm block; check the regenerated `shared.swift` in the scaffold to see the new bindgen output |
 
-5. Write a one-line diagnosis per failure in a scratchpad. Do not combine
-diagnoses from unrelated combos. If two combos fail for the same root cause
-(e.g. the `sse` cap introduces a new RUSTSEC advisory in both the
-`http,kv,time,platform,sse` combo and a future one), treat it as one fix.
+5. Write a one-line diagnosis per failure in a scratchpad. Do not combine diagnoses from unrelated combos. If two combos fail for the same root cause (e.g. the `sse` cap introduces a new RUSTSEC advisory in both the `http,kv,time,platform,sse` combo and a future one), treat it as one fix.
 
 ### D3. Update templates / modules / pins
 
 Apply the fix, making each edit as narrow as possible.
 
-- Edit the **template file** when the change is visible in a scaffolded
-  project (a renamed `use`, a new `#[allow(...)]`, a changed build flag, a
-  new advisory in `deny.toml`). Every template file is `include_str!`-ed
-  verbatim by `<specify-cli>/crates/vectis/src/templates/{core,ios,android}.rs`, so
-  editing the file is sufficient -- do not touch the module unless the set of
-  files shipped, their predicates, or their target paths has changed.
+- Edit the **template file** when the change is visible in a scaffolded project (a renamed `use`, a new `#[allow(...)]`, a changed build flag, a new advisory in `deny.toml`). Every template file is `include_str!`-ed verbatim by `<specify-cli>/crates/vectis/src/templates/{core,ios,android}.rs`, so editing the file is sufficient -- do not touch the module unless the set of files shipped, their predicates, or their target paths has changed.
 - Edit the **template module** (`<specify-cli>/crates/vectis/src/templates/core.rs` etc.) only when: a new file is shipped / removed; an existing file's target path changes; a file's `IncludeWhen::{Always, AnyOf(&[Capability])}` predicate changes; or a new placeholder is introduced and must be substituted. Respect the superstring-first substitution order (`__APP_NAME_LOWER__` before `__APP_NAME__`, `__ANDROID_PACKAGE_PATH__` before `__APP_NAME_LOWER__` in path segments). Any new template file must also be listed in the corresponding `<specify-cli>/templates/vectis/{core,ios,android}/MANIFEST.md`; the parity test `templates::core::tests::registry_matches_rfc_core_file_count` (and its iOS/Android siblings) enforces this.
-- Edit `<specify-cli>/crates/vectis/src/add_shell/parser.rs` when a
-  capability crate is renamed upstream. The parser keys off the **RHS crate
-  root**, not the alias name in the user's `app.rs`. Nested matches (e.g.
-  `crux_http::sse::Sse`) must be tried **before** the bare-crate match,
-  otherwise a capability's successor will be mis-tagged as the parent crate.
-- Edit `<specify-cli>/crates/vectis/embedded/versions.toml` when the fix is
-  a pin bump. Preserve the multi-line rationale comments already in that
-  file -- they capture the uniffi/cargo-swift + AGP/Gradle pairing rules and
-  should only be edited when the rule itself changes, not when an ordinary
-  pin moves.
-- **Do not** edit anything under
-  `<specify-cli>/crates/vectis/src/{init,verify,update_versions,prerequisites}.rs`
-  or `<specify-cli>/src/main.rs` from this skill. If the fix requires
-  orchestration changes, stop and flag it -- that is a CLI change, not a
-  template update, and belongs in a new RFC-6 chunk follow-up.
+- Edit `<specify-cli>/crates/vectis/src/add_shell/parser.rs` when a capability crate is renamed upstream. The parser keys off the **RHS crate root**, not the alias name in the user's `app.rs`. Nested matches (e.g. `crux_http::sse::Sse`) must be tried **before** the bare-crate match, otherwise a capability's successor will be mis-tagged as the parent crate.
+- Edit `<specify-cli>/crates/vectis/embedded/versions.toml` when the fix is a pin bump. Preserve the multi-line rationale comments already in that file -- they capture the uniffi/cargo-swift + AGP/Gradle pairing rules and should only be edited when the rule itself changes, not when an ordinary pin moves.
+- **Do not** edit anything under `<specify-cli>/crates/vectis/src/{init,verify,update_versions,prerequisites}.rs` or `<specify-cli>/src/main.rs` from this skill. If the fix requires orchestration changes, stop and flag it -- that is a CLI change, not a template update, and belongs in a new RFC-6 chunk follow-up.
 
 After each atomic edit:
 
-1. Re-run the single combo that reproduced the failure (all paths rooted at
-   `{repo-dir}`, the `specify-cli` checkout):
+1. Re-run the single combo that reproduced the failure (all paths rooted at `{repo-dir}`, the `specify-cli` checkout):
 
    ```bash
    cargo build -p specify   # only if you touched anything under crates/vectis/ or src/
@@ -161,34 +111,21 @@ After each atomic edit:
    {repo-dir}/target/debug/specify --format json vectis verify \
      --dir "{scratch-dir}/combo-<N>"
    ```
-2. If the step that was failing now passes, move on. If a *later* step now
-   fails, keep the edit and continue diagnosing -- do not revert unless the
-   later failure is clearly caused by your change (not merely unmasked by it).
-3. If the fix required an `embedded/versions.toml` bump, also run
-   `cargo test -p specify-vectis` from `{repo-dir}` -- the embedded-defaults
-   unit tests pin a snapshot of the versions file that will need updating in
-   the same commit.
+2. If the step that was failing now passes, move on. If a *later* step now fails, keep the edit and continue diagnosing -- do not revert unless the later failure is clearly caused by your change (not merely unmasked by it).
+3. If the fix required an `embedded/versions.toml` bump, also run `cargo test -p specify-vectis` from `{repo-dir}` -- the embedded-defaults unit tests pin a snapshot of the versions file that will need updating in the same commit.
 
 ### D4. Validate the full cap matrix
 
-Once every failing combo passes individually, run the whole matrix to
-catch unintended regressions (from `{repo-dir}`):
+Once every failing combo passes individually, run the whole matrix to catch unintended regressions (from `{repo-dir}`):
 
 ```bash
 {repo-dir}/target/debug/specify --format json vectis update-versions \
   --dry-run --verify --version-file {version-file}
 ```
 
-The output must show `verification.passed: true` and every entry in
-`verification.combos[].passed` must be `true`. If a previously-passing combo
-now fails, the fix in D3 was too broad -- narrow it (prefer scoped `#[allow]`,
-an additional cap-conditional branch, or a predicate refinement over a
-template-wide change).
+The output must show `verification.passed: true` and every entry in `verification.combos[].passed` must be `true`. If a previously-passing combo now fails, the fix in D3 was too broad -- narrow it (prefer scoped `#[allow]`, an additional cap-conditional branch, or a predicate refinement over a template-wide change).
 
-If `shells` was set to `"ios,android"` in the arguments, also run the shell
-matrix combo-by-combo for the caps that include those shells -- `specify
-vectis update-versions --verify` is core-only by design; shell regressions
-surface at this step only.
+If `shells` was set to `"ios,android"` in the arguments, also run the shell matrix combo-by-combo for the caps that include those shells -- `specify vectis update-versions --verify` is core-only by design; shell regressions surface at this step only.
 
 Finally, re-run the `specify-cli` repo's own gates from `{repo-dir}`:
 
@@ -199,35 +136,18 @@ cargo test -p specify-vectis
 cargo test --workspace
 ```
 
-All four must be green before the fix is considered valid. (`{repo-dir}` is
-the `specify-cli` checkout; the integration tests in `tests/vectis.rs`
-exercise the same `specify vectis init / verify / update-versions` paths this
-skill drives, so regressions there usually flag the same drift.)
+All four must be green before the fix is considered valid. (`{repo-dir}` is the `specify-cli` checkout; the integration tests in `tests/vectis.rs` exercise the same `specify vectis init / verify / update-versions` paths this skill drives, so regressions there usually flag the same drift.)
 
 ### D5. Report
 
-Produce a structured report in Markdown with these sections. The orchestrator
-(`/vectis:template-updater`) copies this verbatim into the commit message or
-PR body.
+Produce a structured report in Markdown with these sections. The orchestrator (`/vectis:template-updater`) copies this verbatim into the commit message or PR body.
 
-1. **Trigger** -- what bump prompted the run, with the specific pin diffs
-   from `specify vectis update-versions --dry-run`.
-2. **Failures reproduced** -- one bullet per combo × step that failed, with
-   the first line of the compiler/linker/cargo error.
-3. **Diagnoses** -- one paragraph per distinct root cause, citing the
-   upstream changelog entry or RUSTSEC advisory that motivates the fix.
-4. **Changes** -- file-by-file list of edits with a one-line rationale per
-   file. Cite the edit using the path relative to the `specify-cli`
-   checkout; do not paste large diffs (the commit itself carries that).
-5. **Verification** -- confirmation that each failing combo now passes, the
-   full matrix is green, and `cargo test --workspace` + `cargo test -p
-   specify-vectis` both passed. Include the final `specify vectis
-   update-versions --dry-run --verify` JSON's `verification.passed` line.
-6. **Known drift still unresolved** -- anything listed in
-   [`references/known-drift.md`](references/known-drift.md) that the
-   current bump did not exercise and therefore was not fixed. Do not
-   invent new items; promote a known item out of the backlog only when a
-   reproduced failure in this run proves it is fixed.
+1. **Trigger** -- what bump prompted the run, with the specific pin diffs from `specify vectis update-versions --dry-run`.
+2. **Failures reproduced** -- one bullet per combo × step that failed, with the first line of the compiler/linker/cargo error.
+3. **Diagnoses** -- one paragraph per distinct root cause, citing the upstream changelog entry or RUSTSEC advisory that motivates the fix.
+4. **Changes** -- file-by-file list of edits with a one-line rationale per file. Cite the edit using the path relative to the `specify-cli` checkout; do not paste large diffs (the commit itself carries that).
+5. **Verification** -- confirmation that each failing combo now passes, the full matrix is green, and `cargo test --workspace` + `cargo test -p specify-vectis` both passed. Include the final `specify vectis update-versions --dry-run --verify` JSON's `verification.passed` line.
+6. **Known drift still unresolved** -- anything listed in [`references/known-drift.md`](references/known-drift.md) that the current bump did not exercise and therefore was not fixed. Do not invent new items; promote a known item out of the backlog only when a reproduced failure in this run proves it is fixed.
 
 ---
 

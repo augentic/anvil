@@ -937,8 +937,7 @@ This trace makes the `create/amend` blue box on the framework diagram load-beari
     specify plan create registration-duplicate-email-crash \
         --affects user-registration \
         --description "Duplicate email submission returns 500 instead of 409. Discovered during email-verification extraction."
-    ```
-    The CLI writes the new entry into `plan.yaml` synchronously — the same code path a human would use in Layer 1.
+    ``` The CLI writes the new entry into `plan.yaml` synchronously — the same code path a human would use in Layer 1.
 5. Define continues, completes its own briefs, returns `success`.
 6. `/spec:execute` invokes `/spec:build email-verification`, then `/spec:merge email-verification`.
 7. On success, `/spec:execute` transitions `email-verification` to `done` via `specify plan transition`.

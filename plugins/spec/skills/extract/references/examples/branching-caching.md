@@ -90,63 +90,24 @@ export async function validateAndProcess(data: InputData): Promise<Result> {
 - **Execution mode**: asynchronous (sequential operations with conditional branching)
 
 - **Input Types**:
-  ```
-  data: InputData
-    {
-      "id": "string",
-      "forceRefresh?": "boolean"
-    }
+  ``` data: InputData { "id": "string", "forceRefresh?": "boolean" }
   ```
 
 - **Output Types**:
-  ```
-  Result
-    {
-      "success": "boolean",
-      "data?": "object",
-      "error?": "string",
-      "source?": "'cache' | 'api'"
-    }
+  ``` Result { "success": "boolean", "data?": "object", "error?": "string", "source?": "'cache' | 'api'" }
   ```
 
 - **Algorithm**:
   ```
-  1. [domain] Validate data.id field is present and non-empty
-     a. If ID missing or empty:
-        i.  [domain] Return failure result: { success: false, error: 'Invalid ID' }
-        ii. Halt execution (early return)
-     b. Else:
-        i. Continue to step 2
+  1. [domain] Validate data.id field is present and non-empty a. If ID missing or empty: i.  [domain] Return failure result: { success: false, error: 'Invalid ID' } ii. Halt execution (early return) b. Else: i. Continue to step 2
   
-  2. [domain] Validate data.id matches format: 8 alphanumeric uppercase characters
-     a. If ID format invalid:
-        i.  [domain] Return failure result: { success: false, error: 'ID must be 8 alphanumeric characters' }
-        ii. Halt execution (early return)
-     b. Else:
-        i. Continue to step 3
+  2. [domain] Validate data.id matches format: 8 alphanumeric uppercase characters a. If ID format invalid: i.  [domain] Return failure result: { success: false, error: 'ID must be 8 alphanumeric characters' } ii. Halt execution (early return) b. Else: i. Continue to step 3
   
-  3. [mechanical] Check forceRefresh flag
-     a. If forceRefresh is true:
-        i.  [infrastructure] Fetch fresh data from API for ID (skip cache)
-        ii. [infrastructure] Write data to cache with key `data:{id}`, TTL 3600s
-        iii.[domain] Return success result: { success: true, data: fresh, source: 'api' }
-        iv. Halt execution (early return)
-     b. Else:
-        i. Continue to step 4
+  3. [mechanical] Check forceRefresh flag a. If forceRefresh is true: i.  [infrastructure] Fetch fresh data from API for ID (skip cache) ii. [infrastructure] Write data to cache with key `data:{id}`, TTL 3600s iii.[domain] Return success result: { success: true, data: fresh, source: 'api' } iv. Halt execution (early return) b. Else: i. Continue to step 4
   
-  4. [infrastructure] Attempt to retrieve data from cache with key `data:{id}`
-     a. If cache hit (cached data exists):
-        i.  [domain] Return success result: { success: true, data: cached, source: 'cache' }
-        ii. Halt execution (early return)
-     b. Else (cache miss):
-        i. Continue to step 5
+  4. [infrastructure] Attempt to retrieve data from cache with key `data:{id}` a. If cache hit (cached data exists): i.  [domain] Return success result: { success: true, data: cached, source: 'cache' } ii. Halt execution (early return) b. Else (cache miss): i. Continue to step 5
   
-  5. [infrastructure] Fetch fresh data from API for ID (within try block)
-     a. On success:
-        i.  [infrastructure] Write data to cache with key `data:{id}`, TTL 3600s
-        ii. [domain] Return success result: { success: true, data: fresh, source: 'api' }
-     b. On error:
-        i. [domain] Return failure result: { success: false, error: 'API fetch failed: <message>' }
+  5. [infrastructure] Fetch fresh data from API for ID (within try block) a. On success: i.  [infrastructure] Write data to cache with key `data:{id}`, TTL 3600s ii. [domain] Return success result: { success: true, data: fresh, source: 'api' } b. On error: i. [domain] Return failure result: { success: false, error: 'API fetch failed: <message>' }
   ```
 
 - **Error Handling**:

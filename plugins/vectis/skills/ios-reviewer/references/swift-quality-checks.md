@@ -6,37 +6,18 @@ Language-level quality checks for Swift/SwiftUI code in Crux iOS shells.
 
 **Severity**: Warning
 
-No `!` force unwraps or `try!` force tries outside of test files and
-preview blocks.
+No `!` force unwraps or `try!` force tries outside of test files and preview blocks.
 
-`Core.swift` has two categories of throwing calls, each with a different
-error-handling pattern:
+`Core.swift` has two categories of throwing calls, each with a different error-handling pattern:
 
-- **Bincode calls** (`bincodeSerialize()`, `bincodeDeserialize()`) use
-  `try?` with `guard` + `assertionFailure` and a safe fallback. These
-  throw generic errors without structured messages.
-- **CoreFFI calls** (`core.update()`, `core.view()`, `core.resolve()`)
-  use `do/catch` with `assertionFailure` including `\(error)`. These
-  throw `CoreError` containing a meaningful `Bridge` message from the
-  Rust core -- using `try?` would discard this diagnostic information.
+- **Bincode calls** (`bincodeSerialize()`, `bincodeDeserialize()`) use `try?` with `guard` + `assertionFailure` and a safe fallback. These throw generic errors without structured messages.
+- **CoreFFI calls** (`core.update()`, `core.view()`, `core.resolve()`) use `do/catch` with `assertionFailure` including `\(error)`. These throw `CoreError` containing a meaningful `Bridge` message from the Rust core -- using `try?` would discard this diagnostic information.
 
-In `init()`, view deserialization falls back to `.loading` (no prior
-state exists). In the `.render` effect handler, the existing view must be
-preserved by `break`ing without assignment -- never fall back to
-`.loading`, which would overwrite the user's current screen. Event
-serialization uses a no-op return (event is dropped). This ensures Debug
-builds surface type mismatches loudly while Release builds degrade
-gracefully.
+In `init()`, view deserialization falls back to `.loading` (no prior state exists). In the `.render` effect handler, the existing view must be preserved by `break`ing without assignment -- never fall back to `.loading`, which would overwrite the user's current screen. Event serialization uses a no-op return (event is dropped). This ensures Debug builds surface type mismatches loudly while Release builds degrade gracefully.
 
-**Detection**: Search `.swift` files (excluding `*Tests.swift`) for `!`
-used as force unwrap (not `!=` or `!==`) and for `try!`. Skip occurrences
-inside `#Preview { ... }` blocks and in files named `*Previews.swift`.
-Flag all other occurrences including those in `Core.swift`. Also flag
-CoreFFI calls that use `try?` instead of `do/catch`.
+**Detection**: Search `.swift` files (excluding `*Tests.swift`) for `!` used as force unwrap (not `!=` or `!==`) and for `try!`. Skip occurrences inside `#Preview { ... }` blocks and in files named `*Previews.swift`. Flag all other occurrences including those in `Core.swift`. Also flag CoreFFI calls that use `try?` instead of `do/catch`.
 
-**Fix**: Replace `try!` with the appropriate pattern: `do/catch` for
-CoreFFI calls, `guard let ... = try? ... else { assertionFailure(...); return fallback }`
-for bincode calls. Replace `as!` with `as?` guarded by a conditional.
+**Fix**: Replace `try!` with the appropriate pattern: `do/catch` for CoreFFI calls, `guard let ... = try? ... else { assertionFailure(...); return fallback }` for bincode calls. Replace `as!` with `as?` guarded by a conditional.
 
 ## SWF-002: Debug Output
 
@@ -44,8 +25,7 @@ for bincode calls. Replace `as!` with `as?` guarded by a conditional.
 
 No `print()`, `debugPrint()`, or `dump()` calls in production code.
 
-**Detection**: Search `.swift` files (excluding test files) for `print(`,
-`debugPrint(`, `dump(` at the start of a line or after whitespace.
+**Detection**: Search `.swift` files (excluding test files) for `print(`, `debugPrint(`, `dump(` at the start of a line or after whitespace.
 
 **Fix**: Remove or replace with `os.Logger` if logging is needed.
 
@@ -56,10 +36,7 @@ No `print()`, `debugPrint()`, or `dump()` calls in production code.
 With Swift 6 strict concurrency:
 - `Core` must be `@MainActor`.
 - Views that capture `Core` must not pass it across isolation boundaries.
-- Async effect handlers must use `Task { @MainActor in ... }` -- never
-  bare `Task { }`. While Swift 6 inherits actor isolation for `Task.init`
-  in `@MainActor` context, the explicit annotation is required for clarity,
-  cross-version safety, and resilience to refactoring.
+- Async effect handlers must use `Task { @MainActor in ... }` -- never bare `Task { }`. While Swift 6 inherits actor isolation for `Task.init` in `@MainActor` context, the explicit annotation is required for clarity, cross-version safety, and resilience to refactoring.
 
 **Detection**: Check for:
 - `nonisolated` on methods that access `@Published` properties.
@@ -67,8 +44,7 @@ With Swift 6 strict concurrency:
 - `DispatchQueue.main.async` (should use `@MainActor` instead).
 - `Task {` without `@MainActor in` in `Core.swift` effect handlers.
 
-**Fix**: Use `Task { @MainActor in ... }` for all async effect handlers.
-Use `@MainActor` annotation and structured concurrency patterns elsewhere.
+**Fix**: Use `Task { @MainActor in ... }` for all async effect handlers. Use `@MainActor` annotation and structured concurrency patterns elsewhere.
 
 ## SWF-004: State Management
 
@@ -91,23 +67,19 @@ SwiftUI state management must follow these rules:
 
 **Severity**: Info
 
-A view's `body` computed property should not exceed 50 lines. Complex views
-should be split into extracted sub-views or helper methods.
+A view's `body` computed property should not exceed 50 lines. Complex views should be split into extracted sub-views or helper methods.
 
 **Detection**: Count lines in each `var body: some View { ... }` block.
 
-**Fix**: Extract sections into private sub-view properties or separate
-view structs.
+**Fix**: Extract sections into private sub-view properties or separate view structs.
 
 ## SWF-006: Missing VectisDesign Import
 
 **Severity**: Warning
 
-Every `.swift` file in `Views/` that uses design system tokens must import
-`VectisDesign`.
+Every `.swift` file in `Views/` that uses design system tokens must import `VectisDesign`.
 
-**Detection**: Search for `VectisColors`, `VectisTypography`, `VectisSpacing`,
-or `VectisCornerRadius` usage without a corresponding `import VectisDesign`.
+**Detection**: Search for `VectisColors`, `VectisTypography`, `VectisSpacing`, or `VectisCornerRadius` usage without a corresponding `import VectisDesign`.
 
 **Fix**: Add `import VectisDesign` at the top of the file.
 
@@ -128,11 +100,9 @@ Avoid deprecated SwiftUI APIs:
 
 **Severity**: Info
 
-Text that updates frequently (counters, status labels) benefits from
-`.contentTransition(.numericText())` for smooth animations.
+Text that updates frequently (counters, status labels) benefits from `.contentTransition(.numericText())` for smooth animations.
 
-**Detection**: Identify `Text` views bound to frequently-changing view model
-fields (counts, timestamps). Check for `.contentTransition` modifier.
+**Detection**: Identify `Text` views bound to frequently-changing view model fields (counts, timestamps). Check for `.contentTransition` modifier.
 
 **Fix**: Add `.contentTransition(.numericText())` for numeric text.
 
@@ -140,23 +110,18 @@ fields (counts, timestamps). Check for `.contentTransition` modifier.
 
 **Severity**: Info
 
-User-facing strings should be localizable. For apps intended for
-internationalization, use `String(localized:)` or `LocalizedStringKey`.
+User-facing strings should be localizable. For apps intended for internationalization, use `String(localized:)` or `LocalizedStringKey`.
 
-**Detection**: Search for hardcoded string literals in `Text()` calls that
-are not derived from the view model (e.g., button labels, navigation titles).
+**Detection**: Search for hardcoded string literals in `Text()` calls that are not derived from the view model (e.g., button labels, navigation titles).
 
-**Fix**: Replace with `String(localized: "key")` or note as acceptable if
-the app is single-language.
+**Fix**: Replace with `String(localized: "key")` or note as acceptable if the app is single-language.
 
 ## SWF-010: Event Callback Naming
 
 **Severity**: Info
 
-Event callback closures should be named `onEvent` consistently across all
-screen views for uniformity.
+Event callback closures should be named `onEvent` consistently across all screen views for uniformity.
 
-**Detection**: Check screen view structs for the event callback property name.
-Flag if it is not `onEvent`.
+**Detection**: Check screen view structs for the event callback property name. Flag if it is not `onEvent`.
 
 **Fix**: Rename to `onEvent: (Event) -> Void`.

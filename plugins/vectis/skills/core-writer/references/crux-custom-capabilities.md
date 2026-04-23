@@ -1,7 +1,6 @@
 # Building Custom Capabilities
 
-When published capabilities don't cover a needed side-effect, build a custom one.
-A capability consists of:
+When published capabilities don't cover a needed side-effect, build a custom one. A capability consists of:
 
 1. An **Operation** type (the request sent to the shell)
 2. An **Output** type (the response from the shell)
@@ -10,8 +9,7 @@ A capability consists of:
 
 ## The Operation Trait
 
-Every operation must implement `crux_core::capability::Operation`, which ties
-the request type to its response type:
+Every operation must implement `crux_core::capability::Operation`, which ties the request type to its response type:
 
 ```rust
 use crux_core::capability::Operation;
@@ -40,8 +38,7 @@ Rules:
 - Both `MyRequest` and `MyResponse` must be serializable (they cross the FFI boundary).
 - Derive `Facet` for FFI type generation.
 - Add `#[repr(C)]` on response enums.
-- `Operation` links them: the shell knows that resolving a `MyRequest` requires
-  sending back a `MyResponse`.
+- `Operation` links them: the shell knows that resolving a `MyRequest` requires sending back a `MyResponse`.
 
 ## Request-Response Capability
 
@@ -85,14 +82,9 @@ MyCap::fetch("https://example.com", "value")
 
 ## Streaming Capability (SSE Example)
 
-For capabilities that produce a stream of responses (like Server-Sent Events),
-use `StreamBuilder`.
+For capabilities that produce a stream of responses (like Server-Sent Events), use `StreamBuilder`.
 
-**Critical:** The shell delivers SSE data as arbitrary TCP chunks. An SSE event
-can span multiple chunks. You must feed **all** chunks into a **single**
-`async_sse::decode` instance via a unified `AsyncBufRead` reader. Never create
-a new `decode` per chunk -- events that straddle chunk boundaries will be
-silently lost.
+**Critical:** The shell delivers SSE data as arbitrary TCP chunks. An SSE event can span multiple chunks. You must feed **all** chunks into a **single** `async_sse::decode` instance via a unified `AsyncBufRead` reader. Never create a new `decode` per chunk -- events that straddle chunk boundaries will be silently lost.
 
 ```rust
 use std::{future, pin::Pin};
@@ -233,8 +225,7 @@ use crate::sse::{ServerSentEvents, SseRequest};
 
 ## Testing Custom Capabilities
 
-Custom capabilities are tested the same way as built-in ones.
-The effect macro generates `expect_*` helpers based on the Effect variant name:
+Custom capabilities are tested the same way as built-in ones. The effect macro generates `expect_*` helpers based on the Effect variant name:
 
 ```rust
 // For Effect::ServerSentEvents(SseRequest), the macro generates:

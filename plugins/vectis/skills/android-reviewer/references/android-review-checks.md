@@ -1,32 +1,24 @@
 # Android Shell Review Checks
 
-Structural and integration checks for Crux Android shells (Kotlin/Jetpack
-Compose). Each check has an ID, description, severity, and detection method.
+Structural and integration checks for Crux Android shells (Kotlin/Jetpack Compose). Each check has an ID, description, severity, and detection method.
 
 ## AND-001: Missing Screen Composable for ViewModel Variant
 
 **Severity**: Critical
 
-Every variant in the Rust `enum ViewModel` that carries a per-page view struct
-must have a corresponding Kotlin screen composable file in `ui/screens/`.
+Every variant in the Rust `enum ViewModel` that carries a per-page view struct must have a corresponding Kotlin screen composable file in `ui/screens/`.
 
-**Detection**: Extract ViewModel variants from `app.rs`. For each variant with
-a payload, verify a `.kt` file exists in `ui/screens/` with a composable that
-accepts the matching view model type.
+**Detection**: Extract ViewModel variants from `app.rs`. For each variant with a payload, verify a `.kt` file exists in `ui/screens/` with a composable that accepts the matching view model type.
 
-**Fix**: Create the missing screen composable file following
-`references/compose-view-patterns.md`.
+**Fix**: Create the missing screen composable file following `references/compose-view-patterns.md`.
 
 ## AND-002: Missing Root Composable Branch
 
 **Severity**: Critical
 
-The root composable `when` expression (in `MainActivity.kt` or `AppView`)
-must have one branch per ViewModel variant. A missing branch means the shell
-cannot render that view.
+The root composable `when` expression (in `MainActivity.kt` or `AppView`) must have one branch per ViewModel variant. A missing branch means the shell cannot render that view.
 
-**Detection**: Count branches in the root composable `when`. Compare against
-the number of ViewModel variants in `app.rs`.
+**Detection**: Count branches in the root composable `when`. Compare against the number of ViewModel variants in `app.rs`.
 
 **Fix**: Add the missing branch, rendering the appropriate screen composable.
 
@@ -34,28 +26,19 @@ the number of ViewModel variants in `app.rs`.
 
 **Severity**: Critical
 
-Every variant in the Rust `enum Effect` must have a corresponding branch in
-the `processRequest` `when` expression in `Core.kt`. A missing handler means
-the core's side-effect request will be silently dropped.
+Every variant in the Rust `enum Effect` must have a corresponding branch in the `processRequest` `when` expression in `Core.kt`. A missing handler means the core's side-effect request will be silently dropped.
 
-**Detection**: Extract Effect variants from `app.rs`. Verify each has a branch
-in the `processRequest` method.
+**Detection**: Extract Effect variants from `app.rs`. Verify each has a branch in the `processRequest` method.
 
-**Fix**: Add the missing effect handler branch. See
-`references/crux-android-shell-pattern.md` for handler templates.
+**Fix**: Add the missing effect handler branch. See `references/crux-android-shell-pattern.md` for handler templates.
 
 ## AND-004: Undispatched Shell-Facing Event
 
 **Severity**: Warning
 
-Every shell-facing Event variant (those without `#[serde(skip)]` or
-`#[facet(skip)]`) should be dispatched by at least one composable. An
-undispatched event means a user action described in the spec has no UI trigger.
+Every shell-facing Event variant (those without `#[serde(skip)]` or `#[facet(skip)]`) should be dispatched by at least one composable. An undispatched event means a user action described in the spec has no UI trigger.
 
-**Detection**: Extract shell-facing Event variants from `app.rs`. Search all
-`.kt` files for `onEvent(Event.VariantName` or `core.update(Event.VariantName`.
-Flag variants with zero matches. Exclude `Navigate` as it may be handled via
-Compose Navigation APIs rather than explicit dispatch.
+**Detection**: Extract shell-facing Event variants from `app.rs`. Search all `.kt` files for `onEvent(Event.VariantName` or `core.update(Event.VariantName`. Flag variants with zero matches. Exclude `Navigate` as it may be handled via Compose Navigation APIs rather than explicit dispatch.
 
 **Fix**: Add the event dispatch to the appropriate screen composable.
 
@@ -63,78 +46,58 @@ Compose Navigation APIs rather than explicit dispatch.
 
 **Severity**: Warning
 
-Composables should use design system color tokens when available, not
-hardcoded `Color(...)`, `Color.Red`, or hex values.
+Composables should use design system color tokens when available, not hardcoded `Color(...)`, `Color.Red`, or hex values.
 
-**Detection**: Search `.kt` files under the **app module** source roots
-(typically `app/src/main/java/` or `app/src/main/kotlin/`) for:
+**Detection**: Search `.kt` files under the **app module** source roots (typically `app/src/main/java/` or `app/src/main/kotlin/`) for:
 - `Color(0x` or `Color(red =` (explicit color construction)
 - `Color.Red`, `Color.Blue`, etc. (named colors used as semantic colors)
 - Hex color patterns `0xFF[0-9A-Fa-f]{6}` outside generated design-system code
 
 Exclude Material Theme color references (`MaterialTheme.colorScheme.*`).
 
-**Do not flag** the generated **VectisDesign** Android library under
-`design-system/android/` — it legitimately contains `Color(0xFF...)` emitted
-from `tokens.yaml`.
+**Do not flag** the generated **VectisDesign** Android library under `design-system/android/` — it legitimately contains `Color(0xFF...)` emitted from `tokens.yaml`.
 
-**Fix**: Replace with the appropriate design system color token or
-`MaterialTheme.colorScheme` reference.
+**Fix**: Replace with the appropriate design system color token or `MaterialTheme.colorScheme` reference.
 
 ## AND-006: Hardcoded Typography
 
 **Severity**: Warning
 
-Composables should use design system typography tokens or `MaterialTheme.typography`
-rather than inline `TextStyle(fontSize = ...)`.
+Composables should use design system typography tokens or `MaterialTheme.typography` rather than inline `TextStyle(fontSize = ...)`.
 
-**Detection**: Search **app module** `.kt` files for `TextStyle(fontSize` or
-`fontSize = ` with numeric literals without a preceding design system
-reference.
+**Detection**: Search **app module** `.kt` files for `TextStyle(fontSize` or `fontSize = ` with numeric literals without a preceding design system reference.
 
-Exclude icon sizing in `Icon` composables. Exclude generated sources under
-`design-system/android/` (token `TextStyle` definitions).
+Exclude icon sizing in `Icon` composables. Exclude generated sources under `design-system/android/` (token `TextStyle` definitions).
 
-**Fix**: Replace with the appropriate design system typography token or
-`MaterialTheme.typography` reference.
+**Fix**: Replace with the appropriate design system typography token or `MaterialTheme.typography` reference.
 
 ## AND-007: Hardcoded Spacing
 
 **Severity**: Warning
 
-Padding and spacing values should use design system spacing tokens, not
-magic numbers.
+Padding and spacing values should use design system spacing tokens, not magic numbers.
 
-**Detection**: In **app module** composables, search for `.padding(` or
-`Arrangement.spacedBy(` with numeric literals (`X.dp`) that are not `0.dp`.
-Check that the value matches a token; flag if it does not. Skip generated
-`design-system/android/` sources.
+**Detection**: In **app module** composables, search for `.padding(` or `Arrangement.spacedBy(` with numeric literals (`X.dp`) that are not `0.dp`. Check that the value matches a token; flag if it does not. Skip generated `design-system/android/` sources.
 
-**Fix**: Replace with the appropriate design system spacing token (e.g.
-`VectisSpacing.md` from `com.vectis.design`).
+**Fix**: Replace with the appropriate design system spacing token (e.g. `VectisSpacing.md` from `com.vectis.design`).
 
 ## AND-008: Missing Preview
 
 **Severity**: Info
 
-Every screen composable should have a `@Preview` annotated composable with
-sample data for development and visual testing.
+Every screen composable should have a `@Preview` annotated composable with sample data for development and visual testing.
 
-**Detection**: For each screen composable file in `ui/screens/`, check for a
-`@Preview` annotation.
+**Detection**: For each screen composable file in `ui/screens/`, check for a `@Preview` annotation.
 
-**Fix**: Add a `@Preview` composable with sample data at the bottom of the
-file.
+**Fix**: Add a `@Preview` composable with sample data at the bottom of the file.
 
 ## AND-009: Missing Accessibility Description
 
 **Severity**: Warning
 
-Interactive icons (buttons with only an `Icon` composable, no `Text`) must
-have a `contentDescription` that is not `null`.
+Interactive icons (buttons with only an `Icon` composable, no `Text`) must have a `contentDescription` that is not `null`.
 
-**Detection**: Search for `Icon(` calls inside `IconButton` or
-`FloatingActionButton` where `contentDescription = null`.
+**Detection**: Search for `Icon(` calls inside `IconButton` or `FloatingActionButton` where `contentDescription = null`.
 
 **Fix**: Add a descriptive `contentDescription` to the `Icon`.
 
@@ -142,12 +105,9 @@ have a `contentDescription` that is not `null`.
 
 **Severity**: Warning
 
-If the Rust core defines a `Route` enum, the Android shell should implement
-navigation that covers all Route variants.
+If the Rust core defines a `Route` enum, the Android shell should implement navigation that covers all Route variants.
 
-**Detection**: Extract Route variants from `app.rs`. Verify the shell
-dispatches `onEvent(Event.Navigate(Route.VARIANT))` for each variant via
-navigation controls (bottom nav, buttons, drawer items).
+**Detection**: Extract Route variants from `app.rs`. Verify the shell dispatches `onEvent(Event.Navigate(Route.VARIANT))` for each variant via navigation controls (bottom nav, buttons, drawer items).
 
 **Fix**: Add navigation elements for missing Route variants.
 
@@ -155,31 +115,17 @@ navigation controls (bottom nav, buttons, drawer items).
 
 **Severity**: Critical
 
-An `Application` class is required in **all** Android shells -- not just those
-using Koin. Its `onCreate()` must set the JNA library override property BEFORE
-any UniFFI class is loaded. Without this, JNA tries to load
-`libuniffi_shared.so` but Cargo produces `libshared.so`, causing an
-`UnsatisfiedLinkError` crash on launch.
+An `Application` class is required in **all** Android shells -- not just those using Koin. Its `onCreate()` must set the JNA library override property BEFORE any UniFFI class is loaded. Without this, JNA tries to load `libuniffi_shared.so` but Cargo produces `libshared.so`, causing an `UnsatisfiedLinkError` crash on launch.
 
-**Detection**: Verify that an Application class exists and that
-`AndroidManifest.xml` includes the `android:name` attribute pointing to it.
-Search the Application class for
-`System.setProperty("uniffi.component.shared.libraryOverride", "shared")`.
-Verify it appears before `startKoin` or any other code that triggers UniFFI
-class loading. If no Application class exists at all, flag it as critical.
+**Detection**: Verify that an Application class exists and that `AndroidManifest.xml` includes the `android:name` attribute pointing to it. Search the Application class for `System.setProperty("uniffi.component.shared.libraryOverride", "shared")`. Verify it appears before `startKoin` or any other code that triggers UniFFI class loading. If no Application class exists at all, flag it as critical.
 
-**Fix**: Create an Application class with
-`System.setProperty("uniffi.component.shared.libraryOverride", "shared")`
-as the first statement after `super.onCreate()`, and add `android:name` to
-the manifest's `<application>` element.
+**Fix**: Create an Application class with `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` as the first statement after `super.onCreate()`, and add `android:name` to the manifest's `<application>` element.
 
 ## AND-012: Core Missing StateFlow / mutableStateOf
 
 **Severity**: Critical
 
-The `Core` class must expose the ViewModel via either `mutableStateOf` (simple
-pattern) or `StateFlow` (full pattern with Koin). Without proper state
-exposure, Compose cannot observe changes and the UI will not update.
+The `Core` class must expose the ViewModel via either `mutableStateOf` (simple pattern) or `StateFlow` (full pattern with Koin). Without proper state exposure, Compose cannot observe changes and the UI will not update.
 
 **Detection**: Check `Core.kt` for one of:
 - `var view: ViewModel by mutableStateOf(...)` (simple pattern)
@@ -191,53 +137,29 @@ exposure, Compose cannot observe changes and the UI will not update.
 
 **Severity**: Critical
 
-All hand-written `.kt` files that reference generated types (`Event`,
-`ViewModel`, `Effect`, `Request`, etc.) MUST have explicit imports from
-`com.example.app.*`. The generated types live in a different package than
-the hand-written code.
+All hand-written `.kt` files that reference generated types (`Event`, `ViewModel`, `Effect`, `Request`, etc.) MUST have explicit imports from `com.example.app.*`. The generated types live in a different package than the hand-written code.
 
-**Detection**: Search hand-written `.kt` files for references to generated
-types without corresponding `import com.example.app.` statements. Also check
-`Core.kt` for `import uniffi.shared.CoreFfi`.
+**Detection**: Search hand-written `.kt` files for references to generated types without corresponding `import com.example.app.` statements. Also check `Core.kt` for `import uniffi.shared.CoreFfi`.
 
-**Fix**: Add the missing import statements. Never assume generated types are
-in the same package as hand-written code.
+**Fix**: Add the missing import statements. Never assume generated types are in the same package as hand-written code.
 
 ## AND-014: Enum Pattern Match Style Mismatch
 
 **Severity**: Warning
 
-Simple Rust enums (no payloads) are generated as Kotlin `enum class` with
-`UPPER_CASE` values and must be matched with `==` equality. Sealed interface
-variants (with payloads) must be matched with `is`. Using the wrong pattern
-causes compile errors or incorrect matching.
+Simple Rust enums (no payloads) are generated as Kotlin `enum class` with `UPPER_CASE` values and must be matched with `==` equality. Sealed interface variants (with payloads) must be matched with `is`. Using the wrong pattern causes compile errors or incorrect matching.
 
-**Detection**: Search for `is` checks against `enum class` values (e.g.,
-`is Filter.All` instead of `Filter.ALL`). Also search for equality checks
-against `sealed interface` data class variants.
+**Detection**: Search for `is` checks against `enum class` values (e.g., `is Filter.All` instead of `Filter.ALL`). Also search for equality checks against `sealed interface` data class variants.
 
-**Fix**: Use `==` for `enum class` values; use `is` for `sealed interface`
-data class variants; use direct reference for `data object` variants.
+**Fix**: Use `==` for `enum class` values; use `is` for `sealed interface` data class variants; use direct reference for `data object` variants.
 
 ## AND-015: Async Effect Handler Missing try/catch or Missing Fallback Resolve
 
 **Severity**: Critical
 
-All async effect handlers (SSE, Time) that run inside `scope.launch` blocks
-MUST wrap their body in `try/catch` to prevent unhandled exceptions from
-crashing the app. The catch block MUST rethrow `CancellationException` to
-preserve coroutine cancellation semantics. The catch block MUST also call
-`resolveAndHandleEffects` with a fallback response so the core request ID
-is never left unresolved (e.g., `SseResponse.Done` for SSE,
-`TimeResponse.DurationElapsed` / `TimeResponse.InstantArrived` for timers).
-A catch block that only logs leaves the core stalled in a loading or pending
-state.
+All async effect handlers (SSE, Time) that run inside `scope.launch` blocks MUST wrap their body in `try/catch` to prevent unhandled exceptions from crashing the app. The catch block MUST rethrow `CancellationException` to preserve coroutine cancellation semantics. The catch block MUST also call `resolveAndHandleEffects` with a fallback response so the core request ID is never left unresolved (e.g., `SseResponse.Done` for SSE, `TimeResponse.DurationElapsed` / `TimeResponse.InstantArrived` for timers). A catch block that only logs leaves the core stalled in a loading or pending state.
 
-**Detection**: In `Core.kt`, search for `scope.launch` blocks inside
-`processRequest` and inside `handleTimeEffect`. Verify each has a
-`try/catch` wrapping the body. Check that `CancellationException` is
-rethrown (`catch (e: CancellationException) { throw e }`). Check that the
-non-cancellation catch branch calls `resolveAndHandleEffects`.
+**Detection**: In `Core.kt`, search for `scope.launch` blocks inside `processRequest` and inside `handleTimeEffect`. Verify each has a `try/catch` wrapping the body. Check that `CancellationException` is rethrown (`catch (e: CancellationException) { throw e }`). Check that the non-cancellation catch branch calls `resolveAndHandleEffects`.
 
 **Fix**: Wrap the `scope.launch` body in:
 ```kotlin
@@ -254,12 +176,9 @@ catch (e: Exception) {
 
 **Severity**: Warning
 
-The `Core` class `CoroutineScope` must use `SupervisorJob()` for fault
-isolation. Without it, one failing coroutine cancels all sibling coroutines,
-including unrelated effect handlers.
+The `Core` class `CoroutineScope` must use `SupervisorJob()` for fault isolation. Without it, one failing coroutine cancels all sibling coroutines, including unrelated effect handlers.
 
-**Detection**: In `Core.kt`, check the `CoroutineScope` constructor for
-`SupervisorJob()`. Flag if `Job()` is used or if `SupervisorJob` is absent.
+**Detection**: In `Core.kt`, check the `CoroutineScope` constructor for `SupervisorJob()`. Flag if `Job()` is used or if `SupervisorJob` is absent.
 
 **Fix**: Use `CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)`.
 
@@ -267,13 +186,9 @@ including unrelated effect handlers.
 
 **Severity**: Critical
 
-`AndroidManifest.xml` references a theme resource (`@style/Theme.{AppName}`).
-The `res/values/themes.xml` file MUST exist or the build fails with
-`resource style/Theme.{AppName} not found`.
+`AndroidManifest.xml` references a theme resource (`@style/Theme.{AppName}`). The `res/values/themes.xml` file MUST exist or the build fails with `resource style/Theme.{AppName} not found`.
 
-**Detection**: Check for the existence of
-`app/src/main/res/values/themes.xml`. Verify it contains a `<style>` element
-matching the theme name referenced in `AndroidManifest.xml`.
+**Detection**: Check for the existence of `app/src/main/res/values/themes.xml`. Verify it contains a `<style>` element matching the theme name referenced in `AndroidManifest.xml`.
 
 **Fix**: Create `res/values/themes.xml` with the appropriate theme style.
 
@@ -281,31 +196,21 @@ matching the theme name referenced in `AndroidManifest.xml`.
 
 **Severity**: Warning
 
-Apps with HTTP or SSE effects must include a `network_security_config.xml`
-referenced in `AndroidManifest.xml`. Without it, Android 9+ blocks cleartext
-HTTP traffic and the app crashes with `CLEARTEXT communication not permitted`
-when connecting to development servers.
+Apps with HTTP or SSE effects must include a `network_security_config.xml` referenced in `AndroidManifest.xml`. Without it, Android 9+ blocks cleartext HTTP traffic and the app crashes with `CLEARTEXT communication not permitted` when connecting to development servers.
 
-**Detection**: If the app has `Effect.Http` or `Effect.ServerSentEvents`,
-check for:
+**Detection**: If the app has `Effect.Http` or `Effect.ServerSentEvents`, check for:
 1. `res/xml/network_security_config.xml` exists
 2. `AndroidManifest.xml` has `android:networkSecurityConfig="@xml/network_security_config"`
 
-**Fix**: Create the config file allowing cleartext to localhost and `10.0.2.2`
-(emulator host alias). Reference it in the manifest.
+**Fix**: Create the config file allowing cleartext to localhost and `10.0.2.2` (emulator host alias). Reference it in the manifest.
 
 ## AND-019: ULong Displayed Without Conversion
 
 **Severity**: Warning
 
-`ULong` values from generated types (e.g., count fields mapped from `usize`)
-must be cast to `Long` when displayed in Compose `Text` composables.
-Passing `ULong` directly to string interpolation may produce unexpected
-output.
+`ULong` values from generated types (e.g., count fields mapped from `usize`) must be cast to `Long` when displayed in Compose `Text` composables. Passing `ULong` directly to string interpolation may produce unexpected output.
 
-**Detection**: Search for `Text(` composables containing string interpolation
-of properties known to be `ULong` (check generated types). Flag any that do
-not include `.toLong()`.
+**Detection**: Search for `Text(` composables containing string interpolation of properties known to be `ULong` (check generated types). Flag any that do not include `.toLong()`.
 
 **Fix**: Add `.toLong()` conversion: `"${viewModel.count.toLong()}"`.
 
@@ -313,12 +218,9 @@ not include `.toLong()`.
 
 **Severity**: Warning
 
-Classes that call `.toUByteArray()` require the
-`@OptIn(ExperimentalUnsignedTypes::class)` annotation. Without it, the build
-emits warnings or errors depending on compiler settings.
+Classes that call `.toUByteArray()` require the `@OptIn(ExperimentalUnsignedTypes::class)` annotation. Without it, the build emits warnings or errors depending on compiler settings.
 
-**Detection**: Search for `.toUByteArray()` calls. Verify the containing class
-or function has `@OptIn(ExperimentalUnsignedTypes::class)`.
+**Detection**: Search for `.toUByteArray()` calls. Verify the containing class or function has `@OptIn(ExperimentalUnsignedTypes::class)`.
 
 **Fix**: Add the annotation to the class declaration.
 
@@ -326,73 +228,41 @@ or function has `@OptIn(ExperimentalUnsignedTypes::class)`.
 
 **Severity**: Warning
 
-The `app` module and `shared` module MUST have different `namespace` values
-in their `build.gradle.kts` files. If they collide, the build emits confusing
-warnings or fails.
+The `app` module and `shared` module MUST have different `namespace` values in their `build.gradle.kts` files. If they collide, the build emits confusing warnings or fails.
 
-**Detection**: Compare the `namespace` values in `app/build.gradle.kts` and
-`shared/build.gradle.kts`. Flag if they are identical.
+**Detection**: Compare the `namespace` values in `app/build.gradle.kts` and `shared/build.gradle.kts`. Flag if they are identical.
 
-**Fix**: Use `com.vectis.{appname}` for `app` and
-`com.vectis.{appname}.shared` for `shared`.
+**Fix**: Use `com.vectis.{appname}` for `app` and `com.vectis.{appname}.shared` for `shared`.
 
 ## AND-022: Time Effect Clear Handler Missing Job Cancellation
 
 **Severity**: Critical
 
-If the app handles `Effect.Time`, the `TimeRequest.Clear` branch must actually
-cancel the coroutine job for any previously scheduled `NotifyAfter` or
-`NotifyAt` timer. Without job tracking and cancellation, cleared timers
-continue to fire stale `DurationElapsed` or `InstantArrived` events into
-the core, producing incorrect state transitions.
+If the app handles `Effect.Time`, the `TimeRequest.Clear` branch must actually cancel the coroutine job for any previously scheduled `NotifyAfter` or `NotifyAt` timer. Without job tracking and cancellation, cleared timers continue to fire stale `DurationElapsed` or `InstantArrived` events into the core, producing incorrect state transitions.
 
 **Detection**: In `Core.kt`, verify all three conditions:
 
-1. A `MutableMap<TimerId, Job>` (or equivalent) field exists to track active
-   timer coroutine jobs.
-2. `NotifyAfter` and `NotifyAt` branches store their launched coroutine `Job`
-   in the map, keyed by the timer's `TimerId`.
-3. The `Clear` branch removes and cancels the stored job
-   (`timerJobs.remove(timerId)?.cancel()`) before responding with
-   `TimeResponse.Cleared`.
+1. A `MutableMap<TimerId, Job>` (or equivalent) field exists to track active timer coroutine jobs.
+2. `NotifyAfter` and `NotifyAt` branches store their launched coroutine `Job` in the map, keyed by the timer's `TimerId`.
+3. The `Clear` branch removes and cancels the stored job (`timerJobs.remove(timerId)?.cancel()`) before responding with `TimeResponse.Cleared`.
 
-Also verify that `NotifyAfter` and `NotifyAt` coroutines clean up their map
-entry on natural completion and on `CancellationException`.
+Also verify that `NotifyAfter` and `NotifyAt` coroutines clean up their map entry on natural completion and on `CancellationException`.
 
-**Fix**: Add a `timerJobs` map to the `Core` class. In `NotifyAfter` and
-`NotifyAt`, launch a child coroutine via `scope.launch`, store the `Job` in
-the map, and remove the entry in a `finally`-equivalent path (after the delay
-completes or when cancelled). In `Clear`, call
-`timerJobs.remove(timeRequest.value)?.cancel()` before resolving. See
-`references/crux-android-shell-pattern.md` for the full implementation.
+**Fix**: Add a `timerJobs` map to the `Core` class. In `NotifyAfter` and `NotifyAt`, launch a child coroutine via `scope.launch`, store the `Job` in the map, and remove the entry in a `finally`-equivalent path (after the delay completes or when cancelled). In `Clear`, call `timerJobs.remove(timeRequest.value)?.cancel()` before resolving. See `references/crux-android-shell-pattern.md` for the full implementation.
 
 ## AND-023: CoreFFI Errors Not Surfaced
 
 **Severity**: Critical
 
-`CoreFfi` methods (`view()`, `update()`, `resolve()`) return
-`Result<Vec<u8>, CoreError>` in Rust, which UniFFI maps to Kotlin functions
-that throw `CoreException`. The exception contains a meaningful `Bridge`
-error message from the Rust core (deserialization failure, invalid effect ID,
-etc.). Calling these without `try/catch` lets the exception propagate
-unhandled and crash the app. Using a generic catch that discards `e.message`
-loses the diagnostic information needed to debug type mismatches after core
-regeneration.
+`CoreFfi` methods (`view()`, `update()`, `resolve()`) return `Result<Vec<u8>, CoreError>` in Rust, which UniFFI maps to Kotlin functions that throw `CoreException`. The exception contains a meaningful `Bridge` error message from the Rust core (deserialization failure, invalid effect ID, etc.). Calling these without `try/catch` lets the exception propagate unhandled and crash the app. Using a generic catch that discards `e.message` loses the diagnostic information needed to debug type mismatches after core regeneration.
 
-Unlike bincode serialization (AND-014), CoreFFI calls throw structured errors
-with context from the Rust side. All CoreFFI calls must use `try/catch` with
-`Log.e(TAG, "context: ${e.message}", e)` so the underlying reason is visible
-in logcat during development.
+Unlike bincode serialization (AND-014), CoreFFI calls throw structured errors with context from the Rust side. All CoreFFI calls must use `try/catch` with `Log.e(TAG, "context: ${e.message}", e)` so the underlying reason is visible in logcat during development.
 
-**Detection**: Search `Core.kt` for `coreFfi.view()`, `coreFfi.update(`,
-and `coreFfi.resolve(` calls. Verify each is wrapped in a `try/catch` block
-that logs `e.message`. Flag any CoreFFI calls that:
+**Detection**: Search `Core.kt` for `coreFfi.view()`, `coreFfi.update(`, and `coreFfi.resolve(` calls. Verify each is wrapped in a `try/catch` block that logs `e.message`. Flag any CoreFFI calls that:
 
 1. Have no `try/catch` at all (exception propagates to the caller)
-2. Use a catch block that discards the message (e.g., catches `Exception`
-   but only logs a static string without `${e.message}`)
-3. Use a catch block that rethrows without logging (diagnostic is lost
-   unless the caller also logs)
+2. Use a catch block that discards the message (e.g., catches `Exception` but only logs a static string without `${e.message}`)
+3. Use a catch block that rethrows without logging (diagnostic is lost unless the caller also logs)
 
 **Fix**: Wrap each CoreFFI call in a `try/catch` block:
 
@@ -405,33 +275,21 @@ val effects = try {
 }
 ```
 
-In `initialView()` (called during construction), fall back to
-`ViewModel.Loading`. In effect handlers, preserve the existing view or
-return without state changes. See the android-writer skill step 8 for the
-full pattern.
+In `initialView()` (called during construction), fall back to `ViewModel.Loading`. In effect handlers, preserve the existing view or return without state changes. See the android-writer skill step 8 for the full pattern.
 
 ## AND-024: Render Effect Overwrites View with Loading Fallback
 
 **Severity**: Warning
 
-The `Effect.Render` handler must not fall back to `ViewModel.Loading` (or
-any other default ViewModel) on deserialization failure. This would overwrite
-the user's current view (e.g., a task list, a form with entered data) with a
-loading screen on any transient serialization error. The `initialView()`
-helper is the only place where a `ViewModel.Loading` fallback is safe,
-because no prior state exists at construction time.
+The `Effect.Render` handler must not fall back to `ViewModel.Loading` (or any other default ViewModel) on deserialization failure. This would overwrite the user's current view (e.g., a task list, a form with entered data) with a loading screen on any transient serialization error. The `initialView()` helper is the only place where a `ViewModel.Loading` fallback is safe, because no prior state exists at construction time.
 
-**Detection**: In the `processRequest` method, check the `Effect.Render`
-branch for:
+**Detection**: In the `processRequest` method, check the `Effect.Render` branch for:
 
-1. Calls to `initialView()` or any helper that falls back to
-   `ViewModel.Loading`
+1. Calls to `initialView()` or any helper that falls back to `ViewModel.Loading`
 2. Direct assignment of `ViewModel.Loading` in a catch block
-3. Any pattern that assigns a default ViewModel value when
-   deserialization fails
+3. Any pattern that assigns a default ViewModel value when deserialization fails
 
-**Fix**: Replace with an inline pattern that preserves the existing view
-on failure:
+**Fix**: Replace with an inline pattern that preserves the existing view on failure:
 
 ```kotlin
 is Effect.Render -> {

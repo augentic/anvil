@@ -1,19 +1,10 @@
 # e2e-platform-v2-with-crash — crash mid-build, re-run recovers
 
-Same seed as the sibling [`../e2e-platform-v2/`](../e2e-platform-v2/)
-fixture, but a SIGKILL arrives mid-iteration-4 (while `/spec:build
-product-catalog` is running), leaving the workspace partially-
-progressed. An operator re-runs `/spec:execute --loop` against the
-unchanged workspace; self-heal picks up where the crash left off and
-the initiative continues to the same terminal state as the
-uncrashed sibling.
+Same seed as the sibling [`../e2e-platform-v2/`](../e2e-platform-v2/) fixture, but a SIGKILL arrives mid-iteration-4 (while `/spec:build product-catalog` is running), leaving the workspace partially- progressed. An operator re-runs `/spec:execute --loop` against the unchanged workspace; self-heal picks up where the crash left off and the initiative continues to the same terminal state as the uncrashed sibling.
 
-This fixture is the Layer 2 exit-gate acceptance for crash recovery:
-"An injected mid-build SIGKILL, followed by a re-run, recovers via
-self-heal and completes the initiative."
+This fixture is the Layer 2 exit-gate acceptance for crash recovery: "An injected mid-build SIGKILL, followed by a re-run, recovers via self-heal and completes the initiative."
 
-There is no automated harness. The two runs below are narrated as
-documentation.
+There is no automated harness. The two runs below are narrated as documentation.
 
 ## Files in this fixture
 
@@ -84,8 +75,7 @@ Self-heal: email-verification → done (merge success from prior run)
 #   .specify/plan.lock: PID <agent-session-pid> (stale — process is gone)
 ```
 
-`plan.yaml.after-crash` in this directory is the snapshot of
-`.specify/plan.yaml` at exactly this point in time.
+`plan.yaml.after-crash` in this directory is the snapshot of `.specify/plan.yaml` at exactly this point in time.
 
 ## Run 2 — re-run recovers and continues
 
@@ -187,9 +177,7 @@ Exit code: 0.
 
 ## Journal entries after Run 2
 
-After Run 2 completes, `journal.yaml` files under `.specify/changes/`
-contain exactly two `type: recovery` entries authored by the driver
-across both runs:
+After Run 2 completes, `journal.yaml` files under `.specify/changes/` contain exactly two `type: recovery` entries authored by the driver across both runs:
 
 ```yaml
 # .specify/changes/email-verification/journal.yaml
@@ -209,43 +197,13 @@ across both runs:
   recorded-at: <run-2-startup-timestamp>
 ```
 
-Both entries are `type: recovery` written via `specify change
-journal-append <name> <phase> recovery …`. Phase-authored entries
-(`type: question`, `type: failure`) from mid-run work are
-preserved unchanged; the driver only appends, never rewrites.
+Both entries are `type: recovery` written via `specify change journal-append <name> <phase> recovery …`. Phase-authored entries (`type: question`, `type: failure`) from mid-run work are preserved unchanged; the driver only appends, never rewrites.
 
 ## Invariants pinned by this fixture
 
-1. **Stale lock stamps are reclaimed by the CLI.** Run 2's
-   `specify initiative lock acquire` does not fail with `Error::DriverBusy`
-   — the CLI-level liveness check notices Run 1's PID is gone and
-   reclaims the stamp before the skill sees it.
-2. **Mid-build crash leaves `.metadata.yaml.outcome` absent.** The
-   phase writes `outcome` via `specify change phase-outcome` as its
-   terminal action; a SIGKILL mid-phase never reaches that call, so
-   the field is missing rather than malformed. Self-heal treats
-   missing-`outcome` + non-terminal `LifecycleStatus` as mid-change
-   resume (NOT as an ambiguity halt — the ambiguity branch is
-   reserved for contradictions, e.g. `outcome.phase=merge` with
-   `LifecycleStatus=defining`).
-3. **Resume does NOT write a plan transition.** Self-heal's
-   `product-catalog — resuming build` diagnostic reflects a journal
-   append + a phase re-invocation; the plan entry remains
-   `in-progress` until the supervised-run body's normal terminal
-   transition fires after `/spec:merge` completes.
-4. **Argument resolution re-runs against the same plan.** When the
-   resumed `/spec:build` eventually finishes and the outer loop
-   advances to `shopping-cart`, argument resolution starts fresh
-   from `plan.yaml` — self-heal does not cache or replay the
-   Run 1 argument set. The `--source orders=…` flag on
-   `shopping-cart` is constructed during Run 2 from the same
-   top-level `sources` map it would have used in Run 1.
-5. **Tasks.md progress survives the crash.** `/spec:build`'s
-   resume semantics (already documented in `plugins/spec/skills/build/SKILL.md`)
-   rely on the checkbox state in `tasks.md`; nothing the driver
-   does interferes with that.
-6. **Final state matches the uncrashed run exactly.** The crash
-   adds one extra self-heal journal entry and one resumed phase
-   invocation; it does NOT change the terminal plan shape. Both
-   `plan.yaml.after` files (this fixture's and the sibling's) are
-   byte-for-byte identical.
+1. **Stale lock stamps are reclaimed by the CLI.** Run 2's `specify initiative lock acquire` does not fail with `Error::DriverBusy` — the CLI-level liveness check notices Run 1's PID is gone and reclaims the stamp before the skill sees it.
+2. **Mid-build crash leaves `.metadata.yaml.outcome` absent.** The phase writes `outcome` via `specify change phase-outcome` as its terminal action; a SIGKILL mid-phase never reaches that call, so the field is missing rather than malformed. Self-heal treats missing-`outcome` + non-terminal `LifecycleStatus` as mid-change resume (NOT as an ambiguity halt — the ambiguity branch is reserved for contradictions, e.g. `outcome.phase=merge` with `LifecycleStatus=defining`).
+3. **Resume does NOT write a plan transition.** Self-heal's `product-catalog — resuming build` diagnostic reflects a journal append + a phase re-invocation; the plan entry remains `in-progress` until the supervised-run body's normal terminal transition fires after `/spec:merge` completes.
+4. **Argument resolution re-runs against the same plan.** When the resumed `/spec:build` eventually finishes and the outer loop advances to `shopping-cart`, argument resolution starts fresh from `plan.yaml` — self-heal does not cache or replay the Run 1 argument set. The `--source orders=…` flag on `shopping-cart` is constructed during Run 2 from the same top-level `sources` map it would have used in Run 1.
+5. **Tasks.md progress survives the crash.** `/spec:build`'s resume semantics (already documented in `plugins/spec/skills/build/SKILL.md`) rely on the checkbox state in `tasks.md`; nothing the driver does interferes with that.
+6. **Final state matches the uncrashed run exactly.** The crash adds one extra self-heal journal entry and one resumed phase invocation; it does NOT change the terminal plan shape. Both `plan.yaml.after` files (this fixture's and the sibling's) are byte-for-byte identical.

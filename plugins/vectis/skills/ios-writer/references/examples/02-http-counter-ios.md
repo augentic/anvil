@@ -1,10 +1,8 @@
 # Example: HTTP Counter iOS Shell
 
-An iOS shell for a Crux counter app that persists count to a server via HTTP.
-Demonstrates async HTTP effect handling, loading states, and error views.
+An iOS shell for a Crux counter app that persists count to a server via HTTP. Demonstrates async HTTP effect handling, loading states, and error views.
 
-This shell pairs with the core-writer example `02-http-counter.md`. The
-shared crate defines:
+This shell pairs with the core-writer example `02-http-counter.md`. The shared crate defines:
 
 - `ViewModel::Loading`, `ViewModel::Counter(CounterView)`, `ViewModel::Error(ErrorView)`
 - Shell-facing events: `Event::Navigate(Route)`, `Event::Increment`, `Event::Decrement`, `Event::Reset`, `Event::FetchCount`
@@ -326,13 +324,8 @@ struct CounterScreen: View {
 ## Key Patterns Demonstrated
 
 1. **HTTP effect handling** -- `performHttpRequest` uses `URLSession.shared.data(for:)`.
-2. **Async effect resolution** -- HTTP effects run in a `Task`, results resolve
-   back to the core via `core.resolve(id, data)`.
-3. **Error view** -- `ErrorScreen` renders the `ErrorView` view model with a
-   conditional retry button.
-4. **Three-view pattern** -- Loading, Counter, Error correspond to the three
-   `ViewModel` variants.
-5. **Initialization** -- `Core.init()` dispatches `.fetchCount` to trigger the
-   initial data load.
-6. **Graceful HTTP failure** -- network errors return a zero-status response
-   rather than crashing; the core handles the error state.
+2. **Async effect resolution** -- HTTP effects run in a `Task`, results resolve back to the core via `core.resolve(id, data)`.
+3. **Error view** -- `ErrorScreen` renders the `ErrorView` view model with a conditional retry button.
+4. **Three-view pattern** -- Loading, Counter, Error correspond to the three `ViewModel` variants.
+5. **Initialization** -- `Core.init()` dispatches `.fetchCount` to trigger the initial data load.
+6. **Graceful HTTP failure** -- network errors return a zero-status response rather than crashing; the core handles the error state.

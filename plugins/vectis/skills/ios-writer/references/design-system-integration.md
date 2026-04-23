@@ -4,8 +4,7 @@ How to use the VectisDesign Swift Package in generated iOS shell views.
 
 ## Package Dependency
 
-The VectisDesign package lives at `design-system/ios/` in the repo root.
-The XcodeGen `project.yml` references it as a local package:
+The VectisDesign package lives at `design-system/ios/` in the repo root. The XcodeGen `project.yml` references it as a local package:
 
 ```yaml
 packages:
@@ -13,8 +12,7 @@ packages:
     path: ../../../design-system/ios
 ```
 
-The path is relative from the `iOS/` directory. Adjust if the app is at a
-different depth in the repo.
+The path is relative from the `iOS/` directory. Adjust if the app is at a different depth in the repo.
 
 ## Importing
 
@@ -39,8 +37,7 @@ Button("Delete") { ... }
     .tint(VectisColors.error)
 ```
 
-Colors automatically adapt to light/dark mode. Never use hardcoded
-`Color(red:green:blue:)` or `Color("name")` in generated views.
+Colors automatically adapt to light/dark mode. Never use hardcoded `Color(red:green:blue:)` or `Color("name")` in generated views.
 
 ## Using Typography Tokens
 
@@ -93,8 +90,7 @@ ContentView(core: core)
 @Environment(\.vectisTheme) private var theme
 ```
 
-This is optional -- most views should use the static `VectisColors`,
-`VectisTypography`, and `VectisSpacing` directly.
+This is optional -- most views should use the static `VectisColors`, `VectisTypography`, and `VectisSpacing` directly.
 
 ## Disabled State Convention
 
@@ -132,5 +128,4 @@ The ios-reviewer skill checks that generated views:
 3. Use `VectisSpacing` for padding and spacing values (no magic numbers).
 4. Use `VectisCornerRadius` for corner radius values.
 
-Exceptions are allowed for system-provided styles (e.g., `.buttonStyle(.borderedProminent)`)
-where the platform applies its own colors.
+Exceptions are allowed for system-provided styles (e.g., `.buttonStyle(.borderedProminent)`) where the platform applies its own colors.

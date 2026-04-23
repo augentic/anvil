@@ -1,9 +1,6 @@
 # `/spec:execute --loop` — RFC-2 §"The Plan" meta-fixture
 
-This is the Layer 2 exit-gate meta-fixture for RFC-2 Change L2.I. It
-pins the behaviour of `/spec:execute --loop` driven against the full
-nine-entry `platform-v2` plan from [RFC-2 §"The Plan"](../../../docs/links.md#rfc-2-the-plan),
-exercising every argument-resolution shape end to end:
+This is the Layer 2 exit-gate meta-fixture for RFC-2 Change L2.I. It pins the behaviour of `/spec:execute --loop` driven against the full nine-entry `platform-v2` plan from [RFC-2 §"The Plan"](../../../docs/links.md#rfc-2-the-plan), exercising every argument-resolution shape end to end:
 
 - greenfield (`notification-preferences`)
 - `affects`-only, single target (`registration-duplicate-email-crash`)
@@ -13,10 +10,7 @@ exercising every argument-resolution shape end to end:
 - pre-`failed` entry (`checkout-api`, preserved)
 - pre-`in-progress` entry reclaimed on startup (`email-verification`)
 
-The `combined/` shape (both `sources` and `affects` on one entry) is
-pinned by `../field-wiring/combined/`; no entry in RFC-2 §"The Plan"
-as authored demonstrates it, which is why the field-wiring fixtures
-exist as a separate set.
+The `combined/` shape (both `sources` and `affects` on one entry) is pinned by `../field-wiring/combined/`; no entry in RFC-2 §"The Plan" as authored demonstrates it, which is why the field-wiring fixtures exist as a separate set.
 
 ## Files
 
@@ -29,41 +23,19 @@ exist as a separate set.
 
 ## Relationship to the sibling fixture
 
-`../e2e-platform-v2-with-crash/` uses the same seed but injects a
-SIGKILL mid-iteration-4 (`/spec:build product-catalog`). A second
-`/spec:execute --loop` run's self-heal resumes the interrupted build
-phase, and the initiative continues to the same terminal state. The
-two `plan.yaml.after` files in these fixtures are byte-for-byte
-identical — crash recovery is observably indistinguishable from the
-uncrashed run at the plan level.
+`../e2e-platform-v2-with-crash/` uses the same seed but injects a SIGKILL mid-iteration-4 (`/spec:build product-catalog`). A second `/spec:execute --loop` run's self-heal resumes the interrupted build phase, and the initiative continues to the same terminal state. The two `plan.yaml.after` files in these fixtures are byte-for-byte identical — crash recovery is observably indistinguishable from the uncrashed run at the plan level.
 
 ## Authoring → execution path
 
-The `plan.yaml.before` seed here is the *output* of an authoring run
-of `/spec:plan`. For a pinned five-slice authoring run that produces
-an analogous plan shape, see
-[`../../../plan/fixtures/propose/`](../../../plan/fixtures/propose/):
+The `plan.yaml.before` seed here is the *output* of an authoring run of `/spec:plan`. For a pinned five-slice authoring run that produces an analogous plan shape, see [`../../../plan/fixtures/propose/`](../../../plan/fixtures/propose/):
 
 - `discovery.md` — the inventory `/spec:plan` step 3(a) wrote.
 - `transcript.md` — the interactive accept / edit / reject loop.
 - `expected-proposal.md` — the authoring audit trail.
-- `expected-plan.yaml` — the final `.specify/plan.yaml` after the
-  five `specify initiative create` calls.
+- `expected-plan.yaml` — the final `.specify/plan.yaml` after the five `specify initiative create` calls.
 
-Together the two fixture sets pin the full `/spec:plan → /spec:execute
---loop` path: authoring turns `--source` / `--from` inputs into a
-validated `plan.yaml`, and execution drives that plan to `all-done`
-(or `stuck`, or a self-healable interrupt) without further human
-intervention.
+Together the two fixture sets pin the full `/spec:plan → /spec:execute --loop` path: authoring turns `--source` / `--from` inputs into a validated `plan.yaml`, and execution drives that plan to `all-done` (or `stuck`, or a self-healable interrupt) without further human intervention.
 
 ## Terminal classification note
 
-The RFC-2 Change L2.I acceptance says "drives… to `all-done`" but
-the seed contains a pre-`failed` `checkout-api` whose dependant
-`checkout-ui` is therefore permanently ineligible. The loop drains
-every entry it *can* complete (seven `done`) and surfaces the rest
-as `Completion: stuck` — which is the faithful Layer 2 guarantee.
-`transcript.md` has a dedicated section explaining the tension. A
-true `Completion: all-done` run requires a seed without dangling
-failed-dep chains, which is what `../loop/all-done/` pins on a
-three-entry plan.
+The RFC-2 Change L2.I acceptance says "drives… to `all-done`" but the seed contains a pre-`failed` `checkout-api` whose dependant `checkout-ui` is therefore permanently ineligible. The loop drains every entry it *can* complete (seven `done`) and surfaces the rest as `Completion: stuck` — which is the faithful Layer 2 guarantee. `transcript.md` has a dedicated section explaining the tension. A true `Completion: all-done` run requires a seed without dangling failed-dep chains, which is what `../loop/all-done/` pins on a three-entry plan.

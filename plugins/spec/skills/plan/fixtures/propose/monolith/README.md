@@ -1,15 +1,8 @@
 # Monolith propose fixture
 
-Pins the 1:1 capability → slice mapping the propose brief applies
-to a unified-YAML `discovery.md`. Consumes the C22 fixture's
-discovery output verbatim and emits a three-entry `plan.yaml` with
-rich `description` fields carrying file-path hints from each
-capability's `sources:` list and delta-targeting intent.
+Pins the 1:1 capability → slice mapping the propose brief applies to a unified-YAML `discovery.md`. Consumes the C22 fixture's discovery output verbatim and emits a three-entry `plan.yaml` with rich `description` fields carrying file-path hints from each capability's `sources:` list and delta-targeting intent.
 
-This fixture is the acceptance target for
-[RFC-3a C24](../../../../../../../rfcs/rfc-3a-plan.md) (the
-decomposition-heuristic rewrite in
-[`schemas/omnia/briefs/plan/propose.md`](../../../../../../../schemas/omnia/briefs/plan/propose.md)).
+This fixture is the acceptance target for [RFC-3a C24](../../../../../../../rfcs/rfc-3a-plan.md) (the decomposition-heuristic rewrite in [`schemas/omnia/briefs/plan/propose.md`](../../../../../../../schemas/omnia/briefs/plan/propose.md)).
 
 | Path | Role |
 | --- | --- |
@@ -20,10 +13,4 @@ decomposition-heuristic rewrite in
 | [`expected/create-invocations-manifest.md`](expected/create-invocations-manifest.md) | Alternative invocation sequence (description-driven). |
 | [`notes.md`](notes.md) | Mapping rationale + cross-references to C22. |
 
-Sibling of the flat-layout platform-v2 fixture
-([`../discovery.md`](../discovery.md),
-[`../expected-plan.yaml`](../expected-plan.yaml),
-[`../transcript.md`](../transcript.md)), which pins the interactive
-accept/edit/reject/abort loop on a five-slice multi-source run
-under the pre-C19 discovery shape. This fixture pins the
-decomposition rule on the post-C23 unified-YAML shape.
+Sibling of the flat-layout platform-v2 fixture ([`../discovery.md`](../discovery.md), [`../expected-plan.yaml`](../expected-plan.yaml), [`../transcript.md`](../transcript.md)), which pins the interactive accept/edit/reject/abort loop on a five-slice multi-source run under the pre-C19 discovery shape. This fixture pins the decomposition rule on the post-C23 unified-YAML shape.

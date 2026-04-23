@@ -1,7 +1,6 @@
 # Example: KV Notes (Render + Key-Value)
 
-A Crux app that persists notes locally using the Key-Value capability.
-Demonstrates CRUD operations, serialization to bytes, and KV effect testing.
+A Crux app that persists notes locally using the Key-Value capability. Demonstrates CRUD operations, serialization to bytes, and KV effect testing.
 
 ## Capabilities Used
 

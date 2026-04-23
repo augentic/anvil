@@ -545,9 +545,7 @@ This example demonstrates:
 - ✅ **URI pattern matching** for HTTP mocking
 - ✅ **Query parameter handling**
 
-**Total lines of test code**: ~200 lines (provider + tests)
-**Setup time**: ~30 minutes
-**Maintenance**: Moderate
+**Total lines of test code**: ~200 lines (provider + tests) **Setup time**: ~30 minutes **Maintenance**: Moderate
 
 ## Next Steps
 

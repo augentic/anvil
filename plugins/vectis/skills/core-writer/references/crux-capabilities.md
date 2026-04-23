@@ -1,8 +1,6 @@
 # Crux Capabilities: HTTP and Key-Value
 
-Capabilities provide ergonomic APIs for requesting side-effects from the shell.
-Each capability defines an `Operation` type (the request/response protocol) and
-convenience methods that return command builders.
+Capabilities provide ergonomic APIs for requesting side-effects from the shell. Each capability defines an `Operation` type (the request/response protocol) and convenience methods that return command builders.
 
 ## Setup Pattern
 
@@ -36,8 +34,7 @@ Usage in `update()`:
 render()  // returns a Command
 ```
 
-Render is a notification (fire-and-forget) -- it never sends an event back.
-Call `render()` at the end of any `update()` branch that changes the view model.
+Render is a notification (fire-and-forget) -- it never sends an event back. Call `render()` at the end of any `update()` branch that changes the view model.
 
 ## HTTP (`crux_http`)
 

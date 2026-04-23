@@ -1,10 +1,6 @@
 # Spec skill link anchors
 
-Named anchors for cross-references that the skills under
-`plugins/spec/skills/` consume. Keeping the canonical RFC / brief / schema
-paths in one place avoids fragile multi-`..`/ hops from every SKILL and
-fixture file, and lets the real target move (e.g. an RFC relocating between
-`rfcs/` and `rfcs/archive/`) without churning every caller.
+Named anchors for cross-references that the skills under `plugins/spec/skills/` consume. Keeping the canonical RFC / brief / schema paths in one place avoids fragile multi-`..`/ hops from every SKILL and fixture file, and lets the real target move (e.g. an RFC relocating between `rfcs/` and `rfcs/archive/`) without churning every caller.
 
 To reference an anchor from a skill file use
 
@@ -18,10 +14,7 @@ or, from a fixture two levels further down:
 [RFC-2](../../../docs/links.md#rfc-2)  <!-- from plugins/spec/skills/<skill>/fixtures/<fx>/ -->
 ```
 
-Update the targets listed below — not the callers — when a linked document
-moves. All target paths are given relative to the **repo root**; they are
-plain code spans rather than markdown links so that this file itself does
-not contribute to the "no four-`..` hop" invariant the skills enforce.
+Update the targets listed below — not the callers — when a linked document moves. All target paths are given relative to the **repo root**; they are plain code spans rather than markdown links so that this file itself does not contribute to the "no four-`..` hop" invariant the skills enforce.
 
 ## RFCs
 
@@ -36,8 +29,7 @@ not contribute to the "no four-`..` hop" invariant the skills enforce.
 - **RFC-1a validation** — repo path: `rfcs/archive/rfc-1a-validation.md`.
 
 <a id="rfc-2"></a>
-- **RFC-2** (execution, plan authoring, layers 2 & 3) — repo path:
-  `rfcs/archive/rfc-2-execution.md`.
+- **RFC-2** (execution, plan authoring, layers 2 & 3) — repo path: `rfcs/archive/rfc-2-execution.md`.
 
   Subsections the skills cite (resolve against the RFC body):
 
@@ -68,13 +60,10 @@ not contribute to the "no four-`..` hop" invariant the skills enforce.
 ## Schema briefs
 
 <a id="omnia-discovery"></a>
-- **Omnia discovery brief** — repo path:
-  `schemas/omnia/briefs/plan/discovery.md`.
+- **Omnia discovery brief** — repo path: `schemas/omnia/briefs/plan/discovery.md`.
 
 <a id="omnia-propose"></a>
-- **Omnia propose brief** — repo path:
-  `schemas/omnia/briefs/plan/propose.md`.
+- **Omnia propose brief** — repo path: `schemas/omnia/briefs/plan/propose.md`.
 
 <a id="vectis-propose"></a>
-- **Vectis propose brief** — repo path:
-  `schemas/vectis/briefs/plan/propose.md`.
+- **Vectis propose brief** — repo path: `schemas/vectis/briefs/plan/propose.md`.

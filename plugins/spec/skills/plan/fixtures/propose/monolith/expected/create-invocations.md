@@ -1,17 +1,10 @@
 # Emitted `specify initiative create` invocations — monolith
 
-The three commands the propose brief shells out when every slice
-is accepted without edit. Emit order is dependency-order + within-
-layer alphabetical (see
-[`schemas/omnia/briefs/plan/propose.md` §Emit order](../../../../../../../../schemas/omnia/briefs/plan/propose.md)):
+The three commands the propose brief shells out when every slice is accepted without edit. Emit order is dependency-order + within- layer alphabetical (see [`schemas/omnia/briefs/plan/propose.md` §Emit order](../../../../../../../../schemas/omnia/briefs/plan/propose.md)):
 
-1. `email-verification` — leaf (no `--depends-on`), description
-   carries path hints from the capability's `sources:` list.
-2. `shared-validation` — leaf (no `--depends-on`), description
-   carries path hints.
-3. `user-registration` — layer 1 (two `--depends-on` edges to the
-   leaves above), description carries path hints and delta-targeting
-   intent.
+1. `email-verification` — leaf (no `--depends-on`), description carries path hints from the capability's `sources:` list.
+2. `shared-validation` — leaf (no `--depends-on`), description carries path hints.
+3. `user-registration` — layer 1 (two `--depends-on` edges to the leaves above), description carries path hints and delta-targeting intent.
 
 ```text
 specify initiative create email-verification \
@@ -32,5 +25,4 @@ specify initiative create user-registration \
     --description "Create new user accounts with email verification. Focus on src/auth/verify.ts, src/users/register.ts, src/users/validation.ts. Delta-targets email-verification and shared-validation."
 ```
 
-The resulting `plan.yaml` is pinned byte-for-byte in
-[`plan.yaml`](plan.yaml).
+The resulting `plan.yaml` is pinned byte-for-byte in [`plan.yaml`](plan.yaml).
