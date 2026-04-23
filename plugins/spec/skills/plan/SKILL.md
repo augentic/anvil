@@ -1,12 +1,11 @@
 ---
 name: plan
 description: |
-  Author the initial .specify/plan.yaml for an initiative via the
-  pipeline.plan brief pipeline. Layer 3 counterpart to /spec:execute:
-  /spec:plan writes the plan, /spec:execute runs it. When
-  `.specify/registry.yaml` declares more than one project, runs the
-  RFC-3a sync-peers phase (`specify initiative workspace sync`) before
-  propose and emits `workspace.md` for cross-repo planning.
+  Author the initial .specify/plan.yaml for an initiative via the pipeline.plan
+  brief pipeline. Layer 3 counterpart to /spec:execute: /spec:plan writes the 
+  plan, /spec:execute runs it. When `.specify/registry.yaml` declares more than
+  one project, runs the RFC-3a sync-peers phase (`specify initiative workspace 
+  sync`) before propose and emits `workspace.md` for cross-repo planning.
 license: MIT
 argument-hint: "<initiative-name> [--from <path>...] [--against <path>] [--source <key>=<path-or-url>...] [--focus <area>] [--extend] [--dry-run]"
 ---
