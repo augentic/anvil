@@ -7,7 +7,6 @@ changes:
 - name: user-registration
   status: pending
   depends-on: []
-  affects: []
   sources:
   - monolith
   description: User sign-up flow; creates a new user record.
@@ -16,7 +15,6 @@ changes:
   status: pending
   depends-on:
   - user-registration
-  affects: []
   sources:
   - monolith
   description: Verify user email via a one-time link.
@@ -24,7 +22,6 @@ changes:
 - name: product-catalog
   status: pending
   depends-on: []
-  affects: []
   sources:
   - monolith
   description: Browse and search the product catalogue.
@@ -34,7 +31,6 @@ changes:
   depends-on:
   - product-catalog
   - user-registration
-  affects: []
   sources:
   - orders
   description: Add/remove items from the user's cart.
@@ -43,7 +39,6 @@ changes:
   status: pending
   depends-on:
   - shopping-cart
-  affects: []
   sources:
   - payments
   description: Complete payment for a cart.

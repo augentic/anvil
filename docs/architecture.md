@@ -1,39 +1,5 @@
 # Repository Structure
 
-```text
-specify/
-├── .cursor/
-│   └── rules/                    # Project guidance for agents
-├── .cursor-plugin/
-│   └── marketplace.json          # Multi-plugin marketplace manifest
-├── docs/                         # Extended documentation
-│   ├── architecture.md           # Repository structure reference
-│   ├── plugins.md                # Full plugin and skill reference
-│   └── vectis.md                 # Vectis user guide (prerequisites, Xcode, design system)
-├── plugins/
-│   ├── references/               # Shared references (specify.md, agent-teams.md)
-│   ├── spec/                     # Specify workflow plugin
-│   │   ├── skills/               # Workflow skills (init, define, build, merge, ...)
-│   │   └── references/           # Artifact templates and schema resolution
-│   ├── omnia/                    # Omnia code generation plugin
-│   │   ├── skills/               # Code generation skills (crate-writer, test-writer, ...)
-│   │   └── references/           # Guardrails, providers, guest wiring patterns
-│   ├── vectis/                   # Vectis Crux development plugin
-│   │   ├── skills/               # Crux skills (core-writer, test-writer, ios-writer, ...)
-│   │   └── references/           # Crux patterns, design system references
-│   ├── rt/                       # RT migration plugin
-│   │   └── skills/               # Migration skills (git-cloner, replay-writer, wiretapper)
-│   └── plan/                     # Plan SoW generation plugin
-│       └── skills/               # Planning skills (sow-writer)
-├── schemas/                      # Schema definitions
-│   ├── omnia/                    # Greenfield Rust WASM schema
-│   └── vectis/                   # Cross-platform Crux application schema
-└── scripts/                      # Validation and plugin management
-    ├── checks.ts                 # Documentation and consistency checks
-    ├── dev-plugins.sh            # Symlink local plugins for development
-    └── prod-plugins.sh           # Restore marketplace plugins
-```
-
 ## Artifact Boundaries
 
 Specify artifacts have separate responsibilities:

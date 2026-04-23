@@ -11,7 +11,6 @@ top-level `sources` map, finds the local path
 ```text
 plan entry: user-registration
   sources: [monolith]
-  affects: (absent)
 plan's top-level sources map:
   monolith: /path/to/legacy-codebase
 
@@ -19,8 +18,6 @@ resolve "monolith":
   → found in top-level map
   → value is a local filesystem path (starts with "/")
   → pass through as --source monolith=/path/to/legacy-codebase
-
-affects: (absent) — no --affects flags emitted
 ```
 
 ## Pinned invocation
@@ -58,10 +55,9 @@ top-level `sources` map; the driver did not canonicalize, expand
    `--source` flag. Define's brief pipeline receives the key and can
    retain it for provenance when it hands the value to
    `/spec:extract`.
-2. **No `--affects` flag is emitted** when the plan entry has no
-   `affects` list. The driver does not pass an empty
-   `--affects ""` or skip to a positional placeholder — the flag is
-   simply absent.
+2. **No `--affects` flag is emitted.** The `affects` field has been
+   removed from the plan schema. Delta targeting is inferred by the
+   define skill from the change's description.
 3. **Path classification is content-only.** The driver recognised
    `/path/to/legacy-codebase` as a local path (leading `/`) rather
    than a git URL. The classification affects only the transcript's

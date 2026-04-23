@@ -118,12 +118,11 @@ accept one of three actions:
   specify initiative create <slice-name> \
       --sources <key> [--sources <key>...] \
       --depends-on <preceding> [--depends-on <preceding>...] \
-      --affects <area> [--affects <area>...] \
-      --description "<one-line summary>"
+      --description "<rich description with delta-targeting intent>"
   ```
   Record the final entry name in the proposal table.
 - **edit** — reprompt for the changed field(s) (name, sources,
-  depends-on, affects, description) and re-present. Loop until
+  depends-on, description) and re-present. Loop until
   the human accepts or rejects.
 - **reject** — drop the slice entirely. Later slices that had an
   implicit `depends-on` on this slice lose that edge; if a later

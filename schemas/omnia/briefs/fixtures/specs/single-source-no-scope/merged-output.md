@@ -1,22 +1,13 @@
-# single-source-no-scope — zero-flag back-compat path
+# single-source-no-scope — full-tree path
 
-Pins the back-compat / small-legacy case: a source-driven run with a
-single `--source` and no `--scope-*` flags at all. The per-source loop
-runs once, the scope-bundle collection step short-circuits (empty
-bundle), and `/spec:extract` is invoked with no filter flags — same as
-pre-RFC-3a behaviour.
+Pins the small-legacy case: a source-driven run with a single `--source`
+and a description that contains no file-path hints. The brief's scope
+inference finds nothing to narrow, so `/spec:extract` is invoked with
+no filter flags — the full source tree is extracted.
 
 ## Per-source loop (one iteration)
 
-The bundle for `legacy` is empty:
-
-```text
-key      include   exclude   manifest
--------------------------------------
-legacy   —         —         —
-```
-
-Translation emits zero filter flags. Extract invocation:
+No path hints in description → no inferred filters. Extract invocation:
 
 ```text
 /spec:extract ./legacy <change-dir>/.extract/legacy/

@@ -10,8 +10,8 @@ changes:
 
   - name: registration-hardening
     sources: [monolith]
-    affects: [user-registration]
     description: >
       Tighten email-parser validation; same legacy source as the
-      original extraction, delta-targeting the merged baseline.
+      original extraction, delta-targeting the merged
+      user-registration baseline.
     status: pending

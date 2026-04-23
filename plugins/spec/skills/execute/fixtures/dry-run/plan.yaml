@@ -15,10 +15,10 @@ changes:
     status: done
 
   - name: registration-duplicate-email-crash
-    affects: [user-registration]
     description: >
       Duplicate email submission returns 500 instead of 409.
       Discovered during email-verification extraction.
+      Delta-targets user-registration.
     status: pending
 
   - name: notification-preferences

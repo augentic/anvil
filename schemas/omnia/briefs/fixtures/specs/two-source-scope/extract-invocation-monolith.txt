@@ -1,4 +1,0 @@
-/spec:extract ./legacy/monolith <change-dir>/.extract/monolith/ \
-    --include 'src/ingest/**' \
-    --include 'src/kafka/**' \
-    --exclude 'src/ingest/_deprecated/**'

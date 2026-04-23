@@ -90,7 +90,7 @@ updated entry is visible to every subsequent `/spec:execute` iteration.
 
 Allowed:
 
-- `specify initiative create <new-name> --affects <current-name> --description "..."`
+- `specify initiative create <new-name> --description "...modifies <current-name>..."`
   when implementation uncovers a neighbouring defect or a prerequisite
   refactor that warrants its own change.
 - `specify initiative amend <current-name> --depends-on <newly-needed>` when
