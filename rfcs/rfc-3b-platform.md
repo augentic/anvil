@@ -6,7 +6,7 @@
 
 RFC-3a lands initiative *planning* across repos: a platform catalogue (`registry.yaml`), an operator-authored brief (`initiative.md`), a *sync peers* phase that materialises `.specify/workspace/<peer>/`, and a single cross-repo `plan.yaml`. That plan contains an ordered list of changes — but no indication of *which repo* each change belongs to. RFC-3b bridges the gap: it determines which registry project each change targets, records that assignment in the plan, and teaches `/spec:execute` to route each change's define-build-merge cycle to the correct repo with the correct schema.
 
-The assignment problem has two shapes. For **brownfield** work — modernising or extending an existing multi-repo platform — the framework infers assignment from the domain descriptions operators write in `registry.yaml`, cross-referenced against each change's description and the peer baseline specs already materialised by RFC-3a's sync-peers phase. For **greenfield** work — standing up new repos for a system that does not yet exist — the operator predetermines the repo topology by authoring registry entries with descriptions that capture the intended responsibility boundaries (e.g. "frontend", "backend API", "shared types"). In both cases the propose brief presents the inferred assignment for human review; the operator can override.
+The assignment problem has two shapes. For **brownfield** work — modernising or extending an existing multi-repo platform — the framework infers assignment from the domain descriptions operators write in `registry.yaml`, cross-referenced against each change's description and the peer baseline specs already materialised by RFC-3a's sync-peers phase. For **greenfield** work — standing up new repos for a system that does not yet exist — the operator predetermines the repo topology by authoring registry entries with descriptions that capture the intended responsibility boundaries (e.g. "frontend", "backend API", "shared types"). In both cases the plan skill presents the inferred assignment for human review; the operator can override.
 
 RFC-3b is a follow-up to RFC-3a rather than a layer of it because the planning flow (Layers 1–2 + Large-Monolith Decomposition) is independently useful without routing, and routing depends on the workspace and registry being in place first.
 
@@ -18,7 +18,7 @@ RFC-3a's plan output is a single cross-repo `plan.yaml` in the initiating repo. 
 - The schema used for each change is ambiguous when the registry declares projects with different schemas (e.g. `omnia@v1` for the backend, `vectis@v1` for the mobile app).
 - The operator must manually track which changes belong to which repos — the plan looks like a flat list rather than a coordinated cross-repo programme.
 
-RFC-3b closes this gap with three additions: a `description` field on registry projects (the domain signal), a `project` field on plan changes (the routing decision), and an assignment algorithm in the propose brief (the inference).
+RFC-3b closes this gap with three additions: a `description` field on registry projects (the domain signal), a `project` field on plan changes (the routing decision), and an assignment algorithm in the plan skill (the inference).
 
 ## Registry extension: project `description`
 
@@ -52,7 +52,7 @@ projects:
 
 ### Brownfield inference signal
 
-For brownfield platforms, the `description` is the primary signal the propose brief uses to match capabilities from `discovery.md` to projects. It is complemented by secondary signals available from the workspace:
+For brownfield platforms, the `description` is the primary signal the plan skill's assignment step uses to match plan entries to projects. It is complemented by secondary signals available from the workspace:
 
 1. **Baseline specs.** Each peer's `.specify/workspace/<peer>/specs/` (materialised by RFC-3a sync-peers) contains the capabilities already specified in that repo. A discovered capability whose name or domain overlaps with existing baseline specs has a strong affinity signal.
 2. **Schema identity.** When projects use different schemas, the schema itself is a coarse routing signal (e.g. a UI capability is unlikely to route to an `omnia@v1` backend project if a `vectis@v1` frontend project exists).
@@ -80,7 +80,7 @@ projects:
       UI, navigation, and offline-first behaviour.
 ```
 
-The descriptions serve the same role as in brownfield — they are the signal the propose brief matches against — but since no baseline specs exist, the description carries the full weight of the routing decision. For greenfield projects, `url` should be the git remote URL (not a local path) so that `workspace sync` can bootstrap the clone and `workspace push` can push to the remote.
+The descriptions serve the same role as in brownfield — they are the signal the assignment step matches against — but since no baseline specs exist, the description carries the full weight of the routing decision. For greenfield projects, `url` should be the git remote URL (not a local path) so that `workspace sync` can bootstrap the clone and `workspace push` can push to the remote.
 
 ### URL classification
 
@@ -129,75 +129,61 @@ specify plan create <name> \
     [--description "..."]
 ```
 
-`--project` specifies which registry project a change targets — analogous to `--sources` specifying which sources it draws from. The propose brief passes `--project` for each accepted slice. For single-repo plans, omitting `--project` preserves today's behaviour.
+`--project` specifies which registry project a change targets. The propose brief does not use this flag — it creates entries without `--project`, and the plan skill's assignment step (see §*Assignment algorithm*) writes the project via `specify plan amend <name> --project <project>`. For single-repo plans, `--project` is unused. The flag is available for manual plan authoring (Layer 1) and for corrections.
 
-`PlanChangePatch` gains a corresponding `project` field (`Option<Option<String>>` — same three-way semantics as `description`) so that `specify plan amend <name> --project <project>` is available for post-creation corrections.
+`PlanChangePatch` gains a corresponding `project` field (`Option<Option<String>>` — same three-way semantics as `description`) so that `specify plan amend <name> --project <project>` is available.
 
 ## Assignment algorithm
 
-The assignment algorithm runs inside the **propose brief** (schema-owned, not framework-level). RFC-3b defines the contract the propose brief must satisfy; the algorithm itself is schema-specific.
+The assignment algorithm runs inside the **plan skill** (framework-level, not schema-owned). A multi-repo plan spans projects with different schemas, so assignment is inherently a cross-schema concern. The propose brief (schema-owned) handles decomposition — turning capabilities into plan entries — and is unaware of project routing. The plan skill handles assignment as a separate post-propose step.
 
 ### Inputs
 
-The propose brief receives:
+The plan skill's assignment step reads:
 
-1. `**discovery.md`** — the capability inventory from step 3(a). Each capability carries `name`, `summary`, `sources`, `depends-on`, and `confidence`.
-2. `**workspace.md`** — the peer inventory from step 3(a½) (multi-repo only). Each peer's entry includes its baseline specs, schema, materialisation state, and the project's `description` from `registry.yaml`. The description bullet makes `workspace.md` a self-contained context document for assignment — the propose brief does not read `registry.yaml` directly.
+1. **Newly created plan entries** — the entries written by the propose brief during step 3(c). Each carries `name`, `description`, `sources`, and `depends-on`, but no `project`.
+2. **`workspace.md`** — the peer inventory from step 3(b) (multi-repo only). Each peer's entry includes its baseline specs, schema, materialisation state, and the project's `description` from `registry.yaml`. `workspace.md` is the sole source for assignment signals — the plan skill does not read `registry.yaml` directly during this step.
 
 ### Contract
 
-For each candidate slice the propose brief produces, it must also produce a `project` assignment. The assignment is presented to the operator alongside the slice in the accept / edit / reject / abort loop. The operator can override the inferred project during the edit action.
+For each plan entry without a `project` field, the plan skill must produce a `project` assignment. The full assignment table is presented to the operator in a batch review — the operator can override any assignment before it is written. The plan skill records the assignment rationale in `proposal.md` (appended after the propose brief's slice table) for auditability — a short phrase per entry (e.g. "matched: description overlap with `traffic` — ingestion, Kafka", or "matched: baseline spec `user-registration` exists in `command-centre`", or "operator override").
 
-The propose brief must record the assignment rationale in `proposal.md` for auditability — a short phrase per slice (e.g. "matched: description overlap with `traffic` — ingestion, Kafka", or "matched: baseline spec `user-registration` exists in `command-centre`", or "operator override").
+### Inference heuristics
 
-### Inference heuristics (normative contract, not algorithm)
+The plan skill should use the following signal priority:
 
-The propose brief should use the following signal priority:
-
-1. **Description match.** Compare the capability's `summary` and `depends-on` edges against each project's `description`. Domain-term overlap is the primary signal.
-2. **Baseline spec affinity.** If a peer already has baseline specs whose names or domains overlap with the capability, that peer is a strong candidate. This signal is only available for brownfield (materialised workspace with existing specs).
-3. **Schema compatibility.** If the capability's nature (e.g. UI vs backend logic) aligns with only one schema type in the registry, use that as a tiebreaker.
+1. **Description match.** Compare the entry's `description` against each project's `Description` bullet in `workspace.md`. Domain-term overlap is the primary signal.
+2. **Baseline spec affinity.** If a peer already has baseline specs whose names or domains overlap with the entry, that peer is a strong candidate. This signal is only available for brownfield (materialised workspace with existing specs listed in the `Specify tree` bullet).
+3. **Schema compatibility.** If the entry's nature (e.g. UI vs backend logic) aligns with only one schema type in the registry (via the `Schema` bullet), use that as a tiebreaker.
 4. **Ambiguity → human.** When no signal clearly differentiates, or when confidence is low, surface the assignment as "unresolved" and require operator input. Never silently assign a low-confidence match.
 
-The ranking and weighting of these signals is schema-owned. RFC-3b fixes the signal vocabulary and the "ambiguity → human" rule; schemas decide how to combine them.
+### Assignment review
 
-### Proposal shape (multi-repo)
-
-When the registry declares more than one project, the propose brief's `proposal.md` table gains two columns: `Project` and `Rationale`.
+The plan skill presents the full assignment table to the operator after inference:
 
 ```markdown
-# Proposal — <initiative-name>
+## Assignment
 
-## Slices
-
-| # | Slice | Project | Source(s) | Depends on | Rationale | Decision | Plan entry |
-|---|---|---|---|---|---|---|---|
-| 1 | ingest-pipeline | traffic | monolith | — | description overlap: ingestion, Kafka | accept | ingest-pipeline |
-| 2 | operator-dashboard | command-centre | — | ingest-pipeline | baseline spec: user-alerts exists | accept | operator-dashboard |
-| 3 | shared-types | ? | — | — | ambiguous: matches both projects | edit → accept (operator: traffic) | shared-types |
-
-## Notes
-
-- shared-types: operator override — assigned to traffic for co-location with ingestion types.
+| # | Entry | Project | Rationale |
+|---|---|---|---|
+| 1 | ingest-pipeline | traffic | description overlap: ingestion, Kafka |
+| 2 | operator-dashboard | command-centre | baseline spec: user-alerts exists |
+| 3 | shared-types | ? | ambiguous: matches both projects |
 ```
 
-The interactive loop's **edit** action gains `project` as an editable field alongside name, sources, depends-on, and description. The `project` prompt is a pick-from-list field, not free text — the legal values are the `projects[].name` entries from `registry.yaml`. The inferred value is the default: `Project [traffic]: `. Invalid input (a name not in the registry) re-prompts.
+The operator reviews the table and can override any assignment. For **unresolved** assignments (`?`), the operator must assign a project before the step can proceed. The `project` prompt is a pick-from-list field — the legal values are the project names from `workspace.md`. Invalid input re-prompts.
 
-For **unresolved** assignments (ambiguity → human rule), the `Project` column shows `?` and the prompt requires the operator to assign a project before accept is available.
-
-For each accepted slice, the propose brief shells out to:
+For each entry, the plan skill shells out to:
 
 ```text
-specify plan create <name> \
-    --project <project> \
-    --sources <key> \
-    [--depends-on <dep> ...] \
-    --description "<rich prose>"
+specify plan amend <name> --project <project>
 ```
+
+The assignment table (with final assignments and rationale) is appended to `proposal.md` so the proposal reconstructs the full decision trail — decomposition (from the propose brief) followed by routing (from the assignment step).
 
 ### Single-repo plans
 
-When the registry is absent or single-project, the propose brief skips assignment entirely. The `Project` and `Rationale` columns are omitted from `proposal.md`. No `--project` flag is passed to `specify plan create`. This is the backwards-compatible path — pre-RFC-3b plans are valid without modification.
+When the registry is absent or single-project, the assignment step is skipped entirely. No `--project` is written to plan entries. This is the backwards-compatible path — pre-RFC-3b plans are valid without modification.
 
 ## Execution routing
 
@@ -214,7 +200,7 @@ The driver resolves the target project's filesystem root from `registry.yaml`, s
 
 In `--loop` mode, the driver saves and restores CWD around each change's define-build-merge cycle so that the next iteration's `specify plan next` (which reads the initiating repo's `plan.yaml`) runs from the initiating repo root.
 
-The workspace clone is **writable during execution**. Spec artifacts (design.md, specs/, tasks/) are written into the project clone's `.specify/changes/<name>/` subtree during define and build; on merge, the delta specs are folded into the clone's `.specify/specs/` baseline and committed locally. The commit remains in the workspace clone until the operator explicitly pushes via `specify initiative workspace push` (see §*Workspace push*).
+The workspace clone is **writable during execution**. Spec artifacts (design.md, specs/, tasks/) are written into the project clone's `.specify/changes/<name>/` subtree during define and build; on merge, the delta specs are folded into the clone's `.specify/specs/` baseline and committed locally. The commit remains in the workspace clone until the operator explicitly pushes via `specify workspace push` (see §*Workspace push*).
 
 ### Schema resolution
 
@@ -230,7 +216,7 @@ For changes without a `project` field (single-repo plans), resolution is unchang
 
 ### Workspace freshness
 
-Before executing a change targeting a peer project, `/spec:execute` checks the workspace slot's materialisation state via `specify initiative workspace status`. If the slot is `missing`, execution halts with a diagnostic pointing the operator at `specify initiative workspace sync`. Stale-but-present slots are accepted — the operator controls freshness via explicit `specify initiative workspace sync` calls between execution runs, matching the RFC-3a `--extend` contract.
+Before executing a change targeting a peer project, `/spec:execute` checks the workspace slot's materialisation state via `specify workspace status`. If the slot is `missing`, execution halts with a diagnostic pointing the operator at `specify workspace sync`. Stale-but-present slots are accepted — the operator controls freshness via explicit `specify workspace sync` calls between execution runs, matching the RFC-3a `--extend` contract.
 
 ### Source path resolution
 
@@ -284,7 +270,7 @@ The execute skill's per-change algorithm (SKILL.md §Per-change algorithm) gains
 
 1. Read `project` from the `specify plan next` response (see §*`specify plan next` extension*).
 2. If `project` is non-null, resolve the target directory from `registry.yaml`: relative-path `url` → resolved filesystem path; remote `url` → `.specify/workspace/<name>/`.
-3. Check workspace freshness via `specify initiative workspace status` for that slot. If `missing`, halt with a diagnostic pointing the operator at `specify initiative workspace sync`. Release the lock and exit non-zero.
+3. Check workspace freshness via `specify workspace status` for that slot. If `missing`, halt with a diagnostic pointing the operator at `specify workspace sync`. Release the lock and exit non-zero.
 4. Save CWD (the initiating repo root).
 5. Resolve every key in the entry's `sources` list to an absolute filesystem path anchored to the initiating repo root. Git URLs pass through unchanged.
 6. `chdir` into the target project root.
@@ -337,7 +323,7 @@ The first two checks require cross-referencing the plan against the registry. Th
 
 ### Workspace-centric execution
 
-All multi-repo work is undertaken in a single workspace rooted in the registry repo. The operator creates an initiative from the registry repo, which triggers all registry projects to be cloned into `.specify/workspace/<project>/` via `specify initiative workspace sync`. Each change's define-build-merge cycle runs against the relevant project clone inside this workspace. On merge, the resulting specs and code artifacts are committed to the clone. Changes are pushed to remotes explicitly via `specify initiative workspace push` — the operator controls when pushes happen; `/spec:execute` never pushes automatically.
+All multi-repo work is undertaken in a single workspace rooted in the registry repo. The operator creates an initiative from the registry repo, which triggers all registry projects to be cloned into `.specify/workspace/<project>/` via `specify workspace sync`. Each change's define-build-merge cycle runs against the relevant project clone inside this workspace. On merge, the resulting specs and code artifacts are committed to the clone. Changes are pushed to remotes explicitly via `specify workspace push` — the operator controls when pushes happen; `/spec:execute` never pushes automatically.
 
 ### Greenfield bootstrapping
 
@@ -372,7 +358,7 @@ After `workspace sync`, every successfully bootstrapped workspace slot is a vali
 ### Workspace push
 
 ```text
-specify initiative workspace push [<project>...]
+specify workspace push [<project>...]
 ```
 
 Pushes workspace clones that have local commits back to their remote repositories. Omitting the project argument pushes all dirty clones.
@@ -434,7 +420,7 @@ The summary line uses fixed-order status buckets (`created`, `pushed`, `up-to-da
 
 The `"created"` status indicates the remote repo was created as part of this push (greenfield). `"pushed"` indicates an existing remote was updated. `"up-to-date"` indicates the clone has no local commits ahead of the remote. `"local-only"` indicates the project's `url` is a local filesystem path and no `origin` git remote is configured in the repo — `workspace push` skips these projects with a diagnostic (see §*URL classification*).
 
-PRs are merged manually by the operator. A future extension may add `specify initiative workspace merge` for automated PR merging, but this is out of scope for RFC-3b.
+PRs are merged manually by the operator. A future extension may add `specify workspace merge` for automated PR merging, but this is out of scope for RFC-3b.
 
 ### Cross-repo dependency ordering
 
@@ -464,60 +450,28 @@ RFC-3b touches four layers of the stack. Each item below is in scope; items not 
 - `Plan::validate` signature changes (see §*Migration*).
 - `workspace sync` greenfield bootstrapping calls the existing `specify init <schema> --schema-dir <dir>` interface (positional schema identifier + pre-resolved schema source directory). The schema source directory is resolved from the initiating repo's `.specify/.cache/`. No `specify init` CLI changes are needed.
 - `specify merge` gains workspace-clone auto-commit (see §*Merge commit contract*).
-- `specify initiative workspace push` is a new verb (see §*Workspace push*). `WorkspaceAction` in `src/main.rs` gains a `Push` variant with an optional `projects: Vec<String>` argument; the match arm in `run_initiative` dispatches to a new `run_initiative_workspace_push` handler in `src/workspace.rs`.
-- `specify initiative workspace sync` gains greenfield bootstrapping (see §*Greenfield bootstrapping*).
+- `specify workspace push` is a new verb (see §*Workspace push*). `WorkspaceAction` in `src/main.rs` gains a `Push` variant with an optional `projects: Vec<String>` argument; the match arm in `run_initiative` dispatches to a new `run_initiative_workspace_push` handler in `src/workspace.rs`.
+- `specify workspace sync` gains greenfield bootstrapping (see §*Greenfield bootstrapping*).
 
 ### Forward-reference updates
 
 - Update `AGENTS.md` (line 21) and `plugins/spec/skills/plan/SKILL.md` (line 17) from `rfc-3b-layer-3.md` to `rfc-3b-platform.md`. The file was renamed from its working title; these references now point at a non-existent path.
+- Renumber the plan SKILL.md steps from 3(a)/3(a½)/3(b) to 3(a)/3(b)/3(c) for cleaner reading. The new step 3(d) (assignment) is added after 3(c) (propose).
+- Rename `specify initiative workspace {sync,push,status}` to `specify workspace {sync,push,status}` throughout the plan SKILL.md, execute SKILL.md, and CLI code. Workspace operations are promoted to a top-level namespace; initiative-level verbs (`init`, `archive`, `registry validate`) remain under `specify initiative`.
 - `rfcs/archive/rfc-3a-monoliths.md` also references `rfc-3b-layer-3.md` in several places (lines 17, 69, 508, 604). These are left as-is — archived RFCs are frozen. The stale link is cosmetic; the archived file's content is not consulted at implementation time.
 - Update the existing `workspace.md` fixture at `plugins/spec/skills/plan/fixtures/plan-layer2/workspace.md` to include the `Description` and `Schema` bullets defined in §*Plan skill*. Update the plan SKILL.md §`workspace.md` shape pin (lines 184–201) to match the new shape. These updates land with the plan skill amendments.
-- Update the plan SKILL.md's "state the skill mutates" section to include `.specify/plans/<initiative-name>/workspace.md` authored by step 3(a½) when the registry is multi-project. The new item reads: `4. .specify/plans/<initiative-name>/workspace.md written by step 3(a½) when the registry declares more than one project.`
-- Replace the `§Peer registry sources (Layer 2)` paragraph in `schemas/omnia/briefs/plan/propose.md` (line 37: `"actually pointing a plan entry at a peer checkout path belongs to **RFC-3b** (federation)"`) with the assignment-contract wiring text defined in §*Schema propose briefs* → *Existing forward-reference removal*. This is a behavioural change, not just a filename fix — it replaces the deferral with the active assignment contract.
+- Update the plan SKILL.md's "state the skill mutates" section to include `.specify/plans/<initiative-name>/workspace.md` authored by step 3(b) when the registry is multi-project. The new item reads: `4. .specify/plans/<initiative-name>/workspace.md written by step 3(b) when the registry declares more than one project.`
+- Replace the `§Peer registry sources (Layer 2)` paragraph in `schemas/omnia/briefs/plan/propose.md` (line 37: `"actually pointing a plan entry at a peer checkout path belongs to **RFC-3b** (federation)"`) with a simpler note: "Project assignment is handled by the plan skill's assignment step (RFC-3b §*Assignment algorithm*), not by the propose brief. The propose brief creates entries without `--project`." The same replacement applies to the Vectis brief if it carries an equivalent paragraph.
 
 ### Schema propose briefs
 
-Both Omnia and Vectis propose briefs must implement the assignment contract defined in §*Assignment algorithm*. The amendments below apply identically to both `schemas/omnia/briefs/plan/propose.md` and `schemas/vectis/briefs/plan/propose.md`.
+The Omnia and Vectis propose briefs are **unchanged** by RFC-3b. Assignment is a cross-schema concern handled by the plan skill (see §*Assignment algorithm*), not by individual schema briefs. The propose brief continues to decompose capabilities into plan entries via the interactive loop and shell out to `specify plan create` without `--project` — exactly as it does today.
 
-**Prerequisite for Vectis.** The Vectis propose brief currently has no `workspace.md` input and no multi-repo awareness. Before implementing the RFC-3b assignment contract, bring Vectis to parity with Omnia's current Layer 2 handling. The concrete diff to `schemas/vectis/briefs/plan/propose.md`:
-
-1. Add to the `## Input` section (after the `discovery.md` bullet): `- **\`.specify/plans/<name>/workspace.md\`** when present (multi-repo / Layer 2). Authored by \`/spec:plan\` step 3(a½) after \`specify initiative workspace sync\`. Summarises each peer under \`.specify/workspace/<project>/\` so propose can attach capabilities that land in a peer repo. When absent, assume single-repo mode.`
-2. Add a new `### Peer registry sources (Layer 2)` subsection after `### Resulting draft order`, with content identical to Omnia's current version (word-for-word copy of lines 35–37 of `schemas/omnia/briefs/plan/propose.md`).
-3. Verify the brief reads each `## <project>` section of `workspace.md` when present.
-
-This parity step can land as a standalone change (implementation step 7) before the assignment algorithm is added to either brief.
-
-**Input section.** Add `workspace.md` as a conditionally-required input (present when multi-repo). The brief reads each `## <project>` section's `Description` and `Schema` bullets to build the assignment-signal table. The brief does not read `registry.yaml` directly — `workspace.md` is the sole source.
-
-**New section: Assignment (multi-repo).** Insert after the existing `## Decomposition` section and before the interactive loop. When `workspace.md` is present and contains more than one `## <project>` section, the brief runs the assignment pass on each candidate slice:
-
-1. For each slice, score every project using the signal priority from §*Inference heuristics*: description-match (domain-term overlap between the capability's `summary` and the project's `Description` bullet), baseline-spec affinity (capability name or domain overlaps with specs listed in the project's `Specify tree` bullet), and schema compatibility (capability nature vs project's `Schema` bullet).
-2. If one project scores clearly above the rest, assign it. Record a rationale phrase (e.g. "description overlap: ingestion, Kafka").
-3. If scores are tied or all low-confidence, mark the assignment as `?` (unresolved). Record "ambiguous: matches both/all projects" as the rationale.
-
-The assignment is presented inline with the slice in the interactive loop (see below). When `workspace.md` is absent or contains a single project, the assignment pass is skipped entirely — the brief's existing single-repo flow runs unmodified.
-
-**Interactive loop amendments.** The presentation block for each slice gains a `Project` line showing the inferred assignment (or `?` for unresolved). The **edit** action gains `project` as an editable field — prompted as a pick-from-list with the inferred value as default: `Project [traffic]: `. Invalid input (a name not in `workspace.md`'s project list) re-prompts. For unresolved assignments, the operator must assign a project before `accept` is available.
-
-**`specify plan create` invocation amendment.** The shell-out gains `--project <project>`:
-
-```text
-specify plan create <name> \
-    --project <project> \
-    --sources <source-key> \
-    [--depends-on <dep> ...] \
-    --description "<rich prose>"
-```
-
-**Output section amendment.** The `proposal.md` table gains `Project` and `Rationale` columns when multi-repo (see §*Proposal shape (multi-repo)* for the exact table shape). Single-repo proposals are unchanged.
-
-**Existing forward-reference removal.** Remove the `§Peer registry sources (Layer 2)` paragraph that currently defers to RFC-3b ("actually pointing a plan entry at a peer checkout path belongs to RFC-3b (federation)") and replace it with: "When `workspace.md` is present, use the `Description` and `Schema` bullets from each project section alongside the capability's `summary` to infer a `project` assignment per the contract in RFC-3b §*Assignment algorithm*."
-
-Both briefs' single-repo paths are unchanged: when `workspace.md` is absent or single-project, assignment is skipped entirely and the existing flow runs unmodified.
+The only propose-brief change is the forward-reference removal described above: the `§Peer registry sources (Layer 2)` deferral paragraph is replaced with a note pointing at the plan skill's assignment step.
 
 ### Plan skill (`/spec:plan`)
 
-The `workspace.md` shape authored during the sync-peers phase (step 3(a½)) is extended to include each project's `description` from `registry.yaml`. The plan skill's `SKILL.md` workspace.md shape pin (§`workspace.md` shape) must be updated to the following:
+The `workspace.md` shape authored during the sync-peers phase (step 3(b)) is extended to include each project's `description` from `registry.yaml`. The plan skill's `SKILL.md` workspace.md shape pin (§`workspace.md` shape) must be updated to the following:
 
 ```markdown
 # Workspace — <initiative-name>
@@ -528,7 +482,7 @@ The `workspace.md` shape authored during the sync-peers phase (step 3(a½)) is e
 - **Description:** <registry description text from registry.yaml>
 - **Schema:** `<schema identifier from registry.yaml>`
 - **Materialisation:** `symlink` | `git-clone` | `missing` (mirror
-  `specify initiative workspace status`).
+  `specify workspace status`).
 - **Head:** `<40-char sha or —>` when the slot is a git work tree.
 - **Dirty:** `yes` | `no` | `—`
 - **Specify tree:** one bullet each if present: `plan.yaml`, active
@@ -538,13 +492,21 @@ The `workspace.md` shape authored during the sync-peers phase (step 3(a½)) is e
 <!-- one `##` section per registry project, alphabetically by name -->
 ```
 
-The `Description` bullet is placed immediately after `Slot` and before the materialisation-state bullets so that the propose brief encounters the assignment-relevant signals first. The `Schema` bullet is new — it surfaces the registry entry's `schema` field alongside the description for schema-compatibility inference. Step 3(a½) reads `registry.yaml` (already loaded by the plan skill at startup for the multi-repo guard) to populate both bullets; the workspace walk provides the remaining fields. This keeps the propose brief's input contract at two files (`discovery.md` and `workspace.md`) with no direct registry read, keeps the registry as the single source of truth for descriptions, and makes `workspace.md` a self-contained context document for the propose brief.
+The `Description` bullet is placed immediately after `Slot` and before the materialisation-state bullets so that the assignment step encounters the assignment-relevant signals first. The `Schema` bullet is new — it surfaces the registry entry's `schema` field alongside the description for schema-compatibility inference. Step 3(b) reads `registry.yaml` (already loaded by the plan skill at startup for the multi-repo guard) to populate both bullets; the workspace walk provides the remaining fields. This keeps the assignment step's input contract at the plan entries plus `workspace.md` with no direct registry read, keeps the registry as the single source of truth for descriptions, and makes `workspace.md` a self-contained context document for the assignment step.
 
-Under `--extend`, step 3(a½) still rewrites `workspace.md` from the current on-disk cache plus registry metadata, so the `Description` and `Schema` bullets reflect the latest `registry.yaml` content even when the workspace clones themselves are not re-synced. If the operator has added a new project to `registry.yaml` between runs, the new project will appear in `workspace.md` with `Materialisation: missing` — the propose brief can describe it but the execute driver will halt when it encounters a change targeting a missing workspace slot. The operator must run `specify initiative workspace sync` to materialise the new project before execution.
+Under `--extend`, step 3(b) still rewrites `workspace.md` from the current on-disk cache plus registry metadata, so the `Description` and `Schema` bullets reflect the latest `registry.yaml` content even when the workspace clones themselves are not re-synced. If the operator has added a new project to `registry.yaml` between runs, the new project will appear in `workspace.md` with `Materialisation: missing` — the assignment step can route to it but the execute driver will halt when it encounters a change targeting a missing workspace slot. The operator must run `specify workspace sync` to materialise the new project before execution.
 
-Step 3(c) of the plan skill's core loop gains `--project` wiring. When the propose brief produces a project assignment for a slice, the plan skill's `specify plan create` shell-out includes `--project <project>`. The single-repo path (absent or single-project registry) omits `--project`, preserving backwards compatibility. The plan skill itself does not decide the project — it forwards whatever the propose brief emitted, same as it forwards `--sources` and `--depends-on` today.
+**Step 3(d): Assignment (multi-repo only).** After the propose brief completes step 3(c) and all accepted entries have been written to `plan.yaml` (without `project`), the plan skill runs the assignment pass when `workspace.md` is present and contains more than one project section:
 
-The plan skill's `--dry-run` output shape gains `Project` and `Rationale` columns in the proposal-preview table when the registry is multi-project. Single-project dry-runs are unchanged.
+1. Read all entries created by the propose brief — the entries with `status: pending` and no `project` field.
+2. For each entry, infer a project assignment using the signal priority from §*Inference heuristics*: description-match against each project's `Description` bullet, baseline-spec affinity from the `Specify tree` bullet, and schema compatibility from the `Schema` bullet.
+3. Present the full assignment table to the operator in a batch review. The operator can override any assignment. For unresolved assignments (`?`), the operator must assign a project before the step can proceed.
+4. For each entry, shell out to `specify plan amend <name> --project <project>`.
+5. Append the assignment table (with final assignments and rationale) to `proposal.md`.
+
+When the registry is absent or single-project, step 3(d) is skipped entirely — the propose brief's entries stand as-is without `project`, preserving backwards compatibility.
+
+The plan skill's `--dry-run` output shape gains an assignment-preview table with `Project` and `Rationale` columns when the registry is multi-project. Single-project dry-runs are unchanged.
 
 ### Execute skill (`/spec:execute`)
 
@@ -570,7 +532,7 @@ Each CLI change carries unit or integration tests following the existing pattern
 - **Cross-cutting code generation.** Capabilities that span multiple repos are decomposed into per-project changes. Shared concerns (API contracts, auth libraries, protocol definitions) are handled by the platform's own dependency management, not by Specify's code-generation pipeline.
 - **Multi-plan output.** RFC-3a's single `plan.yaml` in the initiating repo is preserved. RFC-3b adds routing metadata to change entries; it does not produce per-repo plans.
 - **Inferring project descriptions.** The `description` on registry projects is always operator-authored. The framework does not attempt to generate descriptions from baseline specs or code analysis.
-- **Re-authoring planning-time behaviour.** Discovery dispatch, the sync-peers phase, and the capability inventory are unchanged from RFC-3a. RFC-3b extends only the propose brief (assignment) and execution (routing).
+- **Re-authoring planning-time behaviour.** Discovery dispatch, the sync-peers phase, and the capability inventory are unchanged from RFC-3a. RFC-3b extends only the plan skill (assignment step) and execution (routing). Schema propose briefs are unchanged.
 - **Non-GitHub forges.** `workspace push` uses `gh` for remote repo creation and PR management. GitLab, Bitbucket, and self-hosted forges are not supported. The `gh`-dependent code paths (repo creation, PR creation) are isolated behind the pre-flight check so that plain `git push` works for any forge; only the repo-creation and PR-creation steps are GitHub-specific. Supporting additional forges is a future extension.
 
 ## Fixtures
@@ -628,20 +590,18 @@ The following sequence minimises integration risk. Each step is independently sh
 3. **`specify merge` auto-commit** (specify-cli). Workspace-clone detection heuristic + git staging + commit logic. Independent of steps 1–2; can ship in parallel.
 4. **`workspace sync` greenfield bootstrap** (specify-cli). Extends `sync_registry_workspace` with the greenfield fallback. Depends on step 1 (needs `description` field to parse).
 5. **`workspace push`** (specify-cli). New verb. Depends on steps 1 and 3 (merge commits exist to push).
-6. **Plan skill + workspace.md shape** (specify repo). Update SKILL.md §workspace.md shape pin, update fixture, update state-mutation list. Depends on step 1 (descriptions exist in registry).
-7. **Vectis propose brief parity** (specify repo). Add `workspace.md` input to Vectis brief. No dependency on RFC-3b CLI work.
-8. **Propose brief assignment contract** (specify repo). Both Omnia and Vectis. Depends on steps 6 and 7.
-9. **Execute skill amendments** (specify repo). CWD routing + CWD restore steps, self-heal multi-repo, `--dry-run` routing line. Depends on step 2 (`plan next` response has `project`).
+6. **Plan skill + workspace.md shape** (specify repo). Update SKILL.md §workspace.md shape pin, update fixture, update state-mutation list. Add step 3(d) assignment pass. Depends on step 1 (descriptions exist in registry) and step 2 (`plan amend --project` available).
+7. **Propose brief forward-reference fix** (specify repo). Replace the RFC-3b deferral paragraph in both Omnia and Vectis propose briefs. No behavioural change to the briefs themselves.
+8. **Execute skill amendments** (specify repo). CWD routing + CWD restore steps, self-heal multi-repo, `--dry-run` routing line. Depends on step 2 (`plan next` response has `project`).
 10. **Forward-reference fixes + fixture authoring**. Can land at any point.
 
 ## Relation to RFC-3a
 
 - The registry gains one optional field (`description` on `RegistryProject`). The field is optional for v1 single-repo registries; required for multi-project registries. See §*Migration* for serde and validation details.
 - The plan schema gains one optional field (`project` on `planChange`). The field is optional for single-repo plans; required for multi-project plans. See §*Migration*.
-- `specify plan create` gains `--project`. `PlanChangePatch` gains a corresponding `project` field for `amend`. Both validate `--project` against the loaded registry at write time. The single-writer invariant is preserved — the propose brief passes `--project` to `specify plan create`; no direct plan edits.
+- `specify plan create` gains `--project`. `PlanChangePatch` gains a corresponding `project` field for `amend`. Both validate `--project` against the loaded registry at write time. The plan skill's assignment step uses `specify plan amend --project` to write assignments; schema propose briefs are unchanged.
 - `specify plan next --format json` gains `project`, `description`, and `sources` in its response so the execute driver can route without a second round-trip. See §*`specify plan next` extension*.
-- The propose brief's contract expands: it must produce a `project` assignment per slice, record the rationale in `proposal.md`, and surface unresolved assignments for operator input. Both Omnia and Vectis propose briefs are in scope for update. See §*Assignment algorithm* and §*Implementation scope*.
-- The plan skill's step 3(c) gains `--project` wiring on its `specify plan create` shell-out. See §*Implementation scope*.
+- The plan skill gains a new step 3(d) — the assignment pass — that infers project assignments for newly created entries and presents them to the operator for review. Assignment is framework-level, not schema-owned. See §*Assignment algorithm* and §*Plan skill*.
 - `/spec:execute` uses **CWD-based routing**: the driver `chdir`s into the target project's workspace clone before invoking phase skills (new CWD routing and CWD restore steps). Phase skills are unaware of multi-repo routing. Source paths are resolved to absolute paths before the CWD change. Self-heal gains per-entry CWD routing for multi-repo entries. See §*Execute skill amendments* and §*Self-heal under multi-repo*.
 - The workspace clone's write policy relaxes from read-only (RFC-3a planning convention) to writable during execution. This is a documented policy change, not a code enforcement change. See §*Workspace writability policy*.
 - On merge inside a workspace clone, `specify merge` auto-commits the folded baseline. The commit lands on the clone's current HEAD; branch management is deferred to `workspace push`. See §*Merge commit contract*.
