@@ -4,7 +4,7 @@ Pins the `.specify/plans/<name>/discovery.md` shape for a small, purpose-built t
 
 This fixture is the acceptance target for:
 
-- [RFC-3a C24](../../../../../../../rfcs/rfc-3a-plan.md) — the 1:1 capability → slice mapping in the propose brief. The three capabilities below become three plan entries with `scope.monolith.include` pre-filled from each capability's `sources:` list. The C24 propose fixture consumes this fixture's `expected/discovery.md` as its starting-state input.
+- [RFC-3a C24](../../../../../../../rfcs/archive/rfc-3a-monoliths.md) — the 1:1 capability → slice mapping in the propose brief. The three capabilities below become three plan entries with `scope.monolith.include` pre-filled from each capability's `sources:` list. The C24 propose fixture consumes this fixture's `expected/discovery.md` as its starting-state input.
 
 | Path                                                    | Role                                                                                                      |
 | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
@@ -22,7 +22,7 @@ Three capabilities, alphabetical order:
 
 1. **`email-verification`** (`high`) — one file (`src/auth/verify.ts`), two HTTP entry points, `postgres` + `sendgrid` external deps.
 2. **`shared-validation`** (`medium`) — one file (`src/common/validation.ts`), no entry points, no external deps; intentionally omits the `hints:` block (a legal shape per the output contract).
-3. **`user-registration`** (`high`) — three files spanning `src/users/` and `src/auth/`, depends on `email-verification` and `shared-validation`. **Byte-identical** to the canonical sample entry pinned in [`rfc-3a-monoliths.md` §*Plan-time analysis, define-time extraction*](../../../../../../../rfcs/rfc-3a-monoliths.md) and the Omnia analyze-brief fixture at [`schemas/omnia/briefs/fixtures/plan/analyze/legacy-code/expected/discovery.md`](../../../../../../../schemas/omnia/briefs/fixtures/plan/analyze/legacy-code/expected/discovery.md).
+3. **`user-registration`** (`high`) — three files spanning `src/users/` and `src/auth/`, depends on `email-verification` and `shared-validation`. **Byte-identical** to the canonical sample entry pinned in [`rfc-3a-monoliths.md` §*Plan-time analysis, define-time extraction*](../../../../../../../rfcs/archive/rfc-3a-monoliths.md) and the Omnia analyze-brief fixture at [`schemas/omnia/briefs/fixtures/plan/analyze/legacy-code/expected/discovery.md`](../../../../../../../schemas/omnia/briefs/fixtures/plan/analyze/legacy-code/expected/discovery.md).
 
 ## Relationship to the Omnia analyze fixture
 

@@ -20,7 +20,7 @@ The C22 brief gave three options:
 
 ## RFC cross-reference
 
-The [`user-registration` block](expected/discovery.md) in [`expected/discovery.md`](expected/discovery.md) reproduces the canonical sample from [`rfc-3a-monoliths.md` §*Plan-time analysis, define-time extraction*](../../../../../../../rfcs/rfc-3a-monoliths.md) byte-for-byte (same `summary`, same `sources` set in alphabetical order, same `depends-on`, same hints, same `confidence: high`). Any change that alters this block here must also update the RFC and the C21 Omnia fixture in the same commit.
+The [`user-registration` block](expected/discovery.md) in [`expected/discovery.md`](expected/discovery.md) reproduces the canonical sample from [`rfc-3a-monoliths.md` §*Plan-time analysis, define-time extraction*](../../../../../../../rfcs/archive/rfc-3a-monoliths.md) byte-for-byte (same `summary`, same `sources` set in alphabetical order, same `depends-on`, same hints, same `confidence: high`). Any change that alters this block here must also update the RFC and the C21 Omnia fixture in the same commit.
 
 ## Clustering signals exercised
 
