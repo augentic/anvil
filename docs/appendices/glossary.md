@@ -70,7 +70,7 @@ The `/spec:execute` driver skill that reads `plan.yaml`, picks the next eligible
 The `/spec:plan` skill and its pipeline (`/spec:analyze`, propose briefs, assignment step) that author `plan.yaml` from inputs. Includes sync-peers for multi-repo registries and project assignment (RFC-3b).
 
 **Lifecycle state**
-The current status of a change: `created`, `defined`, `building`, `complete`, `merged`, or `dropped`. Managed by the CLI via `.metadata.yaml`.
+The current status of a change: `created`, `defining`, `defined`, `building`, `complete`, `merged`, or `dropped`. `defining` and `building` are transient states indicating a phase is in-flight. Managed by the CLI via `.metadata.yaml`.
 
 ## M
 

@@ -61,11 +61,9 @@ This scaffolds the file. Edit it to describe your intent:
 ---
 name: add-oauth
 inputs:
-  - key: monolith
-    path: /path/to/legacy
+  - path: /path/to/legacy
     kind: legacy-code
-  - key: prd
-    path: ./docs/oauth-prd.md
+  - path: ./docs/oauth-prd.md
     kind: documentation
 ---
 

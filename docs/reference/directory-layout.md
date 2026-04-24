@@ -9,7 +9,7 @@ All Specify state lives under `.specify/` at your project root. This directory i
 ├── project.yaml                           # Project configuration (schema, domain, rules)
 ├── plan.yaml                              # Initiative plan (optional, created by /spec:plan)
 ├── registry.yaml                          # Platform catalogue (optional, multi-repo only)
-├── initiative.md                          # Operator brief (optional, multi-repo only)
+├── initiative.md                          # Operator brief (optional)
 ├── plan.lock                              # Advisory lock held by /spec:execute
 │
 ├── .cache/                                # Cached schema and brief files

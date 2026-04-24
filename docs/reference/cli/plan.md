@@ -102,9 +102,9 @@ Moves `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/<YYYYM
 Manage the advisory plan lock.
 
 ```bash
-specify plan lock acquire
-specify plan lock release
+specify plan lock acquire --pid <pid>
+specify plan lock release --pid <pid>
 specify plan lock status
 ```
 
-The lock (`.specify/plan.lock`) is a PID stamp held by `/spec:execute` to prevent concurrent execution. `status` reports whether the lock is held and by which PID.
+The lock (`.specify/plan.lock`) is a PID stamp held by `/spec:execute` to prevent concurrent execution. `--pid` defaults to the current process PID; `/spec:execute` passes a stable agent-session PID so `release` can authenticate the holder. `status` reports whether the lock is held and by which PID.

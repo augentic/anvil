@@ -135,11 +135,9 @@ Operator-authored brief for an initiative. Contains YAML frontmatter for structu
 ---
 name: platform-modernisation
 inputs:
-  - key: monolith
-    path: /path/to/legacy
+  - path: /path/to/legacy
     kind: legacy-code
-  - key: prd
-    path: ./docs/prd.md
+  - path: ./docs/prd.md
     kind: documentation
 ---
 
@@ -150,8 +148,7 @@ subsystems. Notifications can follow in a later cycle.
 
 | Frontmatter field | Required | Description |
 |-------------------|----------|-------------|
-| `name` | Yes | Initiative name |
-| `inputs[].key` | Yes | Source key (referenced in plan sources) |
+| `name` | Yes | Initiative name (kebab-case) |
 | `inputs[].path` | Yes | Filesystem path to the input |
 | `inputs[].kind` | Yes | `legacy-code` or `documentation` |
 
