@@ -14,8 +14,8 @@ Layer 3 skills coordinate multi-change programs through `.specify/plan.yaml`. Th
 
 | Skill | Purpose | Reads | Writes |
 |-------|---------|-------|--------|
-| [/spec:plan](plan.md) | Author `plan.yaml` from inputs | Sources, docs, registry, baseline specs | `plan.yaml`, `discovery.md`, `proposal.md`, optional `workspace.md` |
-| [/spec:execute](execute.md) | Drive the plan through define-build-merge | `plan.yaml` | Plan status transitions (via CLI) |
+| [/spec:plan](plan.md) | Author `plan.yaml` from inputs | Sources, docs, registry, baseline specs | `plan.yaml`, `discovery.md`, `proposal.md`, optional `workspace.md`; for multi-project plans, amends entries with `--project` via the assignment step |
+| [/spec:execute](execute.md) | Drive the plan through define-build-merge | `plan.yaml` | Plan status transitions (via CLI); CWD-routes into workspace clones for multi-project plans; merge may auto-commit `.specify/` in clones |
 | [/spec:analyze](analyze.md) | Plan-time capability inference | Source code or documentation | `discovery.md`, optional `metadata.json` |
 
 ## Three layers, independently useful

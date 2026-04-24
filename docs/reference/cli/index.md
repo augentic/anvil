@@ -41,5 +41,6 @@ The CLI owns operations that require understanding `.specify/` directory structu
 | [specify validate](validate.md) | Structural and semantic artifact validation | Quality gates |
 | [specify task](task.md) | Task progress tracking and checkbox manipulation | Build phase support |
 | [specify merge](merge.md) | Commit delta merge and archive | Terminal merge operation |
+| [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |
 | [specify init](init.md) | Project scaffold | One-time setup |
 | [specify vectis](vectis.md) | Cross-platform Crux project scaffold and verification | Vectis-specific tooling |

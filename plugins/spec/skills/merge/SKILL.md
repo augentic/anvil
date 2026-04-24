@@ -200,6 +200,8 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    On success, the outcome is already recorded — **do not call `phase-outcome`** (see §Phase outcome contract above).
 
+   **Workspace clone auto-commit (RFC-3b).** When CWD is inside a workspace clone (`.specify/workspace/*/` with `.specify/project.yaml`), the CLI auto-commits `.specify/specs/` and `.specify/archive/` with message `specify: merge <change-name>`. Commit failure is a **warning**, not an error — the spec merge still succeeds. Committed changes remain local until the operator explicitly runs `specify workspace push`.
+
    **If the call exits non-zero**: the filesystem is unchanged (baselines not written, change dir not moved). Record the failure via `specify change phase-outcome` (the change directory still exists). Report the error and stop — do not retry until the user has edited the failing delta or addressed the lifecycle state.
 
 5. **Display summary**

@@ -54,6 +54,15 @@ The same `schema.json` is the source of truth for Rust-side CLI tests (`tests/pl
 
 A byte-identical copy lives at [`augentic/specify-cli/schemas/plan-validate-output/schema.json`](https://github.com/augentic/specify-cli/tree/main/schemas/plan-validate-output/schema.json). When you edit the canonical file here, mirror the change to `specify-cli` in the same commit pair — the two files are covered by the `diff` byte-equality check in the RFC-2 cleanup acceptance tests.
 
+## RFC-3b validation codes
+
+`specify plan validate` emits four additional codes when `registry.yaml` is present:
+
+- `project-not-in-registry` (error) — a change's `project` value does not match any `projects[].name` in the registry.
+- `project-missing-multi-repo` (error) — when the registry has multiple projects, a change is missing the required `project` field.
+- `description-missing-multi-repo` (error) — when the registry has multiple projects, a project entry is missing the required `description` field.
+- `schema-mismatch-workspace` (warning) — a workspace clone's `.specify/project.yaml` declares a different `schema` than the corresponding registry entry. The clone is authoritative at execution time; the mismatch likely indicates a stale clone or registry typo.
+
 ## See also
 
 - [`../plan/README.md`](../plan/README.md) — companion schema for the on-disk `plan.yaml` file this command validates.

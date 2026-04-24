@@ -83,10 +83,22 @@ Common failure modes and their resolutions.
 - If the change completed successfully, it transitions the entry to `done`.
 - If the change is in a broken state, it transitions to `failed` or `blocked`.
 
+For multi-repo entries with `project`, self-heal looks at `.specify/changes/<name>/.metadata.yaml` under the target project's workspace clone, not the initiating repo. If the workspace slot is missing, execution halts (see "Workspace slot missing" below).
+
 If self-heal itself fails, manually resolve:
 1. Check the stale change: `specify change status <name>`
 2. Complete or drop it manually.
 3. Transition the plan entry: `specify plan transition <name> done|failed`
+
+### Workspace slot missing
+
+**Symptom:** `/spec:execute` halts with a diagnostic pointing at `specify workspace sync` for a target project.
+
+**Cause:** A plan entry has a `project` field targeting a registry project whose workspace slot is not materialised (`.specify/workspace/<project>/` does not exist or is incomplete).
+
+**Resolution:**
+1. Run `specify workspace sync` to materialise all registry projects.
+2. Re-run `/spec:execute`.
 
 ### Execution stuck
 

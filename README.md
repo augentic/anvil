@@ -81,7 +81,7 @@ A **plan** (`.specify/plan.yaml`) is an initiative's table of contents — an or
 
 Three layers, independently useful, stacked top to bottom:
 
-- **`/spec:plan <initiative-name> --source <key>=<path-or-url> ...`** authors `plan.yaml` (Layer 3). Runs `pipeline.plan` — discovery (`/spec:analyze`), optional **sync-peers** + `workspace.md` when `.specify/registry.yaml` lists multiple projects, then propose — with an interactive accept / edit / reject loop per slice. See [rfcs/rfc-3a-monoliths.md](rfcs/rfc-3a-monoliths.md).
+- **`/spec:plan <initiative-name> --source <key>=<path-or-url> ...`** authors `plan.yaml` (Layer 3). Runs `pipeline.plan` — discovery (`/spec:analyze`), optional **sync-peers** + `workspace.md` when `.specify/registry.yaml` lists multiple projects, then propose — with an interactive accept / edit / reject loop per slice. See [rfcs/archive/rfc-3a-monoliths.md](rfcs/archive/rfc-3a-monoliths.md) and [rfcs/rfc-3b-platform.md](rfcs/rfc-3b-platform.md).
 - **`/spec:execute --loop`** drives the plan to completion (Layer 2). Picks the next eligible entry, runs `/spec:define → /spec:build → /spec:merge`, transitions status, repeats until `all-done` or `stuck`. `--dry-run` previews; a bare invocation runs one change then stops.
 - **`specify plan {init, validate, next, status, create, amend, transition, archive, lock}`** are the Layer 1 plan CRUD and lifecycle CLI primitives both skills shell out to. They stay available for hand-driven initiatives where automation is overkill:
 
@@ -99,7 +99,7 @@ Three layers, independently useful, stacked top to bottom:
   - `specify initiative brief {init, show}` -- Owns `.specify/initiative.md`.
   - `specify initiative registry {show, validate}` -- Owns `.specify/registry.yaml`.
 
-- **`specify workspace {sync, status}`** -- Materialises `.specify/workspace/<peer>/` for multi-repo planning.
+- **`specify workspace {sync, status, push}`** -- Materialises `.specify/workspace/<peer>/` for multi-repo planning; pushes workspace clones to remotes after execution.
 
 A typical initiative: `/spec:plan migrate-to-v2 --source monolith=/path/to/legacy` → review the authored plan with `specify plan status` → `/spec:execute --loop` until it reports `all-done`.
 

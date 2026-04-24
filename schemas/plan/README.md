@@ -6,8 +6,8 @@ Canonical JSON Schema (2020-12) for `.specify/plan.yaml` — the initiative plan
 
 - Top-level `name` (kebab-case) and `changes` (ordered list) are required.
 - Optional top-level `sources` map (kebab-case keys → path-or-URL values).
-- Each change carries a required kebab-case `name`, a required `status` drawn from `{pending, in-progress, done, blocked, failed, skipped}`, plus optional `depends-on`, `sources`, `description`, and `status-reason` fields.
-- `additionalProperties: false` everywhere — unknown fields are a hard error. The schema is strict, not forward-extensible; new fields land via schema version bumps.
+- Each change carries a required kebab-case `name`, a required `status` drawn from `{pending, in-progress, done, blocked, failed, skipped}`, plus optional `project`, `depends-on`, `sources`, `description`, and `status-reason` fields. `project` (RFC-3b) is the target registry project name — required for multi-project registries, optional for single-project.
+- `additionalProperties: false` everywhere — unknown fields are a hard error. The schema is strict; additive optional fields (like `project`) can be introduced without a version bump.
 
 Scope and delta-targeting intent are carried in the `description` field as prose. The define skill infers extract filters and baseline targets from the description at execution time. The former `scope` and `affects` structured fields (introduced by RFC-3a) have been removed in favour of this description-driven approach.
 

@@ -30,19 +30,21 @@ None of its own. Invokes `/spec:define`, `/spec:build`, `/spec:merge` (and `/spe
 
 ### Per-change algorithm
 
-1. **Pick next.** `specify plan next` returns the first `pending` entry whose `depends-on` are all `done`.
+1. **Pick next.** `specify plan next --format json` returns the first `pending` entry whose `depends-on` are all `done`. The JSON response includes `project`, `description`, and `sources` for the entry.
 2. **Lock.** Acquires `.specify/plan.lock` via `specify plan lock acquire`.
-3. **Self-heal.** On startup, checks for stale `in-progress` entries from a prior crashed run and resolves them.
+3. **Self-heal.** On startup, checks for stale `in-progress` entries from a prior crashed run and resolves them. For entries with `project`, metadata is read under the target project's workspace clone, not the initiating repo.
 4. **Transition.** Moves the entry to `in-progress` via `specify plan transition`.
-5. **Define.** Invokes `/spec:define` with the entry's description and sources.
-6. **Build.** Invokes `/spec:build`.
-7. **Merge.** Invokes `/spec:merge`.
-8. **Read outcome.** Reads the phase outcome from `.metadata.yaml`.
-9. **Transition plan entry:**
+5. **CWD routing (multi-repo only).** If `project` is non-null: resolve the target directory from `registry.yaml`, check workspace freshness via `specify workspace status` (halt if `missing`), save CWD, resolve source paths to absolute paths, and `chdir` into the target project root. Emits `Routing: <name> → <project> (<path>)`.
+6. **Define.** Invokes `/spec:define` with the entry's description and resolved sources.
+7. **Build.** Invokes `/spec:build`.
+8. **Merge.** Invokes `/spec:merge`. In workspace clones, the CLI auto-commits `.specify/` subtrees with message `specify: merge <change-name>`.
+9. **CWD restore (multi-repo only).** Restores CWD to the initiating repo root.
+10. **Read outcome.** Reads the phase outcome from `.metadata.yaml`.
+11. **Transition plan entry:**
    - `success` --> `done`
    - `failure` --> `failed` (invokes `/spec:drop` first)
    - `deferred` --> `blocked`
-10. **Release lock.**
+12. **Release lock.**
 
 ### Loop mode
 

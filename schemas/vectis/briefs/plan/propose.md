@@ -5,11 +5,12 @@ needs: [discovery]
 generates: .specify/plans/<name>/proposal.md
 ---
 
-Decompose the capability inventory produced by `discovery.md` into a concrete set of plan entries, presenting each to the human for accept/edit/reject review and shelling out to `specify plan create` for every accepted slice. This is the single-writer edge for `plan.yaml`: every entry is added via `specify plan create` — the brief never edits `plan.yaml` directly.
+Decompose the capability inventory produced by `discovery.md` into a concrete set of plan entries, presenting each to the human for accept/edit/reject review and shelling out to `specify plan create` for every accepted slice. This is the single-writer edge for `plan.yaml` during propose: every entry is added via `specify plan create` (without `--project`) — the brief never edits `plan.yaml` directly. Project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
 
 ## Input
 
 - `.specify/plans/<name>/discovery.md` (authored by `discovery.md`). If the file is missing, stop and report — the discovery brief must run first.
+- **`.specify/plans/<name>/workspace.md`** when present (multi-repo). Authored by `/spec:plan` step 3(b) after `specify workspace sync`. Summarises each peer under `.specify/workspace/<project>/` so propose can attach capabilities that land in a peer repo. When absent, assume single-repo mode.
 
 ## Decomposition heuristics (Vectis)
 

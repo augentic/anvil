@@ -2,7 +2,7 @@
 
 Interactive record of the five-slice migration authoring run pinned by the companion fixtures ([`discovery.md`](discovery.md), [`expected-proposal.md`](expected-proposal.md), [`expected-plan.yaml`](expected-plan.yaml)). Prefix legend: `>` is operator input; lines without `>` are the skill's output or a shelled-out CLI invocation.
 
-Slices are presented in the draft order the propose brief emits; the skill drops stale `depends-on` edges from *upcoming* drafts after a reject, so no downstream amend is ever needed (the skill never calls `specify plan amend` — that is a human verb).
+Slices are presented in the draft order the propose brief emits; the skill drops stale `depends-on` edges from *upcoming* drafts after a reject, so no downstream amend is ever needed during propose (the propose step never calls `specify plan amend` — that is a human verb, or for multi-project plans, the plan skill's assignment step 3(d) uses it to write `--project`).
 
 ## Slice 1/6: user-registration
 

@@ -7,6 +7,12 @@ Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (tota
 
 Self-heal: no in-progress entries found.
 
+# specify plan next --format json → { "next": "ingest-pipeline", "project": "traffic", "description": "Extract the Kafka ingestion pipeline into a standalone capability.", "sources": ["monolith"] }
+# specify plan transition ingest-pipeline in-progress
+# specify workspace status traffic → materialised
+# CWD saved: /path/to/initiating-repo
+# Source resolution: monolith → /path/to/legacy-codebase (absolute)
+
 Routing: ingest-pipeline → traffic (.specify/workspace/traffic/)
 
 ### Processing: ingest-pipeline (sources: [monolith])
@@ -22,10 +28,19 @@ Step 2/3: build
 
 Step 3/3: merge
   specify: merge ingest-pipeline
+  Auto-commit: git add .specify/specs/ .specify/archive/ && git commit -m "specify: merge ingest-pipeline"
   Baseline updated: .specify/specs/ingest-pipeline/spec.md ✓
+
+# CWD restored: /path/to/initiating-repo
+# specify plan transition ingest-pipeline done
   Status: done
 
 ---
+
+# specify plan next --format json → { "next": "operator-dashboard", "project": "command-centre", "description": "Build the operator alerting dashboard.", "sources": null }
+# specify plan transition operator-dashboard in-progress
+# specify workspace status command-centre → materialised
+# CWD saved: /path/to/initiating-repo
 
 Routing: operator-dashboard → command-centre (.specify/workspace/command-centre/)
 
@@ -41,6 +56,9 @@ Step 2/3: build
   Journal: .specify/changes/operator-dashboard/journal.yaml
   Action needed: Fix the underlying error, then retry via
     specify plan transition operator-dashboard pending
+
+# CWD restored: /path/to/initiating-repo
+# specify plan transition operator-dashboard failed --reason "Missing API contract from traffic service."
   Status: failed
 
 ---

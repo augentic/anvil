@@ -110,7 +110,6 @@ projects:
 
   - name: mobile
     url: ../mobile
-    remote: git@github.com:org/mobile.git
     schema: vectis@v1
     description: >
       iOS and Android mobile application for field operators.
@@ -120,8 +119,7 @@ projects:
 |-------|----------|-------------|
 | `version` | Yes | Schema version (currently `1`) |
 | `projects[].name` | Yes | Project identifier (kebab-case) |
-| `projects[].url` | Yes | Clone URL or relative path |
-| `projects[].remote` | No | Canonical remote URL when `url` is a local path |
+| `projects[].url` | Yes | Clone URL or relative path. For local paths, `workspace push` reads `git remote get-url origin` to discover the push target. |
 | `projects[].schema` | Yes | Schema URL for this project |
 | `projects[].description` | Conditional | Required when multiple projects exist. Describes the project's business domain. |
 

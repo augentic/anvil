@@ -44,13 +44,14 @@ Author `.specify/plan.yaml` for a new initiative.
 
 ## Behavior
 
-The skill runs a fixed three-phase internal flow:
+The skill runs a fixed flow:
 
 1. **Analyse inputs.** Dispatches every input to `/spec:analyze`, which branches on `kind` (`legacy-code` or `documentation`) and emits capability summaries into `discovery.md`.
-2. **Sync peers.** *(Runs only when `registry.yaml` declares more than one project.)* Clones every registry project into `.specify/workspace/<project>/` and inventories each repo's baseline specs. Emits `workspace.md`.
-3. **Generate plan.** Combines the capability inventory with the peer inventory (when present) into an ordered, dependency-aware list of changes. Presents each proposed change ("slice") for interactive accept / edit / reject. Writes accepted slices via `specify plan create`.
+2. **Sync peers.** *(Runs only when `registry.yaml` declares more than one project.)* Clones every registry project into `.specify/workspace/<project>/` and inventories each repo's baseline specs. Emits `workspace.md` with per-project `Description` and `Schema` bullets from `registry.yaml`.
+3. **Generate plan (propose).** Combines the capability inventory with the peer inventory (when present) into an ordered, dependency-aware list of changes. Presents each proposed change ("slice") for interactive accept / edit / reject. Writes accepted slices via `specify plan create` (without `--project`).
+4. **Assignment (multi-repo only).** When `workspace.md` contains more than one project, infers a target project for each new entry using description match, baseline spec affinity, and schema compatibility from `workspace.md`. Presents the full assignment table for operator review and override. Writes each assignment via `specify plan amend <name> --project <project>`. Appends the assignment rationale to `proposal.md`.
 
-After the loop, runs `specify plan validate` to check structural integrity (no cycles, no dangling dependencies).
+After the loop, runs `specify plan validate` to check structural integrity (no cycles, no dangling dependencies) and the RFC-3b cross-registry checks (`project-not-in-registry`, `project-missing-multi-repo`, `description-missing-multi-repo`, `schema-mismatch-workspace`).
 
 ## Lifecycle transitions
 

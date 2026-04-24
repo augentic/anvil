@@ -12,7 +12,7 @@ argument-hint: "[--dry-run] [--loop]"
 
 Drive an initiative through `.specify/plan.yaml` by automating the Layer 1 loop: `get next change` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify plan transition`.
 
-> **Status.** Layer 2 is fully landed as of RFC-2 closeout. This skill ships the `--dry-run` preview, the supervised single-change run, the self-heal pass on startup, `--loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/spec:execute --loop` drives the [RFC-2 §"The Plan"](../docs/links.md#rfc-2-the-plan) example end-to-end against a plan authored by `/spec:plan` — see the [§Fixtures](#fixtures) table for the exit-gate meta-fixture.
+> **Status.** Layer 2 is fully landed as of RFC-2 closeout. RFC-3b extends the driver with multi-repo CWD routing (`project` field on plan entries), `plan next` field extensions (`project`, `description`, `sources` in JSON), workspace status checks, merge auto-commit in workspace clones, and self-heal under multi-repo. This skill ships the `--dry-run` preview, the supervised single-change run, the self-heal pass on startup, `--loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/spec:execute --loop` drives the [RFC-2 §"The Plan"](../docs/links.md#rfc-2-the-plan) example end-to-end against a plan authored by `/spec:plan` — see the [§Fixtures](#fixtures) table for the exit-gate meta-fixture.
 
 ## Overview
 
@@ -107,9 +107,10 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
    Interpret the JSON:
      - `next != null`                → continue to step 5 with this
                                         name. Capture the entry's
-                                        `description` and `sources`
-                                        for use in step 6 (see
-                                        §Argument resolution).
+                                        `project`, `description`, and
+                                        `sources` for use in steps 5a
+                                        and 6 (see §Argument
+                                        resolution).
      - `reason == "in-progress"`     → defence in depth: an active
                                         entry exists that self-heal
                                         did not resolve. In practice

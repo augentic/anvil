@@ -39,7 +39,7 @@ Self-heal: email-verification → done (merge success from prior run)
 # ───────────────────────────────────────────────────────────
 # Iteration 4 — product-catalog (crashes mid-/spec:build)
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "product-catalog" }
+# specify plan next --format json → { "next": "product-catalog", "project": null, "description": "...", "sources": ["monolith"] }
 
 # Argument resolution:
 #   sources: [monolith] → --source monolith=/path/to/legacy-codebase

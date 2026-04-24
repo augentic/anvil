@@ -158,6 +158,13 @@ Follow these steps in order on every invocation. Each step is normative; every s
    skill owes its caller — a plan that ships to `/spec:execute`
    without passing `specify plan validate` is a regression.
 
+   RFC-3b adds four cross-registry checks when `registry.yaml` is
+   present: `project-not-in-registry` (error),
+   `project-missing-multi-repo` (error),
+   `description-missing-multi-repo` (error), and
+   `schema-mismatch-workspace` (warning). The warning does not
+   block validation — it surfaces a stale clone or registry typo.
+
 5. Exit with a hand-off summary.
 
    Point the human at:

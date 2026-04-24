@@ -65,6 +65,15 @@ specify plan next
 specify plan transition <name> <target>
 specify plan lock status
 
+# Workspace (multi-repo)
+specify workspace sync
+specify workspace status
+specify workspace push
+
+# Plan authoring (multi-repo)
+specify plan create <name> --project <project>
+specify plan amend <name> --project <project>
+
 # Inspection
 specify spec preview <change-dir>
 specify spec conflict-check <change-dir>

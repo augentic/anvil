@@ -41,6 +41,10 @@
           "$ref": "#/$defs/kebabName",
           "description": "Change name. Unique across the plan; becomes the Specify change directory name when the entry transitions to `in-progress`."
         },
+        "project": {
+          "type": "string",
+          "description": "Target registry project name (RFC-3b). Required for multi-project registries; optional for single-project."
+        },
         "status": {
           "type": "string",
           "enum": [

@@ -39,7 +39,7 @@ Matches the order `specify plan next` would walk at execution time.
 - **`sources.monolith` path.** `./inputs`, matching the C22 invocation `--source monolith=./inputs`.
 - **Change ordering.** Dependency-order + within-layer alphabetical: `email-verification`, `shared-validation`, `user-registration`.
 - **`depends-on` list order.** Alphabetical — `[email-verification, shared-validation]` for `user-registration`.
-- **Field order inside each plan entry.** Matches the CLI's serde output: `name`, `status`, `depends-on`, `sources`, `description`, `status-reason`.
+- **Field order inside each plan entry.** Matches the CLI's serde output: `name`, `project`, `status`, `depends-on`, `sources`, `description`, `status-reason`.
 
 ## Downstream consumers
 

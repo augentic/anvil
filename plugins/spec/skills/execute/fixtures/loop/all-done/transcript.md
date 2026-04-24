@@ -16,7 +16,7 @@ $ /spec:execute --loop
 Self-heal: no in-progress entries found.
 
 # step 4 iteration 1/3: pick next.
-#   specify plan next --format json  → { "next": "user-registration" }
+#   specify plan next --format json  → { "next": "user-registration", "project": null, "description": "...", "sources": ["monolith"] }
 #   specify plan transition user-registration in-progress
 #   /spec:define user-registration   → outcome: success
 #   /spec:build  user-registration   → outcome: success
@@ -48,7 +48,7 @@ Step 3/3: merge
 ---
 
 # step 4 iteration 2/3: pick next.
-#   specify plan next --format json  → { "next": "email-verification" }
+#   specify plan next --format json  → { "next": "email-verification", "project": null, "description": "...", "sources": ["monolith"] }
 # (The two siblings — email-verification and notification-preferences —
 # both depend only on user-registration. specify plan next breaks the
 # tie by plan list order, picking email-verification.)
@@ -81,7 +81,7 @@ Step 3/3: merge
 ---
 
 # step 4 iteration 3/3: pick next.
-#   specify plan next --format json  → { "next": "notification-preferences" }
+#   specify plan next --format json  → { "next": "notification-preferences", "project": null, "description": "...", "sources": [] }
 #   specify plan transition notification-preferences in-progress
 #   /spec:define notification-preferences → outcome: success
 #   /spec:build  notification-preferences → outcome: success

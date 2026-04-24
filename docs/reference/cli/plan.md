@@ -22,7 +22,12 @@ Check structural and referential integrity of the plan.
 specify plan validate
 ```
 
-Checks for: duplicate entry names, dependency cycles, unknown `depends-on` / `affects` / `sources` references, and at most one `in-progress` entry.
+Checks for: duplicate entry names, dependency cycles, unknown `depends-on` / `affects` / `sources` references, at most one `in-progress` entry, and the following RFC-3b cross-registry checks when `registry.yaml` is present:
+
+- `project-not-in-registry` (error) -- every `project` value must match a `projects[].name` in the registry.
+- `project-missing-multi-repo` (error) -- when the registry has multiple projects, every change must carry a `project` field.
+- `description-missing-multi-repo` (error) -- when the registry has multiple projects, every project must carry a `description`.
+- `schema-mismatch-workspace` (warning) -- a workspace clone's `project.yaml` declares a different schema than the corresponding registry entry.
 
 ### specify plan next
 
@@ -33,6 +38,8 @@ specify plan next
 ```
 
 Returns the first `pending` entry whose `depends-on` entries are all `done`. Returns an error if no eligible entry exists.
+
+With `--format json`, when an eligible entry is found the response includes `project` (string or null), `description` (string or null), and `sources` (array or null) alongside `next`. These fields are absent when `reason` is non-null (`all-done`, `stuck`, `in-progress`).
 
 ### specify plan status
 
@@ -49,7 +56,7 @@ Shows entries in topological order with per-status counts, the active `in-progre
 Append a new entry to the plan.
 
 ```bash
-specify plan create <name> [--description "<text>"] [--depends-on <entry>...] [--sources <key>...] [--affects <spec>...]
+specify plan create <name> [--project <name>] [--description "<text>"] [--depends-on <entry>...] [--sources <key>...] [--affects <spec>...]
 ```
 
 Creates the entry in `pending` state.
@@ -59,7 +66,7 @@ Creates the entry in `pending` state.
 Edit non-status fields on an existing entry.
 
 ```bash
-specify plan amend <name> [--description "<text>"] [--depends-on <entry>...] [--sources <key>...] [--affects <spec>...]
+specify plan amend <name> [--project <name>] [--description "<text>"] [--depends-on <entry>...] [--sources <key>...] [--affects <spec>...]
 ```
 
 ### specify plan transition

@@ -24,6 +24,7 @@ graph TB
         changeCli["specify change ..."]
         planCli["specify plan ..."]
         initCli["specify initiative ..."]
+        workspaceCli["specify workspace ..."]
         schemaCli["specify schema ..."]
         specCli["specify spec ..."]
         validateCli["specify validate"]
@@ -53,11 +54,12 @@ graph TB
 
 The `specify` CLI is the foundation. It owns every deterministic operation: creating and transitioning changes, validating artifacts, parsing tasks, merging specs, managing plans. Skills never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into the archive. All writes flow through the CLI.
 
-The two primary command families are:
+The primary command families are:
 
 - **`specify change ...`** -- create, inspect, transition, and archive individual changes.
 - **`specify plan ...`** -- scaffold, populate, validate, transition, and archive an initiative plan.
 - **`specify initiative ...`** -- manage the initiative brief and platform registry.
+- **`specify workspace ...`** -- materialise, inspect, and push workspace clones for multi-repo initiatives.
 
 **Who uses it:** Power users who want fine-grained control, CI pipelines, and anyone debugging the state of `.specify/`. Layer 1 is always available as a manual fallback beneath the higher layers.
 

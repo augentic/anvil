@@ -53,7 +53,7 @@ Self-heal: email-verification → done (merge success from prior run)
 # ───────────────────────────────────────────────────────────
 # Iteration 1 — registration-duplicate-email-crash
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "registration-duplicate-email-crash" }
+# specify plan next --format json → { "next": "registration-duplicate-email-crash", "project": null, "description": "...", "sources": [] }
 # Tie-break: plan list order. Both registration-duplicate-email-crash
 # and notification-preferences are eligible (user-registration is done);
 # the former appears first in plan list order.
@@ -83,7 +83,7 @@ Step 3/3: merge
 # ───────────────────────────────────────────────────────────
 # Iteration 2 — notification-preferences (greenfield)
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "notification-preferences" }
+# specify plan next --format json → { "next": "notification-preferences", "project": null, "description": "...", "sources": [] }
 
 # Argument resolution:
 #   sources: []  →  no --source flags
@@ -109,7 +109,7 @@ Step 3/3: merge
 # ───────────────────────────────────────────────────────────
 # Iteration 3 — extract-shared-validation
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "extract-shared-validation" }
+# specify plan next --format json → { "next": "extract-shared-validation", "project": null, "description": "...", "sources": ["monolith"] }
 # (email-verification is done now, so this entry's dep is satisfied.)
 
 # Argument resolution:
@@ -138,7 +138,7 @@ Step 3/3: merge
 # ───────────────────────────────────────────────────────────
 # Iteration 4 — product-catalog (local-path source)
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "product-catalog" }
+# specify plan next --format json → { "next": "product-catalog", "project": null, "description": "...", "sources": ["monolith"] }
 
 # Argument resolution:
 #   sources: [monolith] — resolve "monolith" against top-level map:
@@ -171,7 +171,7 @@ Step 3/3: merge
 # ───────────────────────────────────────────────────────────
 # Iteration 5 — shopping-cart (git-URL source)
 # ───────────────────────────────────────────────────────────
-# specify plan next → { "next": "shopping-cart" }
+# specify plan next --format json → { "next": "shopping-cart", "project": null, "description": "...", "sources": ["monolith"] }
 
 # Argument resolution:
 #   sources: [orders] — resolve "orders" against top-level map:

@@ -33,7 +33,7 @@ CLI surface the skills depend on:
 - `specify change {create, list, status, transition, touched-specs, overlap, archive, drop, phase-outcome, journal-append}` — lifecycle verbs. `phase-outcome` stamps the `.metadata.yaml:outcome` that `/spec:execute` reads; `journal-append` writes `question` / `failure` / `recovery` entries into `journal.yaml`.
 - `specify plan {init, validate, next, status, create, amend, transition, archive, lock}` — plan CRUD and lifecycle (RFC-2 Layer 1 + RFC-3a). `init` scaffolds an empty plan; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/spec:execute`.
 - `specify initiative {brief, registry}` — operator brief and platform registry. `brief {init, show}` owns `.specify/initiative.md`; `registry {show, validate}` owns `.specify/registry.yaml`.
-- `specify workspace {sync, status}` — materialises `.specify/workspace/<peer>/` for multi-repo planning.
+- `specify workspace {sync, status, push}` — materialises `.specify/workspace/<peer>/` for multi-repo planning; pushes workspace clones to remotes after execution.
 - `specify schema {resolve, check, pipeline}` — schema resolution and brief topology.
 - `specify spec {preview, conflict-check}` — dry-run merge operations and baseline drift detection.
 - `specify validate` — structural + semantic artifact checks.

@@ -26,7 +26,7 @@ $ /spec:execute --loop
 Self-heal: no in-progress entries found.
 
 # step 4 iteration 1: pick next.
-#   specify plan next → { "next": "email-verification" }
+#   specify plan next --format json → { "next": "email-verification", "project": null, "description": "...", "sources": ["monolith"] }
 #   specify plan transition email-verification in-progress
 
 ## /spec:execute — platform-v2

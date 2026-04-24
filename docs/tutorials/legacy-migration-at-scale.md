@@ -26,24 +26,21 @@ Define the target repos where migrated capabilities will land:
 version: 1
 projects:
   - name: auth-service
-    url: ../auth-service
-    remote: git@github.com:org/auth-service.git
+    url: git@github.com:org/auth-service.git
     schema: omnia@v1
     description: >
       Authentication and authorization. Token management,
       OAuth providers, session handling, RBAC.
 
   - name: order-service
-    url: ../order-service
-    remote: git@github.com:org/order-service.git
+    url: git@github.com:org/order-service.git
     schema: omnia@v1
     description: >
       Order processing. Cart management, checkout flow,
       payment integration, order lifecycle.
 
   - name: notification-service
-    url: ../notification-service
-    remote: git@github.com:org/notification-service.git
+    url: git@github.com:org/notification-service.git
     schema: omnia@v1
     description: >
       Notification dispatch. Email, SMS, push notifications,
@@ -89,22 +86,31 @@ Because the registry declares multiple projects, the sync-peers phase clones the
 
 ### Propose phase
 
-The propose phase matches discovered capabilities to projects using:
-
-1. Capability descriptions from `discovery.md`.
-2. Project descriptions from `registry.yaml`.
-3. Dependency edges between capabilities.
-
-Each proposed change is presented for review:
+The propose phase decomposes discovered capabilities into plan entries. Each proposed change is presented for review:
 
 ```
 Proposed: extract-token-validation
   Description: Migrate token validation from the monolith
-  Project: auth-service
   Sources: [monolith]
   Depends-on: []
   Accept / Edit / Reject?
 ```
+
+Propose creates entries without a `project` field -- it handles decomposition, not routing.
+
+### Assignment
+
+After all slices are accepted, the plan skill's assignment step (3d) matches each entry to a target project. It infers routing from `workspace.md` -- project descriptions, baseline spec affinity, and schema compatibility -- then presents a batch review:
+
+```
+| # | Entry                    | Project              | Rationale                              |
+|---|--------------------------|----------------------|----------------------------------------|
+| 1 | extract-token-validation | auth-service         | description overlap: token, auth, RBAC |
+| 2 | extract-checkout-flow    | order-service        | description overlap: checkout, payment  |
+| 3 | extract-email-dispatch   | notification-service | baseline spec: email-templates exists   |
+```
+
+The operator can override any assignment. Once confirmed, the plan skill writes each routing decision via `specify plan amend <name> --project <project>`.
 
 ## 3. Handle tangled code
 
@@ -205,7 +211,7 @@ specify plan status
 
 - The **analyze/extract split** makes large migrations tractable: cheap scanning at plan time, deep extraction at define time.
 - Discovery produces capability summaries with source-file hints and dependency edges.
-- The propose phase matches capabilities to target projects.
+- The propose phase decomposes capabilities into plan entries; the assignment step matches them to target projects.
 - Tangled code is handled with manifest scopes and overlap detection.
 - Extraction and greenfield changes coexist in a single plan.
 - Baseline accumulation in target repos gives subsequent changes context.

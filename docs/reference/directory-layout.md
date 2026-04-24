@@ -48,7 +48,7 @@ All Specify state lives under `.specify/` at your project root. This directory i
 │
 ├── workspace/                             # Cloned peer repos (multi-repo only)
 │   └── <project-name>/
-│       └── ...                            # Read-only repo clone
+│       └── ...                            # Peer repo clone (writable during execution)
 │
 └── archive/                               # Finalized changes and plans
     ├── YYYY-MM-DD-<change-name>/          # Merged or dropped changes
@@ -87,7 +87,7 @@ Working directories for initiative authoring. Each plan gets a subdirectory cont
 
 ### `workspace/`
 
-Cloned peer repositories for multi-repo planning. Created by `specify workspace sync` during `/spec:plan` when `registry.yaml` declares multiple projects. These clones are read-only and used for cross-repo analysis.
+Cloned peer repositories for multi-repo initiatives. Created by `specify workspace sync`. Read-only during planning (`/spec:plan`); writable during execution (`/spec:execute`) -- define, build, and merge write into the clone's `.specify/` tree. Committed changes are pushed explicitly via `specify workspace push`.
 
 ### `archive/`
 
