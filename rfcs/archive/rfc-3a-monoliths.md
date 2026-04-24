@@ -14,7 +14,7 @@ Internally, `/spec:plan` runs a fixed three-phase flow: *analyse inputs* → *(s
 
 There is no pipeline declaration file. RFC-3 does not move `pipeline.plan` anywhere: it eliminates the configuration surface entirely for v1 so the fixed shape is the only shape. `schema.yaml` retains its Layer 1 role (`define/build/merge`); no planning config lives there. Configurability is re-addable in a later RFC without migration (see *Alternatives Considered*).
 
-RFC-3 addresses initiative planning across repos. Cross-repo spec references and contract validation are an execution-time concern that sits downstream of the planning flow introduced here. They are explicitly out of scope for RFC-3 and captured separately in [RFC-3b](../rfc-3b-platform.md).
+RFC-3 addresses initiative planning across repos. Cross-repo spec references and contract validation are an execution-time concern that sits downstream of the planning flow introduced here. They are explicitly out of scope for RFC-3 and captured separately in [RFC-3b](rfc-3b-platform.md).
 
 In parallel, RFC-3 scales `/spec:plan` *down* into large monoliths by splitting the code-handling pipeline across two skills — a cheap whole-source analysis via `/spec:analyze` at plan-authoring time (emitting capability summaries whose `sources:` lists propose scope directly), and a deep per-slice extraction via `/spec:extract` at `/spec:define` time — and by adding an optional `scope` field to plan entries so each change's define runs against only the files that change owns. See §*Large-Monolith Decomposition*.
 
@@ -66,7 +66,7 @@ RFC-2's Layer 3 `/spec:plan` skill addresses the first case for a single repo. T
 - **RFC-2 (Plans):** the Plan format is unchanged. The `/spec:plan` skill — its invocation, its core loop, and its single-writer invariant — is unchanged. RFC-3 adds registry and initiative-brief awareness, a fixed internal *sync peers* phase, and a documentation-analysis skill; the operator-facing contract is the same.
 - **No planning configuration.** RFC-2 Layer 3 placed `pipeline.plan` inside `schema.yaml`. RFC-3 does not relocate that declaration to a new file — it eliminates it. `/spec:plan`'s internal flow is fixed for v1. `schema.yaml` retains its Layer 1 role (`define/build/merge`). Stack-specific planning helpers (e.g. slice-heuristic prose) may still ship in schema directories and be consumed directly by the *generate plan* phase.
 
-RFC-3 is structured in two layers; each layer describes a feature added to the planning flow. **Layer 1** makes `/spec:plan` registry-aware and fixes the discovery-dispatch rule for code vs. documentation inputs. **Layer 2** adds the *sync peers* phase. A parallel §*Large-Monolith Decomposition* adds the two-skill analyze/extract split (plan-time vs define-time) and the `scope` field; it composes with both layers but sits outside their progression. Federation at execution time (`@peer:capability` references, contract reconciliation, peer status roll-up) is deferred to [RFC-3b](../rfc-3b-platform.md).
+RFC-3 is structured in two layers; each layer describes a feature added to the planning flow. **Layer 1** makes `/spec:plan` registry-aware and fixes the discovery-dispatch rule for code vs. documentation inputs. **Layer 2** adds the *sync peers* phase. A parallel §*Large-Monolith Decomposition* adds the two-skill analyze/extract split (plan-time vs define-time) and the `scope` field; it composes with both layers but sits outside their progression. Federation at execution time (`@peer:capability` references, contract reconciliation, peer status roll-up) is deferred to [RFC-3b](rfc-3b-platform.md).
 
 ---
 
@@ -505,7 +505,7 @@ Executed between *analyse inputs* and *generate plan*:
 
 ### Plan output shape
 
-The *generate plan* phase emits a **single cross-repo `plan.yaml*`* in the initiating repo. Entries whose work spans peer projects reference them by registry name in `sources` / `affects`; execution of those entries requires the federation layer deferred to [RFC-3b](../rfc-3b-platform.md).
+The *generate plan* phase emits a **single cross-repo `plan.yaml*`* in the initiating repo. Entries whose work spans peer projects reference them by registry name in `sources` / `affects`; execution of those entries requires the federation layer deferred to [RFC-3b](rfc-3b-platform.md).
 
 Per-repo `plan.yaml`s linked by a feature manifest — staged under `.specify/plans/<initiative-name>/<peer>/` and delivered out-of-band — is a plausible alternative output shape, but it is deferred (see *Alternatives Considered*). RFC-3 ships with exactly one shape.
 
@@ -601,5 +601,5 @@ An alternative to the dedicated shared-infrastructure change is to permit scope 
 
 - [RFC-1: `specify` CLI](rfc-1-cli.md) — CLI surface this RFC extends.
 - [RFC-2: Execution](rfc-2-execution.md) — consumer of the Plan this RFC produces; introduces the `/spec:plan` skill RFC-3 extends.
-- [RFC-3b: Federation at Execution Time (Layer 3)](../rfc-3b-platform.md) — execution-time cross-repo references, contract reconciliation, and peer status roll-up; out of scope for this RFC.
+- [RFC-3b: Federation at Execution Time (Layer 3)](rfc-3b-platform.md) — execution-time cross-repo references, contract reconciliation, and peer status roll-up; out of scope for this RFC.
 
