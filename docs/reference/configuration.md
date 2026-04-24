@@ -11,21 +11,27 @@ Specify uses several YAML and Markdown files for configuration. All are managed 
 Project-level configuration that persists across changes.
 
 ```yaml
+name: my-project
 schema: https://github.com/augentic/specify/schemas/omnia
+specify_version: "0.1.0"
 domain: |
   Brief description of the project's domain, purpose, and
   technical constraints. This context is available to all
   briefs during artifact generation.
 rules:
-  - "All APIs must require authentication"
-  - "Error responses must include a correlation ID"
+  proposal: "Focus on user-facing changes"
+  specs: "All APIs must require authentication"
+  design: "Error responses must include a correlation ID"
+  tasks: ""
 ```
 
 | Field | Required | Description |
 |-------|----------|-------------|
+| `name` | Yes | Project name (set by `specify init --name`) |
 | `schema` | Yes | Schema URL (with optional `@ref` suffix) |
+| `specify_version` | Yes | Minimum CLI version required (set by `specify init`, updated by `--upgrade`) |
 | `domain` | No | Free-form domain description available to briefs |
-| `rules` | No | Project-level constraints the agent should respect |
+| `rules` | No | Per-brief rule overrides keyed by brief ID (e.g. `proposal`, `specs`, `design`, `tasks`). Empty values mean no rules apply. Scaffolded by `specify init` with one entry per `pipeline.define` brief. |
 
 ## plan.yaml
 

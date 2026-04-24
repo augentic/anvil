@@ -33,6 +33,7 @@ The CLI owns operations that require understanding `.specify/` directory structu
 
 | Family | Purpose | Reference |
 |--------|---------|-----------|
+| [specify status](status.md) | Show active changes and progress | Top-level convenience |
 | [specify change](change.md) | Create, inspect, transition, and archive individual changes | Layer 2 operations |
 | [specify plan](plan.md) | Scaffold, populate, validate, and transition initiative plans | Layer 3 operations |
 | [specify initiative](initiative.md) | Manage initiative brief and platform registry | Layer 3 setup |

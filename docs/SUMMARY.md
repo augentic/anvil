@@ -48,6 +48,7 @@
   - [/spec:execute](reference/initiative-skills/execute.md)
   - [/spec:analyze](reference/initiative-skills/analyze.md)
 - [CLI Reference](reference/cli/index.md)
+  - [specify status](reference/cli/status.md)
   - [specify change](reference/cli/change.md)
   - [specify plan](reference/cli/plan.md)
   - [specify initiative](reference/cli/initiative.md)

@@ -29,13 +29,16 @@ Checks that `schema.yaml` conforms to the schema JSON Schema, all referenced bri
 Show the brief pipeline for a phase.
 
 ```bash
-specify schema pipeline <phase>
+specify schema pipeline <phase> [--change <change-dir>] [--format json]
 ```
 
 | Phase | Description |
 |-------|-------------|
+| `plan` | Briefs that drive initiative planning (discovery, propose, assignment) |
 | `define` | Briefs that generate artifacts (proposal, specs, design, tasks) |
 | `build` | Briefs that drive implementation |
 | `merge` | Briefs that drive spec merging |
 
-Returns the ordered list of briefs with their dependencies.
+Returns the ordered list of briefs with their dependencies. Each brief entry includes its absolute `path`, `needs` edges, `generates` target, and current `present` flag.
+
+When `--change` is provided, the `present` flag reflects whether each brief's output already exists in the given change directory.

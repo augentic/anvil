@@ -46,14 +46,20 @@
 ## Lifecycle states
 
 ```
-created --> defined --> building --> complete --> merged
-    \          \          \            \
-     `-------->  `-------->  `-------->  `-----> dropped
+created --> defining --> defined --> building --> complete --> merged
+    \          \           \           \            \
+     `-------->  `--------->  `--------->  `--------->  `-----> dropped
 ```
+
+`defining` and `building` are transient states indicating a phase is in-flight.
 
 ## Key CLI commands
 
 ```bash
+# Status
+specify status
+specify status <name>
+
 # Change management
 specify change list
 specify change status <name>
