@@ -12,7 +12,7 @@ argument-hint: "[--dry-run] [--loop]"
 
 Drive an initiative through `.specify/plan.yaml` by automating the Layer 1 loop: `get next change` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify plan transition`.
 
-> **Status.** Layer 2 is fully landed as of RFC-2 closeout. RFC-3b extends the driver with multi-repo CWD routing (`project` field on plan entries), `plan next` field extensions (`project`, `description`, `sources` in JSON), workspace status checks, merge auto-commit in workspace clones, and self-heal under multi-repo. This skill ships the `--dry-run` preview, the supervised single-change run, the self-heal pass on startup, `--loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/spec:execute --loop` drives the [RFC-2 §"The Plan"](../docs/links.md#rfc-2-the-plan) example end-to-end against a plan authored by `/spec:plan` — see the [§Fixtures](#fixtures) table for the exit-gate meta-fixture.
+> **Status.** Layer 2 is fully landed. The driver supports multi-repo CWD routing (`project` field on plan entries), `plan next` field extensions (`project`, `description`, `sources` in JSON), workspace status checks, merge auto-commit in workspace clones, and self-heal under multi-repo. This skill ships the `--dry-run` preview, the supervised single-change run, the self-heal pass on startup, `--loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/spec:execute --loop` drives the `platform-v2` example end-to-end against a plan authored by `/spec:plan` — see the [§Fixtures](#fixtures) table for the exit-gate meta-fixture.
 
 ## Overview
 
@@ -31,21 +31,19 @@ The on-disk contracts the driver depends on are the same files humans read in La
 | `.specify/changes/<name>/journal.yaml` | library (`Journal::append` + `specify change journal-append`) | Append-only audit log of `question` / `failure` / `recovery` entries. Never consumed as a signalling channel — `.metadata.yaml:outcome` is the only state the driver reads. |
 | `.specify/plan.lock` | library (`PlanLockStamp`) | Advisory PID stamp held by the running driver. Prevents two `/spec:execute` invocations racing on the same plan. |
 
-See [RFC-2 §"Layer 2: Automated Execution"](../docs/links.md#rfc-2-layer-2) for the full design, including the [Phase Outcome Contract](../docs/links.md#rfc-2-phase-outcome-contract), [Plan Mutation and Crash Safety](../docs/links.md#rfc-2-plan-mutation), and [Driver Concurrency](../docs/links.md#rfc-2-driver-concurrency) sections.
+## Invariants
 
-## Invariants (RFC-2 §"Invariants")
-
-These invariants constrain this skill's behaviour. They are reproduced here verbatim from the RFC so the contract is auditable without leaving the skill file.
+These invariants constrain this skill's behaviour.
 
 | Invariant | Enforced by |
 |---|---|
 | Driver contracts with phases, not briefs | `/spec:execute` only invokes `/spec:define`, `/spec:build`, `/spec:merge` |
 | Phases own verify-repair loops | Phase skills exhaust their repair budget before returning |
-| Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `outcome` into `.metadata.yaml` before returning (see [§Phase Outcome Contract](../docs/links.md#rfc-2-phase-outcome-contract)) |
+| Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `outcome` into `.metadata.yaml` before returning |
 | Change *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify plan create` / `specify plan amend` |
 | Change *status* updates written only via `Plan::transition` | `/spec:execute` (Layer 2) or humans (Layer 1) run `specify plan transition` |
 | Single `in-progress` at a time | `plan next` / `plan validate` |
-| Single `/spec:execute` driver at a time | `.specify/plan.lock` advisory lock (see [§Driver Concurrency](../docs/links.md#rfc-2-driver-concurrency)) |
+| Single `/spec:execute` driver at a time | `.specify/plan.lock` advisory lock (see §Driver lock below) |
 
 ## Invocation
 
@@ -131,8 +129,7 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
 5. Transition the selected entry:
      specify plan transition <name> in-progress
    This is the first plan write the driver performs. It must happen
-   BEFORE /spec:define creates the change directory (RFC-2 §"Plan
-   Mutation and Crash Safety"): between this step and step 6 the
+   BEFORE /spec:define creates the change directory: between this step and step 6 the
    plan briefly shows an in-progress entry with no matching change
    directory, which `specify plan validate` tolerates as a
    warning.
@@ -153,8 +150,7 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
        pass through unchanged.
      - `chdir` into the target project root.
      - Emit diagnostic: `Routing: <name> → <project> (<resolved-path>)`
-   If `project` is null, skip this step entirely (pre-RFC-3b
-   single-repo path).
+   If `project` is null, skip this step entirely (single-repo path).
 
 6. Resolve the plan entry's `sources` into define arguments (see
    §Argument resolution below) and invoke:
@@ -188,7 +184,7 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
                   Treat as deferred with a synthetic summary:
                   "phase outcome missing after <phase>; driver
                   stopping for triage." Go to step 12. (This matches
-                  the RFC-2 §"Phase Outcome Contract" fallback: the
+                  the phase outcome contract fallback: the
                   driver never speculates about a missing outcome.)
 
 9a. CWD restore (multi-repo only).
@@ -248,7 +244,7 @@ Step 6 of the per-change algorithm turns the plan entry's `sources` field into c
 
 For every key in the plan entry's `sources` list, look it up in the plan's top-level `sources` map and classify the value:
 
-1. **Key absent from the top-level map** — unresolved reference. The plan is internally inconsistent; this is an `Error::Config`-level halt. Emit a diagnostic naming the offending `(change, key)` pair, release the driver lock, exit non-zero. This should have been caught earlier by `specify plan validate` via the `unknown-source` diagnostic (RFC-2 Change L1.F), so reaching this branch means either the plan was not validated or it was edited out of band between validation and execution — either way, human triage.
+1. **Key absent from the top-level map** — unresolved reference. The plan is internally inconsistent; this is an `Error::Config`-level halt. Emit a diagnostic naming the offending `(change, key)` pair, release the driver lock, exit non-zero. This should have been caught earlier by `specify plan validate` via the `unknown-source` diagnostic, so reaching this branch means either the plan was not validated or it was edited out of band between validation and execution — either way, human triage.
 2. **Value is a local filesystem path** (e.g. `/path/to/legacy`) — pass through as-is. The driver does NOT stat the path or verify it exists; `/spec:define` (and downstream `/spec:extract`) are responsible for surfacing a missing-path error with the right phase-level diagnostic.
 3. **Value is a git URL** (e.g. `git@github.com:org/service.git` or `https://github.com/…`) — pass through as-is. The driver does NOT clone here. Cloning is `git-cloner`'s concern, invoked from inside `/spec:define`'s brief pipeline when a brief needs the source tree materialized. This keeps the clone cache under the phase's control and avoids duplicating the clone logic in the driver.
 
@@ -282,16 +278,16 @@ For every plan entry `E` whose `status` is `in-progress`, in the order they appe
 
 1. **Locate the latest `.metadata.yaml` for `E.name`.**
    - First check `.specify/changes/<name>/.metadata.yaml` — the active change directory. If present, that is the file to read.
-   - If absent, inspect `.specify/archive/`. Archive directory names end with `-<name>` (the `YYYY-MM-DD-<name>` convention from `specify change archive` — see RFC-1 §`metadata.rs`). Multiple matches are legal: a change that failed and was later retried leaves one archive per attempt. Pick the most recent by `created-at` inside its `.metadata.yaml` (falling back to `defined-at`, then the directory's `YYYY-MM-DD` prefix); the outcome itself is surfaced by `specify change outcome <name> --format json` once the active directory is back in place.
+   - If absent, inspect `.specify/archive/`. Archive directory names end with `-<name>` (the `YYYY-MM-DD-<name>` convention from `specify change archive`). Multiple matches are legal: a change that failed and was later retried leaves one archive per attempt. Pick the most recent by `created-at` inside its `.metadata.yaml` (falling back to `defined-at`, then the directory's `YYYY-MM-DD` prefix); the outcome itself is surfaced by `specify change outcome <name> --format json` once the active directory is back in place.
    - If nothing is found anywhere, the plan entry is `in-progress` but no change has ever been created — typically because the prior driver crashed between `specify plan transition pending → in-progress` (step 5) and `/spec:define` (step 6). Treat this as mid-change resume with `LifecycleStatus = None` — jump to step 3 below.
 
-**Multi-repo self-heal (RFC-3b).** For each `in-progress` entry `E` in `plan.yaml`, self-heal reads `E.project` from the plan entry. If non-null:
+**Multi-repo self-heal.** For each `in-progress` entry `E` in `plan.yaml`, self-heal reads `E.project` from the plan entry. If non-null:
 1. Resolve the target project directory from `registry.yaml` (same resolution as step 5a of the per-change algorithm).
 2. Check workspace freshness for that slot. If `missing`, halt — same semantics as the main loop.
 3. Look for `.specify/changes/<E.name>/.metadata.yaml` under the resolved project root instead of the initiating repo root. The classification logic (step 2 of self-heal) and recovery journal append (step 4) are unchanged.
 4. Restore CWD to the initiating repo root after each entry's reconciliation.
 
-For entries without a `project` field, self-heal is unchanged from RFC-2.
+For entries without a `project` field, self-heal follows the standard single-repo path.
 
 2. **Read `.metadata.yaml.outcome` and act on it.**
    - `outcome.outcome == success` and `outcome.phase == merge` → the merge finished but the driver crashed before the terminal plan transition. Run:
@@ -308,10 +304,10 @@ For entries without a `project` field, self-heal is unchanged from RFC-2.
      /spec:drop <name> --reason "<outcome.summary>"
      specify plan transition <name> blocked --reason "<outcome.summary>"
      ```
-   - The `outcome` field is **absent** and `LifecycleStatus` is non-terminal (`defining`, `defined`, `building`, `complete`) → no terminal outcome was ever stamped; the prior phase was in-flight at crash time. Fall through to step 3 with the on-disk `LifecycleStatus`. This is the explicit "active change dir with no terminal outcome yet" branch from RFC-2 §"Plan Mutation and Crash Safety".
+   - The `outcome` field is **absent** and `LifecycleStatus` is non-terminal (`defining`, `defined`, `building`, `complete`) → no terminal outcome was ever stamped; the prior phase was in-flight at crash time. Fall through to step 3 with the on-disk `LifecycleStatus`.
    - The `outcome` field is malformed (unknown enum variant, missing `phase`, missing `summary`, …) or its `phase` contradicts `LifecycleStatus` (for example `phase: merge` with `status: defining`, or `outcome: success` with `status: dropped`) → **halt**. Emit the diagnostic line below with exit code `2` (`EXIT_VALIDATION_FAILED` — see the exit-code table in specify-cli `src/main.rs`). Leave the plan entry as `in-progress`. Do not append a recovery journal entry. Do not drop the change. Humans triage.
 
-3. **Mid-change resume** (no terminal outcome yet). Reached when step 1 found no metadata, when step 2 saw success on `define`/`build`, or when step 2 saw no `outcome` field with a non-terminal `LifecycleStatus`. Read `LifecycleStatus` from `.metadata.yaml.status` (missing metadata counts as "None") and apply the resumption table from RFC-2 §"Context Threading → Resumption Within a Change":
+3. **Mid-change resume** (no terminal outcome yet). Reached when step 1 found no metadata, when step 2 saw success on `define`/`build`, or when step 2 saw no `outcome` field with a non-terminal `LifecycleStatus`. Read `LifecycleStatus` from `.metadata.yaml.status` (missing metadata counts as "None") and apply the resumption table:
    - `None` → invoke `/spec:define <name>` from scratch (step 6 of the per-change algorithm, skipping step 5 because `plan.yaml` already has the entry `in-progress`).
    - `defining` → resume / restart `/spec:define <name>`.
    - `defined` → invoke `/spec:build <name>` (step 7).
@@ -561,7 +557,7 @@ Step 1/3: define
   Status: blocked
 ```
 
-The `⚠ Question recorded — change deferred to blocked` line is the canonical deferred banner from RFC-2 §"Output and Observability"; do not reword. `Question:` carries the phase's `outcome.summary` verbatim.
+The `⚠ Question recorded — change deferred to blocked` line is the canonical deferred banner; do not reword. `Question:` carries the phase's `outcome.summary` verbatim.
 
 ### Terminal summary (`--loop` exit)
 
@@ -641,14 +637,14 @@ No other on-disk state is written by `/spec:execute` itself.
 
 ## Guardrails
 
-- Never hand-edit `.specify/plan.yaml`, `.specify/changes/<name>/.metadata.yaml`, or `.specify/changes/<name>/journal.yaml`. Route every write through the CLI verbs above — the single-writer invariant in RFC-2 §"Plan Mutation and Crash Safety" depends on it.
+- Never hand-edit `.specify/plan.yaml`, `.specify/changes/<name>/.metadata.yaml`, or `.specify/changes/<name>/journal.yaml`. Route every write through the CLI verbs above — the single-writer invariant depends on it.
 - Never skip the lock-release step. If the skill exits early after a successful acquire, run `specify plan lock release --pid
   <agent-session-pid>` on the way out. Stale stamps can be reclaimed by a later run, but only after a visible-to-the-operator failure.
 - Treat an unexpected `specify plan next` response shape (missing keys, unknown `reason`) as a hard failure: print the raw JSON, release the lock, and exit non-zero. Do not speculate.
 - For `--dry-run` specifically: the skill MUST NOT invoke any phase skill, MUST NOT shell out to `specify plan transition`, MUST NOT shell out to `specify change journal-append`, and MUST NOT invoke `/spec:drop`. This prohibition extends to the self-heal step: dry-run self-heal is report-only (§Self-heal on startup → §Dry-run variant). The first-line banner prefixes the rendered output with `[dry-run] ` (the progress / next blocks do not need a per-line prefix — the banner is enough).
 - For `--loop` specifically: the driver lock is acquired ONCE at run start and released ONCE at run end; never per iteration. Individual change outcomes (success, failure, deferred) are handled inside the iteration body; they do not short-circuit the outer loop. The loop exits only on `specify plan next` reporting no eligible change, self-heal halt on startup, or SIGINT / SIGTERM. On any exit path, the terminal summary is emitted before the lock is released.
 - For the supervised single-change run: the string passed to `specify plan transition <name> {failed,blocked} --reason "…"` is always `outcome.summary` from the phase's `.metadata.yaml`, copied byte-for-byte. Never paraphrase, truncate, or add a prefix. The fixtures under `fixtures/single-change/` assert this equality; a drift between `metadata-after-*.yaml:outcome.summary` and `plan.yaml.after:status-reason` is a regression.
-- Phase outcome missing or malformed after a phase returns means the phase crashed or skipped its `specify change phase-outcome` call. Treat as `deferred` with a synthetic summary (`"phase outcome missing after <phase>; driver stopping for triage."`) per RFC-2 §"Phase Outcome Contract" — do not speculate about which of success / failure was really intended.
+- Phase outcome missing or malformed after a phase returns means the phase crashed or skipped its `specify change phase-outcome` call. Treat as `deferred` with a synthetic summary (`"phase outcome missing after <phase>; driver stopping for triage."`) — do not speculate about which of success / failure was really intended.
 - Self-heal applies the same verbatim-`summary` rule as steps 11c / 12c: the string passed to `specify plan transition <name> {failed,blocked} --reason "…"` is copied byte-for-byte from the on-disk `outcome.summary`. The fixtures under `fixtures/self-heal/` assert this equality; drift is a regression.
 - Self-heal never paraphrases ambiguity away. If `.metadata.yaml` has no `outcome`, an `outcome` with a `phase` that contradicts `LifecycleStatus`, or a `LifecycleStatus` that is terminal (`merged`, `dropped`) while `plan.yaml` still says `in-progress`, halt with exit code 1 and leave the plan entry as `in-progress`. A later run, after human triage, can re-enter self-heal safely.
 - Argument resolution never speculates over an unresolved `sources` key. If a key on the plan entry is absent from the plan's top-level `sources` map, halt with `Error::Config`, name the offending `(change, key)` pair, release the lock, and exit non-zero. Do NOT substitute a default, guess at a path, or drop the key silently. The same rule applies whether the run is `--dry-run`, supervised, or `--loop`.
@@ -664,7 +660,7 @@ Every behavioural pin for this skill is consolidated here. Each row names the di
 | [`fixtures/self-heal/`](fixtures/self-heal/) | Five self-heal paths — clean-start / done-resolution / failed-resolution / ambiguous-halt / mid-change-resume. The writing path copies `outcome.summary` verbatim into `--reason`. |
 | [`fixtures/loop/`](fixtures/loop/) | Five `--loop` classifications: `all-done/` (every entry runs to `done`), `halted-on-self-heal-ambiguity/` (self-heal halt on startup), `stuck-on-blocked/` (loop drains eligible entries, exits with an unreachable `blocked` remainder), `driver-busy/` (second invocation refused by the lock), `driver-interrupted/` (SIGINT mid-build; build finishes, merge skipped, entry stays `in-progress`, lock released). |
 | [`fixtures/field-wiring/`](fixtures/field-wiring/) | Argument-resolution pins for the two wiring shapes — `sources-only/` (`/spec:define <name> --source monolith=/path/to/legacy`) and `description-driven/` (greenfield or description-inferred entries with no `--source` flags). Each ships `plan.yaml`, `invocation.txt`, and `transcript.md`; these are authoring pins, not automated tests. |
-| [`fixtures/e2e-platform-v2/`](fixtures/e2e-platform-v2/) | End-to-end exit-gate meta-fixture: `/spec:execute --loop` driving the full RFC-2 §"The Plan" `platform-v2` example against a plan authored by `/spec:plan`. |
+| [`fixtures/e2e-platform-v2/`](fixtures/e2e-platform-v2/) | End-to-end exit-gate meta-fixture: `/spec:execute --loop` driving the full `platform-v2` example against a plan authored by `/spec:plan`. |
 | [`fixtures/e2e-platform-v2-with-crash/`](fixtures/e2e-platform-v2-with-crash/) | Same `platform-v2` plan as above with a simulated mid-change crash; exercises the self-heal-on-startup reclaim path end-to-end. |
-| [`fixtures/multi-project/`](fixtures/multi-project/) | Multi-repo CWD routing (RFC-3b): `registry.yaml`, `plan.yaml` with per-entry `project` fields, `execute-loop-transcript.md` pinning the `Routing:` diagnostic and cross-project loop, `workspace-push-output.json` / `workspace-push-dry-run.json` pinning `specify workspace push` output shapes. |
+| [`fixtures/multi-project/`](fixtures/multi-project/) | Multi-repo CWD routing: `registry.yaml`, `plan.yaml` with per-entry `project` fields, `execute-loop-transcript.md` pinning the `Routing:` diagnostic and cross-project loop, `workspace-push-output.json` / `workspace-push-dry-run.json` pinning `specify workspace push` output shapes. |
 | [`fixtures/greenfield-bootstrap/`](fixtures/greenfield-bootstrap/) | Greenfield `specify workspace sync` fallback sequence: clone-fails → `mkdir` → `git init` → `specify init` → scaffold commit. `partial-rerun/` pins the recovery path when `.git/` exists but `.specify/project.yaml` is absent. |

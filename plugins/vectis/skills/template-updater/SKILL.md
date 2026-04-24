@@ -44,7 +44,7 @@ Before starting, make sure:
 
 ## Process
 
-The skill runs the five-step RFC flow (Detect → Diagnose → Update → Validate → Report). Steps D1--D5 below correspond one-to-one. Each edit the skill makes to the repo is scoped to `{repo-dir}/templates/vectis/**`, `{repo-dir}/crates/vectis/src/templates/**`, `{repo-dir}/crates/vectis/src/add_shell/parser.rs`, `{repo-dir}/crates/vectis/embedded/versions.toml`, and (when a new upstream advisory appears) `{repo-dir}/templates/vectis/core/deny.toml`. All other paths are off-limits -- nothing under `{repo-dir}/crates/vectis/src/{init,verify,update_versions,prerequisites}.rs` or `{repo-dir}/src/main.rs` should be touched by this skill (those are the CLI's orchestration, not its templates).
+The skill runs a five-step flow (Detect → Diagnose → Update → Validate → Report). Steps D1--D5 below correspond one-to-one. Each edit the skill makes to the repo is scoped to `{repo-dir}/templates/vectis/**`, `{repo-dir}/crates/vectis/src/templates/**`, `{repo-dir}/crates/vectis/src/add_shell/parser.rs`, `{repo-dir}/crates/vectis/embedded/versions.toml`, and (when a new upstream advisory appears) `{repo-dir}/templates/vectis/core/deny.toml`. All other paths are off-limits -- nothing under `{repo-dir}/crates/vectis/src/{init,verify,update_versions,prerequisites}.rs` or `{repo-dir}/src/main.rs` should be touched by this skill (those are the CLI's orchestration, not its templates).
 
 ### D1. Detect breakage
 
@@ -96,7 +96,7 @@ Apply the fix, making each edit as narrow as possible.
 - Edit the **template module** (`<specify-cli>/crates/vectis/src/templates/core.rs` etc.) only when: a new file is shipped / removed; an existing file's target path changes; a file's `IncludeWhen::{Always, AnyOf(&[Capability])}` predicate changes; or a new placeholder is introduced and must be substituted. Respect the superstring-first substitution order (`__APP_NAME_LOWER__` before `__APP_NAME__`, `__ANDROID_PACKAGE_PATH__` before `__APP_NAME_LOWER__` in path segments). Any new template file must also be listed in the corresponding `<specify-cli>/templates/vectis/{core,ios,android}/MANIFEST.md`; the parity test `templates::core::tests::registry_matches_rfc_core_file_count` (and its iOS/Android siblings) enforces this.
 - Edit `<specify-cli>/crates/vectis/src/add_shell/parser.rs` when a capability crate is renamed upstream. The parser keys off the **RHS crate root**, not the alias name in the user's `app.rs`. Nested matches (e.g. `crux_http::sse::Sse`) must be tried **before** the bare-crate match, otherwise a capability's successor will be mis-tagged as the parent crate.
 - Edit `<specify-cli>/crates/vectis/embedded/versions.toml` when the fix is a pin bump. Preserve the multi-line rationale comments already in that file -- they capture the uniffi/cargo-swift + AGP/Gradle pairing rules and should only be edited when the rule itself changes, not when an ordinary pin moves.
-- **Do not** edit anything under `<specify-cli>/crates/vectis/src/{init,verify,update_versions,prerequisites}.rs` or `<specify-cli>/src/main.rs` from this skill. If the fix requires orchestration changes, stop and flag it -- that is a CLI change, not a template update, and belongs in a new RFC-6 chunk follow-up.
+- **Do not** edit anything under `<specify-cli>/crates/vectis/src/{init,verify,update_versions,prerequisites}.rs` or `<specify-cli>/src/main.rs` from this skill. If the fix requires orchestration changes, stop and flag it -- that is a separate CLI change, not a template update.
 
 After each atomic edit:
 
@@ -187,7 +187,7 @@ No template-module edit (no new files, no new placeholders, no predicate change)
 
 ## Anti-patterns (do not do these)
 
-- **Editing verify or init orchestration.** If a cap's pipeline "should" pick up a new step, the edit belongs in `<specify-cli>/crates/vectis/src/verify/*.rs`. That is a CLI change that needs its own RFC-6 chunk; this skill must stop and flag it rather than silently expand scope.
+- **Editing verify or init orchestration.** If a cap's pipeline "should" pick up a new step, the edit belongs in `<specify-cli>/crates/vectis/src/verify/*.rs`. That is a separate CLI change; this skill must stop and flag it rather than silently expand scope.
 - **Silencing a new advisory without understanding it.** `RUSTSEC-*` IDs added to `<specify-cli>/templates/vectis/core/deny.toml`'s `[advisories] ignore` list must have (a) a rationale comment naming the transitive chain that forces the advisory, and (b) no known safe upgrade path. A one-line `# upstream unmaintained` with no chain is not acceptable.
 - **Speculative rewrites.** Do not edit a template file that is not covered by at least one reproduced failure. Templates that look "stylistically outdated" are out of scope for this skill -- they belong in a separate refactor.
 - **Changing the placeholder order.** `templates::mod.rs::substitute_placeholders` substitutes superstrings first (`__APP_NAME_LOWER__` before `__APP_NAME__`; `__ANDROID_PACKAGE_PATH__` before `__APP_NAME_LOWER__`). Adding a new placeholder always means slotting it into this chain in superstring-first order -- never appending.
@@ -204,4 +204,4 @@ No template-module edit (no new files, no new placeholders, no predicate change)
 | `<specify-cli>/crates/vectis/src/add_shell/parser.rs` | AST classifier for capability crates. Must be updated in lockstep with any Crux capability-crate rename. |
 | `<specify-cli>/crates/vectis/src/verify/{core,ios,android}.rs` | The ordered build/check steps this skill's Detect phase interprets. Do not edit from this skill. |
 | `<specify-cli>/tests/vectis.rs` | End-to-end integration tests for the `specify vectis init / verify / update-versions` paths -- the runnable reference for how this skill invokes the binary (success JSON shape, `invalid-project` and `missing-prerequisites` error envelopes, `PATH=""` trick for forcing missing-prerequisites). |
-| `rfcs/rfc-6-vectis-bootstrap.md` § Template Maintenance | The RFC's original narrative motivation for this skill (now superseded by the `specify vectis` subcommand tree in `augentic/specify-cli`; the RFC stays in this repo for historical context). |
+| `rfcs/rfc-6-vectis-bootstrap.md` § Template Maintenance | Historical design narrative for this skill (now superseded by the `specify vectis` subcommand tree in `augentic/specify-cli`). |

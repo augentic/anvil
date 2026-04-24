@@ -203,6 +203,9 @@ specify plan status
 # Execute
 /spec:execute --loop
 
+# Push workspace clones to remotes
+specify workspace push
+
 # Verify
 (per repo) /spec:verify
 ```

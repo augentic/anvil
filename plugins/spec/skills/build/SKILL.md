@@ -11,9 +11,7 @@ Deterministic bookkeeping — change selection, lifecycle transitions, schema re
 
 When working plan-driven (a `.specify/plan.yaml` exists), the corresponding plan entry should already be `in-progress` — the human runs `specify plan transition <name> in-progress` once before `/spec:build` starts. `/spec:build` itself does not touch `plan.yaml`; the plan transition out of `in-progress` happens from `/spec:merge` (→ `done`) or `/spec:drop` (→ `failed` / `blocked`).
 
-> See `rfcs/archive/rfc-2-execution.md` §"Execution Model Overview" and `rfcs/assets/execution.png` for where this skill sits in the `/spec:execute` driver loop.
-
-## Phase outcome contract (RFC-2 §"Phase Outcome Contract")
+## Phase outcome contract
 
 This skill is the **build** phase of the `/spec:execute` driver loop. Before returning control to the caller, always record the phase's outcome via:
 
@@ -29,7 +27,7 @@ where `<outcome>` is exactly one of:
 
 `/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome` on return and translates the outcome into a plan transition (`done` / `failed` / `blocked`). If the field is missing or malformed, `/spec:execute` treats the phase as `deferred` and stops for triage — do not skip the CLI call. This `phase-outcome` invocation is the **last action** the skill takes before returning control.
 
-## Journal entries during the run (RFC-2 §"Question Recording")
+## Journal entries during the run
 
 Whenever the skill encounters a situation the human should see — a genuine question, a repair attempt that failed, or a notable recovery — append to `.specify/changes/<name>/journal.yaml` **during** the run, not just at the end:
 
@@ -45,7 +43,7 @@ Kinds:
 
 `journal.yaml` is a pure append-only audit log; `/spec:execute` never consumes it as a signalling channel. The `outcome` field in `.metadata.yaml` is the only state `/spec:execute` reads on phase return.
 
-## Mutating the plan mid-run (RFC-2 §"Phase Boundary → Rule 2")
+## Mutating the plan mid-run
 
 Phases may shell out to `specify plan create` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
 
@@ -57,7 +55,7 @@ Allowed:
 Forbidden:
 
 - Writing `status` through `amend`. The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/spec:execute`'s sole prerogative via `specify plan transition`.
-- Hand-editing `.specify/plan.yaml` or `.specify/changes/<name>/.metadata.yaml`. Always route through the CLI so the single-writer invariant in RFC-2 §"Plan Mutation and Crash Safety" holds.
+- Hand-editing `.specify/plan.yaml` or `.specify/changes/<name>/.metadata.yaml`. Always route through the CLI so the single-writer invariant holds.
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 

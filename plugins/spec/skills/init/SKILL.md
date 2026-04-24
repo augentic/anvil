@@ -41,7 +41,7 @@ I'll populate `.specify/.cache/` with the schema and invoke `specify init` to in
 
 3. **Populate the schema cache**
 
-   Per RFC-1 §`schema.rs` the agent owns all writes to `.specify/.cache/`. The CLI reads the cache but never fetches. Before invoking `specify init`, mirror the resolved schema tree under `.specify/.cache/<name>/` so the CLI can resolve it:
+   The agent owns all writes to `.specify/.cache/`. The CLI reads the cache but never fetches. Before invoking `specify init`, mirror the resolved schema tree under `.specify/.cache/<name>/` so the CLI can resolve it:
 
    ```text
    .specify/.cache/
@@ -153,5 +153,3 @@ Next steps:
 - Do not overwrite an existing project.yaml without user confirmation
 - Populate `.specify/.cache/` before invoking `specify init` — the agent owns cache writes; the CLI only reads
 - If the CLI exits non-zero, surface the error and stop; do not hand-roll the scaffold
-
-> Implements RFC-1 Phase 1 — the CLI handles deterministic operations.

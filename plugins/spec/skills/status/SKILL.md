@@ -93,5 +93,3 @@ If a single change is specified or only one exists, show the detailed view only 
 - If `.specify/` does not exist, suggest `/spec:init`
 - Show clear next-step guidance based on current lifecycle status
 - Distinguish merged changes from dropped changes when metadata is available
-
-> Implements RFC-1 Phase 1 — the CLI handles deterministic operations.

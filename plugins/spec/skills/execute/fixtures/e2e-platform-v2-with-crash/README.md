@@ -1,8 +1,8 @@
 # `/spec:execute --loop` — crash-recovery meta-fixture
 
-This meta-fixture pins the crash-recovery acceptance of RFC-2 Change L2.I: "An injected mid-build SIGKILL, followed by a re-run, recovers via self-heal and completes the initiative."
+This meta-fixture pins crash-recovery acceptance: "An injected mid-build SIGKILL, followed by a re-run, recovers via self-heal and completes the initiative."
 
-The seed is the same full `platform-v2` plan from [RFC-2 §"The Plan"](../../../docs/links.md#rfc-2-the-plan) used by the sibling `../e2e-platform-v2/`. The only difference is the scenario: a SIGKILL arrives mid-iteration-4 while `/spec:build product-catalog` is running. A second `/spec:execute --loop` run, launched against the unchanged workspace, picks up where Run 1 left off and drives the initiative to the same terminal state as the uncrashed sibling.
+The seed is the same full `platform-v2` plan used by the sibling `../e2e-platform-v2/`. The only difference is the scenario: a SIGKILL arrives mid-iteration-4 while `/spec:build product-catalog` is running. A second `/spec:execute --loop` run, launched against the unchanged workspace, picks up where Run 1 left off and drives the initiative to the same terminal state as the uncrashed sibling.
 
 ## Files
 

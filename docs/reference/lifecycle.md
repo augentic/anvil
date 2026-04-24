@@ -25,12 +25,15 @@ stateDiagram-v2
 
 | State | Meaning | Next states |
 |-------|---------|-------------|
-| `created` | Change directory exists, artifacts not yet generated | `defined`, `dropped` |
+| `created` | Change directory exists, artifacts not yet generated | `defining`, `dropped` |
+| `defining` | `/spec:define` is in-flight (transient) | `defined`, `dropped` |
 | `defined` | All artifacts generated, ready for implementation | `building`, `dropped` |
 | `building` | Implementation in progress, tasks being completed | `complete`, `dropped` |
 | `complete` | All tasks done, ready for merge | `merged`, `dropped` |
 | `merged` | Specs merged into baseline, change archived | (terminal) |
 | `dropped` | Change discarded, archived without merging | (terminal) |
+
+`defining` and `building` are **transient states** -- they indicate a phase is currently in-flight. Under normal operation, a phase enters the transient state at start and leaves it on completion. If the agent crashes mid-phase, the transient state remains on disk; `/spec:execute`'s self-heal reads the transient state to determine which phase to resume.
 
 ## Transitions
 

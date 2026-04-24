@@ -1,6 +1,6 @@
-# `/spec:execute --loop` — RFC-2 §"The Plan" meta-fixture
+# `/spec:execute --loop` — `platform-v2` meta-fixture
 
-This is the Layer 2 exit-gate meta-fixture for RFC-2 Change L2.I. It pins the behaviour of `/spec:execute --loop` driven against the full nine-entry `platform-v2` plan from [RFC-2 §"The Plan"](../../../docs/links.md#rfc-2-the-plan), exercising every argument-resolution shape end to end:
+This is the Layer 2 exit-gate meta-fixture. It pins the behaviour of `/spec:execute --loop` driven against the full nine-entry `platform-v2` plan, exercising every argument-resolution shape end to end:
 
 - greenfield (`notification-preferences`)
 - `affects`-only, single target (`registration-duplicate-email-crash`)

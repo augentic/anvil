@@ -170,7 +170,7 @@ This creates a `specify/<initiative-name>` branch per project, pushes to the rem
 
 ## 7. Greenfield variant
 
-For new platforms where repos do not exist yet, the registry describes the *intended* organisation. Use git remote URLs so that `workspace sync` can bootstrap clones and `workspace push` can push to the remote:
+For new platforms where repos do not exist yet, the registry describes the *intended* organisation. The initiating repo itself can use `url: .` (a local path); other greenfield projects should use git remote URLs so that `workspace sync` can bootstrap clones and `workspace push` can push to the remote:
 
 ```yaml
 projects:

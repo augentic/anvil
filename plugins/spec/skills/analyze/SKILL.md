@@ -15,7 +15,7 @@ argument-hint: "<input-path> <output-dir> --kind <legacy-code|documentation> [--
 
 `/spec:analyze` is the sole plan-time discovery skill. It reads one input — a legacy code tree or a documentation bundle — and appends **capability summaries** to `$DISCOVERY`. It does **not** produce full `specs/` + `design.md`; deep per-slice extraction remains [`../extract/SKILL.md`](../extract/SKILL.md)'s job at define time.
 
-See [`rfc-3a-monoliths.md` §*Plan-time analysis, define-time extraction*](../../../../rfcs/rfc-3a-monoliths.md) for the full contract and the rationale for the two-skill split.
+The rationale for the two-skill split: analyze produces capability summaries at plan time; extract produces full specs + design at define time.
 
 ## Derived Arguments
 
@@ -29,7 +29,7 @@ $DISCOVERY   = $OUTPUT_DIR/discovery.md
 
 `$INPUT_PATH` is either a filesystem path to a source tree (for `--kind legacy-code`) or to a documentation bundle (for `--kind documentation`). `$OUTPUT_DIR` is the plan working directory (`.specify/plans/<initiative>/` when called from the discovery brief); the skill writes to `$DISCOVERY` under it, and — for `--kind legacy-code` only — to the structural-metadata sidecar at `$OUTPUT_DIR/analyze/<$SOURCE_KEY>/metadata.json` (see §*Structural metadata*). `$SOURCE_KEY` is optional; when supplied, the discovery brief uses it to tag this run for a specific top-level plan source.
 
-## Input kinds (closed enum, RFC-3a v1)
+## Input kinds (closed enum)
 
 `--kind` must be exactly one of:
 
@@ -38,7 +38,7 @@ $DISCOVERY   = $OUTPUT_DIR/discovery.md
 | `legacy-code`   | Cluster code into capability summaries (schema-owned algorithm).      |
 | `documentation` | Extract capability summaries from prose / PDFs / runbooks / API docs. |
 
-Any other value is a hard error; the skill exits non-zero before writing anything to `$DISCOVERY`. See [`../plan/SKILL.md` §*Input kinds*](../plan/SKILL.md) for the normative enum definition — `/spec:analyze` is the enforcement site for unknown-kind errors, but the vocabulary itself is pinned by the plan skill and changing it requires an RFC update.
+Any other value is a hard error; the skill exits non-zero before writing anything to `$DISCOVERY`. See [`../plan/SKILL.md` §*Input kinds*](../plan/SKILL.md) for the normative enum definition — `/spec:analyze` is the enforcement site for unknown-kind errors, but the vocabulary itself is pinned by the plan skill. Do not extend it.
 
 ## Output contract
 
@@ -102,18 +102,18 @@ In addition to appending capability summaries to `$DISCOVERY`, the code branch (
 
 | field | type | notes |
 | ---- | ---- | ---- |
-| `version` | integer | `1` for v1. Bumps require an RFC. |
+| `version` | integer | `1` for v1. Do not bump this version. |
 | `source_key` | string | Matches the directory segment; redundant but stable on its own. |
 | `language` | string | Detected primary source language (kebab-case: `typescript`, `javascript`, `rust`, `go`, `python`, `java`, `kotlin`, `csharp`, …). Per-schema convention — schemas pin their own valid set. |
 | `loc` | integer | Total source lines of code. Schema-owned convention (non-blank non-comment preferred; raw line count acceptable). Must be consistent across runs of the same schema. |
 | `module_count` | integer | Total module count. Schema-owned definition (TS: files; Java: classes; Python: modules; …). |
 | `top_level_modules` | array[string] | Immediate children of the source root, alphabetically sorted, relative path strings. May be empty. |
 
-All fields are required. The detection algorithm that produces each field is owned by the schema-specific code branch prompt (`schemas/<schema>/briefs/plan/analyze.md`, RFC-3a C21); this SKILL only pins the field names, types, and on-disk shape.
+All fields are required. The detection algorithm that produces each field is owned by the schema-specific code branch prompt (`schemas/<schema>/briefs/plan/analyze.md`); this SKILL only pins the field names, types, and on-disk shape.
 
-**Idempotency.** Same rules as §*Output contract*: no timestamps, no host state, byte-stable field order matching the shape above, and alphabetically-sorted `top_level_modules`. Re-running analyze on unchanged inputs emits byte-identical metadata. This lets `specify plan validate` (RFC-3a C25) diff the file across runs without drift.
+**Idempotency.** Same rules as §*Output contract*: no timestamps, no host state, byte-stable field order matching the shape above, and alphabetically-sorted `top_level_modules`. Re-running analyze on unchanged inputs emits byte-identical metadata. This lets `specify plan validate` diff the file across runs without drift.
 
-**Consumers.** RFC-3a C25 reads this metadata to emit the non-blocking `scope-missing-on-monolith` warning. No other consumer exists in v1; propose (C24) reads capability summaries from `$DISCOVERY`, not this sidecar.
+**Consumers.** `specify plan validate` reads this metadata to emit the non-blocking `scope-missing-on-monolith` warning. No other consumer exists in v1; propose reads capability summaries from `$DISCOVERY`, not this sidecar.
 
 ## Idempotency
 
@@ -131,7 +131,7 @@ A byte-stable output lets the propose brief cache its slicing decisions and surf
 
 The detailed clustering / extraction prompt for each `--kind` value lives under `schemas/<schema>/briefs/plan/analyze.md`:
 
-- `schemas/omnia/briefs/plan/analyze.md` — Omnia's per-kind prompt. Documentation branch lands in RFC-3a C18; code branch in C21.
+- `schemas/omnia/briefs/plan/analyze.md` — Omnia's per-kind prompt (documentation branch and code branch).
 - Other schemas ship their own.
 
 `/spec:analyze` resolves the active schema via `specify schema resolve` and invokes the relevant brief internally. The skill does **not** embed clustering heuristics; those are schema-specific judgement calls (import-graph vs docstring vs endpoint-name weighting, confidence thresholds, etc.).
@@ -162,4 +162,4 @@ The detailed clustering / extraction prompt for each `--kind` value lives under 
 - Never embed clustering heuristics in this SKILL; those live in the schema-owned per-kind brief (§*Per-kind prompts*).
 - Never let timestamps, absolute paths, or run IDs leak into `$DISCOVERY` or the structural-metadata sidecar — idempotency is a hard contract, not a nicety.
 - Never mutate files outside `$DISCOVERY` and `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json`. The structural-metadata sidecar is written by the code branch only; the documentation branch must leave the slot untouched.
-- Never invent fields in `metadata.json` beyond the six pinned in §*Structural metadata*. Field additions require an RFC and a `version` bump.
+- NEVER add fields to `metadata.json` beyond the six pinned in §*Structural metadata*.

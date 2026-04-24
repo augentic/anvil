@@ -17,14 +17,14 @@ When invoked with `--reason`, skip the confirmation `AskQuestion` calls in steps
 
 Non-interactive mode is how `/spec:execute` invokes this skill during `--loop`, supervised single-change runs, and self-heal reclaim of a `failure` / `deferred` outcome (see [`../execute/SKILL.md`](../execute/SKILL.md) steps 11b, 12b, and §"Self-heal on startup" step 2). The driver copies `outcome.summary` verbatim into `--reason`; this skill forwards the same string to `specify change drop` without prompting.
 
-When working plan-driven (a `.specify/plan.yaml` exists), after `specify change drop` succeeds the plan entry should transition to `failed` or `blocked` per RFC-2 semantics — `failed` for a build/test failure the human does not intend to retry automatically, `blocked` when a design question needs resolving before the entry is re-entered as `pending`:
+When working plan-driven (a `.specify/plan.yaml` exists), after `specify change drop` succeeds the plan entry should transition to `failed` or `blocked` — `failed` for a build/test failure the human does not intend to retry automatically, `blocked` when a design question needs resolving before the entry is re-entered as `pending`:
 
 ```bash
 specify plan transition <name> failed  --reason "<short rationale>"
 specify plan transition <name> blocked --reason "<short rationale>"
 ```
 
-This is an advisory note — this skill does not run the command itself. RFC-2 Layer 2's `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
+This is an advisory note — this skill does not run the command itself. `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
 
 ## Input
 

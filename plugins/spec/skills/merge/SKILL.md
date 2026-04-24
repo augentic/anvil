@@ -17,11 +17,9 @@ When working plan-driven (a `.specify/plan.yaml` exists), after `specify merge` 
 specify plan transition <name> done
 ```
 
-This is an advisory note — this skill does not run the command itself. RFC-2 Layer 2's `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
+This is an advisory note — this skill does not run the command itself. `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
 
-> See `rfcs/archive/rfc-2-execution.md` §"Execution Model Overview" and `rfcs/assets/execution.png` for where this skill sits in the `/spec:execute` driver loop.
-
-## Phase outcome contract (RFC-2 §"Phase Outcome Contract")
+## Phase outcome contract
 
 This skill is the **merge** phase of the `/spec:execute` driver loop.
 The merge outcome is recorded differently depending on the path taken:
@@ -81,7 +79,7 @@ treats the phase as `deferred` and stops for triage. The
 `phase-outcome` call (for failure and deferred) is the **last action**
 the skill takes before returning control.
 
-## Journal entries during the run (RFC-2 §"Question Recording")
+## Journal entries during the run
 
 Whenever the skill encounters a situation the human should see — a genuine question, a repair attempt that failed, or a notable recovery — append to `.specify/changes/<name>/journal.yaml` **during** the run, not just at the end:
 
@@ -97,7 +95,7 @@ Kinds:
 
 `journal.yaml` is a pure append-only audit log; `/spec:execute` never consumes it as a signalling channel. The `outcome` field in `.metadata.yaml` is the only state `/spec:execute` reads on phase return.
 
-## Mutating the plan mid-run (RFC-2 §"Phase Boundary → Rule 2")
+## Mutating the plan mid-run
 
 Phases may shell out to `specify plan create` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
 
@@ -109,7 +107,7 @@ Allowed:
 Forbidden:
 
 - Writing `status` through `amend`. The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/spec:execute`'s sole prerogative via `specify plan transition`.
-- Hand-editing `.specify/plan.yaml` or `.specify/changes/<name>/.metadata.yaml`. Always route through the CLI so the single-writer invariant in RFC-2 §"Plan Mutation and Crash Safety" holds.
+- Hand-editing `.specify/plan.yaml` or `.specify/changes/<name>/.metadata.yaml`. Always route through the CLI so the single-writer invariant holds.
 
 ## Input
 
@@ -200,7 +198,7 @@ Optionally specify a change name. If omitted, check if it can be inferred from c
 
    On success, the outcome is already recorded — **do not call `phase-outcome`** (see §Phase outcome contract above).
 
-   **Workspace clone auto-commit (RFC-3b).** When CWD is inside a workspace clone (`.specify/workspace/*/` with `.specify/project.yaml`), the CLI auto-commits `.specify/specs/` and `.specify/archive/` with message `specify: merge <change-name>`. Commit failure is a **warning**, not an error — the spec merge still succeeds. Committed changes remain local until the operator explicitly runs `specify workspace push`.
+   **Workspace clone auto-commit.** When CWD is inside a workspace clone (`.specify/workspace/*/` with `.specify/project.yaml`), the CLI auto-commits `.specify/specs/` and `.specify/archive/` with message `specify: merge <change-name>`. Commit failure is a **warning**, not an error — the spec merge still succeeds. Committed changes remain local until the operator explicitly runs `specify workspace push`.
 
    **If the call exits non-zero**: the filesystem is unchanged (baselines not written, change dir not moved). Record the failure via `specify change phase-outcome` (the change directory still exists). Report the error and stop — do not retry until the user has edited the failing delta or addressed the lifecycle state.
 

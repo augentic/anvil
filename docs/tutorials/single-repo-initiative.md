@@ -117,7 +117,7 @@ To let Specify work through the remaining changes:
 
 Loop mode repeats the pick-define-build-merge cycle until:
 
-- **`all-done`** -- every entry is `done`, `skipped`, or `failed`.
+- **`all-done`** -- every entry is `done` or `skipped`.
 - **`stuck`** -- no `pending` entry has all dependencies satisfied.
 - **Interrupted** -- you press Ctrl+C for graceful shutdown.
 

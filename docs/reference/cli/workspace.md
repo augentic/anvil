@@ -69,6 +69,21 @@ specify: workspace push — <initiative-name>
 1 created, 1 pushed, 1 up-to-date. 0 failed.
 ```
 
+**Output (JSON, `--format json`):**
+
+```json
+{
+  "projects": [
+    { "name": "traffic", "status": "pushed", "branch": "specify/platform-v2", "pr": 42 },
+    { "name": "command-centre", "status": "up-to-date" },
+    { "name": "mobile", "status": "created", "branch": "specify/platform-v2", "pr": 7 },
+    { "name": "local-lib", "status": "local-only" }
+  ]
+}
+```
+
+Under `--dry-run`, the JSON output adds `"dry_run": true` at the top level and action statuses are prefixed with `would-` in human-readable output (e.g. `would-push`, `would-create`).
+
 **Status vocabulary:** `created` (remote repo created, greenfield), `pushed` (existing remote updated), `up-to-date` (no local commits ahead), `local-only` (no remote configured), `failed` (error).
 
 **Prerequisites:** `gh` (GitHub CLI) is required only when repo creation or PR creation is needed. Plain `git push` works for any forge.
