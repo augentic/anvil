@@ -113,7 +113,11 @@ When items is empty:
 
 #### Wired Example
 
-After the define pipeline enriches the skeleton, given `ViewModel::TodoList(TodoListView { items: Vec<ItemView>, count: String, filter: String })`:
+After the define pipeline enriches the skeleton. This example shows two screens — a list and a form — with navigation between them, a loading state, and a confirmation dialog.
+
+Given:
+- `ViewModel::TodoList(TodoListView { items: Vec<ItemView>, count: String, filter: String, loading: bool })`
+- `ViewModel::AddTodo(AddTodoView { title: String, due_date: String, saving: bool, title_error: String })`
 
 ```markdown
 # Views
@@ -137,11 +141,19 @@ Maps to: `ViewModel::TodoList(TodoListView)`
             - Text: {title} (typography: body, strikethrough-when: {completed})
             - Text: {due_date} (typography: caption, color: onSurfaceVariant)
           - Spacer
-          - IconButton: trash → DeleteTodo({id})
+          - IconButton: trash → RequestDelete({id})
   - BottomBar
     - SegmentedControl: {filter} → SetFilter({value})
       - segments: ["All", "Active", "Completed"]
   - FloatingAction: plus → Navigate(AddTodo)
+
+### Loading State
+
+When {loading} is true:
+
+- CenteredContent
+  - ProgressIndicator (color: primary)
+  - Text: "Loading todos…" (typography: body, color: onSurfaceVariant)
 
 ### Empty State
 
@@ -151,9 +163,53 @@ When {items} is empty:
   - Icon: clipboard (size: xl, color: onSurfaceVariant)
   - Text: "No todos yet" (typography: title)
   - Text: "Tap + to add your first todo" (typography: body, color: onSurfaceVariant)
+
+### Delete Confirmation
+
+Dialog: "Delete Todo?"
+  - Text: "This action cannot be undone." (typography: body)
+  - Button: "Cancel" (style: text) → DismissDialog
+  - Button: "Delete" (style: filled, color: error) → ConfirmDelete({id})
+
+---
+
+## AddTodoScreen
+
+Maps to: `ViewModel::AddTodo(AddTodoView)`
+
+### Layout
+
+- Scaffold
+  - TopBar
+    - IconButton: back → NavigateBack
+    - Title: "New Todo" (typography: title)
+  - Content
+    - Column (spacing: lg, padding: md)
+      - TextField: {title} → UpdateTitle({value})
+        - placeholder: "What needs to be done?"
+        - error: {title_error}
+      - TextField: {due_date} → UpdateDueDate({value})
+        - placeholder: "Due date (optional)"
+      - Spacer
+      - Button: "Save" (style: filled) → SaveTodo
+        - disabled-when: {saving}
+
+### Saving State
+
+When {saving} is true:
+
+- overlay:
+  - ProgressIndicator (color: primary)
 ```
 
 Enrichment adds: `Maps to:` traceability, `{field}` bindings on components, `→ Event(args)` wiring on interactive components, and conditional `{field}-when:` styling. The spatial tree itself is unchanged — the pipeline adds data, it does not rearrange the layout.
+
+The example demonstrates several patterns:
+- **Cross-screen navigation:** `→ Navigate(AddTodo)` on the FAB, `→ NavigateBack` on the back button.
+- **Loading and saving states:** `When {loading} is true:` and `When {saving} is true:` with `ProgressIndicator`.
+- **Dialogs:** Triggered by `→ RequestDelete({id})`, confirmed by `→ ConfirmDelete({id})`, dismissed by `→ DismissDialog`.
+- **Form validation:** `error: {title_error}` on a `TextField`.
+- **Disabled state:** `disabled-when: {saving}` on the save button.
 
 #### Provenance
 
@@ -232,9 +288,17 @@ Import from Figma or a legacy app as a starting point, then manually refine: add
 
 7. **Iteration.** `each {collection}:` describes repeated content bound to a `Vec<T>` field. In skeleton mode, this is `each collection:` (without braces).
 
+8. **Overlays.** `Dialog`, `Sheet`, and `Snackbar` components appear in dedicated subsections (e.g., `### Delete Confirmation`). They are not part of the main `### Layout` tree — they are presented modally and triggered by event wiring elsewhere on the screen.
+
+9. **Platform-specific sections.** When a screen's layout differs between platforms, the screen gains `### iOS Layout` or `### Android Layout` subsections that replace the shared `### Layout` for that platform. Shell writers use the platform-specific section when present, falling back to the shared layout when absent.
+
+10. **Accessibility annotations.** Optional `label`, `role`, and `hint` properties in parentheses provide screen reader semantics. These are valid in both skeleton and wired modes. See [Accessibility Annotations](#accessibility-annotations).
+
 ### Component Vocabulary
 
 The vocabulary is deliberately small — a wireframing-level set of primitives, not a UI framework. Shell writers map these to platform-native components.
+
+#### Structure
 
 | Component | Description | SwiftUI | Compose |
 | --- | --- | --- | --- |
@@ -248,18 +312,58 @@ The vocabulary is deliberately small — a wireframing-level set of primitives, 
 | `Column` | Vertical stack | `VStack` | `Column` |
 | `Card` | Elevated container | Rounded container with shadow | `Card` / `ElevatedCard` |
 | `Spacer` | Flexible space | `Spacer()` | `Spacer(Modifier.weight(1f))` |
-| `Text` | Text label | `Text` | `Text` |
-| `Icon` | Icon display | `Image(systemName:)` | `Icon` |
-| `IconButton` | Tappable icon | `Button` with `Image` | `IconButton` |
-| `Button` | Text button | `Button` | `Button` / `TextButton` |
-| `Checkbox` | Toggle control | `Toggle` | `Checkbox` |
-| `TextField` | Text input | `TextField` | `OutlinedTextField` |
-| `SegmentedControl` | Segment picker | `Picker(.segmented)` | `SingleChoiceSegmentedButtonRow` |
 | `CenteredContent` | Centered empty/loading state | `VStack` with `Spacer` padding | `Box(contentAlignment = Center)` |
 | `Divider` | Visual separator | `Divider()` | `HorizontalDivider()` |
+
+#### Display
+
+| Component | Description | SwiftUI | Compose |
+| --- | --- | --- | --- |
+| `Text` | Text label | `Text` | `Text` |
+| `Icon` | Icon display | `Image(systemName:)` | `Icon` |
 | `Image` | Image display | `AsyncImage` / `Image` | `AsyncImage` / `Image` |
+| `Badge` | Small count or status indicator | `.badge()` modifier | `Badge` |
+| `ProgressIndicator` | Loading spinner or progress bar | `ProgressView` | `CircularProgressIndicator` / `LinearProgressIndicator` |
+
+#### Input
+
+| Component | Description | SwiftUI | Compose |
+| --- | --- | --- | --- |
+| `Button` | Text button | `Button` | `Button` / `TextButton` |
+| `IconButton` | Tappable icon | `Button` with `Image` | `IconButton` |
+| `TextField` | Text input | `TextField` | `OutlinedTextField` |
+| `Checkbox` | Multi-select toggle | `Toggle` (checkbox style) | `Checkbox` |
+| `Switch` | On/off toggle | `Toggle` | `Switch` |
+| `Slider` | Range input | `Slider` | `Slider` |
+| `SegmentedControl` | Segment picker | `Picker(.segmented)` | `SingleChoiceSegmentedButtonRow` |
+| `DropdownMenu` | Selection from a list | `Menu` / `Picker(.menu)` | `DropdownMenu` / `ExposedDropdownMenuBox` |
+
+#### Overlay
+
+| Component | Description | SwiftUI | Compose |
+| --- | --- | --- | --- |
+| `Dialog` | Modal confirmation or alert | `.alert()` / `.confirmationDialog()` | `AlertDialog` |
+| `Sheet` | Modal content panel (bottom sheet on mobile) | `.sheet()` / `.presentationDetents` | `ModalBottomSheet` |
+| `Snackbar` | Transient feedback message | Custom overlay / `SnackbarHost` pattern | `SnackbarHost` |
 
 New components can be added as needed. The vocabulary is intentionally open — if a layout requires a component not in the table, introduce it with a descriptive name and document the platform mapping in the view layout.
+
+#### Accessibility Annotations
+
+Components in the views artifact support optional accessibility annotations via parenthetical properties:
+
+- `label: "..."` — accessible label for screen readers (maps to `accessibilityLabel` on iOS, `contentDescription` on Android).
+- `role: heading | button | image | link` — semantic role when the default component role is insufficient.
+- `hint: "..."` — additional context for screen reader users (maps to `accessibilityHint` on iOS, `stateDescription` on Android).
+
+Example:
+
+```markdown
+- IconButton: trash (label: "Delete todo") → DeleteTodo({id})
+- Image: {avatar_url} (label: {user_name}, role: image)
+```
+
+Accessibility annotations are optional. When absent, shell writers apply platform defaults — interactive components get labels derived from their content, and semantic roles follow the component type. When present, they override the defaults. The annotations are valid in both skeleton and wired modes.
 
 ### Composition Import Format
 
@@ -457,6 +561,21 @@ In the current pipeline, the design brief infers per-page view struct fields fro
 
 If the views artifact shows `{due_date}` on the TodoListScreen but the spec never mentions a due date, the design brief can surface this as a gap.
 
+#### Type Name Proposal (Agent-Inference Path)
+
+When the agent infers layout without a skeleton (input priority 3), the views artifact is the **first** artifact in the pipeline to name screens, ViewModel variants, and field bindings. It reads behavioral spec text like "the user sees their todo items with a count of remaining items" and proposes:
+
+- **Screen names:** `TodoListScreen`, `AddTodoScreen` (derived from spec screen/page references)
+- **ViewModel variant names:** `ViewModel::TodoList(TodoListView)` (PascalCase from screen name)
+- **Field names:** `{items}`, `{count}`, `{filter}` (derived from spec data references)
+- **Event names:** `ToggleTodo({id})`, `DeleteTodo({id})` (derived from spec interaction descriptions)
+
+These are **proposed names**, not references to existing types. The design brief, which runs after views, reads `views.md` and adopts the proposed names when formalizing the Rust type system — or adjusts them if naming conventions or domain model considerations require changes. When design adjusts a name, the build phase's cross-artifact validation (see [Validation](#validation)) catches any resulting mismatch between `views.md` and `design.md`, prompting reconciliation before shell writers run.
+
+For the skeleton and composition paths (input priorities 1 and 2), this is not a concern — skeletons do not contain type names, and the define pipeline adds `Maps to:` traceability and `{field}` bindings only after it has access to both the spatial tree and the spec's behavioral content. The names it proposes follow the same convention: derived from spec language, adopted or adjusted by design.
+
+This approach is consistent with how the existing pipeline works — the spec brief proposes screen concepts and event descriptions in natural language, and the design brief formalizes them into typed Rust constructs. The views artifact sits between these two, proposing names at a specificity level between prose and Rust types.
+
 #### Brief Content (`schemas/vectis/briefs/views.md`)
 
 The brief instructs the define agent to:
@@ -539,6 +658,58 @@ When a transient `composition.yaml` is present, the validate command additionall
 
 These checks run during the build phase before shell writers are invoked, catching mismatches between the views artifact and the spec/design early.
 
+### Impact on Existing Artifacts
+
+The views artifact is a new addition, but it changes the inputs and responsibilities of several existing briefs and skills. This section summarizes the required changes to each.
+
+#### `schemas/vectis/briefs/design.md`
+
+The design brief currently declares `needs: [proposal]`. With the views artifact, it gains an additional input:
+
+- **`needs`** changes to `[proposal, views]`.
+- **Domain Model § ViewModel:** The brief currently instructs the agent to derive ViewModel variants and per-page view struct fields from the spec. With views as input, the brief additionally instructs: "Read `views.md` and adopt the screen names, ViewModel variant names, and field names proposed by the views artifact. Adjust naming only when Rust conventions or domain model considerations require it. Every `{field}` binding in `views.md` must appear as a field in the corresponding per-page view struct."
+- **Gap surfacing:** The design brief gains an instruction to flag mismatches — a `{field}` in views with no spec backing, or a spec-described data element with no views binding.
+
+The design brief does **not** gain layout responsibilities. It continues to define the type system; views provides an additional input that makes the ViewModel shape more explicit.
+
+#### `schemas/vectis/briefs/build.md`
+
+The build brief currently orchestrates core-writer → shell-writers. Changes:
+
+- **Pre-shell validation:** Before invoking shell writers, the build brief instructs the agent to run views validation checks (field coverage, event coverage, ViewModel mapping). If validation fails, the agent reports mismatches and halts shell generation for the affected screens.
+- **Shell writer invocation:** The build brief's shell-writer handoff contract gains `views.md` as a required input alongside `app.rs`, `design.md`, and `tokens.yaml`. The handoff instruction reads: "Pass the `views.md` artifact to the shell writer. When present, the shell writer uses it as the primary layout guide. When absent, the shell writer falls back to inference from `app.rs` types."
+
+#### `plugins/vectis/skills/ios-writer/SKILL.md`
+
+The ios-writer's Input Analysis step currently extracts types from `app.rs` and reads optional `## iOS Shell Requirements` from the spec. Changes:
+
+- **New input:** Add `views.md` to the input list alongside `app.rs`, `tokens.yaml`, and spec shell sections.
+- **Input Analysis table:** Add rows for layout trees, field bindings, event wiring, token references, conditional rendering, and iteration (the extraction table from [Shell Writer Consumption](#input-analysis-changes)).
+- **Mapping priority:** When `views.md` is present, the layout tree takes precedence over the ios-writer's current convention-based inference for view body composition. When absent, the existing inference behavior is unchanged.
+- **Platform-specific overrides:** When `views.md` contains `### iOS Layout` sections for a screen, the ios-writer uses those in preference to the shared `### Layout` section.
+
+#### `plugins/vectis/skills/android-writer/SKILL.md`
+
+Mirrors the ios-writer changes:
+
+- **New input:** `views.md` alongside `app.rs`, `tokens.yaml`, and spec shell sections.
+- **Input Analysis table:** Same extraction rows as ios-writer.
+- **Mapping priority:** Same precedence rule — views artifact present means layout-guided, absent means inference-based.
+- **Platform-specific overrides:** When `views.md` contains `### Android Layout` sections, the android-writer uses those in preference to the shared `### Layout`.
+
+#### `plugins/vectis/skills/core-writer/SKILL.md`
+
+The core-writer does **not** read `views.md` directly. Layout is a shell concern; the core-writer's responsibility is the Crux shared crate (Model, Event, ViewModel, update, view). The relationship is mediated through `design.md`:
+
+- Views declares what fields each screen needs → design formalizes them into per-page view structs → core-writer reads design and generates the Rust types.
+- The core-writer's Artifact-to-Code Mapping table gains a note: "Per-page view struct fields align with `views.md` field bindings via `design.md`. The core-writer reads `design.md`, not `views.md`."
+
+This preserves the Crux separation: core knows about data shape, not spatial arrangement.
+
+#### `schemas/vectis/briefs/tasks.md`
+
+The tasks brief's skill directive table gains no new skill — views generation is part of the define pipeline, not a separate build skill. However, the task ordering guidance gains a note: "Shell writer tasks (ios-writer, android-writer) depend on `views.md` being present. When views validation fails, the corresponding shell task is blocked."
+
 ## Incremental Adoption Path
 
 ### Phase 1: Views artifact with skeleton support (low risk)
@@ -547,9 +718,12 @@ Add the `views` brief to the vectis schema and update the define agent to produc
 
 Deliverables:
 - `schemas/vectis/briefs/views.md` brief file
-- Updated `schemas/vectis/schema.yaml` pipeline
-- Updated ios-writer and android-writer Input Analysis sections
-- Updated core-writer Artifact-to-Code Mapping table (views artifact feeds shell writers, not core — but the core-writer's view struct fields should align)
+- Updated `schemas/vectis/schema.yaml` pipeline (add `views` stage between `specs` and `design`)
+- Updated `schemas/vectis/briefs/design.md` brief (`needs: [proposal, views]`, ViewModel adoption instructions)
+- Updated `schemas/vectis/briefs/tasks.md` brief (shell task dependency on `views.md`)
+- Updated `plugins/vectis/skills/ios-writer/SKILL.md` (new input, Input Analysis table, mapping priority, platform overrides)
+- Updated `plugins/vectis/skills/android-writer/SKILL.md` (same changes as ios-writer)
+- Updated `plugins/vectis/skills/core-writer/SKILL.md` (Artifact-to-Code Mapping note on views alignment via design)
 - `composition.yaml` JSON Schema for validating transient imports
 
 ### Phase 2: Validation
@@ -557,8 +731,9 @@ Deliverables:
 Add the views-specific checks to `specify validate`. These catch drift between views, specs, and design before the build phase runs.
 
 Deliverables:
-- Validation checks in the CLI (for both views.md and transient composition.yaml)
-- Updated build brief to run views validation before shell generation
+- Validation checks in the CLI (for both `views.md` and transient `composition.yaml`)
+- Navigation graph derivation from `→ Navigate(...)` references, checked against Route enum
+- Updated `schemas/vectis/briefs/build.md` brief (pre-shell validation gate, `views.md` in handoff contract)
 
 ### Phase 3: Figma adapter
 
@@ -570,28 +745,66 @@ Deliverables:
 
 ### Phase 4: Component library
 
-Introduce named compositions — reusable patterns built from the primitive vocabulary. These live in the design system alongside `tokens.yaml`:
+Introduce named compositions — reusable patterns built from the primitive vocabulary. These live in the design system alongside `tokens.yaml` using the same structured YAML format as `composition.yaml`:
 
 ```yaml
 # design-system/components.yaml
-search-bar:
-  layout:
-    - Row (spacing: sm)
-      - Icon: search (color: onSurfaceVariant)
-      - TextField: {query} → UpdateSearch({value})
-      - IconButton: clear → ClearSearch
-        when: {query} is not empty
+version: 1
 
-item-card:
-  layout:
-    - Card (spacing: sm)
-      - Row (spacing: md)
-        - slot: leading
-        - Column
-          - Text: {title} (typography: body)
-          - Text: {subtitle} (typography: caption, color: onSurfaceVariant)
-        - Spacer
-        - slot: trailing
+components:
+  search-bar:
+    description: "Search input with clear button"
+    slots:
+      query:
+        type: field
+        description: "Bound search text"
+    layout:
+      - Row:
+          spacing: sm
+          children:
+            - Icon:
+                icon: search
+                color: onSurfaceVariant
+            - TextField:
+                slot: query
+            - IconButton:
+                icon: clear
+                visible-when: "query is not empty"
+
+  item-card:
+    description: "Standard list item with leading and trailing slots"
+    slots:
+      leading:
+        type: component
+        description: "Left-side content (checkbox, icon, avatar)"
+      trailing:
+        type: component
+        description: "Right-side content (icon button, badge)"
+      title:
+        type: field
+        description: "Primary text"
+      subtitle:
+        type: field
+        description: "Secondary text"
+    layout:
+      - Card:
+          spacing: sm
+          children:
+            - Row:
+                spacing: md
+                children:
+                  - slot: leading
+                  - Column:
+                      children:
+                        - Text:
+                            slot: title
+                            typography: body
+                        - Text:
+                            slot: subtitle
+                            typography: caption
+                            color: onSurfaceVariant
+                  - Spacer
+                  - slot: trailing
 ```
 
 Screen layouts reference these by name:
@@ -603,6 +816,8 @@ Screen layouts reference these by name:
     - ItemCard
       - leading: Checkbox: {completed} → ToggleTodo({id})
       - trailing: IconButton: trash → DeleteTodo({id})
+      - title: {title}
+      - subtitle: {due_date}
 ```
 
 This reduces repetition across screens and establishes a shared vocabulary between designers and the define agent. The component library is optional — layouts can always use primitive components directly.
@@ -620,6 +835,10 @@ With the layout vocabulary and design system in place, a web shell writer can ma
 | `Column` | Flexbox column |
 | `Card` | `<article>` or `<div>` with card styling |
 | `FloatingAction` | Fixed-position button |
+| `Dialog` | `<dialog>` element / modal |
+| `Sheet` | Side panel or modal overlay |
+| `ProgressIndicator` | `<progress>` / CSS spinner |
+| `Snackbar` | Toast notification / `.snackbar` div |
 
 The web shell writer reads `views.md`, `design.md`, and `tokens.yaml` — the same inputs as the iOS and Android writers. The design system gains a `design-system/web/` output directory for CSS custom properties generated from `tokens.yaml`.
 
@@ -637,19 +856,83 @@ The web shell writer reads `views.md`, `design.md`, and `tokens.yaml` — the sa
 
 **Full design tool integration (Figma, Sketch).** A tight bidirectional sync with design tools was rejected due to authentication, API versioning, and workflow complexity. Instead, Figma is supported as a one-way *import source* via the composition.yaml interchange format (Phase 3). The adapter produces a transient composition file, the views brief renders it into `views.md`, and subsequent edits happen on `views.md` directly. Re-imports produce a fresh composition that the views brief can diff against the existing `views.md`.
 
+## Decisions
+
+### Platform-Divergent Layouts
+
+When the same screen should look materially different on iOS vs Android, `views.md` uses **per-platform subsections within a single file** — the same pattern used by specs (`## iOS Shell Requirements` / `## Android Shell Requirements`) and design (`## iOS Shell Details` / `## Android Shell Details`).
+
+Each screen section has a shared `### Layout` that describes the default, cross-platform composition. When a platform requires a different arrangement, the screen gains a `### iOS Layout` or `### Android Layout` subsection that replaces the shared layout for that platform:
+
+```markdown
+## SettingsScreen
+
+Maps to: `ViewModel::Settings(SettingsView)`
+
+### Layout
+
+- Scaffold
+  - TopBar
+    - Title: "Settings" (typography: title)
+  - Content: ScrollableList
+    - each {sections}:
+      - Text: {heading} (typography: label, color: onSurfaceVariant)
+      - each {items}:
+        - Row (spacing: md)
+          - Text: {title} (typography: body)
+          - Spacer
+          - Switch: {enabled} → ToggleSetting({id})
+
+### iOS Layout
+
+Replaces shared layout — uses grouped list style with navigation links:
+
+- Scaffold
+  - TopBar
+    - Title: "Settings" (typography: title)
+  - Content: ScrollableList (style: grouped)
+    - each {sections}:
+      - Text: {heading} (typography: label, color: onSurfaceVariant)
+      - each {items}:
+        - Row (spacing: md)
+          - Text: {title} (typography: body)
+          - Spacer
+          - Switch: {enabled} → ToggleSetting({id})
+```
+
+Shell writers use the platform-specific section when present, falling back to the shared `### Layout` when absent. Separate `views-ios.md` / `views-android.md` files are not used — a single file keeps the shared-first principle and avoids duplication of screens that look the same on both platforms.
+
+### Accessibility Semantics
+
+The views artifact includes optional accessibility annotations on components (see [Accessibility Annotations](#accessibility-annotations) in the Component Vocabulary). The annotations cover:
+
+- `label` — accessible label for screen readers
+- `role` — semantic role override
+- `hint` — additional context for assistive technology
+
+This strikes a balance: shell writers continue to apply platform-specific defaults (interactive components get inferred labels, semantic roles follow component types), but the views artifact can express intent where defaults are insufficient — icon buttons that need explicit labels, images that need alt text, decorative elements that should be hidden from screen readers.
+
+The ios-writer already checks for `accessibilityLabel` on interactive icons; the android-writer follows M3 semantics for `contentDescription`. Making these annotations explicit in views means both writers consume the same intent rather than inferring independently.
+
+### Navigation Graph
+
+The views artifact does **not** include a separate navigation graph section. Navigation is expressed through two existing mechanisms:
+
+1. **`→ Navigate(ScreenName)`** wiring on interactive components describes forward navigation.
+2. **`→ NavigateBack`** wiring describes backward navigation.
+3. The **Route enum** in `design.md` formalizes the navigation graph at the type level.
+
+The validation pass (Phase 2) derives the navigation graph from `→ Navigate(...)` references across all screens and checks it against the Route enum in design. If a `→ Navigate(AddTodo)` reference has no corresponding `AddTodoScreen` section in views, or no `Route::AddTodo` variant in design, validation flags the mismatch.
+
+A separate authored navigation section would duplicate information already expressed through event wiring and the Route enum. If navigation complexity grows to the point where the implicit graph is hard to follow (e.g., deep linking, conditional navigation, tab-based routing), a navigation visualization can be added as a validation output — a generated diagram, not an authored artifact.
+
 ## Open Questions
 
-1. **Granularity of the component vocabulary.** The initial vocabulary is deliberately small. Should it include higher-level components like `NavigationDrawer`, `BottomSheet`, or `Dialog` from the start, or grow on demand?
+1. **Animation and transitions.** The current vocabulary covers static layout. Page transitions, list item animations, and gesture-driven interactions are visual concerns that may need representation. Should they be part of the views artifact, or a separate concern?
 
-2. **Platform-divergent layouts.** When the same screen should look materially different on iOS vs Android (e.g., bottom tabs vs navigation drawer), should `views.md` have platform-specific sections (like specs do), or should there be separate `views-ios.md` / `views-android.md` files?
+2. **Composition re-import diffing.** When a Figma design is updated and a new `composition.yaml` is produced, the views brief needs to diff it against the existing `views.md` to surface what changed without losing manual refinements or wiring. What diffing strategy works — screen-level replacement, component-tree merge, or conflict markers for human resolution?
 
-3. **Animation and transitions.** The current vocabulary covers static layout. Page transitions, list item animations, and gesture-driven interactions are visual concerns that may need representation. Should they be part of the views artifact, or a separate concern?
-
-4. **Accessibility semantics.** Should the views artifact include accessibility hints (roles, labels, traits) or leave those to the shell writers? The current ios-writer already checks for `accessibilityLabel` on interactive icons.
-
-5. **Composition re-import diffing.** When a Figma design is updated and a new `composition.yaml` is produced, the views brief needs to diff it against the existing `views.md` to surface what changed without losing manual refinements or wiring. What diffing strategy works — screen-level replacement, component-tree merge, or conflict markers for human resolution?
-
-6. **Navigation graph.** The views artifact describes individual screens but not the transitions between them. Should `views.md` include a navigation section describing the screen graph, or does that remain a specs/design concern?
+3. **Higher-level component vocabulary growth.** Components like `NavigationDrawer`, `TabBar`, `SearchBar`, or `DataTable` are common in real applications but not in the initial vocabulary. Should these be added to the core vocabulary as demand arises, or reserved for the component library (Phase 4)?
 
 ## References
 
