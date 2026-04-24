@@ -1,6 +1,6 @@
 # RFC-3b: Platform Changes
 
-> Status: Landed · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-3a](archive/rfc-3a-monoliths.md)
+> Status: Landed · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](rfc-2-execution.md), [RFC-3a](rfc-3a-monoliths.md)
 
 ## Abstract
 
@@ -613,7 +613,7 @@ The following sequence minimises integration risk. Each step is independently sh
 
 ## References
 
-- [RFC-1: `specify` CLI](archive/rfc-1-cli.md)
-- [RFC-2: Execution](archive/rfc-2-execution.md)
-- [RFC-3a: Initiative Planning](archive/rfc-3a-monoliths.md)
+- [RFC-1: `specify` CLI](rfc-1-cli.md)
+- [RFC-2: Execution](rfc-2-execution.md)
+- [RFC-3a: Initiative Planning](rfc-3a-monoliths.md)
 
