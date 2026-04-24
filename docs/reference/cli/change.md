@@ -9,13 +9,13 @@ Create, inspect, transition, and archive individual changes.
 Create a new change directory.
 
 ```bash
-specify change create <name> [--if-exists skip|error|continue|restart] [--format json]
+specify change create <name> [--if-exists fail|continue|restart] [--format json]
 ```
 
 | Argument | Description |
 |----------|-------------|
 | `name` | Kebab-case change name (validated) |
-| `--if-exists` | Behavior when name exists: `error` (default), `skip` (no-op), `continue` (reuse existing), or `restart` (destructive overwrite) |
+| `--if-exists` | Behavior when name exists: `fail` (default, refuse), `continue` (reuse existing -- requires valid `.metadata.yaml`), or `restart` (delete and recreate -- destructive) |
 | `--format` | Output format: `json` for structured output |
 
 Creates `.specify/changes/<name>/` with an initial `.metadata.yaml`.
@@ -49,7 +49,7 @@ specify change transition <name> <target>
 | Argument | Description |
 |----------|-------------|
 | `name` | Change name |
-| `target` | Target state: `defined`, `building`, `complete`, `merged`, `dropped` |
+| `target` | Target state: `defining`, `defined`, `building`, `complete`, `merged`, `dropped`. The transient states (`defining`, `building`) are typically set by skills, not operators. |
 
 Enforces legal transitions. Records timestamps in `.metadata.yaml`.
 

@@ -12,7 +12,7 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `schema-url` | Yes (first run) | Schema URL, e.g. `https://github.com/augentic/specify/schemas/omnia`. Supports `@ref` suffix for version pinning. |
+| `schema-url` | Recommended | Schema URL, e.g. `https://github.com/augentic/specify/schemas/omnia`. Supports `@ref` suffix for version pinning. May be omitted if a schema is already cached. |
 
 ## When to use
 
