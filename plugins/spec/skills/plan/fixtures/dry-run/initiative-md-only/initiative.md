@@ -9,5 +9,4 @@ inputs:
 
 # Traffic modernisation
 
-Move the legacy traffic system onto Omnia, preserving the
-ops-runbook's escalation paths.
+Move the legacy traffic system onto Omnia, preserving the ops-runbook's escalation paths.

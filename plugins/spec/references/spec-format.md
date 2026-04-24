@@ -1,7 +1,6 @@
 # Spec Format
 
-Hard-coded heading conventions used by all Specify skills for parsing and
-generating requirement specs. These are not configurable per-schema.
+Hard-coded heading conventions used by all Specify skills for parsing and generating requirement specs. These are not configurable per-schema.
 
 ## Requirement Blocks
 
@@ -10,9 +9,7 @@ generating requirement specs. These are not configurable per-schema.
 - **Requirement ID pattern**: `^REQ-[0-9]{3}$`
 - **Scenario heading**: `#### Scenario:`
 
-A requirement block starts at a `### Requirement:` heading, includes the
-immediately following `ID:` line, and continues until the next requirement
-heading or `##` header or end of file.
+A requirement block starts at a `### Requirement:` heading, includes the immediately following `ID:` line, and continues until the next requirement heading or `##` header or end of file.
 
 ## Delta Operations
 

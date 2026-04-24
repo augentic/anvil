@@ -31,6 +31,4 @@ Build requires tasks to be complete and is tracked via `tasks.md`.
 
 ## Schema Framework
 
-For general schema concepts — directory structure, field reference for
-`schema.yaml`, schema resolution, composition, caching, and rules
-override — see the [Schemas README](../README.md).
+For general schema concepts — directory structure, field reference for `schema.yaml`, schema resolution, composition, caching, and rules override — see the [Schemas README](../README.md).

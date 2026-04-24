@@ -4,14 +4,9 @@ This document describes the merge algorithm used when archiving a change to merg
 
 ## Merge Algorithm
 
-The `specify` CLI implements this algorithm — `specify merge` for the
-commit path, `specify spec preview` for the dry-run variant, and
-`specify validate` for the baseline coherence check. The description is
-kept here as a reference for authors who want to understand what the CLI
-is doing under the hood.
+The `specify` CLI implements this algorithm — `specify merge` for the commit path, `specify spec preview` for the dry-run variant, and `specify validate` for the baseline coherence check. The description is kept here as a reference for authors who want to understand what the CLI is doing under the hood.
 
-**What is a requirement block?**
-A requirement block starts at a `### Requirement:` heading, includes the immediately following `ID:` line, and continues until the next requirement heading or the next `##` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
+**What is a requirement block?** A requirement block starts at a `### Requirement:` heading, includes the immediately following `ID:` line, and continues until the next requirement heading or the next `##` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
 
 **Preserve preamble**: Any text before the first requirement heading or `##` header in the baseline is preserved as-is.
 

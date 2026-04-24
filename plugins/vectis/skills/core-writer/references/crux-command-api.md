@@ -1,7 +1,6 @@
 # Crux Command API
 
-`Command` represents one or more side-effects returned from the `update()` function.
-Commands describe what should happen; the shell executes them.
+`Command` represents one or more side-effects returned from the `update()` function. Commands describe what should happen; the shell executes them.
 
 In 0.17.0 the return type is `Command<Effect, Event>`.
 

@@ -7,9 +7,7 @@ allowed-tools: Read, Write, StrReplace, Shell, Grep
 
 # Extract
 
-> See also [`../analyze/SKILL.md`](../analyze/SKILL.md) for plan-time
-> capability inference — the sibling skill that emits capability
-> summaries into `discovery.md`, not full `specs/` + `design.md`.
+> See also [`../analyze/SKILL.md`](../analyze/SKILL.md) for plan-time capability inference — the sibling skill that emits capability summaries into `discovery.md`, not full `specs/` + `design.md`.
 
 ## Overview
 
@@ -35,7 +33,7 @@ $EXCLUDE     = [--exclude <glob> ...]       # repeatable; possibly empty
 $MANIFEST    = --manifest <path>            # single; mutually exclusive with $INCLUDE/$EXCLUDE
 ```
 
-`$MANIFEST` is mutually exclusive with `$INCLUDE` / `$EXCLUDE`. Invoking extract with a `$MANIFEST` alongside any `$INCLUDE` or `$EXCLUDE` flag is a hard error — the driver (`/spec:execute`) and the schema's define brief should have caught it upstream at `specify initiative validate` time. Extract fails fast with a clear message rather than trying to reconcile the two modes.
+`$MANIFEST` is mutually exclusive with `$INCLUDE` / `$EXCLUDE`. Invoking extract with a `$MANIFEST` alongside any `$INCLUDE` or `$EXCLUDE` flag is a hard error — the driver (`/spec:execute`) and the schema's define brief should have caught it upstream at `specify plan validate` time. Extract fails fast with a clear message rather than trying to reconcile the two modes.
 
 ## Scope filters
 
@@ -74,10 +72,10 @@ include:
 ```
 
 - Paths are **literal file paths**, resolved relative to `$SOURCE_PATH`. No globs inside a manifest — globbing lives in `$INCLUDE` / `$EXCLUDE`.
-- v1 is exactly `version` + `include` — no other top-level keys (`deny_unknown_fields`); `specify initiative validate` rejects unknown keys, wrong `version`, empty `include`, `..` segments, and absolute paths in `include` (see `specify-change` `Plan::validate` / `manifest-invalid`, `manifest-empty`, `manifest-path-escape`).
+- v1 is exactly `version` + `include` — no other top-level keys (`deny_unknown_fields`); `specify plan validate` rejects unknown keys, wrong `version`, empty `include`, `..` segments, and absolute paths in `include` (see `specify-change` `Plan::validate` / `manifest-invalid`, `manifest-empty`, `manifest-path-escape`).
 - v1 ships `include` only. Line-range subsets per file, `exclude`, and per-file symbol filters are out of scope for v1 and are the natural v2 extensions.
 - A `$MANIFEST` that is missing, malformed, or references a file that does not exist under `$SOURCE_PATH` is a hard error — fail early with a clear message.
-- Manifests are authored at plan time (by the propose brief, per RFC-3a §*Manifest shape*) and referenced from the Plan's `scope.<src>.manifest` field. Extract consumes manifests; it does not author them. On disk they typically live under `.specify/plans/<initiative>/slices/` — see [`/spec:plan` working directory](../plan/SKILL.md) (§*Working directory*).
+- Manifests are authored at plan time (by the propose brief) and referenced from the Plan's `scope.<src>.manifest` field. Extract consumes manifests; it does not author them. On disk they typically live under `.specify/plans/<initiative>/slices/` — see [`/spec:plan` working directory](../plan/SKILL.md) (§*Working directory*).
 
 For a walk-through, see [fixtures/scoped-monolith/](fixtures/scoped-monolith/).
 
@@ -514,8 +512,7 @@ Write `$DESIGN_PATH` with the following sections (see [specify.md](references/sp
     - `[runtime]` Source uses in-memory cache with startup/background loading
     - `[runtime]` Source uses `setTimeout`/`setInterval` for periodic cache refresh
     - `[runtime]` Source uses circuit breaker library for outbound HTTP
-    - `[runtime]` Source caches OAuth tokens in process memory
-    When API response parity matters, fill **Serialization & API Fidelity** (optional fields, DateTime format, field naming, concurrency)
+    - `[runtime]` Source caches OAuth tokens in process memory When API response parity matters, fill **Serialization & API Fidelity** (optional fields, DateTime format, field naming, concurrency)
 11. **Source Capabilities Summary** — derive from External Services; checklist of generic capability categories (Configuration, Outbound HTTP, Message publishing, Key-value state, Authentication/Identity, Table/database access, Real-time messaging, Blob storage, Document storage)
 12. **Dependencies** — external packages with manifest version specifier (for generated project dependency declaration) and lock file resolved version (for API compatibility reference). Include feature flags / optional features enabled.
 13. **Risks / Open Questions** — unknowns, `[unknown]` items, missing lock file, ambiguous source patterns

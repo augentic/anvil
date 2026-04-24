@@ -1,12 +1,10 @@
 # Jetpack Compose View Patterns for Crux Apps
 
-Patterns for building Jetpack Compose UI that consumes Crux `ViewModel` data
-and dispatches `Event` values back to the core.
+Patterns for building Jetpack Compose UI that consumes Crux `ViewModel` data and dispatches `Event` values back to the core.
 
 ## Root Composable: ViewModel Switch
 
-The root composable switches on the `ViewModel` sealed class to display the
-appropriate screen. This is the main dispatch point.
+The root composable switches on the `ViewModel` sealed class to display the appropriate screen. This is the main dispatch point.
 
 ### Pattern 1: ViewModel-based Core (simple apps)
 
@@ -71,8 +69,7 @@ setContent {
 
 ## Screen Pattern
 
-Each screen is a standalone composable that receives its data and an event
-callback. Screens correspond 1:1 to `ViewModel` variants.
+Each screen is a standalone composable that receives its data and an event callback. Screens correspond 1:1 to `ViewModel` variants.
 
 ```kotlin
 @Composable
@@ -225,8 +222,7 @@ LazyColumn(
 
 ## Form Inputs
 
-For text input, use `remember { mutableStateOf("") }` for the local editing
-buffer and dispatch an event on submit.
+For text input, use `remember { mutableStateOf("") }` for the local editing buffer and dispatch an event on submit.
 
 ```kotlin
 @Composable
@@ -272,9 +268,7 @@ fun AddItemField(onEvent: (Event) -> Unit) {
 
 ## Navigation with Route
 
-When the Crux core defines a `Route` enum, navigation events are dispatched
-as `Event.Navigate(route)`. Compose Navigation or simple state-based switching
-can be used.
+When the Crux core defines a `Route` enum, navigation events are dispatched as `Event.Navigate(route)`. Compose Navigation or simple state-based switching can be used.
 
 ### Tab Navigation
 

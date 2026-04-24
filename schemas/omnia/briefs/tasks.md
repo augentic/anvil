@@ -5,8 +5,7 @@ generates: tasks.md
 needs: [specs, design]
 ---
 
-Follow the task format conventions defined in the define skill for
-checkbox format, grouping, ordering, and skill directive tags.
+Follow the task format conventions defined in the define skill for checkbox format, grouping, ordering, and skill directive tags.
 
 ## Available Skills
 

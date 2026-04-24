@@ -315,6 +315,4 @@ This example demonstrates the **recommended testing pattern** for most Rust WASM
 - Standard tokio async tests
 - Client abstraction for handler execution
 
-**Total lines of test code**: ~50 lines
-**Setup time**: ~10 minutes
-**Maintenance**: Low
+**Total lines of test code**: ~50 lines **Setup time**: ~10 minutes **Maintenance**: Low

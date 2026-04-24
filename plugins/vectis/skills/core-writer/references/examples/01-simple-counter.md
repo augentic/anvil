@@ -1,7 +1,6 @@
 # Example: Simple Counter (Render Only)
 
-A minimal Crux app with local state and no external side-effects.
-Demonstrates the basic App trait, Model, Event, ViewModel, Effect, and testing patterns.
+A minimal Crux app with local state and no external side-effects. Demonstrates the basic App trait, Model, Event, ViewModel, Effect, and testing patterns.
 
 ## Capabilities Used
 

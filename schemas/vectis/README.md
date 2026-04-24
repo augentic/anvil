@@ -31,24 +31,17 @@ Build requires tasks to be complete and is tracked via `tasks.md`.
 
 ## Feature-Centric Specs
 
-Specs are organized by **feature** (what the app does), not by software
-component. A single feature spec at `specs/<feature>/spec.md` contains:
+Specs are organized by **feature** (what the app does), not by software component. A single feature spec at `specs/<feature>/spec.md` contains:
 
-- **Core requirements** (main body) — platform-neutral behavioral
-  requirements that drive the Crux shared crate.
-- **Platform sections** (optional) — platform-specific behavioral
-  requirements in dedicated sections (`## iOS Shell Requirements`,
-  `## Android Shell Requirements`, etc.).
-- **Design system requirements** (optional) — token change requirements
-  in a `## Design System Requirements` section.
+- **Core requirements** (main body) — platform-neutral behavioral requirements that drive the Crux shared crate.
+- **Platform sections** (optional) — platform-specific behavioral requirements in dedicated sections (`## iOS Shell Requirements`, `## Android Shell Requirements`, etc.).
+- **Design system requirements** (optional) — token change requirements in a `## Design System Requirements` section.
 
-This means one spec per feature merges into one baseline — no combining
-across component boundaries.
+This means one spec per feature merges into one baseline — no combining across component boundaries.
 
 ## Platforms
 
-The proposal declares which platforms a change targets. Platforms
-determine which build skills are invoked, not how specs are structured.
+The proposal declares which platforms a change targets. Platforms determine which build skills are invoked, not how specs are structured.
 
 | Platform | Description | Primary Skill |
 |----------|-------------|---------------|
@@ -60,6 +53,4 @@ determine which build skills are invoked, not how specs are structured.
 
 ## Schema Framework
 
-For general schema concepts — directory structure, field reference for
-`schema.yaml`, schema resolution, composition, caching, and rules
-override — see the [Schemas README](../README.md).
+For general schema concepts — directory structure, field reference for `schema.yaml`, schema resolution, composition, caching, and rules override — see the [Schemas README](../README.md).

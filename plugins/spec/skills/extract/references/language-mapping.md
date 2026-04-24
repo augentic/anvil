@@ -363,9 +363,7 @@ async function raceCondition() {
 ```markdown
 - **Algorithm**:
   ```
-  1. [infrastructure] Race: Fetch from cache OR fetch from API (whichever completes first)
-     a. Cache fetch completes first: use cached data
-     b. API fetch completes first: use API data
+  1. [infrastructure] Race: Fetch from cache OR fetch from API (whichever completes first) a. Cache fetch completes first: use cached data b. API fetch completes first: use API data
   2. [mechanical] Return result from winning race participant
   ```
 ```
@@ -393,12 +391,7 @@ function validate(data: Data): Result {
 ```markdown
 - **Algorithm**:
   ```
-  1. [domain] Validate data ID
-     a. If ID is missing:
-        i.  [domain] Return failure result with error "Missing ID"
-        ii. Halt execution (early return)
-     b. Else:
-        i. [domain] Return success result with data
+  1. [domain] Validate data ID a. If ID is missing: i.  [domain] Return failure result with error "Missing ID" ii. Halt execution (early return) b. Else: i. [domain] Return success result with data
   ```
 ```
 
@@ -425,10 +418,7 @@ function handleStatus(status: string): string {
 ```markdown
 - **Algorithm**:
   ```
-  1. [mechanical] Match status value:
-     a. Case "pending": Return "Processing"
-     b. Case "completed": Return "Done"
-     c. Default (all other values): Return "Unknown"
+  1. [mechanical] Match status value: a. Case "pending": Return "Processing" b. Case "completed": Return "Done" c. Default (all other values): Return "Unknown"
   ```
 ```
 
@@ -468,9 +458,7 @@ for (const item of items) {
 ```markdown
 - **Algorithm**:
   ```
-  1. [mechanical] Iterate over items collection (count: runtime-dependent)
-     a. For each item:
-        i. [domain] Process item
+  1. [mechanical] Iterate over items collection (count: runtime-dependent) a. For each item: i. [domain] Process item
   ```
 ```
 
@@ -491,10 +479,7 @@ while (hasMore) {
 ```markdown
 - **Algorithm**:
   ```
-  1. [infrastructure] Loop while hasMore flag is true
-     a. Fetch batch from source
-     b. Process batch
-     c. Update hasMore flag based on batch result
+  1. [infrastructure] Loop while hasMore flag is true a. Fetch batch from source b. Process batch c. Update hasMore flag based on batch result
   ```
 ```
 
@@ -547,9 +532,7 @@ async function processWithFallback() {
 
 - **Algorithm**:
   ```
-  1. [infrastructure] Attempt to fetch data from API
-     a. On success: Return API data
-     b. On error: Continue to step 2
+  1. [infrastructure] Attempt to fetch data from API a. On success: Return API data b. On error: Continue to step 2
   2. [infrastructure] Log warning message
   3. [infrastructure] Fetch data from cache as fallback
   4. [mechanical] Return cached data
@@ -582,12 +565,7 @@ async function fetchWithRetry(url: string, maxRetries = 3) {
 
 - **Algorithm**:
   ```
-  1. [infrastructure] Attempt HTTP fetch (max 3 attempts)
-     a. On success: Return response
-     b. On error after all retries: Propagate error; halt execution
-     c. On error with retries remaining:
-        i.  [mechanical] Delay with exponential backoff (100ms * 2^attempt)
-        ii. Retry fetch
+  1. [infrastructure] Attempt HTTP fetch (max 3 attempts) a. On success: Return response b. On error after all retries: Propagate error; halt execution c. On error with retries remaining: i.  [mechanical] Delay with exponential backoff (100ms * 2^attempt) ii. Retry fetch
   ```
 ```
 
@@ -706,8 +684,7 @@ const total = orders.reduce((sum, order) => sum + order.amount, 0);
 - **Algorithm**:
   ```
   1. [mechanical] Initialize accumulator to 0
-  2. [domain] Iterate over orders collection:
-     a. For each order: Add order.amount to accumulator
+  2. [domain] Iterate over orders collection: a. For each order: Add order.amount to accumulator
   3. [mechanical] Return final accumulator value
   ```
 ```

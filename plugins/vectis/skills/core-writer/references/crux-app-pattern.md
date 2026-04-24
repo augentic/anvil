@@ -1,7 +1,6 @@
 # Crux App Pattern (0.17+ API)
 
-This reference describes the types and trait implementation for a Crux core application
-targeting the 0.17+ API on the master branch.
+This reference describes the types and trait implementation for a Crux core application targeting the 0.17+ API on the master branch.
 
 ## App Trait
 
@@ -65,10 +64,8 @@ Rules:
 
 Events are the input to the core. They come from two sources:
 
-1. **Shell-facing** -- triggered by user interaction in the UI, sent across FFI.
-   These must be serializable.
-2. **Internal** -- used as callbacks from side-effects. Marked with `#[serde(skip)]`
-   and `#[facet(skip)]` so they cannot be sent from the shell.
+1. **Shell-facing** -- triggered by user interaction in the UI, sent across FFI. These must be serializable.
+2. **Internal** -- used as callbacks from side-effects. Marked with `#[serde(skip)]` and `#[facet(skip)]` so they cannot be sent from the shell.
 
 ```rust
 use facet::Facet;
@@ -94,20 +91,14 @@ pub enum Event {
 Rules:
 - Derive `Facet, Serialize, Deserialize` for FFI compatibility.
 - Add `#[repr(C)]` for `facet` enum layout.
-- Include `Navigate(Route)` for shell-initiated view changes (see **Shell-initiated
-  navigation** under Page Management).
-- Internal variants with non-serializable payloads (like `crux_http::Result`) must have
-  `#[serde(skip)]` and `#[facet(skip)]`.
+- Include `Navigate(Route)` for shell-initiated view changes (see **Shell-initiated navigation** under Page Management).
+- Internal variants with non-serializable payloads (like `crux_http::Result`) must have `#[serde(skip)]` and `#[facet(skip)]`.
 - Mark opaque fields inside skipped variants with `#[facet(opaque)]`.
-- Enum tuple variants double as constructor functions for `then_send`:
-  `Http::get(url).build().then_send(Event::DataFetched)`.
+- Enum tuple variants double as constructor functions for `then_send`: `Http::get(url).build().then_send(Event::DataFetched)`.
 
 ## ViewModel
 
-The ViewModel is an **enum** where each variant represents a distinct view (page or
-screen) of the application. It crosses the FFI boundary so it must be fully
-serializable and have type generation support. The shell pattern-matches on the
-ViewModel to decide which screen to render.
+The ViewModel is an **enum** where each variant represents a distinct view (page or screen) of the application. It crosses the FFI boundary so it must be fully serializable and have type generation support. The shell pattern-matches on the ViewModel to decide which screen to render.
 
 ```rust
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, Default)]
@@ -137,35 +128,25 @@ pub struct ErrorView {
 ```
 
 Rules:
-- The ViewModel enum derives `Facet, Serialize, Deserialize, Clone, Debug, Default`
-  and has `#[repr(C)]`.
+- The ViewModel enum derives `Facet, Serialize, Deserialize, Clone, Debug, Default` and has `#[repr(C)]`.
 - Per-page view structs derive `Facet, Serialize, Deserialize, Clone, Debug, Default`.
 - All fields on per-page view structs are `pub` (the shell reads them).
-- Use `String` for formatted display values -- formatting logic belongs in the core's
-  `view()` function, not in the shell.
-- Use simple types the shell can easily consume. Avoid complex enums in per-page view
-  structs when a bool or string suffices.
+- Use `String` for formatted display values -- formatting logic belongs in the core's `view()` function, not in the shell.
+- Use simple types the shell can easily consume. Avoid complex enums in per-page view structs when a bool or string suffices.
 - The ViewModel is computed fresh on each `view()` call; it is not incrementally updated.
 - `#[default]` on the initial variant (typically `Loading`) provides the `Default` impl.
-- Variants without associated data (e.g. `Loading`) represent screens the shell renders
-  without needing data from the core.
+- Variants without associated data (e.g. `Loading`) represent screens the shell renders without needing data from the core.
 
 ### Error views vs in-page errors
 
 Two categories of error require different treatment:
 
-- **Blocking errors** (failed initialization, auth failure) warrant a dedicated
-  `ViewModel::Error(ErrorView)` variant. `ErrorView` carries a user-facing `message`
-  and a `can_retry` flag so the shell knows whether to show a retry button.
-- **Recoverable errors** (a single HTTP request failing, going offline) are handled
-  as fields within a page's view struct (e.g. `sync_status: String`). The user stays
-  on the current page -- no separate ViewModel variant is needed.
+- **Blocking errors** (failed initialization, auth failure) warrant a dedicated `ViewModel::Error(ErrorView)` variant. `ErrorView` carries a user-facing `message` and a `can_retry` flag so the shell knows whether to show a retry button.
+- **Recoverable errors** (a single HTTP request failing, going offline) are handled as fields within a page's view struct (e.g. `sync_status: String`). The user stays on the current page -- no separate ViewModel variant is needed.
 
 ## Page Management
 
-The core controls all navigation. The `Model` tracks which page is current using a
-private `Page` enum. The `view()` function matches on `model.page` to produce the
-right ViewModel variant. Page transitions happen in `update()` by setting `model.page`.
+The core controls all navigation. The `Model` tracks which page is current using a private `Page` enum. The `view()` function matches on `model.page` to produce the right ViewModel variant. Page transitions happen in `update()` by setting `model.page`.
 
 ### Page enum (internal)
 
@@ -179,8 +160,7 @@ enum Page {
 }
 ```
 
-The `Page` enum is internal to the core -- it does NOT derive `Facet` or `Serialize`
-and never crosses the FFI boundary. Add it as a field on `Model`:
+The `Page` enum is internal to the core -- it does NOT derive `Facet` or `Serialize` and never crosses the FFI boundary. Add it as a field on `Model`:
 
 ```rust
 #[derive(Default)]
@@ -193,8 +173,7 @@ pub struct Model {
 
 ### Page transitions in `update()`
 
-Set `model.page` to transition between views. The shell sees the change on the
-next `view()` call (triggered by a `render()`).
+Set `model.page` to transition between views. The shell sees the change on the next `view()` call (triggered by a `render()`).
 
 ```rust
 Event::Initialize => {
@@ -240,18 +219,14 @@ fn view(&self, model: &Self::Model) -> Self::ViewModel {
 ```
 
 Rules:
-- Every `Page` variant must have a corresponding `ViewModel` variant and a match arm
-  in `view()`.
+- Every `Page` variant must have a corresponding `ViewModel` variant and a match arm in `view()`.
 - Every `Page` variant must be reachable by at least one transition in `update()`.
 - The `Page` enum and `ViewModel` enum variants should have a 1:1 correspondence.
-- For single-page apps, the ViewModel enum has a single variant wrapping the page's
-  view struct. A `Loading` variant is recommended when the app loads data on startup.
+- For single-page apps, the ViewModel enum has a single variant wrapping the page's view struct. A `Loading` variant is recommended when the app loads data on startup.
 
 ### Shell-initiated navigation
 
-The shell can request view changes via an `Event::Navigate(Route)` event. The
-`Route` enum is a shell-facing type that enumerates navigable destinations --
-typically a subset of `Page`, excluding internal states like `Loading` and `Error`.
+The shell can request view changes via an `Event::Navigate(Route)` event. The `Route` enum is a shell-facing type that enumerates navigable destinations -- typically a subset of `Page`, excluding internal states like `Loading` and `Error`.
 
 ```rust
 #[derive(Facet, Serialize, Deserialize, Clone, Debug, Default, PartialEq, Eq)]
@@ -273,9 +248,7 @@ pub enum Event {
 }
 ```
 
-The `update()` handler maps `Route` to `Page`, taking current state into account.
-The core decides what action is required -- it may need to load data, clear error
-state, or simply switch the page:
+The `update()` handler maps `Route` to `Page`, taking current state into account. The core decides what action is required -- it may need to load data, clear error state, or simply switch the page:
 
 ```rust
 Event::Navigate(route) => {
@@ -304,19 +277,14 @@ Event::Navigate(route) => {
 
 Rules:
 - `Route` derives `Facet, Serialize, Deserialize` and has `#[repr(C)]` -- it crosses FFI.
-- `Route` variants represent **user-navigable destinations** only. Internal states
-  (Loading, Error) are not `Route` variants -- the core transitions to those
-  automatically.
-- The `Navigate` handler must be state-aware: navigating to a view that requires
-  data may trigger a load sequence rather than an immediate page switch.
-- `Route` can carry payload for parameterised views (e.g. `ItemDetail(String)` for
-  a detail screen that needs an item ID).
+- `Route` variants represent **user-navigable destinations** only. Internal states (Loading, Error) are not `Route` variants -- the core transitions to those automatically.
+- The `Navigate` handler must be state-aware: navigating to a view that requires data may trigger a load sequence rather than an immediate page switch.
+- `Route` can carry payload for parameterised views (e.g. `ItemDetail(String)` for a detail screen that needs an item ID).
 - Use cases: deep links, back button, tab bar, push notification opens.
 
 ## Effect
 
-The `Effect` enum declares which side-effects the app can request from the shell.
-Each variant wraps the `Operation` type from a capability.
+The `Effect` enum declares which side-effects the app can request from the shell. Each variant wraps the `Operation` type from a capability.
 
 ```rust
 use crux_core::{
@@ -339,15 +307,12 @@ Rules:
 - Annotate with `#[effect(facet_typegen)]` for type generation support.
 - Derive `Debug`.
 - Always include `Render(RenderOperation)` -- every app needs UI updates.
-- Add one variant per capability used. The variant name is arbitrary but conventionally
-  matches the capability name.
-- The macro generates helper methods like `expect_render()`, `expect_http()`, etc.
-  on effect types for use in tests.
+- Add one variant per capability used. The variant name is arbitrary but conventionally matches the capability name.
+- The macro generates helper methods like `expect_render()`, `expect_http()`, etc. on effect types for use in tests.
 
 ## Type Aliases for Capabilities
 
-When using published capabilities, define a type alias that binds the capability
-to your app's `Effect` and `Event` types:
+When using published capabilities, define a type alias that binds the capability to your app's `Effect` and `Event` types:
 
 ```rust
 type Http = crux_http::Http<Effect, Event>;
@@ -397,8 +362,7 @@ Rules:
 
 ## The `view()` Function
 
-The `view()` function maps Model to ViewModel. It is a pure function with no
-side effects. All formatting and presentation logic belongs here.
+The `view()` function maps Model to ViewModel. It is a pure function with no side effects. All formatting and presentation logic belongs here.
 
 The function matches on `model.page` and returns the corresponding ViewModel variant:
 
@@ -433,8 +397,7 @@ fn view(&self, model: &Self::Model) -> Self::ViewModel {
 
 ## The `update()` Function
 
-The `update()` function handles events, mutates the model, and returns commands.
-Every match arm must return a `Command`.
+The `update()` function handles events, mutates the model, and returns commands. Every match arm must return a `Command`.
 
 ```rust
 fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
@@ -466,20 +429,13 @@ fn update(&self, event: Event, model: &mut Model) -> Command<Effect, Event> {
 }
 ```
 
-Use `Command::done()` when no side-effects are needed and no render is required
-(rare -- usually you want at least `render::render()`).
+Use `Command::done()` when no side-effects are needed and no render is required (rare -- usually you want at least `render::render()`).
 
 ## Pending Operation Sync Queue
 
-When the app queues local mutations (create, update, delete) as pending operations and
-syncs them to a server one at a time via HTTP, use the following pattern to avoid a
-race condition where concurrent events (SSE, fetch-all) shift the queue while an HTTP
-request is in-flight.
+When the app queues local mutations (create, update, delete) as pending operations and syncs them to a server one at a time via HTTP, use the following pattern to avoid a race condition where concurrent events (SSE, fetch-all) shift the queue while an HTTP request is in-flight.
 
-**The bug this prevents:** calling `pending_ops.remove(0)` in the HTTP response handler
-assumes the completed op is still at index 0. If an SSE event removes that same op via
-`retain(...)` first, `remove(0)` silently drops an unrelated pending operation, losing
-a user mutation.
+**The bug this prevents:** calling `pending_ops.remove(0)` in the HTTP response handler assumes the completed op is still at index 0. If an SSE event removes that same op via `retain(...)` first, `remove(0)` silently drops an unrelated pending operation, losing a user mutation.
 
 ### Model fields
 
@@ -520,8 +476,7 @@ fn start_sync(model: &mut Model) -> Command<Effect, Event> {
 
 ### Handling the response
 
-Remove by ID match, not by index. Use `retain` so it is a no-op when SSE already
-removed the op:
+Remove by ID match, not by index. Use `retain` so it is a no-op when SSE already removed the op:
 
 ```rust
 Event::OpResponse(Ok(mut response)) => {
@@ -552,5 +507,4 @@ Event::OpResponse(Err(_)) | Event::DeleteOpResponse(Err(_)) => {
 
 - `retain(|op| op.item_id() != id)` is idempotent -- safe if SSE already removed the op.
 - `remove(0)` is positional -- if the queue shifted, it drops the wrong operation.
-- The `syncing_id` field makes the "which op is in-flight" question explicit rather than
-  relying on the assumption that it is always at index 0.
+- The `syncing_id` field makes the "which op is in-flight" question explicit rather than relying on the assumption that it is always at index 0.

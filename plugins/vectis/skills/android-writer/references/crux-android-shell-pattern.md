@@ -1,9 +1,6 @@
 # Crux Android Shell Pattern (0.17+ API)
 
-The Android shell is a thin Kotlin/Jetpack Compose layer that renders the
-`ViewModel` from the Crux core and sends user-initiated `Event` values back.
-All business logic lives in the shared Rust crate; the shell only handles
-platform I/O (HTTP, KV, SSE, Time, Platform) and UI rendering.
+The Android shell is a thin Kotlin/Jetpack Compose layer that renders the `ViewModel` from the Crux core and sends user-initiated `Event` values back. All business logic lives in the shared Rust crate; the shell only handles platform I/O (HTTP, KV, SSE, Time, Platform) and UI rendering.
 
 ## Architecture
 
@@ -43,13 +40,11 @@ platform I/O (HTTP, KV, SSE, Time, Platform) and UI rendering.
 
 ## Core.kt
 
-The `Core` class is the bridge between Compose and the Rust core. Two patterns
-are supported based on complexity.
+The `Core` class is the bridge between Compose and the Rust core. Two patterns are supported based on complexity.
 
 ### Pattern 1: Simple Core (Render only)
 
-For apps with only the `Render` effect. `Core` extends
-`androidx.lifecycle.ViewModel` and uses Compose `mutableStateOf`.
+For apps with only the `Render` effect. `Core` extends `androidx.lifecycle.ViewModel` and uses Compose `mutableStateOf`.
 
 ```kotlin
 package com.vectis.counter.core
@@ -92,15 +87,9 @@ open class Core : androidx.lifecycle.ViewModel() {
 
 ### Pattern 2: Full Core (with side effects)
 
-For apps with HTTP, SSE, KV, Time, or Platform effects. Uses coroutines and
-`StateFlow`. Injected via Koin.
+For apps with HTTP, SSE, KV, Time, or Platform effects. Uses coroutines and `StateFlow`. Injected via Koin.
 
-**CRITICAL**: All `scope.launch` blocks for async effects (SSE, Time) MUST
-wrap their body in `try/catch` to prevent unhandled exceptions from crashing
-the app. Always rethrow `CancellationException`. Catch blocks MUST call
-`resolveAndHandleEffects` with a fallback response (e.g., `SseResponse.Done`
-for SSE, `TimeResponse.DurationElapsed` / `TimeResponse.InstantArrived` for
-timers) so the core request ID is never left unresolved.
+**CRITICAL**: All `scope.launch` blocks for async effects (SSE, Time) MUST wrap their body in `try/catch` to prevent unhandled exceptions from crashing the app. Always rethrow `CancellationException`. Catch blocks MUST call `resolveAndHandleEffects` with a fallback response (e.g., `SseResponse.Done` for SSE, `TimeResponse.DurationElapsed` / `TimeResponse.InstantArrived` for timers) so the core request ID is never left unresolved.
 
 ```kotlin
 package com.vectis.myapp.core
@@ -211,16 +200,9 @@ The Time capability has multiple request types. Handle each variant:
 - `TimeRequest.NotifyAt(id, instant)` -- delay until instant, then respond with `InstantArrived(id)`
 - `TimeRequest.Clear(id)` -- cancel a pending timer's coroutine job, then respond with `Cleared(id)`
 
-**CRITICAL**: `Duration` has a single `nanos: ULong` field (total nanoseconds),
-NOT separate `secs`/`nanos`. `TimeResponse` variants use `DurationElapsed`,
-`InstantArrived`, and `Cleared` -- not `DURATIONREACHED` or `NOTIFYREACHED`.
+**CRITICAL**: `Duration` has a single `nanos: ULong` field (total nanoseconds), NOT separate `secs`/`nanos`. `TimeResponse` variants use `DurationElapsed`, `InstantArrived`, and `Cleared` -- not `DURATIONREACHED` or `NOTIFYREACHED`.
 
-**CRITICAL**: `NotifyAfter` and `NotifyAt` must store their coroutine `Job` in
-`timerJobs` keyed by `TimerId`. `Clear` must cancel and remove the stored job
-before responding. Without this, cleared timers continue to fire and deliver
-stale `DurationElapsed` or `InstantArrived` events to the core. The map is
-safe to access without synchronization because all coroutines run on
-`Dispatchers.Main.immediate`.
+**CRITICAL**: `NotifyAfter` and `NotifyAt` must store their coroutine `Job` in `timerJobs` keyed by `TimerId`. `Clear` must cancel and remove the stored job before responding. Without this, cleared timers continue to fire and deliver stale `DurationElapsed` or `InstantArrived` events to the core. The map is safe to access without synchronization because all coroutines run on `Dispatchers.Main.immediate`.
 
 ```kotlin
 import com.example.app.Instant
@@ -306,9 +288,7 @@ private suspend fun handlePlatformEffect(requestId: UInt) {
 
 ### Core with SSE Capability
 
-SSE produces a stream of values. Each value is resolved against the same
-request ID, producing a new batch of effects each time. MUST be wrapped in
-`scope.launch` with `try/catch`:
+SSE produces a stream of values. Each value is resolved against the same request ID, producing a new batch of effects each time. MUST be wrapped in `scope.launch` with `try/catch`:
 
 ```kotlin
 is Effect.ServerSentEvents -> {
@@ -424,8 +404,7 @@ class HttpClient {
 
 ## SseClient.kt
 
-SSE streaming client using Ktor. Note the `@OptIn(ExperimentalUnsignedTypes::class)`
-annotation -- required because `toUByteArray()` is experimental.
+SSE streaming client using Ktor. Note the `@OptIn(ExperimentalUnsignedTypes::class)` annotation -- required because `toUByteArray()` is experimental.
 
 ```kotlin
 package com.vectis.myapp.core
@@ -475,11 +454,9 @@ Key-Value storage using SharedPreferences.
 
 **CRITICAL type notes:**
 - `Value.Bytes` takes `List<UByte>` -- convert with `.toUByteArray().toList()`
-- `KeyValueOperation.Set.value` is `List<UByte>` -- convert back with
-  `.map { it.toByte() }.toByteArray()`
+- `KeyValueOperation.Set.value` is `List<UByte>` -- convert back with `.map { it.toByte() }.toByteArray()`
 - `KeyValueResponse.ListKeys` second param is `ULong` (cursor), NOT `String`
-- `KeyValueError` is a sealed interface -- use `KeyValueError.Other(msg)`,
-  NOT `KeyValueError(msg)`
+- `KeyValueError` is a sealed interface -- use `KeyValueError.Other(msg)`, NOT `KeyValueError(msg)`
 
 ```kotlin
 package com.vectis.myapp.core
@@ -553,9 +530,7 @@ class KeyValueClient(context: Context) {
 
 ## Serialization Protocol
 
-All data crossing the FFI boundary uses **Bincode** serialization via the
-generated `bincodeSerialize()` and `bincodeDeserialize()` methods
-on the shared types.
+All data crossing the FFI boundary uses **Bincode** serialization via the generated `bincodeSerialize()` and `bincodeDeserialize()` methods on the shared types.
 
 | Direction | Data | Serialization |
 |-----------|------|---------------|
@@ -566,8 +541,7 @@ on the shared types.
 
 ## Effect Loop
 
-The effect processing loop is recursive: resolving one effect may produce
-additional effects. The loop runs until no more effects are returned.
+The effect processing loop is recursive: resolving one effect may produce additional effects. The loop runs until no more effects are returned.
 
 ```
 User taps button
@@ -582,9 +556,7 @@ User taps button
 
 ## Initialization
 
-Send an initialization event when the app starts. This triggers the core to
-load persisted state or fetch initial data. The exact event name depends on
-what the Crux core defines -- check the generated types in `generated/`.
+Send an initialization event when the app starts. This triggers the core to load persisted state or fetch initial data. The exact event name depends on what the Crux core defines -- check the generated types in `generated/`.
 
 ```kotlin
 // In Activity.onCreate or after Core creation
@@ -593,27 +565,18 @@ core.update(Event.StartWatch)    // if core defines Event::StartWatch
 core.update(Event.Navigate(Route.MAIN))  // if using route-based init
 ```
 
-Note: `Event` is typically a sealed interface (mixed enum) so unit variants
-use PascalCase as `data object` (e.g., `Event.StartWatch`). Only simple
-enums where *every* variant is a unit use `UPPER_CASE` as `enum class`
-values (e.g., `Filter.ALL`). See the "Enum mapping" section below for
-details.
+Note: `Event` is typically a sealed interface (mixed enum) so unit variants use PascalCase as `data object` (e.g., `Event.StartWatch`). Only simple enums where *every* variant is a unit use `UPPER_CASE` as `enum class` values (e.g., `Filter.ALL`). See the "Enum mapping" section below for details.
 
 ## Thread Safety
 
 - Simple Core pattern: `mutableStateOf` is thread-safe for Compose reads.
-- Full Core pattern: `StateFlow` is thread-safe; all mutations happen on
-  `Dispatchers.Main.immediate`.
+- Full Core pattern: `StateFlow` is thread-safe; all mutations happen on `Dispatchers.Main.immediate`.
 - `CoreFfi` is thread-safe internally (Rust `Bridge` uses interior mutability).
-- Async effect handlers run in coroutines scoped to `SupervisorJob`, so one
-  failure doesn't cancel other in-flight effects.
+- Async effect handlers run in coroutines scoped to `SupervisorJob`, so one failure doesn't cancel other in-flight effects.
 
 ## Application Class (Required)
 
-Every Android shell MUST have an Application class that sets the UniFFI
-library override in `onCreate()`, BEFORE any UniFFI class is loaded. Without
-it, JNA tries to load `libuniffi_shared.so` which doesn't exist -- Cargo
-produces `libshared.so` -- causing an `UnsatisfiedLinkError` crash on launch.
+Every Android shell MUST have an Application class that sets the UniFFI library override in `onCreate()`, BEFORE any UniFFI class is loaded. Without it, JNA tries to load `libuniffi_shared.so` which doesn't exist -- Cargo produces `libshared.so` -- causing an `UnsatisfiedLinkError` crash on launch.
 
 ### Minimal Application class (no Koin)
 
@@ -632,8 +595,7 @@ class MyAppApplication : Application() {
 
 ### Application class with Koin
 
-When using the full Core pattern with DI, add `startKoin` after the library
-override:
+When using the full Core pattern with DI, add `startKoin` after the library override:
 
 ```kotlin
 package com.vectis.myapp
@@ -679,8 +641,7 @@ val appModule = module {
 
 ## Type Mapping: Rust → Kotlin
 
-The `codegen` binary produces Kotlin equivalents of all Crux types that cross
-the FFI boundary.
+The `codegen` binary produces Kotlin equivalents of all Crux types that cross the FFI boundary.
 
 ### Primitive types
 
@@ -699,8 +660,7 @@ the FFI boundary.
 
 ### Enum mapping (TWO patterns)
 
-**Simple enums (no payloads)** are generated as Kotlin `enum class` with
-`UPPER_CASE` values:
+**Simple enums (no payloads)** are generated as Kotlin `enum class` with `UPPER_CASE` values:
 
 ```
 // Rust: enum Filter { All, Active, Completed }
@@ -716,8 +676,7 @@ when (filter) {
 }
 ```
 
-**Enums with payloads** are generated as Kotlin `sealed interface` with
-nested `data class` or `data object` variants:
+**Enums with payloads** are generated as Kotlin `sealed interface` with nested `data class` or `data object` variants:
 
 ```
 // Rust: enum Event { Navigate(Route), ClearCompleted }
@@ -745,8 +704,7 @@ when (event) {
 
 ### Generated type packages
 
-All generated types live in `com.example.app.*`, NOT in the app's package.
-All hand-written Kotlin files MUST import them explicitly:
+All generated types live in `com.example.app.*`, NOT in the app's package. All hand-written Kotlin files MUST import them explicitly:
 
 ```kotlin
 import com.example.app.Event

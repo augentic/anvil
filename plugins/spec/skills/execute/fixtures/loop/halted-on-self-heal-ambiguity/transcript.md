@@ -1,19 +1,8 @@
 # halted-on-self-heal-ambiguity — `--loop` halts before the iteration begins
 
-The prior `/spec:execute` run left `shopping-cart` as `in-progress`
-in `plan.yaml`, and its `.metadata.yaml` carries a contradictory
-pair (`status: defining` + `outcome.phase: merge` / `outcome: success`).
-A new `/spec:execute --loop` invocation enters self-heal (step 3 of
-the `--loop` algorithm), detects the contradiction, refuses to
-speculate, and halts before the outer iteration loop runs at all.
+The prior `/spec:execute` run left `shopping-cart` as `in-progress` in `plan.yaml`, and its `.metadata.yaml` carries a contradictory pair (`status: defining` + `outcome.phase: merge` / `outcome: success`). A new `/spec:execute --loop` invocation enters self-heal (step 3 of the `--loop` algorithm), detects the contradiction, refuses to speculate, and halts before the outer iteration loop runs at all.
 
-The `checkout-api` entry is structurally blocked by `shopping-cart`
-anyway, so the halt costs nothing — but the semantics matter: even
-if the plan had other independent entries with all-`done`
-dependencies, self-heal halt stops the whole loop. Ambiguity is a
-signal that the on-disk state is inconsistent; continuing with
-other work while that inconsistency sits unresolved risks
-compounding the damage.
+The `checkout-api` entry is structurally blocked by `shopping-cart` anyway, so the halt costs nothing — but the semantics matter: even if the plan had other independent entries with all-`done` dependencies, self-heal halt stops the whole loop. Ambiguity is a signal that the on-disk state is inconsistent; continuing with other work while that inconsistency sits unresolved risks compounding the damage.
 
 ## Driver timeline
 
@@ -29,7 +18,7 @@ $ /spec:execute --loop
 #   Classifies: outcome.phase == merge, outcome: success BUT
 #   status: defining. Contradiction — no lifecycle transition
 #   reaches this state. HALT.
-#   - Does NOT call specify initiative transition.
+#   - Does NOT call specify plan transition.
 #   - Does NOT call /spec:drop.
 #   - Does NOT append a type: recovery journal entry.
 
@@ -60,24 +49,9 @@ Next action: Manually triage the halted change: inspect .specify/changes/shoppin
 
 ## Invariants pinned
 
-1. **Self-heal halt is the only path to `Completion: halted` under
-   `--loop`.** Individual mid-loop failures / deferrals transition
-   the plan entry to `failed` / `blocked` and the loop continues;
-   `specify initiative next` skips those entries. Only a self-heal
-   ambiguity halt reaches `halted`.
-2. **Halted runs still emit the terminal summary.** The summary is
-   emitted in step 5 regardless of whether the loop body ran or
-   not.
-3. **Halted runs still release the lock.** Step 6 runs
-   unconditionally. The halt's observable effect is the exit code
-   and the terminal summary, not a stranded lock file.
-4. **Plan and journal untouched on halt.** `plan.yaml.after` is
-   byte-identical to `plan.yaml.before`. No `journal.yaml` entry is
-   authored — halt emits no recovery entries. `shopping-cart`'s
-   journal (whatever the crashed run left there) is preserved
-   unchanged.
-5. **Progress line reflects the pre-halt state.** `in-progress 1`
-   is the entry self-heal halted on. `pending 1` is `checkout-api`,
-   which was never touched.
-6. **Exit code 1.** Not 0. Halted is an actionable diagnostic, not
-   a partial success.
+1. **Self-heal halt is the only path to `Completion: halted` under `--loop`.** Individual mid-loop failures / deferrals transition the plan entry to `failed` / `blocked` and the loop continues; `specify plan next` skips those entries. Only a self-heal ambiguity halt reaches `halted`.
+2. **Halted runs still emit the terminal summary.** The summary is emitted in step 5 regardless of whether the loop body ran or not.
+3. **Halted runs still release the lock.** Step 6 runs unconditionally. The halt's observable effect is the exit code and the terminal summary, not a stranded lock file.
+4. **Plan and journal untouched on halt.** `plan.yaml.after` is byte-identical to `plan.yaml.before`. No `journal.yaml` entry is authored — halt emits no recovery entries. `shopping-cart`'s journal (whatever the crashed run left there) is preserved unchanged.
+5. **Progress line reflects the pre-halt state.** `in-progress 1` is the entry self-heal halted on. `pending 1` is `checkout-api`, which was never touched.
+6. **Exit code 1.** Not 0. Halted is an actionable diagnostic, not a partial success.
