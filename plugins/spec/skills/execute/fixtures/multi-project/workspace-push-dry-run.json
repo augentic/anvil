@@ -1,0 +1,7 @@
+{
+  "dry_run": true,
+  "projects": [
+    { "name": "traffic", "status": "pushed", "branch": "specify/platform-v2" },
+    { "name": "command-centre", "status": "up-to-date" }
+  ]
+}

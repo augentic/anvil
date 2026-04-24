@@ -34,7 +34,7 @@ The `<!-- source-key: <k> -->` HTML comment immediately above each `### <name>` 
 
 ### Peer registry sources (Layer 2)
 
-`workspace.md` is operator-facing context: which peers were synced, where their `.specify/` trees live under `.specify/workspace/<name>/`, and whether their checkouts are clean. **Authoring rule for RFC-3a:** every plan entry MUST still list only `sources:` keys that exist in the initiative plan's top-level `sources:` map (the single-writer CLI enforces this today). Use `workspace.md` when deciding *how* to word `description` / `depends-on` for work that touches shared contracts across repos; actually pointing a plan entry at a peer checkout path belongs to **RFC-3b** (federation).
+Project assignment is handled by the plan skill's assignment step (RFC-3b §*Assignment algorithm*), not by the propose brief. The propose brief creates entries without `--project`. `workspace.md` is operator-facing context: which peers were synced, where their `.specify/` trees live under `.specify/workspace/<name>/`, and whether their checkouts are clean. **Authoring rule for RFC-3a:** every plan entry MUST still list only `sources:` keys that exist in the initiative plan's top-level `sources:` map (the single-writer CLI enforces this today).
 
 ### Documentation capabilities (no source-key marker for code)
 

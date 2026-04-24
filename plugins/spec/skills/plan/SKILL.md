@@ -4,8 +4,8 @@ description: |
   Author the initial .specify/plan.yaml for an initiative via the pipeline.plan
   brief pipeline. Layer 3 counterpart to /spec:execute: /spec:plan writes the 
   plan, /spec:execute runs it. When `.specify/registry.yaml` declares more than
-  one project, runs the RFC-3a sync-peers phase (`specify initiative workspace 
-  sync`) before propose and emits `workspace.md` for cross-repo planning.
+  one project, runs the RFC-3a sync-peers phase (`specify workspace sync`)
+  before propose and emits `workspace.md` for cross-repo planning.
 license: MIT
 argument-hint: "<initiative-name> [--from <path>...] [--against <path>] [--source <key>=<path-or-url>...] [--focus <area>] [--extend] [--dry-run]"
 ---
@@ -14,7 +14,7 @@ argument-hint: "<initiative-name> [--from <path>...] [--against <path>] [--sourc
 
 Author `.specify/plan.yaml` for a new initiative by running the `pipeline.plan` brief pipeline declared in the active schema's `schema.yaml`. `/spec:plan` is the Layer 3 authoring counterpart to `/spec:execute`: one *writes* the plan, the other *runs* it.
 
-> **Status.** Layer 3 is fully landed as of RFC-2 closeout, with RFC-3a extensions: discovery (step 3(a)) routes through `/spec:analyze`; when the registry declares **more than one project**, a **sync-peers** step (3(a½)) runs `specify initiative workspace sync` and authors `workspace.md` before propose (step 3(b)). See [rfc-3a-monoliths.md](../../../../rfcs/rfc-3a-monoliths.md) and [rfc-3b-layer-3.md](../../../../rfcs/rfc-3b-layer-3.md) for the wider platform story (Layer 2 workspace vs Layer 3 federation deferrals).
+> **Status.** Layer 3 is fully landed as of RFC-2 closeout, with RFC-3a extensions: discovery (step 3(a)) routes through `/spec:analyze`; when the registry declares **more than one project**, a **sync-peers** step (3(b)) runs `specify workspace sync` and authors `workspace.md` before propose (step 3(c)). See [rfc-3a-monoliths.md](../../../../rfcs/rfc-3a-monoliths.md) and [rfc-3b-platform.md](../../../../rfcs/rfc-3b-platform.md) for the wider platform story (Layer 2 workspace vs Layer 3 federation deferrals).
 
 ## Overview
 
@@ -28,7 +28,7 @@ The on-disk contracts the authoring skill depends on are:
 
 | File / directory | Owner | Role |
 |---|---|---|
-| `.specify/plan.yaml` | library (`Plan::{init, create, amend, transition, archive}`) | Ordered change list with per-entry status. `/spec:plan` writes only via `specify initiative init` (step 2) and `specify initiative create` (step 3b). |
+| `.specify/plan.yaml` | library (`Plan::{init, create, amend, transition, archive}`) | Ordered change list with per-entry status. `/spec:plan` writes only via `specify initiative init` (step 2) and `specify initiative create` (step 3c). |
 | `.specify/plans/<name>/` | schema (`pipeline.plan` briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify initiative archive` alongside the plan itself (RFC-2 L3.B + RFC-3a C33). |
 | `schema.yaml:pipeline.plan` | schema (`Phase::Plan`) | Declares the ordered list of authoring briefs for the project's schema. Resolved via `specify schema pipeline --phase plan`. |
 
@@ -120,7 +120,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
 
    Writes an empty .specify/plan.yaml with just the initiative
    `name` and the supplied `--source` entries in the top-level
-   `sources` map. `changes: []` until step 3(b) populates it.
+   `sources` map. `changes: []` until step 3(c) populates it.
 
    Skipped entirely when --extend is set: the caller is explicitly
    adding to an existing plan, and `specify initiative init`
@@ -142,9 +142,11 @@ Follow these steps in order on every invocation. Each step is normative; every s
    Then run each brief in order:
 
      a. discovery — see §"Step 3(a) — Discovery" below.
-     a½. sync-peers — see §"Step 3(a½) — Sync peers" below (multi-repo
+     b. sync-peers — see §"Step 3(b) — Sync peers" below (multi-repo
          only; skipped when the registry is absent or single-project).
-     b. propose   — see §"Step 3(b) — Propose" below.
+     c. propose   — see §"Step 3(c) — Propose" below.
+     d. assignment — see §"Step 3(d) — Assignment" below (multi-repo
+         only; skipped when the registry is absent or single-project).
 
 4. Final validation gate.
 
@@ -172,13 +174,13 @@ Step 3(a) invokes the discovery brief declared in `pipeline.plan` (for Omnia, [`
 
 Discovery is read-only with respect to `plan.yaml`. The output header is exactly `# Discovery — <initiative-name>` with no timestamps, run IDs, or working-directory paths, and re-running discovery on unchanged inputs MUST produce byte-equivalent output — the brief owns the ordering, the skill does not impose its own. An existing `discovery.md` is overwritten unless `--extend` is set (see [§Modes → `--extend`](#--extend)). The shape of a single-`--source` inventory against a small pre-seeded source tree is pinned by [`fixtures/discovery/expected-discovery.md`](fixtures/discovery/expected-discovery.md) against [`fixtures/discovery/legacy/`](fixtures/discovery/legacy/).
 
-## Step 3(a½) — Sync peers (multi-repo only)
+## Step 3(b) — Sync peers (multi-repo only)
 
 When **`.specify/registry.yaml`** exists and declares **more than one** project (`projects.length > 1` in the JSON from `specify initiative registry show --format json`), `/spec:plan` enters the RFC-3a **sync-peers** phase between discovery and propose. Single- repo initiatives (absent registry or `projects.length ≤ 1`) skip this step entirely.
 
 **Normative sequence**
 
-1. Shell out to **`specify initiative workspace sync`** from the project root. This materialises `.specify/workspace/<project-name>/` (symlink for local / relative `url:` values; shallow `git clone` / `git fetch` for remotes — see the CLI). Treat a non-zero exit as a hard failure for `/spec:plan`.
+1. Shell out to **`specify workspace sync`** from the project root. This materialises `.specify/workspace/<project-name>/` (symlink for local / relative `url:` values; shallow `git clone` / `git fetch` for remotes — see the CLI). Treat a non-zero exit as a hard failure for `/spec:plan`.
 2. Walk each materialised peer root read-only and author **`.specify/plans/<initiative-name>/workspace.md`** — the peer inventory the propose brief consumes alongside `discovery.md`.
 
 **`workspace.md` shape (pin for idempotency)**
@@ -189,8 +191,10 @@ When **`.specify/registry.yaml`** exists and declares **more than one** project 
 ## <registry-project-name>
 
 - **Slot:** `.specify/workspace/<registry-project-name>/`
+- **Description:** <registry description text from registry.yaml>
+- **Schema:** `<schema identifier from registry.yaml>`
 - **Materialisation:** `symlink` \| `git-clone` \| `missing` (mirror
-  `specify initiative workspace status`).
+  `specify workspace status`).
 - **Head:** `<40-char sha or —>` when the slot is a git work tree.
 - **Dirty:** `yes` \| `no` \| `—`
 - **Specify tree:** one bullet each if present: `plan.yaml`, active
@@ -202,15 +206,15 @@ When **`.specify/registry.yaml`** exists and declares **more than one** project 
 
 Re-running on an unchanged registry + workspace cache MUST yield byte-identical `workspace.md` (stable ordering throughout).
 
-**`--dry-run` (C32).** Do **not** shell `specify initiative workspace sync`; do **not** write `workspace.md`. You MAY print a short preview of what `workspace.md` *would* contain after a real sync, but only to stdout — no writes under `.specify/workspace/` or `.specify/plans/`.
+**`--dry-run` (C32).** Do **not** shell `specify workspace sync`; do **not** write `workspace.md`. You MAY print a short preview of what `workspace.md` *would* contain after a real sync, but only to stdout — no writes under `.specify/workspace/` or `.specify/plans/`.
 
-**`--extend` (C32).** Do **not** shell `specify initiative workspace sync` during the sync-peers step — operators refresh clones explicitly between runs. If `.specify/workspace/` already exists, still **rewrite** `workspace.md` from the current on-disk cache (read-only walk) so propose sees an up-to-date peer inventory without an implicit `git fetch`.
+**`--extend` (C32).** Do **not** shell `specify workspace sync` during the sync-peers step — operators refresh clones explicitly between runs. If `.specify/workspace/` already exists, still **rewrite** `workspace.md` from the current on-disk cache (read-only walk) so propose sees an up-to-date peer inventory without an implicit `git fetch`.
 
 Fixture for the inventory shape lives at [`fixtures/plan-layer2/workspace.md`](fixtures/plan-layer2/workspace.md) (placeholder peer names; copy the heading / bullet contract verbatim).
 
-## Step 3(b) — Propose
+## Step 3(c) — Propose
 
-Step 3(b) invokes the propose brief declared in `pipeline.plan` (for Omnia, [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose); for Vectis, [`schemas/vectis/briefs/plan/propose.md`](../docs/links.md#vectis-propose); other schemas ship their own). Propose reads `discovery.md`, applies the schema's slice heuristics to decompose the inventory into draft change slices with `depends-on` edges, and iterates with the human on each slice (accept / edit / reject / abort). For every accepted slice, the skill shells out to:
+Step 3(c) invokes the propose brief declared in `pipeline.plan` (for Omnia, [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose); for Vectis, [`schemas/vectis/briefs/plan/propose.md`](../docs/links.md#vectis-propose); other schemas ship their own). Propose reads `discovery.md`, applies the schema's slice heuristics to decompose the inventory into draft change slices with `depends-on` edges, and iterates with the human on each slice (accept / edit / reject / abort). For every accepted slice, the skill shells out to:
 
 ```text
 specify initiative create <name> \
@@ -224,6 +228,40 @@ The `--description` carries scope and delta-targeting intent in prose; scoping i
 Propose is the single-writer edge for plan entries — every entry lands via `specify initiative create`; the skill never edits `plan.yaml` directly (see §"Single-writer invariant"). The full decision trail (accepted, edited, rejected, skipped, aborted slices) is captured in `.specify/plans/<initiative-name>/proposal.md` regardless of per-slice decisions; the proposal header is exactly `# Proposal — <initiative-name>` with the same idempotency contract as `discovery.md`. The per-slice prompt shape, the four legal actions (`y` / `edit` / `no` / `abort`), the edit sub-loop, and the rules governing dropped `depends-on` edges when a slice is rejected all live in the propose brief — see [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose) for the authoritative contract. The shape of a five-slice migration authoring run is pinned by [`fixtures/propose/expected-plan.yaml`](fixtures/propose/expected-plan.yaml) (final `.specify/plan.yaml`), [`fixtures/propose/expected-proposal.md`](fixtures/propose/expected-proposal.md) (audit trail), [`fixtures/propose/discovery.md`](fixtures/propose/discovery.md) (step 3(a) inventory), and [`fixtures/propose/transcript.md`](fixtures/propose/transcript.md) (the interactive accept / edit / reject transcript).
 
 On abort, the skill writes `proposal.md` with the slices decided so far, skips step 4's validate (the plan is explicitly incomplete), and exits non-zero pointing the operator at `/spec:plan --extend` to resume. Partial plan entries from earlier accepted slices remain on disk — they were written synchronously by `specify initiative create` and the skill never rolls those writes back. On a clean end-of-loop, step 4's `specify initiative validate` is the final acceptance gate: any `Error`-level finding surfaces to the human with a recommended `specify initiative amend` / `specify initiative transition skipped` fix, never an in-skill edit.
+
+## Step 3(d) — Assignment (multi-repo only)
+
+After the propose brief completes step 3(c) and all accepted entries have been written to `plan.yaml` (without `project`), the plan skill runs the assignment pass when `workspace.md` is present and contains more than one project section. Single-project registries skip this step entirely.
+
+**Normative sequence**
+
+1. Read all entries created by the propose brief — the entries with `status: pending` and no `project` field.
+2. For each entry, infer a project assignment using the following signal priority:
+   - **Description match.** Compare the entry's `description` against each project's `Description` bullet in `workspace.md`. Domain-term overlap is the primary signal.
+   - **Baseline spec affinity.** If a peer already has baseline specs whose names or domains overlap with the entry, that peer is a strong candidate. This signal is only available for brownfield (materialised workspace with existing specs listed in the `Specify tree` bullet).
+   - **Schema compatibility.** If the entry's nature (e.g. UI vs backend logic) aligns with only one schema type in the registry (via the `Schema` bullet), use that as a tiebreaker.
+   - **Ambiguity → human.** When no signal clearly differentiates, or when confidence is low, surface the assignment as "unresolved" and require operator input. Never silently assign a low-confidence match.
+3. Present the full assignment table to the operator in a batch review:
+
+   ```markdown
+   ## Assignment
+
+   | # | Entry | Project | Rationale |
+   |---|---|---|---|
+   | 1 | ingest-pipeline | traffic | description overlap: ingestion, Kafka |
+   | 2 | operator-dashboard | command-centre | baseline spec: user-alerts exists |
+   | 3 | shared-types | ? | ambiguous: matches both projects |
+   ```
+
+   The operator reviews the table and can override any assignment. For **unresolved** assignments (`?`), the operator must assign a project before the step can proceed. The `project` prompt is a pick-from-list field — the legal values are the project names from `workspace.md`. Invalid input re-prompts.
+
+4. For each entry, shell out to:
+   ```text
+   specify initiative amend <name> --project <project>
+   ```
+5. Append the assignment table (with final assignments and rationale) to `proposal.md` so the proposal reconstructs the full decision trail — decomposition (from the propose brief) followed by routing (from the assignment step).
+
+When the registry is absent or single-project, step 3(d) is skipped entirely. No `--project` is written to plan entries.
 
 ## Single-writer invariant (RFC-2 §"Phase Boundary → Rule 2")
 
@@ -243,7 +281,7 @@ Authoring artefacts live under `.specify/plans/<initiative-name>/`, mirroring th
 └── plans/
     └── <initiative-name>/
         ├── discovery.md            # from the discovery brief (step 3a)
-        ├── proposal.md             # from the propose brief (step 3b)
+        ├── proposal.md             # from the propose brief (step 3c)
         └── analyze/                # `/spec:analyze` sidecars (legacy-code): `<source-key>/metadata.json`
 ```
 
@@ -257,7 +295,7 @@ Each mode below describes only the *delta* from the core five-step loop. The def
 
 ### Default (no mode flag)
 
-Run the five-step loop exactly as written. `plan.yaml` is initialised via step 2, populated via step 3(b), validated in step 4. A pre-existing `.specify/plan.yaml` is refused at step 1 (the operator is pointed at `specify initiative archive`).
+Run the five-step loop exactly as written. `plan.yaml` is initialised via step 2, populated via step 3(c), validated in step 4. A pre-existing `.specify/plan.yaml` is refused at step 1 (the operator is pointed at `specify initiative archive`).
 
 ### `--extend`
 
@@ -266,8 +304,8 @@ Add to an existing `.specify/plan.yaml` instead of refusing. The skill-level con
 - **Step 1 refuses when `plan.yaml` is absent.** `--extend` is an explicit "I know there's a plan here" signal; the skill never silently creates a fresh plan under `--extend`.
 - **Step 2 (`specify initiative init`) is skipped entirely.**
 - **Step 3(a) is skipped when `.specify/plans/<initiative-name>/discovery.md` already exists**, with a log line `Discovery already present; reusing existing inventory.` Discovery is explicitly a one-shot artefact; an operator who wants to refresh it archives the plan (`specify initiative archive`) and re-runs without `--extend`. When `discovery.md` does not yet exist under `--extend` (e.g. a plan authored by hand, or an earlier run aborted), step 3(a) runs normally.
-- **Step 3(b) skips collisions silently.** Draft slices whose proposed `name` collides with an existing plan entry are recorded in `proposal.md` with decision `skip-existing` and the existing entry's name in the "Plan entry" column; the human is not re-prompted. Slices whose names do not collide run through the usual accept / edit / reject / abort loop.
-- **Sync-peers (step 3(a½)):** when the registry declares more than one project, **do not** shell `specify initiative workspace sync`. Still regenerate `.specify/plans/<initiative-name>/workspace.md` from the existing `.specify/workspace/` cache (read-only walk) so propose stays deterministic without an implicit `git fetch`.
+- **Step 3(c) skips collisions silently.** Draft slices whose proposed `name` collides with an existing plan entry are recorded in `proposal.md` with decision `skip-existing` and the existing entry's name in the "Plan entry" column; the human is not re-prompted. Slices whose names do not collide run through the usual accept / edit / reject / abort loop.
+- **Sync-peers (step 3(b)):** when the registry declares more than one project, **do not** shell `specify workspace sync`. Still regenerate `.specify/plans/<initiative-name>/workspace.md` from the existing `.specify/workspace/` cache (read-only walk) so propose stays deterministic without an implicit `git fetch`.
 - **Pre-existing entries are never modified.** The skill has no path that calls `specify initiative amend` or `specify initiative transition` — a propose-time decision to modify an existing entry is surfaced to the human, who runs `specify initiative amend` by hand outside the authoring loop.
 
 No new flag is introduced beyond `--extend`. A future Change may add `--force-discovery` if refreshing the inventory mid-plan becomes a real need; RFC-2 L3.F explicitly does not.
@@ -280,7 +318,7 @@ Under `--dry-run` the skill MUST NOT:
 
 - create `.specify/plans/<initiative-name>/`;
 - shell out to `specify initiative init`, `specify initiative create`, `specify initiative amend`, or `specify initiative transition`;
-- shell out to **`specify initiative workspace sync`** or write **`.specify/plans/<initiative-name>/workspace.md`** (RFC-3a Layer 2 sync-peers dry-run rule);
+- shell out to **`specify workspace sync`** or write **`.specify/plans/<initiative-name>/workspace.md`** (RFC-3a Layer 2 sync-peers dry-run rule);
 - write any file under `.specify/` (including under `.specify/workspace/`).
 
 The discovery brief's input-reading side (reading `--from` files, invoking `/spec:analyze` against `--source` / `--against` inputs) runs under `--dry-run` so the preview inventory is real; only the write to `discovery.md` and the `.specify/plans/<name>/` directory creation are suppressed. The propose brief's slice-decomposition pass also runs (the preview plan shape is real against the previewed inventory); the accept / edit / reject loop and every `specify initiative create` call are skipped.
@@ -339,6 +377,15 @@ Would write .specify/plans/<initiative-name>/proposal.md:
 
 - Dry-run: no specify initiative create calls made; no entries written.
 
+Would assign projects (multi-repo only; not written):
+
+| # | Entry | Project | Rationale |
+|---|---|---|---|
+| 1 | <slice-name> | <project-name> | <rationale> |
+| 2 | ... | ... | ... |
+
+Dry-run — no specify initiative amend --project calls made.
+
 No files written. Remove --dry-run to run the pipeline.
 ```
 
@@ -358,24 +405,25 @@ Section rules:
 - **Skip `specify initiative validate`.** Never. Step 4 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero. This is the contract the skill owes its caller.
 - **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/spec:execute`.** Never. `/spec:plan` only invokes the briefs declared in `schema.yaml`'s `pipeline.plan`, plus the `specify initiative` CLI for scaffolding, entry creation, and validation.
 - **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/spec:execute`; authoring runs outside that lock. A human running `specify initiative transition` or `specify initiative amend` by hand while `/spec:plan` is authoring is safe because every write goes through the atomic library functions.
-- **Write `.specify/plan.yaml` directly.** Never. Every write goes through `specify initiative init` (step 2, skipped under `--extend`) or `specify initiative create` (step 3b, one call per accepted slice).
-- **Clone git URLs from this skill.** Never for **discovery** inputs: `--source` git URLs are passed through to `/spec:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify initiative workspace sync` (Layer 1 CLI), invoked only in the sync-peers step when `len(registry.projects) > 1`.
+- **Write `.specify/plan.yaml` directly.** Never. Every write goes through `specify initiative init` (step 2, skipped under `--extend`) or `specify initiative create` (step 3c, one call per accepted slice).
+- **Clone git URLs from this skill.** Never for **discovery** inputs: `--source` git URLs are passed through to `/spec:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync` (Layer 1 CLI), invoked only in the sync-peers step when `len(registry.projects) > 1`.
 - **Author propose brief bodies.** Never. The propose brief body is owned by the schema (for Omnia, [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose) from L3.D); the skill only drives the accept / edit / reject loop against whatever the brief emits.
 - **Auto-repair a failing `specify initiative validate`.** Never. Step 4's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify initiative amend` / `specify initiative transition skipped` fix, never an in-skill edit.
 
 The state the skill mutates:
 
-1. `.specify/plan.yaml` via `specify initiative init` (step 2; skipped under `--extend`) and `specify initiative create` (step 3b; once per accepted slice).
+1. `.specify/plan.yaml` via `specify initiative init` (step 2; skipped under `--extend`) and `specify initiative create` (step 3c; once per accepted slice).
 2. `.specify/plans/<initiative-name>/discovery.md` written by the discovery brief (step 3a).
-3. `.specify/plans/<initiative-name>/proposal.md` written by the propose brief (step 3b).
+3. `.specify/plans/<initiative-name>/proposal.md` written by the propose brief (step 3c).
+4. `.specify/plans/<initiative-name>/workspace.md` written by step 3(b) when the registry declares more than one project.
 
 No other on-disk state is written by `/spec:plan` itself.
 
 ## Guardrails
 
-- Never hand-edit `.specify/plan.yaml`. Route every write through `specify initiative init` (step 2) or `specify initiative create` (step 3b). The single-writer invariant in RFC-2 §"Plan Mutation and Crash Safety" depends on it.
+- Never hand-edit `.specify/plan.yaml`. Route every write through `specify initiative init` (step 2) or `specify initiative create` (step 3c). The single-writer invariant in RFC-2 §"Plan Mutation and Crash Safety" depends on it.
 - Never skip `specify initiative validate` (step 4). A plan that ships to `/spec:execute` without a clean validate is a regression; the validator is the contract the skill owes the downstream driver.
 - Validate `<initiative-name>` before any filesystem read or CLI shell-out. A bad name should never leave a half-written plan behind.
 - For `--dry-run` specifically: the skill MUST NOT shell out to `specify initiative init`, `specify initiative create`, `specify initiative amend`, or `specify initiative transition`; MUST NOT create `.specify/plans/<name>/`; MUST NOT write `discovery.md` or any other file under `.specify/`. The discovery brief's input-reading side still runs so the stdout inventory preview is real; only the write-out and directory creation are suppressed. The first-line banner prefixes the rendered output with `[dry-run] ` (the body lines do not need a per-line prefix — the banner is enough).
-- For `--extend` specifically: step 2 is skipped in full; step 3(b) only appends entries via `specify initiative create` — it never calls `specify initiative amend` or `specify initiative transition` on existing entries. Draft slices whose names collide with existing plan entries are skipped with decision `skip-existing` in `proposal.md`; the human is not re-prompted for those. A propose-time decision to modify an existing entry is surfaced to the human, who runs `specify initiative amend` by hand outside the authoring loop.
+- For `--extend` specifically: step 2 is skipped in full; step 3(c) only appends entries via `specify initiative create` — it never calls `specify initiative amend` or `specify initiative transition` on existing entries. Draft slices whose names collide with existing plan entries are skipped with decision `skip-existing` in `proposal.md`; the human is not re-prompted for those. A propose-time decision to modify an existing entry is surfaced to the human, who runs `specify initiative amend` by hand outside the authoring loop.
 - Treat an unexpected `specify schema pipeline --phase plan` response shape (missing keys, unknown brief IDs, empty pipeline) as a hard failure: print the raw JSON and exit non-zero. Do not speculate about brief ordering.

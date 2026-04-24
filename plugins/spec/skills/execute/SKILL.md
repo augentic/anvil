@@ -136,6 +136,25 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
    directory, which `specify initiative validate` tolerates as a
    warning.
 
+5a. CWD routing (multi-repo only).
+   Read `project` from the `specify initiative next` response (step 4).
+   If `project` is non-null:
+     - Resolve the target directory from `registry.yaml`: relative-
+       path `url` → resolved filesystem path; remote `url` →
+       `.specify/workspace/<name>/`.
+     - Check workspace freshness via `specify workspace status` for
+       that slot. If `missing`, halt with a diagnostic pointing the
+       operator at `specify workspace sync`. Release the lock and
+       exit non-zero.
+     - Save CWD (the initiating repo root).
+     - Resolve every key in the entry's `sources` list to an absolute
+       filesystem path anchored to the initiating repo root. Git URLs
+       pass through unchanged.
+     - `chdir` into the target project root.
+     - Emit diagnostic: `Routing: <name> → <project> (<resolved-path>)`
+   If `project` is null, skip this step entirely (pre-RFC-3b
+   single-repo path).
+
 6. Resolve the plan entry's `sources` into define arguments (see
    §Argument resolution below) and invoke:
 
@@ -170,6 +189,15 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
                   stopping for triage." Go to step 12. (This matches
                   the RFC-2 §"Phase Outcome Contract" fallback: the
                   driver never speculates about a missing outcome.)
+
+9a. CWD restore (multi-repo only).
+   If the CWD routing step (5a) changed the working directory,
+   restore CWD to the saved initiating repo root. This ensures
+   `specify initiative transition` (which reads `plan.yaml` in the
+   initiating repo) runs from the correct directory. In `--loop`
+   mode, the CWD routing and CWD restore steps bracket every
+   iteration so that `specify initiative next` always runs from
+   the initiating repo root.
 
 10. Success wrap-up.
       specify initiative transition <name> done
@@ -227,6 +255,8 @@ The path-vs-URL distinction is a content-level classification on the value strin
 
 Two authoring pins under [`fixtures/field-wiring/`](fixtures/field-wiring/) cover the two shapes — `sources-only/` (`/spec:define <name> --source monolith=/path/to/legacy`) and `description-driven/` (greenfield or description-inferred entries with no `--source` flags) — see the [§Fixtures](#fixtures) table for the invocation each one pins.
 
+Under multi-repo routing (step 5a active), source paths from the plan's top-level `sources` map are resolved to **absolute filesystem paths** anchored to the initiating repo root before the CWD change. The resolved absolute paths are what gets passed to `/spec:define --source <key>=<absolute-path>`. This ensures source paths remain valid regardless of which project clone the driver has `chdir`'d into. Git URLs pass through unchanged.
+
 ### Subtleties
 
 - **`/spec:execute` writes only plan transitions and recovery journal entries.** Every write this skill performs against `.specify/plan.yaml` goes through `specify initiative transition`. It never writes `outcome` to `.metadata.yaml` (the phase does that, via `specify change phase-outcome`). The sole case in which the driver appends to `journal.yaml` is the self-heal step (§Self-heal on startup), which emits exactly one `type: recovery` entry per reclaimed or resumed in-progress entry via `specify change journal-append`. The define / build / merge phases own `type: question` and `type: failure` entries; the driver never touches those.
@@ -253,6 +283,14 @@ For every plan entry `E` whose `status` is `in-progress`, in the order they appe
    - First check `.specify/changes/<name>/.metadata.yaml` — the active change directory. If present, that is the file to read.
    - If absent, inspect `.specify/archive/`. Archive directory names end with `-<name>` (the `YYYY-MM-DD-<name>` convention from `specify change archive` — see RFC-1 §`metadata.rs`). Multiple matches are legal: a change that failed and was later retried leaves one archive per attempt. Pick the most recent by `created-at` inside its `.metadata.yaml` (falling back to `defined-at`, then the directory's `YYYY-MM-DD` prefix); the outcome itself is surfaced by `specify change outcome <name> --format json` once the active directory is back in place.
    - If nothing is found anywhere, the plan entry is `in-progress` but no change has ever been created — typically because the prior driver crashed between `specify initiative transition pending → in-progress` (step 5) and `/spec:define` (step 6). Treat this as mid-change resume with `LifecycleStatus = None` — jump to step 3 below.
+
+**Multi-repo self-heal (RFC-3b).** For each `in-progress` entry `E` in `plan.yaml`, self-heal reads `E.project` from the plan entry. If non-null:
+1. Resolve the target project directory from `registry.yaml` (same resolution as step 5a of the per-change algorithm).
+2. Check workspace freshness for that slot. If `missing`, halt — same semantics as the main loop.
+3. Look for `.specify/changes/<E.name>/.metadata.yaml` under the resolved project root instead of the initiating repo root. The classification logic (step 2 of self-heal) and recovery journal append (step 4) are unchanged.
+4. Restore CWD to the initiating repo root after each entry's reconciliation.
+
+For entries without a `project` field, self-heal is unchanged from RFC-2.
 
 2. **Read `.metadata.yaml.outcome` and act on it.**
    - `outcome.outcome == success` and `outcome.phase == merge` → the merge finished but the driver crashed before the terminal plan transition. Run:
@@ -434,6 +472,12 @@ Variants the skill picks based on `specify initiative next`:
 - `reason: "stuck"` — replace with: `Stuck — no eligible changes. Pending: [<names>]. Blocked: [<names>]. Failed: [<names>].`
 
 The canonical shape is pinned by [`fixtures/dry-run/`](fixtures/dry-run/).
+
+Under multi-repo routing, the `--dry-run` output includes a `Routing:` diagnostic line:
+
+```text
+[dry-run] Routing: <name> → <project> (<resolved-path>)
+```
 
 ### Supervised / per-change transcript
 
@@ -621,3 +665,5 @@ Every behavioural pin for this skill is consolidated here. Each row names the di
 | [`fixtures/field-wiring/`](fixtures/field-wiring/) | Argument-resolution pins for the two wiring shapes — `sources-only/` (`/spec:define <name> --source monolith=/path/to/legacy`) and `description-driven/` (greenfield or description-inferred entries with no `--source` flags). Each ships `plan.yaml`, `invocation.txt`, and `transcript.md`; these are authoring pins, not automated tests. |
 | [`fixtures/e2e-platform-v2/`](fixtures/e2e-platform-v2/) | End-to-end exit-gate meta-fixture: `/spec:execute --loop` driving the full RFC-2 §"The Plan" `platform-v2` example against a plan authored by `/spec:plan`. |
 | [`fixtures/e2e-platform-v2-with-crash/`](fixtures/e2e-platform-v2-with-crash/) | Same `platform-v2` plan as above with a simulated mid-change crash; exercises the self-heal-on-startup reclaim path end-to-end. |
+| [`fixtures/multi-project/`](fixtures/multi-project/) | Multi-repo CWD routing (RFC-3b): `registry.yaml`, `plan.yaml` with per-entry `project` fields, `execute-loop-transcript.md` pinning the `Routing:` diagnostic and cross-project loop, `workspace-push-output.json` / `workspace-push-dry-run.json` pinning `specify workspace push` output shapes. |
+| [`fixtures/greenfield-bootstrap/`](fixtures/greenfield-bootstrap/) | Greenfield `specify workspace sync` fallback sequence: clone-fails → `mkdir` → `git init` → `specify init` → scaffold commit. `partial-rerun/` pins the recovery path when `.git/` exists but `.specify/project.yaml` is absent. |
