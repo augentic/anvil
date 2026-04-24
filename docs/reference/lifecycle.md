@@ -7,12 +7,14 @@ Every Specify change moves through a sequence of lifecycle states. Transitions a
 ```mermaid
 stateDiagram-v2
     [*] --> created: specify change create
-    created --> defined: /spec:define completes
+    created --> defining: /spec:define starts
+    defining --> defined: /spec:define completes
     defined --> building: /spec:build starts
     building --> complete: all tasks done
     complete --> merged: /spec:merge succeeds
 
     created --> dropped: /spec:drop
+    defining --> dropped: /spec:drop
     defined --> dropped: /spec:drop
     building --> dropped: /spec:drop
     complete --> dropped: /spec:drop
@@ -43,8 +45,8 @@ The phase skills trigger transitions at well-defined points:
 
 | Trigger | Transition | Performed by |
 |---------|------------|-------------|
-| `/spec:define` starts | `created` (initial) | `specify change create` |
-| `/spec:define` completes all artifacts | `created --> defined` | `specify change transition` |
+| `/spec:define` starts | `created --> defining` | `specify change transition` |
+| `/spec:define` completes all artifacts | `defining --> defined` | `specify change transition` |
 | `/spec:build` starts implementation | `defined --> building` | `specify change transition` |
 | All tasks marked complete | `building --> complete` | `specify change transition` |
 | `/spec:merge` succeeds | `complete --> merged` | `specify merge` |
@@ -68,6 +70,8 @@ When a change is part of an initiative plan, the plan entry has its own status t
 
 ```mermaid
 stateDiagram-v2
+    state "in-progress" as in_progress
+
     [*] --> pending: specify plan create
     pending --> in_progress: specify plan transition
     in_progress --> done: change merged successfully

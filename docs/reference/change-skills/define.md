@@ -42,7 +42,7 @@ Create a new change and generate all artifacts in one step.
 
 ## Lifecycle transitions
 
-`created --> defined`
+`created --> defining --> defined`
 
 ## Error modes
 

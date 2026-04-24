@@ -43,7 +43,7 @@ The output of `/spec:analyze` during plan authoring. A `discovery.md` file conta
 ## E
 
 **Execute**
-The Layer 2 driver skill (`/spec:execute`) that automates the define-build-merge loop for each entry in a plan, in dependency order. For multi-repo plans, routes each change to its target project's workspace clone via CWD-based routing.
+The Layer 3 driver skill (`/spec:execute`) that automates the define-build-merge loop for each entry in a plan, in dependency order. For multi-repo plans, routes each change to its target project's workspace clone via CWD-based routing.
 
 **Extract**
 The process of deriving behavioral specs and design from existing source code, performed by `/spec:extract`. Produces language-agnostic artifacts.
@@ -63,11 +63,11 @@ A multi-change program coordinated through a plan. Examples: a migration, a gree
 **Layer 1 (CLI primitives)**
 The `specify` CLI commands that handle all deterministic operations: change lifecycle, plan CRUD, workspace sync/push, schema resolution, validation. The foundation that skills build on.
 
-**Layer 2 (Automated execution)**
-The `/spec:execute` driver skill that reads `plan.yaml`, picks the next eligible change, runs the define-build-merge phase sequence, and records outcomes. Includes CWD-based routing for multi-repo plans (RFC-3b).
+**Layer 2 (Change lifecycle)**
+The `/spec:define`, `/spec:build`, `/spec:merge` loop and supporting skills (`/spec:init`, `/spec:drop`, `/spec:status`, `/spec:verify`, `/spec:explore`, `/spec:extract`). Each skill operates on a single change inside `.specify/changes/<name>/` and delegates deterministic work to the Layer 1 CLI.
 
-**Layer 3 (Plan authoring)**
-The `/spec:plan` skill and its pipeline (`/spec:analyze`, propose briefs, assignment step) that author `plan.yaml` from inputs. Includes sync-peers for multi-repo registries and project assignment (RFC-3b).
+**Layer 3 (Initiative orchestration)**
+The skills that coordinate multi-change programs through `.specify/plan.yaml`: `/spec:plan` (authors the plan via discovery, propose, and assignment), `/spec:execute` (automates the define-build-merge loop per change with CWD-based routing for multi-repo plans), and `/spec:analyze` (plan-time capability inference). Includes sync-peers for multi-repo registries and project assignment (RFC-3b).
 
 **Lifecycle state**
 The current status of a change: `created`, `defining`, `defined`, `building`, `complete`, `merged`, or `dropped`. `defining` and `building` are transient states indicating a phase is in-flight. Managed by the CLI via `.metadata.yaml`.

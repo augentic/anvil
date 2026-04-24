@@ -49,7 +49,7 @@ Depending on which schema you use, you may need additional tooling.
 ### Omnia schema
 
 - [Rust toolchain](https://rust-lang.org/tools/install/)
-- `wasm32-wasi` target: `rustup target add wasm32-wasi`
+- `wasm32-wasip2` target: `rustup target add wasm32-wasip2`
 
 ### Vectis schema
 
@@ -58,14 +58,17 @@ Depending on which schema you use, you may need additional tooling.
 
 **For iOS shells:**
 - Xcode command line tools
-- `xcode-build-server`: `brew install xcode-build-server`
+- Build and formatting tools: `brew install xcode-build-server xcbeautify swiftformat xcodegen`
 - iOS simulator targets: `rustup target add aarch64-apple-ios aarch64-apple-ios-sim`
-- Swift bindings: `cargo install --locked uniffi-bindgen-swift@0.4.0+v0.28.3`
+- Swift bindings: `cargo install cargo-swift`
+- Cursor extensions: [Swift Language Support](https://open-vsx.org/extension/chrisatwindsurf/swift-vscode), [SweetPad](https://marketplace.visualstudio.com/items?itemName=SweetPad.sweetpad)
 
 **For Android shells:**
-- Android Studio with SDK 35+
-- Android NDK via `sdkmanager "ndk;28.0.13004108"`
-- `cargo-ndk`: `cargo install cargo-ndk`
-- Android targets: `rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android`
+- Android SDK (via Android Studio or command-line tools)
+- Android NDK: `sdkmanager "ndk;29.0.14206865"`
+- Java 21 LTS JDK (not Java 25+ -- Gradle compatibility)
+- Gradle: `brew install gradle`
+- Python 3 (required by rust-android-gradle)
+- Android targets: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
 
 See the [Vectis plugin reference](../reference/plugins/vectis.md) for complete setup instructions.
