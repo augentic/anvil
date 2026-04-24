@@ -22,6 +22,7 @@ graph TB
 
     subgraph layer1 [Layer 1 -- CLI Primitives]
         changeCli["specify change ..."]
+        planCli["specify plan ..."]
         initCli["specify initiative ..."]
         schemaCli["specify schema ..."]
         specCli["specify spec ..."]
@@ -44,8 +45,8 @@ graph TB
     mergeSkill --> mergeCli
     drop --> changeCli
     status --> changeCli
-    plan --> initCli
-    execute --> initCli
+    plan --> planCli
+    execute --> planCli
 ```
 
 ## Layer 1: CLI primitives
@@ -55,7 +56,8 @@ The `specify` CLI is the foundation. It owns every deterministic operation: crea
 The two primary command families are:
 
 - **`specify change ...`** -- create, inspect, transition, and archive individual changes.
-- **`specify initiative ...`** -- scaffold, populate, validate, transition, and archive an initiative plan.
+- **`specify plan ...`** -- scaffold, populate, validate, transition, and archive an initiative plan.
+- **`specify initiative ...`** -- manage the initiative brief and platform registry.
 
 **Who uses it:** Power users who want fine-grained control, CI pipelines, and anyone debugging the state of `.specify/`. Layer 1 is always available as a manual fallback beneath the higher layers.
 
@@ -110,5 +112,5 @@ A key design principle: higher layers invoke lower layers, but lower layers are 
 This means you can always drop down a layer:
 
 - If `/spec:execute` fails on a change, you can finish it manually with `/spec:build` and `/spec:merge`.
-- If `/spec:plan` produces a plan you want to adjust, you can edit it with `specify initiative amend` and drive it yourself with `specify initiative next`.
-- If a skill does something unexpected, you can inspect the underlying state with `specify change status` or `specify initiative status`.
+- If `/spec:plan` produces a plan you want to adjust, you can edit it with `specify plan amend` and drive it yourself with `specify plan next`.
+- If a skill does something unexpected, you can inspect the underlying state with `specify change status` or `specify plan status`.

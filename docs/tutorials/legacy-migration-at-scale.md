@@ -192,7 +192,7 @@ Create registry.yaml with target repos
 /spec:plan modernise-platform --source monolith=/path/to/legacy
 
 # Review
-specify initiative status
+specify plan status
 
 # Execute
 /spec:execute --loop

@@ -5,7 +5,7 @@ needs: [discovery]
 generates: .specify/plans/<name>/proposal.md
 ---
 
-Decompose the capability inventory produced by `discovery.md` into a concrete set of plan entries, presenting each to the human for accept/edit/reject review and shelling out to `specify initiative create` for every accepted slice. This is the single-writer edge for `plan.yaml`: every entry is added via `specify initiative create` — the brief never edits `plan.yaml` directly.
+Decompose the capability inventory produced by `discovery.md` into a concrete set of plan entries, presenting each to the human for accept/edit/reject review and shelling out to `specify plan create` for every accepted slice. This is the single-writer edge for `plan.yaml`: every entry is added via `specify plan create` — the brief never edits `plan.yaml` directly.
 
 ## Input
 
@@ -15,7 +15,7 @@ Decompose the capability inventory produced by `discovery.md` into a concrete se
 
 Vectis is a Crux stack: one Rust shared core crate with an `App` trait that is consumed by a SwiftUI iOS shell and a Jetpack Compose Android shell, with design tokens generating a Swift Package on iOS and an Android `vectis-design` Compose library. Slice the inventory with that grain in mind.
 
-1. **Shared-core first.** Every capability classified as shared core under `discovery.md`'s `### Shared core` tier becomes a plan entry before any shell entry. Shared core is the dependency backbone: shell views bind to it, so shelving the cores earlier in the plan keeps `depends-on` edges forward and avoids dependent slices blocking on missing `App` traits. Name shared-core entries with a `-core` suffix (`counter-core`, `theme-core`) to make the tier obvious at a glance in `specify initiative status`.
+1. **Shared-core first.** Every capability classified as shared core under `discovery.md`'s `### Shared core` tier becomes a plan entry before any shell entry. Shared core is the dependency backbone: shell views bind to it, so shelving the cores earlier in the plan keeps `depends-on` edges forward and avoids dependent slices blocking on missing `App` traits. Name shared-core entries with a `-core` suffix (`counter-core`, `theme-core`) to make the tier obvious at a glance in `specify plan status`.
 2. **Design system next.** Design-tokens and shared component primitives land after the shared-core entries they read from (e.g. `design-tokens` depends on `theme-core`) and before any shell that consumes them. On Vectis this is usually a single entry named `design-tokens`, regenerated for both platforms by `/vectis:design-system-writer`; split only when the inventory surfaces distinct token families (e.g. `design-tokens-colour` vs `design-tokens-typography`) that ship independently.
 3. **Per-shell last.** Every iOS-shell and Android-shell capability from `discovery.md` becomes its own plan entry, presented *after* the shared-core and design-system entries it depends on. The default `depends-on` edges for a shell entry are the corresponding shared-core entry PLUS every design-system entry the shell consumes, seeded from discovery's ordering hints. Name shell entries with a platform-suffixed `-ios-view` / `-android-view` / `-ios-binding` / `-android-binding` to make the platform obvious at a glance.
 4. **One plan entry per Crux unit.** The Crux units are:
@@ -50,7 +50,7 @@ For each proposed slice, present the draft to the human and accept one of three 
 
 - **accept** — shell out to:
   ```
-  specify initiative create <slice-name> \
+  specify plan create <slice-name> \
       --sources <key> [--sources <key>...] \
       --depends-on <preceding> [--depends-on <preceding>...] \
       --description "<rich description with delta-targeting intent>"
@@ -85,21 +85,21 @@ The table MUST include every slice presented to the human — edited and rejecte
 
 ## Final step
 
-After the last accepted slice, run `specify initiative validate`. If it reports any errors, write the error block into the "Notes" section of `proposal.md` and stop — human triage is required before execution can begin. Do not attempt to auto-repair plan errors from within this brief.
+After the last accepted slice, run `specify plan validate`. If it reports any errors, write the error block into the "Notes" section of `proposal.md` and stop — human triage is required before execution can begin. Do not attempt to auto-repair plan errors from within this brief.
 
 ## `--dry-run` behaviour
 
 Emit the proposed plan to stdout as a preview of the same table structure that would be written to `proposal.md`. Do NOT:
 
-- call `specify initiative create`,
+- call `specify plan create`,
 - write `proposal.md`,
-- run `specify initiative validate`.
+- run `specify plan validate`.
 
 `--dry-run` is read-only; it is safe to invoke repeatedly against the same discovery output.
 
 ## `--extend` behaviour
 
-Skip the `specify initiative init` step (the caller, typically the `/spec:plan` skill, or the human, has already ensured `.specify/plan.yaml` exists). Still run propose against the existing plan: slices whose names collide with existing plan entries are skipped with a note in the proposal; new slices go through the usual accept/edit/reject loop.
+Skip the `specify plan init` step (the caller, typically the `/spec:plan` skill, or the human, has already ensured `.specify/plan.yaml` exists). Still run propose against the existing plan: slices whose names collide with existing plan entries are skipped with a note in the proposal; new slices go through the usual accept/edit/reject loop.
 
 ## Example fragment
 
@@ -125,5 +125,5 @@ Skip the `specify initiative init` step (the caller, typically the `/spec:plan` 
   `-core` entry plus `design-tokens`.
 - Slice 5's `description` was edited during review to clarify
   the Compose binding is Material 3.
-- `specify initiative validate` — no errors.
+- `specify plan validate` — no errors.
 ```

@@ -2,7 +2,7 @@
 # reads it on startup. /spec:build exhausted its verify-repair budget
 # and stamped outcome: build failure before returning; the prior
 # /spec:execute run crashed before reaching the step-11 drop path
-# (`/spec:drop checkout-api --reason "..."` then `specify initiative
+# (`/spec:drop checkout-api --reason "..."` then `specify plan
 # transition checkout-api failed --reason "..."`).
 #
 # Self-heal reads this file, classifies the outcome as `failure`, and

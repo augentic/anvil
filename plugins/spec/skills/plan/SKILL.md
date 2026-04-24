@@ -20,16 +20,16 @@ Author `.specify/plan.yaml` for a new initiative by running the `pipeline.plan` 
 
 Specify at authoring time is a three-layer stack — mirror of the execution stack documented in [`../execute/SKILL.md`](../execute/SKILL.md):
 
-1. **Plan CLI** (`specify initiative {init, validate, next, status, create, amend, transition, archive, lock}`) — the library-backed verbs that read and write `.specify/plan.yaml`. The single writer of the plan file, used by humans (Layer 1), `/spec:execute` (Layer 2), and this skill (Layer 3) alike.
-2. **Authoring skill** (`/spec:plan`, this one) — the Layer 3 driver that runs the `pipeline.plan` brief pipeline and shells out to `specify initiative create` for each accepted slice.
+1. **Plan CLI** (`specify plan {init, validate, next, status, create, amend, transition, archive, lock}`) — the library-backed verbs that read and write `.specify/plan.yaml`. The single writer of the plan file, used by humans (Layer 1), `/spec:execute` (Layer 2), and this skill (Layer 3) alike.
+2. **Authoring skill** (`/spec:plan`, this one) — the Layer 3 driver that runs the `pipeline.plan` brief pipeline and shells out to `specify plan create` for each accepted slice.
 3. **Driver skill** (`/spec:execute`) — the Layer 2 automation that consumes the plan this skill authored.
 
 The on-disk contracts the authoring skill depends on are:
 
 | File / directory | Owner | Role |
 |---|---|---|
-| `.specify/plan.yaml` | library (`Plan::{init, create, amend, transition, archive}`) | Ordered change list with per-entry status. `/spec:plan` writes only via `specify initiative init` (step 2) and `specify initiative create` (step 3c). |
-| `.specify/plans/<name>/` | schema (`pipeline.plan` briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify initiative archive` alongside the plan itself (RFC-2 L3.B + RFC-3a C33). |
+| `.specify/plan.yaml` | library (`Plan::{init, create, amend, transition, archive}`) | Ordered change list with per-entry status. `/spec:plan` writes only via `specify plan init` (step 2) and `specify plan create` (step 3c). |
+| `.specify/plans/<name>/` | schema (`pipeline.plan` briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify plan archive` alongside the plan itself (RFC-2 L3.B + RFC-3a C33). |
 | `schema.yaml:pipeline.plan` | schema (`Phase::Plan`) | Declares the ordered list of authoring briefs for the project's schema. Resolved via `specify schema pipeline --phase plan`. |
 
 See [RFC-2 §"Layer 3: Plan Authoring"](../docs/links.md#rfc-2-layer-3) for the full design, including the [Core loop](../docs/links.md#rfc-2-layer-3), [Plan pipeline briefs](../docs/links.md#rfc-2-layer-3), [Working directory](../docs/links.md#rfc-2-layer-3), and [Integration with `/spec:execute`](../docs/links.md#rfc-2-layer-3) sections.
@@ -106,7 +106,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
      MUST mention both possibilities so the operator knows the
      two alternatives.
    - If .specify/plan.yaml exists and --extend was NOT supplied,
-     refuse with a diagnostic pointing at `specify initiative
+     refuse with a diagnostic pointing at `specify plan
      archive`. (There is no --force. The refusal is deliberate:
      overwriting an existing plan would drop audit history.)
    - If --extend was supplied but .specify/plan.yaml does NOT
@@ -115,7 +115,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
 
 2. Scaffold the plan.
 
-     specify initiative init <initiative-name> \
+     specify plan init <initiative-name> \
          [--source <key>=<path-or-url> ...]
 
    Writes an empty .specify/plan.yaml with just the initiative
@@ -123,7 +123,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
    `sources` map. `changes: []` until step 3(c) populates it.
 
    Skipped entirely when --extend is set: the caller is explicitly
-   adding to an existing plan, and `specify initiative init`
+   adding to an existing plan, and `specify plan init`
    refuses when .specify/plan.yaml already exists (see RFC-2
    §"CLI support").
 
@@ -150,18 +150,18 @@ Follow these steps in order on every invocation. Each step is normative; every s
 
 4. Final validation gate.
 
-     specify initiative validate
+     specify plan validate
 
    Runs the Layer 1 validator against the authored plan. Report
    every `ValidationResult` verbatim. Non-zero exit on any result
    with `level == Error`. A clean validate is the contract the
    skill owes its caller — a plan that ships to `/spec:execute`
-   without passing `specify initiative validate` is a regression.
+   without passing `specify plan validate` is a regression.
 
 5. Exit with a hand-off summary.
 
    Point the human at:
-     - `specify initiative status` — review the authored plan.
+     - `specify plan status` — review the authored plan.
      - `/spec:execute --loop` — start executing it (Layer 2).
 
    Non-zero exit on any earlier step's hard failure; zero exit on
@@ -217,7 +217,7 @@ Fixture for the inventory shape lives at [`fixtures/plan-layer2/workspace.md`](f
 Step 3(c) invokes the propose brief declared in `pipeline.plan` (for Omnia, [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose); for Vectis, [`schemas/vectis/briefs/plan/propose.md`](../docs/links.md#vectis-propose); other schemas ship their own). Propose reads `discovery.md`, applies the schema's slice heuristics to decompose the inventory into draft change slices with `depends-on` edges, and iterates with the human on each slice (accept / edit / reject / abort). For every accepted slice, the skill shells out to:
 
 ```text
-specify initiative create <name> \
+specify plan create <name> \
     [--sources <key> ...] \
     [--depends-on <name> ...] \
     [--description "..."]
@@ -225,9 +225,9 @@ specify initiative create <name> \
 
 The `--description` carries scope and delta-targeting intent in prose; scoping is inferred from the description by the define skill at execution time.
 
-Propose is the single-writer edge for plan entries — every entry lands via `specify initiative create`; the skill never edits `plan.yaml` directly (see §"Single-writer invariant"). The full decision trail (accepted, edited, rejected, skipped, aborted slices) is captured in `.specify/plans/<initiative-name>/proposal.md` regardless of per-slice decisions; the proposal header is exactly `# Proposal — <initiative-name>` with the same idempotency contract as `discovery.md`. The per-slice prompt shape, the four legal actions (`y` / `edit` / `no` / `abort`), the edit sub-loop, and the rules governing dropped `depends-on` edges when a slice is rejected all live in the propose brief — see [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose) for the authoritative contract. The shape of a five-slice migration authoring run is pinned by [`fixtures/propose/expected-plan.yaml`](fixtures/propose/expected-plan.yaml) (final `.specify/plan.yaml`), [`fixtures/propose/expected-proposal.md`](fixtures/propose/expected-proposal.md) (audit trail), [`fixtures/propose/discovery.md`](fixtures/propose/discovery.md) (step 3(a) inventory), and [`fixtures/propose/transcript.md`](fixtures/propose/transcript.md) (the interactive accept / edit / reject transcript).
+Propose is the single-writer edge for plan entries — every entry lands via `specify plan create`; the skill never edits `plan.yaml` directly (see §"Single-writer invariant"). The full decision trail (accepted, edited, rejected, skipped, aborted slices) is captured in `.specify/plans/<initiative-name>/proposal.md` regardless of per-slice decisions; the proposal header is exactly `# Proposal — <initiative-name>` with the same idempotency contract as `discovery.md`. The per-slice prompt shape, the four legal actions (`y` / `edit` / `no` / `abort`), the edit sub-loop, and the rules governing dropped `depends-on` edges when a slice is rejected all live in the propose brief — see [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose) for the authoritative contract. The shape of a five-slice migration authoring run is pinned by [`fixtures/propose/expected-plan.yaml`](fixtures/propose/expected-plan.yaml) (final `.specify/plan.yaml`), [`fixtures/propose/expected-proposal.md`](fixtures/propose/expected-proposal.md) (audit trail), [`fixtures/propose/discovery.md`](fixtures/propose/discovery.md) (step 3(a) inventory), and [`fixtures/propose/transcript.md`](fixtures/propose/transcript.md) (the interactive accept / edit / reject transcript).
 
-On abort, the skill writes `proposal.md` with the slices decided so far, skips step 4's validate (the plan is explicitly incomplete), and exits non-zero pointing the operator at `/spec:plan --extend` to resume. Partial plan entries from earlier accepted slices remain on disk — they were written synchronously by `specify initiative create` and the skill never rolls those writes back. On a clean end-of-loop, step 4's `specify initiative validate` is the final acceptance gate: any `Error`-level finding surfaces to the human with a recommended `specify initiative amend` / `specify initiative transition skipped` fix, never an in-skill edit.
+On abort, the skill writes `proposal.md` with the slices decided so far, skips step 4's validate (the plan is explicitly incomplete), and exits non-zero pointing the operator at `/spec:plan --extend` to resume. Partial plan entries from earlier accepted slices remain on disk — they were written synchronously by `specify plan create` and the skill never rolls those writes back. On a clean end-of-loop, step 4's `specify plan validate` is the final acceptance gate: any `Error`-level finding surfaces to the human with a recommended `specify plan amend` / `specify plan transition skipped` fix, never an in-skill edit.
 
 ## Step 3(d) — Assignment (multi-repo only)
 
@@ -257,7 +257,7 @@ After the propose brief completes step 3(c) and all accepted entries have been w
 
 4. For each entry, shell out to:
    ```text
-   specify initiative amend <name> --project <project>
+   specify plan amend <name> --project <project>
    ```
 5. Append the assignment table (with final assignments and rationale) to `proposal.md` so the proposal reconstructs the full decision trail — decomposition (from the propose brief) followed by routing (from the assignment step).
 
@@ -265,9 +265,9 @@ When the registry is absent or single-project, step 3(d) is skipped entirely. No
 
 ## Single-writer invariant (RFC-2 §"Phase Boundary → Rule 2")
 
-Every plan entry this skill writes goes through **`specify initiative create`**. The skill never edits `.specify/plan.yaml` directly, never rewrites existing entries, and never bundles multiple entries into a batch write. This preserves the single-writer invariant established in RFC-2 §"Phase Boundary → Rule 2": exactly two classes of writes touch `plan.yaml` (entry writes via `Plan::{create, amend}` and status writes via `Plan::transition`), and both route through the library.
+Every plan entry this skill writes goes through **`specify plan create`**. The skill never edits `.specify/plan.yaml` directly, never rewrites existing entries, and never bundles multiple entries into a batch write. This preserves the single-writer invariant established in RFC-2 §"Phase Boundary → Rule 2": exactly two classes of writes touch `plan.yaml` (entry writes via `Plan::{create, amend}` and status writes via `Plan::transition`), and both route through the library.
 
-The invariant extends to `--extend`: additional entries are added via `specify initiative create`; pre-existing entries are left untouched. The skill has no path that calls `specify initiative amend` or `specify initiative transition` — those verbs belong to the running initiative (humans in Layer 1, `/spec:execute` in Layer 2), not to the authoring step.
+The invariant extends to `--extend`: additional entries are added via `specify plan create`; pre-existing entries are left untouched. The only path that calls `specify plan amend` is step 3(d) Assignment, which writes `--project` on multi-repo plans. The skill never calls `specify plan transition` — that verb belongs to the running initiative (humans in Layer 1, `/spec:execute` in Layer 2), not to the authoring step.
 
 See [RFC-2 §"Phase Boundary → Rule 2"](../docs/links.md#rfc-2-phase-boundary-rule-2) for the full contract.
 
@@ -285,9 +285,9 @@ Authoring artefacts live under `.specify/plans/<initiative-name>/`, mirroring th
         └── analyze/                # `/spec:analyze` sidecars (legacy-code): `<source-key>/metadata.json`
 ```
 
-The working directory is created lazily — by the discovery brief itself when it writes `discovery.md`, not by the skill scaffold. Step 2 (`specify initiative init`) does not create it.
+The working directory is created lazily — by the discovery brief itself when it writes `discovery.md`, not by the skill scaffold. Step 2 (`specify plan init`) does not create it.
 
-On archive, `specify initiative archive` (RFC-2 L3.B) sweeps this directory alongside `plan.yaml` into `.specify/archive/plans/<name>-<YYYYMMDD>/`, preserving the authoring trail with the plan it produced.
+On archive, `specify plan archive` (RFC-2 L3.B) sweeps this directory alongside `plan.yaml` into `.specify/archive/plans/<name>-<YYYYMMDD>/`, preserving the authoring trail with the plan it produced.
 
 ## Modes
 
@@ -295,18 +295,18 @@ Each mode below describes only the *delta* from the core five-step loop. The def
 
 ### Default (no mode flag)
 
-Run the five-step loop exactly as written. `plan.yaml` is initialised via step 2, populated via step 3(c), validated in step 4. A pre-existing `.specify/plan.yaml` is refused at step 1 (the operator is pointed at `specify initiative archive`).
+Run the five-step loop exactly as written. `plan.yaml` is initialised via step 2, populated via step 3(c), validated in step 4. A pre-existing `.specify/plan.yaml` is refused at step 1 (the operator is pointed at `specify plan archive`).
 
 ### `--extend`
 
 Add to an existing `.specify/plan.yaml` instead of refusing. The skill-level contract is:
 
 - **Step 1 refuses when `plan.yaml` is absent.** `--extend` is an explicit "I know there's a plan here" signal; the skill never silently creates a fresh plan under `--extend`.
-- **Step 2 (`specify initiative init`) is skipped entirely.**
-- **Step 3(a) is skipped when `.specify/plans/<initiative-name>/discovery.md` already exists**, with a log line `Discovery already present; reusing existing inventory.` Discovery is explicitly a one-shot artefact; an operator who wants to refresh it archives the plan (`specify initiative archive`) and re-runs without `--extend`. When `discovery.md` does not yet exist under `--extend` (e.g. a plan authored by hand, or an earlier run aborted), step 3(a) runs normally.
+- **Step 2 (`specify plan init`) is skipped entirely.**
+- **Step 3(a) is skipped when `.specify/plans/<initiative-name>/discovery.md` already exists**, with a log line `Discovery already present; reusing existing inventory.` Discovery is explicitly a one-shot artefact; an operator who wants to refresh it archives the plan (`specify plan archive`) and re-runs without `--extend`. When `discovery.md` does not yet exist under `--extend` (e.g. a plan authored by hand, or an earlier run aborted), step 3(a) runs normally.
 - **Step 3(c) skips collisions silently.** Draft slices whose proposed `name` collides with an existing plan entry are recorded in `proposal.md` with decision `skip-existing` and the existing entry's name in the "Plan entry" column; the human is not re-prompted. Slices whose names do not collide run through the usual accept / edit / reject / abort loop.
 - **Sync-peers (step 3(b)):** when the registry declares more than one project, **do not** shell `specify workspace sync`. Still regenerate `.specify/plans/<initiative-name>/workspace.md` from the existing `.specify/workspace/` cache (read-only walk) so propose stays deterministic without an implicit `git fetch`.
-- **Pre-existing entries are never modified.** The skill has no path that calls `specify initiative amend` or `specify initiative transition` — a propose-time decision to modify an existing entry is surfaced to the human, who runs `specify initiative amend` by hand outside the authoring loop.
+- **Pre-existing entries are never modified.** The skill never calls `specify plan transition` on existing entries. The only `specify plan amend` call is step 3(d) Assignment (`--project`), which tags newly created entries — it does not modify pre-existing ones. A propose-time decision to modify an existing entry is surfaced to the human, who runs `specify plan amend` by hand outside the authoring loop.
 
 No new flag is introduced beyond `--extend`. A future Change may add `--force-discovery` if refreshing the inventory mid-plan becomes a real need; RFC-2 L3.F explicitly does not.
 
@@ -317,11 +317,11 @@ Emit a readiness report, the would-be-produced capability inventory, and the wou
 Under `--dry-run` the skill MUST NOT:
 
 - create `.specify/plans/<initiative-name>/`;
-- shell out to `specify initiative init`, `specify initiative create`, `specify initiative amend`, or `specify initiative transition`;
+- shell out to `specify plan init`, `specify plan create`, `specify plan amend`, or `specify plan transition`;
 - shell out to **`specify workspace sync`** or write **`.specify/plans/<initiative-name>/workspace.md`** (RFC-3a Layer 2 sync-peers dry-run rule);
 - write any file under `.specify/` (including under `.specify/workspace/`).
 
-The discovery brief's input-reading side (reading `--from` files, invoking `/spec:analyze` against `--source` / `--against` inputs) runs under `--dry-run` so the preview inventory is real; only the write to `discovery.md` and the `.specify/plans/<name>/` directory creation are suppressed. The propose brief's slice-decomposition pass also runs (the preview plan shape is real against the previewed inventory); the accept / edit / reject loop and every `specify initiative create` call are skipped.
+The discovery brief's input-reading side (reading `--from` files, invoking `/spec:analyze` against `--source` / `--against` inputs) runs under `--dry-run` so the preview inventory is real; only the write to `discovery.md` and the `.specify/plans/<name>/` directory creation are suppressed. The propose brief's slice-decomposition pass also runs (the preview plan shape is real against the previewed inventory); the accept / edit / reject loop and every `specify plan create` call are skipped.
 
 Output shape:
 
@@ -360,7 +360,7 @@ Would propose plan entries (not written):
        description: <one-line summary>
   2. ...
 
-Dry-run — no specify initiative create calls made.
+Dry-run — no specify plan create calls made.
 
 Would write .specify/plans/<initiative-name>/proposal.md:
 
@@ -375,7 +375,7 @@ Would write .specify/plans/<initiative-name>/proposal.md:
 
 ## Notes
 
-- Dry-run: no specify initiative create calls made; no entries written.
+- Dry-run: no specify plan create calls made; no entries written.
 
 Would assign projects (multi-repo only; not written):
 
@@ -384,7 +384,7 @@ Would assign projects (multi-repo only; not written):
 | 1 | <slice-name> | <project-name> | <rationale> |
 | 2 | ... | ... | ... |
 
-Dry-run — no specify initiative amend --project calls made.
+Dry-run — no specify plan amend --project calls made.
 
 No files written. Remove --dry-run to run the pipeline.
 ```
@@ -401,18 +401,18 @@ Section rules:
 ## Non-goals
 
 - **Execute the plan.** Never. Execution is `/spec:execute`'s concern (Layer 2). `/spec:plan` exits with a hand-off summary that points the operator at `/spec:execute --loop`.
-- **Modify existing plan entries.** Never. `--extend` is append-only; pre-existing entries are left untouched. Editing a pending entry mid-authoring is done via `specify initiative amend` by the human, not by this skill.
-- **Skip `specify initiative validate`.** Never. Step 4 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero. This is the contract the skill owes its caller.
-- **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/spec:execute`.** Never. `/spec:plan` only invokes the briefs declared in `schema.yaml`'s `pipeline.plan`, plus the `specify initiative` CLI for scaffolding, entry creation, and validation.
-- **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/spec:execute`; authoring runs outside that lock. A human running `specify initiative transition` or `specify initiative amend` by hand while `/spec:plan` is authoring is safe because every write goes through the atomic library functions.
-- **Write `.specify/plan.yaml` directly.** Never. Every write goes through `specify initiative init` (step 2, skipped under `--extend`) or `specify initiative create` (step 3c, one call per accepted slice).
+- **Modify existing plan entries.** Never. `--extend` is append-only; pre-existing entries are left untouched. Editing a pending entry mid-authoring is done via `specify plan amend` by the human, not by this skill.
+- **Skip `specify plan validate`.** Never. Step 4 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero. This is the contract the skill owes its caller.
+- **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/spec:execute`.** Never. `/spec:plan` only invokes the briefs declared in `schema.yaml`'s `pipeline.plan`, plus the `specify plan` CLI for scaffolding, entry creation, and validation.
+- **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/spec:execute`; authoring runs outside that lock. A human running `specify plan transition` or `specify plan amend` by hand while `/spec:plan` is authoring is safe because every write goes through the atomic library functions.
+- **Write `.specify/plan.yaml` directly.** Never. Every write goes through `specify plan init` (step 2, skipped under `--extend`), `specify plan create` (step 3c, one call per accepted slice), or `specify plan amend` (step 3d, `--project` assignment on multi-repo plans).
 - **Clone git URLs from this skill.** Never for **discovery** inputs: `--source` git URLs are passed through to `/spec:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync` (Layer 1 CLI), invoked only in the sync-peers step when `len(registry.projects) > 1`.
 - **Author propose brief bodies.** Never. The propose brief body is owned by the schema (for Omnia, [`schemas/omnia/briefs/plan/propose.md`](../docs/links.md#omnia-propose) from L3.D); the skill only drives the accept / edit / reject loop against whatever the brief emits.
-- **Auto-repair a failing `specify initiative validate`.** Never. Step 4's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify initiative amend` / `specify initiative transition skipped` fix, never an in-skill edit.
+- **Auto-repair a failing `specify plan validate`.** Never. Step 4's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify plan amend` / `specify plan transition skipped` fix, never an in-skill edit.
 
 The state the skill mutates:
 
-1. `.specify/plan.yaml` via `specify initiative init` (step 2; skipped under `--extend`) and `specify initiative create` (step 3c; once per accepted slice).
+1. `.specify/plan.yaml` via `specify plan init` (step 2; skipped under `--extend`), `specify plan create` (step 3c; once per accepted slice), and `specify plan amend` (step 3d; `--project` assignment on multi-repo plans).
 2. `.specify/plans/<initiative-name>/discovery.md` written by the discovery brief (step 3a).
 3. `.specify/plans/<initiative-name>/proposal.md` written by the propose brief (step 3c).
 4. `.specify/plans/<initiative-name>/workspace.md` written by step 3(b) when the registry declares more than one project.
@@ -421,9 +421,9 @@ No other on-disk state is written by `/spec:plan` itself.
 
 ## Guardrails
 
-- Never hand-edit `.specify/plan.yaml`. Route every write through `specify initiative init` (step 2) or `specify initiative create` (step 3c). The single-writer invariant in RFC-2 §"Plan Mutation and Crash Safety" depends on it.
-- Never skip `specify initiative validate` (step 4). A plan that ships to `/spec:execute` without a clean validate is a regression; the validator is the contract the skill owes the downstream driver.
+- Never hand-edit `.specify/plan.yaml`. Route every write through `specify plan init` (step 2), `specify plan create` (step 3c), or `specify plan amend` (step 3d, `--project` assignment). The single-writer invariant in RFC-2 §"Plan Mutation and Crash Safety" depends on it.
+- Never skip `specify plan validate` (step 4). A plan that ships to `/spec:execute` without a clean validate is a regression; the validator is the contract the skill owes the downstream driver.
 - Validate `<initiative-name>` before any filesystem read or CLI shell-out. A bad name should never leave a half-written plan behind.
-- For `--dry-run` specifically: the skill MUST NOT shell out to `specify initiative init`, `specify initiative create`, `specify initiative amend`, or `specify initiative transition`; MUST NOT create `.specify/plans/<name>/`; MUST NOT write `discovery.md` or any other file under `.specify/`. The discovery brief's input-reading side still runs so the stdout inventory preview is real; only the write-out and directory creation are suppressed. The first-line banner prefixes the rendered output with `[dry-run] ` (the body lines do not need a per-line prefix — the banner is enough).
-- For `--extend` specifically: step 2 is skipped in full; step 3(c) only appends entries via `specify initiative create` — it never calls `specify initiative amend` or `specify initiative transition` on existing entries. Draft slices whose names collide with existing plan entries are skipped with decision `skip-existing` in `proposal.md`; the human is not re-prompted for those. A propose-time decision to modify an existing entry is surfaced to the human, who runs `specify initiative amend` by hand outside the authoring loop.
+- For `--dry-run` specifically: the skill MUST NOT shell out to `specify plan init`, `specify plan create`, `specify plan amend`, or `specify plan transition`; MUST NOT create `.specify/plans/<name>/`; MUST NOT write `discovery.md` or any other file under `.specify/`. The discovery brief's input-reading side still runs so the stdout inventory preview is real; only the write-out and directory creation are suppressed. The first-line banner prefixes the rendered output with `[dry-run] ` (the body lines do not need a per-line prefix — the banner is enough).
+- For `--extend` specifically: step 2 is skipped in full; step 3(c) only appends entries via `specify plan create` — it never calls `specify plan transition` on existing entries. The only `specify plan amend` call is step 3(d) Assignment (`--project`), which tags newly created entries, not pre-existing ones. Draft slices whose names collide with existing plan entries are skipped with decision `skip-existing` in `proposal.md`; the human is not re-prompted for those. A propose-time decision to modify an existing entry is surfaced to the human, who runs `specify plan amend` by hand outside the authoring loop.
 - Treat an unexpected `specify schema pipeline --phase plan` response shape (missing keys, unknown brief IDs, empty pipeline) as a hard failure: print the raw JSON and exit non-zero. Do not speculate about brief ordering.

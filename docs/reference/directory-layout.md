@@ -87,7 +87,7 @@ Working directories for initiative authoring. Each plan gets a subdirectory cont
 
 ### `workspace/`
 
-Cloned peer repositories for multi-repo planning. Created by `specify initiative workspace sync` during `/spec:plan` when `registry.yaml` declares multiple projects. These clones are read-only and used for cross-repo analysis.
+Cloned peer repositories for multi-repo planning. Created by `specify workspace sync` during `/spec:plan` when `registry.yaml` declares multiple projects. These clones are read-only and used for cross-repo analysis.
 
 ### `archive/`
 

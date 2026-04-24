@@ -4,7 +4,7 @@ Canonical JSON Schema (2020-12) for the response body emitted by `specify plan v
 
 ## Producer
 
-`specify initiative validate --format json` (wired through [`run_plan_validate`](https://github.com/augentic/specify-cli/blob/rfc-2/src/main.rs)) always emits an object shaped like:
+`specify plan validate --format json` (wired through [`run_plan_validate`](https://github.com/augentic/specify-cli/blob/rfc-2/src/main.rs)) always emits an object shaped like:
 
 ```json
 {
@@ -29,7 +29,7 @@ Canonical JSON Schema (2020-12) for the response body emitted by `specify plan v
 
 ## Consumer wiring
 
-Skills that shell out to `specify initiative validate --format json` should parse the response against this schema before branching on `results`. The recommended pattern in a Node- or Python-driven runner is to pin the schema via the checked-in file path rather than fetching it at runtime so validation stays hermetic:
+Skills that shell out to `specify plan validate --format json` should parse the response against this schema before branching on `results`. The recommended pattern in a Node- or Python-driven runner is to pin the schema via the checked-in file path rather than fetching it at runtime so validation stays hermetic:
 
 ```ts
 // TypeScript / ajv

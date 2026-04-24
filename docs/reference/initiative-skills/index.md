@@ -26,4 +26,4 @@ Layer 3 skills are optional. You can use the define-build-merge loop without eve
 - **Layer 3 + Layer 2 (`/spec:plan` then `/spec:execute`)** -- author a plan, then automate execution.
 - **Layer 2 alone** -- skip plans entirely, define and build changes one at a time.
 
-The Layer 1 CLI commands (`specify initiative ...`) remain available as manual fallback at every level.
+The Layer 1 CLI commands (`specify plan ...`) remain available as manual fallback at every level.

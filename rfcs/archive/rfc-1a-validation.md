@@ -1,6 +1,6 @@
 # RFC-1a: Deferred Validation
 
-> Status: Draft · Parent: [RFC-1](rfc-1-cli.md)
+> Status: Implemented · Parent: [RFC-1](rfc-1-cli.md)
 
 ## Abstract
 

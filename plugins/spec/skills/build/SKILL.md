@@ -9,7 +9,7 @@ Implement tasks from a Specify change.
 
 Deterministic bookkeeping — change selection, lifecycle transitions, schema resolution, brief completion checks, task progress counting, checkbox flips — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the build brief body, dispatching skill directives, and making code changes.
 
-When working plan-driven (a `.specify/plan.yaml` exists), the corresponding plan entry should already be `in-progress` — the human runs `specify initiative transition <name> in-progress` once before `/spec:build` starts. `/spec:build` itself does not touch `plan.yaml`; the plan transition out of `in-progress` happens from `/spec:merge` (→ `done`) or `/spec:drop` (→ `failed` / `blocked`).
+When working plan-driven (a `.specify/plan.yaml` exists), the corresponding plan entry should already be `in-progress` — the human runs `specify plan transition <name> in-progress` once before `/spec:build` starts. `/spec:build` itself does not touch `plan.yaml`; the plan transition out of `in-progress` happens from `/spec:merge` (→ `done`) or `/spec:drop` (→ `failed` / `blocked`).
 
 > See `rfcs/archive/rfc-2-execution.md` §"Execution Model Overview" and `rfcs/assets/execution.png` for where this skill sits in the `/spec:execute` driver loop.
 
@@ -47,16 +47,16 @@ Kinds:
 
 ## Mutating the plan mid-run (RFC-2 §"Phase Boundary → Rule 2")
 
-Phases may shell out to `specify initiative create` / `specify initiative amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
+Phases may shell out to `specify plan create` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
 
 Allowed:
 
-- `specify initiative create <new-name> --description "...modifies <current-name>..."` when implementation uncovers a neighbouring defect or a prerequisite refactor that warrants its own change.
-- `specify initiative amend <current-name> --depends-on <newly-needed>` when the phase discovers a dependency on another plan entry. `amend` may target the currently-active entry — non-`status` fields on an `in-progress` entry are fair game.
+- `specify plan create <new-name> --description "...modifies <current-name>..."` when implementation uncovers a neighbouring defect or a prerequisite refactor that warrants its own change.
+- `specify plan amend <current-name> --depends-on <newly-needed>` when the phase discovers a dependency on another plan entry. `amend` may target the currently-active entry — non-`status` fields on an `in-progress` entry are fair game.
 
 Forbidden:
 
-- Writing `status` through `amend`. The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/spec:execute`'s sole prerogative via `specify initiative transition`.
+- Writing `status` through `amend`. The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/spec:execute`'s sole prerogative via `specify plan transition`.
 - Hand-editing `.specify/plan.yaml` or `.specify/changes/<name>/.metadata.yaml`. Always route through the CLI so the single-writer invariant in RFC-2 §"Plan Mutation and Crash Safety" holds.
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.

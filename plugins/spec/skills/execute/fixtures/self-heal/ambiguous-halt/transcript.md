@@ -11,7 +11,7 @@ Self-heal:
 
 1. Scans `plan.yaml`, finds `shopping-cart` with `status: in-progress`.
 2. Reads `metadata.yaml`. Detects the contradiction (`outcome.phase == merge` but `LifecycleStatus == defining`).
-3. Does NOT call `specify initiative transition`.
+3. Does NOT call `specify plan transition`.
 4. Does NOT call `/spec:drop`.
 5. Does NOT append a `type: recovery` journal entry.
 6. Emits one diagnostic line to stdout, releases the driver lock (step 13 of the supervised run — even halts run the release step), and exits with code 1.

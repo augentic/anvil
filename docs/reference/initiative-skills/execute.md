@@ -24,16 +24,16 @@ Drive an initiative through its plan, automating define-build-merge.
 
 ## Artifacts produced
 
-None of its own. Invokes `/spec:define`, `/spec:build`, `/spec:merge` (and `/spec:drop` on failure) for each change. Writes plan entry transitions via `specify initiative transition`. Manages `.specify/plan.lock` for concurrency safety.
+None of its own. Invokes `/spec:define`, `/spec:build`, `/spec:merge` (and `/spec:drop` on failure) for each change. Writes plan entry transitions via `specify plan transition`. Manages `.specify/plan.lock` for concurrency safety.
 
 ## Behavior
 
 ### Per-change algorithm
 
-1. **Pick next.** `specify initiative next` returns the first `pending` entry whose `depends-on` are all `done`.
-2. **Lock.** Acquires `.specify/plan.lock` via `specify initiative lock acquire`.
+1. **Pick next.** `specify plan next` returns the first `pending` entry whose `depends-on` are all `done`.
+2. **Lock.** Acquires `.specify/plan.lock` via `specify plan lock acquire`.
 3. **Self-heal.** On startup, checks for stale `in-progress` entries from a prior crashed run and resolves them.
-4. **Transition.** Moves the entry to `in-progress` via `specify initiative transition`.
+4. **Transition.** Moves the entry to `in-progress` via `specify plan transition`.
 5. **Define.** Invokes `/spec:define` with the entry's description and sources.
 6. **Build.** Invokes `/spec:build`.
 7. **Merge.** Invokes `/spec:merge`.
@@ -86,7 +86,7 @@ Transitions plan entries: `pending --> in-progress --> done|failed|blocked`.
 
 ```text
 /spec:plan migrate-to-v2 --source monolith=/path/to/legacy
-specify initiative status          # review the plan
+specify plan status                # review the plan
 /spec:execute --loop               # run until all-done
 ```
 

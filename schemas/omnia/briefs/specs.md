@@ -73,7 +73,7 @@ If the inferred affects set is non-empty, run the following four-step pass. If t
 
 3. **Leave unmatched capabilities as fresh specs.** Capabilities whose names do not match any inferred affects target keep the new-crate spec form already written by the per-source merge. No rewrite, no additional work.
 
-4. **Warn on inferred targets with no extract match.** For each name in the inferred affects set with no corresponding `<change-dir>/specs/<name>/spec.md` after the merge, emit a brief-level warning naming the orphan target. Suggest that the description may be inaccurate — the operator can amend it via `specify initiative amend <change> --description "..."`.
+4. **Warn on inferred targets with no extract match.** For each name in the inferred affects set with no corresponding `<change-dir>/specs/<name>/spec.md` after the merge, emit a brief-level warning naming the orphan target. Suggest that the description may be inaccurate — the operator can amend it via `specify plan amend <change> --description "..."`.
 
    The warning is informational; the brief continues.
 

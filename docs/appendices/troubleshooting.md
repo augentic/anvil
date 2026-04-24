@@ -69,8 +69,8 @@ Common failure modes and their resolutions.
 **Cause:** Another `/spec:execute` session is running, or a previous session crashed without releasing the lock.
 
 **Resolution:**
-1. Check the lock: `specify initiative lock status`
-2. If the PID is not running, release it: `specify initiative lock release`
+1. Check the lock: `specify plan lock status`
+2. If the PID is not running, release it: `specify plan lock release`
 3. If another session is running, wait for it to finish.
 
 ### Self-heal on startup
@@ -86,7 +86,7 @@ Common failure modes and their resolutions.
 If self-heal itself fails, manually resolve:
 1. Check the stale change: `specify change status <name>`
 2. Complete or drop it manually.
-3. Transition the plan entry: `specify initiative transition <name> done|failed`
+3. Transition the plan entry: `specify plan transition <name> done|failed`
 
 ### Execution stuck
 
@@ -95,12 +95,12 @@ If self-heal itself fails, manually resolve:
 **Cause:** No `pending` entry has all dependencies satisfied. Typically because a dependency is `failed` or `blocked`.
 
 **Resolution:**
-1. Check plan status: `specify initiative status`
+1. Check plan status: `specify plan status`
 2. Identify the blocking entries.
 3. Options:
-   - Fix and retry the failed entry: `specify initiative transition <name> pending` then `/spec:execute`
-   - Skip it: `specify initiative transition <name> skipped`
-   - Remove the dependency: `specify initiative amend <downstream> --depends-on <updated-list>`
+   - Fix and retry the failed entry: `specify plan transition <name> pending` then `/spec:execute`
+   - Skip it: `specify plan transition <name> skipped`
+   - Remove the dependency: `specify plan amend <downstream> --depends-on <updated-list>`
 
 ### Phase failure during execution
 

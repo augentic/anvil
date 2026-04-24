@@ -30,8 +30,8 @@ rules:
 ## plan.yaml
 
 **Location:** `.specify/plan.yaml`
-**Created by:** `/spec:plan` (via `specify initiative init` + `specify initiative create`)
-**Modified by:** `specify initiative amend`, `specify initiative transition`
+**Created by:** `/spec:plan` (via `specify plan init` + `specify plan create`)
+**Modified by:** `specify plan amend`, `specify plan transition`
 
 The initiative's table of contents -- an ordered, dependency-aware list of changes.
 

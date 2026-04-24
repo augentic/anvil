@@ -40,7 +40,7 @@ Step 2/3: build
   Summary: Missing API contract from traffic service.
   Journal: .specify/changes/operator-dashboard/journal.yaml
   Action needed: Fix the underlying error, then retry via
-    specify initiative transition operator-dashboard pending
+    specify plan transition operator-dashboard pending
   Status: failed
 
 ---
@@ -58,4 +58,4 @@ Failed:
 Pending (dependencies not satisfied):
   - traffic-api (waits on: ingest-pipeline)
 
-Next action: Resolve blocked/failed entries (specify initiative amend + specify initiative transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify initiative archive --force.
+Next action: Resolve blocked/failed entries (specify plan amend + specify plan transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify plan archive --force.

@@ -34,7 +34,8 @@ The CLI owns operations that require understanding `.specify/` directory structu
 | Family | Purpose | Reference |
 |--------|---------|-----------|
 | [specify change](change.md) | Create, inspect, transition, and archive individual changes | Layer 2 operations |
-| [specify initiative](initiative.md) | Scaffold, populate, validate, and transition initiative plans | Layer 3 operations |
+| [specify plan](plan.md) | Scaffold, populate, validate, and transition initiative plans | Layer 3 operations |
+| [specify initiative](initiative.md) | Manage initiative brief and platform registry | Layer 3 setup |
 | [specify schema](schema.md) | Schema resolution and brief pipeline queries | Schema infrastructure |
 | [specify spec](spec.md) | Merge preview and baseline drift detection | Pre-merge checks |
 | [specify validate](validate.md) | Structural and semantic artifact validation | Quality gates |

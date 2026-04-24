@@ -2,7 +2,7 @@
 
 Interactive record of the six-slice Vectis authoring run pinned by the companion fixtures ([`discovery.md`](discovery.md), [`expected-proposal.md`](expected-proposal.md), [`expected-plan.yaml`](expected-plan.yaml)). Prefix legend: `>` is operator input; lines without `>` are the skill's output or a shelled-out CLI invocation.
 
-Slices are presented in the Vectis heuristic order — shared-core first (slices 1–2), design-system next (slice 4), per-shell last (slices 5–6) — with cross-cutting refactors (slice 3) presented *before* the shell slices that would seed their edges so a reject only trims upcoming drafts, never already-written entries. The skill drops stale `depends-on` edges from draft slices after a reject, so no downstream amend is ever needed (the skill never calls `specify initiative amend` — that is a human verb).
+Slices are presented in the Vectis heuristic order — shared-core first (slices 1–2), design-system next (slice 4), per-shell last (slices 5–6) — with cross-cutting refactors (slice 3) presented *before* the shell slices that would seed their edges so a reject only trims upcoming drafts, never already-written entries. The skill drops stale `depends-on` edges from draft slices after a reject, so no downstream amend is ever needed (the skill never calls `specify plan amend` — that is a human verb).
 
 ## Slice 1/6: counter-core
 
@@ -21,7 +21,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify initiative create counter-core \
+$ specify plan create counter-core \
     --sources legacy-ios \
     --sources legacy-android \
     --description "Increment/decrement a single integer with persistent storage, lifted into a Crux App trait."
@@ -47,7 +47,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify initiative create theme-core \
+$ specify plan create theme-core \
     --sources legacy-ios \
     --sources legacy-android \
     --description "Resolve the active light/dark theme and emit theme tokens to the shell via ViewModel."
@@ -76,7 +76,7 @@ Accept? [y / edit / no / abort]
 > lands and the full mapping surface is visible.
 ```
 
-Decision: **reject**. Plan entry: — (no `specify initiative create` call; no `specify initiative amend` either — the skill only trims `extract-shared-viewmodel-adapter` from *upcoming* slice drafts, never from already-written entries).
+Decision: **reject**. Plan entry: — (no `specify plan create` call; no `specify plan amend` either — the skill only trims `extract-shared-viewmodel-adapter` from *upcoming* slice drafts, never from already-written entries).
 
 The brief's remaining drafts had seeded `depends-on: [extract-shared-viewmodel-adapter]` on slices 5 (`counter-ios-view`) and 6 (`counter-android-view`). The skill drops that edge from both draft slices before presenting them.
 
@@ -98,7 +98,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify initiative create design-tokens \
+$ specify plan create design-tokens \
     --sources legacy-tokens \
     --depends-on theme-core \
     --description "Colour, typography, and spacing tokens generated into the iOS Swift Package and the Android vectis-design Compose library."
@@ -125,7 +125,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify initiative create counter-ios-view \
+$ specify plan create counter-ios-view \
     --sources legacy-ios \
     --depends-on counter-core \
     --depends-on design-tokens \
@@ -183,7 +183,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify initiative create counter-android-view \
+$ specify plan create counter-android-view \
     --sources legacy-android \
     --depends-on counter-core \
     --depends-on design-tokens \
@@ -196,7 +196,7 @@ Decision: **edit → accept**. Plan entry: `counter-android-view`.
 ## Final validation
 
 ```text
-$ specify initiative validate
+$ specify plan validate
 OK (no findings)
 ```
 
@@ -209,6 +209,6 @@ Proposal: .specify/plans/counter-migration/proposal.md
 Validate: OK
 
 Next:
-  - Review: specify initiative status
+  - Review: specify plan status
   - Execute: /spec:execute --loop
 ```

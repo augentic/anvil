@@ -48,13 +48,13 @@ The skill runs a fixed three-phase internal flow:
 
 1. **Analyse inputs.** Dispatches every input to `/spec:analyze`, which branches on `kind` (`legacy-code` or `documentation`) and emits capability summaries into `discovery.md`.
 2. **Sync peers.** *(Runs only when `registry.yaml` declares more than one project.)* Clones every registry project into `.specify/workspace/<project>/` and inventories each repo's baseline specs. Emits `workspace.md`.
-3. **Generate plan.** Combines the capability inventory with the peer inventory (when present) into an ordered, dependency-aware list of changes. Presents each proposed change ("slice") for interactive accept / edit / reject. Writes accepted slices via `specify initiative create`.
+3. **Generate plan.** Combines the capability inventory with the peer inventory (when present) into an ordered, dependency-aware list of changes. Presents each proposed change ("slice") for interactive accept / edit / reject. Writes accepted slices via `specify plan create`.
 
-After the loop, runs `specify initiative validate` to check structural integrity (no cycles, no dangling dependencies).
+After the loop, runs `specify plan validate` to check structural integrity (no cycles, no dangling dependencies).
 
 ## Lifecycle transitions
 
-Creates plan entries in `pending` state via `specify initiative create`.
+Creates plan entries in `pending` state via `specify plan create`.
 
 ## Error modes
 

@@ -83,19 +83,25 @@ Three layers, independently useful, stacked top to bottom:
 
 - **`/spec:plan <initiative-name> --source <key>=<path-or-url> ...`** authors `plan.yaml` (Layer 3). Runs `pipeline.plan` — discovery (`/spec:analyze`), optional **sync-peers** + `workspace.md` when `.specify/registry.yaml` lists multiple projects, then propose — with an interactive accept / edit / reject loop per slice. See [rfcs/rfc-3a-monoliths.md](rfcs/rfc-3a-monoliths.md).
 - **`/spec:execute --loop`** drives the plan to completion (Layer 2). Picks the next eligible entry, runs `/spec:define → /spec:build → /spec:merge`, transitions status, repeats until `all-done` or `stuck`. `--dry-run` previews; a bare invocation runs one change then stops.
-- **`specify initiative {init, validate, next, status, create, amend, transition, archive, lock, brief, registry, workspace}`** are the Layer 1 CLI primitives both skills shell out to. They stay available for hand-driven initiatives where automation is overkill:
+- **`specify plan {init, validate, next, status, create, amend, transition, archive, lock}`** are the Layer 1 plan CRUD and lifecycle CLI primitives both skills shell out to. They stay available for hand-driven initiatives where automation is overkill:
 
-  - `specify initiative init <name> [--source ...]` -- Scaffold `.specify/plan.yaml` with an empty `changes:` list.
-  - `specify initiative validate` -- Structural and referential integrity checks (duplicate names, dependency cycles, unknown `depends-on` / `affects` / `sources`, at most one `in-progress`).
-  - `specify initiative next` -- Report the next eligible entry (first `pending` whose `depends-on` is all `done`).
-  - `specify initiative status` -- Render progress in topological order with per-status counts, the active `in-progress` entry, and any `status-reason`.
-  - `specify initiative create <name>` -- Append a new entry (starts `pending`).
-  - `specify initiative amend <name>` -- Edit non-status fields on an existing entry.
-  - `specify initiative transition <name> <target>` -- Move an entry through the status state machine (`pending → in-progress → done`, plus `blocked`, `failed`, `skipped`).
-  - `specify initiative archive` -- Move a completed `plan.yaml` (and its `.specify/plans/<name>/` working directory) to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
-  - `specify initiative lock {acquire, release, status}` -- Advisory `.specify/plan.lock` PID stamp held by the `/spec:execute` driver.
+  - `specify plan init <name> [--source ...]` -- Scaffold `.specify/plan.yaml` with an empty `changes:` list.
+  - `specify plan validate` -- Structural and referential integrity checks (duplicate names, dependency cycles, unknown `depends-on` / `affects` / `sources`, at most one `in-progress`).
+  - `specify plan next` -- Report the next eligible entry (first `pending` whose `depends-on` is all `done`).
+  - `specify plan status` -- Render progress in topological order with per-status counts, the active `in-progress` entry, and any `status-reason`.
+  - `specify plan create <name>` -- Append a new entry (starts `pending`).
+  - `specify plan amend <name>` -- Edit non-status fields on an existing entry.
+  - `specify plan transition <name> <target>` -- Move an entry through the status state machine (`pending → in-progress → done`, plus `blocked`, `failed`, `skipped`).
+  - `specify plan archive` -- Move a completed `plan.yaml` (and its `.specify/plans/<name>/` working directory) to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+  - `specify plan lock {acquire, release, status}` -- Advisory `.specify/plan.lock` PID stamp held by the `/spec:execute` driver.
 
-A typical initiative: `/spec:plan migrate-to-v2 --source monolith=/path/to/legacy` → review the authored plan with `specify initiative status` → `/spec:execute --loop` until it reports `all-done`.
+- **`specify initiative {brief, registry}`** -- Operator brief and platform registry.
+  - `specify initiative brief {init, show}` -- Owns `.specify/initiative.md`.
+  - `specify initiative registry {show, validate}` -- Owns `.specify/registry.yaml`.
+
+- **`specify workspace {sync, status}`** -- Materialises `.specify/workspace/<peer>/` for multi-repo planning.
+
+A typical initiative: `/spec:plan migrate-to-v2 --source monolith=/path/to/legacy` → review the authored plan with `specify plan status` → `/spec:execute --loop` until it reports `all-done`.
 
 ## Plugins
 

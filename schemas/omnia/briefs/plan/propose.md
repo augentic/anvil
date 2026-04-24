@@ -5,12 +5,12 @@ needs: [discovery]
 generates: .specify/plans/<name>/proposal.md
 ---
 
-Turn the capability inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered capability. Capability boundaries were decided upstream by `/spec:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify initiative create` for every accepted slice. This is the single-writer edge for `plan.yaml`: every entry is added via `specify initiative create` — the brief never edits `plan.yaml` directly.
+Turn the capability inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered capability. Capability boundaries were decided upstream by `/spec:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify plan create` for every accepted slice. This is the single-writer edge for `plan.yaml`: every entry is added via `specify plan create` — the brief never edits `plan.yaml` directly.
 
 ## Input
 
 - `.specify/plans/<name>/discovery.md` (authored by `discovery.md`). If the file is missing, stop and report — the discovery brief must run first.
-- **`.specify/plans/<name>/workspace.md`** when present (multi-repo / Layer 2). Authored by `/spec:plan` step 3(a½) after `specify initiative workspace sync`. Summarises each peer under `.specify/workspace/<project>/` so propose can attach capabilities that land in a peer repo. When absent, assume single-repo mode — every `<!-- source-key: <k> -->` MUST resolve to a key in the initiative plan's top-level `sources:` map.
+- **`.specify/plans/<name>/workspace.md`** when present (multi-repo / Layer 2). Authored by `/spec:plan` step 3(b) after `specify workspace sync`. Summarises each peer under `.specify/workspace/<project>/` so propose can attach capabilities that land in a peer repo. When absent, assume single-repo mode — every `<!-- source-key: <k> -->` MUST resolve to a key in the initiative plan's top-level `sources:` map.
 - Assumed shape: unified capability summaries as `### <name>` headings + fenced YAML (`summary`, `sources`, `depends-on`, optional `hints`, `confidence`), each prefixed by a `<!-- source-key: <k> -->` HTML comment. Optional trailing `## Constraints` and `## Open questions` sections (documentation inputs only) are operator context; they do not drive slice emission.
 
 ## Decomposition — 1:1 capability → slice
@@ -45,7 +45,7 @@ Capabilities produced from `/spec:analyze --kind documentation` carry `sources:`
 
 ### Emit order
 
-Emit in dependency order using `depends-on`: leaves first, transitive dependents later. Within a layer, emit alphabetically by `name`. This mirrors the topological order `specify initiative next` walks at execution time.
+Emit in dependency order using `depends-on`: leaves first, transitive dependents later. Within a layer, emit alphabetically by `name`. This mirrors the topological order `specify plan next` walks at execution time.
 
 ### Rich description generation
 
@@ -67,12 +67,12 @@ The generated description is presented to the operator in the interactive loop a
 
 Capability names flow directly into change names; the one-WASM-crate-per-change convention is preserved at `/spec:define` time, not here. No grouping, no renaming, no cross-capability merges in this brief — edits happen through the interactive loop, one slice at a time.
 
-## `specify initiative create` invocation
+## `specify plan create` invocation
 
 For each accepted slice, shell out once:
 
 ```text
-specify initiative create <name> \
+specify plan create <name> \
     --sources <source-key> \
     --depends-on <dep1> [--depends-on <dep2> ...] \
     --description "<rich prose>"
@@ -89,10 +89,10 @@ For each candidate slice in emit order:
 3. Show **depends-on** graph preview.
 4. If `confidence: low`, prepend **⚠ review before accepting** to the first line of the prompt.
 5. Accept one of four actions:
-   - **accept** — shell out to `specify initiative create` with the mapped flags above. Record the entry in the proposal table.
+   - **accept** — shell out to `specify plan create` with the mapped flags above. Record the entry in the proposal table.
    - **edit** — reprompt for changed field(s) (name, sources, depends-on, description) and re-present. Loop until accept or reject. Edits may rename the capability, drop a dependency edge, or refine the description prose.
    - **reject** — drop the slice. Upcoming slices with an implicit `depends-on` on this slice lose that edge before they are presented; if a later slice is semantically blocked by the rejection, flag it during its own review.
-   - **abort** — stop the loop. Already-accepted entries remain on disk (written by `specify initiative create`); the brief writes `proposal.md` with decisions to date and exits non-zero, pointing the operator at `/spec:plan --extend` to resume.
+   - **abort** — stop the loop. Already-accepted entries remain on disk (written by `specify plan create`); the brief writes `proposal.md` with decisions to date and exits non-zero, pointing the operator at `/spec:plan --extend` to resume.
 
 Present slices in the order the emit rule produces; do not re-order mid-loop beyond dropping stale dependency edges after a reject.
 
@@ -121,7 +121,7 @@ The table MUST include every slice presented to the human — edited and rejecte
 
 ## Final step
 
-After the last accepted slice, run `specify initiative validate`. If it reports errors, write the error block into the "Notes" section of `proposal.md` and stop — human triage is required before execution can begin. Do not attempt to auto-repair plan errors from within this brief.
+After the last accepted slice, run `specify plan validate`. If it reports errors, write the error block into the "Notes" section of `proposal.md` and stop — human triage is required before execution can begin. Do not attempt to auto-repair plan errors from within this brief.
 
 ## Example — monolith fixture
 
@@ -133,16 +133,16 @@ Given [`plugins/spec/skills/plan/fixtures/discovery/monolith/expected/discovery.
 
 Propose emits (dependency order, alphabetical within layer):
 
-1. ```text specify initiative create email-verification \
+1. ```text specify plan create email-verification \
        --sources monolith \
        --description "Verify a newly registered account via a one-time email token. Focus on src/auth/verify.ts."
    ```
 2. ```text
-   specify initiative create shared-validation \
+   specify plan create shared-validation \
        --sources monolith \
        --description "Validate common user-facing inputs with reusable primitives. Focus on src/common/validation/."
    ```
-3. ```text specify initiative create user-registration \
+3. ```text specify plan create user-registration \
        --sources monolith \
        --depends-on email-verification --depends-on shared-validation \
        --description "Create new user accounts with email verification. Relevant files: src/auth/verify.ts, src/users/register.ts, src/users/validation.ts. Delta-targets email-verification."
@@ -161,16 +161,16 @@ prose during the edit step (e.g. narrowing to
 Emit the proposed plan to stdout as a preview of the same table
 structure that would be written to `proposal.md`. Do NOT:
 
-- call `specify initiative create`,
+- call `specify plan create`,
 - write `proposal.md`,
-- run `specify initiative validate`.
+- run `specify plan validate`.
 
 `--dry-run` is read-only; it is safe to invoke repeatedly against
 the same discovery output.
 
 ## `--extend` behaviour
 
-Skip the `specify initiative init` step (the caller — typically
+Skip the `specify plan init` step (the caller — typically
 the `/spec:plan` skill — has already ensured `.specify/plan.yaml`
 exists). Still run propose against the existing plan: slices whose
 names collide with existing plan entries are skipped with a note

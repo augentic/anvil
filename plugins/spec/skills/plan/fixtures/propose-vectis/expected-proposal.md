@@ -19,4 +19,4 @@
 - Open questions from discovery answered inline:
   - *Should `theme-core` own the light/dark toggle state?* — yes, retained on `theme-core` (slice 2); the shells read it via the `ViewModel`.
   - *Do we ship the Android `vectis-design` library as a sibling module or a published artifact?* — sibling module in the counter app's Gradle build for this initiative; a standalone publication is deferred.
-- `specify initiative validate` — no errors.
+- `specify plan validate` — no errors.

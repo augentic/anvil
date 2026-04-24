@@ -1,6 +1,6 @@
 # RFC-1: `specify` CLI
 
-> Status: Draft · Depends: — · Enables: [RFC-2](../archive/rfc-2-execution.md), [RFC-3](../rfc-3a-plan.md), [RFC-4](../rfc-4-dsl.md), [RFC-5](../rfc-5-framework-lint.md)
+> Status: Implemented · Depends: — · Enables: [RFC-2](../archive/rfc-2-execution.md), [RFC-3](../rfc-3a-plan.md), [RFC-4](../rfc-4-dsl.md), [RFC-5](../rfc-5-framework-lint.md)
 
 ## Abstract
 

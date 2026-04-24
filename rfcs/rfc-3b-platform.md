@@ -1,6 +1,6 @@
 # RFC-3b: Platform Changes
 
-> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-3a](archive/rfc-3a-monoliths.md)
+> Status: Landed · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-3a](archive/rfc-3a-monoliths.md)
 
 ## Abstract
 
@@ -142,7 +142,7 @@ The assignment algorithm runs inside the **plan skill** (framework-level, not sc
 The plan skill's assignment step reads:
 
 1. **Newly created plan entries** — the entries written by the propose brief during step 3(c). Each carries `name`, `description`, `sources`, and `depends-on`, but no `project`.
-2. **`workspace.md`** — the peer inventory from step 3(b) (multi-repo only). Each peer's entry includes its baseline specs, schema, materialisation state, and the project's `description` from `registry.yaml`. `workspace.md` is the sole source for assignment signals — the plan skill does not read `registry.yaml` directly during this step.
+2. `**workspace.md*`* — the peer inventory from step 3(b) (multi-repo only). Each peer's entry includes its baseline specs, schema, materialisation state, and the project's `description` from `registry.yaml`. `workspace.md` is the sole source for assignment signals — the plan skill does not read `registry.yaml` directly during this step.
 
 ### Contract
 
@@ -253,7 +253,7 @@ The plan's top-level `sources` map is initiative-scoped and shared across all ch
 Merge commits inside workspace clones follow these rules:
 
 - **Branch.** Commits land on the clone's current HEAD — whatever branch `workspace sync` checked out (typically `main` or `master` for brownfield; the default branch from `git init` for greenfield). `workspace push` later creates or force-updates a `specify/<initiative-name>` branch from HEAD before pushing. This separation keeps merge simple (it doesn't need the initiative name) and puts branch-naming policy entirely in `workspace push`.
-- **Who commits.** `specify merge` (the CLI verb) auto-commits when it detects it is running inside a workspace clone. The heuristic is: CWD contains `.specify/project.yaml` **and** CWD is a subdirectory of a `.specify/workspace/` tree (i.e. an ancestor directory matches `*/.specify/workspace/*/`). The secondary check — CWD does **not** contain `.specify/plan.yaml` — is retained as a safety guard but is not sufficient on its own, because `plan.yaml` may be absent after `specify initiative archive`. The workspace-path ancestry test is the primary signal. The commit message follows the existing convention: `"specify: merge <change-name>"`.
+- **Who commits.** `specify merge` (the CLI verb) auto-commits when it detects it is running inside a workspace clone. The heuristic is: CWD contains `.specify/project.yaml` **and** CWD is a subdirectory of a `.specify/workspace/` tree (i.e. an ancestor directory matches `*/.specify/workspace/*/`). The secondary check — CWD does **not** contain `.specify/plan.yaml` — is retained as a safety guard but is not sufficient on its own, because `plan.yaml` may be absent after `specify plan archive`. The workspace-path ancestry test is the primary signal. The commit message follows the existing convention: `"specify: merge <change-name>"`.
 - **Git staging scope.** The auto-commit stages only `.specify/` subtrees: `git add .specify/specs/` (merged baselines) and `git add .specify/archive/` (archived change directory). Non-Specify files (application code, configuration, etc.) are never staged by the auto-commit. If the index already has staged changes from non-Specify files, they ride along in the commit — the commit-failure path (below) handles the case where this is undesirable. The commit message format `"specify: merge <change-name>"` is a hard contract pinned by the `execute-loop-transcript.md` fixture.
 - **Implementation location.** The auto-commit logic lives in `run_merge` in `src/main.rs` (post-`merge_change` call), not in `crates/merge/`. The merge engine stays git-unaware; the CLI handler owns the git integration.
 - **Commit failure.** If the git commit fails (dirty index from non-Specify files, merge conflicts in tracked files, etc.), `specify merge` still succeeds at the spec-merge level — the commit failure is a **warning**, not an error. `workspace push` will detect uncommitted changes and surface them as a per-project diagnostic. The operator resolves manually before pushing.
@@ -268,7 +268,7 @@ The execute skill's per-change algorithm (SKILL.md §Per-change algorithm) gains
 
 **New step: CWD routing.** Inserted after the `specify plan transition <name> in-progress` step and before the `/spec:define` invocation step. All subsequent step numbers in the SKILL.md shift by one.
 
-1. Read `project` from the `specify plan next` response (see §*`specify plan next` extension*).
+1. Read `project` from the `specify plan next` response (see §`*specify plan next` extension*).
 2. If `project` is non-null, resolve the target directory from `registry.yaml`: relative-path `url` → resolved filesystem path; remote `url` → `.specify/workspace/<name>/`.
 3. Check workspace freshness via `specify workspace status` for that slot. If `missing`, halt with a diagnostic pointing the operator at `specify workspace sync`. Release the lock and exit non-zero.
 4. Save CWD (the initiating repo root).
@@ -331,15 +331,15 @@ For greenfield projects whose remote repos do not yet exist, `workspace sync` an
 
 **Precondition.** The initiating repo must have a populated `.specify/.cache/` with schema definitions for every `schema` identifier referenced in `registry.yaml`. `workspace sync` does not download or populate schema caches; it reuses the initiating repo's cache. If a schema identifier in a registry entry has no corresponding cache entry in the initiating repo, the per-project bootstrap fails with a diagnostic pointing the operator at `/spec:init` in the initiating repo.
 
-**`workspace sync` (local bootstrapping).** For each registry project whose workspace slot is `missing`:
+`**workspace sync` (local bootstrapping).** For each registry project whose workspace slot is `missing`:
 
 1. Attempt a shallow clone from the registry entry's `url`. If the clone succeeds (brownfield), the slot is materialised as today.
 2. If the clone fails (404, repo not found) or the `url` is a relative path to a non-existent directory, treat the project as greenfield:
-   - Create the workspace slot directory (`mkdir -p .specify/workspace/<name>/`).
-   - `git init` inside the slot.
-   - `git remote add origin <url>` (from `registry.yaml`). The `url` must be a remote URL for greenfield projects — local paths have no meaningful remote to add.
-   - Resolve the schema source directory from the **initiating repo's** `.specify/.cache/` using the same `locate_schema_root` logic that `Schema::resolve` uses. For a bare schema identifier like `omnia@v1`, the resolved path is `<initiating-repo>/.specify/.cache/omnia@v1/`; for a URL-shaped identifier, the last non-empty path segment (before any `@ref`) names the subdirectory under `.cache/`. `workspace sync` calls `locate_schema_root(registry_entry.schema, initiating_repo_dir)` to obtain the path and passes it as `--schema-dir`. If the path does not exist, the per-project bootstrap fails with a diagnostic: `"schema '<identifier>' not cached in <initiating-repo>/.specify/.cache/; run /spec:init in the initiating repo first."` Then `chdir` into the workspace slot and run `specify init <registry-entry-schema> --schema-dir <resolved-cache-dir>` to scaffold `.specify/project.yaml`. No new CLI flags are needed — `workspace sync` uses the existing `specify init` positional + `--schema-dir` interface that the agent and skills already use. The `chdir` ensures `specify init` writes `.specify/project.yaml` into the slot, not the initiating repo.
-   - `git add . && git commit -m "Initial Specify scaffold"`.
+  - Create the workspace slot directory (`mkdir -p .specify/workspace/<name>/`).
+  - `git init` inside the slot.
+  - `git remote add origin <url>` (from `registry.yaml`). The `url` must be a remote URL for greenfield projects — local paths have no meaningful remote to add.
+  - Resolve the schema source directory from the **initiating repo's** `.specify/.cache/` using the same `locate_schema_root` logic that `Schema::resolve` uses. For a bare schema identifier like `omnia@v1`, the resolved path is `<initiating-repo>/.specify/.cache/omnia@v1/`; for a URL-shaped identifier, the last non-empty path segment (before any `@ref`) names the subdirectory under `.cache/`. `workspace sync` calls `locate_schema_root(registry_entry.schema, initiating_repo_dir)` to obtain the path and passes it as `--schema-dir`. If the path does not exist, the per-project bootstrap fails with a diagnostic: `"schema '<identifier>' not cached in <initiating-repo>/.specify/.cache/; run /spec:init in the initiating repo first."` Then `chdir` into the workspace slot and run `specify init <registry-entry-schema> --schema-dir <resolved-cache-dir>` to scaffold `.specify/project.yaml`. No new CLI flags are needed — `workspace sync` uses the existing `specify init` positional + `--schema-dir` interface that the agent and skills already use. The `chdir` ensures `specify init` writes `.specify/project.yaml` into the slot, not the initiating repo.
+  - `git add . && git commit -m "Initial Specify scaffold"`.
 
 **Error handling.** Each project's bootstrap is independent. A failure in one project (e.g. `specify init` fails because the schema name in `registry.yaml` is invalid, or `git init` fails due to filesystem permissions) is reported as a per-project error; sync continues to the next project.
 
@@ -363,7 +363,7 @@ specify workspace push [<project>...]
 
 Pushes workspace clones that have local commits back to their remote repositories. Omitting the project argument pushes all dirty clones.
 
-The initiative name used for branch naming (`specify/<initiative-name>`) is read from `.specify/plan.yaml`'s `name` field. `workspace push` loads the plan via `Plan::load` (the same path `specify plan status` uses) and reads `plan.name`. The plan is considered **active** when `.specify/plan.yaml` exists on disk — no further checks on entry statuses are required. If `.specify/plan.yaml` does not exist (never created, or already swept to `.specify/archive/plans/` by `specify initiative archive`), the verb exits non-zero with a diagnostic: `"No active plan found at .specify/plan.yaml. Run 'specify initiative init' to create one, or check whether the plan was already archived."`
+The initiative name used for branch naming (`specify/<initiative-name>`) is read from `.specify/plan.yaml`'s `name` field. `workspace push` loads the plan via `Plan::load` (the same path `specify plan status` uses) and reads `plan.name`. The plan is considered **active** when `.specify/plan.yaml` exists on disk — no further checks on entry statuses are required. If `.specify/plan.yaml` does not exist (never created, or already swept to `.specify/archive/plans/` by `specify plan archive`), the verb exits non-zero with a diagnostic: `"No active plan found at .specify/plan.yaml. Run 'specify plan init' to create one, or check whether the plan was already archived."`
 
 **Per-project algorithm:**
 
@@ -371,14 +371,14 @@ The initiative name used for branch naming (`specify/<initiative-name>`) is read
 2. **Branch.** Create or update `specify/<initiative-name>` from the clone's current HEAD.
 3. **Remote repo creation (greenfield).** Detect whether the remote repository exists via `gh repo view <org/name> --json name` (non-zero exit = does not exist). The `<org/name>` slug is extracted from the resolved remote URL by a `extract_github_slug` utility function with the following rules:
 
-   | URL form | Extraction rule | Example → slug |
-   |---|---|---|
-   | `git@github.com:<org>/<repo>.git` | strip `git@github.com:` prefix + `.git` suffix | `git@github.com:org/mobile.git` → `org/mobile` |
-   | `git@github.com:<org>/<repo>` | strip prefix only (no `.git`) | `git@github.com:org/mobile` → `org/mobile` |
-   | `https://github.com/<org>/<repo>.git` | strip scheme + host prefix + `.git` suffix | `https://github.com/org/mobile.git` → `org/mobile` |
-   | `https://github.com/<org>/<repo>` | strip scheme + host prefix | `https://github.com/org/mobile` → `org/mobile` |
-   | `ssh://git@github.com/<org>/<repo>.git` | strip scheme + user + host + leading `/` + `.git` | `ssh://git@github.com/org/mobile.git` → `org/mobile` |
-   | Any other form | returns `None` | `git@gitlab.com:org/repo.git` → `None` |
+  | URL form                                | Extraction rule                                   | Example → slug                                       |
+  | --------------------------------------- | ------------------------------------------------- | ---------------------------------------------------- |
+  | `git@github.com:<org>/<repo>.git`       | strip `git@github.com:` prefix + `.git` suffix    | `git@github.com:org/mobile.git` → `org/mobile`       |
+  | `git@github.com:<org>/<repo>`           | strip prefix only (no `.git`)                     | `git@github.com:org/mobile` → `org/mobile`           |
+  | `https://github.com/<org>/<repo>.git`   | strip scheme + host prefix + `.git` suffix        | `https://github.com/org/mobile.git` → `org/mobile`   |
+  | `https://github.com/<org>/<repo>`       | strip scheme + host prefix                        | `https://github.com/org/mobile` → `org/mobile`       |
+  | `ssh://git@github.com/<org>/<repo>.git` | strip scheme + user + host + leading `/` + `.git` | `ssh://git@github.com/org/mobile.git` → `org/mobile` |
+  | Any other form                          | returns `None`                                    | `git@gitlab.com:org/repo.git` → `None`               |
 
    When `extract_github_slug` returns `None`, skip repo creation and let the push step surface any authentication or not-found error. When it returns `Some(slug)`, check existence via `gh repo view <slug> --json name`. If the remote does not exist, create it via `gh repo create <slug> --private --source .`. This keeps GitHub API interaction at the write boundary — `workspace sync` is local-only. The extraction function has unit tests covering all six rows in the table above (see §*Test coverage*).
 4. **Push.** `git push --force-with-lease -u origin specify/<initiative-name>`. The lease guard prevents clobbering concurrent pushes to the same branch from another workspace (e.g. a teammate's parallel initiative run). If the lease check fails, the per-project status is `"failed"` with a diagnostic advising `workspace sync` to refresh the clone before retrying.
@@ -389,7 +389,7 @@ The initiative name used for branch naming (`specify/<initiative-name>`) is read
 
 **Error handling.** Per-project errors (push rejection, remote permission issues) are reported and the verb continues to the next project. Non-zero exit if any project failed.
 
-**`--dry-run` mode.** `workspace push --dry-run` runs the remote-resolution and status-classification steps for each project but performs no writes. Concretely it MUST NOT: run `git push`, run `gh repo create`, run `gh pr create`, or modify any branch. It MUST: load the plan and registry, classify each project's push status (would push, up-to-date, local-only, would create repo), and emit the same output format as the real run with a `[dry-run]` banner on the first line. The `--dry-run` output uses the same status vocabulary (`pushed`, `created`, `up-to-date`, `local-only`, `failed`) but all action statuses are prefixed with "would-" in the human-readable output (e.g. `would-push`, `would-create`). The JSON output adds `"dry_run": true` at the top level. The `gh auth status` pre-flight check still runs under `--dry-run` so the operator learns about missing credentials before attempting a real push.
+`**--dry-run` mode.** `workspace push --dry-run` runs the remote-resolution and status-classification steps for each project but performs no writes. Concretely it MUST NOT: run `git push`, run `gh repo create`, run `gh pr create`, or modify any branch. It MUST: load the plan and registry, classify each project's push status (would push, up-to-date, local-only, would create repo), and emit the same output format as the real run with a `[dry-run]` banner on the first line. The `--dry-run` output uses the same status vocabulary (`pushed`, `created`, `up-to-date`, `local-only`, `failed`) but all action statuses are prefixed with "would-" in the human-readable output (e.g. `would-push`, `would-create`). The JSON output adds `"dry_run": true` at the top level. The `gh auth status` pre-flight check still runs under `--dry-run` so the operator learns about missing credentials before attempting a real push.
 
 **Output format (human-readable, default):**
 
@@ -457,7 +457,7 @@ RFC-3b touches four layers of the stack. Each item below is in scope; items not 
 
 - Update `AGENTS.md` (line 21) and `plugins/spec/skills/plan/SKILL.md` (line 17) from `rfc-3b-layer-3.md` to `rfc-3b-platform.md`. The file was renamed from its working title; these references now point at a non-existent path.
 - Renumber the plan SKILL.md steps from 3(a)/3(a½)/3(b) to 3(a)/3(b)/3(c) for cleaner reading. The new step 3(d) (assignment) is added after 3(c) (propose).
-- Rename `specify initiative workspace {sync,push,status}` to `specify workspace {sync,push,status}` throughout the plan SKILL.md, execute SKILL.md, and CLI code. Workspace operations are promoted to a top-level namespace; initiative-level verbs (`init`, `archive`, `registry validate`) remain under `specify initiative`.
+- `specify initiative workspace {sync,push,status}` has been renamed to `specify workspace {sync,push,status}` throughout the plan SKILL.md, execute SKILL.md, and CLI code. Workspace operations are a top-level namespace. `init` and `archive` have moved to `specify plan`; only `brief` and `registry validate` remain under `specify initiative`.
 - `rfcs/archive/rfc-3a-monoliths.md` also references `rfc-3b-layer-3.md` in several places (lines 17, 69, 508, 604). These are left as-is — archived RFCs are frozen. The stale link is cosmetic; the archived file's content is not consulted at implementation time.
 - Update the existing `workspace.md` fixture at `plugins/spec/skills/plan/fixtures/plan-layer2/workspace.md` to include the `Description` and `Schema` bullets defined in §*Plan skill*. Update the plan SKILL.md §`workspace.md` shape pin (lines 184–201) to match the new shape. These updates land with the plan skill amendments.
 - Update the plan SKILL.md's "state the skill mutates" section to include `.specify/plans/<initiative-name>/workspace.md` authored by step 3(b) when the registry is multi-project. The new item reads: `4. .specify/plans/<initiative-name>/workspace.md written by step 3(b) when the registry declares more than one project.`
@@ -517,13 +517,13 @@ The execute skill gains the step-level amendments described in §*Execute skill 
 Each CLI change carries unit or integration tests following the existing patterns in the crate:
 
 - **Validation checks** (`project-not-in-registry`, `project-missing-multi-repo`, `description-missing-multi-repo`, `schema-mismatch-workspace`): unit tests in `crates/change/src/plan.rs` (for plan checks) and `crates/schema/src/registry.rs` (for registry checks), following the existing `Plan::validate` and `Registry::validate_shape` test patterns.
-- **`--project` flag on create/amend**: integration tests verifying that `--project` is written to and round-trips through `plan.yaml`, and that invalid `--project` values (not in registry) are rejected at write time.
-- **`plan next` response extension**: test that `project`, `description`, and `sources` appear in the JSON response when the entry has them, and are absent when the entry doesn't or when `reason` is non-null.
-- **`workspace push`**: integration tests mocking `git` and `gh` commands, verifying per-project status classification, branch naming, and error handling. The `gh` pre-flight check should have a unit test. `--dry-run` mode should have its own test verifying no side-effects.
-- **`extract_github_slug`**: unit tests covering all six URL forms in the §*Workspace push* extraction table, plus the `None` case for non-GitHub hosts.
+- `**--project` flag on create/amend**: integration tests verifying that `--project` is written to and round-trips through `plan.yaml`, and that invalid `--project` values (not in registry) are rejected at write time.
+- `**plan next` response extension**: test that `project`, `description`, and `sources` appear in the JSON response when the entry has them, and are absent when the entry doesn't or when `reason` is non-null.
+- `**workspace push`**: integration tests mocking `git` and `gh` commands, verifying per-project status classification, branch naming, and error handling. The `gh` pre-flight check should have a unit test. `--dry-run` mode should have its own test verifying no side-effects.
+- `**extract_github_slug**`: unit tests covering all six URL forms in the §*Workspace push* extraction table, plus the `None` case for non-GitHub hosts.
 - **Greenfield bootstrap**: integration test that exercises the `mkdir` → `git init` → `specify init` sequence for a missing remote, verifying the resulting directory structure and `.specify/project.yaml` content.
 - **Greenfield partial re-run**: integration test that exercises the partial-bootstrap re-run path: `git init` succeeded, `specify init` failed, second `workspace sync` re-runs `specify init` and produces a healthy slot.
-- **`specify merge` auto-commit**: test that the workspace-clone heuristic correctly identifies workspace clones (CWD under `.specify/workspace/*/` with `project.yaml`) vs the initiating repo (including the edge case where `plan.yaml` has been archived), and that git staging is scoped to `.specify/` subtrees.
+- `**specify merge` auto-commit**: test that the workspace-clone heuristic correctly identifies workspace clones (CWD under `.specify/workspace/*/` with `project.yaml`) vs the initiating repo (including the edge case where `plan.yaml` has been archived), and that git staging is scoped to `.specify/` subtrees.
 
 ## Non-goals
 
@@ -542,16 +542,18 @@ Every behavioural pin for RFC-3b is listed here. Fixture files are authored duri
 - **Execute skill fixtures** live under `plugins/spec/skills/execute/fixtures/`.
 - **Plan skill fixtures** live under `plugins/spec/skills/plan/fixtures/`.
 
-| Fixture | Parent | Pins |
-|---|---|---|
-| `fixtures/multi-project/registry.yaml` | execute | Multi-project registry with `description` fields on every project. |
-| `fixtures/multi-project/plan.yaml` | execute | Plan with `project` on every change entry, including cross-project `depends-on` edges. |
-| `fixtures/multi-project/proposal.md` | plan | Proposal table with `Project` and `Rationale` columns, including one operator override and one unresolved → resolved case. |
-| `fixtures/multi-project/execute-loop-transcript.md` | execute | `/spec:execute --loop` transcript showing CWD switches (with `Routing:` diagnostic lines) across two projects, with one success and one failure. |
-| `fixtures/multi-project/workspace-push-output.json` | execute | Machine-readable output from `workspace push` showing branch + PR per project, including one greenfield `"created"` status. |
-| `fixtures/multi-project/workspace-push-dry-run.json` | execute | Machine-readable output from `workspace push --dry-run` showing would-push / would-create statuses with `"dry_run": true`. |
-| `fixtures/greenfield-bootstrap/` | execute | `workspace sync` output for a greenfield project: directory creation, git init, specify init sequence. |
-| `fixtures/greenfield-bootstrap/partial-rerun/` | execute | `workspace sync` re-run after partial bootstrap (`.git/` present, `.specify/project.yaml` absent): re-runs `specify init`, verifies healthy slot. |
+
+| Fixture                                              | Parent  | Pins                                                                                                                                              |
+| ---------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fixtures/multi-project/registry.yaml`               | execute | Multi-project registry with `description` fields on every project.                                                                                |
+| `fixtures/multi-project/plan.yaml`                   | execute | Plan with `project` on every change entry, including cross-project `depends-on` edges.                                                            |
+| `fixtures/multi-project/proposal.md`                 | plan    | Proposal table with `Project` and `Rationale` columns, including one operator override and one unresolved → resolved case.                        |
+| `fixtures/multi-project/execute-loop-transcript.md`  | execute | `/spec:execute --loop` transcript showing CWD switches (with `Routing:` diagnostic lines) across two projects, with one success and one failure.  |
+| `fixtures/multi-project/workspace-push-output.json`  | execute | Machine-readable output from `workspace push` showing branch + PR per project, including one greenfield `"created"` status.                       |
+| `fixtures/multi-project/workspace-push-dry-run.json` | execute | Machine-readable output from `workspace push --dry-run` showing would-push / would-create statuses with `"dry_run": true`.                        |
+| `fixtures/greenfield-bootstrap/`                     | execute | `workspace sync` output for a greenfield project: directory creation, git init, specify init sequence.                                            |
+| `fixtures/greenfield-bootstrap/partial-rerun/`       | execute | `workspace sync` re-run after partial bootstrap (`.git/` present, `.specify/project.yaml` absent): re-runs `specify init`, verifies healthy slot. |
+
 
 ## Migration
 
@@ -587,20 +589,20 @@ The following sequence minimises integration risk. Each step is independently sh
 
 1. **CLI struct extensions** (specify-cli). `RegistryProject` gains `description`; `PlanChange` gains `project`; `PlanChangePatch` gains `project`; `plan.schema.json` updated. Validation checks added. All additive, backwards-compatible.
 2. **CLI verb extensions** (specify-cli). `specify plan create` and `amend` gain `--project`. `specify plan next --format json` gains `project`, `description`, `sources`. Depends on step 1.
-3. **`specify merge` auto-commit** (specify-cli). Workspace-clone detection heuristic + git staging + commit logic. Independent of steps 1–2; can ship in parallel.
-4. **`workspace sync` greenfield bootstrap** (specify-cli). Extends `sync_registry_workspace` with the greenfield fallback. Depends on step 1 (needs `description` field to parse).
-5. **`workspace push`** (specify-cli). New verb. Depends on steps 1 and 3 (merge commits exist to push).
+3. `**specify merge` auto-commit** (specify-cli). Workspace-clone detection heuristic + git staging + commit logic. Independent of steps 1–2; can ship in parallel.
+4. `**workspace sync` greenfield bootstrap** (specify-cli). Extends `sync_registry_workspace` with the greenfield fallback. Depends on step 1 (needs `description` field to parse).
+5. `**workspace push**` (specify-cli). New verb. Depends on steps 1 and 3 (merge commits exist to push).
 6. **Plan skill + workspace.md shape** (specify repo). Update SKILL.md §workspace.md shape pin, update fixture, update state-mutation list. Add step 3(d) assignment pass. Depends on step 1 (descriptions exist in registry) and step 2 (`plan amend --project` available).
 7. **Propose brief forward-reference fix** (specify repo). Replace the RFC-3b deferral paragraph in both Omnia and Vectis propose briefs. No behavioural change to the briefs themselves.
 8. **Execute skill amendments** (specify repo). CWD routing + CWD restore steps, self-heal multi-repo, `--dry-run` routing line. Depends on step 2 (`plan next` response has `project`).
-10. **Forward-reference fixes + fixture authoring**. Can land at any point.
+9. **Forward-reference fixes + fixture authoring**. Can land at any point.
 
 ## Relation to RFC-3a
 
 - The registry gains one optional field (`description` on `RegistryProject`). The field is optional for v1 single-repo registries; required for multi-project registries. See §*Migration* for serde and validation details.
 - The plan schema gains one optional field (`project` on `planChange`). The field is optional for single-repo plans; required for multi-project plans. See §*Migration*.
 - `specify plan create` gains `--project`. `PlanChangePatch` gains a corresponding `project` field for `amend`. Both validate `--project` against the loaded registry at write time. The plan skill's assignment step uses `specify plan amend --project` to write assignments; schema propose briefs are unchanged.
-- `specify plan next --format json` gains `project`, `description`, and `sources` in its response so the execute driver can route without a second round-trip. See §*`specify plan next` extension*.
+- `specify plan next --format json` gains `project`, `description`, and `sources` in its response so the execute driver can route without a second round-trip. See §`*specify plan next` extension*.
 - The plan skill gains a new step 3(d) — the assignment pass — that infers project assignments for newly created entries and presents them to the operator for review. Assignment is framework-level, not schema-owned. See §*Assignment algorithm* and §*Plan skill*.
 - `/spec:execute` uses **CWD-based routing**: the driver `chdir`s into the target project's workspace clone before invoking phase skills (new CWD routing and CWD restore steps). Phase skills are unaware of multi-repo routing. Source paths are resolved to absolute paths before the CWD change. Self-heal gains per-entry CWD routing for multi-repo entries. See §*Execute skill amendments* and §*Self-heal under multi-repo*.
 - The workspace clone's write policy relaxes from read-only (RFC-3a planning convention) to writable during execution. This is a documented policy change, not a code enforcement change. See §*Workspace writability policy*.

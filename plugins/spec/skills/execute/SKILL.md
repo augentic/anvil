@@ -3,14 +3,14 @@ name: execute
 description: |
   Drive an initiative through its plan.yaml: read the plan, pick the next
   eligible change, run define → build → merge, and update status. Layer 2
-  automation over the Layer 1 specify initiative CLI.
+  automation over the Layer 1 specify plan CLI.
 license: MIT
 argument-hint: "[--dry-run] [--loop]"
 ---
 
 # Execute skill
 
-Drive an initiative through `.specify/plan.yaml` by automating the Layer 1 loop: `get next change` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify initiative transition`.
+Drive an initiative through `.specify/plan.yaml` by automating the Layer 1 loop: `get next change` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify plan transition`.
 
 > **Status.** Layer 2 is fully landed as of RFC-2 closeout. This skill ships the `--dry-run` preview, the supervised single-change run, the self-heal pass on startup, `--loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/spec:execute --loop` drives the [RFC-2 §"The Plan"](../docs/links.md#rfc-2-the-plan) example end-to-end against a plan authored by `/spec:plan` — see the [§Fixtures](#fixtures) table for the exit-gate meta-fixture.
 
@@ -19,14 +19,14 @@ Drive an initiative through `.specify/plan.yaml` by automating the Layer 1 loop:
 Specify at runtime is a three-layer stack:
 
 1. **Phase skills** (`/spec:define`, `/spec:build`, `/spec:merge`, and `/spec:drop`) — the define-build-merge loop that operates on a single change.
-2. **Plan CLI** (`specify initiative {validate, next, status, create, amend, transition, archive, lock}`) — the library-backed verbs that read and write `.specify/plan.yaml`. Both humans (Layer 1) and this skill (Layer 2) drive the loop through these verbs; no other code path writes the plan file.
+2. **Plan CLI** (`specify plan {validate, next, status, create, amend, transition, archive, lock}`) — the library-backed verbs that read and write `.specify/plan.yaml`. Both humans (Layer 1) and this skill (Layer 2) drive the loop through these verbs; no other code path writes the plan file.
 3. **Driver skill** (`/spec:execute`, this one) — the Layer 2 automation that reads `plan.yaml`, picks the next entry, invokes the phase sequence, and records outcomes.
 
 The on-disk contracts the driver depends on are the same files humans read in Layer 1 — `/spec:execute` introduces no new storage of its own:
 
 | File | Owner | Role |
 |---|---|---|
-| `.specify/plan.yaml` | library (`Plan::{create, amend, transition, archive}`) | Ordered change list with per-entry status. Driver reads via `specify initiative next`/`status`; writes only via `specify initiative transition`. |
+| `.specify/plan.yaml` | library (`Plan::{create, amend, transition, archive}`) | Ordered change list with per-entry status. Driver reads via `specify plan next`/`status`; writes only via `specify plan transition`. |
 | `.specify/changes/<name>/.metadata.yaml` | library (`ChangeMetadata` + `specify change phase-outcome`) | Change lifecycle status **and** the phase's `outcome` field. Phases stamp this; the driver reads it on phase return. |
 | `.specify/changes/<name>/journal.yaml` | library (`Journal::append` + `specify change journal-append`) | Append-only audit log of `question` / `failure` / `recovery` entries. Never consumed as a signalling channel — `.metadata.yaml:outcome` is the only state the driver reads. |
 | `.specify/plan.lock` | library (`PlanLockStamp`) | Advisory PID stamp held by the running driver. Prevents two `/spec:execute` invocations racing on the same plan. |
@@ -42,8 +42,8 @@ These invariants constrain this skill's behaviour. They are reproduced here verb
 | Driver contracts with phases, not briefs | `/spec:execute` only invokes `/spec:define`, `/spec:build`, `/spec:merge` |
 | Phases own verify-repair loops | Phase skills exhaust their repair budget before returning |
 | Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `outcome` into `.metadata.yaml` before returning (see [§Phase Outcome Contract](../docs/links.md#rfc-2-phase-outcome-contract)) |
-| Change *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify initiative create` / `specify initiative amend` |
-| Change *status* updates written only via `Plan::transition` | `/spec:execute` (Layer 2) or humans (Layer 1) run `specify initiative transition` |
+| Change *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify plan create` / `specify plan amend` |
+| Change *status* updates written only via `Plan::transition` | `/spec:execute` (Layer 2) or humans (Layer 1) run `specify plan transition` |
 | Single `in-progress` at a time | `plan next` / `plan validate` |
 | Single `/spec:execute` driver at a time | `.specify/plan.lock` advisory lock (see [§Driver Concurrency](../docs/links.md#rfc-2-driver-concurrency)) |
 
@@ -62,14 +62,14 @@ The plan path is fixed at `.specify/plan.yaml`; multi-plan support is a future c
 `/spec:execute` takes the `.specify/plan.lock` PID stamp at the start of every run — **including `--dry-run`** — and releases it on normal exit. The stamp is managed by three dedicated CLI verbs:
 
 ```bash
-specify initiative lock acquire --pid <agent-session-pid>
-specify initiative lock status
-specify initiative lock release --pid <agent-session-pid>
+specify plan lock acquire --pid <agent-session-pid>
+specify plan lock status
+specify plan lock release --pid <agent-session-pid>
 ```
 
 Notes on the protocol:
 
-- The stamp is a **PID file with liveness check**, not an `flock(2)`. Short-lived CLI invocations cannot hold an advisory file lock across agent-side work, so the lock is represented as a persistent marker that outlives the `specify` processes writing it. `specify initiative lock acquire` reclaims a stale stamp (dead PID, malformed contents) itself before the driver enters the self-heal step; nothing in this skill hand-rolls that check.
+- The stamp is a **PID file with liveness check**, not an `flock(2)`. Short-lived CLI invocations cannot hold an advisory file lock across agent-side work, so the lock is represented as a persistent marker that outlives the `specify` processes writing it. `specify plan lock acquire` reclaims a stale stamp (dead PID, malformed contents) itself before the driver enters the self-heal step; nothing in this skill hand-rolls that check.
 - `--pid` defaults to `std::process::id()` of the `specify` binary. `/spec:execute` should pass a **stable agent-session PID** on every invocation so `release` can authenticate the holder.
 - Another live holder surfaces as `Error::DriverBusy { pid }` (exit code `1`); this skill reports the conflict and stops without touching the plan.
 - The long-lived in-process `PlanLockGuard` primitive (with a real `flock`) remains available for any future native driver that keeps a Rust process alive for the full run.
@@ -86,7 +86,7 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
    no Specify project is found.
 
 2. Acquire the driver lock:
-     specify initiative lock acquire --pid <agent-session-pid>
+     specify plan lock acquire --pid <agent-session-pid>
    On Error::DriverBusy, report which PID holds the lock and exit 1
    without touching the plan.
 
@@ -103,7 +103,7 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
    reaching step 4.
 
 4. Pick the next change:
-     specify initiative next --format json
+     specify plan next --format json
    Interpret the JSON:
      - `next != null`                → continue to step 5 with this
                                         name. Capture the entry's
@@ -128,16 +128,16 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
                                         this the same way.
 
 5. Transition the selected entry:
-     specify initiative transition <name> in-progress
+     specify plan transition <name> in-progress
    This is the first plan write the driver performs. It must happen
    BEFORE /spec:define creates the change directory (RFC-2 §"Plan
    Mutation and Crash Safety"): between this step and step 6 the
    plan briefly shows an in-progress entry with no matching change
-   directory, which `specify initiative validate` tolerates as a
+   directory, which `specify plan validate` tolerates as a
    warning.
 
 5a. CWD routing (multi-repo only).
-   Read `project` from the `specify initiative next` response (step 4).
+   Read `project` from the `specify plan next` response (step 4).
    If `project` is non-null:
      - Resolve the target directory from `registry.yaml`: relative-
        path `url` → resolved filesystem path; remote `url` →
@@ -193,14 +193,14 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
 9a. CWD restore (multi-repo only).
    If the CWD routing step (5a) changed the working directory,
    restore CWD to the saved initiating repo root. This ensures
-   `specify initiative transition` (which reads `plan.yaml` in the
+   `specify plan transition` (which reads `plan.yaml` in the
    initiating repo) runs from the correct directory. In `--loop`
    mode, the CWD routing and CWD restore steps bracket every
-   iteration so that `specify initiative next` always runs from
+   iteration so that `specify plan next` always runs from
    the initiating repo root.
 
 10. Success wrap-up.
-      specify initiative transition <name> done
+      specify plan transition <name> done
     Emit the success transcript (see §Output format). Go to step 13.
 
 11. Failure drop path.
@@ -212,7 +212,7 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
        artifacts and flips the change lifecycle to `dropped`. It does
        NOT touch plan.yaml.
     c. Run:
-         specify initiative transition <name> failed --reason "<outcome.summary>"
+         specify plan transition <name> failed --reason "<outcome.summary>"
        The `--reason` value is copied VERBATIM from the phase's
        `outcome.summary`. Do not paraphrase, truncate, or re-render.
     d. Emit the failure transcript. Go to step 13.
@@ -223,12 +223,12 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
     b. Run:
          /spec:drop <name> --reason "<outcome.summary>"
     c. Run:
-         specify initiative transition <name> blocked --reason "<outcome.summary>"
+         specify plan transition <name> blocked --reason "<outcome.summary>"
        `--reason` is copied verbatim, as in step 11c.
     d. Emit the deferred transcript. Go to step 13.
 
 13. Release the driver lock:
-      specify initiative lock release --pid <agent-session-pid>
+      specify plan lock release --pid <agent-session-pid>
     Run this on EVERY exit path — success, failure, deferral, stop-
     for-triage (step 4 in-progress branch), or any uncaught error
     after step 2. The release step is unconditional; think of it as
@@ -247,7 +247,7 @@ Step 6 of the per-change algorithm turns the plan entry's `sources` field into c
 
 For every key in the plan entry's `sources` list, look it up in the plan's top-level `sources` map and classify the value:
 
-1. **Key absent from the top-level map** — unresolved reference. The plan is internally inconsistent; this is an `Error::Config`-level halt. Emit a diagnostic naming the offending `(change, key)` pair, release the driver lock, exit non-zero. This should have been caught earlier by `specify initiative validate` via the `unknown-source` diagnostic (RFC-2 Change L1.F), so reaching this branch means either the plan was not validated or it was edited out of band between validation and execution — either way, human triage.
+1. **Key absent from the top-level map** — unresolved reference. The plan is internally inconsistent; this is an `Error::Config`-level halt. Emit a diagnostic naming the offending `(change, key)` pair, release the driver lock, exit non-zero. This should have been caught earlier by `specify plan validate` via the `unknown-source` diagnostic (RFC-2 Change L1.F), so reaching this branch means either the plan was not validated or it was edited out of band between validation and execution — either way, human triage.
 2. **Value is a local filesystem path** (e.g. `/path/to/legacy`) — pass through as-is. The driver does NOT stat the path or verify it exists; `/spec:define` (and downstream `/spec:extract`) are responsible for surfacing a missing-path error with the right phase-level diagnostic.
 3. **Value is a git URL** (e.g. `git@github.com:org/service.git` or `https://github.com/…`) — pass through as-is. The driver does NOT clone here. Cloning is `git-cloner`'s concern, invoked from inside `/spec:define`'s brief pipeline when a brief needs the source tree materialized. This keeps the clone cache under the phase's control and avoids duplicating the clone logic in the driver.
 
@@ -259,30 +259,30 @@ Under multi-repo routing (step 5a active), source paths from the plan's top-leve
 
 ### Subtleties
 
-- **`/spec:execute` writes only plan transitions and recovery journal entries.** Every write this skill performs against `.specify/plan.yaml` goes through `specify initiative transition`. It never writes `outcome` to `.metadata.yaml` (the phase does that, via `specify change phase-outcome`). The sole case in which the driver appends to `journal.yaml` is the self-heal step (§Self-heal on startup), which emits exactly one `type: recovery` entry per reclaimed or resumed in-progress entry via `specify change journal-append`. The define / build / merge phases own `type: question` and `type: failure` entries; the driver never touches those.
+- **`/spec:execute` writes only plan transitions and recovery journal entries.** Every write this skill performs against `.specify/plan.yaml` goes through `specify plan transition`. It never writes `outcome` to `.metadata.yaml` (the phase does that, via `specify change phase-outcome`). The sole case in which the driver appends to `journal.yaml` is the self-heal step (§Self-heal on startup), which emits exactly one `type: recovery` entry per reclaimed or resumed in-progress entry via `specify change journal-append`. The define / build / merge phases own `type: question` and `type: failure` entries; the driver never touches those.
 
-- **Summary is copied verbatim into `status-reason`.** The string passed to `specify initiative transition … --reason "…"` in steps 11c and 12c is byte-identical to `outcome.summary` stamped by the phase. The fixtures under `fixtures/single-change/` pin this: every `plan.yaml.after` carries `status-reason: "<exact summary from the metadata file>"`. Do not paraphrase, truncate, or reformat.
+- **Summary is copied verbatim into `status-reason`.** The string passed to `specify plan transition … --reason "…"` in steps 11c and 12c is byte-identical to `outcome.summary` stamped by the phase. The fixtures under `fixtures/single-change/` pin this: every `plan.yaml.after` carries `status-reason: "<exact summary from the metadata file>"`. Do not paraphrase, truncate, or reformat.
 
 - **Journal entries from the phase are preserved.** Whatever `type: question` / `type: failure` entries the phase wrote during its run stay on disk unchanged. The driver does not rewrite, merge, or summarise them. Humans reading the journal after a failure or deferral see the full trail the phase recorded, not a driver-authored post-hoc rollup.
 
-- **Release the lock on every exit path.** Every branch of the algorithm — success, failure, deferred, stop-for-triage, unhandled error — MUST run `specify initiative lock release` before returning control to the caller. Treat the release as the invariant trailing edge of the run.
+- **Release the lock on every exit path.** Every branch of the algorithm — success, failure, deferred, stop-for-triage, unhandled error — MUST run `specify plan lock release` before returning control to the caller. Treat the release as the invariant trailing edge of the run.
 
 - **Single `in-progress` at a time.** The driver never has more than one plan entry in `in-progress` at any point in time. Step 5 is the only place the driver enters that state; steps 10/11/12 are the only places the driver leaves it. Self-heal is the only other step that mutates plan status, and only to resolve a pre-existing `in-progress` left by a prior crashed run.
 
 ## Self-heal on startup
 
-Self-heal is the driver's reconciliation pass. It runs **once per `/spec:execute` invocation**, under the driver lock, immediately after the lock is acquired and before `specify initiative next`. Its job is to make the plan agree with what actually finished on disk before the previous driver crashed — not to do any new work.
+Self-heal is the driver's reconciliation pass. It runs **once per `/spec:execute` invocation**, under the driver lock, immediately after the lock is acquired and before `specify plan next`. Its job is to make the plan agree with what actually finished on disk before the previous driver crashed — not to do any new work.
 
 Two invariants frame the whole step. First, `.metadata.yaml:outcome` is the single authoritative signal: the driver never consults `journal.yaml`, tempfiles, or stderr transcripts to decide what happened. Second, nothing in self-heal speculates. Every ambiguity (missing outcome with no change dir, outcome field that contradicts `LifecycleStatus`, two archives with equal timestamps, …) halts the driver with a non-zero exit so a human can triage. A speculative transition could silently mark a failed change as `done` and that failure mode is strictly worse than "one extra triage per N runs".
 
 ### Algorithm
 
-For every plan entry `E` whose `status` is `in-progress`, in the order they appear in `plan.yaml` (the loop tolerates more than one even though `specify initiative next` would flag that as a validation warning):
+For every plan entry `E` whose `status` is `in-progress`, in the order they appear in `plan.yaml` (the loop tolerates more than one even though `specify plan next` would flag that as a validation warning):
 
 1. **Locate the latest `.metadata.yaml` for `E.name`.**
    - First check `.specify/changes/<name>/.metadata.yaml` — the active change directory. If present, that is the file to read.
    - If absent, inspect `.specify/archive/`. Archive directory names end with `-<name>` (the `YYYY-MM-DD-<name>` convention from `specify change archive` — see RFC-1 §`metadata.rs`). Multiple matches are legal: a change that failed and was later retried leaves one archive per attempt. Pick the most recent by `created-at` inside its `.metadata.yaml` (falling back to `defined-at`, then the directory's `YYYY-MM-DD` prefix); the outcome itself is surfaced by `specify change outcome <name> --format json` once the active directory is back in place.
-   - If nothing is found anywhere, the plan entry is `in-progress` but no change has ever been created — typically because the prior driver crashed between `specify initiative transition pending → in-progress` (step 5) and `/spec:define` (step 6). Treat this as mid-change resume with `LifecycleStatus = None` — jump to step 3 below.
+   - If nothing is found anywhere, the plan entry is `in-progress` but no change has ever been created — typically because the prior driver crashed between `specify plan transition pending → in-progress` (step 5) and `/spec:define` (step 6). Treat this as mid-change resume with `LifecycleStatus = None` — jump to step 3 below.
 
 **Multi-repo self-heal (RFC-3b).** For each `in-progress` entry `E` in `plan.yaml`, self-heal reads `E.project` from the plan entry. If non-null:
 1. Resolve the target project directory from `registry.yaml` (same resolution as step 5a of the per-change algorithm).
@@ -295,17 +295,17 @@ For entries without a `project` field, self-heal is unchanged from RFC-2.
 2. **Read `.metadata.yaml.outcome` and act on it.**
    - `outcome.outcome == success` and `outcome.phase == merge` → the merge finished but the driver crashed before the terminal plan transition. Run:
      ```bash
-     specify initiative transition <name> done
+     specify plan transition <name> done
      ``` No `status-reason` on success.
    - `outcome.outcome == success` and `outcome.phase ∈ {define, build}` → the phase finished but the driver crashed before launching the next phase. This is **not** a terminal state. Do NOT transition the plan. Fall through to step 3 with `LifecycleStatus ∈ {defined, complete}` to resume the next phase.
    - `outcome.outcome == failure` → run `/spec:drop <name> --reason "<outcome.summary>"` (same drop skill steps 11a/b invoke for a live failure — it is idempotent against an already-dropped change). Then:
      ```bash
-     specify initiative transition <name> failed --reason "<outcome.summary>"
+     specify plan transition <name> failed --reason "<outcome.summary>"
      ``` `--reason` copied byte-for-byte from `outcome.summary`; never paraphrase or truncate.
    - `outcome.outcome == deferred` → same shape with `blocked`:
      ```bash
      /spec:drop <name> --reason "<outcome.summary>"
-     specify initiative transition <name> blocked --reason "<outcome.summary>"
+     specify plan transition <name> blocked --reason "<outcome.summary>"
      ```
    - The `outcome` field is **absent** and `LifecycleStatus` is non-terminal (`defining`, `defined`, `building`, `complete`) → no terminal outcome was ever stamped; the prior phase was in-flight at crash time. Fall through to step 3 with the on-disk `LifecycleStatus`. This is the explicit "active change dir with no terminal outcome yet" branch from RFC-2 §"Plan Mutation and Crash Safety".
    - The `outcome` field is malformed (unknown enum variant, missing `phase`, missing `summary`, …) or its `phase` contradicts `LifecycleStatus` (for example `phase: merge` with `status: defining`, or `outcome: success` with `status: dropped`) → **halt**. Emit the diagnostic line below with exit code `2` (`EXIT_VALIDATION_FAILED` — see the exit-code table in specify-cli `src/main.rs`). Leave the plan entry as `in-progress`. Do not append a recovery journal entry. Do not drop the change. Humans triage.
@@ -329,7 +329,7 @@ For entries without a `project` field, self-heal is unchanged from RFC-2.
    - `"applied terminal transition blocked after finding deferred outcome on define"`
    - `"resumed mid-change build phase (LifecycleStatus=defined)"`
 
-5. **Lock scope.** Self-heal runs **inside** the driver lock already acquired at step 2 of the outer run. There is no second acquire and no inner release: the whole reconciliation pass is part of the same critical section that wraps the per-change loop. Two `/spec:execute` invocations started at the same time cannot both enter self-heal — the second one fails at `specify initiative lock acquire` with `Error::DriverBusy`.
+5. **Lock scope.** Self-heal runs **inside** the driver lock already acquired at step 2 of the outer run. There is no second acquire and no inner release: the whole reconciliation pass is part of the same critical section that wraps the per-change loop. Two `/spec:execute` invocations started at the same time cannot both enter self-heal — the second one fails at `specify plan lock acquire` with `Error::DriverBusy`.
 
 ### Diagnostic output
 
@@ -348,7 +348,7 @@ The halt variant is followed by `Exit 2` (`EXIT_VALIDATION_FAILED`; see the exit
 
 ### Dry-run variant (report-only)
 
-Under `--dry-run`, self-heal runs the same classification scan but performs **no writes**: no `specify initiative transition`, no `specify change journal-append`, no `/spec:drop`. Instead it prints what the writing path *would* do:
+Under `--dry-run`, self-heal runs the same classification scan but performs **no writes**: no `specify plan transition`, no `specify change journal-append`, no `/spec:drop`. Instead it prints what the writing path *would* do:
 
 ```text
 Self-heal (dry-run): no in-progress entries found.
@@ -375,12 +375,12 @@ Run the per-change algorithm with every **write** substituted for a **report** (
 
 | Write | Dry-run substitute |
 |---|---|
-| `specify initiative transition <name> in-progress` (step 5) | Not invoked. The preview shows the plan in its current state. |
-| `specify initiative transition <name> {done,failed,blocked}` (steps 10–12) | Not invoked. Diagnostics use the "Would transition" wording (see self-heal §Dry-run variant). |
+| `specify plan transition <name> in-progress` (step 5) | Not invoked. The preview shows the plan in its current state. |
+| `specify plan transition <name> {done,failed,blocked}` (steps 10–12) | Not invoked. Diagnostics use the "Would transition" wording (see self-heal §Dry-run variant). |
 | `specify change journal-append … recovery …` (self-heal step 4) | Not invoked. |
 | `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` (steps 6–8, 11b, 12b) | Not invoked. `--dry-run` is read-only end to end — the self-heal scan is report-only too. |
 
-Step 4's `specify initiative next` / `specify initiative status` calls still run — they are read-only. The rendered output follows the §`--dry-run` output format below; every line carries the `[dry-run] ` banner so the operator cannot mistake a preview for a real run.
+Step 4's `specify plan next` / `specify plan status` calls still run — they are read-only. The rendered output follows the §`--dry-run` output format below; every line carries the `[dry-run] ` banner so the operator cannot mistake a preview for a real run.
 
 If self-heal would halt (ambiguity case), dry-run emits the same halt diagnostic, releases the lock, and exits non-zero WITHOUT reaching step 4 — the one non-zero exit on the happy startup path.
 
@@ -391,11 +391,11 @@ Wrap the per-change algorithm (steps 3–12) in an outer iteration:
 ```text
 4a. Iteration body:
       loop:
-        - run steps 3–12 against whatever `specify initiative next`
+        - run steps 3–12 against whatever `specify plan next`
           returns; on return (terminal plan status reached), DO NOT
           release the lock.
         - loop back to step 4 of the per-change algorithm
-          (`specify initiative next --format json`).
+          (`specify plan next --format json`).
         - break on `reason ∈ {"all-done", "stuck"}` (classifications
           of the same name) or defence-in-depth `reason ==
           "in-progress"` (classification `halted`).
@@ -405,11 +405,11 @@ Wrap the per-change algorithm (steps 3–12) in an outer iteration:
 
 Mode invariants:
 
-- **Lock is held for the entire run.** `specify initiative lock acquire` runs once at step 2 of the per-change algorithm; `specify initiative lock release` runs once at step 13. The outer iteration neither acquires nor releases the lock.
+- **Lock is held for the entire run.** `specify plan lock acquire` runs once at step 2 of the per-change algorithm; `specify plan lock release` runs once at step 13. The outer iteration neither acquires nor releases the lock.
 - **Self-heal runs once.** The step-3 pass happens before the first iteration. Subsequent iterations do not re-run self-heal.
-- **`failure` does NOT stop the loop.** An individual change that returns `outcome: failure` is transitioned to `failed` inside steps 11a–c; the driver then continues to the next `specify initiative next` call. `specify initiative next` naturally skips `failed` entries, so the loop advances without extra branching.
+- **`failure` does NOT stop the loop.** An individual change that returns `outcome: failure` is transitioned to `failed` inside steps 11a–c; the driver then continues to the next `specify plan next` call. `specify plan next` naturally skips `failed` entries, so the loop advances without extra branching.
 - **`deferred` does NOT stop the loop.** Same shape with `blocked` instead of `failed`.
-- **Loop stops only when `specify initiative next` reports no eligible change.** Terminal classifications are `all-done` (every entry in `{done, skipped}`) or `stuck` (pending / blocked / failed entries remain but no pending entry has its `depends-on` satisfied).
+- **Loop stops only when `specify plan next` reports no eligible change.** Terminal classifications are `all-done` (every entry in `{done, skipped}`) or `stuck` (pending / blocked / failed entries remain but no pending entry has its `depends-on` satisfied).
 - **`halted` is reserved for self-heal halts.** Mid-loop failures / deferrals do NOT reach `halted`.
 - **No phase-level parallelism.** At most one change is `in-progress` at a time; the loop does not fan out concurrent phase invocations.
 
@@ -431,12 +431,12 @@ The skill runs inside an agent session; the agent process (not this skill direct
    resolve terminally (success on merge, failure, deferred).
 
 3. Leave the active change entry as in-progress. Do NOT run
-   `specify initiative transition` on interrupt — the write path is
+   `specify plan transition` on interrupt — the write path is
    reserved for normal outcomes. Self-heal on the next run will
    reclaim the entry based on .metadata.yaml.outcome.
 
 4. Release the driver lock:
-     specify initiative lock release --pid <agent-session-pid>
+     specify plan lock release --pid <agent-session-pid>
    Run this before exit regardless of which phase was mid-flight.
 
 5. Emit the terminal summary with Completion: driver-interrupted and
@@ -465,7 +465,7 @@ Next: <name> (sources: [<sources>])
 No changes written.
 ```
 
-Variants the skill picks based on `specify initiative next`:
+Variants the skill picks based on `specify plan next`:
 
 - `reason: "in-progress"` — replace the `Next:` line with: `Active: <name> (driver would resume/adopt this entry)`
 - `reason: "all-done"` — replace with: `Initiative complete — no eligible changes remain.`
@@ -532,7 +532,7 @@ Step 2/3: build
   Summary: <outcome.summary verbatim>
   Journal: .specify/changes/<name>/journal.yaml
   Action needed: Fix the underlying error, then retry via
-    specify initiative transition <name> pending
+    specify plan transition <name> pending
   Status: failed
 ```
 
@@ -555,7 +555,7 @@ Step 1/3: define
 
   Question: <outcome.summary verbatim>
   Journal: .specify/changes/<name>/journal.yaml
-  Action needed: Enrich the plan description (specify initiative amend …) with the missing
+  Action needed: Enrich the plan description (specify plan amend …) with the missing
     detail, then unflag (blocked → pending) to retry.
   Status: blocked
 ```
@@ -602,7 +602,7 @@ Section rules:
 | Classification | Condition | Next action template |
 |---|---|---|
 | `all-done` | Every entry's status is in `{done, skipped}`. | `Initiative complete — no further action needed.` |
-| `stuck` | Some entries remain in `{pending, blocked, failed}` but none are eligible (pending entries have unmet deps; no eligible sibling exists). | `Resolve blocked/failed entries (specify initiative amend + specify initiative transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify initiative archive --force.` |
+| `stuck` | Some entries remain in `{pending, blocked, failed}` but none are eligible (pending entries have unmet deps; no eligible sibling exists). | `Resolve blocked/failed entries (specify plan amend + specify plan transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify plan archive --force.` |
 | `halted` | Self-heal detected an ambiguous on-disk state on startup and refused to speculate. Individual mid-loop failures or deferrals do NOT reach `halted`. | `Manually triage the halted change: inspect .specify/changes/<name>/.metadata.yaml against plan.yaml, repair the contradiction, then re-run /spec:execute --loop.` |
 | `driver-interrupted` | SIGINT or SIGTERM arrived mid-run. The current phase finished (or no phase was in flight), subsequent phases were skipped, the active plan entry is still `in-progress`, the lock was released. | `Re-run /spec:execute --loop — self-heal will reclaim the interrupted change on the next startup.` |
 
@@ -621,19 +621,19 @@ The distinction between `stuck` and `halted` matters for operator routing: `stuc
 
 | Surface | Status |
 |---|---|
-| Write `.specify/plan.yaml` *entries* (`create` / `amend`) | Never — those writes are the phases' concern (they shell out to `specify initiative create` / `specify initiative amend` mid-run). |
-| Write `.specify/plan.yaml` *status* (`transition`) | Only via `specify initiative transition`, at exactly three points in a supervised run: `pending → in-progress` before step 6, and the terminal `in-progress → {done, failed, blocked}` in steps 10/11/12. |
+| Write `.specify/plan.yaml` *entries* (`create` / `amend`) | Never — those writes are the phases' concern (they shell out to `specify plan create` / `specify plan amend` mid-run). |
+| Write `.specify/plan.yaml` *status* (`transition`) | Only via `specify plan transition`, at exactly three points in a supervised run: `pending → in-progress` before step 6, and the terminal `in-progress → {done, failed, blocked}` in steps 10/11/12. |
 | Write `.specify/changes/<name>/.metadata.yaml` (including the `outcome` field) | Never — that is the phase skills' concern via `specify change phase-outcome`. |
 | Write `.specify/changes/<name>/journal.yaml` | Only via `specify change journal-append <name> <phase> recovery …` inside the §Self-heal on startup step — exactly one entry per reclaimed or resumed in-progress entry. Phases own the `type: question` / `type: failure` entries and the driver never touches those. |
 | Invoke `/spec:define`, `/spec:build`, `/spec:merge`, or `/spec:drop` | Never in `--dry-run` (including dry-run self-heal, which is report-only); in supervised and `--loop` modes, exactly as the algorithms prescribe (define → build → merge on success paths; plus `/spec:drop` on failure / deferred, and on any writing-path self-heal reclaim of a `failure` or `deferred` outcome). |
 | Run self-heal on `in-progress` entries | Yes — §Self-heal on startup is the full contract. Five fixtures under `fixtures/self-heal/` pin the clean / done / failed / ambiguous-halt / mid-change-resume paths. Under `--dry-run` self-heal is report-only: same classification scan, no writes. |
-| Loop across changes | `--loop` iterates `specify initiative next → execute change` until no eligible change remains. The driver lock is held for the entire run (not per iteration). Individual failures / deferrals do NOT halt the loop — `specify initiative next` skips `failed` / `blocked` entries naturally. |
+| Loop across changes | `--loop` iterates `specify plan next → execute change` until no eligible change remains. The driver lock is held for the entire run (not per iteration). Individual failures / deferrals do NOT halt the loop — `specify plan next` skips `failed` / `blocked` entries naturally. |
 | Resolve `sources` keys to paths / URLs and hand them to define | Yes — §Argument resolution resolves every key in the plan entry's `sources` list against the plan's top-level `sources` map and forwards the tuples to `/spec:define` as `--source <key>=<path-or-url>`. The driver does NOT clone git URLs or stat local paths; it only forwards the values. An unresolved key halts the run with `Error::Config`. Scope and delta-targeting intent are carried in the entry's `description` and inferred by the define skill; the driver does not forward them as separate flags. |
 
 The state the skill mutates is:
 
 1. The driver lock stamp at `.specify/plan.lock` (written on acquire, removed on release by the CLI — not by the skill directly).
-2. The plan entry's `status` field via `specify initiative transition` at the three points named in the per-change algorithm, plus any terminal transitions self-heal applies on startup.
+2. The plan entry's `status` field via `specify plan transition` at the three points named in the per-change algorithm, plus any terminal transitions self-heal applies on startup.
 3. A single `type: recovery` entry appended to `.specify/changes/<name>/journal.yaml` via `specify change journal-append` whenever self-heal resolves or resumes an in-progress entry.
 
 No other on-disk state is written by `/spec:execute` itself.
@@ -641,14 +641,14 @@ No other on-disk state is written by `/spec:execute` itself.
 ## Guardrails
 
 - Never hand-edit `.specify/plan.yaml`, `.specify/changes/<name>/.metadata.yaml`, or `.specify/changes/<name>/journal.yaml`. Route every write through the CLI verbs above — the single-writer invariant in RFC-2 §"Plan Mutation and Crash Safety" depends on it.
-- Never skip the lock-release step. If the skill exits early after a successful acquire, run `specify initiative lock release --pid
+- Never skip the lock-release step. If the skill exits early after a successful acquire, run `specify plan lock release --pid
   <agent-session-pid>` on the way out. Stale stamps can be reclaimed by a later run, but only after a visible-to-the-operator failure.
-- Treat an unexpected `specify initiative next` response shape (missing keys, unknown `reason`) as a hard failure: print the raw JSON, release the lock, and exit non-zero. Do not speculate.
-- For `--dry-run` specifically: the skill MUST NOT invoke any phase skill, MUST NOT shell out to `specify initiative transition`, MUST NOT shell out to `specify change journal-append`, and MUST NOT invoke `/spec:drop`. This prohibition extends to the self-heal step: dry-run self-heal is report-only (§Self-heal on startup → §Dry-run variant). The first-line banner prefixes the rendered output with `[dry-run] ` (the progress / next blocks do not need a per-line prefix — the banner is enough).
-- For `--loop` specifically: the driver lock is acquired ONCE at run start and released ONCE at run end; never per iteration. Individual change outcomes (success, failure, deferred) are handled inside the iteration body; they do not short-circuit the outer loop. The loop exits only on `specify initiative next` reporting no eligible change, self-heal halt on startup, or SIGINT / SIGTERM. On any exit path, the terminal summary is emitted before the lock is released.
-- For the supervised single-change run: the string passed to `specify initiative transition <name> {failed,blocked} --reason "…"` is always `outcome.summary` from the phase's `.metadata.yaml`, copied byte-for-byte. Never paraphrase, truncate, or add a prefix. The fixtures under `fixtures/single-change/` assert this equality; a drift between `metadata-after-*.yaml:outcome.summary` and `plan.yaml.after:status-reason` is a regression.
+- Treat an unexpected `specify plan next` response shape (missing keys, unknown `reason`) as a hard failure: print the raw JSON, release the lock, and exit non-zero. Do not speculate.
+- For `--dry-run` specifically: the skill MUST NOT invoke any phase skill, MUST NOT shell out to `specify plan transition`, MUST NOT shell out to `specify change journal-append`, and MUST NOT invoke `/spec:drop`. This prohibition extends to the self-heal step: dry-run self-heal is report-only (§Self-heal on startup → §Dry-run variant). The first-line banner prefixes the rendered output with `[dry-run] ` (the progress / next blocks do not need a per-line prefix — the banner is enough).
+- For `--loop` specifically: the driver lock is acquired ONCE at run start and released ONCE at run end; never per iteration. Individual change outcomes (success, failure, deferred) are handled inside the iteration body; they do not short-circuit the outer loop. The loop exits only on `specify plan next` reporting no eligible change, self-heal halt on startup, or SIGINT / SIGTERM. On any exit path, the terminal summary is emitted before the lock is released.
+- For the supervised single-change run: the string passed to `specify plan transition <name> {failed,blocked} --reason "…"` is always `outcome.summary` from the phase's `.metadata.yaml`, copied byte-for-byte. Never paraphrase, truncate, or add a prefix. The fixtures under `fixtures/single-change/` assert this equality; a drift between `metadata-after-*.yaml:outcome.summary` and `plan.yaml.after:status-reason` is a regression.
 - Phase outcome missing or malformed after a phase returns means the phase crashed or skipped its `specify change phase-outcome` call. Treat as `deferred` with a synthetic summary (`"phase outcome missing after <phase>; driver stopping for triage."`) per RFC-2 §"Phase Outcome Contract" — do not speculate about which of success / failure was really intended.
-- Self-heal applies the same verbatim-`summary` rule as steps 11c / 12c: the string passed to `specify initiative transition <name> {failed,blocked} --reason "…"` is copied byte-for-byte from the on-disk `outcome.summary`. The fixtures under `fixtures/self-heal/` assert this equality; drift is a regression.
+- Self-heal applies the same verbatim-`summary` rule as steps 11c / 12c: the string passed to `specify plan transition <name> {failed,blocked} --reason "…"` is copied byte-for-byte from the on-disk `outcome.summary`. The fixtures under `fixtures/self-heal/` assert this equality; drift is a regression.
 - Self-heal never paraphrases ambiguity away. If `.metadata.yaml` has no `outcome`, an `outcome` with a `phase` that contradicts `LifecycleStatus`, or a `LifecycleStatus` that is terminal (`merged`, `dropped`) while `plan.yaml` still says `in-progress`, halt with exit code 1 and leave the plan entry as `in-progress`. A later run, after human triage, can re-enter self-heal safely.
 - Argument resolution never speculates over an unresolved `sources` key. If a key on the plan entry is absent from the plan's top-level `sources` map, halt with `Error::Config`, name the offending `(change, key)` pair, release the lock, and exit non-zero. Do NOT substitute a default, guess at a path, or drop the key silently. The same rule applies whether the run is `--dry-run`, supervised, or `--loop`.
 

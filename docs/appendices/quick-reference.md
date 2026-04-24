@@ -60,10 +60,10 @@ specify change status <name>
 specify change transition <name> <target>
 
 # Plan management
-specify initiative status
-specify initiative next
-specify initiative transition <name> <target>
-specify initiative lock status
+specify plan status
+specify plan next
+specify plan transition <name> <target>
+specify plan lock status
 
 # Inspection
 specify spec preview <change-dir>

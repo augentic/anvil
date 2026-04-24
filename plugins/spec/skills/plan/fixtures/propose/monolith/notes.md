@@ -26,7 +26,7 @@ Dependency-order + within-layer alphabetical:
 2. `shared-validation` (layer 0)
 3. `user-registration` (layer 1, depends on both leaves)
 
-Matches the order `specify initiative next` would walk at execution time.
+Matches the order `specify plan next` would walk at execution time.
 
 ## Confidence flags
 

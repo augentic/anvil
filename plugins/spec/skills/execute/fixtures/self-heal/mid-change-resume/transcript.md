@@ -9,9 +9,9 @@ Self-heal:
 1. Scans `plan.yaml`, finds `product-catalog` with `status: in-progress`.
 2. Reads `metadata.yaml`. Sees `outcome` is absent and `LifecycleStatus == defined` (non-terminal) → fall through to the mid-change resume branch.
 3. Reads `LifecycleStatus == defined`. Per RFC-2 §"Context Threading → Resumption Within a Change", the next phase is `/spec:build`.
-4. Does NOT call `specify initiative transition` — the plan entry stays `in-progress` for the remainder of the phase sequence.
+4. Does NOT call `specify plan transition` — the plan entry stays `in-progress` for the remainder of the phase sequence.
 5. Appends one `type: recovery` entry to `journal.yaml` (see `journal.yaml.after`) documenting the resume.
-6. Emits one diagnostic line, jumps directly to step 7 of the supervised run (invoke `/spec:build product-catalog`), bypassing the normal step-4 `specify initiative next` and step-5 `pending → in-progress` transition (both of which are unnecessary — the entry is already the active in-progress one).
+6. Emits one diagnostic line, jumps directly to step 7 of the supervised run (invoke `/spec:build product-catalog`), bypassing the normal step-4 `specify plan next` and step-5 `pending → in-progress` transition (both of which are unnecessary — the entry is already the active in-progress one).
 
 ```text
 Self-heal: product-catalog — resuming build (LifecycleStatus=defined)

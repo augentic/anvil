@@ -65,8 +65,8 @@ When a change is part of an initiative plan, the plan entry has its own status t
 
 ```mermaid
 stateDiagram-v2
-    [*] --> pending: specify initiative create
-    pending --> in_progress: specify initiative transition
+    [*] --> pending: specify plan create
+    pending --> in_progress: specify plan transition
     in_progress --> done: change merged successfully
     in_progress --> failed: change failed
     in_progress --> blocked: change deferred
@@ -87,7 +87,7 @@ stateDiagram-v2
 | `blocked` | Change deferred -- dependency issue or external blocker |
 | `skipped` | Manually skipped by operator |
 
-Plan entry transitions are performed by `specify initiative transition <name> <target>`.
+Plan entry transitions are performed by `specify plan transition <name> <target>`.
 
 ## Archiving
 
@@ -99,4 +99,4 @@ Both terminal states (`merged` and `dropped`) result in the change directory bei
 
 The full change directory is preserved, including all artifacts and `.metadata.yaml`. This provides an audit trail of every change the project has been through.
 
-For plans, `specify initiative archive` moves a completed `plan.yaml` and its working directory to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+For plans, `specify plan archive` moves a completed `plan.yaml` and its working directory to `.specify/archive/plans/<YYYYMMDD>-<name>/`.

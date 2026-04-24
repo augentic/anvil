@@ -13,7 +13,7 @@ Scope and delta-targeting intent are carried in the `description` field as prose
 
 Semantic checks (cycle detection, referential integrity of `depends-on` / `sources` targets, at-most-one `in-progress`, etc.) are performed by `Plan::validate` in [`specify-change`](https://github.com/augentic/specify-cli/tree/main/crates/change); this schema covers shape only.
 
-The JSON response produced by `specify initiative validate --format json` (both the shape checks above and the semantic ones) is itself covered by a sibling schema at [`../plan-validate-output/schema.json`](../plan-validate-output/schema.json); skill authors consuming the validator should match the response against that schema.
+The JSON response produced by `specify plan validate --format json` (both the shape checks above and the semantic ones) is itself covered by a sibling schema at [`../plan-validate-output/schema.json`](../plan-validate-output/schema.json); skill authors consuming the validator should match the response against that schema.
 
 ## Editor integration
 

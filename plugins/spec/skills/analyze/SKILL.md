@@ -111,7 +111,7 @@ In addition to appending capability summaries to `$DISCOVERY`, the code branch (
 
 All fields are required. The detection algorithm that produces each field is owned by the schema-specific code branch prompt (`schemas/<schema>/briefs/plan/analyze.md`, RFC-3a C21); this SKILL only pins the field names, types, and on-disk shape.
 
-**Idempotency.** Same rules as §*Output contract*: no timestamps, no host state, byte-stable field order matching the shape above, and alphabetically-sorted `top_level_modules`. Re-running analyze on unchanged inputs emits byte-identical metadata. This lets `specify initiative validate` (RFC-3a C25) diff the file across runs without drift.
+**Idempotency.** Same rules as §*Output contract*: no timestamps, no host state, byte-stable field order matching the shape above, and alphabetically-sorted `top_level_modules`. Re-running analyze on unchanged inputs emits byte-identical metadata. This lets `specify plan validate` (RFC-3a C25) diff the file across runs without drift.
 
 **Consumers.** RFC-3a C25 reads this metadata to emit the non-blocking `scope-missing-on-monolith` warning. No other consumer exists in v1; propose (C24) reads capability summaries from `$DISCOVERY`, not this sidecar.
 

@@ -4,7 +4,7 @@
 # --context "..."`. The driver reads `.outcome.outcome` (== deferred)
 # and enters the defer path (step 12):
 #   1. run `/spec:drop notification-preferences --reason "<outcome.summary>"`
-#   2. run `specify initiative transition notification-preferences blocked
+#   2. run `specify plan transition notification-preferences blocked
 #          --reason "<outcome.summary>"`
 # The `--reason` argument is byte-identical to `outcome.summary` below;
 # drift between this field and `plan.yaml.after:status-reason` is a
@@ -27,6 +27,6 @@ outcome:
     webhook }. None is clearly in or out of scope from the available inputs;
     the define pipeline cannot pick among them without an authoritative
     scope from the human. Suggested resolution: update the plan description
-    via `specify initiative amend notification-preferences --description "..."`
+    via `specify plan amend notification-preferences --description "..."`
     with the channel enumeration, then transition (blocked → pending) to
     retry.
