@@ -288,7 +288,8 @@ Authoring artefacts live under `.specify/plans/<initiative-name>/`, mirroring th
 └── plans/
     └── <initiative-name>/
         ├── discovery.md            # from the discovery brief (step 3a)
-        ├── proposal.md             # from the propose brief (step 3c)
+        ├── workspace.md            # from sync-peers (step 3b; multi-repo only)
+        ├── proposal.md             # from the propose brief (step 3c) + assignment table (step 3d)
         └── analyze/                # `/spec:analyze` sidecars (legacy-code): `<source-key>/metadata.json`
 ```
 

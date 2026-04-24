@@ -82,7 +82,7 @@ Run the plan skill as usual, but now the registry is in play:
 /spec:plan add-oauth --source monolith=/path/to/legacy --from ./docs/oauth-prd.md
 ```
 
-The plan skill runs its three-phase flow, but with an extra step:
+The plan skill runs its four-phase flow for multi-repo initiatives:
 
 ### Discovery
 
@@ -94,28 +94,34 @@ Because `registry.yaml` declares multiple projects, the **sync peers** phase run
 
 1. Clones every registry project into `.specify/workspace/<project>/`.
 2. Inventories each repo's existing `.specify/` tree -- baseline specs, in-flight plans, schema.
-3. Produces `workspace.md` with the peer inventory.
+3. Produces `workspace.md` with the peer inventory, including each project's `Description` and `Schema` from the registry.
 
 You can review the result at `.specify/plans/add-oauth/workspace.md`.
 
-### Propose with project assignment
+### Propose
 
-During the propose phase, each proposed change is **assigned to a project**. The assignment uses three signals:
+Same as single-repo -- the propose brief decomposes the capability inventory into change slices via the interactive accept / edit / reject loop. Entries are created **without** a `project` field; assignment happens in the next step.
 
-1. **Registry descriptions** -- the primary signal. Each change's description is matched against project descriptions.
+### Assignment
+
+After propose, the plan skill runs the **assignment pass**. For each newly created entry, it infers which project the change belongs to using three signals:
+
+1. **Registry descriptions** -- the primary signal. Each change's description is matched against project descriptions in `workspace.md`.
 2. **Baseline specs** -- capabilities already specified in a repo have strong affinity.
 3. **Schema identity** -- a UI capability is unlikely to route to an `omnia` backend project.
 
-For each slice, the agent shows the proposed assignment:
+The full assignment table is presented in a batch review:
 
 ```
-Proposed: add-token-management
-  Description: OAuth2 token management and provider integration
-  Project: api (inferred from: "authentication, token management")
-  Accept / Edit / Reject?
+## Assignment
+
+| # | Entry | Project | Rationale |
+|---|---|---|---|
+| 1 | add-token-management | api | description overlap: authentication, token management |
+| 2 | add-login-screens | mobile | schema: vectis (UI capability) |
 ```
 
-You can override the assignment during the edit step.
+You can override any assignment. Ambiguous entries are surfaced as unresolved and require your input. Each assignment is written via `specify plan amend <name> --project <project>`.
 
 ## 4. Review the cross-repo plan
 
@@ -144,18 +150,29 @@ The `project` field tells `/spec:execute` where to run each change.
 /spec:execute --loop
 ```
 
-For each change, the driver:
+For each change, the driver uses **CWD-based routing** (RFC-3b):
 
-1. Reads the `project` field.
-2. Routes to the correct repo in `.specify/workspace/<project>/`.
-3. Uses the project's schema for define/build/merge.
-4. Writes phase outcomes and transitions the plan entry.
+1. Reads the `project` field from `specify plan next`.
+2. Resolves source paths to absolute paths (anchored to the initiating repo).
+3. Changes working directory to the target project's workspace clone.
+4. Runs `/spec:define`, `/spec:build`, `/spec:merge` — phase skills are unaware of multi-repo routing.
+5. Restores CWD to the initiating repo for the next iteration.
 
 Changes execute in dependency order. `add-token-management` (api) runs first, then `add-login-screens` (mobile) can start because its dependency is `done`.
 
-## 6. Greenfield variant
+## 6. Push results
 
-For new platforms where repos do not exist yet, the registry describes the *intended* organisation:
+After execution, workspace clones contain local commits from merge. Push them to remotes:
+
+```text
+specify workspace push
+```
+
+This creates a `specify/<initiative-name>` branch per project, pushes to the remote, and opens a PR. For greenfield projects, it also creates the remote repo via `gh`. See [specify workspace](../reference/cli/workspace.md) for details.
+
+## 7. Greenfield variant
+
+For new platforms where repos do not exist yet, the registry describes the *intended* organisation. Use git remote URLs so that `workspace sync` can bootstrap clones and `workspace push` can push to the remote:
 
 ```yaml
 projects:
@@ -166,22 +183,22 @@ projects:
       REST API and business logic.
 
   - name: mobile
-    url: ../mobile
-    remote: git@github.com:org/mobile.git
+    url: git@github.com:org/mobile.git
     schema: vectis@v1
     description: >
       iOS and Android mobile application.
 ```
 
-When `/spec:execute` encounters a project with no `.specify/` directory, it runs `specify init --schema <url>` to bootstrap it before proceeding with define.
+When `specify workspace sync` encounters a remote that does not exist, it treats the project as greenfield: creates the workspace slot, runs `git init`, sets the remote, and bootstraps `.specify/project.yaml` via `specify init` using the initiating repo's schema cache. After execution, `specify workspace push` creates the remote repo (via `gh`) and pushes.
 
 ## What you learned
 
 - `registry.yaml` declares the repos in your platform with domain descriptions.
 - `/spec:plan` automatically syncs peers when the registry has multiple projects.
-- Changes are assigned to projects based on description matching, baseline specs, and schema.
-- `plan.yaml` entries carry a `project` field for routing.
-- `/spec:execute` routes each change to the correct repo and schema.
+- Propose creates entries without `project`; the assignment step infers and writes project routing.
+- `plan.yaml` entries carry a `project` field for CWD-based routing during execution.
+- `/spec:execute` routes each change to the correct workspace clone and schema.
+- `specify workspace push` publishes local commits to remotes and opens PRs.
 - The same flow works for brownfield (existing repos) and greenfield (new repos).
 
 ## Next

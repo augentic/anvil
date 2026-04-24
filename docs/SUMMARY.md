@@ -56,6 +56,7 @@
   - [specify validate](reference/cli/validate.md)
   - [specify task](reference/cli/task.md)
   - [specify merge](reference/cli/merge.md)
+  - [specify workspace](reference/cli/workspace.md)
   - [specify init](reference/cli/init.md)
   - [specify vectis](reference/cli/vectis.md)
 - [Plugins](reference/plugins/index.md)

@@ -17,7 +17,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### CLI
 
-- [CLI Reference](cli/index.md) -- all `specify` subcommands grouped by family (change, initiative, schema, spec, validate, task, merge, init, vectis).
+- [CLI Reference](cli/index.md) -- all `specify` subcommands grouped by family (change, initiative, workspace, schema, spec, validate, task, merge, init, vectis).
 
 ### Plugins
 

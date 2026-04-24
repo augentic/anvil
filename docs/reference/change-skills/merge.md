@@ -36,6 +36,7 @@ Merge a completed change into the baseline.
    - Validates coherence of the merged baseline.
    - Transitions the change to `merged`.
    - Moves the change directory to the archive.
+   - **Workspace clone auto-commit (RFC-3b).** When the merge runs inside a workspace clone (CWD under `.specify/workspace/*/` with `project.yaml`), `specify merge` auto-commits the merged baseline and archive with message `"specify: merge <change-name>"`. The commit stages only `.specify/` subtrees. If the commit fails, the spec-merge still succeeds -- the commit failure is a warning. The operator publishes changes via `specify workspace push`.
 6. Writes phase outcome.
 
 ## Lifecycle transitions

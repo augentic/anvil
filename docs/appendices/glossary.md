@@ -122,4 +122,4 @@ The read-only skill (`/spec:verify`) that compares code against baseline specs t
 ## W
 
 **Workspace**
-`.specify/workspace/<project>/` -- read-only clones of registry projects, created during sync-peers for cross-repo planning.
+`.specify/workspace/<project>/` -- clones of registry projects materialised by `specify workspace sync`. Read-only during planning (sync-peers phase); writable during execution (`/spec:execute` routes define-build-merge into the clone). Local commits are pushed to remotes via `specify workspace push`.
