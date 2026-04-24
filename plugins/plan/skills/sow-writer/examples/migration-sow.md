@@ -6,9 +6,7 @@ A TypeScript notification processing service is being migrated to Rust WASM. The
 
 ## Input
 
-**Specify artifacts**: `./.specify/changes/notification_hub/`
-**Client**: Auckland Transport
-**Origin**: code-analysis (TypeScript source)
+**Specify artifacts**: `./.specify/changes/notification_hub/` **Client**: Auckland Transport **Origin**: code-analysis (TypeScript source)
 
 **Key artifact content** (summarised):
 

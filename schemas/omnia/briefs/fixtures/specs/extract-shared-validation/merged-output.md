@@ -1,19 +1,14 @@
 # extract-shared-validation — merged output walkthrough
 
-Pins the canonical refactor case as it runs through the specs brief's
-source-driven branch — from description-driven scope inference through
-the post-merge delta composition pass.
+Pins the canonical refactor case as it runs through the specs brief's source-driven branch — from description-driven scope inference through the post-merge delta composition pass.
 
 ## Scope inference
 
 The plan entry's description says:
 
-> Lift the shared validation helpers (src/common/validation/) out of
-> user-registration and email-verification into their own slice;
-> delta-target both prior baselines.
+> Lift the shared validation helpers (src/common/validation/) out of user-registration and email-verification into their own slice; delta-target both prior baselines.
 
-The brief infers `--include src/common/validation/**` from the path
-hint and logs the inference in the journal.
+The brief infers `--include src/common/validation/**` from the path hint and logs the inference in the journal.
 
 ## Per-source loop (one iteration)
 
@@ -42,10 +37,7 @@ hint and logs the inference in the journal.
 
 ## After delta composition
 
-The description references "user-registration" and "email-verification"
-as delta targets. The brief checks `.specify/specs/` for baselines and
-finds both. Each match is rewritten in delta form; unmatched extracted
-capabilities stay as fresh new-crate specs.
+The description references "user-registration" and "email-verification" as delta targets. The brief checks `.specify/specs/` for baselines and finds both. Each match is rewritten in delta form; unmatched extracted capabilities stay as fresh new-crate specs.
 
 ```text
 <change-dir>/specs/user-registration/spec.md
@@ -63,11 +55,7 @@ capabilities stay as fresh new-crate specs.
 
 ### Warnings
 
-Both inferred delta targets (`user-registration`, `email-verification`)
-matched an extracted capability, so step 4 of the composition pass
-fires no warnings. The pinned behaviour here is **silent-when-matched**
-— a clean run logs nothing. The orphan-warning path is pinned by the
-sibling `affects-orphan-warning/` fixture.
+Both inferred delta targets (`user-registration`, `email-verification`) matched an extracted capability, so step 4 of the composition pass fires no warnings. The pinned behaviour here is **silent-when-matched** — a clean run logs nothing. The orphan-warning path is pinned by the sibling `affects-orphan-warning/` fixture.
 
 ## `.extract/monolith/` after merge
 

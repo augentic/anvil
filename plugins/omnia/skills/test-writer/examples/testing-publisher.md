@@ -582,9 +582,7 @@ This example demonstrates:
 - ✅ **Custom trait implementation** (RequestReply)
 - ✅ **Multiple event verification** patterns
 
-**Total lines of test code**: ~150 lines
-**Setup time**: ~20 minutes
-**Maintenance**: Low
+**Total lines of test code**: ~150 lines **Setup time**: ~20 minutes **Maintenance**: Low
 
 ## Next Steps
 

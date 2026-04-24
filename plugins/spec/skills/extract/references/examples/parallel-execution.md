@@ -101,18 +101,11 @@ export class EventProcessor {
 - **Execution mode**: asynchronous-parallel (steps 2-3 run concurrently)
 
 - **Input Types**:
-  ```
-  input: EventInput
-    {
-      "id": "string",
-      "type": "string",
-      "data": "object"
-    }
+  ``` input: EventInput { "id": "string", "type": "string", "data": "object" }
   ```
 
 - **Output Types**:
-  ```
-  void (no return value)
+  ``` void (no return value)
   ```
 
 - **Algorithm**:

@@ -1,7 +1,6 @@
 # Example: HTTP Counter (Render + HTTP)
 
-A Crux app that communicates with a REST API, demonstrating HTTP requests,
-optimistic updates, error handling, and effect testing.
+A Crux app that communicates with a REST API, demonstrating HTTP requests, optimistic updates, error handling, and effect testing.
 
 ## Capabilities Used
 

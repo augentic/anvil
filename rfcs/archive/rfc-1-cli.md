@@ -1,6 +1,6 @@
 # RFC-1: `specify` CLI
 
-> Status: Draft · Depends: — · Enables: [RFC-2](../archive/rfc-2-execution.md), [RFC-3](../rfc-3a-plan.md), [RFC-4](../rfc-4-dsl.md), [RFC-5](../rfc-5-framework-lint.md)
+> Status: Implemented · Depends: — · Enables: [RFC-2](../archive/rfc-2-execution.md), [RFC-3](rfc-3a-monoliths.md), [RFC-4](../rfc-4-dsl.md), [RFC-5](../rfc-5-framework-lint.md)
 
 ## Abstract
 
@@ -10,7 +10,7 @@ Replace prose-interpreted deterministic operations (validation, task parsing, ar
 
 Every precision-critical operation — validation, task parsing, artifact structure checking — is currently performed by the LLM interpreting prose rules. This produces unreliable results for operations that are fundamentally structured decision trees.
 
-The CLI is the foundation everything else builds on. Feature manifest commands ([RFC-2](../archive/rfc-2-execution.md)), multi-repo coordination ([RFC-3](../rfc-3a-plan.md)), and skill validation ([RFC-4](../rfc-4-dsl.md)) all require a binary that understands `.specify/` structure, spec format, and schema rules. Building the CLI first means every subsequent RFC extends an existing tool rather than creating a new one.
+The CLI is the foundation everything else builds on. Feature manifest commands ([RFC-2](../archive/rfc-2-execution.md)), multi-repo coordination ([RFC-3](rfc-3a-monoliths.md)), and skill validation ([RFC-4](../rfc-4-dsl.md)) all require a binary that understands `.specify/` structure, spec format, and schema rules. Building the CLI first means every subsequent RFC extends an existing tool rather than creating a new one.
 
 ## Design Principles
 
@@ -53,12 +53,12 @@ The first four items establish a working binary with immediate value. Items 5–
 
 These build on the existing `/spec:extract`, `wiretapper`, `replay-writer`, and core `/spec:*` skills. See [RFC-2](../archive/rfc-2-execution.md) for the full design.
 
-#### Phase 3: Federation extensions ([RFC-3](../rfc-3a-plan.md))
+#### Phase 3: Federation extensions ([RFC-3](rfc-3a-monoliths.md))
 
 12. **Federation config** and `specify federation sync` for multi-repo
 13. **Cross-repo spec references** and `specify federation validate`
 
-See [RFC-3](../rfc-3a-plan.md) for the full design.
+See [RFC-3](rfc-3a-monoliths.md) for the full design.
 
 ### Impact on Existing Skills
 
@@ -1069,10 +1069,7 @@ The skill prose shrinks from 40 lines of validation instructions to:
 6. **Validate artifacts**
    ```bash
    specify validate "$CHANGE_DIR" --format json
-   ```
-   If `passed` is false: report failures to the user and suggest fixes.
-   If any results have `status: deferred`: apply your judgment for those rules.
-   Do not proceed to implementation until all non-deferred checks pass.
+   ``` If `passed` is false: report failures to the user and suggest fixes. If any results have `status: deferred`: apply your judgment for those rules. Do not proceed to implementation until all non-deferred checks pass.
 ```
 
 ### Dependencies (conservative)
@@ -1163,12 +1160,7 @@ Downstream projects need a deterministic story for getting the `specify` binary,
 1. **Validate artifacts**
    ```bash
    specify validate "$CHANGE_DIR" --format json
-   ```
-   If the command is not found, stop and instruct the user to install the
-   CLI via `brew install specify` (preferred), `cargo install specify`, or
-   the release script at https://specify.sh/install, then re-run. Do not
-   attempt a prose fallback — validation rules have diverged past the
-   point where the agent can reliably reproduce them.
+   ``` If the command is not found, stop and instruct the user to install the CLI via `brew install specify` (preferred), `cargo install specify`, or the release script at https://specify.sh/install, then re-run. Do not attempt a prose fallback — validation rules have diverged past the point where the agent can reliably reproduce them.
 ```
 
 This is a deliberate break from the current `merge` skill's "if `python3` is unavailable, follow the algorithm in `delta-merge.md`" pattern. The prose fallback worked when the CLI was a 120-line Python script; it does not scale to the validator + parser + merger + task engine. Maintaining a second implementation in skill prose would reintroduce exactly the unreliable-interpretation problem this RFC exists to solve. `specify init` (the one skill that runs before the CLI has been exercised against the project) must carry the same hard-fail guard so projects never enter a state where `project.yaml` exists but no downstream skill can read it.
@@ -1191,6 +1183,6 @@ Upgrading `specify_version` is user-driven: running `specify init --upgrade` rew
 
 - [RFC-1-A: Deferred Validation](rfc-1a-validation.md) — the three-way Pass/Fail/Deferred classification
 - [RFC-2: Feature Manifests](../archive/rfc-2-execution.md) — extends the CLI with `specify manifest` subcommands
-- [RFC-3: Multi-Repo Coordination](../rfc-3a-plan.md) — extends the CLI with `specify federation` subcommands
+- [RFC-3: Multi-Repo Coordination](rfc-3a-monoliths.md) — extends the CLI with `specify federation` subcommands
 - [RFC-4: Type-Safe Skill Expression](../rfc-4-dsl.md) — extends the framework linter with skill validation
 - [RFC-5: Framework Linter](../rfc-5-framework-lint.md) — ports `checks.ts` into a `specify-check` crate and adds `specify check`

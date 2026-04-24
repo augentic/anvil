@@ -18,13 +18,13 @@ See also: [RFC-1a: Deferred Validation](archive/rfc-1a-validation.md) — the th
 
 ## [RFC-2: Execution](archive/rfc-2-execution.md)
 
-**Status:** Implemented (Layers 1–3, 2026-04). Plan format, `specify initiative` CLI, `/spec:execute` driver skill, and `/spec:plan` authoring skill are all live. See [DECISIONS.md](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) in `augentic/specify-cli` for the architectural calls made during the build.
+**Status:** Implemented (Layers 1–3, 2026-04). Plan format, `specify plan` / `specify workspace` CLI, `/spec:execute` driver skill, and `/spec:plan` authoring skill are all live. See [DECISIONS.md](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) in `augentic/specify-cli` for the architectural calls made during the build.
 
 **Problem:** Complex initiatives — multi-feature greenfield builds, legacy migrations, platform modernisations — lack a coordination artifact. The agent rediscovers scope, ordering, and dependencies on every iteration. There's no persistent plan that tracks what's done, what's next, and what's blocked.
 
 **Solution:** A Plan (`plan.yaml`) that drives the same define-build-merge loop Specify already uses, change by change, with dependency tracking and progressive baseline accumulation. For legacy migration, a change adds `sources` and define's extract sub-skill analyses them. For greenfield work, define starts from the description. The loop is the same either way. Extracted and greenfield changes coexist in a single plan. Layer 2 adds the `/spec:execute` driver skill (and Layer 3's `/spec:plan` entry-writer skill) that automate the loop.
 
-## [RFC-3: Multi-Repo Planning](rfc-3a-plan.md)
+## [RFC-3: Multi-Repo Planning](archive/rfc-3a-monoliths.md)
 
 **Problem:** RFC-2 assumes you already know the changes. For legacy modernisation, greenfield builds across multiple repos, and platform-wide initiatives, the agent has to *derive* the changes from inputs (legacy code, documentation) and coordinate them across a set of repos whose scope isn't declared anywhere. RFC-2's `/spec:plan` handles single-repo plan authoring; the multi-repo case has no equivalent.
 

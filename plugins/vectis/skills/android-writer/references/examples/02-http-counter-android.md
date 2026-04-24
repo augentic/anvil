@@ -1,11 +1,8 @@
 # Example: HTTP Counter Android Shell
 
-An Android shell for a Crux counter app that persists count to a server via
-HTTP and streams updates via SSE. Demonstrates async HTTP effect handling,
-SSE streaming, Koin dependency injection, and Ktor HTTP client.
+An Android shell for a Crux counter app that persists count to a server via HTTP and streams updates via SSE. Demonstrates async HTTP effect handling, SSE streaming, Koin dependency injection, and Ktor HTTP client.
 
-This shell pairs with the core-writer example `02-http-counter.md`. The
-shared crate defines:
+This shell pairs with the core-writer example `02-http-counter.md`. The shared crate defines:
 
 - `ViewModel::Loading` and `ViewModel::Counter(CounterView)` variants (two-variant enum)
 - `CounterView { text: String, confirmed: bool }` per-page view struct
@@ -662,30 +659,17 @@ fun LoadingScreenPreview() {
 
 ## Key Patterns Demonstrated
 
-1. **Enum ViewModel with `when` branching** -- `AppView` uses `when (state)`
-   to match `ViewModel.Loading` and `ViewModel.Counter`, rendering the
-   corresponding screen composable for each variant.
-2. **Per-page view struct as screen parameter** -- `CounterScreen` accepts
-   `CounterView`, not `ViewModel`. The `when` branch extracts `state.value`.
-3. **One screen per ViewModel variant** -- `LoadingScreen` for the `Loading`
-   variant and `CounterScreen` for the `Counter(CounterView)` variant.
-4. **HTTP effect handling** -- `HttpClient` uses Ktor + OkHttp engine with
-   proper timeout configuration and error mapping.
-5. **SSE streaming** -- `SseClient` reads a Ktor channel line-by-line and
-   invokes a callback for each chunk. Uses `@OptIn(ExperimentalUnsignedTypes::class)`.
-6. **Defensive error handling** -- SSE effect is wrapped in `scope.launch`
-   with `try/catch` to prevent crashes. `CancellationException` is rethrown.
-7. **Koin DI** -- `Core`, `HttpClient`, and `SseClient` are singletons
-   injected via Koin. The `CounterApplication` bootstraps Koin.
-8. **UniFFI library override** -- `System.setProperty("uniffi.component.shared.libraryOverride", "shared")`
-   set in `CounterApplication.onCreate()` before Koin initialization.
-9. **Generated type imports** -- all `.kt` files explicitly import types
-   from `com.example.app.*` and `uniffi.shared.CoreFfi`.
-10. **Network security config** -- cleartext HTTP allowed for localhost/`10.0.2.2`
-    to support development servers.
+1. **Enum ViewModel with `when` branching** -- `AppView` uses `when (state)` to match `ViewModel.Loading` and `ViewModel.Counter`, rendering the corresponding screen composable for each variant.
+2. **Per-page view struct as screen parameter** -- `CounterScreen` accepts `CounterView`, not `ViewModel`. The `when` branch extracts `state.value`.
+3. **One screen per ViewModel variant** -- `LoadingScreen` for the `Loading` variant and `CounterScreen` for the `Counter(CounterView)` variant.
+4. **HTTP effect handling** -- `HttpClient` uses Ktor + OkHttp engine with proper timeout configuration and error mapping.
+5. **SSE streaming** -- `SseClient` reads a Ktor channel line-by-line and invokes a callback for each chunk. Uses `@OptIn(ExperimentalUnsignedTypes::class)`.
+6. **Defensive error handling** -- SSE effect is wrapped in `scope.launch` with `try/catch` to prevent crashes. `CancellationException` is rethrown.
+7. **Koin DI** -- `Core`, `HttpClient`, and `SseClient` are singletons injected via Koin. The `CounterApplication` bootstraps Koin.
+8. **UniFFI library override** -- `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` set in `CounterApplication.onCreate()` before Koin initialization.
+9. **Generated type imports** -- all `.kt` files explicitly import types from `com.example.app.*` and `uniffi.shared.CoreFfi`.
+10. **Network security config** -- cleartext HTTP allowed for localhost/`10.0.2.2` to support development servers.
 11. **themes.xml** -- Android theme resource required by `AndroidManifest.xml`.
-12. **StateFlow observation** -- `core.viewModel.collectAsState()` in Compose
-    triggers recomposition on ViewModel changes.
-13. **Effect loop** -- `update -> handleEffects -> processRequest -> resolve
-    -> handleEffects` forms the recursive effect processing loop.
+12. **StateFlow observation** -- `core.viewModel.collectAsState()` in Compose triggers recomposition on ViewModel changes.
+13. **Effect loop** -- `update -> handleEffects -> processRequest -> resolve -> handleEffects` forms the recursive effect processing loop.
 14. **INTERNET permission** -- Required in AndroidManifest for HTTP/SSE.

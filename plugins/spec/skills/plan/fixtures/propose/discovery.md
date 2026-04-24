@@ -3,27 +3,19 @@
 ## Capability inventory
 
 ### user-registration
-Source: monolith (/path/to/legacy-codebase)
-Description: User sign-up flow; creates a new user record.
+Source: monolith (/path/to/legacy-codebase) Description: User sign-up flow; creates a new user record.
 
 ### email-verification
-Source: monolith (/path/to/legacy-codebase)
-Description: Verifies user email via a one-time link.
-Depends-on hints: user-registration
+Source: monolith (/path/to/legacy-codebase) Description: Verifies user email via a one-time link. Depends-on hints: user-registration
 
 ### product-catalog
-Source: monolith (/path/to/legacy-codebase)
-Description: Browse and search the product catalogue.
+Source: monolith (/path/to/legacy-codebase) Description: Browse and search the product catalogue.
 
 ### cart-management
-Source: orders (git@github.com:org/orders-service.git)
-Description: Add/remove items from the user's cart.
-Depends-on hints: user-registration
+Source: orders (git@github.com:org/orders-service.git) Description: Add/remove items from the user's cart. Depends-on hints: user-registration
 
 ### checkout
-Source: payments (git@github.com:org/payments-service.git)
-Description: Completes payment for a cart.
-Depends-on hints: cart-management
+Source: payments (git@github.com:org/payments-service.git) Description: Completes payment for a cart. Depends-on hints: cart-management
 
 ## Open questions
 

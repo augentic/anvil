@@ -5,16 +5,9 @@ description: Review generated Android shell (Kotlin/Jetpack Compose) code for st
 
 # Crux Android Shell Reviewer
 
-Systematically review the generated Android shell (Kotlin/Jetpack Compose)
-for structural issues, integration correctness, and general code quality
-problems. Produces a severity-graded report with actionable findings and
-suggested fixes.
+Systematically review the generated Android shell (Kotlin/Jetpack Compose) for structural issues, integration correctness, and general code quality problems. Produces a severity-graded report with actionable findings and suggested fixes.
 
-This skill catches issues that the Kotlin compiler and linter miss: missing
-screen composable / root branch correspondence, incomplete effect handlers,
-hardcoded design tokens, missing accessibility descriptions, coroutine safety
-violations, missing UniFFI library override, and incorrect generated-type
-import patterns.
+This skill catches issues that the Kotlin compiler and linter miss: missing screen composable / root branch correspondence, incomplete effect handlers, hardcoded design tokens, missing accessibility descriptions, coroutine safety violations, missing UniFFI library override, and incorrect generated-type import patterns.
 
 ## Arguments
 
@@ -27,11 +20,7 @@ import patterns.
 
 ## Process
 
-This skill uses an agent team with 3 specialist reviewers and 1 antagonist.
-The lead coordinates the team, synthesizes findings, and produces the final
-report. See [Agent Team Patterns](references/agent-teams.md) for shared
-protocols (team roles, antagonist protocol, synthesis rules, file ownership,
-and confidence scoring).
+This skill uses an agent team with 3 specialist reviewers and 1 antagonist. The lead coordinates the team, synthesizes findings, and produces the final report. See [Agent Team Patterns](references/agent-teams.md) for shared protocols (team roles, antagonist protocol, synthesis rules, file ownership, and confidence scoring).
 
 ### 1. Gather context
 
@@ -48,8 +37,7 @@ Read the following files from `{target-dir}`:
 - `Android/app/src/main/AndroidManifest.xml` -- manifest configuration
 - `Android/Makefile` -- build automation
 
-If `reference-dir` is provided, also read the corresponding files from the
-reference app.
+If `reference-dir` is provided, also read the corresponding files from the reference app.
 
 Also read:
 - `design-system/tokens.yaml` -- expected design tokens
@@ -62,25 +50,17 @@ Before starting, initialize:
 - `iteration = 1`, `max_iterations = 3`
 - An empty list of **accumulated design-level findings**
 
-The cycle repeats: spawn the team, run specialist analysis, challenge via
-antagonist, synthesize findings, auto-fix mechanical issues, then re-review.
-Exit when no mechanical fixes are applied or `max_iterations` is reached.
+The cycle repeats: spawn the team, run specialist analysis, challenge via antagonist, synthesize findings, auto-fix mechanical issues, then re-review. Exit when no mechanical fixes are applied or `max_iterations` is reached.
 
 #### 2a. Initialize team
 
-**CREATE** agent team with specialists appropriate for this iteration and
-scope. Each receives the target-dir path and their assigned review scope.
+**CREATE** agent team with specialists appropriate for this iteration and scope. Each receives the target-dir path and their assigned review scope.
 
-**First iteration (`scope = full`)**: Spawn all three specialists. This is
-the comprehensive initial review.
+**First iteration (`scope = full`)**: Spawn all three specialists. This is the comprehensive initial review.
 
-**First iteration (`scope = quick`)**: Spawn only the **Structural
-Specialist** and **Quality Specialist**. Skip the Integration Specialist.
+**First iteration (`scope = quick`)**: Spawn only the **Structural Specialist** and **Quality Specialist**. Skip the Integration Specialist.
 
-**Subsequent iterations (either scope)**: Spawn only the **Structural
-Specialist** and **Quality Specialist**, scoped to files modified by the
-previous iteration's fixes. Skip the Integration Specialist -- mechanical
-fixes do not alter FFI type mappings or build configuration.
+**Subsequent iterations (either scope)**: Spawn only the **Structural Specialist** and **Quality Specialist**, scoped to files modified by the previous iteration's fixes. Skip the Integration Specialist -- mechanical fixes do not alter FFI type mappings or build configuration.
 
 **Spawn Structural Specialist**:
 
@@ -114,8 +94,7 @@ Output your findings as a numbered list in markdown. Prefix each finding
 ID with "AND-" (e.g., AND-001-1, AND-023-1).
 ```
 
-If `iteration > 1`, append: "Scope your analysis to these files modified
-in the previous iteration: [list of changed files]."
+If `iteration > 1`, append: "Scope your analysis to these files modified in the previous iteration: [list of changed files]."
 
 **Spawn Quality Specialist**:
 
@@ -145,8 +124,7 @@ Output your findings as a numbered list in markdown. Prefix each finding
 ID with "KTL-" (e.g., KTL-001-1, KTL-006-1).
 ```
 
-If `iteration > 1`, append: "Scope your analysis to these files modified
-in the previous iteration: [list of changed files]."
+If `iteration > 1`, append: "Scope your analysis to these files modified in the previous iteration: [list of changed files]."
 
 **Spawn Integration Specialist** (first iteration only; skip if scope = quick):
 
@@ -185,19 +163,13 @@ ID with "INT-" (e.g., INT-001, INT-002).
 
 #### 2b. Specialist analysis (concurrent)
 
-The specialists analyze the shell concurrently. Each reads all `.kt` files
-under `Android/app/src/main/java/` (and `shared/src/app.rs` for the
-Integration Specialist) but reports only on their assigned checks.
+The specialists analyze the shell concurrently. Each reads all `.kt` files under `Android/app/src/main/java/` (and `shared/src/app.rs` for the Integration Specialist) but reports only on their assigned checks.
 
 **Lead waits** for all specialists to complete before proceeding.
 
 #### 2c. Universal checks (lead; skip if scope = quick)
 
-After all specialists report, the lead reads
-`../../references/review-checks.md` and applies checks UNI-001
-through UNI-021 with Kotlin/Android-specific detection. Several universal
-checks overlap with categories already assigned to the specialists. Skip
-those and focus on the gaps:
+After all specialists report, the lead reads `../../references/review-checks.md` and applies checks UNI-001 through UNI-021 with Kotlin/Android-specific detection. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
 
 | Universal check | Already covered by | Action |
 |---|---|---|
@@ -207,84 +179,32 @@ those and focus on the gaps:
 
 Apply the remaining checks with these Kotlin/Android-specific heuristics:
 
-- **UNI-001** (uninitialised values): Look for `var` properties initialised
-  to `null` or placeholder values that are accessed before a coroutine load
-  completes. Check for `MutableStateFlow` initialised with default values
-  that represent an invalid domain state.
-- **UNI-002** (unvalidated input): Look for shell-side `TextField` values
-  dispatched to the core via `onEvent(Event.Something(text))` without local
-  trim or empty check. While the core should also validate, the shell should
-  prevent obviously invalid dispatches.
-- **UNI-004** (logic bugs): Reason about the `processRequest` `when` for
-  missing branches, incorrect effect resolution sequences, and navigation
-  handlers that produce unreachable states.
-- **UNI-005** (unbounded growth): Look for `scope.launch` blocks that create
-  coroutines without cancellation tracking, growing lists of SSE observations
-  without cleanup, and `MutableStateFlow` subscribers that are never
-  collected. Check for `Job` references stored without cancellation.
-- **UNI-007** (chatty calls): Look for Ktor HTTP calls that re-fetch data
-  the core already has from SSE or other real-time channels. Check for
-  effect handlers that fire identical resolve calls on repeated recompositions.
-- **UNI-008** (instrumentation balance): Look for error paths with no
-  `Log.e` or `Log.w` call. Flag per-event logging inside hot loops (e.g.,
-  logging every SSE chunk body).
-- **UNI-009** (handle-then-throw): Look for `try/catch` blocks that
-  partially update `_viewModel.value` or other `MutableStateFlow` values
-  before rethrowing, leaving the UI in an inconsistent state.
-- **UNI-011** (timeout/retry): Look for Ktor `HttpClient` instances without
-  `HttpTimeout` installed. Check whether SSE reconnection logic exists for
-  transient network failures.
-- **UNI-012** (persisted state compat): Look for `SharedPreferences` model
-  changes (new keys, changed serialization format) that would break
-  deserialization of existing stored data.
-- **UNI-013** (dead code): Look for `when` branches that can never match,
-  unreachable code after `return` / `break`, unused private functions or
-  properties, and composables with no call site.
-- **UNI-014** (hardcoded config): Look for hardcoded timeout intervals,
-  literal URL strings, and magic number page sizes or retry counts.
-- **UNI-015** (stale captures): Look for `scope.launch` blocks capturing
-  `this` or local state that may mutate before the coroutine completes.
-  Check for lambda captures in `LazyColumn` `items` blocks that reference
-  loop-scoped variables.
-- **UNI-016** (error message quality): Look for `Log.e` messages with no
-  context about which item or operation failed, and catch blocks that log
-  the exception type but not the message.
-- **UNI-017** (type safety): Look for `String` properties on view model
-  types or event types that hold values from a known closed set (should be
-  Kotlin enums or sealed interfaces).
-- **UNI-018** (hardcoded secrets): Look for API keys, tokens, passwords,
-  or connection strings embedded as string literals in Kotlin source files.
-  Check for secrets in `local.properties` committed to git, hardcoded
-  `Authorization` headers, and credentials stored in plain-text
-  `SharedPreferences` rather than `EncryptedSharedPreferences` or the
-  Android Keystore.
-- **UNI-019** (injection vulnerabilities): Look for user input interpolated
-  into `WebView` HTML content without escaping, URL path segments built via
-  string concatenation, and `Runtime.exec` invocations with user-controlled
-  arguments.
-- **UNI-020** (unsafe deserialization): Look for bincode or JSON
-  deserialization of untrusted external payloads directly into model types
-  that carry privilege state. Check for missing payload size limits on data
-  fetched from external sources.
-- **UNI-021** (missing auth checks): Check that effect handlers attaching
-  authentication credentials (Bearer tokens, API keys) to outbound requests
-  source them from secure storage (Android Keystore /
-  `EncryptedSharedPreferences`), not from hardcoded values or unprotected
-  `SharedPreferences`. Flag API calls to protected endpoints dispatched
-  without any auth header.
+- **UNI-001** (uninitialised values): Look for `var` properties initialised to `null` or placeholder values that are accessed before a coroutine load completes. Check for `MutableStateFlow` initialised with default values that represent an invalid domain state.
+- **UNI-002** (unvalidated input): Look for shell-side `TextField` values dispatched to the core via `onEvent(Event.Something(text))` without local trim or empty check. While the core should also validate, the shell should prevent obviously invalid dispatches.
+- **UNI-004** (logic bugs): Reason about the `processRequest` `when` for missing branches, incorrect effect resolution sequences, and navigation handlers that produce unreachable states.
+- **UNI-005** (unbounded growth): Look for `scope.launch` blocks that create coroutines without cancellation tracking, growing lists of SSE observations without cleanup, and `MutableStateFlow` subscribers that are never collected. Check for `Job` references stored without cancellation.
+- **UNI-007** (chatty calls): Look for Ktor HTTP calls that re-fetch data the core already has from SSE or other real-time channels. Check for effect handlers that fire identical resolve calls on repeated recompositions.
+- **UNI-008** (instrumentation balance): Look for error paths with no `Log.e` or `Log.w` call. Flag per-event logging inside hot loops (e.g., logging every SSE chunk body).
+- **UNI-009** (handle-then-throw): Look for `try/catch` blocks that partially update `_viewModel.value` or other `MutableStateFlow` values before rethrowing, leaving the UI in an inconsistent state.
+- **UNI-011** (timeout/retry): Look for Ktor `HttpClient` instances without `HttpTimeout` installed. Check whether SSE reconnection logic exists for transient network failures.
+- **UNI-012** (persisted state compat): Look for `SharedPreferences` model changes (new keys, changed serialization format) that would break deserialization of existing stored data.
+- **UNI-013** (dead code): Look for `when` branches that can never match, unreachable code after `return` / `break`, unused private functions or properties, and composables with no call site.
+- **UNI-014** (hardcoded config): Look for hardcoded timeout intervals, literal URL strings, and magic number page sizes or retry counts.
+- **UNI-015** (stale captures): Look for `scope.launch` blocks capturing `this` or local state that may mutate before the coroutine completes. Check for lambda captures in `LazyColumn` `items` blocks that reference loop-scoped variables.
+- **UNI-016** (error message quality): Look for `Log.e` messages with no context about which item or operation failed, and catch blocks that log the exception type but not the message.
+- **UNI-017** (type safety): Look for `String` properties on view model types or event types that hold values from a known closed set (should be Kotlin enums or sealed interfaces).
+- **UNI-018** (hardcoded secrets): Look for API keys, tokens, passwords, or connection strings embedded as string literals in Kotlin source files. Check for secrets in `local.properties` committed to git, hardcoded `Authorization` headers, and credentials stored in plain-text `SharedPreferences` rather than `EncryptedSharedPreferences` or the Android Keystore.
+- **UNI-019** (injection vulnerabilities): Look for user input interpolated into `WebView` HTML content without escaping, URL path segments built via string concatenation, and `Runtime.exec` invocations with user-controlled arguments.
+- **UNI-020** (unsafe deserialization): Look for bincode or JSON deserialization of untrusted external payloads directly into model types that carry privilege state. Check for missing payload size limits on data fetched from external sources.
+- **UNI-021** (missing auth checks): Check that effect handlers attaching authentication credentials (Bearer tokens, API keys) to outbound requests source them from secure storage (Android Keystore / `EncryptedSharedPreferences`), not from hardcoded values or unprotected `SharedPreferences`. Flag API calls to protected endpoints dispatched without any auth header.
 
-Prefix findings from this step with `UNI-` (e.g., UNI-1, UNI-2). Use the
-severity defined in the universal checklist for each check.
+Prefix findings from this step with `UNI-` (e.g., UNI-1, UNI-2). Use the severity defined in the universal checklist for each check.
 
-Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004,
-UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in
-the adversarial review and spec-change output in step 3.
+Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004, UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in the adversarial review and spec-change output in step 3.
 
 #### 2d. Adversarial challenge
 
-After the specialist reports and universal checks are complete, the lead
-sends all combined findings (AND-, KTL-, INT-, and UNI- prefixed) to the
-antagonist.
+After the specialist reports and universal checks are complete, the lead sends all combined findings (AND-, KTL-, INT-, and UNI- prefixed) to the antagonist.
 
 **Spawn Antagonist**:
 
@@ -331,30 +251,22 @@ The antagonist:
 
 1. Reviews every finding for evidence quality and severity accuracy
 2. Performs a counter-scan for missed Android-specific issues
-3. Sends challenged report to lead with: confirmed, downgraded, upgraded,
-   disputed, and new findings
+3. Sends challenged report to lead with: confirmed, downgraded, upgraded, disputed, and new findings
 
 #### 2e. Synthesis
 
-The lead merges all findings (specialist reports, universal checks, and
-antagonist challenges) into a single iteration report:
+The lead merges all findings (specialist reports, universal checks, and antagonist challenges) into a single iteration report:
 
 1. **Confirmed findings**: Include verbatim from specialist reports
-2. **Downgraded findings**: Include with the antagonist's revised severity
-   and rationale
-3. **Upgraded findings**: Include with the antagonist's revised severity
-   and rationale
-4. **Disputed findings**: Lead makes final call; if included, add dispute
-   note
+2. **Downgraded findings**: Include with the antagonist's revised severity and rationale
+3. **Upgraded findings**: Include with the antagonist's revised severity and rationale
+4. **Disputed findings**: Lead makes final call; if included, add dispute note
 5. **New findings**: Include with the antagonist's severity and evidence
-6. Assign overall **confidence level** per
-   [Agent Team Patterns - Confidence Scoring](references/agent-teams.md#confidence-scoring)
+6. Assign overall **confidence level** per [Agent Team Patterns - Confidence Scoring](references/agent-teams.md#confidence-scoring)
 
 #### 2f. Produce iteration report
 
-Output the synthesized findings for this iteration. On the first iteration,
-use the full report format. On subsequent iterations, report only new
-findings discovered in re-review and note the iteration number.
+Output the synthesized findings for this iteration. On the first iteration, use the full report format. On subsequent iterations, report only new findings discovered in re-review and note the iteration number.
 
 ````
 ## Android Shell Review Report: {app-name} (iteration {N})
@@ -418,13 +330,9 @@ Classify each finding as **mechanical** (auto-fixable) or **design-level**.
 
 #### 2g. Auto-fix mechanical issues
 
-The **lead** applies all auto-fixes directly (specialists and antagonist
-have completed their analysis). The finding prefix (AND-, KTL-, INT-,
-UNI-, NEW-) tracks which reviewer or pass identified the issue for
-accountability in the report.
+The **lead** applies all auto-fixes directly (specialists and antagonist have completed their analysis). The finding prefix (AND-, KTL-, INT-, UNI-, NEW-) tracks which reviewer or pass identified the issue for accountability in the report.
 
-Apply fixes for findings that are mechanical and confirmed or upgraded
-(not disputed):
+Apply fixes for findings that are mechanical and confirmed or upgraded (not disputed):
 
 - Adding missing accessibility `contentDescription` values
 - Adding missing design system imports
@@ -435,13 +343,9 @@ Apply fixes for findings that are mechanical and confirmed or upgraded
 - Adding missing `import com.example.app.*` statements
 - Adding `CancellationException` rethrow to catch blocks
 
-Do NOT auto-fix structural issues (missing screen composables, missing effect
-handlers) without confirmation -- these may require design decisions about
-layout and interaction. Respect antagonist regression flags.
+Do NOT auto-fix structural issues (missing screen composables, missing effect handlers) without confirmation -- these may require design decisions about layout and interaction. Respect antagonist regression flags.
 
-After fixes, run Kotlin formatting on modified files if a formatter is
-configured. If fixes cause build errors, revert all auto-fixes and warn in
-the report.
+After fixes, run Kotlin formatting on modified files if a formatter is configured. If fixes cause build errors, revert all auto-fixes and warn in the report.
 
 #### 2h. Loop control
 
@@ -451,8 +355,7 @@ After applying fixes, verifying, and shutting down the team:
 2. If `iteration >= max_iterations`, exit the cycle.
 3. Otherwise, increment `iteration` and return to step 2a.
 
-When the cycle exits, shut down all remaining teammates and output a summary
-across all iterations:
+When the cycle exits, shut down all remaining teammates and output a summary across all iterations:
 
 ```
 ### Review Cycle Summary
@@ -465,29 +368,16 @@ across all iterations:
 
 ### 3. Express accumulated design-level findings
 
-After the review-fix cycle completes, check whether any **design-level
-findings** were accumulated -- findings that require architectural decisions,
-missing screen composables, missing effect handlers, or issues that indicate
-the spec is incomplete (typically AND-001, AND-003, AND-010, and universal
-checks tagged with a **Spec-change indicator**).
-If none were accumulated across any iteration, skip this step.
+After the review-fix cycle completes, check whether any **design-level findings** were accumulated -- findings that require architectural decisions, missing screen composables, missing effect handlers, or issues that indicate the spec is incomplete (typically AND-001, AND-003, AND-010, and universal checks tagged with a **Spec-change indicator**). If none were accumulated across any iteration, skip this step.
 
 #### Classify findings: code-fix vs spec-change
 
 Classify each design-level finding:
 
-- **Code-fix**: The spec is clear and the code simply does not implement it
-  correctly. The fix is a code change; no spec update is needed. These
-  become tasks in `tasks.md`.
-- **Spec-change**: The spec is silent, ambiguous, or mandates behavior that
-  the review identified as problematic. The fix requires updating the spec
-  first, then implementing. These become requirements in `specs/` and
-  decisions in `design.md`.
+- **Code-fix**: The spec is clear and the code simply does not implement it correctly. The fix is a code change; no spec update is needed. These become tasks in `tasks.md`.
+- **Spec-change**: The spec is silent, ambiguous, or mandates behavior that the review identified as problematic. The fix requires updating the spec first, then implementing. These become requirements in `specs/` and decisions in `design.md`.
 
-Universal checks with a Spec-change indicator (UNI-002, UNI-004, UNI-007,
-UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) commonly surface as spec-change
-findings. Consult `../../references/review-checks.md` for the
-indicator description on each check.
+Universal checks with a Spec-change indicator (UNI-002, UNI-004, UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) commonly surface as spec-change findings. Consult `../../references/review-checks.md` for the indicator description on each check.
 
 #### When `orchestrated: true` (build-phase invocation)
 
@@ -503,8 +393,7 @@ single Specify change. Do **not** call `/spec:define`.
 If design-level findings exist, delegate to `/spec:define` to create a
 single Specify change that tracks all of them:
 
-1. **Derive a change name** from the app name and append the current
-   date-time for traceability:
+1. **Derive a change name** from the app name and append the current date-time for traceability:
 
    ```
    review-{app-name}-android-{YYYY-MM-DDTHH-MM}
@@ -517,47 +406,19 @@ single Specify change that tracks all of them:
    date -u +"%Y-%m-%dT%H-%M"
    ```
 
-2. **Delegate to `/spec:define`** with the derived change name and a
-   description synthesized from the accumulated design-level findings.
-   Provide the following guidance for artifact generation:
+2. **Delegate to `/spec:define`** with the derived change name and a description synthesized from the accumulated design-level findings. Provide the following guidance for artifact generation:
 
 3. **Content guidelines for each artifact**:
 
-   - **proposal.md**: The "Why" section summarizes the accumulated review
-     findings by severity and risk, distinguishing spec-change findings
-     (requirements gaps) from code-fix findings (implementation bugs).
-     The "What Changes" section lists each design-level finding as a
-     bullet, prefixed with `[spec]` or `[code]` to indicate its
-     classification. Note which mechanical fixes were already applied
-     across all iterations and how many review cycles ran. The "Impact"
-     section identifies affected files, core contract changes, and
-     migration concerns.
+   - **proposal.md**: The "Why" section summarizes the accumulated review findings by severity and risk, distinguishing spec-change findings (requirements gaps) from code-fix findings (implementation bugs). The "What Changes" section lists each design-level finding as a bullet, prefixed with `[spec]` or `[code]` to indicate its classification. Note which mechanical fixes were already applied across all iterations and how many review cycles ran. The "Impact" section identifies affected files, core contract changes, and migration concerns.
 
-   - **design.md**: Each design-level finding becomes a Decision section
-     with rationale and alternatives considered. Group related findings
-     (e.g., all effect-handler-related changes under one decision).
-     Reference the specific check IDs (AND-xxx, KTL-xxx, UNI-xxx) that
-     motivated each decision. For spec-change findings, explain why the
-     current spec is insufficient and what the proposed requirement
-     should be.
+   - **design.md**: Each design-level finding becomes a Decision section with rationale and alternatives considered. Group related findings (e.g., all effect-handler-related changes under one decision). Reference the specific check IDs (AND-xxx, KTL-xxx, UNI-xxx) that motivated each decision. For spec-change findings, explain why the current spec is insufficient and what the proposed requirement should be.
 
-   - **specs/**: Create one spec file per logical area (e.g.,
-     `android-shell-effects`, `android-shell-navigation`). Each requirement
-     maps to a review finding. Spec-change findings become new requirements
-     with explicit acceptance criteria. Code-fix findings become scenarios
-     under existing requirements. Use WHEN/THEN format.
+   - **specs/**: Create one spec file per logical area (e.g., `android-shell-effects`, `android-shell-navigation`). Each requirement maps to a review finding. Spec-change findings become new requirements with explicit acceptance criteria. Code-fix findings become scenarios under existing requirements. Use WHEN/THEN format.
 
-   - **tasks.md**: Order tasks by dependency -- spec updates first (so
-     requirements are clear before implementation), then missing screen
-     composables, then missing effect handlers, then navigation fixes,
-     then design system corrections, then verification. Each task
-     references the finding ID it addresses. Include a final verification
-     section that re-runs the android-reviewer skill to confirm all
-     Critical findings are resolved.
+   - **tasks.md**: Order tasks by dependency -- spec updates first (so requirements are clear before implementation), then missing screen composables, then missing effect handlers, then navigation fixes, then design system corrections, then verification. Each task references the finding ID it addresses. Include a final verification section that re-runs the android-reviewer skill to confirm all Critical findings are resolved.
 
-4. **Show final status** using `/spec:status` and summarize: change name,
-   location, artifacts created, and prompt the user with "Run `/spec:build`
-   or ask me to implement to start working on the tasks."
+4. **Show final status** using `/spec:status` and summarize: change name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
 
 ## Severity Definitions
 
@@ -584,11 +445,8 @@ Before completing review:
 
 - [ ] Structural Specialist: AND-001 through AND-024 checked
 - [ ] Quality Specialist: KTL-001 through KTL-010 checked
-- [ ] Integration Specialist: type completeness, serialization, build config,
-  capability alignment, module structure, manifest checked (first iteration,
-  full scope)
-- [ ] Universal Checks: UNI-001 through UNI-021 applied with Kotlin/Android-specific
-  heuristics (skipped where covered by AND/KTL)
+- [ ] Integration Specialist: type completeness, serialization, build config, capability alignment, module structure, manifest checked (first iteration, full scope)
+- [ ] Universal Checks: UNI-001 through UNI-021 applied with Kotlin/Android-specific heuristics (skipped where covered by AND/KTL)
 - [ ] Antagonist: counter-scan completed for Android-specific blind spots
 
 ### Report Quality

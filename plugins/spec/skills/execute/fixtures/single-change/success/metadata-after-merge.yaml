@@ -1,7 +1,7 @@
 # Snapshot of .specify/changes/user-registration/.metadata.yaml after
 # /spec:merge returns success. The driver reads `.outcome.outcome`
 # (== success) and proceeds to step 10 (transition plan entry to done
-# via `specify initiative transition user-registration done`).
+# via `specify plan transition user-registration done`).
 
 name: user-registration
 status: merged

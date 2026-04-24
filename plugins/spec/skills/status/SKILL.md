@@ -9,11 +9,7 @@ argument-hint: "[change-name?]"
 
 ## Prerequisites
 
-**If `specify` is not on PATH:** stop and instruct the user to install the
-CLI via `brew install specify` (preferred), `cargo install specify`, or
-the release script at https://specify.sh/install, then re-run. Do not
-attempt a prose fallback — validation rules have diverged past the point
-where the agent can reliably reproduce them.
+**If `specify` is not on PATH:** stop and instruct the user to install the CLI via `brew install augentic/tap/specify` (preferred), `cargo install specify`, or the release script at https://specify.sh/install, then re-run. Do not attempt a prose fallback — validation rules have diverged past the point where the agent can reliably reproduce them.
 
 Show the current state of Specify in this project.
 
@@ -97,5 +93,3 @@ If a single change is specified or only one exists, show the detailed view only 
 - If `.specify/` does not exist, suggest `/spec:init`
 - Show clear next-step guidance based on current lifecycle status
 - Distinguish merged changes from dropped changes when metadata is available
-
-> Implements RFC-1 Phase 1 — the CLI handles deterministic operations.

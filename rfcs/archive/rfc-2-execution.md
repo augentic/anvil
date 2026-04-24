@@ -937,8 +937,7 @@ This trace makes the `create/amend` blue box on the framework diagram load-beari
     specify plan create registration-duplicate-email-crash \
         --affects user-registration \
         --description "Duplicate email submission returns 500 instead of 409. Discovered during email-verification extraction."
-    ```
-    The CLI writes the new entry into `plan.yaml` synchronously — the same code path a human would use in Layer 1.
+    ``` The CLI writes the new entry into `plan.yaml` synchronously — the same code path a human would use in Layer 1.
 5. Define continues, completes its own briefs, returns `success`.
 6. `/spec:execute` invokes `/spec:build email-verification`, then `/spec:merge email-verification`.
 7. On success, `/spec:execute` transitions `email-verification` to `done` via `specify plan transition`.
@@ -1161,7 +1160,7 @@ The plan format supports multi-repo initiatives on both the source and target si
 
 - **Multi-source extraction.** A change's `sources` list declares which repos to extract from; a change may reference multiple sources. In scope for Layer 2.
 - **Multi-target implementation.** Features spanning multiple build targets are decomposed into separate changes with `depends-on` edges. In scope today.
-- **Cross-repo spec resolution.** Cross-repo spec references (distinct from cloning source repos) are resolved through the federation model defined in [RFC-3](../rfc-3a-plan.md). Deferred.
+- **Cross-repo spec resolution.** Cross-repo spec references (distinct from cloning source repos) are resolved through the federation model defined in [RFC-3](rfc-3a-monoliths.md). Deferred.
 
 ### Other Deferred Capabilities
 
@@ -1240,4 +1239,4 @@ The plan format supports multi-repo initiatives on both the source and target si
 ## References
 
 - [RFC-1: `specify` CLI](rfc-1-cli.md) — prerequisite; `specify plan` subcommands extend the CLI
-- [RFC-3: Multi-Repo Coordination](../rfc-3a-plan.md) — provides federation resolution for plans that span repositories
+- [RFC-3: Multi-Repo Coordination](rfc-3a-monoliths.md) — provides federation resolution for plans that span repositories

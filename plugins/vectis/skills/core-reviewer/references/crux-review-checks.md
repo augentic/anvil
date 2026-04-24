@@ -1,8 +1,6 @@
 # Crux Structural Review Checks
 
-Pattern-based checks for common Crux framework issues. Each check includes a
-detection heuristic, a bad/good code example (drawn from real `opsx_todo` vs
-`todo` comparisons), and a severity rating.
+Pattern-based checks for common Crux framework issues. Each check includes a detection heuristic, a bad/good code example (drawn from real `opsx_todo` vs `todo` comparisons), and a severity rating.
 
 ---
 
@@ -10,14 +8,9 @@ detection heuristic, a bad/good code example (drawn from real `opsx_todo` vs
 
 **Severity**: Critical
 
-Every assignment to `model.page`, `model.sync_status`, `model.sse_state`, or
-any other field that the `view()` function reads must be accompanied by a
-`render()` call in the same `Command` chain. Without it, the shell continues
-displaying stale state until the next unrelated event triggers a render.
+Every assignment to `model.page`, `model.sync_status`, `model.sse_state`, or any other field that the `view()` function reads must be accompanied by a `render()` call in the same `Command` chain. Without it, the shell continues displaying stale state until the next unrelated event triggers a render.
 
-**Detection**: In each `Event` arm of `update()`, find assignments to model
-fields that `view()` reads. Verify the returned `Command` includes `render()`
-(directly or via `.and(render())`).
+**Detection**: In each `Event` arm of `update()`, find assignments to model fields that `view()` reads. Verify the returned `Command` includes `render()` (directly or via `.and(render())`).
 
 **Bad** (opsx_todo):
 ```rust
@@ -40,8 +33,7 @@ Event::ConnectSse => {
 }
 ```
 
-Also check: `Event::SseDisconnected`, `Event::Navigate(Route::...)` from
-Error page, and any handler that transitions `model.page`.
+Also check: `Event::SseDisconnected`, `Event::Navigate(Route::...)` from Error page, and any handler that transitions `model.page`.
 
 ---
 
@@ -49,14 +41,9 @@ Error page, and any handler that transitions `model.page`.
 
 **Severity**: Critical
 
-Any Event variant that carries user-typed text (titles, names, descriptions)
-must trim whitespace and reject empty strings before mutating the model.
-Accepting empty or whitespace-only values leads to invisible list items,
-empty database records, or confusing UI state.
+Any Event variant that carries user-typed text (titles, names, descriptions) must trim whitespace and reject empty strings before mutating the model. Accepting empty or whitespace-only values leads to invisible list items, empty database records, or confusing UI state.
 
-**Detection**: Find Event variants with `String` payloads that represent user
-input (not IDs or system values). Verify the handler calls `.trim()` and checks
-`.is_empty()` before proceeding.
+**Detection**: Find Event variants with `String` payloads that represent user input (not IDs or system values). Verify the handler calls `.trim()` and checks `.is_empty()` before proceeding.
 
 **Bad** (opsx_todo):
 ```rust
@@ -88,14 +75,9 @@ Event::EditTitle(id, new_title, timestamp) => {
 
 **Severity**: Critical
 
-Every `PendingOp` variant must carry enough information to resolve conflicts
-with the server. For destructive operations like `Delete`, this means storing
-a `deleted_at` timestamp so the conflict-resolution logic can compare it
-against the server's `updated_at`.
+Every `PendingOp` variant must carry enough information to resolve conflicts with the server. For destructive operations like `Delete`, this means storing a `deleted_at` timestamp so the conflict-resolution logic can compare it against the server's `updated_at`.
 
-**Detection**: Inspect the `PendingOp` enum. Each variant should carry temporal
-metadata (timestamps) alongside the item data. A bare `Delete(String)` (ID only)
-is insufficient.
+**Detection**: Inspect the `PendingOp` enum. Each variant should carry temporal metadata (timestamps) alongside the item data. A bare `Delete(String)` (ID only) is insufficient.
 
 **Bad** (opsx_todo):
 ```rust
@@ -121,18 +103,11 @@ pub enum PendingOp {
 
 **Severity**: Critical
 
-When deleting an item (via `DeleteTodo` or `ClearCompleted`), the handler must
-check whether the item only exists as a pending `Create`. If so, the `Create`
-should be removed from the queue and no `Delete` sent to the server -- the
-server has never seen the item.
+When deleting an item (via `DeleteTodo` or `ClearCompleted`), the handler must check whether the item only exists as a pending `Create`. If so, the `Create` should be removed from the queue and no `Delete` sent to the server -- the server has never seen the item.
 
-Failing to coalesce causes unnecessary 404 errors from the server and may
-trigger error-handling paths that confuse sync state.
+Failing to coalesce causes unnecessary 404 errors from the server and may trigger error-handling paths that confuse sync state.
 
-**Detection**: In `DeleteTodo` and `ClearCompleted` handlers, check whether the
-code inspects existing pending ops before pushing a `Delete`. Look for logic
-that detects `PendingOp::Create` for the same item ID and skips the server
-delete in that case.
+**Detection**: In `DeleteTodo` and `ClearCompleted` handlers, check whether the code inspects existing pending ops before pushing a `Delete`. Look for logic that detects `PendingOp::Create` for the same item ID and skips the server delete in that case.
 
 **Bad** (opsx_todo):
 ```rust
@@ -181,13 +156,9 @@ for id in completed {
 
 **Severity**: Warning
 
-All types that are part of `ViewModel`, `Event`, or `Effect` (or nested within
-them) must derive both `Serialize` and `Deserialize` to cross the FFI bridge
-between core and shell. Types used in `StateStore` (KeyValue) persistence also
-need both.
+All types that are part of `ViewModel`, `Event`, or `Effect` (or nested within them) must derive both `Serialize` and `Deserialize` to cross the FFI bridge between core and shell. Types used in `StateStore` (KeyValue) persistence also need both.
 
-Internal-only types used exclusively within `update()` may omit `Deserialize`
-if they are never read back, but err on the side of including it.
+Internal-only types used exclusively within `update()` may omit `Deserialize` if they are never read back, but err on the side of including it.
 
 **Detection**: For each struct/enum, check if it appears in:
 - A `ViewModel` variant or view struct -> needs `Serialize + Deserialize`
@@ -225,15 +196,9 @@ pub enum SyncStatus { ... }
 
 **Severity**: Warning
 
-Fields used for ordering or conflict resolution (`updated_at`, `created_at`,
-`version`) should not be `Option` unless the domain genuinely allows missing
-values. An `Option` field forces fallback logic (typically "server wins") that
-can silently discard valid local edits.
+Fields used for ordering or conflict resolution (`updated_at`, `created_at`, `version`) should not be `Option` unless the domain genuinely allows missing values. An `Option` field forces fallback logic (typically "server wins") that can silently discard valid local edits.
 
-**Detection**: Find timestamp or version fields on domain types. If they are
-`Option<String>` or `Option<T>`, check the conflict-resolution code. Look for
-`_ => true` or similar catch-all patterns that default to one side winning
-when the timestamp is absent.
+**Detection**: Find timestamp or version fields on domain types. If they are `Option<String>` or `Option<T>`, check the conflict-resolution code. Look for `_ => true` or similar catch-all patterns that default to one side winning when the timestamp is absent.
 
 **Bad** (opsx_todo):
 ```rust
@@ -261,14 +226,9 @@ pub struct TodoItem {
 
 **Severity**: Warning
 
-User-facing Event variants should receive IDs and timestamps as parameters
-from the shell, not generate them inside `update()`. This keeps the core
-deterministic and testable -- tests can supply known values without mocking
-random number generators or clocks.
+User-facing Event variants should receive IDs and timestamps as parameters from the shell, not generate them inside `update()`. This keeps the core deterministic and testable -- tests can supply known values without mocking random number generators or clocks.
 
-**Detection**: Search `update()` for calls to UUID generation, `Utc::now()`,
-`SystemTime::now()`, or incrementing counters (`model.next_local_id += 1`).
-These should instead be parameters on the Event variant.
+**Detection**: Search `update()` for calls to UUID generation, `Utc::now()`, `SystemTime::now()`, or incrementing counters (`model.next_local_id += 1`). These should instead be parameters on the Event variant.
 
 **Bad**:
 ```rust
@@ -292,15 +252,11 @@ Event::AddTodo(id, timestamp) => {
 
 **Severity**: Info
 
-ViewModel fields should use typed values (`usize`, `bool`, enums) rather than
-pre-formatted strings. The shell is responsible for presentation; the core
-should provide raw data.
+ViewModel fields should use typed values (`usize`, `bool`, enums) rather than pre-formatted strings. The shell is responsible for presentation; the core should provide raw data.
 
-Pre-formatted strings couple the core to a specific display format and prevent
-shells from localizing, pluralizing, or styling values independently.
+Pre-formatted strings couple the core to a specific display format and prevent shells from localizing, pluralizing, or styling values independently.
 
-**Detection**: In ViewModel / view structs, look for `String` fields that hold
-formatted counts, status labels, or display text derived from model state.
+**Detection**: In ViewModel / view structs, look for `String` fields that hold formatted counts, status labels, or display text derived from model state.
 
 **Bad** (opsx_todo):
 ```rust
@@ -322,8 +278,7 @@ pub struct TodoListView {
 
 **Severity**: Warning
 
-The test module must include tests for the following scenarios at minimum.
-Absence of any is a finding.
+The test module must include tests for the following scenarios at minimum. Absence of any is a finding.
 
 **Required test scenarios**:
 1. SSE event arrives while sync is in-flight for the same item
@@ -335,8 +290,7 @@ Absence of any is a finding.
 7. `ClearCompleted` correctly coalesces pending Creates (no server delete)
 8. Toggling an item during an in-flight sync for the same item
 
-**Detection**: Search the `#[cfg(test)]` module for test function names or
-assertions that cover each scenario. Missing coverage is a Warning finding.
+**Detection**: Search the `#[cfg(test)]` module for test function names or assertions that cover each scenario. Missing coverage is a Warning finding.
 
 ---
 
@@ -344,16 +298,11 @@ assertions that cover each scenario. Missing coverage is a Warning finding.
 
 **Severity**: Info
 
-Every dependency listed in `[dependencies]` in `shared/Cargo.toml` must be
-referenced by at least one `use` statement in the source code. Unused
-dependencies increase compile time and binary size.
+Every dependency listed in `[dependencies]` in `shared/Cargo.toml` must be referenced by at least one `use` statement in the source code. Unused dependencies increase compile time and binary size.
 
-**Detection**: For each dependency in `Cargo.toml`, search all `.rs` files
-under `shared/src/` for a corresponding `use <crate_name>` or
-`<crate_name>::` reference. Flag deps with no matching usage.
+**Detection**: For each dependency in `Cargo.toml`, search all `.rs` files under `shared/src/` for a corresponding `use <crate_name>` or `<crate_name>::` reference. Flag deps with no matching usage.
 
-**Example**: `opsx_todo` lists `url = "2"` in dependencies but never imports
-or uses the `url` crate.
+**Example**: `opsx_todo` lists `url = "2"` in dependencies but never imports or uses the `url` crate.
 
 ---
 
@@ -361,15 +310,9 @@ or uses the `url` crate.
 
 **Severity**: Critical
 
-`CoreFFI` methods (`update`, `resolve`, `view`) must return
-`Result<Vec<u8>, CoreError>` instead of panicking on `BridgeError`. A panic
-in the FFI layer crashes the host process (iOS app, browser tab) with no
-recovery path. The Crux `Bridge` already returns `Result<(), BridgeError>`,
-so errors should be propagated through a `CoreError` wrapper type.
+`CoreFFI` methods (`update`, `resolve`, `view`) must return `Result<Vec<u8>, CoreError>` instead of panicking on `BridgeError`. A panic in the FFI layer crashes the host process (iOS app, browser tab) with no recovery path. The Crux `Bridge` already returns `Result<(), BridgeError>`, so errors should be propagated through a `CoreError` wrapper type.
 
-**Detection**: Search `ffi.rs` for `panic!`, `unwrap()`, or `expect()` in
-the `update`, `resolve`, or `view` methods. Also check that the return types
-are `Result<Vec<u8>, CoreError>`, not bare `Vec<u8>`.
+**Detection**: Search `ffi.rs` for `panic!`, `unwrap()`, or `expect()` in the `update`, `resolve`, or `view` methods. Also check that the return types are `Result<Vec<u8>, CoreError>`, not bare `Vec<u8>`.
 
 **Bad**:
 ```rust
@@ -391,7 +334,4 @@ pub fn update(&self, data: &[u8]) -> Result<Vec<u8>, CoreError> {
 }
 ```
 
-**Fix**: Define `CoreError` with `thiserror::Error` and feature-gated
-`uniffi::Error` (using `uniffi(flat_error)`). Implement
-`From<BridgeError<F>> for CoreError`. Change all three methods to return
-`Result<Vec<u8>, CoreError>` and use `?` to propagate errors.
+**Fix**: Define `CoreError` with `thiserror::Error` and feature-gated `uniffi::Error` (using `uniffi(flat_error)`). Implement `From<BridgeError<F>> for CoreError`. Change all three methods to return `Result<Vec<u8>, CoreError>` and use `?` to propagate errors.

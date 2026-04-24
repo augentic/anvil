@@ -6,9 +6,7 @@ A new GTFS generation component is being built from requirements. Specify artifa
 
 ## Input
 
-**Specify artifacts**: `./.specify/changes/gtfs_generator/`
-**Client**: Auckland Transport
-**Origin**: requirements
+**Specify artifacts**: `./.specify/changes/gtfs_generator/` **Client**: Auckland Transport **Origin**: requirements
 
 **Key artifact content** (summarised):
 

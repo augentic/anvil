@@ -2,7 +2,7 @@
 # Same crashed-post-merge snapshot as in the sibling fixture
 # ../e2e-platform-v2/metadata-email-verification-crashed.yaml —
 # the prior driver stamped outcome: success on merge and then
-# crashed before running `specify initiative transition email-verification
+# crashed before running `specify plan transition email-verification
 # done`. Self-heal on the first /spec:execute --loop run in this
 # fixture reconciles this entry in the same way.
 

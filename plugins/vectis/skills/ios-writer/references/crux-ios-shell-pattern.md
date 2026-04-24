@@ -1,9 +1,6 @@
 # Crux iOS Shell Pattern (0.17+ API)
 
-The iOS shell is a thin SwiftUI layer that renders the `ViewModel` from the Crux
-core and sends user-initiated `Event` values back. All business logic lives in
-the shared Rust crate; the shell only handles platform I/O (HTTP, KV, SSE) and
-UI rendering.
+The iOS shell is a thin SwiftUI layer that renders the `ViewModel` from the Crux core and sends user-initiated `Event` values back. All business logic lives in the shared Rust crate; the shell only handles platform I/O (HTTP, KV, SSE) and UI rendering.
 
 ## Architecture
 
@@ -43,8 +40,7 @@ UI rendering.
 
 ## Core.swift
 
-The `Core` class is the bridge between SwiftUI and the Rust core. It is an
-`@MainActor` `ObservableObject` that publishes the current `ViewModel`.
+The `Core` class is the bridge between SwiftUI and the Rust core. It is an `@MainActor` `ObservableObject` that publishes the current `ViewModel`.
 
 ### Minimal Core (Render only)
 
@@ -221,8 +217,7 @@ case .keyValue(let kvOp):
 
 ### Core with SSE (Server-Sent Events)
 
-SSE produces a stream of values. Each value is resolved against the same
-request ID, producing a new batch of effects each time.
+SSE produces a stream of values. Each value is resolved against the same request ID, producing a new batch of effects each time.
 
 ```swift
 case .serverSentEvents(let sseRequest):
@@ -246,9 +241,7 @@ case .serverSentEvents(let sseRequest):
 
 ## Serialization Protocol
 
-All data crossing the FFI boundary uses **Bincode** serialization via the
-generated `bincodeSerialize()` and `bincodeDeserialize(input:)` methods
-on the shared types.
+All data crossing the FFI boundary uses **Bincode** serialization via the generated `bincodeSerialize()` and `bincodeDeserialize(input:)` methods on the shared types.
 
 | Direction | Data | Serialization |
 |-----------|------|---------------|
@@ -259,8 +252,7 @@ on the shared types.
 
 ## Effect Loop
 
-The effect processing loop is recursive: resolving one effect may produce
-additional effects. The loop runs until no more effects are returned.
+The effect processing loop is recursive: resolving one effect may produce additional effects. The loop runs until no more effects are returned.
 
 ```
 User taps button
@@ -275,8 +267,7 @@ User taps button
 
 ## Initialization
 
-Send an initialization event when the app starts. This triggers the core to
-load persisted state or fetch initial data.
+Send an initialization event when the app starts. This triggers the core to load persisted state or fetch initial data.
 
 ```swift
 init() {
@@ -294,14 +285,12 @@ init() {
 ## Thread Safety
 
 - `Core` is `@MainActor` -- all property access is main-thread.
-- Async effect handlers use `Task { @MainActor in ... }` to explicitly
-  maintain main-actor isolation. Never use bare `Task { }`.
+- Async effect handlers use `Task { @MainActor in ... }` to explicitly maintain main-actor isolation. Never use bare `Task { }`.
 - `CoreFfi` is thread-safe internally (Rust `Bridge` uses interior mutability).
 
 ## Type Mapping: Rust → Swift
 
-The `codegen` binary (or manual type generation) produces Swift equivalents
-of all Crux types that cross the FFI boundary.
+The `codegen` binary (or manual type generation) produces Swift equivalents of all Crux types that cross the FFI boundary.
 
 | Rust Type | Swift Type |
 |-----------|------------|

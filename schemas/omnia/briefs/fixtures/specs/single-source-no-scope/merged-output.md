@@ -1,9 +1,6 @@
 # single-source-no-scope — full-tree path
 
-Pins the small-legacy case: a source-driven run with a single `--source`
-and a description that contains no file-path hints. The brief's scope
-inference finds nothing to narrow, so `/spec:extract` is invoked with
-no filter flags — the full source tree is extracted.
+Pins the small-legacy case: a source-driven run with a single `--source` and a description that contains no file-path hints. The brief's scope inference finds nothing to narrow, so `/spec:extract` is invoked with no filter flags — the full source tree is extracted.
 
 ## Per-source loop (one iteration)
 

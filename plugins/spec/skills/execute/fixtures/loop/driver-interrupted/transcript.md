@@ -1,32 +1,17 @@
 # driver-interrupted — SIGINT arrives mid-build; `--loop` exits cleanly
 
-A three-entry plan; `user-registration` is already `done`.
-`/spec:execute --loop` picks `email-verification` as the next
-eligible entry, transitions it to `in-progress`, runs `/spec:define`
-(success) and `/spec:build` (success). Between `/spec:build`
-returning and the driver invoking `/spec:merge`, the operator
-presses Ctrl-C. The agent surfaces the interrupt to the skill.
+A three-entry plan; `user-registration` is already `done`. `/spec:execute --loop` picks `email-verification` as the next eligible entry, transitions it to `in-progress`, runs `/spec:define` (success) and `/spec:build` (success). Between `/spec:build` returning and the driver invoking `/spec:merge`, the operator presses Ctrl-C. The agent surfaces the interrupt to the skill.
 
 Per §Loop mode → SIGINT / SIGTERM handling:
 
-- Rule 1 is trivially satisfied: `/spec:build` has already returned,
-  no phase is mid-invocation, nothing to finish.
+- Rule 1 is trivially satisfied: `/spec:build` has already returned, no phase is mid-invocation, nothing to finish.
 - Rule 2: skip `/spec:merge`. Do NOT invoke it.
-- Rule 3: leave `email-verification` as `in-progress`. Do NOT call
-  `specify initiative transition`.
+- Rule 3: leave `email-verification` as `in-progress`. Do NOT call `specify plan transition`.
 - Rule 4: release the driver lock.
-- Rule 5: emit the terminal summary with `Completion:
-  driver-interrupted`.
+- Rule 5: emit the terminal summary with `Completion: driver-interrupted`.
 - Rule 6: exit non-zero (130 for SIGINT).
 
-On the next `/spec:execute --loop` invocation, self-heal (step 3 of
-the `--loop` algorithm) reads
-`.specify/changes/email-verification/.metadata.yaml`, sees
-`outcome.outcome == success` with `outcome.phase == build`, and
-resumes by invoking `/spec:merge` (mid-change resume path, step 3
-of the self-heal algorithm; RFC-2 §"Context Threading → Resumption
-Within a Change"). The interrupt therefore costs one restart but
-loses no completed phase work.
+On the next `/spec:execute --loop` invocation, self-heal (step 3 of the `--loop` algorithm) reads `.specify/changes/email-verification/.metadata.yaml`, sees `outcome.outcome == success` with `outcome.phase == build`, and resumes by invoking `/spec:merge` (mid-change resume path, step 3 of the self-heal algorithm; RFC-2 §"Context Threading → Resumption Within a Change"). The interrupt therefore costs one restart but loses no completed phase work.
 
 ## Driver timeline
 
@@ -41,8 +26,8 @@ $ /spec:execute --loop
 Self-heal: no in-progress entries found.
 
 # step 4 iteration 1: pick next.
-#   specify initiative next → { "next": "email-verification" }
-#   specify initiative transition email-verification in-progress
+#   specify plan next --format json → { "next": "email-verification", "project": null, "description": "...", "sources": ["monolith"] }
+#   specify plan transition email-verification in-progress
 
 ## /spec:execute — platform-v2
 
@@ -71,7 +56,7 @@ Step 2/3: build
 #   Rule 1 — no phase is mid-invocation; trivially satisfied.
 #   Rule 2 — skip /spec:merge. Do NOT invoke it.
 #   Rule 3 — leave email-verification as in-progress. Do NOT call
-#            specify initiative transition. The on-disk state at this
+#            specify plan transition. The on-disk state at this
 #            moment:
 #              plan.yaml: email-verification status: in-progress
 #              .metadata.yaml: LifecycleStatus: complete
@@ -80,7 +65,7 @@ Step 2/3: build
 #            using the mid-change-resume branch of the self-heal
 #            algorithm.
 #   Rule 4 — release the driver lock:
-#            specify initiative lock release --pid <agent-session-pid>
+#            specify plan lock release --pid <agent-session-pid>
 #   Rule 5 — emit terminal summary with Completion:
 #            driver-interrupted.
 #   Rule 6 — exit 130.
@@ -105,36 +90,10 @@ Next action: Re-run /spec:execute --loop — self-heal will reclaim the interrup
 
 ## Invariants pinned
 
-1. **Active entry preserved as `in-progress`.** Unlike the other
-   `--loop` exit paths, `driver-interrupted` leaves the entry the
-   driver was working on in `in-progress` state. The next run's
-   self-heal is responsible for reclaiming it — the interrupted
-   driver does not second-guess the on-disk state.
-2. **`.metadata.yaml.outcome` is the reconciliation signal.** The
-   phase (`/spec:build` in this fixture) wrote its outcome before
-   returning, so the on-disk state after the interrupt is
-   recoverable: self-heal next run reads the outcome, classifies
-   as "success on build" (not a terminal phase), and invokes
-   `/spec:merge`.
-3. **Lock released on interrupt.** Rule 4 is non-negotiable. A
-   stranded lock after an interrupt would block every subsequent
-   `/spec:execute` until an operator manually removed the stamp.
-   The skill runs the release step even on the interrupt path.
-4. **Terminal summary emitted on interrupt.** The `Completion:
-   driver-interrupted` line and its `Next action` tell the operator
-   exactly how to recover. The summary is part of the interrupt
-   handling contract (Rule 5), not optional.
-5. **Exit non-zero.** SIGINT typically maps to exit 130, SIGTERM
-   to 143; CI / scripting treats either as "abnormal termination"
-   and can distinguish from an `all-done` exit 0 or a `halted` exit
-   1.
-6. **`in-progress 1` in the progress line.** This is the observable
-   tell that the run was interrupted: no other terminal
-   classification leaves an `in-progress` entry. (Self-heal
-   ambiguity `halted` also has `in-progress 1` in its progress
-   line, but its `Completion:` value differentiates.)
-7. **No terminal plan transition on interrupt.** The driver does
-   NOT call `specify initiative transition email-verification failed` (or
-   anything similar). The phase succeeded; the driver simply ran
-   out of wall-clock before invoking the next phase. Self-heal on
-   the next run is the correct actor to advance the plan.
+1. **Active entry preserved as `in-progress`.** Unlike the other `--loop` exit paths, `driver-interrupted` leaves the entry the driver was working on in `in-progress` state. The next run's self-heal is responsible for reclaiming it — the interrupted driver does not second-guess the on-disk state.
+2. **`.metadata.yaml.outcome` is the reconciliation signal.** The phase (`/spec:build` in this fixture) wrote its outcome before returning, so the on-disk state after the interrupt is recoverable: self-heal next run reads the outcome, classifies as "success on build" (not a terminal phase), and invokes `/spec:merge`.
+3. **Lock released on interrupt.** Rule 4 is non-negotiable. A stranded lock after an interrupt would block every subsequent `/spec:execute` until an operator manually removed the stamp. The skill runs the release step even on the interrupt path.
+4. **Terminal summary emitted on interrupt.** The `Completion: driver-interrupted` line and its `Next action` tell the operator exactly how to recover. The summary is part of the interrupt handling contract (Rule 5), not optional.
+5. **Exit non-zero.** SIGINT typically maps to exit 130, SIGTERM to 143; CI / scripting treats either as "abnormal termination" and can distinguish from an `all-done` exit 0 or a `halted` exit 1.
+6. **`in-progress 1` in the progress line.** This is the observable tell that the run was interrupted: no other terminal classification leaves an `in-progress` entry. (Self-heal ambiguity `halted` also has `in-progress 1` in its progress line, but its `Completion:` value differentiates.)
+7. **No terminal plan transition on interrupt.** The driver does NOT call `specify plan transition email-verification failed` (or anything similar). The phase succeeded; the driver simply ran out of wall-clock before invoking the next phase. Self-heal on the next run is the correct actor to advance the plan.

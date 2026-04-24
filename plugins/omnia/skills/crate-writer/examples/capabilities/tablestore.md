@@ -526,8 +526,7 @@ use serde::{Deserialize, Serialize};
 6. **Prefer ORM**: Use `SelectBuilder`, `InsertBuilder`, `UpdateBuilder`, `DeleteBuilder` and `Filter` for CRUD and simple queries. Use **raw SQL** (`TableStore::query` / `TableStore::exec`) only when legacy code requires:
    - **GeoSearch / spatial queries** (e.g. PostGIS `ST_AsText`, `ST_Simplify`, `ST_MakeLine`, geofence filters)
    - **Nested subqueries** or complex expressions that the ORM builders do not support
-   - **Complex transactional** multi-statement flows
-   When using raw SQL, always use parameterized queries (e.g. `?` placeholders and `DataType` params), never string-concatenate user input.
+   - **Complex transactional** multi-statement flows When using raw SQL, always use parameterized queries (e.g. `?` placeholders and `DataType` params), never string-concatenate user input.
 7. **Azure Table Storage uses DocumentStore, not TableStore**: When the source uses `@azure/data-tables`, `TableClient`, `listEntities`, or `*.table.core.windows.net`, use `DocumentStore` — not `TableStore`. See [documentstore.md](documentstore.md) for Azure Table Storage patterns.
 
 ## References

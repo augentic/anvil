@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/schemas/plan-validate-output/schema.json",
-  "title": "specify initiative validate --format json response",
-  "description": "Validates the JSON response body emitted by `specify initiative validate --format json` under the v2 JSON contract (RFC-2 §2). The CLI exits 0 when `passed` is true and 2 (EXIT_VALIDATION_FAILED) otherwise; downstream skills should match on the structured payload rather than the exit code alone.",
+  "title": "specify plan validate --format json response",
+  "description": "Validates the JSON response body emitted by `specify plan validate --format json` under the v2 JSON contract (RFC-2 §2). The CLI exits 0 when `passed` is true and 2 (EXIT_VALIDATION_FAILED) otherwise; downstream skills should match on the structured payload rather than the exit code alone.",
   "type": "object",
   "required": ["schema-version", "plan", "results", "passed"],
   "additionalProperties": false,

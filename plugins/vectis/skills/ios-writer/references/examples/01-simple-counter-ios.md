@@ -1,11 +1,8 @@
 # Example: Simple Counter iOS Shell (Render Only)
 
-A minimal iOS shell for a Crux counter app with local state and no external
-side-effects. Demonstrates Core.swift, ContentView, screen views, project.yml,
-and Makefile.
+A minimal iOS shell for a Crux counter app with local state and no external side-effects. Demonstrates Core.swift, ContentView, screen views, project.yml, and Makefile.
 
-This shell pairs with the core-writer example `01-simple-counter.md`. The
-shared crate defines:
+This shell pairs with the core-writer example `01-simple-counter.md`. The shared crate defines:
 
 - `ViewModel::Loading` and `ViewModel::Counter(CounterView)` variants
 - `Event::Navigate(Route)`, `Event::Increment`, `Event::Decrement`, `Event::Reset`
@@ -353,5 +350,4 @@ struct CounterScreen: View {
 4. **Preview support** -- every screen has a `#Preview` with sample data.
 5. **Accessibility** -- interactive icons have `accessibilityLabel`.
 6. **Render-only Core.swift** -- the simplest possible effect handler.
-7. **Hot reloading** -- Inject boilerplate (`@ObserveInjection`, `.enableInjection()`)
-   in every view; Debug-only linker flags in `project.yml`.
+7. **Hot reloading** -- Inject boilerplate (`@ObserveInjection`, `.enableInjection()`) in every view; Debug-only linker flags in `project.yml`.

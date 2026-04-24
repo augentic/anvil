@@ -1,12 +1,10 @@
 # SwiftUI View Patterns for Crux Apps
 
-Patterns for building SwiftUI views that consume Crux `ViewModel` data and
-dispatch `Event` values back to the core.
+Patterns for building SwiftUI views that consume Crux `ViewModel` data and dispatch `Event` values back to the core.
 
 ## ContentView: ViewModel Switch
 
-The root content view switches on the `ViewModel` enum to display the
-appropriate screen. This is the main dispatch point.
+The root content view switches on the `ViewModel` enum to display the appropriate screen. This is the main dispatch point.
 
 ```swift
 import Inject
@@ -44,8 +42,7 @@ struct ContentView: View {
 
 ## Screen Pattern
 
-Each screen is a standalone SwiftUI view that receives its data and an event
-callback. Screens correspond 1:1 to `ViewModel` variants.
+Each screen is a standalone SwiftUI view that receives its data and an event callback. Screens correspond 1:1 to `ViewModel` variants.
 
 ```swift
 struct MainScreen: View {
@@ -156,8 +153,7 @@ List(viewModel.items, id: \.id) { item in
 
 ## Form Inputs
 
-For text input, use `@State` for the local editing buffer and dispatch an
-event on submit.
+For text input, use `@State` for the local editing buffer and dispatch an event on submit.
 
 ```swift
 struct AddItemSection: View {
@@ -191,8 +187,7 @@ struct AddItemSection: View {
 
 ## Navigation with Route
 
-When the Crux core defines a `Route` enum, use `NavigationStack` in the app
-entry point. Navigation events are dispatched as `Event.navigate(route)`.
+When the Crux core defines a `Route` enum, use `NavigationStack` in the app entry point. Navigation events are dispatched as `Event.navigate(route)`.
 
 ```swift
 @main
@@ -259,8 +254,7 @@ List(viewModel.items, id: \.id) { item in
 
 ## Status Indicators
 
-For sync status or connectivity indicators within a page (not a separate
-error view):
+For sync status or connectivity indicators within a page (not a separate error view):
 
 ```swift
 if !viewModel.syncStatus.isEmpty {

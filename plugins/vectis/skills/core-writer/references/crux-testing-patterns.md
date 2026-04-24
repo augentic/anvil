@@ -1,8 +1,6 @@
 # Crux Testing Patterns
 
-Crux apps are tested by calling `update()` directly, inspecting the returned `Command`
-for effects and events, resolving effects with simulated responses, and asserting on
-model and view model state.
+Crux apps are tested by calling `update()` directly, inspecting the returned `Command` for effects and events, resolving effects with simulated responses, and asserting on model and view model state.
 
 No mocking or async runtime is needed. Tests are synchronous and deterministic.
 
@@ -35,8 +33,7 @@ mod tests {
 }
 ```
 
-Import `crux_core::App as _` to bring the `update` and `view` methods into scope
-when your app type shadows the `App` name.
+Import `crux_core::App as _` to bring the `update` and `view` methods into scope when your app type shadows the `App` name.
 
 ## Asserting Effects
 
@@ -47,8 +44,7 @@ let mut cmd = app.update(Event::Increment, &mut model);
 cmd.expect_one_effect().expect_render();
 ```
 
-`expect_one_effect()` asserts there is exactly one effect and returns it.
-`expect_render()` asserts that effect is a `Render`.
+`expect_one_effect()` asserts there is exactly one effect and returns it. `expect_render()` asserts that effect is a `Render`.
 
 ### Single HTTP effect
 
@@ -61,8 +57,7 @@ let mut request = cmd.expect_one_effect().expect_http();
 
 ### Multiple effects
 
-When a command produces multiple effects (e.g., `render().and(http_call)`),
-use `expect_effect()` to consume them one at a time:
+When a command produces multiple effects (e.g., `render().and(http_call)`), use `expect_effect()` to consume them one at a time:
 
 ```rust
 let mut cmd = app.update(Event::Increment, &mut model);
@@ -74,8 +69,7 @@ cmd.expect_effect().expect_render();
 let mut request = cmd.expect_one_effect().expect_http();
 ```
 
-`expect_effect()` returns the next available effect without asserting it's the only one.
-`expect_one_effect()` asserts it's the last remaining effect.
+`expect_effect()` returns the next available effect without asserting it's the only one. `expect_one_effect()` asserts it's the last remaining effect.
 
 ### Using `assert_effect!` macro
 
@@ -126,8 +120,7 @@ assert_eq!(
 
 ## Resolving Effects
 
-After inspecting an effect, resolve it with a simulated response to continue
-the command's execution.
+After inspecting an effect, resolve it with a simulated response to continue the command's execution.
 
 ### Resolving HTTP requests
 

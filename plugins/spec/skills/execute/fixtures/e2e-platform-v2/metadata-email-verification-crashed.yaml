@@ -2,7 +2,7 @@
 # Illustrative snapshot of the seeded workspace. The prior
 # /spec:execute --loop run merged email-verification successfully
 # but crashed after /spec:merge stamped outcome: success, before it
-# could run `specify initiative transition email-verification done`. Self-
+# could run `specify plan transition email-verification done`. Self-
 # heal on startup reclaims this entry by applying the terminal
 # transition.
 

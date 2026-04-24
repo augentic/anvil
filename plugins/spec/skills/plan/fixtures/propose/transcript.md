@@ -1,16 +1,8 @@
 # Transcript — platform-v2 propose
 
-Interactive record of the five-slice migration authoring run pinned
-by the companion fixtures
-([`discovery.md`](discovery.md), [`expected-proposal.md`](expected-proposal.md),
-[`expected-plan.yaml`](expected-plan.yaml)). Prefix legend: `>` is
-operator input; lines without `>` are the skill's output or a
-shelled-out CLI invocation.
+Interactive record of the five-slice migration authoring run pinned by the companion fixtures ([`discovery.md`](discovery.md), [`expected-proposal.md`](expected-proposal.md), [`expected-plan.yaml`](expected-plan.yaml)). Prefix legend: `>` is operator input; lines without `>` are the skill's output or a shelled-out CLI invocation.
 
-Slices are presented in the draft order the propose brief emits;
-the skill drops stale `depends-on` edges from *upcoming* drafts
-after a reject, so no downstream amend is ever needed (the skill
-never calls `specify initiative amend` — that is a human verb).
+Slices are presented in the draft order the propose brief emits; the skill drops stale `depends-on` edges from *upcoming* drafts after a reject, so no downstream amend is ever needed during propose (the propose step never calls `specify plan amend` — that is a human verb, or for multi-project plans, the plan skill's assignment step 3(d) uses it to write `--project`).
 
 ## Slice 1/6: user-registration
 
@@ -28,7 +20,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify initiative create user-registration \
+$ specify plan create user-registration \
     --sources monolith \
     --description "User sign-up flow; creates a new user record."
 Created plan entry 'user-registration' with status 'pending'.
@@ -52,7 +44,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify initiative create email-verification \
+$ specify plan create email-verification \
     --sources monolith \
     --depends-on user-registration \
     --description "Verify user email via a one-time link."
@@ -80,15 +72,9 @@ Accept? [y / edit / no / abort]
 > is visible.
 ```
 
-Decision: **reject**. Plan entry: — (no `specify initiative create`
-call; no `specify initiative amend` either — the skill only trims
-`extract-shared-validation` from *upcoming* slice drafts, never
-from already-written entries).
+Decision: **reject**. Plan entry: — (no `specify plan create` call; no `specify plan amend` either — the skill only trims `extract-shared-validation` from *upcoming* slice drafts, never from already-written entries).
 
-The brief's remaining drafts had seeded
-`depends-on: [extract-shared-validation]` on slices 4
-(`product-catalog`) and 5 (`cart-management`). The skill drops
-that edge from both draft slices before presenting them.
+The brief's remaining drafts had seeded `depends-on: [extract-shared-validation]` on slices 4 (`product-catalog`) and 5 (`cart-management`). The skill drops that edge from both draft slices before presenting them.
 
 ## Slice 4/6: product-catalog
 
@@ -106,7 +92,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify initiative create product-catalog \
+$ specify plan create product-catalog \
     --sources monolith \
     --description "Browse and search the product catalogue."
 Created plan entry 'product-catalog' with status 'pending'.
@@ -169,7 +155,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify initiative create shopping-cart \
+$ specify plan create shopping-cart \
     --sources orders \
     --depends-on product-catalog \
     --depends-on user-registration \
@@ -234,7 +220,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify initiative create checkout-api \
+$ specify plan create checkout-api \
     --sources payments \
     --depends-on shopping-cart \
     --description "Complete payment for a cart."
@@ -246,7 +232,7 @@ Decision: **edit → accept**. Plan entry: `checkout-api`.
 ## Final validation
 
 ```text
-$ specify initiative validate
+$ specify plan validate
 OK (no findings)
 ```
 
@@ -259,6 +245,6 @@ Proposal: .specify/plans/platform-v2/proposal.md
 Validate: OK
 
 Next:
-  - Review: specify initiative status
+  - Review: specify plan status
   - Execute: /spec:execute --loop
 ```
