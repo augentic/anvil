@@ -1,0 +1,31 @@
+# Change Skills (Layer 2)
+
+Layer 2 skills operate on a single change inside `.specify/changes/<name>/`. They form the core define-build-merge loop and provide supporting capabilities for exploration, extraction, verification, and status inspection.
+
+## The define-build-merge loop
+
+```text
+/spec:init  -->  /spec:define  -->  /spec:build  -->  /spec:merge
+```
+
+This is the primary workflow. You initialise a project once, then repeat the define-build-merge cycle for each change.
+
+## Skill summary
+
+| Skill | Purpose | Reads | Writes |
+|-------|---------|-------|--------|
+| [/spec:init](init.md) | One-time project setup | -- | `.specify/`, `project.yaml`, cache |
+| [/spec:define](define.md) | Generate all artifacts for a new change | Schema briefs, baseline specs | `proposal.md`, `spec.md`, `design.md`, `tasks.md` |
+| [/spec:build](build.md) | Implement tasks from a defined change | All artifacts, build brief | Source code, task checkmarks |
+| [/spec:merge](merge.md) | Merge completed change into baseline | Change specs, baseline specs | Updated baseline, archived change |
+| [/spec:drop](drop.md) | Discard a change without merging | Change metadata | Archived change (dropped) |
+| [/spec:status](status.md) | Inspect active changes and progress | Change metadata, tasks | -- (read-only) |
+| [/spec:verify](verify.md) | Detect drift between code and specs | Baseline specs, source code | -- (read-only) |
+| [/spec:explore](explore.md) | Thinking partner for ideas and requirements | Optional: change artifacts | Optional: artifact updates |
+| [/spec:extract](extract.md) | Produce specs and design from existing code | Source code | `spec.md`, `design.md` |
+
+## How skills delegate
+
+Each skill is an agent-driven orchestrator. Deterministic operations are delegated to the `specify` CLI (Layer 1). Skills never hand-edit `.metadata.yaml`, never create directories under `.specify/`, and never move files to the archive directly.
+
+During `/spec:build`, tasks with skill directive tags (e.g. `<!-- skill: omnia:crate-writer -->`) are delegated to the named specialist plugin skill. Tasks without tags are implemented via the schema's default build instruction.

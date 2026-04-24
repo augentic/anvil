@@ -1,0 +1,32 @@
+# Tutorials
+
+These tutorials walk you through Specify from simplest to most sophisticated. Each one builds on vocabulary introduced by the previous, and each can be followed end to end in a real project.
+
+## Progression map
+
+```mermaid
+graph LR
+    t1["1. Your First Change"] --> t2["2. Iterating on a Baseline"]
+    t2 --> t3["3. Thinking Before Defining"]
+    t3 --> t4["4. Brownfield Onboarding"]
+    t4 --> t5["5. Multi-Change Initiative"]
+    t5 --> t6["6. Cross-Repo Initiatives"]
+    t6 --> t7["7. Legacy Migration at Scale"]
+```
+
+| # | Tutorial | What you learn | Prerequisites |
+|---|---------|---------------|---------------|
+| 1 | [Your First Change](first-change.md) | The define-build-merge loop, artifacts, baseline | [Prerequisites](../orientation/prerequisites.md) installed |
+| 2 | [Iterating on a Baseline](iterating-on-baseline.md) | Delta specs, baseline accumulation, drift detection | Tutorial 1 |
+| 3 | [Thinking Before Defining](thinking-before-defining.md) | Explore mode as a first-class activity | Tutorial 1 |
+| 4 | [Brownfield Onboarding](brownfield-onboarding.md) | Extracting specs from existing code | [Prerequisites](../orientation/prerequisites.md) installed |
+| 5 | [A Multi-Change Initiative](single-repo-initiative.md) | Plans, execute, dependency tracking | Tutorials 1-2 |
+| 6 | [Cross-Repo Initiatives](cross-repo-initiative.md) | Registry, workspace sync, project assignment | Tutorial 5 |
+| 7 | [Legacy Migration at Scale](legacy-migration-at-scale.md) | Analyze/extract split, monolith decomposition | Tutorials 5-6 |
+
+## Where to start
+
+- **New to Specify?** Start with [Tutorial 1](first-change.md).
+- **Have an existing codebase?** Start with [Tutorial 4](brownfield-onboarding.md), then return to Tutorial 1.
+- **Planning a large initiative?** Read Tutorials 1-2 first, then skip to [Tutorial 5](single-repo-initiative.md).
+- **Working across multiple repos?** Read through to [Tutorial 6](cross-repo-initiative.md).

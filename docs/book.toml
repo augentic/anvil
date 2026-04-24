@@ -1,0 +1,15 @@
+[book]
+title = "Specify Operator Guide"
+authors = ["Augentic"]
+language = "en"
+src = "."
+
+[output.html]
+git-repository-url = "https://github.com/augentic/specify"
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html.fold]
+enable = true
+level = 1

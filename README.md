@@ -189,9 +189,10 @@ All skills follow the shared `SKILL.md` structure. Changes to generation behavio
 
 ## Documentation
 
-- [Plugin Reference](docs/plugins.md)
-- [Vectis User Guide](docs/vectis.md) -- prerequisites, Crux workflow, Xcode setup, design system
-- [Repository Architecture](docs/architecture.md)
+- **[Operator Guide](docs/SUMMARY.md)** -- tutorials, reference, and appendices (mdBook)
+  - [Tutorials](docs/tutorials/index.md) -- progressive walkthroughs from first change to multi-repo migration
+  - [Reference](docs/reference/index.md) -- skills, CLI, plugins, schemas, configuration
+  - [Quick Reference](docs/appendices/quick-reference.md) -- single-page cheat sheet
 - [Specify Artifact Guidance](plugins/references/specify.md)
 - [Project Rule](.cursor/rules/project.mdc)
 - [Agent Instructions](AGENTS.md)
