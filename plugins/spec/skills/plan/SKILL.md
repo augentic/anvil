@@ -14,7 +14,7 @@ argument-hint: "<initiative-name> [--from <path>...] [--against <path>] [--sourc
 
 Author `.specify/plan.yaml` for a new initiative by running the `pipeline.plan` brief pipeline declared in the active schema's `schema.yaml`. `/spec:plan` is the Layer 3 authoring counterpart to `/spec:execute`: one *writes* the plan, the other *runs* it.
 
-> **Status.** Layer 3 is fully landed as of RFC-2 closeout, with RFC-3a extensions: discovery (step 3(a)) routes through `/spec:analyze`; when the registry declares **more than one project**, a **sync-peers** step (3(b)) runs `specify workspace sync` and authors `workspace.md` before propose (step 3(c)). See [rfc-3a-monoliths.md](../../../../rfcs/rfc-3a-monoliths.md) and [rfc-3b-platform.md](../../../../rfcs/rfc-3b-platform.md) for the wider platform story (Layer 2 workspace vs Layer 3 federation deferrals).
+> **Status.** Layer 3 is fully landed as of RFC-2 closeout, with RFC-3a and RFC-3b extensions: discovery (step 3(a)) routes through `/spec:analyze`; when the registry declares **more than one project**, a **sync-peers** step (3(b)) runs `specify workspace sync` and authors `workspace.md` before propose (step 3(c)); after propose, an **assignment** step (3(d)) infers and writes `project` per entry for multi-repo routing. See [rfc-3a-monoliths.md](../../../../rfcs/rfc-3a-monoliths.md) and [rfc-3b-platform.md](../../../../rfcs/rfc-3b-platform.md) for the wider platform story (multi-repo workspace routing and project assignment).
 
 ## Overview
 

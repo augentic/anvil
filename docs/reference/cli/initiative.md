@@ -25,3 +25,7 @@ specify initiative registry validate
 ```
 
 `show` renders `registry.yaml` content. `validate` checks required fields (e.g. `description` required when multiple projects exist).
+
+## See also
+
+- [specify workspace](workspace.md) -- workspace sync, status, and push (moved from `specify initiative workspace` in RFC-3b).

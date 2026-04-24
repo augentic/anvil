@@ -15,5 +15,5 @@ changes:
   - name: traffic-api
     project: traffic
     status: pending
-    depends-on: [ingest-pipeline]
+    depends-on: [ingest-pipeline, operator-dashboard]
     description: "Expose the traffic state as a REST API."

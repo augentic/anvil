@@ -32,9 +32,9 @@ For each `### <capability-name>` block:
 
 The `<!-- source-key: <k> -->` HTML comment immediately above each `### <name>` heading identifies the capability's origin source. Its value is the plan entry's sole `sources:` entry.
 
-### Peer registry sources (Layer 2)
+### Peer registry sources (multi-repo)
 
-Project assignment is handled by the plan skill's assignment step (RFC-3b §*Assignment algorithm*), not by the propose brief. The propose brief creates entries without `--project`. `workspace.md` is operator-facing context: which peers were synced, where their `.specify/` trees live under `.specify/workspace/<name>/`, and whether their checkouts are clean. **Authoring rule for RFC-3a:** every plan entry MUST still list only `sources:` keys that exist in the initiative plan's top-level `sources:` map (the single-writer CLI enforces this today).
+Project assignment is handled by the plan skill's assignment step (RFC-3b §*Assignment algorithm*), not by the propose brief. The propose brief creates entries without `--project`. `workspace.md` is operator-facing context: which peers were synced, where their `.specify/` trees live under `.specify/workspace/<name>/`, and whether their checkouts are clean. **Authoring rule:** every plan entry MUST still list only `sources:` keys that exist in the initiative plan's top-level `sources:` map (the single-writer CLI enforces this today).
 
 ### Documentation capabilities (no source-key marker for code)
 

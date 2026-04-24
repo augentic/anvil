@@ -29,6 +29,10 @@ Vectis is a Crux stack: one Rust shared core crate with an `App` trait that is c
 7. **Dependency edges follow capability ordering hints.** If discovery records "depends on X" or "consumes X" on a capability, the proposed entry inherits a `--depends-on X` flag unless X is rejected during review, in which case the edge is dropped with a note in `proposal.md`.
 8. **`sources` points at origin.** Each entry's `sources` list names the discovery `--source` key (or `against`) the slice migrates from; greenfield slices reference the literal artefact (`--from`) path as their source. A shared-core entry typically carries every source that mentioned the capability under the `### Shared core` tier; shell entries carry only the source(s) for their specific platform.
 
+### Peer registry sources (multi-repo)
+
+Project assignment is handled by the plan skill's assignment step (RFC-3b §*Assignment algorithm*), not by the propose brief. The propose brief creates entries without `--project`. `workspace.md` is operator-facing context: which peers were synced, where their `.specify/` trees live under `.specify/workspace/<name>/`, and whether their checkouts are clean. **Authoring rule:** every plan entry MUST still list only `sources:` keys that exist in the initiative plan's top-level `sources:` map (the single-writer CLI enforces this today).
+
 ### Resulting draft order
 
 For a two-platform initiative with one shared-core capability, one design-system capability, and matching iOS + Android views, the heuristic produces the following draft order:

@@ -74,6 +74,6 @@ Failed:
   - operator-dashboard (status-reason: "Missing API contract from traffic service.")
 
 Pending (dependencies not satisfied):
-  - traffic-api (waits on: ingest-pipeline)
+  - traffic-api (waits on: operator-dashboard)
 
 Next action: Resolve blocked/failed entries (specify plan amend + specify plan transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify plan archive --force.

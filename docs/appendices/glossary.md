@@ -43,10 +43,15 @@ The output of `/spec:analyze` during plan authoring. A `discovery.md` file conta
 ## E
 
 **Execute**
-The Layer 3 skill (`/spec:execute`) that automates the define-build-merge loop for each entry in a plan, in dependency order.
+The Layer 2 driver skill (`/spec:execute`) that automates the define-build-merge loop for each entry in a plan, in dependency order. For multi-repo plans, routes each change to its target project's workspace clone via CWD-based routing.
 
 **Extract**
 The process of deriving behavioral specs and design from existing source code, performed by `/spec:extract`. Produces language-agnostic artifacts.
+
+## G
+
+**Greenfield bootstrapping**
+The `specify workspace sync` fallback for registry projects whose remote repos do not yet exist. Creates the workspace slot, runs `git init`, sets the remote, and scaffolds `.specify/project.yaml` via `specify init` using the initiating repo's schema cache.
 
 ## I
 
@@ -56,13 +61,13 @@ A multi-change program coordinated through a plan. Examples: a migration, a gree
 ## L
 
 **Layer 1 (CLI primitives)**
-The `specify` CLI commands that handle all deterministic operations. The foundation that skills build on.
+The `specify` CLI commands that handle all deterministic operations: change lifecycle, plan CRUD, workspace sync/push, schema resolution, validation. The foundation that skills build on.
 
-**Layer 2 (Change lifecycle)**
-The `/spec:*` skills that operate on a single change: define, build, merge, drop, verify, explore, extract, status, init.
+**Layer 2 (Automated execution)**
+The `/spec:execute` driver skill that reads `plan.yaml`, picks the next eligible change, runs the define-build-merge phase sequence, and records outcomes. Includes CWD-based routing for multi-repo plans (RFC-3b).
 
-**Layer 3 (Initiative orchestration)**
-The `/spec:*` skills that coordinate multi-change programs: plan, execute, analyze.
+**Layer 3 (Plan authoring)**
+The `/spec:plan` skill and its pipeline (`/spec:analyze`, propose briefs, assignment step) that author `plan.yaml` from inputs. Includes sync-peers for multi-repo registries and project assignment (RFC-3b).
 
 **Lifecycle state**
 The current status of a change: `created`, `defined`, `building`, `complete`, `merged`, or `dropped`. Managed by the CLI via `.metadata.yaml`.
@@ -70,7 +75,7 @@ The current status of a change: `created`, `defined`, `building`, `complete`, `m
 ## M
 
 **Merge**
-The third phase of the change lifecycle. Applies spec deltas to the baseline and archives the change.
+The third phase of the change lifecycle. Applies spec deltas to the baseline and archives the change. When running inside a workspace clone, `specify merge` auto-commits the merged baseline (RFC-3b).
 
 **Merge key**
 The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec operations to baseline requirements during merge.
@@ -86,6 +91,12 @@ An ordered, dependency-aware list of changes stored in `.specify/plan.yaml`. The
 **Plugin**
 A Cursor marketplace package that provides skills, rules, and references for a specific domain (Specify, Omnia, Vectis, RT, Plan).
 
+**Project (plan routing)**
+The `project` field on a plan entry that names the registry project a change targets. Required on every entry when `registry.yaml` declares multiple projects; optional (or absent) for single-repo plans. Drives CWD-based routing during execution (RFC-3b).
+
+**Project assignment**
+The step during `/spec:plan` (multi-repo only, step 3(d)) that infers which registry project each plan entry targets. Uses description match, baseline-spec affinity, and schema compatibility as signals. Assignments are presented to the operator for review and written via `specify plan amend --project`.
+
 **Proposal**
 The first artifact generated during define. Captures why the change exists, what is in scope, and which capabilities are affected.
 
@@ -96,6 +107,9 @@ The first artifact generated during define. Captures why the change exists, what
 
 **Requirement ID**
 A stable identifier (`REQ-001`, `REQ-002`, ...) assigned to each behavioral requirement in a spec. Serves as the merge key across delta specs.
+
+**Routing (CWD-based)**
+The mechanism by which `/spec:execute` routes each multi-repo plan entry to its target project. The driver changes working directory to the target project's workspace clone before invoking phase skills; phase skills run unmodified in whatever directory the driver places them in (RFC-3b).
 
 ## S
 
@@ -122,4 +136,4 @@ The read-only skill (`/spec:verify`) that compares code against baseline specs t
 ## W
 
 **Workspace**
-`.specify/workspace/<project>/` -- clones of registry projects materialised by `specify workspace sync`. Read-only during planning (sync-peers phase); writable during execution (`/spec:execute` routes define-build-merge into the clone). Local commits are pushed to remotes via `specify workspace push`.
+`.specify/workspace/<project>/` -- clones of registry projects materialised by `specify workspace sync`. Read-only during planning (sync-peers phase); writable during execution (`/spec:execute` routes define-build-merge into the clone via CWD-based routing). Local commits are pushed to remotes via `specify workspace push`.
