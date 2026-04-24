@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Introduce a structured **view layout artifact** (`views.md`) into the Specify define pipeline that describes the spatial composition of each screen. This bridges the gap between behavioral specs (which define *what* the app does) and shell writers (which must decide *how* to arrange it on screen), without polluting the spec format with visual concerns.
+Introduce a structured **view layout artifact** (`views.md`) into the Specify define pipeline that describes the spatial composition of each screen. The views artifact can be authored from multiple sources — the define agent (inferred from specs), external design tools (Figma via a transient `composition.yaml` import), reverse-engineering of legacy applications, or direct manual editing. This bridges the gap between behavioral specs (which define *what* the app does) and shell writers (which must decide *how* to arrange it on screen), without polluting the spec format with visual concerns.
 
 ## Motivation
 
@@ -33,9 +33,10 @@ The BDD spec format (`GIVEN... WHEN... THEN...`) defines observable behavior. Th
 A layer that communicates **spatial composition** — the arrangement of components on each screen, the mapping from ViewModel fields to visual elements, and the interaction points that wire to Event variants. This layer should be:
 
 - **Platform-neutral.** Described in abstract primitives, not SwiftUI or Compose types.
+- **Multi-source.** Authorable from design tools (Figma), legacy app analysis, manual editing, or agent inference — not limited to a single authoring path.
 - **Verifiable.** Every ViewModel field must appear in the layout; every Event must be wired to an interaction point.
 - **Diffable.** Layout changes show up in version control as text diffs and support the existing ADDED/MODIFIED/REMOVED delta operations.
-- **Generatable.** The define agent can produce it from the spec and proposal, the same way it produces `design.md` today.
+- **Generatable.** The define agent can produce it from the spec and proposal, the same way it produces `design.md` today. When external input is available (e.g., a Figma import), the agent enriches rather than invents.
 
 ## Design Principles
 
@@ -53,11 +54,66 @@ The boundary follows the existing Specify principle: specs define behavior, desi
 
 ### New Artifact: `views.md`
 
-A structured markdown document that describes the layout of each screen in the application using a platform-neutral component vocabulary. One section per ViewModel variant that carries data.
+A structured markdown document that describes the layout of each screen in the application using a platform-neutral component vocabulary. One section per ViewModel variant that carries data. The artifact lives alongside `spec.md` in the Specify lifecycle — per-change deltas in `.specify/changes/<name>/`, merged baseline in `.specify/specs/`.
 
-#### Example
+`views.md` supports two modes:
 
-For a todo app with `ViewModel::TodoList(TodoListView { items: Vec<ItemView>, count: String, filter: String })`:
+1. **Skeleton mode.** A spatial layout with component hierarchy, token references, and content hints — but no `{field}` bindings or `→ Event(args)` wiring. This is the form produced by external tools (Figma adapters, legacy extractors) and by manual authoring before the define pipeline runs.
+
+2. **Wired mode.** The same layout enriched with data bindings, event wiring, and `Maps to:` traceability. This is the form produced by the define pipeline and consumed by shell writers.
+
+The define pipeline reads an existing skeleton (when present), preserves its spatial tree, and adds bindings and wiring based on the specs and design. When no skeleton exists, the pipeline infers layout from the specs and proposal — the same inference that would otherwise fall to shell writers, but captured as an explicit, reviewable artifact.
+
+#### Skeleton Example
+
+A skeleton authored before the define pipeline runs — no `{field}` bindings or `→ Event` wiring, just the spatial tree with token references and content hints:
+
+```markdown
+---
+provenance:
+  - kind: figma
+    uri: "https://www.figma.com/design/abc123/MyApp"
+    captured_at: "2026-04-25T08:00:00Z"
+---
+
+# Views
+
+## TodoListScreen
+
+### Layout
+
+- Scaffold
+  - TopBar
+    - Text: "My Todos" (typography: title)
+    - Badge (color: primaryContainer, corner-radius: full)
+  - Content: ScrollableList
+    - each items:
+      - Card (spacing: sm)
+        - Row (spacing: md)
+          - Checkbox
+          - Column
+            - Text (typography: body)
+            - Text (typography: caption, color: onSurfaceVariant)
+          - Spacer
+          - IconButton: trash
+  - BottomBar
+    - SegmentedControl
+      - segments: ["All", "Active", "Completed"]
+  - FloatingAction: plus
+
+### Empty State
+
+When items is empty:
+
+- CenteredContent
+  - Icon: clipboard (size: xl, color: onSurfaceVariant)
+  - Text: "No todos yet" (typography: title)
+  - Text: "Tap + to add your first todo" (typography: body, color: onSurfaceVariant)
+```
+
+#### Wired Example
+
+After the define pipeline enriches the skeleton, given `ViewModel::TodoList(TodoListView { items: Vec<ItemView>, count: String, filter: String })`:
 
 ```markdown
 # Views
@@ -97,21 +153,84 @@ When {items} is empty:
   - Text: "Tap + to add your first todo" (typography: body, color: onSurfaceVariant)
 ```
 
+Enrichment adds: `Maps to:` traceability, `{field}` bindings on components, `→ Event(args)` wiring on interactive components, and conditional `{field}-when:` styling. The spatial tree itself is unchanged — the pipeline adds data, it does not rearrange the layout.
+
+#### Provenance
+
+The views artifact optionally tracks where its content came from via a YAML frontmatter block:
+
+```markdown
+---
+provenance:
+  - kind: figma
+    uri: "https://www.figma.com/design/abc123/MyApp"
+    captured_at: "2026-04-25T08:00:00Z"
+  - kind: manual
+---
+```
+
+Supported `kind` values:
+
+| Kind | Description |
+| --- | --- |
+| `figma` | Imported from a Figma file via adapter tooling |
+| `legacy` | Reverse-engineered from a legacy application |
+| `manual` | Authored directly by a human or agent |
+
+Multiple sources can contribute to the same document. This is the expected case — import from Figma as a starting point, then refine manually. The provenance block is optional; its absence implies agent-generated or manual authoring.
+
+#### Authoring Modes
+
+##### Agent Inference (the Default)
+
+When no skeleton exists, the define pipeline's views brief infers layout from the specs and proposal. This is the zero-configuration path and produces the same quality of layout decisions that would otherwise fall to shell writers, but captured as an explicit, reviewable artifact.
+
+##### Figma Import
+
+A Figma adapter reads a Figma file's frame hierarchy and produces a `views.md` skeleton via a transient `composition.yaml` (see [Composition Import Format](#composition-import-format)):
+
+- Figma Frames → screen sections
+- Figma Auto Layout → `Row`, `Column` with spacing tokens
+- Figma Components → vocabulary matches (`Button`, `Card`, etc.)
+- Figma Text layers → `Text` with typography tokens
+- Figma Icons → `Icon` or `IconButton`
+- Unrecognized patterns → best-match component with a `<!-- TODO: review -->` comment
+
+The adapter produces a first draft that humans refine. Exact fidelity is not required — the layout is a wireframe-level description, not a pixel-perfect specification.
+
+##### Legacy App Reverse-Engineering
+
+When `/spec:extract` runs against a legacy application, it can optionally produce a `views.md` skeleton alongside the extracted specs:
+
+- Screen components in the legacy code → screen sections
+- UI framework widgets → vocabulary mapping (e.g., React `<List>` → `ScrollableList`)
+- Layout containers → `Row`, `Column`, `Grid`
+
+This fits naturally with the existing RT plugin's analysis capabilities.
+
+##### Manual Authoring
+
+Direct editing of `views.md`. The indented-list format maps intuitively to the visual structure a designer has in mind. Skeletons are valid without any `{field}` or `→ Event` syntax, so manual authoring does not require knowledge of the type system.
+
+##### Hybrid (the Common Case)
+
+Import from Figma or a legacy app as a starting point, then manually refine: add missing screens, adjust component choices, align token references with `tokens.yaml`. The `provenance` frontmatter tracks which sources contributed, enabling auditing.
+
 #### Format Rules
 
-1. **Screen sections.** Each `## ScreenName` section maps to one ViewModel variant. The `Maps to:` line establishes traceability.
+1. **Screen sections.** Each `## ScreenName` section describes one screen. In wired mode, the `Maps to:` line establishes traceability to a ViewModel variant. In skeleton mode, `Maps to:` is absent.
 
 2. **Component tree.** Indented bullet lists describe the component hierarchy. Each bullet is a component with optional properties in parentheses.
 
-3. **Field bindings.** Curly braces `{field}` bind to per-page view struct fields. Every field in the view struct must appear at least once.
+3. **Field bindings (wired mode).** Curly braces `{field}` bind to per-page view struct fields. In wired mode, every field in the view struct must appear at least once. In skeleton mode, bindings are absent.
 
-4. **Event wiring.** The `→ EventVariant(args)` syntax wires interactions to shell-facing Event variants. Every shell-facing Event that belongs to this screen must be wired.
+4. **Event wiring (wired mode).** The `→ EventVariant(args)` syntax wires interactions to shell-facing Event variants. In wired mode, every shell-facing Event that belongs to this screen must be wired. In skeleton mode, wiring is absent.
 
-5. **Design token references.** Parenthetical properties reference design system tokens by name (`typography: title`, `color: primary`, `spacing: md`). Shell writers resolve these to `VectisTypography.title`, `VectisColors.primary`, `VectisSpacing.md` on each platform.
+5. **Design token references.** Parenthetical properties reference design system tokens by name (`typography: title`, `color: primary`, `spacing: md`). Shell writers resolve these to `VectisTypography.title`, `VectisColors.primary`, `VectisSpacing.md` on each platform. Valid in both skeleton and wired modes.
 
-6. **Conditional rendering.** `When {field} is {value}:` blocks describe conditional layout. `{field}-when: {condition}` is shorthand for conditional styling on a single property (e.g., `strikethrough-when: {completed}`).
+6. **Conditional rendering.** `When {field} is {value}:` blocks describe conditional layout. `{field}-when: {condition}` is shorthand for conditional styling on a single property (e.g., `strikethrough-when: {completed}`). In skeleton mode, conditions use plain names without curly braces (`When items is empty:`).
 
-7. **Iteration.** `each {collection}:` describes repeated content bound to a `Vec<T>` field.
+7. **Iteration.** `each {collection}:` describes repeated content bound to a `Vec<T>` field. In skeleton mode, this is `each collection:` (without braces).
 
 ### Component Vocabulary
 
@@ -141,6 +260,134 @@ The vocabulary is deliberately small — a wireframing-level set of primitives, 
 | `Image` | Image display | `AsyncImage` / `Image` | `AsyncImage` / `Image` |
 
 New components can be added as needed. The vocabulary is intentionally open — if a layout requires a component not in the table, introduce it with a descriptive name and document the platform mapping in the view layout.
+
+### Composition Import Format
+
+External tools — Figma adapters, legacy app analyzers — produce structured output naturally. Rather than requiring them to emit markdown directly, they produce a transient `composition.yaml` that the views brief consumes and renders into `views.md`. The composition file is an **input-only interchange format**, not a persisted Specify artifact. It is consumed once by the views brief and not retained in the Specify lifecycle.
+
+```
+Figma / legacy app / external tool
+         │
+         ▼
+    composition.yaml (transient)
+         │
+         ▼
+    views brief → views.md (persisted in .specify/)
+```
+
+#### Schema
+
+```yaml
+# composition.yaml (transient import — not committed to .specify/)
+version: 1
+
+provenance:
+  sources:
+    - kind: figma
+      uri: "https://www.figma.com/design/abc123/MyApp"
+      captured_at: "2026-04-25T08:00:00Z"
+
+screens:
+  todo-list:
+    name: "Todo List"
+    description: "Main screen showing all todo items"
+    layout:
+      - Scaffold:
+          top-bar:
+            - TopBar:
+                - Text: "My Todos"
+                  typography: title
+                - Badge:
+                    color: primaryContainer
+                    corner-radius: full
+          content:
+            - ScrollableList:
+                repeat: items
+                item:
+                  - Card:
+                      spacing: sm
+                      children:
+                        - Row:
+                            spacing: md
+                            children:
+                              - Checkbox
+                              - Column:
+                                  children:
+                                    - Text:
+                                        typography: body
+                                    - Text:
+                                        typography: caption
+                                        color: onSurfaceVariant
+                              - Spacer
+                              - IconButton:
+                                  icon: trash
+          bottom-bar:
+            - BottomBar:
+                - SegmentedControl:
+                    segments: ["All", "Active", "Completed"]
+          floating-action:
+            - FloatingAction:
+                icon: plus
+
+    states:
+      empty:
+        when: "items is empty"
+        layout:
+          - CenteredContent:
+              children:
+                - Icon:
+                    icon: clipboard
+                    size: xl
+                    color: onSurfaceVariant
+                - Text: "No todos yet"
+                  typography: title
+                - Text: "Tap + to add your first todo"
+                  typography: body
+                  color: onSurfaceVariant
+
+  add-todo:
+    name: "Add Todo"
+    description: "Screen for creating a new todo item"
+    layout:
+      - Scaffold:
+          top-bar:
+            - TopBar:
+                - Text: "New Todo"
+                  typography: title
+          content:
+            - Column:
+                spacing: lg
+                padding: md
+                children:
+                  - TextField:
+                      placeholder: "What needs to be done?"
+                  - TextField:
+                      placeholder: "Due date (optional)"
+                  - Button: "Save"
+                    style: filled
+```
+
+#### Why YAML for the Import Format
+
+- **Machine-parseable.** Figma adapters and legacy app analyzers produce structured output naturally. YAML avoids fragile indentation-based parsing on the *producer* side.
+- **Validatable.** A JSON Schema can enforce component validity, token resolution, and structural rules before the views brief consumes it.
+- **Round-trippable.** A tool that imports from Figma today can re-import tomorrow and diff against the previous import to surface what changed in the design.
+
+The markdown indented-list format in `views.md` prioritizes human readability and diff-friendliness for the *persisted* artifact. YAML serves the *transient* interchange where machine producers and consumers dominate.
+
+#### Rendering to views.md
+
+When the views brief encounters a `composition.yaml`, it:
+
+1. Reads each screen entry and renders the YAML layout tree into the markdown indented-list format.
+2. Carries `provenance` from the composition into the `views.md` frontmatter.
+3. Maps `states` entries to `### Empty State` / `### Loading State` sections.
+4. Preserves content hints and token references verbatim.
+5. In wired mode (when specs are available), adds `{field}` bindings and `→ Event(args)` wiring. In skeleton mode (when run before specs), produces the skeleton form.
+
+#### Lifecycle
+
+The composition file is not committed to `.specify/`. It serves the same role as a Figma export or a database dump — a point-in-time snapshot that seeds a Specify artifact. After the views brief has consumed it and produced `views.md`, subsequent edits happen on `views.md` directly. If the external source changes (a new Figma iteration), the adapter produces a fresh `composition.yaml` and the views brief diffs it against the existing `views.md` to surface what changed.
 
 ### Pipeline Integration
 
@@ -174,7 +421,31 @@ needs: [specs, proposal]
 ---
 ```
 
-It reads the spec to know which screens exist (ViewModel variants from spec requirements about views/pages) and what interactions they support (Event variants from spec requirements about features). It reads the proposal to know which platforms are targeted (determines whether to include platform-specific layout sections).
+It reads the spec to know which screens exist (ViewModel variants from spec requirements about views/pages) and what interactions they support (Event variants from spec requirements about features). It reads the proposal to know which platforms are targeted (determines whether to include platform-specific layout sections). It reads an existing `views.md` skeleton (when present) as the spatial layout to enrich, and optionally reads a transient `composition.yaml` (when present) as a structured import to render into `views.md`.
+
+```
+composition.yaml (transient, optional)
+         │
+existing views.md skeleton (optional)
+         │
+         ▼
+    ┌─────────┐
+    │  views   │◄── specs (screens, behaviors)
+    │  brief   │◄── proposal (platforms)
+    └────┬────┘
+         │
+         ▼
+    views.md (wired layout with {field} bindings and → Event wiring)
+         │
+         ▼
+    shell writers (iOS, Android, web)
+```
+
+The views brief resolves inputs in priority order:
+
+1. **composition.yaml present** — render YAML to markdown, enrich with bindings from specs.
+2. **Existing views.md skeleton present** — preserve spatial tree, enrich with bindings from specs.
+3. **Neither present** — infer layout from specs and proposal (agent-generated).
 
 #### Why `views` precedes `design`
 
@@ -190,11 +461,14 @@ If the views artifact shows `{due_date}` on the TodoListScreen but the spec neve
 
 The brief instructs the define agent to:
 
-1. Read the spec and identify every screen (ViewModel variant).
-2. For each screen, identify the data it displays (fields from spec requirements about views) and the interactions it supports (Event variants from spec requirements about features).
-3. Compose a layout using the component vocabulary, binding every field and wiring every interaction.
-4. Reference design system tokens for styling (if `design-system` is in the proposal's Platforms list, or if `design-system/tokens.yaml` exists).
-5. Include platform-specific layout notes in dedicated sections when the proposal targets multiple platforms and the layout differs between them.
+1. Check for a transient `composition.yaml` — if present, render its YAML layout trees into the markdown indented-list format and carry provenance into the frontmatter.
+2. If no composition exists, check for an existing `views.md` skeleton — if present, use it as the spatial starting point.
+3. If neither exists, read the spec and identify every screen (ViewModel variant), then infer a layout using the component vocabulary.
+4. For each screen, identify the data it displays (fields from spec requirements about views) and the interactions it supports (Event variants from spec requirements about features).
+5. Enrich the layout by binding every field (`{field}`) and wiring every interaction (`→ Event(args)`).
+6. Reference design system tokens for styling (if `design-system` is in the proposal's Platforms list, or if `design-system/tokens.yaml` exists).
+7. Include platform-specific layout notes in dedicated sections when the proposal targets multiple platforms and the layout differs between them.
+8. Surface gaps — a skeleton screen with no matching spec, or a spec screen with no skeleton entry.
 
 ### Shell Writer Consumption
 
@@ -248,35 +522,53 @@ The `specify validate` command gains checks for the views artifact:
 
 | Check | Description |
 | --- | --- |
-| **Field coverage** | Every field in each per-page view struct (from design) appears in the corresponding screen layout |
-| **Event coverage** | Every shell-facing Event variant relevant to a screen has a `→` wiring in that screen's layout |
+| **Field coverage** | Every field in each per-page view struct (from design) appears in the corresponding screen layout (wired mode only) |
+| **Event coverage** | Every shell-facing Event variant relevant to a screen has a `→` wiring in that screen's layout (wired mode only) |
 | **Token resolution** | Every token reference (`typography: X`, `color: Y`, `spacing: Z`) resolves to an entry in `tokens.yaml` (when the design system exists) |
 | **Component validity** | Every component name is in the vocabulary or explicitly introduced in the layout |
-| **ViewModel mapping** | Every `Maps to:` line references a declared ViewModel variant from the design |
+| **ViewModel mapping** | Every `Maps to:` line references a declared ViewModel variant from the design (wired mode only) |
+
+When a transient `composition.yaml` is present, the validate command additionally checks:
+
+| Check | Description |
+| --- | --- |
+| **Component validity** | Every component name in the YAML resolves to the vocabulary or `components.yaml` |
+| **Token resolution** | Every token reference in the YAML resolves to `tokens.yaml` (when the design system exists) |
+| **Slot validity** | Slot names on container components match declared slots |
+| **Screen uniqueness** | No duplicate screen IDs |
 
 These checks run during the build phase before shell writers are invoked, catching mismatches between the views artifact and the spec/design early.
 
 ## Incremental Adoption Path
 
-### Phase 1: Manual views artifact (low risk)
+### Phase 1: Views artifact with skeleton support (low risk)
 
-Add the `views` brief to the vectis schema and update the define agent to produce `views.md`. Shell writers **read** `views.md` when present but fall back to inference when absent. No existing functionality changes. This is a pure addition.
+Add the `views` brief to the vectis schema and update the define agent to produce `views.md`. Support both skeleton mode (authored manually or imported) and wired mode (enriched by the pipeline). Shell writers read `views.md` when present but fall back to inference when absent. No existing functionality changes. This is a pure addition.
 
 Deliverables:
 - `schemas/vectis/briefs/views.md` brief file
 - Updated `schemas/vectis/schema.yaml` pipeline
 - Updated ios-writer and android-writer Input Analysis sections
 - Updated core-writer Artifact-to-Code Mapping table (views artifact feeds shell writers, not core — but the core-writer's view struct fields should align)
+- `composition.yaml` JSON Schema for validating transient imports
 
 ### Phase 2: Validation
 
 Add the views-specific checks to `specify validate`. These catch drift between views, specs, and design before the build phase runs.
 
 Deliverables:
-- Validation checks in the CLI
+- Validation checks in the CLI (for both views.md and transient composition.yaml)
 - Updated build brief to run views validation before shell generation
 
-### Phase 3: Component library
+### Phase 3: Figma adapter
+
+Introduce tooling that reads a Figma file and produces a transient `composition.yaml`. The adapter maps Figma's frame/component hierarchy to the component vocabulary, applies best-match heuristics for unrecognized patterns, and marks uncertain mappings for human review. The views brief then renders the composition into `views.md`.
+
+Deliverables:
+- Figma-to-composition adapter (standalone tool or `/spec:*` skill)
+- Documentation for the Figma import workflow
+
+### Phase 4: Component library
 
 Introduce named compositions — reusable patterns built from the primitive vocabulary. These live in the design system alongside `tokens.yaml`:
 
@@ -315,7 +607,7 @@ Screen layouts reference these by name:
 
 This reduces repetition across screens and establishes a shared vocabulary between designers and the define agent. The component library is optional — layouts can always use primitive components directly.
 
-### Phase 4: Web shell writer
+### Phase 5: Web shell writer
 
 With the layout vocabulary and design system in place, a web shell writer can map the same `views.md` to HTML/CSS/JS (or a framework like React, Leptos, or Yew). The layout primitives map naturally:
 
@@ -339,9 +631,11 @@ The web shell writer reads `views.md`, `design.md`, and `tokens.yaml` — the sa
 
 **Extend design.md with layout sections.** Partially viable — the design already has `## iOS Shell Details` and `## Android Shell Details` sections. However, layout is a concern that cuts across all platforms and deserves its own artifact with dedicated validation. Embedding it in the design would make the design document responsible for both the type system (consumed by core-writer) and the visual arrangement (consumed by shell writers), violating the single-responsibility principle that keeps artifacts clean.
 
-**YAML or JSON instead of markdown.** Viable for the layout tree itself (more deterministically parseable), but inconsistent with every other Specify artifact. The indented-list format in markdown is a reasonable middle ground: human-readable, diff-friendly, and parseable by pattern matching in the shell writer skills. If parsing reliability becomes a problem in practice, a structured format (YAML) can be introduced as an alternative representation alongside the markdown, similar to how `tokens.yaml` coexists with `spec.md` in the design system.
+**Persisted `composition.yaml` alongside `views.md`.** An earlier design had a persistent YAML composition model (`composition.yaml`) living alongside `tokens.yaml` or in `.specify/specs/`, with `views.md` generated from it. Rejected because it duplicates the spatial tree — the YAML describes the same component hierarchy that appears in `views.md`, creating a permanent sync obligation. Every layout edit would require updating the composition and regenerating views. The transient import approach preserves the machine-parseable YAML format for external tool interchange without the maintenance cost of two persisted representations of the same tree.
 
-**Full design tool integration (Figma, Sketch).** Rejected for the same reasons as image wireframes, plus the additional complexity of maintaining an API integration, authentication, and sync workflow. The textual format can be authored by the same define agent that writes specs and design, keeping the workflow unified. Nothing prevents a future tool from *generating* `views.md` from a Figma file — the format is the contract, not the authoring tool.
+**YAML or JSON instead of markdown for the persisted artifact.** Viable for the layout tree itself (more deterministically parseable), but inconsistent with every other Specify artifact. The indented-list format in markdown is a reasonable middle ground: human-readable, diff-friendly, and parseable by pattern matching in the shell writer skills. YAML is used as the *transient import format* (composition.yaml) for machine producers, while markdown remains the persisted, human-reviewed artifact.
+
+**Full design tool integration (Figma, Sketch).** A tight bidirectional sync with design tools was rejected due to authentication, API versioning, and workflow complexity. Instead, Figma is supported as a one-way *import source* via the composition.yaml interchange format (Phase 3). The adapter produces a transient composition file, the views brief renders it into `views.md`, and subsequent edits happen on `views.md` directly. Re-imports produce a fresh composition that the views brief can diff against the existing `views.md`.
 
 ## Open Questions
 
@@ -352,6 +646,10 @@ The web shell writer reads `views.md`, `design.md`, and `tokens.yaml` — the sa
 3. **Animation and transitions.** The current vocabulary covers static layout. Page transitions, list item animations, and gesture-driven interactions are visual concerns that may need representation. Should they be part of the views artifact, or a separate concern?
 
 4. **Accessibility semantics.** Should the views artifact include accessibility hints (roles, labels, traits) or leave those to the shell writers? The current ios-writer already checks for `accessibilityLabel` on interactive icons.
+
+5. **Composition re-import diffing.** When a Figma design is updated and a new `composition.yaml` is produced, the views brief needs to diff it against the existing `views.md` to surface what changed without losing manual refinements or wiring. What diffing strategy works — screen-level replacement, component-tree merge, or conflict markers for human resolution?
+
+6. **Navigation graph.** The views artifact describes individual screens but not the transitions between them. Should `views.md` include a navigation section describing the screen graph, or does that remain a specs/design concern?
 
 ## References
 
