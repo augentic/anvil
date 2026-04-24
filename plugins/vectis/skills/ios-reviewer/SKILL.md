@@ -16,6 +16,7 @@ This skill catches issues that the Swift compiler and swiftformat miss: missing 
 | `target-dir` | **Yes** | Path to the Crux app directory containing an `iOS/` shell |
 | `reference-dir` | No | Path to a known-good app for comparative review |
 | `scope` | No | `full` (default) runs all four passes (structural, quality, universal, integration); `quick` runs structural + quality only, skipping universal and integration |
+| `orchestrated` | No | When `true`, the reviewer skips step 3 (`/spec:define`) and instead returns classified design-level findings in its output for the orchestrator to consolidate across platforms. Set by the build brief when running iOS and Android reviews in parallel. Defaults to `false`. |
 
 ## Process
 
@@ -334,20 +335,32 @@ When the cycle exits, shut down all remaining teammates and output a summary acr
 - Total: N+K mechanical fixes applied. M design-level findings accumulated.
 ```
 
-### 3. Express accumulated design-level findings as a Specify change
+### 3. Express accumulated design-level findings
 
 After the review-fix cycle completes, check whether any **design-level findings** were accumulated -- findings that require architectural decisions, missing screen views, missing effect handlers, or issues that indicate the spec is incomplete (typically IOS-001, IOS-003, IOS-010, and universal checks tagged with a **Spec-change indicator**). If none were accumulated across any iteration, skip this step.
 
 #### Classify findings: code-fix vs spec-change
 
-Before creating the Specify change, classify each design-level finding:
+Classify each design-level finding:
 
 - **Code-fix**: The spec is clear and the code simply does not implement it correctly. The fix is a code change; no spec update is needed. These become tasks in `tasks.md`.
 - **Spec-change**: The spec is silent, ambiguous, or mandates behavior that the review identified as problematic. The fix requires updating the spec first, then implementing. These become requirements in `specs/` and decisions in `design.md`.
 
 Universal checks with a Spec-change indicator (UNI-002, UNI-004, UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) commonly surface as spec-change findings. Consult `../../references/review-checks.md` for the indicator description on each check.
 
-If design-level findings exist, delegate to `/spec:define` to create a single Specify change that tracks all of them:
+#### When `orchestrated: true` (build-phase invocation)
+
+Return the classified findings in the `design_findings` output field
+and stop. Each finding entry includes: finding ID (e.g., IOS-001-1),
+check ID, severity, classification (`code-fix` or `spec-change`),
+file:line, description, and suggested fix. The orchestrator
+consolidates findings from all platform reviewers and creates a
+single Specify change. Do **not** call `/spec:define`.
+
+#### When `orchestrated: false` (standalone invocation, default)
+
+If design-level findings exist, delegate to `/spec:define` to create a
+single Specify change that tracks all of them:
 
 1. **Derive a change name** from the app name and append the current date-time for traceability:
 
@@ -416,13 +429,23 @@ Before completing review:
 
 ## Integration with Specify Workflow
 
-This skill is invoked as part of the Vectis build phase, after ios-writer generation and build verification:
+This skill is invoked as part of the Vectis build phase, after ios-writer
+generation and build verification. When invoked from the build phase, the
+orchestrator passes `orchestrated: true` so that this skill returns
+design-level findings for cross-platform consolidation instead of calling
+`/spec:define` directly. iOS and Android reviews run in parallel since
+they operate on disjoint file trees with no build-tool contention:
 
 ```
-define -> build (ios-writer) -> verify build -> review-fix cycle (this skill) -> generate change for design issues -> merge
+define -> build (ios-writer + android-writer in parallel)
+       -> verify iOS -> verify Android (serial -- cargo workspace lock)
+       -> review iOS + review Android (parallel -- code analysis only)
+       -> orchestrator consolidates design-level findings -> merge
 ```
 
-The skill can also be invoked standalone:
+The skill can also be invoked standalone (with `orchestrated: false`,
+the default), in which case it creates its own Specify change for any
+design-level findings:
 
 > Use the ios-reviewer skill to review `<target-dir>`
 
