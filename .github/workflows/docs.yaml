@@ -33,7 +33,7 @@ jobs:
       - name: Set release date
         id: date
         run: |
-          echo "today=$(date --rfc-3339=date)" >> ${GITHUB_ENV}
+          echo "today=$(date +'%Y-%m-%d')" >> ${GITHUB_ENV}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
