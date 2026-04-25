@@ -8,7 +8,7 @@
 /spec:init                     # one-time setup
 /spec:define "description"     # generate artifacts
 /spec:build                    # implement tasks
-/spec:merge                    # merge specs into baseline
+/spec:merge                    # merge specs (+ composition) into baseline
 ```
 
 ### Multi-change initiative
@@ -25,7 +25,7 @@
 | `/spec:init` | One-time project setup |
 | `/spec:define` | Generate artifacts for a new change |
 | `/spec:build` | Implement tasks |
-| `/spec:merge` | Merge completed specs into baseline |
+| `/spec:merge` | Merge completed change into baseline |
 | `/spec:drop` | Discard a change |
 | `/spec:status` | Check progress |
 | `/spec:verify` | Detect drift between code and specs |

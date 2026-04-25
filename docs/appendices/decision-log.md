@@ -50,7 +50,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** The same `/spec:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what schema they use, what domain they own). Sync-peers runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
 
-**Source:** [RFC-3a: Monolith Migration Planning](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3a-monoliths.md), [RFC-3b: Platform Changes](https://github.com/augentic/specify/blob/main/rfcs/rfc-3b-platform.md)
+**Source:** [RFC-3a: Monolith Migration Planning](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3a-monoliths.md), [RFC-3b: Platform Changes](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## CWD-based routing for multi-repo execution
 
@@ -58,7 +58,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** The alternative (passing a `--project` flag through to every phase skill) would have required changes to every skill and every brief pipeline. CWD-based routing keeps the routing decision in one place (the driver) and preserves the invariant that phase skills operate on "the current project." Phase skills discover the schema via their normal `.specify/project.yaml` walk from CWD.
 
-**Source:** [RFC-3b: Platform Changes, §Execution routing](https://github.com/augentic/specify/blob/main/rfcs/rfc-3b-platform.md)
+**Source:** [RFC-3b: Platform Changes, §Execution routing](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## One change, one project
 
@@ -66,7 +66,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Allowing a single change to span repos would require the execution loop to manage multiple project roots, multiple schemas, and multiple baseline merge targets within one define-build-merge cycle. Decomposing cross-cutting capabilities into per-project entries keeps the loop simple and matches the existing baseline-accumulation model where each merge has a single target.
 
-**Source:** [RFC-3b: Platform Changes, §One change, one project](https://github.com/augentic/specify/blob/main/rfcs/rfc-3b-platform.md)
+**Source:** [RFC-3b: Platform Changes, §One change, one project](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## Project assignment is a framework concern
 
@@ -74,7 +74,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** A multi-repo plan spans projects with different schemas, so assignment is inherently a cross-schema concern. Placing it in individual propose briefs would duplicate the logic across schemas and create an ordering problem (the brief would need to know about projects it does not own). Keeping it in the plan skill also means propose briefs are unchanged -- a single-repo propose brief works identically in a multi-repo plan.
 
-**Source:** [RFC-3b: Platform Changes, §Assignment algorithm](https://github.com/augentic/specify/blob/main/rfcs/rfc-3b-platform.md)
+**Source:** [RFC-3b: Platform Changes, §Assignment algorithm](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## Workspace-centric execution with explicit push
 
@@ -82,7 +82,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Automatic pushes during execution would make the driver non-idempotent and create a rollback problem -- a failed change that was already pushed cannot be cleanly undone. Keeping pushes explicit gives the operator a review gate between "execution produced artifacts" and "artifacts are published." The workspace is the staging area; `workspace push` is the release gate.
 
-**Source:** [RFC-3b: Platform Changes, §Workspace-centric execution](https://github.com/augentic/specify/blob/main/rfcs/rfc-3b-platform.md)
+**Source:** [RFC-3b: Platform Changes, §Workspace-centric execution](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## Composition as a separate artifact, not embedded in specs or design
 

@@ -55,7 +55,7 @@ At any point you can check where things stand:
 /spec:status
 ```
 
-You will see the change listed with status `defined`, all four artifacts marked complete, and the task count.
+You will see the change listed with status `defined`, all artifacts marked complete, and the task count.
 
 ## 4. Build the implementation
 

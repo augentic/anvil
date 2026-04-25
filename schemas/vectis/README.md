@@ -4,7 +4,7 @@
 - **Purpose**: Cross-platform Crux application development
 - **Source**: Manual
 - **Target**: Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell), VectisDesign (design system)
-- **Workflow**: `define` -> `specs` -> `composition` -> `design` -> `tasks` -> `build` (core-writer, ios-writer, android-writer, design-system-writer)
+- **Workflow**: `proposal` -> `specs` -> `composition` -> `design` -> `tasks` -> `build` (core-writer, ios-writer, android-writer, design-system-writer)
 
 ## Contents
 

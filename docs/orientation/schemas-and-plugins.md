@@ -61,9 +61,9 @@ For example, with the Omnia schema:
 With the Vectis schema:
 
 ```text
-/spec:define --> generates artifacts using Vectis brief pipelines
+/spec:define --> generates artifacts using Vectis brief pipelines (incl. composition.yaml)
 /spec:build  --> delegates tasks to /vectis:core-writer, /vectis:ios-writer, etc.
-/spec:merge  --> merges specs into baseline (schema-agnostic)
+/spec:merge  --> merges specs + composition into baseline
 ```
 
 The define-build-merge loop is invariant. Swapping the schema swaps the brief content and the specialist skills -- nothing else changes.

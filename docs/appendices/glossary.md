@@ -13,7 +13,7 @@ The `.specify/archive/` directory where finalized changes (merged or dropped) an
 ## B
 
 **Baseline**
-The accumulated set of merged specs at `.specify/specs/`. Represents the current known behavioral state of the system. Future changes produce deltas against the baseline.
+The accumulated set of merged specs at `.specify/specs/`. For Vectis projects, also includes the merged `composition.yaml` for screen layout. Represents the current known behavioral state of the system. Future changes produce deltas against the baseline.
 
 **Brief**
 A markdown prompt file provided by a schema that drives artifact generation. Briefs are organized into pipelines for each phase (define, build, merge).
@@ -78,7 +78,7 @@ The current status of a change: `created`, `defining`, `defined`, `building`, `c
 ## M
 
 **Merge**
-The third phase of the change lifecycle. Applies spec deltas to the baseline and archives the change. When running inside a workspace clone, `specify merge` auto-commits the merged baseline (RFC-3b).
+The third phase of the change lifecycle. Applies spec deltas (and composition deltas for Vectis) to the baseline and archives the change. When running inside a workspace clone, `specify merge` auto-commits the merged baseline (RFC-3b).
 
 **Merge key**
 The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec operations to baseline requirements during merge.
