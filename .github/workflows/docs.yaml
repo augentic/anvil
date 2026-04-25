@@ -34,5 +34,4 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: |
             pages project list
-            cd docs/book
-            pages deploy --project-name=specify-docs
+            pages deploy docs/book --project-name=specify-docs
