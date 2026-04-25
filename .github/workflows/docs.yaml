@@ -2,7 +2,7 @@ name: Docs
 
 on:
   push:
-    # branches: [main]
+    branches: [main]
     paths:
       - "docs/**"
       - ".github/workflows/docs.yaml"
@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build and deploy documentation
+    name: Publish documentation
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -32,9 +32,7 @@ jobs:
 
       - name: Set release date
         id: date
-        run: |
-          echo "today=$(date +'%Y-%m-%d')" >> ${GITHUB_OUTPUT}
-
+        run: echo "today=$(date +'%Y-%m-%d')" >> ${GITHUB_OUTPUT}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
