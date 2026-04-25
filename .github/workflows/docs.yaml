@@ -28,7 +28,9 @@ jobs:
           use-mermaid: true
 
       - name: Build book
-        run: mdbook build docs
+        run: |
+          mdbook build docs
+          mdbook-mermaid install docs/book
 
       - name: Set release date
         id: date
