@@ -342,8 +342,55 @@ The central co-location model works identically in both topologies:
 | How projects read | Direct filesystem read | Materialised by `workspace sync` |
 | How changes propose updates | `.specify/changes/<name>/contracts/` | Same — in the project clone's change directory |
 | How updates merge | `specify merge` → `.specify/contracts/` | Same — then `workspace push` propagates |
+| Contract roles | Optional — sole project is implicit producer and consumer | `contracts` block in `registry.yaml` per project (see §*Contract roles*) |
 
 Phase skills see the same paths regardless of topology. The only difference is the distribution mechanism, which is handled by the existing workspace infrastructure.
+
+## Contract roles in `registry.yaml`
+
+Contracts are platform-level shared artifacts — neither producer nor consumer owns them. But each contract has exactly one authoritative producer and one or more consumers. Without an explicit record of these roles, two projects could independently write specs that describe producing the same endpoint or publishing to the same message channel, with no tooling to detect the conflict.
+
+`registry.yaml` gains an optional `contracts` block per project that declares which contracts each project produces and which it consumes:
+
+```yaml
+projects:
+  - name: backend
+    description: "User management API and order processing"
+    contracts:
+      produces: [http/user-api, messages/order-events]
+  - name: mobile
+    description: "iOS and Android registration flows"
+    contracts:
+      consumes: [http/user-api]
+  - name: notifications
+    description: "Email and push notification delivery"
+    contracts:
+      consumes: [messages/order-events]
+```
+
+Contract paths are relative to `.specify/contracts/` (e.g. `http/user-api` refers to `.specify/contracts/http/user-api.yaml`). This completes the triad of platform metadata:
+
+- **`registry.yaml`** declares *who* the participants are and *which contract roles they play*.
+- **`plan.yaml`** declares *what* changes are planned.
+- **`.specify/contracts/`** declares *what the interfaces look like*.
+
+### Validation invariant
+
+A single rule enforces uniqueness: **each contract path has at most one producer.** Multiple consumers are expected and unrestricted. `specify validate` checks this invariant when the registry declares contract roles:
+
+```
+error: contract "http/user-api" has multiple producers: backend, payments
+```
+
+The `contracts` brief also reads the registry roles as context. When generating contracts for a change, the brief verifies that the producing project's specs are consistent with its declared role and flags specs that describe producing an interface the project does not own.
+
+### Role lifecycle
+
+Contract roles are declared when the contract is first defined — typically during a contract-first change (see §*Authorship patterns*). `/spec:plan` populates the registry's `contracts` block when it inserts contract changes into a plan: the project that will implement the API is recorded as the producer; projects that will consume it are recorded as consumers.
+
+For single-repo projects, the roles are implicit (the sole project is both producer and consumer) and the `contracts` block is optional.
+
+Roles evolve as the platform evolves. When a new consumer adopts an existing contract, its registry entry gains a `consumes` reference. When a contract is retired, the producing project removes it from `produces`. These are edits to `registry.yaml` — contract roles change infrequently and warrant human review.
 
 ## Schema integration
 
@@ -387,7 +434,7 @@ Not every project needs machine-readable contracts. A single-crate WASM service 
 - **Contract versioning or backwards-compatibility checking.** Semantic versioning of contracts, breaking-change detection, and consumer compatibility validation are deferred to Layer 3. The initial implementation treats contracts as define-time artifacts that are evolved incrementally.
 - **Replacing behavioral specs.** Contracts complement specs; they do not replace them. Specs describe *what* the system must do. Contracts describe *what the interface looks like*. Both are needed — one for requirements traceability, the other for machine-readable integration.
 - **Cross-repo contract enforcement in Layer 1.** The initial implementation relies on `depends-on` ordering and agent judgment for cross-repo compatibility. Automated validation is explicitly deferred.
-- **Contract ownership by a single project.** Contracts are platform-level shared artifacts. No project "owns" a contract; both producer and consumer reference the same central definition.
+- **Contract ownership by a single project.** Contracts are platform-level shared artifacts. No project "owns" a contract; both producer and consumer reference the same central definition. The registry records which project is the authoritative *producer* of each contract (see §*Contract roles*), but this is a role declaration for conflict prevention, not ownership — the contract artifact remains shared and editable through the normal change process.
 
 ## Implementation scope
 
@@ -397,21 +444,22 @@ Not every project needs machine-readable contracts. A single-crate WASM service 
 2. **Updated `design` brief** — modify `briefs/design.md` to declare `needs: [proposal, contracts]` and update the `## API Contracts` / `## Publication & Timing Patterns` sections to reference the central contract files.
 3. **Child schemas** — create `schemas/omnia-contracts/` and `schemas/vectis-contracts/` with `extends` and the `contracts` pipeline entry.
 4. **Fixture** — author a worked example under `schemas/omnia-contracts/fixtures/` showing the baseline contracts and a change-level delta for a representative capability.
+5. **Registry contract roles** — define the optional `contracts` block schema for `registry.yaml` project entries (`produces` and `consumes` lists). Update `/spec:plan` to populate roles when inserting contract changes. Update the `contracts` brief to read registry roles as context.
 
 Layer 1 is independently useful: it produces machine-readable contracts during define that the agent and human can review, and that the build phase can consume for code generation.
 
 ### Layer 2 (CLI changes)
 
-5. **`specify merge` extension** — copy change-level `contracts/` files into `.specify/contracts/`. Files that share a path are replaced; files absent from the change are left untouched.
-6. **`specify spec preview` extension** — include contract file changes in the preview output.
-7. **`specify spec conflict-check` extension** — detect baseline contract modifications after the change's `defined-at` timestamp.
-8. **`specify validate` extension** — check that `.specify/contracts/schemas/` contains at least one file when the schema declares a `contracts` brief, and that `$ref` pointers in OpenAPI/AsyncAPI files resolve.
-9. **`workspace sync` extension** — materialise `.specify/contracts/` from the initiating repo into each project clone. Same copy/symlink mechanism used for peer baselines.
+6. **`specify merge` extension** — copy change-level `contracts/` files into `.specify/contracts/`. Files that share a path are replaced; files absent from the change are left untouched.
+7. **`specify spec preview` extension** — include contract file changes in the preview output.
+8. **`specify spec conflict-check` extension** — detect baseline contract modifications after the change's `defined-at` timestamp.
+9. **`specify validate` extension** — check that `.specify/contracts/schemas/` contains at least one file when the schema declares a `contracts` brief, that `$ref` pointers in OpenAPI/AsyncAPI files resolve, and that each contract path has at most one producer in `registry.yaml` (see §*Contract roles*).
+10. **`workspace sync` extension** — materialise `.specify/contracts/` from the initiating repo into each project clone. Same copy/symlink mechanism used for peer baselines.
 
 ### Layer 3 (future, deferred)
 
-10. **`specify contract validate`** — cross-repo contract compatibility checking against the central contracts.
-11. **Contract-validation build brief** — automated verification during build that generated code matches the contract.
+11. **`specify contract validate`** — cross-repo contract compatibility checking against the central contracts.
+12. **Contract-validation build brief** — automated verification during build that generated code matches the contract.
 
 ## Implementation order
 
@@ -419,12 +467,13 @@ Layer 1 is independently useful: it produces machine-readable contracts during d
 2. Update the `design.md` brief (Layer 1, item 2). A small `needs` change plus section rewording.
 3. Create the child schemas (Layer 1, item 3). Schema composition handles the pipeline insertion.
 4. Author the fixture (Layer 1, item 4). Validates the brief against a representative input.
-5. Extend `specify merge` (Layer 2, item 5). The merge engine gains a contract-copy step targeting `.specify/contracts/`.
-6. Extend `specify spec preview` and `conflict-check` (Layer 2, items 6–7). Preview and conflict surfaces gain contract awareness.
-7. Extend `specify validate` (Layer 2, item 8). Structural validation of contract artifacts.
-8. Extend `workspace sync` (Layer 2, item 9). Distribution of central contracts to project clones.
+5. Define registry contract roles (Layer 1, item 5). Schema for the `contracts` block, plus `/spec:plan` and `contracts` brief updates.
+6. Extend `specify merge` (Layer 2, item 6). The merge engine gains a contract-copy step targeting `.specify/contracts/`.
+7. Extend `specify spec preview` and `conflict-check` (Layer 2, items 7–8). Preview and conflict surfaces gain contract awareness.
+8. Extend `specify validate` (Layer 2, item 9). Structural validation of contract artifacts and producer-uniqueness checking.
+9. Extend `workspace sync` (Layer 2, item 10). Distribution of central contracts to project clones.
 
-Steps 1–4 can ship without any CLI changes. Steps 5–8 require specify-cli changes and can follow independently.
+Steps 1–5 can ship without any CLI changes. Steps 6–9 require specify-cli changes and can follow independently.
 
 ## References
 
