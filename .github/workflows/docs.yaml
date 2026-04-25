@@ -30,7 +30,7 @@ jobs:
       - name: Build book
         run: |
           mdbook build docs
-          mdbook-mermaid install docs/book
+          mdbook-mermaid install docs
 
       - name: Set release date
         id: date
