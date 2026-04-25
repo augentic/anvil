@@ -5,7 +5,7 @@ Canonical definitions for terms used throughout Specify.
 ## A
 
 **Artifact**
-One of the four structured documents that define a change: `proposal.md`, `spec.md`, `design.md`, `tasks.md`. Artifacts are the contract between human intent and agent execution.
+A structured document that defines part of a change. The four core artifacts are `proposal.md`, `spec.md`, `design.md`, and `tasks.md`. Schema-specific artifacts extend this set -- the Vectis schema adds `composition.yaml` for screen layout. Artifacts are the contract between human intent and agent execution.
 
 **Archive**
 The `.specify/archive/` directory where finalized changes (merged or dropped) and completed plans are stored for audit.
@@ -19,15 +19,18 @@ The accumulated set of merged specs at `.specify/specs/`. Represents the current
 A markdown prompt file provided by a schema that drives artifact generation. Briefs are organized into pipelines for each phase (define, build, merge).
 
 **Brief pipeline**
-An ordered sequence of briefs declared by a schema for a given phase. The define pipeline typically runs: proposal, specs, design, tasks.
+An ordered sequence of briefs declared by a schema for a given phase. The Omnia define pipeline runs: proposal, specs, design, tasks. The Vectis define pipeline runs: proposal, specs, composition, design, tasks.
 
 ## C
 
 **Capability**
 A discrete unit of system behavior that gets its own spec file. In the Omnia schema, capabilities typically correspond to crates. In the Vectis schema, they correspond to features.
 
+**Composition artifact**
+A schema-validated YAML document (`composition.yaml`) that describes the spatial layout of each screen in a Vectis application. Organises content into named regions (`header`, `body`, `footer`, `fab`) with a container tree of items and groups carrying flexbox-like layout properties. Supports skeleton mode (layout without data bindings) and wired mode (enriched with `bind`, `event`, and `maps_to` keys). Produced by the Vectis define pipeline between specs and design. Consumed by shell writers for deterministic layout generation. See [RFC-7](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md).
+
 **Change**
-A unit of work in Specify, stored at `.specify/changes/<name>/`. Contains the four artifacts and a `.metadata.yaml` file tracking lifecycle state.
+A unit of work in Specify, stored at `.specify/changes/<name>/`. Contains the core artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`), any schema-specific artifacts (e.g. `composition.yaml` for Vectis), and a `.metadata.yaml` file tracking lifecycle state.
 
 ## D
 

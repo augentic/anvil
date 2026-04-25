@@ -31,7 +31,7 @@ rules:
 | `schema` | Yes | Schema URL (with optional `@ref` suffix) |
 | `specify_version` | Yes | Minimum CLI version required (set by `specify init`, updated by `--upgrade`) |
 | `domain` | No | Free-form domain description available to briefs |
-| `rules` | No | Per-brief rule overrides keyed by brief ID (e.g. `proposal`, `specs`, `design`, `tasks`). Empty values mean no rules apply. Scaffolded by `specify init` with one entry per `pipeline.define` brief. |
+| `rules` | No | Per-brief rule overrides keyed by brief ID (e.g. `proposal`, `specs`, `composition`, `design`, `tasks`). Empty values mean no rules apply. Scaffolded by `specify init` with one entry per `pipeline.define` brief. The Vectis schema includes a `composition` entry for the screen layout brief. |
 
 ## plan.yaml
 

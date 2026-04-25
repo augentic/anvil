@@ -40,6 +40,7 @@
 |----------|----------|----------|
 | `proposal.md` | Why? | `.specify/changes/<name>/proposal.md` |
 | `spec.md` | What? | `.specify/changes/<name>/specs/<cap>/spec.md` |
+| `composition.yaml` | Where? (Vectis) | `.specify/changes/<name>/composition.yaml` |
 | `design.md` | How? | `.specify/changes/<name>/design.md` |
 | `tasks.md` | Sequence? | `.specify/changes/<name>/tasks.md` |
 
@@ -104,8 +105,8 @@ specify validate <change-dir>
 ├── initiative.md         # operator brief (optional)
 ├── plan.lock             # advisory lock for /spec:execute
 ├── .cache/               # cached schema + briefs
-├── changes/              # active changes
-├── specs/                # merged baseline
+├── changes/              # active changes (composition.yaml for Vectis)
+├── specs/                # merged baseline (incl. composition.yaml for Vectis)
 ├── plans/                # initiative working dirs (discovery, proposal)
 ├── workspace/            # peer repo clones (multi-repo only)
 └── archive/              # finalized changes and plans

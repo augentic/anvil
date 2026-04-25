@@ -35,9 +35,11 @@ specify schema pipeline <phase> [--change <change-dir>] [--format json]
 | Phase | Description |
 |-------|-------------|
 | `plan` | Briefs that drive initiative planning (discovery, propose, assignment) |
-| `define` | Briefs that generate artifacts (proposal, specs, design, tasks) |
+| `define` | Briefs that generate artifacts (proposal, specs, composition*, design, tasks) |
 | `build` | Briefs that drive implementation |
 | `merge` | Briefs that drive spec merging |
+
+*\* `composition` is Vectis-schema only.*
 
 Returns the ordered list of briefs with their dependencies. Each brief entry includes its absolute `path`, `needs` edges, `generates` target, and current `present` flag.
 

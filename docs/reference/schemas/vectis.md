@@ -12,8 +12,11 @@
 |-------|--------|-------------|
 | `proposal.md` | `proposal.md` | -- |
 | `specs.md` | `specs/<feature>/spec.md` | proposal |
-| `design.md` | `design.md` | proposal |
+| `composition.md` | `composition.yaml` | specs, proposal |
+| `design.md` | `design.md` | proposal, specs |
 | `tasks.md` | `tasks.md` | specs, design |
+
+The `composition` brief produces a YAML artifact (not markdown) that describes the spatial layout of each screen. It runs between specs and design so that the design brief can adopt screen names, ViewModel variants, and field names proposed by the composition artifact. See [RFC-7](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md) for the full design.
 
 ### Build phase
 
@@ -21,7 +24,7 @@
 |-------|---------------|
 | `build.md` | `/vectis:design-system-writer`, `/vectis:core-writer`, `/vectis:test-writer`, `/vectis:core-reviewer`, `/vectis:ios-writer`, `/vectis:ios-reviewer`, `/vectis:android-writer`, `/vectis:android-reviewer` |
 
-Build order: design-system first, core second, shells last. Each skill reads the single feature spec and extracts the sections relevant to it.
+Build order: design-system first, core second, shells last. Each skill reads the single feature spec and extracts the sections relevant to it. When `composition.yaml` is present, the build phase runs composition validation checks (field coverage, event coverage, ViewModel mapping) before invoking shell writers. Shell writers use `composition.yaml` as the primary layout guide when present, falling back to inference when absent.
 
 ### Merge phase
 

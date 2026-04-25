@@ -61,6 +61,8 @@ export PATH="$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
 
 Generate or update the Rust Crux shared crate from Specify artifacts.
 
+**Inputs:** `spec.md`, `design.md`. The core-writer does not read `composition.yaml` directly -- layout is a shell concern. Per-page view struct fields align with `composition.yaml` field bindings via `design.md`.
+
 **Outputs:** `shared/Cargo.toml`, `shared/src/app.rs` (Model, Event, ViewModel, Effect, `update()`, `view()`, tests), `shared/src/ffi.rs`, `shared/src/lib.rs`, workspace `Cargo.toml`, `clippy.toml`, `rust-toolchain.toml`.
 
 **Modes:**
@@ -83,6 +85,8 @@ Review Crux core code using an agent team (structural, logic, quality specialist
 
 Generate or update the SwiftUI iOS shell.
 
+**Inputs:** `app.rs`, `spec.md`, `design.md`, `tokens.yaml`, and `composition.yaml` (when present). When `composition.yaml` is present, the region structure and group container tree provide deterministic layout instructions -- groups map to `HStack`/`VStack`/`ZStack` with their layout properties, sizing maps to `.frame()` modifiers, and surface decoration maps to styled container views. When absent, the writer falls back to convention-based inference. Platform-specific overrides from `composition.yaml` `platforms.ios` take precedence over shared regions.
+
 **Outputs:** `project.yml`, `Makefile`, `Core.swift` (bridge), `ContentView.swift`, per-screen views under `Views/`, app entry point. All views use the VectisDesign package.
 
 **Modes:** Create (scaffold + generate) and Update (targeted edits).
@@ -94,6 +98,8 @@ Review iOS shell code using an agent team (structural, quality, integration spec
 ### /vectis:android-writer
 
 Generate or update the Kotlin/Jetpack Compose Android shell.
+
+**Inputs:** `app.rs`, `spec.md`, `design.md`, `tokens.yaml`, and `composition.yaml` (when present). When `composition.yaml` is present, groups map to `Row`/`Column`/`Box` with `Arrangement`/`Alignment`, sizing maps to `Modifier.fillMaxWidth()` etc., and surface decoration maps to `Card`/`Surface`. When absent, the writer falls back to inference. Platform-specific overrides from `composition.yaml` `platforms.android` take precedence over shared regions.
 
 **Outputs:** Gradle build files, `Core.kt` (bridge), `MainActivity.kt`, per-screen composables under `ui/screens/`, Material 3 theme. All composables use Material 3 tokens.
 

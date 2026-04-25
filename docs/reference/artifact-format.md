@@ -1,6 +1,6 @@
 # Artifact Format
 
-This is the definitive reference for the structure and conventions of Specify's four artifacts. For a high-level overview, see [Artifacts](../orientation/artifacts.md).
+This is the definitive reference for the structure and conventions of Specify artifacts. For a high-level overview, see [Artifacts](../orientation/artifacts.md).
 
 ## Spec files (behavioral "what")
 
@@ -226,6 +226,100 @@ Tasks may include a skill directive as an HTML comment. The build phase parses t
 
 Tasks without a skill tag are implemented via the schema's default build instruction.
 
+## Composition document (Vectis only)
+
+`composition.yaml` describes the spatial layout of each screen. It is a schema-validated YAML document produced by the Vectis schema's define pipeline between the specs and design stages. The JSON Schema lives at `schemas/vectis/composition.schema.json`.
+
+### Two modes
+
+- **Skeleton mode** -- regions and layout structure without `bind`, `event`, or `maps_to` keys. Produced by external tools (Figma adapters, legacy extractors) or manual authoring before the define pipeline runs.
+- **Wired mode** -- the same regions enriched with data bindings, event wiring, and ViewModel traceability. Produced by the define pipeline and consumed by shell writers.
+
+### Format
+
+```yaml
+version: 1
+
+provenance:              # optional: where this layout came from
+  sources:
+    - kind: manual       # figma | legacy | manual
+
+screens:
+  <screen-slug>:         # kebab-case screen identifier
+    name: "Screen Name"
+    maps_to: "ViewModel::ScreenName(ScreenNameView)"  # wired mode only
+
+    header:
+      title: "Title"
+      leading: [...]     # left-side items (back button, menu)
+      trailing: [...]    # right-side items (badges, actions)
+
+    body:                # one of: list, grid, form, or content node array
+      list:
+        each: <field>
+        item: [...]
+
+    footer: [...]        # bottom bar items
+
+    fab: { icon: plus, event: Navigate(AddTodo) }
+
+    states:
+      <state-slug>:
+        when: "<field> is <true|false|empty|not empty>"
+        body: [...]
+
+    overlays:
+      <overlay-slug>:
+        kind: dialog | sheet | snackbar
+        trigger: <EventName>
+        content: [...]
+
+    platforms:            # per-platform region overrides (optional)
+      ios:
+        body: { ... }
+```
+
+### Regions
+
+Each screen is divided into named regions that map to platform-native screen structure:
+
+| Region | Description | iOS | Android |
+|--------|-------------|-----|---------|
+| `header` | Top navigation bar | `NavigationTitle` + toolbar | `TopAppBar` |
+| `body` | Main content (list, grid, form, or items) | Content view | Scaffold `content` |
+| `footer` | Bottom bar | `TabView` or toolbar | `BottomAppBar` |
+| `fab` | Floating action button | `.overlay` / `ZStack` | `FloatingActionButton` |
+
+### Groups and items
+
+Content within regions is a tree of **items** (leaf elements like `text`, `button`, `field`) and **groups** (container nodes with flexbox-like layout properties). Groups carry `direction` (row/column/stack), `gap`, `padding`, `align`, `justify`, optional `size`, and optional surface decoration (`background`, `corner_radius`, `elevation`). These map to SwiftUI stacks, Compose Row/Column/Box, and CSS Flexbox.
+
+### Delta format
+
+Per-change composition artifacts use a `delta` key (not `screens`) with `added`, `modified`, and `removed` sub-keys. Delta operations are screen-level -- `modified` replaces the entire screen entry, not individual regions.
+
+```yaml
+version: 1
+
+delta:
+  added:
+    new-screen: { name: "New Screen", ... }
+  modified:
+    existing-screen: { name: "Existing Screen", ... }
+  removed:
+    old-screen: { reason: "Replaced by new-screen" }
+```
+
+### Key rules
+
+- A document has either `screens` (baseline) or `delta` (per-change), never both.
+- Screen slugs are kebab-case (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`).
+- Every field in a per-page view struct should appear as a `bind` value (wired mode).
+- Every shell-facing Event should have an `event` wiring (wired mode).
+- `event` values follow PascalCase: `EventName` or `EventName(arg1, arg2)`.
+
+For the full schema definition and item vocabulary, see [RFC-7](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md).
+
 ## Validation checklists
 
 ### Behavioral specs
@@ -246,3 +340,13 @@ Tasks without a skill tag are implemented via the schema's default build instruc
 - `tasks.md` exists when `/spec:build` depends on it
 - Tasks are implementation steps and checkpoints only
 - Every task uses checkbox format (`- [ ]`)
+
+### Composition (Vectis only)
+
+- `composition.yaml` conforms to the JSON Schema at `schemas/vectis/composition.schema.json`
+- Screen slugs are kebab-case
+- Every per-page view struct field has a `bind` on some item (wired mode)
+- Every shell-facing Event has an `event` wiring (wired mode)
+- `maps_to` values reference declared ViewModel variants from the design (wired mode)
+- Overlay `trigger` values match an `event` name in the same screen
+- `Navigate(X)` targets have corresponding screen slugs and Route variants

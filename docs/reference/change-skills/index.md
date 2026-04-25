@@ -15,14 +15,16 @@ This is the primary workflow. You initialise a project once, then repeat the def
 | Skill | Purpose | Reads | Writes |
 |-------|---------|-------|--------|
 | [/spec:init](init.md) | One-time project setup | -- | `.specify/`, `project.yaml`, cache |
-| [/spec:define](define.md) | Generate all artifacts for a new change | Schema briefs, baseline specs | `proposal.md`, `spec.md`, `design.md`, `tasks.md` |
+| [/spec:define](define.md) | Generate all artifacts for a new change | Schema briefs, baseline specs | `proposal.md`, `spec.md`, `composition.yaml`*, `design.md`, `tasks.md` |
 | [/spec:build](build.md) | Implement tasks from a defined change | All artifacts, build brief | Source code, task checkmarks |
-| [/spec:merge](merge.md) | Merge completed change into baseline | Change specs, baseline specs | Updated baseline, archived change |
+| [/spec:merge](merge.md) | Merge completed change into baseline | Change specs + composition*, baseline | Updated baseline, archived change |
 | [/spec:drop](drop.md) | Discard a change without merging | Change metadata | Archived change (dropped) |
 | [/spec:status](status.md) | Inspect active changes and progress | Change metadata, tasks | -- (read-only) |
 | [/spec:verify](verify.md) | Detect drift between code and specs | Baseline specs, source code | -- (read-only) |
 | [/spec:explore](explore.md) | Thinking partner for ideas and requirements | Optional: change artifacts | Optional: artifact updates |
 | [/spec:extract](extract.md) | Produce specs and design from existing code | Source code | `spec.md`, `design.md` |
+
+*\* `composition.yaml` is Vectis-schema only.*
 
 ## How skills delegate
 

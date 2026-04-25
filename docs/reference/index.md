@@ -6,7 +6,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Core concepts
 
-- [Artifact Format](artifact-format.md) -- full specification of the four artifacts (proposal, spec, design, tasks), including delta spec format, tags, and validation checklists.
+- [Artifact Format](artifact-format.md) -- full specification of the core artifacts (proposal, spec, design, tasks) and schema-specific artifacts (composition), including delta formats, tags, and validation checklists.
 - [Lifecycle](lifecycle.md) -- state diagram, transitions, `.metadata.yaml` shape, plan entry states.
 - [Directory Layout](directory-layout.md) -- annotated `.specify/` tree with explanations.
 

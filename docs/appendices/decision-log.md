@@ -84,6 +84,30 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** [RFC-3b: Platform Changes, §Workspace-centric execution](https://github.com/augentic/specify/blob/main/rfcs/rfc-3b-platform.md)
 
+## Composition as a separate artifact, not embedded in specs or design
+
+**Decision:** Introduce `composition.yaml` as a new Vectis-specific artifact that describes spatial screen layout, rather than extending specs or design with layout concerns.
+
+**Rationale:** Specs define observable behavior ("the user sees their todo items"); they should not specify how items are arranged on screen. Design defines the type system; embedding layout in design would make it responsible for both data shape and visual arrangement. A separate artifact preserves the existing separation of concerns: specs drive the core, design defines the type contract, and composition drives the shell. This also enables multi-source authoring -- Figma adapters, legacy extractors, and manual editing can all produce composition artifacts without touching specs or design.
+
+**Source:** [RFC-7: View Layout Artifact](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md)
+
+## YAML for composition, markdown for specs
+
+**Decision:** The composition artifact uses YAML (`composition.yaml`) rather than markdown, despite all other define-phase artifacts being markdown.
+
+**Rationale:** Layout is fundamentally structural data -- a tree of components with properties. Shell writers and the validation CLI consume it programmatically against a JSON Schema. A markdown representation would require pattern-matching on indented lists to reconstruct the component tree -- fragile and impossible to schema-validate. YAML also aligns with `tokens.yaml` as a structured design-layer artifact and enables same-format diffing for re-imports from design tools.
+
+**Source:** [RFC-7: View Layout Artifact, §Why YAML](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md)
+
+## Screen-level delta merge for composition
+
+**Decision:** Composition deltas operate at the screen level (`added`/`modified`/`removed` per screen), with `modified` performing full screen replacement rather than region-level or item-level merging.
+
+**Rationale:** Merging independently edited region structures at the item level would require positional diff logic with ambiguous conflict resolution. Full-screen replacement is simple, predictable, and sufficient because the define pipeline always produces complete screen entries. Per-screen SHA-256 checksums in `.composition-checksums.yaml` provide conflict detection when two changes modify the same screen.
+
+**Source:** [RFC-7: View Layout Artifact, §Delta Operations](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md)
+
 ## Stable requirement IDs as merge keys
 
 **Decision:** Each behavioral requirement has a stable `ID: REQ-XXX` line that serves as the merge key across delta specs. Requirement titles may change; IDs must not.
@@ -92,6 +116,6 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Schema-agnostic lifecycle, schema-specific briefs
 
-**Decision:** The lifecycle (states, transitions, four artifacts, baseline accumulation) is invariant across schemas. Schemas only control the *content* of brief pipelines and the specialist skills invoked during build.
+**Decision:** The lifecycle (states, transitions, core artifacts, baseline accumulation) is invariant across schemas. Schemas control the *content* of brief pipelines, may add schema-specific stages (e.g. Vectis adds `composition` to the define pipeline), and determine which specialist skills are invoked during build.
 
-**Rationale:** The workflow is the value -- define-build-merge, baseline accumulation, drift detection. Making this schema-agnostic means every project gets the same tooling regardless of target platform. Schemas customise the generation content without fragmenting the workflow.
+**Rationale:** The workflow is the value -- define-build-merge, baseline accumulation, drift detection. Making this schema-agnostic means every project gets the same tooling regardless of target platform. Schemas customise the generation content and may extend the pipeline without fragmenting the workflow.

@@ -27,12 +27,13 @@ Source code changes in the project codebase (not under `.specify/`). Task checkb
 1. Validates that the change is in `defined` or `building` state.
 2. Transitions the change from `defined` to `building` (if not already).
 3. Reads the schema's build brief.
-4. Works through tasks sequentially:
+4. Runs pre-shell validation when `composition.yaml` is present (Vectis only): checks field coverage, event coverage, ViewModel mapping, overlay trigger consistency, and navigation graph consistency. Errors halt shell generation; warnings are logged.
+5. Works through tasks sequentially:
    - Tasks with a **skill directive tag** (e.g. `<!-- skill: omnia:crate-writer -->`) are delegated to the named specialist skill.
    - Tasks without a skill tag are implemented via the schema's default build instruction.
-5. Marks each task complete via `specify task mark`.
-6. On completion of all tasks, transitions to `complete`.
-7. Writes phase outcome.
+6. Marks each task complete via `specify task mark`.
+7. On completion of all tasks, transitions to `complete`.
+8. Writes phase outcome.
 
 ## Lifecycle transitions
 
