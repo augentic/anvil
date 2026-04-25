@@ -50,7 +50,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** The same `/spec:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what schema they use, what domain they own). Sync-peers runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
 
-**Source:** [RFC-3a: Monolith Migration Planning](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3a-monoliths.md), [RFC-3b: Platform Changes](https://github.com/augentic/specify/blob/main/rfcs/rfc-3b-platform.md)
+**Source:** [RFC-3a: Monolith Migration Planning](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3a-monoliths.md), [RFC-3b: Platform Changes](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## CWD-based routing for multi-repo execution
 
@@ -58,7 +58,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** The alternative (passing a `--project` flag through to every phase skill) would have required changes to every skill and every brief pipeline. CWD-based routing keeps the routing decision in one place (the driver) and preserves the invariant that phase skills operate on "the current project." Phase skills discover the schema via their normal `.specify/project.yaml` walk from CWD.
 
-**Source:** [RFC-3b: Platform Changes, §Execution routing](https://github.com/augentic/specify/blob/main/rfcs/rfc-3b-platform.md)
+**Source:** [RFC-3b: Platform Changes, §Execution routing](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## One change, one project
 
@@ -66,7 +66,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Allowing a single change to span repos would require the execution loop to manage multiple project roots, multiple schemas, and multiple baseline merge targets within one define-build-merge cycle. Decomposing cross-cutting capabilities into per-project entries keeps the loop simple and matches the existing baseline-accumulation model where each merge has a single target.
 
-**Source:** [RFC-3b: Platform Changes, §One change, one project](https://github.com/augentic/specify/blob/main/rfcs/rfc-3b-platform.md)
+**Source:** [RFC-3b: Platform Changes, §One change, one project](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## Project assignment is a framework concern
 
@@ -74,7 +74,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** A multi-repo plan spans projects with different schemas, so assignment is inherently a cross-schema concern. Placing it in individual propose briefs would duplicate the logic across schemas and create an ordering problem (the brief would need to know about projects it does not own). Keeping it in the plan skill also means propose briefs are unchanged -- a single-repo propose brief works identically in a multi-repo plan.
 
-**Source:** [RFC-3b: Platform Changes, §Assignment algorithm](https://github.com/augentic/specify/blob/main/rfcs/rfc-3b-platform.md)
+**Source:** [RFC-3b: Platform Changes, §Assignment algorithm](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## Workspace-centric execution with explicit push
 
@@ -82,7 +82,31 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Rationale:** Automatic pushes during execution would make the driver non-idempotent and create a rollback problem -- a failed change that was already pushed cannot be cleanly undone. Keeping pushes explicit gives the operator a review gate between "execution produced artifacts" and "artifacts are published." The workspace is the staging area; `workspace push` is the release gate.
 
-**Source:** [RFC-3b: Platform Changes, §Workspace-centric execution](https://github.com/augentic/specify/blob/main/rfcs/rfc-3b-platform.md)
+**Source:** [RFC-3b: Platform Changes, §Workspace-centric execution](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
+
+## Composition as a separate artifact, not embedded in specs or design
+
+**Decision:** Introduce `composition.yaml` as a new Vectis-specific artifact that describes spatial screen layout, rather than extending specs or design with layout concerns.
+
+**Rationale:** Specs define observable behavior ("the user sees their todo items"); they should not specify how items are arranged on screen. Design defines the type system; embedding layout in design would make it responsible for both data shape and visual arrangement. A separate artifact preserves the existing separation of concerns: specs drive the core, design defines the type contract, and composition drives the shell. This also enables multi-source authoring -- Figma adapters, legacy extractors, and manual editing can all produce composition artifacts without touching specs or design.
+
+**Source:** [RFC-7: View Layout Artifact](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md)
+
+## YAML for composition, markdown for specs
+
+**Decision:** The composition artifact uses YAML (`composition.yaml`) rather than markdown, despite all other define-phase artifacts being markdown.
+
+**Rationale:** Layout is fundamentally structural data -- a tree of components with properties. Shell writers and the validation CLI consume it programmatically against a JSON Schema. A markdown representation would require pattern-matching on indented lists to reconstruct the component tree -- fragile and impossible to schema-validate. YAML also aligns with `tokens.yaml` as a structured design-layer artifact and enables same-format diffing for re-imports from design tools.
+
+**Source:** [RFC-7: View Layout Artifact, §Why YAML](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md)
+
+## Screen-level delta merge for composition
+
+**Decision:** Composition deltas operate at the screen level (`added`/`modified`/`removed` per screen), with `modified` performing full screen replacement rather than region-level or item-level merging.
+
+**Rationale:** Merging independently edited region structures at the item level would require positional diff logic with ambiguous conflict resolution. Full-screen replacement is simple, predictable, and sufficient because the define pipeline always produces complete screen entries. Per-screen SHA-256 checksums in `.composition-checksums.yaml` provide conflict detection when two changes modify the same screen.
+
+**Source:** [RFC-7: View Layout Artifact, §Delta Operations](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md)
 
 ## Stable requirement IDs as merge keys
 
@@ -92,6 +116,6 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Schema-agnostic lifecycle, schema-specific briefs
 
-**Decision:** The lifecycle (states, transitions, four artifacts, baseline accumulation) is invariant across schemas. Schemas only control the *content* of brief pipelines and the specialist skills invoked during build.
+**Decision:** The lifecycle (states, transitions, core artifacts, baseline accumulation) is invariant across schemas. Schemas control the *content* of brief pipelines, may add schema-specific stages (e.g. Vectis adds `composition` to the define pipeline), and determine which specialist skills are invoked during build.
 
-**Rationale:** The workflow is the value -- define-build-merge, baseline accumulation, drift detection. Making this schema-agnostic means every project gets the same tooling regardless of target platform. Schemas customise the generation content without fragmenting the workflow.
+**Rationale:** The workflow is the value -- define-build-merge, baseline accumulation, drift detection. Making this schema-agnostic means every project gets the same tooling regardless of target platform. Schemas customise the generation content and may extend the pipeline without fragmenting the workflow.

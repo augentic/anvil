@@ -23,14 +23,16 @@ Schema URLs support an optional `@ref` suffix to pin a version (e.g. `omnia@v1`)
 
 ### What schemas share
 
-Both schemas use the same four-blueprint dependency order:
+Both schemas share the same core four-artifact dependency chain:
 
 1. **proposal** -- initial proposal document
 2. **specs** -- behavioral specifications (requires proposal)
-3. **design** -- technical design (requires proposal)
+3. **design** -- technical design (requires proposal, specs)
 4. **tasks** -- implementation checklist (requires specs + design)
 
-The artifact structure and lifecycle are schema-agnostic. Schemas fill in the brief *content* within each phase, not the phase structure itself.
+The Vectis schema extends this with a **composition** stage between specs and design that produces `composition.yaml` -- a structured YAML artifact describing the spatial layout of each screen (regions, groups, items, bindings, and event wiring). The composition brief requires specs and proposal as inputs, and the design brief reads the composition artifact to adopt the screen names and field names it proposes.
+
+The artifact structure and lifecycle are schema-agnostic. Schemas fill in the brief *content* within each phase and may add schema-specific stages to the pipeline.
 
 ## Plugins
 
@@ -59,9 +61,9 @@ For example, with the Omnia schema:
 With the Vectis schema:
 
 ```text
-/spec:define --> generates artifacts using Vectis brief pipelines
+/spec:define --> generates artifacts using Vectis brief pipelines (incl. composition.yaml)
 /spec:build  --> delegates tasks to /vectis:core-writer, /vectis:ios-writer, etc.
-/spec:merge  --> merges specs into baseline (schema-agnostic)
+/spec:merge  --> merges specs + composition into baseline
 ```
 
 The define-build-merge loop is invariant. Swapping the schema swaps the brief content and the specialist skills -- nothing else changes.

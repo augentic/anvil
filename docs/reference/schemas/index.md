@@ -17,12 +17,16 @@ Schemas declare **brief pipelines** for each phase of the define-build-merge loo
 
 ### Define pipeline (artifact generation)
 
-Briefs run in dependency order to produce the four artifacts:
+Briefs run in dependency order to produce the change artifacts. The core pipeline (shared by all schemas):
 
 1. **proposal.md** -- generates `proposal.md`
 2. **specs.md** -- generates `specs/<capability>/spec.md` (requires proposal)
-3. **design.md** -- generates `design.md` (requires proposal)
+3. **design.md** -- generates `design.md` (requires proposal, specs)
 4. **tasks.md** -- generates `tasks.md` (requires specs + design)
+
+The Vectis schema inserts an additional stage between specs and design:
+
+- **composition.md** -- generates `composition.yaml` (requires specs, proposal) -- screen layout with regions, groups, bindings, and event wiring
 
 ### Build pipeline (implementation)
 
@@ -38,7 +42,7 @@ A single brief that drives the merge phase:
 
 ## Schema-agnostic vs schema-specific
 
-The **lifecycle** (states, transitions, archiving) and **artifact structure** (proposal, specs, design, tasks) are schema-agnostic. Every schema uses the same four blueprints in the same dependency order.
+The **lifecycle** (states, transitions, archiving) and the four **core artifacts** (proposal, specs, design, tasks) are schema-agnostic. Schemas may add additional stages to the pipeline (e.g. Vectis adds `composition` between specs and design).
 
 What varies between schemas:
 

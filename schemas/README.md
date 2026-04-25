@@ -19,6 +19,7 @@ schemas/<name>/
 └── briefs/          # Brief markdown files with YAML frontmatter
     ├── proposal.md
     ├── specs.md
+    ├── composition.md   # Vectis only
     ├── design.md
     ├── tasks.md
     ├── build.md
@@ -127,6 +128,7 @@ When a schema is resolved remotely, fetched files are cached at the project leve
 └── briefs/              (if fetched)
     ├── proposal.md
     ├── specs.md
+    ├── composition.md   # Vectis only
     ├── design.md
     ├── tasks.md
     ├── build.md

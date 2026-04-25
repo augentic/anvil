@@ -51,7 +51,7 @@ Guidance for core requirements:
 - Each **business rule** (validation, constraints, edge cases) becomes a requirement with scenarios showing valid and invalid inputs.
 - **Capabilities** (HTTP, KV, SSE, Time, Platform) belong in design.md, not in specs. Specs describe *what* the system does, not *how*.
 - **Data Model** details (field names, types) belong in design.md. Specs reference domain concepts by name without defining their internal structure.
-- **Views** (screens the user sees) become requirements describing what the user sees and when. View structure details belong in design.
+- **Views** (screens the user sees) become requirements describing what the user sees and when. Name each distinct view explicitly in its requirement title (e.g., "Requirement: Todo List View", "Requirement: Add Todo Form"). The composition brief uses these titles to derive screen slugs. View structure details belong in design.
 - Include requirements for page transitions (Loading -> Main, Error -> retry) and navigation behavior.
 
 ### iOS Shell Requirements section

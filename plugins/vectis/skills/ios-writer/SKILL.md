@@ -45,6 +45,15 @@ The ios-writer reads the Crux core source to determine what the shell must rende
 | Effect variants | `enum Effect` | `processEffect` switch cases in Core.swift |
 | Route variants | `enum Route` | Navigation destinations |
 | Supporting types | Structs/enums used in view structs | Display data types |
+| Screen regions | `composition.yaml` `header`, `body`, `footer`, `fab` | View structure (NavigationTitle + toolbar, content, bottom toolbar, overlay button) |
+| Container structure | `composition.yaml` `group` nodes with `direction`, `gap`, `align`, `justify` | `HStack`/`VStack`/`ZStack` with spacing and alignment |
+| Sizing | `composition.yaml` `size` on groups and items (`fill`, `hug`, fixed) | `.frame(maxWidth: .infinity)`, intrinsic sizing, explicit dimensions |
+| Surface decoration | `composition.yaml` `background`, `corner_radius`, `elevation` on groups | Styled container views with background, cornerRadius, shadow |
+| Field bindings | `composition.yaml` `bind` keys on items | Property bindings in views |
+| Event wiring | `composition.yaml` `event` keys on items | `onEvent()` interaction handlers |
+| Token references | `composition.yaml` `style`, `color`, `gap`, `padding` | `VectisTypography.*` / `VectisColors.*` / `VectisSpacing.*` |
+| Conditional rendering | `composition.yaml` `states` and `*-when` keys | `if`/`switch` in view code |
+| Iteration | `composition.yaml` `list.each` / `grid.each` + `item` keys | `ForEach` / `List` / `LazyVStack` |
 
 Also read:
 - `{app-dir}/shared/src/lib.rs` -- custom capability modules
@@ -54,6 +63,7 @@ Also read:
 
 When `change-dir` is provided, also read:
 - `{change-dir}/specs/{feature-name}/spec.md` -- read the `## iOS Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## iOS Shell Details` section of `{change-dir}/design.md` for platform design decisions.
+- `{change-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- composition artifact for deterministic layout instructions (when present).
 
 ## Mode Detection
 
@@ -180,6 +190,17 @@ Output the diff summary before making edits.
 2. Run `make build` to verify compilation (the CLI-generated `Makefile` runs the three-phase `typegen -> package -> xcode` pipeline).
 3. Run `make sim-build` to verify the project compiles for the iOS Simulator.
 4. Fix any build errors.
+
+## Composition Mapping Priority
+
+When `composition.yaml` is present, the region structure and group container tree take precedence over convention-based inference for view body composition:
+
+- **Groups** map to SwiftUI stacks: `direction: row` → `HStack(spacing:)`, `direction: column` → `VStack(spacing:)`, `direction: stack` → `ZStack`.
+- **Sizing** maps to `.frame()` modifiers: `fill` → `.frame(maxWidth: .infinity)`, fixed values → `.frame(width:)` / `.frame(height:)`.
+- **Surface decoration** maps to styled container views: `background` → `.background()`, `corner_radius` → `.cornerRadius()` or `.clipShape(RoundedRectangle())`, `elevation` → `.shadow()`.
+- **Platform-specific overrides**: When `composition.yaml` contains `platforms.ios` region overrides for a screen, use those in preference to the shared regions.
+
+When `composition.yaml` is absent, the existing inference behavior is unchanged — this preserves backward compatibility for pre-RFC-7 projects.
 
 ## Spec-to-Code Mapping
 

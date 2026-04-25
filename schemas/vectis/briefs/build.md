@@ -13,6 +13,25 @@ Arguments (used by all skills):
 - ANDROID_SHELL_DIR: the root directory of the Android shell project (e.g. `$PROJECT_DIR/Android`)
 - APP_NAME: the Xcode target / Swift source folder name (e.g. `MyApp`)
 
+## Composition validation gate
+
+Before invoking shell writers, check whether a `composition.yaml` exists in the change directory (`.specify/changes/<name>/composition.yaml`) or baseline (`.specify/specs/composition.yaml`). When present, run composition validation checks before proceeding to shell generation:
+
+1. **Schema validity** — `composition.yaml` conforms to the JSON Schema at `schemas/vectis/composition.schema.json`. Schema violations are **errors** that halt shell generation.
+2. **Field coverage** — every field in each per-page view struct (from `design.md`) appears as a `bind` value on some item in the corresponding screen. Missing bindings are **warnings**.
+3. **Event coverage** — every shell-facing Event variant relevant to a screen has an `event` wiring on some item in that screen's regions. Missing event wiring is a **warning**.
+4. **ViewModel mapping** — every `maps_to` value references a declared ViewModel variant from `design.md`. Mismatches are **errors**.
+5. **Overlay trigger consistency** — every overlay `trigger` value matches an `event` name (without arguments) used somewhere in the same screen's regions. Inconsistencies are **errors**.
+6. **Navigation consistency** — every `Navigate(X)` argument has a corresponding screen slug in composition and a corresponding Route variant in `design.md`. Missing targets are **errors**.
+
+**Severity handling:** Errors halt shell generation for the affected screen(s). The agent reports the errors and does not proceed until they are resolved. Warnings are logged and reported but do not block generation.
+
+When `composition.yaml` is absent, skip this validation gate entirely — shell writers fall back to inference from `app.rs` types as before.
+
+### Shell writer handoff
+
+Pass the `composition.yaml` artifact to the shell writer alongside `app.rs`, `design.md`, and `tokens.yaml`. When present, the shell writer uses it as the primary layout guide (mapping regions and items to platform-native views). When absent, the shell writer falls back to inference from `app.rs` types.
+
 ## Platform detection
 
 Read the proposal to determine which platforms are in scope. Process platforms in this dependency order:

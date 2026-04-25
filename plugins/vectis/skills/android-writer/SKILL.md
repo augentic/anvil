@@ -53,6 +53,15 @@ The android-writer reads the Crux core source to determine what the shell must r
 | Effect variants | `enum Effect` | `processRequest` `when` branches in Core.kt |
 | Route variants | `enum Route` | Navigation destinations |
 | Supporting types | Structs/enums used in view structs | Display data types |
+| Screen regions | `composition.yaml` `header`, `body`, `footer`, `fab` | View structure (TopAppBar, Scaffold content, BottomAppBar, FloatingActionButton) |
+| Container structure | `composition.yaml` `group` nodes with `direction`, `gap`, `align`, `justify` | `Row`/`Column`/`Box` with `Arrangement` and `Alignment` |
+| Sizing | `composition.yaml` `size` on groups and items (`fill`, `hug`, fixed) | `Modifier.fillMaxWidth()`, intrinsic sizing, explicit dimensions |
+| Surface decoration | `composition.yaml` `background`, `corner_radius`, `elevation` on groups | `Card`/`Surface` with background, shape, and elevation |
+| Field bindings | `composition.yaml` `bind` keys on items | Property bindings in composables |
+| Event wiring | `composition.yaml` `event` keys on items | `onEvent()` interaction handlers |
+| Token references | `composition.yaml` `style`, `color`, `gap`, `padding` | `MaterialTheme.typography.*` / `MaterialTheme.colorScheme.*` / `VectisSpacing.*` |
+| Conditional rendering | `composition.yaml` `states` and `*-when` keys | `if`/`when` in composable code |
+| Iteration | `composition.yaml` `list.each` / `grid.each` + `item` keys | `LazyColumn items` / `LazyVerticalGrid` |
 
 Also read:
 - `{app-dir}/shared/src/lib.rs` -- custom capability modules
@@ -64,6 +73,7 @@ Also read:
 
 When `change-dir` is provided, also read:
 - `{change-dir}/specs/{feature-name}/spec.md` -- read the `## Android Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## Android Shell Details` section of `{change-dir}/design.md` for platform design decisions.
+- `{change-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- composition artifact for deterministic layout instructions (when present).
 
 ## Generated Type Conventions (CRITICAL)
 
@@ -306,6 +316,17 @@ Build sequence:
 2. Run `./gradlew :shared:cargoBuild` to cross-compile the Rust library.
 3. Run `./gradlew :app:assembleDebug` to build the APK.
 4. Fix any build errors.
+
+## Composition Mapping Priority
+
+When `composition.yaml` is present, the region structure and group container tree take precedence over convention-based inference for composable body composition:
+
+- **Groups** map to Compose containers: `direction: row` → `Row(horizontalArrangement:)`, `direction: column` → `Column(verticalArrangement:)`, `direction: stack` → `Box`.
+- **Sizing** maps to `Modifier` calls: `fill` → `Modifier.fillMaxWidth()`, fixed values → `Modifier.width()` / `Modifier.height()`.
+- **Surface decoration** maps to card-like containers: `background` + `corner_radius` → `Card` or `Surface` with shape and color, `elevation` → `Modifier.shadow()` or `Card(elevation:)`.
+- **Platform-specific overrides**: When `composition.yaml` contains `platforms.android` region overrides for a screen, use those in preference to the shared regions.
+
+When `composition.yaml` is absent, the existing inference behavior is unchanged — this preserves backward compatibility for pre-RFC-7 projects.
 
 ## Spec-to-Code Mapping
 

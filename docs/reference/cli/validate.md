@@ -15,6 +15,7 @@ Runs the validation engine against a change directory. Checks include:
 - **Structural checks** -- artifact files exist, conform to expected format, required sections present.
 - **Referential checks** -- specs referenced in the proposal exist, requirement IDs are unique and stable.
 - **Schema checks** -- artifacts conform to the active schema's rules.
+- **Composition checks** (Vectis only) -- structural validation of `composition.yaml`: valid YAML, `version: 1`, exactly one of `screens` or `delta` (not both), kebab-case screen slugs. Cross-artifact checks: `maps_to` values are non-empty strings, field coverage (every view struct field has a `bind`), event coverage (every shell-facing Event has an `event` wiring), ViewModel mapping, overlay trigger consistency, and navigation graph consistency. See [Artifact Format > Composition](../artifact-format.md#composition-document-vectis-only) for the full checklist.
 
 ## Output
 

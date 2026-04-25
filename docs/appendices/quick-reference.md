@@ -8,7 +8,7 @@
 /spec:init                     # one-time setup
 /spec:define "description"     # generate artifacts
 /spec:build                    # implement tasks
-/spec:merge                    # merge specs into baseline
+/spec:merge                    # merge specs (+ composition) into baseline
 ```
 
 ### Multi-change initiative
@@ -25,7 +25,7 @@
 | `/spec:init` | One-time project setup |
 | `/spec:define` | Generate artifacts for a new change |
 | `/spec:build` | Implement tasks |
-| `/spec:merge` | Merge completed specs into baseline |
+| `/spec:merge` | Merge completed change into baseline |
 | `/spec:drop` | Discard a change |
 | `/spec:status` | Check progress |
 | `/spec:verify` | Detect drift between code and specs |
@@ -40,6 +40,7 @@
 |----------|----------|----------|
 | `proposal.md` | Why? | `.specify/changes/<name>/proposal.md` |
 | `spec.md` | What? | `.specify/changes/<name>/specs/<cap>/spec.md` |
+| `composition.yaml` | Where? (Vectis) | `.specify/changes/<name>/composition.yaml` |
 | `design.md` | How? | `.specify/changes/<name>/design.md` |
 | `tasks.md` | Sequence? | `.specify/changes/<name>/tasks.md` |
 
@@ -104,8 +105,8 @@ specify validate <change-dir>
 ├── initiative.md         # operator brief (optional)
 ├── plan.lock             # advisory lock for /spec:execute
 ├── .cache/               # cached schema + briefs
-├── changes/              # active changes
-├── specs/                # merged baseline
+├── changes/              # active changes (composition.yaml for Vectis)
+├── specs/                # merged baseline (incl. composition.yaml for Vectis)
 ├── plans/                # initiative working dirs (discovery, proposal)
 ├── workspace/            # peer repo clones (multi-repo only)
 └── archive/              # finalized changes and plans

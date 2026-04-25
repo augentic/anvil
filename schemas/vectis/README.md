@@ -4,15 +4,17 @@
 - **Purpose**: Cross-platform Crux application development
 - **Source**: Manual
 - **Target**: Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell), VectisDesign (design system)
-- **Workflow**: `define` -> `specs` -> `design` -> `tasks` -> `build` (core-writer, ios-writer, android-writer, design-system-writer)
+- **Workflow**: `proposal` -> `specs` -> `composition` -> `design` -> `tasks` -> `build` (core-writer, ios-writer, android-writer, design-system-writer)
 
 ## Contents
 
 | File | Description |
 |------|-------------|
 | `schema.yaml` | Pipeline stages, domain context, and per-stage brief references |
+| `composition.schema.json` | JSON Schema for `composition.yaml` validation |
 | `briefs/proposal.md` | Generation brief for the proposal stage |
 | `briefs/specs.md` | Generation brief for the specs stage |
+| `briefs/composition.md` | Generation brief for the composition stage (screen layout) |
 | `briefs/design.md` | Generation brief for the design stage |
 | `briefs/tasks.md` | Generation brief for the tasks stage |
 | `briefs/build.md` | Implementation brief for the build stage |
@@ -20,12 +22,13 @@
 
 ## Blueprints
 
-The schema declares four blueprints in dependency order:
+The schema declares five blueprints in dependency order:
 
 1. **proposal** — initial proposal document (`proposal.md`)
 2. **specs** — detailed specifications (`specs/**/*.md`), requires proposal
-3. **design** — technical design with implementation details (`design.md`), requires proposal
-4. **tasks** — implementation checklist (`tasks.md`), requires specs + design
+3. **composition** — screen layout artifact (`composition.yaml`), requires specs + proposal
+4. **design** — technical design with implementation details (`design.md`), requires proposal + specs
+5. **tasks** — implementation checklist (`tasks.md`), requires specs + design
 
 Build requires tasks to be complete and is tracked via `tasks.md`.
 

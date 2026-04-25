@@ -18,6 +18,7 @@ All Specify state lives under `.specify/` at your project root. This directory i
 │       └── briefs/
 │           ├── proposal.md
 │           ├── specs.md
+│           ├── composition.md             # Vectis only
 │           ├── design.md
 │           ├── tasks.md
 │           ├── build.md
@@ -27,6 +28,7 @@ All Specify state lives under `.specify/` at your project root. This directory i
 │   └── <change-name>/
 │       ├── .metadata.yaml                 # Lifecycle state (managed by CLI)
 │       ├── proposal.md                    # Why this change exists
+│       ├── composition.yaml               # Screen layout (Vectis only)
 │       ├── design.md                      # Technical design
 │       ├── tasks.md                       # Implementation checklist
 │       └── specs/                         # Behavioral specs (one per capability)
@@ -34,6 +36,8 @@ All Specify state lives under `.specify/` at your project root. This directory i
 │               └── spec.md
 │
 ├── specs/                                 # Merged baseline specs
+│   ├── composition.yaml                   # Baseline screen layout (Vectis only)
+│   ├── .composition-checksums.yaml        # Per-screen hashes for conflict detection
 │   └── <capability>/
 │       └── spec.md                        # Accumulated behavioral requirements
 │
@@ -54,6 +58,7 @@ All Specify state lives under `.specify/` at your project root. This directory i
     ├── YYYY-MM-DD-<change-name>/          # Merged or dropped changes
     │   ├── .metadata.yaml
     │   ├── proposal.md
+    │   ├── composition.yaml               # Vectis only
     │   ├── design.md
     │   ├── tasks.md
     │   └── specs/...
@@ -69,11 +74,11 @@ All Specify state lives under `.specify/` at your project root. This directory i
 
 Each active change gets its own directory under `changes/`. The directory name is kebab-case and validated by the CLI when you run `specify change create`.
 
-A change directory contains the four artifacts plus `.metadata.yaml` for lifecycle state. The `specs/` subdirectory holds one spec file per capability.
+A change directory contains the core artifacts plus `.metadata.yaml` for lifecycle state. The `specs/` subdirectory holds one spec file per capability. Vectis changes also include `composition.yaml` for screen layout.
 
 ### `specs/`
 
-The baseline. When a change is merged, its spec deltas are applied here. Baseline specs represent the current known state of the system -- what has been specified and implemented so far.
+The baseline. When a change is merged, its spec deltas are applied here. For Vectis projects, composition deltas are also merged into a baseline `composition.yaml` in this directory, with per-screen checksums tracked in `.composition-checksums.yaml` for conflict detection. Baseline specs represent the current known state of the system -- what has been specified and implemented so far.
 
 `/spec:verify` compares your code against these baseline specs to detect drift.
 

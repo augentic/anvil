@@ -29,7 +29,7 @@ None. This is a read-only skill.
 1. Runs `specify status` (or `specify change status <name>` for a specific change).
 2. Renders a summary including:
    - Active changes with lifecycle status.
-   - Per-brief artifact completion.
+   - Per-brief artifact completion (including `composition.yaml` for Vectis changes).
    - Task progress (completed / total).
    - Next-step guidance.
 
