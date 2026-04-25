@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Introduce a structured **composition artifact** (`composition.yaml`) into the Specify define pipeline that describes the spatial composition of each screen as a schema-validated YAML document. The composition artifact can be authored from multiple sources — the define agent (inferred from specs), external design tools (Figma), reverse-engineering of legacy applications, or direct manual editing. This bridges the gap between behavioral specs (which define *what* the app does) and shell writers (which must decide *how* to arrange it on screen), without polluting the spec format with visual concerns.
+Introduce a structured **composition artifact** (`composition.yaml`) into the Specify define pipeline that describes the spatial composition of each screen as a schema-validated YAML document. Screen content is organized into named regions (`header`, `body`, `footer`, `fab`) whose contents form a lightweight **container tree** — items and `group` containers carrying a small flexbox-like property set (`direction`, `gap`, `padding`, `align`, `justify`, sizing modes, and optional surface decoration). This model maps directly to Figma Auto Layout, CSS Flexbox, SwiftUI stacks, and Compose Row/Column/Box, giving shell writers deterministic layout instructions rather than requiring them to infer container structure. The composition artifact can be authored from multiple sources — the define agent (inferred from specs), external design tools (Figma), reverse-engineering of legacy applications, or direct manual editing. This bridges the gap between behavioral specs (which define *what* the app does) and shell writers (which must decide *how* to arrange it on screen), without polluting the spec format with visual concerns.
 
 ## Motivation
 
@@ -16,9 +16,11 @@ Today the pipeline from spec to screen works like this:
 2. **Design** defines the type system (`ViewModel::TodoList(TodoListView { items: Vec<ItemView>, count: String })`)
 3. **Shell writer** infers layout from the ViewModel struct fields + design tokens
 
-Step 3 is where fidelity breaks down. The shell writer sees `TodoListView { items: Vec<ItemView>, count: String }` and produces a reasonable default — a scrollable list with a count label somewhere — but has no guidance on whether the count should be in a header bar, a floating badge, or inline at the bottom. The design system gives colors, fonts, and spacing; it does not give composition.
+Step 3 is where fidelity breaks down. The shell writer sees `TodoListView { items: Vec<ItemView>, count: String }` and produces a reasonable default — a scrollable list with a count label somewhere — but has no guidance on whether the count should be in a header bar, a floating badge, or inline at the bottom. It also has no guidance on container structure: should the item title and due date be in a horizontal row or a vertical stack? Should they fill the remaining space or hug their content? Should a group of items be wrapped in a card with rounded corners? The design system gives colors, fonts, and spacing scales; it does not give composition or layout structure.
 
 The result is that generated UIs are *functionally correct* (every field is rendered, every event is wired) but *visually arbitrary* (layout choices are made by the LLM based on convention, not intent). For a todo app this is acceptable. For anything with a deliberate design — onboarding flows, dashboards, e-commerce product pages — it produces output that must be substantially reworked by hand.
+
+Recent research confirms this gap. The DOne framework (Alibaba/HKUST, 2025) shows that fixing the structural hierarchy of a UI — which elements group together and how they nest — provides the single largest quality gain in design-to-code generation, more than element detection or schema guidance individually. The Figma2Code benchmark (HUST, 2025) demonstrates that preserving Figma's relative layout model (direction, gap, padding, alignment, sizing modes) dramatically outperforms both image-only inference and absolute-coordinate approaches. Every successful design-to-code tool — Facebook's Yoga engine (React Native), Google's Relay, FigmaToCode, Plasmic — converges on the same layout model: a flexbox-like container tree with a small property set that maps cleanly across platforms.
 
 ### Why Specs Should Not Change
 
@@ -30,10 +32,11 @@ The BDD spec format (`GIVEN... WHEN... THEN...`) defines observable behavior. Th
 
 ### What Is Missing
 
-A layer that communicates **spatial composition** — the arrangement of components on each screen, the mapping from ViewModel fields to visual elements, and the interaction points that wire to Event variants. This layer should be:
+A layer that communicates **spatial composition** — the arrangement of components on each screen, the container structure that groups them (rows, columns, cards), the mapping from ViewModel fields to visual elements, and the interaction points that wire to Event variants. This layer should be:
 
-- **Platform-neutral.** Described in abstract primitives, not SwiftUI or Compose types.
-- **Multi-source.** Authorable from design tools (Figma), legacy app analysis, manual editing, or agent inference — not limited to a single authoring path.
+- **Platform-neutral.** Described in abstract primitives that map to every target — CSS Flexbox, SwiftUI stacks, Compose Row/Column/Box — not tied to any single platform's types.
+- **High-fidelity.** Captures the container tree, layout direction, spacing, alignment, sizing modes, and surface decoration that distinguish a deliberate design from a generic layout.
+- **Multi-source.** Authorable from design tools (Figma), legacy app analysis, manual editing, or agent inference — not limited to a single authoring path. Figma Auto Layout maps directly to the layout model.
 - **Verifiable.** Every ViewModel field must appear in the layout; every Event must be wired to an interaction point.
 - **Diffable.** Layout changes show up in version control as text diffs and support the existing ADDED/MODIFIED/REMOVED delta operations.
 - **Generatable.** The define agent can produce it from the spec and proposal, the same way it produces `design.md` today. When external input is available (e.g., a Figma import), the agent enriches rather than invents.
@@ -44,9 +47,10 @@ A layer that communicates **spatial composition** — the arrangement of compone
 | --- | --- | --- |
 | Deciding *where* a field appears on screen | Deciding *what* the field's value means | Deciding *what type* the field is |
 | Choosing between a list, grid, or card layout | Specifying that items must be scrollable | Defining the ViewModel struct and its fields |
-| Placing a floating action button | Specifying that tapping "add" creates an item | Mapping the Event variant to `update()` logic |
-| Ordering elements within a screen | Specifying page transitions and navigation | Defining the Route and Page enums |
-| Referencing design tokens for spacing/color | Specifying error states and recovery | Defining capability requirements |
+| Grouping items in rows, columns, or cards | Specifying that tapping "add" creates an item | Mapping the Event variant to `update()` logic |
+| Specifying spacing, alignment, and sizing | Specifying page transitions and navigation | Defining the Route and Page enums |
+| Placing a floating action button | Specifying error states and recovery | Defining capability requirements |
+| Referencing design tokens for spacing/color | | |
 
 The boundary follows the existing Specify principle: specs define behavior, design defines the technical contract, and the new artifact defines visual arrangement. Shell writers consume all three.
 
@@ -54,7 +58,9 @@ The boundary follows the existing Specify principle: specs define behavior, desi
 
 ### New Artifact: `composition.yaml`
 
-A schema-validated YAML document that describes the layout of each screen in the application using a region-based format. Each screen declares its content through named regions (`header`, `body`, `footer`, `fab`) containing flat item lists, rather than a deeply-nested component tree. Shell writers map regions and items to platform-native components; the composition artifact specifies *what content appears where*, not *which containers wrap it*. One entry per screen keyed by slug. The artifact lives alongside `spec.md` in the Specify lifecycle — per-change deltas in `.specify/changes/<name>/`, merged baseline in `.specify/specs/`.
+A schema-validated YAML document that describes the layout of each screen in the application using a region-based format with a lightweight container tree. Each screen declares its content through named regions (`header`, `body`, `footer`, `fab`). Within each region, content is organized as a tree of **items** (leaf elements like `text`, `button`, `field`) and **groups** (container nodes carrying flexbox-like layout properties). Groups specify `direction` (row/column/stack), `gap`, `padding`, `align`, `justify`, optional sizing, and optional surface decoration (`background`, `corner_radius`, `elevation`). This property set maps directly to Figma Auto Layout, CSS Flexbox, SwiftUI HStack/VStack/ZStack, and Compose Row/Column/Box — giving shell writers deterministic, platform-neutral layout instructions.
+
+One entry per screen keyed by slug. The artifact lives alongside `spec.md` in the Specify lifecycle — per-change deltas in `.specify/changes/<name>/`, merged baseline in `.specify/specs/`.
 
 `composition.yaml` supports two modes:
 
@@ -66,7 +72,7 @@ The define pipeline reads an existing skeleton (when present), preserves its reg
 
 #### Skeleton Example
 
-A skeleton authored before the define pipeline runs — no `bind`, `event`, or `maps_to` keys, just the region structure with token references and content hints:
+A skeleton authored before the define pipeline runs — no `bind`, `event`, or `maps_to` keys, just the region structure with layout properties, token references, and content hints. The `group` containers carry flexbox-like properties (`direction`, `gap`, `align`, etc.) imported directly from Figma's Auto Layout structure:
 
 ```yaml
 # composition.yaml — skeleton (pre-define)
@@ -92,10 +98,20 @@ screens:
       list:
         each: items
         item:
-          - checkbox
-          - text: { style: body }
-          - text: { style: caption, color: onSurfaceVariant }
-          - action: { icon: trash }
+          - group:
+              direction: row
+              gap: md
+              align: center
+              items:
+                - checkbox
+                - group:
+                    direction: column
+                    gap: xs
+                    size: { width: fill }
+                    items:
+                      - text: { style: body }
+                      - text: { style: caption, color: onSurfaceVariant }
+                - action: { icon: trash }
 
     footer:
       - segments: { options: ["All", "Active", "Completed"] }
@@ -106,14 +122,20 @@ screens:
       empty:
         when: "no items to display"
         body:
-          - icon: { name: clipboard, size: xl, color: onSurfaceVariant }
-          - text: { content: "No todos yet", style: title }
-          - text: { content: "Tap + to add your first todo", style: body, color: onSurfaceVariant }
+          - group:
+              direction: column
+              gap: md
+              align: center
+              padding: xl
+              items:
+                - icon: { name: clipboard, style: xl, color: onSurfaceVariant }
+                - text: { content: "No todos yet", style: title }
+                - text: { content: "Tap + to add your first todo", style: body, color: onSurfaceVariant }
 ```
 
 #### Wired Example
 
-After the define pipeline enriches the skeleton. This example shows two screens — a list and a form — with navigation between them, loading/error states, and a confirmation dialog.
+After the define pipeline enriches the skeleton. This example shows two screens — a list and a form — with navigation between them, loading/error states, and a confirmation dialog. The `group` containers preserve the layout structure from the skeleton while `bind`, `event`, and `maps_to` keys are added.
 
 Given:
 - `ViewModel::TodoList(TodoListView { items: Vec<ItemView>, count: String, filter: String, loading: bool, error_message: String })`
@@ -137,10 +159,20 @@ screens:
       list:
         each: items
         item:
-          - checkbox: { bind: completed, event: ToggleTodo(id) }
-          - text: { bind: title, style: body, strikethrough-when: completed }
-          - text: { bind: due_date, style: caption, color: onSurfaceVariant }
-          - action: { icon: trash, event: RequestDelete(id) }
+          - group:
+              direction: row
+              gap: md
+              align: center
+              items:
+                - checkbox: { bind: completed, event: ToggleTodo(id) }
+                - group:
+                    direction: column
+                    gap: xs
+                    size: { width: fill }
+                    items:
+                      - text: { bind: title, style: body, strikethrough-when: completed }
+                      - text: { bind: due_date, style: caption, color: onSurfaceVariant }
+                - action: { icon: trash, event: RequestDelete(id) }
 
     footer:
       - segments: { bind: filter, event: SetFilter(value), options: ["All", "Active", "Completed"] }
@@ -151,22 +183,40 @@ screens:
       loading:
         when: "loading is true"
         body:
-          - progress: { color: primary }
-          - text: { content: "Loading todos…", style: body, color: onSurfaceVariant }
+          - group:
+              direction: column
+              gap: md
+              align: center
+              padding: xl
+              items:
+                - progress: { color: primary }
+                - text: { content: "Loading todos…", style: body, color: onSurfaceVariant }
 
       error:
         when: "error_message is not empty"
         body:
-          - icon: { name: alert-circle, size: xl, color: error }
-          - text: { bind: error_message, style: body, color: onSurfaceVariant }
-          - button: { content: "Retry", style: filled, event: RetryLoad }
+          - group:
+              direction: column
+              gap: md
+              align: center
+              padding: xl
+              items:
+                - icon: { name: alert-circle, style: xl, color: error }
+                - text: { bind: error_message, style: body, color: onSurfaceVariant }
+                - button: { content: "Retry", style: filled, event: RetryLoad }
 
       empty:
         when: "items is empty"
         body:
-          - icon: { name: clipboard, size: xl, color: onSurfaceVariant }
-          - text: { content: "No todos yet", style: title }
-          - text: { content: "Tap + to add your first todo", style: body, color: onSurfaceVariant }
+          - group:
+              direction: column
+              gap: md
+              align: center
+              padding: xl
+              items:
+                - icon: { name: clipboard, style: xl, color: onSurfaceVariant }
+                - text: { content: "No todos yet", style: title }
+                - text: { content: "Tap + to add your first todo", style: body, color: onSurfaceVariant }
 
     overlays:
       delete-confirmation:
@@ -175,8 +225,13 @@ screens:
         title: "Delete Todo?"
         content:
           - text: { content: "This action cannot be undone.", style: body }
-          - button: { content: "Cancel", style: text, event: DismissDialog }
-          - button: { content: "Delete", style: filled, color: error, event: ConfirmDelete(id) }
+          - group:
+              direction: row
+              gap: sm
+              justify: end
+              items:
+                - button: { content: "Cancel", style: text, event: DismissDialog }
+                - button: { content: "Delete", style: filled, color: error, event: ConfirmDelete(id) }
 
   add-todo:
     name: "Add Todo"
@@ -198,18 +253,24 @@ screens:
         when: "saving is true"
         replaces: screen
         body:
-          - progress: { color: primary }
+          - group:
+              direction: column
+              align: center
+              justify: center
+              items:
+                - progress: { color: primary }
 ```
 
-Enrichment adds: `maps_to` traceability on screens, `bind` keys connecting items to ViewModel fields, `event` keys wiring interactions to Event variants, and conditional `*-when` properties. The region structure itself is unchanged — the pipeline adds data, it does not rearrange the layout.
+Enrichment adds: `maps_to` traceability on screens, `bind` keys connecting items to ViewModel fields, `event` keys wiring interactions to Event variants, and conditional `*-when` properties. The group structure and layout properties are preserved unchanged — the pipeline adds data bindings, it does not rearrange the layout.
 
 The example demonstrates several patterns:
+- **Container structure:** List items use `group: { direction: row }` to arrange checkbox, text stack, and delete action horizontally. The inner `group: { direction: column, size: { width: fill } }` stacks title and due date vertically while filling the remaining horizontal space.
 - **Cross-screen navigation:** `event: Navigate(AddTodo)` on the FAB, `event: NavigateBack` on the back button.
-- **Loading, error, and saving states:** `when: "loading is true"`, `when: "error_message is not empty"`, and `when: "saving is true"` with progress indicators, error display with retry button, and full-screen overlay respectively.
-- **Dialogs:** The overlay's `trigger: RequestDelete` declares which event opens it. Confirmation via `event: ConfirmDelete(id)`, dismissal via `event: DismissDialog`.
+- **Loading, error, and saving states:** `when: "loading is true"`, `when: "error_message is not empty"`, and `when: "saving is true"` with progress indicators, error display with retry button, and full-screen overlay respectively. Each state body wraps content in a centered column group.
+- **Dialogs:** The overlay's `trigger: RequestDelete` declares which event opens it. Dialog buttons are grouped in a `direction: row` with `justify: end`. Confirmation via `event: ConfirmDelete(id)`, dismissal via `event: DismissDialog`.
 - **Form validation:** `error: title_error` on a `field` item.
 - **Disabled state:** `disabled-when: saving` on the save button.
-- **Region-based body patterns:** The todo-list screen uses `body.list` for iterable content; the add-todo screen uses `body.form` for vertical input layout; states use `body` as a flat item array for centered content.
+- **Content patterns:** The todo-list screen uses `body.list` for iterable content; the add-todo screen uses `body.form` for vertical input layout; states use groups with `align: center` for centered content.
 
 #### Provenance
 
@@ -242,19 +303,24 @@ When no skeleton exists, the define pipeline's composition brief infers layout f
 
 ##### Figma Import
 
-A Figma adapter reads a Figma file's frame hierarchy and produces a `composition.yaml` skeleton directly:
+A Figma adapter reads a Figma file's frame hierarchy and produces a `composition.yaml` skeleton directly. The mapping leverages Figma Auto Layout, which is a flexbox model — the same model used by the composition artifact's `group` containers:
 
 - Figma Frames → screen entries
+- Figma Auto Layout frames → `group` containers with `direction` (from layoutMode), `gap` (from itemSpacing), `padding` (from paddingTop/Right/Bottom/Left), `align` (from counterAxisAlignItems), `justify` (from primaryAxisAlignItems)
+- Figma "Hug contents" → `size: { width: hug }` or default (absent)
+- Figma "Fill container" → `size: { width: fill }`
+- Figma "Fixed size" → `size: { width: N }`
 - Figma navigation bars → `header` region with title and trailing/leading items
-- Figma main content area → `body` region (list, grid, form, or item array based on content pattern)
+- Figma main content area → `body` region (list, grid, form, or groups based on content pattern)
 - Figma bottom bars → `footer` region
 - Figma FABs → `fab` item
 - Figma Text layers → `text` items with style tokens
 - Figma Icons → `icon` or `action` items
 - Figma input fields → `field`, `checkbox`, `switch`, etc.
+- Figma frames with fills, corner radius, or effects → `group` with `background`, `corner_radius`, `elevation`
 - Unrecognized patterns → best-match item with a `# TODO: review` comment
 
-The adapter produces a first draft that humans refine. Exact fidelity is not required — the composition is a content-placement description, not a pixel-perfect specification.
+Because Figma Auto Layout maps directly to the composition's layout model, the adapter preserves the designer's intended container structure — which elements are grouped in rows vs columns, how they're spaced and aligned, and which containers have card-like decoration. This structural fidelity is what enables high-fidelity code generation downstream.
 
 ##### Legacy App Reverse-Engineering
 
@@ -265,13 +331,15 @@ When `/spec:extract` runs against a legacy application, it could optionally prod
 - List/table views → `body.list` or `body.grid` patterns
 - Form views → `body.form` patterns
 - Bottom bars / tab bars → `footer` region
+- Flex/grid containers → `group` nodes with `direction`, `gap`, `align` derived from CSS flexbox or framework layout props
+- Card/panel components → `group` with `background`, `corner_radius`, `elevation`
 - UI framework widgets → item vocabulary mapping (e.g., React `<input>` → `field`, React `<button>` → `button`)
 
 This fits naturally with the existing RT plugin's analysis capabilities. However, the current `/spec:extract` skill does not produce composition artifacts. **Extract integration is deferred beyond Phase 1** — it is not a prerequisite for any phase in the adoption path. When extract gains composition support, it will produce a skeleton `composition.yaml` that the define pipeline enriches during the next `/spec:define` run, using the same skeleton-to-wired enrichment strategy described above.
 
 ##### Manual Authoring
 
-Direct editing of `composition.yaml`. The region-based format maps intuitively to the visual structure a designer has in mind: header at the top, body in the middle, footer at the bottom, fab floating. Skeletons are valid without any `bind`, `event`, or `maps_to` keys, so manual authoring does not require knowledge of the type system.
+Direct editing of `composition.yaml`. The region-based format with `group` containers maps intuitively to the visual structure a designer has in mind: header at the top, body in the middle with items arranged in rows and columns, footer at the bottom, fab floating. Skeletons are valid without any `bind`, `event`, or `maps_to` keys, so manual authoring does not require knowledge of the type system. The `group` properties (`direction`, `gap`, `padding`, `align`) are the same concepts designers work with in Figma Auto Layout.
 
 ##### Hybrid (the Common Case)
 
@@ -283,7 +351,7 @@ When the composition brief receives an existing skeleton, it must match skeleton
 
 1. **Screen matching.** Match skeleton screen slugs to spec-described screens by name similarity. If a skeleton has `todo-list` and the spec describes "a screen showing the user's todo items," the match is direct. Unmatched skeleton screens are preserved with a `# GAP` comment. Unmatched spec screens get new inferred entries.
 
-2. **Collection binding.** A `list` or `grid` pattern in the body with an `each` key binds to the `Vec<T>` field whose item type contains fields matching the items inside `item`. Heuristic: if the skeleton's item template has two `text` items and a `checkbox`, and the spec describes items with a title, due date, and completion state, the agent binds `each: items` and the inner items to the corresponding fields by positional and semantic matching (first text → `title`, second text → `due_date`, checkbox → `completed`).
+2. **Collection binding.** A `list` or `grid` pattern in the body with an `each` key binds to the `Vec<T>` field whose item type contains fields matching the leaf items inside the item template (including items nested inside `group` containers). Heuristic: if the skeleton's item template has two `text` items and a `checkbox` (possibly grouped in rows and columns), and the spec describes items with a title, due date, and completion state, the agent binds `each: items` and the inner items to the corresponding fields by positional and semantic matching (first text → `title`, second text → `due_date`, checkbox → `completed`). The `group` structure is preserved unchanged.
 
 3. **Display item binding.** `text`, `badge`, `image`, and other display items bind to the view struct field whose semantic role matches the item's position and context. A `text` in the header with `content: "My Todos"` is static (no `bind`). A `badge` in `header.trailing` with no `content` but a token reference binds to the count-like field. Heuristic: items with a `content` property containing a literal string are static; items without `content` in a position that implies dynamic data get a `bind`.
 
@@ -291,7 +359,7 @@ When the composition brief receives an existing skeleton, it must match skeleton
 
 5. **Action item wiring.** `button`, `action`, and `fab` items get an `event` key derived from the spec's interaction descriptions. If the skeleton has an `action` with `icon: trash` and the spec describes "user can delete items," the agent wires `event: DeleteTodo(id)` (or `event: RequestDelete(id)` if the spec describes a confirmation flow).
 
-6. **Decorative items.** Items that serve a purely visual purpose (`divider`, static `icon` with no interaction, static `text` with literal content) are left untouched — no `bind` or `event` added. The enrichment pipeline adds data, it does not rearrange or remove items.
+6. **Decorative items and groups.** Items that serve a purely visual purpose (`divider`, static `icon` with no interaction, static `text` with literal content) are left untouched — no `bind` or `event` added. `group` containers and their layout properties (`direction`, `gap`, `padding`, `align`, `justify`, `background`, `corner_radius`, `elevation`, `size`) are never modified by enrichment. The enrichment pipeline adds data bindings to leaf items; it does not rearrange, restructure, or modify container layout.
 
 7. **Ambiguous matches.** When the agent cannot confidently match a skeleton item to a spec behavior, it adds a `# TODO: review binding` comment rather than guessing. This preserves the skeleton while flagging areas for human review.
 
@@ -303,22 +371,66 @@ When the composition brief receives an existing skeleton, it must match skeleton
 
 3. **Regions.** Each screen is divided into named regions that map to standard screen areas:
 
-   - **`header`** — Top navigation bar. Contains `title` (string), optional `leading` (item array for left-side actions like back buttons), and optional `trailing` (item array for right-side actions like badges, search, settings).
+   - **`header`** — Top navigation bar. Contains `title` (string), optional `leading` (content node array for left-side actions like back buttons), and optional `trailing` (content node array for right-side actions like badges, search, settings).
    - **`body`** — Main content area. Can be one of:
      - **`list`** pattern — `{ each: field, item: [...items] }` for scrollable list content.
      - **`grid`** pattern — `{ each: field, columns: N, item: [...items] }` for grid layouts.
-     - **`form`** pattern — an item array rendered as a vertical input layout.
-     - **Item array** — a flat list of items rendered as centered/stacked content (used for states and simple screens).
-   - **`footer`** — Bottom bar area. An item array (typically segments, buttons, or tab items).
+     - **`form`** pattern — a content node array rendered as a vertical input layout.
+     - **Content node array** — items and groups rendered as centered/stacked content (used for states and simple screens).
+   - **`footer`** — Bottom bar area. A content node array (typically segments, buttons, or tab items).
    - **`fab`** — Floating action button. A single item (typically `{ icon: name, event: Event }`).
 
    All regions are optional. Shell writers map each region to platform-native containers: `header` → `NavigationTitle` + toolbar (iOS) / `TopAppBar` (Android), `body` → main content view, `footer` → bottom toolbar / `BottomAppBar`, `fab` → overlay button / `FloatingActionButton`.
 
-4. **Items.** Content within regions is expressed as **items** — flat typed objects. Each item is a YAML mapping with a single key (the item type) whose value is either `null` (bare item like `- divider`) or a properties object (e.g., `- text: { bind: title, style: body }`). Items describe *what content appears*, not *which containers wrap it* — shell writers choose the appropriate platform-native container structure.
+4. **Items and groups.** Content within regions is expressed as a tree of **items** and **groups**.
 
-5. **Field bindings (wired mode).** The `bind` key on an item connects it to a per-page view struct field. In wired mode, every field in the view struct must appear as a `bind` value at least once. In skeleton mode, `bind` keys are absent.
+   - **Items** are leaf elements — YAML mappings with a single key (the item type) whose value is either `null` (bare item like `- divider`) or a properties object (e.g., `- text: { bind: title, style: body }`). Items describe content: what data to display or what interaction to offer.
+   - **Groups** are container nodes that organize items (and other groups) with flexbox-like layout properties. A group is written as `- group:` followed by layout properties and an `items` array containing children. Groups describe structure: how content is arranged spatially.
 
-6. **Event wiring (wired mode).** The `event` key on interactive items wires them to shell-facing Event variants. The value follows the syntax `EventName` or `EventName(arg1, arg2)`. Arguments are one of three kinds:
+   Together, items and groups form a shallow tree within each region. The tree depth is typically 2–3 levels — enough to express rows within columns (or vice versa), cards containing content stacks, and similar real-world patterns. Deeply nested trees (5+ levels) should be flattened where possible.
+
+5. **Group layout properties.** Groups carry a small set of flexbox-like properties that map directly to every target platform:
+
+   | Property | Values | Default | Maps to |
+   | --- | --- | --- | --- |
+   | `direction` | `row`, `column`, `stack` | `column` | flex-direction / HStack-VStack-ZStack / Row-Column-Box |
+   | `gap` | token ref or number | none | gap / spacing / Arrangement.spacedBy |
+   | `padding` | token ref, number, or `{ top, right, bottom, left }` | none | padding |
+   | `align` | `start`, `center`, `end`, `stretch`, `baseline` | `stretch` | align-items / alignment / verticalAlignment-horizontalAlignment |
+   | `justify` | `start`, `center`, `end`, `space-between`, `space-around` | `start` | justify-content / implicit in stack / horizontalArrangement-verticalArrangement |
+   | `wrap` | boolean | `false` | flex-wrap / LazyVGrid alternative / FlowRow |
+
+   These are the only layout properties on groups. They match the universal flexbox subset: Figma Auto Layout, CSS Flexbox, SwiftUI stacks, Compose Row/Column/Box, and React Native's Yoga engine.
+
+6. **Sizing.** Items and groups accept an optional `size` property that specifies responsive sizing behavior:
+
+   ```yaml
+   size: { width: fill }              # expand to fill available space
+   size: { width: 48, height: 48 }    # fixed dimensions
+   size: { width: fill, height: 200 } # fill width, fixed height
+   ```
+
+   Each dimension (`width`, `height`) is one of:
+   - A **number** — fixed size in logical pixels/points (maps to explicit width/height).
+   - **`fill`** — expand to fill available space (maps to `flex: 1` / `.frame(maxWidth: .infinity)` / `Modifier.fillMaxWidth()`).
+   - **`hug`** — size to content (the default when `size` is absent; maps to intrinsic sizing).
+
+   Sizing captures the three fundamental responsive modes that Figma, CSS, SwiftUI, and Compose all support. When `size` is absent, the element uses its intrinsic size (hug).
+
+7. **Surface decoration.** Groups accept optional surface decoration properties for card-like containers:
+
+   | Property | Values | Maps to |
+   | --- | --- | --- |
+   | `background` | token ref (e.g., `surfaceContainer`) | background color / fill |
+   | `corner_radius` | token ref or number | border-radius / cornerRadius / clip(RoundedCornerShape) |
+   | `elevation` | token ref (e.g., `sm`) | box-shadow / shadow / Modifier.shadow |
+   | `border` | `{ color: token, width: number }` | border / overlay(RoundedRectangle) / Modifier.border |
+
+   Decoration properties are optional. When absent, groups are transparent containers with no visual treatment. Decoration is valid in both skeleton and wired modes — it is a layout concern, not a data-binding concern.
+
+8. **Field bindings (wired mode).** The `bind` key on an item connects it to a per-page view struct field. In wired mode, every field in the view struct must appear as a `bind` value at least once. In skeleton mode, `bind` keys are absent.
+
+9. **Event wiring (wired mode).** The `event` key on interactive items wires them to shell-facing Event variants. The value follows the syntax `EventName` or `EventName(arg1, arg2)`. Arguments are one of three kinds:
 
    - **Item-context fields.** Inside an `each` iteration, bare names like `id` or `completed` refer to fields on the current item struct. Example: `event: ToggleTodo(id)` inside a list with `each: items` means "send `Event::ToggleTodo` with the current item's `id` field."
    - **The `value` keyword.** On input items (`field`, `segments`, `slider`, `dropdown`), `value` is a reserved keyword meaning "the item's current input value." Example: `event: UpdateTitle(value)` on a `field` means "send `Event::UpdateTitle` with whatever the user typed."
@@ -326,16 +438,16 @@ When the composition brief receives an existing skeleton, it must match skeleton
 
    Events with no arguments omit parentheses: `event: NavigateBack`, `event: DismissDialog`. Multiple arguments are comma-separated: `event: MoveItem(id, position)`. In wired mode, every shell-facing Event that belongs to this screen must be wired. In skeleton mode, `event` keys are absent.
 
-7. **Navigation mapping.** `event: Navigate(ScreenName)` uses a PascalCase argument that maps to both a screen slug and a Route variant via deterministic conversion:
+10. **Navigation mapping.** `event: Navigate(ScreenName)` uses a PascalCase argument that maps to both a screen slug and a Route variant via deterministic conversion:
    - PascalCase argument → kebab-case screen slug: `AddTodo` → `add-todo` (insert hyphens at case boundaries, lowercase).
    - PascalCase argument → Route variant: `AddTodo` → `Route::AddTodo` (identity).
    - The reverse applies for validation: screen slug `add-todo` → PascalCase `AddTodo`.
    
    This three-way mapping (event argument ↔ screen slug ↔ Route variant) is deterministic and validation checks all three references for consistency: every `Navigate(X)` must have a corresponding screen slug in composition and a corresponding Route variant in design.
 
-8. **Design token references.** Properties like `style` (typography), `color`, and `size` reference design system tokens by name. Shell writers resolve these to `VectisTypography.title`, `VectisColors.primary`, `VectisSpacing.md` on each platform. Valid in both skeleton and wired modes.
+11. **Design token references.** Properties like `style` (typography and display size), `color`, `gap`, and `padding` reference design system tokens by name. Shell writers resolve these to `VectisTypography.title`, `VectisColors.primary`, `VectisSpacing.md` on each platform. On items, `style` controls the visual variant (e.g., `body` for text, `xl` for icon display size, `filled` for button style). On groups, `gap` and `padding` reference spacing tokens. Valid in both skeleton and wired modes.
 
-9. **Conditional rendering.** Two syntax forms serve different contexts:
+12. **Conditional rendering.** Two syntax forms serve different contexts:
 
    - **Screen-level conditions** (`states[].when`): A predicate expression with the syntax `"<field> is <predicate>"`. Supported predicates: `is true`, `is false`, `is empty`, `is not empty`. The field name references a boolean or collection field on the screen's per-page view struct. Examples: `when: "loading is true"`, `when: "items is empty"`. In skeleton mode, the `when` value is a plain descriptive string (e.g., `when: "no items to display"`) that the enrichment pipeline replaces with a formal predicate.
 
@@ -346,13 +458,13 @@ When the composition brief receives an existing skeleton, it must match skeleton
      - `replaces: screen` — the state replaces the entire screen, including all regions. Use this for full-screen takeovers like splash screens or blocking error pages.
    - **Item-level conditions** (`*-when` properties): The value is a bare field name referencing a boolean field on the current view struct (or item struct within an `each` context). The property name prefix determines the effect. Examples: `disabled-when: saving` (disable when `saving` is true), `strikethrough-when: completed` (apply strikethrough when `completed` is true), `visible-when: has_avatar` (show only when `has_avatar` is true). The `*-when` pattern is open — any visual property can be made conditional by appending `-when` to its name.
 
-10. **Iteration.** The `each` key on a body content pattern (`list` or `grid`) describes repeated content bound to a `Vec<T>` field. The `item` key holds the items for each element. In skeleton mode, `each` names the collection conceptually; in wired mode, it binds to a specific field. Iteration contexts are nested — within an `each` block, `bind` and `event` arguments reference fields on the item struct, not the screen's per-page view struct. In nested iteration (e.g., `each: sections` containing a nested `list` with `each: items`), the innermost `each` context takes precedence: `bind` values resolve to fields on the innermost item struct. To reference a field on an outer iteration context from a nested context, use dot notation: `bind: section.heading`. Dot notation follows the pattern `<each-name>.<field>`, where `<each-name>` matches the `each` key of the target iteration level. The common pattern is to place bindings at the appropriate nesting level rather than using dot notation (as in the settings example), but dot notation provides an escape hatch when an item inside an inner loop must reference data from an outer loop.
+13. **Iteration.** The `each` key on a body content pattern (`list` or `grid`) describes repeated content bound to a `Vec<T>` field. The `item` key holds the items for each element. In skeleton mode, `each` names the collection conceptually; in wired mode, it binds to a specific field. Iteration contexts are nested — within an `each` block, `bind` and `event` arguments reference fields on the item struct, not the screen's per-page view struct. In nested iteration (e.g., `each: sections` containing a nested `list` with `each: items`), the innermost `each` context takes precedence: `bind` values resolve to fields on the innermost item struct. To reference a field on an outer iteration context from a nested context, use dot notation: `bind: section.heading`. Dot notation follows the pattern `<each-name>.<field>`, where `<each-name>` matches the `each` key of the target iteration level. The common pattern is to place bindings at the appropriate nesting level rather than using dot notation (as in the settings example), but dot notation provides an escape hatch when an item inside an inner loop must reference data from an outer loop.
 
-11. **Overlays.** Dialogs, sheets, and snackbars appear under the screen's `overlays` map, keyed by slug. Each overlay has a `kind`, a `trigger` (the Event name that causes the overlay to present), optional `title`, and a `content` item array. They are not part of the main regions — they are presented modally when the trigger event fires. The `trigger` value is an Event name without arguments (e.g., `trigger: RequestDelete`); shell writers match it against `event` keys elsewhere on the screen to wire presentation logic. In skeleton mode, `trigger` is absent.
+14. **Overlays.** Dialogs, sheets, and snackbars appear under the screen's `overlays` map, keyed by slug. Each overlay has a `kind`, a `trigger` (the Event name that causes the overlay to present), optional `title`, and a `content` array (items and groups). They are not part of the main regions — they are presented modally when the trigger event fires. The `trigger` value is an Event name without arguments (e.g., `trigger: RequestDelete`); shell writers match it against `event` keys elsewhere on the screen to wire presentation logic. In skeleton mode, `trigger` is absent.
 
-12. **Platform-specific regions.** When a screen's layout differs between platforms, the screen gains a `platforms` map with per-platform region overrides that replace the shared regions for that platform. Shell writers use the platform-specific regions when present, falling back to the shared regions when absent. Only overridden regions are specified — unspecified regions fall through to the shared definition.
+15. **Platform-specific regions.** When a screen's layout differs between platforms, the screen gains a `platforms` map with per-platform region overrides that replace the shared regions for that platform. Shell writers use the platform-specific regions when present, falling back to the shared regions when absent. Only overridden regions are specified — unspecified regions fall through to the shared definition.
 
-13. **Accessibility annotations.** Optional `label`, `role`, and `hint` properties on items provide screen reader semantics. Valid in both skeleton and wired modes. See [Accessibility Annotations](#accessibility-annotations).
+16. **Accessibility annotations.** Optional `label`, `role`, and `hint` properties on items provide screen reader semantics. Valid in both skeleton and wired modes. See [Accessibility Annotations](#accessibility-annotations).
 
 ### Schema
 
@@ -401,7 +513,7 @@ interface ScreenEntry {
   maps_to?: string;          // wired mode only, e.g. "ViewModel::TodoList(TodoListView)"
   header?: HeaderRegion;
   body?: BodyRegion;
-  footer?: Item[];
+  footer?: ContentNode[];
   fab?: ItemProps;            // single item (e.g. { icon: "plus", event: "Navigate(AddTodo)" })
   states?: Record<string, StateEntry>;
   overlays?: Record<string, OverlayEntry>;
@@ -410,38 +522,44 @@ interface ScreenEntry {
 
 type PlatformId = "ios" | "android" | "web";
 
+// A ContentNode is either a leaf item or a group container
+type ContentNode = Item | GroupItem;
+
+// A group is written as `- group: { direction: row, items: [...] }`
+type GroupItem = { group: GroupProps };
+
 interface HeaderRegion {
   title?: string;
-  leading?: Item[];          // left-side items (back button, menu icon)
-  trailing?: Item[];         // right-side items (badges, action icons)
+  leading?: ContentNode[];   // left-side items (back button, menu icon)
+  trailing?: ContentNode[];  // right-side items (badges, action icons)
 }
 
 // Body is polymorphic: one of these four shapes
 type BodyRegion =
   | { list: ListPattern }
   | { grid: GridPattern }
-  | { form: Item[] }
-  | Item[];                  // flat item array for centered/stacked content
+  | { form: ContentNode[] }
+  | ContentNode[];           // item/group array for centered/stacked content
 
 interface ListPattern {
   each: string;              // field name of Vec<T> collection
-  item: Item[];              // item template for each element
+  item: ContentNode[];       // item template for each element (items and groups)
   style?: string;            // e.g. "grouped" for iOS grouped list style
 }
 
 interface GridPattern {
   each: string;
   columns: number;
-  item: Item[];
+  item: ContentNode[];
 }
 
 interface StateEntry {
   when: string;              // predicate: "<field> is <true|false|empty|not empty>" (wired)
                              // or plain descriptive string (skeleton)
   replaces?: "body" | "screen";  // default: "body" (replaces body region only)
-  body?: BodyRegion | Item[];    // replacement body content
+  body?: BodyRegion | ContentNode[];  // replacement body content
   header?: HeaderRegion;         // only when replaces: "screen"
-  footer?: Item[];               // only when replaces: "screen"
+  footer?: ContentNode[];        // only when replaces: "screen"
   fab?: ItemProps;               // only when replaces: "screen"
 }
 
@@ -449,20 +567,79 @@ interface OverlayEntry {
   kind: "dialog" | "sheet" | "snackbar";
   trigger?: string;          // wired mode: Event name that opens this overlay (e.g. "RequestDelete")
   title?: string;
-  content: Item[];           // overlay content items
+  content: ContentNode[];    // overlay content (items and groups)
 }
 
 interface PlatformOverride {
   header?: HeaderRegion;
   body?: BodyRegion;
-  footer?: Item[];
+  footer?: ContentNode[];
   fab?: ItemProps;
 }
 ```
 
+#### Group
+
+Groups are container nodes with flexbox-like layout properties and an `items` array of children:
+
+```typescript
+interface GroupProps {
+  // --- Layout (flexbox subset) ---
+  direction?: "row" | "column" | "stack";  // default: "column"
+  gap?: TokenRef | number;
+  padding?: TokenRef | number | PaddingSpec;
+  align?: "start" | "center" | "end" | "stretch" | "baseline";  // default: "stretch"
+  justify?: "start" | "center" | "end" | "space-between" | "space-around";  // default: "start"
+  wrap?: boolean;            // default: false
+
+  // --- Sizing ---
+  size?: SizingSpec;
+
+  // --- Surface decoration (optional, for card-like containers) ---
+  background?: TokenRef;     // e.g. "surfaceContainer", "primaryContainer"
+  corner_radius?: TokenRef | number;
+  elevation?: TokenRef;      // e.g. "sm", "md"
+  border?: { color: TokenRef; width: number };
+
+  // --- Children ---
+  items: ContentNode[];      // the group's children (items and nested groups)
+
+  // --- Conditional (wired mode) ---
+  [key: `${string}-when`]?: string;  // e.g. visible-when: has_items
+
+  // --- Accessibility ---
+  label?: string;
+  role?: "heading" | "button" | "image" | "link";
+  hint?: string;
+}
+
+interface PaddingSpec {
+  top?: TokenRef | number;
+  right?: TokenRef | number;
+  bottom?: TokenRef | number;
+  left?: TokenRef | number;
+}
+```
+
+#### Sizing
+
+Items and groups share the same sizing model:
+
+```typescript
+interface SizingSpec {
+  width?: SizingValue;
+  height?: SizingValue;
+}
+
+type SizingValue =
+  | number         // fixed size in logical pixels/points
+  | "fill"         // expand to fill available space (flex: 1)
+  | "hug";         // size to content (the default when size is absent)
+```
+
 #### Item
 
-Each item in a region is a YAML mapping with a single key (the item type) whose value is either `null` (bare item) or a properties object:
+Each leaf item in a region is a YAML mapping with a single key (the item type) whose value is either `null` (bare item) or a properties object:
 
 ```typescript
 // In YAML: `- divider` or `- text: { bind: title, style: body }`
@@ -490,7 +667,10 @@ interface ItemProps {
   // --- Styling ---
   style?: string;            // typography token or component variant, e.g. "title", "body", "filled"
   color?: TokenRef;          // e.g. "primary", "onSurfaceVariant", "error"
-  size?: TokenRef;           // e.g. "sm", "md", "lg", "xl"
+
+  // --- Sizing ---
+  size?: SizingSpec;         // responsive sizing (fixed, fill, or hug)
+  corner_radius?: TokenRef | number;  // for image items
 
   // --- Conditional (wired mode) ---
   // Any property suffixed with `-when` takes a field name (boolean)
@@ -499,7 +679,7 @@ interface ItemProps {
   // --- Nested iteration (for list/grid items within body) ---
   each?: string;             // field name of Vec<T> collection (nested list)
   columns?: number;          // grid columns (nested grid)
-  item?: Item[];             // item template for nested iteration
+  item?: ContentNode[];      // item template for nested iteration
 
   // --- Accessibility ---
   label?: string;            // accessible label (string literal or field name)
@@ -538,9 +718,19 @@ Schema-enforced rules:
 
 ### Item Vocabulary
 
-The vocabulary is deliberately small — a content-placement set of primitives, not a UI framework. Shell writers map these to platform-native components and choose appropriate container structures (rows, columns, cards, spacing) based on the item sequence and region context.
+The vocabulary is deliberately small — a content-placement set of primitives plus a single container type (`group`), not a UI framework. Shell writers map items to platform-native components and map groups to platform-native containers (HStack/VStack, Row/Column, flex containers) using the group's layout properties.
 
 > **Note:** The tables below show SwiftUI and Compose mappings for Phases 1–2. Web mappings (HTML/CSS/JS) are deferred to Phase 5. See [Phase 5: Web shell writer](#phase-5-web-shell-writer) for the planned web item mapping table.
+
+#### Layout Container
+
+| Node | Description | SwiftUI | Compose |
+| --- | --- | --- | --- |
+| `group` (direction: row) | Horizontal container | `HStack(spacing:)` | `Row(horizontalArrangement:)` |
+| `group` (direction: column) | Vertical container | `VStack(spacing:)` | `Column(verticalArrangement:)` |
+| `group` (direction: stack) | Overlapping container | `ZStack` | `Box` |
+
+Groups with surface decoration (`background`, `corner_radius`, `elevation`) map to card-like wrappers on each platform — e.g., a `Group` inside a styled container view on iOS, or a `Card`/`Surface` on Android.
 
 #### Regions
 
@@ -563,7 +753,7 @@ Content patterns describe how the body region organizes its content:
 | `grid` | Grid layout with iteration | `LazyVGrid` | `LazyVerticalGrid` |
 | `form` | Vertical input layout | `Form` / `VStack` | `Column` with form styling |
 
-When body is a flat item array (no content pattern), shell writers render it as centered/stacked content — the standard pattern for loading, empty, and error states.
+When body is a content node array (no content pattern), shell writers render it using the group layout properties if present, or as centered/stacked content by default — the standard pattern for loading, empty, and error states.
 
 #### Display Items
 
@@ -643,7 +833,7 @@ Layout is fundamentally structural data — a tree of components with properties
 - **Schema-validatable.** A single JSON Schema enforces item validity, token resolution, structural rules, and binding completeness. Validation runs once, against one format, with one codepath.
 - **Consistent with `tokens.yaml`.** The design system layer already persists structured data as YAML. Layout composition is the natural companion — both feed shell writers, both are structural, both benefit from schema validation.
 - **Round-trippable.** External tools (Figma adapters, legacy analyzers) produce `composition.yaml` directly. Re-imports from updated designs produce a new YAML file that can be diffed against the existing `composition.yaml` — same-format diffing, not cross-format.
-- **Diff-friendly.** YAML region structures produce clear, readable diffs in version control. The flat item lists within regions minimize nesting depth, making diffs concise and easy to review.
+- **Diff-friendly.** YAML region structures produce clear, readable diffs in version control. The shallow container tree (typically 2–3 levels deep) keeps diffs concise and easy to review.
 
 ### Pipeline Integration
 
@@ -739,14 +929,14 @@ generates: composition.yaml
 needs: [specs, proposal]
 ---
 
-Generate a `composition.yaml` file describing the spatial composition of every screen in the application. The artifact uses the region-based item vocabulary defined in RFC-7 and follows the schema at `schemas/vectis/composition.schema.json`.
+Generate a `composition.yaml` file describing the spatial composition of every screen in the application. The artifact uses the region-based format with `group` containers and item vocabulary defined in RFC-7, and follows the schema at `schemas/vectis/composition.schema.json`. Groups carry flexbox-like layout properties (`direction`, `gap`, `padding`, `align`, `justify`) and optional sizing and surface decoration.
 
 ## Input Resolution
 
 Before generating, check whether a `composition.yaml` already exists — first in the active change directory (`.specify/changes/<name>/`), then in the baseline (`.specify/specs/`).
 
-1. **Existing `composition.yaml` found** (skeleton or baseline from a prior change) — use it as the starting point. Preserve the region structure. Add `maps_to`, `bind`, `event`, and `*-when` keys based on the specs. Do not rearrange the layout.
-2. **No existing `composition.yaml`** — infer layout from the specs and proposal using the item vocabulary and region structure.
+1. **Existing `composition.yaml` found** (skeleton or baseline from a prior change) — use it as the starting point. Preserve the region structure and all `group` layout properties (`direction`, `gap`, `padding`, `align`, `justify`, `size`, `background`, `corner_radius`, `elevation`). Add `maps_to`, `bind`, `event`, and `*-when` keys to leaf items based on the specs. Do not rearrange groups or modify layout properties.
+2. **No existing `composition.yaml`** — infer layout from the specs and proposal. Use `group` containers to express how items should be arranged (rows vs columns), their spacing and alignment, and their sizing behavior. Use the item vocabulary for leaf content.
 
 When a `design-system/tokens.yaml` file exists or `design-system` is listed in the proposal's Platforms, reference token names for `style`, `color`, and `size` properties.
 
@@ -769,8 +959,8 @@ When the spec is ambiguous about whether two behaviors belong to the same screen
 
 For each screen:
 
-- **If a skeleton exists for this screen:** Read its region structure. The skeleton provides the content placement — which items appear in each region, their token references. Do not restructure it.
-- **If no skeleton exists:** Infer regions from the spec's behavioral requirements. Place the screen title and navigation actions in `header`, primary content in `body` (choosing `list`, `grid`, `form`, or flat item array based on the data shape), secondary actions in `footer`, and a primary creation action as `fab` when appropriate.
+- **If a skeleton exists for this screen:** Read its region and group structure. The skeleton provides the container tree — which items appear in each region, how they are grouped (rows, columns, cards), their spacing and alignment, and their token references. Do not restructure groups or modify layout properties.
+- **If no skeleton exists:** Infer regions and group structure from the spec's behavioral requirements. Place the screen title and navigation actions in `header`, primary content in `body` (choosing `list`, `grid`, `form`, or group-based layout based on the data shape), secondary actions in `footer`, and a primary creation action as `fab` when appropriate. Use `group` containers to express layout intent: `direction: row` for items that should sit side-by-side, `direction: column` for stacked content, `size: { width: fill }` for elements that should expand, and surface decoration (`background`, `corner_radius`) for card-like containers.
 
 ### 3. Enrich with Bindings
 
@@ -787,11 +977,11 @@ For each screen, add wired-mode keys:
 For each screen, identify alternate states from the spec (loading, empty, error, saving). Add entries under `states` with:
 
 - `when`: a predicate in the form `"<field> is <true|false|empty|not empty>"`.
-- `body`: the item list for that state (replaces the screen's body region by default).
+- `body`: the content (items and groups) for that state (replaces the screen's body region by default).
 
 ### 5. Add Overlays
 
-For each screen, identify dialogs, sheets, or snackbars from the spec (confirmation prompts, detail panels, feedback messages). Add entries under `overlays` with `kind`, `trigger` (the Event name that opens the overlay), optional `title`, and `content` (item list). The `trigger` value connects the overlay to the event that presents it — e.g., `trigger: RequestDelete` on a dialog means the dialog appears when `RequestDelete` fires from an `event` key elsewhere on the screen.
+For each screen, identify dialogs, sheets, or snackbars from the spec (confirmation prompts, detail panels, feedback messages). Add entries under `overlays` with `kind`, `trigger` (the Event name that opens the overlay), optional `title`, and `content` (items and groups). The `trigger` value connects the overlay to the event that presents it — e.g., `trigger: RequestDelete` on a dialog means the dialog appears when `RequestDelete` fires from an `event` key elsewhere on the screen.
 
 ### 6. Platform-Specific Regions
 
@@ -827,10 +1017,16 @@ screens:
         - badge: { bind: <field>, color: <token> }
 
     body:
-      list:  # or grid, form, or flat item array
+      list:  # or grid, form, or group-based layout
         each: <collection_field>
         item:
-          # items with bind, event, token references
+          - group:
+              direction: row
+              gap: <token>
+              align: center
+              items:
+                # leaf items with bind, event, token references
+                # nested groups for sub-layout (e.g., column stack)
 
     footer:
       - segments: { bind: <field>, event: <Event>, options: [...] }
@@ -841,7 +1037,11 @@ screens:
       <state-slug>:
         when: "<field> is <predicate>"
         body:
-          # replacement items
+          - group:
+              direction: column
+              align: center
+              items:
+                # replacement items
 
     overlays:
       <overlay-slug>:
@@ -849,7 +1049,7 @@ screens:
         trigger: <EventName>
         title: "..."
         content:
-          # overlay items
+          # items and groups
 
     platforms:          # only when platform regions differ
       ios:
@@ -878,15 +1078,18 @@ Both `ios-writer` and `android-writer` currently have an Input Analysis step tha
 | Extract | Source | Maps to |
 | --- | --- | --- |
 | Screen regions | `composition.yaml` `header`, `body`, `footer`, `fab` | View structure (nav bar, content, bottom bar, FAB) |
+| Container structure | `composition.yaml` `group` nodes with `direction`, `gap`, `align`, `justify` | HStack/VStack/ZStack (iOS), Row/Column/Box (Android), flex containers (web) |
+| Sizing | `composition.yaml` `size` on groups and items (`fill`, `hug`, fixed) | `.frame(maxWidth: .infinity)` (iOS), `Modifier.fillMaxWidth()` (Android), `flex: 1` (web) |
+| Surface decoration | `composition.yaml` `background`, `corner_radius`, `elevation` on groups | Styled container views (iOS), Card/Surface (Android), styled divs (web) |
 | Field bindings | `composition.yaml` `bind` keys on items | Property bindings in views |
 | Event wiring | `composition.yaml` `event` keys on items | `onEvent()` / interaction handlers |
-| Token references | `composition.yaml` `style`, `color`, `size` | `VectisTypography.*` / `VectisColors.*` |
+| Token references | `composition.yaml` `style`, `color`, `gap`, `padding` | `VectisTypography.*` / `VectisColors.*` / `VectisSpacing.*` |
 | Conditional rendering | `composition.yaml` `states` and `*-when` keys | `if`/`switch` in view code |
 | Iteration | `composition.yaml` `list.each` / `grid.each` + `item` keys | `ForEach` / `LazyColumn items` |
 
 #### Mapping Priority
 
-When the composition artifact is present, shell writers use it as the primary layout guide. When absent (for backward compatibility with existing changes that predate RFC-7), shell writers fall back to the current inference behavior. The fallback ensures existing projects and in-flight changes are not disrupted.
+When the composition artifact is present, shell writers use it as the primary layout guide — the group structure, layout properties, and sizing modes are followed deterministically rather than inferred. When absent (for backward compatibility with existing changes that predate RFC-7), shell writers fall back to the current inference behavior. The fallback ensures existing projects and in-flight changes are not disrupted.
 
 ### Delta Operations
 
@@ -1065,7 +1268,7 @@ The ios-writer's Input Analysis step currently extracts types from `app.rs` and 
 
 - **New input:** Add `composition.yaml` to the input list alongside `app.rs`, `tokens.yaml`, and spec shell sections.
 - **Input Analysis table:** Add rows for screen regions, field bindings, event wiring, token references, conditional rendering, and iteration (the extraction table from [Shell Writer Consumption](#input-analysis-changes)).
-- **Mapping priority:** When `composition.yaml` is present, the region structure takes precedence over the ios-writer's current convention-based inference for view body composition. When absent, the existing inference behavior is unchanged.
+- **Mapping priority:** When `composition.yaml` is present, the region structure and group container tree take precedence over the ios-writer's current convention-based inference for view body composition. Groups map to SwiftUI stacks (`HStack`/`VStack`/`ZStack`) with their layout properties; sizing maps to `.frame()` modifiers; surface decoration maps to styled container views. When absent, the existing inference behavior is unchanged.
 - **Platform-specific overrides:** When `composition.yaml` contains `platforms.ios` region overrides for a screen, the ios-writer uses those in preference to the shared regions.
 
 #### `plugins/vectis/skills/android-writer/SKILL.md`
@@ -1074,7 +1277,7 @@ Mirrors the ios-writer changes:
 
 - **New input:** `composition.yaml` alongside `app.rs`, `tokens.yaml`, and spec shell sections.
 - **Input Analysis table:** Same extraction rows as ios-writer.
-- **Mapping priority:** Same precedence rule — composition artifact present means region-guided, absent means inference-based.
+- **Mapping priority:** Same precedence rule — composition artifact present means the group container tree provides deterministic layout instructions (`Row`/`Column`/`Box` with `Arrangement`/`Alignment`, `Modifier.fillMaxWidth()`, `Card`/`Surface` for decoration). When absent, inference-based.
 - **Platform-specific overrides:** When `composition.yaml` contains `platforms.android` region overrides for a screen, the android-writer uses those in preference to the shared regions.
 
 #### `plugins/vectis/skills/core-writer/SKILL.md`
@@ -1236,12 +1439,16 @@ With the item vocabulary and design system in place, a web shell writer can map 
 | Region / Item | Web mapping |
 | --- | --- |
 | `header` | `<header>` / `<nav>` with title and action buttons |
-| `body` (item array) | `<main>` with centered content |
+| `body` (content array) | `<main>` with centered content |
 | `body.list` | `<ul>` / virtual list |
 | `body.grid` | CSS Grid |
 | `body.form` | `<form>` with vertical input layout |
 | `footer` | `<footer>` / bottom nav |
 | `fab` | Fixed-position `<button>` |
+| `group` (direction: row) | `<div style="display:flex; flex-direction:row">` |
+| `group` (direction: column) | `<div style="display:flex; flex-direction:column">` |
+| `group` (direction: stack) | `<div style="position:relative">` with absolute children |
+| `group` with decoration | Styled `<div>` with background, border-radius, box-shadow |
 | `text` | `<span>` / `<p>` / `<h*>` (based on `style`) |
 | `field` | `<input>` / `<textarea>` |
 | `button` | `<button>` |
@@ -1267,7 +1474,15 @@ The web shell writer reads `composition.yaml`, `design.md`, and `tokens.yaml` �
 
 **Full design tool integration (Figma, Sketch).** A tight bidirectional sync with design tools was rejected due to authentication, API versioning, and workflow complexity. Instead, Figma is supported as a one-way *import source* (Phase 3). The adapter produces a `composition.yaml` skeleton that the composition brief enriches with bindings from specs. Re-imports produce a fresh skeleton that can be diffed against the existing `composition.yaml` to surface design changes.
 
-**Component-tree YAML (deeply nested).** An earlier design used a deeply nested YAML tree where each screen was described as a hierarchy of PascalCase components (`Scaffold > TopBar > Text`, `ScrollableList > Card > Row > Checkbox + Column > Text`). Each component was a single-key YAML mapping with a `children` key for nesting and named slots for containers. Rejected because the nesting depth made the format hard to author, hard to review in diffs, and verbose — a simple two-screen todo app required ~170 lines of YAML. The format also over-specified container structure (rows, columns, cards, spacers) that shell writers are better positioned to choose based on platform conventions and design tokens. The region-based format captures the same content-placement information (what data appears where, what events fire) in roughly a third of the lines by delegating container decisions to shell writers.
+**Component-tree YAML (deeply nested).** An earlier design used a deeply nested YAML tree where each screen was described as a hierarchy of PascalCase components (`Scaffold > TopBar > Text`, `ScrollableList > Card > Row > Checkbox + Column > Text`). Each component was a single-key YAML mapping with a `children` key for nesting and named slots for containers. Rejected because the nesting depth made the format hard to author, hard to review in diffs, and verbose — a simple two-screen todo app required ~170 lines of YAML. The format used platform-specific component names (Scaffold, TopBar) rather than platform-neutral abstractions. The current design uses `group` containers with a small flexbox property set instead — this provides the structural fidelity of a container tree without over-specifying platform-specific components, and keeps nesting shallow (2–3 levels typical).
+
+**Flat item lists without container structure (earlier version of this RFC).** An earlier revision of this RFC used flat item lists within regions, with no `group` containers, sizing, or surface decoration. Shell writers were expected to infer container structure (rows vs columns, cards, spacing) from the item sequence and context. This was rejected after analysis showed that container structure — which elements group together and how — is the single most important factor for layout fidelity. Research (DOne 2025, Figma2Code 2025) and industry tools (Yoga, FigmaToCode, Plasmic) all converge on a flexbox-like container tree as the minimum viable layout model. The flat-list approach produced functionally correct but visually arbitrary output for any screen more complex than a simple list. The current design adds `group` containers with ~10 flexbox-like properties — the smallest property set that maps to Figma Auto Layout, CSS Flexbox, SwiftUI stacks, and Compose Row/Column/Box.
+
+**Absolute positioning / pixel coordinates.** Rejected because models that map absolute coordinates produce rigid, non-responsive code. The Figma2Code benchmark (2025) shows that absolute-positioning approaches have dramatically worse responsiveness scores (APR rising to 31–58%) compared to flexbox-based approaches. The composition artifact uses relative layout properties (direction, gap, alignment, sizing modes) specifically because they produce responsive code across screen sizes.
+
+**Constraint-based layout (Auto Layout / ConstraintLayout).** Constraint-based systems are powerful but significantly more verbose, harder to author manually, and don't have a clean cross-platform mapping. SwiftUI has moved away from constraint-based layout toward stacks; Compose uses Row/Column/Box rather than ConstraintLayout for most UIs. The flexbox subset covers the vast majority of layout patterns with a smaller, more portable property set.
+
+**Full CSS as the layout model.** Rejected because CSS is platform-specific (web-only) and includes properties that don't map to native mobile (float, position, display: table, etc.). The flexbox subset is the intersection of CSS Flexbox, SwiftUI stacks, and Compose containers — the largest common denominator that maps cleanly to all targets.
 
 ## Decisions
 
@@ -1294,8 +1509,13 @@ screens:
           - list:
               each: items
               item:
-                - text: { bind: title, style: body }
-                - switch: { bind: enabled, event: ToggleSetting(id) }
+                - group:
+                    direction: row
+                    align: center
+                    justify: space-between
+                    items:
+                      - text: { bind: title, style: body }
+                      - switch: { bind: enabled, event: ToggleSetting(id) }
 
     platforms:
       ios:
@@ -1308,8 +1528,13 @@ screens:
               - list:
                   each: items
                   item:
-                    - text: { bind: title, style: body }
-                    - switch: { bind: enabled, event: ToggleSetting(id) }
+                    - group:
+                        direction: row
+                        align: center
+                        justify: space-between
+                        items:
+                          - text: { bind: title, style: body }
+                          - switch: { bind: enabled, event: ToggleSetting(id) }
 ```
 
 Shell writers use the platform-specific regions when present, falling back to the shared regions when absent. Only overridden regions need to be specified in the platform block — shared regions like `header` carry through. Separate `composition-ios.yaml` / `composition-android.yaml` files are not used — a single file keeps the shared-first principle and avoids duplication of screens that look the same on both platforms.
@@ -1466,8 +1691,8 @@ Draft JSON Schema for `schemas/vectis/composition.schema.json`. This is a Phase 
       "additionalProperties": false,
       "properties": {
         "title": { "type": "string" },
-        "leading": { "$ref": "#/$defs/itemArray" },
-        "trailing": { "$ref": "#/$defs/itemArray" }
+        "leading": { "$ref": "#/$defs/contentNodeArray" },
+        "trailing": { "$ref": "#/$defs/contentNodeArray" }
       }
     },
 
@@ -1477,7 +1702,7 @@ Draft JSON Schema for `schemas/vectis/composition.schema.json`. This is a Phase 
       "additionalProperties": false,
       "properties": {
         "each": { "type": "string" },
-        "item": { "$ref": "#/$defs/itemArray" },
+        "item": { "$ref": "#/$defs/contentNodeArray" },
         "style": { "type": "string" }
       }
     },
@@ -1489,7 +1714,7 @@ Draft JSON Schema for `schemas/vectis/composition.schema.json`. This is a Phase 
       "properties": {
         "each": { "type": "string" },
         "columns": { "type": "integer", "minimum": 1 },
-        "item": { "$ref": "#/$defs/itemArray" }
+        "item": { "$ref": "#/$defs/contentNodeArray" }
       }
     },
 
@@ -1511,9 +1736,9 @@ Draft JSON Schema for `schemas/vectis/composition.schema.json`. This is a Phase 
           "type": "object",
           "required": ["form"],
           "additionalProperties": false,
-          "properties": { "form": { "$ref": "#/$defs/itemArray" } }
+          "properties": { "form": { "$ref": "#/$defs/contentNodeArray" } }
         },
-        { "$ref": "#/$defs/itemArray" }
+        { "$ref": "#/$defs/contentNodeArray" }
       ]
     },
 
@@ -1527,7 +1752,7 @@ Draft JSON Schema for `schemas/vectis/composition.schema.json`. This is a Phase 
         "maps_to": { "type": "string" },
         "header": { "$ref": "#/$defs/headerRegion" },
         "body": { "$ref": "#/$defs/bodyRegion" },
-        "footer": { "$ref": "#/$defs/itemArray" },
+        "footer": { "$ref": "#/$defs/contentNodeArray" },
         "fab": { "$ref": "#/$defs/itemProps" },
         "states": {
           "type": "object",
@@ -1551,7 +1776,7 @@ Draft JSON Schema for `schemas/vectis/composition.schema.json`. This is a Phase 
       "properties": {
         "header": { "$ref": "#/$defs/headerRegion" },
         "body": { "$ref": "#/$defs/bodyRegion" },
-        "footer": { "$ref": "#/$defs/itemArray" },
+        "footer": { "$ref": "#/$defs/contentNodeArray" },
         "fab": { "$ref": "#/$defs/itemProps" }
       }
     },
@@ -1565,7 +1790,7 @@ Draft JSON Schema for `schemas/vectis/composition.schema.json`. This is a Phase 
         "replaces": { "type": "string", "enum": ["body", "screen"] },
         "header": { "$ref": "#/$defs/headerRegion" },
         "body": { "$ref": "#/$defs/bodyRegion" },
-        "footer": { "$ref": "#/$defs/itemArray" },
+        "footer": { "$ref": "#/$defs/contentNodeArray" },
         "fab": { "$ref": "#/$defs/itemProps" }
       }
     },
@@ -1578,20 +1803,102 @@ Draft JSON Schema for `schemas/vectis/composition.schema.json`. This is a Phase 
         "kind": { "type": "string", "enum": ["dialog", "sheet", "snackbar"] },
         "trigger": { "$ref": "#/$defs/triggerValue" },
         "title": { "type": "string" },
-        "content": { "$ref": "#/$defs/itemArray" }
+        "content": { "$ref": "#/$defs/contentNodeArray" }
       }
     },
 
-    "itemArray": {
+    "contentNodeArray": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/item" }
+      "items": { "$ref": "#/$defs/contentNode" },
+      "description": "Array of items and/or groups."
+    },
+
+    "contentNode": {
+      "oneOf": [
+        { "$ref": "#/$defs/item" },
+        { "$ref": "#/$defs/groupItem" }
+      ]
+    },
+
+    "groupItem": {
+      "type": "object",
+      "required": ["group"],
+      "additionalProperties": false,
+      "properties": {
+        "group": { "$ref": "#/$defs/groupProps" }
+      }
+    },
+
+    "groupProps": {
+      "type": "object",
+      "required": ["items"],
+      "properties": {
+        "direction": { "type": "string", "enum": ["row", "column", "stack"] },
+        "gap": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "padding": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "number" },
+            { "$ref": "#/$defs/paddingSpec" }
+          ]
+        },
+        "align": { "type": "string", "enum": ["start", "center", "end", "stretch", "baseline"] },
+        "justify": { "type": "string", "enum": ["start", "center", "end", "space-between", "space-around"] },
+        "wrap": { "type": "boolean" },
+        "size": { "$ref": "#/$defs/sizingSpec" },
+        "background": { "$ref": "#/$defs/tokenRef" },
+        "corner_radius": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "elevation": { "$ref": "#/$defs/tokenRef" },
+        "border": {
+          "type": "object",
+          "required": ["color", "width"],
+          "additionalProperties": false,
+          "properties": {
+            "color": { "$ref": "#/$defs/tokenRef" },
+            "width": { "type": "number" }
+          }
+        },
+        "items": { "$ref": "#/$defs/contentNodeArray" },
+        "label": { "type": "string" },
+        "role": { "type": "string", "enum": ["heading", "button", "image", "link"] },
+        "hint": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+
+    "paddingSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "top": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "right": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "bottom": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
+        "left": { "oneOf": [{ "type": "string" }, { "type": "number" }] }
+      }
+    },
+
+    "sizingSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "width": { "$ref": "#/$defs/sizingValue" },
+        "height": { "$ref": "#/$defs/sizingValue" }
+      }
+    },
+
+    "sizingValue": {
+      "oneOf": [
+        { "type": "number", "minimum": 0 },
+        { "type": "string", "enum": ["fill", "hug"] }
+      ]
     },
 
     "item": {
       "type": "object",
       "minProperties": 1,
       "maxProperties": 1,
+      "not": { "required": ["group"] },
       "additionalProperties": {
         "oneOf": [
           { "type": "null" },
@@ -1615,11 +1922,12 @@ Draft JSON Schema for `schemas/vectis/composition.schema.json`. This is a Phase 
 
         "style": { "type": "string" },
         "color": { "$ref": "#/$defs/tokenRef" },
-        "size": { "$ref": "#/$defs/tokenRef" },
+        "size": { "$ref": "#/$defs/sizingSpec" },
+        "corner_radius": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
 
         "each": { "type": "string" },
         "columns": { "type": "integer", "minimum": 1 },
-        "item": { "$ref": "#/$defs/itemArray" },
+        "item": { "$ref": "#/$defs/contentNodeArray" },
 
         "label": { "type": "string" },
         "role": { "type": "string", "enum": ["heading", "button", "image", "link"] },
@@ -1662,9 +1970,12 @@ Draft JSON Schema for `schemas/vectis/composition.schema.json`. This is a Phase 
 
 **Notes on the draft schema:**
 
-- `itemProps` uses `additionalProperties: true` to allow `*-when` conditional properties whose names are not enumerable in advance. Cross-artifact validation (Phase 2) checks that `*-when` values reference valid boolean fields.
+- `itemProps` and `groupProps` use `additionalProperties: true` to allow `*-when` conditional properties whose names are not enumerable in advance. Cross-artifact validation (Phase 2) checks that `*-when` values reference valid boolean fields.
 - The `oneOf` constraint on the top level enforces that a document has either `screens` (baseline) or `delta` (per-change), never both.
-- The `bodyRegion` uses `oneOf` to accept four shapes: `{ list: ... }`, `{ grid: ... }`, `{ form: [...] }`, or a flat item array. The first three are wrapped in single-key objects to disambiguate the polymorphic body.
+- The `contentNode` union uses `oneOf` to distinguish items (any single key except `group`) from groups (`group` key required). The `item` def uses `not: { required: ["group"] }` to prevent ambiguity.
+- The `bodyRegion` uses `oneOf` to accept four shapes: `{ list: ... }`, `{ grid: ... }`, `{ form: [...] }`, or a content node array. The first three are wrapped in single-key objects to disambiguate the polymorphic body.
+- The `sizingValue` union accepts a number (fixed size), `"fill"`, or `"hug"`. When `size` is absent on an item or group, the default is hug (intrinsic sizing).
+- `groupProps` captures the flexbox-like layout properties (`direction`, `gap`, `padding`, `align`, `justify`, `wrap`) and optional surface decoration (`background`, `corner_radius`, `elevation`, `border`).
 - The `bindValue` pattern allows both bare names (`title`) and dot-qualified names (`section.heading`) for nested iteration contexts.
 - `custom_items` is validated structurally but does not participate in cross-artifact item validity checks — that is a Phase 2 concern.
 - The `fab` property on screen entries accepts `itemProps` directly (not wrapped in an item type key) since it is always a single floating action item.
