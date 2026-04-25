@@ -674,23 +674,12 @@ id: composition
 description: Define the visual layout of each screen
 generates: composition.yaml
 needs: [specs, proposal]
-reads_if_present: [composition.yaml]
 ---
 ```
 
-It reads the spec to know which screens exist (ViewModel variants from spec requirements about views/pages) and what interactions they support (Event variants from spec requirements about features). It reads the proposal to know which platforms are targeted (determines whether to include platform-specific region overrides). The `reads_if_present` key declares that the brief optionally reads an existing `composition.yaml` skeleton (from baseline or manual authoring) as the starting point to enrich. This is not a hard dependency — when no skeleton exists, the brief infers regions from specs and proposal.
+It reads the spec to know which screens exist (ViewModel variants from spec requirements about views/pages) and what interactions they support (Event variants from spec requirements about features). It reads the proposal to know which platforms are targeted (determines whether to include platform-specific region overrides).
 
-**Note on `reads_if_present`:** This is a new frontmatter key introduced by this RFC. The existing `needs` key declares required inputs — the pipeline ensures they exist before the brief runs. `reads_if_present` declares optional inputs — the pipeline passes them to the agent when available but does not fail when absent. The `specify schema resolve` command must be updated to recognize this key (see [CLI Impact](#cli-impact)).
-
-`reads_if_present` semantics:
-
-- **Value format.** An array of file paths relative to the change directory (same format as `generates`). Single files only — glob patterns are not supported. Example: `reads_if_present: [composition.yaml]`.
-- **Resolution order.** For each path in the array, `specify schema resolve` checks (1) the active change directory (`.specify/changes/<name>/`), then (2) the baseline (`.specify/specs/`). The first existing match wins. This means the brief sees the in-progress change's version when available, falling back to baseline.
-- **Snapshot semantics.** Resolution happens once, *before* the brief runs. The content is captured at resolution time and passed to the agent as a frozen snapshot. If the brief itself `generates` the same file (as the composition brief does — it both `reads_if_present: [composition.yaml]` and `generates: composition.yaml`), the resolution sees only the pre-existing version (from a prior change's baseline or a manually placed skeleton), never a partially-written output from the current pipeline run. This is the same temporal model as `needs` — inputs are resolved before execution, not lazily during it.
-- **Agent contract.** When the file exists, `specify schema resolve` includes the file content in the resolved brief context alongside the `needs` inputs. The brief receives the full file content, not just a path. When the file does not exist, the key is omitted from the resolved context — the brief receives no indication of the optional input, and proceeds without it.
-- **Pipeline output.** `specify schema pipeline` includes `reads_if_present` entries in its output with a `present: true|false` flag, so operators can see which optional inputs were available during resolution.
-- **No ordering effect.** Unlike `needs`, `reads_if_present` does not establish a dependency edge for pipeline ordering. When `specify schema pipeline` computes the topological sort for brief execution, it explicitly ignores `reads_if_present` entries — they do not create dependency edges. The brief's position in the pipeline is determined solely by its `needs` declarations and its position in the `schema.yaml` array.
-- **Frontmatter validation.** The `BriefFrontmatter` struct in the CLI (`crates/schema/src/brief.rs`) must be extended with a `reads_if_present: Vec<String>` field (defaulting to empty). The pipeline validation in `pipeline.rs` must recognize the key without treating it as a dependency edge. Unknown frontmatter keys should continue to be rejected — `reads_if_present` is an explicitly recognized optional key, not a free-form extension point.
+The brief's prose instructions direct the agent to check for an existing `composition.yaml` — first in the active change directory (`.specify/changes/<name>/`), then in the baseline (`.specify/specs/`). If one exists, the agent uses it as a skeleton and enriches it with `bind`, `event`, and `maps_to` keys derived from the specs, preserving the existing region structure. If no `composition.yaml` exists, the agent infers layout from the specs and proposal. This optional-input behavior is expressed entirely in the brief's prose instructions; it does not require new pipeline machinery.
 
 ```
 existing composition.yaml skeleton (optional)
@@ -748,16 +737,15 @@ id: composition
 description: Define the visual layout of each screen as a composition.yaml artifact
 generates: composition.yaml
 needs: [specs, proposal]
-reads_if_present: [composition.yaml]
 ---
 
 Generate a `composition.yaml` file describing the spatial composition of every screen in the application. The artifact uses the region-based item vocabulary defined in RFC-7 and follows the schema at `schemas/vectis/composition.schema.json`.
 
 ## Input Resolution
 
-Resolve inputs in this priority order:
+Before generating, check whether a `composition.yaml` already exists — first in the active change directory (`.specify/changes/<name>/`), then in the baseline (`.specify/specs/`).
 
-1. **Existing `composition.yaml` present** (skeleton or baseline from a prior change) — use it as the starting point. Preserve the region structure. Add `maps_to`, `bind`, `event`, and `*-when` keys based on the specs. Do not rearrange the layout.
+1. **Existing `composition.yaml` found** (skeleton or baseline from a prior change) — use it as the starting point. Preserve the region structure. Add `maps_to`, `bind`, `event`, and `*-when` keys based on the specs. Do not rearrange the layout.
 2. **No existing `composition.yaml`** — infer layout from the specs and proposal using the item vocabulary and region structure.
 
 When a `design-system/tokens.yaml` file exists or `design-system` is listed in the proposal's Platforms, reference token names for `style`, `color`, and `size` properties.
@@ -1058,7 +1046,7 @@ The spec brief currently instructs: "Views (screens the user sees) become requir
 The design brief currently declares `needs: [proposal]` (it also implicitly reads specs, though this is not declared in `needs`). With the composition artifact, it gains additional inputs:
 
 - **`needs`** changes to `[proposal, specs]` — making the existing implicit dependency on specs explicit.
-- **`reads_if_present`** gains `[composition.yaml]` — the composition artifact is an optional input, not a hard dependency. This preserves backward compatibility: projects that predate RFC-7 (or Omnia-schema projects that don't use Vectis composition) continue to work because the design brief proceeds without composition when it is absent. When composition is present, the design brief uses it as an additional input to validate view struct completeness; when absent, the design brief infers ViewModel shape from specs alone (the current behavior).
+- **Composition awareness (prose-based).** The design brief gains prose instructions to check for a `composition.yaml` in the change directory or baseline. When present, the design brief uses it as an additional input to validate view struct completeness. When absent, the design brief infers ViewModel shape from specs alone (the current behavior). This preserves backward compatibility: projects that predate RFC-7 (or Omnia-schema projects that don't use Vectis composition) continue to work because the design brief proceeds without composition.
 - **Domain Model § ViewModel:** The brief currently instructs the agent to derive ViewModel variants and per-page view struct fields from the spec. With composition as input, the brief additionally instructs: "When `composition.yaml` is present, read it and adopt the screen names, ViewModel variant names, and field names proposed by the composition artifact. Adjust naming only when Rust conventions or domain model considerations require it. Every `bind` value in `composition.yaml` must appear as a field in the corresponding per-page view struct. When `composition.yaml` is absent, infer the ViewModel shape from specs as before."
 - **Gap surfacing:** The design brief gains an instruction to flag mismatches — a `bind` in composition with no spec backing, or a spec-described data element with no composition binding.
 
@@ -1103,7 +1091,7 @@ This preserves the Crux separation: core knows about data shape, not spatial arr
 The tasks brief currently declares `needs: [specs, design]`. With the composition artifact:
 
 - **`needs`** stays `[specs, design]` — unchanged.
-- **`reads_if_present`** gains `[composition.yaml]` — the tasks brief needs to know whether composition exists so it can express the dependency between shell tasks and `composition.yaml`, but this is not a hard requirement (pre-RFC-7 changes have no composition artifact).
+- **Composition awareness (prose-based).** The tasks brief gains prose instructions to check for a `composition.yaml` in the change directory. When present, the tasks brief expresses the dependency between shell tasks and `composition.yaml` in its task ordering. This is not a hard requirement — pre-RFC-7 changes have no composition artifact.
 - The tasks brief's skill directive table gains no new skill — composition generation is part of the define pipeline, not a separate build skill. However, the task ordering guidance gains a note: "When `composition.yaml` is present, shell writer tasks (ios-writer, android-writer) depend on it. When composition validation fails, the corresponding shell task is blocked. When `composition.yaml` is absent, shell writers fall back to inference and no composition-related blocking applies."
 
 #### `schemas/vectis/briefs/merge.md`
@@ -1119,7 +1107,7 @@ The define skill orchestrates the define pipeline — it runs each brief in sequ
 
 - **Pipeline awareness.** The define skill reads `schema.yaml` to determine the brief sequence. With the composition stage added, the skill discovers it automatically via `specify schema pipeline`. No hardcoded brief list change is needed in the skill itself, but the skill must handle the new artifact type.
 - **YAML output.** All existing briefs produce markdown artifacts. The composition brief produces a YAML file (`composition.yaml`). The define skill must write the agent's output as YAML rather than markdown for this stage. The skill's file-writing logic should dispatch on the `generates` extension: `.md` files are written as-is; `.yaml` files are written with YAML formatting validation (the agent's output must be valid YAML).
-- **Skeleton passthrough.** When a `composition.yaml` already exists (in the change directory or baseline), the define skill must pass its content to the composition brief's agent context as an optional input (via the `reads_if_present` resolution mechanism in `specify schema resolve`). The skill does not need special handling for this — `specify schema resolve` handles the content injection.
+- **Skeleton passthrough.** The composition brief's prose instructions direct the agent to check for an existing `composition.yaml` in the change directory or baseline. The define skill does not need special handling for this — the agent reads the file system directly when the brief instructs it to look for an existing artifact.
 - **Change directory placement.** The composition artifact is written to `.specify/changes/<name>/composition.yaml`, alongside `proposal.md`, `spec.md`, `design.md`, and `tasks.md`. When the change uses delta mode, the composition artifact contains a `delta` key (not `screens`).
 
 #### `plugins/spec/skills/extract/SKILL.md`
@@ -1137,7 +1125,6 @@ The composition artifact introduces new responsibilities for the `specify` CLI (
 
 | Command | Change |
 | --- | --- |
-| `specify schema resolve` | Recognize the new `reads_if_present` frontmatter key on briefs. Pass optional inputs to the agent when they exist on disk; do not fail when absent. |
 | `specify change create` | Include `composition.yaml` in the change's artifact manifest. When the change directory is created, the lifecycle tracker knows that `composition.yaml` is an expected artifact (alongside `proposal.md`, `spec.md`, `design.md`, `tasks.md`). |
 | `specify status` | Report `composition.yaml` completion status alongside other artifacts. Show whether the artifact is in skeleton mode (no `bind`/`event` keys) or wired mode. Report the number of screens. |
 | `specify validate` | Add structural validation: parse `composition.yaml` against the JSON Schema (`schemas/vectis/composition.schema.json`). Report schema violations as errors. This is schema-only validation — cross-artifact checks come in Phase 2. |
@@ -1166,14 +1153,14 @@ Deliverables:
 - `schemas/vectis/composition.schema.json` JSON Schema (draft in [Appendix A](#appendix-a-composition-json-schema))
 - Updated `schemas/vectis/schema.yaml` pipeline (add `composition` stage between `specs` and `design`)
 - Updated `schemas/vectis/briefs/specs.md` brief (strengthen view-naming guidance for screen discovery)
-- Updated `schemas/vectis/briefs/design.md` brief (`needs: [proposal, specs]`, `reads_if_present: [composition.yaml]`, ViewModel adoption instructions)
-- Updated `schemas/vectis/briefs/tasks.md` brief (`reads_if_present: [composition.yaml]`, shell task dependency on `composition.yaml`)
+- Updated `schemas/vectis/briefs/design.md` brief (`needs: [proposal, specs]`, prose-based composition awareness, ViewModel adoption instructions)
+- Updated `schemas/vectis/briefs/tasks.md` brief (prose-based composition awareness, shell task dependency on `composition.yaml`)
 - Updated `schemas/vectis/briefs/merge.md` brief (composition delta in merge preview guidance)
 - Updated `plugins/spec/skills/define/SKILL.md` (YAML output handling, skeleton passthrough, change directory placement)
 - Updated `plugins/vectis/skills/ios-writer/SKILL.md` (new input, Input Analysis table, mapping priority, platform overrides)
 - Updated `plugins/vectis/skills/android-writer/SKILL.md` (same changes as ios-writer)
 - Updated `plugins/vectis/skills/core-writer/SKILL.md` (Artifact-to-Code Mapping note on composition alignment via design)
-- CLI changes: `specify schema resolve` (`reads_if_present` support, `BriefFrontmatter` struct update), `specify change create` (composition in manifest), `specify status` (composition reporting), `specify validate` (schema validation), `specify merge` (YAML delta merge with per-screen checksums), `specify spec preview` and `specify spec conflict-check` (composition awareness)
+- CLI changes: `specify change create` (composition in manifest), `specify status` (composition reporting), `specify validate` (schema validation), `specify merge` (YAML delta merge with per-screen checksums), `specify spec preview` and `specify spec conflict-check` (composition awareness)
 
 ### Phase 2: Validation
 
