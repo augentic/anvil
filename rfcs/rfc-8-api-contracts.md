@@ -6,7 +6,11 @@
 
 Introduce machine-readable API contracts as a first-class, platform-level artifact in Specify. Contracts capture the interface shapes that behavioral specs describe — request/response payloads, message envelopes, error types — in a format that tooling can validate and generate code from. JSON Schema defines the shared payload vocabulary; OpenAPI and AsyncAPI provide protocol-specific bindings for HTTP endpoints and messaging respectively.
 
-Contracts are co-located with `registry.yaml` and `plan.yaml` at `.specify/contracts/`. They are a platform concern — they describe interfaces *between* components, not internals of any one — and every project references the same central contracts, including the implementer of the API itself. A new `contracts` brief in the define pipeline reads the current baseline contracts and proposes the minimal set of changes a given change requires. No CLI changes are required for the initial implementation; baseline tracking and cross-repo distribution are layered on top.
+Contracts are co-located with `registry.yaml` and `plan.yaml` at `.specify/contracts/`. They are a platform concern — they describe interfaces *between* components, not internals of any one — and every project references the same central contracts, including the implementer of the API itself. A `contracts` brief in the define pipeline reads the current baseline contracts and proposes the minimal set of changes a given change requires.
+
+For multi-repo initiatives, contracts are defined via a dedicated **contract change** in the plan — a regular Specify change whose specs are interface-level behavioral requirements and whose `contracts` brief derives the machine-readable shapes from them. Implementation changes on both sides depend on the contract change, enabling parallel execution. For single-repo projects, contracts are derived inline during a change's define phase. Both patterns use the same brief and the same central location; the difference is plan structure, not mechanism.
+
+No CLI changes are required for the initial implementation; baseline tracking and cross-repo distribution are layered on top.
 
 ## Motivation
 
@@ -209,15 +213,72 @@ See `.specify/contracts/messages/` for the full AsyncAPI specifications.
 
 The `design` brief's `needs` gains `contracts` so the agent has the generated files available when writing design.md.
 
+## Authorship patterns
+
+The `contracts` brief handles both creating new contracts and evolving existing ones — it reads the baseline and proposes the minimal delta. This single mechanism supports two authorship patterns depending on context.
+
+### Contract-first (dedicated contract change)
+
+For multi-repo initiatives or APIs shared with external consumers, contracts are defined as their own change in the plan. A contract change is a regular Specify change that produces interface-level behavioral specs and derives contracts from them. It carries no implementation code — its build phase validates the contract artifacts rather than generating code.
+
+The interface has its own behavioral specs, distinct from any project's internal specs:
+
+> The user registration API SHALL accept a `POST /users` request with a `UserRegistration` payload.
+> WHEN the registration succeeds, the API SHALL respond with `201 Created` and a `User` payload including the assigned `id`.
+> WHEN the email is already registered, the API SHALL respond with `409 Conflict` and an `ErrorResponse` payload.
+
+These are behavioral requirements for the interface itself — not the producer's internal logic or the consumer's UI flows. The `contracts` brief derives the machine-readable shapes from these specs: JSON Schema for `UserRegistration`, `User`, and `ErrorResponse`; an OpenAPI binding for the endpoint. The spec-driven model is intact: specs describe *what* the interface does; contracts capture *what the interface looks like*.
+
+The plan makes the sequencing explicit and enables parallelism:
+
+```yaml
+changes:
+  - name: user-api-contract
+    description: "Define the user registration API contract"
+    status: pending
+
+  - name: user-api-backend
+    project: backend
+    description: "Implement the user registration API"
+    depends-on: [user-api-contract]
+    status: pending
+
+  - name: registration-screen
+    project: mobile
+    description: "Build the registration screen"
+    depends-on: [user-api-contract]
+    status: pending
+```
+
+Once the contract change merges, producer and consumer run in parallel — both depend on the contract, not on each other:
+
+```
+                         ┌── user-api-backend (backend)
+user-api-contract ───────┤
+                         └── registration-screen (mobile)
+```
+
+The `/spec:plan` skill can automate this: when it identifies an interface between projects during planning, it inserts a contract change before the implementation changes on both sides.
+
+### Spec-first (inline derivation)
+
+For single-repo projects or changes that don't cross API boundaries, contracts are derived inline during a single change's define phase. The change's specs describe the system's behavior; the `contracts` brief extracts the interface shapes from those specs in the same pipeline run. No separate contract change is needed.
+
+This is the simpler pattern — one change, one define phase, specs and contracts produced together. It applies when there is no multi-party agreement to negotiate.
+
+### Pattern selection
+
+The choice between patterns is a planning decision, not a mechanism difference. Both use the same `contracts` brief, the same central `.specify/contracts/` location, and the same merge semantics. The `contracts` brief does not need to know which pattern is in play — in the contract-first case, the baseline is sparse and the change produces substantial new contracts; in the spec-first case, the baseline may already be rich and the change proposes a small delta.
+
+`/spec:plan` applies a simple heuristic: if the plan contains changes in multiple projects that share an API boundary, insert a contract change. Otherwise, rely on inline derivation.
+
 ## Multi-repo contract sharing
 
 Central co-location with `registry.yaml` makes multi-repo contract sharing straightforward. The same `.specify/contracts/` directory serves all projects; distribution uses the existing workspace infrastructure.
 
 ### Layer 1: Central contracts with workspace distribution (no CLI changes)
 
-In a multi-repo initiative, contracts live in the initiating repo alongside `registry.yaml`. The plan skill — which already has the cross-project view — can generate initial contract stubs during `/spec:plan` when it identifies interfaces between projects. Individual changes then refine contracts during their define phases.
-
-`workspace sync` distributes `.specify/contracts/` from the initiating repo into each project clone:
+In a multi-repo initiative, contracts live in the initiating repo alongside `registry.yaml`. The plan uses dedicated contract changes (see §*Authorship patterns*) to define interfaces before implementation begins. `workspace sync` distributes `.specify/contracts/` from the initiating repo into each project clone:
 
 ```text
 .specify/                           # Initiating repo
@@ -240,26 +301,9 @@ In a multi-repo initiative, contracts live in the initiating repo alongside `reg
 
 Each workspace clone gets the central contracts at `.specify/contracts/`. Phase skills always read from `.specify/contracts/` relative to their working directory — they do not need to know whether the contracts were authored locally or materialised from a central source. This preserves RFC-3b's design principle that phase skills are unaware of the multi-repo topology.
 
-Plan sequencing ensures the producer's contracts are available before the consumer's define phase begins:
+When a contract change completes its define-build-merge cycle, its contracts merge into the central `.specify/contracts/`. The driver's pre-change distribution step propagates the updated contracts to all project clones before dependent implementation changes begin their define phases. Implementation changes read the materialised contracts as their baseline; their `contracts` brief proposes only additions or modifications their specs require — typically a small or empty delta, since the interface was already defined by the contract change.
 
-```yaml
-# plan.yaml
-changes:
-  - name: user-api
-    project: backend
-    description: "Define and implement the user registration API."
-    status: pending
-
-  - name: registration-screen
-    project: mobile
-    description: "Build the registration screen consuming the user API."
-    depends-on: [user-api]
-    status: pending
-```
-
-When `user-api` completes its define-build-merge cycle, its contract changes merge into the central `.specify/contracts/`. The next `workspace sync` (or the driver's pre-change distribution step) propagates the updated contracts to all project clones before the mobile project's define phase begins. The consumer's `contracts` brief reads the baseline — which now includes the producer's contracts — and proposes only the additions or modifications the consumer's specs require.
-
-Compatibility is validated by the agent during the consumer's define phase rather than by automated tooling. This requires no framework changes beyond extending `workspace sync` to include the `contracts/` directory in what it materialises — a single additional path using the same copy/symlink mechanism it already uses for peer baselines.
+Compatibility is validated by the agent during each implementation change's define phase rather than by automated tooling. This requires no framework changes beyond extending `workspace sync` to include the `contracts/` directory in what it materialises — a single additional path using the same copy/symlink mechanism it already uses for peer baselines.
 
 ### Layer 2: Baseline tracking and merge (CLI changes)
 
@@ -294,7 +338,7 @@ The central co-location model works identically in both topologies:
 | Concern | Single-repo | Multi-repo |
 |---------|-------------|------------|
 | Contracts location | `.specify/contracts/` | `.specify/contracts/` (initiating repo) |
-| Who writes | `contracts` brief during define | Plan skill (initial stubs) + `contracts` brief (refinement) |
+| Who writes | `contracts` brief during define (inline) | Dedicated contract change, then `contracts` brief in implementation changes |
 | How projects read | Direct filesystem read | Materialised by `workspace sync` |
 | How changes propose updates | `.specify/changes/<name>/contracts/` | Same — in the project clone's change directory |
 | How updates merge | `specify merge` → `.specify/contracts/` | Same — then `workspace push` propagates |
