@@ -4,9 +4,9 @@
 
 ## Abstract
 
-Introduce machine-readable API contracts as a first-class artifact in the Specify define pipeline. Contracts capture the interface shapes that behavioral specs describe — request/response payloads, message envelopes, error types — in a format that tooling can validate and generate code from. JSON Schema defines the shared payload vocabulary; OpenAPI and AsyncAPI provide protocol-specific bindings for HTTP endpoints and messaging respectively.
+Introduce machine-readable API contracts as a first-class, platform-level artifact in Specify. Contracts capture the interface shapes that behavioral specs describe — request/response payloads, message envelopes, error types — in a format that tooling can validate and generate code from. JSON Schema defines the shared payload vocabulary; OpenAPI and AsyncAPI provide protocol-specific bindings for HTTP endpoints and messaging respectively.
 
-The integration is schema-level: a new `contracts` brief is added to the define pipeline between `specs` and `design`. No CLI changes are required for the initial implementation. The existing pipeline machinery (`specify schema pipeline`, `specify validate`, delta merge) handles the new artifact without modification in Layer 1; baseline tracking and cross-repo contract sharing are layered on top.
+Contracts are co-located with `registry.yaml` and `plan.yaml` at `.specify/contracts/`. They are a platform concern — they describe interfaces *between* components, not internals of any one — and every project references the same central contracts, including the implementer of the API itself. A new `contracts` brief in the define pipeline reads the current baseline contracts and proposes the minimal set of changes a given change requires. No CLI changes are required for the initial implementation; baseline tracking and cross-repo distribution are layered on top.
 
 ## Motivation
 
@@ -18,7 +18,21 @@ This gap matters in two scenarios:
 
 2. **Multi-repo initiatives.** A mobile frontend and a WASM backend communicate over HTTP and/or messaging. RFC-3b explicitly defers cross-repo spec references (`@peer:capability`) and states that "API contracts, auth libraries, protocol definitions are a framework-level concern addressed by the platform's own dependency management and build tooling, not by Specify's code-generation pipeline." This is the right scope boundary for *behavioral* specs, but it leaves a gap: there is no Specify-managed artifact that captures the interface contract between components. Change ordering via `depends-on` edges ensures sequencing but not compatibility.
 
-Machine-readable contracts close both gaps. Within a single repo, they make the API surface explicit and diffable. Across repos, they provide a shared artifact that both producer and consumer can validate against.
+Machine-readable contracts close both gaps. Within a single repo, they make the API surface explicit and diffable. Across repos, they provide a shared artifact that both producer and consumer validate against.
+
+### Why central, not per-project?
+
+An API contract is a shared agreement between parties. It does not belong to the producer any more than to the consumer — it is the interface between them. Nesting contracts inside a single project's capability tree misattributes ownership and forces consumers to navigate workspace clones to find the producer's contract files.
+
+Co-locating contracts with `registry.yaml` makes the neutrality structural:
+
+- **`registry.yaml`** declares *who* the participants are.
+- **`plan.yaml`** declares *what* changes are planned.
+- **`.specify/contracts/`** declares *how* participants communicate.
+
+Three platform concerns, three co-located locations. Both sides of an interface — producer and consumer — reference the same central contracts. Neither owns them; both are bound by them.
+
+This mirrors established industry practice: proto repos, shared OpenAPI spec repos, and contract-first design all place interface definitions in a single canonical location rather than in one party's source tree.
 
 ### Why not `@peer:capability`?
 
@@ -53,26 +67,49 @@ This RFC adopts **JSON Schema as the shared payload vocabulary** with **OpenAPI 
 
 ### Artifact structure
 
-The `contracts` brief generates files under `.specify/changes/<name>/contracts/`:
+Contracts live at `.specify/contracts/` — a platform-level directory alongside `registry.yaml` and `plan.yaml`:
 
 ```text
-contracts/
-├── schemas/                    # JSON Schema payload definitions
-│   ├── user-registration.yaml
-│   ├── order-placed.yaml
-│   └── error-response.yaml
-├── http/                       # OpenAPI binding (when specs describe HTTP)
-│   └── api.yaml                # $ref → ../schemas/
-└── messages/                   # AsyncAPI binding (when specs describe messaging)
-    └── events.yaml             # $ref → ../schemas/
+.specify/
+├── registry.yaml
+├── plan.yaml
+├── contracts/                  # Platform API contracts
+│   ├── schemas/                # JSON Schema payload definitions
+│   │   ├── user-registration.yaml
+│   │   ├── order-placed.yaml
+│   │   └── error-response.yaml
+│   ├── http/                   # OpenAPI bindings (when HTTP is used)
+│   │   └── user-api.yaml       # $ref → ../schemas/
+│   └── messages/               # AsyncAPI bindings (when messaging is used)
+│       └── order-events.yaml   # $ref → ../schemas/
 ```
 
 Directory rules:
 
-- **`contracts/schemas/`** is always present. Every contract generates at least one payload schema.
-- **`contracts/http/`** is present when the specs describe HTTP interactions (REST endpoints, request/response patterns). Omitted when the capability is purely event-driven.
-- **`contracts/messages/`** is present when the specs describe messaging interactions (pub/sub, event-driven, queue-based). Omitted when the capability is purely synchronous HTTP.
-- Both `http/` and `messages/` may be present for capabilities that expose both transport types.
+- **`contracts/schemas/`** is always present. Every contract includes at least one payload schema.
+- **`contracts/http/`** is present when the platform includes HTTP interactions (REST endpoints, request/response patterns). Omitted for purely event-driven systems.
+- **`contracts/messages/`** is present when the platform includes messaging interactions (pub/sub, event-driven, queue-based). Omitted for purely synchronous HTTP systems.
+- Both `http/` and `messages/` may be present when the platform uses both transport types.
+
+Contracts sit outside the per-capability spec tree. This is correct because a single OpenAPI document or schema type often spans multiple capabilities — a `POST /users` endpoint might touch `user-registration`, `auth`, and `notifications` capabilities. Flattening contracts out of the capability hierarchy avoids the question of "which capability owns this schema?" — nobody does; it is platform vocabulary.
+
+### Working contracts during define
+
+During a change's define phase, proposed contract modifications live in the change directory:
+
+```text
+.specify/changes/add-oauth/
+├── contracts/                  # Proposed contract changes (this change only)
+│   ├── schemas/
+│   │   └── oauth-token.yaml    # New type
+│   └── http/
+│       └── user-api.yaml       # Updated OpenAPI (additional paths)
+├── specs/
+├── design.md
+└── ...
+```
+
+The change-level `contracts/` directory contains only the files this change adds or replaces — not a full copy of the baseline. This keeps the diff reviewable and makes it clear what a single change contributes to the platform's contract surface.
 
 ### Pipeline placement
 
@@ -96,7 +133,7 @@ pipeline:
 The ordering is deliberate:
 
 1. **`specs` → `contracts`**: Contracts are derived from behavioral specs. The specs brief establishes *what* the system does; the contracts brief captures the *interface shapes* those behaviors imply. The `contracts` brief declares `needs: [specs]`.
-2. **`contracts` → `design`**: The design document references contracts rather than re-describing API shapes in prose. The `design` brief declares `needs: [proposal, contracts]` (adding `contracts` to its existing `needs`). The `## API Contracts` and `## Publication & Timing Patterns` sections in `design.md` become pointers to the generated contract files rather than hand-authored descriptions.
+2. **`contracts` → `design`**: The design document references contracts rather than re-describing API shapes in prose. The `design` brief declares `needs: [proposal, contracts]` (adding `contracts` to its existing `needs`). The `## API Contracts` and `## Publication & Timing Patterns` sections in `design.md` become pointers to the contract files rather than hand-authored descriptions.
 3. **`contracts` → `tasks`**: Task generation can reference contracts for code-generation tasks (e.g. "generate Rust types from `contracts/schemas/`"). The `tasks` brief already declares `needs: [specs, design]`; adding `contracts` is optional — design transitively carries the contract context.
 
 ### Brief frontmatter
@@ -104,41 +141,43 @@ The ordering is deliberate:
 ```yaml
 ---
 id: contracts
-description: Generate machine-readable API and message contracts from behavioral specs
+description: Evolve platform API and message contracts from behavioral specs
 generates: contracts/**/*.yaml
 needs: [specs]
 ---
 ```
 
-The `generates` glob (`contracts/**/*.yaml`) follows the same pattern as the specs brief's `specs/**/*.md` — the brief determines how many files to create and where within the pattern.
+The `generates` glob (`contracts/**/*.yaml`) scopes output to the change-level `contracts/` directory. The brief reads the baseline at `.specify/contracts/` as context and writes proposed changes into the change directory.
 
 ### Contract generation rules
 
 The `contracts` brief body instructs the agent to:
 
-1. **Read all spec files** under `.specify/changes/<name>/specs/` and identify requirements that describe API interactions (HTTP endpoints, request/response patterns) or message exchanges (pub/sub, event-driven patterns).
+1. **Read the baseline contracts** at `.specify/contracts/` to understand the current platform vocabulary — existing domain types, HTTP bindings, and messaging bindings.
 
-2. **Extract domain types.** For each requirement's scenarios, identify the data shapes: request payloads, response payloads, message envelopes, error types. Each distinct shape becomes a JSON Schema file under `contracts/schemas/`.
+2. **Read all spec files** under `.specify/changes/<name>/specs/` and identify requirements that describe API interactions (HTTP endpoints, request/response patterns) or message exchanges (pub/sub, event-driven patterns).
 
-3. **Generate JSON Schema files.** Each schema file defines one domain type with:
+3. **Determine the minimal contract delta.** Compare what the specs require against the existing baseline. Identify new domain types, modified types, new endpoints or channels, and modified bindings. Only produce files for what this change adds or modifies.
+
+4. **Generate JSON Schema files** for new or modified domain types, each with:
    - `$id` for stable cross-referencing
    - `title` matching the type name
    - `description` from the spec's behavioral description
    - `properties`, `required`, and type constraints derived from scenario data
-   - `$ref` pointers for shared sub-types
+   - `$ref` pointers for shared sub-types (referencing baseline schemas where they already exist)
 
-4. **Generate OpenAPI spec** (when applicable). For capabilities whose specs describe HTTP interactions, produce `contracts/http/api.yaml` with:
+5. **Generate or update OpenAPI spec** (when applicable). For changes whose specs describe HTTP interactions, produce contract files under `contracts/http/` with:
    - Paths and methods derived from spec scenarios
    - Request/response schemas as `$ref` pointers to `../schemas/`
    - Error responses derived from the spec's error conditions
    - OpenAPI 3.1 format (native JSON Schema support)
 
-5. **Generate AsyncAPI spec** (when applicable). For capabilities whose specs describe messaging interactions, produce `contracts/messages/events.yaml` with:
+6. **Generate or update AsyncAPI spec** (when applicable). For changes whose specs describe messaging interactions, produce contract files under `contracts/messages/` with:
    - Channels and operations derived from spec scenarios
    - Message payload schemas as `$ref` pointers to `../schemas/`
    - AsyncAPI 3.0 format (native JSON Schema support)
 
-6. **Validate internal consistency.** All `$ref` pointers in OpenAPI and AsyncAPI files must resolve to files under `contracts/schemas/`. The agent verifies this before completing the brief.
+7. **Validate internal consistency.** All `$ref` pointers in OpenAPI and AsyncAPI files must resolve — either to files in the change's `contracts/schemas/` or to existing files in the baseline `.specify/contracts/schemas/`. The agent verifies this before completing the brief.
 
 ### Relationship to `design.md`
 
@@ -152,18 +191,18 @@ The Omnia `design.md` brief currently has:
 <!-- Topics, message shapes, timing, partition keys -->
 ```
 
-With the `contracts` brief in place, these sections change role. Instead of being the primary description of interface shapes, they become **references** to the generated contract files with additional implementation-level context (e.g. rate limits, retry policies, authentication schemes) that the contract format does not capture:
+With the `contracts` brief in place, these sections change role. Instead of being the primary description of interface shapes, they become **references** to the platform contract files with additional implementation-level context (e.g. rate limits, retry policies, authentication schemes) that the contract format does not capture:
 
 ```markdown
 ## API Contracts
 
-See `contracts/http/api.yaml` for the full OpenAPI specification.
+See `.specify/contracts/http/` for the full OpenAPI specifications.
 
 <!-- Implementation notes: auth, rate limits, caching, versioning strategy -->
 
 ## Publication & Timing Patterns
 
-See `contracts/messages/events.yaml` for the full AsyncAPI specification.
+See `.specify/contracts/messages/` for the full AsyncAPI specifications.
 
 <!-- Implementation notes: ordering guarantees, retry policies, DLQ strategy -->
 ```
@@ -172,9 +211,36 @@ The `design` brief's `needs` gains `contracts` so the agent has the generated fi
 
 ## Multi-repo contract sharing
 
-### Layer 1: Ordering via `depends-on` (no framework changes)
+Central co-location with `registry.yaml` makes multi-repo contract sharing straightforward. The same `.specify/contracts/` directory serves all projects; distribution uses the existing workspace infrastructure.
 
-In a multi-repo initiative, the plan sequences changes so that the producer's contracts are generated before the consumer's define phase begins. The consumer's specs and design reference the producer's contracts from the workspace clone:
+### Layer 1: Central contracts with workspace distribution (no CLI changes)
+
+In a multi-repo initiative, contracts live in the initiating repo alongside `registry.yaml`. The plan skill — which already has the cross-project view — can generate initial contract stubs during `/spec:plan` when it identifies interfaces between projects. Individual changes then refine contracts during their define phases.
+
+`workspace sync` distributes `.specify/contracts/` from the initiating repo into each project clone:
+
+```text
+.specify/                           # Initiating repo
+├── registry.yaml
+├── contracts/                      # Central source of truth
+│   ├── schemas/
+│   │   └── user.yaml
+│   ├── http/
+│   │   └── user-api.yaml
+│   └── messages/
+│       └── order-events.yaml
+├── workspace/
+│   ├── backend/
+│   │   └── .specify/
+│   │       └── contracts/          # ← materialised from central
+│   └── mobile/
+│       └── .specify/
+│           └── contracts/          # ← materialised from central
+```
+
+Each workspace clone gets the central contracts at `.specify/contracts/`. Phase skills always read from `.specify/contracts/` relative to their working directory — they do not need to know whether the contracts were authored locally or materialised from a central source. This preserves RFC-3b's design principle that phase skills are unaware of the multi-repo topology.
+
+Plan sequencing ensures the producer's contracts are available before the consumer's define phase begins:
 
 ```yaml
 # plan.yaml
@@ -191,35 +257,23 @@ changes:
     status: pending
 ```
 
-After `user-api` completes its define-build-merge cycle, the contracts are available in the backend's baseline at `.specify/specs/user-api/contracts/` (if contracts are merged into baseline — see Layer 2) or in the archived change at `.specify/archive/`. The mobile project's define phase can read these contracts from the workspace clone at `.specify/workspace/backend/specs/user-api/contracts/`.
+When `user-api` completes its define-build-merge cycle, its contract changes merge into the central `.specify/contracts/`. The next `workspace sync` (or the driver's pre-change distribution step) propagates the updated contracts to all project clones before the mobile project's define phase begins. The consumer's `contracts` brief reads the baseline — which now includes the producer's contracts — and proposes only the additions or modifications the consumer's specs require.
 
-This requires no framework changes — it uses existing `depends-on` ordering and the workspace materialisation from RFC-3a/3b. The consumer's brief reads the producer's contracts as context; compatibility is validated by the agent during the consumer's define phase rather than by automated tooling.
+Compatibility is validated by the agent during the consumer's define phase rather than by automated tooling. This requires no framework changes beyond extending `workspace sync` to include the `contracts/` directory in what it materialises — a single additional path using the same copy/symlink mechanism it already uses for peer baselines.
 
-### Layer 2: Contracts in the baseline (requires merge extension)
+### Layer 2: Baseline tracking and merge (CLI changes)
 
-To make contracts a persistent, diffable artifact, extend the merge system to track contract files alongside specs in the baseline:
+To make contracts a persistent, diffable artifact with full merge support:
 
-```text
-.specify/specs/<capability>/
-├── spec.md                     # behavioral spec (existing)
-└── contracts/                  # API contracts (new)
-    ├── schemas/
-    │   └── *.yaml
-    ├── http/
-    │   └── api.yaml
-    └── messages/
-        └── events.yaml
-```
-
-When `specify merge` processes a change, it copies the `contracts/` directory from the change into the baseline alongside `spec.md`. Contract files are treated as **opaque replacements** per capability — unlike spec files which use the ADDED/MODIFIED/REMOVED delta format, contract files are replaced wholesale on merge. The rationale: JSON Schema and OpenAPI/AsyncAPI files have their own versioning semantics (schema `$id`, OpenAPI `info.version`); introducing a second delta-merge algorithm for YAML contract files would add complexity without clear benefit over replacement.
+When `specify merge` processes a change, it copies the change's `contracts/` files into `.specify/contracts/`, replacing files that share a path. Contract files use **opaque replacement** semantics — unlike spec files which use the ADDED/MODIFIED/REMOVED delta format, contract files are replaced wholesale. The rationale: JSON Schema and OpenAPI/AsyncAPI files have their own versioning semantics (`$id`, `info.version`); introducing a second delta-merge algorithm for YAML contract files would add complexity without clear benefit over replacement.
 
 `specify spec preview` and `specify spec conflict-check` are extended to include contract files in their output so operators see when a merge will update contracts.
 
 This layer requires CLI changes:
 
-- `specify merge` copies `contracts/` into baseline alongside spec files.
-- `specify spec preview` reports contract file changes (added/replaced/removed).
-- `specify spec conflict-check` detects when baseline contracts have been modified after the change was defined.
+- `specify merge` copies change-level `contracts/` files into `.specify/contracts/`. Files that share a path are replaced; files absent from the change are left untouched.
+- `specify spec preview` reports contract file changes (added/replaced).
+- `specify spec conflict-check` detects when baseline contracts have been modified after the change's `defined-at` timestamp.
 
 ### Layer 3: Automated contract validation (future)
 
@@ -227,11 +281,25 @@ A future extension could add automated validation that a consumer's usage of a c
 
 This layer is explicitly deferred. It requires:
 
-- A `specify contract validate` CLI verb that loads contracts from workspace clones and checks compatibility.
+- A `specify contract validate` CLI verb that loads the central contracts and each project's specs, checking compatibility.
 - A contract-validation brief in the build pipeline that runs after code generation.
 - A definition of "compatibility" that accounts for backwards-compatible changes (additive fields, optional-to-required transitions, etc.).
 
-The workspace already materialises peer baselines under `.specify/workspace/<peer>/specs/`, so the read path exists. The validation rules can be designed against real examples when the need arises — the same deferral logic RFC-3b applies to `@peer:capability`.
+The central contracts directory makes validation simpler than the per-project model — all contracts are in one place, and all project specs are accessible via workspace clones. The validation rules can be designed against real examples when the need arises.
+
+## Single-repo and multi-repo — same model
+
+The central co-location model works identically in both topologies:
+
+| Concern | Single-repo | Multi-repo |
+|---------|-------------|------------|
+| Contracts location | `.specify/contracts/` | `.specify/contracts/` (initiating repo) |
+| Who writes | `contracts` brief during define | Plan skill (initial stubs) + `contracts` brief (refinement) |
+| How projects read | Direct filesystem read | Materialised by `workspace sync` |
+| How changes propose updates | `.specify/changes/<name>/contracts/` | Same — in the project clone's change directory |
+| How updates merge | `specify merge` → `.specify/contracts/` | Same — then `workspace push` propagates |
+
+Phase skills see the same paths regardless of topology. The only difference is the distribution mechanism, which is handled by the existing workspace infrastructure.
 
 ## Schema integration
 
@@ -272,32 +340,34 @@ Not every project needs machine-readable contracts. A single-crate WASM service 
 
 - **Inventing a new IDL.** The contract format uses JSON Schema, OpenAPI, and AsyncAPI — existing standards with existing tooling. No proprietary schema language.
 - **Automated code generation from contracts.** The build phase *can* use contracts as input for code generation (via skill directives in tasks), but this RFC does not prescribe how. Code generation strategies differ by schema (Omnia generates Rust; Vectis generates Rust + Swift + Kotlin); the contract-to-code mapping belongs in the build brief and specialist skills, not in the contract artifact itself.
-- **Contract versioning or backwards-compatibility checking.** Semantic versioning of contracts, breaking-change detection, and consumer compatibility validation are deferred to Layer 3. The initial implementation treats contracts as define-time artifacts that are generated fresh each change.
+- **Contract versioning or backwards-compatibility checking.** Semantic versioning of contracts, breaking-change detection, and consumer compatibility validation are deferred to Layer 3. The initial implementation treats contracts as define-time artifacts that are evolved incrementally.
 - **Replacing behavioral specs.** Contracts complement specs; they do not replace them. Specs describe *what* the system must do. Contracts describe *what the interface looks like*. Both are needed — one for requirements traceability, the other for machine-readable integration.
 - **Cross-repo contract enforcement in Layer 1.** The initial implementation relies on `depends-on` ordering and agent judgment for cross-repo compatibility. Automated validation is explicitly deferred.
+- **Contract ownership by a single project.** Contracts are platform-level shared artifacts. No project "owns" a contract; both producer and consumer reference the same central definition.
 
 ## Implementation scope
 
 ### Layer 1 (no CLI changes)
 
-1. **`contracts` brief** — author `briefs/contracts.md` with the generation rules described above.
-2. **Updated `design` brief** — modify `briefs/design.md` to declare `needs: [proposal, contracts]` and update the `## API Contracts` / `## Publication & Timing Patterns` sections to reference generated contract files.
+1. **`contracts` brief** — author `briefs/contracts.md` with the generation rules described above. The brief reads baseline contracts from `.specify/contracts/` and writes proposed changes into the change directory.
+2. **Updated `design` brief** — modify `briefs/design.md` to declare `needs: [proposal, contracts]` and update the `## API Contracts` / `## Publication & Timing Patterns` sections to reference the central contract files.
 3. **Child schemas** — create `schemas/omnia-contracts/` and `schemas/vectis-contracts/` with `extends` and the `contracts` pipeline entry.
-4. **Fixture** — author a worked example under `schemas/omnia-contracts/fixtures/` showing the generated contract tree for a representative capability.
+4. **Fixture** — author a worked example under `schemas/omnia-contracts/fixtures/` showing the baseline contracts and a change-level delta for a representative capability.
 
 Layer 1 is independently useful: it produces machine-readable contracts during define that the agent and human can review, and that the build phase can consume for code generation.
 
 ### Layer 2 (CLI changes)
 
-5. **`specify merge` extension** — copy `contracts/` into baseline alongside spec files during merge. Contract files are replaced wholesale per capability (no delta merge).
+5. **`specify merge` extension** — copy change-level `contracts/` files into `.specify/contracts/`. Files that share a path are replaced; files absent from the change are left untouched.
 6. **`specify spec preview` extension** — include contract file changes in the preview output.
 7. **`specify spec conflict-check` extension** — detect baseline contract modifications after the change's `defined-at` timestamp.
-8. **`specify validate` extension** — check that `contracts/schemas/` contains at least one file when the schema declares a `contracts` brief, and that `$ref` pointers in OpenAPI/AsyncAPI files resolve.
+8. **`specify validate` extension** — check that `.specify/contracts/schemas/` contains at least one file when the schema declares a `contracts` brief, and that `$ref` pointers in OpenAPI/AsyncAPI files resolve.
+9. **`workspace sync` extension** — materialise `.specify/contracts/` from the initiating repo into each project clone. Same copy/symlink mechanism used for peer baselines.
 
 ### Layer 3 (future, deferred)
 
-9. **`specify contract validate`** — cross-repo contract compatibility checking.
-10. **Contract-validation build brief** — automated verification during build that generated code matches the contract.
+10. **`specify contract validate`** — cross-repo contract compatibility checking against the central contracts.
+11. **Contract-validation build brief** — automated verification during build that generated code matches the contract.
 
 ## Implementation order
 
@@ -305,11 +375,12 @@ Layer 1 is independently useful: it produces machine-readable contracts during d
 2. Update the `design.md` brief (Layer 1, item 2). A small `needs` change plus section rewording.
 3. Create the child schemas (Layer 1, item 3). Schema composition handles the pipeline insertion.
 4. Author the fixture (Layer 1, item 4). Validates the brief against a representative input.
-5. Extend `specify merge` (Layer 2, item 5). The merge engine gains a contract-copy step.
+5. Extend `specify merge` (Layer 2, item 5). The merge engine gains a contract-copy step targeting `.specify/contracts/`.
 6. Extend `specify spec preview` and `conflict-check` (Layer 2, items 6–7). Preview and conflict surfaces gain contract awareness.
 7. Extend `specify validate` (Layer 2, item 8). Structural validation of contract artifacts.
+8. Extend `workspace sync` (Layer 2, item 9). Distribution of central contracts to project clones.
 
-Steps 1–4 can ship without any CLI changes. Steps 5–7 require specify-cli changes and can follow independently.
+Steps 1–4 can ship without any CLI changes. Steps 5–8 require specify-cli changes and can follow independently.
 
 ## References
 
