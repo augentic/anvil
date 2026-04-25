@@ -4,7 +4,7 @@
 
 ---
 
-# OrientationX
+# Orientation
 
 - [What is Specify?](orientation/index.md)
 - [The Three-Layer Stack](orientation/three-layer-stack.md)
