@@ -7,7 +7,6 @@ src = "."
 [output.html]
 git-repository-url = "https://github.com/augentic/specify"
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
-# additional-css = ["mermaid.css"]
 
 [preprocessor.mermaid]
 command = "mdbook-mermaid"
