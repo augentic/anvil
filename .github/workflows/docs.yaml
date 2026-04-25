@@ -35,7 +35,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy docs/book --name specify-docs
+          command: deploy ./docs/book --name specify-docs
           # command: |
           #   pages project list
           #   pages deploy docs/book --project-name=specify-docs
