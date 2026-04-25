@@ -22,3 +22,12 @@ Each task references the single feature spec at `specs/<feature>/spec.md`. The s
 | `vectis:android-writer`        | Generate or update Android shell   | Android shell implementation tasks     |
 | `vectis:android-reviewer`      | AI code review for Android shell   | Post-implementation review of Android  |
 | `vectis:design-system-writer`  | Regenerate iOS + Android design system from tokens | Design system generation tasks         |
+
+## Composition Awareness
+
+When a `composition.yaml` exists in the change directory, express the dependency between shell tasks and the composition artifact in the task ordering:
+
+- Shell writer tasks (`vectis:ios-writer`, `vectis:android-writer`) depend on `composition.yaml` when present. When composition validation fails, the corresponding shell task is blocked.
+- When `composition.yaml` is absent, shell writers fall back to inference and no composition-related blocking applies.
+
+This is not a hard requirement — pre-RFC-7 changes have no composition artifact.

@@ -2,7 +2,7 @@
 id: design
 description: Create the design document to explain HOW to implement the change
 generates: design.md
-needs: [proposal]
+needs: [proposal, specs]
 ---
 
 Include sections based on the platforms declared in the proposal. The Domain Model and Capabilities sections are always present (core is always in scope). Platform-specific sections are included only when the corresponding platform is listed in the proposal.
@@ -125,3 +125,13 @@ Standard constraints for Crux projects:
 
 <!-- Additional observations or considerations -->
 ```
+
+## Composition Awareness
+
+When a `composition.yaml` exists in the change directory or baseline (`.specify/specs/`), read it and use it as an additional input:
+
+- **ViewModel adoption:** Adopt the screen names, ViewModel variant names, and field names proposed by the composition artifact. Adjust naming only when Rust conventions or domain model considerations require it.
+- **Field completeness:** Every `bind` value in `composition.yaml` must appear as a field in the corresponding per-page view struct. If a `bind` references a field not described in the spec, flag the mismatch.
+- **Gap surfacing:** Report any `bind` in composition that has no spec backing, or any spec-described data element with no composition binding.
+
+When `composition.yaml` is absent, infer the ViewModel shape from specs alone (the current behavior). This preserves backward compatibility for projects that predate RFC-7.

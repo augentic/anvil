@@ -292,6 +292,8 @@ This table shows how each Specify artifact section maps to code constructs. Use 
 | **Spec** -- Scenario conditions | Validation logic in `update()` | `app.rs` `fn update()` | Changed guards, conditions |
 | **Spec** -- Scenario conditions | Helper functions | `app.rs` free functions | Changed conflict resolution, sync logic |
 
+> **Note:** Per-page view struct fields align with `composition.yaml` field bindings via `design.md`. The core-writer reads `design.md`, not `composition.yaml` — layout is a shell concern. The composition artifact declares which data fields each screen needs (via `bind` keys), the design brief formalizes them into per-page view structs, and the core-writer generates the Rust types from the design.
+
 ## Update Change Patterns
 
 Common change patterns and which code elements they touch. Use this as a checklist when applying changes in steps U5--U7.
