@@ -30,13 +30,15 @@ jobs:
       - name: Build book
         run: mdbook build docs
 
+      - name: Set release date
+        id: date
+        run: |
+          echo "today=$(date --rfc-3339=date)" >> ${GITHUB_ENV}
+
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy --assets ./docs/book --name specify-docs --compatibility-date 2026-04-25
+          command: deploy --assets ./docs/book --name specify-docs --compatibility-date ${{ steps.date.outputs.today }}
 
-          # command: |
-          #   pages project list
-          #   pages deploy docs/book --project-name=specify-docs
