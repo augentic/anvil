@@ -26,9 +26,11 @@ See also: [RFC-1a: Deferred Validation](archive/rfc-1a-validation.md) — the th
 
 ## [RFC-3: Multi-Repo Planning](archive/rfc-3a-monoliths.md)
 
+**Status:** Implemented (RFC-3a and [RFC-3b](archive/rfc-3b-platform.md), 2026-04). Registry, workspace sync, plan authoring with project assignment, CWD-based execution routing, and workspace push are all live. Cross-repo spec references (`@peer:capability`) and contract reconciliation are explicitly deferred — see [RFC-8](rfc-8-api-contracts.md) for the contract direction.
+
 **Problem:** RFC-2 assumes you already know the changes. For legacy modernisation, greenfield builds across multiple repos, and platform-wide initiatives, the agent has to *derive* the changes from inputs (legacy code, documentation) and coordinate them across a set of repos whose scope isn't declared anywhere. RFC-2's `/spec:plan` handles single-repo plan authoring; the multi-repo case has no equivalent.
 
-**Solution:** Extend `/spec:plan` to be registry-aware, and add a fixed *sync peers* phase that runs automatically when `registry.yaml` is present, cloning peer repos into `.specify/workspace/` and inventorying their specs. Inputs are dispatched by `kind`: legacy code to `/spec:extract`, documentation to a new `/spec:analyze` skill; the vocabulary is a closed enum. The same `/spec:plan <name>` command scales unchanged from a single repo to 100+ repos, with no planning configuration file. Layer 1 introduces `registry.yaml` and the discovery-dispatch contract; Layer 2 adds the sync-peers phase for multi-repo runs; Layer 3 adds federation at execution time (cross-repo spec references, contract reconciliation) on top of the same workspace.
+**Solution:** Extend `/spec:plan` to be registry-aware, and add a fixed *sync peers* phase that runs automatically when `registry.yaml` is present, cloning peer repos into `.specify/workspace/` and inventorying their specs. Inputs are dispatched by `kind`: legacy code to `/spec:extract`, documentation to a new `/spec:analyze` skill; the vocabulary is a closed enum. The same `/spec:plan <name>` command scales unchanged from a single repo to 100+ repos, with no planning configuration file. [RFC-3a](archive/rfc-3a-monoliths.md) introduces `registry.yaml`, the discovery-dispatch contract, and the sync-peers phase. [RFC-3b](archive/rfc-3b-platform.md) adds per-change project assignment, CWD-based execution routing, greenfield workspace bootstrapping, merge auto-commit in workspace clones, and `specify workspace push`.
 
 ## [RFC-4: Type-Safe Skill Expression](rfc-4-dsl.md)
 
@@ -51,3 +53,19 @@ Note: `checks.ts` already implements the core of Option 1 (CLI-integrated skill 
 **Problem:** Bootstrapping a greenfield Crux cross-platform project requires the agent to interpret ~3,000 lines of prose instructions across three writer skills (core-writer, ios-writer, android-writer), write ~40 files one at a time, and iterate on compilation errors. The output is fully deterministic — given an app name, capabilities, and target platforms — yet the agent spends 10-20 minutes and significant tokens on work that requires no judgment.
 
 **Solution (as shipped):** Four subcommands under the `specify` binary — `specify vectis init` scaffolds a minimum-viable Crux project (core always, iOS and Android shells optionally) from embedded templates with correct version pins; `specify vectis add-shell` adds a platform shell to an existing core-only project by parsing `app.rs` for the app name and capabilities; `specify vectis verify` checks all assemblies compile; and `specify vectis update-versions` manages coherent dependency pins across the Crux, Android, and iOS ecosystems. All commands perform prerequisite detection first and stop with a clear report if required toolchain components are missing. Writer skills detect greenfield projects and invoke the CLI before switching to Update Mode for feature-specific implementation. Hosted alongside the `specify` CLI from [RFC-1](archive/rfc-1-cli.md) as a sibling subcommand tree rather than the originally-planned standalone binary.
+
+## [RFC-7: View Layout Artifact](rfc-7-ui.md)
+
+**Status:** Draft. The `composition.yaml` artifact and Vectis pipeline integration (Phases 1–2) are implemented. Phases 3–5 (Figma adapter, component library, web shell writer) are future work.
+
+**Problem:** Shell writers infer layout from ViewModel struct fields and design tokens, but have no guidance on spatial composition — whether a count label belongs in a header bar or a floating badge, whether items should stack vertically or horizontally, or whether a group should be wrapped in a card. The result is UIs that are functionally correct but visually arbitrary.
+
+**Solution:** A structured `composition.yaml` artifact in the define pipeline that describes the spatial composition of each screen as a schema-validated YAML document. Screens are organized into named regions (`header`, `body`, `footer`, `fab`) with a lightweight container tree — items and `group` containers carrying flexbox-like properties (`direction`, `gap`, `padding`, `align`, `justify`, sizing modes, surface decoration). This model maps directly to Figma Auto Layout, CSS Flexbox, SwiftUI stacks, and Compose Row/Column/Box. The composition can be authored from specs, Figma, legacy reverse-engineering, or direct editing, bridging the gap between behavioral specs and shell writers without polluting the spec format with visual concerns.
+
+## [RFC-8: API Contracts](rfc-8-api-contracts.md)
+
+**Status:** Draft.
+
+**Problem:** Specify specs describe behavioral requirements but not interface shapes. The `design.md` brief captures API contracts and messaging patterns as prose, but these are not machine-readable or machine-validatable. In multi-repo initiatives, there is no Specify-managed artifact that captures the interface contract between components — change ordering via `depends-on` ensures sequencing but not compatibility.
+
+**Solution:** Introduce machine-readable API contracts as a first-class define-phase artifact. JSON Schema defines shared payload types; OpenAPI 3.1 and AsyncAPI 3.0 provide protocol-specific bindings for HTTP and messaging. A new `contracts` brief is inserted between `specs` and `design` in the pipeline via opt-in child schemas (`omnia-contracts`, `vectis-contracts`) using schema composition. Layer 1 requires no CLI changes. Layer 2 extends `specify merge` to track contracts in baselines. Layer 3 (deferred) adds automated cross-repo contract validation.
