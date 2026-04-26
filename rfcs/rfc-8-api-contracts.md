@@ -8,7 +8,7 @@ Introduce machine-readable API contracts as a first-class, platform-level artifa
 
 Contracts are co-located with `registry.yaml` and `plan.yaml` at `.specify/contracts/`. They are a platform concern — they describe interfaces *between* components, not internals of any one — and every project references the same central contracts, including the implementer of the API itself.
 
-A `contracts` brief in the define pipeline reads the current baseline contracts and the change's specs, then produces the minimal delta: new or modified schemas and protocol bindings. The writer always works the same way — read baseline, read specs, produce delta — regardless of whether the baseline is empty (new API), rich (evolution), or externally imported (legacy/partner). Three authorship patterns (contract-first, spec-first, contract-given) emerge from plan structure and baseline state, not from separate code paths.
+Contracts are authored before implementation begins — either in dedicated contract changes that precede implementation changes in the plan, or imported from external systems. Implementation changes then validate their specs against the baseline contracts rather than deriving contracts from scratch. A `contracts` brief in the define pipeline reads the baseline contracts and the change's specs, verifying alignment and producing new contract artifacts only when specs describe interactions not covered by the baseline. For single-repo services with no external consumers, inline derivation from specs is available as a convenience fallback. Three authorship patterns (contract-first, spec-first, contract-given) emerge from plan structure and baseline state, not from separate code paths; contract-first is the recommended default.
 
 No CLI changes are required for the initial implementation; baseline tracking, cross-repo distribution, contract import tooling, and registry role declarations are layered on top.
 
@@ -148,24 +148,24 @@ pipeline:
 
 The ordering is deliberate:
 
-1. **`specs` → `contracts`**: Contracts are derived from behavioral specs. The specs brief establishes *what* the system does; the contracts brief captures the *interface shapes* those behaviors imply. The `contracts` brief declares `needs: [specs]`.
+1. **`specs` → `contracts`**: The specs brief establishes *what* the system does; the contracts brief then validates that the change's specs align with the baseline contracts and produces new contract artifacts only for interactions not already covered. The `contracts` brief declares `needs: [specs]`. When baseline contracts exist (the recommended default — see §*Authorship patterns*), the contracts brief operates primarily in validation mode, verifying alignment rather than generating from scratch.
 2. **`contracts` → `design`**: The design document references contracts rather than re-describing API shapes in prose. The `design` brief declares `needs: [proposal, contracts]` (adding `contracts` to its existing `needs`). The `## API Contracts` and `## Publication & Timing Patterns` sections in `design.md` become pointers to the contract files rather than hand-authored descriptions.
 3. **`contracts` → `tasks`**: Task generation can reference contracts for code-generation tasks (e.g. "generate Rust types from `contracts/schemas/`"). The `tasks` brief already declares `needs: [specs, design]`; adding `contracts` is optional — design transitively carries the contract context.
 
 #### Baseline contract visibility in the specs brief
 
-When the baseline at `.specify/contracts/` contains pre-existing contracts (imported from an external system or a preceding contract change), the `specs` brief benefits from seeing them as context — spec authors should write behavioral requirements that *conform to* the existing interface shapes rather than inventing new ones.
+Because contracts are typically authored before implementation changes begin (§*Authorship patterns*), the baseline at `.specify/contracts/` usually contains the relevant contracts by the time an implementation change's define phase runs. The `specs` brief benefits from seeing these as context — spec authors should write behavioral requirements that *conform to* the existing interface shapes rather than inventing new ones.
 
-No schema-resolution change is needed for this. Baseline contracts are files on disk at a well-known path (`.specify/contracts/`). The `specs` brief body instructs the agent: "if `.specify/contracts/` exists, read its contents as read-only context and write scenarios consistent with the existing endpoint paths, payload schemas, and error responses." When no baseline contracts exist (the common case for new APIs), the directory is absent and the instruction has no effect.
+No schema-resolution change is needed for this. Baseline contracts are files on disk at a well-known path (`.specify/contracts/`). The `specs` brief body instructs the agent: "if `.specify/contracts/` exists, read its contents as read-only context and write scenarios consistent with the existing endpoint paths, payload schemas, and error responses." When no baseline contracts exist (e.g. a single-repo service using the spec-first fallback pattern), the directory is absent and the instruction has no effect.
 
-This preserves the `specs → contracts` pipeline ordering — specs still run before the `contracts` brief — while giving spec authors visibility into external contracts that their requirements must conform to. The mechanism is a brief-body instruction, not a schema-resolution primitive.
+This preserves the `specs → contracts` pipeline ordering — specs still run before the `contracts` brief — while giving spec authors visibility into contracts that their requirements must conform to. The mechanism is a brief-body instruction, not a schema-resolution primitive.
 
 ### Brief frontmatter
 
 ```yaml
 ---
 id: contracts
-description: Derive machine-readable contract delta from specs and baseline
+description: Validate spec alignment with baseline contracts; generate delta for uncovered interactions
 generates: contracts/**/*.yaml
 needs: [specs]
 ---
@@ -179,10 +179,10 @@ The `contracts` brief is a thin orchestrator — it delegates to `/contracts:wri
 
 #### Algorithm
 
-1. `/contracts:writer` — read baseline contracts and specs, produce the minimal contract delta.
+1. `/contracts:writer` — read baseline contracts and specs, validate alignment, produce the minimal contract delta.
 2. `/contracts:validator` — verify internal consistency of the produced artifacts.
 
-There is no mode switch. The writer always follows the same algorithm: read the baseline, read the specs, produce a delta for what the specs require that the baseline does not already cover. When the baseline is empty, the delta is the full contract set. When the baseline is rich (externally imported or defined by a preceding contract change), the delta is small or empty — the writer validates that the specs align with what already exists and flags mismatches rather than silently overwriting.
+There is no mode switch. The writer always follows the same algorithm: read the baseline, read the specs, validate alignment, produce a delta for what the specs require that the baseline does not already cover. In the recommended contract-first workflow, baseline contracts already exist when implementation changes run their define phase — the writer validates that the specs align with those contracts and produces a small or empty delta, flagging mismatches rather than silently overwriting. When no baseline contracts exist (the spec-first fallback for single-repo services), the delta is the full contract set, derived from the change's specs.
 
 #### Verify-repair loop
 
@@ -192,36 +192,36 @@ If the validator reports failures, re-enter the writer with the validation outpu
 
 #### `/contracts:writer`
 
-Produces the minimal contract delta for a change. The algorithm is always the same regardless of whether the baseline is empty, rich, or externally imported:
+Validates spec alignment with baseline contracts and produces the minimal contract delta for uncovered interactions. The algorithm is always the same regardless of whether the baseline is empty, rich, or externally imported — the difference is in outcome, not in code path:
 
 1. **Read the baseline contracts** at `.specify/contracts/` to understand the current platform vocabulary — existing domain types, HTTP bindings, and messaging bindings.
 
 2. **Read all spec files** under the change's `specs/` directory and identify requirements that describe API interactions (HTTP endpoints, request/response patterns) or message exchanges (pub/sub, event-driven patterns). When the change has no specs (a contract-only import change), skip to step 3's normalisation path — the delta consists of metadata normalisation only, and the brief delegates directly to `/contracts:validator`.
 
-3. **Determine the minimal contract delta.** Compare what the specs require against the existing baseline:
-   - **Already covered:** When the baseline already defines an endpoint, channel, or schema that the specs describe, validate alignment — verify that endpoint paths, methods, payload shapes, error codes, channel names, and message structures match. Flag mismatches as warnings for human review. Do not regenerate what already exists.
-   - **New or modified:** When the specs require types, endpoints, or channels absent from the baseline, generate the corresponding contract files.
+3. **Validate alignment and determine the minimal delta.** Compare what the specs require against the existing baseline:
+   - **Already covered (primary path):** When the baseline already defines an endpoint, channel, or schema that the specs describe, validate alignment — verify that endpoint paths, methods, payload shapes, error codes, channel names, and message structures match. Flag mismatches as warnings for human review. Do not regenerate what already exists. In the recommended contract-first workflow, most or all spec interactions fall into this category.
+   - **New or modified (fallback):** When the specs require types, endpoints, or channels absent from the baseline, generate the corresponding contract files. This is the primary path only in the spec-first fallback pattern (single-repo services with no external consumers) where the baseline is empty.
    - **Normalisation:** When baseline files lack Specify conventions (missing `$id` on schemas, inconsistent `description` fields), propose a normalisation delta that adds the missing metadata without changing the interface shapes.
 
-4. **Generate JSON Schema files** for new or modified domain types, each with:
+4. **Generate JSON Schema files** for new or modified domain types (when step 3 identifies uncovered interactions), each with:
    - `$id` for stable cross-referencing
    - `title` matching the type name
    - `description` from the spec's behavioral description
    - `properties`, `required`, and type constraints derived from scenario data
    - `$ref` pointers for shared sub-types (referencing baseline schemas where they already exist)
 
-5. **Generate or update OpenAPI spec** (when applicable). For changes whose specs describe HTTP interactions, produce contract files under `contracts/http/` with:
+5. **Generate or update OpenAPI spec** (when applicable and step 3 identifies uncovered HTTP interactions). Produce contract files under `contracts/http/` with:
    - Paths and methods derived from spec scenarios
    - Request/response schemas as `$ref` pointers to `../schemas/`
    - Error responses derived from the spec's error conditions
    - OpenAPI 3.1 format (native JSON Schema support)
 
-6. **Generate or update AsyncAPI spec** (when applicable). For changes whose specs describe messaging interactions, produce contract files under `contracts/messages/` with:
+6. **Generate or update AsyncAPI spec** (when applicable and step 3 identifies uncovered messaging interactions). Produce contract files under `contracts/messages/` with:
    - Channels and operations derived from spec scenarios
    - Message payload schemas as `$ref` pointers to `../schemas/`
    - AsyncAPI 3.0 format (native JSON Schema support)
 
-The writer reports what it found: how many spec interactions were already covered by the baseline, how many required new contract artifacts, and any alignment mismatches flagged for review.
+The writer reports what it found: how many spec interactions were already covered by the baseline (with alignment results), how many required new contract artifacts, and any mismatches flagged for review. A clean alignment report with an empty delta is the expected outcome for implementation changes in a contract-first workflow.
 
 #### `/contracts:validator`
 
@@ -275,11 +275,13 @@ The `design` brief's `needs` gains `contracts` so the agent has the generated fi
 
 ## Authorship patterns
 
-The `contracts` brief and its specialist skills (`/contracts:writer` and `/contracts:validator`) handle creating new contracts, evolving existing ones, and validating alignment with externally mandated ones. The writer always follows the same algorithm — read baseline, read specs, produce delta — so the three authorship patterns below emerge from plan structure and baseline state, not from separate code paths.
+The `contracts` brief and its specialist skills (`/contracts:writer` and `/contracts:validator`) handle creating new contracts, evolving existing ones, and validating alignment with externally mandated ones. The writer always follows the same algorithm — read baseline, read specs, validate alignment, produce delta — so the three authorship patterns below emerge from plan structure and baseline state, not from separate code paths.
 
-### Contract-first (dedicated contract change)
+**Contract-first is the recommended default.** API contracts are coordination artifacts — shared agreements between parties. Defining them before implementation begins ensures that both producer and consumer work against the same interface, that the contract reflects a deliberate design decision rather than an accidental derivation, and that `spec:execute` can validate implementation specs against stable baseline contracts. The spec-first pattern is a convenience fallback for single-repo services with no external consumers; it should not be the norm.
 
-For multi-repo initiatives or APIs shared with external consumers, contracts are defined as their own change in the plan. A contract change is a regular Specify change that produces interface-level behavioral specs and derives contracts from them. It carries no implementation code — its build phase validates the contract artifacts rather than generating code.
+### Contract-first (dedicated contract change) — recommended default
+
+Contracts are defined as their own change in the plan before implementation changes begin. A contract change is a regular Specify change that produces interface-level behavioral specs and derives contracts from them. It carries no implementation code — its build phase validates the contract artifacts rather than generating code.
 
 **Build phase for contract-only changes.** The build pipeline is inherited from the parent schema (`omnia` or `vectis`), and the build brief delegates to code-generation skills based on the tasks in `tasks.md`. For a contract-only change, the tasks brief generates validation tasks rather than code-generation tasks — the task list contains items like "validate contract structural correctness" and "verify `$ref` resolution" rather than "generate Rust crate." The build brief's mode detection (check whether `Cargo.toml` exists) naturally falls through to a no-op for code generation, and the validation tasks are satisfied by the `/contracts:validator` output from the define phase. This requires no special handling in the build brief — the task-driven model adapts to the change's content.
 
@@ -322,11 +324,11 @@ user-api-contract ───────┤
 
 The `/spec:plan` skill can automate this: when it identifies an interface between projects during planning, it inserts a contract change before the implementation changes on both sides.
 
-### Spec-first (inline derivation)
+### Spec-first (inline derivation) — fallback for single-repo services
 
-For single-repo projects or changes that don't cross API boundaries, contracts are derived inline during a single change's define phase. The change's specs describe the system's behavior; the `contracts` brief extracts the interface shapes from those specs in the same pipeline run. No separate contract change is needed.
+For single-repo services with no external consumers and no multi-party coordination, contracts can be derived inline during a single change's define phase. The change's specs describe the system's behavior; the `contracts` brief extracts the interface shapes from those specs in the same pipeline run. No separate contract change is needed.
 
-This is the simpler pattern — one change, one define phase, specs and contracts produced together. It applies when there is no multi-party agreement to negotiate.
+This is the simpler pattern — one change, one define phase, specs and contracts produced together. It is appropriate when the API surface is a thin projection of a single capability and there is no second party to agree with. It should not be used when the API is shared across repos or consumed by external systems — those cases call for the contract-first pattern.
 
 ### Contract-given (external or legacy contracts)
 
@@ -367,11 +369,11 @@ The import change produces validated contract artifacts. Implementation changes 
 
 The choice between patterns is a planning decision, not a mechanism difference. All three use the same `contracts` brief, the same `/contracts:writer` and `/contracts:validator` skills, the same central `.specify/contracts/` location, and the same merge semantics. The writer's single algorithm adapts naturally to each:
 
-- **Contract-first**: baseline is sparse → the delta is the full contract set, derived from interface-level specs.
-- **Spec-first**: baseline may already be rich → the delta is small, derived from implementation-level specs.
+- **Contract-first** (default): a dedicated contract change produces the full contract set from interface-level specs. Implementation changes then validate alignment — their delta is small or empty.
+- **Spec-first** (fallback): no baseline contracts exist; the delta is the full contract set, derived from implementation-level specs. Appropriate only for single-repo services with no external consumers.
 - **Contract-given**: external contracts are imported into the baseline → the delta is small or empty, with alignment validation against what already exists.
 
-`/spec:plan` applies heuristics to select the pattern: if the plan contains changes in multiple projects that share an API boundary, insert a contract change (contract-first). If a source is flagged as an external system or legacy migration, insert an import change before the implementation changes (contract-given). Otherwise, rely on inline derivation (spec-first).
+`/spec:plan` defaults to contract-first: it inserts a dedicated contract change before implementation changes whenever the plan contains an API boundary — whether between projects in a multi-repo initiative or between a service and its consumers. If a source is flagged as an external system or legacy migration, it inserts an import change (contract-given). Spec-first inline derivation is used only when the plan contains a single-repo change with no identified API boundary and no external consumers.
 
 ### Contract references in plan entries (Layer 2)
 
@@ -386,7 +388,7 @@ The central co-location model works identically in both topologies:
 | Concern | Single-repo | Multi-repo |
 |---------|-------------|------------|
 | Contracts location | `.specify/contracts/` | `.specify/contracts/` (initiating repo) |
-| Who writes (new APIs) | `/contracts:writer` during define (inline) | Dedicated contract change, then `/contracts:writer` in implementation changes |
+| Who writes (new APIs) | Dedicated contract change (recommended) or `/contracts:writer` inline fallback | Dedicated contract change, then `/contracts:writer` validates alignment in implementation changes |
 | Who writes (external APIs) | Import into baseline, then `/contracts:writer` validates alignment | Import change in plan, then alignment validation in implementation changes |
 | How projects read | Direct filesystem read | Materialised by `workspace sync` |
 | How changes propose updates | `.specify/changes/<name>/contracts/` | Same — in the project clone's change directory |
@@ -508,7 +510,15 @@ This is an acceptable trade-off for a small number of child schemas (two: `omnia
 
 ### Why not modify the base schemas?
 
-Not every project needs machine-readable contracts. A single-crate WASM service with no external consumers may never expose an API that warrants a formal contract. Making contracts opt-in via schema composition keeps the base schemas lean and avoids generating unused artifacts. Projects that need contracts select the `omnia-contracts` or `vectis-contracts` schema at init time; projects that don't, use the base schema unchanged.
+Not every project needs machine-readable contracts. A single-crate WASM service with no external consumers may never expose an API that warrants a formal contract. Making contracts opt-in via schema composition keeps the base schemas lean and avoids generating unused artifacts.
+
+### Recommended defaults
+
+In practice, most Augentic work targets multi-service platforms and applications with frontends consuming backends. For these projects, API contracts are not an optional extra — they are the missing structural link between behavioral specs on both sides of an interface. The contracts-aware schemas (`omnia-contracts`, `vectis-contracts`) should be the **recommended default** at `/spec:init` time.
+
+The base schemas without contracts remain available for genuinely isolated services — a single-crate WASM service with no external consumers, or a standalone tool with no API surface. But when a project participates in a platform with other services or has consumers (mobile, web, or third-party), the contracts-aware schema should be the starting point.
+
+`/spec:init` should guide this choice: when `registry.yaml` exists or the operator indicates multi-service intent, recommend the contracts-aware schema. When the project is standalone with no declared peers, offer the base schema as the simpler option. The contracts pipeline adds no overhead when the change's specs describe no API interactions — the writer produces an empty delta and the validator has nothing to check — so selecting the contracts-aware schema for a project that turns out not to need contracts is low-cost, while missing contracts on a project that does need them creates integration risk that surfaces late.
 
 ## Non-goals
 
@@ -523,16 +533,16 @@ Not every project needs machine-readable contracts. A single-crate WASM service 
 
 ### Layer 1 (no CLI changes)
 
-1. **`/contracts:writer` skill** — author `plugins/contracts/skills/writer/SKILL.md` with the delta-production algorithm. The writer reads baseline contracts from `.specify/contracts/` and the change's specs, then produces the minimal contract delta. Includes reference docs for JSON Schema, OpenAPI 3.1, and AsyncAPI 3.0 conventions.
+1. **`/contracts:writer` skill** — author `plugins/contracts/skills/writer/SKILL.md` with the alignment-validation and delta-production algorithm. The writer reads baseline contracts from `.specify/contracts/` and the change's specs, validates alignment, and produces the minimal contract delta for uncovered interactions. Includes reference docs for JSON Schema, OpenAPI 3.1, and AsyncAPI 3.0 conventions.
 2. **`/contracts:validator` skill** — author `plugins/contracts/skills/validator/SKILL.md` with post-generation validation checks (`$ref` resolution, schema metadata, binding completeness).
-3. **`contracts` brief** — author `briefs/contracts.md` as a thin orchestrator: delegation to `/contracts:writer` and `/contracts:validator`, plus a verify-repair loop.
+3. **`contracts` brief** — author `briefs/contracts.md` as a thin orchestrator: delegation to `/contracts:writer` (alignment validation and delta production) and `/contracts:validator`, plus a verify-repair loop.
 4. **Updated `specs` brief** — add a brief-body instruction to read `.specify/contracts/` as optional context when the directory exists. No schema-resolution changes.
 5. **Updated `design` brief** — modify `briefs/design.md` to declare `needs: [proposal, contracts]` and update the `## API Contracts` / `## Publication & Timing Patterns` sections to reference the central contract files.
 6. **Child schemas** — create `schemas/omnia-contracts/` and `schemas/vectis-contracts/` with `extends` and the `contracts` pipeline entry.
 7. **Fixture (generation)** — author a worked example under `schemas/omnia-contracts/fixtures/` showing the baseline contracts, the writer's output, the validator's output, and a change-level delta for a representative capability.
 8. **Fixture (conformance)** — author a worked example showing pre-existing baseline contracts (manually imported), a change whose specs describe behavior against that baseline, the writer's alignment output, and the validator's results.
 
-Layer 1 is independently useful: it produces machine-readable contracts during define that the agent and human can review, and that the build phase can consume for code generation. For external contracts, the operator places normalised files into the change directory; the writer validates alignment and the validator catches structural issues.
+Layer 1 is independently useful: for contract-first changes, it produces machine-readable contracts that the agent and human can review and that the build phase can consume for code generation; for implementation changes, it validates that specs align with predefined baseline contracts and flags mismatches. For external contracts, the operator places normalised files into the change directory; the writer validates alignment and the validator catches structural issues.
 
 ### Layer 2 (CLI changes + additional skills)
 
@@ -553,7 +563,7 @@ Layer 1 is independently useful: it produces machine-readable contracts during d
 
 ## Implementation order
 
-1. Author the `/contracts:writer` skill (item 1). This is the core deliverable — the delta-production algorithm and reference docs for JSON Schema, OpenAPI, and AsyncAPI conventions.
+1. Author the `/contracts:writer` skill (item 1). This is the core deliverable — the alignment-validation and delta-production algorithm, plus reference docs for JSON Schema, OpenAPI, and AsyncAPI conventions.
 2. Author the `/contracts:validator` skill (item 2). Post-generation consistency checks that the brief's verify-repair loop acts on.
 3. Author the `contracts.md` brief (item 3). Thin orchestrator wiring skill delegation and the verify-repair loop. Depends on steps 1–2.
 4. Update the `specs.md` brief (item 4). Add the baseline-contracts-as-context instruction.
