@@ -237,7 +237,7 @@ The validator reports each issue with the file path and a description of the pro
 
 #### `/contracts:importer` (Layer 2)
 
-The importer is deferred to Layer 2. It codifies format detection, version upgrade (Swagger 2.0 / OpenAPI 3.0 → 3.1, AsyncAPI 2.x → 3.0), inline schema decomposition, and Specify metadata injection for external contract files (§*Implementation scope*, item 14).
+The importer is deferred to Layer 2. It codifies format detection, version upgrade (Swagger 2.0 / OpenAPI 3.0 → 3.1, AsyncAPI 2.x → 3.0), inline schema decomposition, and Specify metadata injection for external contract files (§*Implementation scope*, item 16).
 
 In Layer 1, external contracts are imported manually: the operator places OpenAPI 3.1 / AsyncAPI 3.0 / JSON Schema files into the change's `contracts/` directory, following the artifact structure described in §*Artifact structure*. The `/contracts:writer` normalises metadata gaps (missing `$id`, `description`) as part of its standard delta, and `/contracts:validator` catches structural issues. The agent can assist with format conversion when the source files are not already in the target versions.
 
@@ -283,9 +283,9 @@ All three patterns use the same `contracts` brief, the same `/contracts:writer` 
 
 `/spec:plan` applies the following rules when constructing the plan:
 
-1. **API boundary between projects.** When the plan contains changes in multiple projects that share an API boundary (identified from registry descriptions, source analysis, or operator input), `/spec:plan` inserts a dedicated contract change before the implementation changes on both sides. The contract change carries interface-level behavioral specs and derives contracts from them; implementation changes `depends-on` the contract change and validate alignment. This is the **contract-first** pattern and is the most common case for multi-service platforms.
+1. **API boundary between projects.** When the plan contains changes in multiple projects that share an API boundary (identified from registry descriptions, source analysis, or operator input), `/spec:plan` inserts a dedicated contract change before the implementation changes on both sides. The contract change uses the `contracts` schema (§*Schema integration*), carries interface-level behavioral specs, and derives contracts from them; implementation changes `depends-on` the contract change and validate alignment. This is the **contract-first** pattern and is the most common case for multi-service platforms.
 
-2. **External system or legacy migration.** When a source is flagged as an external system or legacy API, `/spec:plan` inserts an import change before the implementation changes. The operator places the external contract files into the import change's `contracts/` directory; the change's build phase validates structural correctness. Implementation changes depend on the import change and write specs that conform to the imported contract. This is the **contract-given** pattern.
+2. **External system or legacy migration.** When a source is flagged as an external system or legacy API, `/spec:plan` inserts an import change before the implementation changes. The import change uses the `contracts` schema. The operator places the external contract files into the import change's `contracts/` directory; the change's build phase validates structural correctness. Implementation changes depend on the import change and write specs that conform to the imported contract. This is the **contract-given** pattern.
 
 3. **Single-repo, no API boundary.** When the plan contains a single-repo change with no identified API boundary and no external consumers, no separate contract change is inserted. The `contracts` brief derives interface shapes inline during the change's define phase — the baseline is empty, so the delta is the full contract set. This is the **spec-first** pattern, a convenience fallback for isolated services.
 
@@ -295,7 +295,7 @@ The contract-first pattern is the default. Most Augentic work involves multi-ser
 
 The plan skill inserts a dedicated contract change before implementation changes. The contract change is a regular Specify change that produces interface-level behavioral specs and derives contracts from them. It carries no implementation code — its build phase validates the contract artifacts rather than generating code.
 
-**Build phase for contract-only changes.** The build brief delegates to code-generation skills based on the tasks in `tasks.md`. For a contract-only change, the tasks brief generates validation tasks rather than code-generation tasks — the task list contains items like "validate contract structural correctness" and "verify `$ref` resolution" rather than "generate Rust crate." The build brief's mode detection (check whether `Cargo.toml` exists) naturally falls through to a no-op for code generation, and the validation tasks are satisfied by the `/contracts:validator` output from the define phase. This requires no special handling in the build brief — the task-driven model adapts to the change's content.
+**Build phase for contract-only changes.** Contract-only changes use the `contracts` schema (§*Schema integration*), whose build brief delegates to `/contracts:validator` rather than code-generation skills. The build phase validates structural correctness — `$ref` resolution, schema metadata, binding completeness — and produces no implementation code. This is not a fallback path through an implementation schema; it is the designed behavior of a purpose-built schema.
 
 The interface has its own behavioral specs, distinct from any project's internal specs:
 
@@ -310,6 +310,7 @@ The plan makes the sequencing explicit and enables parallelism:
 ```yaml
 changes:
   - name: user-api-contract
+    schema: contracts@v1
     description: "Define the user registration API contract"
     status: pending
 
@@ -361,6 +362,7 @@ The plan structure for a migration:
 ```yaml
 changes:
   - name: import-legacy-api
+    schema: contracts@v1
     description: "Import legacy billing API contract"
     status: pending
 
@@ -404,7 +406,7 @@ Central co-location with `registry.yaml` makes multi-repo contract sharing strai
 
 In a multi-repo initiative, contracts live in the initiating repo alongside `registry.yaml`. The plan uses dedicated contract changes (see §*Authorship patterns*) to define interfaces before implementation begins. Contract changes run in the initiating repo, where `.specify/contracts/` is directly accessible.
 
-In Layer 1, workspace clones do not automatically receive the central contracts — the `workspace sync` extension that materialises `.specify/contracts/` into project clones is a Layer 2 CLI change (§*Implementation scope*, item 13). Until then, the `/spec:execute` driver can copy the central `.specify/contracts/` into each project clone's `.specify/contracts/` as a pre-change distribution step — the same directory structure, achieved by the agent rather than by the CLI.
+In Layer 1, workspace clones do not automatically receive the central contracts — the `workspace sync` extension that materialises `.specify/contracts/` into project clones is a Layer 2 CLI change (§*Implementation scope*, item 15). Until then, the `/spec:execute` driver can copy the central `.specify/contracts/` into each project clone's `.specify/contracts/` as a pre-change distribution step — the same directory structure, achieved by the agent rather than by the CLI.
 
 The target state (Layer 2) looks like:
 
@@ -612,7 +614,47 @@ No artifact type gets a special-purpose narrowing mechanism. The `context` field
 
 ## Schema integration
 
-The `contracts` brief is added directly to the base `omnia` and `vectis` schemas. No child schemas or schema composition is needed.
+Contract-only changes and implementation changes have different schema needs, reflecting the two distinct roles the `contracts` brief serves. A standalone `contracts` schema handles contract authoring and import; the `contracts` brief in Omnia and Vectis handles alignment validation during implementation.
+
+### The `contracts` schema
+
+Dedicated contract changes — the primary output of the contract-first and contract-given authorship patterns — are platform-level changes with no project binding. They define or import interface shapes; they do not generate implementation code. A standalone `contracts` schema models this directly:
+
+```yaml
+name: contracts
+version: 1
+description: API contract definition and validation
+domain: |
+  Formats: JSON Schema, OpenAPI 3.1, AsyncAPI 3.0
+  Purpose: Platform-level interface definitions between components
+
+pipeline:
+  define:
+    - id: proposal
+      brief: briefs/proposal.md
+    - id: specs
+      brief: briefs/specs.md
+    - id: contracts
+      brief: briefs/contracts.md
+    - id: tasks
+      brief: briefs/tasks.md
+  build:
+    - id: build
+      brief: briefs/build.md
+  merge:
+    - id: merge
+      brief: briefs/merge.md
+```
+
+Key differences from Omnia and Vectis schemas:
+
+- **No `design` stage.** Contract changes define interface shapes, not implementation design. The `design.md` sections for auth schemes, retry policies, and caching strategies are implementation concerns that belong in the implementing project's change, not in the contract change.
+- **Build delegates to validation, not code generation.** The build brief invokes `/contracts:validator` to verify structural correctness — `$ref` resolution, schema metadata, binding completeness. There are no code-generation skills to invoke because the change produces no implementation code.
+- **Domain context is format-specific, not platform-specific.** The `domain` field describes JSON Schema, OpenAPI, and AsyncAPI conventions rather than Rust/WASM or Crux/SwiftUI/Kotlin toolchains.
+
+### The `contracts` brief in Omnia and Vectis
+
+Implementation changes in Omnia and Vectis projects benefit from the `contracts` brief — not for generating contracts, but for validating that their specs align with baseline contracts authored by preceding contract changes. The brief is added to both base schemas' define pipelines.
 
 The updated Omnia `define` pipeline:
 
@@ -650,17 +692,35 @@ pipeline:
       brief: briefs/tasks.md
 ```
 
+In the recommended contract-first workflow, baseline contracts already exist when an implementation change's define phase runs. The `contracts` brief operates in validation mode — `/contracts:writer` verifies alignment and produces a small or empty delta, flagging mismatches rather than generating from scratch. The brief is a well-behaved no-op when a change's specs describe no API interactions.
+
 The `contracts.md` brief and the updated `design.md` brief (which adds `contracts` to its `needs`) are added to each base schema's `briefs/` directory alongside the existing briefs. `build` and `merge` pipelines are unchanged.
 
-### Why not opt-in via child schemas?
+### Schema resolution for contract changes
 
-An earlier draft considered creating `omnia-contracts` and `vectis-contracts` child schemas via `extends`, keeping contracts opt-in at schema selection time. This was rejected for three reasons:
+Plan entries for contract-only changes have no `project` field — contracts are platform-level, not owned by any single project. Schema resolution for these entries uses a `schema` field on the plan entry itself, bypassing the `project` → `registry.yaml` → `schema` lookup path used for implementation changes:
 
-1. **Maintenance coupling.** Schema composition overrides at the file level. The child's `design.md` brief must duplicate the parent's entire brief body; the child's `define` pipeline must reproduce the full stage list to place `contracts` in the correct position. Any future change to the parent's briefs or pipeline must be mirrored manually into each child. Two child schemas means two copies of every affected brief.
+```yaml
+changes:
+  - name: user-api-contract
+    schema: contracts@v1
+    description: "Define the user registration API contract"
+    status: pending
+```
 
-2. **The contracts pipeline is a well-behaved no-op.** When a change's specs describe no API interactions, `/contracts:writer` produces an empty delta and `/contracts:validator` has nothing to check. The `contracts/` directory is only created when the first contract change runs. Including the `contracts` stage in the base schema adds no overhead for projects that never use it.
+The `schema` field and `project` field serve complementary purposes: `project` identifies the target codebase and resolves the schema via the registry; `schema` identifies the schema directly when no project applies. Validation enforces that each plan entry has at least one of the two.
 
-3. **Most projects need contracts.** Almost all Augentic work targets multi-service platforms and applications with frontends consuming backends. Contracts are not an optional extra for these projects — they are the structural link between behavioral specs on both sides of an interface. Making contracts opt-in creates a decision point at init time that most projects should answer the same way, and the cost of answering wrong (missing contracts on a project that needs them) is late-discovered integration risk.
+This requires extending the plan entry schema with an optional `schema` field (§*Implementation scope*, item 7).
+
+### Why both a standalone schema and a pipeline brief?
+
+Two simpler alternatives were considered:
+
+1. **No standalone schema — contracts brief only in Omnia/Vectis.** This forces contract-only changes through schemas designed for implementation code. The build pipeline falls through to a no-op for code generation; the domain context describes Rust/WASM or Crux toolchains irrelevant to contract authoring; and schema resolution requires assigning a contract change to a project it does not belong to. The workarounds function but misrepresent the change's nature.
+
+2. **Standalone schema only — no brief in Omnia/Vectis.** This loses alignment validation during implementation changes. When an Omnia backend change defines specs for an API with existing baseline contracts, the `contracts` brief validates that the specs conform to those contracts. Without it, spec-contract mismatches are not caught until integration time.
+
+The two-part approach gives each change type the right tools: contract-only changes get a purpose-built schema; implementation changes get alignment validation in their existing pipeline.
 
 ## Non-goals
 
@@ -680,28 +740,30 @@ An earlier draft considered creating `omnia-contracts` and `vectis-contracts` ch
 3. **`contracts` brief** — author `briefs/contracts.md` as a thin orchestrator: delegation to `/contracts:writer` (alignment validation and delta production) and `/contracts:validator`, plus a verify-repair loop.
 4. **Updated `specs` brief** — add a brief-body instruction to read `.specify/contracts/` as optional context when the directory exists. No schema-resolution changes.
 5. **Updated `design` brief** — modify `briefs/design.md` to declare `needs: [proposal, contracts]` and update the `## API Contracts` / `## Publication & Timing Patterns` sections to reference the central contract files.
-6. **Base schema updates** — add the `contracts` pipeline entry and `briefs/contracts.md` to `schemas/omnia/` and `schemas/vectis/`. Update `briefs/design.md` in each schema to declare `needs: [proposal, contracts]`.
-7. **Fixture (generation)** — author a worked example under `schemas/omnia/fixtures/` showing the baseline contracts, the writer's output, the validator's output, and a change-level delta for a representative capability.
-8. **Fixture (conformance)** — author a worked example showing pre-existing baseline contracts (manually imported), a change whose specs describe behavior against that baseline, the writer's alignment output, and the validator's results.
+6. **`contracts` schema** — author `schemas/contracts/schema.yaml` with the define, build, and merge pipelines described in §*Schema integration*. Author the schema's briefs: `briefs/proposal.md`, `briefs/specs.md`, `briefs/contracts.md`, `briefs/tasks.md`, `briefs/build.md` (delegates to `/contracts:validator`), and `briefs/merge.md`.
+7. **Plan entry `schema` field** — extend the plan entry schema with an optional `schema` field for entries without a `project`. `/spec:plan` populates this field when inserting contract-only changes. `specify plan create` and `specify plan amend` accept `--schema` as an alternative to `--project`. Validation enforces that each entry has at least one of `project` or `schema`.
+8. **Omnia and Vectis schema updates** — add the `contracts` pipeline entry and `briefs/contracts.md` to `schemas/omnia/` and `schemas/vectis/` for alignment validation during implementation changes. Update `briefs/design.md` in each schema to declare `needs: [proposal, contracts]`.
+9. **Fixture (generation)** — author a worked example under `schemas/contracts/fixtures/` showing the baseline contracts, the writer's output, the validator's output, and a change-level delta for a representative capability.
+10. **Fixture (conformance)** — author a worked example showing pre-existing baseline contracts (manually imported), a change whose specs describe behavior against that baseline, the writer's alignment output, and the validator's results.
 
 Layer 1 is independently useful: for contract-first changes, it produces machine-readable contracts that the agent and human can review and that the build phase can consume for code generation; for implementation changes, it validates that specs align with predefined baseline contracts and flags mismatches. For external contracts, the operator places normalised files into the change directory; the writer validates alignment and the validator catches structural issues.
 
 ### Layer 2 (CLI changes + additional skills)
 
-9. **`specify merge` extension** — copy change-level `contracts/` files into `.specify/contracts/`. Files that share a path are replaced; files absent from the change are left untouched.
-10. **`specify spec preview` extension** — include contract file changes in the preview output.
-11. **`specify spec conflict-check` extension** — detect baseline contract modifications after the change's `defined-at` timestamp.
-12. **`specify validate` extension** — check that `.specify/contracts/schemas/` contains at least one file when the schema declares a `contracts` brief, and that `$ref` pointers in OpenAPI/AsyncAPI files resolve. When registry contract roles are declared, check producer-uniqueness and `produces`/`imports` mutual exclusion.
-13. **`workspace sync` extension** — materialise `.specify/contracts/` from the initiating repo into each project clone. Same copy/symlink mechanism used for peer baselines.
-14. **`/contracts:importer` skill** — author `plugins/contracts/skills/importer/SKILL.md` with format detection, version upgrade (Swagger 2.0 / OpenAPI 3.0 → 3.1, AsyncAPI 2.x → 3.0), schema decomposition, and Specify metadata injection. Includes reference docs for supported input formats and the normalisation rules.
-15. **Registry contract roles** — implement the optional `contracts` block on `registry.yaml` project entries as designed in §*Contract roles in `registry.yaml`*. Add `produces`, `consumes`, and `imports` lists to the registry schema. Update `specify initiative registry validate` and `specify validate` to enforce the invariants (single producer, produce/import mutual exclusion, path validity, self-consistency). Update `/spec:plan` to populate roles when inserting contract changes.
-16. **`context` plan entry field (generic context narrowing)** — define the optional `context` field on plan entries (list of paths relative to `.specify/`). `/spec:plan` populates `context` automatically when inserting changes — contract paths, spec baselines, or any other context the define phase should focus on. Briefs use `context` as a focused filter when scanning baseline directories. This is a general-purpose mechanism that applies to contracts, specs, and any future artifact type equally. See §*Generic context narrowing (`context`)* for the full design.
+11. **`specify merge` extension** — copy change-level `contracts/` files into `.specify/contracts/`. Files that share a path are replaced; files absent from the change are left untouched.
+12. **`specify spec preview` extension** — include contract file changes in the preview output.
+13. **`specify spec conflict-check` extension** — detect baseline contract modifications after the change's `defined-at` timestamp.
+14. **`specify validate` extension** — check that `.specify/contracts/schemas/` contains at least one file when the schema declares a `contracts` brief, and that `$ref` pointers in OpenAPI/AsyncAPI files resolve. When registry contract roles are declared, check producer-uniqueness and `produces`/`imports` mutual exclusion.
+15. **`workspace sync` extension** — materialise `.specify/contracts/` from the initiating repo into each project clone. Same copy/symlink mechanism used for peer baselines.
+16. **`/contracts:importer` skill** — author `plugins/contracts/skills/importer/SKILL.md` with format detection, version upgrade (Swagger 2.0 / OpenAPI 3.0 → 3.1, AsyncAPI 2.x → 3.0), schema decomposition, and Specify metadata injection. Includes reference docs for supported input formats and the normalisation rules.
+17. **Registry contract roles** — implement the optional `contracts` block on `registry.yaml` project entries as designed in §*Contract roles in `registry.yaml`*. Add `produces`, `consumes`, and `imports` lists to the registry schema. Update `specify initiative registry validate` and `specify validate` to enforce the invariants (single producer, produce/import mutual exclusion, path validity, self-consistency). Update `/spec:plan` to populate roles when inserting contract changes.
+18. **`context` plan entry field (generic context narrowing)** — define the optional `context` field on plan entries (list of paths relative to `.specify/`). `/spec:plan` populates `context` automatically when inserting changes — contract paths, spec baselines, or any other context the define phase should focus on. Briefs use `context` as a focused filter when scanning baseline directories. This is a general-purpose mechanism that applies to contracts, specs, and any future artifact type equally. See §*Generic context narrowing (`context`)* for the full design.
 
 ### Layer 3 (future, deferred)
 
-17. **`specify contract validate`** — cross-repo contract compatibility checking against the central contracts.
-18. **Contract-validation build brief** — automated verification during build that generated code matches the contract.
-19. **Contract-aware `/spec:verify`** — drift detection between baseline contracts and implementation code.
+19. **`specify contract validate`** — cross-repo contract compatibility checking against the central contracts.
+20. **Contract-validation build brief** — automated verification during build that generated code matches the contract.
+21. **Contract-aware `/spec:verify`** — drift detection between baseline contracts and implementation code.
 
 ## Implementation order
 
@@ -710,11 +772,13 @@ Layer 1 is independently useful: for contract-first changes, it produces machine
 3. Author the `contracts.md` brief (item 3). Thin orchestrator wiring skill delegation and the verify-repair loop. Depends on steps 1–2.
 4. Update the `specs.md` brief (item 4). Add the baseline-contracts-as-context instruction.
 5. Update the `design.md` brief (item 5). A small `needs` change plus section rewording.
-6. Update the base schemas (item 6). Add the `contracts` pipeline entry and brief to `schemas/omnia/` and `schemas/vectis/`.
-7. Author the generation fixture (item 7). Validates the writer and validator against a representative new-API input.
-8. Author the conformance fixture (item 8). Validates the writer's alignment checking and validator against pre-existing baseline contracts.
+6. Author the `contracts` schema (item 6). Purpose-built schema for contract-only changes with validation-focused build pipeline.
+7. Extend the plan entry schema with the `schema` field (item 7). Enables schema resolution for project-less contract changes.
+8. Update the Omnia and Vectis base schemas (item 8). Add the `contracts` pipeline entry and brief for alignment validation.
+9. Author the generation fixture (item 9). Validates the writer and validator against a representative new-API input.
+10. Author the conformance fixture (item 10). Validates the writer's alignment checking and validator against pre-existing baseline contracts.
 
-Steps 1–8 can ship without any CLI changes. Steps 9–16 require specify-cli changes and can follow independently. Steps 14–16 (importer, registry roles, `context` field) can land in any order once the CLI merge/validate extensions are in place.
+Steps 1–10 can ship without any CLI changes. Steps 11–18 require specify-cli changes and can follow independently. Steps 16–18 (importer, registry roles, `context` field) can land in any order once the CLI merge/validate extensions are in place.
 
 ## References
 
