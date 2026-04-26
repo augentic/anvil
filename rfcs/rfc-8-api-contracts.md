@@ -8,7 +8,7 @@ Introduce machine-readable API contracts as a first-class, platform-level artifa
 
 Contracts are co-located with `registry.yaml` and `plan.yaml` at `.specify/contracts/`. They are a platform concern — they describe interfaces *between* components, not internals of any one — and every project references the same central contracts, including the implementer of the API itself. A `contracts` brief in the define pipeline reads the current baseline contracts and proposes the minimal set of changes a given change requires.
 
-For multi-repo initiatives, contracts are defined via a dedicated **contract change** in the plan — a regular Specify change whose specs are interface-level behavioral requirements and whose `contracts` brief derives the machine-readable shapes from them. Implementation changes on both sides depend on the contract change, enabling parallel execution. For single-repo projects, contracts are derived inline during a change's define phase. When a contract is mandated by an external system or inherited from a legacy system being migrated, it is imported into the baseline and the `contracts` brief validates that specs conform to the pre-existing interface rather than generating new artifacts. All three patterns use the same brief and the same central location; the difference is plan structure and brief mode, not mechanism.
+For multi-repo initiatives, contracts are defined via a dedicated **contract change** in the plan — a regular Specify change whose specs are interface-level behavioral requirements and whose `contracts` pipeline stage derives the machine-readable shapes from them via `/contracts:writer`. Implementation changes on both sides depend on the contract change, enabling parallel execution. For single-repo projects, contracts are derived inline during a change's define phase. When a contract is mandated by an external system or inherited from a legacy system being migrated, it is imported into the baseline and `/contracts:writer` validates that specs conform to the pre-existing interface rather than generating new artifacts. All three patterns use the same brief, the same skills, and the same central location; the difference is plan structure and brief mode, not mechanism.
 
 No CLI changes are required for the initial implementation; baseline tracking and cross-repo distribution are layered on top.
 
@@ -167,21 +167,52 @@ This preserves the `specs → contracts` pipeline ordering — specs still run b
 ```yaml
 ---
 id: contracts
-description: Evolve platform API contracts or validate conformance to external contracts
+description: Orchestrate contract generation or conformance validation
 generates: contracts/**/*.yaml
 needs: [specs]
 ---
 ```
 
-The `generates` glob (`contracts/**/*.yaml`) scopes output to the change-level `contracts/` directory. The brief reads the baseline at `.specify/contracts/` and the registry roles as context, then operates in one of two modes: **generation** (deriving new contracts from specs) or **conformance** (validating specs against pre-existing baseline contracts). See rule 8 in §*Contract generation rules* for the mode-selection heuristic.
+The `generates` glob (`contracts/**/*.yaml`) scopes output to the change-level `contracts/` directory.
 
-### Contract generation rules
+### Brief body
 
-The `contracts` brief body instructs the agent to:
+The `contracts` brief is a thin orchestrator — it detects the operating mode and delegates to specialist skills, following the same pattern as the `build` brief's delegation to `/omnia:crate-writer` and `/omnia:test-writer`.
+
+#### Mode detection
+
+Read the baseline contracts at `.specify/contracts/` and the set of API interactions described in the change's specs. Compare the overlap:
+
+- When the baseline already covers the majority of API interactions described in the specs (the specs describe behavior against a pre-existing API rather than defining a new one), select **conformance mode**.
+- When the overlap is minimal or absent, select **generation mode**.
+
+Report which mode was selected and why.
+
+#### Generation mode
+
+1. `/contracts:writer` — derive the minimal contract delta from specs and baseline
+2. `/contracts:validator` — verify internal consistency of the generated artifacts
+
+#### Conformance mode
+
+1. `/contracts:writer --conformance` — validate spec-to-contract alignment against the baseline; generate delta for extensions only
+2. `/contracts:validator` — verify internal consistency (same checks as generation mode)
+
+#### Verify-repair loop
+
+If the validator reports failures, re-enter the writer with the validation output for targeted repair. Repeat until clean or a maximum of 2 iterations — analogous to the build brief's verify-repair loop. If still failing after 2 iterations, stop and surface the issues for human review.
+
+### Specialist skills
+
+#### `/contracts:writer`
+
+Generates or validates API contract artifacts. The writer's behavior is controlled by the invoking brief's mode selection.
+
+**Generation mode** (default):
 
 1. **Read the baseline contracts** at `.specify/contracts/` to understand the current platform vocabulary — existing domain types, HTTP bindings, and messaging bindings.
 
-2. **Read all spec files** under `.specify/changes/<name>/specs/` and identify requirements that describe API interactions (HTTP endpoints, request/response patterns) or message exchanges (pub/sub, event-driven patterns).
+2. **Read all spec files** under the change's `specs/` directory and identify requirements that describe API interactions (HTTP endpoints, request/response patterns) or message exchanges (pub/sub, event-driven patterns).
 
 3. **Determine the minimal contract delta.** Compare what the specs require against the existing baseline. Identify new domain types, modified types, new endpoints or channels, and modified bindings. Only produce files for what this change adds or modifies.
 
@@ -203,15 +234,31 @@ The `contracts` brief body instructs the agent to:
    - Message payload schemas as `$ref` pointers to `../schemas/`
    - AsyncAPI 3.0 format (native JSON Schema support)
 
-7. **Validate internal consistency.** All `$ref` pointers in OpenAPI and AsyncAPI files must resolve — either to files in the change's `contracts/schemas/` or to existing files in the baseline `.specify/contracts/schemas/`. The agent verifies this before completing the brief.
+The writer reads the registry's contract roles (§*Contract roles*) as context. When generating contracts, it verifies that the producing project's specs are consistent with its declared role and flags specs that describe producing an interface the project does not own.
 
-8. **Conformance mode (external contracts).** When the baseline contains contracts that already cover the interface described by the change's specs — i.e. the specs describe behavior against a pre-existing API rather than defining a new one — the brief switches to conformance mode:
-   - **Validate alignment.** For each spec scenario that describes an API interaction, verify that the endpoint path, HTTP method, request/response payload shapes, and error codes match the baseline contract. For messaging scenarios, verify that the channel, operation, and message payload match the baseline AsyncAPI definition. Flag mismatches as warnings for human review.
-   - **Suppress generation for covered interfaces.** Do not generate new contract files for endpoints, channels, or schemas that already exist in the baseline. The external contract is authoritative for its interfaces.
-   - **Generate delta for extensions only.** If specs describe interactions that go beyond the baseline contract (new endpoints added during a migration, additional message channels), generate contract files for those additions following the standard rules above.
-   - **Normalise imported files.** If imported contract files lack Specify conventions (missing `$id` on schemas, inconsistent `description` fields), propose a normalisation delta that adds the missing metadata without changing the interface shapes. This delta is written to the change's `contracts/` directory as replacements for the imported files.
+**Conformance mode** (`--conformance`):
 
-   The brief detects conformance mode by comparing the set of API interactions in the specs against the set of bindings in the baseline contracts. When the overlap is substantial (the majority of spec scenarios describe interactions already present in the baseline), the brief operates in conformance mode. When the overlap is minimal or absent, it operates in the standard generation mode. The brief reports which mode it selected and why.
+When the baseline contains contracts that already cover the interface described by the change's specs, the writer validates alignment instead of generating from scratch:
+
+1. **Validate alignment.** For each spec scenario that describes an API interaction, verify that the endpoint path, HTTP method, request/response payload shapes, and error codes match the baseline contract. For messaging scenarios, verify that the channel, operation, and message payload match the baseline AsyncAPI definition. Flag mismatches as warnings for human review.
+2. **Suppress generation for covered interfaces.** Do not generate new contract files for endpoints, channels, or schemas that already exist in the baseline. The external contract is authoritative for its interfaces.
+3. **Generate delta for extensions only.** If specs describe interactions that go beyond the baseline contract (new endpoints added during a migration, additional message channels), generate contract files for those additions following the standard generation rules above.
+4. **Normalise imported files.** If imported contract files lack Specify conventions (missing `$id` on schemas, inconsistent `description` fields), propose a normalisation delta that adds the missing metadata without changing the interface shapes. This delta is written to the change's `contracts/` directory as replacements for the imported files.
+
+For imported contracts, the writer flags specs that would modify the external interface shape rather than silently overwriting.
+
+#### `/contracts:validator`
+
+Validates internal consistency of contract artifacts after the writer completes. The validator does not generate or modify contract files — it reports issues for the brief's verify-repair loop to act on.
+
+Checks:
+
+1. **`$ref` resolution.** All `$ref` pointers in OpenAPI and AsyncAPI files must resolve — either to files in the change's `contracts/schemas/` or to existing files in the baseline `.specify/contracts/schemas/`.
+2. **Schema metadata.** Every JSON Schema file has `$id`, `title`, and `description`.
+3. **Binding completeness.** Every schema referenced by a spec scenario has at least one protocol binding (an OpenAPI path or AsyncAPI channel) unless the scenario is purely about the domain type.
+4. **Registry alignment.** When the registry declares contract roles, verify that the change's contracts are consistent — the producing project's change should not generate contracts for interfaces it does not produce, and a consumer's change should not modify the producer's contract files.
+
+The validator reports each issue with the file path and a description of the problem.
 
 ### Relationship to `design.md`
 
@@ -245,7 +292,7 @@ The `design` brief's `needs` gains `contracts` so the agent has the generated fi
 
 ## Authorship patterns
 
-The `contracts` brief handles creating new contracts, evolving existing ones, and validating conformance to externally mandated ones — it reads the baseline and adapts its behavior accordingly. This single mechanism supports three authorship patterns depending on context.
+The `contracts` brief and its specialist skills (`/contracts:writer`, `/contracts:validator`) handle creating new contracts, evolving existing ones, and validating conformance to externally mandated ones. The brief detects the operating mode from the baseline and delegates accordingly. This single mechanism supports three authorship patterns depending on context.
 
 ### Contract-first (dedicated contract change)
 
@@ -257,7 +304,7 @@ The interface has its own behavioral specs, distinct from any project's internal
 > WHEN the registration succeeds, the API SHALL respond with `201 Created` and a `User` payload including the assigned `id`.
 > WHEN the email is already registered, the API SHALL respond with `409 Conflict` and an `ErrorResponse` payload.
 
-These are behavioral requirements for the interface itself — not the producer's internal logic or the consumer's UI flows. The `contracts` brief derives the machine-readable shapes from these specs: JSON Schema for `UserRegistration`, `User`, and `ErrorResponse`; an OpenAPI binding for the endpoint. The spec-driven model is intact: specs describe *what* the interface does; contracts capture *what the interface looks like*.
+These are behavioral requirements for the interface itself — not the producer's internal logic or the consumer's UI flows. `/contracts:writer` derives the machine-readable shapes from these specs: JSON Schema for `UserRegistration`, `User`, and `ErrorResponse`; an OpenAPI binding for the endpoint. The spec-driven model is intact: specs describe *what* the interface does; contracts capture *what the interface looks like*.
 
 The plan makes the sequencing explicit and enables parallelism:
 
@@ -300,19 +347,19 @@ This is the simpler pattern — one change, one define phase, specs and contract
 
 When a contract is mandated by an external system — a partner API, a regulatory interface, or a legacy system being migrated — the derivation direction is reversed. The machine-readable contract already exists or its shape is dictated by a third party, and the specs need to *conform to* that contract rather than *generate* it.
 
-A contract-given change imports the external contract into `.specify/contracts/` and then writes behavioral specs that describe the pre-existing interface. The `contracts` brief operates in **conformance mode**: instead of deriving new schemas from specs, it validates that the specs correctly describe the given contract and proposes only the minimal amendments (e.g. adding `$id` values, aligning `description` fields with spec language) needed to bring the imported files into Specify's structural conventions.
+A contract-given change imports the external contract into `.specify/contracts/` and then writes behavioral specs that describe the pre-existing interface. The brief selects **conformance mode** and `/contracts:writer` validates that the specs correctly describe the given contract, proposing only the minimal amendments (e.g. adding `$id` values, aligning `description` fields with spec language) needed to bring the imported files into Specify's structural conventions.
 
 The workflow:
 
 1. **Import.** The external contract files (OpenAPI specs, AsyncAPI specs, JSON Schema definitions) are placed into `.specify/contracts/` — either manually, via a dedicated import step in the plan, or via the RT plugin's `wiretapper` skill for legacy systems. This happens *before* the change's define phase begins.
 
-2. **Define with conformance.** The change's `contracts` brief detects that baseline contracts already cover the interface the specs describe. Rather than generating new contract files, it validates spec-to-contract alignment:
+2. **Define with conformance.** The `contracts` brief detects that baseline contracts already cover the interface the specs describe and selects conformance mode. `/contracts:writer` validates spec-to-contract alignment:
    - Every endpoint or channel described in the specs has a corresponding binding in the baseline contracts.
    - Payload shapes referenced in spec scenarios match the JSON Schema definitions.
    - Error conditions in specs correspond to error responses in the contract.
    - Mismatches are flagged for human review rather than silently overwritten.
 
-3. **Delta for extensions only.** If the change extends the external contract (e.g. adding a new endpoint to a legacy API during migration), the brief produces contract files for the *additions* only. The imported baseline files are not modified — they remain the external system's authoritative shapes.
+3. **Delta for extensions only.** If the change extends the external contract (e.g. adding a new endpoint to a legacy API during migration), the writer produces contract files for the *additions* only. The imported baseline files are not modified — they remain the external system's authoritative shapes.
 
 The plan structure for a migration looks like:
 
@@ -333,11 +380,11 @@ The import change carries the external contract files but no implementation code
 
 ### Pattern selection
 
-The choice between patterns is a planning decision, not a mechanism difference. All three use the same `contracts` brief, the same central `.specify/contracts/` location, and the same merge semantics. The brief's behavior adapts to context:
+The choice between patterns is a planning decision, not a mechanism difference. All three use the same `contracts` brief, the same `/contracts:writer` and `/contracts:validator` skills, the same central `.specify/contracts/` location, and the same merge semantics. The brief's mode detection adapts to context:
 
 - **Contract-first**: baseline is sparse; the change produces substantial new contracts from interface-level specs.
 - **Spec-first**: baseline may already be rich; the change proposes a small delta derived from implementation-level specs.
-- **Contract-given**: baseline contains imported external contracts; the brief validates conformance and produces delta only for extensions.
+- **Contract-given**: baseline contains imported external contracts; the writer validates conformance and produces delta only for extensions.
 
 `/spec:plan` applies heuristics to select the pattern: if the plan contains changes in multiple projects that share an API boundary, insert a contract change (contract-first). If a source is flagged as an external system or legacy migration, insert an import change before the implementation changes (contract-given). Otherwise, rely on inline derivation (spec-first).
 
@@ -370,7 +417,7 @@ In a multi-repo initiative, contracts live in the initiating repo alongside `reg
 
 Each workspace clone gets the central contracts at `.specify/contracts/`. Phase skills always read from `.specify/contracts/` relative to their working directory — they do not need to know whether the contracts were authored locally or materialised from a central source. This preserves RFC-3b's design principle that phase skills are unaware of the multi-repo topology.
 
-When a contract change completes its define-build-merge cycle, its contracts merge into the central `.specify/contracts/`. The driver's pre-change distribution step propagates the updated contracts to all project clones before dependent implementation changes begin their define phases. Implementation changes read the materialised contracts as their baseline; their `contracts` brief proposes only additions or modifications their specs require — typically a small or empty delta, since the interface was already defined by the contract change.
+When a contract change completes its define-build-merge cycle, its contracts merge into the central `.specify/contracts/`. The driver's pre-change distribution step propagates the updated contracts to all project clones before dependent implementation changes begin their define phases. Implementation changes read the materialised contracts as their baseline; `/contracts:writer` proposes only additions or modifications their specs require — typically a small or empty delta, since the interface was already defined by the contract change.
 
 Compatibility is validated by the agent during each implementation change's define phase rather than by automated tooling. This requires no framework changes beyond extending `workspace sync` to include the `contracts/` directory in what it materialises — a single additional path using the same copy/symlink mechanism it already uses for peer baselines.
 
@@ -407,8 +454,8 @@ The central co-location model works identically in both topologies:
 | Concern | Single-repo | Multi-repo |
 |---------|-------------|------------|
 | Contracts location | `.specify/contracts/` | `.specify/contracts/` (initiating repo) |
-| Who writes (new APIs) | `contracts` brief during define (inline) | Dedicated contract change, then `contracts` brief in implementation changes |
-| Who writes (external APIs) | Import into baseline, then `contracts` brief validates conformance | Import change in plan, then conformance in implementation changes |
+| Who writes (new APIs) | `/contracts:writer` during define (inline) | Dedicated contract change, then `/contracts:writer` in implementation changes |
+| Who writes (external APIs) | Import into baseline, then `/contracts:writer` validates conformance | Import change in plan, then conformance in implementation changes |
 | How projects read | Direct filesystem read | Materialised by `workspace sync` |
 | How changes propose updates | `.specify/changes/<name>/contracts/` | Same — in the project clone's change directory |
 | How updates merge | `specify merge` → `.specify/contracts/` | Same — then `workspace push` propagates |
@@ -477,7 +524,7 @@ error: contract "http/billing-api" appears in both produces (payments) and impor
 
 Contracts that appear only in `imports` lists are exempt from the producer-uniqueness check — they have no internal producer by definition.
 
-The `contracts` brief also reads the registry roles as context. When generating contracts for a change, the brief verifies that the producing project's specs are consistent with its declared role and flags specs that describe producing an interface the project does not own. For imported contracts, the brief operates in conformance mode (see §*Contract generation rules*, rule 8) and flags specs that would modify the external interface shape.
+The `/contracts:writer` skill reads the registry roles as context (see §*Specialist skills*). When generating contracts, it verifies that the producing project's specs are consistent with its declared role and flags specs that describe producing an interface the project does not own. For imported contracts, the writer operates in conformance mode and flags specs that would modify the external interface shape. The `/contracts:validator` checks registry alignment as part of its post-generation validation (see §*Specialist skills*).
 
 ### Role lifecycle
 
@@ -535,44 +582,48 @@ Not every project needs machine-readable contracts. A single-crate WASM service 
 
 ### Layer 1 (no CLI changes)
 
-1. **`contracts` brief** — author `briefs/contracts.md` with the generation and conformance rules described above. The brief reads baseline contracts from `.specify/contracts/`, detects whether to operate in generation or conformance mode, and writes proposed changes into the change directory.
-2. **Updated `specs` brief** — add `context: [contracts]` to the `specs` brief frontmatter so spec authors see pre-existing baseline contracts when writing behavioral requirements for external interfaces.
-3. **Updated `design` brief** — modify `briefs/design.md` to declare `needs: [proposal, contracts]` and update the `## API Contracts` / `## Publication & Timing Patterns` sections to reference the central contract files.
-4. **Child schemas** — create `schemas/omnia-contracts/` and `schemas/vectis-contracts/` with `extends` and the `contracts` pipeline entry.
-5. **Fixture (generation)** — author a worked example under `schemas/omnia-contracts/fixtures/` showing the baseline contracts and a change-level delta for a representative capability.
-6. **Fixture (conformance)** — author a worked example showing an imported external contract, a change whose specs conform to it, and the conformance validation output.
-7. **Registry contract roles** — define the optional `contracts` block schema for `registry.yaml` project entries (`produces`, `consumes`, and `imports` lists). Update `/spec:plan` to populate roles when inserting contract changes — including `imports` entries when a source is flagged as an external system. Update the `contracts` brief to read registry roles as context and trigger conformance mode for imported contracts.
+1. **`/contracts:writer` skill** — author `plugins/contracts/skills/writer/SKILL.md` with generation and conformance rules. The writer reads baseline contracts from `.specify/contracts/`, the change's specs, and registry roles, then produces the contract delta. Includes reference docs for JSON Schema, OpenAPI 3.1, and AsyncAPI 3.0 conventions.
+2. **`/contracts:validator` skill** — author `plugins/contracts/skills/validator/SKILL.md` with post-generation validation checks (`$ref` resolution, schema metadata, binding completeness, registry alignment).
+3. **`contracts` brief** — author `briefs/contracts.md` as a thin orchestrator: mode detection, delegation to `/contracts:writer` and `/contracts:validator`, and a verify-repair loop.
+4. **Updated `specs` brief** — add `context: [contracts]` to the `specs` brief frontmatter so spec authors see pre-existing baseline contracts when writing behavioral requirements for external interfaces.
+5. **Updated `design` brief** — modify `briefs/design.md` to declare `needs: [proposal, contracts]` and update the `## API Contracts` / `## Publication & Timing Patterns` sections to reference the central contract files.
+6. **Child schemas** — create `schemas/omnia-contracts/` and `schemas/vectis-contracts/` with `extends` and the `contracts` pipeline entry.
+7. **Fixture (generation)** — author a worked example under `schemas/omnia-contracts/fixtures/` showing the baseline contracts, the writer's output, the validator's output, and a change-level delta for a representative capability.
+8. **Fixture (conformance)** — author a worked example showing an imported external contract, a change whose specs conform to it, the writer's conformance output, and the validator's results.
+9. **Registry contract roles** — define the optional `contracts` block schema for `registry.yaml` project entries (`produces`, `consumes`, and `imports` lists). Update `/spec:plan` to populate roles when inserting contract changes — including `imports` entries when a source is flagged as an external system.
 
 Layer 1 is independently useful: it produces machine-readable contracts during define that the agent and human can review, and that the build phase can consume for code generation. For external contracts, it validates conformance and flags mismatches before implementation begins.
 
 ### Layer 2 (CLI changes)
 
-8. **`specify merge` extension** — copy change-level `contracts/` files into `.specify/contracts/`. Files that share a path are replaced; files absent from the change are left untouched.
-9. **`specify spec preview` extension** — include contract file changes in the preview output.
-10. **`specify spec conflict-check` extension** — detect baseline contract modifications after the change's `defined-at` timestamp.
-11. **`specify validate` extension** — check that `.specify/contracts/schemas/` contains at least one file when the schema declares a `contracts` brief, that `$ref` pointers in OpenAPI/AsyncAPI files resolve, that each contract path has at most one producer in `registry.yaml`, and that no contract path appears in both `produces` and `imports` (see §*Contract roles*).
-12. **`workspace sync` extension** — materialise `.specify/contracts/` from the initiating repo into each project clone. Same copy/symlink mechanism used for peer baselines.
+10. **`specify merge` extension** — copy change-level `contracts/` files into `.specify/contracts/`. Files that share a path are replaced; files absent from the change are left untouched.
+11. **`specify spec preview` extension** — include contract file changes in the preview output.
+12. **`specify spec conflict-check` extension** — detect baseline contract modifications after the change's `defined-at` timestamp.
+13. **`specify validate` extension** — check that `.specify/contracts/schemas/` contains at least one file when the schema declares a `contracts` brief, that `$ref` pointers in OpenAPI/AsyncAPI files resolve, that each contract path has at most one producer in `registry.yaml`, and that no contract path appears in both `produces` and `imports` (see §*Contract roles*).
+14. **`workspace sync` extension** — materialise `.specify/contracts/` from the initiating repo into each project clone. Same copy/symlink mechanism used for peer baselines.
 
 ### Layer 3 (future, deferred)
 
-13. **`specify contract validate`** — cross-repo contract compatibility checking against the central contracts.
-14. **Contract-validation build brief** — automated verification during build that generated code matches the contract.
+15. **`specify contract validate`** — cross-repo contract compatibility checking against the central contracts.
+16. **Contract-validation build brief** — automated verification during build that generated code matches the contract.
 
 ## Implementation order
 
-1. Author the `contracts.md` brief (Layer 1, item 1). This is the core deliverable — the brief body contains the generation and conformance rules and the agent follows them during define.
-2. Update the `specs.md` brief (Layer 1, item 2). Add `context: [contracts]` for baseline contract visibility during spec authoring.
-3. Update the `design.md` brief (Layer 1, item 3). A small `needs` change plus section rewording.
-4. Create the child schemas (Layer 1, item 4). Schema composition handles the pipeline insertion.
-5. Author the generation fixture (Layer 1, item 5). Validates the brief against a representative new-API input.
-6. Author the conformance fixture (Layer 1, item 6). Validates the brief's conformance mode against an imported external contract.
-7. Define registry contract roles (Layer 1, item 7). Schema for the `contracts` block (`produces`, `consumes`, `imports`), plus `/spec:plan` and `contracts` brief updates.
-8. Extend `specify merge` (Layer 2, item 8). The merge engine gains a contract-copy step targeting `.specify/contracts/`.
-9. Extend `specify spec preview` and `conflict-check` (Layer 2, items 9–10). Preview and conflict surfaces gain contract awareness.
-10. Extend `specify validate` (Layer 2, item 11). Structural validation of contract artifacts, producer-uniqueness checking, and `produces`/`imports` mutual exclusion.
-11. Extend `workspace sync` (Layer 2, item 12). Distribution of central contracts to project clones.
+1. Author the `/contracts:writer` skill (Layer 1, item 1). This is the core deliverable — the generation and conformance rules live here, with reference docs for JSON Schema, OpenAPI, and AsyncAPI conventions.
+2. Author the `/contracts:validator` skill (Layer 1, item 2). Post-generation consistency checks that the brief's verify-repair loop acts on.
+3. Author the `contracts.md` brief (Layer 1, item 3). Thin orchestrator wiring mode detection, skill delegation, and the verify-repair loop. Depends on steps 1–2.
+4. Update the `specs.md` brief (Layer 1, item 4). Add `context: [contracts]` for baseline contract visibility during spec authoring.
+5. Update the `design.md` brief (Layer 1, item 5). A small `needs` change plus section rewording.
+6. Create the child schemas (Layer 1, item 6). Schema composition handles the pipeline insertion.
+7. Author the generation fixture (Layer 1, item 7). Validates the writer and validator against a representative new-API input.
+8. Author the conformance fixture (Layer 1, item 8). Validates the writer's conformance mode and the validator against an imported external contract.
+9. Define registry contract roles (Layer 1, item 9). Schema for the `contracts` block (`produces`, `consumes`, `imports`), plus `/spec:plan` updates.
+10. Extend `specify merge` (Layer 2, item 10). The merge engine gains a contract-copy step targeting `.specify/contracts/`.
+11. Extend `specify spec preview` and `conflict-check` (Layer 2, items 11–12). Preview and conflict surfaces gain contract awareness.
+12. Extend `specify validate` (Layer 2, item 13). Structural validation of contract artifacts, producer-uniqueness checking, and `produces`/`imports` mutual exclusion.
+13. Extend `workspace sync` (Layer 2, item 14). Distribution of central contracts to project clones.
 
-Steps 1–7 can ship without any CLI changes. Steps 8–11 require specify-cli changes and can follow independently.
+Steps 1–9 can ship without any CLI changes. Steps 10–13 require specify-cli changes and can follow independently.
 
 ## References
 
