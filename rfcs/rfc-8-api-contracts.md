@@ -379,7 +379,7 @@ In Layer 1, the `depends-on` edges in the plan provide sufficient signal for the
 
 Producer/consumer role information — whether a change *implements* a contract or *calls* an API described by one — comes from the registry, not the plan. Layer 2's `contracts` block on `registry.yaml` project entries (§*Contract roles in `registry.yaml`*) declares `produces`, `consumes`, and `imports` per project. The plan entry's `project` field cross-references to the registry; briefs look up the project's role when they need to determine validation strategy (completeness for producers, compatibility for consumers).
 
-In large baselines with many unrelated contracts, a narrowing mechanism helps the agent focus. This is not specific to contracts — the same problem applies to large spec baselines, large source trees, and any other context the define phase reads. Rather than a contract-specific `uses-contracts` field, Layer 2 introduces a generic `reads` field on plan entries that declares which baseline paths are relevant to a change regardless of artifact type. See §*Generic context narrowing (`reads`)* for the design.
+In large baselines with many unrelated contracts, a narrowing mechanism helps the agent focus. This is not specific to contracts — the same problem applies to large spec baselines, large source trees, and any other context the define phase reads. Rather than a contract-specific `uses-contracts` field, Layer 2 introduces a generic `context` field on plan entries that declares which baseline paths are relevant to a change regardless of artifact type. See §*Generic context narrowing (`context`)* for the design.
 
 ## Single-repo and multi-repo — same model
 
@@ -469,19 +469,90 @@ The central contracts directory makes validation simpler than the per-project mo
 
 In Layer 1, contract ownership is implicit in the plan structure: a contract change's `depends-on` edges reveal which projects produce and consume each contract. The plan is the source of truth for who depends on what.
 
-Layer 2 introduces an explicit `contracts` block on `registry.yaml` project entries (`produces`, `consumes`, `imports`) that persists role information beyond a single initiative. This becomes valuable when contracts outlive the plan that created them — when the question shifts from "who depends on this contract in the current plan?" to "who owns this contract in the platform?" The design is summarised in §*Implementation scope*, item 15; the full schema and validation rules will be detailed during Layer 2 implementation.
+Layer 2 introduces an explicit `contracts` block on `registry.yaml` project entries that persists role information beyond a single initiative. This becomes valuable when contracts outlive the plan that created them — when the question shifts from "who depends on this contract in the current plan?" to "who owns this contract in the platform?"
 
-## Generic context narrowing (`reads`)
+### Schema
+
+The `contracts` block is optional on each project entry. When present, it declares the project's relationship to specific contract files:
+
+```yaml
+version: 1
+projects:
+  - name: backend
+    url: git@github.com:org/backend.git
+    schema: omnia@v1
+    description: >
+      User registration API and account management.
+    contracts:
+      produces:
+        - http/user-api.yaml
+        - schemas/user-registration.yaml
+        - schemas/user.yaml
+        - schemas/error-response.yaml
+      consumes:
+        - messages/order-events.yaml
+
+  - name: mobile
+    url: ../mobile
+    schema: vectis@v1
+    description: >
+      iOS and Android mobile application.
+    contracts:
+      consumes:
+        - http/user-api.yaml
+        - schemas/user-registration.yaml
+        - schemas/user.yaml
+        - schemas/error-response.yaml
+
+  - name: billing
+    url: git@github.com:org/billing.git
+    schema: omnia@v1
+    description: >
+      Order processing, invoicing, and payment integration.
+    contracts:
+      produces:
+        - messages/order-events.yaml
+        - schemas/order-placed.yaml
+      imports:
+        - http/payment-gateway-api.yaml
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `contracts` | object | Optional. Declares this project's relationship to central contract files. |
+| `contracts.produces` | list of paths | Contract files this project is the authoritative implementer of. Paths are relative to `.specify/contracts/`. |
+| `contracts.consumes` | list of paths | Contract files this project calls or subscribes to as a client. Paths are relative to `.specify/contracts/`. |
+| `contracts.imports` | list of paths | Contract files whose shape is dictated by an external system that this project integrates with. Paths are relative to `.specify/contracts/`. |
+
+All three lists are optional within the `contracts` block. A project that only produces needs no `consumes` or `imports`.
+
+### Validation invariants
+
+`specify initiative registry validate` (and `specify validate` when registry contract roles are present) enforces:
+
+1. **Single producer.** Each contract path appears in `produces` for at most one project. If two projects both claim to produce `http/user-api.yaml`, validation fails. This prevents conflicting implementations of the same interface.
+2. **Produce/import mutual exclusion.** A contract path must not appear in both `produces` and `imports` across the registry. A produced contract is authored within the platform; an imported contract is dictated by an external system. The same file cannot be both.
+3. **Path validity.** Every path listed in `produces`, `consumes`, or `imports` must be a valid relative path under `.specify/contracts/` (no `..`, no absolute paths). The file need not exist yet — a `produces` declaration may precede the contract change that creates it.
+4. **Self-consistency.** A project must not list the same path in both `produces` and `consumes` — a project cannot be both the authoritative implementer and a client of the same interface. `imports` and `consumes` may overlap (a project can both import an external contract and consume it).
+
+### How skills use contract roles
+
+- **`/spec:plan`** populates `contracts` roles when inserting contract changes. When the plan skill creates a contract change for an API boundary between projects, it adds the contract paths to the producer's `produces` and the consumer's `consumes` via `specify initiative registry validate` (which remains advisory — the operator can adjust). For import changes, it adds the paths to the importing project's `imports`.
+- **`/contracts:writer`** cross-references the current project's role to determine validation strategy. For a `produces` project, the writer validates *completeness* — every endpoint or channel in the contract must have a corresponding spec scenario. For a `consumes` project, the writer validates *compatibility* — the spec scenarios must be consistent with the contract's types and endpoints but need not cover every endpoint.
+- **`/contracts:validator`** uses roles to scope binding-completeness checks. A consumer project's change need not have bindings for every schema in the contract — only the ones its specs reference.
+- **`specify validate`** checks the invariants above when the registry declares contract roles.
+
+## Generic context narrowing (`context`)
 
 ### Motivation
 
 The define phase reads context from the baseline to inform artifact generation: specs briefs read `.specify/contracts/` for interface conformance, design briefs read prior specs, and future artifact types will follow the same pattern. In small baselines, reading everything at a well-known path works. In large baselines — dozens of contract files, hundreds of spec capabilities — the agent benefits from knowing which subset is relevant to the change at hand.
 
-This narrowing problem is not specific to contracts. A change that modifies a single capability in a platform with 50 baseline specs faces the same issue: the specs brief must decide which baselines to read as context. A contract-specific `uses-contracts` field would solve the problem for one artifact type while leaving every other type unaddressed. The generic alternative is a `reads` field on plan entries that declares relevant baseline paths regardless of artifact type.
+This narrowing problem is not specific to contracts. A change that modifies a single capability in a platform with 50 baseline specs faces the same issue: the specs brief must decide which baselines to read as context. A contract-specific `uses-contracts` field would solve the problem for one artifact type while leaving every other type unaddressed. The generic alternative is a `context` field on plan entries that declares relevant baseline paths regardless of artifact type.
 
 ### Design
 
-Layer 2 introduces an optional `reads` field on plan entries:
+Layer 2 introduces an optional `context` field on plan entries:
 
 ```yaml
 changes:
@@ -489,7 +560,7 @@ changes:
     project: backend
     description: "Implement the user registration API"
     depends-on: [user-api-contract]
-    reads:
+    context:
       - contracts/http/user-api.yaml
       - contracts/schemas/user-registration.yaml
       - contracts/schemas/error-response.yaml
@@ -500,18 +571,18 @@ changes:
 Field semantics:
 
 - **Values are paths relative to `.specify/`.** A brief that sees `contracts/http/user-api.yaml` reads `.specify/contracts/http/user-api.yaml` from the baseline (or from the materialised workspace clone in multi-repo).
-- **The list is a focus hint, not an access restriction.** Briefs may still read other baseline paths when the brief body instructs them to (e.g. the contracts writer always reads the full baseline to detect mismatches). `reads` tells the brief "start here" — it narrows default scanning, not capability.
-- **`/spec:plan` populates `reads` automatically.** When the plan skill inserts a contract change and wires `depends-on` edges from implementation changes, it also populates `reads` on those implementation entries with the contract paths the contract change will produce. For changes with `affects` targeting existing capabilities, `/spec:plan` populates `reads` with the corresponding baseline spec paths.
-- **Manual authoring is supported.** Operators using the Layer 1 hand-driven workflow can add `reads` via `specify plan create --reads <path>...` or `specify plan amend --reads <path>...`.
+- **The list is a focus hint, not an access restriction.** Briefs may still read other baseline paths when the brief body instructs them to (e.g. the contracts writer always reads the full baseline to detect mismatches). `context` tells the brief "start here" — it narrows default scanning, not capability.
+- **`/spec:plan` populates `context` automatically.** When the plan skill inserts a contract change and wires `depends-on` edges from implementation changes, it also populates `context` on those implementation entries with the contract paths the contract change will produce. For changes with `affects` targeting existing capabilities, `/spec:plan` populates `context` with the corresponding baseline spec paths.
+- **Manual authoring is supported.** Operators using the Layer 1 hand-driven workflow can add `context` via `specify plan create --context <path>...` or `specify plan amend --context <path>...`.
 
-### How briefs use `reads`
+### How briefs use `context`
 
-The `reads` field is available to every brief in the define pipeline. Each brief consults it according to its own needs:
+The `context` field is available to every brief in the define pipeline. Each brief consults it according to its own needs:
 
-- **`specs` brief.** When `reads` contains `contracts/` paths, the brief reads those specific contract files as conformance context rather than scanning the entire `.specify/contracts/` directory. When `reads` contains `specs/` paths, the brief reads those baselines for delta composition.
-- **`contracts` brief.** When `reads` contains `contracts/` paths, `/contracts:writer` uses them as the primary alignment targets — validating that the change's specs align with the listed contracts before scanning the broader baseline for mismatches. When `reads` is absent, the writer falls back to scanning the full baseline (the Layer 1 behavior).
-- **`design` brief.** When `reads` contains paths, the brief uses them to identify which contracts and specs to reference in the design document's `## API Contracts` and `## Publication & Timing Patterns` sections.
-- **Future briefs.** Any new brief type can consult `reads` for the same narrowing benefit. The mechanism is artifact-agnostic.
+- **`specs` brief.** When `context` contains `contracts/` paths, the brief reads those specific contract files as conformance context rather than scanning the entire `.specify/contracts/` directory. When `context` contains `specs/` paths, the brief reads those baselines for delta composition.
+- **`contracts` brief.** When `context` contains `contracts/` paths, `/contracts:writer` uses them as the primary alignment targets — validating that the change's specs align with the listed contracts before scanning the broader baseline for mismatches. When `context` is absent, the writer falls back to scanning the full baseline (the Layer 1 behavior).
+- **`design` brief.** When `context` contains paths, the brief uses them to identify which contracts and specs to reference in the design document's `## API Contracts` and `## Publication & Timing Patterns` sections.
+- **Future briefs.** Any new brief type can consult `context` for the same narrowing benefit. The mechanism is artifact-agnostic.
 
 ### Relationship to existing plan entry fields
 
@@ -521,9 +592,9 @@ The `reads` field is available to every brief in the define pipeline. Each brief
 | `sources` | External input — "analyze these repos" | `/spec:define` via `--source` flags |
 | `affects` | Impact annotation — "this change modifies these capabilities" | Delta-target inference in specs brief |
 | `description` | Scoping intent — free-text guidance for the define phase | Scope and delta-target inference in briefs |
-| `reads` | Context narrowing — "these baseline paths are relevant" | All define briefs as a focus filter |
+| `context` | Context narrowing — "these baseline paths are relevant" | All define briefs as a focus filter |
 
-`reads` does not overlap with `depends-on` (which governs execution order, not content focus), `sources` (which points to external input, not baseline artifacts), or `affects` (which declares impact on capabilities, not which files to read). It complements `description` by providing machine-readable path precision alongside the human-readable scoping prose.
+`context` does not overlap with `depends-on` (which governs execution order, not content focus), `sources` (which points to external input, not baseline artifacts), or `affects` (which declares impact on capabilities, not which files to read). It complements `description` by providing machine-readable path precision alongside the human-readable scoping prose.
 
 ### Consistency with the information-flow model
 
@@ -535,9 +606,9 @@ Contracts follow the same context-delivery model as every other artifact type:
 | Prior change's specs | `depends-on` ordering → merged into `.specify/specs/` → brief reads baseline |
 | Baseline contracts | `depends-on` ordering → merged into `.specify/contracts/` → brief reads baseline |
 | Producer/consumer role | `project` on plan entry → cross-reference with `registry.yaml` contract roles |
-| Context narrowing | `reads` on plan entry → brief filters baseline scanning to listed paths |
+| Context narrowing | `context` on plan entry → brief filters baseline scanning to listed paths |
 
-No artifact type gets a special-purpose narrowing mechanism. The `reads` field is the single generic solution.
+No artifact type gets a special-purpose narrowing mechanism. The `context` field is the single generic solution.
 
 ## Schema integration
 
@@ -623,8 +694,8 @@ Layer 1 is independently useful: for contract-first changes, it produces machine
 12. **`specify validate` extension** — check that `.specify/contracts/schemas/` contains at least one file when the schema declares a `contracts` brief, and that `$ref` pointers in OpenAPI/AsyncAPI files resolve. When registry contract roles are declared, check producer-uniqueness and `produces`/`imports` mutual exclusion.
 13. **`workspace sync` extension** — materialise `.specify/contracts/` from the initiating repo into each project clone. Same copy/symlink mechanism used for peer baselines.
 14. **`/contracts:importer` skill** — author `plugins/contracts/skills/importer/SKILL.md` with format detection, version upgrade (Swagger 2.0 / OpenAPI 3.0 → 3.1, AsyncAPI 2.x → 3.0), schema decomposition, and Specify metadata injection. Includes reference docs for supported input formats and the normalisation rules.
-15. **Registry contract roles** — define the optional `contracts` block schema for `registry.yaml` project entries (`produces`, `consumes`, and `imports` lists). Update `/spec:plan` to populate roles when inserting contract changes. Validation invariants: each contract path has at most one producer; a contract path must not appear in both `produces` and `imports`.
-16. **`reads` plan entry field (generic context narrowing)** — define the optional `reads` field on plan entries (list of paths relative to `.specify/`). `/spec:plan` populates `reads` automatically when inserting changes — contract paths, spec baselines, or any other context the define phase should focus on. Briefs use `reads` as a focused filter when scanning baseline directories. This is a general-purpose mechanism that applies to contracts, specs, and any future artifact type equally. See §*Generic context narrowing (`reads`)* for the full design.
+15. **Registry contract roles** — implement the optional `contracts` block on `registry.yaml` project entries as designed in §*Contract roles in `registry.yaml`*. Add `produces`, `consumes`, and `imports` lists to the registry schema. Update `specify initiative registry validate` and `specify validate` to enforce the invariants (single producer, produce/import mutual exclusion, path validity, self-consistency). Update `/spec:plan` to populate roles when inserting contract changes.
+16. **`context` plan entry field (generic context narrowing)** — define the optional `context` field on plan entries (list of paths relative to `.specify/`). `/spec:plan` populates `context` automatically when inserting changes — contract paths, spec baselines, or any other context the define phase should focus on. Briefs use `context` as a focused filter when scanning baseline directories. This is a general-purpose mechanism that applies to contracts, specs, and any future artifact type equally. See §*Generic context narrowing (`context`)* for the full design.
 
 ### Layer 3 (future, deferred)
 
@@ -643,7 +714,7 @@ Layer 1 is independently useful: for contract-first changes, it produces machine
 7. Author the generation fixture (item 7). Validates the writer and validator against a representative new-API input.
 8. Author the conformance fixture (item 8). Validates the writer's alignment checking and validator against pre-existing baseline contracts.
 
-Steps 1–8 can ship without any CLI changes. Steps 9–16 require specify-cli changes and can follow independently. Steps 14–16 (importer, registry roles, `reads` field) can land in any order once the CLI merge/validate extensions are in place.
+Steps 1–8 can ship without any CLI changes. Steps 9–16 require specify-cli changes and can follow independently. Steps 14–16 (importer, registry roles, `context` field) can land in any order once the CLI merge/validate extensions are in place.
 
 ## References
 
