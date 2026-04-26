@@ -473,17 +473,11 @@ Layer 2 introduces an explicit `contracts` block on `registry.yaml` project entr
 
 ## Schema integration
 
-### New schema via `extends`
+The `contracts` brief is added directly to the base `omnia` and `vectis` schemas. No child schemas or schema composition is needed.
 
-The contracts brief is not added to the base `omnia` or `vectis` schemas directly. Instead, contract-aware variants are created using schema composition:
+The updated Omnia `define` pipeline:
 
 ```yaml
-# schemas/omnia-contracts/schema.yaml
-name: omnia-contracts
-version: 1
-extends: https://github.com/augentic/specify/schemas/omnia
-description: Omnia with API contract generation
-
 pipeline:
   define:
     - id: proposal
@@ -498,27 +492,36 @@ pipeline:
       brief: briefs/tasks.md
 ```
 
-The child schema overrides the `define` pipeline to insert the `contracts` entry. `build` and `merge` pipelines are inherited from the parent. The `contracts.md` brief and the updated `design.md` brief (which adds `contracts` to its `needs`) live in the child schema's `briefs/` directory; all other briefs fall back to the parent via the `extends` resolution algorithm documented in `plugins/spec/references/schema-resolution.md`.
+The updated Vectis `define` pipeline inserts `contracts` between `specs` and `composition`:
 
-A `vectis-contracts` schema follows the same pattern, extending `vectis` and inserting the `contracts` brief after `specs` (and before `composition` in Vectis's pipeline).
+```yaml
+pipeline:
+  define:
+    - id: proposal
+      brief: briefs/proposal.md
+    - id: specs
+      brief: briefs/specs.md
+    - id: contracts
+      brief: briefs/contracts.md
+    - id: composition
+      brief: briefs/composition.md
+    - id: design
+      brief: briefs/design.md
+    - id: tasks
+      brief: briefs/tasks.md
+```
 
-### Composition trade-offs
+The `contracts.md` brief and the updated `design.md` brief (which adds `contracts` to its `needs`) are added to each base schema's `briefs/` directory alongside the existing briefs. `build` and `merge` pipelines are unchanged.
 
-Schema composition overrides at the file level, not the frontmatter level. The child's `design.md` brief must contain the *entire* brief body (all output structure sections and guidance), not just the updated frontmatter — the child's file replaces the parent's rather than merging with it. Any future change to the parent's `design.md` must be mirrored manually into the child. The same coupling applies to the `define` pipeline: because `extends` appends new `id`s at the end, the child must specify the full pipeline to place `contracts` between `specs` and `design`. If the parent adds a new define stage, the child's pipeline must be updated to include it.
+### Why not opt-in via child schemas?
 
-This is an acceptable trade-off for a small number of child schemas (two: `omnia-contracts` and `vectis-contracts`). If the number of child schemas grows, a brief-level composition mechanism (frontmatter-only overrides) could reduce the coupling, but that is out of scope for this RFC.
+An earlier draft considered creating `omnia-contracts` and `vectis-contracts` child schemas via `extends`, keeping contracts opt-in at schema selection time. This was rejected for three reasons:
 
-### Why not modify the base schemas?
+1. **Maintenance coupling.** Schema composition overrides at the file level. The child's `design.md` brief must duplicate the parent's entire brief body; the child's `define` pipeline must reproduce the full stage list to place `contracts` in the correct position. Any future change to the parent's briefs or pipeline must be mirrored manually into each child. Two child schemas means two copies of every affected brief.
 
-Not every project needs machine-readable contracts. A single-crate WASM service with no external consumers may never expose an API that warrants a formal contract. Making contracts opt-in via schema composition keeps the base schemas lean and avoids generating unused artifacts.
+2. **The contracts pipeline is a well-behaved no-op.** When a change's specs describe no API interactions, `/contracts:writer` produces an empty delta and `/contracts:validator` has nothing to check. The `contracts/` directory is only created when the first contract change runs. Including the `contracts` stage in the base schema adds no overhead for projects that never use it.
 
-### Recommended defaults
-
-In practice, most Augentic work targets multi-service platforms and applications with frontends consuming backends. For these projects, API contracts are not an optional extra — they are the missing structural link between behavioral specs on both sides of an interface. The contracts-aware schemas (`omnia-contracts`, `vectis-contracts`) should be the **recommended default** at `/spec:init` time.
-
-The base schemas without contracts remain available for genuinely isolated services — a single-crate WASM service with no external consumers, or a standalone tool with no API surface. But when a project participates in a platform with other services or has consumers (mobile, web, or third-party), the contracts-aware schema should be the starting point.
-
-`/spec:init` should guide this choice: when `registry.yaml` exists or the operator indicates multi-service intent, recommend the contracts-aware schema. When the project is standalone with no declared peers, offer the base schema as the simpler option. The contracts pipeline adds no overhead when the change's specs describe no API interactions — the writer produces an empty delta and the validator has nothing to check — so selecting the contracts-aware schema for a project that turns out not to need contracts is low-cost, while missing contracts on a project that does need them creates integration risk that surfaces late.
+3. **Most projects need contracts.** Almost all Augentic work targets multi-service platforms and applications with frontends consuming backends. Contracts are not an optional extra for these projects — they are the structural link between behavioral specs on both sides of an interface. Making contracts opt-in creates a decision point at init time that most projects should answer the same way, and the cost of answering wrong (missing contracts on a project that needs them) is late-discovered integration risk.
 
 ## Non-goals
 
@@ -538,8 +541,8 @@ The base schemas without contracts remain available for genuinely isolated servi
 3. **`contracts` brief** — author `briefs/contracts.md` as a thin orchestrator: delegation to `/contracts:writer` (alignment validation and delta production) and `/contracts:validator`, plus a verify-repair loop.
 4. **Updated `specs` brief** — add a brief-body instruction to read `.specify/contracts/` as optional context when the directory exists. No schema-resolution changes.
 5. **Updated `design` brief** — modify `briefs/design.md` to declare `needs: [proposal, contracts]` and update the `## API Contracts` / `## Publication & Timing Patterns` sections to reference the central contract files.
-6. **Child schemas** — create `schemas/omnia-contracts/` and `schemas/vectis-contracts/` with `extends` and the `contracts` pipeline entry.
-7. **Fixture (generation)** — author a worked example under `schemas/omnia-contracts/fixtures/` showing the baseline contracts, the writer's output, the validator's output, and a change-level delta for a representative capability.
+6. **Base schema updates** — add the `contracts` pipeline entry and `briefs/contracts.md` to `schemas/omnia/` and `schemas/vectis/`. Update `briefs/design.md` in each schema to declare `needs: [proposal, contracts]`.
+7. **Fixture (generation)** — author a worked example under `schemas/omnia/fixtures/` showing the baseline contracts, the writer's output, the validator's output, and a change-level delta for a representative capability.
 8. **Fixture (conformance)** — author a worked example showing pre-existing baseline contracts (manually imported), a change whose specs describe behavior against that baseline, the writer's alignment output, and the validator's results.
 
 Layer 1 is independently useful: for contract-first changes, it produces machine-readable contracts that the agent and human can review and that the build phase can consume for code generation; for implementation changes, it validates that specs align with predefined baseline contracts and flags mismatches. For external contracts, the operator places normalised files into the change directory; the writer validates alignment and the validator catches structural issues.
@@ -568,7 +571,7 @@ Layer 1 is independently useful: for contract-first changes, it produces machine
 3. Author the `contracts.md` brief (item 3). Thin orchestrator wiring skill delegation and the verify-repair loop. Depends on steps 1–2.
 4. Update the `specs.md` brief (item 4). Add the baseline-contracts-as-context instruction.
 5. Update the `design.md` brief (item 5). A small `needs` change plus section rewording.
-6. Create the child schemas (item 6). Schema composition handles the pipeline insertion.
+6. Update the base schemas (item 6). Add the `contracts` pipeline entry and brief to `schemas/omnia/` and `schemas/vectis/`.
 7. Author the generation fixture (item 7). Validates the writer and validator against a representative new-API input.
 8. Author the conformance fixture (item 8). Validates the writer's alignment checking and validator against pre-existing baseline contracts.
 
