@@ -373,11 +373,13 @@ changes:
 
 The import change produces validated contract artifacts. Implementation changes depend on it and write specs that conform to the imported contract.
 
-### Contract references in plan entries (Layer 2)
+### Contract references in plan entries
 
 In Layer 1, the `depends-on` edges in the plan provide sufficient signal for the agent to identify which baseline contracts are relevant to a change. When a change `depends-on` a contract change, the agent reads the contract change's output to understand which contracts apply.
 
-Layer 2 introduces an optional `uses-contracts` field on plan entries that explicitly declares which baseline contracts a change consumes. This narrows the agent's attention in large baselines with many unrelated contracts and makes the plan self-documenting. See §*Implementation scope*, item 16.
+Producer/consumer role information — whether a change *implements* a contract or *calls* an API described by one — comes from the registry, not the plan. Layer 2's `contracts` block on `registry.yaml` project entries (§*Contract roles in `registry.yaml`*) declares `produces`, `consumes`, and `imports` per project. The plan entry's `project` field cross-references to the registry; briefs look up the project's role when they need to determine validation strategy (completeness for producers, compatibility for consumers).
+
+In large baselines with many unrelated contracts, a narrowing mechanism helps the agent focus. This is not specific to contracts — the same problem applies to large spec baselines, large source trees, and any other context the define phase reads. Rather than a contract-specific `uses-contracts` field, Layer 2 introduces a generic `reads` field on plan entries that declares which baseline paths are relevant to a change regardless of artifact type. See §*Generic context narrowing (`reads`)* for the design.
 
 ## Single-repo and multi-repo — same model
 
@@ -469,6 +471,74 @@ In Layer 1, contract ownership is implicit in the plan structure: a contract cha
 
 Layer 2 introduces an explicit `contracts` block on `registry.yaml` project entries (`produces`, `consumes`, `imports`) that persists role information beyond a single initiative. This becomes valuable when contracts outlive the plan that created them — when the question shifts from "who depends on this contract in the current plan?" to "who owns this contract in the platform?" The design is summarised in §*Implementation scope*, item 15; the full schema and validation rules will be detailed during Layer 2 implementation.
 
+## Generic context narrowing (`reads`)
+
+### Motivation
+
+The define phase reads context from the baseline to inform artifact generation: specs briefs read `.specify/contracts/` for interface conformance, design briefs read prior specs, and future artifact types will follow the same pattern. In small baselines, reading everything at a well-known path works. In large baselines — dozens of contract files, hundreds of spec capabilities — the agent benefits from knowing which subset is relevant to the change at hand.
+
+This narrowing problem is not specific to contracts. A change that modifies a single capability in a platform with 50 baseline specs faces the same issue: the specs brief must decide which baselines to read as context. A contract-specific `uses-contracts` field would solve the problem for one artifact type while leaving every other type unaddressed. The generic alternative is a `reads` field on plan entries that declares relevant baseline paths regardless of artifact type.
+
+### Design
+
+Layer 2 introduces an optional `reads` field on plan entries:
+
+```yaml
+changes:
+  - name: user-api-backend
+    project: backend
+    description: "Implement the user registration API"
+    depends-on: [user-api-contract]
+    reads:
+      - contracts/http/user-api.yaml
+      - contracts/schemas/user-registration.yaml
+      - contracts/schemas/error-response.yaml
+      - specs/user-registration/spec.md
+    status: pending
+```
+
+Field semantics:
+
+- **Values are paths relative to `.specify/`.** A brief that sees `contracts/http/user-api.yaml` reads `.specify/contracts/http/user-api.yaml` from the baseline (or from the materialised workspace clone in multi-repo).
+- **The list is a focus hint, not an access restriction.** Briefs may still read other baseline paths when the brief body instructs them to (e.g. the contracts writer always reads the full baseline to detect mismatches). `reads` tells the brief "start here" — it narrows default scanning, not capability.
+- **`/spec:plan` populates `reads` automatically.** When the plan skill inserts a contract change and wires `depends-on` edges from implementation changes, it also populates `reads` on those implementation entries with the contract paths the contract change will produce. For changes with `affects` targeting existing capabilities, `/spec:plan` populates `reads` with the corresponding baseline spec paths.
+- **Manual authoring is supported.** Operators using the Layer 1 hand-driven workflow can add `reads` via `specify plan create --reads <path>...` or `specify plan amend --reads <path>...`.
+
+### How briefs use `reads`
+
+The `reads` field is available to every brief in the define pipeline. Each brief consults it according to its own needs:
+
+- **`specs` brief.** When `reads` contains `contracts/` paths, the brief reads those specific contract files as conformance context rather than scanning the entire `.specify/contracts/` directory. When `reads` contains `specs/` paths, the brief reads those baselines for delta composition.
+- **`contracts` brief.** When `reads` contains `contracts/` paths, `/contracts:writer` uses them as the primary alignment targets — validating that the change's specs align with the listed contracts before scanning the broader baseline for mismatches. When `reads` is absent, the writer falls back to scanning the full baseline (the Layer 1 behavior).
+- **`design` brief.** When `reads` contains paths, the brief uses them to identify which contracts and specs to reference in the design document's `## API Contracts` and `## Publication & Timing Patterns` sections.
+- **Future briefs.** Any new brief type can consult `reads` for the same narrowing benefit. The mechanism is artifact-agnostic.
+
+### Relationship to existing plan entry fields
+
+| Field | Purpose | Consumed by |
+|---|---|---|
+| `depends-on` | Ordering constraint — "don't start until these are done" | `specify plan next` |
+| `sources` | External input — "analyze these repos" | `/spec:define` via `--source` flags |
+| `affects` | Impact annotation — "this change modifies these capabilities" | Delta-target inference in specs brief |
+| `description` | Scoping intent — free-text guidance for the define phase | Scope and delta-target inference in briefs |
+| `reads` | Context narrowing — "these baseline paths are relevant" | All define briefs as a focus filter |
+
+`reads` does not overlap with `depends-on` (which governs execution order, not content focus), `sources` (which points to external input, not baseline artifacts), or `affects` (which declares impact on capabilities, not which files to read). It complements `description` by providing machine-readable path precision alongside the human-readable scoping prose.
+
+### Consistency with the information-flow model
+
+Contracts follow the same context-delivery model as every other artifact type:
+
+| Context type | How it reaches `/spec:define` |
+|---|---|
+| Legacy source code | `sources` on plan entry → `--source` flag → `/spec:extract` |
+| Prior change's specs | `depends-on` ordering → merged into `.specify/specs/` → brief reads baseline |
+| Baseline contracts | `depends-on` ordering → merged into `.specify/contracts/` → brief reads baseline |
+| Producer/consumer role | `project` on plan entry → cross-reference with `registry.yaml` contract roles |
+| Context narrowing | `reads` on plan entry → brief filters baseline scanning to listed paths |
+
+No artifact type gets a special-purpose narrowing mechanism. The `reads` field is the single generic solution.
+
 ## Schema integration
 
 The `contracts` brief is added directly to the base `omnia` and `vectis` schemas. No child schemas or schema composition is needed.
@@ -554,7 +624,7 @@ Layer 1 is independently useful: for contract-first changes, it produces machine
 13. **`workspace sync` extension** — materialise `.specify/contracts/` from the initiating repo into each project clone. Same copy/symlink mechanism used for peer baselines.
 14. **`/contracts:importer` skill** — author `plugins/contracts/skills/importer/SKILL.md` with format detection, version upgrade (Swagger 2.0 / OpenAPI 3.0 → 3.1, AsyncAPI 2.x → 3.0), schema decomposition, and Specify metadata injection. Includes reference docs for supported input formats and the normalisation rules.
 15. **Registry contract roles** — define the optional `contracts` block schema for `registry.yaml` project entries (`produces`, `consumes`, and `imports` lists). Update `/spec:plan` to populate roles when inserting contract changes. Validation invariants: each contract path has at most one producer; a contract path must not appear in both `produces` and `imports`.
-16. **`uses-contracts` plan entry field** — define the optional `uses-contracts` field on plan entries (list of contract paths relative to `.specify/contracts/`). Update `/spec:plan` to populate the field automatically when inserting contract changes. Update the `specs` and `contracts` briefs to read `uses-contracts` as a focused filter when scanning baseline contracts.
+16. **`reads` plan entry field (generic context narrowing)** — define the optional `reads` field on plan entries (list of paths relative to `.specify/`). `/spec:plan` populates `reads` automatically when inserting changes — contract paths, spec baselines, or any other context the define phase should focus on. Briefs use `reads` as a focused filter when scanning baseline directories. This is a general-purpose mechanism that applies to contracts, specs, and any future artifact type equally. See §*Generic context narrowing (`reads`)* for the full design.
 
 ### Layer 3 (future, deferred)
 
@@ -573,7 +643,7 @@ Layer 1 is independently useful: for contract-first changes, it produces machine
 7. Author the generation fixture (item 7). Validates the writer and validator against a representative new-API input.
 8. Author the conformance fixture (item 8). Validates the writer's alignment checking and validator against pre-existing baseline contracts.
 
-Steps 1–8 can ship without any CLI changes. Steps 9–16 require specify-cli changes and can follow independently. Steps 14–16 (importer, registry roles, `uses-contracts`) can land in any order once the CLI merge/validate extensions are in place.
+Steps 1–8 can ship without any CLI changes. Steps 9–16 require specify-cli changes and can follow independently. Steps 14–16 (importer, registry roles, `reads` field) can land in any order once the CLI merge/validate extensions are in place.
 
 ## References
 
