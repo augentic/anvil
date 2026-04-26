@@ -1,6 +1,6 @@
 # RFC-8: API Contracts
 
-> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-3](archive/rfc-3a-monoliths.md)
+> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-3a](archive/rfc-3a-monoliths.md), [RFC-3b](archive/rfc-3b-platform.md)
 
 ## Abstract
 
@@ -105,7 +105,7 @@ All contract files use **kebab-case** names with `.yaml` extensions, consistent 
 - **HTTP binding files** are named after the API domain they describe: `user-api.yaml`, `billing-api.yaml`. A single OpenAPI file may contain multiple related endpoints (e.g. `POST /users`, `GET /users/{id}`, `DELETE /users/{id}` all in `user-api.yaml`).
 - **Message binding files** are named after the event domain: `order-events.yaml`, `notification-events.yaml`. A single AsyncAPI file may contain multiple related channels.
 
-The `$id` field in JSON Schema files uses the file's path relative to `.specify/contracts/` as the identifier (e.g. `$id: schemas/user-registration`). This provides stable cross-referencing without introducing a separate namespace.
+The `$id` field in JSON Schema files must be a valid URI per the JSON Schema specification. The writer skill defines the exact format; the constraint is that `$id` values are stable, unique within the contract tree, and compatible with standard JSON Schema tooling (`ajv`, `typify`, etc.). A natural convention is a URN-shaped identifier derived from the file path (e.g. `$id: "urn:specify:schemas/user-registration"`), but the precise format is a writer-skill implementation detail.
 
 ### Working contracts during define
 
@@ -124,6 +124,8 @@ During a change's define phase, proposed contract modifications live in the chan
 ```
 
 The change-level `contracts/` directory contains only the files this change adds or replaces — not a full copy of the baseline. This keeps the diff reviewable and makes it clear what a single change contributes to the platform's contract surface.
+
+**Contract deletion.** The change-level directory can express additions and replacements but not deletions — there is no mechanism to say "remove this file from the baseline." For specs, the delta format has `## REMOVED Requirements`; contracts use opaque replacement and have no equivalent. Contract deletion is rare (retiring an endpoint or decommissioning a message channel) and is handled as a manual baseline edit. A deletion mechanism could be added in a future layer if the need arises.
 
 ### Pipeline placement
 
@@ -194,7 +196,7 @@ Produces the minimal contract delta for a change. The algorithm is always the sa
 
 1. **Read the baseline contracts** at `.specify/contracts/` to understand the current platform vocabulary — existing domain types, HTTP bindings, and messaging bindings.
 
-2. **Read all spec files** under the change's `specs/` directory and identify requirements that describe API interactions (HTTP endpoints, request/response patterns) or message exchanges (pub/sub, event-driven patterns).
+2. **Read all spec files** under the change's `specs/` directory and identify requirements that describe API interactions (HTTP endpoints, request/response patterns) or message exchanges (pub/sub, event-driven patterns). When the change has no specs (a contract-only import change), skip to step 3's normalisation path — the delta consists of metadata normalisation only, and the brief delegates directly to `/contracts:validator`.
 
 3. **Determine the minimal contract delta.** Compare what the specs require against the existing baseline:
    - **Already covered:** When the baseline already defines an endpoint, channel, or schema that the specs describe, validate alignment — verify that endpoint paths, methods, payload shapes, error codes, channel names, and message structures match. Flag mismatches as warnings for human review. Do not regenerate what already exists.
@@ -235,7 +237,7 @@ The validator reports each issue with the file path and a description of the pro
 
 #### `/contracts:importer` (Layer 2)
 
-The importer is deferred to Layer 2. It codifies format detection, version upgrade (Swagger 2.0 / OpenAPI 3.0 → 3.1, AsyncAPI 2.x → 3.0), inline schema decomposition, and Specify metadata injection for external contract files. See §*Layer 2* for the full specification.
+The importer is deferred to Layer 2. It codifies format detection, version upgrade (Swagger 2.0 / OpenAPI 3.0 → 3.1, AsyncAPI 2.x → 3.0), inline schema decomposition, and Specify metadata injection for external contract files (§*Implementation scope*, item 14).
 
 In Layer 1, external contracts are imported manually: the operator places OpenAPI 3.1 / AsyncAPI 3.0 / JSON Schema files into the change's `contracts/` directory, following the artifact structure described in §*Artifact structure*. The `/contracts:writer` normalises metadata gaps (missing `$id`, `description`) as part of its standard delta, and `/contracts:validator` catches structural issues. The agent can assist with format conversion when the source files are not already in the target versions.
 
@@ -278,6 +280,8 @@ The `contracts` brief and its specialist skills (`/contracts:writer` and `/contr
 ### Contract-first (dedicated contract change)
 
 For multi-repo initiatives or APIs shared with external consumers, contracts are defined as their own change in the plan. A contract change is a regular Specify change that produces interface-level behavioral specs and derives contracts from them. It carries no implementation code — its build phase validates the contract artifacts rather than generating code.
+
+**Build phase for contract-only changes.** The build pipeline is inherited from the parent schema (`omnia` or `vectis`), and the build brief delegates to code-generation skills based on the tasks in `tasks.md`. For a contract-only change, the tasks brief generates validation tasks rather than code-generation tasks — the task list contains items like "validate contract structural correctness" and "verify `$ref` resolution" rather than "generate Rust crate." The build brief's mode detection (check whether `Cargo.toml` exists) naturally falls through to a no-op for code generation, and the validation tasks are satisfied by the `/contracts:validator` output from the define phase. This requires no special handling in the build brief — the task-driven model adapts to the change's content.
 
 The interface has its own behavioral specs, distinct from any project's internal specs:
 
@@ -373,7 +377,7 @@ The choice between patterns is a planning decision, not a mechanism difference. 
 
 In Layer 1, the `depends-on` edges in the plan provide sufficient signal for the agent to identify which baseline contracts are relevant to a change. When a change `depends-on` a contract change, the agent reads the contract change's output to understand which contracts apply.
 
-Layer 2 introduces an optional `uses-contracts` field on plan entries that explicitly declares which baseline contracts a change consumes. This narrows the agent's attention in large baselines with many unrelated contracts and makes the plan self-documenting. See §*Layer 2* for the specification.
+Layer 2 introduces an optional `uses-contracts` field on plan entries that explicitly declares which baseline contracts a change consumes. This narrows the agent's attention in large baselines with many unrelated contracts and makes the plan self-documenting. See §*Implementation scope*, item 16.
 
 ## Single-repo and multi-repo — same model
 
@@ -394,9 +398,13 @@ Phase skills see the same paths regardless of topology. The only difference is t
 
 Central co-location with `registry.yaml` makes multi-repo contract sharing straightforward. The same `.specify/contracts/` directory serves all projects; distribution uses the existing workspace infrastructure.
 
-### Layer 1: Central contracts with workspace distribution (no CLI changes)
+### Layer 1: Central contracts in the initiating repo (no CLI changes)
 
-In a multi-repo initiative, contracts live in the initiating repo alongside `registry.yaml`. The plan uses dedicated contract changes (see §*Authorship patterns*) to define interfaces before implementation begins. `workspace sync` distributes `.specify/contracts/` from the initiating repo into each project clone:
+In a multi-repo initiative, contracts live in the initiating repo alongside `registry.yaml`. The plan uses dedicated contract changes (see §*Authorship patterns*) to define interfaces before implementation begins. Contract changes run in the initiating repo, where `.specify/contracts/` is directly accessible.
+
+In Layer 1, workspace clones do not automatically receive the central contracts — the `workspace sync` extension that materialises `.specify/contracts/` into project clones is a Layer 2 CLI change (§*Implementation scope*, item 13). Until then, the `/spec:execute` driver can copy the central `.specify/contracts/` into each project clone's `.specify/contracts/` as a pre-change distribution step — the same directory structure, achieved by the agent rather than by the CLI.
+
+The target state (Layer 2) looks like:
 
 ```text
 .specify/                           # Initiating repo
@@ -417,11 +425,9 @@ In a multi-repo initiative, contracts live in the initiating repo alongside `reg
 │           └── contracts/          # ← materialised from central
 ```
 
-Each workspace clone gets the central contracts at `.specify/contracts/`. Phase skills always read from `.specify/contracts/` relative to their working directory — they do not need to know whether the contracts were authored locally or materialised from a central source. This preserves RFC-3b's design principle that phase skills are unaware of the multi-repo topology.
+Phase skills always read from `.specify/contracts/` relative to their working directory — they do not need to know whether the contracts were authored locally or materialised from a central source. This preserves RFC-3b's design principle that phase skills are unaware of the multi-repo topology.
 
-When a contract change completes its define-build-merge cycle, its contracts merge into the central `.specify/contracts/`. The driver's pre-change distribution step propagates the updated contracts to all project clones before dependent implementation changes begin their define phases. Implementation changes read the materialised contracts as their baseline; `/contracts:writer` proposes only additions or modifications their specs require — typically a small or empty delta, since the interface was already defined by the contract change.
-
-Compatibility is validated by the agent during each implementation change's define phase rather than by automated tooling. This requires no framework changes beyond extending `workspace sync` to include the `contracts/` directory in what it materialises — a single additional path using the same copy/symlink mechanism it already uses for peer baselines.
+When a contract change completes its define-build-merge cycle, its contracts merge into the central `.specify/contracts/`. The distribution step (agent-driven in Layer 1, automated by `workspace sync` in Layer 2) propagates the updated contracts to all project clones before dependent implementation changes begin their define phases. Implementation changes read the materialised contracts as their baseline; `/contracts:writer` proposes only additions or modifications their specs require — typically a small or empty delta, since the interface was already defined by the contract change.
 
 ### Layer 2: Baseline tracking and merge (CLI changes)
 
@@ -461,7 +467,7 @@ The central contracts directory makes validation simpler than the per-project mo
 
 In Layer 1, contract ownership is implicit in the plan structure: a contract change's `depends-on` edges reveal which projects produce and consume each contract. The plan is the source of truth for who depends on what.
 
-Layer 2 introduces an explicit `contracts` block on `registry.yaml` project entries (`produces`, `consumes`, `imports`) that persists role information beyond a single initiative. This becomes valuable when contracts outlive the plan that created them — when the question shifts from "who depends on this contract in the current plan?" to "who owns this contract in the platform?" See §*Layer 2* for the full specification.
+Layer 2 introduces an explicit `contracts` block on `registry.yaml` project entries (`produces`, `consumes`, `imports`) that persists role information beyond a single initiative. This becomes valuable when contracts outlive the plan that created them — when the question shifts from "who depends on this contract in the current plan?" to "who owns this contract in the platform?" The design is summarised in §*Implementation scope*, item 15; the full schema and validation rules will be detailed during Layer 2 implementation.
 
 ## Schema integration
 
@@ -493,6 +499,12 @@ pipeline:
 The child schema overrides the `define` pipeline to insert the `contracts` entry. `build` and `merge` pipelines are inherited from the parent. The `contracts.md` brief and the updated `design.md` brief (which adds `contracts` to its `needs`) live in the child schema's `briefs/` directory; all other briefs fall back to the parent via the `extends` resolution algorithm documented in `plugins/spec/references/schema-resolution.md`.
 
 A `vectis-contracts` schema follows the same pattern, extending `vectis` and inserting the `contracts` brief after `specs` (and before `composition` in Vectis's pipeline).
+
+### Composition trade-offs
+
+Schema composition overrides at the file level, not the frontmatter level. The child's `design.md` brief must contain the *entire* brief body (all output structure sections and guidance), not just the updated frontmatter — the child's file replaces the parent's rather than merging with it. Any future change to the parent's `design.md` must be mirrored manually into the child. The same coupling applies to the `define` pipeline: because `extends` appends new `id`s at the end, the child must specify the full pipeline to place `contracts` between `specs` and `design`. If the parent adds a new define stage, the child's pipeline must be updated to include it.
+
+This is an acceptable trade-off for a small number of child schemas (two: `omnia-contracts` and `vectis-contracts`). If the number of child schemas grows, a brief-level composition mechanism (frontmatter-only overrides) could reduce the coupling, but that is out of scope for this RFC.
 
 ### Why not modify the base schemas?
 
