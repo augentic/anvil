@@ -107,7 +107,7 @@ All contract files use **kebab-case** names with `.yaml` extensions, consistent 
 
 The `$id` field in JSON Schema files must be a valid URI per the JSON Schema specification. The writer skill defines the exact format; the constraint is that `$id` values are stable, unique within the contract tree, and compatible with standard JSON Schema tooling (`ajv`, `typify`, etc.). A natural convention is a URN-shaped identifier derived from the file path (e.g. `$id: "urn:specify:schemas/user-registration"`), but the precise format is a writer-skill implementation detail.
 
-### Working contracts during define
+### Contract modifcation
 
 During a change's define phase, proposed contract modifications live in the change directory:
 
