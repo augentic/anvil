@@ -8,7 +8,7 @@ Introduce machine-readable API contracts as a first-class, platform-level artifa
 
 Contracts are co-located with `registry.yaml` and `plan.yaml` at `.specify/contracts/`. They are a platform concern — they describe interfaces *between* components, not internals of any one — and every project references the same central contracts, including the implementer of the API itself.
 
-Contracts are authored before implementation begins — either in dedicated contract changes that precede implementation changes in the plan, or imported from external systems. Implementation changes then validate their specs against the baseline contracts rather than deriving contracts from scratch. A `contracts` brief in the define pipeline reads the baseline contracts and the change's specs, verifying alignment and producing new contract artifacts only when specs describe interactions not covered by the baseline. For single-repo services with no external consumers, inline derivation from specs is available as a convenience fallback. Three authorship patterns (contract-first, spec-first, contract-given) emerge from plan structure and baseline state, not from separate code paths; contract-first is the recommended default.
+Contracts are authored before implementation begins — either in dedicated contract changes that precede implementation changes in the plan, or imported from external systems. Implementation changes then validate their specs against the baseline contracts rather than deriving contracts from scratch. A `contracts` brief in the define pipeline reads the baseline contracts and the change's specs, verifying alignment and producing new contract artifacts only when specs describe interactions not covered by the baseline. For single-repo services with no external consumers, inline derivation from specs is available as a convenience fallback. `/spec:plan` automatically selects the right authorship pattern (contract-first, spec-first, or contract-given) based on registry topology, source declarations, and API boundary detection; the operator does not make this choice manually.
 
 No CLI changes are required for the initial implementation; baseline tracking, cross-repo distribution, contract import tooling, and registry role declarations are layered on top.
 
@@ -275,15 +275,27 @@ The `design` brief's `needs` gains `contracts` so the agent has the generated fi
 
 ## Authorship patterns
 
-The `contracts` brief and its specialist skills (`/contracts:writer` and `/contracts:validator`) handle creating new contracts, evolving existing ones, and validating alignment with externally mandated ones. The writer always follows the same algorithm — read baseline, read specs, validate alignment, produce delta — so the three authorship patterns below emerge from plan structure and baseline state, not from separate code paths.
+`/spec:plan` automatically determines how contracts enter the plan. The operator does not choose an authorship pattern — the plan skill reads the registry, source declarations, and project topology and inserts the right contract changes in the right positions. Three patterns emerge from this algorithm, but they are implementation details of the plan skill, not decisions the operator makes.
 
-**Contract-first is the recommended default.** API contracts are coordination artifacts — shared agreements between parties. Defining them before implementation begins ensures that both producer and consumer work against the same interface, that the contract reflects a deliberate design decision rather than an accidental derivation, and that `spec:execute` can validate implementation specs against stable baseline contracts. The spec-first pattern is a convenience fallback for single-repo services with no external consumers; it should not be the norm.
+All three patterns use the same `contracts` brief, the same `/contracts:writer` and `/contracts:validator` skills, the same central `.specify/contracts/` location, and the same merge semantics. The writer always follows the same algorithm — read baseline, read specs, validate alignment, produce delta — so the patterns differ in plan structure and baseline state, not in code path.
 
-### Contract-first (dedicated contract change) — recommended default
+### `/spec:plan` algorithm
 
-Contracts are defined as their own change in the plan before implementation changes begin. A contract change is a regular Specify change that produces interface-level behavioral specs and derives contracts from them. It carries no implementation code — its build phase validates the contract artifacts rather than generating code.
+`/spec:plan` applies the following rules when constructing the plan:
 
-**Build phase for contract-only changes.** The build pipeline is inherited from the parent schema (`omnia` or `vectis`), and the build brief delegates to code-generation skills based on the tasks in `tasks.md`. For a contract-only change, the tasks brief generates validation tasks rather than code-generation tasks — the task list contains items like "validate contract structural correctness" and "verify `$ref` resolution" rather than "generate Rust crate." The build brief's mode detection (check whether `Cargo.toml` exists) naturally falls through to a no-op for code generation, and the validation tasks are satisfied by the `/contracts:validator` output from the define phase. This requires no special handling in the build brief — the task-driven model adapts to the change's content.
+1. **API boundary between projects.** When the plan contains changes in multiple projects that share an API boundary (identified from registry descriptions, source analysis, or operator input), `/spec:plan` inserts a dedicated contract change before the implementation changes on both sides. The contract change carries interface-level behavioral specs and derives contracts from them; implementation changes `depends-on` the contract change and validate alignment. This is the **contract-first** pattern and is the most common case for multi-service platforms.
+
+2. **External system or legacy migration.** When a source is flagged as an external system or legacy API, `/spec:plan` inserts an import change before the implementation changes. The operator places the external contract files into the import change's `contracts/` directory; the change's build phase validates structural correctness. Implementation changes depend on the import change and write specs that conform to the imported contract. This is the **contract-given** pattern.
+
+3. **Single-repo, no API boundary.** When the plan contains a single-repo change with no identified API boundary and no external consumers, no separate contract change is inserted. The `contracts` brief derives interface shapes inline during the change's define phase — the baseline is empty, so the delta is the full contract set. This is the **spec-first** pattern, a convenience fallback for isolated services.
+
+The contract-first pattern is the default. Most Augentic work involves multi-service platforms where API boundaries exist between projects. Spec-first inline derivation should not be used when the API is shared across repos or consumed by external systems — `/spec:plan` enforces this by inserting a contract change whenever it detects a cross-project interface.
+
+### Contract-first (dedicated contract change)
+
+The plan skill inserts a dedicated contract change before implementation changes. The contract change is a regular Specify change that produces interface-level behavioral specs and derives contracts from them. It carries no implementation code — its build phase validates the contract artifacts rather than generating code.
+
+**Build phase for contract-only changes.** The build brief delegates to code-generation skills based on the tasks in `tasks.md`. For a contract-only change, the tasks brief generates validation tasks rather than code-generation tasks — the task list contains items like "validate contract structural correctness" and "verify `$ref` resolution" rather than "generate Rust crate." The build brief's mode detection (check whether `Cargo.toml` exists) naturally falls through to a no-op for code generation, and the validation tasks are satisfied by the `/contracts:validator` output from the define phase. This requires no special handling in the build brief — the task-driven model adapts to the change's content.
 
 The interface has its own behavioral specs, distinct from any project's internal specs:
 
@@ -322,17 +334,13 @@ user-api-contract ───────┤
                          └── registration-screen (mobile)
 ```
 
-The `/spec:plan` skill can automate this: when it identifies an interface between projects during planning, it inserts a contract change before the implementation changes on both sides.
+### Spec-first (inline derivation)
 
-### Spec-first (inline derivation) — fallback for single-repo services
-
-For single-repo services with no external consumers and no multi-party coordination, contracts can be derived inline during a single change's define phase. The change's specs describe the system's behavior; the `contracts` brief extracts the interface shapes from those specs in the same pipeline run. No separate contract change is needed.
-
-This is the simpler pattern — one change, one define phase, specs and contracts produced together. It is appropriate when the API surface is a thin projection of a single capability and there is no second party to agree with. It should not be used when the API is shared across repos or consumed by external systems — those cases call for the contract-first pattern.
+For single-repo services with no external consumers and no multi-party coordination, `/spec:plan` does not insert a separate contract change. The `contracts` brief derives interface shapes inline during the change's define phase — one change, one define phase, specs and contracts produced together. This is appropriate when the API surface is a thin projection of a single capability and there is no second party to agree with.
 
 ### Contract-given (external or legacy contracts)
 
-When a contract is mandated by an external system — a partner API, a regulatory interface, or a legacy system being migrated — the derivation direction is reversed. The machine-readable contract already exists or its shape is dictated by a third party, and the specs need to *conform to* that contract rather than *generate* it.
+When `/spec:plan` identifies a source flagged as an external system or legacy migration, it inserts an import change before the implementation changes. The derivation direction is reversed: the machine-readable contract already exists or its shape is dictated by a third party, and the specs need to *conform to* that contract rather than *generate* it.
 
 The workflow:
 
@@ -348,7 +356,7 @@ The workflow:
 
 4. **Delta for extensions only.** If the change extends the external contract (e.g. adding a new endpoint to a legacy API during migration), the writer produces contract files for the *additions* only. The imported baseline files are not modified — they remain the external system's authoritative shapes.
 
-The plan structure for a migration looks like:
+The plan structure for a migration:
 
 ```yaml
 changes:
@@ -365,16 +373,6 @@ changes:
 
 The import change produces validated contract artifacts. Implementation changes depend on it and write specs that conform to the imported contract.
 
-### Pattern selection
-
-The choice between patterns is a planning decision, not a mechanism difference. All three use the same `contracts` brief, the same `/contracts:writer` and `/contracts:validator` skills, the same central `.specify/contracts/` location, and the same merge semantics. The writer's single algorithm adapts naturally to each:
-
-- **Contract-first** (default): a dedicated contract change produces the full contract set from interface-level specs. Implementation changes then validate alignment — their delta is small or empty.
-- **Spec-first** (fallback): no baseline contracts exist; the delta is the full contract set, derived from implementation-level specs. Appropriate only for single-repo services with no external consumers.
-- **Contract-given**: external contracts are imported into the baseline → the delta is small or empty, with alignment validation against what already exists.
-
-`/spec:plan` defaults to contract-first: it inserts a dedicated contract change before implementation changes whenever the plan contains an API boundary — whether between projects in a multi-repo initiative or between a service and its consumers. If a source is flagged as an external system or legacy migration, it inserts an import change (contract-given). Spec-first inline derivation is used only when the plan contains a single-repo change with no identified API boundary and no external consumers.
-
 ### Contract references in plan entries (Layer 2)
 
 In Layer 1, the `depends-on` edges in the plan provide sufficient signal for the agent to identify which baseline contracts are relevant to a change. When a change `depends-on` a contract change, the agent reads the contract change's output to understand which contracts apply.
@@ -388,7 +386,7 @@ The central co-location model works identically in both topologies:
 | Concern | Single-repo | Multi-repo |
 |---------|-------------|------------|
 | Contracts location | `.specify/contracts/` | `.specify/contracts/` (initiating repo) |
-| Who writes (new APIs) | Dedicated contract change (recommended) or `/contracts:writer` inline fallback | Dedicated contract change, then `/contracts:writer` validates alignment in implementation changes |
+| Who writes (new APIs) | Dedicated contract change (inserted by `/spec:plan` when API boundary detected) or inline fallback for isolated services | Dedicated contract change (inserted by `/spec:plan`), then `/contracts:writer` validates alignment in implementation changes |
 | Who writes (external APIs) | Import into baseline, then `/contracts:writer` validates alignment | Import change in plan, then alignment validation in implementation changes |
 | How projects read | Direct filesystem read | Materialised by `workspace sync` |
 | How changes propose updates | `.specify/changes/<name>/contracts/` | Same — in the project clone's change directory |
