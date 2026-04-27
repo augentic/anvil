@@ -1,6 +1,7 @@
 ---
 name: template-updater
 description: Fix Vectis CLI templates and version pins when upstream crate or tooling bumps break a freshly scaffolded project. Use when `specify vectis update-versions --verify` reports a failing cap-matrix combo, when a Crux/uniffi/Gradle release has introduced template drift, or when the user mentions template-updater.
+license: MIT
 ---
 
 # Vectis Template Updater

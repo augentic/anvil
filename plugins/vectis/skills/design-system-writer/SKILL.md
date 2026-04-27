@@ -1,6 +1,7 @@
 ---
 name: design-system-writer
 description: Generate or update the platform-specific design system implementation from tokens.yaml for iOS (Swift Package) and Android (Jetpack Compose Material 3 library). Use when implementing design-system tasks from a Specify change, or when the user mentions design-system-writer.
+license: MIT
 ---
 
 # Design System Writer

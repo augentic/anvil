@@ -1,6 +1,7 @@
 ---
 name: ios-reviewer
 description: Review generated iOS shell (SwiftUI) code for structural issues, integration correctness, and quality problems. Use when reviewing a Crux app's iOS shell after generation, or when the user mentions ios-reviewer.
+license: MIT
 ---
 
 # Crux iOS Shell Reviewer

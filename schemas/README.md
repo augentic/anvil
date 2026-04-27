@@ -8,6 +8,7 @@ This directory contains the schema definitions for the Specify workflow. Each sc
 |--------|---------|---------|
 | [`omnia`](omnia/README.md) | Rust WASM development (Omnia SDK) | Greenfield or migration via Git Repository or Manual |
 | [`vectis`](vectis/README.md) | Cross-platform Crux app development | Rust core, iOS/Android shells, design system |
+| [`contracts`](contracts/README.md) | API contract generation and validation | JSON Schema, OpenAPI 3.1, AsyncAPI 3.0 |
 
 ## Schema Directory Structure
 

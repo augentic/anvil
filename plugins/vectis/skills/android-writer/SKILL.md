@@ -1,6 +1,7 @@
 ---
 name: android-writer
 description: Generate or update a Kotlin/Jetpack Compose Android shell for a Crux application. Use when the user wants to create an Android shell, scaffold Android UI, or generate Compose views for a Crux app, or mentions android-writer.
+license: MIT
 ---
 
 # Crux Android Shell Generator

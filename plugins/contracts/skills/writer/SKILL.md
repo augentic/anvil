@@ -1,6 +1,7 @@
 ---
 name: writer
 description: "Validate spec alignment with baseline API contracts and produce the minimal contract delta for uncovered interactions — JSON Schema, OpenAPI 3.1, AsyncAPI 3.0."
+license: MIT
 allowed-tools: Read, Write, StrReplace, Shell, Grep, Glob
 ---
 

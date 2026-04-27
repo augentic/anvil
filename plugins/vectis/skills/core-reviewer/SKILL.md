@@ -1,6 +1,7 @@
 ---
 name: core-reviewer
 description: Review generated Crux core (Rust shared crate) code for structural issues, logic bugs, and quality problems. Use when reviewing a Crux app's core after generation, or when the user mentions core-reviewer.
+license: MIT
 ---
 
 # Crux Core Reviewer
