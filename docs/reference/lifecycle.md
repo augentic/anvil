@@ -2,25 +2,26 @@
 
 Every Specify change moves through a sequence of lifecycle states. Transitions are enforced by the `specify` CLI -- skills never write state directly.
 
+Specify's three-layer design is explained in [The Three-Layer Stack](../explanation/three-layer-stack.md). For the rationale, see the [Decision Log](../explanation/decision-log.md#three-independently-useful-layers).
+
 ## State diagram
 
-```mermaid
-stateDiagram-v2
-    [*] --> created: specify change create
-    created --> defining: /spec:define starts
-    defining --> defined: /spec:define completes
-    defined --> building: /spec:build starts
-    building --> complete: all tasks done
-    complete --> merged: /spec:merge succeeds
+```d2
+changeLifecycle: {
+  shape: state_diagram
 
-    created --> dropped: /spec:drop
-    defining --> dropped: /spec:drop
-    defined --> dropped: /spec:drop
-    building --> dropped: /spec:drop
-    complete --> dropped: /spec:drop
+  created -> defining: "/spec:define starts"
+  defining -> defined: "/spec:define completes"
+  defined -> building: "/spec:build starts"
+  building -> complete: "all tasks done"
+  complete -> merged: "/spec:merge succeeds"
 
-    merged --> [*]
-    dropped --> [*]
+  created -> dropped: "/spec:drop"
+  defining -> dropped: "/spec:drop"
+  defined -> dropped: "/spec:drop"
+  building -> dropped: "/spec:drop"
+  complete -> dropped: "/spec:drop"
+}
 ```
 
 ## States
@@ -68,21 +69,16 @@ Never hand-edit `.metadata.yaml`. All writes flow through the CLI.
 
 When a change is part of an initiative plan, the plan entry has its own status tracked in `plan.yaml`:
 
-```mermaid
-stateDiagram-v2
-    state "in-progress" as in_progress
+```d2
+planEntryLifecycle: {
+  shape: state_diagram
 
-    [*] --> pending: specify plan create
-    pending --> in_progress: specify plan transition
-    in_progress --> done: change merged successfully
-    in_progress --> failed: change failed
-    in_progress --> blocked: change deferred
-    pending --> skipped: manually skipped
-
-    done --> [*]
-    failed --> [*]
-    blocked --> [*]
-    skipped --> [*]
+  pending -> in-progress: "specify plan transition"
+  in-progress -> done: "change merged successfully"
+  in-progress -> failed: "change failed"
+  in-progress -> blocked: "change deferred"
+  pending -> skipped: "manually skipped"
+}
 ```
 
 | State | Meaning |

@@ -47,6 +47,17 @@ Validate the registry:
 specify initiative registry validate
 ```
 
+<details>
+<summary>Expected output</summary>
+
+```text
+Registry valid.
+  2 projects: api (omnia@v1), mobile (vectis@v1)
+  All projects have descriptions.
+```
+
+</details>
+
 ## 2. Author the initiative brief (optional)
 
 For complex initiatives, write an operator brief at `.specify/initiative.md`:

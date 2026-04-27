@@ -2,6 +2,28 @@
 
 Every Specify change produces a set of interdependent artifacts. Together they form the contract between human intent and agent execution.
 
+## Artifact dependency chain
+
+The define pipeline generates artifacts in dependency order. Each artifact builds on the ones before it:
+
+```d2
+direction: right
+
+proposal: "proposal.md\n(why)" {shape: page}
+specs: "spec.md\n(what)" {shape: page}
+contracts: "contracts/\n(shape)" {shape: page}
+design: "design.md\n(how)" {shape: page}
+tasks: "tasks.md\n(sequence)" {shape: page}
+
+proposal -> specs: "scopes capabilities"
+specs -> contracts: "alignment check"
+contracts -> design: "shapes referenced"
+specs -> design: "behavioral input"
+design -> tasks: "what to build"
+```
+
+The Vectis schema inserts a `composition.yaml` stage between contracts and design.
+
 ## Core artifacts
 
 All schemas produce these four artifacts:

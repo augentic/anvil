@@ -21,6 +21,8 @@ curl -sSfL https://specify.sh/install.sh | sh   # pre-built binary
 
 The CLI owns operations that require understanding `.specify/` directory structure or spec format. Operations that require semantic understanding or context (like deciding what to build) stay with the agent.
 
+For the rationale behind this split, see [CLI owns correctness, agent owns judgment](../../explanation/decision-log.md#cli-owns-correctness-agent-owns-judgment) in the Decision Log.
+
 | Use CLI when | Use agent when |
 |-------------|---------------|
 | The operation must be idempotent | The response depends on context |

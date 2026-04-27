@@ -1,6 +1,6 @@
 # Artifact Format
 
-This is the definitive reference for the structure and conventions of Specify artifacts. For a high-level overview, see [Artifacts](../orientation/artifacts.md).
+This is the definitive reference for the structure and conventions of Specify artifacts. For a high-level overview, see [Artifacts in Depth](../explanation/artifacts.md).
 
 ## Spec files (behavioral "what")
 
@@ -236,7 +236,7 @@ Tasks without a skill tag are implemented via the schema's default build instruc
 
 ## Composition document (Vectis only)
 
-`composition.yaml` describes the spatial layout of each screen. It is a schema-validated YAML document produced by the Vectis schema's define pipeline between the specs and design stages. The JSON Schema lives at `schemas/vectis/composition.schema.json`.
+`composition.yaml` describes the spatial layout of each screen. It is a schema-validated YAML document produced by the Vectis schema's define pipeline between the specs and design stages. The JSON Schema lives at `schemas/vectis/composition.schema.json`. (See [Decision Log: Composition as a separate artifact](../explanation/decision-log.md#composition-as-a-separate-artifact-not-embedded-in-specs-or-design) for the rationale.)
 
 ### Two modes
 
@@ -330,7 +330,7 @@ For the full schema definition and item vocabulary, see [RFC-7](https://github.c
 
 ## Contract artifacts (API "shape")
 
-Contract artifacts capture the machine-readable shapes of APIs and message interfaces. They use three standard formats, each with its own subdirectory under `contracts/`:
+Contract artifacts capture the machine-readable shapes of APIs and message interfaces. (See [Decision Log: Contracts as platform-level artifacts](../explanation/decision-log.md#contracts-as-platform-level-artifacts-not-per-project) for the rationale.) They use three standard formats, each with its own subdirectory under `contracts/`:
 
 ### Directory structure
 

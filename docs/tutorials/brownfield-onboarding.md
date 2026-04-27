@@ -22,6 +22,25 @@ Run extract against your codebase:
 /spec:extract . .specify/changes/initial-baseline/
 ```
 
+<details>
+<summary>Expected output</summary>
+
+```text
+Extracting from . ...
+  Scanning source files...
+  Discovered capabilities: auth, payments, notifications
+
+Generating artifacts...
+  ✓ specs/auth/spec.md (5 requirements)
+  ✓ specs/payments/spec.md (8 requirements)
+  ✓ specs/notifications/spec.md (3 requirements)
+  ✓ design.md
+
+Extraction complete. Review artifacts, then run /spec:merge initial-baseline.
+```
+
+</details>
+
 The agent reads your source code and produces:
 
 - **`spec.md` files** (one per discovered capability) -- behavioral requirements extracted from the source. Each requirement gets a stable ID and scenarios based on the code's actual behavior.

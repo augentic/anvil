@@ -43,3 +43,9 @@ When `--format json` is provided, returns:
 - `directories-created` -- list of directories created
 - `scaffolded-rule-keys` -- per-brief rule keys added to `project.yaml`
 - `specify-version` -- version recorded in `project.yaml`
+
+## See also
+
+- [/spec:init](../change-skills/init.md) -- skill that drives this command
+- [Configuration Files](../configuration.md) -- project.yaml and metadata format
+- [Prerequisites](../../orientation/prerequisites.md) -- setup before first init

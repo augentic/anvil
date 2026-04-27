@@ -25,7 +25,7 @@ The accumulated set of merged specs at `.specify/specs/` and merged contracts at
 A markdown prompt file provided by a schema that drives artifact generation. Briefs are organized into pipelines for each phase (define, build, merge).
 
 **Brief pipeline**
-An ordered sequence of briefs declared by a schema for a given phase. The Omnia define pipeline runs: proposal, specs, design, tasks. The Vectis define pipeline runs: proposal, specs, composition, design, tasks.
+An ordered sequence of briefs declared by a schema for a given phase. The Omnia define pipeline runs: proposal, specs, contracts, design, tasks. The Vectis define pipeline runs: proposal, specs, contracts, composition, design, tasks.
 
 ## C
 

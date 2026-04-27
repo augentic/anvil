@@ -1,15 +1,15 @@
 [book]
-title = "Specify Operator Guide"
+title = "Specify Developer Guide"
 authors = ["Augentic"]
 language = "en"
 src = "."
 
 [output.html]
 git-repository-url = "https://github.com/augentic/specify"
-additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
-[preprocessor.mermaid]
-command = "mdbook-mermaid"
+[preprocessor.d2]
+layout = "elk"
+inline = true
 
 [output.html.fold]
 enable = true

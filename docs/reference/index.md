@@ -44,3 +44,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 | Understand schema differences | [Schemas](schemas/index.md) |
 | Look up a term | [Glossary](../appendices/glossary.md) |
 | Troubleshoot an error | [Troubleshooting](../appendices/troubleshooting.md) |
+
+## Design decisions
+
+For the reasoning behind Specify's architectural choices, see the [Decision Log](../explanation/decision-log.md).

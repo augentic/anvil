@@ -87,3 +87,9 @@ Under `--dry-run`, the JSON output adds `"dry_run": true` at the top level and a
 **Status vocabulary:** `created` (remote repo created, greenfield), `pushed` (existing remote updated), `up-to-date` (no local commits ahead), `local-only` (no remote configured), `failed` (error).
 
 **Prerequisites:** `gh` (GitHub CLI) is required only when repo creation or PR creation is needed. Plain `git push` works for any forge.
+
+## See also
+
+- [Cross-Repo Initiatives](../../tutorials/cross-repo-initiative.md) -- tutorial for multi-repo workflows
+- [Configuration Files](../configuration.md) -- registry.yaml and plan.yaml format
+- [/spec:execute](../initiative-skills/execute.md) -- skill that drives workspace execution

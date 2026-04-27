@@ -108,3 +108,9 @@ specify plan lock status
 ```
 
 The lock (`.specify/plan.lock`) is a PID stamp held by `/spec:execute` to prevent concurrent execution. `--pid` defaults to the current process PID; `/spec:execute` passes a stable agent-session PID so `release` can authenticate the holder. `status` reports whether the lock is held and by which PID.
+
+## See also
+
+- [/spec:plan](../initiative-skills/plan.md) -- skill that authors plans
+- [/spec:execute](../initiative-skills/execute.md) -- skill that drives plan execution
+- [Configuration Files](../configuration.md) -- plan.yaml and registry format

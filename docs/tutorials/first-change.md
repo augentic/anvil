@@ -14,6 +14,18 @@ Open your project in Cursor and type the following in the agent chat:
 
 > Replace `omnia` with `vectis` if you are building a cross-platform Crux application.
 
+<details>
+<summary>Expected output</summary>
+
+```text
+Specify Initialized
+  Schema: omnia@latest
+  Project config: .specify/project.yaml
+  Cache: .specify/.cache/omnia/
+```
+
+</details>
+
 Specify creates the `.specify/` directory:
 
 ```
@@ -35,6 +47,23 @@ Now describe what you want to build:
 /spec:define "Add a greeting endpoint that accepts a name and returns a personalised message"
 ```
 
+<details>
+<summary>Expected output</summary>
+
+```text
+Change created: add-greeting-endpoint
+
+Generating artifacts...
+  ✓ proposal.md
+  ✓ specs/greeting/spec.md
+  ✓ design.md
+  ✓ tasks.md
+
+Change defined (4 tasks).
+```
+
+</details>
+
 Specify generates four artifacts (five for the Vectis schema, which adds `composition.yaml` for screen layout):
 
 1. **`proposal.md`** -- captures the motivation and scope. It names the capabilities that will be affected.
@@ -55,6 +84,16 @@ At any point you can check where things stand:
 /spec:status
 ```
 
+<details>
+<summary>Expected output</summary>
+
+```text
+Active changes:
+  add-greeting-endpoint  defined  (4 tasks, 0 complete)
+```
+
+</details>
+
 You will see the change listed with status `defined`, all artifacts marked complete, and the task count.
 
 ## 4. Build the implementation
@@ -65,9 +104,25 @@ Now implement the change:
 /spec:build
 ```
 
+<details>
+<summary>Expected output</summary>
+
+```text
+Building add-greeting-endpoint...
+  ✓ 1.1 Generate the domain crate
+  ✓ 1.2 Generate test suites
+  ✓ 1.3 Verify and review output
+  ✓ 1.4 Final verification
+
+Implementation Complete
+  Tasks: 4/4 done
+```
+
+</details>
+
 The agent reads the build brief and works through the tasks in `tasks.md`. For each task:
 
-- If the task has a **skill directive tag** (e.g. `<!-- skill: omnia:crate-writer -->`), the agent delegates to that specialist skill.
+- If the task has a **skill directive tag** (see [Glossary](../appendices/glossary.md)) (e.g. `<!-- skill: omnia:crate-writer -->`), the agent delegates to that specialist skill.
 - If the task has no tag, the agent implements it using the schema's default build instruction.
 
 As each task completes, the agent marks it done via `specify task mark`. You can watch the checkboxes flip in `tasks.md`.
@@ -81,6 +136,20 @@ Finalise the change:
 ```text
 /spec:merge
 ```
+
+<details>
+<summary>Expected output</summary>
+
+```text
+Merge preview:
+  + specs/greeting/spec.md (new capability)
+
+Merge complete.
+  Baseline updated: .specify/specs/greeting/spec.md
+  Archived: .specify/archive/2026-04-27-add-greeting-endpoint/
+```
+
+</details>
 
 The agent:
 
@@ -97,7 +166,7 @@ After merging, look at `.specify/specs/`:
     └── spec.md    # your greeting spec is now part of the baseline
 ```
 
-This baseline is permanent. Future changes will see it and build on it. The change directory has been moved to the archive:
+This baseline (see [Glossary](../appendices/glossary.md)) is permanent. Future changes will see it and build on it. The change directory has been moved to the archive:
 
 ```
 .specify/archive/
@@ -116,6 +185,19 @@ If at any point you decide a change should not be merged -- it was exploratory, 
 ```text
 /spec:drop
 ```
+
+<details>
+<summary>Expected output</summary>
+
+```text
+Drop change add-greeting-endpoint? (y/n): y
+
+Change dropped.
+  Archived: .specify/archive/2026-04-27-add-greeting-endpoint/
+  Baseline unchanged.
+```
+
+</details>
 
 The change is archived with status `dropped`. Baseline specs remain unchanged. You can provide a reason to skip the interactive confirmation:
 

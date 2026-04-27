@@ -1,12 +1,18 @@
-# Specify Operator Guide — Local Development
+# Specify Developer Guide -- Local Development
 
-This directory contains the [mdbook](https://rust-lang.github.io/mdBook/) source for the Specify Operator Guide.
+This directory contains the [mdbook](https://rust-lang.github.io/mdBook/) source for the Specify Developer Guide.
 
 ## Prerequisites
 
 ```bash
 cargo install mdbook
-cargo install mdbook-mermaid
+cargo install mdbook-d2 --locked
+```
+
+You also need [D2](https://d2lang.com/) installed and available on your `PATH`:
+
+```bash
+curl -fsSL https://d2lang.com/install.sh | sh -s --
 ```
 
 ## Serve locally (with live-reload)

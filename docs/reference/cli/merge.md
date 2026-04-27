@@ -26,3 +26,9 @@ This is the CLI command invoked by `/spec:merge` after preview and conflict-chec
 
 - Change must be in `complete` state.
 - `specify spec preview` and `specify spec conflict-check` should pass (the skill checks these before calling merge).
+
+## See also
+
+- [/spec:merge](../change-skills/merge.md) -- skill that orchestrates merge
+- [Artifact Format](../artifact-format.md) -- spec and composition structure
+- [Lifecycle](../lifecycle.md) -- change state machine reference
