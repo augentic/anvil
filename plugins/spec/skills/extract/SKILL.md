@@ -6,6 +6,18 @@ argument-hint: "<source-path> <change-dir> [--include <glob>...] [--exclude <glo
 allowed-tools: Read, Write, StrReplace, Shell, Grep
 ---
 
+## Critical Path (Quick Reference)
+
+1. **Identify component structure** — detect source language, entry points, module organization, async patterns, and guest/entry-point layer. Pin dependency versions from the lock file, not the manifest.
+2. **Extract business logic** — apply scope filters (`--include`/`--exclude`/`--manifest`), then analyze depth-first by domain. Tag every statement `[domain]`, `[infrastructure]`, `[mechanical]`, or `[unknown]`. Copy type definitions verbatim; capture all serialization attributes, wire-format names, and field optionality.
+3. **Document external API surfaces** — trace actual deserialization code (not type declarations) for every HTTP/API call. Record exact URLs, headers, request/response shapes, auth sources, retries, and timeouts.
+4. **Capture external service dependencies** — classify each service by type (`database`, `managed table store`, `message broker`, `cache`, `identity provider`, `API`, `WebSocket`).
+5. **Capture publication & timing patterns** — document exact publication counts, delay placement, payload identity, partition keys, and message metadata.
+6. **Capture metrics and observability** — record metric names, types, emission points, and labels.
+7. **Write artifacts** — create `$SPECS_DIR/$CRATE_NAME/spec.md` (flat `### Requirement:` blocks with `ID: REQ-XXX`) and `$DESIGN_PATH` (all 14 sections from Context through Notes). Validate against the verification checklist before completing.
+
+See detailed sections below for edge cases, guardrails, and error handling.
+
 # Extract
 
 > See also [`../analyze/SKILL.md`](../analyze/SKILL.md) for plan-time capability inference — the sibling skill that emits capability summaries into `discovery.md`, not full `specs/` + `design.md`.

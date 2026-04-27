@@ -8,6 +8,18 @@ license: MIT
 argument-hint: "[--dry-run] [--loop]"
 ---
 
+## Critical Path (Quick Reference)
+
+1. **Resolve project root** — walk upward from CWD looking for `.specify/project.yaml`; exit non-zero if not found.
+2. **Acquire driver lock** — `specify plan lock acquire --pid <agent-session-pid>`. On `DriverBusy`, report and exit.
+3. **Self-heal** — reconcile any `in-progress` entries left by a prior crash: read `.metadata.yaml:outcome`, apply terminal transitions or resume mid-change. Halt on ambiguity.
+4. **Pick next change** — `specify plan next --format json`. Handle `all-done` (exit 0), `stuck` (exit 0), or `in-progress` (exit non-zero). Capture `project`, `description`, and `sources` from the response.
+5. **Transition to in-progress and route CWD** — `specify plan transition <name> in-progress`. For multi-repo entries, resolve the target project directory from `registry.yaml` and `chdir`.
+6. **Run phase sequence** — invoke `/spec:define` → `/spec:build` → `/spec:merge`, reading `.metadata.yaml:outcome` after each phase. On `failure` → drop + transition `failed`. On `deferred` → drop + transition `blocked`. Copy `outcome.summary` verbatim into `--reason`.
+7. **Wrap up** — transition to `done` on success. Release the driver lock on **every** exit path (`specify plan lock release`). In `--loop` mode, repeat from step 4 until no eligible change remains, then emit the terminal summary.
+
+See detailed sections below for edge cases, guardrails, and error handling.
+
 # Execute skill
 
 Drive an initiative through `.specify/plan.yaml` by automating the Layer 1 loop: `get next change` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify plan transition`.
@@ -646,7 +658,7 @@ No other on-disk state is written by `/spec:execute` itself.
 - For the supervised single-change run: the string passed to `specify plan transition <name> {failed,blocked} --reason "…"` is always `outcome.summary` from the phase's `.metadata.yaml`, copied byte-for-byte. Never paraphrase, truncate, or add a prefix. The fixtures under `fixtures/single-change/` assert this equality; a drift between `metadata-after-*.yaml:outcome.summary` and `plan.yaml.after:status-reason` is a regression.
 - Phase outcome missing or malformed after a phase returns means the phase crashed or skipped its `specify change phase-outcome` call. Treat as `deferred` with a synthetic summary (`"phase outcome missing after <phase>; driver stopping for triage."`) — do not speculate about which of success / failure was really intended.
 - Self-heal applies the same verbatim-`summary` rule as steps 11c / 12c: the string passed to `specify plan transition <name> {failed,blocked} --reason "…"` is copied byte-for-byte from the on-disk `outcome.summary`. The fixtures under `fixtures/self-heal/` assert this equality; drift is a regression.
-- Self-heal never paraphrases ambiguity away. If `.metadata.yaml` has no `outcome`, an `outcome` with a `phase` that contradicts `LifecycleStatus`, or a `LifecycleStatus` that is terminal (`merged`, `dropped`) while `plan.yaml` still says `in-progress`, halt with exit code 1 and leave the plan entry as `in-progress`. A later run, after human triage, can re-enter self-heal safely.
+- Self-heal never paraphrases ambiguity away. If `.metadata.yaml` has no `outcome`, an `outcome` with a `phase` that contradicts `LifecycleStatus`, or a `LifecycleStatus` that is terminal (`merged`, `dropped`) while `plan.yaml` still says `in-progress`, halt with exit code 2 and leave the plan entry as `in-progress`. A later run, after human triage, can re-enter self-heal safely.
 - Argument resolution never speculates over an unresolved `sources` key. If a key on the plan entry is absent from the plan's top-level `sources` map, halt with `Error::Config`, name the offending `(change, key)` pair, release the lock, and exit non-zero. Do NOT substitute a default, guess at a path, or drop the key silently. The same rule applies whether the run is `--dry-run`, supervised, or `--loop`.
 
 ## Fixtures
