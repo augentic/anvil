@@ -43,7 +43,7 @@ specify/
 │   ├── specify-validate/             # RFC-1
 │   ├── specify-change/               # RFC-1
 │   ├── specify-drift/                # RFC-1
-│   ├── specify-federation/           # RFC-1
+│   ├── specify-platform/             # RFC-1
 │   └── specify-check/                # this RFC — framework validation (replaces checks.ts)
 │       ├── Cargo.toml
 │       └── src/

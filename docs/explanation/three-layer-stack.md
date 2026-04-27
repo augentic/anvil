@@ -33,22 +33,6 @@ Layer1: "Layer 1 — CLI Primitives" {
   taskCli: "specify task"
   mergeCli: "specify merge"
 }
-
-Layer3.execute -> Layer2.define
-Layer3.execute -> Layer2.build
-Layer3.execute -> Layer2.mergeSkill
-Layer3.execute -> Layer2.drop
-
-Layer2.define -> Layer1.changeCli
-Layer2.define -> Layer1.schemaCli
-Layer2.build -> Layer1.taskCli
-Layer2.build -> Layer1.validateCli
-Layer2.mergeSkill -> Layer1.specCli
-Layer2.mergeSkill -> Layer1.mergeCli
-Layer2.drop -> Layer1.changeCli
-Layer2.status -> Layer1.changeCli
-Layer3.plan -> Layer1.planCli
-Layer3.execute -> Layer1.planCli
 ```
 
 ## Layer 1: CLI primitives
