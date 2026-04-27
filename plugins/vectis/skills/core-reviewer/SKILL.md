@@ -1,6 +1,9 @@
 ---
 name: core-reviewer
 description: Review generated Crux core (Rust shared crate) code for structural issues, logic bugs, and quality problems. Use when reviewing a Crux app's core after generation, or when the user mentions core-reviewer.
+license: MIT
+argument-hint: "<target-dir>"
+allowed-tools: Read, Grep, Glob, Shell, SemanticSearch
 ---
 
 # Crux Core Reviewer
@@ -25,7 +28,7 @@ This skill uses an agent team with 3 specialist reviewers and 1 antagonist. The 
 
 Read the following files from `{target-dir}`:
 
-- `spec.md` -- the app specification (required for logic specialist)
+- `spec.md` -- the app specification (required for logic specialist). Look under `.specify/changes/<change>/specs/<feature>/spec.md` (the Vectis artifact path), not at the project root.
 - `shared/Cargo.toml` -- dependencies and features
 - All `.rs` files under `shared/src/` -- focus on `app.rs` (the `update()` function)
 

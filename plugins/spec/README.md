@@ -16,6 +16,8 @@ Core workflow orchestration for spec-driven development: define changes, build t
 | [status](skills/status/SKILL.md) | `/spec:status` | Check artifact completion and task progress |
 | [extract](skills/extract/SKILL.md) | `/spec:extract` | Extract Specify artifacts from existing source code |
 | [analyze](skills/analyze/SKILL.md) | `/spec:analyze` | Plan-time capability inference; emits capability summaries into `discovery.md` |
+| [plan](skills/plan/SKILL.md) | `/spec:plan` | Author `.specify/plan.yaml` via the plan pipeline |
+| [execute](skills/execute/SKILL.md) | `/spec:execute` | Drive an initiative's plan through define, build, merge |
 
 ## References
 

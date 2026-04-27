@@ -15,6 +15,8 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
 
 ## Steps
 
+> **Implementation note:** This procedure is currently heuristic — it relies on LLM-based analysis to compare source code against baseline specs. When the `specify-drift` crate or a future `specify verify` CLI command supports programmatic drift detection, this skill should wire into that as the primary signal and use LLM judgment only as a secondary layer for ambiguous cases.
+
 1. **Check initialization and resolve schema**
 
    Verify `.specify/project.yaml` exists. If not:

@@ -75,7 +75,7 @@ The code branch additionally writes a structural-metadata sidecar — see §*Str
 
 ### `--source-key` tagging
 
-When `$SOURCE_KEY` is supplied, the skill carries it into `$DISCOVERY` as a top-of-block marker next to each capability it produced on this invocation (e.g. an HTML comment `<!-- source-key: <k> -->` immediately before the `### <name>` heading). For C17 (scaffold) the semantics stay thin: the flag is recorded, not used to rewrite `sources:` paths. Path-rewriting nuance is refined in C18 (documentation branch) and C21 (code branch) once the per-kind prompts land.
+When `$SOURCE_KEY` is supplied, the skill carries it into `$DISCOVERY` as a top-of-block marker next to each capability it produced on this invocation (e.g. an HTML comment `<!-- source-key: <k> -->` immediately before the `### <name>` heading). For the scaffold branch the semantics stay thin: the flag is recorded, not used to rewrite `sources:` paths. Path-rewriting nuance is refined in the documentation branch and code branch once the per-kind prompts land.
 
 ## Structural metadata (per-source)
 
@@ -154,7 +154,7 @@ The detailed clustering / extraction prompt for each `--kind` value lives under 
 
 ## Fixtures
 
-- [`fixtures/scaffold-example/`](fixtures/scaffold-example/) — an illustrative capability-summary block plus a small structural- metadata sidecar demonstrating the on-disk shape of both `$DISCOVERY` and `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json`. Structural only; the per-kind fixtures with real clustering land in C18 (documentation) and C21 (code).
+- [`fixtures/scaffold-example/`](fixtures/scaffold-example/) — an illustrative capability-summary block plus a small structural- metadata sidecar demonstrating the on-disk shape of both `$DISCOVERY` and `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json`. Structural only; the per-kind fixtures with real clustering land in the documentation and code branches.
 
 ## Guardrails
 

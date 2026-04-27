@@ -33,7 +33,7 @@
     {
       "name": "spec",
       "source": "spec",
-      "description": "Skills for Specify workflow orchestration: init, define, build, merge, drop, verify, explore, status, and extract."
+      "description": "Skills for Specify workflow orchestration: init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, and execute."
     },
     {
       "name": "contracts",

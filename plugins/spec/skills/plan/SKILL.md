@@ -10,6 +10,20 @@ license: MIT
 argument-hint: "<initiative-name> [--from <path>...] [--against <path>] [--source <key>=<path-or-url>...] [--focus <area>] [--extend] [--dry-run]"
 ---
 
+## Critical Path (Quick Reference)
+
+1. **Parse and validate inputs** — validate `<initiative-name>` as kebab-case. Require at least one of `--from`, `--against`, `--source`, or a populated `initiative.md:inputs`. Refuse if `plan.yaml` already exists (unless `--extend`).
+2. **Scaffold the plan** — `specify plan init <initiative-name> [--source <key>=<path-or-url> ...]`. Skipped under `--extend`.
+3. **Run the plan brief pipeline** from `schema.yaml`:
+   - **(a) Discovery** — invoke the discovery brief via `/spec:analyze`; writes `discovery.md`.
+   - **(b) Sync peers** (multi-repo only) — `specify workspace sync` + author `workspace.md`.
+   - **(c) Propose** — run the propose brief; iterate accept/edit/reject/abort per slice; `specify plan create` for each accepted slice.
+   - **(d) Assignment** (multi-repo only) — infer `project` per entry; `specify plan amend --project <project>`.
+4. **Validate** — `specify plan validate`. Non-zero exit on any `Error`-level finding. Never skip this step.
+5. **Exit with hand-off summary** — point the operator at `specify plan status` and `/spec:execute --loop`.
+
+See detailed sections below for edge cases, guardrails, and error handling.
+
 # Plan skill
 
 Author `.specify/plan.yaml` for a new initiative by running the `pipeline.plan` brief pipeline declared in the active schema's `schema.yaml`. `/spec:plan` is the Layer 3 authoring counterpart to `/spec:execute`: one *writes* the plan, the other *runs* it.
@@ -210,9 +224,9 @@ When **`.specify/registry.yaml`** exists and declares **more than one** project 
 
 Re-running on an unchanged registry + workspace cache MUST yield byte-identical `workspace.md` (stable ordering throughout).
 
-**`--dry-run` (C32).** Do **not** shell `specify workspace sync`; do **not** write `workspace.md`. You MAY print a short preview of what `workspace.md` *would* contain after a real sync, but only to stdout — no writes under `.specify/workspace/` or `.specify/plans/`.
+**`--dry-run`.** Do **not** shell `specify workspace sync`; do **not** write `workspace.md`. You MAY print a short preview of what `workspace.md` *would* contain after a real sync, but only to stdout — no writes under `.specify/workspace/` or `.specify/plans/`.
 
-**`--extend` (C32).** Do **not** shell `specify workspace sync` during the sync-peers step — operators refresh clones explicitly between runs. If `.specify/workspace/` already exists, still **rewrite** `workspace.md` from the current on-disk cache (read-only walk) so propose sees an up-to-date peer inventory without an implicit `git fetch`.
+**`--extend`.** Do **not** shell `specify workspace sync` during the sync-peers step — operators refresh clones explicitly between runs. If `.specify/workspace/` already exists, still **rewrite** `workspace.md` from the current on-disk cache (read-only walk) so propose sees an up-to-date peer inventory without an implicit `git fetch`.
 
 Fixture for the inventory shape lives at [`fixtures/plan-layer2/workspace.md`](fixtures/plan-layer2/workspace.md) (placeholder peer names; copy the heading / bullet contract verbatim).
 

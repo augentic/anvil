@@ -1,6 +1,9 @@
 ---
 name: android-reviewer
 description: Review generated Android shell (Kotlin/Jetpack Compose) code for structural issues, integration correctness, and quality problems. Use when reviewing a Crux app's Android shell after generation, or when the user mentions android-reviewer.
+license: MIT
+argument-hint: "<target-dir>"
+allowed-tools: Read, Grep, Glob, Shell, SemanticSearch
 ---
 
 # Crux Android Shell Reviewer

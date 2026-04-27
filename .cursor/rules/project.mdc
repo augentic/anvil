@@ -64,6 +64,9 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `explore` - thinking partner for ideas, investigation, and requirements
 - `status` - check artifact completion, task progress, and active changes
 - `extract` - extract Specify artifacts from existing source code
+- `analyze` - plan-time capability inference; emits capability summaries
+- `plan` - author `.specify/plan.yaml` via the plan pipeline
+- `execute` - drive an initiative's plan through define, build, merge
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -101,7 +104,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ## Repository Layout
 
-See [docs/architecture.md](docs/architecture.md) for the full repository structure. Key directories:
+See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for the full directory structure. Key directories:
 
 ```text
 /.cursor/rules/           # Project guidance for agents
@@ -109,7 +112,7 @@ See [docs/architecture.md](docs/architecture.md) for the full repository structu
 /docs/                    # Extended documentation (architecture, plugins)
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
-  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status)
+  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, execute)
   │   └── references/     # Artifact templates and schema resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
