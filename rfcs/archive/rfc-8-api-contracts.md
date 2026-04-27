@@ -1,6 +1,6 @@
 # RFC-8: API Contracts
 
-> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-3a](archive/rfc-3a-monoliths.md), [RFC-3b](archive/rfc-3b-platform.md)
+> Status: Draft · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](rfc-2-execution.md), [RFC-3a](rfc-3a-monoliths.md), [RFC-3b](rfc-3b-platform.md)
 
 ## Abstract
 
@@ -782,10 +782,10 @@ Steps 1–10 can ship without any CLI changes. Steps 11–18 require specify-cli
 
 ## References
 
-- [RFC-1: `specify` CLI](archive/rfc-1-cli.md)
-- [RFC-2: Execution](archive/rfc-2-execution.md)
-- [RFC-3a: Initiative Planning](archive/rfc-3a-monoliths.md)
-- [RFC-3b: Platform Changes](archive/rfc-3b-platform.md)
+- [RFC-1: `specify` CLI](rfc-1-cli.md)
+- [RFC-2: Execution](rfc-2-execution.md)
+- [RFC-3a: Initiative Planning](rfc-3a-monoliths.md)
+- [RFC-3b: Platform Changes](rfc-3b-platform.md)
 - [OpenAPI 3.1 Specification](https://spec.openapis.org/oas/v3.1.0)
 - [AsyncAPI 3.0 Specification](https://www.asyncapi.com/docs/reference/specification/v3.0.0)
 - [JSON Schema](https://json-schema.org/specification)

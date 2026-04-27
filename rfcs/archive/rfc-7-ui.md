@@ -1582,7 +1582,7 @@ A separate authored navigation section would duplicate information already expre
 - `plugins/vectis/skills/android-writer/SKILL.md` — Android shell generation
 - `plugins/vectis/skills/design-system-writer/SKILL.md` — design system generation from `tokens.yaml`
 - `docs/vectis.md` — user-facing Vectis documentation
-- [RFC-6: Vectis Bootstrap CLI](rfc-6-vectis-bootstrap.md) — CLI scaffolding (composition artifact consumed after scaffold)
+- [RFC-6: Task Lifecycle](rfc-6-tasks.md) — CLI scaffolding (composition artifact consumed after scaffold)
 
 ## Appendix A: Composition JSON Schema
 
