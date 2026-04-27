@@ -1,0 +1,35 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "urn:specify:schemas/order-placed"
+title: OrderPlaced
+description: Event payload published when a new order is placed.
+type: object
+required:
+  - order_id
+  - customer_id
+  - items
+  - total_amount
+  - placed_at
+properties:
+  order_id:
+    type: string
+    format: uuid
+    description: Unique identifier for the order.
+  customer_id:
+    type: string
+    format: uuid
+    description: Customer who placed the order.
+  items:
+    type: array
+    minItems: 1
+    items:
+      $ref: "order-item.yaml"
+    description: Line items in the order.
+  total_amount:
+    type: number
+    minimum: 0
+    description: Total order amount in the base currency.
+  placed_at:
+    type: string
+    format: date-time
+    description: ISO 8601 timestamp when the order was placed.
+additionalProperties: false

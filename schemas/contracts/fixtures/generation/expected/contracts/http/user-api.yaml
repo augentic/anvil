@@ -1,0 +1,71 @@
+openapi: "3.1.0"
+info:
+  title: User API
+  version: "1.0.0"
+  description: User registration and management API.
+paths:
+  /users:
+    post:
+      operationId: createUser
+      summary: Create a new user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/user-registration.yaml"
+      responses:
+        "201":
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/user.yaml"
+        "400":
+          description: Invalid request (e.g. malformed email)
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/error-response.yaml"
+        "409":
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/error-response.yaml"
+  /users/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getUser
+      summary: Retrieve a user by ID
+      responses:
+        "200":
+          description: User found
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/user.yaml"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/error-response.yaml"
+    delete:
+      operationId: deleteUser
+      summary: Delete a user by ID
+      responses:
+        "204":
+          description: User deleted successfully
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/error-response.yaml"

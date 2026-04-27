@@ -1,0 +1,74 @@
+openapi: "3.1.0"
+info:
+  title: Order API
+  version: "1.0.0"
+  description: Order processing API.
+paths:
+  /orders:
+    post:
+      operationId: createOrder
+      summary: Place a new order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - customer_id
+                - items
+              properties:
+                customer_id:
+                  type: string
+                  format: uuid
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required:
+                      - product_id
+                      - quantity
+                    properties:
+                      product_id:
+                        type: string
+                      quantity:
+                        type: integer
+                        minimum: 1
+      responses:
+        "201":
+          description: Order placed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/order-placed.yaml"
+        "400":
+          description: Invalid order request
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/error-response.yaml"
+  /orders/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      operationId: getOrder
+      summary: Retrieve an order by ID
+      responses:
+        "200":
+          description: Order found
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/order-placed.yaml"
+        "404":
+          description: Order not found
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/error-response.yaml"

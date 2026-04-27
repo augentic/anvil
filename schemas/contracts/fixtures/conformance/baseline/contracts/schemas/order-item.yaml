@@ -1,0 +1,22 @@
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "urn:specify:schemas/order-item"
+title: OrderItem
+description: A single line item within an order.
+type: object
+required:
+  - product_id
+  - quantity
+  - unit_price
+properties:
+  product_id:
+    type: string
+    description: Product identifier.
+  quantity:
+    type: integer
+    minimum: 1
+    description: Number of units ordered.
+  unit_price:
+    type: number
+    minimum: 0
+    description: Price per unit in the base currency.
+additionalProperties: false

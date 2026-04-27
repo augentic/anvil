@@ -34,6 +34,11 @@
       "name": "spec",
       "source": "spec",
       "description": "Skills for Specify workflow orchestration: init, define, build, merge, drop, verify, explore, status, and extract."
+    },
+    {
+      "name": "contracts",
+      "source": "contracts",
+      "description": "Skills to generate and validate machine-readable API contracts (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0) from Specify artifacts."
     }
   ]
 }
