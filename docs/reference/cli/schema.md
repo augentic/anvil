@@ -44,3 +44,8 @@ specify schema pipeline <phase> [--change <change-dir>] [--format json]
 Returns the ordered list of briefs with their dependencies. Each brief entry includes its absolute `path`, `needs` edges, `generates` target, and current `present` flag.
 
 When `--change` is provided, the `present` flag reflects whether each brief's output already exists in the given change directory.
+
+## See also
+
+- [Schemas](../schemas/index.md) -- available schemas and structure
+- [Configuration Files](../configuration.md) -- schema references in project.yaml

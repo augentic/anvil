@@ -25,3 +25,8 @@ specify task mark <change-dir> <task-id>
 Flips the checkbox from `- [ ]` to `- [x]` for the specified task. The task ID is the numbered identifier (e.g. `1.2`, `2.1`).
 
 Used by `/spec:build` as it completes each task.
+
+## See also
+
+- [/spec:build](../change-skills/build.md) -- skill that drives task execution
+- [Artifact Format](../artifact-format.md) -- tasks.md checkbox format

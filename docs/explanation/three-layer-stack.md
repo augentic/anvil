@@ -2,52 +2,53 @@
 
 Specify is organised in three layers. Each layer is independently useful, and each builds on the one below it.
 
-```mermaid
-graph TB
-    subgraph layer3 [Layer 3 -- Initiative Orchestration]
-        plan["/spec:plan"]
-        execute["/spec:execute"]
-    end
+```d2
+direction: down
 
-    subgraph layer2 [Layer 2 -- Change Lifecycle]
-        define["/spec:define"]
-        build["/spec:build"]
-        mergeSkill["/spec:merge"]
-        drop["/spec:drop"]
-        verify["/spec:verify"]
-        explore["/spec:explore"]
-        extract["/spec:extract"]
-        status["/spec:status"]
-    end
+Layer3: "Layer 3 — Initiative Orchestration" {
+  plan: "/spec:plan"
+  execute: "/spec:execute"
+  plan -> execute
+}
 
-    subgraph layer1 [Layer 1 -- CLI Primitives]
-        changeCli["specify change ..."]
-        planCli["specify plan ..."]
-        initCli["specify initiative ..."]
-        workspaceCli["specify workspace ..."]
-        schemaCli["specify schema ..."]
-        specCli["specify spec ..."]
-        validateCli["specify validate"]
-        taskCli["specify task ..."]
-        mergeCli["specify merge"]
-    end
+Layer2: "Layer 2 — Change Lifecycle" {
+  define: "/spec:define"
+  build: "/spec:build"
+  mergeSkill: "/spec:merge"
+  drop: "/spec:drop"
+  verify: "/spec:verify"
+  explore: "/spec:explore"
+  extract: "/spec:extract"
+  status: "/spec:status"
+}
 
-    plan --> execute
-    execute --> define
-    execute --> build
-    execute --> mergeSkill
-    execute --> drop
+Layer1: "Layer 1 — CLI Primitives" {
+  changeCli: "specify change"
+  planCli: "specify plan"
+  initCli: "specify initiative"
+  workspaceCli: "specify workspace"
+  schemaCli: "specify schema"
+  specCli: "specify spec"
+  validateCli: "specify validate"
+  taskCli: "specify task"
+  mergeCli: "specify merge"
+}
 
-    define --> changeCli
-    define --> schemaCli
-    build --> taskCli
-    build --> validateCli
-    mergeSkill --> specCli
-    mergeSkill --> mergeCli
-    drop --> changeCli
-    status --> changeCli
-    plan --> planCli
-    execute --> planCli
+Layer3.execute -> Layer2.define
+Layer3.execute -> Layer2.build
+Layer3.execute -> Layer2.mergeSkill
+Layer3.execute -> Layer2.drop
+
+Layer2.define -> Layer1.changeCli
+Layer2.define -> Layer1.schemaCli
+Layer2.build -> Layer1.taskCli
+Layer2.build -> Layer1.validateCli
+Layer2.mergeSkill -> Layer1.specCli
+Layer2.mergeSkill -> Layer1.mergeCli
+Layer2.drop -> Layer1.changeCli
+Layer2.status -> Layer1.changeCli
+Layer3.plan -> Layer1.planCli
+Layer3.execute -> Layer1.planCli
 ```
 
 ## Layer 1: CLI primitives

@@ -133,3 +133,10 @@ specify change journal-append <name> <phase> <kind> --summary "..." [--context "
 | `--context` | Optional verbatim detail |
 
 Records questions, failures, and recovery steps in `journal.yaml` for audit. The journal is append-only and never consumed as a signalling channel -- `.metadata.yaml:outcome` is the only state `/spec:execute` reads.
+
+## See also
+
+- [/spec:define](../change-skills/define.md) -- skill that creates changes
+- [/spec:drop](../change-skills/drop.md) -- skill that drops changes
+- [Lifecycle](../lifecycle.md) -- change state machine reference
+- [Configuration Files](../configuration.md) -- project and change metadata

@@ -14,7 +14,7 @@ Install the Augentic plugins from the Cursor marketplace:
 4. Install the plugin marketplace.
 5. Restart Cursor.
 
-This installs all five plugins (Specify, Omnia, Vectis, RT, Plan) and their skills.
+This installs all six plugins (Specify, Omnia, Vectis, Contracts, RT, Plan) and their skills.
 
 ## The `specify` CLI
 
@@ -72,3 +72,13 @@ Depending on which schema you use, you may need additional tooling.
 - Android targets: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`
 
 See the [Vectis plugin reference](../reference/plugins/vectis.md) for complete setup instructions.
+
+## Verify your setup
+
+Run through this checklist to confirm everything is ready:
+
+1. **CLI installed:** `specify --version` prints a version number.
+2. **Cursor plugins:** Open Cursor Settings > Plugins and confirm the Augentic plugins are listed.
+3. **Schema tooling:** If using Omnia, run `rustup target list --installed` and confirm `wasm32-wasip2` appears. If using Vectis, confirm `rustc --version` succeeds.
+
+If all three checks pass, proceed to the [Quick Start](../tutorials/quick-start.md).

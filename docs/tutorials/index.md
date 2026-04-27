@@ -2,17 +2,9 @@
 
 These tutorials walk you through Specify from simplest to most sophisticated. Each one builds on vocabulary introduced by the previous, and each can be followed end to end in a real project.
 
-## Progression map
+## Progression
 
-```mermaid
-graph LR
-    t1["1. Your First Change"] --> t2["2. Iterating on a Baseline"]
-    t2 --> t3["3. Thinking Before Defining"]
-    t3 --> t4["4. Brownfield Onboarding"]
-    t4 --> t5["5. Multi-Change Initiative"]
-    t5 --> t6["6. Cross-Repo Initiatives"]
-    t6 --> t7["7. Legacy Migration at Scale"]
-```
+The tutorials progress from single-change basics through multi-repo platform initiatives. Each builds on vocabulary introduced by the ones before it.
 
 | # | Tutorial | What you learn | Prerequisites |
 |---|---------|---------------|---------------|

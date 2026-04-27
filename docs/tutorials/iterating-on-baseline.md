@@ -10,7 +10,27 @@ In the [previous tutorial](first-change.md), you created a greeting capability a
 /spec:define "Add support for an optional language parameter to the greeting endpoint, defaulting to English"
 ```
 
-This time, Specify detects that the `greeting` capability already exists in the baseline. Instead of writing a fresh spec, it generates a **delta spec** that describes only what changed.
+<details>
+<summary>Expected output</summary>
+
+```text
+Change created: add-language-parameter
+
+Baseline detected: specs/greeting/spec.md
+  Generating delta spec...
+
+Generating artifacts...
+  ✓ proposal.md
+  ✓ specs/greeting/spec.md (delta)
+  ✓ design.md
+  ✓ tasks.md
+
+Change defined (3 tasks).
+```
+
+</details>
+
+This time, Specify detects that the `greeting` capability already exists in the baseline. Instead of writing a fresh spec, it generates a **delta spec** (see [Glossary](../appendices/glossary.md)) that describes only what changed.
 
 Open `.specify/changes/<name>/specs/greeting/spec.md` and notice the delta structure:
 
@@ -76,6 +96,22 @@ After merging, confirm that your code matches the updated specs:
 /spec:verify
 ```
 
+<details>
+<summary>Expected output</summary>
+
+```text
+Verifying baseline...
+
+  greeting:
+    REQ-001  COVERED  Greeting Response
+    REQ-002  COVERED  Empty Name Error
+    REQ-003  COVERED  Language Parameter
+
+Summary: 3 requirements, 3 covered, 0 drifted, 0 missing
+```
+
+</details>
+
 Verify reads each baseline spec and compares it against the implementation. It classifies each requirement:
 
 | Classification | Meaning |
@@ -108,7 +144,7 @@ The delta spec format is how Specify manages change over time without losing his
 | `REMOVED` | Requirement block (matched by ID) is removed, with reason recorded |
 | `RENAMED` | Requirement title updated, ID preserved |
 
-The merge key is always the `ID: REQ-XXX` line, not the requirement title. Titles can change freely across deltas.
+The merge key (see [Glossary](../appendices/glossary.md)) is always the `ID: REQ-XXX` line, not the requirement title. Titles can change freely across deltas.
 
 ## What you learned
 

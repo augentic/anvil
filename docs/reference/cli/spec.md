@@ -23,3 +23,9 @@ specify spec conflict-check <change-dir>
 ```
 
 Returns a pass/fail result. Checks for both spec conflicts and composition conflicts (Vectis only -- detects when a baseline screen has been modified by another merged change since this change was created, using per-screen checksums). If conflicts are detected, the change's specs may need to be regenerated against the current baseline.
+
+## See also
+
+- [/spec:merge](../change-skills/merge.md) -- skill that uses preview and conflict-check
+- [/spec:verify](../change-skills/verify.md) -- skill for baseline drift detection
+- [Artifact Format](../artifact-format.md) -- spec and composition structure

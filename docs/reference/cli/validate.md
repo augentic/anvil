@@ -27,4 +27,10 @@ Returns a JSON validation report with three classifications:
 | **Fail** | Check failed -- must be fixed |
 | **Deferred** | Check requires semantic judgment -- flagged for agent review |
 
-The Pass/Fail/Deferred model lets the CLI handle structural checks while the agent evaluates semantic ones. See the [Decision Log](../../appendices/decision-log.md) for the rationale.
+The Pass/Fail/Deferred model lets the CLI handle structural checks while the agent evaluates semantic ones. See the [Decision Log](../../explanation/decision-log.md) for the rationale.
+
+## See also
+
+- [/spec:define](../change-skills/define.md) -- skill that invokes validation
+- [Artifact Format](../artifact-format.md) -- expected artifact structure
+- [Decision Log](../../explanation/decision-log.md) -- rationale for Pass/Fail/Deferred

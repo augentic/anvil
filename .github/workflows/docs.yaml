@@ -25,12 +25,15 @@ jobs:
       - uses: jontze/action-mdbook@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          use-mermaid: true
+
+      - name: Install D2
+        run: curl -fsSL https://d2lang.com/install.sh | sh -s --
+
+      - name: Install mdbook-d2
+        run: cargo install mdbook-d2 --locked
 
       - name: Build book
-        run: |
-          mdbook-mermaid install docs
-          mdbook build docs
+        run: mdbook build docs
 
       - name: Set release date
         id: date
@@ -42,4 +45,3 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy --assets ./docs/book --name specify-docs --compatibility-date ${{ steps.date.outputs.today }}
-

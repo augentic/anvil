@@ -10,8 +10,16 @@ Every change flows through three phases:
 2. **Build** -- The agent works through the task list, delegating to specialist skills that generate code from the artifacts.
 3. **Merge** -- The change's specs merge into your project's baseline, building a cumulative record of what the system does.
 
-```text
-/spec:define  -->  /spec:build  -->  /spec:merge
+```d2
+direction: right
+define: "/spec:define" {shape: rectangle}
+build: "/spec:build" {shape: rectangle}
+merge: "/spec:merge" {shape: rectangle}
+baseline: "Baseline\n(.specify/specs/)" {shape: cylinder}
+
+define -> build: "artifacts"
+build -> merge: "complete"
+merge -> baseline: "specs merged"
 ```
 
 This loop is the heartbeat of Specify. It works the same way whether you are adding a single endpoint or modernising a 200-service platform -- the only difference is what sits above it.
@@ -29,17 +37,9 @@ Specify makes that reasoning durable:
 
 These artifacts are version-controlled alongside your code. They serve as the contract between human intent and agent execution, and they accumulate as a baseline that future changes build on.
 
-## Scaling up
+## Specify and git
 
-For work that spans multiple changes, Specify adds an orchestration layer:
-
-- A **plan** (`plan.yaml`) sequences changes with dependency tracking.
-- `/spec:execute` automates the define-build-merge loop change by change.
-- `/spec:plan` derives the plan from inputs -- legacy code, documentation, or both.
-
-For work that spans multiple repositories, a **registry** (`registry.yaml`) declares the repos in your platform, and Specify routes each change to the correct repo with the correct schema.
-
-The same three-phase loop runs at every scale. The coordination layers above it are optional -- you can use Specify for a single change in a single repo and never touch plans or registries.
+Specify artifacts live in a `.specify/` directory at your project root. They are regular files -- you commit them, branch them, and review them like any other source file. `/spec:merge` modifies files on disk (applying spec deltas to the baseline) but does not create git commits. You control when and how to commit.
 
 ## What you interact with
 
@@ -59,3 +59,7 @@ You interact with Specify through **skills** -- commands prefixed with `/spec:` 
 | `/spec:execute` | Drive a plan through the define-build-merge loop |
 
 Behind these skills, a Rust CLI binary (`specify`) handles every deterministic operation -- validation, lifecycle transitions, spec merging, task tracking. The agent keeps judgment; the CLI keeps correctness.
+
+## Going deeper
+
+For a detailed understanding of Specify's layered architecture, artifact system, and schema/plugin model, see [Understanding Specify](../explanation/three-layer-stack.md).

@@ -4,13 +4,11 @@
 
 ---
 
-# Orientation
+# Getting Started
 
 - [What is Specify?](orientation/index.md)
-- [The Three-Layer Stack](orientation/three-layer-stack.md)
-- [Artifacts](orientation/artifacts.md)
-- [Schemas and Plugins](orientation/schemas-and-plugins.md)
 - [Prerequisites](orientation/prerequisites.md)
+- [Quick Start (5 Minutes)](tutorials/quick-start.md)
 
 ---
 
@@ -27,9 +25,22 @@
 
 ---
 
+# How-To Guides
+
+- [Overview](how-to/index.md)
+- [Recover from a Failed Change](how-to/recover-failed-change.md)
+- [Add a Capability to an Existing Project](how-to/add-capability.md)
+- [Debug Drift Detected by Verify](how-to/debug-drift.md)
+- [Work with Contracts Across Repos](how-to/cross-repo-contracts.md)
+- [Onboard a Team Member](how-to/onboard-team-member.md)
+- [Drop Down a Layer](how-to/drop-down-a-layer.md)
+
+---
+
 # Reference
 
 - [Overview](reference/index.md)
+- [Quick Reference Card](reference/quick-reference.md)
 - [Artifact Format](reference/artifact-format.md)
 - [Lifecycle](reference/lifecycle.md)
 - [Directory Layout](reference/directory-layout.md)
@@ -74,9 +85,16 @@
 
 ---
 
+# Understanding Specify
+
+- [The Three-Layer Stack](explanation/three-layer-stack.md)
+- [Artifacts in Depth](explanation/artifacts.md)
+- [Schemas and Plugins](explanation/schemas-and-plugins.md)
+- [Decision Log](explanation/decision-log.md)
+
+---
+
 # Appendices
 
 - [Glossary](appendices/glossary.md)
-- [Decision Log](appendices/decision-log.md)
 - [Troubleshooting](appendices/troubleshooting.md)
-- [Quick Reference](appendices/quick-reference.md)

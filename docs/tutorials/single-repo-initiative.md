@@ -23,6 +23,33 @@ Suppose you want to migrate an auth service from a legacy codebase. Start by tel
 /spec:plan migrate-auth --source legacy=./src/auth
 ```
 
+<details>
+<summary>Expected output (summary)</summary>
+
+```text
+Planning migrate-auth...
+
+Discovery:
+  Analyzing ./src/auth...
+  Found 4 capabilities: token-validation, session-management,
+    oauth-integration, auth-middleware
+
+Propose:
+  1. extract-token-validation — Accept / Edit / Reject? Accept
+  2. extract-session-management — Accept / Edit / Reject? Accept
+  3. add-oauth-integration — Accept / Edit / Reject? Accept
+  4. consolidate-auth-middleware — Accept / Edit / Reject? Accept
+
+Validate:
+  ✓ No duplicate names
+  ✓ No dependency cycles
+  ✓ All depends-on references valid
+
+Plan created: .specify/plan.yaml (4 entries)
+```
+
+</details>
+
 The plan skill runs a three-phase internal flow:
 
 ### Discovery
@@ -78,6 +105,17 @@ Before committing to automated execution, preview what would happen:
 ```text
 /spec:execute --dry-run
 ```
+
+<details>
+<summary>Expected output</summary>
+
+```text
+Dry run:
+  Next eligible: extract-token-validation (depends-on: [])
+  Progress: 0/4 done, 4 pending
+```
+
+</details>
 
 This reports the next eligible change and current progress without modifying anything.
 

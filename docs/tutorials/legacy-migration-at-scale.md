@@ -55,6 +55,22 @@ Point the plan skill at the monolith:
 /spec:plan modernise-platform --source monolith=/path/to/legacy-monolith
 ```
 
+<details>
+<summary>Expected output (discovery phase)</summary>
+
+```text
+Planning modernise-platform...
+
+Discovery:
+  Analyzing /path/to/legacy-monolith...
+  Language: TypeScript, ~245,000 LOC, 47 modules
+  Found 12 capabilities across 3 domains
+
+  Writing .specify/plans/modernise-platform/discovery.md
+```
+
+</details>
+
 ### Discovery phase
 
 `/spec:analyze` scans the entire monolith at plan time. For each discovered capability, it emits a summary to `discovery.md`:

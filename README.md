@@ -105,15 +105,16 @@ A typical initiative: `/spec:plan migrate-to-v2 --source monolith=/path/to/legac
 
 ## Plugins
 
-Specify ships as a Cursor plugin marketplace with five plugins:
+Specify ships as a Cursor plugin marketplace with six plugins:
 
 - **Specify** (`spec`) -- Core workflow: define, build, merge, verify, explore, extract
 - **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
 - **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
+- **Contracts** (`contracts`) -- API contract generation, validation, and import
 - **RT** (`rt`) -- Repository cloning, fixture capture, and regression testing for migration
 - **Plan** (`plan`) -- Requirements analysis and SoW generation
 
-See the [Operator Guide](docs/reference/plugins/index.md) for the full skill reference and artifact lifecycle.
+See the [Developer Guide](docs/reference/plugins/index.md) for the full skill reference and artifact lifecycle.
 
 ## Installing the CLI
 
@@ -195,10 +196,10 @@ All skills follow the shared `SKILL.md` structure. Changes to generation behavio
 
 ## Documentation
 
-- **[Operator Guide](docs/SUMMARY.md)** -- tutorials, reference, and appendices (mdBook)
+- **[Developer Guide](docs/SUMMARY.md)** -- tutorials, how-to guides, reference, and appendices (mdBook)
   - [Tutorials](docs/tutorials/index.md) -- progressive walkthroughs from first change to multi-repo migration
   - [Reference](docs/reference/index.md) -- skills, CLI, plugins, schemas, configuration
-  - [Quick Reference](docs/appendices/quick-reference.md) -- single-page cheat sheet
+  - [Quick Reference](docs/reference/quick-reference.md) -- single-page cheat sheet
 - [Specify Artifact Guidance](plugins/references/specify.md)
 - [Project Rule](.cursor/rules/project.mdc)
 - [Agent Instructions](AGENTS.md)
