@@ -1,6 +1,6 @@
 # RFC-7: View Layout Artifact for UI Generation
 
-> Status: Draft · Depends: — · Enables: web shell writer, improved iOS/Android shell fidelity
+> Status: Implemented · Depends: — · Enables: web shell writer, improved iOS/Android shell fidelity
 
 ## Abstract
 
@@ -43,14 +43,16 @@ A layer that communicates **spatial composition** — the arrangement of compone
 
 ## Design Principles
 
-| Use the composition artifact when: | Keep in the spec when: | Keep in the design when: |
-| --- | --- | --- |
-| Deciding *where* a field appears on screen | Deciding *what* the field's value means | Deciding *what type* the field is |
-| Choosing between a list, grid, or card layout | Specifying that items must be scrollable | Defining the ViewModel struct and its fields |
-| Grouping items in rows, columns, or cards | Specifying that tapping "add" creates an item | Mapping the Event variant to `update()` logic |
-| Specifying spacing, alignment, and sizing | Specifying page transitions and navigation | Defining the Route and Page enums |
-| Placing a floating action button | Specifying error states and recovery | Defining capability requirements |
-| Referencing design tokens for spacing/color | | |
+
+| Use the composition artifact when:            | Keep in the spec when:                        | Keep in the design when:                      |
+| --------------------------------------------- | --------------------------------------------- | --------------------------------------------- |
+| Deciding *where* a field appears on screen    | Deciding *what* the field's value means       | Deciding *what type* the field is             |
+| Choosing between a list, grid, or card layout | Specifying that items must be scrollable      | Defining the ViewModel struct and its fields  |
+| Grouping items in rows, columns, or cards     | Specifying that tapping "add" creates an item | Mapping the Event variant to `update()` logic |
+| Specifying spacing, alignment, and sizing     | Specifying page transitions and navigation    | Defining the Route and Page enums             |
+| Placing a floating action button              | Specifying error states and recovery          | Defining capability requirements              |
+| Referencing design tokens for spacing/color   |                                               |                                               |
+
 
 The boundary follows the existing Specify principle: specs define behavior, design defines the technical contract, and the new artifact defines visual arrangement. Shell writers consume all three.
 
@@ -65,7 +67,6 @@ One entry per screen keyed by slug. The artifact lives alongside `spec.md` in th
 `composition.yaml` supports two modes:
 
 1. **Skeleton mode.** Regions with items, token references, and content hints — but no `bind`, `event`, or `maps_to` keys. This is the form produced by external tools (Figma adapters, legacy extractors) and by manual authoring before the define pipeline runs.
-
 2. **Wired mode.** The same regions enriched with data bindings (`bind`), event wiring (`event`), and `maps_to` traceability. This is the form produced by the define pipeline and consumed by shell writers.
 
 The define pipeline reads an existing skeleton (when present), preserves its region structure, and adds bindings and wiring based on the specs and design. When no skeleton exists, the pipeline infers layout from the specs and proposal — the same inference that would otherwise fall to shell writers, but captured as an explicit, reviewable artifact.
@@ -138,6 +139,7 @@ screens:
 After the define pipeline enriches the skeleton. This example shows two screens — a list and a form — with navigation between them, loading/error states, and a confirmation dialog. The `group` containers preserve the layout structure from the skeleton while `bind`, `event`, and `maps_to` keys are added.
 
 Given:
+
 - `ViewModel::TodoList(TodoListView { items: Vec<ItemView>, count: String, filter: String, loading: bool, error_message: String })`
 - `ViewModel::AddTodo(AddTodoView { title: String, due_date: String, saving: bool, title_error: String })`
 
@@ -264,6 +266,7 @@ screens:
 Enrichment adds: `maps_to` traceability on screens, `bind` keys connecting items to ViewModel fields, `event` keys wiring interactions to Event variants, and conditional `*-when` properties. The group structure and layout properties are preserved unchanged — the pipeline adds data bindings, it does not rearrange the layout.
 
 The example demonstrates several patterns:
+
 - **Container structure:** List items use `group: { direction: row }` to arrange checkbox, text stack, and delete action horizontally. The inner `group: { direction: column, size: { width: fill } }` stacks title and due date vertically while filling the remaining horizontal space.
 - **Cross-screen navigation:** `event: Navigate(AddTodo)` on the FAB, `event: NavigateBack` on the back button.
 - **Loading, error, and saving states:** `when: "loading is true"`, `when: "error_message is not empty"`, and `when: "saving is true"` with progress indicators, error display with retry button, and full-screen overlay respectively. Each state body wraps content in a centered column group.
@@ -287,11 +290,13 @@ provenance:
 
 Supported `kind` values:
 
-| Kind | Description |
-| --- | --- |
-| `figma` | Imported from a Figma file via adapter tooling |
-| `legacy` | Reverse-engineered from a legacy application |
-| `manual` | Authored directly by a human or agent |
+
+| Kind     | Description                                    |
+| -------- | ---------------------------------------------- |
+| `figma`  | Imported from a Figma file via adapter tooling |
+| `legacy` | Reverse-engineered from a legacy application   |
+| `manual` | Authored directly by a human or agent          |
+
 
 Multiple sources can contribute to the same artifact. This is the expected case — import from Figma as a starting point, then refine manually. The provenance block is optional; its absence implies agent-generated or manual authoring.
 
@@ -350,120 +355,86 @@ Import from Figma or a legacy app as a starting point, then manually refine: add
 When the composition brief receives an existing skeleton, it must match skeleton items to spec behaviors without restructuring the layout. This matching follows explicit heuristics, not unconstrained inference:
 
 1. **Screen matching.** Match skeleton screen slugs to spec-described screens by name similarity. If a skeleton has `todo-list` and the spec describes "a screen showing the user's todo items," the match is direct. Unmatched skeleton screens are preserved with a `# GAP` comment. Unmatched spec screens get new inferred entries.
-
 2. **Collection binding.** A `list` or `grid` pattern in the body with an `each` key binds to the `Vec<T>` field whose item type contains fields matching the leaf items inside the item template (including items nested inside `group` containers). Heuristic: if the skeleton's item template has two `text` items and a `checkbox` (possibly grouped in rows and columns), and the spec describes items with a title, due date, and completion state, the agent binds `each: items` and the inner items to the corresponding fields by positional and semantic matching (first text → `title`, second text → `due_date`, checkbox → `completed`). The `group` structure is preserved unchanged.
-
 3. **Display item binding.** `text`, `badge`, `image`, and other display items bind to the view struct field whose semantic role matches the item's position and context. A `text` in the header with `content: "My Todos"` is static (no `bind`). A `badge` in `header.trailing` with no `content` but a token reference binds to the count-like field. Heuristic: items with a `content` property containing a literal string are static; items without `content` in a position that implies dynamic data get a `bind`.
-
 4. **Input item wiring.** `field`, `checkbox`, `switch`, `slider`, `segments`, and `dropdown` items are inherently interactive. Each gets both a `bind` (to the field it displays/edits) and an `event` (the Event variant triggered on change). The agent derives the event name from the spec's interaction descriptions for that field.
-
 5. **Action item wiring.** `button`, `action`, and `fab` items get an `event` key derived from the spec's interaction descriptions. If the skeleton has an `action` with `icon: trash` and the spec describes "user can delete items," the agent wires `event: DeleteTodo(id)` (or `event: RequestDelete(id)` if the spec describes a confirmation flow).
-
 6. **Decorative items and groups.** Items that serve a purely visual purpose (`divider`, static `icon` with no interaction, static `text` with literal content) are left untouched — no `bind` or `event` added. `group` containers and their layout properties (`direction`, `gap`, `padding`, `align`, `justify`, `background`, `corner_radius`, `elevation`, `size`) are never modified by enrichment. The enrichment pipeline adds data bindings to leaf items; it does not rearrange, restructure, or modify container layout.
-
 7. **Ambiguous matches.** When the agent cannot confidently match a skeleton item to a spec behavior, it adds a `# TODO: review binding` comment rather than guessing. This preserves the skeleton while flagging areas for human review.
 
 #### Format Rules
 
 1. **Top-level structure.** Every `composition.yaml` has a `version` key (currently `1`) and a `screens` map keyed by screen slug. Optional top-level keys: `provenance`, `delta` (for per-change artifacts). There is one `composition.yaml` per change, not one per feature. When a change involves multiple features (multiple spec files), the composition brief reads all specs for the change and produces a single `composition.yaml` containing all screens across all features. Screen slugs must be unique across the entire file — if two features introduce screens with the same name, the composition brief must disambiguate (e.g., `settings-account` vs `settings-notifications` instead of two `settings` entries).
-
 2. **Screen entries.** Each screen entry has a `name`, optional `description`, and one or more region keys (`header`, `body`, `footer`, `fab`). Optional keys: `states`, `overlays`, `platforms`. In wired mode, the entry gains `maps_to` establishing traceability to a ViewModel variant. In skeleton mode, `maps_to` is absent.
-
 3. **Regions.** Each screen is divided into named regions that map to standard screen areas:
-
-   - **`header`** — Top navigation bar. Contains `title` (string), optional `leading` (content node array for left-side actions like back buttons), and optional `trailing` (content node array for right-side actions like badges, search, settings).
-   - **`body`** — Main content area. Can be one of:
-     - **`list`** pattern — `{ each: field, item: [...items] }` for scrollable list content.
-     - **`grid`** pattern — `{ each: field, columns: N, item: [...items] }` for grid layouts.
-     - **`form`** pattern — a content node array rendered as a vertical input layout.
-     - **Content node array** — items and groups rendered as centered/stacked content (used for states and simple screens).
-   - **`footer`** — Bottom bar area. A content node array (typically segments, buttons, or tab items).
-   - **`fab`** — Floating action button. A single item (typically `{ icon: name, event: Event }`).
-
+  - `**header`** — Top navigation bar. Contains `title` (string), optional `leading` (content node array for left-side actions like back buttons), and optional `trailing` (content node array for right-side actions like badges, search, settings).
+  - `**body**` — Main content area. Can be one of:
+    - `**list**` pattern — `{ each: field, item: [...items] }` for scrollable list content.
+    - `**grid**` pattern — `{ each: field, columns: N, item: [...items] }` for grid layouts.
+    - `**form**` pattern — a content node array rendered as a vertical input layout.
+    - **Content node array** — items and groups rendered as centered/stacked content (used for states and simple screens).
+  - `**footer`** — Bottom bar area. A content node array (typically segments, buttons, or tab items).
+  - `**fab**` — Floating action button. A single item (typically `{ icon: name, event: Event }`).
    All regions are optional. Shell writers map each region to platform-native containers: `header` → `NavigationTitle` + toolbar (iOS) / `TopAppBar` (Android), `body` → main content view, `footer` → bottom toolbar / `BottomAppBar`, `fab` → overlay button / `FloatingActionButton`.
-
 4. **Items and groups.** Content within regions is expressed as a tree of **items** and **groups**.
-
-   - **Items** are leaf elements — YAML mappings with a single key (the item type) whose value is either `null` (bare item like `- divider`) or a properties object (e.g., `- text: { bind: title, style: body }`). Items describe content: what data to display or what interaction to offer.
-   - **Groups** are container nodes that organize items (and other groups) with flexbox-like layout properties. A group is written as `- group:` followed by layout properties and an `items` array containing children. Groups describe structure: how content is arranged spatially.
-
+  - **Items** are leaf elements — YAML mappings with a single key (the item type) whose value is either `null` (bare item like `- divider`) or a properties object (e.g., `- text: { bind: title, style: body }`). Items describe content: what data to display or what interaction to offer.
+  - **Groups** are container nodes that organize items (and other groups) with flexbox-like layout properties. A group is written as `- group:` followed by layout properties and an `items` array containing children. Groups describe structure: how content is arranged spatially.
    Together, items and groups form a shallow tree within each region. The tree depth is typically 2–3 levels — enough to express rows within columns (or vice versa), cards containing content stacks, and similar real-world patterns. Deeply nested trees (5+ levels) should be flattened where possible.
-
 5. **Group layout properties.** Groups carry a small set of flexbox-like properties that map directly to every target platform:
 
-   | Property | Values | Default | Maps to |
-   | --- | --- | --- | --- |
-   | `direction` | `row`, `column`, `stack` | `column` | flex-direction / HStack-VStack-ZStack / Row-Column-Box |
-   | `gap` | token ref or number | none | gap / spacing / Arrangement.spacedBy |
-   | `padding` | token ref, number, or `{ top, right, bottom, left }` | none | padding |
-   | `align` | `start`, `center`, `end`, `stretch`, `baseline` | `stretch` | align-items / alignment / verticalAlignment-horizontalAlignment |
-   | `justify` | `start`, `center`, `end`, `space-between`, `space-around` | `start` | justify-content / implicit in stack / horizontalArrangement-verticalArrangement |
-   | `wrap` | boolean | `false` | flex-wrap / LazyVGrid alternative / FlowRow |
+  | Property    | Values                                                    | Default   | Maps to                                                                         |
+  | ----------- | --------------------------------------------------------- | --------- | ------------------------------------------------------------------------------- |
+  | `direction` | `row`, `column`, `stack`                                  | `column`  | flex-direction / HStack-VStack-ZStack / Row-Column-Box                          |
+  | `gap`       | token ref or number                                       | none      | gap / spacing / Arrangement.spacedBy                                            |
+  | `padding`   | token ref, number, or `{ top, right, bottom, left }`      | none      | padding                                                                         |
+  | `align`     | `start`, `center`, `end`, `stretch`, `baseline`           | `stretch` | align-items / alignment / verticalAlignment-horizontalAlignment                 |
+  | `justify`   | `start`, `center`, `end`, `space-between`, `space-around` | `start`   | justify-content / implicit in stack / horizontalArrangement-verticalArrangement |
+  | `wrap`      | boolean                                                   | `false`   | flex-wrap / LazyVGrid alternative / FlowRow                                     |
 
    These are the only layout properties on groups. They match the universal flexbox subset: Figma Auto Layout, CSS Flexbox, SwiftUI stacks, Compose Row/Column/Box, and React Native's Yoga engine.
-
 6. **Sizing.** Items and groups accept an optional `size` property that specifies responsive sizing behavior:
-
-   ```yaml
+  ```yaml
    size: { width: fill }              # expand to fill available space
    size: { width: 48, height: 48 }    # fixed dimensions
    size: { width: fill, height: 200 } # fill width, fixed height
-   ```
-
+  ```
    Each dimension (`width`, `height`) is one of:
-   - A **number** — fixed size in logical pixels/points (maps to explicit width/height).
-   - **`fill`** — expand to fill available space (maps to `flex: 1` / `.frame(maxWidth: .infinity)` / `Modifier.fillMaxWidth()`).
-   - **`hug`** — size to content (the default when `size` is absent; maps to intrinsic sizing).
-
+  - A **number** — fixed size in logical pixels/points (maps to explicit width/height).
+  - `**fill`** — expand to fill available space (maps to `flex: 1` / `.frame(maxWidth: .infinity)` / `Modifier.fillMaxWidth()`).
+  - `**hug**` — size to content (the default when `size` is absent; maps to intrinsic sizing).
    Sizing captures the three fundamental responsive modes that Figma, CSS, SwiftUI, and Compose all support. When `size` is absent, the element uses its intrinsic size (hug).
-
 7. **Surface decoration.** Groups accept optional surface decoration properties for card-like containers:
 
-   | Property | Values | Maps to |
-   | --- | --- | --- |
-   | `background` | token ref (e.g., `surfaceContainer`) | background color / fill |
-   | `corner_radius` | token ref or number | border-radius / cornerRadius / clip(RoundedCornerShape) |
-   | `elevation` | token ref (e.g., `sm`) | box-shadow / shadow / Modifier.shadow |
-   | `border` | `{ color: token, width: number }` | border / overlay(RoundedRectangle) / Modifier.border |
+  | Property        | Values                               | Maps to                                                 |
+  | --------------- | ------------------------------------ | ------------------------------------------------------- |
+  | `background`    | token ref (e.g., `surfaceContainer`) | background color / fill                                 |
+  | `corner_radius` | token ref or number                  | border-radius / cornerRadius / clip(RoundedCornerShape) |
+  | `elevation`     | token ref (e.g., `sm`)               | box-shadow / shadow / Modifier.shadow                   |
+  | `border`        | `{ color: token, width: number }`    | border / overlay(RoundedRectangle) / Modifier.border    |
 
    Decoration properties are optional. When absent, groups are transparent containers with no visual treatment. Decoration is valid in both skeleton and wired modes — it is a layout concern, not a data-binding concern.
-
 8. **Field bindings (wired mode).** The `bind` key on an item connects it to a per-page view struct field. In wired mode, every field in the view struct must appear as a `bind` value at least once. In skeleton mode, `bind` keys are absent.
-
 9. **Event wiring (wired mode).** The `event` key on interactive items wires them to shell-facing Event variants. The value follows the syntax `EventName` or `EventName(arg1, arg2)`. Arguments are one of three kinds:
-
-   - **Item-context fields.** Inside an `each` iteration, bare names like `id` or `completed` refer to fields on the current item struct. Example: `event: ToggleTodo(id)` inside a list with `each: items` means "send `Event::ToggleTodo` with the current item's `id` field."
-   - **The `value` keyword.** On input items (`field`, `segments`, `slider`, `dropdown`), `value` is a reserved keyword meaning "the item's current input value." Example: `event: UpdateTitle(value)` on a `field` means "send `Event::UpdateTitle` with whatever the user typed."
-   - **Screen-slug references.** In `Navigate(ScreenName)`, the argument is a PascalCase screen name that maps to a Route variant. Example: `event: Navigate(AddTodo)` maps to `Event::Navigate(Route::AddTodo)`.
-
+  - **Item-context fields.** Inside an `each` iteration, bare names like `id` or `completed` refer to fields on the current item struct. Example: `event: ToggleTodo(id)` inside a list with `each: items` means "send `Event::ToggleTodo` with the current item's `id` field."
+  - **The `value` keyword.** On input items (`field`, `segments`, `slider`, `dropdown`), `value` is a reserved keyword meaning "the item's current input value." Example: `event: UpdateTitle(value)` on a `field` means "send `Event::UpdateTitle` with whatever the user typed."
+  - **Screen-slug references.** In `Navigate(ScreenName)`, the argument is a PascalCase screen name that maps to a Route variant. Example: `event: Navigate(AddTodo)` maps to `Event::Navigate(Route::AddTodo)`.
    Events with no arguments omit parentheses: `event: NavigateBack`, `event: DismissDialog`. Multiple arguments are comma-separated: `event: MoveItem(id, position)`. In wired mode, every shell-facing Event that belongs to this screen must be wired. In skeleton mode, `event` keys are absent.
-
 10. **Navigation mapping.** `event: Navigate(ScreenName)` uses a PascalCase argument that maps to both a screen slug and a Route variant via deterministic conversion:
-   - PascalCase argument → kebab-case screen slug: `AddTodo` → `add-todo` (insert hyphens at case boundaries, lowercase).
-   - PascalCase argument → Route variant: `AddTodo` → `Route::AddTodo` (identity).
-   - The reverse applies for validation: screen slug `add-todo` → PascalCase `AddTodo`.
-   
+  - PascalCase argument → kebab-case screen slug: `AddTodo` → `add-todo` (insert hyphens at case boundaries, lowercase).
+  - PascalCase argument → Route variant: `AddTodo` → `Route::AddTodo` (identity).
+  - The reverse applies for validation: screen slug `add-todo` → PascalCase `AddTodo`.
    This three-way mapping (event argument ↔ screen slug ↔ Route variant) is deterministic and validation checks all three references for consistency: every `Navigate(X)` must have a corresponding screen slug in composition and a corresponding Route variant in design.
-
 11. **Design token references.** Properties like `style` (typography and display size), `color`, `gap`, and `padding` reference design system tokens by name. Shell writers resolve these to `VectisTypography.title`, `VectisColors.primary`, `VectisSpacing.md` on each platform. On items, `style` controls the visual variant (e.g., `body` for text, `xl` for icon display size, `filled` for button style). On groups, `gap` and `padding` reference spacing tokens. Valid in both skeleton and wired modes.
-
 12. **Conditional rendering.** Two syntax forms serve different contexts:
-
-   - **Screen-level conditions** (`states[].when`): A predicate expression with the syntax `"<field> is <predicate>"`. Supported predicates: `is true`, `is false`, `is empty`, `is not empty`. The field name references a boolean or collection field on the screen's per-page view struct. Examples: `when: "loading is true"`, `when: "items is empty"`. In skeleton mode, the `when` value is a plain descriptive string (e.g., `when: "no items to display"`) that the enrichment pipeline replaces with a formal predicate.
-
+  - **Screen-level conditions** (`states[].when`): A predicate expression with the syntax `"<field> is <predicate>"`. Supported predicates: `is true`, `is false`, `is empty`, `is not empty`. The field name references a boolean or collection field on the screen's per-page view struct. Examples: `when: "loading is true"`, `when: "items is empty"`. In skeleton mode, the `when` value is a plain descriptive string (e.g., `when: "no items to display"`) that the enrichment pipeline replaces with a formal predicate.
      **Predicate language limitations and extensibility.** The initial predicate set (`is true`, `is false`, `is empty`, `is not empty`) is deliberately minimal — it covers the common cases (loading states, empty states, error states) with predicates that map cleanly to `if field` / `if field.is_empty()` in Rust. Real applications will encounter conditions that don't fit this vocabulary: comparisons (`count > 0`), enum matching (`status is error`), or compound predicates (`loading is false AND items is not empty`). The recommended approach for Phase 1 is to push complex conditions into the core: the `view()` function computes a boolean field (e.g., `show_empty_state: bool`) and the composition predicate tests that boolean. This keeps the predicate language simple and the composition artifact thin. If demand for richer predicates emerges, extending the grammar is a backward-compatible change — new predicate forms (e.g., `is "value"`, `> N`, `AND`/`OR` combinators) can be added in a future RFC without invalidating existing predicates.
-
      Each state entry has a `replaces` key that declares what the state's body replaces when the condition is true:
-     - `replaces: body` (the default when `replaces` is omitted) — the state's `body` replaces only the body region of the screen. The header, footer, and fab remain visible. This is the common case for loading, empty, and error states where the screen chrome should persist.
-     - `replaces: screen` — the state replaces the entire screen, including all regions. Use this for full-screen takeovers like splash screens or blocking error pages.
-   - **Item-level conditions** (`*-when` properties): The value is a bare field name referencing a boolean field on the current view struct (or item struct within an `each` context). The property name prefix determines the effect. Examples: `disabled-when: saving` (disable when `saving` is true), `strikethrough-when: completed` (apply strikethrough when `completed` is true), `visible-when: has_avatar` (show only when `has_avatar` is true). The `*-when` pattern is open — any visual property can be made conditional by appending `-when` to its name.
-
+    - `replaces: body` (the default when `replaces` is omitted) — the state's `body` replaces only the body region of the screen. The header, footer, and fab remain visible. This is the common case for loading, empty, and error states where the screen chrome should persist.
+    - `replaces: screen` — the state replaces the entire screen, including all regions. Use this for full-screen takeovers like splash screens or blocking error pages.
+  - **Item-level conditions** (`*-when` properties): The value is a bare field name referencing a boolean field on the current view struct (or item struct within an `each` context). The property name prefix determines the effect. Examples: `disabled-when: saving` (disable when `saving` is true), `strikethrough-when: completed` (apply strikethrough when `completed` is true), `visible-when: has_avatar` (show only when `has_avatar` is true). The `*-when` pattern is open — any visual property can be made conditional by appending `-when` to its name.
 13. **Iteration.** The `each` key on a body content pattern (`list` or `grid`) describes repeated content bound to a `Vec<T>` field. The `item` key holds the items for each element. In skeleton mode, `each` names the collection conceptually; in wired mode, it binds to a specific field. Iteration contexts are nested — within an `each` block, `bind` and `event` arguments reference fields on the item struct, not the screen's per-page view struct. In nested iteration (e.g., `each: sections` containing a nested `list` with `each: items`), the innermost `each` context takes precedence: `bind` values resolve to fields on the innermost item struct. To reference a field on an outer iteration context from a nested context, use dot notation: `bind: section.heading`. Dot notation follows the pattern `<each-name>.<field>`, where `<each-name>` matches the `each` key of the target iteration level. The common pattern is to place bindings at the appropriate nesting level rather than using dot notation (as in the settings example), but dot notation provides an escape hatch when an item inside an inner loop must reference data from an outer loop.
-
 14. **Overlays.** Dialogs, sheets, and snackbars appear under the screen's `overlays` map, keyed by slug. Each overlay has a `kind`, a `trigger` (the Event name that causes the overlay to present), optional `title`, and a `content` array (items and groups). They are not part of the main regions — they are presented modally when the trigger event fires. The `trigger` value is an Event name without arguments (e.g., `trigger: RequestDelete`); shell writers match it against `event` keys elsewhere on the screen to wire presentation logic. In skeleton mode, `trigger` is absent.
-
 15. **Platform-specific regions.** When a screen's layout differs between platforms, the screen gains a `platforms` map with per-platform region overrides that replace the shared regions for that platform. Shell writers use the platform-specific regions when present, falling back to the shared regions when absent. Only overridden regions are specified — unspecified regions fall through to the shared definition.
-
 16. **Accessibility annotations.** Optional `label`, `role`, and `hint` properties on items provide screen reader semantics. Valid in both skeleton and wired modes. See [Accessibility Annotations](#accessibility-annotations).
 
 ### Schema
@@ -705,6 +676,7 @@ interface DeltaDocument {
 The JSON Schema enforces structural validity. Cross-artifact checks (field coverage, event coverage, ViewModel mapping) run as separate validation passes against `design.md` and `spec.md` — they cannot be expressed in JSON Schema alone.
 
 Schema-enforced rules:
+
 - `version` must be `1`.
 - A document must have exactly one of `screens` or `delta` (not both).
 - Screen slugs must be kebab-case (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`).
@@ -724,11 +696,13 @@ The vocabulary is deliberately small — a content-placement set of primitives p
 
 #### Layout Container
 
-| Node | Description | SwiftUI | Compose |
-| --- | --- | --- | --- |
-| `group` (direction: row) | Horizontal container | `HStack(spacing:)` | `Row(horizontalArrangement:)` |
-| `group` (direction: column) | Vertical container | `VStack(spacing:)` | `Column(verticalArrangement:)` |
-| `group` (direction: stack) | Overlapping container | `ZStack` | `Box` |
+
+| Node                        | Description           | SwiftUI            | Compose                        |
+| --------------------------- | --------------------- | ------------------ | ------------------------------ |
+| `group` (direction: row)    | Horizontal container  | `HStack(spacing:)` | `Row(horizontalArrangement:)`  |
+| `group` (direction: column) | Vertical container    | `VStack(spacing:)` | `Column(verticalArrangement:)` |
+| `group` (direction: stack)  | Overlapping container | `ZStack`           | `Box`                          |
+
 
 Groups with surface decoration (`background`, `corner_radius`, `elevation`) map to card-like wrappers on each platform — e.g., a `Group` inside a styled container view on iOS, or a `Card`/`Surface` on Android.
 
@@ -736,53 +710,63 @@ Groups with surface decoration (`background`, `corner_radius`, `elevation`) map 
 
 Regions are implicit — shell writers map them to platform-native screen structure:
 
-| Region | Description | SwiftUI | Compose |
-| --- | --- | --- | --- |
-| `header` | Top navigation bar (title, leading/trailing items) | `NavigationTitle` + toolbar | `TopAppBar` |
-| `body` | Main content area (list, grid, form, or items) | Body content view | Scaffold `content` |
-| `footer` | Bottom bar (tabs, segments, actions) | `TabView` or toolbar | `BottomAppBar` / `NavigationBar` |
-| `fab` | Floating action button | `.overlay` / `ZStack` | `FloatingActionButton` |
+
+| Region   | Description                                        | SwiftUI                     | Compose                          |
+| -------- | -------------------------------------------------- | --------------------------- | -------------------------------- |
+| `header` | Top navigation bar (title, leading/trailing items) | `NavigationTitle` + toolbar | `TopAppBar`                      |
+| `body`   | Main content area (list, grid, form, or items)     | Body content view           | Scaffold `content`               |
+| `footer` | Bottom bar (tabs, segments, actions)               | `TabView` or toolbar        | `BottomAppBar` / `NavigationBar` |
+| `fab`    | Floating action button                             | `.overlay` / `ZStack`       | `FloatingActionButton`           |
+
 
 #### Content Patterns
 
 Content patterns describe how the body region organizes its content:
 
-| Pattern | Description | SwiftUI | Compose |
-| --- | --- | --- | --- |
-| `list` | Scrollable list with iteration | `List` / `LazyVStack` | `LazyColumn` |
-| `grid` | Grid layout with iteration | `LazyVGrid` | `LazyVerticalGrid` |
-| `form` | Vertical input layout | `Form` / `VStack` | `Column` with form styling |
+
+| Pattern | Description                    | SwiftUI               | Compose                    |
+| ------- | ------------------------------ | --------------------- | -------------------------- |
+| `list`  | Scrollable list with iteration | `List` / `LazyVStack` | `LazyColumn`               |
+| `grid`  | Grid layout with iteration     | `LazyVGrid`           | `LazyVerticalGrid`         |
+| `form`  | Vertical input layout          | `Form` / `VStack`     | `Column` with form styling |
+
 
 When body is a content node array (no content pattern), shell writers render it using the group layout properties if present, or as centered/stacked content by default — the standard pattern for loading, empty, and error states.
 
 #### Display Items
 
-| Item | Description | SwiftUI | Compose |
-| --- | --- | --- | --- |
-| `text` | Text label (static or bound) | `Text` | `Text` |
-| `icon` | Icon display | `Image(systemName:)` | `Icon` |
-| `image` | Image display | `AsyncImage` / `Image` | `AsyncImage` / `Image` |
-| `badge` | Count or status indicator | `.badge()` modifier | `Badge` |
-| `progress` | Loading spinner or progress bar | `ProgressView` | `CircularProgressIndicator` |
-| `divider` | Visual separator | `Divider()` | `HorizontalDivider()` |
+
+| Item       | Description                     | SwiftUI                | Compose                     |
+| ---------- | ------------------------------- | ---------------------- | --------------------------- |
+| `text`     | Text label (static or bound)    | `Text`                 | `Text`                      |
+| `icon`     | Icon display                    | `Image(systemName:)`   | `Icon`                      |
+| `image`    | Image display                   | `AsyncImage` / `Image` | `AsyncImage` / `Image`      |
+| `badge`    | Count or status indicator       | `.badge()` modifier    | `Badge`                     |
+| `progress` | Loading spinner or progress bar | `ProgressView`         | `CircularProgressIndicator` |
+| `divider`  | Visual separator                | `Divider()`            | `HorizontalDivider()`       |
+
 
 #### Input Items
 
-| Item | Description | SwiftUI | Compose |
-| --- | --- | --- | --- |
-| `field` | Text input | `TextField` | `OutlinedTextField` |
-| `checkbox` | Multi-select toggle | `Toggle` (checkbox style) | `Checkbox` |
-| `switch` | On/off toggle | `Toggle` | `Switch` |
-| `slider` | Range input | `Slider` | `Slider` |
-| `segments` | Segment picker | `Picker(.segmented)` | `SingleChoiceSegmentedButtonRow` |
-| `dropdown` | Selection from a list | `Menu` / `Picker(.menu)` | `ExposedDropdownMenuBox` |
+
+| Item       | Description           | SwiftUI                   | Compose                          |
+| ---------- | --------------------- | ------------------------- | -------------------------------- |
+| `field`    | Text input            | `TextField`               | `OutlinedTextField`              |
+| `checkbox` | Multi-select toggle   | `Toggle` (checkbox style) | `Checkbox`                       |
+| `switch`   | On/off toggle         | `Toggle`                  | `Switch`                         |
+| `slider`   | Range input           | `Slider`                  | `Slider`                         |
+| `segments` | Segment picker        | `Picker(.segmented)`      | `SingleChoiceSegmentedButtonRow` |
+| `dropdown` | Selection from a list | `Menu` / `Picker(.menu)`  | `ExposedDropdownMenuBox`         |
+
 
 #### Action Items
 
-| Item | Description | SwiftUI | Compose |
-| --- | --- | --- | --- |
-| `button` | Text button | `Button` | `Button` / `TextButton` |
-| `action` | Icon button (tappable icon) | `Button` with `Image` | `IconButton` |
+
+| Item     | Description                 | SwiftUI               | Compose                 |
+| -------- | --------------------------- | --------------------- | ----------------------- |
+| `button` | Text button                 | `Button`              | `Button` / `TextButton` |
+| `action` | Icon button (tappable icon) | `Button` with `Image` | `IconButton`            |
+
 
 New item types can be added as needed. The vocabulary is intentionally open — if a screen requires an item type not in the table, introduce it with a descriptive lowercase name and document the platform mapping.
 
@@ -921,7 +905,7 @@ This approach is consistent with how the existing pipeline works — the spec br
 
 The full brief file:
 
-````markdown
+```markdown
 ---
 id: composition
 description: Define the visual layout of each screen as a composition.yaml artifact
@@ -966,7 +950,7 @@ For each screen:
 
 For each screen, add wired-mode keys:
 
-- **`maps_to`** on the screen entry: `"ViewModel::ScreenName(ScreenNameView)"` using PascalCase derived from the screen slug.
+- *`*maps_to`** on the screen entry: `"ViewModel::ScreenName(ScreenNameView)"` using PascalCase derived from the screen slug.
 - **`bind`** on display and input items: the field name from the per-page view struct that this item renders or edits. Derive field names from the spec's data descriptions (e.g., "remaining items count" → `count`, "todo title" → `title`).
 - **`event`** on interactive items: the Event variant this interaction triggers. Derive event names from the spec's interaction descriptions (e.g., "user taps add" → `AddTodo`, "user toggles completion" → `ToggleTodo(id)`). Use the event syntax: `EventName` for no-arg events, `EventName(arg)` with item-context fields or the `value` keyword.
 - **`error`** on `field` items when the spec describes validation for that input.
@@ -1067,7 +1051,7 @@ The names proposed in this artifact (screen slugs, ViewModel variants, field nam
 - Per-page view struct: variant name + `View` suffix (`TodoListView`, `AddTodoView`)
 - Field names: snake_case (`due_date`, `title_error`)
 - Event names: PascalCase (`ToggleTodo`, `SaveTodo`, `Navigate`)
-````
+```
 
 ### Shell Writer Consumption
 
@@ -1075,17 +1059,19 @@ The names proposed in this artifact (screen slugs, ViewModel variants, field nam
 
 Both `ios-writer` and `android-writer` currently have an Input Analysis step that reads `app.rs` types. The updated input analysis additionally reads `composition.yaml`. Because the artifact is schema-validated YAML, shell writers deserialize it directly rather than pattern-matching on text:
 
-| Extract | Source | Maps to |
-| --- | --- | --- |
-| Screen regions | `composition.yaml` `header`, `body`, `footer`, `fab` | View structure (nav bar, content, bottom bar, FAB) |
-| Container structure | `composition.yaml` `group` nodes with `direction`, `gap`, `align`, `justify` | HStack/VStack/ZStack (iOS), Row/Column/Box (Android), flex containers (web) |
-| Sizing | `composition.yaml` `size` on groups and items (`fill`, `hug`, fixed) | `.frame(maxWidth: .infinity)` (iOS), `Modifier.fillMaxWidth()` (Android), `flex: 1` (web) |
-| Surface decoration | `composition.yaml` `background`, `corner_radius`, `elevation` on groups | Styled container views (iOS), Card/Surface (Android), styled divs (web) |
-| Field bindings | `composition.yaml` `bind` keys on items | Property bindings in views |
-| Event wiring | `composition.yaml` `event` keys on items | `onEvent()` / interaction handlers |
-| Token references | `composition.yaml` `style`, `color`, `gap`, `padding` | `VectisTypography.*` / `VectisColors.*` / `VectisSpacing.*` |
-| Conditional rendering | `composition.yaml` `states` and `*-when` keys | `if`/`switch` in view code |
-| Iteration | `composition.yaml` `list.each` / `grid.each` + `item` keys | `ForEach` / `LazyColumn items` |
+
+| Extract               | Source                                                                       | Maps to                                                                                   |
+| --------------------- | ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Screen regions        | `composition.yaml` `header`, `body`, `footer`, `fab`                         | View structure (nav bar, content, bottom bar, FAB)                                        |
+| Container structure   | `composition.yaml` `group` nodes with `direction`, `gap`, `align`, `justify` | HStack/VStack/ZStack (iOS), Row/Column/Box (Android), flex containers (web)               |
+| Sizing                | `composition.yaml` `size` on groups and items (`fill`, `hug`, fixed)         | `.frame(maxWidth: .infinity)` (iOS), `Modifier.fillMaxWidth()` (Android), `flex: 1` (web) |
+| Surface decoration    | `composition.yaml` `background`, `corner_radius`, `elevation` on groups      | Styled container views (iOS), Card/Surface (Android), styled divs (web)                   |
+| Field bindings        | `composition.yaml` `bind` keys on items                                      | Property bindings in views                                                                |
+| Event wiring          | `composition.yaml` `event` keys on items                                     | `onEvent()` / interaction handlers                                                        |
+| Token references      | `composition.yaml` `style`, `color`, `gap`, `padding`                        | `VectisTypography.*` / `VectisColors.*` / `VectisSpacing.*`                               |
+| Conditional rendering | `composition.yaml` `states` and `*-when` keys                                | `if`/`switch` in view code                                                                |
+| Iteration             | `composition.yaml` `list.each` / `grid.each` + `item` keys                   | `ForEach` / `LazyColumn items`                                                            |
+
 
 #### Mapping Priority
 
@@ -1132,9 +1118,9 @@ The baseline `composition.yaml` uses a flat `screens` map. Per-change artifacts 
 
 Delta operations are **screen-level**, not region-level or item-level:
 
-- **`added`**: Insert the screen entry into the baseline `screens` map. If the slug already exists in the baseline, the merge fails with a conflict (the screen should be under `modified` instead).
-- **`modified`**: Replace the entire screen entry in the baseline with the version from the delta. This is a full-screen replacement, not a region-level merge. The rationale: merging independently edited region structures at the item level would require positional diff logic with ambiguous conflict resolution. Full-screen replacement is simple, predictable, and sufficient because the define pipeline always produces complete screen entries.
-- **`removed`**: Delete the screen entry from the baseline. The `reason` field is preserved in the archive for audit purposes.
+- `**added`**: Insert the screen entry into the baseline `screens` map. If the slug already exists in the baseline, the merge fails with a conflict (the screen should be under `modified` instead).
+- `**modified**`: Replace the entire screen entry in the baseline with the version from the delta. This is a full-screen replacement, not a region-level merge. The rationale: merging independently edited region structures at the item level would require positional diff logic with ambiguous conflict resolution. Full-screen replacement is simple, predictable, and sufficient because the define pipeline always produces complete screen entries.
+- `**removed**`: Delete the screen entry from the baseline. The `reason` field is preserved in the archive for audit purposes.
 
 This is consistent with how spec deltas work — `MODIFIED Requirements` replaces the entire requirement block, not individual sentences within it.
 
@@ -1142,9 +1128,9 @@ This is consistent with how spec deltas work — `MODIFIED Requirements` replace
 
 When `/spec:merge` runs, the CLI checks for conflicts between the delta and the current baseline:
 
-- **`added` conflict**: A screen slug in `added` already exists in the baseline → merge fails, prompt user to use `modified`.
-- **`modified` conflict**: The baseline screen has been modified by another merged change since this change was created → merge fails with a diff showing both versions. The user resolves by re-running the define pipeline against the updated baseline.
-- **`removed` conflict**: The screen slug in `removed` does not exist in the baseline (already removed by another change) → warning, not a failure.
+- `**added` conflict**: A screen slug in `added` already exists in the baseline → merge fails, prompt user to use `modified`.
+- `**modified` conflict**: The baseline screen has been modified by another merged change since this change was created → merge fails with a diff showing both versions. The user resolves by re-running the define pipeline against the updated baseline.
+- `**removed` conflict**: The screen slug in `removed` does not exist in the baseline (already removed by another change) → warning, not a failure.
 
 ##### Per-Screen Change Tracking
 
@@ -1168,23 +1154,17 @@ Each value is the SHA-256 hash of the YAML-serialized screen entry (normalized: 
 The YAML merge codepath in `specify merge` executes these steps:
 
 1. **Parse.** Deserialize the per-change `composition.yaml` (must have a `delta` key) and the baseline `composition.yaml` (must have a `screens` key). If either is missing or malformed, fail with a descriptive error.
-
 2. **Validate delta structure.** Confirm the delta contains only `added`, `modified`, and/or `removed` keys with valid screen entries. Schema validation should have already caught structural issues, but belt-and-suspenders checking here prevents corrupt merges.
-
 3. **Process `removed`.** For each slug in `removed`:
-   - If the slug exists in baseline `screens`: delete it, record the removal in the archive metadata.
-   - If the slug does not exist: emit a warning ("screen `{slug}` already absent from baseline") and continue.
-
+  - If the slug exists in baseline `screens`: delete it, record the removal in the archive metadata.
+  - If the slug does not exist: emit a warning ("screen `{slug}` already absent from baseline") and continue.
 4. **Process `added`.** For each slug in `added`:
-   - If the slug does not exist in baseline `screens`: insert the screen entry.
-   - If the slug already exists: fail with conflict ("screen `{slug}` already exists in baseline; use `modified` to update it").
-
+  - If the slug does not exist in baseline `screens`: insert the screen entry.
+  - If the slug already exists: fail with conflict ("screen `{slug}` already exists in baseline; use `modified` to update it").
 5. **Process `modified`.** For each slug in `modified`:
-   - If the slug does not exist in baseline `screens`: fail with conflict ("screen `{slug}` not found in baseline; use `added` for new screens").
-   - If the slug exists: compare the baseline screen's current SHA-256 hash against `.composition-checksums.yaml`. If the hashes match (no intervening change), replace the screen entry. If they differ, fail with conflict and output a diff of the two versions.
-
+  - If the slug does not exist in baseline `screens`: fail with conflict ("screen `{slug}` not found in baseline; use `added` for new screens").
+  - If the slug exists: compare the baseline screen's current SHA-256 hash against `.composition-checksums.yaml`. If the hashes match (no intervening change), replace the screen entry. If they differ, fail with conflict and output a diff of the two versions.
 6. **Write.** Serialize the updated baseline `composition.yaml`, recompute all screen checksums, and write `.composition-checksums.yaml`.
-
 7. **Archive.** Copy the per-change `composition.yaml` (with its `delta` key) into the archive alongside the spec deltas.
 
 This algorithm is the YAML counterpart of the markdown section-based merge that specs use. The operations are semantically identical; only the serialization format and conflict-detection granularity differ.
@@ -1197,17 +1177,19 @@ Spec deltas use markdown headers (`## ADDED Requirements`, `## MODIFIED Requirem
 
 The `specify validate` command gains checks for the composition artifact, all enforced against the JSON Schema and cross-artifact references:
 
-| Check | Description |
-| --- | --- |
-| **Schema validity** | `composition.yaml` conforms to the JSON Schema (version, screen structure, region/item shape) |
-| **Screen uniqueness** | No duplicate screen slugs |
-| **Item validity** | Every item type name resolves to the vocabulary or `custom_items` |
-| **Token resolution** | Every token reference (`style`, `color`, `size`) resolves to an entry in `tokens.yaml` (when the design system exists) |
-| **Field coverage** | Every field in each per-page view struct (from design) appears as a `bind` value in the corresponding screen (wired mode only) |
-| **Event coverage** | Every shell-facing Event variant relevant to a screen has an `event` wiring in that screen's regions (wired mode only) |
-| **ViewModel mapping** | Every `maps_to` value references a declared ViewModel variant from the design (wired mode only) |
-| **Overlay trigger consistency** | Every overlay `trigger` value matches an `event` name (without args) used somewhere in the same screen's regions (wired mode only) |
-| **Navigation consistency** | Every `Navigate(X)` argument has a corresponding screen slug in composition and a corresponding Route variant in design (wired mode only) |
+
+| Check                           | Description                                                                                                                               |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Schema validity**             | `composition.yaml` conforms to the JSON Schema (version, screen structure, region/item shape)                                             |
+| **Screen uniqueness**           | No duplicate screen slugs                                                                                                                 |
+| **Item validity**               | Every item type name resolves to the vocabulary or `custom_items`                                                                         |
+| **Token resolution**            | Every token reference (`style`, `color`, `size`) resolves to an entry in `tokens.yaml` (when the design system exists)                    |
+| **Field coverage**              | Every field in each per-page view struct (from design) appears as a `bind` value in the corresponding screen (wired mode only)            |
+| **Event coverage**              | Every shell-facing Event variant relevant to a screen has an `event` wiring in that screen's regions (wired mode only)                    |
+| **ViewModel mapping**           | Every `maps_to` value references a declared ViewModel variant from the design (wired mode only)                                           |
+| **Overlay trigger consistency** | Every overlay `trigger` value matches an `event` name (without args) used somewhere in the same screen's regions (wired mode only)        |
+| **Navigation consistency**      | Every `Navigate(X)` argument has a corresponding screen slug in composition and a corresponding Route variant in design (wired mode only) |
+
 
 These checks run during the build phase before shell writers are invoked, catching mismatches between the composition artifact and the spec/design early.
 
@@ -1215,24 +1197,28 @@ These checks run during the build phase before shell writers are invoked, catchi
 
 Each validation check produces diagnostics at one of two severity levels:
 
-| Severity | Meaning | Build phase behavior |
-| --- | --- | --- |
-| **error** | The artifact is structurally invalid or has a cross-artifact mismatch that will produce incorrect shell code. | Halts shell generation for the affected screen(s). The agent reports the errors and does not proceed until they are resolved. |
-| **warning** | A non-blocking issue that may indicate incomplete authoring but will not produce incorrect code. | Logged and reported to the user. Shell generation proceeds. |
+
+| Severity    | Meaning                                                                                                       | Build phase behavior                                                                                                          |
+| ----------- | ------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **error**   | The artifact is structurally invalid or has a cross-artifact mismatch that will produce incorrect shell code. | Halts shell generation for the affected screen(s). The agent reports the errors and does not proceed until they are resolved. |
+| **warning** | A non-blocking issue that may indicate incomplete authoring but will not produce incorrect code.              | Logged and reported to the user. Shell generation proceeds.                                                                   |
+
 
 Severity assignments by check:
 
-| Check | Severity |
-| --- | --- |
-| Schema validity | error |
-| Screen uniqueness | error |
-| Item validity (known vocabulary) | warning (Phase 1), error (Phase 4 with `components.yaml`) |
-| Token resolution | warning (tokens may be added later) |
-| Field coverage (unbound view struct field) | warning |
-| Event coverage (unwired Event variant) | warning |
-| ViewModel mapping (`maps_to` mismatch) | error |
-| Overlay trigger consistency (trigger doesn't match any event) | error |
-| Navigation consistency (`Navigate(X)` target missing) | error |
+
+| Check                                                         | Severity                                                  |
+| ------------------------------------------------------------- | --------------------------------------------------------- |
+| Schema validity                                               | error                                                     |
+| Screen uniqueness                                             | error                                                     |
+| Item validity (known vocabulary)                              | warning (Phase 1), error (Phase 4 with `components.yaml`) |
+| Token resolution                                              | warning (tokens may be added later)                       |
+| Field coverage (unbound view struct field)                    | warning                                                   |
+| Event coverage (unwired Event variant)                        | warning                                                   |
+| ViewModel mapping (`maps_to` mismatch)                        | error                                                     |
+| Overlay trigger consistency (trigger doesn't match any event) | error                                                     |
+| Navigation consistency (`Navigate(X)` target missing)         | error                                                     |
+
 
 The distinction matters for incremental adoption: warnings allow the pipeline to proceed with partial composition artifacts (e.g., a skeleton with incomplete bindings), while errors catch structural problems that would break shell generation. The `specify validate` CLI outputs diagnostics in the format: `[error|warning] composition:<screen-slug>: <message>`.
 
@@ -1248,7 +1234,7 @@ The spec brief currently instructs: "Views (screens the user sees) become requir
 
 The design brief currently declares `needs: [proposal]` (it also implicitly reads specs, though this is not declared in `needs`). With the composition artifact, it gains additional inputs:
 
-- **`needs`** changes to `[proposal, specs]` — making the existing implicit dependency on specs explicit.
+- `**needs`** changes to `[proposal, specs]` — making the existing implicit dependency on specs explicit.
 - **Composition awareness (prose-based).** The design brief gains prose instructions to check for a `composition.yaml` in the change directory or baseline. When present, the design brief uses it as an additional input to validate view struct completeness. When absent, the design brief infers ViewModel shape from specs alone (the current behavior). This preserves backward compatibility: projects that predate RFC-7 (or Omnia-schema projects that don't use Vectis composition) continue to work because the design brief proceeds without composition.
 - **Domain Model § ViewModel:** The brief currently instructs the agent to derive ViewModel variants and per-page view struct fields from the spec. With composition as input, the brief additionally instructs: "When `composition.yaml` is present, read it and adopt the screen names, ViewModel variant names, and field names proposed by the composition artifact. Adjust naming only when Rust conventions or domain model considerations require it. Every `bind` value in `composition.yaml` must appear as a field in the corresponding per-page view struct. When `composition.yaml` is absent, infer the ViewModel shape from specs as before."
 - **Gap surfacing:** The design brief gains an instruction to flag mismatches — a `bind` in composition with no spec backing, or a spec-described data element with no composition binding.
@@ -1293,7 +1279,7 @@ This preserves the Crux separation: core knows about data shape, not spatial arr
 
 The tasks brief currently declares `needs: [specs, design]`. With the composition artifact:
 
-- **`needs`** stays `[specs, design]` — unchanged.
+- `**needs`** stays `[specs, design]` — unchanged.
 - **Composition awareness (prose-based).** The tasks brief gains prose instructions to check for a `composition.yaml` in the change directory. When present, the tasks brief expresses the dependency between shell tasks and `composition.yaml` in its task ordering. This is not a hard requirement — pre-RFC-7 changes have no composition artifact.
 - The tasks brief's skill directive table gains no new skill — composition generation is part of the define pipeline, not a separate build skill. However, the task ordering guidance gains a note: "When `composition.yaml` is present, shell writer tasks (ios-writer, android-writer) depend on it. When composition validation fails, the corresponding shell task is blocked. When `composition.yaml` is absent, shell writers fall back to inference and no composition-related blocking applies."
 
@@ -1326,20 +1312,24 @@ The composition artifact introduces new responsibilities for the `specify` CLI (
 
 #### Phase 1 Changes
 
-| Command | Change |
-| --- | --- |
-| `specify change create` | Include `composition.yaml` in the change's artifact manifest. When the change directory is created, the lifecycle tracker knows that `composition.yaml` is an expected artifact (alongside `proposal.md`, `spec.md`, `design.md`, `tasks.md`). |
-| `specify status` | Report `composition.yaml` completion status alongside other artifacts. Show whether the artifact is in skeleton mode (no `bind`/`event` keys) or wired mode. Report the number of screens. |
-| `specify validate` | Add structural validation: parse `composition.yaml` against the JSON Schema (`schemas/vectis/composition.schema.json`). Report schema violations as errors. This is schema-only validation — cross-artifact checks come in Phase 2. |
-| `specify merge` | Add a YAML delta merge codepath alongside the existing markdown spec merge. Read the per-change `composition.yaml` delta, apply `added`/`modified`/`removed` operations to the baseline `composition.yaml`, and detect conflicts at the screen-entry level. |
-| `specify spec preview` | Include composition delta in the dry-run merge preview output. |
-| `specify spec conflict-check` | Check for composition conflicts (added screen already exists, modified screen changed in baseline). |
+
+| Command                       | Change                                                                                                                                                                                                                                                      |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `specify change create`       | Include `composition.yaml` in the change's artifact manifest. When the change directory is created, the lifecycle tracker knows that `composition.yaml` is an expected artifact (alongside `proposal.md`, `spec.md`, `design.md`, `tasks.md`).              |
+| `specify status`              | Report `composition.yaml` completion status alongside other artifacts. Show whether the artifact is in skeleton mode (no `bind`/`event` keys) or wired mode. Report the number of screens.                                                                  |
+| `specify validate`            | Add structural validation: parse `composition.yaml` against the JSON Schema (`schemas/vectis/composition.schema.json`). Report schema violations as errors. This is schema-only validation — cross-artifact checks come in Phase 2.                         |
+| `specify merge`               | Add a YAML delta merge codepath alongside the existing markdown spec merge. Read the per-change `composition.yaml` delta, apply `added`/`modified`/`removed` operations to the baseline `composition.yaml`, and detect conflicts at the screen-entry level. |
+| `specify spec preview`        | Include composition delta in the dry-run merge preview output.                                                                                                                                                                                              |
+| `specify spec conflict-check` | Check for composition conflicts (added screen already exists, modified screen changed in baseline).                                                                                                                                                         |
+
 
 #### Phase 2 Changes
 
-| Command | Change |
-| --- | --- |
+
+| Command            | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `specify validate` | Add cross-artifact validation checks: field coverage (every per-page view struct field has a `bind` on some item), event coverage (every shell-facing Event has an `event` wiring on some item), ViewModel mapping (`maps_to` references valid ViewModel variants from `design.md`), token resolution (token references resolve to `tokens.yaml` entries), overlay trigger consistency (every `trigger` matches an `event` in the same screen), and navigation graph consistency (`Navigate(X)` targets exist as screen entries and Route variants). |
+
 
 #### Phase 3+ Changes
 
@@ -1352,6 +1342,7 @@ No additional CLI changes required. The Figma adapter (Phase 3) is a standalone 
 Add the `composition` brief to the vectis schema and update the define agent to produce `composition.yaml`. Support both skeleton mode (authored manually or imported from external tools) and wired mode (enriched by the pipeline). Shell writers read `composition.yaml` when present but fall back to inference when absent. No existing functionality changes. This is a pure addition.
 
 Deliverables:
+
 - `schemas/vectis/briefs/composition.md` brief file
 - `schemas/vectis/composition.schema.json` JSON Schema (draft in [Appendix A](#appendix-a-composition-json-schema))
 - Updated `schemas/vectis/schema.yaml` pipeline (add `composition` stage between `specs` and `design`)
@@ -1370,6 +1361,7 @@ Deliverables:
 Add the composition-specific checks to `specify validate`. These catch drift between composition, specs, and design before the build phase runs.
 
 Deliverables:
+
 - Validation checks in the CLI (JSON Schema + cross-artifact checks against `composition.yaml`)
 - Navigation graph derivation from `event: Navigate(...)` references, checked against Route enum
 - Updated `schemas/vectis/briefs/build.md` brief (pre-shell validation gate, `composition.yaml` in handoff contract)
@@ -1379,7 +1371,8 @@ Deliverables:
 Introduce tooling that reads a Figma file and produces a `composition.yaml` skeleton. The adapter maps Figma's frame hierarchy to regions and items, applies best-match heuristics for unrecognized patterns, and marks uncertain mappings for human review. The composition brief then enriches the skeleton with bindings from specs.
 
 Deliverables:
-- Figma-to-composition adapter (standalone tool or `/spec:*` skill)
+
+- Figma-to-composition adapter (standalone tool or `/spec:`* skill)
 - Documentation for the Figma import workflow
 
 ### Phase 4: Component library
@@ -1436,27 +1429,29 @@ This reduces repetition across screens and establishes a shared vocabulary betwe
 
 With the item vocabulary and design system in place, a web shell writer can map the same `composition.yaml` to HTML/CSS/JS (or a framework like React, Leptos, or Yew). Regions and items map naturally:
 
-| Region / Item | Web mapping |
-| --- | --- |
-| `header` | `<header>` / `<nav>` with title and action buttons |
-| `body` (content array) | `<main>` with centered content |
-| `body.list` | `<ul>` / virtual list |
-| `body.grid` | CSS Grid |
-| `body.form` | `<form>` with vertical input layout |
-| `footer` | `<footer>` / bottom nav |
-| `fab` | Fixed-position `<button>` |
-| `group` (direction: row) | `<div style="display:flex; flex-direction:row">` |
-| `group` (direction: column) | `<div style="display:flex; flex-direction:column">` |
-| `group` (direction: stack) | `<div style="position:relative">` with absolute children |
-| `group` with decoration | Styled `<div>` with background, border-radius, box-shadow |
-| `text` | `<span>` / `<p>` / `<h*>` (based on `style`) |
-| `field` | `<input>` / `<textarea>` |
-| `button` | `<button>` |
-| `action` | `<button>` with icon |
-| `progress` | `<progress>` / CSS spinner |
-| `dialog` overlay | `<dialog>` element / modal |
-| `sheet` overlay | Side panel or modal overlay |
-| `snackbar` overlay | Toast notification |
+
+| Region / Item               | Web mapping                                               |
+| --------------------------- | --------------------------------------------------------- |
+| `header`                    | `<header>` / `<nav>` with title and action buttons        |
+| `body` (content array)      | `<main>` with centered content                            |
+| `body.list`                 | `<ul>` / virtual list                                     |
+| `body.grid`                 | CSS Grid                                                  |
+| `body.form`                 | `<form>` with vertical input layout                       |
+| `footer`                    | `<footer>` / bottom nav                                   |
+| `fab`                       | Fixed-position `<button>`                                 |
+| `group` (direction: row)    | `<div style="display:flex; flex-direction:row">`          |
+| `group` (direction: column) | `<div style="display:flex; flex-direction:column">`       |
+| `group` (direction: stack)  | `<div style="position:relative">` with absolute children  |
+| `group` with decoration     | Styled `<div>` with background, border-radius, box-shadow |
+| `text`                      | `<span>` / `<p>` / `<h*>` (based on `style`)              |
+| `field`                     | `<input>` / `<textarea>`                                  |
+| `button`                    | `<button>`                                                |
+| `action`                    | `<button>` with icon                                      |
+| `progress`                  | `<progress>` / CSS spinner                                |
+| `dialog` overlay            | `<dialog>` element / modal                                |
+| `sheet` overlay             | Side panel or modal overlay                               |
+| `snackbar` overlay          | Toast notification                                        |
+
 
 The web shell writer reads `composition.yaml`, `design.md`, and `tokens.yaml` — the same inputs as the iOS and Android writers. The design system gains a `design-system/web/` output directory for CSS custom properties generated from `tokens.yaml`.
 
@@ -1563,8 +1558,8 @@ Shell writers continue to apply platform-default animations (navigation transiti
 
 The composition artifact does **not** include a separate navigation graph section. Navigation is expressed through two existing mechanisms:
 
-1. **`event: Navigate(ScreenName)`** on interactive components describes forward navigation.
-2. **`event: NavigateBack`** describes backward navigation.
+1. `**event: Navigate(ScreenName)`** on interactive components describes forward navigation.
+2. `**event: NavigateBack**` describes backward navigation.
 3. The **Route enum** in `design.md` formalizes the navigation graph at the type level.
 
 The validation pass (Phase 2) derives the navigation graph from `event: Navigate(...)` references across all screens and checks it against the Route enum in design. If an `event: Navigate(AddTodo)` reference has no corresponding `add-todo` screen entry in composition, or no `Route::AddTodo` variant in design, validation flags the mismatch.
@@ -1574,7 +1569,6 @@ A separate authored navigation section would duplicate information already expre
 ## Open Questions
 
 1. **Composition re-import merging.** When a Figma design is updated and a new skeleton `composition.yaml` is produced, the composition brief needs to merge it with the existing wired `composition.yaml` to surface what changed without losing `bind`/`event` enrichment. The delta merge strategy (see [Delta Operations](#delta-operations)) handles change-level merges, but re-import is a different operation: the new skeleton may have added, removed, or restructured items within a screen, not just added or removed screens. The re-import merge strategy needs definition — likely a screen-by-screen diff that presents changes for human review, preserving `bind`/`event` annotations on items that match between old and new versions. This is a Phase 3 concern (Figma adapter) and does not block Phases 1–2.
-
 2. **Item vocabulary growth.** Item types like `avatar`, `chip`, `date-picker`, `tab-bar`, or `data-table` are common in real applications but not in the initial vocabulary. The Phase 1 approach uses `custom_items` as a validation allowlist (see [Custom Items](#custom-items-phase-1-escape-hatch)) and treats item validity as a warning rather than an error. The outstanding question is the graduation path: when should commonly-used custom items be promoted into the core vocabulary? A threshold like "used in 3+ shipped compositions" could work, but the governance process for vocabulary expansion is not yet defined. The component library (Phase 4) partially addresses this by providing formal `components.yaml` definitions, but the core vocabulary itself may also need periodic expansion.
 
 ## References
@@ -1588,7 +1582,7 @@ A separate authored navigation section would duplicate information already expre
 - `plugins/vectis/skills/android-writer/SKILL.md` — Android shell generation
 - `plugins/vectis/skills/design-system-writer/SKILL.md` — design system generation from `tokens.yaml`
 - `docs/vectis.md` — user-facing Vectis documentation
-- [RFC-6: Vectis Bootstrap CLI](rfc-6-vectis-bootstrap.md) — CLI scaffolding (composition artifact consumed after scaffold)
+- [RFC-6: Task Lifecycle](rfc-6-tasks.md) — CLI scaffolding (composition artifact consumed after scaffold)
 
 ## Appendix A: Composition JSON Schema
 
@@ -1979,3 +1973,4 @@ Draft JSON Schema for `schemas/vectis/composition.schema.json`. This is a Phase 
 - The `bindValue` pattern allows both bare names (`title`) and dot-qualified names (`section.heading`) for nested iteration contexts.
 - `custom_items` is validated structurally but does not participate in cross-artifact item validity checks — that is a Phase 2 concern.
 - The `fab` property on screen entries accepts `itemProps` directly (not wrapped in an item type key) since it is always a single floating action item.
+

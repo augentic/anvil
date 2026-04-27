@@ -4,8 +4,14 @@ Canonical definitions for terms used throughout Specify.
 
 ## A
 
+**Alignment report**
+The output of `/contracts:writer` after running the 6-step algorithm. Summarises coverage (interactions already defined in the baseline), alignment warnings (spec-vs-baseline mismatches), generated delta (new contract files), and normalisation changes. A clean report with zero delta is the expected outcome for implementation changes in a contract-first workflow.
+
+**API contract**
+A machine-readable interface definition at `.specify/contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Contracts capture the *shape* of interfaces -- endpoint paths, methods, payload schemas, error codes, channel names, message structures. They complement behavioral specs, which capture *what* the system does.
+
 **Artifact**
-A structured document that defines part of a change. The four core artifacts are `proposal.md`, `spec.md`, `design.md`, and `tasks.md`. Schema-specific artifacts extend this set -- the Vectis schema adds `composition.yaml` for screen layout. Artifacts are the contract between human intent and agent execution.
+A structured document that defines part of a change. The core artifacts are `proposal.md`, `spec.md`, `contracts/**/*.yaml`, `design.md`, and `tasks.md`. Schema-specific artifacts extend this set -- the Vectis schema adds `composition.yaml` for screen layout. Artifacts are the contract between human intent and agent execution.
 
 **Archive**
 The `.specify/archive/` directory where finalized changes (merged or dropped) and completed plans are stored for audit.
@@ -13,7 +19,7 @@ The `.specify/archive/` directory where finalized changes (merged or dropped) an
 ## B
 
 **Baseline**
-The accumulated set of merged specs at `.specify/specs/`. For Vectis projects, also includes the merged `composition.yaml` for screen layout. Represents the current known behavioral state of the system. Future changes produce deltas against the baseline.
+The accumulated set of merged specs at `.specify/specs/` and merged contracts at `.specify/contracts/`. For Vectis projects, also includes the merged `composition.yaml` for screen layout. Represents the current known behavioral and interface state of the system. Future changes produce deltas against the baseline.
 
 **Brief**
 A markdown prompt file provided by a schema that drives artifact generation. Briefs are organized into pipelines for each phase (define, build, merge).
@@ -30,7 +36,16 @@ A discrete unit of system behavior that gets its own spec file. In the Omnia sch
 A schema-validated YAML document (`composition.yaml`) that describes the spatial layout of each screen in a Vectis application. Organises content into named regions (`header`, `body`, `footer`, `fab`) with a container tree of items and groups carrying flexbox-like layout properties. Supports skeleton mode (layout without data bindings) and wired mode (enriched with `bind`, `event`, and `maps_to` keys). Produced by the Vectis define pipeline between specs and design. Consumed by shell writers for deterministic layout generation. See [RFC-7](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md).
 
 **Change**
-A unit of work in Specify, stored at `.specify/changes/<name>/`. Contains the core artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`), any schema-specific artifacts (e.g. `composition.yaml` for Vectis), and a `.metadata.yaml` file tracking lifecycle state.
+A unit of work in Specify, stored at `.specify/changes/<name>/`. Contains the core artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`), optional contract artifacts (`contracts/`), any schema-specific artifacts (e.g. `composition.yaml` for Vectis), and a `.metadata.yaml` file tracking lifecycle state.
+
+**Context (plan entry)**
+The optional `context` field on a plan entry -- a list of baseline paths (relative to `.specify/`) that are relevant to the change. Briefs use these as a focus hint when scanning baseline directories. Populated automatically by `/spec:plan` (e.g. contract paths from a preceding contract change) or manually via `specify plan create --context`.
+
+**Contract-first**
+Authorship pattern where a dedicated contract change defines interface shapes before implementation begins. `/spec:plan` inserts these automatically when it detects an API boundary between projects. The contract change uses `schema: contracts@v1` and has no `project`. Implementation changes depend on the contract change.
+
+**Contract-given**
+Authorship pattern where API contracts are imported from an external system or legacy API. The operator places the external files into the change's `contracts/` directory. `/spec:plan` inserts import changes when a source is flagged as external.
 
 ## D
 
@@ -78,10 +93,15 @@ The current status of a change: `created`, `defining`, `defined`, `building`, `c
 ## M
 
 **Merge**
-The third phase of the change lifecycle. Applies spec deltas (and composition deltas for Vectis) to the baseline and archives the change. When running inside a workspace clone, `specify merge` auto-commits the merged baseline (RFC-3b).
+The third phase of the change lifecycle. Applies spec deltas, contract deltas, and composition deltas (Vectis) to the baseline and archives the change. When running inside a workspace clone, `specify merge` auto-commits the merged baseline (RFC-3b).
 
 **Merge key**
 The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec operations to baseline requirements during merge.
+
+## O
+
+**Opaque replacement**
+The merge semantics used for contract files. Unlike spec files (which use the ADDED/MODIFIED/REMOVED delta format), contract files are replaced wholesale during merge -- `specify merge` copies the change's `contracts/` files into `.specify/contracts/`, replacing files that share a path. Files absent from the change are left untouched.
 
 ## P
 
@@ -127,6 +147,9 @@ An HTML comment in `tasks.md` (e.g. `<!-- skill: omnia:crate-writer -->`) that r
 
 **Spec**
 A behavioral specification at `specs/<capability>/spec.md`. Contains requirements with stable IDs, scenarios (WHEN/THEN), error conditions, and optional metrics.
+
+**Spec-first (inline derivation)**
+Authorship pattern where contracts are derived inline from specs during a single change's define phase. Used as a convenience fallback for single-repo services with no external consumers and no API boundary. The baseline is empty, so the delta is the full contract set.
 
 **Sync peers**
 The phase during `/spec:plan` (multi-repo only) that clones registry projects into `.specify/workspace/` and inventories their baseline specs. Produces `workspace.md`.

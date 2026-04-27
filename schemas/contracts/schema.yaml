@@ -1,0 +1,25 @@
+# yaml-language-server: $schema=../schema.schema.json
+name: contracts
+version: 1
+description: API contract definition and validation
+domain: |
+  Formats: JSON Schema (draft 2020-12), OpenAPI 3.1, AsyncAPI 3.0
+  Purpose: Platform-level interface definitions between components
+  Artifact location: .specify/contracts/ (baseline), .specify/changes/<name>/contracts/ (delta)
+
+pipeline:
+  define:
+    - id: proposal
+      brief: briefs/proposal.md
+    - id: specs
+      brief: briefs/specs.md
+    - id: contracts
+      brief: briefs/contracts.md
+    - id: tasks
+      brief: briefs/tasks.md
+  build:
+    - id: build
+      brief: briefs/build.md
+  merge:
+    - id: merge
+      brief: briefs/merge.md

@@ -28,6 +28,7 @@ Create a new change and generate all artifacts in one step.
 |----------|----------|---------|
 | `proposal.md` | `.specify/changes/<name>/proposal.md` | Why the change exists and what is in scope |
 | `spec.md` (per capability) | `.specify/changes/<name>/specs/<capability>/spec.md` | Behavioral requirements with scenarios |
+| `contracts/**/*.yaml` | `.specify/changes/<name>/contracts/` | API contract delta (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0) |
 | `composition.yaml` (Vectis only) | `.specify/changes/<name>/composition.yaml` | Screen layout with regions, groups, bindings, and event wiring |
 | `design.md` | `.specify/changes/<name>/design.md` | Domain model, APIs, integrations, configuration |
 | `tasks.md` | `.specify/changes/<name>/tasks.md` | Implementation task list with checkboxes |
@@ -36,7 +37,7 @@ Create a new change and generate all artifacts in one step.
 
 1. Creates the change directory via `specify change create <name>`.
 2. Reads the schema's `pipeline.define` brief sequence.
-3. Generates artifacts in dependency order: proposal, then specs (which may invoke `/spec:extract` if `sources` are present), then composition (Vectis only -- produces `composition.yaml`), then design, then tasks. The composition stage produces a YAML file rather than markdown; the skill dispatches on the `generates` extension in the brief frontmatter.
+3. Generates artifacts in dependency order: proposal, then specs (which may invoke `/spec:extract` if `sources` are present), then contracts (validates spec alignment with baseline contracts and produces the minimal delta), then composition (Vectis only -- produces `composition.yaml`), then design, then tasks. The composition stage produces a YAML file rather than markdown; the skill dispatches on the `generates` extension in the brief frontmatter. The contracts stage completes as a no-op when the change has no API interactions.
 4. Scans `touched-specs` via `specify change touched-specs`.
 5. Transitions the change to `defined`.
 6. Writes phase outcome via `specify change phase-outcome`.

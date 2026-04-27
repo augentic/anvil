@@ -42,6 +42,16 @@ CLI surface the skills depend on:
 
 Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 
+### Contract skills
+
+The contracts plugin provides specialist skills for API contract generation and validation:
+
+- `/contracts:writer` — validates spec alignment with baseline contracts and produces the minimal delta for uncovered interactions
+- `/contracts:validator` — checks internal consistency of contract artifacts ($ref resolution, schema metadata, binding completeness)
+- `/contracts:importer` — imports and normalizes external API contracts (Layer 2)
+
+These skills are invoked by the `contracts` brief in the define pipeline. The brief is present in the `contracts` schema (for dedicated contract changes) and in the Omnia and Vectis schemas (for alignment validation during implementation changes).
+
 ### Plan-driven loop (RFC-2, all three layers landed)
 
 When an initiative is coordinated through a `.specify/plan.yaml`, the recommended path is:

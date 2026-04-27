@@ -51,6 +51,34 @@ The skill runs a fixed flow:
 3. **Generate plan (propose).** Combines the capability inventory with the peer inventory (when present) into an ordered, dependency-aware list of changes. Presents each proposed change ("slice") for interactive accept / edit / reject. Writes accepted slices via `specify plan create` (without `--project`).
 4. **Assignment (multi-repo only).** When `workspace.md` contains more than one project, infers a target project for each new entry using description match, baseline spec affinity, and schema compatibility from `workspace.md`. Presents the full assignment table for operator review and override. Writes each assignment via `specify plan amend <name> --project <project>`. Appends the assignment rationale to `proposal.md`.
 
+### Contract authorship patterns
+
+`/spec:plan` automatically determines how API contracts enter the plan based on registry topology, source declarations, and API boundary detection. Three patterns emerge:
+
+**Contract-first (dedicated contract change).** When the plan contains changes in multiple projects that share an API boundary, `/spec:plan` inserts a dedicated contract change before the implementation changes on both sides. The contract change uses `schema: contracts@v1` (no `project`) and defines interface-level behavioral specs. Implementation changes `depends-on` the contract change and validate alignment:
+
+```yaml
+changes:
+  - name: user-api-contract
+    schema: contracts@v1
+    description: "Define the user registration API contract"
+    status: pending
+
+  - name: user-api-backend
+    project: backend
+    depends-on: [user-api-contract]
+    status: pending
+
+  - name: registration-screen
+    project: mobile
+    depends-on: [user-api-contract]
+    status: pending
+```
+
+**Contract-given (external or legacy contracts).** When a source is flagged as an external system or legacy API, `/spec:plan` inserts an import change before the implementation changes. The operator places the external contract files into the import change's `contracts/` directory.
+
+**Spec-first (inline derivation).** For single-repo changes with no identified API boundary and no external consumers, no separate contract change is inserted. The `contracts` brief derives interface shapes inline during the change's define phase.
+
 After the loop, runs `specify plan validate` to check structural integrity (no cycles, no dangling dependencies) and the RFC-3b cross-registry checks (`project-not-in-registry`, `project-missing-multi-repo`, `description-missing-multi-repo`, `schema-mismatch-workspace`).
 
 ## Lifecycle transitions

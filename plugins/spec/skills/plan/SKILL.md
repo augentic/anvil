@@ -233,6 +233,16 @@ Propose is the single-writer edge for plan entries — every entry lands via `sp
 
 On abort, the skill writes `proposal.md` with the slices decided so far, skips step 4's validate (the plan is explicitly incomplete), and exits non-zero pointing the operator at `/spec:plan --extend` to resume. Partial plan entries from earlier accepted slices remain on disk — they were written synchronously by `specify plan create` and the skill never rolls those writes back. On a clean end-of-loop, step 4's `specify plan validate` is the final acceptance gate: any `Error`-level finding surfaces to the human with a recommended `specify plan amend` / `specify plan transition skipped` fix, never an in-skill edit.
 
+### Context Auto-Population
+
+When `/spec:plan` inserts changes, it automatically populates the `context` field on plan entries to help briefs focus on relevant baseline paths:
+
+- **Contract changes**: When a contract change is inserted, implementation changes that depend on it get `context` entries for the contract paths the contract change will produce (e.g. `contracts/http/user-api.yaml`, `contracts/schemas/user.yaml`).
+- **Spec changes**: When a change targets existing capabilities via `affects`, `context` entries are populated with the corresponding baseline spec paths (e.g. `specs/user-registration/spec.md`).
+- **Manual authoring**: Operators can add context paths via `specify plan create --context <path>...` or `specify plan amend --context <path>...`.
+
+Context paths are relative to `.specify/`. They are a focus hint — briefs may still read other baseline paths when instructed to.
+
 ## Step 3(d) — Assignment (multi-repo only)
 
 After the propose brief completes step 3(c) and all accepted entries have been written to `plan.yaml` (without `project`), the plan skill runs the assignment pass when `workspace.md` is present and contains more than one project section. Single-project registries skip this step entirely.
@@ -272,6 +282,16 @@ When the registry is absent or single-project, step 3(d) is skipped entirely. No
 Every plan entry this skill writes goes through **`specify plan create`**. The skill never edits `.specify/plan.yaml` directly, never rewrites existing entries, and never bundles multiple entries into a batch write. This preserves the single-writer invariant: exactly two classes of writes touch `plan.yaml` (entry writes via `Plan::{create, amend}` and status writes via `Plan::transition`), and both route through the library.
 
 The invariant extends to `--extend`: additional entries are added via `specify plan create`; pre-existing entries are left untouched. The only path that calls `specify plan amend` is step 3(d) Assignment, which writes `--project` on multi-repo plans. The skill never calls `specify plan transition` — that verb belongs to the running initiative (humans in Layer 1, `/spec:execute` in Layer 2), not to the authoring step.
+
+### Contract Role Population
+
+When `/spec:plan` inserts a contract change for an API boundary between projects, it populates the `contracts` block on the relevant registry project entries:
+
+1. **Producer project**: Add the contract file paths to `contracts.produces` on the project that implements the API.
+2. **Consumer project**: Add the contract file paths to `contracts.consumes` on the project that calls the API.
+3. **Import changes**: Add the contract file paths to `contracts.imports` on the project integrating with the external system.
+
+Use `specify initiative registry validate` to verify the invariants after populating roles. The validation is advisory — the operator can adjust role assignments.
 
 ## Working directory (`.specify/plans/<name>/`)
 

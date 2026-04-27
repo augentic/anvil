@@ -123,6 +123,10 @@ The stable `ID: REQ-XXX` line is the merge key, not the requirement title. Requi
 
 ## API Contracts
 
+<!-- When .specify/contracts/http/ exists: reference the OpenAPI specifications
+     rather than re-describing endpoint shapes. Add implementation-level notes
+     not captured in the contract: auth schemes, rate limits, caching, versioning. -->
+
 ## External Services
 
 ## Constants & Configuration
@@ -130,6 +134,10 @@ The stable `ID: REQ-XXX` line is the merge key, not the requirement title. Requi
 ## Business Logic
 
 ## Publication & Timing Patterns
+
+<!-- When .specify/contracts/messages/ exists: reference the AsyncAPI specifications
+     rather than re-describing message shapes. Add implementation-level notes
+     not captured in the contract: ordering guarantees, retry policies, DLQ strategy. -->
 
 ## Implementation Constraints
 
@@ -320,6 +328,75 @@ delta:
 
 For the full schema definition and item vocabulary, see [RFC-7](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md).
 
+## Contract artifacts (API "shape")
+
+Contract artifacts capture the machine-readable shapes of APIs and message interfaces. They use three standard formats, each with its own subdirectory under `contracts/`:
+
+### Directory structure
+
+```text
+contracts/
+├── schemas/                # JSON Schema payload definitions (always present)
+│   ├── user-registration.yaml
+│   ├── error-response.yaml
+│   └── order-placed.yaml
+├── http/                   # OpenAPI 3.1 bindings (when HTTP is used)
+│   └── user-api.yaml       # $ref → ../schemas/
+└── messages/               # AsyncAPI 3.0 bindings (when messaging is used)
+    └── order-events.yaml    # $ref → ../schemas/
+```
+
+### Naming conventions
+
+- **All files** use kebab-case names with `.yaml` extensions.
+- **Schema files** are named after the domain type: `user-registration.yaml`, `error-response.yaml`. One type per file.
+- **HTTP binding files** are named after the API domain: `user-api.yaml`, `billing-api.yaml`.
+- **Message binding files** are named after the event domain: `order-events.yaml`, `notification-events.yaml`.
+
+### JSON Schema files
+
+Each schema file defines a single domain type:
+
+```yaml
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "urn:specify:schemas/user-registration"
+title: "UserRegistration"
+description: "Payload for creating a new user account"
+type: object
+properties:
+  email:
+    type: string
+    format: email
+  password:
+    type: string
+required: [email, password]
+```
+
+Key fields:
+
+- **`$id`** -- stable URI in the format `urn:specify:schemas/<filename-without-extension>`. Once assigned, must not change.
+- **`title`** -- PascalCase type name matching the domain concept.
+- **`description`** -- concise sentence describing the type's role.
+- **`$ref`** -- shared sub-types reference other schema files rather than inlining definitions.
+
+### OpenAPI bindings
+
+OpenAPI 3.1 files define HTTP endpoint bindings. All request/response schemas use `$ref` pointers to `../schemas/` -- type definitions are never inlined in binding files.
+
+### AsyncAPI bindings
+
+AsyncAPI 3.0 files define messaging bindings. Message payload schemas use `$ref` pointers to `../schemas/`, following the same shared-schema principle as OpenAPI bindings.
+
+### Scope boundary
+
+Contracts capture *interface shape* -- endpoint paths, methods, payload schemas, error codes, channel names, message structures. Everything else belongs in `design.md`: authentication schemes, rate limits, retry policies, caching strategies, versioning approaches, and ordering guarantees. If a concern affects wire compatibility, it belongs in the contract; if it affects operational behavior, it belongs in the design.
+
+### Delta semantics
+
+Contract files use **opaque replacement** semantics during merge -- unlike spec files which use the ADDED/MODIFIED/REMOVED delta format, contract files are replaced wholesale. When a change modifies an existing binding (e.g. adding new endpoints to `user-api.yaml`), the delta file must include both existing and new paths -- the merge replaces the baseline file entirely.
+
+Contract deletion is rare and handled as a manual baseline edit. The change-level directory can express additions and replacements but not deletions.
+
 ## Validation checklists
 
 ### Behavioral specs
@@ -350,3 +427,15 @@ For the full schema definition and item vocabulary, see [RFC-7](https://github.c
 - `maps_to` values reference declared ViewModel variants from the design (wired mode)
 - Overlay `trigger` values match an `event` name in the same screen
 - `Navigate(X)` targets have corresponding screen slugs and Route variants
+
+### API contracts
+
+- Every JSON Schema file has `$id`, `title`, and `description`
+- `$id` values use the `urn:specify:schemas/<name>` format
+- One type per schema file
+- All `$ref` pointers in OpenAPI and AsyncAPI files resolve to existing schema files
+- Request/response schemas in OpenAPI bindings use `$ref` to `../schemas/`, not inline definitions
+- Message payload schemas in AsyncAPI bindings use `$ref` to `../schemas/`
+- Every schema that appears as a top-level payload in a spec scenario has at least one protocol binding
+- File names use kebab-case with `.yaml` extensions
+- Contract files capture interface shape only; auth, rate limits, and retry policies remain in `design.md`

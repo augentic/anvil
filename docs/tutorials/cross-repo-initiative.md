@@ -123,24 +123,32 @@ You can override any assignment. Ambiguous entries are surfaced as unresolved an
 
 ## 4. Review the cross-repo plan
 
-After planning, the plan has a `project` field on each entry:
+After planning, the plan has a `project` field on each entry. When `/spec:plan` detects an API boundary between the `api` and `mobile` projects, it automatically inserts a **contract change** before the implementation changes:
 
 ```yaml
 changes:
+  - name: oauth-api-contract
+    schema: contracts@v1
+    description: "Define the OAuth API contract between api and mobile"
+    depends-on: []
+    status: pending
+
   - name: add-token-management
     description: "OAuth2 token management and provider integration"
     project: api
-    depends-on: []
+    depends-on: [oauth-api-contract]
     status: pending
 
   - name: add-login-screens
     description: "Login and registration screens with OAuth flow"
     project: mobile
-    depends-on: [add-token-management]
+    depends-on: [oauth-api-contract]
     status: pending
 ```
 
-The `project` field tells `/spec:execute` where to run each change.
+The contract change uses `schema: contracts@v1` and has no `project` -- it is a platform-level change that defines the interface shapes both sides will implement against. Once the contract change merges, the producer (`api`) and consumer (`mobile`) can run in parallel -- both depend on the contract, not on each other.
+
+The `project` field on implementation entries tells `/spec:execute` where to run each change.
 
 ## 5. Execute across repos
 

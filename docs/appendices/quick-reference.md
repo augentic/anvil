@@ -31,6 +31,9 @@
 | `/spec:verify` | Detect drift between code and specs |
 | `/spec:explore` | Think through a problem |
 | `/spec:extract` | Extract specs from existing code |
+| `/contracts:writer` | Validate spec alignment, produce contract delta |
+| `/contracts:validator` | Verify contract artifact consistency |
+| `/contracts:importer` | Import and normalise external contracts (Layer 2) |
 | `/spec:plan` | Author a multi-change plan |
 | `/spec:execute` | Automate the plan loop |
 
@@ -40,6 +43,7 @@
 |----------|----------|----------|
 | `proposal.md` | Why? | `.specify/changes/<name>/proposal.md` |
 | `spec.md` | What? | `.specify/changes/<name>/specs/<cap>/spec.md` |
+| `contracts/**/*.yaml` | Shape? | `.specify/contracts/` (baseline) or `.specify/changes/<name>/contracts/` (delta) |
 | `composition.yaml` | Where? (Vectis) | `.specify/changes/<name>/composition.yaml` |
 | `design.md` | How? | `.specify/changes/<name>/design.md` |
 | `tasks.md` | Sequence? | `.specify/changes/<name>/tasks.md` |
@@ -94,6 +98,7 @@ specify validate <change-dir>
 |--------|-----|--------|
 | Omnia | `https://github.com/augentic/specify/schemas/omnia` | Rust WASM |
 | Vectis | `https://github.com/augentic/specify/schemas/vectis` | Crux cross-platform |
+| Contracts | `https://github.com/augentic/specify/schemas/contracts` | API contracts |
 
 ## Directory structure
 
@@ -104,8 +109,9 @@ specify validate <change-dir>
 ├── registry.yaml         # multi-repo catalogue (optional)
 ├── initiative.md         # operator brief (optional)
 ├── plan.lock             # advisory lock for /spec:execute
+├── contracts/            # baseline API contracts (schemas/, http/, messages/)
 ├── .cache/               # cached schema + briefs
-├── changes/              # active changes (composition.yaml for Vectis)
+├── changes/              # active changes (contracts/, composition.yaml for Vectis)
 ├── specs/                # merged baseline (incl. composition.yaml for Vectis)
 ├── plans/                # initiative working dirs (discovery, proposal)
 ├── workspace/            # peer repo clones (multi-repo only)

@@ -2,7 +2,7 @@
 id: design
 description: Create the design document to explain HOW to implement the change
 generates: design.md
-needs: [proposal]
+needs: [proposal, contracts]
 ---
 
 ## Output Structure
@@ -18,7 +18,12 @@ needs: [proposal]
 
 ## API Contracts
 
-<!-- Endpoints with method, path, request/response shapes, errors -->
+<!-- When `.specify/contracts/http/` exists: reference the OpenAPI specifications
+     there rather than re-describing endpoint shapes. Add implementation-level notes
+     not captured in the contract: auth schemes, rate limits, caching, versioning strategy.
+     
+     When no baseline contracts exist: endpoints with method, path,
+     request/response shapes, errors (the existing behavior). -->
 
 ## External Services
 
@@ -34,7 +39,12 @@ needs: [proposal]
 
 ## Publication & Timing Patterns
 
-<!-- Topics, message shapes, timing, partition keys -->
+<!-- When `.specify/contracts/messages/` exists: reference the AsyncAPI specifications
+     there rather than re-describing message shapes. Add implementation-level notes
+     not captured in the contract: ordering guarantees, retry policies, DLQ strategy.
+     
+     When no baseline contracts exist: topics, message shapes, timing,
+     partition keys (the existing behavior). -->
 
 ## Implementation Constraints
 

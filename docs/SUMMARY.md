@@ -63,11 +63,13 @@
 - [Plugins](reference/plugins/index.md)
   - [Omnia](reference/plugins/omnia.md)
   - [Vectis](reference/plugins/vectis.md)
+  - [Contracts](reference/plugins/contracts.md)
   - [RT](reference/plugins/rt.md)
   - [Plan](reference/plugins/plan.md)
 - [Schemas](reference/schemas/index.md)
   - [Omnia Schema](reference/schemas/omnia.md)
   - [Vectis Schema](reference/schemas/vectis.md)
+  - [Contracts Schema](reference/schemas/contracts.md)
 - [Configuration Files](reference/configuration.md)
 
 ---

@@ -89,6 +89,12 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `android-reviewer` - review Android shells via agent team (structural/quality/integration specialists + antagonist)
 - `design-system-writer` - generate VectisDesign from tokens (iOS Swift package + Android Compose library)
 
+### Contracts Plugin (`plugins/contracts/`)
+
+- `writer` - generate or validate API contract artifacts from Specify specs
+- `validator` - validate internal consistency of contract artifacts
+- `importer` - import and normalize external API contracts (Layer 2)
+
 ### Plan Plugin (`plugins/plan/`)
 
 - `sow-writer` - translate Specify artifacts into client-facing SoW material
@@ -109,9 +115,10 @@ See [docs/architecture.md](docs/architecture.md) for the full repository structu
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
   ├── vectis/             # Vectis Crux development plugin
   │   └── references/     # Crux patterns, design system references
+  ├── contracts/          # API contract generation and validation plugin
   ├── rt/                 # RT migration plugin
   └── plan/               # Plan requirements analysis plugin
-/schemas/                 # Schema definitions (omnia, vectis)
+/schemas/                 # Schema definitions (omnia, vectis, contracts)
 /scripts/                 # Validation and plugin management
 ```
 

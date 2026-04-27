@@ -57,17 +57,28 @@ changes:
     status: done
     project: api
 
+  - name: auth-api-contract
+    schema: contracts@v1
+    description: "Define the auth API contract"
+    depends-on: [extract-auth]
+    status: pending
+
   - name: add-oauth
     description: "Add OAuth2 provider integration"
-    depends-on: [extract-auth]
+    depends-on: [extract-auth, auth-api-contract]
     affects: [auth]
+    context:
+      - contracts/http/auth-api.yaml
+      - contracts/schemas/oauth-token.yaml
     status: pending
     project: api
 
   - name: auth-ui
     description: "Login and registration screens"
-    depends-on: [add-oauth]
+    depends-on: [auth-api-contract]
     affects: [auth-ui]
+    context:
+      - contracts/http/auth-api.yaml
     status: pending
     project: mobile
 ```
@@ -85,8 +96,10 @@ changes:
 | `sources` | No | List of source keys from the top-level `sources` |
 | `affects` | No | List of spec/capability names this change touches |
 | `status` | Yes | Current state: `pending`, `in-progress`, `done`, `failed`, `blocked`, `skipped` |
+| `schema` | No | Schema identifier for project-less entries (e.g. `contracts@v1`). Required when `project` is absent. |
+| `context` | No | List of baseline paths (relative to `.specify/`) relevant to this change. Used by briefs as a focus hint when scanning baseline directories. |
 | `status-reason` | No | Explanation for non-happy-path status |
-| `project` | No | Registry project name (multi-repo only, see RFC-3b) |
+| `project` | No | Registry project name (multi-repo only, see RFC-3b). Each entry must have at least one of `project` or `schema`. |
 
 ## registry.yaml
 
