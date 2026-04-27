@@ -24,6 +24,14 @@ All Specify state lives under `.specify/` at your project root. This directory i
 │           ├── build.md
 │           └── merge.md
 │
+├── contracts/                              # Baseline API contracts
+│   ├── schemas/                           # JSON Schema payload definitions
+│   │   └── <type>.yaml
+│   ├── http/                              # OpenAPI 3.1 bindings (when HTTP is used)
+│   │   └── <domain>-api.yaml
+│   └── messages/                          # AsyncAPI 3.0 bindings (when messaging is used)
+│       └── <domain>-events.yaml
+│
 ├── changes/                               # Active changes (one directory per change)
 │   └── <change-name>/
 │       ├── .metadata.yaml                 # Lifecycle state (managed by CLI)
@@ -31,9 +39,13 @@ All Specify state lives under `.specify/` at your project root. This directory i
 │       ├── composition.yaml               # Screen layout (Vectis only)
 │       ├── design.md                      # Technical design
 │       ├── tasks.md                       # Implementation checklist
-│       └── specs/                         # Behavioral specs (one per capability)
-│           └── <capability>/
-│               └── spec.md
+│       ├── specs/                         # Behavioral specs (one per capability)
+│       │   └── <capability>/
+│       │       └── spec.md
+│       └── contracts/                     # Per-change contract delta (when API interactions exist)
+│           ├── schemas/
+│           ├── http/
+│           └── messages/
 │
 ├── specs/                                 # Merged baseline specs
 │   ├── composition.yaml                   # Baseline screen layout (Vectis only)
@@ -75,6 +87,14 @@ All Specify state lives under `.specify/` at your project root. This directory i
 Each active change gets its own directory under `changes/`. The directory name is kebab-case and validated by the CLI when you run `specify change create`.
 
 A change directory contains the core artifacts plus `.metadata.yaml` for lifecycle state. The `specs/` subdirectory holds one spec file per capability. Vectis changes also include `composition.yaml` for screen layout.
+
+### `contracts/`
+
+Platform-level API contracts, co-located with `registry.yaml` and `plan.yaml`. Contains JSON Schema payload definitions (`schemas/`), OpenAPI 3.1 HTTP bindings (`http/`), and AsyncAPI 3.0 messaging bindings (`messages/`). Subdirectories are present only when the platform uses the corresponding transport type.
+
+Contracts are a platform concern -- they describe interfaces *between* components, not internals of any one project. Both producer and consumer reference the same central definitions. When a change is merged, its `contracts/` files are copied here using opaque file replacement.
+
+A change directory may also contain a `contracts/` subdirectory holding the proposed additions or replacements for that change only. The change-level directory contains only the files the change adds or replaces -- not a full copy of the baseline.
 
 ### `specs/`
 

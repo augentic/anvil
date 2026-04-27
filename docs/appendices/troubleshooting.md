@@ -125,6 +125,50 @@ If self-heal itself fails, manually resolve:
 2. Review the failure in the journal: check `.specify/changes/<name>/journal.yaml` (if it exists before archiving).
 3. To retry: reset the plan entry to `pending` and re-run `/spec:execute`.
 
+## Contract issues
+
+### `$ref` resolution failures
+
+**Symptom:** `/contracts:validator` reports that a `$ref` pointer does not resolve.
+
+**Cause:** A schema file referenced from an OpenAPI or AsyncAPI binding does not exist in either the change's `contracts/schemas/` or the baseline `.specify/contracts/schemas/`.
+
+**Resolution:**
+1. Check the `$ref` path in the binding file.
+2. Verify the referenced schema file exists and the filename matches (kebab-case, `.yaml` extension).
+3. If the schema is new, ensure `/contracts:writer` generated it. If it is a baseline schema, ensure the baseline is up to date.
+
+### Schema metadata incomplete
+
+**Symptom:** `/contracts:validator` reports missing `$id`, `title`, or `description` on a JSON Schema file.
+
+**Cause:** The schema file was created without the required Specify metadata, or an imported external schema was not fully normalised.
+
+**Resolution:**
+1. Add the missing fields. `$id` must be `urn:specify:schemas/<filename-without-extension>`.
+2. For imported schemas, run `/contracts:importer` (Layer 2) or add the metadata manually.
+
+### Binding completeness failures
+
+**Symptom:** `/contracts:validator` reports that a schema has no protocol binding.
+
+**Cause:** A schema that appears as a top-level request/response body or message payload in a spec scenario has no corresponding OpenAPI path or AsyncAPI channel.
+
+**Resolution:**
+1. If the schema is a shared vocabulary type (e.g. `ErrorResponse`) used only via `$ref` from other schemas, it is exempt from this check -- verify the validator is not misclassifying it.
+2. If the schema should have a binding, ensure `/contracts:writer` produced the corresponding OpenAPI or AsyncAPI file.
+
+### Alignment warnings
+
+**Symptom:** `/contracts:writer` reports alignment warnings in the alignment report.
+
+**Cause:** The change's specs describe interactions that partially conflict with the baseline contracts -- e.g. a response schema missing a field that a spec scenario asserts, or a spec referencing a status code the baseline binding does not define.
+
+**Resolution:**
+1. Review each warning. The writer does not auto-resolve spec-vs-baseline conflicts.
+2. If the spec is correct, update the baseline contract in a dedicated contract change.
+3. If the baseline is correct, update the spec to conform.
+
 ## Schema and init issues
 
 ### Schema resolution failure

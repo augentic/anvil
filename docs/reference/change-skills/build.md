@@ -35,6 +35,10 @@ Source code changes in the project codebase (not under `.specify/`). Task checkb
 7. On completion of all tasks, transitions to `complete`.
 8. Writes phase outcome.
 
+### Contract-only changes
+
+Changes using the `contracts` schema have a different build behavior. The build brief delegates to `/contracts:validator` rather than code-generation skills -- the sole output is a validation pass/fail. A verify-repair loop runs up to 2 iterations: if the validator reports failures, `/contracts:writer` makes targeted repairs, then the validator re-checks. No implementation code is generated.
+
 ## Lifecycle transitions
 
 `defined --> building --> complete`

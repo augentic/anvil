@@ -108,6 +108,30 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Source:** [RFC-7: View Layout Artifact, §Delta Operations](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md)
 
+## Contracts as platform-level artifacts, not per-project
+
+**Decision:** API contracts live at `.specify/contracts/` alongside `registry.yaml` and `plan.yaml`, not nested inside any project's capability tree or spec directory.
+
+**Rationale:** An API contract is a shared agreement between parties -- it does not belong to the producer any more than to the consumer. Nesting contracts inside a single project's capability tree misattributes ownership and forces consumers to navigate workspace clones to find the producer's contract files. Co-locating contracts with `registry.yaml` makes the neutrality structural: `registry.yaml` declares *who* the participants are, `plan.yaml` declares *what* changes are planned, and `.specify/contracts/` declares *how* participants communicate. This mirrors established industry practice (proto repos, shared OpenAPI spec repos, contract-first design).
+
+**Source:** [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md)
+
+## JSON Schema + OpenAPI + AsyncAPI, not a new IDL
+
+**Decision:** The contract format uses JSON Schema as the shared payload vocabulary with OpenAPI 3.1 and AsyncAPI 3.0 as protocol-specific bindings. No proprietary schema language is introduced.
+
+**Rationale:** JSON Schema is the common denominator -- both OpenAPI 3.1 and AsyncAPI 3.0 use it for payload definitions. Defining domain types as JSON Schema files means both protocol bindings reference a single source of truth. The Rust code generation ecosystem (`schemars` + `typify`, `progenitor`) can consume these artifacts directly. Introducing a proprietary format or a less common IDL (Smithy, Protobuf) would narrow the ecosystem without clear benefit.
+
+**Source:** [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md)
+
+## Opaque replacement for contract merge
+
+**Decision:** Contract files use opaque file replacement during merge -- the entire file is replaced rather than delta-merged. Unlike spec files (which use ADDED/MODIFIED/REMOVED sections), contract files are replaced wholesale.
+
+**Rationale:** JSON Schema and OpenAPI/AsyncAPI files have their own versioning semantics (`$id`, `info.version`). Introducing a second delta-merge algorithm for YAML contract files would add complexity without clear benefit over replacement. Two concurrent changes that modify the same contract file are caught by `specify spec conflict-check` (baseline modification after the change's `defined-at` timestamp), and the resolution is to re-run the define phase against the updated baseline.
+
+**Source:** [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md)
+
 ## Stable requirement IDs as merge keys
 
 **Decision:** Each behavioral requirement has a stable `ID: REQ-XXX` line that serves as the merge key across delta specs. Requirement titles may change; IDs must not.
