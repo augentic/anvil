@@ -1,39 +1,39 @@
 # Contribution Guide
 
-Augentic welcomes community contributions to the `omnia` library.
-
-Since the project is still unstable, there are specific priorities for development. Pull requests that do not address these priorities will not be accepted until Omnia is production ready.
-
-Please familiarize yourself with the Contribution Guidelines and Project Roadmap before contributing.
-
-There are many ways to help Omnia besides contributing code:
-
-- Fix bugs or file issues
-- Improve the documentation
+Augentic welcomes contributions to the Specify framework. This document covers the essentials for getting a pull request accepted. For detailed guidance on the framework's internals -- skills, schemas, plugins, and CLI architecture -- see the [Contributing section](docs/contributing/index.md) of the Developer Guide.
 
 ## Table of Contents
 
-- [Contributing Code](#contributing-code)
-- [Code Style](#code-style)
+- [Getting started](#getting-started)
+- [Code style](#code-style)
 - [Developer's Certificate of Origin](#developers-certificate-of-origin)
 - [Pull request procedure](#pull-request-procedure)
 - [Conduct](#conduct)
 
-## Contributing Code
+## Getting started
 
-Unless you are fixing a known bug, we **strongly** recommend discussing it with the core team via a GitHub issue before getting started to ensure your work is consistent with Omnia's roadmap and architecture.
+Unless you are fixing a known bug, we recommend discussing your change with the core team via a GitHub issue before getting started to ensure alignment with the project roadmap.
 
-All contributions are made via pull request. Note that **all patches from all contributors get reviewed**. After a pull request is made other contributors will offer feedback, and if the patch passes review a maintainer will accept it with a comment. When pull requests fail testing, authors are expected to update their pull requests to address the failures until the tests pass and the pull request merges successfully.
+The framework spans two repositories:
 
-At least one review from a maintainer is required for all patches (even patches from maintainers).
+- **[augentic/specify](https://github.com/augentic/specify)** -- skills, schemas, briefs, shared references, and documentation (Markdown, YAML, TypeScript)
+- **[augentic/specify-cli](https://github.com/augentic/specify-cli)** -- the `specify` binary and its Rust workspace crates
 
-Reviewers should leave a "LGTM" comment once they are satisfied with the patch. If the patch was submitted by a maintainer with write access, the pull request should be merged by the submitter after review.
+See the [Contributing Overview](docs/contributing/index.md) for the full repository map, development environment setup, and links to topic-specific guides.
 
-## Code Style
+## Code style
 
-Please follow these guidelines when formatting source code:
+### Rust (specify-cli)
 
-- Rust code should match the output of `cargo +nightly fmt`
+- Format with `cargo fmt`
+- Lint with `cargo clippy -- -D warnings`
+- Run the full suite with `cargo make ci`
+
+### Skills and documentation (specify)
+
+- Follow the conventions of existing `SKILL.md` files in the same plugin -- see [Anatomy of a Skill](docs/contributing/skill-anatomy.md)
+- `make checks` must pass before submitting a pull request
+- Use kebab-case for file names, change names, and schema identifiers
 
 ## Developer's Certificate of Origin
 
@@ -78,37 +78,34 @@ By making a contribution to this project, I certify that:
     this project or the open source license(s) involved.
 ```
 
-To accept the DCO, simply add this line to each commit message with your name and email address (`git commit -s` will do this for you):
+To accept the DCO, add this line to each commit message with your name and email address (`git commit -s` will do this for you):
 
 ```text
 Signed-off-by: Jane Example <jane@example.com>
 ```
 
-For legal reasons, no anonymous or pseudonymous contributions are accepted ([contact us](mailto:aeneas@ory.am) if this is an issue).
+For legal reasons, no anonymous or pseudonymous contributions are accepted.
 
 ## Pull request procedure
 
-To make a pull request, you will need a GitHub account; if you are unclear on this process, see GitHub's documentation on [forking](https://help.github.com/articles/fork-a-repo) and [pull requests](https://help.github.com/articles/using-pull-requests). Pull requests should be targeted at the `master` branch. Before creating a pull request, go through this checklist:
+Pull requests should be targeted at the `main` branch. Before creating a pull request, go through this checklist:
 
-1. Create a feature branch off of `master` so that changes do not get mixed up.
-1. [Rebase](https://git-scm.com/book/en/Git-Branching-Rebasing) your local changes against the `master` branch.
-1. Run the full project test suite and confirm that it passes.
-1. Accept the Developer's Certificate of Origin on all commits (see above).
-1. Ensure that each commit has a subsystem prefix (ex: `controller:`).
+1. Create a feature branch off of `main`.
+2. [Rebase](https://git-scm.com/book/en/Git-Branching-Rebasing) your local changes against `main`.
+3. Run checks: `make checks` for the specify repo; `cargo make ci` for the specify-cli repo.
+4. Accept the Developer's Certificate of Origin on all commits (see above).
 
-Pull requests will be treated as "review requests," and maintainers will give feedback on the style and substance of the patch.
+All contributions are made via pull request. All patches from all contributors get reviewed. At least one review from a maintainer is required for all patches (even patches from maintainers).
 
-Normally, all pull requests must include tests that test your change. Occasionally, a change will be very difficult to test for. In those cases, please include a note in your commit message explaining why.
+Normally, all pull requests must include tests that cover your change. For skill changes, this means `make checks` passes and you have manually verified the skill in a target project. For CLI changes, add or update integration tests in the `tests/` directory.
 
 ## Conduct
 
 Whether you are a regular contributor or a newcomer, we care about making this community a safe place for you and we've got your back.
 
 - We are committed to providing a friendly, safe and welcoming environment for all, regardless of gender, sexual orientation, disability, ethnicity, religion, or similar personal characteristic.
-- Please avoid using nicknames that might detract from a friendly, safe and welcoming environment for all.
 - Be kind and courteous. There is no need to be mean or rude.
 - We will exclude you from interaction if you insult, demean or harass anyone. In particular, we do not tolerate behavior that excludes people in socially marginalized groups.
-- Private harassment is also unacceptable. No matter who you are, if you feel you have been or are being harassed or made uncomfortable by a community member, please contact one of the channel ops or a member of the Omnia core team immediately.
-- Likewise any spamming, trolling, flaming, baiting or other attention-stealing behaviour is not welcome.
+- Private harassment is also unacceptable. If you feel you have been or are being harassed or made uncomfortable by a community member, please contact a member of the core team immediately.
 
 We welcome discussion about creating a welcoming, safe, and productive environment for the community. If you have any questions, feedback, or concerns please let us know with a GitHub issue.

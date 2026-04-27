@@ -98,3 +98,15 @@
 
 - [Glossary](appendices/glossary.md)
 - [Troubleshooting](appendices/troubleshooting.md)
+
+---
+
+# Contributing
+
+- [Overview](contributing/index.md)
+- [Anatomy of a Skill](contributing/skill-anatomy.md)
+- [Anatomy of a Schema](contributing/schema-anatomy.md)
+- [Plugin Development](contributing/plugin-development.md)
+- [CLI Architecture](contributing/cli-architecture.md)
+- [Adding a CLI Command](contributing/adding-a-command.md)
+- [Consistency Checks](contributing/checks.md)
