@@ -106,11 +106,12 @@ Define these types (see guidance below each):
 
 ## Implementation Constraints
 
-<!-- Runtime and dependency constraints relevant to generation.
-Standard constraints for Crux projects:
-- Crux 0.17.0 (crates.io)
-- facet = "=0.31" (exact pin required)
-- uniffi = "=0.29.4" (exact pin, must match crux_core bundled version)
+<!-- Runtime and dependency constraints. Query the CLI for current pins:
+
+    specify vectis versions --dir $PROJECT_DIR --format json
+
+Include the resolved Crux, facet, and uniffi pins from that output.
+Standard platform constraints:
 - Swift 6, iOS 17+ deployment target
 - Kotlin 2.x, Jetpack Compose, Material 3, min SDK 34
 - Java 21 LTS (NOT Java 25+)

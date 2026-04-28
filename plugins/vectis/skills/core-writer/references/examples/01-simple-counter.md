@@ -61,7 +61,7 @@ clap = { version = "4", optional = true, features = ["derive"] }
 getrandom = { version = "0.3", optional = true, default-features = false }
 log = { version = "0.4", optional = true }
 pretty_env_logger = { version = "0.5", optional = true }
-uniffi = { version = "=0.29.4", optional = true }
+uniffi = { version = "{version from specify vectis versions}", optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
 ```
 

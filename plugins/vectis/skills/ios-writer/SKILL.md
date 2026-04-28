@@ -33,7 +33,7 @@ The following tools must be installed (see README.md for installation):
 - xcbeautify
 - swiftformat
 - XcodeGen
-- cargo-swift (v0.9.0) -- builds the Rust static library as a Swift Package with XCFramework
+- cargo-swift (version must match uniffi pin; run `specify vectis versions` to check) -- builds the Rust static library as a Swift Package with XCFramework
 
 ## Input Analysis
 
@@ -249,7 +249,7 @@ XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffold
 | `app.rs` not found | Verify `app-dir` points to a Crux app with `shared/src/app.rs` |
 | Unknown Effect variant | Add a placeholder `case` with a `fatalError("unhandled")` and report |
 | `xcodegen` fails | Check `project.yml` syntax; verify path references |
-| Build fails with missing types | Verify `uniffi` is pinned to `"=0.29.4"` in `shared/Cargo.toml`, matching the version bundled in `crux_core::cli::bindgen` |
+| Build fails with missing types | Verify `uniffi` is pinned to the version from `specify vectis versions` (must match `crux_core` bundled bindgen). Run `specify vectis verify` to detect mismatches |
 | VectisDesign not found | Check package path in `project.yml` relative to `{project-dir}` |
 
 ## Verification Checklist
@@ -301,7 +301,7 @@ XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffold
 
 - **Core only must exist first**: This skill generates the iOS shell for an existing Crux core. Run the core-writer skill first to generate the `shared` crate.
 - **Shell is thin**: All business logic lives in the Rust core. The shell only renders views and performs platform I/O. Never add business logic to Swift code.
-- **UniFFI bridging**: The shared crate must have `crate-type = ["staticlib"]` and the `uniffi` feature gate. The ios-writer assumes this is already configured by the core-writer. The `uniffi` crate must be pinned to `"=0.29.4"` to match `crux_core::cli::bindgen`'s bundled `uniffi_bindgen`.
+- **UniFFI bridging**: The shared crate must have `crate-type = ["staticlib"]` and the `uniffi` feature gate. The ios-writer assumes this is already configured by the core-writer. The `uniffi` crate must be pinned to the version from `specify vectis versions` (must match cargo-swift and `crux_core` bundled bindgen). Run `specify vectis verify` to detect mismatches.
 - **Generated types**: Two Swift packages are produced: `SharedTypes` (domain types via facet_typegen) and `Shared` (UniFFI bindings + XCFramework via cargo-swift).
 - **Hot reloading**: All generated shells include the [Inject](https://github.com/krzysztofzablocki/Inject) library for hot reloading during development. Inject is a no-op in Release builds (stripped by LLVM), so the boilerplate can remain permanently. Each developer must install [InjectionIII](https://github.com/nicklama/InjectionIII/releases) separately. The CLI wires Inject into `project.yml` (SPM package + Debug-only `OTHER_LDFLAGS: -Xlinker -interposable` + `EMIT_FRONTEND_COMMAND_LINES: YES`); Update Mode only has to add `@ObserveInjection`/`.enableInjection()` to new screen views.
 - **Specify integration**: When `change-dir` is provided, the skill reads the `## iOS Shell Requirements` section from the feature spec and the `## iOS Shell Details` section from design.md. The primary input remains `app.rs` from the core; the feature spec's platform section supplements with requirements that may not be expressed in the Rust types alone (e.g., navigation style, specific UX behaviors, accessibility requirements, layout constraints).

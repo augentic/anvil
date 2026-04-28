@@ -60,7 +60,7 @@ Depending on which schema you use, you may need additional tooling.
 - Xcode command line tools
 - Build and formatting tools: `brew install xcode-build-server xcbeautify swiftformat xcodegen`
 - iOS simulator targets: `rustup target add aarch64-apple-ios aarch64-apple-ios-sim`
-- Swift bindings: `cargo install cargo-swift`
+- Swift bindings: `cargo install cargo-swift@0.9`
 - Cursor extensions: [Swift Language Support](https://open-vsx.org/extension/chrisatwindsurf/swift-vscode), [SweetPad](https://marketplace.visualstudio.com/items?itemName=SweetPad.sweetpad)
 
 **For Android shells:**

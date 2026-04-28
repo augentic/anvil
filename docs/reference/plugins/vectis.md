@@ -23,7 +23,7 @@ Required only for iOS shells:
 
 ```shell
 brew install xcode-build-server xcbeautify swiftformat xcodegen
-cargo install cargo-swift
+cargo install cargo-swift@0.9
 ```
 
 Install the [Swift Language Support](https://open-vsx.org/extension/chrisatwindsurf/swift-vscode) and [SweetPad](https://marketplace.visualstudio.com/items?itemName=SweetPad.sweetpad) Cursor extensions.

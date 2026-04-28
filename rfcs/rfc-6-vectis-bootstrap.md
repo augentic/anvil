@@ -331,7 +331,7 @@ The full set of tools a developer needs on their workstation, by assembly:
 | **Core** | `cargo-vet` | `cargo vet --version` | `cargo install cargo-vet` |
 | **iOS** | Xcode + Command Line Tools | `xcode-select -p` | Mac App Store |
 | **iOS** | `xcodegen` | `xcodegen --version` | `brew install xcodegen` |
-| **iOS** | `cargo-swift` | `cargo swift --version` | `cargo install cargo-swift` |
+| **iOS** | `cargo-swift` | `cargo swift --version` | `cargo install cargo-swift@0.9` |
 | **iOS** | `xcbeautify` | `xcbeautify --version` | `brew install xcbeautify` |
 | **Android** | Android SDK (`$ANDROID_HOME`) | `echo $ANDROID_HOME` | [Android Studio](https://developer.android.com/studio) |
 | **Android** | Java 21 | `java --version` | [Adoptium](https://adoptium.net) or `brew install openjdk@21` |
@@ -359,7 +359,7 @@ If any prerequisite is missing, the CLI outputs a structured error and exits wit
       "tool": "cargo-swift",
       "assembly": "ios",
       "check": "cargo swift --version",
-      "install": "cargo install cargo-swift"
+      "install": "cargo install cargo-swift@0.9"
     }
   ],
   "message": "Install the missing tools above and re-run the command."

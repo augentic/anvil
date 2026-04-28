@@ -377,7 +377,7 @@ Gradle build files, the version catalog, the Gradle wrapper, the Makefile, `Andr
 | `app.rs` not found | Verify `app-dir` points to a Crux app with `shared/src/app.rs` |
 | Unknown Effect variant | Add a placeholder `is Effect.XXX -> { }` and report |
 | Gradle sync fails | Check `build.gradle.kts` syntax; verify NDK version matches installed |
-| Build fails with missing types | Run `make build` to regenerate types; verify `uniffi` is pinned to `"=0.29.4"` |
+| Build fails with missing types | Run `make build` to regenerate types; verify `uniffi` is pinned to the version from `specify vectis versions`. Run `specify vectis verify` to detect mismatches |
 | `cargoBuild` fails with `target may not be installed` | Run `rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android` |
 | NDK not found | Install via `sdkmanager "ndk;29.0.14206865"` or Android Studio SDK Manager |
 | Python 3 not found | Required by rust-android-gradle; install via system package manager |
@@ -389,7 +389,7 @@ Gradle build files, the version catalog, the Gradle wrapper, the Makefile, `Andr
 | `Unresolved reference 'CoreFfi'` | Add `import uniffi.shared.CoreFfi` to `Core.kt` |
 | `Unresolved reference 'Icons'` | Add `material-icons-extended` dependency to `libs.versions.toml` + `app/build.gradle.kts` |
 | `Namespace 'X' is used in multiple modules` | Use `com.vectis.{appname}.shared` namespace for the shared module |
-| `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- ensure `uniffi = "=0.29.4"` in shared `Cargo.toml` |
+| `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- run `specify vectis verify` to detect mismatches and `specify vectis versions` to see expected pins |
 | `This declaration needs opt-in` (unsigned types) | Add `@OptIn(ExperimentalUnsignedTypes::class)` to the class |
 
 ### Runtime crashes
@@ -470,7 +470,7 @@ When `design-system/tokens.yaml` exists:
 
 - **Core must exist first**: This skill generates the Android shell for an existing Crux core. Run the core-writer skill first to generate the `shared` crate.
 - **Shell is thin**: All business logic lives in the Rust core. The shell only renders composables and performs platform I/O. Never add business logic to Kotlin code.
-- **UniFFI bridging**: The shared crate must have `crate-type = ["cdylib", "staticlib", "lib"]` and the `uniffi` feature gate. The `uniffi` crate must be pinned to `"=0.29.4"` to match `crux_core::cli::bindgen`'s bundled `uniffi_bindgen`.
+- **UniFFI bridging**: The shared crate must have `crate-type = ["cdylib", "staticlib", "lib"]` and the `uniffi` feature gate. The `uniffi` crate must be pinned to the version from `specify vectis versions` (must match `crux_core` bundled bindgen). Run `specify vectis verify` to detect mismatches.
 - **UniFFI library name**: Cargo produces `libshared.so` but JNA expects `libuniffi_shared.so` by default. The Application class MUST set `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` before any UniFFI class is loaded. Without this, the app crashes on launch.
 - **Generated types live in `com.example.app`**: The codegen binary produces Kotlin types (via facet) in `com.example.app.*` and UniFFI bindings in `uniffi.shared.*`. These live in the `generated/` directory, which is included as a source directory in the `shared` Gradle module. Hand-written Kotlin in `com.vectis.{appname}` MUST import them explicitly. This is the most common source of "Unresolved reference" compile errors.
 - **rust-android-gradle**: Mozilla's plugin cross-compiles the Rust crate into `libshared.so` for 4 ABIs (arm, arm64, x86, x86_64). It requires Python 3. If Python 3.13+ causes issues with the `pipes` module, use Python 3.12.
