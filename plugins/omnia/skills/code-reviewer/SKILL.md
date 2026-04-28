@@ -2,8 +2,8 @@
 name: code-reviewer
 description: AI-powered code review for generated Rust crates, catching security issues and quality problems
 license: MIT
-argument-hint: "[crate-path] [--fix?]"
-allowed-tools: Read, Write, StrReplace, Shell, Grep
+argument-hint: "crate-path? fix?"
+allowed-tools: Read Write StrReplace Shell Grep
 ---
 
 # AI Code Review Skill

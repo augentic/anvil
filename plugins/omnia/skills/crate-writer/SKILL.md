@@ -2,8 +2,8 @@
 name: crate-writer
 description: "Write Rust WASM crates from Specify artifacts -- greenfield creation or incremental updates -- following Omnia SDK patterns with provider-based dependency injection."
 license: MIT
-argument-hint: "[crate-name]"
-allowed-tools: Read, Write, StrReplace, Shell, Grep, ReadLints
+argument-hint: "crate-name?"
+allowed-tools: Read Write StrReplace Shell Grep ReadLints
 ---
 
 # Crate Writer

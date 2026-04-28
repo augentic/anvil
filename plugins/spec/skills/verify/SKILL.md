@@ -2,7 +2,7 @@
 name: verify
 description: Compare current code against baseline specs to detect drift. Use when the user wants to check whether the codebase still matches the merged specifications.
 license: MIT
-argument-hint: "[capability-name?] [--fixtures <dir>?]"
+argument-hint: "capability-name? fixtures dir?"
 ---
 
 # Verify

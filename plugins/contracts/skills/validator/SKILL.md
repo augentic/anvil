@@ -2,7 +2,7 @@
 name: validator
 description: "Validate internal consistency of API contract artifacts — $ref resolution, schema metadata completeness, and binding coverage."
 license: MIT
-allowed-tools: Read, Grep, Glob
+allowed-tools: Read Grep Glob
 ---
 
 # Contracts Validator

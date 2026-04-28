@@ -10,25 +10,59 @@
     "name": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$",
-      "description": "Skill identifier, must match directory name."
+      "maxLength": 64,
+      "description": "Skill identifier; lowercase letters, numbers, and hyphens; max 64 chars; must match directory name. Avoid reserved words 'anthropic' and 'claude' (Anthropic platform policy)."
     },
     "description": {
       "type": "string",
       "minLength": 10,
-      "description": "One-line description including when to use the skill."
+      "maxLength": 1024,
+      "description": "One-line description including when to use the skill (max 1024 chars per Anthropic spec). Avoid XML tags."
     },
     "license": {
       "type": "string",
-      "enum": ["MIT", "Apache-2.0", "proprietary"],
-      "description": "License identifier."
+      "minLength": 1,
+      "description": "License identifier (SPDX ID, custom name, or path to a bundled LICENSE file)."
     },
     "argument-hint": {
       "type": "string",
-      "description": "Argument pattern using [required] [optional?] syntax."
+      "description": "Argument pattern using bare names for required and a ? suffix for optional (e.g. \"source-path output-dir kind value source-key k?\"). Use literal pipes for choices (a|b|c) and ... for repeatables. No --flag prefix, no angle or square brackets."
     },
     "allowed-tools": {
       "type": "string",
-      "description": "Comma-separated tool names."
+      "description": "Space-separated tool names (matches Cursor and Claude Code spec)."
+    },
+    "compatibility": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "object", "additionalProperties": true }
+      ],
+      "description": "Environment requirements such as system packages or network access (Cursor)."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Arbitrary key-value mapping for additional metadata (Cursor)."
+    },
+    "disable-model-invocation": {
+      "type": "boolean",
+      "description": "When true, the skill is only included when explicitly invoked via /skill-name; the agent will not auto-trigger it (Cursor + Claude Code)."
+    },
+    "when_to_use": {
+      "type": "string",
+      "maxLength": 1024,
+      "description": "Additional trigger phrases or example requests appended to the description in the skill listing (Claude Code)."
+    },
+    "user-invocable": {
+      "type": "boolean",
+      "description": "When false, hide the skill from the / menu so only the agent can invoke it (Claude Code)."
+    },
+    "paths": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "array", "items": { "type": "string" } }
+      ],
+      "description": "Glob patterns that limit when this skill is auto-activated; comma-separated string or YAML list (Claude Code)."
     }
   }
 }

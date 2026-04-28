@@ -7,8 +7,8 @@ description: |
   are schema-owned. Use when the plan-time discovery brief needs a
   capability-level inventory of a source before propose slices it.
 license: MIT
-allowed-tools: Read, Write, StrReplace, Shell, Grep
-argument-hint: "<input-path> <output-dir> --kind <legacy-code|documentation> [--source-key <k>]"
+argument-hint: "input-path output-dir kind legacy-code|documentation source-key k?"
+allowed-tools: Read Write StrReplace Shell Grep
 ---
 
 # Analyze Skill

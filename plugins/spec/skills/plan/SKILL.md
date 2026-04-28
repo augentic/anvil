@@ -7,7 +7,7 @@ description: |
   one project, runs the sync-peers phase (`specify workspace sync`)
   before propose and emits `workspace.md` for cross-repo planning.
 license: MIT
-argument-hint: "<initiative-name> [--from <path>...] [--against <path>] [--source <key>=<path-or-url>...] [--focus <area>] [--extend] [--dry-run]"
+argument-hint: "initiative-name from path...? against path? source key=path-or-url...? focus area? extend? dry-run?"
 ---
 
 ## Critical Path (Quick Reference)
