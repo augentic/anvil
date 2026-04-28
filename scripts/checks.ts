@@ -600,6 +600,110 @@ async function checkPluginConsistency(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
+// 11. Retired CLI verbs do not appear in skills or docs
+//     (see docs/explanation/migrating-cli-v1.md for the rename map)
+// ──────────────────────────────────────────────────────────────
+
+interface DenyPattern {
+  pattern: RegExp;
+  hint: string;
+}
+
+async function checkRetiredCliVerbs(): Promise<void> {
+  // Files that intentionally reference the old verbs (rename map, narrative
+  // explanation of the cleanup). These pages are exempt from the deny list.
+  const ALLOWLIST = new Set<string>([
+    "docs/explanation/migrating-cli-v1.md",
+    "docs/reference/cli/change.md",
+    "docs/reference/cli/initiative.md",
+    "docs/reference/cli/registry.md",
+    "docs/reference/cli/status.md",
+  ]);
+
+  const PATTERNS: DenyPattern[] = [
+    {
+      pattern: /\bspecify validate /,
+      hint: "use `specify change validate <name>`",
+    },
+    {
+      pattern: /\bspecify merge /,
+      hint: "use `specify change merge run <name>`",
+    },
+    {
+      pattern: /\bspecify spec /,
+      hint:
+        "use `specify change merge {preview, conflict-check}` (the `spec` group is retired)",
+    },
+    {
+      pattern: /\bspecify task /,
+      hint:
+        "use `specify change task {progress, mark}` (the `task` group is retired)",
+    },
+    {
+      pattern: /\bspecify initiative brief\b/,
+      hint: "use `specify initiative {init, show}`",
+    },
+    {
+      pattern: /\bspecify initiative registry\b/,
+      hint: "use `specify registry {show, validate}`",
+    },
+    {
+      pattern: /\bspecify change phase-outcome\b/,
+      hint: "use `specify change outcome set ...`",
+    },
+    {
+      pattern: /\bspecify change journal-append\b/,
+      hint: "use `specify change journal append ...`",
+    },
+    {
+      // The bare `specify change outcome <name>` form (no `set`/`show` after
+      // `outcome`) is ambiguous after the cleanup. Reads must use `outcome
+      // show`; writes must use `outcome set`.
+      pattern: /\bspecify change outcome (?!set\b|show\b)/,
+      hint:
+        "use `specify change outcome show <name>` to read or `specify change outcome set <name> <phase> <outcome> ...` to write",
+    },
+  ];
+
+  const SCAN_ROOTS = [
+    join(REPO_ROOT, "plugins", "spec", "skills"),
+    join(REPO_ROOT, "docs"),
+  ];
+
+  for (const root of SCAN_ROOTS) {
+    for await (const entry of walk(root, {
+      exts: [".md"],
+      includeDirs: false,
+    })) {
+      if (await isUnderSymlink(entry.path)) continue;
+      const rel = relative(REPO_ROOT, entry.path);
+      if (ALLOWLIST.has(rel)) continue;
+
+      let content: string;
+      try {
+        content = await Deno.readTextFile(entry.path);
+      } catch {
+        continue;
+      }
+
+      const lines = content.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        for (const { pattern, hint } of PATTERNS) {
+          if (pattern.test(line)) {
+            fail(
+              `Retired CLI verb in ${rel}:${i + 1} -- ${
+                line.trim()
+              } -- ${hint}`,
+            );
+          }
+        }
+      }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // 12. Instruction files contain output location preamble
 // ──────────────────────────────────────────────────────────────
 
@@ -639,6 +743,7 @@ await Promise.all([
   validateSchemaYaml(),
   checkSchemaIntegrity(),
   checkInstructionPreambles(),
+  checkRetiredCliVerbs(),
 ]);
 await Promise.all([
   validateSkillFrontmatter(),

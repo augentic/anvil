@@ -1,6 +1,8 @@
 # specify change
 
-Create, inspect, transition, and archive individual changes.
+Create, inspect, validate, transition, merge, and archive individual changes. The `change` noun group absorbs the per-change operations that previously lived at the top level (`validate`, `merge`, `spec`, `task`); see [Migrating CLI v1](../../explanation/migrating-cli-v1.md) for the rename map.
+
+Every per-change verb takes the change `<name>`. The CLI resolves the on-disk directory from the name internally (no `<change-dir>` arg).
 
 ## Subcommands
 
@@ -36,7 +38,7 @@ Show detailed status for a change.
 specify change status <name>
 ```
 
-Returns lifecycle state, artifact completion, task progress, and timestamps.
+Returns lifecycle state, artifact completion, task progress, and timestamps. The bare project dashboard lives at [`specify status`](status.md).
 
 ### specify change transition
 
@@ -88,12 +90,105 @@ Drop a change (transition to `dropped` and archive).
 specify change drop <name> [--reason "<rationale>"]
 ```
 
-### specify change phase-outcome
+### specify change validate
+
+Run structural and semantic artifact validation against a change.
+
+```bash
+specify change validate <name> [--format json]
+```
+
+Checks include:
+
+- **Structural checks** -- artifact files exist, conform to expected format, required sections present.
+- **Referential checks** -- specs referenced in the proposal exist, requirement IDs are unique and stable.
+- **Schema checks** -- artifacts conform to the active schema's rules.
+- **Composition checks** (Vectis only) -- structural validation of `composition.yaml` plus cross-artifact checks (field coverage, event coverage, ViewModel mapping, overlay trigger consistency, navigation graph consistency). See [Artifact Format > Composition](../artifact-format.md#composition-document-vectis-only) for the full checklist.
+
+Returns a JSON report with `Pass` / `Fail` / `Deferred` classifications. The Pass/Fail/Deferred model lets the CLI handle structural checks while the agent evaluates semantic ones; see the [Decision Log](../../explanation/decision-log.md) for the rationale.
+
+### specify change merge
+
+Three subcommands cover the merge surface (renamed from the old top-level `specify merge` / `specify spec preview` / `specify spec conflict-check`).
+
+#### specify change merge preview
+
+Preview what a merge would do without writing anything.
+
+```bash
+specify change merge preview <name> [--format json]
+```
+
+Shows which baseline specs would be created, modified, or removed. For Vectis changes, also previews composition delta operations (screen-level `added`/`modified`/`removed`). Used by `/spec:merge` before committing.
+
+#### specify change merge conflict-check
+
+Detect whether the baseline has changed since the change was defined.
+
+```bash
+specify change merge conflict-check <name> [--format json]
+```
+
+Returns a pass/fail result. Checks for both spec conflicts and composition conflicts (Vectis only -- detects when a baseline screen has been modified by another merged change since this change was created, using per-screen checksums). If conflicts are detected, the change's specs may need to be regenerated against the current baseline.
+
+#### specify change merge run
+
+The terminal merge operation. Commits the delta merge and archives the change.
+
+```bash
+specify change merge run <name> [--format json]
+```
+
+Performs:
+
+1. Applies spec deltas from the change to the baseline at `.specify/specs/`.
+2. Applies composition deltas (Vectis only) -- merges `composition.yaml` screen-level `added`/`modified`/`removed` operations into the baseline `composition.yaml`, using per-screen SHA-256 checksums (`.composition-checksums.yaml`) for conflict detection.
+3. Validates coherence of the merged baseline.
+4. Transitions the change to `merged` and stamps `PhaseOutcome { phase: merge, outcome: success }` atomically with the status transition.
+5. Moves the change directory to `.specify/archive/YYYY-MM-DD-<name>/`.
+
+This is the CLI command invoked by `/spec:merge` after preview and conflict-check pass. It is a single atomic operation -- if any step fails, no changes are committed.
+
+**Workspace clone auto-commit (RFC-3b).** When `change merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived change directory with message `"specify: merge <change-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. The operator uses `specify workspace push` to publish commits to remotes.
+
+**Preconditions.** Change must be in `complete` state; `change merge preview` and `change merge conflict-check` should pass (the skill checks these before calling `merge run`).
+
+### specify change task
+
+Two subcommands cover the task surface (renamed from the old top-level `specify task progress` / `specify task mark`).
+
+#### specify change task progress
+
+Report task completion progress for a change.
+
+```bash
+specify change task progress <name> [--format json]
+```
+
+Returns the count of completed and total tasks, parsed from `tasks.md` checkbox syntax.
+
+#### specify change task mark
+
+Mark a task as complete.
+
+```bash
+specify change task mark <name> <task-id> [--format json]
+```
+
+Flips the checkbox from `- [ ]` to `- [x]` for the specified task. The task ID is the numbered identifier (e.g. `1.2`, `2.1`).
+
+Used by `/spec:build` as it completes each task.
+
+### specify change outcome
+
+Two subcommands cover the phase outcome surface (renamed from `specify change phase-outcome` / bare `specify change outcome`).
+
+#### specify change outcome set
 
 Write the phase outcome for a change.
 
 ```bash
-specify change phase-outcome <name> <phase> <outcome> --summary "..." [--context "..."]
+specify change outcome set <name> <phase> <outcome> --summary "..." [--context "..."]
 ```
 
 | Argument | Description |
@@ -104,24 +199,28 @@ specify change phase-outcome <name> <phase> <outcome> --summary "..." [--context
 | `--summary` | Short description of the outcome |
 | `--context` | Optional verbatim detail (stderr tail, failing test, etc.) |
 
-Used by `/spec:execute` to determine plan entry transitions. For merge success, the CLI stamps the outcome automatically during `specify merge` -- skills do not call `phase-outcome` on the merge success path.
+Used by `/spec:execute` to determine plan entry transitions. For merge success, the CLI stamps the outcome automatically during `change merge run` -- skills do not call `outcome set` on the merge success path.
 
-### specify change outcome
+#### specify change outcome show
 
 Read the phase outcome for a change.
 
 ```bash
-specify change outcome <name> [--format json]
+specify change outcome show <name> [--format json]
 ```
 
 Returns the `outcome` field from `.metadata.yaml`. Falls back to the archive when the active change directory is absent (e.g. after a successful merge archives the change). Used by `/spec:execute` to read the result of a phase after it returns.
 
-### specify change journal-append
+### specify change journal
+
+Two subcommands cover the change journal surface (renamed from `specify change journal-append`; `show` is new).
+
+#### specify change journal append
 
 Append an entry to the change's journal.
 
 ```bash
-specify change journal-append <name> <phase> <kind> --summary "..." [--context "..."]
+specify change journal append <name> <phase> <kind> --summary "..." [--context "..."]
 ```
 
 | Argument | Description |
@@ -134,9 +233,22 @@ specify change journal-append <name> <phase> <kind> --summary "..." [--context "
 
 Records questions, failures, and recovery steps in `journal.yaml` for audit. The journal is append-only and never consumed as a signalling channel -- `.metadata.yaml:outcome` is the only state `/spec:execute` reads.
 
+#### specify change journal show
+
+Read the journal entries for a change.
+
+```bash
+specify change journal show <name> [--format json]
+```
+
+Renders the journal in chronological order. Useful for triaging failed or deferred runs.
+
 ## See also
 
 - [/spec:define](../change-skills/define.md) -- skill that creates changes
+- [/spec:build](../change-skills/build.md) -- skill that drives build, calls `change task progress`/`mark`
+- [/spec:merge](../change-skills/merge.md) -- skill that orchestrates `change merge {preview, conflict-check, run}`
 - [/spec:drop](../change-skills/drop.md) -- skill that drops changes
 - [Lifecycle](../lifecycle.md) -- change state machine reference
 - [Configuration Files](../configuration.md) -- project and change metadata
+- [Migrating CLI v1](../../explanation/migrating-cli-v1.md) -- rename map for the cleanup.

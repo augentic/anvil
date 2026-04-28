@@ -35,15 +35,14 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 
 | Family | Purpose | Reference |
 |--------|---------|-----------|
-| [specify status](status.md) | Show active changes and progress | Top-level convenience |
-| [specify change](change.md) | Create, inspect, transition, and archive individual changes | Layer 2 operations |
+| [specify status](status.md) | Project dashboard -- registry summary, plan progress, active changes | Top-level convenience |
+| [specify change](change.md) | Per-change CRUD, validation, merge, task tracking, outcome, journal | Layer 2 operations |
 | [specify plan](plan.md) | Scaffold, populate, validate, and transition initiative plans | Layer 3 operations |
-| [specify initiative](initiative.md) | Manage initiative brief and platform registry | Layer 3 setup |
+| [specify initiative](initiative.md) | Manage the operator-authored initiative brief | Layer 3 setup |
+| [specify registry](registry.md) | Manage the platform registry at `.specify/registry.yaml` | Multi-repo platform |
 | [specify schema](schema.md) | Schema resolution and brief pipeline queries | Schema infrastructure |
-| [specify spec](spec.md) | Merge preview and baseline drift detection | Pre-merge checks |
-| [specify validate](validate.md) | Structural and semantic artifact validation | Quality gates |
-| [specify task](task.md) | Task progress tracking and checkbox manipulation | Build phase support |
-| [specify merge](merge.md) | Commit delta merge and archive | Terminal merge operation |
 | [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |
 | [specify init](init.md) | Project scaffold | One-time setup |
 | [specify vectis](vectis.md) | Cross-platform Crux project scaffold and verification | Vectis-specific tooling |
+
+The previous standalone families `specify validate`, `specify spec`, `specify task`, and `specify merge` were absorbed into [`specify change`](change.md) (`change validate`, `change merge {preview, conflict-check, run}`, `change task {progress, mark}`). See [Migrating CLI v1](../../explanation/migrating-cli-v1.md) for the full rename map.

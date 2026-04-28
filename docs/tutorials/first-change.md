@@ -125,7 +125,7 @@ The agent reads the build brief and works through the tasks in `tasks.md`. For e
 - If the task has a **skill directive tag** (see [Glossary](../appendices/glossary.md)) (e.g. `<!-- skill: omnia:crate-writer -->`), the agent delegates to that specialist skill.
 - If the task has no tag, the agent implements it using the schema's default build instruction.
 
-As each task completes, the agent marks it done via `specify task mark`. You can watch the checkboxes flip in `tasks.md`.
+As each task completes, the agent marks it done via `specify change task mark`. You can watch the checkboxes flip in `tasks.md`.
 
 When all tasks are complete, the change transitions to `complete`.
 

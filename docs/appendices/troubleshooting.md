@@ -43,7 +43,7 @@ Common failure modes and their resolutions.
 **Cause:** The baseline changed since the change was defined (another change was merged in between).
 
 **Resolution:**
-1. Review the conflict: `specify spec conflict-check <change-dir>`
+1. Review the conflict: `specify change merge conflict-check <name>`
 2. Options:
    - Re-run `/spec:define` to update specs against the current baseline.
    - Manually resolve conflicts in the spec files.
@@ -51,7 +51,7 @@ Common failure modes and their resolutions.
 
 ### Coherence failure after merge
 
-**Symptom:** `specify merge` fails during coherence validation.
+**Symptom:** `specify change merge run` fails during coherence validation.
 
 **Cause:** The merged baseline has structural issues (e.g. duplicate requirement IDs, broken references).
 

@@ -27,7 +27,7 @@ $ /spec:execute --loop
 #   email-verification was in-progress with outcome: success on merge.
 Self-heal: email-verification → done (merge success from prior run)
 #   specify plan transition email-verification done
-#   specify change journal-append email-verification merge recovery \
+#   specify change journal append email-verification merge recovery \
 #       --summary "Self-heal on startup: applied terminal transition done after finding success outcome on merge" \
 #       --context "before=in-progress/merged, after=done"
 
@@ -99,7 +99,7 @@ $ /spec:execute --loop
 #   field is absent + LifecycleStatus non-terminal" → fall through
 #   to step 3 mid-change resume with LifecycleStatus=building.
 Self-heal: product-catalog — resuming build (LifecycleStatus=building)
-#   specify change journal-append product-catalog build recovery \
+#   specify change journal append product-catalog build recovery \
 #       --summary "Self-heal on startup: resumed mid-change build phase (LifecycleStatus=building)" \
 #       --context "before=in-progress/building, after=resume-build"
 #   NO plan transition here — the entry stays in-progress while the
@@ -197,12 +197,12 @@ After Run 2 completes, `journal.yaml` files under `.specify/changes/` contain ex
   recorded-at: <run-2-startup-timestamp>
 ```
 
-Both entries are `type: recovery` written via `specify change journal-append <name> <phase> recovery …`. Phase-authored entries (`type: question`, `type: failure`) from mid-run work are preserved unchanged; the driver only appends, never rewrites.
+Both entries are `type: recovery` written via `specify change journal append <name> <phase> recovery …`. Phase-authored entries (`type: question`, `type: failure`) from mid-run work are preserved unchanged; the driver only appends, never rewrites.
 
 ## Invariants pinned by this fixture
 
 1. **Stale lock stamps are reclaimed by the CLI.** Run 2's `specify plan lock acquire` does not fail with `Error::DriverBusy` — the CLI-level liveness check notices Run 1's PID is gone and reclaims the stamp before the skill sees it.
-2. **Mid-build crash leaves `.metadata.yaml.outcome` absent.** The phase writes `outcome` via `specify change phase-outcome` as its terminal action; a SIGKILL mid-phase never reaches that call, so the field is missing rather than malformed. Self-heal treats missing-`outcome` + non-terminal `LifecycleStatus` as mid-change resume (NOT as an ambiguity halt — the ambiguity branch is reserved for contradictions, e.g. `outcome.phase=merge` with `LifecycleStatus=defining`).
+2. **Mid-build crash leaves `.metadata.yaml.outcome` absent.** The phase writes `outcome` via `specify change outcome set` as its terminal action; a SIGKILL mid-phase never reaches that call, so the field is missing rather than malformed. Self-heal treats missing-`outcome` + non-terminal `LifecycleStatus` as mid-change resume (NOT as an ambiguity halt — the ambiguity branch is reserved for contradictions, e.g. `outcome.phase=merge` with `LifecycleStatus=defining`).
 3. **Resume does NOT write a plan transition.** Self-heal's `product-catalog — resuming build` diagnostic reflects a journal append + a phase re-invocation; the plan entry remains `in-progress` until the supervised-run body's normal terminal transition fires after `/spec:merge` completes.
 4. **Argument resolution re-runs against the same plan.** When the resumed `/spec:build` eventually finishes and the outer loop advances to `shopping-cart`, argument resolution starts fresh from `plan.yaml` — self-heal does not cache or replay the Run 1 argument set. The `--source orders=…` flag on `shopping-cart` is constructed during Run 2 from the same top-level `sources` map it would have used in Run 1.
 5. **Tasks.md progress survives the crash.** `/spec:build`'s resume semantics (already documented in `plugins/spec/skills/build/SKILL.md`) rely on the checkbox state in `tasks.md`; nothing the driver does interferes with that.

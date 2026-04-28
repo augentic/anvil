@@ -95,10 +95,8 @@ Three layers, independently useful, stacked top to bottom:
   - `specify plan archive` -- Move a completed `plan.yaml` (and its `.specify/plans/<name>/` working directory) to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
   - `specify plan lock {acquire, release, status}` -- Advisory `.specify/plan.lock` PID stamp held by the `/spec:execute` driver.
 
-- **`specify initiative {brief, registry}`** -- Operator brief and platform registry.
-  - `specify initiative brief {init, show}` -- Owns `.specify/initiative.md`.
-  - `specify initiative registry {show, validate}` -- Owns `.specify/registry.yaml`.
-
+- **`specify initiative {init, show}`** -- Operator brief at `.specify/initiative.md`.
+- **`specify registry {show, validate}`** -- Platform registry at `.specify/registry.yaml`.
 - **`specify workspace {sync, status, push}`** -- Materialises `.specify/workspace/<peer>/` for multi-repo planning; pushes workspace clones to remotes after execution.
 
 A typical initiative: `/spec:plan migrate-to-v2 --source monolith=/path/to/legacy` → review the authored plan with `specify plan status` → `/spec:execute --loop` until it reports `all-done`.

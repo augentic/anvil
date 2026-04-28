@@ -7,7 +7,7 @@
 # in-progress, on-disk says done.
 #
 # This file is illustrative — the real on-disk form is whatever
-# `specify change phase-outcome email-verification merge success
+# `specify change outcome set email-verification merge success
 #   --summary "..."` writes, shaped per
 # crates/change/src/lib.rs::ChangeMetadata in augentic/specify-cli.
 

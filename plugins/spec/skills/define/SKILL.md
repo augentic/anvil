@@ -54,7 +54,7 @@ The authoritative contract for how `/spec:execute` builds these flag values live
 This skill is the **define** phase of the `/spec:execute` driver loop. Before returning control to the caller, always record the phase's outcome via:
 
 ```bash
-specify change phase-outcome <name> define <outcome> --summary "..." [--context "..."]
+specify change outcome set <name> define <outcome> --summary "..." [--context "..."]
 ```
 
 where `<outcome>` is exactly one of:
@@ -63,20 +63,20 @@ where `<outcome>` is exactly one of:
 - `failure`  — a brief failed after the repair budget was exhausted (e.g. extraction's fixture-capture sub-step crashed, a writer brief could not converge). Use `--summary` to name which brief and the load-bearing stderr line; use `--context` for verbatim detail (stderr tail, failing assertion, etc.).
 - `deferred` — human judgement is needed (ambiguous requirement, missing scope, unresolvable conflict between sources and existing baselines). Use `--summary` to name the question; use `--context` for the ambiguous-requirement text itself.
 
-`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome` on return and translates the outcome into a plan transition (`done` / `failed` / `blocked`). If the field is missing or malformed, `/spec:execute` treats the phase as `deferred` and stops for triage — do not skip the CLI call. This `phase-outcome` invocation is the **last action** the skill takes before returning control.
+`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome` on return and translates the outcome into a plan transition (`done` / `failed` / `blocked`). If the field is missing or malformed, `/spec:execute` treats the phase as `deferred` and stops for triage — do not skip the CLI call. This `outcome set` invocation is the **last action** the skill takes before returning control.
 
 ## Journal entries during the run
 
 Whenever the skill encounters a situation the human should see — a genuine question, a repair attempt that failed, or a notable recovery — append to `.specify/changes/<name>/journal.yaml` **during** the run, not just at the end:
 
 ```bash
-specify change journal-append <name> define <kind> --summary "..." [--context "..."]
+specify change journal append <name> define <kind> --summary "..." [--context "..."]
 ```
 
 Kinds:
 
 - `question` — ambiguous requirement, missing scope, or anything that might produce a `deferred` outcome at the end of the phase. Write one entry per question so the human sees the full trail when triaging.
-- `failure` — a brief returned an error after retry. Write one entry per failure; the final `phase-outcome` summary rolls up only the load-bearing one, but auditors still see every attempt.
+- `failure` — a brief returned an error after retry. Write one entry per failure; the final `outcome set` summary rolls up only the load-bearing one, but auditors still see every attempt.
 - `recovery` — a self-heal / recovery step happened. (Typically written by `/spec:execute` itself; phases rarely need to append this kind.)
 
 `journal.yaml` is a pure append-only audit log; `/spec:execute` never consumes it as a signalling channel. The `outcome` field in `.metadata.yaml` is the only state `/spec:execute` reads on phase return.

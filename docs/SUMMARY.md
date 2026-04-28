@@ -63,11 +63,8 @@
   - [specify change](reference/cli/change.md)
   - [specify plan](reference/cli/plan.md)
   - [specify initiative](reference/cli/initiative.md)
+  - [specify registry](reference/cli/registry.md)
   - [specify schema](reference/cli/schema.md)
-  - [specify spec](reference/cli/spec.md)
-  - [specify validate](reference/cli/validate.md)
-  - [specify task](reference/cli/task.md)
-  - [specify merge](reference/cli/merge.md)
   - [specify workspace](reference/cli/workspace.md)
   - [specify init](reference/cli/init.md)
   - [specify vectis](reference/cli/vectis.md)
@@ -91,6 +88,7 @@
 - [Artifacts in Depth](explanation/artifacts.md)
 - [Schemas and Plugins](explanation/schemas-and-plugins.md)
 - [Decision Log](explanation/decision-log.md)
+- [Migrating CLI v1](explanation/migrating-cli-v1.md)
 
 ---
 

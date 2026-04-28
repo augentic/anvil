@@ -29,16 +29,15 @@ The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/
 CLI surface the skills depend on:
 
 - `specify init` — scaffold `.specify/` and write `project.yaml`.
-- `specify status` — list active changes and per-change progress.
-- `specify change {create, list, status, transition, touched-specs, overlap, archive, drop, phase-outcome, journal-append}` — lifecycle verbs. `phase-outcome` stamps the `.metadata.yaml:outcome` that `/spec:execute` reads; `journal-append` writes `question` / `failure` / `recovery` entries into `journal.yaml`.
+- `specify status` — project dashboard summarising registry, plan, and active changes (single-change view lives at `specify change status <name>`).
+- `specify change {create, list, status, transition, touched-specs, overlap, archive, drop, validate, merge {preview, conflict-check, run}, task {progress, mark}, outcome {set, show}, journal {append, show}}` — every per-change verb. `outcome set` stamps the `.metadata.yaml:outcome` that `/spec:execute` reads; `journal append` writes `question` / `failure` / `recovery` entries into `journal.yaml`.
 - `specify plan {init, validate, next, status, create, amend, transition, archive, lock}` — plan CRUD and lifecycle (RFC-2 Layer 1 + RFC-3a). `init` scaffolds an empty plan; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/spec:execute`.
-- `specify initiative {brief, registry}` — operator brief and platform registry. `brief {init, show}` owns `.specify/initiative.md`; `registry {show, validate}` owns `.specify/registry.yaml`.
+- `specify initiative {init, show}` — operator brief at `.specify/initiative.md`.
+- `specify registry {show, validate}` — platform registry at `.specify/registry.yaml`.
 - `specify workspace {sync, status, push}` — materialises `.specify/workspace/<peer>/` for multi-repo planning; pushes workspace clones to remotes after execution.
 - `specify schema {resolve, check, pipeline}` — schema resolution and brief topology.
-- `specify spec {preview, conflict-check}` — dry-run merge operations and baseline drift detection.
-- `specify validate` — structural + semantic artifact checks.
-- `specify task {progress, mark}` — task progress and checkbox flips.
-- `specify merge` — commit spec merge + archive.
+
+The previous standalone groups (`specify validate`, `specify spec`, `specify task`, `specify merge`) and the previous nested verbs (`specify initiative {brief, registry}`, `specify change phase-outcome`, `specify change journal-append`) were folded into `specify change` and top-level `registry` / `initiative` in the CLI cleanup. See [docs/explanation/migrating-cli-v1.md](docs/explanation/migrating-cli-v1.md) for the rename map.
 
 Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 

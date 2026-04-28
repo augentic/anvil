@@ -1,6 +1,6 @@
 ---
 name: status
-description: Show the current state of Specify changes. Invokes `specify status` and renders active changes, artifact completion, and task progress. Use when the user wants to check where they are.
+description: Show the current state of Specify changes. Invokes `specify status` (or `specify change status <name>` when scoped) and renders active changes, artifact completion, and task progress. Use when the user wants to check where they are.
 license: MIT
 argument-hint: "[change-name?]"
 ---
@@ -27,11 +27,19 @@ Optionally specify a change name to focus on. Otherwise show an overview.
 
 2. **Gather status from the CLI**
 
+   When `$CHANGE` is set, invoke the per-change view:
+
    ```bash
-   specify status ${CHANGE:+"$CHANGE"} --format json
+   specify change status "$CHANGE" --format json
    ```
 
-   The response contains a `changes` array; each entry has `name`, `status`, `schema`, `tasks` (`{ total, complete }` or `null`), and `artifacts` (map of brief id → `bool`). On non-zero exit surface the JSON `error`/`message` and stop. If `changes` is empty, report "No active changes."
+   When `$CHANGE` is unset, invoke the project dashboard:
+
+   ```bash
+   specify status --format json
+   ```
+
+   The dashboard response carries `{registry, plan, changes}` top-level keys; the `changes` array (and the per-change response above) lists entries with `name`, `status`, `schema`, `tasks` (`{ total, complete }` or `null`), and `artifacts` (map of brief id → `bool`). On non-zero exit surface the JSON `error`/`message` and stop. If `changes` is empty, report "No active changes."
 
 3. **Render the output**
 

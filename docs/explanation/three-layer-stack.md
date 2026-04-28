@@ -26,12 +26,10 @@ Layer1: "Layer 1 — CLI Primitives" {
   changeCli: "specify change"
   planCli: "specify plan"
   initCli: "specify initiative"
+  registryCli: "specify registry"
   workspaceCli: "specify workspace"
   schemaCli: "specify schema"
-  specCli: "specify spec"
-  validateCli: "specify validate"
-  taskCli: "specify task"
-  mergeCli: "specify merge"
+  statusCli: "specify status"
 }
 ```
 
@@ -41,10 +39,12 @@ The `specify` CLI is the foundation. It owns every deterministic operation: crea
 
 The primary command families are:
 
-- **`specify change ...`** -- create, inspect, transition, and archive individual changes.
+- **`specify change ...`** -- per-change CRUD, validation, merge (`change merge {preview, conflict-check, run}`), task tracking (`change task {progress, mark}`), phase outcome (`change outcome {set, show}`), and journal entries (`change journal {append, show}`).
 - **`specify plan ...`** -- scaffold, populate, validate, transition, and archive an initiative plan.
-- **`specify initiative ...`** -- manage the initiative brief and platform registry.
+- **`specify initiative ...`** -- manage the operator-authored initiative brief at `.specify/initiative.md`.
+- **`specify registry ...`** -- manage the platform registry at `.specify/registry.yaml` (multi-repo initiatives).
 - **`specify workspace ...`** -- materialise, inspect, and push workspace clones for multi-repo initiatives.
+- **`specify status`** -- project dashboard summarising registry, plan, and active changes.
 
 **Who uses it:** Power users who want fine-grained control, CI pipelines, and anyone debugging the state of `.specify/`. Layer 1 is always available as a manual fallback beneath the higher layers.
 

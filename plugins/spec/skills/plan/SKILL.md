@@ -70,7 +70,7 @@ Flags:
 
 At least one of `--from`, `--against`, `--source`, or a populated `initiative.md:inputs` list must be supplied. A bare `/spec:plan <name>` with no CLI inputs **and** no `initiative.md` (or `initiative.md` with empty `inputs`) is a hard exit — the skill cannot decide the initiative's shape without at least one input.
 
-When `initiative.md:inputs` is the only source of inputs, the skill reads them via `specify initiative brief show --format json` before entering the core loop and treats each entry as if it had been supplied on the command line: `kind: legacy-code` entries route through the same path as `--source <k>=<path>:legacy-code`, and `kind: documentation` entries route through the `--from` path. The closed `kind` enum and default-kind mapping for CLI flags are pinned under §*Input kinds* and §*Kind defaults for CLI flags* below. Both documentation and legacy-code dispatch are live via `/spec:analyze`. Plan-time `/spec:extract` call sites have been fully retired; `/spec:extract` now runs only at `/spec:define` time with scope inferred from the change's description.
+When `initiative.md:inputs` is the only source of inputs, the skill reads them via `specify initiative show --format json` before entering the core loop and treats each entry as if it had been supplied on the command line: `kind: legacy-code` entries route through the same path as `--source <k>=<path>:legacy-code`, and `kind: documentation` entries route through the `--from` path. The closed `kind` enum and default-kind mapping for CLI flags are pinned under §*Input kinds* and §*Kind defaults for CLI flags* below. Both documentation and legacy-code dispatch are live via `/spec:analyze`. Plan-time `/spec:extract` call sites have been fully retired; `/spec:extract` now runs only at `/spec:define` time with scope inferred from the change's description.
 
 ## Input kinds (normative)
 
@@ -109,7 +109,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
      exit on failure.
    - Require at least one of --from, --against, --source, or a
      populated `initiative.md:inputs` list. Discover the brief's
-     inputs via `specify initiative brief show --format json`
+     inputs via `specify initiative show --format json`
      (exit 0 and `"brief": null` ⇒ brief absent ⇒ no brief inputs;
      `"frontmatter.inputs": []` ⇒ present but empty ⇒ no brief
      inputs). Reject with a hard exit on failure. A bare
@@ -194,7 +194,7 @@ Discovery is read-only with respect to `plan.yaml`. The output header is exactly
 
 ## Step 3(b) — Sync peers (multi-repo only)
 
-When **`.specify/registry.yaml`** exists and declares **more than one** project (`projects.length > 1` in the JSON from `specify initiative registry show --format json`), `/spec:plan` enters the **sync-peers** phase between discovery and propose. Single-repo initiatives (absent registry or `projects.length ≤ 1`) skip this step entirely.
+When **`.specify/registry.yaml`** exists and declares **more than one** project (`projects.length > 1` in the JSON from `specify registry show --format json`), `/spec:plan` enters the **sync-peers** phase between discovery and propose. Single-repo initiatives (absent registry or `projects.length ≤ 1`) skip this step entirely.
 
 **Normative sequence**
 
@@ -305,7 +305,7 @@ When `/spec:plan` inserts a contract change for an API boundary between projects
 2. **Consumer project**: Add the contract file paths to `contracts.consumes` on the project that calls the API.
 3. **Import changes**: Add the contract file paths to `contracts.imports` on the project integrating with the external system.
 
-Use `specify initiative registry validate` to verify the invariants after populating roles. The validation is advisory — the operator can adjust role assignments.
+Use `specify registry validate` to verify the invariants after populating roles. The validation is advisory — the operator can adjust role assignments.
 
 ## Working directory (`.specify/plans/<name>/`)
 

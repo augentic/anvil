@@ -17,7 +17,7 @@ The seed is the same full `platform-v2` plan used by the sibling `../e2e-platfor
 
 ## What this fixture proves
 
-1. **Mid-build crashes are recoverable.** A SIGKILL between `/spec:build`'s start and its terminal `specify change phase-outcome` call leaves `.metadata.yaml` with `status: building` and no `outcome` — a state self-heal classifies as mid-change resume (§Self-heal on startup, step 3 → `LifecycleStatus=building` → resume `/spec:build`).
+1. **Mid-build crashes are recoverable.** A SIGKILL between `/spec:build`'s start and its terminal `specify change outcome set` call leaves `.metadata.yaml` with `status: building` and no `outcome` — a state self-heal classifies as mid-change resume (§Self-heal on startup, step 3 → `LifecycleStatus=building` → resume `/spec:build`).
 2. **Stale driver locks are reclaimed.** Run 2's `specify plan lock acquire` does not fail with `Error::DriverBusy` — the CLI's liveness check notices Run 1's PID is gone and reclaims the stamp.
 3. **The argument-resolution plumbing is stateless.** `/spec:execute` does not persist the resolved `--source` flags across runs. When the outer loop in Run 2 advances past the resumed `product-catalog` iteration to `shopping-cart`, it resolves that entry's `sources: [orders]` fresh from the plan's top-level `sources` map — same code path as Run 1 would have used.
 4. **Crash recovery is observably indistinguishable at the plan level.** `plan.yaml.after` is byte-for-byte identical to the uncrashed sibling's. The only difference is one additional `type: recovery` entry in `product-catalog/journal.yaml`.

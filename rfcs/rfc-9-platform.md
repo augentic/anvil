@@ -8,7 +8,7 @@ Specify's ideal developer workflow is a **single-repo operator experience**: an 
 
 **Operator-experience gaps**
 
-1. **No initiative umbrella.** The platform-first flow is five Layer 1/2/3 commands the operator must drive in sequence (`brief init` → registry edit → `/spec:plan` → `/spec:execute --loop` → `workspace push` → manual PR merge). There is no `/spec:initiative start` Layer 4 verb that strings them together.
+1. **No initiative umbrella.** The platform-first flow is five Layer 1/2/3 commands the operator must drive in sequence (`initiative init` → registry edit → `/spec:plan` → `/spec:execute --loop` → `workspace push` → manual PR merge). There is no `/spec:initiative start` Layer 4 verb that strings them together.
 2. **Registry topology is manual.** The framework works with whatever the operator puts in `registry.yaml` but cannot propose, create, or modify registry entries as part of its analysis.
 3. **The platform-repo hub pattern is hinted, not codified.** The data model already supports a registry-only platform repo, but no convention, scaffold, or tutorial pins whether the platform repo is itself a project (`url: .`) or a registry-only hub.
 4. **Initiative landing has no closure verb.** `workspace push` ships the work; nothing observes the whole initiative as landed (all PRs merged, baselines committed, workspace clones pruned).
@@ -48,7 +48,7 @@ Each shape uses the same `/spec:plan → /spec:execute → workspace push → wo
 ### What the gaps look like in practice
 
 - The operator must **manually author** `registry.yaml` entries for new projects before Specify can route work to them. For greenfield initiatives where the repo topology is itself a design decision, this front-loads a decision the framework should help make.
-- The platform-first vision implies **one command** to start an initiative. Today it is five commands (`brief init` → registry edit → `/spec:plan` → `/spec:execute --loop` → `workspace push`) plus N manual PR merges. Each step is correct in isolation; together they leak the operator out of the platform repo.
+- The platform-first vision implies **one command** to start an initiative. Today it is five commands (`initiative init` → registry edit → `/spec:plan` → `/spec:execute --loop` → `workspace push`) plus N manual PR merges. Each step is correct in isolation; together they leak the operator out of the platform repo.
 - The **platform repo's identity** is ambiguous. Tutorials and skills are agnostic about whether the platform repo is itself a code project (`url: .`) or a registry-only hub. The `/spec:init` flow does not distinguish the two; the choice is made implicitly by the first registry edit.
 - During multi-repo execution, a spec in the backend project cannot **reference** a capability defined in the mobile project. The workspace materialises peer baselines under `.specify/workspace/<peer>/specs/`, but no syntax or resolution exists for cross-project references.
 - Contracts are **copied** into workspace clones by `workspace sync`, but there is no mechanism to detect when a change in one project breaks a contract consumed by another. RFC-8 lands the contract format and role declarations; what's missing is the cross-project validation loop.
@@ -147,14 +147,14 @@ Cross-link from `docs/explanation/three-layer-stack.md`, the `/spec:plan` SKILL.
 
 ### Phase 2: Dynamic registry management (high impact)
 
-#### 2A. `specify initiative registry add`
+#### 2A. `specify registry add`
 
 **Problem.** The operator must manually edit `registry.yaml` to add new projects. There is no CLI verb for creating or modifying registry entries.
 
-**Action.** Add a `specify initiative registry add` verb:
+**Action.** Add a `specify registry add` verb:
 
 ```text
-specify initiative registry add <name> \
+specify registry add <name> \
     --url <url> \
     --schema <schema> \
     [--description "..."]
@@ -167,13 +167,11 @@ Semantics:
 - Enforces the `description-missing-multi-repo` invariant: if the addition creates a multi-project registry and any existing project lacks a `description`, the verb fails with a diagnostic telling the operator to add descriptions to existing entries first.
 - Runs `validate_shape` after the write.
 
-Complementary verb: `specify initiative registry remove <name>` — removes an entry, validates shape, warns if plan entries reference the removed project.
+Complementary verb: `specify registry remove <name>` — removes an entry, validates shape, warns if plan entries reference the removed project.
 
-**Validation ordering invariant.** `specify plan create --project <name>` and `specify plan amend --project <name>` continue to reject unknown projects (RFC-3b §Validation). Any consumer that wants to assign work to a new project must therefore call `specify initiative registry add` and `specify workspace sync` *before* the corresponding plan write. The 2B registry-proposal sub-step and the 2C umbrella skill must respect this ordering.
+**Validation ordering invariant.** `specify plan create --project <name>` and `specify plan amend --project <name>` continue to reject unknown projects (RFC-3b §Validation). Any consumer that wants to assign work to a new project must therefore call `specify registry add` and `specify workspace sync` *before* the corresponding plan write. The 2B registry-proposal sub-step and the 2C umbrella skill must respect this ordering.
 
-**Forward reference (namespace).** RFC-3b moved workspace operations from `specify initiative workspace ...` to top-level `specify workspace ...`. A future RFC may apply the same flattening to `specify initiative registry ...` → `specify registry ...`. To keep the eventual rename a routing change rather than a relocation, the 2A handler implementation should live in `src/commands/registry.rs` (a new module) rather than nested inside `commands/initiative.rs`. The `RegistryAction` enum can stay attached to `InitiativeAction` for this RFC; only the handler module moves.
-
-**Scope.** specify-cli: new `RegistryAction` variants (`Add`, `Remove`), new handler module `src/commands/registry.rs`, new tests covering kebab-case validation, URL classification, multi-project description enforcement, and round-tripping through `Registry::load`.
+**Scope.** specify-cli: new `RegistryAction` variants (`Add`, `Remove`) added to `src/commands/registry.rs`, new tests covering kebab-case validation, URL classification, multi-project description enforcement, and round-tripping through `Registry::load`.
 
 #### 2B. Plan skill proposes new registry entries
 
@@ -183,7 +181,7 @@ Complementary verb: `specify initiative registry remove <name>` — removes an e
 
 1. After inference, if any entry is tagged `unresolved` and the operator's override creates a project name that does not exist in the registry, prompt: "Project `<name>` does not exist in registry.yaml. Create it?"
 2. If accepted, gather `url` (default: `git@github.com:<org>/<name>.git` inferred from existing registry entries' URL patterns) and `schema` (default: the schema used by the majority of existing entries, or prompted if ambiguous).
-3. Shell out to `specify initiative registry add <name> --url <url> --schema <schema> --description "<inferred>"`.
+3. Shell out to `specify registry add <name> --url <url> --schema <schema> --description "<inferred>"`.
 4. Run `specify workspace sync` to bootstrap the new slot.
 5. Continue assignment with the new project available.
 
@@ -191,14 +189,14 @@ For **greenfield** initiatives where no registry exists at all, the discovery br
 
 **Execute-time amendment path.** Registry amendments are not always foreseeable at plan time — a build brief may discover that a capability is misrouted, or `/spec:extract` may surface tangled code that should split into a new repo. To make this recoverable without leaving the platform-first flow:
 
-1. Phase skills can emit a `registry-amendment-required` phase outcome with a structured payload `{ proposed-name, proposed-url, proposed-schema, proposed-description, rationale }`. `specify change phase-outcome` is extended to accept this outcome shape.
-2. The execute driver classifies `registry-amendment-required` as `blocked` (existing classification), records the payload in the plan journal via `specify change journal-append`, and surfaces the proposal to the operator at the end of the change.
-3. The operator reviews the proposal and runs `specify initiative registry add` (or accepts via 2C's umbrella skill), then `specify workspace sync`, then `specify plan amend <change> --project <new>`, then `specify plan transition <change> pending` to re-queue.
+1. Phase skills can emit a `registry-amendment-required` phase outcome with a structured payload `{ proposed-name, proposed-url, proposed-schema, proposed-description, rationale }`. `specify change outcome set` is extended to accept this outcome shape.
+2. The execute driver classifies `registry-amendment-required` as `blocked` (existing classification), records the payload in the plan journal via `specify change journal append`, and surfaces the proposal to the operator at the end of the change.
+3. The operator reviews the proposal and runs `specify registry add` (or accepts via 2C's umbrella skill), then `specify workspace sync`, then `specify plan amend <change> --project <new>`, then `specify plan transition <change> pending` to re-queue.
 4. The recovery sequence is documented in the execute skill guardrails as the canonical `registry-amendment-required` recovery path.
 
 This keeps phase skills unaware of registry mechanics (they just emit the outcome) and keeps the registry under operator control (the driver never auto-adds projects).
 
-**Scope.** Plan skill SKILL.md amendments + Omnia/Vectis propose brief updates + execute SKILL.md guardrails section + `specify change phase-outcome` accepting the new outcome shape. CLI verb from 2A is a prerequisite.
+**Scope.** Plan skill SKILL.md amendments + Omnia/Vectis propose brief updates + execute SKILL.md guardrails section + `specify change outcome set` accepting the new outcome shape. CLI verb from 2A is a prerequisite.
 
 #### 2C. `/spec:initiative` umbrella skill
 
@@ -218,8 +216,8 @@ This keeps phase skills unaware of registry mechanics (they just emit the outcom
 
 Internally, the skill drives the canonical loop:
 
-1. **Brief.** If `.specify/initiative.md` is absent, run `specify initiative brief init` and prompt the operator to fill it (or accept defaults inferred from `--shape` and CLI flags).
-2. **Registry.** Run `specify initiative registry validate`. If the registry is multi-project, ensure every entry has a `description` (2A invariant). If `--shape` is `new-feature` or `migrate-legacy` and the registry is empty, prompt for an initial topology (2B greenfield path).
+1. **Brief.** If `.specify/initiative.md` is absent, run `specify initiative init` and prompt the operator to fill it (or accept defaults inferred from `--shape` and CLI flags).
+2. **Registry.** Run `specify registry validate`. If the registry is multi-project, ensure every entry has a `description` (2A invariant). If `--shape` is `new-feature` or `migrate-legacy` and the registry is empty, prompt for an initial topology (2B greenfield path).
 3. **Plan.** Invoke `/spec:plan <name>` with the forwarded `--from` / `--against` / `--source` flags. If `--dry-run` was passed, stop after the plan-skill's own dry-run preview.
 4. **Execute.** Invoke `/spec:execute --loop`. Halts at the same points the underlying skill halts (self-heal, stuck, `registry-amendment-required` from 2B).
 5. **Push.** Run `specify workspace push`.
@@ -248,7 +246,7 @@ Internally, the skill drives the canonical loop:
 
 - **Read path.** `.specify/workspace/<peer>/specs/` already contains peer baselines. Extend the specs brief to accept `@<project>:<capability>` references in scenario steps and requirements. At define time, resolve references by reading the workspace clone's baseline specs.
 - **Write path.** References are informational — they declare "this scenario depends on `<project>:<capability>` being available" — but do not generate code or create cross-project artifacts. They surface as warnings when the referenced capability does not exist in the peer's baseline.
-- **Validation.** `specify validate` gains a `peer-reference-unresolved` check that reads workspace baselines and flags broken references.
+- **Validation.** `specify change validate` gains a `peer-reference-unresolved` check that reads workspace baselines and flags broken references.
 
 **Scope.** specify-cli: spec parser extension, validation rule. Specify repo: specs brief and build brief updates. Requires workspace clones to be present (already ensured by the execute skill's workspace freshness check).
 

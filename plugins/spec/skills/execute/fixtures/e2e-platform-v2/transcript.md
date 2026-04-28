@@ -42,7 +42,7 @@ $ /spec:execute --loop
 #   Self-heal applies the terminal transition.
 Self-heal: email-verification → done (merge success from prior run)
 #   specify plan transition email-verification done
-#   specify change journal-append email-verification merge recovery
+#   specify change journal append email-verification merge recovery
 #       --summary "Self-heal on startup: applied terminal transition done after finding success outcome on merge"
 #       --context "before=in-progress/merged, after=done"
 

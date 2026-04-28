@@ -42,7 +42,7 @@ For each `--source <key>=<path>` flag, processed in declaration order:
    - When the description contains path-like references for this source, use each as an `--include` glob on `/spec:extract`. Treat bare directory names as recursive globs (e.g. `src/auth/` becomes `src/auth/**`).
    - When the description contains no path hints for this source, run extract on the full source tree (no filter flags).
 
-   Log the inferred scope in the journal via `specify change journal-append <name> define question --summary "Inferred scope for <key>: <filters>"`. This gives operators an audit trail of what was extracted.
+   Log the inferred scope in the journal via `specify change journal append <name> define question --summary "Inferred scope for <key>: <filters>"`. This gives operators an audit trail of what was extracted.
 
 2. **Invoke `/spec:extract`:**
 
@@ -76,7 +76,7 @@ After every `--source` has been processed and merged, the merged `<change-dir>/s
 
 After the per-source loop has merged its extracted specs into `<change-dir>/specs/`, determine whether this change modifies existing baselines by reading the plan entry's `description` for references to prior change names (e.g. "delta-target user-registration", "modifies email-verification", "refactors out of user-registration and email-verification").
 
-For each referenced name, check whether a baseline exists at `.specify/specs/<name>/spec.md`. Collect the confirmed names into the **inferred affects set**. Log the inferred set in the journal via `specify change journal-append <name> define question --summary "Inferred delta targets: <names>"`.
+For each referenced name, check whether a baseline exists at `.specify/specs/<name>/spec.md`. Collect the confirmed names into the **inferred affects set**. Log the inferred set in the journal via `specify change journal append <name> define question --summary "Inferred delta targets: <names>"`.
 
 If the inferred affects set is non-empty, run the following four-step pass. If the description does not reference any existing baselines, skip this section entirely — all extracted specs remain in fresh new-crate form.
 

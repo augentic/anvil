@@ -59,7 +59,7 @@ Each change directory contains a `.metadata.yaml` file managed exclusively by th
 
 - **`status`** -- the current lifecycle state.
 - **`created_at`** / **`updated_at`** -- ISO 8601 timestamps.
-- **`outcome`** -- phase outcome (`success`, `failure`, `deferred`) written by `specify change phase-outcome`. Used by `/spec:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`.
+- **`outcome`** -- phase outcome (`success`, `failure`, `deferred`) written by `specify change outcome set`. Used by `/spec:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`.
 - **`schema`** -- the schema URL used for this change.
 - **`touched_specs`** -- the list of spec files this change affects.
 

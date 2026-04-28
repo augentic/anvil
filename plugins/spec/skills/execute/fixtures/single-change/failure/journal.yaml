@@ -1,4 +1,4 @@
-# Journal entries written by /spec:build (via `specify change journal-append
+# Journal entries written by /spec:build (via `specify change journal append
 # checkout-api build failure --summary "..." --context "..."`) as it
 # iterated through its verify-repair loop. /spec:execute does NOT rewrite,
 # augment, or summarise these entries. The driver's only signal channel

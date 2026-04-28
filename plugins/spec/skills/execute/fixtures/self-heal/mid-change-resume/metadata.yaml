@@ -4,7 +4,7 @@
 # via `specify change transition`) but crashed BEFORE any phase
 # stamped an `outcome` field on this file — either the crash caught
 # /spec:define mid-flight just after its lifecycle transition but
-# before `specify change phase-outcome`, or it caught the driver in
+# before `specify change outcome set`, or it caught the driver in
 # the window between /spec:define returning and /spec:build starting.
 # Either way the concrete on-disk shape is the same: non-terminal
 # `LifecycleStatus`, no `outcome` field.

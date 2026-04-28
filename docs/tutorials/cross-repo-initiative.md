@@ -44,7 +44,7 @@ The `description` field is the key signal -- it tells Specify what each repo is 
 Validate the registry:
 
 ```bash
-specify initiative registry validate
+specify registry validate
 ```
 
 <details>
@@ -63,7 +63,7 @@ Registry valid.
 For complex initiatives, write an operator brief at `.specify/initiative.md`:
 
 ```bash
-specify initiative brief init
+specify initiative init
 ```
 
 This scaffolds the file. Edit it to describe your intent:

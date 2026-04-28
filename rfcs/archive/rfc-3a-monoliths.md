@@ -2,6 +2,8 @@
 
 > Status: Implemented · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](rfc-2-execution.md)
 >
+> **Note**: Verb names in this archived RFC predate the CLI cleanup; see [docs/explanation/migrating-cli-v1.md](../../docs/explanation/migrating-cli-v1.md) for current names.
+>
 > **Supersession note.** The `scope` and `affects` structured fields on plan entries, introduced by §*The `scope` field* and §*How `scope` travels through the pipeline*, have been removed. Scope and delta-targeting intent are now carried in the `description` field as prose and inferred by the define skill at execution time. The three-hop flag-forwarding pipeline (plan.yaml → execute → define → extract) is replaced by description-driven inference in the specs brief. Extract's native `--include`/`--exclude`/`--manifest` flags are preserved; the change is about *who decides* those values. See the plan schema README for current field documentation.
 
 ## Abstract

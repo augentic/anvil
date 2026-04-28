@@ -1,31 +1,31 @@
 # specify initiative
 
-Manage the operator-authored initiative brief and platform registry.
+Manage the operator-authored initiative brief at `.specify/initiative.md`.
 
 ## Subcommands
 
-### specify initiative brief
+### specify initiative init
 
-Manage the operator-authored initiative brief.
-
-```bash
-specify initiative brief init
-specify initiative brief show
-```
-
-`init` scaffolds `.specify/initiative.md` with frontmatter template. `show` renders the brief content.
-
-### specify initiative registry
-
-Manage the platform registry.
+Scaffold `.specify/initiative.md` with the frontmatter template.
 
 ```bash
-specify initiative registry show
-specify initiative registry validate
+specify initiative init
 ```
 
-`show` renders `registry.yaml` content. `validate` checks required fields (e.g. `description` required when multiple projects exist).
+Idempotent — re-running on an existing brief is a no-op.
+
+### specify initiative show
+
+Render the brief content (frontmatter + prose body).
+
+```bash
+specify initiative show [--format json]
+```
+
+`--format json` emits the parsed frontmatter alongside the prose body for tooling consumers (e.g. `/spec:plan`).
 
 ## See also
 
+- [specify registry](registry.md) -- platform registry (top-level since the CLI cleanup; previously `specify initiative registry`).
 - [specify workspace](workspace.md) -- workspace sync, status, and push (moved from `specify initiative workspace` in RFC-3b).
+- [Migrating CLI v1](../../explanation/migrating-cli-v1.md) -- rename map for the cleanup.

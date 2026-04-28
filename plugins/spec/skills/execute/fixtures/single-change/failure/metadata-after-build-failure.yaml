@@ -1,5 +1,5 @@
 # Snapshot of .specify/changes/checkout-api/.metadata.yaml after
-# /spec:build stamps outcome: failure via `specify change phase-outcome
+# /spec:build stamps outcome: failure via `specify change outcome set
 # checkout-api build failure --summary "..." --context "..."`. The
 # driver reads `.outcome.outcome` (== failure) and enters the drop path
 # (step 11):

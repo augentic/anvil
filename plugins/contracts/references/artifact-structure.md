@@ -85,7 +85,7 @@ During a change's define phase, proposed contract modifications live in the chan
 
 ### Merge Semantics
 
-When `specify merge` processes a change (Layer 2):
+When `specify change merge run` processes a change (Layer 2):
 
 - Files in the change's `contracts/` are copied into `.specify/contracts/`, replacing files at the same path.
 - Files absent from the change's `contracts/` are left untouched in the baseline.
@@ -93,7 +93,7 @@ When `specify merge` processes a change (Layer 2):
 
 ### Conflict Detection
 
-Two concurrent changes that both modify the same contract file (e.g. both add paths to `http/user-api.yaml`) will conflict. `specify spec conflict-check` detects this: if the baseline file was modified after the change's `defined-at` timestamp, the merge is blocked. Resolution: re-run the change's define phase against the updated baseline.
+Two concurrent changes that both modify the same contract file (e.g. both add paths to `http/user-api.yaml`) will conflict. `specify change merge conflict-check` detects this: if the baseline file was modified after the change's `defined-at` timestamp, the merge is blocked. Resolution: re-run the change's define phase against the updated baseline.
 
 ## Baseline vs Change-Level
 

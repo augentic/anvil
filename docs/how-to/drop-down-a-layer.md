@@ -33,16 +33,16 @@ specify change status <name>
 specify change transition <name> defined
 
 # Check task progress
-specify task progress .specify/changes/<name>/
+specify change task progress <name>
 
 # Preview what merge would do
-specify spec preview .specify/changes/<name>/
+specify change merge preview <name>
 
 # Check for baseline conflicts
-specify spec conflict-check .specify/changes/<name>/
+specify change merge conflict-check <name>
 
 # Validate artifacts
-specify validate .specify/changes/<name>/
+specify change validate <name>
 ```
 
 ## Common scenarios

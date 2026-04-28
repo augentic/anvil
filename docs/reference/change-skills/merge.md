@@ -30,18 +30,18 @@ Merge a completed change into the baseline.
 ## Behavior
 
 1. Validates that the change is in `complete` state.
-2. Previews the merge via `specify spec preview` -- shows what will change in the baseline.
-3. Checks for baseline drift via `specify spec conflict-check` -- detects whether the baseline has changed since define.
+2. Previews the merge via `specify change merge preview` -- shows what will change in the baseline.
+3. Checks for baseline drift via `specify change merge conflict-check` -- detects whether the baseline has changed since define.
 4. Confirms with the user (unless running non-interactively).
-5. Runs `specify merge` which:
+5. Runs `specify change merge run` which:
    - Applies spec deltas to the baseline.
    - Copies contract files into `.specify/contracts/` using opaque file replacement -- files that share a path are replaced; files absent from the change are left untouched.
    - Applies composition deltas to the baseline `composition.yaml` (Vectis only -- screen-level `added`/`modified`/`removed` operations with per-screen checksum conflict detection).
    - Validates coherence of the merged baseline.
    - Transitions the change to `merged`.
    - Moves the change directory to the archive.
-   - **Workspace clone auto-commit (RFC-3b).** When the merge runs inside a workspace clone (CWD under `.specify/workspace/*/` with `project.yaml`), `specify merge` auto-commits the merged baseline and archive with message `"specify: merge <change-name>"`. The commit stages only `.specify/` subtrees. If the commit fails, the spec-merge still succeeds -- the commit failure is a warning. The operator publishes changes via `specify workspace push`.
-6. Writes phase outcome. On the success path, `specify merge` stamps the outcome automatically -- the skill does not call `phase-outcome` separately. On failure or deferred paths, the skill writes the outcome via `specify change phase-outcome`.
+   - **Workspace clone auto-commit (RFC-3b).** When the merge runs inside a workspace clone (CWD under `.specify/workspace/*/` with `project.yaml`), `specify change merge run` auto-commits the merged baseline and archive with message `"specify: merge <change-name>"`. The commit stages only `.specify/` subtrees. If the commit fails, the spec-merge still succeeds -- the commit failure is a warning. The operator publishes changes via `specify workspace push`.
+6. Writes phase outcome. On the success path, `specify change merge run` stamps the outcome automatically -- the skill does not call `outcome set` separately. On failure or deferred paths, the skill writes the outcome via `specify change outcome set`.
 
 ## Lifecycle transitions
 
