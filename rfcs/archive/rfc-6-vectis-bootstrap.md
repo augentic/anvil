@@ -19,7 +19,7 @@ Today, the agent writes each file individually by interpreting prose instruction
 - **Time**: A full greenfield bootstrap can take 10-20 minutes of agent time before any feature-specific work begins.
 - **Fragility**: When reference documents update (e.g., a new Crux version), every agent invocation must independently discover and apply the change.
 
-The scaffolded output is not a judgment call — it is a structured decision tree with enumerable inputs and deterministic outputs. This is exactly the category of operation that belongs in a CLI, following the same principle established in [RFC-1](archive/rfc-1-cli.md): **deterministic operations belong in a binary, not in agent prose.**
+The scaffolded output is not a judgment call — it is a structured decision tree with enumerable inputs and deterministic outputs. This is exactly the category of operation that belongs in a CLI, following the same principle established in [RFC-1](rfc-1-cli.md): **deterministic operations belong in a binary, not in agent prose.**
 
 ## Design Principles
 
@@ -522,7 +522,7 @@ vectis update-versions --verify          # prove everything compiles
 
 ### Workspace Layout
 
-The CLI lives in this repository as a Cargo workspace member. It is independent of the `specify` CLI from [RFC-1](archive/rfc-1-cli.md) — different binary, different purpose, different lifecycle. If RFC-1 is implemented first, the two can share a workspace; if not, `vectis` establishes its own.
+The CLI lives in this repository as a Cargo workspace member. It is independent of the `specify` CLI from [RFC-1](rfc-1-cli.md) — different binary, different purpose, different lifecycle. If RFC-1 is implemented first, the two can share a workspace; if not, `vectis` establishes its own.
 
 ```
 specify/                              # repo root
@@ -707,8 +707,8 @@ The current templates include VectisDesign references conditionally. A future `-
 
 ## References
 
-- [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — the parallel effort for Specify workflow operations
-- [RFC-1a: Deferred Validation](archive/rfc-1a-validation.md) — the Pass/Fail/Deferred model that inspires the verify output
+- [RFC-1: `specify` CLI](rfc-1-cli.md) — the parallel effort for Specify workflow operations
+- [RFC-1a: Deferred Validation](rfc-1a-validation.md) — the Pass/Fail/Deferred model that inspires the verify output
 - `plugins/vectis/skills/core-writer/SKILL.md` — Create Mode steps 1-13
 - `plugins/vectis/skills/ios-writer/SKILL.md` — Create Mode steps 1-11
 - `plugins/vectis/skills/android-writer/SKILL.md` — Create Mode steps 1-15
