@@ -19,6 +19,10 @@ Specify's ideal developer workflow is a **single-repo operator experience**: an 
 
 1. **Contract federation is copy-based.** Central contracts are distributed by file copy during `workspace sync`; there is no version negotiation, breaking-change detection, or reconciliation across projects.
 
+**Verb consistency gaps**
+
+1. **`init` survives in two `specify` verbs.** `specify initiative init` and `specify plan init` are the only `init` verbs in the v1 surface; every other noun-create verb is `create`. Operators have to keep two near-identical verbs (`init` and `create`) in their head, and the 2C umbrella skill would have to remember which composite verb to call when shelling out.
+
 **Housekeeping gaps**
 
 1. **Stale fixtures reference removed schema fields.** Multiple execute fixtures still reference the `affects` field, which has been removed from the plan schema.
@@ -26,7 +30,7 @@ Specify's ideal developer workflow is a **single-repo operator experience**: an 
 3. **No end-to-end multi-repo validation.** The full plan → execute → push path across multiple workspace clones has not been validated against a real platform initiative.
 4. **Workspace-tier semantics are blurred.** Operator docs do not distinguish legacy-source clones (read-only, ephemeral, under `.specify/plans/<name>/analyze/<key>/`) from registered project clones (read-write, durable, under `.specify/workspace/<name>/`).
 
-This RFC proposes a phased plan to close each gap, ordered by impact on the operator experience.
+This RFC proposes a phased plan to close each gap, ordered by impact on the operator experience. Phase 4 also opportunistically picks up two RFC-2 §Future items (4B plan doctor, 4D fixture-backed verification) that fit naturally alongside the closure verbs.
 
 ## Motivation
 
@@ -173,7 +177,7 @@ The verb rename is mechanical and behaviour-preserving. No flag changes, no JSON
 3. Rename the matching dispatch arms in `src/commands/plan/mod.rs` and the underlying lifecycle helpers (`run_plan_init` → `run_plan_create`; the entry-append helper → `run_plan_add`). Handlers keep their current behaviour — refuse-if-exists for `create`, append-with-validation for `add`.
 4. Add two v1.x rows to the v1 migration map (`docs/explanation/migrating-cli-v1.md`): `specify plan init <name>` → `specify plan create <name>`, and `specify plan create <name>` → `specify plan add <name>`. Tag both as v1.x evolution alongside 1F's row.
 5. Audit and update every reference in skills, docs, tutorials, fixtures, and project rules. Non-exhaustive list: `docs/reference/cli/plan.md`, `docs/reference/initiative-skills/plan.md`, `docs/reference/quick-reference.md`, `docs/reference/configuration.md`, `docs/appendices/glossary.md`, `plugins/spec/skills/{plan,execute,merge,define,build}/SKILL.md`, `schemas/{omnia,vectis}/briefs/plan/propose.md`, plan-skill propose fixtures (`plan/fixtures/propose/`, `plan/fixtures/propose/monolith/`, `plan/fixtures/propose-vectis/`), execute fixture READMEs (`execute/fixtures/e2e-platform-v2/README.md`), `AGENTS.md`, `README.md`, `.cursor/rules/project.mdc`. Every occurrence of `plan init` and `plan create` in markdown and yaml gets reviewed.
-6. Update the in-flight references **within this RFC** that still use the pre-rename names: 2A's validation-ordering invariant (`specify plan create --project` → `specify plan add --project`), 2B's greenfield prompt (`specify plan init` → `specify plan create`), and 2C's Layer 3 → Layer 1 pattern (`specify plan {init, create}` → `specify plan {create, add}`). The RFC ships with the post-rename names so the worked example in §1C and the umbrella skill in §2C compose against the canonical surface from day one.
+6. **Within-RFC references — already updated.** This RFC ships with the post-rename surface in 2A, 2B, and 2C: 2A's validation-ordering invariant uses `specify plan add --project`, 2B's greenfield prompt uses `specify plan create`, and 2C's Layer 3 → Layer 1 pattern uses `specify plan {create, add}`. Implementers do not need to repeat the within-RFC update — only the repo-wide audit in step 5 remains.
 
 **Why both at once.** Renaming `plan init` → `plan create` alone is impossible (the name is taken). Renaming `plan create` → `plan add` alone leaves the file-creating verb still called `init`, defeating the consistency win. The two renames must land in the same change so operators learn the new surface once.
 
@@ -259,8 +263,8 @@ Internally, the skill drives the canonical loop:
 3. **Plan.** Invoke `/spec:plan <name>` with the forwarded `--from` / `--against` / `--source` flags. If `--dry-run` was passed, stop after the plan-skill's own dry-run preview.
 4. **Execute.** Invoke `/spec:execute --loop`. Halts at the same points the underlying skill halts (self-heal, stuck, `registry-amendment-required` from 2B).
 5. **Push.** Run `specify workspace push`.
-6. **Land.** When `--auto-merge` is supplied, run `specify workspace merge` (5A) to merge PRs whose CI is green. Without `--auto-merge`, surface the open PR list and stop.
-7. **Finalize.** When all PRs are merged, run `specify initiative finalize` (5C) to archive the plan and (optionally) prune workspace clones.
+6. **Land.** When `--auto-merge` is supplied, run `specify workspace merge` (4A) to merge PRs whose CI is green. Without `--auto-merge`, surface the open PR list and stop.
+7. **Finalize.** When all PRs are merged, run `specify initiative finalize` (4C) to archive the plan and (optionally) prune workspace clones.
 
 **Composition discipline.** The umbrella skill *only* invokes other Layer 1/2/3 skills and CLI verbs — no new logic. Every step has a manual-fallback equivalent (the existing skill or CLI command) so the operator can always drop down a layer. This is the same composition principle RFC-2 applied to `/spec:execute`'s relationship with `/spec:define` / `/spec:build` / `/spec:merge`.
 
@@ -270,7 +274,7 @@ Internally, the skill drives the canonical loop:
 
 **Status of `/spec:plan` and `/spec:execute`.** Both remain operator-facing. `/spec:initiative` is the recommended entry point but the lower skills are still callable directly for power users, partial reruns, and CI pipelines.
 
-**Scope.** Specify repo: new skill `plugins/spec/skills/initiative/SKILL.md`, new fixtures under `plugins/spec/skills/initiative/fixtures/`, three-layer-stack documentation update to introduce a "Layer 4" (initiative orchestration) above existing Layer 3 (or rename the layers — see §*Open question* below). CLI: no new verbs (the `init` → `create` renames are in 1F and 1G). Depends on 1F (`initiative create` rename), 1G (`plan {create, add}` rename), 2A (registry mutation), 2B (registry proposal), 5A (`workspace merge`, optional via `--auto-merge`), 5C (`initiative finalize`).
+**Scope.** Specify repo: new skill `plugins/spec/skills/initiative/SKILL.md`, new fixtures under `plugins/spec/skills/initiative/fixtures/`, three-layer-stack documentation update to introduce a "Layer 4" (initiative orchestration) above existing Layer 3 (or rename the layers — see §*Open question* below). CLI: no new verbs (the `init` → `create` renames are in 1F and 1G). Depends on 1C (worked-example tutorial — three-shape acceptance criteria extend it), 1F (`initiative create` rename), 1G (`plan {create, add}` rename), 2A (registry mutation), 2B (registry proposal), 4A (`workspace merge`, optional via `--auto-merge`), 4C (`initiative finalize`).
 
 > **Open question.** The current three-layer stack labels the plan/execute skills as "Layer 3 — Initiative Orchestration." If `/spec:initiative` sits above them, either (a) rename Layer 3 to "Plan & Drive" and introduce Layer 4 "Initiative Orchestration," or (b) absorb `/spec:initiative` into Layer 3 alongside `/spec:plan` and `/spec:execute`, treating it as an aggregator within the same layer. Decide as part of 2C implementation; the docs change is small either way.
 
@@ -293,26 +297,9 @@ Internally, the skill drives the canonical loop:
 
 ---
 
-### Phase 4: Broader migration support (medium impact, high effort)
+### Phase 4: Autonomy and polish
 
-#### 4B. Fixture-backed verification mode
-
-**Problem.** RFC-2 §Future defers "fixture-backed verification" — a mode where `/spec:verify` compares live behavior against captured fixtures to detect drift post-migration. Without it, the replay-writer's fixtures are only useful as one-shot integration tests, not as ongoing regression guards.
-
-**Action.** Design a verification mode that:
-
-1. Accepts a fixture directory (the replay-writer's output format).
-2. Replays each fixture against the migrated service's API.
-3. Compares responses against expected outputs, allowing configurable tolerance (e.g., ignore timestamps, allow additional fields).
-4. Reports drift as a verify-level diagnostic.
-
-**Scope.** New skill definition. May require CLI extensions for the verify pipeline. Defer to after Phase 3.
-
----
-
-### Phase 5: Autonomy and polish
-
-#### 5A. `specify workspace merge` — automated PR merging
+#### 4A. `specify workspace merge` — automated PR merging
 
 **Problem.** RFC-3b §Non-goals explicitly defers automated PR merging. `workspace push` creates PRs; merging is manual. For fully autonomous execution, the driver should be able to merge PRs after CI passes.
 
@@ -327,7 +314,7 @@ Guard: only merge PRs that were created by `workspace push` (match branch name p
 
 **Scope.** specify-cli: new `WorkspaceAction::Merge` variant. Requires `gh` (same constraint as `workspace push`).
 
-#### 5B. Plan doctor — extended diagnostics
+#### 4B. Plan doctor — extended diagnostics
 
 **Problem.** RFC-2 §Future defers `specify plan doctor` — extended plan health checks beyond what `validate` covers (e.g., circular dependencies, orphan sources, stale workspace clones, unreachable entries).
 
@@ -340,9 +327,9 @@ Guard: only merge PRs that were created by `workspace push` (match branch name p
 
 **Scope.** specify-cli: new command. Specify repo: document in execute skill guardrails.
 
-#### 5C. `specify initiative finalize` — initiative landing closure
+#### 4C. `specify initiative finalize` — initiative landing closure
 
-**Problem.** `workspace push` ships local commits; `workspace merge` (5A) lands the PRs; `specify plan archive` sweeps local plan state. But no single verb confirms an initiative as **fully landed** — all per-project PRs merged on remote, all baselines committed to mainline, workspace clones optionally pruned. The operator must check each forge's PR page, then remember to archive the plan.
+**Problem.** `workspace push` ships local commits; `workspace merge` (4A) lands the PRs; `specify plan archive` sweeps local plan state. But no single verb confirms an initiative as **fully landed** — all per-project PRs merged on remote, all baselines committed to mainline, workspace clones optionally pruned. The operator must check each forge's PR page, then remember to archive the plan.
 
 **Action.** Add `specify initiative finalize`:
 
@@ -364,28 +351,41 @@ Output format mirrors `workspace push`: per-project status (`merged`, `unmerged`
 
 **Recovery from a partially-landed state.** If finalize fails because some PR is unmerged, the operator merges it manually (or via `workspace merge`) and re-runs `finalize`. Partial archives are not created — finalize is all-or-nothing on the archive write.
 
-**Scope.** specify-cli: new `InitiativeAction::Finalize` variant, new handler. Depends on 5A (`workspace merge`) only logically — finalize can run after manual merges. The 2C umbrella skill calls finalize as its terminal step.
+**Scope.** specify-cli: new `InitiativeAction::Finalize` variant, new handler. Depends on 4A (`workspace merge`) only logically — finalize can run after manual merges. The 2C umbrella skill calls finalize as its terminal step.
+
+#### 4D. Fixture-backed verification mode
+
+**Problem.** RFC-2 §Future defers "fixture-backed verification" — a mode where `/spec:verify` compares live behavior against captured fixtures to detect drift post-migration. Without it, the replay-writer's fixtures are only useful as one-shot integration tests, not as ongoing regression guards.
+
+**Action.** Design a verification mode that:
+
+1. Accepts a fixture directory (the replay-writer's output format).
+2. Replays each fixture against the migrated service's API.
+3. Compares responses against expected outputs, allowing configurable tolerance (e.g., ignore timestamps, allow additional fields).
+4. Reports drift as a verify-level diagnostic.
+
+**Scope.** New skill definition. May require CLI extensions for the verify pipeline.
 
 ## Implementation order
 
 
-| Phase | Item                                    | Depends on         | Effort          | Impact                     |
-| ----- | --------------------------------------- | ------------------ | --------------- | -------------------------- |
-| 1     | 1A. Fixture cleanup                     | —                  | S               | Contributor confidence     |
-| 1     | 1B. Retire `PlatformConfig` stub        | —                  | S               | Crate graph simplification |
-| 1     | 1D. Codify platform-repo hub pattern    | —                  | M               | Topology clarity           |
-| 1     | 1E. Document two-tier workspace model   | —                  | S               | Operator clarity           |
-| 1     | 1F. Rename `initiative init` → `create` | —                      | S               | Verb consistency           |
-| 1     | 1G. Rename `plan init`/`plan create`    | 1F (ship together)     | S               | Verb consistency           |
-| 1     | 1C. E2E multi-repo tutorial             | 1D                     | M               | Validation + documentation |
-| 2     | 2A. `registry add/remove` CLI           | —                      | M               | Operator UX                |
-| 2     | 2B. Plan skill registry proposals       | 2A                     | M               | Autonomous topology        |
-| 2     | 2C. `/spec:initiative` umbrella skill   | 1F, 1G, 2A, 2B, 5A, 5C | M               | Single-command initiative  |
-| 3     | 3B. Cross-project contract validation   | RFC-8                  | L               | Contract safety            |
-| 4     | 4B. Fixture-backed verification         | —                      | M               | Ongoing regression         |
-| 5     | 5A. `workspace merge`                   | —                      | M               | Full autonomy              |
-| 5     | 5B. Plan doctor                         | —                  | M               | Diagnostic depth           |
-| 5     | 5C. `initiative finalize`               | —                  | M               | Initiative closure         |
+| Phase | Item                                    | Depends on                 | Effort | Impact                     |
+| ----- | --------------------------------------- | -------------------------- | ------ | -------------------------- |
+| 1     | 1A. Fixture cleanup                     | —                          | S      | Contributor confidence     |
+| 1     | 1B. Retire `PlatformConfig` stub        | —                          | S      | Crate graph simplification |
+| 1     | 1D. Codify platform-repo hub pattern    | —                          | M      | Topology clarity           |
+| 1     | 1E. Document two-tier workspace model   | —                          | S      | Operator clarity           |
+| 1     | 1F. Rename `initiative init` → `create` | —                          | S      | Verb consistency           |
+| 1     | 1G. Rename `plan init`/`plan create`    | 1F (ship together)         | S      | Verb consistency           |
+| 1     | 1C. E2E multi-repo tutorial             | 1D                         | M      | Validation + documentation |
+| 2     | 2A. `registry add/remove` CLI           | —                          | M      | Operator UX                |
+| 2     | 2B. Plan skill registry proposals       | 2A                         | M      | Autonomous topology        |
+| 2     | 2C. `/spec:initiative` umbrella skill   | 1C, 1F, 1G, 2A, 2B, 4A, 4C | M      | Single-command initiative  |
+| 3     | 3B. Cross-project contract validation   | RFC-8                      | L      | Contract safety            |
+| 4     | 4A. `workspace merge`                   | —                          | M      | Full autonomy              |
+| 4     | 4B. Plan doctor                         | —                          | M      | Diagnostic depth           |
+| 4     | 4C. `initiative finalize`               | —                          | M      | Initiative closure         |
+| 4     | 4D. Fixture-backed verification         | —                          | M      | Ongoing regression         |
 
 
 Effort: S = 1–2 days, M = 3–5 days, L = 1–2 weeks.
@@ -393,15 +393,16 @@ Effort: S = 1–2 days, M = 3–5 days, L = 1–2 weeks.
 **Critical path for the platform-first vision.** The shortest path from today's state to "operator never leaves the platform repo" is:
 
 1. **1D** (decide hub pattern) → unblocks 1C and gives 2C a canonical scaffold target.
-2. **1F** (`initiative create` rename) → trivial CLI rename so 2C can shell out symmetrically (`/spec:initiative create` → `specify initiative create`).
-3. **1G** (`plan {create, add}` rename) → eliminates the last `init` verb so 2C composes against a single consistent surface; ships with 1F.
-4. **2A** (`registry add/remove`) → unblocks 2B and 2C.
-5. **2B** (plan-skill registry proposals) → makes the assignment step able to mint projects.
-6. **5A** (`workspace merge`) → closes the upstream-landing half of the loop.
-7. **5C** (`initiative finalize`) → closes the local-archive half of the loop.
-8. **2C** (`/spec:initiative` umbrella) → composes 1D, 1F, 1G, 2A, 2B, 5A, 5C into a single operator-facing verb.
+2. **1C** (E2E multi-repo tutorial) → exercises the loop end-to-end and produces the worked example that 2C's three-shape acceptance criteria extend.
+3. **1F** (`initiative create` rename) → trivial CLI rename so 2C can shell out symmetrically (`/spec:initiative create` → `specify initiative create`).
+4. **1G** (`plan {create, add}` rename) → eliminates the last `init` verb so 2C composes against a single consistent surface; ships with 1F.
+5. **2A** (`registry add/remove`) → unblocks 2B and 2C.
+6. **2B** (plan-skill registry proposals) → makes the assignment step able to mint projects.
+7. **4A** (`workspace merge`) → closes the upstream-landing half of the loop.
+8. **4C** (`initiative finalize`) → closes the local-archive half of the loop.
+9. **2C** (`/spec:initiative` umbrella) → composes 1C, 1D, 1F, 1G, 2A, 2B, 4A, 4C into a single operator-facing verb.
 
-The other items (1A/1B/1E housekeeping, 3B coherence, 4B migration breadth, 5B doctor) improve the experience but do not block the headline vision. Phase 1 housekeeping is safe to start immediately. The critical-path items can be driven as Specify initiatives themselves — authored via `/spec:plan` and executed via `/spec:execute --loop` — which would simultaneously validate the platform-first workflow and close the gaps in it.
+The other items (1A/1B/1E housekeeping, 3B coherence, 4B plan doctor, 4D fixture-backed verification) improve the experience but do not block the headline vision. Phase 1 housekeeping is safe to start immediately. The critical-path items can be driven as Specify initiatives themselves — authored via `/spec:plan` and executed via `/spec:execute --loop` — which would simultaneously validate the platform-first workflow and close the gaps in it.
 
 ## Non-goals
 
