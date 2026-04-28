@@ -8,7 +8,9 @@ Specify uses several YAML and Markdown files for configuration. All are managed 
 **Created by:** `/spec:init` (via `specify init`)
 **Edited by:** Operator (directly)
 
-Project-level configuration that persists across changes.
+Project-level configuration that persists across changes. Two shapes -- the regular project shape (default) and the hub shape (`specify init --hub`, RFC-9 Section 1D).
+
+### Regular project shape
 
 ```yaml
 name: my-project
@@ -32,6 +34,26 @@ rules:
 | `specify_version` | Yes | Minimum CLI version required (set by `specify init`, updated by `--upgrade`) |
 | `domain` | No | Free-form domain description available to briefs |
 | `rules` | No | Per-brief rule overrides keyed by brief ID (e.g. `proposal`, `specs`, `composition`, `design`, `tasks`). Empty values mean no rules apply. Scaffolded by `specify init` with one entry per `pipeline.define` brief. The Vectis schema includes a `composition` entry for the screen layout brief. |
+| `hub` | No | Absent or `false` for a regular project (the platform-as-project shape uses `url: .` in `registry.yaml` instead). |
+
+### Hub shape
+
+```yaml
+name: shop-platform
+schema: hub
+hub: true
+specify_version: "0.24.2"
+```
+
+A hub is a registry-only platform repo: it holds `registry.yaml`, `initiative.md`, `plan.yaml`, and `workspace/` but is never itself a code project. The two markers above identify a hub:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `schema` | Yes | The literal string `hub` (the schema-resolution sentinel that disables phase pipelines on the hub itself). |
+| `hub` | Yes | `true`. Triggers `Registry::validate_shape` to reject `url: .` entries with `hub-cannot-be-project`. |
+| `rules` | -- | Omitted -- a hub has no phase pipelines to scaffold. |
+
+**When to use the hub shape:** multi-repo platforms, greenfield initiatives where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous. See [Platform repo topologies](../explanation/platform-repo.md) for the full contract and the hub vs platform-as-project comparison.
 
 ## plan.yaml
 
@@ -53,7 +75,6 @@ changes:
     description: "Extract authentication capabilities from the monolith"
     depends-on: []
     sources: [monolith]
-    affects: [auth]
     status: done
     project: api
 
@@ -66,7 +87,6 @@ changes:
   - name: add-oauth
     description: "Add OAuth2 provider integration"
     depends-on: [extract-auth, auth-api-contract]
-    affects: [auth]
     context:
       - contracts/http/auth-api.yaml
       - contracts/schemas/oauth-token.yaml
@@ -76,7 +96,6 @@ changes:
   - name: auth-ui
     description: "Login and registration screens"
     depends-on: [auth-api-contract]
-    affects: [auth-ui]
     context:
       - contracts/http/auth-api.yaml
     status: pending
@@ -94,7 +113,6 @@ changes:
 | `description` | Yes | What this change does |
 | `depends-on` | No | List of change names that must be `done` first |
 | `sources` | No | List of source keys from the top-level `sources` |
-| `affects` | No | List of spec/capability names this change touches |
 | `status` | Yes | Current state: `pending`, `in-progress`, `done`, `failed`, `blocked`, `skipped` |
 | `schema` | No | Schema identifier for project-less entries (e.g. `contracts@v1`). Required when `project` is absent. |
 | `context` | No | List of baseline paths (relative to `.specify/`) relevant to this change. Used by briefs as a focus hint when scanning baseline directories. |

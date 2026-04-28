@@ -18,24 +18,34 @@
 /spec:execute --loop                        # run until done
 ```
 
+### Cross-repo umbrella
+
+```text
+/spec:init --hub                                     # bootstrap a platform hub
+specify registry add <project> --url ... --schema ...
+/spec:initiative create <name> [--shape ...] [--auto-merge]
+```
+
 ## All skills
 
-| Skill | Purpose |
-|-------|---------|
-| `/spec:init` | One-time project setup |
-| `/spec:define` | Generate artifacts for a new change |
-| `/spec:build` | Implement tasks |
-| `/spec:merge` | Merge completed change into baseline |
-| `/spec:drop` | Discard a change |
-| `/spec:status` | Check progress |
-| `/spec:verify` | Detect drift between code and specs |
-| `/spec:explore` | Think through a problem |
-| `/spec:extract` | Extract specs from existing code |
-| `/contracts:writer` | Validate spec alignment, produce contract delta |
-| `/contracts:validator` | Verify contract artifact consistency |
-| `/contracts:importer` | Import and normalise external contracts (Layer 2) |
-| `/spec:plan` | Author a multi-change plan |
-| `/spec:execute` | Automate the plan loop |
+| Skill | Layer | Purpose |
+|-------|-------|---------|
+| `/spec:init` | 2 | One-time project setup (`--hub` for a platform hub) |
+| `/spec:define` | 2 | Generate artifacts for a new change |
+| `/spec:build` | 2 | Implement tasks |
+| `/spec:merge` | 2 | Merge completed change into baseline |
+| `/spec:drop` | 2 | Discard a change |
+| `/spec:status` | 2 | Check progress |
+| `/spec:verify` | 2 | Detect drift between code and specs |
+| `/spec:explore` | 2 | Think through a problem |
+| `/spec:extract` | 2 | Extract specs from existing code |
+| `/spec:analyze` | 3 | Plan-time capability inference (invoked by `/spec:plan`) |
+| `/spec:plan` | 3 | Author a multi-change plan |
+| `/spec:execute` | 3 | Automate the plan loop |
+| `/spec:initiative` | 4 | Cross-repo umbrella: brief -> registry -> plan -> execute -> push -> merge -> finalize |
+| `/contracts:writer` | -- | Validate spec alignment, produce contract delta |
+| `/contracts:validator` | -- | Verify contract artifact consistency |
+| `/contracts:importer` | -- | Import and normalise external contracts (Layer 2) |
 
 ## Artifacts
 
@@ -65,6 +75,10 @@ created --> defining --> defined --> building --> complete --> merged
 specify status                            # project dashboard
 specify change status <name>              # single-change view
 
+# Project setup
+specify init <schema>                     # regular single-project scaffold
+specify init hub --hub                    # registry-only platform hub (RFC-9 1D)
+
 # Change management
 specify change list
 specify change transition <name> <target>
@@ -72,6 +86,7 @@ specify change transition <name> <target>
 # Plan management
 specify plan status
 specify plan next
+specify plan doctor                       # validate + cycle / orphan / stale-clone / unreachable
 specify plan transition <name> <target>
 specify plan lock status
 
@@ -79,10 +94,19 @@ specify plan lock status
 specify workspace sync
 specify workspace status
 specify workspace push
+specify workspace merge                   # squash-merge PRs once CI is green (RFC-9 4A)
 
 # Platform registry (multi-repo)
 specify registry show
 specify registry validate
+specify registry add <name> --url <url> --schema <schema> --description "..."
+specify registry remove <name>
+
+# Initiative brief and closure
+specify initiative create <name>          # scaffold .specify/initiative.md
+specify initiative show
+specify initiative finalize               # confirm PRs merged, archive plan (RFC-9 4C)
+specify initiative finalize --clean       # also prune .specify/workspace/<peer>/
 
 # Plan authoring (multi-repo)
 specify plan add <name> --project <project>

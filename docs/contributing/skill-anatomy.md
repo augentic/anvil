@@ -60,6 +60,16 @@ Frontmatter fields appear in this canonical order:
 | `user-invocable` | no | When `false`, hide the skill from the `/` menu so only the agent can invoke it (Claude Code). |
 | `paths` | no | Glob patterns that limit when this skill is auto-activated (Claude Code). Accepts a comma-separated string or YAML list. |
 
+### Argument-hint vs reference-doc synopsis
+
+The `argument-hint` field uses the bare-name + `?` house style above. The reference docs under `docs/reference/change-skills/` and `docs/reference/initiative-skills/` use a **narrative** synopsis convention with square brackets:
+
+```text
+/spec:define [description] [artifact-id?] [--source <key>=<path-or-url>...]
+```
+
+This is documentation-only and does not match the `argument-hint` shape -- the docs use brackets because that is the conventional shorthand for "optional positional" in Unix-style man pages and shell-skill READMEs. Contributors copying a synopsis line from a reference doc into a SKILL.md frontmatter must convert it: drop the brackets, keep the `?` for optionals, drop any `--flag` prefix. The two conventions live in different places on purpose; do not "fix" the reference docs to match the frontmatter or vice versa without a discussion first.
+
 ### Cursor-specific tool names
 
 The `KNOWN_TOOLS` set enforced by [scripts/checks.ts](../../scripts/checks.ts) is the Cursor toolset:

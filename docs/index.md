@@ -34,6 +34,8 @@ That is the entire core workflow. Everything else in Specify builds on this loop
 
 - **Planning a large initiative?** Read [Your First Change](tutorials/first-change.md) and [Iterating on a Baseline](tutorials/iterating-on-baseline.md) first, then skip to [A Multi-Change Initiative](tutorials/single-repo-initiative.md).
 
+- **Returning after a few releases?** [What's New Since v0.23](explanation/whats-new.md) catalogues the additive RFC-8 and RFC-9 work; the [v1 migration map](explanation/migrating-cli-v1.md) covers the rename pulse.
+
 ## Guide structure
 
 - **[Getting Started](orientation/index.md)** builds the mental model and gets you set up.

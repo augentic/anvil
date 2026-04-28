@@ -52,6 +52,32 @@ No verb crosses tiers. There is no `workspace push` for legacy-source clones (th
     └── <project-name>/          # tier 2 lives here
 ```
 
+```d2
+direction: right
+
+tier1: "Tier 1 — legacy-source clone" {
+  shape: rectangle
+  loc: ".specify/plans/<name>/analyze/<key>/" {shape: cylinder}
+  analyze: "/spec:analyze" {shape: rectangle}
+  archive: "specify plan archive" {shape: rectangle}
+  analyze -> loc: "writes (one per --source <k>=<git-url>)"
+  loc -> archive: "swept into\n.specify/archive/plans/"
+}
+
+tier2: "Tier 2 — registered project clone" {
+  shape: rectangle
+  loc: ".specify/workspace/<project>/" {shape: cylinder}
+  sync: "specify workspace sync" {shape: rectangle}
+  execute: "/spec:execute --loop" {shape: rectangle}
+  push: "specify workspace push" {shape: rectangle}
+  sync -> loc: "materialises (one per registry entry)"
+  execute -> loc: "chdir + writes (define-build-merge)"
+  loc -> push: "git push specify/<initiative-name>"
+}
+```
+
+The arrows make the lifecycle explicit: tier 1 only flows from `/spec:analyze` to the archive, never back; tier 2 cycles between `sync` (refresh), `execute` (write), and `push` (release).
+
 ## Why the tiers are not interchangeable
 
 The two tiers look superficially similar -- both contain working trees that Specify materialises on the operator's behalf -- but treating them as a single "workspace" leads to two specific failure modes:

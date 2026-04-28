@@ -4,6 +4,8 @@ When a body of work spans multiple related changes -- a migration, a new feature
 
 **Prerequisites:** Familiarity with the [define-build-merge loop](first-change.md). A project with `/spec:init` already run.
 
+> **Choosing your topology.** This tutorial is for **single-repo** work -- one project under `/spec:init` with phase pipelines enabled, no platform hub. If your initiative spans two or more repos (e.g. backend + mobile), you want the platform-hub topology instead -- see [Cross-Repo Initiatives](cross-repo-initiative.md). The platform-as-project shape (single-repo with `url: .` in `registry.yaml`) is also valid; see [Platform repo topologies](../explanation/platform-repo.md) for the comparison.
+
 ## When you need a plan
 
 A plan is useful when:

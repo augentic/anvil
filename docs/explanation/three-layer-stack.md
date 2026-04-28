@@ -59,6 +59,8 @@ The primary command families are:
 
 **Who uses it:** Power users who want fine-grained control, CI pipelines, and anyone debugging the state of `.specify/`. Layer 1 is always available as a manual fallback beneath the higher layers.
 
+**Climb to Layer 2 when:** you are about to author or implement a single change. The Layer 2 skills wrap the CLI primitives in agent-driven orchestrators that elicit intent, read briefs, and write artifacts on your behalf. Reaching for `specify change create` directly is rare outside CI scripts and recovery paths.
+
 ## Layer 2: Change lifecycle
 
 Layer 2 skills operate on a **single change** inside `.specify/changes/<name>/`. They form the define-build-merge loop:
@@ -85,6 +87,8 @@ The full set of Layer 2 skills:
 
 **Who uses it:** Every Specify operator, every day. This is the primary interaction layer.
 
+**Climb to Layer 3 when:** you have three or more related changes with dependencies, you want a tracked plan to coordinate the work, or you want the framework to drive the change-by-change loop automatically. Two changes with no dependencies stay at Layer 2; three or more typically benefit from a plan. See the rubric in [A Multi-Change Initiative -- When you need a plan](../tutorials/single-repo-initiative.md#when-you-need-a-plan).
+
 ## Layer 3: Plan & Drive
 
 Layer 3 skills coordinate **multi-change programs** through `.specify/plan.yaml` -- an ordered, dependency-aware list of changes with status tracking. They are the authoring and execution counterparts of an initiative-scoped program.
@@ -102,6 +106,8 @@ The plan is the initiative's table of contents. `/spec:plan` produces it by anal
 ```
 
 **Who uses it:** Initiative leads coordinating multi-change programs -- greenfield builds, legacy migrations, platform modernisations -- when they want fine-grained control over the plan/execute loop or only need a subset of the platform-first flow.
+
+**Climb to Layer 4 when:** the initiative spans multiple registered projects (i.e. `registry.yaml` declares more than one project) and you want the cross-repo loop -- brief, registry validate, plan, execute, push, optional merge, finalize -- driven as a single operator action. Single-project initiatives stay at Layer 3 because there is no cross-repo work for the umbrella to compose. Power users running CI pipelines or partial reruns also stay at Layer 3 because the umbrella's value is single-command convenience, not a new capability.
 
 ## Layer 4: Initiative orchestration
 

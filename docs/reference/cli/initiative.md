@@ -2,6 +2,14 @@
 
 Manage the operator-authored initiative brief at `.specify/initiative.md` and close out an initiative once every per-project PR has merged.
 
+## Verb cheat-sheet
+
+| Verb | When to use |
+|------|-------------|
+| [`create`](#specify-initiative-create) | Scaffold `.specify/initiative.md` from the canonical template at the start of an initiative. |
+| [`show`](#specify-initiative-show) | Render the current brief (frontmatter + prose body) for tooling consumers and review. |
+| [`finalize`](#specify-initiative-finalize) | Close out a fully-landed initiative: confirm every per-project PR merged, archive `plan.yaml` + brief + working dir. |
+
 ## Subcommands
 
 ### specify initiative create
