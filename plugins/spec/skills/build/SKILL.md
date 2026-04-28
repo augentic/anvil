@@ -2,7 +2,7 @@
 name: build
 description: Implement tasks from a Specify change. Use when the user wants to start implementing, continue implementation, or work through tasks.
 license: MIT
-argument-hint: "[change-name?]"
+argument-hint: "change-name?"
 ---
 
 Implement tasks from a Specify change.

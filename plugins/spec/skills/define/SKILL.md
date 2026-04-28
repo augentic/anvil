@@ -2,7 +2,7 @@
 name: define
 description: Define a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
 license: MIT
-argument-hint: "[description] [artifact-id?] [--source <key>=<path-or-url>...]"
+argument-hint: "description? artifact-id? source key=path-or-url...?"
 ---
 
 # Define Skill

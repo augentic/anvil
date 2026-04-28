@@ -2,8 +2,8 @@
 name: test-writer
 description: "Generate or update test suites for Crux shared crates from Specify artifacts -- spec-to-test mapping, traceability, drift detection, and synchronous Crux testing patterns."
 license: MIT
-argument-hint: "[feature-name]"
-allowed-tools: Read, Write, StrReplace, Shell, Grep, ReadLints
+argument-hint: "feature-name?"
+allowed-tools: Read Write StrReplace Shell Grep ReadLints
 ---
 
 # Crux Test Writer

@@ -356,7 +356,7 @@ async function validateSkillFrontmatter(): Promise<void> {
 
     const tools = fm["allowed-tools"];
     if (typeof tools === "string") {
-      for (const tool of tools.split(",").map((t) => t.trim())) {
+      for (const tool of tools.split(/\s+/).map((t) => t.trim())) {
         if (!tool) continue;
         if (!KNOWN_TOOLS.has(tool) && !tool.startsWith("mcp__")) {
           fail(`Unknown tool in allowed-tools: ${rel} — '${tool}'`);

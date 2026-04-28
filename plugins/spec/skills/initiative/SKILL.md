@@ -8,8 +8,8 @@ description: |
   command to take a platform initiative from "I have an idea" to "every PR
   is merged."
 license: MIT
-argument-hint: "create <name> [--shape migrate-legacy|new-feature|update-existing] [--from <path>...] [--against <path>] [--source <key>=<path-or-url>...] [--auto-merge] [--dry-run]"
-allowed-tools: Read, Write, Shell, Grep, Glob, AskQuestion, Task, TodoWrite
+argument-hint: "create name shape migrate-legacy|new-feature|update-existing? from path...? against path? source key=path-or-url...? auto-merge? dry-run?"
+allowed-tools: Read Write Shell Grep Glob AskQuestion Task TodoWrite
 ---
 
 ## Critical Path (Quick Reference)

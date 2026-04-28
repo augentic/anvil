@@ -5,7 +5,7 @@ description: |
   eligible change, run define → build → merge, and update status. Layer 2
   automation over the Layer 1 specify plan CLI.
 license: MIT
-argument-hint: "[--dry-run] [--loop]"
+argument-hint: "dry-run? loop?"
 ---
 
 ## Critical Path (Quick Reference)

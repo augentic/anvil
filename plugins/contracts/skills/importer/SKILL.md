@@ -2,7 +2,7 @@
 name: importer
 description: "Import and normalize external API contracts — detect formats, upgrade versions, decompose inline schemas, and inject Specify metadata."
 license: MIT
-allowed-tools: Read, Write, StrReplace, Shell, Grep, Glob
+allowed-tools: Read Write StrReplace Shell Grep Glob
 ---
 
 # Contracts Importer

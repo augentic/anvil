@@ -2,8 +2,8 @@
 name: sow-writer
 description: Generate a Statement of Work (SoW) document from Specify artifacts and project context.
 license: MIT
-argument-hint: "[change-dir] [output-path?] [client-name?] [company-name?] [--pdf?]"
-allowed-tools: Read, Write, StrReplace, Shell, Grep
+argument-hint: "change-dir? output-path? client-name? company-name? pdf?"
+allowed-tools: Read Write StrReplace Shell Grep
 ---
 
 # SoW Generator Skill

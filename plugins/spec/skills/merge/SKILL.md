@@ -2,7 +2,7 @@
 name: merge
 description: Merge a completed change. Merges delta specs into baseline and moves the change to the archive. Use when the user wants to finalize a change after implementation is complete.
 license: MIT
-argument-hint: "[change-name?]"
+argument-hint: "change-name?"
 ---
 
 # Merge
