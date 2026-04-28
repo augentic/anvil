@@ -17,19 +17,14 @@ Specify's ideal developer workflow is a **single-repo operator experience**: an 
 
 **Cross-repo coherence gaps**
 
-5. **Cross-repo spec references are deferred.** Specs in one project cannot reference capabilities in another, limiting multi-repo define-time coherence.
-6. **Contract federation is copy-based.** Central contracts are distributed by file copy during `workspace sync`; there is no version negotiation, breaking-change detection, or reconciliation across projects.
-
-**Migration-breadth gaps**
-
-7. **RT wiretapping is TypeScript-only.** The fixture-capture pipeline covers Node.js/TypeScript stacks but has no equivalent for other legacy platforms.
+1. **Contract federation is copy-based.** Central contracts are distributed by file copy during `workspace sync`; there is no version negotiation, breaking-change detection, or reconciliation across projects.
 
 **Housekeeping gaps**
 
-8. **Stale fixtures reference removed schema fields.** Multiple execute fixtures still reference the `affects` field, which has been removed from the plan schema.
-9. **The `PlatformConfig` trait is a stub.** The programmatic peer-resolution abstraction in `crates/platform/` returns `vec![]` unconditionally.
-10. **No end-to-end multi-repo validation.** The full plan → execute → push path across multiple workspace clones has not been validated against a real platform initiative.
-11. **Workspace-tier semantics are blurred.** Operator docs do not distinguish legacy-source clones (read-only, ephemeral, under `.specify/plans/<name>/analyze/<key>/`) from registered project clones (read-write, durable, under `.specify/workspace/<name>/`).
+1. **Stale fixtures reference removed schema fields.** Multiple execute fixtures still reference the `affects` field, which has been removed from the plan schema.
+2. **The `PlatformConfig` trait is a stub.** The programmatic peer-resolution abstraction in `crates/platform/` returns `vec![]` unconditionally.
+3. **No end-to-end multi-repo validation.** The full plan → execute → push path across multiple workspace clones has not been validated against a real platform initiative.
+4. **Workspace-tier semantics are blurred.** Operator docs do not distinguish legacy-source clones (read-only, ephemeral, under `.specify/plans/<name>/analyze/<key>/`) from registered project clones (read-write, durable, under `.specify/workspace/<name>/`).
 
 This RFC proposes a phased plan to close each gap, ordered by impact on the operator experience.
 
@@ -52,10 +47,8 @@ Each shape uses the same `/spec:plan → /spec:execute → workspace push → wo
 - The operator must **manually author** `registry.yaml` entries for new projects before Specify can route work to them. For greenfield initiatives where the repo topology is itself a design decision, this front-loads a decision the framework should help make.
 - The platform-first vision implies **one command** to start an initiative. Today it is five commands (`initiative init` → registry edit → `/spec:plan` → `/spec:execute --loop` → `workspace push`) plus N manual PR merges. Each step is correct in isolation; together they leak the operator out of the platform repo.
 - The **platform repo's identity** is ambiguous. Tutorials and skills are agnostic about whether the platform repo is itself a code project (`url: .`) or a registry-only hub. The `/spec:init` flow does not distinguish the two; the choice is made implicitly by the first registry edit.
-- During multi-repo execution, a spec in the backend project cannot **reference** a capability defined in the mobile project. The workspace materialises peer baselines under `.specify/workspace/<peer>/specs/`, but no syntax or resolution exists for cross-project references.
-- Contracts are **copied** into workspace clones by `workspace sync`, but there is no mechanism to detect when a change in one project breaks a contract consumed by another. RFC-8 lands the contract format and role declarations; what's missing is the cross-project validation loop.
+- Contracts are **copied** into workspace clones by `workspace sync`, but there is no mechanism to detect when a change in one project breaks a contract consumed by another. RFC-8 lands the contract format and role declarations; what's missing is the cross-project validation loop. (Cross-repo *spec* references — `@peer:capability` — are explicitly *not* a gap: contracts are the cross-repo boundary, and behavioural cross-references would re-couple consumer specs to producer internals. See *Non-goals*.)
 - After `workspace push`, no Specify verb confirms **initiative landing**. The operator must check N PR pages, merge them manually, and then remember to `specify plan archive`.
-- Legacy migrations are limited to **Node.js/TypeScript** for automated fixture capture. Teams migrating Java, Python, Go, or .NET services must capture fixtures manually.
 - Fixture drift within the Specify repo itself — stale `affects` references in execute fixtures — creates confusion for contributors and risks agent behaviour divergence from the documented schema.
 
 Closing these gaps in priority order transforms Specify from "infrastructure that supports the platform-first vision" to "a workflow that delivers it."
@@ -129,10 +122,12 @@ The tutorial doubles as an integration test: if any step fails, the gap is in th
 
 **Problem.** Operator docs blur two different "clones in the workspace" with different lifecycles and write semantics:
 
-| Tier | Location | Lifecycle | Writability |
-|---|---|---|---|
-| Legacy-source clone | `.specify/plans/<name>/analyze/<key>/` | Ephemeral; swept by `specify plan archive` | Read-only (analyze-only) |
-| Registered project clone | `.specify/workspace/<name>/` | Durable; persists across initiatives | Read-write during execution; pushed by `workspace push` |
+
+| Tier                     | Location                               | Lifecycle                                  | Writability                                             |
+| ------------------------ | -------------------------------------- | ------------------------------------------ | ------------------------------------------------------- |
+| Legacy-source clone      | `.specify/plans/<name>/analyze/<key>/` | Ephemeral; swept by `specify plan archive` | Read-only (analyze-only)                                |
+| Registered project clone | `.specify/workspace/<name>/`           | Durable; persists across initiatives       | Read-write during execution; pushed by `workspace push` |
+
 
 The two tiers serve different roles — analyze-only reading vs full define-build-merge — but the operator-facing language ("Specify clones the appropriate repo into its workspace") elides the distinction. This causes confusion when an operator expects `--source` clones to be writable, or expects registered projects to disappear after an initiative ends.
 
@@ -160,9 +155,29 @@ Cross-link from `docs/explanation/three-layer-stack.md`, the `/spec:plan` SKILL.
 
 The verb rename is mechanical and behaviour-preserving. No flag changes, no JSON shape change, no `.specify/initiative.md` template change.
 
-**Why not also rename `specify plan init`?** `plan init` and `plan create` are distinct operations on the same noun — the former scaffolds `plan.yaml`, the latter adds an entry. Renaming `plan init` would collide with `plan create`. Initiative has no such collision because the brief is a singleton.
+**What about `specify plan init`?** Handled in §1G. Renaming `plan init` alone collides with the existing `plan create`, so §1G renames both verbs in the same change (`init` → `create` for the file scaffold, `create` → `add` for the entry append). 1F and 1G ship together to avoid an interim state where `initiative` is consistent but `plan` still uses `init`.
 
 **Scope.** specify-cli (`InitiativeAction` rename + handler signature) + Specify repo (skill, doc, tutorial, fixture updates + migration-map entry).
+
+#### 1G. Rename `specify plan init` to `create` and `specify plan create` to `add`
+
+**Problem.** With 1F landing `specify initiative create`, `specify plan init` is the only remaining `init` verb in the v1 surface. 1F declined the rename because `plan create` already exists (it appends a change entry to the plan), but the collision is solvable: rename both verbs in the same change. The file-creating verb takes the canonical `create`, and the entry-appending verb adopts `add` — matching `specify registry add` (2A) and the convention that child-add verbs use `add`. After 1G:
+
+- `specify plan create <name>` scaffolds `.specify/plan.yaml` (was `plan init`).
+- `specify plan add <entry>` appends a change entry to the plan (was `plan create`).
+
+**Action.** Apply both renames in one change:
+
+1. `PlanAction::Init { name, sources }` → `PlanAction::Create { name, sources }` in `src/cli.rs`.
+2. `PlanAction::Create { name, project, description, depends_on, sources, affects }` (entry-append variant) → `PlanAction::Add { ... }`. Flag shapes and JSON output do not change.
+3. Rename the matching dispatch arms in `src/commands/plan/mod.rs` and the underlying lifecycle helpers (`run_plan_init` → `run_plan_create`; the entry-append helper → `run_plan_add`). Handlers keep their current behaviour — refuse-if-exists for `create`, append-with-validation for `add`.
+4. Add two v1.x rows to the v1 migration map (`docs/explanation/migrating-cli-v1.md`): `specify plan init <name>` → `specify plan create <name>`, and `specify plan create <name>` → `specify plan add <name>`. Tag both as v1.x evolution alongside 1F's row.
+5. Audit and update every reference in skills, docs, tutorials, fixtures, and project rules. Non-exhaustive list: `docs/reference/cli/plan.md`, `docs/reference/initiative-skills/plan.md`, `docs/reference/quick-reference.md`, `docs/reference/configuration.md`, `docs/appendices/glossary.md`, `plugins/spec/skills/{plan,execute,merge,define,build}/SKILL.md`, `schemas/{omnia,vectis}/briefs/plan/propose.md`, plan-skill propose fixtures (`plan/fixtures/propose/`, `plan/fixtures/propose/monolith/`, `plan/fixtures/propose-vectis/`), execute fixture READMEs (`execute/fixtures/e2e-platform-v2/README.md`), `AGENTS.md`, `README.md`, `.cursor/rules/project.mdc`. Every occurrence of `plan init` and `plan create` in markdown and yaml gets reviewed.
+6. Update the in-flight references **within this RFC** that still use the pre-rename names: 2A's validation-ordering invariant (`specify plan create --project` → `specify plan add --project`), 2B's greenfield prompt (`specify plan init` → `specify plan create`), and 2C's Layer 3 → Layer 1 pattern (`specify plan {init, create}` → `specify plan {create, add}`). The RFC ships with the post-rename names so the worked example in §1C and the umbrella skill in §2C compose against the canonical surface from day one.
+
+**Why both at once.** Renaming `plan init` → `plan create` alone is impossible (the name is taken). Renaming `plan create` → `plan add` alone leaves the file-creating verb still called `init`, defeating the consistency win. The two renames must land in the same change so operators learn the new surface once.
+
+**Scope.** specify-cli (`PlanAction::{Init, Create}` rename + handler signatures + tests + clap derive output) + Specify repo (skill, doc, tutorial, fixture, project-rule updates + two migration-map rows + the within-RFC references called out in step 6). Ships together with 1F.
 
 ---
 
@@ -190,7 +205,7 @@ Semantics:
 
 Complementary verb: `specify registry remove <name>` — removes an entry, validates shape, warns if plan entries reference the removed project.
 
-**Validation ordering invariant.** `specify plan create --project <name>` and `specify plan amend --project <name>` continue to reject unknown projects (RFC-3b §Validation). Any consumer that wants to assign work to a new project must therefore call `specify registry add` and `specify workspace sync` *before* the corresponding plan write. The 2B registry-proposal sub-step and the 2C umbrella skill must respect this ordering.
+**Validation ordering invariant.** `specify plan add --project <name>` and `specify plan amend --project <name>` continue to reject unknown projects (RFC-3b §Validation; verb names per §1G). Any consumer that wants to assign work to a new project must therefore call `specify registry add` and `specify workspace sync` *before* the corresponding plan write. The 2B registry-proposal sub-step and the 2C umbrella skill must respect this ordering.
 
 **Scope.** specify-cli: new `RegistryAction` variants (`Add`, `Remove`) added to `src/commands/registry.rs`, new tests covering kebab-case validation, URL classification, multi-project description enforcement, and round-tripping through `Registry::load`.
 
@@ -206,7 +221,7 @@ Complementary verb: `specify registry remove <name>` — removes an entry, valid
 4. Run `specify workspace sync` to bootstrap the new slot.
 5. Continue assignment with the new project available.
 
-For **greenfield** initiatives where no registry exists at all, the discovery brief should propose an initial registry based on the capability decomposition: "These capabilities cluster into N groups; I recommend N projects with these boundaries." The operator reviews and approves before `specify plan init` runs.
+For **greenfield** initiatives where no registry exists at all, the discovery brief should propose an initial registry based on the capability decomposition: "These capabilities cluster into N groups; I recommend N projects with these boundaries." The operator reviews and approves before `specify plan create` runs (verb name per §1G; was `plan init`).
 
 **Execute-time amendment path.** Registry amendments are not always foreseeable at plan time — a build brief may discover that a capability is misrouted, or `/spec:extract` may surface tangled code that should split into a new repo. To make this recoverable without leaving the platform-first flow:
 
@@ -235,7 +250,7 @@ This keeps phase skills unaware of registry mechanics (they just emit the outcom
     [--dry-run]
 ```
 
-The skill verb (`create`) matches the renamed CLI verb (`specify initiative create`, see §1F). "Create at the orchestration layer calls create at the primitive layer" mirrors the existing Layer 3 → Layer 1 pattern (`/spec:plan` → `specify plan {init, create}`).
+The skill verb (`create`) matches the renamed CLI verb (`specify initiative create`, see §1F). "Create at the orchestration layer calls create at the primitive layer" mirrors the existing Layer 3 → Layer 1 pattern (`/spec:plan` → `specify plan {create, add}`, verb names per §1G).
 
 Internally, the skill drives the canonical loop:
 
@@ -255,25 +270,13 @@ Internally, the skill drives the canonical loop:
 
 **Status of `/spec:plan` and `/spec:execute`.** Both remain operator-facing. `/spec:initiative` is the recommended entry point but the lower skills are still callable directly for power users, partial reruns, and CI pipelines.
 
-**Scope.** Specify repo: new skill `plugins/spec/skills/initiative/SKILL.md`, new fixtures under `plugins/spec/skills/initiative/fixtures/`, three-layer-stack documentation update to introduce a "Layer 4" (initiative orchestration) above existing Layer 3 (or rename the layers — see §*Open question* below). CLI: no new verbs (the `init` → `create` rename is in 1F). Depends on 1F (`initiative create` rename), 2A (registry mutation), 2B (registry proposal), 5A (`workspace merge`, optional via `--auto-merge`), 5C (`initiative finalize`).
+**Scope.** Specify repo: new skill `plugins/spec/skills/initiative/SKILL.md`, new fixtures under `plugins/spec/skills/initiative/fixtures/`, three-layer-stack documentation update to introduce a "Layer 4" (initiative orchestration) above existing Layer 3 (or rename the layers — see §*Open question* below). CLI: no new verbs (the `init` → `create` renames are in 1F and 1G). Depends on 1F (`initiative create` rename), 1G (`plan {create, add}` rename), 2A (registry mutation), 2B (registry proposal), 5A (`workspace merge`, optional via `--auto-merge`), 5C (`initiative finalize`).
 
 > **Open question.** The current three-layer stack labels the plan/execute skills as "Layer 3 — Initiative Orchestration." If `/spec:initiative` sits above them, either (a) rename Layer 3 to "Plan & Drive" and introduce Layer 4 "Initiative Orchestration," or (b) absorb `/spec:initiative` into Layer 3 alongside `/spec:plan` and `/spec:execute`, treating it as an aggregator within the same layer. Decide as part of 2C implementation; the docs change is small either way.
 
 ---
 
 ### Phase 3: Cross-repo coherence (medium impact)
-
-#### 3A. Cross-repo spec references
-
-**Problem.** RFC-3b defers `@peer:capability` syntax. Without it, a spec in one project cannot express a dependency on a capability in another project. This forces the operator to manage cross-project coherence manually.
-
-**Action.** Design and implement a lightweight cross-project reference syntax:
-
-- **Read path.** `.specify/workspace/<peer>/specs/` already contains peer baselines. Extend the specs brief to accept `@<project>:<capability>` references in scenario steps and requirements. At define time, resolve references by reading the workspace clone's baseline specs.
-- **Write path.** References are informational — they declare "this scenario depends on `<project>:<capability>` being available" — but do not generate code or create cross-project artifacts. They surface as warnings when the referenced capability does not exist in the peer's baseline.
-- **Validation.** `specify change validate` gains a `peer-reference-unresolved` check that reads workspace baselines and flags broken references.
-
-**Scope.** specify-cli: spec parser extension, validation rule. Specify repo: specs brief and build brief updates. Requires workspace clones to be present (already ensured by the execute skill's workspace freshness check).
 
 #### 3B. Cross-project contract validation
 
@@ -291,25 +294,6 @@ Internally, the skill drives the canonical loop:
 ---
 
 ### Phase 4: Broader migration support (medium impact, high effort)
-
-#### 4A. Language-agnostic wiretapper framework
-
-**Problem.** `/rt:wiretapper` supports TypeScript/Node.js exclusively (patterns A–H: Fastify, Express, Nest, Kafka, TypeORM, etc.). Teams migrating Java (Spring Boot), Python (Django/Flask/FastAPI), Go, or .NET services must capture fixtures manually.
-
-**Action.** Decompose the wiretapper into a **framework-agnostic protocol** with per-stack adapters:
-
-1. **Core protocol.** Define a standard fixture format (already exists in `replay-writer/references/fixture-format.md`) and a standard instrumentation contract: capture HTTP request/response pairs and message broker envelopes into JSON files under a conventional directory.
-2. **Adapter registry.** Each adapter is a skill that instruments a specific framework:
-   - `wiretapper-node` (existing, renamed)
-   - `wiretapper-jvm` (Spring Boot interceptors, Kafka client wrappers)
-   - `wiretapper-python` (ASGI/WSGI middleware, Celery task wrappers)
-   - `wiretapper-dotnet` (ASP.NET middleware, MassTransit filters)
-   - `wiretapper-go` (net/http middleware, Sarama interceptors)
-3. **Detection.** Extend the wiretapper entry point to detect the stack from project files (`package.json`, `pom.xml`/`build.gradle`, `requirements.txt`/`pyproject.toml`, `*.csproj`, `go.mod`) and delegate to the appropriate adapter.
-
-Each adapter is independently shippable. Start with the JVM adapter (most common enterprise migration source), then Python, then .NET and Go.
-
-**Scope.** Specify repo: new skill definitions under `plugins/rt/skills/`. No CLI changes.
 
 #### 4B. Fixture-backed verification mode
 
@@ -384,24 +368,25 @@ Output format mirrors `workspace push`: per-project status (`merged`, `unmerged`
 
 ## Implementation order
 
-| Phase | Item | Depends on | Effort | Impact |
-|-------|------|------------|--------|--------|
-| 1 | 1A. Fixture cleanup | — | S | Contributor confidence |
-| 1 | 1B. Retire `PlatformConfig` stub | — | S | Crate graph simplification |
-| 1 | 1D. Codify platform-repo hub pattern | — | M | Topology clarity |
-| 1 | 1E. Document two-tier workspace model | — | S | Operator clarity |
-| 1 | 1F. Rename `initiative init` → `create` | — | S | Verb consistency |
-| 1 | 1C. E2E multi-repo tutorial | 1D | M | Validation + documentation |
-| 2 | 2A. `registry add/remove` CLI | — | M | Operator UX |
-| 2 | 2B. Plan skill registry proposals | 2A | M | Autonomous topology |
-| 2 | 2C. `/spec:initiative` umbrella skill | 1F, 2A, 2B, 5A, 5C | M | Single-command initiative |
-| 3 | 3A. Cross-repo spec references | 1C | L | Multi-repo coherence |
-| 3 | 3B. Cross-project contract validation | RFC-8 | L | Contract safety |
-| 4 | 4A. Language-agnostic wiretapper | — | L (per adapter) | Migration breadth |
-| 4 | 4B. Fixture-backed verification | 4A | M | Ongoing regression |
-| 5 | 5A. `workspace merge` | — | M | Full autonomy |
-| 5 | 5B. Plan doctor | — | M | Diagnostic depth |
-| 5 | 5C. `initiative finalize` | — | M | Initiative closure |
+
+| Phase | Item                                    | Depends on         | Effort          | Impact                     |
+| ----- | --------------------------------------- | ------------------ | --------------- | -------------------------- |
+| 1     | 1A. Fixture cleanup                     | —                  | S               | Contributor confidence     |
+| 1     | 1B. Retire `PlatformConfig` stub        | —                  | S               | Crate graph simplification |
+| 1     | 1D. Codify platform-repo hub pattern    | —                  | M               | Topology clarity           |
+| 1     | 1E. Document two-tier workspace model   | —                  | S               | Operator clarity           |
+| 1     | 1F. Rename `initiative init` → `create` | —                      | S               | Verb consistency           |
+| 1     | 1G. Rename `plan init`/`plan create`    | 1F (ship together)     | S               | Verb consistency           |
+| 1     | 1C. E2E multi-repo tutorial             | 1D                     | M               | Validation + documentation |
+| 2     | 2A. `registry add/remove` CLI           | —                      | M               | Operator UX                |
+| 2     | 2B. Plan skill registry proposals       | 2A                     | M               | Autonomous topology        |
+| 2     | 2C. `/spec:initiative` umbrella skill   | 1F, 1G, 2A, 2B, 5A, 5C | M               | Single-command initiative  |
+| 3     | 3B. Cross-project contract validation   | RFC-8                  | L               | Contract safety            |
+| 4     | 4B. Fixture-backed verification         | —                      | M               | Ongoing regression         |
+| 5     | 5A. `workspace merge`                   | —                      | M               | Full autonomy              |
+| 5     | 5B. Plan doctor                         | —                  | M               | Diagnostic depth           |
+| 5     | 5C. `initiative finalize`               | —                  | M               | Initiative closure         |
+
 
 Effort: S = 1–2 days, M = 3–5 days, L = 1–2 weeks.
 
@@ -409,13 +394,14 @@ Effort: S = 1–2 days, M = 3–5 days, L = 1–2 weeks.
 
 1. **1D** (decide hub pattern) → unblocks 1C and gives 2C a canonical scaffold target.
 2. **1F** (`initiative create` rename) → trivial CLI rename so 2C can shell out symmetrically (`/spec:initiative create` → `specify initiative create`).
-3. **2A** (`registry add/remove`) → unblocks 2B and 2C.
-4. **2B** (plan-skill registry proposals) → makes the assignment step able to mint projects.
-5. **5A** (`workspace merge`) → closes the upstream-landing half of the loop.
-6. **5C** (`initiative finalize`) → closes the local-archive half of the loop.
-7. **2C** (`/spec:initiative` umbrella) → composes 1D, 1F, 2A, 2B, 5A, 5C into a single operator-facing verb.
+3. **1G** (`plan {create, add}` rename) → eliminates the last `init` verb so 2C composes against a single consistent surface; ships with 1F.
+4. **2A** (`registry add/remove`) → unblocks 2B and 2C.
+5. **2B** (plan-skill registry proposals) → makes the assignment step able to mint projects.
+6. **5A** (`workspace merge`) → closes the upstream-landing half of the loop.
+7. **5C** (`initiative finalize`) → closes the local-archive half of the loop.
+8. **2C** (`/spec:initiative` umbrella) → composes 1D, 1F, 1G, 2A, 2B, 5A, 5C into a single operator-facing verb.
 
-The other items (1A/1B/1E housekeeping, 3A/3B coherence, 4A/4B migration breadth, 5B doctor) improve the experience but do not block the headline vision. Phase 1 housekeeping is safe to start immediately. The critical-path items can be driven as Specify initiatives themselves — authored via `/spec:plan` and executed via `/spec:execute --loop` — which would simultaneously validate the platform-first workflow and close the gaps in it.
+The other items (1A/1B/1E housekeeping, 3B coherence, 4B migration breadth, 5B doctor) improve the experience but do not block the headline vision. Phase 1 housekeeping is safe to start immediately. The critical-path items can be driven as Specify initiatives themselves — authored via `/spec:plan` and executed via `/spec:execute --loop` — which would simultaneously validate the platform-first workflow and close the gaps in it.
 
 ## Non-goals
 
@@ -425,6 +411,7 @@ The other items (1A/1B/1E housekeeping, 3A/3B coherence, 4A/4B migration breadth
 - **Auto-creating registry entries.** Even with 2B's registry-proposal sub-step and 2B's execute-time amendment path, registry mutations always pass through operator confirmation. The framework never silently adds, removes, or modifies `registry.yaml` entries.
 - **Mandatory hub pattern.** 1D codifies the registry-only hub as canonical, but the platform-as-project shape (`url: .` on the initiating repo) remains valid for single-repo and small-team use. The hub pattern is a recommendation, not an enforcement.
 - **Full behavioural diff.** RFC-2 §Future's "behavioural diff" between pre- and post-migration services is undesigned and out of scope.
+- **Cross-repo spec-body references.** `@peer:capability` syntax (and any other spec-body reference that names a peer project's internal capabilities) is out of scope. Contracts (RFC-8) are the cross-repo boundary: a consumer declares the contracts it depends on via `consumes`/`imports` in `registry.yaml`, and §3B closes the wire-level compatibility loop. Cross-project sequencing belongs to `depends-on` edges in `plan.yaml` (RFC-2/RFC-3a). A `@peer:capability` syntax in spec bodies would re-couple consumer specs to producer internals — exactly the coupling contracts were introduced to remove. RFC-8's "Why not `@peer:capability`?" carved out a residual "planning and ordering" use; that residual is already covered by `depends-on`, so this RFC closes the door on the syntax entirely.
 
 ## References
 
@@ -435,3 +422,4 @@ The other items (1A/1B/1E housekeeping, 3A/3B coherence, 4A/4B migration breadth
 - [RFC-8: API Contracts](archive/rfc-8-api-contracts.md)
 - [Three-Layer Stack](../docs/explanation/three-layer-stack.md)
 - [Migrating to CLI v1](../docs/explanation/migrating-cli-v1.md)
+
