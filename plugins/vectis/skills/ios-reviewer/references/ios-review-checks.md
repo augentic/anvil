@@ -185,3 +185,23 @@ case .render:
 ```
 
 See `references/crux-ios-shell-pattern.md`.
+
+## IOS-017: Interactive Controls Inside ScrollView in NavigationStack
+
+**Severity**: Warning
+
+`TextField` and small `Button` elements inside a `ScrollView` that sits within a `NavigationStack` suffer from tap suppression. The underlying `UIScrollView` sets `delaysContentTouches = true`, which delays touch delivery to non-`UIButton` views. Users experience this as controls requiring a long press or double tap to activate.
+
+**Detection**: Search screen view files for a `ScrollView` nested inside a `NavigationStack` (or vice versa). Within that `ScrollView` body, flag any `TextField` or `Button` that is not inside a `List`. Ignore `Button` with `.buttonStyle(.borderedProminent)` or `.buttonStyle(.bordered)` as these map to `UIButton` and are not affected.
+
+**Fix**: Move the interactive control outside the `ScrollView` using `.safeAreaInset(edge:)`, or replace the `ScrollView` with `List` which manages `delaysContentTouches` internally. See `ios-writer/references/swiftui-view-patterns.md` for examples.
+
+## IOS-018: Nested ScrollViews with Tappable Content
+
+**Severity**: Warning
+
+A horizontal `ScrollView` (e.g. a chip row or filter bar) nested inside a vertical `ScrollView` creates compound gesture recognizer conflicts. The inner and outer `UIScrollView` pan gestures compete, causing missed taps on elements within the inner scroll and erratic scroll behavior.
+
+**Detection**: Search screen view files for a `ScrollView(.horizontal` that appears inside a vertical `ScrollView` (or inside a `VStack`/`LazyVStack` within a vertical `ScrollView`). Flag if the inner `ScrollView` contains tappable elements (`Button`, `.onTapGesture`, `NavigationLink`) that do not use `.buttonStyle(.plain)`.
+
+**Fix**: Move the inner horizontal scrollable outside the outer `ScrollView` using `.safeAreaInset(edge:)`. If nesting is unavoidable, ensure all tappable elements use `Button` with `.buttonStyle(.plain)`. See `ios-writer/references/swiftui-view-patterns.md` for examples.

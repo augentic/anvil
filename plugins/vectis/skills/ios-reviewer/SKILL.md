@@ -67,7 +67,7 @@ You are a Structural Reviewer for a Crux iOS shell at $TARGET_DIR.
 
 Read `references/ios-review-checks.md`.
 
-Apply checks IOS-001 through IOS-016 against the Swift source. These are
+Apply checks IOS-001 through IOS-018 against the Swift source. These are
 pattern-based checks that verify the shell correctly maps to the Crux core:
 
 - ViewModel/screen view correspondence
@@ -76,6 +76,7 @@ pattern-based checks that verify the shell correctly maps to the Crux core:
 - Route/navigation completeness
 - Design system token usage
 - ContentView switch exhaustiveness
+- ScrollView interaction hazards (touch delay, nested gesture conflicts)
 
 For each finding, report: check ID (IOS-NNN), file:line, code snippet,
 severity (Critical or Warning), risk description, suggested fix, and
@@ -415,7 +416,7 @@ Before completing review:
 
 ### Scan Coverage
 
-- [ ] Structural Specialist: IOS-001 through IOS-016 checked
+- [ ] Structural Specialist: IOS-001 through IOS-018 checked
 - [ ] Quality Specialist: SWF-001 through SWF-010 checked
 - [ ] Integration Specialist: type completeness, serialization, build config, capability alignment checked (first iteration, full scope)
 - [ ] Universal Checks: UNI-001 through UNI-021 applied with Swift-specific heuristics (skipped where covered by IOS/SWF)

@@ -185,6 +185,74 @@ struct AddItemSection: View {
 }
 ```
 
+## ScrollView Interaction Rules
+
+### No Interactive Controls Inside ScrollView in NavigationStack
+
+Avoid placing `TextField` or small `Button` elements inside a `ScrollView` that sits inside a `NavigationStack`. The underlying `UIScrollView` touch-delay mechanism (`delaysContentTouches`) suppresses taps on views that are not `UIButton` subclasses. This manifests as controls requiring a long press or double tap to register input.
+
+**Preferred patterns:**
+
+- Pin interactive controls (search fields, filter chips, action buttons) outside the scroll content using `.safeAreaInset(edge:)`.
+- Use `List` instead of `ScrollView` when the content contains interactive elements -- `List` handles touch delay internally.
+
+```swift
+struct SearchableListScreen: View {
+    let viewModel: SearchView
+    let onEvent: (Event) -> Void
+    @State private var query = ""
+    @ObserveInjection var inject
+
+    var body: some View {
+        NavigationStack {
+            List(viewModel.items, id: \.id) { item in
+                ItemRow(item: item) { onEvent(.selectItem(item.id)) }
+            }
+            .navigationTitle("Search")
+            .safeAreaInset(edge: .top) {
+                TextField("Search...", text: $query)
+                    .textFieldStyle(.roundedBorder)
+                    .padding(.horizontal, VectisSpacing.md)
+                    .onSubmit { onEvent(.search(query)) }
+            }
+        }
+        .enableInjection()
+    }
+}
+```
+
+### No Nested ScrollViews with Tappable Content
+
+A horizontal `ScrollView` (e.g. a chip/filter row) nested inside a vertical `ScrollView` creates compound gesture conflicts. The inner and outer scroll recognizers compete, causing missed taps and erratic scrolling.
+
+**Preferred patterns:**
+
+- Keep the inner scrollable content outside the outer `ScrollView` using `.safeAreaInset(edge:)`.
+- If nesting is unavoidable, ensure all tappable elements use `Button` with `.buttonStyle(.plain)` so the gesture system recognises them as tap targets rather than scroll content.
+
+```swift
+NavigationStack {
+    ScrollView {
+        LazyVStack(spacing: VectisSpacing.sm) {
+            ForEach(viewModel.items, id: \.id) { item in
+                ItemCard(item: item) { onEvent(.selectItem(item.id)) }
+            }
+        }
+    }
+    .safeAreaInset(edge: .top) {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: VectisSpacing.xs) {
+                ForEach(viewModel.filters, id: \.self) { filter in
+                    Button(filter) { onEvent(.applyFilter(filter)) }
+                        .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, VectisSpacing.md)
+        }
+    }
+}
+```
+
 ## Navigation with Route
 
 When the Crux core defines a `Route` enum, use `NavigationStack` in the app entry point. Navigation events are dispatched as `Event.navigate(route)`.
