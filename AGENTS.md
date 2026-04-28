@@ -17,8 +17,9 @@ Humans are expected to work through stock Specify:
 - `/spec:explore` (thinking partner for ideas and requirements)
 - `/spec:status` (check artifact completion and task progress)
 - `/spec:extract` (extract Specify artifacts from existing source code)
-- `/spec:execute` (drive an initiative's `.specify/plan.yaml` through define → build → merge; RFC-2 Layer 2, fully landed — `--dry-run` preview, supervised single-change run, self-heal on startup, `--loop` mode with terminal summary + SIGINT/SIGTERM handling, and `sources` / `affects` execution wiring)
+- `/spec:execute` (drive an initiative's `.specify/plan.yaml` through define → build → merge; RFC-2 Layer 2, fully landed — `--dry-run` preview, supervised single-change run, self-heal on startup, `--loop` mode with terminal summary + SIGINT/SIGTERM handling, `sources` execution wiring, and post-merge cross-project contract validation per RFC-9 §3B)
 - `/spec:plan` (author `.specify/plan.yaml` via `pipeline.plan`; RFC-2 Layer 3 + RFC-3a + RFC-3b — discovery through `/spec:analyze`, optional **sync-peers** when `.specify/registry.yaml` declares multiple projects (`specify workspace sync` + `workspace.md`), propose with glob or **manifest** scopes (Stage C), **project assignment** step for multi-repo plans (RFC-3b: infers `project` per entry from registry descriptions, writes via `specify plan amend --project`), `.specify/plans/<name>/` artefacts archived with the plan; see [rfcs/rfc-3a-monoliths.md](rfcs/archive/rfc-3a-monoliths.md) and [rfcs/archive/rfc-3b-platform.md](rfcs/archive/rfc-3b-platform.md))
+- `/spec:initiative` (Layer 4 umbrella that strings the cross-repo loop into one operator action: brief → registry validate → `/spec:plan` → `/spec:execute --loop` → `specify workspace push` → optional `specify workspace merge` → `specify initiative finalize`; RFC-9 §2C, fully landed — composition only, idempotent on re-entry, supports `migrate-legacy` / `new-feature` / `update-existing` shapes through a single uniform sequence)
 
 This repository provides specialist skills and references that support that workflow.
 
@@ -28,13 +29,13 @@ The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/
 
 CLI surface the skills depend on:
 
-- `specify init` — scaffold `.specify/` and write `project.yaml`.
+- `specify init [--hub]` — scaffold `.specify/` and write `project.yaml`. `--hub` (RFC-9 §1D) scaffolds a registry-only platform hub instead of a regular project.
 - `specify status` — project dashboard summarising registry, plan, and active changes (single-change view lives at `specify change status <name>`).
 - `specify change {create, list, status, transition, touched-specs, overlap, archive, drop, validate, merge {preview, conflict-check, run}, task {progress, mark}, outcome {set, show}, journal {append, show}}` — every per-change verb. `outcome set` stamps the `.metadata.yaml:outcome` that `/spec:execute` reads; `journal append` writes `question` / `failure` / `recovery` entries into `journal.yaml`.
-- `specify plan {init, validate, next, status, create, amend, transition, archive, lock}` — plan CRUD and lifecycle (RFC-2 Layer 1 + RFC-3a). `init` scaffolds an empty plan; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/spec:execute`.
-- `specify initiative {init, show}` — operator brief at `.specify/initiative.md`.
-- `specify registry {show, validate}` — platform registry at `.specify/registry.yaml`.
-- `specify workspace {sync, status, push}` — materialises `.specify/workspace/<peer>/` for multi-repo planning; pushes workspace clones to remotes after execution.
+- `specify plan {create, validate, doctor, next, status, add, amend, transition, archive, lock}` — plan CRUD and lifecycle (RFC-2 Layer 1 + RFC-3a + RFC-9 §§1G/4B). `create` scaffolds an empty plan (renamed from `init` in v1.x); `add` appends an entry (renamed from the v1 entry-append `create`); `doctor` is a strict superset of `validate` with cycle / orphan-source / stale-clone / unreachable-entry diagnostics; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/spec:execute`.
+- `specify initiative {create, show, finalize}` — operator brief at `.specify/initiative.md` plus the canonical closure verb (RFC-9 §4C). `create` was renamed from v1 `init`; `finalize` confirms every per-project PR has merged before archiving.
+- `specify registry {add, remove, show, validate}` — platform registry at `.specify/registry.yaml`. `add` and `remove` were added by RFC-9 §2A; both validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
+- `specify workspace {sync, status, push, merge}` — materialises `.specify/workspace/<peer>/` for multi-repo planning, pushes workspace clones to remotes after execution, and squash-merges the resulting PRs once CI is green (`merge`, RFC-9 §4A).
 - `specify schema {resolve, check, pipeline}` — schema resolution and brief topology.
 
 The previous standalone groups (`specify validate`, `specify spec`, `specify task`, `specify merge`) and the previous nested verbs (`specify initiative {brief, registry}`, `specify change phase-outcome`, `specify change journal-append`) were folded into `specify change` and top-level `registry` / `initiative` in the CLI cleanup. See [docs/explanation/migrating-cli-v1.md](docs/explanation/migrating-cli-v1.md) for the rename map.
@@ -59,7 +60,7 @@ When an initiative is coordinated through a `.specify/plan.yaml`, the recommende
 2. **Execute.** `/spec:execute --loop` — Layer 2 driver that repeatedly picks `specify plan next`, runs `/spec:define → /spec:build → /spec:merge` on the chosen entry, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
 3. **Archive.** `specify plan archive` sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
-Hand-driven fallback (RFC-2 Layer 1): skip `/spec:plan` and `/spec:execute`, author `plan.yaml` entry-by-entry with `specify plan {init, create, amend}`, and drive the loop yourself via `specify plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
+Hand-driven fallback (RFC-2 Layer 1): skip `/spec:plan` and `/spec:execute`, author `plan.yaml` entry-by-entry with `specify plan {create, add, amend}`, and drive the loop yourself via `specify plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
 
 The phase skills themselves stay unaware of the plan — they operate change-by-change. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *status* is only ever written via `specify plan transition`. A phase that discovers a neighbouring change mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify plan add` / `specify plan amend` — the same commands humans run. See [rfcs/archive/rfc-2-execution.md](rfcs/archive/rfc-2-execution.md) for the full design.
 

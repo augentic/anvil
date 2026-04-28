@@ -21,6 +21,7 @@
 - [Brownfield Onboarding](tutorials/brownfield-onboarding.md)
 - [A Multi-Change Initiative](tutorials/single-repo-initiative.md)
 - [Cross-Repo Initiatives](tutorials/cross-repo-initiative.md)
+- [Landing an Initiative](tutorials/landing-an-initiative.md)
 - [Legacy Migration at Scale](tutorials/legacy-migration-at-scale.md)
 
 ---
@@ -31,7 +32,12 @@
 - [Recover from a Failed Change](how-to/recover-failed-change.md)
 - [Add a Capability to an Existing Project](how-to/add-capability.md)
 - [Debug Drift Detected by Verify](how-to/debug-drift.md)
+- [Bootstrap a Platform Hub](how-to/bootstrap-a-platform-hub.md)
+- [Manage Registry Projects](how-to/manage-registry-projects.md)
 - [Work with Contracts Across Repos](how-to/cross-repo-contracts.md)
+- [Resolve Cross-Project Contract Warnings](how-to/resolve-cross-project-contract-warnings.md)
+- [Land an Initiative](how-to/land-an-initiative.md)
+- [Recover from registry-amendment-required](how-to/recover-from-registry-amendment.md)
 - [Onboard a Team Member](how-to/onboard-team-member.md)
 - [Drop Down a Layer](how-to/drop-down-a-layer.md)
 
@@ -54,7 +60,8 @@
   - [/spec:verify](reference/change-skills/verify.md)
   - [/spec:explore](reference/change-skills/explore.md)
   - [/spec:extract](reference/change-skills/extract.md)
-- [Initiative Skills (Layer 3)](reference/initiative-skills/index.md)
+- [Initiative Skills (Layers 3 & 4)](reference/initiative-skills/index.md)
+  - [/spec:initiative](reference/initiative-skills/initiative.md)
   - [/spec:plan](reference/initiative-skills/plan.md)
   - [/spec:execute](reference/initiative-skills/execute.md)
   - [/spec:analyze](reference/initiative-skills/analyze.md)
@@ -87,8 +94,12 @@
 - [The Layered Stack](explanation/three-layer-stack.md)
 - [Artifacts in Depth](explanation/artifacts.md)
 - [Schemas and Plugins](explanation/schemas-and-plugins.md)
+- [Platform Repo Topologies](explanation/platform-repo.md)
+- [Workspace Tiers](explanation/workspace-tiers.md)
 - [Decision Log](explanation/decision-log.md)
 - [Migrating CLI v1](explanation/migrating-cli-v1.md)
+- [What's New Since v0.23](explanation/whats-new.md)
+- [Verify Fixture Mode (design)](explanation/verify-fixture-mode.md)
 
 ---
 

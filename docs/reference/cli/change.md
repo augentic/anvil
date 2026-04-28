@@ -4,6 +4,24 @@ Create, inspect, validate, transition, merge, and archive individual changes. Th
 
 Every per-change verb takes the change `<name>`. The CLI resolves the on-disk directory from the name internally (no `<change-dir>` arg).
 
+## Verb cheat-sheet
+
+| Verb | When to use |
+|------|-------------|
+| [`create`](#specify-change-create) | Create a new change directory with an initial `.metadata.yaml`. |
+| [`list`](#specify-change-list) | List all active changes. |
+| [`status`](#specify-change-status) | Detailed status for one change (lifecycle state, artifacts, tasks, timestamps). |
+| [`transition`](#specify-change-transition) | Move a change through the lifecycle state machine (`created` -> `defining` -> `defined` -> `building` -> `complete` -> `merged`/`dropped`). |
+| [`validate`](#specify-change-validate) | Run artifact validation (formerly top-level `specify validate`). |
+| [`merge`](#specify-change-merge) | `merge {preview, conflict-check, run}` -- preview the delta merge, detect baseline conflicts, or execute the merge. |
+| [`task`](#specify-change-task) | `task {progress, mark}` -- inspect or update the task checkbox state in `tasks.md`. |
+| [`outcome`](#specify-change-outcome) | `outcome {set, show}` -- write or read the phase outcome that `/spec:execute` consumes. |
+| [`journal`](#specify-change-journal) | `journal {append, show}` -- append or read `journal.yaml` entries (questions, failures, recoveries). |
+| [`touched-specs`](#specify-change-touched-specs) | Scan or set the spec files this change affects. |
+| [`overlap`](#specify-change-overlap) | Find changes whose touched specs overlap. |
+| [`archive`](#specify-change-archive) | Move a `merged` or `dropped` change into `.specify/archive/`. |
+| [`drop`](#specify-change-drop) | Discard a change without merging. |
+
 ## Subcommands
 
 ### specify change create

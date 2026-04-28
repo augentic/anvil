@@ -9,15 +9,28 @@ This repository provides specialist skills and references for Specify-driven dev
 
 ## Operating Model
 
-The intended workflow is human-driven Specify:
+The intended workflow is human-driven Specify. Single-change loop:
 
 ```bash
-/spec:init      # once per project
+/spec:init      # once per project (use --hub for a registry-only platform hub)
 /spec:define
 /spec:build     # validates artifacts, then implements
 /spec:merge
 /spec:drop
 /spec:verify    # detect drift between code and baseline specs
+```
+
+Multi-change initiative (Layer 3):
+
+```bash
+/spec:plan <name> --source legacy=./path
+/spec:execute --loop
+```
+
+Cross-repo initiative end-to-end (Layer 4 umbrella, RFC-9 §2C):
+
+```bash
+/spec:initiative create <name> [--shape migrate-legacy|new-feature|update-existing] [--auto-merge]
 ```
 
 Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
@@ -55,7 +68,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Specify Plugin (`plugins/spec/`)
 
-- `init` - initialize Specify in a project (one-time setup)
+- `init` - initialize Specify in a project (one-time setup; supports `--hub` for a registry-only platform hub, RFC-9 §1D)
 - `define` - create a change and generate all artifacts in one step
 - `build` - validate artifacts and implement tasks from a Specify change
 - `merge` - finalize and merge a completed change
@@ -67,6 +80,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `analyze` - plan-time capability inference; emits capability summaries
 - `plan` - author `.specify/plan.yaml` via the plan pipeline
 - `execute` - drive an initiative's plan through define, build, merge
+- `initiative` - Layer 4 umbrella that strings the cross-repo loop (brief → registry validate → plan → execute → push → optional merge → finalize) into one operator action (RFC-9 §2C)
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -112,7 +126,7 @@ See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for
 /docs/                    # Extended documentation (architecture, plugins)
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
-  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, execute)
+  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, execute, initiative)
   │   └── references/     # Artifact templates and schema resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)

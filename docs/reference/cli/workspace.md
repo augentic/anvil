@@ -2,6 +2,15 @@
 
 Materialise, inspect, and push workspace peer clones for multi-repo initiatives.
 
+## Verb cheat-sheet
+
+| Verb | When to use |
+|------|-------------|
+| [`sync`](#specify-workspace-sync) | Clone or refresh every registry project into `.specify/workspace/<project>/`. Runs automatically during `/spec:plan`'s sync-peers phase; re-run by hand to refresh between initiatives. |
+| [`status`](#specify-workspace-status) | Per-project materialisation report (slot path, type, HEAD sha, dirty flag, `.specify/` tree summary). |
+| [`push`](#specify-workspace-push) | Ship local commits in each clone to its remote on `specify/<initiative-name>` and create a PR. |
+| [`merge`](#specify-workspace-merge) | Squash-merge the open PRs once their CI is green (RFC-9 §4A). Refuses on `branch-pattern-mismatch`, never `--admin`/`--auto`. |
+
 ## Subcommands
 
 ### specify workspace sync

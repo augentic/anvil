@@ -77,8 +77,8 @@ src/main.rs  →  Cli::parse()  →  commands::run(cli)  →  ExitCode
 The CLI definition lives in `src/cli.rs`:
 
 - **`Cli`** -- top-level struct with a global `--format text|json` flag and a `Commands` subcommand
-- **`Commands`** -- enum with one variant per top-level subcommand (`Init`, `Validate`, `Merge`, `Status`, `Task`, `Schema`, `Change`, `Spec`, `Plan`, `Initiative`, `Workspace`, `Vectis`, `Completions`)
-- **Nested enums** -- subcommands with their own variants (e.g. `PlanAction`, `ChangeAction`, `VectisAction`)
+- **`Commands`** -- enum with one variant per top-level subcommand (`Init`, `Status`, `Schema`, `Change`, `Plan`, `Initiative`, `Registry`, `Workspace`, `Completions`, `Vectis`). The pre-v1 standalone `Validate`, `Merge`, `Spec`, and `Task` variants were folded into `Change` during the v1 cleanup; `Registry` was added by RFC-9 §2A.
+- **Nested enums** -- subcommands with their own variants (e.g. `PlanAction`, `ChangeAction`, `InitiativeAction`, `RegistryAction`, `WorkspaceAction`, `VectisAction`)
 
 The dispatcher in `src/commands/mod.rs` matches on the command variant and routes to a handler function. Most commands load a `CommandContext` from `.specify/project.yaml` (via `CommandContext::require`); a few "bare" commands (like `Init` and `Schema Resolve`) run without project context.
 

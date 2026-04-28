@@ -1,6 +1,6 @@
 # Plugins
 
-Specify ships as a Cursor plugin marketplace containing five plugins. Each plugin provides specialist skills and reference documentation for a specific domain.
+Specify ships as a Cursor plugin marketplace containing six plugins. Each plugin provides specialist skills and reference documentation for a specific domain.
 
 ## Plugin model
 

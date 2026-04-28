@@ -2,6 +2,21 @@
 
 Scaffold, populate, validate, transition, and archive initiative plans.
 
+## Verb cheat-sheet
+
+| Verb | When to use |
+|------|-------------|
+| [`create`](#specify-plan-create) | Scaffold an empty `.specify/plan.yaml` at the start of an initiative (renamed from v1 `plan init`). |
+| [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state (renamed from the v1 entry-append `plan create`). |
+| [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
+| [`transition`](#specify-plan-transition) | Move an entry through the status state machine (`pending` -> `in-progress` -> `done` / `failed` / `blocked`, plus `skipped`). |
+| [`validate`](#specify-plan-validate) | Structural and referential integrity check (cycles, unknown deps, multi-repo invariants). |
+| [`doctor`](#specify-plan-doctor) | First triage step when `/spec:execute` reports `stuck`. Strict superset of `validate` with cycle / orphan-source / stale-clone / unreachable-entry diagnostics. |
+| [`next`](#specify-plan-next) | Report the next eligible entry (used by `/spec:execute` and ad-hoc operators). |
+| [`status`](#specify-plan-status) | Render plan progress in topological order with per-status counts. |
+| [`archive`](#specify-plan-archive) | Move a completed `plan.yaml` and `.specify/plans/<name>/` to `.specify/archive/plans/`. (Usually invoked by `specify initiative finalize` rather than directly.) |
+| [`lock`](#specify-plan-lock) | Manage the advisory `.specify/plan.lock` PID stamp held by `/spec:execute`. |
+
 ## Subcommands
 
 ### specify plan create
@@ -22,7 +37,7 @@ Check structural and referential integrity of the plan.
 specify plan validate
 ```
 
-Checks for: duplicate entry names, dependency cycles, unknown `depends-on` / `affects` / `sources` references, at most one `in-progress` entry, and the following RFC-3b cross-registry checks when `registry.yaml` is present:
+Checks for: duplicate entry names, dependency cycles, unknown `depends-on` / `sources` references, at most one `in-progress` entry, and the following RFC-3b cross-registry checks when `registry.yaml` is present:
 
 - `project-not-in-registry` (error) -- every `project` value must match a `projects[].name` in the registry.
 - `project-missing-multi-repo` (error) -- when the registry has multiple projects, every change must carry a `project` field.

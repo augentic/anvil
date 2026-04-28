@@ -104,15 +104,38 @@ If self-heal itself fails, manually resolve:
 
 **Symptom:** `/spec:execute --loop` exits with `stuck`.
 
-**Cause:** No `pending` entry has all dependencies satisfied. Typically because a dependency is `failed` or `blocked`.
+**Cause:** No `pending` entry has all dependencies satisfied. Typically because a dependency is `failed` or `blocked`, or a structural problem in the plan (cycle, unreachable entry) is preventing progress.
 
 **Resolution:**
-1. Check plan status: `specify plan status`
-2. Identify the blocking entries.
-3. Options:
+1. **First triage step:** run `specify plan doctor` -- it surfaces every structural problem (cycles, orphan sources, stale clones, unreachable entries) that `validate` would miss. See [Plan doctor diagnostics](#plan-doctor-diagnostics) below.
+2. Check plan status: `specify plan status`
+3. Identify the blocking entries.
+4. Options:
    - Fix and retry the failed entry: `specify plan transition <name> pending` then `/spec:execute`
    - Skip it: `specify plan transition <name> skipped`
    - Remove the dependency: `specify plan amend <downstream> --depends-on <updated-list>`
+
+### Registry amendment required
+
+**Symptom:** `/spec:execute --loop` halts with a `registry-amendment-required` outcome on the offending change. The change is transitioned to `blocked` and the proposal payload is written to its `journal.yaml`.
+
+**Cause:** A phase skill (typically `/spec:extract` or a build brief) discovered that the change targets a capability that does not fit any existing registry project, and proposed a new project. Introduced by RFC-9 Section 2B; the framework never auto-modifies the registry.
+
+**Resolution:** Follow the canonical recovery sequence:
+
+```bash
+specify change journal show <change>             # read the proposal payload
+specify registry add <proposed-name> \
+    --url <proposed-url> \
+    --schema <proposed-schema> \
+    --description "<proposed-description>"
+specify workspace sync                           # bootstrap the new slot
+specify plan amend <change> --project <proposed-name>
+specify plan transition <change> pending
+# re-run /spec:execute
+```
+
+For the full how-to, see [Recover from registry-amendment-required](../how-to/recover-from-registry-amendment.md).
 
 ### Phase failure during execution
 
@@ -207,3 +230,98 @@ If self-heal itself fails, manually resolve:
 **Cause:** The capability naming or project structure does not match what verify expects.
 
 **Resolution:** Ensure the capability name in `.specify/specs/<name>/` corresponds to the actual source location in your project.
+
+## Hub and registry issues
+
+### `hub-cannot-be-project`
+
+**Symptom:** `specify registry validate` (or `specify init --hub`) refuses with `hub-cannot-be-project: registry.yaml: projects[<idx>] (<name>).url is `.``.
+
+**Cause:** A registry on a hub repo (`project.yaml: hub: true`) has an entry whose `url` is `.`. The hub topology forbids this -- the hub holds platform state and never appears in its own registry. Code projects always live in their own repos. Introduced by RFC-9 Section 1D.
+
+**Resolution:** Two paths.
+
+- **Stay on the hub:** remove the entry. `specify registry remove <name>`. Code projects must live in their own repos and be referenced via a remote URL.
+- **Convert to platform-as-project:** if the operator actually wants the single-repo shape (the initiating repo is itself a code project), remove `.specify/` and re-run `specify init <schema>` without `--hub`. See [Platform repo topologies](../explanation/platform-repo.md).
+
+### `description-missing-multi-repo`
+
+**Symptom:** `specify registry add` or `specify registry validate` refuses with `description-missing-multi-repo` and names the offending entry.
+
+**Cause:** A multi-project registry must declare a `description` on every entry (the description drives `/spec:plan`'s assignment step; sparse descriptions force unresolved prompts during planning). The invariant fires when the addition produces a multi-project registry and any existing entry lacks a description, or when validate is run against an already-violating registry.
+
+**Resolution:** Add the missing descriptions. Either re-run `specify registry add` for each existing entry with `--description "..."`, or hand-edit `.specify/registry.yaml` and re-run `specify registry validate` to confirm.
+
+```bash
+specify registry add <existing-name> \
+    --url <existing-url> \
+    --schema <existing-schema> \
+    --description "..."
+```
+
+`registry add` refuses if the entry already exists; for already-declared entries the operator hand-edits `registry.yaml` and runs `specify registry validate` again.
+
+## Plan doctor diagnostics
+
+`specify plan doctor` (RFC-9 Section 4B) is the first triage step when `/spec:execute --loop` reports `stuck`. It runs every check `validate` runs, then layers four health diagnostics.
+
+### `cycle-in-depends-on`
+
+**Symptom:** `specify plan doctor` reports `cycle-in-depends-on` with the cycle path (e.g. `["a", "b", "a"]`).
+
+**Cause:** Two or more plan entries form a `depends-on` cycle. `next_eligible` silently skips cycles at runtime, so the executor reports `stuck`; `doctor` is the only place where the cycle structure is surfaced.
+
+**Resolution:** Break the cycle with `specify plan amend <name> --depends-on <updated-list>` on one of the entries on the cycle path, then re-run doctor.
+
+### `orphan-source-key`
+
+**Symptom:** `specify plan doctor` reports `orphan-source-key` (warning) for a key declared in the top-level `sources:` map but referenced by no entry.
+
+**Cause:** A `--source <key>=<path>` was supplied at plan time but no proposed slice ended up using it (rejected during the propose loop, or scope changed).
+
+**Resolution:** Either reference the key from an entry's `sources:` list (`specify plan amend <name> --sources <key>`) or drop the declaration via a hand-edit of `.specify/plan.yaml`. Warnings are non-fatal; the loop will proceed.
+
+### `stale-workspace-clone`
+
+**Symptom:** `specify plan doctor` reports `stale-workspace-clone` (warning) with reason `signature-changed` (URL or schema diverged) or `missing-sync-stamp` (no stamp file and no readable git remote).
+
+**Cause:** The workspace clone's signature has drifted from the registry, typically because `registry.yaml` was edited after the clone was first materialised.
+
+**Resolution:** `specify workspace sync` to refresh the clone. The verb is idempotent.
+
+### `unreachable-entry`
+
+**Symptom:** `specify plan doctor` reports `unreachable-entry` for a pending entry whose dependency closure is rooted in a `failed` or `skipped` predecessor.
+
+**Cause:** The entry's `depends-on` list (transitively) names an entry that can never become `done` (it is in a terminal non-success state).
+
+**Resolution:** Two paths.
+
+- **Reset the predecessor:** `specify plan transition <pred> pending` (after fixing the underlying issue) and re-run `/spec:execute`.
+- **Drop the leaf:** `specify plan transition <entry> skipped --reason "<reason>"` to remove the entry from the dependency frontier.
+
+## Initiative landing issues
+
+### `branch-pattern-mismatch`
+
+**Symptom:** `specify workspace merge` or `specify initiative finalize` refuses on a project with status `branch-pattern-mismatch`.
+
+**Cause:** A PR exists on the workspace clone but its `headRefName` is not `specify/<initiative-name>` exactly. The verb refuses to operate on PRs created outside the Specify push flow -- the guard exists so the framework never accidentally squash-merges someone else's branch.
+
+**Resolution:** Inspect the PR by hand (`gh pr view <pr> -R <org/repo>`). If the PR is correct, rename its branch to `specify/<initiative-name>`; if it was created outside the Specify flow, close it and re-run `specify workspace push`. The verbs never override the guard.
+
+### `plan-not-found` from `initiative finalize`
+
+**Symptom:** `specify initiative finalize` exits non-zero with `plan-not-found`.
+
+**Cause:** `.specify/plan.yaml` does not exist. This is the explicit "already finalized" signal -- a previous successful `finalize` run swept the plan into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+
+**Resolution:** None needed -- the initiative is already closed. Inspect the archive to confirm: `ls .specify/archive/plans/`. If the plan was lost some other way (e.g. accidental `rm`), recover from version control.
+
+### Cross-project contract warnings on the merge transcript
+
+**Symptom:** `/spec:execute --loop`'s merge transcript shows `cross-project-warning:` entries, and the merged change's `journal.yaml` carries the same warnings.
+
+**Cause:** RFC-9 Section 3B post-merge cross-project contract validation. After a producer merges, the driver walks `contracts.produces`, finds consumer projects via `contracts.consumes`, and runs `/contracts:validator --mode cross-project` against each consumer's workspace clone. Any incompatibilities surface as warnings. Warnings never halt the loop -- the operator triages.
+
+**Resolution:** Read [Resolve cross-project contract warnings](../how-to/resolve-cross-project-contract-warnings.md) for the triage checklist. Typical paths: spawn a follow-up consumer change to track the producer's update, or accept the drift if the consumer is intentionally lagging.

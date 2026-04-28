@@ -45,18 +45,23 @@ Specify artifacts live in a `.specify/` directory at your project root. They are
 
 You interact with Specify through **skills** -- commands prefixed with `/spec:` that you invoke in Cursor's agent chat:
 
-| Skill | Purpose |
-|-------|---------|
-| `/spec:init` | One-time project setup |
-| `/spec:define` | Generate artifacts for a new change |
-| `/spec:build` | Implement tasks from a defined change |
-| `/spec:merge` | Merge completed specs into baseline |
-| `/spec:drop` | Discard a change |
-| `/spec:status` | Check progress |
-| `/spec:verify` | Detect drift between code and specs |
-| `/spec:explore` | Think through a problem before defining |
-| `/spec:plan` | Author a multi-change initiative plan |
-| `/spec:execute` | Drive a plan through the define-build-merge loop |
+| Skill | Layer | Purpose |
+|-------|-------|---------|
+| `/spec:init` | 2 | One-time project setup (`--hub` for a registry-only platform hub) |
+| `/spec:define` | 2 | Generate artifacts for a new change |
+| `/spec:build` | 2 | Implement tasks from a defined change |
+| `/spec:merge` | 2 | Merge completed specs into baseline |
+| `/spec:drop` | 2 | Discard a change |
+| `/spec:status` | 2 | Check progress |
+| `/spec:verify` | 2 | Detect drift between code and specs |
+| `/spec:explore` | 2 | Think through a problem before defining |
+| `/spec:extract` | 2 | Extract specs from existing code |
+| `/spec:analyze` | 3 | Plan-time capability inference (used internally by `/spec:plan`) |
+| `/spec:plan` | 3 | Author a multi-change initiative plan |
+| `/spec:execute` | 3 | Drive a plan through the define-build-merge loop |
+| `/spec:initiative` | 4 | Cross-repo umbrella: brief -> registry -> plan -> execute -> push -> optional merge -> finalize |
+
+Skills are grouped by layer. Layer 2 owns single-change work; Layer 3 coordinates multi-change initiatives; Layer 4 strings the cross-repo loop into one operator action. See [The Layered Stack](../explanation/three-layer-stack.md) for when to climb between layers.
 
 Behind these skills, a Rust CLI binary (`specify`) handles every deterministic operation -- validation, lifecycle transitions, spec merging, task tracking. The agent keeps judgment; the CLI keeps correctness.
 

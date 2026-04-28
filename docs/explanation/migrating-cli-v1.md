@@ -4,6 +4,8 @@ The `specify` CLI was reshaped in the v1 release so per-change operations live u
 
 The behavioural surface did not change -- every renamed command does exactly the same thing it did before. The reshape is a routing change, not a semantic one.
 
+> **For the additive surface** -- new verbs (`specify registry add`, `specify workspace merge`, `specify plan doctor`, `specify initiative finalize`), new flags (`specify init --hub`), the `/spec:initiative` Layer 4 umbrella, and contracts -- see [What's New Since v0.23](whats-new.md). The two pages compose: this one is **what was renamed**, the other is **what was added**.
+
 ## Rename map
 
 | Old verb | New verb |
@@ -40,7 +42,7 @@ Order matters when running these as bulk replacements: do `plan create` -> `plan
 
 ## Why these renames
 
-- **`registry.yaml` is platform-scoped, not initiative-scoped.** A platform's repository catalogue spans every initiative the platform ever runs. Nesting the verbs under `specify initiative ...` implied the wrong lifetime. They now live at the top level: `specify registry {show, validate}`.
+- **`registry.yaml` is platform-scoped, not initiative-scoped.** A platform's repository catalogue spans every initiative the platform ever runs. Nesting the verbs under `specify initiative ...` implied the wrong lifetime. They now live at the top level: `specify registry {show, validate}` (plus `{add, remove}` added later by RFC-9 §2A).
 - **Per-change operations belong with `change`.** The old `specify validate`, `specify merge`, `specify spec`, and `specify task` groups all took a change directory and operated on a single change. Folding them into `specify change` makes the noun structure of the CLI match the noun structure of `.specify/changes/`.
 - **`outcome` and `journal` group their verbs cleanly.** `phase-outcome` was a hyphenated verb pretending to be a sub-noun; `journal-append` was an action attached to a missing noun group. Both now sit under `outcome {set, show}` and `journal {append, show}`, matching how every other group works.
 - **`status` is a project dashboard, not an alias of `change status`.** The bare `specify status` now returns `{registry, plan, changes}` -- the operator's overall view of the project. The single-change view moved to `specify change status <name>`.
@@ -80,10 +82,12 @@ After running the bulk pass:
 
 These surfaces are untouched. Scripts that use them keep working.
 
-- `specify init ...` -- project scaffold.
+- `specify init ...` -- project scaffold (extended with `--hub` in RFC-9 §1D, additive only).
 - `specify schema {resolve, check, pipeline}` -- schema and brief pipeline queries.
-- `specify plan {init, validate, next, status, create, amend, transition, archive, lock {acquire, release, status}}` -- initiative plan CRUD and lifecycle.
-- `specify workspace {sync, status, push}` -- multi-repo workspace clones.
+- `specify plan {create, validate, doctor, next, status, add, amend, transition, archive, lock {acquire, release, status}}` -- initiative plan CRUD and lifecycle. The v1.x rename rows above renamed `init` -> `create` (file scaffold) and the entry-append `create` -> `add`; `doctor` is a strict superset of `validate` added by RFC-9 §4B.
+- `specify workspace {sync, status, push, merge}` -- multi-repo workspace clones; `merge` was added by RFC-9 §4A.
+- `specify initiative {create, show, finalize}` -- operator brief at `.specify/initiative.md`; `finalize` was added by RFC-9 §4C, and `init` was renamed to `create` in v1.x.
+- `specify registry {add, remove, show, validate}` -- platform registry at `.specify/registry.yaml`; `add` and `remove` were added by RFC-9 §2A.
 - `specify vectis {init, verify, add-shell, update-versions}` -- Vectis project tooling.
 - `specify change {create, list, status, transition, touched-specs, overlap, archive, drop}` -- the existing CRUD verbs on `change`. The rename added new verbs alongside; it did not displace these.
 

@@ -4,6 +4,15 @@ Manage the platform registry at `.specify/registry.yaml` -- the catalogue of rep
 
 The registry was promoted from `specify initiative registry ...` to a top-level noun group in the CLI cleanup: `registry.yaml` is platform-scoped (it spans every initiative the platform runs), not initiative-scoped, so the verb shape now reflects that.
 
+## Verb cheat-sheet
+
+| Verb | When to use |
+|------|-------------|
+| [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name, URL classification, schema, and the `description-missing-multi-repo` invariant after the write. |
+| [`remove`](#specify-registry-remove) | Delete a project entry. Warns when `plan.yaml` references the removed project. |
+| [`show`](#specify-registry-show) | Render the registry as parsed YAML (or JSON via `--format json`). The canonical surface `/spec:plan`'s sync-peers step consumes. |
+| [`validate`](#specify-registry-validate) | Structural and referential check; runs the multi-repo description invariant and (on hubs) the `hub-cannot-be-project` invariant. |
+
 ## Subcommands
 
 ### specify registry show

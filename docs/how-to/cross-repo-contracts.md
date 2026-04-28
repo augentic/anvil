@@ -57,9 +57,36 @@ When you define an implementation change (Omnia or Vectis schema), the define pi
 
 In a multi-repo setup, contracts live in the initiating repo's `.specify/contracts/`. After execution, `specify workspace push` publishes changes to each target repo. The contract files serve as the shared vocabulary -- both producer and consumer reference the same definitions.
 
+## Cross-project contract validation (RFC-9 Section 3B)
+
+After a producer change merges, `/spec:execute` runs a cross-project compatibility check against every consumer project. The check is post-merge (the producer's contract is already in the baseline), advisory (warnings never halt the loop), and operator-triaged.
+
+**Algorithm:**
+
+1. Read the producer project's `contracts.produces` list from `.specify/registry.yaml`.
+2. For each produced contract path, find consumer projects -- those listing the same path in `contracts.consumes`.
+3. Run `/contracts:validator --mode cross-project` against each consumer's workspace clone, passing the updated contract.
+4. Surface each incompatibility as a warning in the merge transcript.
+5. Write each warning to the merged change's `journal.yaml` as a `cross-project-warning:` entry, so the audit trail survives the change being archived.
+
+**Where the warnings appear:**
+
+- The `/spec:execute` merge transcript prints a per-warning block (consumer project, contract path, finding type, finding detail) right after the per-change merge summary.
+- `specify change journal show <change>` displays the same warnings keyed by `cross-project-warning:` even after the change is archived.
+
+**Triage:**
+
+- If the consumer project is intentionally lagging (e.g. mobile shipping a release behind the backend), accept the drift. The warning is in the journal for audit.
+- If the consumer needs to be updated to match, spawn a follow-up consumer change in the same plan or in a follow-up initiative. Use `specify plan add <name> --project <consumer> --depends-on <producer-change>` to wire it up.
+- See [Resolve cross-project contract warnings](resolve-cross-project-contract-warnings.md) for the full triage checklist.
+
+**What the check does not do:** it never halts the loop, never modifies the consumer's specs, never auto-creates a follow-up change. The framework reports drift; the operator decides what to do about it.
+
 ## See also
 
 - [Cross-Repo Initiatives](../tutorials/cross-repo-initiative.md) -- tutorial on multi-repo planning
+- [Resolve cross-project contract warnings](resolve-cross-project-contract-warnings.md) -- triage how-to for the post-merge check
+- [Cross-project contract warnings on the merge transcript](../appendices/troubleshooting.md#cross-project-contract-warnings-on-the-merge-transcript) -- troubleshooting entry
 - [Contracts plugin](../reference/plugins/contracts.md) -- plugin reference
 - [Contracts schema](../reference/schemas/contracts.md) -- schema reference
 - [Artifact Format (contracts)](../reference/artifact-format.md#contract-artifacts-api-shape) -- format details

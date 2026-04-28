@@ -1,17 +1,20 @@
 # Cross-Repo Initiatives
 
-Drive a feature spanning a backend and a mobile app from a single platform hub. This tutorial walks an end-to-end **platform-first** loop: bootstrap a hub, register two code projects, plan a feature that crosses both, execute the plan across workspace clones, and ship the result as PRs.
+Drive a feature spanning a backend and a mobile app from a single platform hub. This tutorial walks the **bootstrap-to-PRs** half of an end-to-end platform-first loop: bootstrap a hub, register two code projects, plan a feature that crosses both, execute the plan across workspace clones, and ship the result as PRs.
 
-It exercises the full RFC-9 §1C critical path:
+It exercises Steps 1-7 of the RFC-9 §1C critical path:
 
 1. `specify init --hub` (RFC-9 §1D)
 2. `specify registry add` (RFC-9 §2A)
 3. `specify initiative create` (RFC-9 §1F)
 4. `/spec:plan` with multi-repo sync-peers and assignment
-5. `/spec:execute --loop` with CWD routing across two workspace clones
-6. `specify workspace push` to publish branches and PRs
-7. `specify workspace merge` to land PRs once CI is green (RFC-9 §4A)
-8. `specify initiative finalize` to confirm landing and archive (RFC-9 §4C)
+5. (Inspect the workspace)
+6. `/spec:execute --loop` with CWD routing across two workspace clones
+7. `specify workspace push` to publish branches and PRs
+
+The remaining steps -- merging the PRs and archiving the plan -- live in the follow-on tutorial [Landing an Initiative](landing-an-initiative.md). Between them, the two tutorials walk the full Steps 1-9 RFC-9 §1C path. The `/spec:initiative` umbrella variants and the three initiative shapes (migrate-legacy / new-feature / update-existing) also live there.
+
+> **Choosing your topology.** This tutorial uses the platform-hub topology because the feature spans two registered projects -- the hub holds platform state and the code lives in registered repos. If your work is single-repo, the platform-as-project shape (initiating repo with `url: .` in the registry) is simpler; see [Platform repo topologies](../explanation/platform-repo.md) for the comparison and [A Multi-Change Initiative](single-repo-initiative.md) for the single-repo flow.
 
 Every command below should run cleanly against the current `specify` CLI on a freshly-cloned hub. If a step fails, the gap is in the implementation, not the design — file an issue with the failing transcript.
 
@@ -420,80 +423,13 @@ specify: workspace push — oauth-login
 
 For greenfield projects (remote did not exist before this run), the per-project status flips to `created` and `gh repo create` runs first. Use `--dry-run` to classify each clone's push status without performing any writes — the verb adds `would-` prefixes to the action statuses. See [`specify workspace push`](../reference/cli/workspace.md#specify-workspace-push) for the full status vocabulary.
 
-## 8. Land the PRs (optional)
+## Pause point
 
-Once CI is green on each PR, squash-merge them in one shot:
+Two PRs are now open against `org/shop-backend` and `org/shop-mobile`, both on the `specify/oauth-login` branch. The `oauth-login` plan still lives at `.specify/plan.yaml` with every entry `done`. The hub is in the canonical "ready to land" state.
 
-```bash
-specify workspace merge
-```
+[**Continue to Landing an Initiative**](landing-an-initiative.md) for Steps 8 (squash-merge with `specify workspace merge`) and 9 (archive with `specify initiative finalize`), the `/spec:initiative` umbrella variants, and the three initiative shapes (migrate-legacy / new-feature / update-existing).
 
-Per project, the verb checks `gh pr checks` against the `specify/oauth-login` branch and, if every check is `pass` or `skipping`, runs `gh pr merge --squash`.
-
-<details>
-<summary>Expected output (all checks green)</summary>
-
-```text
-specify: workspace merge — oauth-login (specify/oauth-login)
-
-  shop-backend     merged                    PR #41     https://github.com/org/shop-backend/pull/41
-  shop-mobile      merged                    PR #18     https://github.com/org/shop-mobile/pull/18
-
-2 merged, 0 would-merge, 0 pending-checks, 0 failed-checks, 0 closed, 0 no-branch, 0 branch-pattern-mismatch, 0 failed.
-```
-
-</details>
-
-The verb refuses to operate on any PR whose branch is not `specify/oauth-login` exactly (the `branch-pattern-mismatch` guard). It never passes `--admin` or `--auto`, and it never overrides failing or pending checks. Failures on one project surface in their own row without aborting the others.
-
-Use `--dry-run` to see the would-merge classification without invoking `gh pr merge`. See [`specify workspace merge`](../reference/cli/workspace.md#specify-workspace-merge) for the full status table and exit-code contract (any `pending-checks`, `failed-checks`, or `branch-pattern-mismatch` flips the exit code to `1` so CI loops can branch on it).
-
-## 9. Finalize the initiative
-
-Once every PR is merged, close the initiative with the canonical closure verb:
-
-```bash
-specify initiative finalize
-```
-
-`finalize` confirms the whole initiative is landed and atomically sweeps local plan state into the archive (RFC-9 §4C). It runs four guards in order before any move:
-
-1. **Plan-presence:** `.specify/plan.yaml` exists.
-2. **Plan terminal-state:** every entry is `done` / `failed` / `skipped`.
-3. **Per-project PR-state:** every registered project's PR on `specify/oauth-login` is `MERGED` on its remote (or has no PR at all). Refuses on `unmerged` / `closed` / `branch-pattern-mismatch` / `failed`.
-4. **Workspace-cleanliness:** `git status --porcelain` is empty for every workspace clone.
-
-Any guard failure refuses with a per-project status table and leaves the on-disk state untouched. When all guards pass, `plan.yaml`, `.specify/initiative.md`, and `.specify/plans/oauth-login/` move atomically into `.specify/archive/plans/<YYYYMMDD>-oauth-login/`.
-
-<details>
-<summary>Expected output (all PRs merged, clean clones)</summary>
-
-```text
-specify: initiative finalize — oauth-login (specify/oauth-login)
-
-  shop-backend         merged                   PR #41     https://github.com/org/shop-backend/pull/41
-  shop-mobile          merged                   PR #18     https://github.com/org/shop-mobile/pull/18
-
-2 merged, 0 unmerged, 0 closed, 0 no-branch, 0 branch-pattern-mismatch, 0 dirty, 0 failed.
-
-Initiative `oauth-login` finalized.
-  archived plan: /…/shop-platform/.specify/archive/plans/oauth-login-20260428.yaml
-  archived dir:  /…/shop-platform/.specify/archive/plans/oauth-login-20260428
-```
-
-</details>
-
-The two workspace clones stay on disk under `.specify/workspace/` — they are the staging area for the next initiative. To prune them at the same time:
-
-```bash
-specify initiative finalize --clean
-```
-
-`--clean` removes `.specify/workspace/<peer>/` for every non-symlink registered project after the archive completes. Refused when any clone has a dirty working tree; the diagnostic warns that `--clean` would drop the uncommitted changes.
-
-Use `--dry-run` to preview the guard table without writing anything — useful for verifying readiness before you commit. `finalize` is **idempotent**: re-running it after manually clearing a refused guard (e.g. merging the last PR by hand) completes the archive on the second invocation. Re-running after a successful finalize returns `plan-not-found`, the explicit "already finalized" signal.
-
-> **One-shot variant — `/spec:initiative` (RFC-9 §2C).** The Layer 4 umbrella skill composes Steps 1–9 into a single operator action: brief → registry validate → plan → execute → push → optional merge → finalize. The three subsections below show the umbrella driving each of the three initiative shapes against the same hub. See [`/spec:initiative` SKILL](../../plugins/spec/skills/initiative/SKILL.md) for the full algorithm, halt semantics, and re-entry rules.
+If you stop here, the platform-first work is shipped but unmerged. The PRs sit on the forge until reviewed; nothing is blocking. You can resume landing at any time -- the umbrella is idempotent on re-entry, and the manual flow is just `specify workspace merge` then `specify initiative finalize`.
 
 ## Troubleshooting
 
@@ -537,116 +473,35 @@ A reviewer (or an operator stepping through this tutorial as an integration test
 | Step 6 | `specify plan status` | All three changes `done`; `Summary: 0 pending, 0 in-progress, 3 done`. |
 | Step 7 | `gh pr list -R org/shop-backend --head specify/oauth-login` | Exactly one open PR. |
 | Step 7 | `gh pr list -R org/shop-mobile --head specify/oauth-login` | Exactly one open PR. |
-| Step 8 | `gh pr view <pr> -R org/shop-backend --json state,merged` | `{"state":"MERGED","merged":true}`. |
-| Step 9 | `ls .specify/archive/plans/` | A `oauth-login-<YYYYMMDD>.yaml` plan file plus a `oauth-login-<YYYYMMDD>/` directory holding `initiative.md` and the `plans/oauth-login/` authoring trail. |
-| Step 9 | `ls .specify/plan.yaml` | `No such file or directory` — the plan moved to the archive. |
-| Step 9 | `specify initiative finalize` (re-run) | Exits `1` with `error: plan-not-found` — the canonical "already finalized" signal. |
 
-Any deviation is a blocker. File the failing transcript against this tutorial; per RFC-9 §1C the gap is in the implementation, not the design.
+Any deviation is a blocker. File the failing transcript against this tutorial; per RFC-9 §1C the gap is in the implementation, not the design. The Steps 8-9 verification (PR `MERGED` on remote, plan archived, re-run `plan-not-found`) lives in [Landing an Initiative](landing-an-initiative.md#verification).
 
-## Initiative shapes
+## Initiative shapes (preview)
 
-The platform-first loop above is shape-agnostic. The same Steps 1–9 drive three initiative shapes (RFC-9 §Motivation → *The three initiative shapes*); only the inputs to Step 4 (Plan) differ. Each shape is also drivable as a single command via the Layer 4 umbrella `/spec:initiative` (RFC-9 §2C). The transcripts below show each shape from the umbrella's perspective; the manual fallback for every step is the same Layer 1 verb the umbrella shells out to (see [§Drop down a layer](../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the exact verb sequence).
-
-### Variant: migrate-legacy
-
-Sources arrive via `--source <key>=<git-url-or-path>`. `/spec:analyze` clones each source into `.specify/plans/<initiative>/analyze/<key>/` (the [tier-1 workspace](../explanation/workspace-tiers.md#the-two-tiers)) for shallow capability inventory; deep `/spec:extract` runs at define time per change. Targets are existing or newly-minted registered projects.
-
-Run against an empty hub:
-
-```text
-/spec:initiative create migrate-foo \
-    --shape migrate-legacy \
-    --source monolith=git@github.com:org/legacy-foo.git \
-    --auto-merge
-```
-
-The umbrella runs all seven steps without halting:
-
-1. **Brief.** `specify initiative create migrate-foo` scaffolds `.specify/initiative.md`; the operator confirms a default body listing the legacy monolith as a `legacy-code` input.
-2. **Registry.** Empty + `--shape migrate-legacy` → hand off to the 2B greenfield path inside `/spec:plan`.
-3. **Plan.** `/spec:plan` runs discovery against the cloned monolith, proposes a two-project topology (`foo-backend` + `foo-mobile`), shells `specify registry add` × 2 and `specify workspace sync` once, then propose decomposes into one cross-project contract change plus one implementation slice per project. Assignment routes the implementation slices.
-4. **Execute.** `/spec:execute --loop` drives all three changes to `done` (contract change runs against the hub; the two implementation changes run inside their workspace clones).
-5. **Push.** `specify workspace push` opens two PRs.
-6. **Land.** `--auto-merge` → `specify workspace merge` waits for CI, sees both PRs green, squash-merges them.
-7. **Finalize.** `specify initiative finalize` archives the plan and brief.
-
-Verb sequence: `specify initiative create` → `specify registry validate` → `/spec:plan` → `specify plan create` → `specify registry add` × 2 → `specify workspace sync` → `specify plan add` × 3 → `specify plan amend --project` × 2 → `specify plan validate` → `/spec:execute --loop` → `specify workspace push` → `specify workspace merge` → `specify initiative finalize`. Full transcript and on-disk shapes: [`fixtures/migrate-legacy/`](../../plugins/spec/skills/initiative/fixtures/migrate-legacy/).
-
-### Variant: new-feature
-
-Sources arrive via `--from <docs>` only (or via `initiative.md:inputs`). Targets are existing registered projects, possibly with new ones spawned at assignment time via the registry-proposal sub-step (RFC-9 §2B).
-
-Run against the populated hub from Steps 1–3 above (or your own equivalent):
-
-```text
-/spec:initiative create dark-mode \
-    --shape new-feature \
-    --from ./docs/dark-mode-spec.md
-```
-
-**The walkthrough at the top of this page is this shape.** The umbrella drives the same nine-step flow, with one wrinkle: without `--auto-merge`, Step 6 lists the open PRs and **stops**. The operator merges PRs by hand on the forge (or runs `specify workspace merge` directly), then re-runs the umbrella to land Step 7. Re-entry inspects on-disk state — brief present, plan terminal, every PR `MERGED` on remote — and skips straight to `specify initiative finalize`.
-
-Verb sequence (run 1, halts at step 6): `specify initiative create` → `specify registry validate` → `/spec:plan --from ./docs/dark-mode-spec.md` → `specify plan create` → `specify workspace sync` → `specify plan add` × 3 → `specify plan amend --project` × 2 → `specify plan validate` → `/spec:execute --loop` → `specify workspace push` → `gh pr list` (read-only). No registry mutation — both projects exist before the run.
-
-Verb sequence (run 2, after the operator merges PRs by hand): `specify registry validate` → `specify workspace push` (reports `up-to-date`) → `gh pr list` → `specify initiative finalize`.
-
-Full transcript and on-disk shapes: [`fixtures/new-feature/`](../../plugins/spec/skills/initiative/fixtures/new-feature/).
-
-### Variant: update-existing
-
-No `--from` and no `--source` — sources are unused. Targets are existing registered projects; baseline accumulation in `.specify/workspace/<peer>/specs/` is the dominant signal during planning.
-
-Run against the same populated hub:
-
-```text
-/spec:initiative create polish-pass \
-    --shape update-existing \
-    --auto-merge
-```
-
-Pre-flight forbids `--from`, `--against`, and `--source` under this shape; supplying any is a hard exit. The umbrella runs all seven steps without halting:
-
-1. **Brief.** Scaffolded with `inputs: []`; the operator writes one paragraph naming the capabilities being polished.
-2. **Registry.** Multi-project; descriptions complete. No mutation.
-3. **Plan.** Discovery falls back to baseline accumulation in `.specify/workspace/<peer>/specs/` because the input set is empty. Propose surfaces two slices (one per project, **no contract change** — the polish does not change the API surface). Assignment routes each slice to its existing project. No registry mutation.
-4. **Execute.** Both changes drive to `done`.
-5. **Push.** Two PRs opened.
-6. **Land.** `--auto-merge` → both PRs squash-merged.
-7. **Finalize.** Archive completes.
-
-Verb sequence: `specify initiative create` → `specify registry validate` → `/spec:plan` → `specify plan create` → `specify workspace sync` → `specify plan add` × 2 → `specify plan amend --project` × 2 → `specify plan validate` → `/spec:execute --loop` → `specify workspace push` → `specify workspace merge` → `specify initiative finalize`.
-
-Full transcript and on-disk shapes: [`fixtures/update-existing/`](../../plugins/spec/skills/initiative/fixtures/update-existing/).
-
-### Manual fallback parity
-
-Each step in every shape above is a shell-out the umbrella runs verbatim. Operators can drop down a layer at any step — see [Drop down a layer](../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the canonical command sequence. The umbrella's value is single-command convenience plus idempotent re-entry; it adds no behaviour beyond the underlying skills and CLI verbs.
+The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three initiative shapes -- `migrate-legacy`, `new-feature`, `update-existing` -- through a single uniform sequence. The walkthrough at the top of this page is the **new-feature** shape (sources are documentation only); the other two arrive in [Landing an Initiative](landing-an-initiative.md#initiative-shapes), which also covers the `/spec:initiative` umbrella that drives each shape as a single operator action.
 
 ## What you learned
 
 - The platform-hub topology (`specify init --hub`) is the canonical starting shape for multi-repo initiatives. The hub holds platform state and never carries code.
 - `specify registry add` registers code projects with kebab-case names, schema identifiers, and domain descriptions. Descriptions drive automated assignment in `/spec:plan`.
 - `specify initiative create` scaffolds the operator brief; the `inputs:` frontmatter feeds the discovery brief.
-- `/spec:plan` runs discovery → sync-peers → propose → assignment, and finishes with `specify plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
+- `/spec:plan` runs discovery -> sync-peers -> propose -> assignment, and finishes with `specify plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
 - `/spec:execute --loop` `chdir`s into each workspace clone, runs define-build-merge, transitions the plan entry, and routes back. Multi-repo CWD routing is invisible to the phase skills.
-- `specify workspace push` ships local commits as PRs on `specify/<initiative-name>` branches; `specify workspace merge` lands them once CI is green (RFC-9 §4A).
-- `specify initiative finalize` is the canonical closure verb (RFC-9 §4C): it confirms every per-project PR is merged on remote, refuses to archive on dirty workspace clones, and optionally prunes `.specify/workspace/<peer>/` via `--clean`.
-- The same Steps 1–9 handle three initiative shapes — `migrate-legacy`, `new-feature`, `update-existing` — through a single uniform loop.
+- `specify workspace push` ships local commits as PRs on `specify/<initiative-name>` branches.
 
 ## Cross-links
 
-- [Platform repo topologies](../explanation/platform-repo.md) — registry-only hub vs platform-as-project, the validation invariant, and the on-disk shape of each.
-- [Workspace tiers](../explanation/workspace-tiers.md) — the legacy-source vs registered-project clone distinction the loop relies on.
-- [The Layered Stack](../explanation/three-layer-stack.md) — where `/spec:plan`, `/spec:execute`, and `/spec:initiative` sit in the layered model.
-- [`/spec:plan`](../../plugins/spec/skills/plan/SKILL.md) — Layer 3 plan authoring skill.
-- [`/spec:execute`](../../plugins/spec/skills/execute/SKILL.md) — Layer 2 plan driver, including the cross-project contract check (RFC-9 §3B).
-- [`specify init`](../reference/cli/init.md) — the `--hub` flag.
-- [`specify registry`](../reference/cli/registry.md) — `add` / `remove` / `show` / `validate`.
-- [`specify workspace`](../reference/cli/workspace.md) — `sync` / `status` / `push` / `merge`.
-- [`specify plan`](../reference/cli/plan.md) — `create` / `add` / `amend` / `next` / `doctor` / `archive` / `lock`.
-- [Migrating to CLI v1](../explanation/migrating-cli-v1.md) — rename map covering the v1.x `init`→`create` and `create`→`add` renames.
+- [Platform repo topologies](../explanation/platform-repo.md) -- registry-only hub vs platform-as-project, the validation invariant, and the on-disk shape of each.
+- [Workspace tiers](../explanation/workspace-tiers.md) -- the legacy-source vs registered-project clone distinction the loop relies on.
+- [The Layered Stack](../explanation/three-layer-stack.md) -- where `/spec:plan`, `/spec:execute`, and `/spec:initiative` sit in the layered model.
+- [`/spec:plan`](../reference/initiative-skills/plan.md) -- Layer 3 plan authoring skill.
+- [`/spec:execute`](../reference/initiative-skills/execute.md) -- Layer 2 plan driver, including the cross-project contract check (RFC-9 §3B).
+- [`specify init`](../reference/cli/init.md) -- the `--hub` flag.
+- [`specify registry`](../reference/cli/registry.md) -- `add` / `remove` / `show` / `validate`.
+- [`specify workspace`](../reference/cli/workspace.md) -- `sync` / `status` / `push` / `merge`.
+- [`specify plan`](../reference/cli/plan.md) -- `create` / `add` / `amend` / `next` / `doctor` / `archive` / `lock`.
+- [Migrating to CLI v1](../explanation/migrating-cli-v1.md) -- rename map covering the v1.x `init`->`create` and `create`->`add` renames.
 
 ## Next
 
-[Legacy Migration at Scale](legacy-migration-at-scale.md) — decompose a large monolith across multiple target repos using the analyze/extract split.
+[Landing an Initiative](landing-an-initiative.md) -- merge the PRs you just pushed, finalize the initiative, and exercise the `/spec:initiative` umbrella shapes.

@@ -4,6 +4,36 @@ A **platform repo** is the repository an operator opens when they sit down to dr
 
 There are two valid shapes for a platform repo. Specify supports both, but the **registry-only hub** is canonical -- it is what `specify init --hub` scaffolds, what tutorials use as their reference shape, and what the platform-first vision composes against. The other shape -- **platform-as-project** -- remains valid for single-repo and small-team cases. This page explains the difference, the on-disk shape of each, and the validation invariant that keeps the two from being silently mixed.
 
+```d2
+direction: right
+
+hub: "Registry-only hub" {
+  shape: rectangle
+  hubProj: "project.yaml\n{schema: hub, hub: true}" {shape: page}
+  hubReg: "registry.yaml\n[peer-a, peer-b]" {shape: page}
+  hubInit: "initiative.md" {shape: page}
+  hubPlan: "plan.yaml" {shape: page}
+  hubWs: "workspace/" {shape: cylinder}
+  peerA: "workspace/peer-a/\n(clone of peer-a)" {shape: cylinder}
+  peerB: "workspace/peer-b/\n(clone of peer-b)" {shape: cylinder}
+  hubWs -> peerA
+  hubWs -> peerB
+}
+
+pap: "Platform-as-project" {
+  shape: rectangle
+  papProj: "project.yaml\n{schema: omnia@v1}" {shape: page}
+  papReg: "registry.yaml\n[my-app (url: .), peer-b]" {shape: page}
+  papChanges: "changes/" {shape: cylinder}
+  papSpecs: "specs/" {shape: cylinder}
+  papWs: "workspace/" {shape: cylinder}
+  papSelf: "workspace/my-app/\n(symlink to .)" {shape: cylinder}
+  papPeer: "workspace/peer-b/\n(clone of peer-b)" {shape: cylinder}
+  papWs -> papSelf
+  papWs -> papPeer
+}
+```
+
 ## The registry-only hub (canonical)
 
 In the hub topology, the platform repo is **never itself a code project**. It holds platform state and routes work to peer repos materialised under `.specify/workspace/<name>/`.
