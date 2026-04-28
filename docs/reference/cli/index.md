@@ -38,7 +38,7 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | [specify status](status.md) | Project dashboard -- registry summary, plan progress, active changes | Top-level convenience |
 | [specify change](change.md) | Per-change CRUD, validation, merge, task tracking, outcome, journal | Layer 2 operations |
 | [specify plan](plan.md) | Scaffold, populate, validate, and transition initiative plans | Layer 3 operations |
-| [specify initiative](initiative.md) | Manage the operator-authored initiative brief | Layer 3 setup |
+| [specify initiative](initiative.md) | Manage the operator-authored initiative brief and finalize landed initiatives | Layers 3–4 closure |
 | [specify registry](registry.md) | Manage the platform registry at `.specify/registry.yaml` | Multi-repo platform |
 | [specify schema](schema.md) | Schema resolution and brief pipeline queries | Schema infrastructure |
 | [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |

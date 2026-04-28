@@ -1,0 +1,27 @@
+# The in-memory ChangeMetadata after the new reader loads
+# `archived/.metadata.yaml.before`. Note the defaulted `version: 1` —
+# the on-disk file has no version field; serde's `default` shim
+# resolves it to `1`. Every other field round-trips byte-for-byte from
+# the on-disk YAML.
+#
+# This shape is what `crates/change/src/lib.rs::tests::
+# metadata_pre_rfc9_round_trips_with_default_version_one` asserts in
+# code. The YAML below is the human-readable mirror — kebab-case
+# rename_all on the struct, optional fields included only when present
+# on disk.
+version: 1
+schema: omnia
+status: merged
+created-at: "2024-08-01T10:00:00Z"
+defined-at: "2024-08-01T12:30:00Z"
+build-started-at: "2024-08-02T09:00:00Z"
+completed-at: "2024-08-03T14:00:00Z"
+merged-at: "2024-08-03T14:15:00Z"
+touched-specs:
+  - name: archived-feature
+    type: new
+outcome:
+  phase: merge
+  outcome: success
+  at: "2024-08-03T14:15:00Z"
+  summary: "Baseline updated: .specify/specs/archived-feature/spec.md"

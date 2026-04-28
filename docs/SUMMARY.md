@@ -84,7 +84,7 @@
 
 # Understanding Specify
 
-- [The Three-Layer Stack](explanation/three-layer-stack.md)
+- [The Layered Stack](explanation/three-layer-stack.md)
 - [Artifacts in Depth](explanation/artifacts.md)
 - [Schemas and Plugins](explanation/schemas-and-plugins.md)
 - [Decision Log](explanation/decision-log.md)

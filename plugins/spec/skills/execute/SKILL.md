@@ -15,7 +15,7 @@ argument-hint: "[--dry-run] [--loop]"
 3. **Self-heal** — reconcile any `in-progress` entries left by a prior crash: read `.metadata.yaml:outcome`, apply terminal transitions or resume mid-change. Halt on ambiguity.
 4. **Pick next change** — `specify plan next --format json`. Handle `all-done` (exit 0), `stuck` (exit 0), or `in-progress` (exit non-zero). Capture `project`, `description`, and `sources` from the response.
 5. **Transition to in-progress and route CWD** — `specify plan transition <name> in-progress`. For multi-repo entries, resolve the target project directory from `registry.yaml` and `chdir`.
-6. **Run phase sequence** — invoke `/spec:define` → `/spec:build` → `/spec:merge`, reading `.metadata.yaml:outcome` after each phase. On `failure` → drop + transition `failed`. On `deferred` → drop + transition `blocked`. Copy `outcome.summary` verbatim into `--reason`.
+6. **Run phase sequence** — invoke `/spec:define` → `/spec:build` → `/spec:merge`, reading `.metadata.yaml:outcome` after each phase. On `failure` → drop + transition `failed`. On `deferred` → drop + transition `blocked`. On `registry-amendment-required` (RFC-9 §2B) → record proposal payload to journal (`specify change journal append <name> <phase> failure --summary "registry-amendment-required: <proposed-name>" --context <yaml>`) → drop + transition `blocked`; surface the proposal block in the deferred transcript. Copy `outcome.summary` verbatim into `--reason`.
 7. **Wrap up** — transition to `done` on success; on multi-repo successes, run the §Cross-project contract check (RFC-9 §3B) and append any findings to the merged change's journal as `cross-project-warning:` entries. Release the driver lock on **every** exit path (`specify plan lock release`). In `--loop` mode, repeat from step 4 until no eligible change remains, then emit the terminal summary.
 
 See detailed sections below for edge cases, guardrails, and error handling.
@@ -251,6 +251,98 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
     step-4 in-progress stops and step-9 synthetic-deferred cases
     where human triage is required.
 ```
+
+### Phase outcome classifications (RFC-9 §2B)
+
+Step 9's classifier reads `.outcome.outcome` and routes to the per-change algorithm's terminal branches:
+
+| `.outcome.outcome` | Step | Plan transition | Notes |
+|---|---|---|---|
+| `success` | continue / step 10 | none mid-sequence; `done` after merge | Happy path. |
+| `failure` | step 11 | `failed` (drop + transition) | `--reason` byte-identical to `outcome.summary`. |
+| `deferred` | step 12 | `blocked` (drop + transition) | `--reason` byte-identical to `outcome.summary`. |
+| `registry-amendment-required` | step 12a | `blocked` (drop + transition) | RFC-9 §2B. Driver records the structured proposal payload to the change's journal **before** the drop (`/spec:drop` does not touch `journal.yaml`, but the journal sweeps with the change into `.specify/archive/...`). See §"Registry amendment required (RFC-9 §2B)" below. |
+| missing / malformed / contradicts lifecycle | step 12 | `blocked` with synthetic summary | Driver never speculates. |
+
+### Registry amendment required (RFC-9 §2B)
+
+When a phase emits `outcome: registry-amendment-required` (via `specify change outcome set <name> <phase> registry-amendment-required ...`), the driver follows the **deferred** terminal branch with one extra writing step: it appends the proposal payload to the change's journal **before** invoking `/spec:drop`. The classification (`blocked`) is the existing `deferred` classification — no new plan status is introduced.
+
+#### Step 12a — Record the proposal in the journal
+
+After step 9 classifies the outcome as `registry-amendment-required` and **before** step 12.b (`/spec:drop`), shell out exactly once:
+
+```bash
+specify change journal append <name> <outcome.phase> failure \
+    --summary "registry-amendment-required: <outcome.proposal.proposed-name>" \
+    --context "$(cat <<'YAML'
+proposed-name: <outcome.proposal.proposed-name>
+proposed-url: <outcome.proposal.proposed-url>
+proposed-schema: <outcome.proposal.proposed-schema>
+proposed-description: <outcome.proposal.proposed-description or "—">
+rationale: |
+  <outcome.proposal.rationale verbatim>
+YAML
+)"
+```
+
+Notes:
+
+- The journal entry uses the existing `failure` kind (the canonical `EntryKind::{Question, Failure, Recovery}` set per `specify-cli/crates/change/src/journal.rs`); no new kind is introduced. Readers grep `summary` for the `registry-amendment-required:` prefix to filter.
+- The full structured payload lives in `--context` as YAML, mirroring the contract used by §Cross-project contract check (RFC-9 §3B). The `--summary` carries the proposed project name so an operator scanning the journal sees what was proposed at a glance.
+- Read `outcome.proposal.*` from `specify change outcome show <name> --format json` — the CLI emits the proposal as a sibling object (`outcome.proposal`) so existing consumers that only read `.outcome.outcome` (a kebab-case string) keep working.
+- After the journal append, fall through to step 12.b (`/spec:drop`) and step 12.c (`specify plan transition <name> blocked --reason "<outcome.summary>"`) with the **same `--reason` rule** the `deferred` branch follows: `outcome.summary` is copied byte-for-byte. The default summary stamped by the CLI is `registry-amendment-required: <proposed-name>`, but a phase that supplied a richer `--summary` keeps that exact text.
+
+#### Surface the proposal in the per-change transcript
+
+The `Deferred` transcript (see §Output format → Supervised / per-change transcript → Deferred) renders an extra `Proposed registry amendment` block immediately after the `Status: blocked` line **only** when the deferral was a `registry-amendment-required`:
+
+```text
+Proposed registry amendment (RFC-9 §2B)
+  Name:        <proposed-name>
+  URL:         <proposed-url>
+  Schema:      <proposed-schema>
+  Description: <proposed-description or "—">
+  Rationale:   <rationale verbatim>
+
+  Action needed: review the proposal, then run the canonical recovery
+    sequence below to land the new project and re-queue the change.
+```
+
+The block is omitted entirely when the deferral was a plain `deferred` outcome.
+
+#### Canonical recovery sequence (operator-driven)
+
+The driver does **not** apply registry amendments automatically — `specify registry add` is reserved for operator-initiated topology changes. Once the operator has reviewed the proposal, they run this exact sequence (or its supervised equivalent inside the §2C `/spec:initiative` umbrella when 2C lands):
+
+```text
+specify registry add <proposed-name> \
+    --url <proposed-url> \
+    --schema <proposed-schema> \
+    --description "<proposed-description>"
+
+specify workspace sync
+
+specify plan amend <change-name> --project <proposed-name>
+
+specify plan transition <change-name> pending
+```
+
+Notes:
+
+- **Verb order matters.** The registry must be amended **before** the plan can amend `--project` (the validator rejects `project` values not in `registry.yaml`). The workspace sync between them materialises the new clone slot under `.specify/workspace/<proposed-name>/` so subsequent `/spec:execute --loop` runs route into a real working tree.
+- **`pending` re-queues.** The change was dropped at step 12.b; the next `/spec:execute --loop` pass picks it up via `specify plan next`. The drop archived the prior journal under `.specify/archive/...-<change-name>/` — the recovery `pending → in-progress` re-creates a fresh change directory at step 6 (see §Per-change algorithm).
+- **Manual fallback.** Every step is a v1 verb the operator can run by hand; the umbrella skill (RFC-9 §2C) wraps the same sequence into a single composition. `/spec:execute` itself never invokes any of these verbs — that boundary is what keeps the registry under operator control.
+
+#### Self-heal interaction
+
+Self-heal (§Self-heal on startup) treats `outcome.outcome == registry-amendment-required` exactly like `deferred`: it emits the journal append (the same way step 12.a above does), runs `/spec:drop`, and applies `specify plan transition <name> blocked --reason "<outcome.summary>"`. The diagnostic line uses the canonical `registry-amendment-required` qualifier so the operator can tell from a single log line which deferred branch the self-heal pass took:
+
+```text
+Self-heal: <name> → blocked (define registry-amendment-required: "<outcome.summary verbatim>")
+```
+
+The dry-run variant uses the same line with `(if executed)` appended (mirroring the existing failed / blocked dry-run lines).
 
 ### Argument resolution (`sources`)
 
@@ -678,6 +770,8 @@ Step 1/3: define
 
 The `⚠ Question recorded — change deferred to blocked` line is the canonical deferred banner; do not reword. `Question:` carries the phase's `outcome.summary` verbatim.
 
+When the deferral classification was `registry-amendment-required` (RFC-9 §2B), an additional `Proposed registry amendment` block is appended immediately after the `Status: blocked` line. The block layout, field names, and "Action needed" line are pinned by §Registry amendment required (RFC-9 §2B) → §Surface the proposal in the per-change transcript. The block is omitted entirely on plain `deferred` outcomes.
+
 ### Terminal summary (`--loop` exit)
 
 At the end of every `--loop` run — success, interruption, or halt — `/spec:execute` emits a single terminal summary block. Fixtures under [`fixtures/loop/`](fixtures/loop/) pin one example per `Completion:` value.
@@ -717,7 +811,7 @@ Section rules:
 
 | Classification | Condition | Next action template |
 |---|---|---|
-| `all-done` | Every entry's status is in `{done, skipped}`. | `Initiative complete — no further action needed.` |
+| `all-done` | Every entry's status is in `{done, skipped}`. | `Initiative complete. Land remote PRs (specify workspace merge or merge them by hand on the forge), then close out via specify initiative finalize — see [specify initiative](../../../../docs/reference/cli/initiative.md#specify-initiative-finalize) for the closure verb.` |
 | `stuck` | Some entries remain in `{pending, blocked, failed}` but none are eligible (pending entries have unmet deps; no eligible sibling exists). | `Resolve blocked/failed entries (specify plan amend + specify plan transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify plan archive --force.` |
 | `halted` | Self-heal detected an ambiguous on-disk state on startup and refused to speculate. Individual mid-loop failures or deferrals do NOT reach `halted`. | `Manually triage the halted change: inspect .specify/changes/<name>/.metadata.yaml against plan.yaml, repair the contradiction, then re-run /spec:execute --loop.` |
 | `driver-interrupted` | SIGINT or SIGTERM arrived mid-run. The current phase finished (or no phase was in flight), subsequent phases were skipped, the active plan entry is still `in-progress`, the lock was released. | `Re-run /spec:execute --loop — self-heal will reclaim the interrupted change on the next startup.` |
@@ -740,7 +834,7 @@ The distinction between `stuck` and `halted` matters for operator routing: `stuc
 | Write `.specify/plan.yaml` *entries* (`create` / `amend`) | Never — those writes are the phases' concern (they shell out to `specify plan add` / `specify plan amend` mid-run). |
 | Write `.specify/plan.yaml` *status* (`transition`) | Only via `specify plan transition`, at exactly three points in a supervised run: `pending → in-progress` before step 6, and the terminal `in-progress → {done, failed, blocked}` in steps 10/11/12. |
 | Write `.specify/changes/<name>/.metadata.yaml` (including the `outcome` field) | Never — that is the phase skills' concern via `specify change outcome set`. |
-| Write `.specify/changes/<name>/journal.yaml` | Two narrowly-scoped paths only: (1) `specify change journal append <name> <phase> recovery …` inside the §Self-heal on startup step — exactly one entry per reclaimed or resumed in-progress entry; (2) `specify change journal append <merged-name> merge failure …` inside the §Cross-project contract check step — one entry per finding emitted by `/contracts:validator --mode cross-project`, with `cross-project-warning:` as the summary prefix. Phases own all other `type: question` / `type: failure` entries and the driver never touches those. |
+| Write `.specify/changes/<name>/journal.yaml` | Three narrowly-scoped paths only: (1) `specify change journal append <name> <phase> recovery …` inside the §Self-heal on startup step — exactly one entry per reclaimed or resumed in-progress entry; (2) `specify change journal append <merged-name> merge failure …` inside the §Cross-project contract check step — one entry per finding emitted by `/contracts:validator --mode cross-project`, with `cross-project-warning:` as the summary prefix; (3) `specify change journal append <name> <phase> failure --summary "registry-amendment-required: <proposed-name>" --context <yaml>` inside the §Registry amendment required (RFC-9 §2B) step — exactly one entry per `registry-amendment-required` deferral, recorded **before** `/spec:drop`. Phases own all other `type: question` / `type: failure` entries and the driver never touches those. |
 | Invoke `/spec:define`, `/spec:build`, `/spec:merge`, or `/spec:drop` | Never in `--dry-run` (including dry-run self-heal, which is report-only); in supervised and `--loop` modes, exactly as the algorithms prescribe (define → build → merge on success paths; plus `/spec:drop` on failure / deferred, and on any writing-path self-heal reclaim of a `failure` or `deferred` outcome). |
 | Run self-heal on `in-progress` entries | Yes — §Self-heal on startup is the full contract. Five fixtures under `fixtures/self-heal/` pin the clean / done / failed / ambiguous-halt / mid-change-resume paths. Under `--dry-run` self-heal is report-only: same classification scan, no writes. |
 | Loop across changes | `--loop` iterates `specify plan next → execute change` until no eligible change remains. The driver lock is held for the entire run (not per iteration). Individual failures / deferrals do NOT halt the loop — `specify plan next` skips `failed` / `blocked` entries naturally. |

@@ -15,10 +15,10 @@ argument-hint: "<initiative-name> [--from <path>...] [--against <path>] [--sourc
 1. **Parse and validate inputs** — validate `<initiative-name>` as kebab-case. Require at least one of `--from`, `--against`, `--source`, or a populated `initiative.md:inputs`. Refuse if `plan.yaml` already exists (unless `--extend`).
 2. **Scaffold the plan** — `specify plan create <initiative-name> [--source <key>=<path-or-url> ...]`. Skipped under `--extend`.
 3. **Run the plan brief pipeline** from `schema.yaml`:
-   - **(a) Discovery** — invoke the discovery brief via `/spec:analyze`; writes `discovery.md`.
+   - **(a) Discovery** — invoke the discovery brief via `/spec:analyze`; writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** (RFC-9 §2B) before step 3(b) when no `.specify/registry.yaml` exists yet.
    - **(b) Sync peers** (multi-repo only) — `specify workspace sync` + author `workspace.md`.
    - **(c) Propose** — run the propose brief; iterate accept/edit/reject/abort per slice; `specify plan add` for each accepted slice.
-   - **(d) Assignment** (multi-repo only) — infer `project` per entry; `specify plan amend --project <project>`.
+   - **(d) Assignment** (multi-repo only) — infer `project` per entry; `specify plan amend --project <project>`. When an unresolved row names a project that does not exist in `registry.yaml`, run the **registry-proposal sub-step** (RFC-9 §2B) — `specify registry add` + `specify workspace sync` — before continuing.
 4. **Validate** — `specify plan validate`. Non-zero exit on any `Error`-level finding. Never skip this step.
 5. **Exit with hand-off summary** — point the operator at `specify plan status` and `/spec:execute --loop`.
 
@@ -153,11 +153,19 @@ Follow these steps in order on every invocation. Each step is normative; every s
    Then run each brief in order:
 
      a. discovery — see §"Step 3(a) — Discovery" below.
+        - greenfield registry bootstrap — see §"Greenfield discovery
+           → initial registry topology" below; runs only when the
+           discovery brief proposes a multi-project topology AND no
+           registry.yaml exists.
      b. sync-peers — see §"Step 3(b) — Sync peers" below (multi-repo
          only; skipped when the registry is absent or single-project).
      c. propose   — see §"Step 3(c) — Propose" below.
      d. assignment — see §"Step 3(d) — Assignment" below (multi-repo
          only; skipped when the registry is absent or single-project).
+        - registry-proposal sub-step — see §"Step 3(d).1 — Registry
+           proposal sub-step" below; runs only when the operator
+           routes an unresolved entry to a project name not yet in
+           registry.yaml.
 
 4. Final validation gate.
 
@@ -290,6 +298,95 @@ After the propose brief completes step 3(c) and all accepted entries have been w
 5. Append the assignment table (with final assignments and rationale) to `proposal.md` so the proposal reconstructs the full decision trail — decomposition (from the propose brief) followed by routing (from the assignment step).
 
 When the registry is absent or single-project, step 3(d) is skipped entirely. No `--project` is written to plan entries.
+
+### Step 3(d).1 — Registry proposal sub-step (RFC-9 §2B)
+
+Step 3(d) routes entries to **existing** registry projects. When the operator's response in step 3(d).3 names a project that does **not** exist in `.specify/registry.yaml`, the registry-proposal sub-step is invoked **before** continuing assignment. This sub-step is the only place `/spec:plan` ever calls `specify registry add`.
+
+**Trigger.** An unresolved (`?`) row in the assignment table where the operator types a project name that is not present in `registry.yaml:projects[].name` (case-sensitive, exact match).
+
+**Normative sequence**
+
+1. **Confirm.** Prompt the operator with the exact line:
+
+   ```text
+   Project `<name>` does not exist in registry.yaml. Create it now? [y/N]
+   ```
+
+   Default is **N** (decline). On decline, surface a follow-up prompt asking the operator either to (a) name an existing project from the registry, or (b) drop the entry via `specify plan transition <name> skipped --reason "<reason>"` outside the loop. The skill never auto-skips a low-confidence assignment.
+
+2. **Gather defaults.** On accept:
+   - **`--url`.** Default to `git@github.com:<org>/<name>.git` where `<org>` is inferred from the longest common `<host>:<org>/` prefix across `registry.yaml:projects[].url` entries (when the registry already has at least one entry with that prefix). If no prefix can be inferred (e.g. greenfield registry, or every existing entry uses a different host or path layout), prompt the operator to supply the URL by hand. The operator can always override the suggested default.
+   - **`--schema`.** Default to the schema used by the **majority** of existing registry entries; on a tie, prompt with the legal candidates. If the registry is empty, prompt with the canonical schema list (`omnia@v1`, `vectis@v1`, `contracts@v1`, `hub` — the closed enum from `Registry::validate_shape`). Bail with a hard exit on an empty response or an unknown value.
+   - **`--description`.** Required when the addition produces a multi-project registry (`description-missing-multi-repo` invariant from RFC-3b). The operator supplies free-form prose; the skill never paraphrases.
+
+3. **Apply.** Shell out **in this exact order**:
+
+   ```text
+   specify registry add <name> \
+       --url <url> \
+       --schema <schema> \
+       [--description "<description>"]
+
+   specify workspace sync
+   ```
+
+   Both calls are blocking. Surface a non-zero exit from `specify registry add` (e.g. `description-missing-multi-repo`) verbatim and abort the sub-step — the operator may retry with `--description "<...>"` or decline. Treat a non-zero `specify workspace sync` (e.g. clone failure on the new slot) as a hard failure that leaves the registry edit in place (atomicity is at the verb level — `specify registry remove <name>` can roll it back if needed).
+
+4. **Continue assignment.** Re-render the assignment table with the freshly-added project highlighted in the legal-values list, then re-prompt for any remaining unresolved rows. The accepted row's project field is set to `<name>` and the skill shells out:
+
+   ```text
+   specify plan amend <name> --project <name>
+   ```
+
+   The skill never bundles the registry-add and the plan-amend into one step — the registry is the producer of legal project names; the plan is the consumer. Two writes, two verbs, in that order.
+
+5. **Audit trail.** Append a `Registry amendments` block to `.specify/plans/<initiative-name>/proposal.md` listing every `(name, url, schema, description)` tuple created during the run, plus the rationale (the entry that triggered the proposal). The block sits after the assignment table.
+
+**`--dry-run`.** Do **not** shell `specify registry add` or `specify workspace sync`; do **not** invoke `specify plan amend`. The dry-run output emits a `Would propose registry amendments:` block listing the same `(name, url, schema, description)` tuples the writing path would have created, plus the rationale per entry. The block sits after the assignment preview.
+
+**`--extend`.** Same as default, with one wrinkle: an `--extend` run can land additional entries that route to a project added in an earlier `/spec:plan` run. When the assignment table names a project that **does** exist in `registry.yaml`, no proposal sub-step runs (the project is already legal). The proposal sub-step only fires for genuinely new project names.
+
+### Greenfield discovery → initial registry topology (RFC-9 §2B)
+
+When `/spec:plan` runs **before** any `.specify/registry.yaml` exists and the discovery brief surfaces capabilities that cluster into more than one project (e.g. a TypeScript backend monolith with a separate Crux mobile shell, or two unrelated services in a single migration), the skill enters the **greenfield registry-bootstrap** flow between discovery (step 3(a)) and propose (step 3(c)). Single-project greenfield runs (`--from <single-codebase>`, no clear cluster split) skip this flow and continue as a standard single-repo initiative.
+
+**Detection.** The discovery brief decides whether the capability inventory implies more than one project. The brief writes a `## Proposed registry topology` section to `.specify/plans/<initiative-name>/discovery.md` whenever its clustering produces ≥ 2 candidate projects. Absence of that section (or a section with exactly one candidate) means single-repo — the bootstrap flow is skipped.
+
+**Normative sequence**
+
+1. Read the `## Proposed registry topology` block from `discovery.md`. The block lists each candidate project as `### <name>` with bullets for `url`, `schema`, and `description` — same shape `specify registry add` consumes.
+2. Present the full topology table to the operator in a single batch review:
+
+   ```markdown
+   ## Proposed registry
+
+   | # | Name | URL | Schema | Description |
+   |---|---|---|---|---|
+   | 1 | <name-a> | <url-a> | <schema-a> | <description-a> |
+   | 2 | <name-b> | <url-b> | <schema-b> | <description-b> |
+   ```
+
+   The operator approves each row, edits any field, or rejects the entry. Rejection of a candidate drops it from the bootstrap; capabilities that would have routed to that project surface as `unresolved` during step 3(d) Assignment and re-enter the registry-proposal sub-step (3(d).1) one at a time.
+3. For each accepted row, shell out **once**:
+
+   ```text
+   specify registry add <name> --url <url> --schema <schema> --description "<description>"
+   ```
+
+   Multi-project registries enforce the `description-missing-multi-repo` invariant — the description is required. Defer ordering to the discovery brief (alphabetical by `name` is the conservative default).
+4. After the last accepted entry, run **once**:
+
+   ```text
+   specify workspace sync
+   ```
+
+   Materialise every new slot under `.specify/workspace/<name>/`. Then proceed to step 3(b) Sync peers (which now has a multi-project registry to inventory) and step 3(c) Propose.
+5. **Plan scaffold ordering.** Step 2 (`specify plan create`) MUST run **before** the bootstrap flow — `plan.yaml` is independent of `registry.yaml`. Use the v1 verb `specify plan create <name>` (NOT the retired `plan init`). The bootstrap flow runs between step 3(a) discovery and step 3(b) sync-peers; it never re-creates the plan.
+
+**`--dry-run`.** Render the `Proposed registry` table to stdout with a `Would create registry entries:` heading; do **not** shell `specify registry add` or `specify workspace sync`. The discovery brief still runs (so the clustering preview is real); only the writing path is suppressed.
+
+**Single-project greenfield.** When the discovery brief writes no `## Proposed registry topology` section (or a section with exactly one entry), the skill proceeds as a single-repo initiative — no `registry.yaml` is created, no `specify workspace sync` is run, and step 3(d) Assignment is skipped per its existing single-project rule.
 
 ## Single-writer invariant
 
