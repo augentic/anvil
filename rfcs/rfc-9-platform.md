@@ -1,6 +1,8 @@
 # RFC-9: Platform-First Operator Experience
 
 > Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-3a](archive/rfc-3a-monoliths.md), [RFC-3b](archive/rfc-3b-platform.md), [RFC-8](archive/rfc-8-api-contracts.md)
+>
+> This RFC is written against the v1 CLI surface ([migration map](../docs/explanation/migrating-cli-v1.md)). Every verb shape referenced below — `specify change {validate, outcome set, journal append}`, top-level `specify {registry, initiative}`, and so on — assumes the post-v1 noun groupings. Pre-v1 shapes (`specify change phase-outcome`, `specify initiative brief …`, `specify initiative registry …`) no longer exist.
 
 ## Abstract
 
@@ -8,7 +10,7 @@ Specify's ideal developer workflow is a **single-repo operator experience**: an 
 
 **Operator-experience gaps**
 
-1. **No initiative umbrella.** The platform-first flow is five Layer 1/2/3 commands the operator must drive in sequence (`initiative init` → registry edit → `/spec:plan` → `/spec:execute --loop` → `workspace push` → manual PR merge). There is no `/spec:initiative start` Layer 4 verb that strings them together.
+1. **No initiative umbrella.** The platform-first flow is five Layer 1/2/3 commands the operator must drive in sequence (`initiative init` → registry edit → `/spec:plan` → `/spec:execute --loop` → `workspace push` → manual PR merge). There is no `/spec:initiative create` Layer 4 verb that strings them together.
 2. **Registry topology is manual.** The framework works with whatever the operator puts in `registry.yaml` but cannot propose, create, or modify registry entries as part of its analysis.
 3. **The platform-repo hub pattern is hinted, not codified.** The data model already supports a registry-only platform repo, but no convention, scaffold, or tutorial pins whether the platform repo is itself a project (`url: .`) or a registry-only hub.
 4. **Initiative landing has no closure verb.** `workspace push` ships the work; nothing observes the whole initiative as landed (all PRs merged, baselines committed, workspace clones pruned).
@@ -64,15 +66,17 @@ Closing these gaps in priority order transforms Specify from "infrastructure tha
 
 #### 1A. Fixture cleanup — remove stale `affects` references
 
-**Problem.** The `affects` field was removed from the plan schema (supersession note in RFC-3a), but multiple execute fixtures still contain it. All paths below are relative to `plugins/spec/skills/execute/fixtures/` unless noted otherwise:
+**Problem.** The `affects` field was removed from the plan schema (supersession note in RFC-3a), but multiple execute *and* plan fixtures still contain it. The list below is **non-exhaustive** — the audit below sweeps both fixture trees in full. Spot-check hits, with paths relative to `plugins/spec/skills/`:
 
-- `e2e-platform-v2/plan.yaml.before` and `.after`
-- `e2e-platform-v2-with-crash/plan.yaml.before`, `.after`, `.after-crash`
-- `loop/stuck-on-blocked/plan.yaml.before` and `.after`
-- `dry-run/expected-output.md` (the **execute** skill fixture; `plugins/spec/skills/plan/fixtures/dry-run/` has its own copy that should also be audited)
-- `loop/stuck-on-blocked/transcript.md`
-- `single-change/README.md`
-- `e2e-platform-v2/README.md`
+- `execute/fixtures/e2e-platform-v2/plan.yaml.before` and `.after`
+- `execute/fixtures/e2e-platform-v2-with-crash/plan.yaml.before`, `.after`, `.after-crash`
+- `execute/fixtures/loop/stuck-on-blocked/plan.yaml.before` and `.after`
+- `execute/fixtures/dry-run/expected-output.md`
+- `execute/fixtures/loop/stuck-on-blocked/transcript.md`
+- `execute/fixtures/single-change/README.md`
+- `execute/fixtures/e2e-platform-v2/README.md`
+- `plan/fixtures/propose/transcript.md`
+- `plan/fixtures/propose-vectis/transcript.md`
 
 **Action.** Audit every fixture under `plugins/spec/skills/execute/fixtures/` and `plugins/spec/skills/plan/fixtures/`. Remove `affects:` entries from plan YAML fixtures. Update transcript and README references to use the current description-driven model. Extend `make checks` to flag any fixture YAML containing `affects:` as a schema-violation warning.
 
@@ -143,6 +147,23 @@ Cross-link from `docs/explanation/three-layer-stack.md`, the `/spec:plan` SKILL.
 
 **Scope.** Specify repo only. Documentation; no CLI changes.
 
+#### 1F. Rename `specify initiative init` to `specify initiative create`
+
+**Problem.** The project's noun-create verbs are inconsistent. `specify change create` and `specify plan create` use `create`; `specify initiative init` uses `init`. This is incidentally consistent with `specify plan init`, but `plan` has *both* verbs (`plan init` scaffolds the file; `plan create` adds an entry) — `initiative` only has the file, so the `init` choice is gratuitous. The asymmetry leaks into the 2C umbrella skill: the skill verb is `/spec:initiative create <name>`, but it would shell out to `specify initiative init <name>`, forcing operators to remember two verbs for one act.
+
+**Action.** Rename the CLI verb:
+
+1. `InitiativeAction::Init { name }` → `InitiativeAction::Create { name }` in `src/cli.rs`.
+2. The handler in `src/commands/initiative.rs` keeps its current behaviour (refuse-if-exists, kebab-case validation, template write).
+3. Update the v1 migration map (`docs/explanation/migrating-cli-v1.md`) with a v1.x rename row: `specify initiative init <name>` → `specify initiative create <name>`. Tag it as a v1.x evolution rather than a v1 cleanup rename so operators reading the doc can tell the two waves apart.
+4. Update every reference in skills, docs, tutorials, and fixtures (`docs/reference/cli/initiative.md`, plan/execute SKILL.md, AGENTS.md, README.md, `.cursor/rules/project.mdc`).
+
+The verb rename is mechanical and behaviour-preserving. No flag changes, no JSON shape change, no `.specify/initiative.md` template change.
+
+**Why not also rename `specify plan init`?** `plan init` and `plan create` are distinct operations on the same noun — the former scaffolds `plan.yaml`, the latter adds an entry. Renaming `plan init` would collide with `plan create`. Initiative has no such collision because the brief is a singleton.
+
+**Scope.** specify-cli (`InitiativeAction` rename + handler signature) + Specify repo (skill, doc, tutorial, fixture updates + migration-map entry).
+
 ---
 
 ### Phase 2: Dynamic registry management (high impact)
@@ -196,7 +217,7 @@ For **greenfield** initiatives where no registry exists at all, the discovery br
 
 This keeps phase skills unaware of registry mechanics (they just emit the outcome) and keeps the registry under operator control (the driver never auto-adds projects).
 
-**Scope.** Plan skill SKILL.md amendments + Omnia/Vectis propose brief updates + execute SKILL.md guardrails section + `specify change outcome set` accepting the new outcome shape. CLI verb from 2A is a prerequisite.
+**Scope.** Plan skill SKILL.md amendments + Omnia/Vectis propose brief updates + execute SKILL.md guardrails section + `specify change outcome set` accepting the new outcome shape. Adding a fourth `Outcome` variant is a wire-format change: today `crates/change/src/lib.rs::Outcome` is closed (`Success` / `Failure` / `Deferred`), and `.metadata.yaml:outcome` round-trips it via serde. The new variant therefore bumps the change-metadata schema version and needs a back-compat read path for archived metadata. CLI verb from 2A is a prerequisite.
 
 #### 2C. `/spec:initiative` umbrella skill
 
@@ -205,7 +226,7 @@ This keeps phase skills unaware of registry mechanics (they just emit the outcom
 **Action.** Add a new Layer 3 skill, `/spec:initiative`, that orchestrates the full platform-first loop:
 
 ```text
-/spec:initiative start <name> \
+/spec:initiative create <name> \
     [--shape migrate-legacy | new-feature | update-existing] \
     [--from <path>...] \
     [--against <path>] \
@@ -214,9 +235,11 @@ This keeps phase skills unaware of registry mechanics (they just emit the outcom
     [--dry-run]
 ```
 
+The skill verb (`create`) matches the renamed CLI verb (`specify initiative create`, see §1F). "Create at the orchestration layer calls create at the primitive layer" mirrors the existing Layer 3 → Layer 1 pattern (`/spec:plan` → `specify plan {init, create}`).
+
 Internally, the skill drives the canonical loop:
 
-1. **Brief.** If `.specify/initiative.md` is absent, run `specify initiative init` and prompt the operator to fill it (or accept defaults inferred from `--shape` and CLI flags).
+1. **Brief.** If `.specify/initiative.md` is absent, run `specify initiative create` (1F) and prompt the operator to fill it (or accept defaults inferred from `--shape` and CLI flags).
 2. **Registry.** Run `specify registry validate`. If the registry is multi-project, ensure every entry has a `description` (2A invariant). If `--shape` is `new-feature` or `migrate-legacy` and the registry is empty, prompt for an initial topology (2B greenfield path).
 3. **Plan.** Invoke `/spec:plan <name>` with the forwarded `--from` / `--against` / `--source` flags. If `--dry-run` was passed, stop after the plan-skill's own dry-run preview.
 4. **Execute.** Invoke `/spec:execute --loop`. Halts at the same points the underlying skill halts (self-heal, stuck, `registry-amendment-required` from 2B).
@@ -226,11 +249,13 @@ Internally, the skill drives the canonical loop:
 
 **Composition discipline.** The umbrella skill *only* invokes other Layer 1/2/3 skills and CLI verbs — no new logic. Every step has a manual-fallback equivalent (the existing skill or CLI command) so the operator can always drop down a layer. This is the same composition principle RFC-2 applied to `/spec:execute`'s relationship with `/spec:define` / `/spec:build` / `/spec:merge`.
 
+**Verb-naming discipline.** Compose using v1 verb names verbatim — `specify change {validate, outcome set, journal append}`, top-level `specify {registry, initiative}`, and so on. The pre-v1 shapes (`specify change phase-outcome`, `specify change journal-append`, `specify initiative brief …`, `specify initiative registry …`) no longer exist. When this skill lands, double-check every shell-out against the [v1 migration map](../docs/explanation/migrating-cli-v1.md); muscle memory for `phase-outcome` in particular dies hard.
+
 **Three-shape acceptance criteria.** A successful 2C lands when the skill cleanly handles all three initiative shapes (Motivation §*The three initiative shapes*). The 1C tutorial is extended with a transcript per shape: a migrate-legacy transcript with `--source monolith=<git-url>`, a new-feature transcript with `--from ./docs/`, and an update-existing transcript with neither.
 
 **Status of `/spec:plan` and `/spec:execute`.** Both remain operator-facing. `/spec:initiative` is the recommended entry point but the lower skills are still callable directly for power users, partial reruns, and CI pipelines.
 
-**Scope.** Specify repo: new skill `plugins/spec/skills/initiative/SKILL.md`, new fixtures under `plugins/spec/skills/initiative/fixtures/`, three-layer-stack documentation update to introduce a "Layer 4" (initiative orchestration) above existing Layer 3 (or rename the layers — see §*Open question* below). CLI: no new verbs. Depends on 2A (registry mutation), 2B (registry proposal), 5A (`workspace merge`, optional via `--auto-merge`), 5C (`initiative finalize`).
+**Scope.** Specify repo: new skill `plugins/spec/skills/initiative/SKILL.md`, new fixtures under `plugins/spec/skills/initiative/fixtures/`, three-layer-stack documentation update to introduce a "Layer 4" (initiative orchestration) above existing Layer 3 (or rename the layers — see §*Open question* below). CLI: no new verbs (the `init` → `create` rename is in 1F). Depends on 1F (`initiative create` rename), 2A (registry mutation), 2B (registry proposal), 5A (`workspace merge`, optional via `--auto-merge`), 5C (`initiative finalize`).
 
 > **Open question.** The current three-layer stack labels the plan/execute skills as "Layer 3 — Initiative Orchestration." If `/spec:initiative` sits above them, either (a) rename Layer 3 to "Plan & Drive" and introduce Layer 4 "Initiative Orchestration," or (b) absorb `/spec:initiative` into Layer 3 alongside `/spec:plan` and `/spec:execute`, treating it as an aggregator within the same layer. Decide as part of 2C implementation; the docs change is small either way.
 
@@ -365,10 +390,11 @@ Output format mirrors `workspace push`: per-project status (`merged`, `unmerged`
 | 1 | 1B. Retire `PlatformConfig` stub | — | S | Crate graph simplification |
 | 1 | 1D. Codify platform-repo hub pattern | — | M | Topology clarity |
 | 1 | 1E. Document two-tier workspace model | — | S | Operator clarity |
+| 1 | 1F. Rename `initiative init` → `create` | — | S | Verb consistency |
 | 1 | 1C. E2E multi-repo tutorial | 1D | M | Validation + documentation |
 | 2 | 2A. `registry add/remove` CLI | — | M | Operator UX |
 | 2 | 2B. Plan skill registry proposals | 2A | M | Autonomous topology |
-| 2 | 2C. `/spec:initiative` umbrella skill | 2A, 2B, 5A, 5C | M | Single-command initiative |
+| 2 | 2C. `/spec:initiative` umbrella skill | 1F, 2A, 2B, 5A, 5C | M | Single-command initiative |
 | 3 | 3A. Cross-repo spec references | 1C | L | Multi-repo coherence |
 | 3 | 3B. Cross-project contract validation | RFC-8 | L | Contract safety |
 | 4 | 4A. Language-agnostic wiretapper | — | L (per adapter) | Migration breadth |
@@ -382,11 +408,12 @@ Effort: S = 1–2 days, M = 3–5 days, L = 1–2 weeks.
 **Critical path for the platform-first vision.** The shortest path from today's state to "operator never leaves the platform repo" is:
 
 1. **1D** (decide hub pattern) → unblocks 1C and gives 2C a canonical scaffold target.
-2. **2A** (`registry add/remove`) → unblocks 2B and 2C.
-3. **2B** (plan-skill registry proposals) → makes the assignment step able to mint projects.
-4. **5A** (`workspace merge`) → closes the upstream-landing half of the loop.
-5. **5C** (`initiative finalize`) → closes the local-archive half of the loop.
-6. **2C** (`/spec:initiative` umbrella) → composes 1D, 2A, 2B, 5A, 5C into a single operator-facing verb.
+2. **1F** (`initiative create` rename) → trivial CLI rename so 2C can shell out symmetrically (`/spec:initiative create` → `specify initiative create`).
+3. **2A** (`registry add/remove`) → unblocks 2B and 2C.
+4. **2B** (plan-skill registry proposals) → makes the assignment step able to mint projects.
+5. **5A** (`workspace merge`) → closes the upstream-landing half of the loop.
+6. **5C** (`initiative finalize`) → closes the local-archive half of the loop.
+7. **2C** (`/spec:initiative` umbrella) → composes 1D, 1F, 2A, 2B, 5A, 5C into a single operator-facing verb.
 
 The other items (1A/1B/1E housekeeping, 3A/3B coherence, 4A/4B migration breadth, 5B doctor) improve the experience but do not block the headline vision. Phase 1 housekeeping is safe to start immediately. The critical-path items can be driven as Specify initiatives themselves — authored via `/spec:plan` and executed via `/spec:execute --loop` — which would simultaneously validate the platform-first workflow and close the gaps in it.
 
@@ -407,3 +434,4 @@ The other items (1A/1B/1E housekeeping, 3A/3B coherence, 4A/4B migration breadth
 - [RFC-3b: Platform Changes](archive/rfc-3b-platform.md)
 - [RFC-8: API Contracts](archive/rfc-8-api-contracts.md)
 - [Three-Layer Stack](../docs/explanation/three-layer-stack.md)
+- [Migrating to CLI v1](../docs/explanation/migrating-cli-v1.md)
