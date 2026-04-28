@@ -425,7 +425,7 @@ See `references/examples/` for complete worked examples:
 |---|---|
 | `cargo check` fails with unresolved import | Verify capability crate is in `[workspace.dependencies]` and `shared/Cargo.toml` |
 | `Command` type mismatch | Ensure `update()` returns `Command<Effect, Event>` |
-| `facet` derive errors | Ensure `facet = "=0.31"` is pinned exactly; add `#[repr(C)]` to enums |
+| `facet` derive errors | Ensure `facet` is pinned to the expected version (run `specify vectis update-versions --dry-run` to inspect); run `specify vectis verify` to check. Add `#[repr(C)]` to enums |
 | `uniffi` build failures | Ensure `uniffi` is behind `feature = "uniffi"` gate, not unconditional |
 | Missing `Operation` impl for custom capability | Each custom request type must `impl Operation` with `type Output` |
 | `#[serde(skip)]` on Event variant causes deserialization panic | Internal variants must never be sent from the shell; guard with `#[facet(skip)]` too |

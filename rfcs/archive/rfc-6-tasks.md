@@ -2,7 +2,7 @@
 
 > **Status: Superseded.** The standalone `vectis` binary these tasks built has been folded into the `specify` CLI as the `specify vectis ...` subcommand tree, living in [`augentic/specify-cli`](https://github.com/augentic/specify-cli) (`crates/vectis/` library + `templates/vectis/`). The chunk list and per-chunk verification commands below reference the original `crates/vectis-cli/` paths and `./target/release/vectis` binary that no longer exist in this repo; they are preserved as historical record of how RFC-6 was originally executed.
 
-> Source RFC: [rfc-6-vectis-bootstrap.md](../rfc-6-vectis-bootstrap.md) Owner: vectis CLI binary and the writer skills it replaces Scope: **vectis only**. A future top-level workspace CLI (RFC-1) will be folded in as a sibling member; nothing in this plan should require touching anything outside the vectis surface.
+> Source RFC: [rfc-6-vectis-bootstrap.md](rfc-6-vectis-bootstrap.md) Owner: vectis CLI binary and the writer skills it replaces Scope: **vectis only**. A future top-level workspace CLI (RFC-1) will be folded in as a sibling member; nothing in this plan should require touching anything outside the vectis surface.
 
 ## How to Use This File
 

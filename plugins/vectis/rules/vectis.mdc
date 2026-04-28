@@ -61,8 +61,8 @@ Token changes in `tokens.yaml` trigger regeneration of the iOS Swift Package (en
 ### iOS Shell Build Fails
 
 - Does the core exist with `shared/src/app.rs`?
-- Is `uniffi` pinned to `"=0.29.4"` in `shared/Cargo.toml`?
-- Is `facet` pinned to `"=0.31"`?
+- Run `specify vectis verify --dir $PROJECT_DIR` -- this checks version consistency, cargo-swift compatibility, and the build pipeline end-to-end.
+- If verify passes but the iOS app panics with "UniFFI contract version mismatch", the installed cargo-swift version is incompatible with the pinned UniFFI contract. Run `specify vectis update-versions --dry-run` to see expected tool versions and reinstall a compatible cargo-swift release with `cargo install cargo-swift@{version}`.
 
 ### Android Shell Build Fails
 
