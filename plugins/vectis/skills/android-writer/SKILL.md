@@ -377,7 +377,7 @@ Gradle build files, the version catalog, the Gradle wrapper, the Makefile, `Andr
 | `app.rs` not found | Verify `app-dir` points to a Crux app with `shared/src/app.rs` |
 | Unknown Effect variant | Add a placeholder `is Effect.XXX -> { }` and report |
 | Gradle sync fails | Check `build.gradle.kts` syntax; verify NDK version matches installed |
-| Build fails with missing types | Run `make build` to regenerate types; verify `uniffi` is pinned to the version from `specify vectis versions`. Run `specify vectis verify` to detect mismatches |
+| Build fails with missing types | Run `make build` to regenerate types; verify `uniffi` is pinned to the expected version (run `specify vectis update-versions --dry-run` to inspect). Run `specify vectis verify` to detect mismatches |
 | `cargoBuild` fails with `target may not be installed` | Run `rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android` |
 | NDK not found | Install via `sdkmanager "ndk;29.0.14206865"` or Android Studio SDK Manager |
 | Python 3 not found | Required by rust-android-gradle; install via system package manager |
@@ -389,7 +389,7 @@ Gradle build files, the version catalog, the Gradle wrapper, the Makefile, `Andr
 | `Unresolved reference 'CoreFfi'` | Add `import uniffi.shared.CoreFfi` to `Core.kt` |
 | `Unresolved reference 'Icons'` | Add `material-icons-extended` dependency to `libs.versions.toml` + `app/build.gradle.kts` |
 | `Namespace 'X' is used in multiple modules` | Use `com.vectis.{appname}.shared` namespace for the shared module |
-| `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- run `specify vectis verify` to detect mismatches and `specify vectis versions` to see expected pins |
+| `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- run `specify vectis verify` to detect mismatches and `specify vectis update-versions --dry-run` to see expected pins |
 | `This declaration needs opt-in` (unsigned types) | Add `@OptIn(ExperimentalUnsignedTypes::class)` to the class |
 
 ### Runtime crashes

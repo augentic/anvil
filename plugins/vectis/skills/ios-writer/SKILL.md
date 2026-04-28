@@ -33,7 +33,7 @@ The following tools must be installed (see README.md for installation):
 - xcbeautify
 - swiftformat
 - XcodeGen
-- cargo-swift (version must match uniffi pin; run `specify vectis versions` to check) -- builds the Rust static library as a Swift Package with XCFramework
+- cargo-swift (must be compatible with the pinned UniFFI contract; run `specify vectis verify` to check) -- builds the Rust static library as a Swift Package with XCFramework
 
 ## Input Analysis
 
@@ -249,7 +249,7 @@ XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffold
 | `app.rs` not found | Verify `app-dir` points to a Crux app with `shared/src/app.rs` |
 | Unknown Effect variant | Add a placeholder `case` with a `fatalError("unhandled")` and report |
 | `xcodegen` fails | Check `project.yml` syntax; verify path references |
-| Build fails with missing types | Verify `uniffi` is pinned to the version from `specify vectis versions` (must match `crux_core` bundled bindgen). Run `specify vectis verify` to detect mismatches |
+| Build fails with missing types | Verify `uniffi` is pinned to the expected version (run `specify vectis update-versions --dry-run` to inspect). Run `specify vectis verify` to detect mismatches |
 | VectisDesign not found | Check package path in `project.yml` relative to `{project-dir}` |
 
 ## Verification Checklist
@@ -303,7 +303,7 @@ XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffold
 
 - **Core only must exist first**: This skill generates the iOS shell for an existing Crux core. Run the core-writer skill first to generate the `shared` crate.
 - **Shell is thin**: All business logic lives in the Rust core. The shell only renders views and performs platform I/O. Never add business logic to Swift code.
-- **UniFFI bridging**: The shared crate must have `crate-type = ["staticlib"]` and the `uniffi` feature gate. The ios-writer assumes this is already configured by the core-writer. The `uniffi` crate must be pinned to the version from `specify vectis versions` (must match cargo-swift and `crux_core` bundled bindgen). Run `specify vectis verify` to detect mismatches.
+- **UniFFI bridging**: The shared crate must have `crate-type = ["staticlib"]` and the `uniffi` feature gate. The ios-writer assumes this is already configured by the core-writer. The `uniffi` crate pin must be compatible with the UniFFI contract expected by `cargo-swift` and the `crux_core` bundled bindgen (strict version equality is not required; cargo-swift 0.11 can read uniffi 0.29.x metadata). Run `specify vectis verify` to detect mismatches.
 - **Generated types**: Two Swift packages are produced: `SharedTypes` (domain types via facet_typegen) and `Shared` (UniFFI bindings + XCFramework via cargo-swift).
 - **Hot reloading**: All generated shells include the [Inject](https://github.com/krzysztofzablocki/Inject) library for hot reloading during development. Inject is a no-op in Release builds (stripped by LLVM), so the boilerplate can remain permanently. Each developer must install [InjectionIII](https://github.com/nicklama/InjectionIII/releases) separately. The CLI wires Inject into `project.yml` (SPM package + Debug-only `OTHER_LDFLAGS: -Xlinker -interposable` + `EMIT_FRONTEND_COMMAND_LINES: YES`); Update Mode only has to add `@ObserveInjection`/`.enableInjection()` to new screen views.
 - **ScrollView interaction hazards**: Do not place `TextField` or small `Button` elements inside a `ScrollView` within a `NavigationStack`. The `UIScrollView` touch-delay mechanism (`delaysContentTouches`) suppresses taps on non-`UIButton` views. Use `.safeAreaInset(edge:)` to pin interactive controls outside the scroll content, or use `List` which handles this internally. Similarly, avoid nesting a horizontal `ScrollView` (e.g. chip row) inside a vertical `ScrollView` -- the compound gesture conflicts cause missed taps. Pin the inner scrollable with `.safeAreaInset`, or ensure all tappable elements use `Button` with `.buttonStyle(.plain)`. See `references/swiftui-view-patterns.md` for examples.
