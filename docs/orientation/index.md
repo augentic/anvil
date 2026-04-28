@@ -62,4 +62,4 @@ Behind these skills, a Rust CLI binary (`specify`) handles every deterministic o
 
 ## Going deeper
 
-For a detailed understanding of Specify's layered architecture, artifact system, and schema/plugin model, see [Understanding Specify](../explanation/three-layer-stack.md).
+For a detailed understanding of Specify's layered architecture, artifact system, and schema/plugin model, see [The Layered Stack](../explanation/three-layer-stack.md).

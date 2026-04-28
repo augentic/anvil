@@ -1,0 +1,80 @@
+# Baseline (v1) shape of the user-api contract — what
+# `mobile`'s tier-2 workspace clone holds in its
+# `.specify/contracts/http/user-api.yaml` (it was sync'd
+# during a prior initiative). The cross-project validator
+# compares this against `../after/http/user-api.yaml`.
+
+openapi: "3.1.0"
+info:
+  title: "User API"
+  version: "1.0.0"
+  description: "User registration and profile management."
+paths:
+  /users:
+    post:
+      operationId: create-user
+      summary: "Register a new user."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                display-name:
+                  type: string
+              required:
+                - email
+                - password
+      responses:
+        "201":
+          description: "User created."
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/user.yaml"
+        "409":
+          description: "Email already registered."
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/error-response.yaml"
+  /users/{id}:
+    get:
+      operationId: get-user-by-id
+      summary: "Fetch a user by id."
+      responses:
+        "200":
+          description: "User found."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  email:
+                    type: string
+                    format: email
+                  display-name:
+                    type: string
+                  created-at:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - email
+                  - display-name
+                  - created-at
+        "404":
+          description: "User not found."
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/error-response.yaml"

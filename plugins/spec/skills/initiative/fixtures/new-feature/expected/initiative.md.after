@@ -1,0 +1,18 @@
+---
+name: dark-mode
+inputs:
+  - path: ./docs/dark-mode-spec.md
+    kind: documentation
+---
+
+Add a dark-mode theme to the storefront, spanning the backend
+(omnia-backend) and the mobile shells (vectis-mobile). Users pick a
+theme in the mobile app's settings screen; the choice persists to the
+backend so it survives logouts and stays consistent across devices.
+
+The boundary between the two projects is a small HTTP contract for the
+per-user theme-preference endpoints (`GET/PUT /v1/users/me/theme`).
+The contract change lands first; the two implementation changes depend
+on it.
+
+Documentation: ./docs/dark-mode-spec.md.

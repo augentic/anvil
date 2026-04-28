@@ -13,7 +13,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 ### Skills
 
 - [Change Skills (Layer 2)](change-skills/index.md) -- the define-build-merge loop and supporting skills (init, drop, status, verify, explore, extract).
-- [Initiative Skills (Layer 3)](initiative-skills/index.md) -- plan, execute, and analyze for multi-change programs.
+- [Initiative Skills (Layers 3 & 4)](initiative-skills/index.md) -- plan, execute, and analyze for multi-change programs (Layer 3); the `/spec:initiative` umbrella for cross-repo initiatives end-to-end (Layer 4).
 
 ### CLI
 

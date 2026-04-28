@@ -1,13 +1,20 @@
-# The Three-Layer Stack
+# The Layered Stack
 
-Specify is organised in three layers. Each layer is independently useful, and each builds on the one below it.
+Specify is organised in four layers. Each layer is independently useful, and each builds on the one below it.
+
+> **Naming note.** The pre-RFC-9 stack was a "three-layer stack" topped by `/spec:plan` and `/spec:execute`. RFC-9 §2C added the `/spec:initiative` umbrella verb at Layer 4 (Initiative Orchestration), promoting plan-and-drive to its own dedicated layer. The filename of this page (`three-layer-stack.md`) is preserved so existing cross-references keep resolving — see the [decision log entry](decision-log.md#independently-useful-layers) for the rationale.
 
 ```d2
 direction: down
 
-Layer3: "Layer 3 — Initiative Orchestration" {
+Layer4: "Layer 4 — Initiative Orchestration" {
+  initiative: "/spec:initiative"
+}
+
+Layer3: "Layer 3 — Plan & Drive" {
   plan: "/spec:plan"
   execute: "/spec:execute"
+  analyze: "/spec:analyze"
   plan -> execute
 }
 
@@ -26,13 +33,15 @@ Layer1: "Layer 1 — CLI Primitives" {
   changeCli: "specify change"
   planCli: "specify plan"
   initCli: "specify initiative"
+  registryCli: "specify registry"
   workspaceCli: "specify workspace"
   schemaCli: "specify schema"
-  specCli: "specify spec"
-  validateCli: "specify validate"
-  taskCli: "specify task"
-  mergeCli: "specify merge"
+  statusCli: "specify status"
 }
+
+Layer4 -> Layer3
+Layer3 -> Layer2
+Layer2 -> Layer1
 ```
 
 ## Layer 1: CLI primitives
@@ -41,10 +50,12 @@ The `specify` CLI is the foundation. It owns every deterministic operation: crea
 
 The primary command families are:
 
-- **`specify change ...`** -- create, inspect, transition, and archive individual changes.
+- **`specify change ...`** -- per-change CRUD, validation, merge (`change merge {preview, conflict-check, run}`), task tracking (`change task {progress, mark}`), phase outcome (`change outcome {set, show}`), and journal entries (`change journal {append, show}`).
 - **`specify plan ...`** -- scaffold, populate, validate, transition, and archive an initiative plan.
-- **`specify initiative ...`** -- manage the initiative brief and platform registry.
-- **`specify workspace ...`** -- materialise, inspect, and push workspace clones for multi-repo initiatives.
+- **`specify initiative ...`** -- manage the operator-authored initiative brief at `.specify/initiative.md` and finalize an initiative once every PR has merged (`initiative {create, show, finalize}`).
+- **`specify registry ...`** -- manage the platform registry at `.specify/registry.yaml` (multi-repo initiatives) — `registry {add, remove, show, validate}`.
+- **`specify workspace ...`** -- materialise, inspect, push, and merge workspace clones for multi-repo initiatives. Workspace clones are durable and read-write; the separate read-only legacy-source clones used by `/spec:analyze` live elsewhere -- see [Workspace Tiers](workspace-tiers.md) for the distinction.
+- **`specify status`** -- project dashboard summarising registry, plan, and active changes.
 
 **Who uses it:** Power users who want fine-grained control, CI pipelines, and anyone debugging the state of `.specify/`. Layer 1 is always available as a manual fallback beneath the higher layers.
 
@@ -74,9 +85,9 @@ The full set of Layer 2 skills:
 
 **Who uses it:** Every Specify operator, every day. This is the primary interaction layer.
 
-## Layer 3: Initiative orchestration
+## Layer 3: Plan & Drive
 
-Layer 3 skills coordinate **multi-change programs** through `.specify/plan.yaml` -- an ordered, dependency-aware list of changes with status tracking.
+Layer 3 skills coordinate **multi-change programs** through `.specify/plan.yaml` -- an ordered, dependency-aware list of changes with status tracking. They are the authoring and execution counterparts of an initiative-scoped program.
 
 | Skill | Role |
 |-------|------|
@@ -90,14 +101,33 @@ The plan is the initiative's table of contents. `/spec:plan` produces it by anal
 /spec:plan <name> --source legacy=./path  -->  /spec:execute --loop
 ```
 
-**Who uses it:** Initiative leads coordinating multi-change programs -- greenfield builds, legacy migrations, platform modernisations.
+**Who uses it:** Initiative leads coordinating multi-change programs -- greenfield builds, legacy migrations, platform modernisations -- when they want fine-grained control over the plan/execute loop or only need a subset of the platform-first flow.
+
+## Layer 4: Initiative orchestration
+
+Layer 4 is a single skill — `/spec:initiative` (RFC-9 §2C) — that strings the entire platform-first loop into one operator action. It is **composition only**: every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the umbrella adds no new logic.
+
+| Skill | Role |
+|-------|------|
+| `/spec:initiative` | Brief → registry validate → `/spec:plan` → `/spec:execute --loop` → `specify workspace push` → optional `specify workspace merge` → `specify initiative finalize` |
+
+```text
+/spec:initiative create <name> [--shape ...] [--from ...] [--source ...] [--auto-merge]
+```
+
+The umbrella honours all the halts the underlying skills surface (self-heal, stuck, `registry-amendment-required`) and is **idempotent on re-entry** — running it again after a halt resumes from the appropriate step.
+
+**Who uses it:** Operators driving a cross-repo initiative end-to-end without leaving the platform hub. Power users still call `/spec:plan` and `/spec:execute` directly when they want partial reruns or CI-pipeline composability.
 
 ## The layers compose
 
-A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `/spec:execute` calls `/spec:define`, `/spec:build`, and `/spec:merge` -- the same skills you would invoke manually. The phase skills themselves do not know whether they are running inside an automated loop or being driven by a human.
+A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `/spec:initiative` calls `/spec:plan` and `/spec:execute`; `/spec:execute` calls `/spec:define`, `/spec:build`, and `/spec:merge` -- the same skills you would invoke manually. The phase skills themselves do not know whether they are running inside an automated loop or being driven by a human.
 
 This means you can always drop down a layer:
 
+- If `/spec:initiative` halts on a step, you can pick up by hand at the next CLI verb (`specify workspace push`, `specify workspace merge`, `specify initiative finalize`).
 - If `/spec:execute` fails on a change, you can finish it manually with `/spec:build` and `/spec:merge`.
 - If `/spec:plan` produces a plan you want to adjust, you can edit it with `specify plan amend` and drive it yourself with `specify plan next`.
 - If a skill does something unexpected, you can inspect the underlying state with `specify change status` or `specify plan status`.
+
+See [Drop down a layer](../how-to/drop-down-a-layer.md) for worked examples of each escape hatch.

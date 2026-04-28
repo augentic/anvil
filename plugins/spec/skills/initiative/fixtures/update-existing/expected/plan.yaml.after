@@ -1,0 +1,21 @@
+# Terminal plan after step 4 (/spec:execute --loop) drained every entry.
+# No contract change — the polish pass does not change the API surface.
+# Two entries, both `done`, each routed to its existing project.
+version: 1
+name: polish-pass
+sources: {}
+changes:
+  - name: tighten-auth-error-messages
+    status: done
+    project: omnia-backend
+    description: |
+      Polish the auth flow's error messages to match the platform style
+      guide. Delta-targets the `user-auth` baseline spec on
+      omnia-backend.
+  - name: theme-picker-a11y-label
+    status: done
+    project: vectis-mobile
+    description: |
+      Add the missing accessibility label on the theme-picker control.
+      Delta-targets the `settings-screen` baseline spec on
+      vectis-mobile.

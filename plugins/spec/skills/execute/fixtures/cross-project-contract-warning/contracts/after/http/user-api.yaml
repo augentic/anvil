@@ -1,0 +1,84 @@
+# Post-merge (v2) shape of the user-api contract — what the
+# `update-user-api-v2` change's `contracts/http/user-api.yaml`
+# delta merged into `.specify/contracts/http/user-api.yaml` on
+# the producer side. The cross-project validator compares this
+# file against `../../consumer-workspace/.specify/contracts/http/user-api.yaml`.
+#
+# Two breaking-against-the-consumer changes vs the v1 shape:
+# 1. `email` removed from GET /users/{id} response (PII reduction).
+# 2. `phone-number` added to the required list of POST /users.
+
+openapi: "3.1.0"
+info:
+  title: "User API"
+  version: "2.0.0"
+  description: "User registration and profile management. v2 reduces PII surface area and tightens registration requirements."
+paths:
+  /users:
+    post:
+      operationId: create-user
+      summary: "Register a new user."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                display-name:
+                  type: string
+                phone-number:
+                  type: string
+                  pattern: "^\\+[1-9][0-9]{6,14}$"
+              required:
+                - email
+                - password
+                - phone-number
+      responses:
+        "201":
+          description: "User created."
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/user.yaml"
+        "409":
+          description: "Email already registered."
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/error-response.yaml"
+  /users/{id}:
+    get:
+      operationId: get-user-by-id
+      summary: "Fetch a user by id."
+      responses:
+        "200":
+          description: "User found."
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  display-name:
+                    type: string
+                  created-at:
+                    type: string
+                    format: date-time
+                required:
+                  - id
+                  - display-name
+                  - created-at
+        "404":
+          description: "User not found."
+          content:
+            application/json:
+              schema:
+                $ref: "../schemas/error-response.yaml"

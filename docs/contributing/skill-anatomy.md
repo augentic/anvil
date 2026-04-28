@@ -79,7 +79,7 @@ Elicit intent from user          →
                                        specify change create <name>
                                   ←    { "status": "created", ... }
 Read brief, write artifact       →
-                                       specify validate .specify/changes/<name>/
+                                       specify change validate <name>
                                   ←    { "passed": true, ... }
                                        specify change transition <name> defined
                                   ←    { "status": "defined", ... }

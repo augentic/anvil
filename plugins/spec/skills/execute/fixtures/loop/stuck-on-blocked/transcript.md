@@ -1,6 +1,6 @@
 # stuck-on-blocked — `--loop` drains what it can, then stops at `stuck`
 
-A three-entry plan where `user-registration` is already `done`. `email-verification` defers mid-run (scope question from the define phase), becomes `blocked`, and `--loop` continues rather than halting. `registration-duplicate-email-crash` has no `depends-on` (it uses `affects` instead, which does NOT gate eligibility), so the next iteration picks it up and runs it to `done`. The third iteration's `specify plan next` returns no eligible entry — `blocked` is the only non-terminal status left — so the loop exits with `Completion: stuck`.
+A three-entry plan where `user-registration` is already `done`. `email-verification` defers mid-run (scope question from the define phase), becomes `blocked`, and `--loop` continues rather than halting. `registration-duplicate-email-crash` has no `depends-on` — its delta target (`user-registration`) is inferred by the define skill from the description and does NOT gate eligibility — so the next iteration picks it up and runs it to `done`. The third iteration's `specify plan next` returns no eligible entry — `blocked` is the only non-terminal status left — so the loop exits with `Completion: stuck`.
 
 The key behaviour this fixture pins: **an individual deferral does NOT halt `--loop`**. The loop continues draining eligible work and only stops when `specify plan next` reports no eligible entry.
 
@@ -71,7 +71,7 @@ Progress: done 1, in-progress 1, pending 0, blocked 1, failed 0, skipped 0 (tota
 
 ---
 
-### Processing: registration-duplicate-email-crash (affects: [user-registration])
+### Processing: registration-duplicate-email-crash
 
 Step 1/3: define
   Artifacts: proposal.md, specs, design.md, tasks.md ✓
@@ -114,7 +114,7 @@ Next action: Resolve blocked/failed entries (specify plan amend + specify plan t
 
 1. **Deferral does NOT halt `--loop`.** After email-verification is transitioned to `blocked`, the loop's next iteration runs `specify plan next` again — which skips the `blocked` entry and returns `registration-duplicate-email-crash` as the next eligible.
 2. **`specify plan next` skips `blocked` / `failed` naturally.** The driver does not need an explicit "skip this entry" branch; eligibility in the Layer 1 CLI is already defined as "pending AND all depends-on are done". `blocked` entries are not pending, so they are not eligible.
-3. **`affects` does NOT gate eligibility.** The `registration-duplicate-email-crash` entry lists `affects: [user-registration]` but has no `depends-on`. It is eligible as soon as it becomes the first pending entry. The `affects` field is a baseline-delta targeting hint (see RFC-2 §"`affects`" and L2.I for the execution wiring), not an eligibility gate.
+3. **Description-driven delta targeting does NOT gate eligibility.** The `registration-duplicate-email-crash` entry has no `depends-on`; the define skill infers its delta target (`user-registration`) from the description at phase time. Eligibility is purely a function of `pending` status and satisfied `depends-on` — delta targeting is a phase-time concern, not an eligibility gate.
 4. **Verbatim `outcome.summary` → `status-reason` → terminal summary.** The string in `plan.yaml.after`'s `status-reason` for `email-verification` is byte-identical to the `Question:` line in the mid-run transcript AND to the `status-reason:` quoted in the terminal summary. No paraphrasing at any hop.
 5. **`stuck` renders empty sections as empty — but doesn't emit empty headings.** The terminal summary above has a `Blocked:` section but NO `Failed:` or `Pending (dependencies not satisfied):` sections. The renderer must omit empty list headings entirely.
 6. **Exit code 0 on `stuck`.** Partial completion is observable via the plan; the driver did nothing wrong. Operator triage is signalled by the terminal summary text, not by the exit code.

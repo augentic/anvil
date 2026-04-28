@@ -10,7 +10,7 @@
 # §"Context Threading → Resumption Within a Change").
 #
 # This file is illustrative; the real on-disk form is whatever
-# `specify change phase-outcome email-verification build success
+# `specify change outcome set email-verification build success
 #   --summary "..."` writes, shaped per
 # crates/change/src/lib.rs::ChangeMetadata in augentic/specify-cli.
 

@@ -1,0 +1,41 @@
+# Output of:
+#
+#   /contracts:validator \
+#       --mode cross-project \
+#       --producer-contract .specify/contracts/http/user-api.yaml \
+#       --consumer-workspace .specify/workspace/mobile/
+#
+# (See `/contracts:validator → §Output Format — Cross-Project`.)
+# Two findings, both severity `warning`. The execute driver reads
+# `summary.total-findings` to decide whether to render the
+# `⚠ Cross-project contract warnings` block in the merge transcript;
+# it then walks `findings[]` and emits one journal entry per finding
+# (see `expected-journal.yaml`).
+
+mode: cross-project
+producer:
+  contract: contracts/http/user-api.yaml
+consumer:
+  workspace: .specify/workspace/mobile/
+findings:
+  - severity: warning
+    contract: contracts/http/user-api.yaml
+    change-kind: removed-field
+    locator: paths./users/{id}.get.responses.200.content.application/json.schema.properties.email
+    details: >
+      The producer's update removes the `email` field from the
+      GET /users/{id} response body. The consumer's last-known view
+      defines this field; consumer code that reads it will receive
+      `undefined` after the next workspace sync.
+  - severity: warning
+    contract: contracts/http/user-api.yaml
+    change-kind: required-field-added
+    locator: paths./users.post.requestBody.content.application/json.schema.required
+    details: >
+      Producer adds `phone-number` to the required field list of
+      POST /users. Consumer requests built from the prior shape will
+      be rejected with HTTP 400.
+summary:
+  total-findings: 2
+  warnings: 2
+  errors: 0

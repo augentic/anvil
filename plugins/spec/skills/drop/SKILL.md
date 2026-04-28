@@ -34,7 +34,7 @@ Optionally specify a change name. If omitted, check whether it can be inferred f
 
 1. **Select the change**
 
-   If a name is provided, use it. Otherwise run `specify status --format json` to enumerate active changes:
+   If a name is provided, use it. Otherwise run `specify status --format json` to enumerate active changes from the dashboard:
 
    - If only one entry exists, use it but confirm with the user.
    - If multiple, use the **AskQuestion tool** to let the user select.

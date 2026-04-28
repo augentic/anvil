@@ -1,0 +1,11 @@
+{
+  "schema-version": 2,
+  "name": "archived-feature",
+  "outcome": {
+    "phase": "merge",
+    "outcome": "success",
+    "at": "2024-08-03T14:15:00Z",
+    "summary": "Baseline updated: .specify/specs/archived-feature/spec.md",
+    "context": null
+  }
+}

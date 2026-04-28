@@ -1,0 +1,31 @@
+# Terminal plan after step 4 (/spec:execute --loop) drained every entry.
+# The contract change runs against the hub (no `project`); the two
+# implementation changes carry the project assignments written by
+# step 3(d).
+version: 1
+name: dark-mode
+sources: {}
+changes:
+  - name: dark-mode-contract
+    status: done
+    schema: contracts@v1
+    description: |
+      Define the cross-project HTTP contract for the per-user theme
+      preference: GET/PUT /v1/users/me/theme with body { theme: light
+      | dark | system }.
+  - name: dark-mode-backend
+    status: done
+    project: omnia-backend
+    depends-on: [dark-mode-contract]
+    description: |
+      Persist a per-user `theme` setting. Implement GET and PUT
+      endpoints from the contract. Default `system` for users who have
+      never set the preference.
+  - name: dark-mode-mobile
+    status: done
+    project: vectis-mobile
+    depends-on: [dark-mode-contract]
+    description: |
+      Settings screen exposes a three-way picker bound to the
+      theme-preference API. Every screen honours the active theme via
+      design system tokens. Cache the preference locally for cold-launch.

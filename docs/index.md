@@ -40,4 +40,4 @@ That is the entire core workflow. Everything else in Specify builds on this loop
 - **[Tutorials](tutorials/index.md)** walk you through progressively complex scenarios.
 - **[How-To Guides](how-to/index.md)** answer specific task-oriented questions.
 - **[Reference](reference/index.md)** provides the complete lookup table for every skill, CLI command, artifact format, and configuration file.
-- **[Understanding Specify](explanation/three-layer-stack.md)** explains the architecture and design decisions.
+- **[The Layered Stack](explanation/three-layer-stack.md)** explains the architecture and design decisions.

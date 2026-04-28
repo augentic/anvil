@@ -16,40 +16,40 @@ When working plan-driven (a `.specify/plan.yaml` exists), the corresponding plan
 This skill is the **build** phase of the `/spec:execute` driver loop. Before returning control to the caller, always record the phase's outcome via:
 
 ```bash
-specify change phase-outcome <name> build <outcome> --summary "..." [--context "..."]
+specify change outcome set <name> build <outcome> --summary "..." [--context "..."]
 ```
 
 where `<outcome>` is exactly one of:
 
-- `success`  — every build brief produced its `generates` artefacts, the verify-repair loop converged, and `specify task progress` reports `pending == 0`. The change is ready for `/spec:merge`.
+- `success`  — every build brief produced its `generates` artefacts, the verify-repair loop converged, and `specify change task progress` reports `pending == 0`. The change is ready for `/spec:merge`.
 - `failure`  — a brief failed after the repair budget was exhausted (e.g. the Omnia `build.md` 3-iteration verify-repair loop could not converge; a specialist writer skill returned a non-recoverable error). Use `--summary` to name which brief and the load-bearing stderr/test line; use `--context` for verbatim detail (failing test name, compiler error tail, etc.).
 - `deferred` — human judgement is needed (task is ambiguous, implementation reveals a design issue that must be resolved before coding, artefact updates are required but not safe to do unattended). Use `--summary` to name the question.
 
-`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome` on return and translates the outcome into a plan transition (`done` / `failed` / `blocked`). If the field is missing or malformed, `/spec:execute` treats the phase as `deferred` and stops for triage — do not skip the CLI call. This `phase-outcome` invocation is the **last action** the skill takes before returning control.
+`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome` on return and translates the outcome into a plan transition (`done` / `failed` / `blocked`). If the field is missing or malformed, `/spec:execute` treats the phase as `deferred` and stops for triage — do not skip the CLI call. This `outcome set` invocation is the **last action** the skill takes before returning control.
 
 ## Journal entries during the run
 
 Whenever the skill encounters a situation the human should see — a genuine question, a repair attempt that failed, or a notable recovery — append to `.specify/changes/<name>/journal.yaml` **during** the run, not just at the end:
 
 ```bash
-specify change journal-append <name> build <kind> --summary "..." [--context "..."]
+specify change journal append <name> build <kind> --summary "..." [--context "..."]
 ```
 
 Kinds:
 
 - `question` — task is ambiguous, implementation reveals a design issue, or anything that might produce a `deferred` outcome at the end of the phase. Write one entry per question so the human sees the full trail when triaging.
-- `failure` — a brief (or its specialist writer) returned an error after retry. Write one entry per failure; the final `phase-outcome` summary rolls up only the load-bearing one, but auditors still see every attempt inside the verify-repair loop.
+- `failure` — a brief (or its specialist writer) returned an error after retry. Write one entry per failure; the final `outcome set` summary rolls up only the load-bearing one, but auditors still see every attempt inside the verify-repair loop.
 - `recovery` — a self-heal / recovery step happened. (Typically written by `/spec:execute` itself; phases rarely need to append this kind.)
 
 `journal.yaml` is a pure append-only audit log; `/spec:execute` never consumes it as a signalling channel. The `outcome` field in `.metadata.yaml` is the only state `/spec:execute` reads on phase return.
 
 ## Mutating the plan mid-run
 
-Phases may shell out to `specify plan create` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
+Phases may shell out to `specify plan add` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
 
 Allowed:
 
-- `specify plan create <new-name> --description "...modifies <current-name>..."` when implementation uncovers a neighbouring defect or a prerequisite refactor that warrants its own change.
+- `specify plan add <new-name> --description "...modifies <current-name>..."` when implementation uncovers a neighbouring defect or a prerequisite refactor that warrants its own change.
 - `specify plan amend <current-name> --depends-on <newly-needed>` when the phase discovers a dependency on another plan entry. `amend` may target the currently-active entry — non-`status` fields on an `in-progress` entry are fair game.
 
 Forbidden:
@@ -66,7 +66,7 @@ Forbidden:
    If a name is provided, use it. Otherwise:
 
    - Infer from conversation context if the user mentioned a change.
-   - Run `specify status --format json` to enumerate active changes. If only one entry exists, auto-select it. If multiple, use the **AskQuestion tool** to let the user pick.
+   - Run `specify status --format json` to enumerate active changes from the dashboard. If only one entry exists, auto-select it. If multiple, use the **AskQuestion tool** to let the user pick.
 
    Always announce: "Using change: <name>" and how to override (e.g., `/spec:build <other>`).
 
@@ -85,7 +85,7 @@ Forbidden:
 
 4. **Validate prerequisites (define artifacts + build-brief needs)**
 
-   Run `specify validate .specify/changes/<name> --format json`. Inspect the report:
+   Run `specify change validate <name> --format json`. Inspect the report:
 
    - If `passed` is `false` and the failures are about missing define-phase artifacts, halt and tell the user to run `/spec:define` to fill them in.
    - If `passed` is `false` for other reasons, report the details but ask the user whether to proceed.
@@ -97,11 +97,11 @@ Forbidden:
 
    `specify schema pipeline build --change .specify/changes/<name> --format json` returns the build brief's `path`, `needs`, and `tracks`. Read the brief body from that path; the build loop follows it step-by-step.
 
-   Read the tracked tasks file (its path comes from `specify task progress` below) and every define-phase artifact you need for context (paths available via `specify schema pipeline define --change <change-dir> --format json`).
+   Read the tracked tasks file (its path comes from `specify change task progress` below) and every define-phase artifact you need for context (paths available via `specify schema pipeline define --change <change-dir> --format json`).
 
 6. **Show current progress**
 
-   Run `specify task progress .specify/changes/<name> --format json` for structured counts:
+   Run `specify change task progress <name> --format json` for structured counts:
 
    ```json
    {"total": 7, "complete": 2, "pending": 5, "tasks": [{"number": "1.1", ...}]}
@@ -121,12 +121,12 @@ Forbidden:
 
 8. **Implement tasks (loop until done or blocked)**
 
-   For each pending task returned by `specify task progress`:
+   For each pending task returned by `specify change task progress`:
 
    - Inspect the task's `skill-directive` field. When present (`plugin`/`skill` pair), invoke that skill directly with the standard arguments (e.g. `/omnia:crate-writer $CRATE_PATH`). When absent, follow the build brief body's step-by-step execution (mode detection, verification loop, etc.).
    - Announce which task is being worked on.
    - Make the code changes required. Keep changes minimal and focused.
-   - Mark the task complete: `specify task mark .specify/changes/<name> <task-number> --format json`. The call is idempotent — a re-mark on an already-completed task is a no-op.
+   - Mark the task complete: `specify change task mark <name> <task-number> --format json`. The call is idempotent — a re-mark on an already-completed task is a no-op.
    - Continue to the next task.
 
    **Pause if:**
@@ -149,7 +149,7 @@ Forbidden:
    Display:
 
    - Tasks completed this session
-   - Overall progress via `specify task progress .specify/changes/<name>`
+   - Overall progress via `specify change task progress <name>`
    - If all done: suggest `/spec:merge`
    - If paused: explain why and wait for guidance
 
@@ -211,7 +211,7 @@ What would you like to do?
 - If a task is ambiguous, pause and ask before implementing.
 - If implementation reveals issues, pause and suggest artifact updates.
 - Keep code changes minimal and scoped to each task.
-- Flip task checkboxes through `specify task mark`; do not edit `tasks.md` directly.
+- Flip task checkboxes through `specify change task mark`; do not edit `tasks.md` directly.
 - Never hand-edit `.metadata.yaml`. All status transitions go through `specify change transition`; the CLI enforces the legal set of lifecycle values.
 - Pause on errors, blockers, or unclear requirements — don't guess.
 

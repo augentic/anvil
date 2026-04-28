@@ -36,7 +36,7 @@ Use **git branches** -- each developer creates a branch for their change. The ba
 If two changes modify the same capability, the second to merge may encounter a conflict:
 
 1. Developer A merges `add-notifications` -- baseline updated.
-2. Developer B tries to merge `improve-auth` -- `specify spec conflict-check` detects the baseline changed since define.
+2. Developer B tries to merge `improve-auth` -- `specify change merge conflict-check` detects the baseline changed since define.
 
 Resolution options:
 

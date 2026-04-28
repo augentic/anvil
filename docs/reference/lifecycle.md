@@ -2,7 +2,7 @@
 
 Every Specify change moves through a sequence of lifecycle states. Transitions are enforced by the `specify` CLI -- skills never write state directly.
 
-Specify's three-layer design is explained in [The Three-Layer Stack](../explanation/three-layer-stack.md). For the rationale, see the [Decision Log](../explanation/decision-log.md#three-independently-useful-layers).
+Specify's layered design is explained in [The Layered Stack](../explanation/three-layer-stack.md). For the rationale, see the [Decision Log](../explanation/decision-log.md#independently-useful-layers).
 
 ## State diagram
 
@@ -59,7 +59,7 @@ Each change directory contains a `.metadata.yaml` file managed exclusively by th
 
 - **`status`** -- the current lifecycle state.
 - **`created_at`** / **`updated_at`** -- ISO 8601 timestamps.
-- **`outcome`** -- phase outcome (`success`, `failure`, `deferred`) written by `specify change phase-outcome`. Used by `/spec:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`.
+- **`outcome`** -- phase outcome (`success`, `failure`, `deferred`) written by `specify change outcome set`. Used by `/spec:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`.
 - **`schema`** -- the schema URL used for this change.
 - **`touched_specs`** -- the list of spec files this change affects.
 

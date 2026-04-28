@@ -1,0 +1,23 @@
+# Pre-RFC-9 .metadata.yaml as written by a pre-bump binary.
+# Note the absence of `version:` — the field is post-bump, defaulting
+# to `1` when read by the new reader. The closed `Outcome` set used
+# `success`, `failure`, and `deferred` (no struct variants).
+#
+# The file lives at .specify/archive/2024-08-03-archived-feature/.metadata.yaml
+# in the producer's tree; the new reader resolves it via
+# `resolve_archived_metadata` in src/commands/change.rs.
+schema: omnia
+status: merged
+created-at: "2024-08-01T10:00:00Z"
+defined-at: "2024-08-01T12:30:00Z"
+build-started-at: "2024-08-02T09:00:00Z"
+completed-at: "2024-08-03T14:00:00Z"
+merged-at: "2024-08-03T14:15:00Z"
+touched-specs:
+  - name: archived-feature
+    type: new
+outcome:
+  phase: merge
+  outcome: success
+  at: "2024-08-03T14:15:00Z"
+  summary: "Baseline updated: .specify/specs/archived-feature/spec.md"

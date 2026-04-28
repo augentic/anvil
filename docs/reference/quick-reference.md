@@ -62,12 +62,11 @@ created --> defining --> defined --> building --> complete --> merged
 
 ```bash
 # Status
-specify status
-specify status <name>
+specify status                            # project dashboard
+specify change status <name>              # single-change view
 
 # Change management
 specify change list
-specify change status <name>
 specify change transition <name> <target>
 
 # Plan management
@@ -81,15 +80,19 @@ specify workspace sync
 specify workspace status
 specify workspace push
 
+# Platform registry (multi-repo)
+specify registry show
+specify registry validate
+
 # Plan authoring (multi-repo)
-specify plan create <name> --project <project>
+specify plan add <name> --project <project>
 specify plan amend <name> --project <project>
 
-# Inspection
-specify spec preview <change-dir>
-specify spec conflict-check <change-dir>
-specify task progress <change-dir>
-specify validate <change-dir>
+# Per-change inspection
+specify change validate <name>
+specify change task progress <name>
+specify change merge preview <name>
+specify change merge conflict-check <name>
 ```
 
 ## Schemas

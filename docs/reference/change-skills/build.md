@@ -20,7 +20,7 @@ Implement tasks from a defined change.
 
 ## Artifacts produced
 
-Source code changes in the project codebase (not under `.specify/`). Task checkboxes in `tasks.md` are flipped via `specify task mark` as each task completes.
+Source code changes in the project codebase (not under `.specify/`). Task checkboxes in `tasks.md` are flipped via `specify change task mark` as each task completes.
 
 ## Behavior
 
@@ -31,7 +31,7 @@ Source code changes in the project codebase (not under `.specify/`). Task checkb
 5. Works through tasks sequentially:
    - Tasks with a **skill directive tag** (e.g. `<!-- skill: omnia:crate-writer -->`) are delegated to the named specialist skill.
    - Tasks without a skill tag are implemented via the schema's default build instruction.
-6. Marks each task complete via `specify task mark`.
+6. Marks each task complete via `specify change task mark`.
 7. On completion of all tasks, transitions to `complete`.
 8. Writes phase outcome.
 

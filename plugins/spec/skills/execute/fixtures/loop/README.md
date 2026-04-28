@@ -55,4 +55,4 @@ loop/
 ## Using these fixtures
 
 - Before changing the `--loop` algorithm or terminal summary format in `SKILL.md`, re-read the before / after pairs and transcripts here and confirm the new algorithm still maps them cleanly. If it does not, update the fixtures in the same commit as the SKILL.md change.
-- The `.metadata.yaml` files in these fixtures are illustrative snapshots shaped per `crates/change/src/lib.rs::ChangeMetadata` in `augentic/specify-cli`. They are prose, not a validated schema input — convenience fields like `updated-at` and a top-level `name` appear for readability and mirror the style of `../self-heal/` and `../single-change/`; the real on-disk file is whatever `specify change phase-outcome` writes.
+- The `.metadata.yaml` files in these fixtures are illustrative snapshots shaped per `crates/change/src/lib.rs::ChangeMetadata` in `augentic/specify-cli`. They are prose, not a validated schema input — convenience fields like `updated-at` and a top-level `name` appear for readability and mirror the style of `../self-heal/` and `../single-change/`; the real on-disk file is whatever `specify change outcome set` writes.

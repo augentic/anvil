@@ -1,4 +1,4 @@
-# Journal entry written by /spec:define (via `specify change journal-append
+# Journal entry written by /spec:define (via `specify change journal append
 # notification-preferences define question --summary "..." --context "..."`)
 # when the proposal brief hit an unresolvable scope question. /spec:execute
 # does NOT rewrite, augment, or summarise this entry — it reads only

@@ -1,6 +1,6 @@
 # sources-only — `/spec:execute` resolves a single source key
 
-The plan entry `user-registration` declares `sources: [monolith]` and no `affects`. `/spec:execute` looks up `monolith` in the plan's top-level `sources` map, finds the local path `/path/to/legacy-codebase`, and passes the pair through to `/spec:define` as a single `--source` flag.
+The plan entry `user-registration` declares `sources: [monolith]` and a description with no delta-targeting intent. `/spec:execute` looks up `monolith` in the plan's top-level `sources` map, finds the local path `/path/to/legacy-codebase`, and passes the pair through to `/spec:define` as a single `--source` flag.
 
 ## Resolution trace
 

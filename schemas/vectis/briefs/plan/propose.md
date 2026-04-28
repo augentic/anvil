@@ -5,7 +5,7 @@ needs: [discovery]
 generates: .specify/plans/<name>/proposal.md
 ---
 
-Decompose the capability inventory produced by `discovery.md` into a concrete set of plan entries, presenting each to the human for accept/edit/reject review and shelling out to `specify plan create` for every accepted slice. This is the single-writer edge for `plan.yaml` during propose: every entry is added via `specify plan create` (without `--project`) — the brief never edits `plan.yaml` directly. Project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
+Decompose the capability inventory produced by `discovery.md` into a concrete set of plan entries, presenting each to the human for accept/edit/reject review and shelling out to `specify plan add` for every accepted slice. This is the single-writer edge for `plan.yaml` during propose: every entry is added via `specify plan add` (without `--project`) — the brief never edits `plan.yaml` directly. Project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
 
 ## Input
 
@@ -33,6 +33,8 @@ Vectis is a Crux stack: one Rust shared core crate with an `App` trait that is c
 
 Project assignment is handled by the plan skill's assignment step (RFC-3b §*Assignment algorithm*), not by the propose brief. The propose brief creates entries without `--project`. `workspace.md` is operator-facing context: which peers were synced, where their `.specify/` trees live under `.specify/workspace/<name>/`, and whether their checkouts are clean. **Authoring rule:** every plan entry MUST still list only `sources:` keys that exist in the initiative plan's top-level `sources:` map (the single-writer CLI enforces this today).
 
+When the assignment step (3(d)) routes an entry to a project that does not yet exist in `registry.yaml`, the plan skill — not this brief — runs the **registry-proposal sub-step** (RFC-9 §2B; see `plugins/spec/skills/plan/SKILL.md` → §"Step 3(d).1 — Registry proposal sub-step"). The sub-step shells out to `specify registry add`, then `specify workspace sync`, then `specify plan amend --project <name>` for the entry. This brief never proposes registry entries directly — its single-writer responsibility is `specify plan add` for each accepted slice.
+
 ### Resulting draft order
 
 For a two-platform initiative with one shared-core capability, one design-system capability, and matching iOS + Android views, the heuristic produces the following draft order:
@@ -55,7 +57,7 @@ For each proposed slice, present the draft to the human and accept one of three 
 
 - **accept** — shell out to:
   ```
-  specify plan create <slice-name> \
+  specify plan add <slice-name> \
       --sources <key> [--sources <key>...] \
       --depends-on <preceding> [--depends-on <preceding>...] \
       --description "<rich description with delta-targeting intent>"
@@ -96,7 +98,7 @@ After the last accepted slice, run `specify plan validate`. If it reports any er
 
 Emit the proposed plan to stdout as a preview of the same table structure that would be written to `proposal.md`. Do NOT:
 
-- call `specify plan create`,
+- call `specify plan add`,
 - write `proposal.md`,
 - run `specify plan validate`.
 
@@ -104,7 +106,7 @@ Emit the proposed plan to stdout as a preview of the same table structure that w
 
 ## `--extend` behaviour
 
-Skip the `specify plan init` step (the caller, typically the `/spec:plan` skill, or the human, has already ensured `.specify/plan.yaml` exists). Still run propose against the existing plan: slices whose names collide with existing plan entries are skipped with a note in the proposal; new slices go through the usual accept/edit/reject loop.
+Skip the `specify plan create` step (the caller, typically the `/spec:plan` skill, or the human, has already ensured `.specify/plan.yaml` exists). Still run propose against the existing plan: slices whose names collide with existing plan entries are skipped with a note in the proposal; new slices go through the usual accept/edit/reject loop.
 
 ## Example fragment
 

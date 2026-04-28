@@ -21,7 +21,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create counter-core \
+$ specify plan add counter-core \
     --sources legacy-ios \
     --sources legacy-android \
     --description "Increment/decrement a single integer with persistent storage, lifted into a Crux App trait."
@@ -47,7 +47,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create theme-core \
+$ specify plan add theme-core \
     --sources legacy-ios \
     --sources legacy-android \
     --description "Resolve the active light/dark theme and emit theme tokens to the shell via ViewModel."
@@ -62,10 +62,10 @@ Decision: **accept**. Plan entry: `theme-core`.
 Slice 3/6: extract-shared-viewmodel-adapter
   sources:     []
   depends-on:  []
-  affects:     [counter-ios-view, counter-android-view]
   description: Extract the duplicated ViewModel→SwiftUI /
-               ViewModel→Compose mapping glue into a shared
-               adapter so both shells stay in sync.
+               ViewModel→Compose mapping glue out of
+               counter-ios-view and counter-android-view into a
+               shared adapter so both shells stay in sync.
 
 Accept? [y / edit / no / abort]
 ```
@@ -76,7 +76,7 @@ Accept? [y / edit / no / abort]
 > lands and the full mapping surface is visible.
 ```
 
-Decision: **reject**. Plan entry: — (no `specify plan create` call; no `specify plan amend` either — the skill only trims `extract-shared-viewmodel-adapter` from *upcoming* slice drafts, never from already-written entries).
+Decision: **reject**. Plan entry: — (no `specify plan add` call; no `specify plan amend` either — the skill only trims `extract-shared-viewmodel-adapter` from *upcoming* slice drafts, never from already-written entries).
 
 The brief's remaining drafts had seeded `depends-on: [extract-shared-viewmodel-adapter]` on slices 5 (`counter-ios-view`) and 6 (`counter-android-view`). The skill drops that edge from both draft slices before presenting them.
 
@@ -98,7 +98,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create design-tokens \
+$ specify plan add design-tokens \
     --sources legacy-tokens \
     --depends-on theme-core \
     --description "Colour, typography, and spacing tokens generated into the iOS Swift Package and the Android vectis-design Compose library."
@@ -125,7 +125,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create counter-ios-view \
+$ specify plan add counter-ios-view \
     --sources legacy-ios \
     --depends-on counter-core \
     --depends-on design-tokens \
@@ -151,7 +151,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-  Field to edit? [name / sources / depends-on / affects / description]
+  Field to edit? [name / sources / depends-on / description]
 ```
 
 ```text
@@ -160,7 +160,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-  Field to edit? [name / sources / depends-on / affects / description / done]
+  Field to edit? [name / sources / depends-on / description / done]
 ```
 
 ```text
@@ -183,7 +183,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create counter-android-view \
+$ specify plan add counter-android-view \
     --sources legacy-android \
     --depends-on counter-core \
     --depends-on design-tokens \

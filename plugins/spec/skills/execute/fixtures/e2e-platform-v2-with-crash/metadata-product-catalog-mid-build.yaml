@@ -20,4 +20,4 @@ touched-specs:
   - { capability: product-catalog, classification: new }
 
 # No `outcome` field — /spec:build did not reach its
-# `specify change phase-outcome` call before SIGKILL arrived.
+# `specify change outcome set` call before SIGKILL arrived.

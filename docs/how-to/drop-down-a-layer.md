@@ -1,6 +1,22 @@
 # Drop Down a Layer
 
-Specify is organized in three layers. Higher layers invoke lower layers, but you can always bypass a higher layer and work directly with the one below it. This is useful when automation does something unexpected, when you need fine-grained control, or when you want to debug state.
+Specify is organized in four layers. Higher layers invoke lower layers, but you can always bypass a higher layer and work directly with the one below it. This is useful when automation does something unexpected, when you need fine-grained control, or when you want to debug state.
+
+## From Layer 4 to Layer 3: skip the umbrella
+
+If `/spec:initiative` halts on the registry-amendment-required path, on `stuck`, or on a step you want to drive yourself, the same composition can be run by hand:
+
+```bash
+specify initiative create <name>           # Step 1 — brief
+specify registry validate                  # Step 2 — registry
+/spec:plan <name> --from <docs>            # Step 3 — plan
+/spec:execute --loop                       # Step 4 — execute
+specify workspace push                     # Step 5 — push
+specify workspace merge                    # Step 6 — land (or merge by hand on the forge)
+specify initiative finalize                # Step 7 — finalize
+```
+
+The umbrella is **idempotent on re-entry** — re-running `/spec:initiative create <name>` after dropping down picks up from the first step that still has work to do. See [`/spec:initiative` — Re-entry / idempotency](../../plugins/spec/skills/initiative/SKILL.md#re-entry--idempotency).
 
 ## From Layer 3 to Layer 2: manual change execution
 
@@ -33,16 +49,16 @@ specify change status <name>
 specify change transition <name> defined
 
 # Check task progress
-specify task progress .specify/changes/<name>/
+specify change task progress <name>
 
 # Preview what merge would do
-specify spec preview .specify/changes/<name>/
+specify change merge preview <name>
 
 # Check for baseline conflicts
-specify spec conflict-check .specify/changes/<name>/
+specify change merge conflict-check <name>
 
 # Validate artifacts
-specify validate .specify/changes/<name>/
+specify change validate <name>
 ```
 
 ## Common scenarios
@@ -89,6 +105,7 @@ Every skill is built on CLI commands. If a skill does something you don't unders
 
 ## See also
 
-- [The Three-Layer Stack](../explanation/three-layer-stack.md) -- architectural explanation
+- [The Layered Stack](../explanation/three-layer-stack.md) -- architectural explanation
+- [/spec:initiative](../../plugins/spec/skills/initiative/SKILL.md) -- the Layer 4 umbrella skill
 - [CLI Reference](../reference/cli/index.md) -- all CLI commands
 - [Recover from a Failed Change](recover-failed-change.md) -- focused recovery guide

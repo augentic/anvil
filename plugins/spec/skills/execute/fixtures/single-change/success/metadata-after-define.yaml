@@ -1,6 +1,6 @@
 # Snapshot of .specify/changes/user-registration/.metadata.yaml taken
 # immediately after /spec:define returns and stamps outcome: success
-# via `specify change phase-outcome user-registration define success
+# via `specify change outcome set user-registration define success
 # --summary "..."`. /spec:execute reads `.outcome.outcome` (== success)
 # and proceeds to step 7 (invoke /spec:build).
 #

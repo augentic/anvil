@@ -36,7 +36,7 @@ rules:
 ## plan.yaml
 
 **Location:** `.specify/plan.yaml`
-**Created by:** `/spec:plan` (via `specify plan init` + `specify plan create`)
+**Created by:** `/spec:plan` (via `specify plan create` + `specify plan add`)
 **Modified by:** `specify plan amend`, `specify plan transition`
 
 The initiative's table of contents -- an ordered, dependency-aware list of changes.
@@ -105,7 +105,7 @@ changes:
 
 **Location:** `.specify/registry.yaml`
 **Created by:** Operator (directly)
-**Validated by:** `specify initiative registry validate`
+**Validated by:** `specify registry validate`
 
 Platform catalogue for multi-repo initiatives. Optional -- not needed for single-repo projects.
 
@@ -145,7 +145,7 @@ projects:
 ## initiative.md
 
 **Location:** `.specify/initiative.md`
-**Created by:** `specify initiative brief init`
+**Created by:** `specify initiative create`
 **Edited by:** Operator (directly)
 
 Operator-authored brief for an initiative. Contains YAML frontmatter for structured inputs and a prose body for intent.
@@ -177,7 +177,7 @@ The prose body describes the operator's intent. It is read by `/spec:plan` durin
 
 **Location:** `.specify/changes/<name>/.metadata.yaml`
 **Created by:** `specify change create`
-**Modified by:** `specify change transition`, `specify change phase-outcome`
+**Modified by:** `specify change transition`, `specify change outcome set`
 
 Per-change lifecycle metadata. **Never hand-edit this file.**
 

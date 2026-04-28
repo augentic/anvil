@@ -1,6 +1,8 @@
 # RFC-3b: Platform Changes
 
-> Status: Landed · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](rfc-2-execution.md), [RFC-3a](rfc-3a-monoliths.md)
+> Status: Implemented · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](rfc-2-execution.md), [RFC-3a](rfc-3a-monoliths.md)
+>
+> **Note**: Verb names in this archived RFC predate the CLI cleanup; see [docs/explanation/migrating-cli-v1.md](../../docs/explanation/migrating-cli-v1.md) for current names.
 
 ## Abstract
 

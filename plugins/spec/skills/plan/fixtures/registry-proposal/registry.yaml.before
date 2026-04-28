@@ -1,0 +1,14 @@
+# Pre-state for the RFC-9 §2B registry-proposal fixture.
+# Two projects, both schema omnia@v1, sharing a `git@github.com:augentic/`
+# URL prefix. The plan-skill defaults the new entry's URL to the same
+# host:org prefix and majority schema.
+version: 1
+projects:
+  - name: legacy-monolith
+    url: git@github.com:augentic/legacy-monolith.git
+    schema: omnia@v1
+    description: TypeScript monolith hosting the existing public API.
+  - name: command-centre
+    url: git@github.com:augentic/command-centre.git
+    schema: omnia@v1
+    description: Operator dashboard surface and incident workflows.

@@ -1,0 +1,4 @@
+name: shop-platform
+schema: hub
+hub: true
+specify_version: 0.x.y
