@@ -88,6 +88,101 @@ Under `--dry-run`, the JSON output adds `"dry_run": true` at the top level and a
 
 **Prerequisites:** `gh` (GitHub CLI) is required only when repo creation or PR creation is needed. Plain `git push` works for any forge.
 
+### specify workspace merge
+
+Squash-merge the open PRs created by `workspace push` once their CI is green (RFC-9 §4A).
+
+```bash
+specify workspace merge [<project>...]
+```
+
+Omitting the project argument considers every entry in `.specify/registry.yaml`. The initiative name (and therefore the expected PR branch `specify/<initiative-name>`) is read from `.specify/plan.yaml`.
+
+**Per-project algorithm:**
+
+1. **Branch lookup.** `gh pr list --head specify/<initiative-name> --state all --json number --limit 1` followed by `gh pr view ... --json state,merged,headRefName,number,url`. No PR on the branch ⇒ `no-branch`.
+2. **Branch-pattern guard.** Refuses to operate on any PR whose `headRefName` does not equal the resolved `specify/<initiative-name>` exactly. Surfaces the literal expected branch in the diagnostic so an operator can see the drift.
+3. **Already-landed short-circuit.** `state == MERGED` ⇒ `merged`. `state == CLOSED` (without merge) ⇒ `closed`.
+4. **Check inspection.** `gh pr checks --json bucket,name`. Any `fail`/`cancel` ⇒ `failed-checks`. Any `pending` ⇒ `pending-checks`. Otherwise (all `pass`/`skipping`, or empty list) proceed.
+5. **Merge.** `--dry-run` ⇒ `would-merge` and stop. Otherwise `gh pr merge <pr> --squash` ⇒ `merged` on success, `failed` on shell error.
+
+Best-effort across projects: a single project's failure surfaces in its row without aborting the others.
+
+**Flags:**
+
+| Flag | Description |
+|------|-------------|
+| `--dry-run` | Classify each project's mergeability without invoking `gh pr merge`. Mergeable PRs report `would-merge`. |
+| `--format json` | Machine-readable JSON output. |
+
+**Output (human-readable):**
+
+```text
+specify: workspace merge — platform-v2 (specify/platform-v2)
+
+  traffic              merged                    PR #42     https://github.com/org/traffic/pull/42
+  command-centre       pending-checks            PR #7      https://github.com/org/command-centre/pull/7
+    pending checks: e2e
+  mobile               no-branch
+    no open PR on specify/platform-v2; run `specify workspace push` first
+
+1 merged, 0 would-merge, 1 pending-checks, 0 failed-checks, 0 closed, 1 no-branch, 0 branch-pattern-mismatch, 0 failed.
+```
+
+**Output (JSON, `--format json`):**
+
+```json
+{
+  "schema-version": 2,
+  "initiative": "platform-v2",
+  "expected-branch": "specify/platform-v2",
+  "projects": [
+    {
+      "name": "traffic",
+      "status": "merged",
+      "pr-number": 42,
+      "url": "https://github.com/org/traffic/pull/42",
+      "head-ref-name": "specify/platform-v2"
+    }
+  ],
+  "summary": {
+    "merged": 1,
+    "would-merge": 0,
+    "pending-checks": 0,
+    "failed-checks": 0,
+    "closed": 0,
+    "no-branch": 0,
+    "branch-pattern-mismatch": 0,
+    "failed": 0
+  }
+}
+```
+
+Under `--dry-run`, the JSON output adds `"dry-run": true` at the top level.
+
+**Status vocabulary:**
+
+| Status | Meaning |
+|--------|---------|
+| `merged` | PR already merged, or successfully squash-merged this run. |
+| `would-merge` | Dry-run only: PR is mergeable; no merge attempt was made. |
+| `pending-checks` | At least one CI check is still running. Operator action: wait. |
+| `failed-checks` | At least one CI check failed or was cancelled. Operator action: fix CI, push, re-run. |
+| `closed` | PR was closed without merging. |
+| `no-branch` | No PR exists on `specify/<initiative-name>`. Operator action: `specify workspace push`. |
+| `branch-pattern-mismatch` | A PR exists but its `headRefName` does not equal the resolved branch. The verb refuses to operate. |
+| `failed` | Generic shell-out failure (`gh` missing, network error, merge conflict, …). See `detail`. |
+
+Exit code is `0` only when every project lands on `merged`, `would-merge`, or `no-branch`. Any of `failed`, `failed-checks`, `pending-checks`, `closed`, or `branch-pattern-mismatch` flips the exit code to `1` so CI loops and the 2C umbrella skill can branch on the result.
+
+**Safety guards (non-negotiable):**
+
+- Branch-pattern guard refuses any PR whose `headRefName` ≠ `specify/<initiative-name>` exactly.
+- Never `--admin`; never `--auto`; never overrides failing or pending checks.
+- Failure on one project never aborts the batch — each project runs to its own classification.
+
+**Prerequisites:** `gh` (GitHub CLI) authenticated against every registry remote.
+
 ## See also
 
 - [Cross-Repo Initiatives](../../tutorials/cross-repo-initiative.md) -- tutorial for multi-repo workflows

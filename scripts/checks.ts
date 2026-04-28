@@ -731,6 +731,59 @@ async function checkInstructionPreambles(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
+// 13. Retired plan-schema fields do not appear in fixture YAML
+//     (`affects` was removed from the plan schema; delta targeting
+//     is now description-driven — see RFC-9 §1A.)
+// ──────────────────────────────────────────────────────────────
+
+async function checkRetiredAffectsField(): Promise<void> {
+  // Matches plan/execute fixture YAML, including the suffix variants
+  // used to pin lifecycle state (`plan.yaml.before`, `plan.yaml.after`,
+  // `plan.yaml.after-crash`, `journal.yaml.after`, etc.).
+  const FIXTURE_NAME_RE = /\.ya?ml(\.[a-z-]+)?$/;
+  const AFFECTS_RE = /^\s*affects:/;
+
+  const FIXTURE_ROOTS = [
+    join(REPO_ROOT, "plugins", "spec", "skills", "execute", "fixtures"),
+    join(REPO_ROOT, "plugins", "spec", "skills", "plan", "fixtures"),
+  ];
+
+  for (const root of FIXTURE_ROOTS) {
+    let rootExists = true;
+    try {
+      await Deno.stat(root);
+    } catch {
+      rootExists = false;
+    }
+    if (!rootExists) continue;
+
+    for await (const entry of walk(root, { includeDirs: false })) {
+      if (!FIXTURE_NAME_RE.test(entry.path)) continue;
+      if (await isUnderSymlink(entry.path)) continue;
+
+      let content: string;
+      try {
+        content = await Deno.readTextFile(entry.path);
+      } catch {
+        continue;
+      }
+
+      const rel = relative(REPO_ROOT, entry.path);
+      const lines = content.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        if (AFFECTS_RE.test(lines[i])) {
+          fail(
+            `Retired schema field in ${rel}:${i + 1} -- ${
+              lines[i].trim()
+            } -- the 'affects' field was removed from the plan schema; use description-driven delta targeting`,
+          );
+        }
+      }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // Run all checks
 // ──────────────────────────────────────────────────────────────
 
@@ -744,6 +797,7 @@ await Promise.all([
   checkSchemaIntegrity(),
   checkInstructionPreambles(),
   checkRetiredCliVerbs(),
+  checkRetiredAffectsField(),
 ]);
 await Promise.all([
   validateSkillFrontmatter(),

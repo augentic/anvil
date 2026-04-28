@@ -85,11 +85,11 @@ Three layers, independently useful, stacked top to bottom:
 - **`/spec:execute --loop`** drives the plan to completion (Layer 2). Picks the next eligible entry, runs `/spec:define → /spec:build → /spec:merge`, transitions status, repeats until `all-done` or `stuck`. `--dry-run` previews; a bare invocation runs one change then stops.
 - **`specify plan {init, validate, next, status, create, amend, transition, archive, lock}`** are the Layer 1 plan CRUD and lifecycle CLI primitives both skills shell out to. They stay available for hand-driven initiatives where automation is overkill:
 
-  - `specify plan init <name> [--source ...]` -- Scaffold `.specify/plan.yaml` with an empty `changes:` list.
+  - `specify plan create <name> [--source ...]` -- Scaffold `.specify/plan.yaml` with an empty `changes:` list.
   - `specify plan validate` -- Structural and referential integrity checks (duplicate names, dependency cycles, unknown `depends-on` / `affects` / `sources`, at most one `in-progress`).
   - `specify plan next` -- Report the next eligible entry (first `pending` whose `depends-on` is all `done`).
   - `specify plan status` -- Render progress in topological order with per-status counts, the active `in-progress` entry, and any `status-reason`.
-  - `specify plan create <name>` -- Append a new entry (starts `pending`).
+  - `specify plan add <name>` -- Append a new entry (starts `pending`).
   - `specify plan amend <name>` -- Edit non-status fields on an existing entry.
   - `specify plan transition <name> <target>` -- Move an entry through the status state machine (`pending → in-progress → done`, plus `blocked`, `failed`, `skipped`).
   - `specify plan archive` -- Move a completed `plan.yaml` (and its `.specify/plans/<name>/` working directory) to `.specify/archive/plans/<YYYYMMDD>-<name>/`.

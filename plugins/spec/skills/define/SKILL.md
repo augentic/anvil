@@ -11,7 +11,7 @@ Define a new change - create the change and generate all artifacts in one step.
 
 When ready to implement, run `/spec:build`.
 
-When working plan-driven (a `.specify/plan.yaml` exists), `specify plan next` can be run to pick the next eligible entry, and `specify plan transition <name> in-progress` claims it before `/spec:define` starts. If this skill uncovers a neighbouring change that should be tracked (e.g. a bug fix spotted during extraction), shell out to `specify plan create <name> ...` — it is the only supported way to add a new entry. Use `specify plan amend <name> ...` to edit non-status fields on the active or a pending entry; `status` stays off-limits to `amend` by design.
+When working plan-driven (a `.specify/plan.yaml` exists), `specify plan next` can be run to pick the next eligible entry, and `specify plan transition <name> in-progress` claims it before `/spec:define` starts. If this skill uncovers a neighbouring change that should be tracked (e.g. a bug fix spotted during extraction), shell out to `specify plan add <name> ...` — it is the only supported way to add a new entry. Use `specify plan amend <name> ...` to edit non-status fields on the active or a pending entry; `status` stays off-limits to `amend` by design.
 
 Deterministic bookkeeping — name validation, `.metadata.yaml` writes, schema resolution, pipeline topology, touched-specs scanning, overlap detection — is delegated to the `specify` CLI. This skill only drives the agent-side work: eliciting intent from the user, reading brief bodies, and writing the artifact files those briefs describe.
 
@@ -83,11 +83,11 @@ Kinds:
 
 ## Mutating the plan mid-run
 
-Phases may shell out to `specify plan create` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
+Phases may shell out to `specify plan add` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
 
 Allowed:
 
-- `specify plan create <new-name> --description "...modifies <current-name>..."` when, for example, an extract sub-step surfaces a neighbouring defect (the canonical `registration-duplicate-email-crash` case).
+- `specify plan add <new-name> --description "...modifies <current-name>..."` when, for example, an extract sub-step surfaces a neighbouring defect (the canonical `registration-duplicate-email-crash` case).
 - `specify plan amend <current-name> --depends-on <newly-needed>` when the phase discovers a dependency on another plan entry while designing. `amend` may target the currently-active entry — non-`status` fields on an `in-progress` entry are fair game.
 
 Forbidden:

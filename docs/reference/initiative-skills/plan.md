@@ -48,7 +48,7 @@ The skill runs a fixed flow:
 
 1. **Analyse inputs.** Dispatches every input to `/spec:analyze`, which branches on `kind` (`legacy-code` or `documentation`) and emits capability summaries into `discovery.md`.
 2. **Sync peers.** *(Runs only when `registry.yaml` declares more than one project.)* Clones every registry project into `.specify/workspace/<project>/` and inventories each repo's baseline specs. Emits `workspace.md` with per-project `Description` and `Schema` bullets from `registry.yaml`.
-3. **Generate plan (propose).** Combines the capability inventory with the peer inventory (when present) into an ordered, dependency-aware list of changes. Presents each proposed change ("slice") for interactive accept / edit / reject. Writes accepted slices via `specify plan create` (without `--project`).
+3. **Generate plan (propose).** Combines the capability inventory with the peer inventory (when present) into an ordered, dependency-aware list of changes. Presents each proposed change ("slice") for interactive accept / edit / reject. Writes accepted slices via `specify plan add` (without `--project`).
 4. **Assignment (multi-repo only).** When `workspace.md` contains more than one project, infers a target project for each new entry using description match, baseline spec affinity, and schema compatibility from `workspace.md`. Presents the full assignment table for operator review and override. Writes each assignment via `specify plan amend <name> --project <project>`. Appends the assignment rationale to `proposal.md`.
 
 ### Contract authorship patterns
@@ -83,7 +83,7 @@ After the loop, runs `specify plan validate` to check structural integrity (no c
 
 ## Lifecycle transitions
 
-Creates plan entries in `pending` state via `specify plan create`.
+Creates plan entries in `pending` state via `specify plan add`.
 
 ## Error modes
 

@@ -3,14 +3,14 @@
 This is the Layer 2 exit-gate meta-fixture. It pins the behaviour of `/spec:execute --loop` driven against the full nine-entry `platform-v2` plan, exercising every argument-resolution shape end to end:
 
 - greenfield (`notification-preferences`)
-- `affects`-only, single target (`registration-duplicate-email-crash`)
-- `affects`-only, multiple targets (`extract-shared-validation`)
+- description-driven delta targeting, single target (`registration-duplicate-email-crash`)
+- description-driven delta targeting, multiple targets (`extract-shared-validation`)
 - `sources`-only, local path (`product-catalog` → `monolith`)
 - `sources`-only, git URL (`shopping-cart` → `orders`)
 - pre-`failed` entry (`checkout-api`, preserved)
 - pre-`in-progress` entry reclaimed on startup (`email-verification`)
 
-The `combined/` shape (both `sources` and `affects` on one entry) is pinned by `../field-wiring/combined/`; no entry in RFC-2 §"The Plan" as authored demonstrates it, which is why the field-wiring fixtures exist as a separate set.
+The `combined/` shape (both `sources` and a description-driven delta target on one entry) is pinned by `../field-wiring/combined/`; no entry in RFC-2 §"The Plan" as authored demonstrates it, which is why the field-wiring fixtures exist as a separate set.
 
 ## Files
 
@@ -32,7 +32,7 @@ The `plan.yaml.before` seed here is the *output* of an authoring run of `/spec:p
 - `discovery.md` — the inventory `/spec:plan` step 3(a) wrote.
 - `transcript.md` — the interactive accept / edit / reject loop.
 - `expected-proposal.md` — the authoring audit trail.
-- `expected-plan.yaml` — the final `.specify/plan.yaml` after the five `specify plan create` calls.
+- `expected-plan.yaml` — the final `.specify/plan.yaml` after the five `specify plan add` calls.
 
 Together the two fixture sets pin the full `/spec:plan → /spec:execute --loop` path: authoring turns `--source` / `--from` inputs into a validated `plan.yaml`, and execution drives that plan to `all-done` (or `stuck`, or a self-healable interrupt) without further human intervention.
 

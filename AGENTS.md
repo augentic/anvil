@@ -55,13 +55,13 @@ These skills are invoked by the `contracts` brief in the define pipeline. The br
 
 When an initiative is coordinated through a `.specify/plan.yaml`, the recommended path is:
 
-1. **Author.** `/spec:plan <initiative-name> --source <key>=<path-or-url> ...` — Layer 3 skill runs `pipeline.plan` briefs, optionally **sync-peers** + `workspace.md` when the registry is multi-project, then `specify plan init` + one `specify plan create` per accepted slice (globs or `--scope-manifest` per RFC-3a Stage C).
+1. **Author.** `/spec:plan <initiative-name> --source <key>=<path-or-url> ...` — Layer 3 skill runs `pipeline.plan` briefs, optionally **sync-peers** + `workspace.md` when the registry is multi-project, then `specify plan create` + one `specify plan add` per accepted slice (globs or `--scope-manifest` per RFC-3a Stage C).
 2. **Execute.** `/spec:execute --loop` — Layer 2 driver that repeatedly picks `specify plan next`, runs `/spec:define → /spec:build → /spec:merge` on the chosen entry, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
 3. **Archive.** `specify plan archive` sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
 Hand-driven fallback (RFC-2 Layer 1): skip `/spec:plan` and `/spec:execute`, author `plan.yaml` entry-by-entry with `specify plan {init, create, amend}`, and drive the loop yourself via `specify plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
 
-The phase skills themselves stay unaware of the plan — they operate change-by-change. Plan *entries* are only ever written via `specify plan create` / `specify plan amend`; plan *status* is only ever written via `specify plan transition`. A phase that discovers a neighbouring change mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify plan create` / `specify plan amend` — the same commands humans run. See [rfcs/archive/rfc-2-execution.md](rfcs/archive/rfc-2-execution.md) for the full design.
+The phase skills themselves stay unaware of the plan — they operate change-by-change. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *status* is only ever written via `specify plan transition`. A phase that discovers a neighbouring change mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify plan add` / `specify plan amend` — the same commands humans run. See [rfcs/archive/rfc-2-execution.md](rfcs/archive/rfc-2-execution.md) for the full design.
 
 ### Commands
 

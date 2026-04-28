@@ -5,7 +5,7 @@ needs: [discovery]
 generates: .specify/plans/<name>/proposal.md
 ---
 
-Turn the capability inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered capability. Capability boundaries were decided upstream by `/spec:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify plan create` for every accepted slice. This is the single-writer edge for `plan.yaml` during propose: every entry is added via `specify plan create` (without `--project`) — the brief never edits `plan.yaml` directly. Project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
+Turn the capability inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered capability. Capability boundaries were decided upstream by `/spec:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify plan add` for every accepted slice. This is the single-writer edge for `plan.yaml` during propose: every entry is added via `specify plan add` (without `--project`) — the brief never edits `plan.yaml` directly. Project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
 
 ## Input
 
@@ -67,12 +67,12 @@ The generated description is presented to the operator in the interactive loop a
 
 Capability names flow directly into change names; the one-WASM-crate-per-change convention is preserved at `/spec:define` time, not here. No grouping, no renaming, no cross-capability merges in this brief — edits happen through the interactive loop, one slice at a time.
 
-## `specify plan create` invocation
+## `specify plan add` invocation
 
 For each accepted slice, shell out once:
 
 ```text
-specify plan create <name> \
+specify plan add <name> \
     --sources <source-key> \
     --depends-on <dep1> [--depends-on <dep2> ...] \
     --description "<rich prose>"
@@ -89,10 +89,10 @@ For each candidate slice in emit order:
 3. Show **depends-on** graph preview.
 4. If `confidence: low`, prepend **⚠ review before accepting** to the first line of the prompt.
 5. Accept one of four actions:
-   - **accept** — shell out to `specify plan create` with the mapped flags above. Record the entry in the proposal table.
+   - **accept** — shell out to `specify plan add` with the mapped flags above. Record the entry in the proposal table.
    - **edit** — reprompt for changed field(s) (name, sources, depends-on, description) and re-present. Loop until accept or reject. Edits may rename the capability, drop a dependency edge, or refine the description prose.
    - **reject** — drop the slice. Upcoming slices with an implicit `depends-on` on this slice lose that edge before they are presented; if a later slice is semantically blocked by the rejection, flag it during its own review.
-   - **abort** — stop the loop. Already-accepted entries remain on disk (written by `specify plan create`); the brief writes `proposal.md` with decisions to date and exits non-zero, pointing the operator at `/spec:plan --extend` to resume.
+   - **abort** — stop the loop. Already-accepted entries remain on disk (written by `specify plan add`); the brief writes `proposal.md` with decisions to date and exits non-zero, pointing the operator at `/spec:plan --extend` to resume.
 
 Present slices in the order the emit rule produces; do not re-order mid-loop beyond dropping stale dependency edges after a reject.
 
@@ -133,16 +133,16 @@ Given [`plugins/spec/skills/plan/fixtures/discovery/monolith/expected/discovery.
 
 Propose emits (dependency order, alphabetical within layer):
 
-1. ```text specify plan create email-verification \
+1. ```text specify plan add email-verification \
        --sources monolith \
        --description "Verify a newly registered account via a one-time email token. Focus on src/auth/verify.ts."
    ```
 2. ```text
-   specify plan create shared-validation \
+   specify plan add shared-validation \
        --sources monolith \
        --description "Validate common user-facing inputs with reusable primitives. Focus on src/common/validation/."
    ```
-3. ```text specify plan create user-registration \
+3. ```text specify plan add user-registration \
        --sources monolith \
        --depends-on email-verification --depends-on shared-validation \
        --description "Create new user accounts with email verification. Relevant files: src/auth/verify.ts, src/users/register.ts, src/users/validation.ts. Delta-targets email-verification."
@@ -161,7 +161,7 @@ prose during the edit step (e.g. narrowing to
 Emit the proposed plan to stdout as a preview of the same table
 structure that would be written to `proposal.md`. Do NOT:
 
-- call `specify plan create`,
+- call `specify plan add`,
 - write `proposal.md`,
 - run `specify plan validate`.
 
@@ -170,7 +170,7 @@ the same discovery output.
 
 ## `--extend` behaviour
 
-Skip the `specify plan init` step (the caller — typically
+Skip the `specify plan create` step (the caller — typically
 the `/spec:plan` skill — has already ensured `.specify/plan.yaml`
 exists). Still run propose against the existing plan: slices whose
 names collide with existing plan entries are skipped with a note

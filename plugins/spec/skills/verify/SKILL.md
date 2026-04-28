@@ -2,7 +2,7 @@
 name: verify
 description: Compare current code against baseline specs to detect drift. Use when the user wants to check whether the codebase still matches the merged specifications.
 license: MIT
-argument-hint: "[capability-name?]"
+argument-hint: "[capability-name?] [--fixtures <dir>?]"
 ---
 
 # Verify
@@ -12,6 +12,8 @@ Detect drift between baseline specs and the current codebase.
 ## Input
 
 Optionally specify a capability name to verify. If omitted, verify all capabilities that have baseline specs.
+
+Optionally pass `--fixtures <dir>` to additionally replay captured fixtures against the live service (preview-only — see [Fixture-backed verification (preview)](#fixture-backed-verification-preview) below; full design in [`docs/explanation/verify-fixture-mode.md`](../../../../docs/explanation/verify-fixture-mode.md)).
 
 ## Steps
 
@@ -125,6 +127,24 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
 - UNSPECIFIED Rate limiter: Add a requirement via `/spec:define`, or remove if unintended.
 ```
 
+## Fixture-backed verification (preview)
+
+> **STATUS:** design — implementation pending RFC-9 §4D follow-up (`rfc9-4d2-impl`). This mode currently emits a TODO; full implementation lands in a follow-up change. See [verify-fixture-mode.md](../../../../docs/explanation/verify-fixture-mode.md) for the full design.
+
+When the user invokes `/spec:verify` with a fixture directory argument (typically rendered as `--fixtures <dir>` in the operator-facing form), the skill enters fixture-replay mode: it would replay [TestDef-style fixtures](../../../rt/skills/replay-writer/references/fixture-format.md) against the migrated service's live API and report response drift alongside the requirement drift report.
+
+For now, the mode is stubbed:
+
+1. Validate that `<dir>` exists and is a directory. If not, report:
+   > "Error: fixture directory `<dir>` does not exist."
+   …and stop.
+2. List the fixtures discovered under `<dir>` (every `*.json` outside `samples/`).
+3. Emit:
+   > "TODO: rfc-9 §4D — fixture-backed verification not yet implemented. Found N fixture(s) at `<dir>`. See `docs/explanation/verify-fixture-mode.md` for the design and `rfc9-4d2-impl` for the follow-up change that will land replay, diff, and tolerance enforcement."
+4. Continue with the default drift report (steps 1–6 above) so the requirement-vs-source check still runs.
+
+Do **not** attempt to call `transport.yaml`, `tolerances.yaml`, or any live endpoint until the follow-up change lands. The design note (above) is the implementation contract.
+
 ## Guardrails
 
 - Read-only -- do not create or modify any files
@@ -133,3 +153,4 @@ Optionally specify a capability name to verify. If omitted, verify all capabilit
 - Do not run the full extract skill -- perform lightweight comparison only
 - When uncertain whether code matches a requirement, classify as DRIFTED rather than COVERED
 - Report all findings before suggesting actions
+- Fixture-backed mode is preview-only; never claim it is implemented (see *Fixture-backed verification (preview)* above)

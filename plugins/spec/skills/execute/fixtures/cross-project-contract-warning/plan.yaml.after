@@ -1,0 +1,11 @@
+name: platform-v2
+
+changes:
+  - name: update-user-api-v2
+    project: backend
+    status: done
+    description: >
+      Update the user-api contract: drop `email` from the
+      GET /users/{id} response (PII reduction) and add
+      `phone-number` to the required field list of POST /users
+      (mandatory verification channel).

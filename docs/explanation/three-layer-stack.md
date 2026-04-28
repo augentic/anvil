@@ -43,7 +43,7 @@ The primary command families are:
 - **`specify plan ...`** -- scaffold, populate, validate, transition, and archive an initiative plan.
 - **`specify initiative ...`** -- manage the operator-authored initiative brief at `.specify/initiative.md`.
 - **`specify registry ...`** -- manage the platform registry at `.specify/registry.yaml` (multi-repo initiatives).
-- **`specify workspace ...`** -- materialise, inspect, and push workspace clones for multi-repo initiatives.
+- **`specify workspace ...`** -- materialise, inspect, and push workspace clones for multi-repo initiatives. Workspace clones are durable and read-write; the separate read-only legacy-source clones used by `/spec:analyze` live elsewhere -- see [Workspace Tiers](workspace-tiers.md) for the distinction.
 - **`specify status`** -- project dashboard summarising registry, plan, and active changes.
 
 **Who uses it:** Power users who want fine-grained control, CI pipelines, and anyone debugging the state of `.specify/`. Layer 1 is always available as a manual fallback beneath the higher layers.

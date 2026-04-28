@@ -11,11 +11,10 @@ plan entry: registration-duplicate-email-crash
                 Modifies user-registration."
 
 sources: (absent) — no --source flags emitted
-affects: (removed from schema) — no --affects flags emitted
-
-delta targeting:
-  /spec:define reads the description and infers that
-  user-registration is the delta target
+delta targeting: description-driven (no --affects flag — the
+  affects field was removed from the plan schema; /spec:define
+  reads the description and infers user-registration as the
+  delta target)
 ```
 
 ## Pinned invocation

@@ -39,7 +39,7 @@ A schema-validated YAML document (`composition.yaml`) that describes the spatial
 A unit of work in Specify, stored at `.specify/changes/<name>/`. Contains the core artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`), optional contract artifacts (`contracts/`), any schema-specific artifacts (e.g. `composition.yaml` for Vectis), and a `.metadata.yaml` file tracking lifecycle state.
 
 **Context (plan entry)**
-The optional `context` field on a plan entry -- a list of baseline paths (relative to `.specify/`) that are relevant to the change. Briefs use these as a focus hint when scanning baseline directories. Populated automatically by `/spec:plan` (e.g. contract paths from a preceding contract change) or manually via `specify plan create --context`.
+The optional `context` field on a plan entry -- a list of baseline paths (relative to `.specify/`) that are relevant to the change. Briefs use these as a focus hint when scanning baseline directories. Populated automatically by `/spec:plan` (e.g. contract paths from a preceding contract change) or manually via `specify plan add --context`.
 
 **Contract-first**
 Authorship pattern where a dedicated contract change defines interface shapes before implementation begins. `/spec:plan` inserts these automatically when it detects an API boundary between projects. The contract change uses `schema: contracts@v1` and has no `project`. Implementation changes depend on the contract change.

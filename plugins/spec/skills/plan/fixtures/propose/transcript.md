@@ -20,7 +20,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create user-registration \
+$ specify plan add user-registration \
     --sources monolith \
     --description "User sign-up flow; creates a new user record."
 Created plan entry 'user-registration' with status 'pending'.
@@ -44,7 +44,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create email-verification \
+$ specify plan add email-verification \
     --sources monolith \
     --depends-on user-registration \
     --description "Verify user email via a one-time link."
@@ -59,9 +59,9 @@ Decision: **accept**. Plan entry: `email-verification`.
 Slice 3/6: extract-shared-validation
   sources:     []
   depends-on:  [email-verification]
-  affects:     [user-registration, email-verification]
-  description: Extract duplicated input validation into a shared
-               validation crate.
+  description: Extract duplicated input validation out of
+               user-registration and email-verification into a
+               shared validation crate.
 
 Accept? [y / edit / no / abort]
 ```
@@ -72,7 +72,7 @@ Accept? [y / edit / no / abort]
 > is visible.
 ```
 
-Decision: **reject**. Plan entry: — (no `specify plan create` call; no `specify plan amend` either — the skill only trims `extract-shared-validation` from *upcoming* slice drafts, never from already-written entries).
+Decision: **reject**. Plan entry: — (no `specify plan add` call; no `specify plan amend` either — the skill only trims `extract-shared-validation` from *upcoming* slice drafts, never from already-written entries).
 
 The brief's remaining drafts had seeded `depends-on: [extract-shared-validation]` on slices 4 (`product-catalog`) and 5 (`cart-management`). The skill drops that edge from both draft slices before presenting them.
 
@@ -92,7 +92,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create product-catalog \
+$ specify plan add product-catalog \
     --sources monolith \
     --description "Browse and search the product catalogue."
 Created plan entry 'product-catalog' with status 'pending'.
@@ -116,7 +116,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-  Field to edit? [name / sources / depends-on / affects / description]
+  Field to edit? [name / sources / depends-on / description]
 ```
 
 ```text
@@ -125,7 +125,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-  Field to edit? [name / sources / depends-on / affects / description / done]
+  Field to edit? [name / sources / depends-on / description / done]
 ```
 
 ```text
@@ -134,7 +134,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-  Field to edit? [name / sources / depends-on / affects / description / done]
+  Field to edit? [name / sources / depends-on / description / done]
 ```
 
 ```text
@@ -155,7 +155,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create shopping-cart \
+$ specify plan add shopping-cart \
     --sources orders \
     --depends-on product-catalog \
     --depends-on user-registration \
@@ -181,7 +181,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-  Field to edit? [name / sources / depends-on / affects / description]
+  Field to edit? [name / sources / depends-on / description]
 ```
 
 ```text
@@ -190,7 +190,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-  Field to edit? [name / sources / depends-on / affects / description / done]
+  Field to edit? [name / sources / depends-on / description / done]
 ```
 
 ```text
@@ -199,7 +199,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-  Field to edit? [name / sources / depends-on / affects / description / done]
+  Field to edit? [name / sources / depends-on / description / done]
 ```
 
 ```text
@@ -220,7 +220,7 @@ Accept? [y / edit / no / abort]
 ```
 
 ```text
-$ specify plan create checkout-api \
+$ specify plan add checkout-api \
     --sources payments \
     --depends-on shopping-cart \
     --description "Complete payment for a cart."

@@ -85,7 +85,7 @@ specify registry show
 specify registry validate
 
 # Plan authoring (multi-repo)
-specify plan create <name> --project <project>
+specify plan add <name> --project <project>
 specify plan amend <name> --project <project>
 
 # Per-change inspection

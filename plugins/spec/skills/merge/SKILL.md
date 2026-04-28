@@ -97,11 +97,11 @@ Kinds:
 
 ## Mutating the plan mid-run
 
-Phases may shell out to `specify plan create` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
+Phases may shell out to `specify plan add` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
 
 Allowed:
 
-- `specify plan create <new-name> --description "...modifies <current-name>..."` when, for example, baseline conflict-check surfaces a neighbouring change that must land before this one can merge cleanly.
+- `specify plan add <new-name> --description "...modifies <current-name>..."` when, for example, baseline conflict-check surfaces a neighbouring change that must land before this one can merge cleanly.
 - `specify plan amend <current-name> --depends-on <newly-needed>` when the phase discovers a dependency on another plan entry (e.g. a sibling change that should merge first). `amend` may target the currently-active entry — non-`status` fields on an `in-progress` entry are fair game.
 
 Forbidden:

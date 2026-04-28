@@ -4,12 +4,12 @@ Scaffold, populate, validate, transition, and archive initiative plans.
 
 ## Subcommands
 
-### specify plan init
+### specify plan create
 
 Scaffold an empty plan.
 
 ```bash
-specify plan init <name> [--source <key>=<path>...]
+specify plan create <name> [--source <key>=<path>...]
 ```
 
 Creates `.specify/plan.yaml` with the given name and an empty `changes:` list. Optional `--source` entries are recorded in the plan's `sources:` section.
@@ -28,6 +28,25 @@ Checks for: duplicate entry names, dependency cycles, unknown `depends-on` / `af
 - `project-missing-multi-repo` (error) -- when the registry has multiple projects, every change must carry a `project` field.
 - `description-missing-multi-repo` (error) -- when the registry has multiple projects, every project must carry a `description`.
 - `schema-mismatch-workspace` (warning) -- a workspace clone's `project.yaml` declares a different schema than the corresponding registry entry.
+
+### specify plan doctor
+
+Diagnose plan health (RFC-9 §4B). `doctor` is a strict superset of `validate`: it runs every check `validate` runs (preserving every diagnostic code listed above) and then layers four additional health diagnostics on top.
+
+```bash
+specify plan doctor
+```
+
+| Code | Severity | Meaning | Recovery |
+|------|----------|---------|----------|
+| `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; doctor is the only place where the cycle structure surfaces. Payload carries the cycle path, e.g. `["a", "b", "a"]`. | `specify plan amend <name> --depends-on …` to break the cycle, then re-run doctor. |
+| `orphan-source-key` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list or remove the declaration. |
+| `stale-workspace-clone` | warning | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or schema diverged) or `missing-sync-stamp` (no stamp file and no readable git remote). | `specify workspace sync` to refresh the clone. |
+| `unreachable-entry` | error | Pending entry whose dependency closure is rooted in a `failed`/`skipped` predecessor. Payload lists the immediate blocking predecessors and their statuses. | `specify plan transition <pred> pending` (after fixing the underlying issue) or `specify plan transition <entry> skipped --reason …` to drop the leaf. |
+
+JSON output (`--format json`) wraps the rows under `diagnostics:` with a top-level `ok:` boolean (`false` whenever any error-severity diagnostic was emitted). Each row carries `severity`, `code`, `message`, optional `entry`, and an optional structured `data` payload (`kind` is one of `cycle` / `orphan-source` / `stale-clone` / `unreachable-entry`). Validate-level findings carry no `data` field; doctor-only diagnostics always do.
+
+Exit code: 0 when no error-severity diagnostic fires (warnings are non-fatal — matches `validate`); `2` when any error-severity diagnostic fires.
 
 ### specify plan next
 
@@ -51,12 +70,12 @@ specify plan status [--format json|table]
 
 Shows entries in topological order with per-status counts, the active `in-progress` entry (if any), and any `status-reason` annotations.
 
-### specify plan create
+### specify plan add
 
 Append a new entry to the plan.
 
 ```bash
-specify plan create <name> [--project <name>] [--description "<text>"] [--depends-on <entry>...] [--sources <key>...] [--affects <spec>...]
+specify plan add <name> [--project <name>] [--description "<text>"] [--depends-on <entry>...] [--sources <key>...]
 ```
 
 Creates the entry in `pending` state.
@@ -66,7 +85,7 @@ Creates the entry in `pending` state.
 Edit non-status fields on an existing entry.
 
 ```bash
-specify plan amend <name> [--project <name>] [--description "<text>"] [--depends-on <entry>...] [--sources <key>...] [--affects <spec>...]
+specify plan amend <name> [--project <name>] [--description "<text>"] [--depends-on <entry>...] [--sources <key>...]
 ```
 
 ### specify plan transition

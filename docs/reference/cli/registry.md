@@ -33,6 +33,37 @@ Validates:
 
 Used by `/spec:plan` after populating contract roles, and by operators who edit `registry.yaml` by hand.
 
+### specify registry add
+
+Append a new project entry to `.specify/registry.yaml`. Creates the file with `version: 1` when absent. (RFC-9 §2A.)
+
+```bash
+specify registry add <name> --url <url> --schema <schema> [--description "..."]
+```
+
+Behaviour:
+
+- Validates `name` (kebab-case), `--url` (same shape rules `registry validate` enforces — `.`, repo-relative path, `git@host:path`, `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://`), and `--schema` (non-empty after trim).
+- Refuses to add a project that already exists.
+- Runs `Registry::validate_shape` after the write — including the `description-missing-multi-repo` invariant: if the addition produces a multi-project registry and any existing entry lacks a `description`, the verb fails with a diagnostic naming the offending entry.
+- Hub repos (`project.yaml: hub: true`) layer on the `hub-cannot-be-project` invariant: an entry with `url: .` is rejected.
+
+Used by `/spec:plan`'s registry-proposal sub-step (RFC-9 §2B) and by operators staging a new peer ahead of `specify plan amend --project <new>`. The validation-ordering invariant is: `specify registry add` before `specify plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
+
+### specify registry remove
+
+Delete a project entry from `.specify/registry.yaml`. (RFC-9 §2A.)
+
+```bash
+specify registry remove <name>
+```
+
+Behaviour:
+
+- Refuses when the registry is absent or `<name>` is not declared.
+- Validates the resulting shape after the write.
+- Surfaces a non-fatal warning (on stderr in text mode, in the JSON `warnings` array) when `.specify/plan.yaml` exists and any plan entry references the removed project — naming each affected entry so the operator can rewire them via `specify plan amend <change> --project <other>` separately.
+
 ## See also
 
 - [specify initiative](initiative.md) -- operator brief at `.specify/initiative.md`.

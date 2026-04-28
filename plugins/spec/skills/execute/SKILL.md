@@ -16,7 +16,7 @@ argument-hint: "[--dry-run] [--loop]"
 4. **Pick next change** — `specify plan next --format json`. Handle `all-done` (exit 0), `stuck` (exit 0), or `in-progress` (exit non-zero). Capture `project`, `description`, and `sources` from the response.
 5. **Transition to in-progress and route CWD** — `specify plan transition <name> in-progress`. For multi-repo entries, resolve the target project directory from `registry.yaml` and `chdir`.
 6. **Run phase sequence** — invoke `/spec:define` → `/spec:build` → `/spec:merge`, reading `.metadata.yaml:outcome` after each phase. On `failure` → drop + transition `failed`. On `deferred` → drop + transition `blocked`. Copy `outcome.summary` verbatim into `--reason`.
-7. **Wrap up** — transition to `done` on success. Release the driver lock on **every** exit path (`specify plan lock release`). In `--loop` mode, repeat from step 4 until no eligible change remains, then emit the terminal summary.
+7. **Wrap up** — transition to `done` on success; on multi-repo successes, run the §Cross-project contract check (RFC-9 §3B) and append any findings to the merged change's journal as `cross-project-warning:` entries. Release the driver lock on **every** exit path (`specify plan lock release`). In `--loop` mode, repeat from step 4 until no eligible change remains, then emit the terminal summary.
 
 See detailed sections below for edge cases, guardrails, and error handling.
 
@@ -43,6 +43,8 @@ The on-disk contracts the driver depends on are the same files humans read in La
 | `.specify/changes/<name>/journal.yaml` | library (`Journal::append` + `specify change journal append`) | Append-only audit log of `question` / `failure` / `recovery` entries. Never consumed as a signalling channel — `.metadata.yaml:outcome` is the only state the driver reads. |
 | `.specify/plan.lock` | library (`PlanLockStamp`) | Advisory PID stamp held by the running driver. Prevents two `/spec:execute` invocations racing on the same plan. |
 
+For multi-repo initiatives the driver `chdir`s into a registered project clone under `.specify/workspace/<project>/` before invoking the phase skills (step 5a below). These clones are the read-write **tier-2** workspace; they outlive the initiative and are pushed to remotes by `specify workspace push`. The read-only **tier-1** legacy-source clones used by `/spec:analyze` at plan time are a separate concern entirely. See [Workspace Tiers](../../../../docs/explanation/workspace-tiers.md) for the full contrast.
+
 ## Invariants
 
 These invariants constrain this skill's behaviour.
@@ -52,7 +54,7 @@ These invariants constrain this skill's behaviour.
 | Driver contracts with phases, not briefs | `/spec:execute` only invokes `/spec:define`, `/spec:build`, `/spec:merge` |
 | Phases own verify-repair loops | Phase skills exhaust their repair budget before returning |
 | Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `outcome` into `.metadata.yaml` before returning |
-| Change *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify plan create` / `specify plan amend` |
+| Change *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify plan add` / `specify plan amend` |
 | Change *status* updates written only via `Plan::transition` | `/spec:execute` (Layer 2) or humans (Layer 1) run `specify plan transition` |
 | Single `in-progress` at a time | `plan next` / `plan validate` |
 | Single `/spec:execute` driver at a time | `.specify/plan.lock` advisory lock (see §Driver lock below) |
@@ -210,7 +212,9 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
 
 10. Success wrap-up.
       specify plan transition <name> done
-    Emit the success transcript (see §Output format). Go to step 13.
+    Emit the success transcript (see §Output format). Run the
+    post-merge cross-project contract check (§Cross-project contract
+    check below). Go to step 13.
 
 11. Failure drop path.
     a. Capture `outcome.summary` (and, if present, `outcome.context`)
@@ -268,7 +272,7 @@ Under multi-repo routing (step 5a active), source paths from the plan's top-leve
 
 ### Subtleties
 
-- **`/spec:execute` writes only plan transitions and recovery journal entries.** Every write this skill performs against `.specify/plan.yaml` goes through `specify plan transition`. It never writes `outcome` to `.metadata.yaml` (the phase does that, via `specify change outcome set`). The sole case in which the driver appends to `journal.yaml` is the self-heal step (§Self-heal on startup), which emits exactly one `type: recovery` entry per reclaimed or resumed in-progress entry via `specify change journal append`. The define / build / merge phases own `type: question` and `type: failure` entries; the driver never touches those.
+- **`/spec:execute` writes only plan transitions and a narrow set of journal entries.** Every write this skill performs against `.specify/plan.yaml` goes through `specify plan transition`. It never writes `outcome` to `.metadata.yaml` (the phase does that, via `specify change outcome set`). The driver appends to `journal.yaml` in exactly two situations: (1) the self-heal step (§Self-heal on startup) emits one `type: recovery` entry per reclaimed or resumed in-progress entry; (2) the post-merge cross-project contract check (§Cross-project contract check) emits one `type: failure` entry per finding the validator reports, with the canonical `cross-project-warning:` summary prefix. The define / build / merge phases own all other `type: question` and `type: failure` entries; the driver never touches those.
 
 - **Summary is copied verbatim into `status-reason`.** The string passed to `specify plan transition … --reason "…"` in steps 11c and 12c is byte-identical to `outcome.summary` stamped by the phase. The fixtures under `fixtures/single-change/` pin this: every `plan.yaml.after` carries `status-reason: "<exact summary from the metadata file>"`. Do not paraphrase, truncate, or reformat.
 
@@ -369,6 +373,96 @@ Self-heal (dry-run): <name> — would halt (ambiguous outcome=<outcome> phase=<p
 ```
 
 Terminal-resolution lines use "(if executed)" to make clear that no transition was written. The halt line still ends the run: dry-run self-heal emits it, releases the lock, and exits non-zero. It is the one place `--dry-run` exits non-zero on the happy startup path — the whole point of the halt is to surface ambiguity. Mid-change resume does nothing in dry-run anyway (the writing path also emits no plan transition for this case). The report-only path never appends `type: recovery` entries — recovery entries are the writing path's observable side-effect; dry-run has no side-effects by contract.
+
+## Cross-project contract check (RFC-9 §3B)
+
+When step 10 transitions a change to `done`, the driver runs a non-fatal contract compatibility check **only when** the merged change satisfies all three conditions:
+
+1. The merged change has a non-null `project` field on its plan entry (multi-repo only — single-repo initiatives have no peer consumers to warn).
+2. `.specify/registry.yaml` exists and the producer's project entry declares a non-empty `contracts.produces` list.
+3. At least one merged file path under the producer's `contracts/` directory matches an entry in the producer's `produces` list (i.e. the merge actually touched a produced contract — most merges that just touch specs do nothing here).
+
+When all three hold, walk the producer's `produces` list and find every consumer project (any registry entry whose `contracts.consumes` or `contracts.imports` list contains the same path). For each `(produced-contract, consumer)` pair, invoke the contracts validator in cross-project mode:
+
+```bash
+/contracts:validator \
+    --mode cross-project \
+    --producer-contract <merged-contract-path> \
+    --consumer-workspace .specify/workspace/<consumer>/
+```
+
+Both arguments are paths anchored at the **initiating repo root**, not the producer's workspace clone — the post-merge check runs after the CWD restore (step 9a) so the driver sits in the initiating repo where `.specify/registry.yaml` and the central contracts live.
+
+The validator emits a YAML report (see [`/contracts:validator` → §Output Format — Cross-Project](../../../contracts/skills/validator/SKILL.md#output-format--cross-project)). Parse `summary.total-findings`:
+
+- Zero findings: do nothing — the consumer's view matches.
+- One or more findings (any severity, including `info` for `consumer-has-no-baseline`): record each as a journal entry and render a warning block in the merge transcript.
+
+### Recording the findings
+
+For every finding, append one journal entry to **the merged change** (not the consumer's change) via:
+
+```bash
+specify change journal append <merged-change-name> merge failure \
+    --summary "cross-project-warning: <change-kind> in <consumer> for <contract>" \
+    --context "$(cat <<'YAML'
+contract: <contract-path>
+consumer: <consumer-name>
+workspace: .specify/workspace/<consumer>/
+change-kind: <change-kind>
+locator: <locator>
+severity: <warning|info>
+details: |
+  <details prose verbatim from the validator>
+YAML
+)"
+```
+
+The journal entry uses the existing `failure` kind (per the journal contract in `specify-cli/crates/change/src/journal.rs` — `EntryKind::{Question, Failure, Recovery}`). The summary's `cross-project-warning:` prefix is the canonical marker that this entry is a §3B finding rather than an in-loop phase failure; the structured payload lives in `--context`. No new `EntryKind` variant is introduced; readers grep `summary` for the prefix when they need to filter.
+
+The `--context` payload schema is stable and round-trippable:
+
+| Key | Value |
+|---|---|
+| `contract` | The path of the produced contract (e.g. `contracts/http/user-api.yaml`). |
+| `consumer` | The consumer project name (matches a `registry.yaml:projects[].name`). |
+| `workspace` | The consumer's workspace clone path (`.specify/workspace/<consumer>/`). |
+| `change-kind` | One of `removed-field`, `removed-endpoint`, `removed-channel`, `required-field-added`, `type-narrowed`, `status-code-removed`, `consumer-has-no-baseline`, `format-mismatch`. |
+| `locator` | The dot-separated path into the contract document where the incompatibility was detected. |
+| `severity` | `warning` for breaking changes; `info` for `consumer-has-no-baseline` and similar. |
+| `details` | Free-form prose copied verbatim from the validator's `details` field. |
+
+The append uses the verbatim journal-append shape — the `--context` is a multi-line YAML string the validator's prose maps into 1:1.
+
+### Warning block in the merge transcript
+
+When at least one finding is recorded, the success transcript (see §Output format → Supervised / per-change transcript → Success) renders a labelled warning block **immediately after** the `Status: done` line:
+
+```text
+⚠ Cross-project contract warnings
+  Contract: contracts/http/user-api.yaml
+  Consumers checked: 1 (mobile)
+
+  mobile (.specify/workspace/mobile/):
+    - removed-field at paths./users/{id}.get.responses.200.content.application/json.schema.properties.email
+    - required-field-added at paths./users.post.requestBody.content.application/json.schema.required
+
+  Recorded 2 finding(s) to .specify/changes/<name>/journal.yaml.
+  Action needed: review the warning(s); the consumer change(s) may need a follow-up.
+```
+
+The block is omitted entirely when `summary.total-findings == 0`. Multiple consumers stack as additional indented blocks under the same `Contract:` line; multiple contracts produce repeated `Contract:` blocks.
+
+### Non-fatal semantics
+
+- **The execute loop never halts on cross-project warnings.** The merged change has already transitioned to `done`. Findings are advisory output for the operator; the driver continues to the next iteration in `--loop` mode or exits normally in supervised mode.
+- **The merged change is not re-touched** beyond the journal append. No plan transition, no metadata edit, no follow-up phase invocation.
+- **Validator errors do not halt the driver.** If `/contracts:validator` exits non-zero (read failure on a consumer workspace, malformed contract), record the failure as a single `failure`-kind journal entry on the merged change with `--summary "cross-project-warning: validator-error in <consumer>"` and continue. The driver does not retry the validator.
+- **The check is skipped under `--dry-run`** end-to-end — dry-run never invokes phase skills (per the §Guardrails MUST-NOTs) and the post-merge step inherits that prohibition.
+
+### Self-heal interaction
+
+Self-heal does **not** run the cross-project check on a reclaimed `success`-on-merge entry. The check is a one-shot side-effect of the live merge transition; on the next normal `/spec:execute` startup, the merged change has already been transitioned to `done` and no producer-side work remains. If a prior crash interrupted the cross-project check itself, the operator can re-trigger it manually by re-running `/contracts:validator --mode cross-project` against the same `(producer-contract, consumer-workspace)` pair — the validator is idempotent and writes nothing to disk.
 
 ## Modes
 
@@ -516,9 +610,22 @@ Step 2/3: build
 Step 3/3: merge
   Baseline updated: .specify/specs/<name>/spec.md ✓
   Status: done
+
+⚠ Cross-project contract warnings           # OPTIONAL — see §Cross-project contract check
+  Contract: <produced-contract-path>
+  Consumers checked: <N> (<consumer-name>[, ...])
+
+  <consumer-name> (.specify/workspace/<consumer-name>/):
+    - <change-kind> at <locator>
+    - <change-kind> at <locator>
+
+  Recorded <M> finding(s) to .specify/changes/<name>/journal.yaml.
+  Action needed: review the warning(s); the consumer change(s) may need a follow-up.
 ```
 
 The `(sources: [...])` suffix is rendered only when the plan entry has `sources`; greenfield entries become `### Processing: <name> (greenfield)`. The extract sub-step block inside `Step 1/3: define` is elided when the entry has no `sources`.
+
+The `⚠ Cross-project contract warnings` block is rendered only when (a) the merged change touches a contract listed in the producer's `registry.yaml:contracts.produces` list AND (b) at least one consumer's `/contracts:validator --mode cross-project` invocation reports `summary.total-findings > 0`. See §Cross-project contract check for the full algorithm and the per-finding journal payload schema.
 
 #### Failure
 
@@ -630,10 +737,10 @@ The distinction between `stuck` and `halted` matters for operator routing: `stuc
 
 | Surface | Status |
 |---|---|
-| Write `.specify/plan.yaml` *entries* (`create` / `amend`) | Never — those writes are the phases' concern (they shell out to `specify plan create` / `specify plan amend` mid-run). |
+| Write `.specify/plan.yaml` *entries* (`create` / `amend`) | Never — those writes are the phases' concern (they shell out to `specify plan add` / `specify plan amend` mid-run). |
 | Write `.specify/plan.yaml` *status* (`transition`) | Only via `specify plan transition`, at exactly three points in a supervised run: `pending → in-progress` before step 6, and the terminal `in-progress → {done, failed, blocked}` in steps 10/11/12. |
 | Write `.specify/changes/<name>/.metadata.yaml` (including the `outcome` field) | Never — that is the phase skills' concern via `specify change outcome set`. |
-| Write `.specify/changes/<name>/journal.yaml` | Only via `specify change journal append <name> <phase> recovery …` inside the §Self-heal on startup step — exactly one entry per reclaimed or resumed in-progress entry. Phases own the `type: question` / `type: failure` entries and the driver never touches those. |
+| Write `.specify/changes/<name>/journal.yaml` | Two narrowly-scoped paths only: (1) `specify change journal append <name> <phase> recovery …` inside the §Self-heal on startup step — exactly one entry per reclaimed or resumed in-progress entry; (2) `specify change journal append <merged-name> merge failure …` inside the §Cross-project contract check step — one entry per finding emitted by `/contracts:validator --mode cross-project`, with `cross-project-warning:` as the summary prefix. Phases own all other `type: question` / `type: failure` entries and the driver never touches those. |
 | Invoke `/spec:define`, `/spec:build`, `/spec:merge`, or `/spec:drop` | Never in `--dry-run` (including dry-run self-heal, which is report-only); in supervised and `--loop` modes, exactly as the algorithms prescribe (define → build → merge on success paths; plus `/spec:drop` on failure / deferred, and on any writing-path self-heal reclaim of a `failure` or `deferred` outcome). |
 | Run self-heal on `in-progress` entries | Yes — §Self-heal on startup is the full contract. Five fixtures under `fixtures/self-heal/` pin the clean / done / failed / ambiguous-halt / mid-change-resume paths. Under `--dry-run` self-heal is report-only: same classification scan, no writes. |
 | Loop across changes | `--loop` iterates `specify plan next → execute change` until no eligible change remains. The driver lock is held for the entire run (not per iteration). Individual failures / deferrals do NOT halt the loop — `specify plan next` skips `failed` / `blocked` entries naturally. |
@@ -644,6 +751,7 @@ The state the skill mutates is:
 1. The driver lock stamp at `.specify/plan.lock` (written on acquire, removed on release by the CLI — not by the skill directly).
 2. The plan entry's `status` field via `specify plan transition` at the three points named in the per-change algorithm, plus any terminal transitions self-heal applies on startup.
 3. A single `type: recovery` entry appended to `.specify/changes/<name>/journal.yaml` via `specify change journal append` whenever self-heal resolves or resumes an in-progress entry.
+4. One `type: failure` entry per cross-project contract finding appended to the **merged** change's `.specify/changes/<merged-name>/journal.yaml` (or its archived equivalent — see [§Self-heal on startup](#self-heal-on-startup) for the active-vs-archive resolution rule) via `specify change journal append` after a successful `merge` transition (see §Cross-project contract check). Each entry carries the canonical `cross-project-warning:` summary prefix.
 
 No other on-disk state is written by `/spec:execute` itself.
 
@@ -660,6 +768,20 @@ No other on-disk state is written by `/spec:execute` itself.
 - Self-heal applies the same verbatim-`summary` rule as steps 11c / 12c: the string passed to `specify plan transition <name> {failed,blocked} --reason "…"` is copied byte-for-byte from the on-disk `outcome.summary`. The fixtures under `fixtures/self-heal/` assert this equality; drift is a regression.
 - Self-heal never paraphrases ambiguity away. If `.metadata.yaml` has no `outcome`, an `outcome` with a `phase` that contradicts `LifecycleStatus`, or a `LifecycleStatus` that is terminal (`merged`, `dropped`) while `plan.yaml` still says `in-progress`, halt with exit code 2 and leave the plan entry as `in-progress`. A later run, after human triage, can re-enter self-heal safely.
 - Argument resolution never speculates over an unresolved `sources` key. If a key on the plan entry is absent from the plan's top-level `sources` map, halt with `Error::Config`, name the offending `(change, key)` pair, release the lock, and exit non-zero. Do NOT substitute a default, guess at a path, or drop the key silently. The same rule applies whether the run is `--dry-run`, supervised, or `--loop`.
+- The §Cross-project contract check is **non-fatal by contract**. Any finding — `warning`, `info`, or even a validator read failure — is recorded to the merged change's journal and reflected in the merge transcript, never halting the loop or rolling back the merge. Validator exit codes other than zero are treated as a single `cross-project-warning: validator-error` journal entry, not as driver failure. The merged change stays `done`. Operators triage findings out of band by reading the journal or the transcript.
+
+### When the loop reports `stuck`: run `specify plan doctor`
+
+When `specify plan next` returns `reason: stuck`, or when the terminal summary classifies a `--loop` exit as `stuck` (per §Output format → §Completion classification), the operator's first triage step is `specify plan doctor`. `doctor` is a strict superset of `plan validate` (RFC-9 §4B): it surfaces the four health issues `validate` does not catch, each with a stable diagnostic code so dashboards and runbooks can route them mechanically.
+
+| Code | Severity | Meaning | Recovery |
+|---|---|---|---|
+| `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; doctor is the only place where the cycle path surfaces. | `specify plan amend <name> --depends-on …` to break the cycle on the offending entry, then re-run `plan doctor`. |
+| `orphan-source-key` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of validate's `unknown-source`). | Either reference the key from an entry's `sources:` list via `specify plan amend <name> --sources …` or remove it from the top-level map. Non-fatal. |
+| `stale-workspace-clone` | warning | `.specify/workspace/<project>/` clone's signature has drifted from `.specify/registry.yaml`, or no signature is readable. | `specify workspace sync` to refresh the clone. Non-fatal. |
+| `unreachable-entry` | error | Pending entry whose dependency closure is rooted in a `failed`/`skipped` predecessor. Distinct from cycles — entries inside a cycle are reported only under `cycle-in-depends-on`. | Recover the predecessor (`specify plan transition <pred> pending` once the underlying issue is fixed) or `specify plan transition <entry> skipped --reason "…"` to drop the leaf. |
+
+The driver itself never invokes `plan doctor` — it is an operator triage verb, not a runtime check. `specify plan validate` continues to be invoked verbatim by `plan next` / `plan status` for the structural-error short-circuit; doctor's four additional codes are surfaced only when the operator asks.
 
 ## Fixtures
 
@@ -676,3 +798,4 @@ Every behavioural pin for this skill is consolidated here. Each row names the di
 | [`fixtures/e2e-platform-v2-with-crash/`](fixtures/e2e-platform-v2-with-crash/) | Same `platform-v2` plan as above with a simulated mid-change crash; exercises the self-heal-on-startup reclaim path end-to-end. |
 | [`fixtures/multi-project/`](fixtures/multi-project/) | Multi-repo CWD routing: `registry.yaml`, `plan.yaml` with per-entry `project` fields, `execute-loop-transcript.md` pinning the `Routing:` diagnostic and cross-project loop, `workspace-push-output.json` / `workspace-push-dry-run.json` pinning `specify workspace push` output shapes. |
 | [`fixtures/greenfield-bootstrap/`](fixtures/greenfield-bootstrap/) | Greenfield `specify workspace sync` fallback sequence: clone-fails → `mkdir` → `git init` → `specify init` → scaffold commit. `partial-rerun/` pins the recovery path when `.git/` exists but `.specify/project.yaml` is absent. |
+| [`fixtures/cross-project-contract-warning/`](fixtures/cross-project-contract-warning/) | RFC-9 §3B post-merge cross-project contract check: a producer-side merge updates `contracts/http/user-api.yaml`, the driver invokes `/contracts:validator --mode cross-project` against the consumer's workspace clone, two findings round-trip to the merged change's `journal.yaml` via `specify change journal append`, and the success transcript renders the `⚠ Cross-project contract warnings` block. Pins the journal payload shape (see §Cross-project contract check → §Recording the findings) and the transcript block layout. |

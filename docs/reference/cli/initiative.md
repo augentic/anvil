@@ -4,15 +4,15 @@ Manage the operator-authored initiative brief at `.specify/initiative.md`.
 
 ## Subcommands
 
-### specify initiative init
+### specify initiative create
 
 Scaffold `.specify/initiative.md` with the frontmatter template.
 
 ```bash
-specify initiative init
+specify initiative create <name>
 ```
 
-Idempotent — re-running on an existing brief is a no-op.
+Refuses to overwrite an existing brief — mirrors the `specify plan create` posture for `plan.yaml`. (Renamed from the v1 `init` verb by RFC-9 §1F; see [Migrating CLI v1](../../explanation/migrating-cli-v1.md#v1x-renames).)
 
 ### specify initiative show
 

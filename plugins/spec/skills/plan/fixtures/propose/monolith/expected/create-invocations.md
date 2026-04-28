@@ -1,4 +1,4 @@
-# Emitted `specify plan create` invocations — monolith
+# Emitted `specify plan add` invocations — monolith
 
 The three commands the propose brief shells out when every slice is accepted without edit. Emit order is dependency-order + within- layer alphabetical (see [`schemas/omnia/briefs/plan/propose.md` §Emit order](../../../../../../../../schemas/omnia/briefs/plan/propose.md)):
 
@@ -7,19 +7,19 @@ The three commands the propose brief shells out when every slice is accepted wit
 3. `user-registration` — layer 1 (two `--depends-on` edges to the leaves above), description carries path hints and delta-targeting intent.
 
 ```text
-specify plan create email-verification \
+specify plan add email-verification \
     --sources monolith \
     --description "Verify a newly registered account via a one-time email token. Focus on src/auth/verify.ts."
 ```
 
 ```text
-specify plan create shared-validation \
+specify plan add shared-validation \
     --sources monolith \
     --description "Validate common user-facing inputs with reusable primitives. Focus on src/common/validation.ts."
 ```
 
 ```text
-specify plan create user-registration \
+specify plan add user-registration \
     --sources monolith \
     --depends-on email-verification --depends-on shared-validation \
     --description "Create new user accounts with email verification. Focus on src/auth/verify.ts, src/users/register.ts, src/users/validation.ts. Delta-targets email-verification and shared-validation."

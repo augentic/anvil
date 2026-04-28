@@ -40,4 +40,4 @@ single-change/
 ## Using these fixtures
 
 - Before changing the algorithm in `SKILL.md`, re-read the before/after pairs here and confirm the new algorithm still maps them cleanly. If it does not, update the fixtures in the same commit as the SKILL.md change.
-- Future Changes (L2.G self-heal, L2.H `--loop`, L2.I sources/affects wiring) will ship their own fixtures alongside these; none of them should require editing the single-change fixtures to stay coherent.
+- Future Changes (L2.G self-heal, L2.H `--loop`, L2.I sources wiring) will ship their own fixtures alongside these; none of them should require editing the single-change fixtures to stay coherent.

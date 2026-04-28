@@ -26,6 +26,18 @@ The behavioural surface did not change -- every renamed command does exactly the
 
 Every renamed verb takes the change `<name>` (kebab-case) directly. The on-disk `<change-dir>` is resolved internally by the CLI; operators no longer need to type `.specify/changes/<name>/`.
 
+## v1.x renames
+
+The renames below landed after the v1 cleanup, as part of the RFC-9 §1F+§1G consistency pass on the noun-create verbs. Behaviourally they are identical to their predecessors -- only the verb spellings changed -- and they ship together so the `plan` group never spent an interim release with `init` and `create` for the same noun. Operators on v1 cleanup-era CI/aliases need to apply this second hop on top of the v1 row map above.
+
+| Old verb (v1) | New verb (v1.x) |
+| --- | --- |
+| `specify initiative init <name>` | `specify initiative create <name>` |
+| `specify plan init <name>` | `specify plan create <name>` |
+| `specify plan create <name>` | `specify plan add <name>` |
+
+Order matters when running these as bulk replacements: do `plan create` -> `plan add` (the entry-append verb) **before** `plan init` -> `plan create` (the file scaffold), or the second pass will rewrite freshly renamed entries.
+
 ## Why these renames
 
 - **`registry.yaml` is platform-scoped, not initiative-scoped.** A platform's repository catalogue spans every initiative the platform ever runs. Nesting the verbs under `specify initiative ...` implied the wrong lifetime. They now live at the top level: `specify registry {show, validate}`.

@@ -4,14 +4,13 @@ The `specify` CLI lives in the [`augentic/specify-cli`](https://github.com/augen
 
 ## Crate dependency graph
 
-The workspace contains 10 library crates plus the root binary crate:
+The workspace contains 9 library crates plus the root binary crate:
 
 ```text
 specify (binary)
 ├── specify-change      Change lifecycle, plan CRUD, locks, journals
 ├── specify-drift       Code-vs-baseline drift detection
 ├── specify-error       Shared error types
-├── specify-platform   Multi-repo peer configuration
 ├── specify-merge       Delta merge engine, conflict detection
 ├── specify-schema      Schema resolution, caching, brief pipelines
 ├── specify-spec        Spec parsing, delta operations, requirement IDs
@@ -31,7 +30,6 @@ specify: "specify (binary)" {
 change: specify-change
 drift: specify-drift
 error: specify-error
-platform: specify-platform
 merge: specify-merge
 schema: specify-schema
 spec: specify-spec
@@ -41,7 +39,6 @@ vectis: "specify-vectis (isolated)"
 
 specify -> change
 specify -> drift
-specify -> platform
 specify -> merge
 specify -> schema
 specify -> spec
@@ -53,8 +50,6 @@ change -> error
 change -> schema
 drift -> error
 drift -> spec
-platform -> error
-platform -> change
 merge -> error
 merge -> spec
 merge -> schema

@@ -36,7 +36,7 @@ rules:
 ## plan.yaml
 
 **Location:** `.specify/plan.yaml`
-**Created by:** `/spec:plan` (via `specify plan init` + `specify plan create`)
+**Created by:** `/spec:plan` (via `specify plan create` + `specify plan add`)
 **Modified by:** `specify plan amend`, `specify plan transition`
 
 The initiative's table of contents -- an ordered, dependency-aware list of changes.
@@ -145,7 +145,7 @@ projects:
 ## initiative.md
 
 **Location:** `.specify/initiative.md`
-**Created by:** `specify initiative init`
+**Created by:** `specify initiative create`
 **Edited by:** Operator (directly)
 
 Operator-authored brief for an initiative. Contains YAML frontmatter for structured inputs and a prose body for intent.
