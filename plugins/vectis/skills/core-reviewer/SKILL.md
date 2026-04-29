@@ -426,7 +426,7 @@ If design-level findings exist, delegate to `/spec:define` to create a single Sp
 
    - **tasks.md**: Order tasks by dependency -- spec updates first (so requirements are clear before implementation), then data-type changes, then event signatures, then handler logic, then test updates, then new tests, then verification. Each task references the finding ID it addresses. Include a final verification section that re-runs the core-reviewer skill to confirm all Critical findings are resolved.
 
-4. **Show final status** using `/spec:status` and summarize: change name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
+4. **Show final status** by running `specify change status <name>` and summarize: change name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
 
 ## Severity Definitions
 

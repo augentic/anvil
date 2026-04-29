@@ -73,4 +73,3 @@ Create a new change and generate all artifacts in one step.
 - [Artifact Format](../artifact-format.md) -- format of the generated artifacts
 - [/spec:build](build.md) -- next step after define
 - [/spec:extract](extract.md) -- how source extraction works when `--source` is provided
-- [/spec:explore](explore.md) -- for thinking through requirements before defining

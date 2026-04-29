@@ -88,51 +88,6 @@ When merge runs, it applies the delta to the baseline. Open `.specify/specs/gree
 
 The baseline is the accumulated state of all merged changes.
 
-## 3. Verify the baseline
-
-After merging, confirm that your code matches the updated specs:
-
-```text
-/spec:verify
-```
-
-<details>
-<summary>Expected output</summary>
-
-```text
-Verifying baseline...
-
-  greeting:
-    REQ-001  COVERED  Greeting Response
-    REQ-002  COVERED  Empty Name Error
-    REQ-003  COVERED  Language Parameter
-
-Summary: 3 requirements, 3 covered, 0 drifted, 0 missing
-```
-
-</details>
-
-Verify reads each baseline spec and compares it against the implementation. It classifies each requirement:
-
-| Classification | Meaning |
-|---------------|---------|
-| **COVERED** | Code implements the requirement as specified |
-| **DRIFTED** | Code behavior diverges from the spec |
-| **MISSING** | Requirement specified but not implemented |
-| **UNSPECIFIED** | Code behavior exists with no spec |
-
-If everything went well, all requirements should be `COVERED`. If someone later changes the greeting logic without going through Specify, a future `/spec:verify` will flag the drift.
-
-## 4. Verify a specific capability
-
-You can also verify a single capability:
-
-```text
-/spec:verify greeting
-```
-
-This is useful when you suspect drift in a particular area and do not want to verify the entire baseline.
-
 ## Understanding delta merges
 
 The delta spec format is how Specify manages change over time without losing history. Here is how each operation works at merge time:
@@ -151,9 +106,8 @@ The merge key (see [Glossary](../appendices/glossary.md)) is always the `ID: REQ
 - Changes against existing capabilities produce **delta specs**, not full rewrites.
 - Delta sections (`ADDED`, `MODIFIED`, `REMOVED`, `RENAMED`) describe precisely what changed.
 - Stable `REQ-XXX` IDs are the merge keys that connect deltas to the baseline.
-- `/spec:verify` checks whether your code still matches the accumulated baseline.
 - The baseline is the cumulative record of all merged specs.
 
 ## Next
 
-[Thinking Before Defining](thinking-before-defining.md) -- use explore mode to investigate a problem before committing to a change.
+[Brownfield Onboarding](brownfield-onboarding.md) -- bring an existing codebase into Specify by extracting specs from source code.

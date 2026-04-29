@@ -80,8 +80,8 @@ Take a moment to read each artifact. Notice how they separate concerns: the prop
 
 At any point you can check where things stand:
 
-```text
-/spec:status
+```bash
+specify status
 ```
 
 <details>

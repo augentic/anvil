@@ -100,8 +100,6 @@ A change directory may also contain a `contracts/` subdirectory holding the prop
 
 The baseline. When a change is merged, its spec deltas are applied here. For Vectis projects, composition deltas are also merged into a baseline `composition.yaml` in this directory, with per-screen checksums tracked in `.composition-checksums.yaml` for conflict detection. Baseline specs represent the current known state of the system -- what has been specified and implemented so far.
 
-`/spec:verify` compares your code against these baseline specs to detect drift.
-
 ### `.cache/`
 
 Schema and brief files fetched at `/spec:init` time. These are read by phase skills during define and build. The cache is populated once per schema version and updated when you re-init with a different schema URL or ref.

@@ -17,7 +17,6 @@ The intended workflow is human-driven Specify. Single-change loop:
 /spec:build     # validates artifacts, then implements
 /spec:merge
 /spec:drop
-/spec:verify    # detect drift between code and baseline specs
 ```
 
 Multi-change initiative (Layer 3):
@@ -73,9 +72,6 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `build` - validate artifacts and implement tasks from a Specify change
 - `merge` - finalize and merge a completed change
 - `drop` - discard a change without merging specs into baseline
-- `verify` - detect drift between code and baseline specs
-- `explore` - thinking partner for ideas, investigation, and requirements
-- `status` - check artifact completion, task progress, and active changes
 - `extract` - extract Specify artifacts from existing source code
 - `analyze` - plan-time capability inference; emits capability summaries
 - `plan` - author `.specify/plan.yaml` via the plan pipeline

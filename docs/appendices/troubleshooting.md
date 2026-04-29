@@ -213,24 +213,6 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 
 **Resolution:** Re-run `/spec:init` with the schema URL to refresh the cache.
 
-## Verify issues
-
-### No baseline specs
-
-**Symptom:** `/spec:verify` reports no baseline specs to verify against.
-
-**Cause:** No changes have been merged yet.
-
-**Resolution:** Complete and merge at least one change, or run the brownfield onboarding flow to establish a baseline from existing code.
-
-### Source not found for capability
-
-**Symptom:** `/spec:verify` cannot locate the implementation for a baseline spec.
-
-**Cause:** The capability naming or project structure does not match what verify expects.
-
-**Resolution:** Ensure the capability name in `.specify/specs/<name>/` corresponds to the actual source location in your project.
-
 ## Hub and registry issues
 
 ### `hub-cannot-be-project`

@@ -35,9 +35,6 @@ specify registry add <project> --url ... --schema ...
 | `/spec:build` | 2 | Implement tasks |
 | `/spec:merge` | 2 | Merge completed change into baseline |
 | `/spec:drop` | 2 | Discard a change |
-| `/spec:status` | 2 | Check progress |
-| `/spec:verify` | 2 | Detect drift between code and specs |
-| `/spec:explore` | 2 | Think through a problem |
 | `/spec:extract` | 2 | Extract specs from existing code |
 | `/spec:analyze` | 3 | Plan-time capability inference (invoked by `/spec:plan`) |
 | `/spec:plan` | 3 | Author a multi-change plan |

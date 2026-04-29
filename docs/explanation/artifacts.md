@@ -121,6 +121,6 @@ Artifacts move through three locations:
 2. **Baseline** -- `.specify/specs/` holds the merged specs that represent the current known state of the system.
 3. **Archive** -- `.specify/archive/YYYY-MM-DD-<name>/` holds finalized changes (both merged and dropped) for audit.
 
-When you run `/spec:merge`, the change's spec deltas are applied to the baseline. For Vectis changes, composition deltas are also merged into the baseline `composition.yaml` alongside spec files. When the change includes contract artifacts, they are copied into `.specify/contracts/` using opaque file replacement -- each file is replaced wholesale rather than delta-merged. The baseline grows over time, giving future changes a foundation to build on and enabling `/spec:verify` to detect drift between your code and your specifications.
+When you run `/spec:merge`, the change's spec deltas are applied to the baseline. For Vectis changes, composition deltas are also merged into the baseline `composition.yaml` alongside spec files. When the change includes contract artifacts, they are copied into `.specify/contracts/` using opaque file replacement -- each file is replaced wholesale rather than delta-merged. The baseline grows over time, giving future changes a foundation to build on.
 
 For full format details, see the [Artifact Format](../reference/artifact-format.md) reference.

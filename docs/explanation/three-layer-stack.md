@@ -23,10 +23,7 @@ Layer2: "Layer 2 — Change Lifecycle" {
   build: "/spec:build"
   mergeSkill: "/spec:merge"
   drop: "/spec:drop"
-  verify: "/spec:verify"
-  explore: "/spec:explore"
   extract: "/spec:extract"
-  status: "/spec:status"
 }
 
 Layer1: "Layer 1 — CLI Primitives" {
@@ -80,9 +77,6 @@ The full set of Layer 2 skills:
 | `/spec:build` | Implement tasks from a defined change |
 | `/spec:merge` | Merge completed change into baseline |
 | `/spec:drop` | Discard a change without merging |
-| `/spec:status` | Inspect active changes and progress |
-| `/spec:verify` | Detect drift between code and baseline specs |
-| `/spec:explore` | Thinking partner -- no fixed workflow |
 | `/spec:extract` | Produce specs and design from existing source code |
 
 **Who uses it:** Every Specify operator, every day. This is the primary interaction layer.

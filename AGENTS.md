@@ -13,9 +13,6 @@ Humans are expected to work through stock Specify:
 - `/spec:build`
 - `/spec:merge`
 - `/spec:drop`
-- `/spec:verify` (detect drift between code and baseline specs)
-- `/spec:explore` (thinking partner for ideas and requirements)
-- `/spec:status` (check artifact completion and task progress)
 - `/spec:extract` (extract Specify artifacts from existing source code)
 - `/spec:execute` (drive an initiative's `.specify/plan.yaml` through define → build → merge; RFC-2 Layer 2, fully landed — `--dry-run` preview, supervised single-change run, self-heal on startup, `--loop` mode with terminal summary + SIGINT/SIGTERM handling, `sources` execution wiring, and post-merge cross-project contract validation per RFC-9 §3B)
 - `/spec:plan` (author `.specify/plan.yaml` via `pipeline.plan`; RFC-2 Layer 3 + RFC-3a + RFC-3b — discovery through `/spec:analyze`, optional **sync-peers** when `.specify/registry.yaml` declares multiple projects (`specify workspace sync` + `workspace.md`), propose with glob or **manifest** scopes (Stage C), **project assignment** step for multi-repo plans (RFC-3b: infers `project` per entry from registry descriptions, writes via `specify plan amend --project`), `.specify/plans/<name>/` artefacts archived with the plan; see [rfcs/rfc-3a-monoliths.md](rfcs/archive/rfc-3a-monoliths.md) and [rfcs/archive/rfc-3b-platform.md](rfcs/archive/rfc-3b-platform.md))
@@ -25,7 +22,7 @@ This repository provides specialist skills and references that support that work
 
 ### Skill / CLI responsibility split
 
-The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:status`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, lifecycle transitions, schema and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
+The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, lifecycle transitions, schema and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
 CLI surface the skills depend on:
 

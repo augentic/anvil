@@ -6,7 +6,6 @@ Specify turns ad-hoc AI prompting into a repeatable, auditable workflow. Every c
 
 - **Durable reasoning.** The thinking that connects intent to implementation is captured in version-controlled artifacts, not lost when the chat session ends.
 - **Baseline accumulation.** Each merged change adds to a growing specification. Future changes build on what came before rather than starting from scratch.
-- **Drift detection.** `/spec:verify` compares your code against the specification and flags where they have diverged.
 - **Automated execution.** For multi-change initiatives, `/spec:execute` drives the define-build-merge loop change by change, in dependency order.
 
 ## See it in action

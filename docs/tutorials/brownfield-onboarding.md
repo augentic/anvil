@@ -71,13 +71,7 @@ Open the generated artifacts and review them:
 - Are the requirement IDs and scenarios reasonable?
 - Does the design capture the key technical decisions?
 
-This is a good time to use `/spec:explore` if you want to discuss any findings:
-
-```text
-/spec:explore initial-baseline
-```
-
-You can ask the agent to refine specs, add missing requirements, or correct inaccuracies.
+You can ask the agent to refine specs, add missing requirements, or correct inaccuracies before merging.
 
 ## 4. Merge the baseline
 
@@ -108,16 +102,6 @@ With a populated baseline, new changes benefit from context. When you define a c
 ```
 
 The agent knows the current auth requirements from the baseline. The generated delta spec will reference existing `REQ-XXX` IDs and add new ones.
-
-## 6. Verify after changes
-
-After building and merging the new change, verify the entire baseline:
-
-```text
-/spec:verify
-```
-
-This confirms that all requirements -- both the extracted originals and the newly added ones -- are covered by the implementation.
 
 ## The onboarding flow
 

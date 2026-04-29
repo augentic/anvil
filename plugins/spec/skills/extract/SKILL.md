@@ -130,7 +130,7 @@ See complete definitions in [Specify Artifact Format Specification - Tags Refere
 4. External dependencies from manifest files (`package.json`, `go.mod`, `requirements.txt`, `Cargo.toml`, `pom.xml`, etc.)
 5. Async boundaries (async/await, Promises, goroutines, threads, futures, etc.)
 6. Type definitions (interfaces, types, classes, structs, enums)
-7. **Guest/entry-point layer**: Middleware (CORS, auth), error code → HTTP status mapping, body injection/transformation, parameter sourcing, and any validation performed before the domain handler. See [Entry Point Patterns](../../references/entry-point-patterns.md) for framework-specific guidance.
+7. **Guest/entry-point layer**: Middleware (CORS, auth), error code → HTTP status mapping, body injection/transformation, parameter sourcing, and any validation performed before the domain handler.
 
 Scope filters never hide manifest files from this step — see §*Sentinels always read*. Language detection and dependency extraction always run against the full set of sentinel files regardless of `$INCLUDE` / `$EXCLUDE` / `$MANIFEST`.
 

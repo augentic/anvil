@@ -1,5 +1,5 @@
 ---
-description: Specify plugin context -- Specify workflow orchestration for defining, building, merging, dropping, and exploring changes
+description: Specify plugin context -- Specify workflow orchestration for defining, building, merging, and dropping changes
 alwaysApply: true
 ---
 
@@ -7,9 +7,9 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: define a change, build (validate and implement) a change, merge a completed change, drop a discarded change, verify code-to-spec consistency, explore ideas or problems interactively, check status, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
+This plugin provides the core Specify workflow skills: define a change, build (validate and implement) a change, merge a completed change, drop a discarded change, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
 
-**Purpose**: Drive the define -> build -> merge workflow, with drop for cleanup, verify for drift detection, and explore for thinking and investigation.
+**Purpose**: Drive the define -> build -> merge workflow, with drop for cleanup.
 
 ## Schema Structure
 
@@ -48,9 +48,6 @@ defining -> defined -> building -> complete -> merged
 /spec:define  ->  /spec:build  ->  /spec:merge
                        ^
                        |
-                  /spec:explore (anytime)
-                  /spec:status  (anytime)
-                  /spec:verify  (after merge, detect drift)
                   /spec:drop    (discard instead of merge)
                   /spec:extract (extract artifacts from existing source code)
 ```
@@ -60,9 +57,6 @@ defining -> defined -> building -> complete -> merged
 - **build**: Validate artifacts against `schema.yaml` rules and cross-blueprint consistency, then implement tasks from the change, marking them complete as you go
 - **merge**: Preview merge operations, finalize a completed change, merge delta specs into baseline
 - **drop**: Discard an active change, set `status: dropped`, and move it to archive without merging specs
-- **verify**: Compare current code against baseline specs to detect drift -- read-only
-- **explore**: Read-only thinking mode for investigating problems and clarifying requirements
-- **status**: Check lifecycle status, artifact completion, task progress, and active/merged changes
 - **extract**: Extract Specify artifacts (specs + design.md) from existing source code
 
 ## Troubleshooting
@@ -70,16 +64,16 @@ defining -> defined -> building -> complete -> merged
 ### Project Not Initialized
 
 - Run `/spec:init` in the project root to create the `.specify/` directory structure
-- Verify with `/spec:status`
+- Verify with `specify status`
 
 ### Change Not Found
 
-- Run `/spec:status` to see active changes
+- Run `specify status` to see active changes
 - Check the change name matches (kebab-case)
 
 ### Artifacts Incomplete
 
-- Run `/spec:status <name>` to check artifact status
+- Run `specify change status <name>` to check artifact status
 - Use `/spec:define <name> <blueprint-id>` to regenerate a single artifact
 - Use `/spec:define` to create a new change with all artifacts
 
@@ -91,9 +85,6 @@ defining -> defined -> building -> complete -> merged
 - [Build SKILL.md](skills/build/SKILL.md) - Validate artifacts and implement change tasks
 - [Merge SKILL.md](skills/merge/SKILL.md) - Finalize completed changes
 - [Drop SKILL.md](skills/drop/SKILL.md) - Discard a change without merging specs
-- [Verify SKILL.md](skills/verify/SKILL.md) - Detect drift between code and baseline specs
-- [Explore SKILL.md](skills/explore/SKILL.md) - Thinking and investigation mode
-- [Status SKILL.md](skills/status/SKILL.md) - Check status and progress
 - [Extract SKILL.md](skills/extract/SKILL.md) - Extract artifacts from existing source code
 - [Specify Artifact Specification](../references/specify.md) - Artifact format details
 

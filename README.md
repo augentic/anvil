@@ -68,9 +68,6 @@ Core commands:
 Additional commands:
 
 - `/spec:drop` -- Discard a change without merging specs into baseline.
-- `/spec:verify` -- Detect drift between your code and baseline specs.
-- `/spec:status` -- Check artifact completion, task progress, and active changes.
-- `/spec:explore` -- Think through ideas and investigate problems before or during a change.
 - `/spec:extract` -- Extract Specify artifacts from existing source code.
 - `/spec:plan` -- Author `.specify/plan.yaml` for a multi-change initiative (RFC-2 Layer 3 + RFC-3a: `/spec:analyze` discovery, optional multi-repo workspace sync, manifest scopes when tangled).
 - `/spec:execute` -- Drive an initiative's `plan.yaml` through `define → build → merge` automatically (RFC-2 Layer 2; `--loop` runs until `all-done`). See [Initiative authoring + execution](#initiative-authoring--execution-plans) below for the full workflow.

@@ -96,7 +96,7 @@ The three input topologies the platform-first loop handles uniformly (RFC-9 Sect
 The `specify` CLI commands that handle all deterministic operations: change lifecycle, plan CRUD, registry mutation, workspace sync/push/merge, schema resolution, validation. The foundation that skills build on.
 
 **Layer 2 (Change lifecycle)**
-The `/spec:define`, `/spec:build`, `/spec:merge` loop and supporting skills (`/spec:init`, `/spec:drop`, `/spec:status`, `/spec:verify`, `/spec:explore`, `/spec:extract`). Each skill operates on a single change inside `.specify/changes/<name>/` and delegates deterministic work to the Layer 1 CLI.
+The `/spec:define`, `/spec:build`, `/spec:merge` loop and supporting skills (`/spec:init`, `/spec:drop`, `/spec:extract`). Each skill operates on a single change inside `.specify/changes/<name>/` and delegates deterministic work to the Layer 1 CLI.
 
 **Layer 3 (Plan & Drive)**
 The skills that coordinate multi-change programs through `.specify/plan.yaml`: `/spec:plan` (authors the plan via discovery, propose, and assignment), `/spec:execute` (automates the define-build-merge loop per change with CWD-based routing for multi-repo plans), and `/spec:analyze` (plan-time capability inference). Includes sync-peers for multi-repo registries and project assignment (RFC-3b). Originally called "Initiative orchestration"; renamed to "Plan & Drive" by RFC-9 Section 2C when Layer 4 was promoted above it.
@@ -179,11 +179,6 @@ Authorship pattern where contracts are derived inline from specs during a single
 
 **Sync peers**
 The phase during `/spec:plan` (multi-repo only) that clones registry projects into `.specify/workspace/` and inventories their baseline specs. Produces `workspace.md`.
-
-## V
-
-**Verify**
-The read-only skill (`/spec:verify`) that compares code against baseline specs to detect drift. Classifies requirements as COVERED, DRIFTED, MISSING, or UNSPECIFIED.
 
 ## W
 

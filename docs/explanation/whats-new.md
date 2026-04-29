@@ -128,12 +128,6 @@ The canonical recovery sequence: `specify registry add` -> `specify workspace sy
 - How-to: [Recover from `registry-amendment-required`](../how-to/recover-from-registry-amendment.md)
 - Troubleshooting: [Registry amendment required](../appendices/troubleshooting.md#registry-amendment-required)
 
-## Fixture-backed verification (design)
-
-RFC-9 §4D adds a second mode to `/spec:verify` that replays captured fixtures against a live, deployed service and reports response drift. **Implementation is pending** (`rfc9-4d2-impl`); the design note documents the inputs (TestDef-style fixtures, `transport.yaml` binding, `tolerances.yaml` policy), the diff semantics, and the `--fixtures <dir>` operator surface so a follow-up implementation change can land it without re-deriving the model.
-
-- Explanation: [Fixture-backed verification mode](verify-fixture-mode.md)
-
 ## v1.x verb renames (RFC-9 §§1F, 1G)
 
 Three renames landed on top of the v1 cleanup so every noun-create verb now uses `create`:

@@ -1,6 +1,6 @@
 # RFC-9: Platform-First Operator Experience
 
-> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-3a](archive/rfc-3a-monoliths.md), [RFC-3b](archive/rfc-3b-platform.md), [RFC-8](archive/rfc-8-api-contracts.md)
+> Status: Implemented · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-2](archive/rfc-2-execution.md), [RFC-3a](archive/rfc-3a-monoliths.md), [RFC-3b](archive/rfc-3b-platform.md), [RFC-8](archive/rfc-8-api-contracts.md)
 >
 > This RFC is written against the v1 CLI surface ([migration map](../docs/explanation/migrating-cli-v1.md)). Every verb shape referenced below — `specify change {validate, outcome set, journal append}`, top-level `specify {registry, initiative}`, and so on — assumes the post-v1 noun groupings. Pre-v1 shapes (`specify change phase-outcome`, `specify initiative brief …`, `specify initiative registry …`) no longer exist.
 
@@ -21,7 +21,7 @@ Specify's ideal developer workflow is a **single-repo operator experience**: an 
 
 **Verb consistency gaps**
 
-1. **`init` survives in two `specify` verbs.** `specify initiative init` and `specify plan init` are the only `init` verbs in the v1 surface; every other noun-create verb is `create`. Operators have to keep two near-identical verbs (`init` and `create`) in their head, and the 2C umbrella skill would have to remember which composite verb to call when shelling out.
+1. `**init` survives in two `specify` verbs.** `specify initiative init` and `specify plan init` are the only `init` verbs in the v1 surface; every other noun-create verb is `create`. Operators have to keep two near-identical verbs (`init` and `create`) in their head, and the 2C umbrella skill would have to remember which composite verb to call when shelling out.
 
 **Housekeeping gaps**
 
