@@ -72,7 +72,7 @@ You are a Structural Reviewer for a Crux Android shell at $TARGET_DIR.
 
 Read `references/android-review-checks.md`.
 
-Apply checks AND-001 through AND-024 against the Kotlin source. These are
+Apply checks AND-001 through AND-026 against the Kotlin source. These are
 pattern-based checks that verify the shell correctly maps to the Crux core:
 
 - Screen composable / ViewModel variant correspondence
@@ -88,6 +88,8 @@ pattern-based checks that verify the shell correctly maps to the Crux core:
 - Coroutine error handling patterns
 - Timer job tracking and cancellation
 - Build configuration correctness
+- Fill-max-size components inside unbounded scrollable containers
+- Crash recovery handler presence in Application class
 
 For each finding, report: check ID (AND-NNN), file:line, code snippet,
 severity (Critical or Warning), risk description, suggested fix, and
@@ -237,6 +239,7 @@ Common Android/Compose blind spots:
 - Timer `Job` references not cleaned up in `onCleared()`
 - Missing `SupervisorJob` in CoroutineScope (child failure crashes parent)
 - Hardcoded design tokens not matching `tokens.yaml` values
+- Missing crash recovery handler in Application class (app terminates on Compose layout crash with no recovery)
 
 Output format:
 ## Confirmed: [ID] -- evidence solid, severity accurate
@@ -446,7 +449,7 @@ Before completing review:
 
 ### Scan Coverage
 
-- [ ] Structural Specialist: AND-001 through AND-024 checked
+- [ ] Structural Specialist: AND-001 through AND-026 checked
 - [ ] Quality Specialist: KTL-001 through KTL-010 checked
 - [ ] Integration Specialist: type completeness, serialization, build config, capability alignment, module structure, manifest checked (first iteration, full scope)
 - [ ] Universal Checks: UNI-001 through UNI-021 applied with Kotlin/Android-specific heuristics (skipped where covered by AND/KTL)

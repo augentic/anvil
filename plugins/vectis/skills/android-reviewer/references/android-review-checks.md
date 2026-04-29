@@ -310,3 +310,23 @@ is Effect.Render -> {
 ```
 
 See the android-writer skill step 8 for the full Core.kt pattern.
+
+## AND-025: Fill-Max-Size Component Inside Unbounded Scrollable Container
+
+**Severity**: Critical
+
+Components that internally expand to fill available space (Material 3 `SearchBar` in expanded mode, `BottomSheet` modal content, or any composable applying `fillMaxSize()` / `fillMaxHeight()`) must not be placed inside a `verticalScroll` or `horizontalScroll` container. The scrollable container provides infinite max constraints; the fill-sizing component cannot resolve against infinity, and Compose throws `IllegalStateException` at runtime.
+
+**Detection**: In screen composable files, find `Column` or `Row` modifiers containing `.verticalScroll(` or `.horizontalScroll(`. Within those containers, flag any child that is: (a) `SearchBar` (not `DockedSearchBar`), (b) applies `Modifier.fillMaxSize()` or `Modifier.fillMaxHeight()`, or (c) contains a composable known to expand internally (e.g., `ModalBottomSheet` content).
+
+**Fix**: Move the fill-sizing component outside the scrollable container, use `Modifier.weight(1f)` on the scrollable portion only, switch to `LazyColumn` with bounded items, or use `DockedSearchBar` instead of `SearchBar`. See `compose-view-patterns.md` Layout Constraint Rules.
+
+## AND-026: Missing Crash Recovery Handler
+
+**Severity**: Warning
+
+The Application class should install a global `Thread.setDefaultUncaughtExceptionHandler` that persists crash info and restarts the Activity rather than letting the app terminate with no user feedback. For Crux apps, the core manages state independently of the shell, so an Activity restart re-creates the Core and re-renders the current ViewModel with minimal user disruption.
+
+**Detection**: In the Application class, search for `Thread.setDefaultUncaughtExceptionHandler` or `Thread.getDefaultUncaughtExceptionHandler`. If absent, flag as missing. Also check `MainActivity` for crash flag detection in `onCreate` (reading from SharedPreferences key `"crux_crash_recovery"` or equivalent).
+
+**Fix**: Add the crash recovery handler to the Application class and the crash flag detection to `MainActivity.onCreate`. See `crux-android-shell-pattern.md` Crash Recovery Handler section.
