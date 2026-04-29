@@ -617,6 +617,181 @@ class MyAppApplication : Application() {
 }
 ```
 
+## Crash Recovery Handler
+
+Compose has no equivalent of React's `ErrorBoundary` -- layout-phase exceptions propagate as unhandled crashes on the main thread and cannot be caught at the composable level. A global uncaught exception handler in the Application class converts unrecoverable crashes into graceful Activity restarts. This is especially effective for Crux apps because the core manages state independently of the shell -- restarting the Activity re-creates the `Core`, which re-renders the current ViewModel. If KV persistence is used, the core recovers its state from storage, so the user sees at most a brief flash rather than the app disappearing.
+
+This is a last-resort safety net, not a substitute for fixing the underlying bug. The handler catches all uncaught exceptions, not just Compose layout crashes.
+
+### Application Class with Crash Recovery (minimal)
+
+```kotlin
+package com.vectis.myapp
+
+import android.app.AlarmManager
+import android.app.Application
+import android.app.PendingIntent
+import android.content.Intent
+import android.util.Log
+
+private const val CRASH_LOOP_WINDOW_MS = 10_000L
+
+class MyAppApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        System.setProperty("uniffi.component.shared.libraryOverride", "shared")
+        installCrashRecoveryHandler()
+    }
+
+    private fun installCrashRecoveryHandler() {
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                Log.e("CrashRecovery", "Uncaught exception on ${thread.name}", throwable)
+
+                val prefs = getSharedPreferences("crux_crash_recovery", MODE_PRIVATE)
+                val lastCrash = prefs.getLong("last_crash_ms", 0)
+                val now = System.currentTimeMillis()
+
+                prefs.edit()
+                    .putBoolean("crashed", true)
+                    .putString("crash_summary", throwable.message ?: throwable::class.simpleName)
+                    .putLong("last_crash_ms", now)
+                    .commit()
+
+                if (now - lastCrash > CRASH_LOOP_WINDOW_MS) {
+                    val intent = packageManager.getLaunchIntentForPackage(packageName)
+                    if (intent != null) {
+                        intent.addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        )
+                        val pending = PendingIntent.getActivity(
+                            this@MyAppApplication, 0, intent,
+                            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        val alarm = getSystemService(ALARM_SERVICE) as AlarmManager
+                        alarm.set(AlarmManager.RTC, now + 200, pending)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CrashRecovery", "Failed to schedule restart", e)
+            }
+
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
+    }
+}
+```
+
+### Application Class with Crash Recovery (Koin)
+
+```kotlin
+package com.vectis.myapp
+
+import android.app.AlarmManager
+import android.app.Application
+import android.app.PendingIntent
+import android.content.Intent
+import android.util.Log
+import com.vectis.myapp.di.appModule
+import org.koin.android.ext.koin.androidContext
+import org.koin.core.context.startKoin
+
+private const val CRASH_LOOP_WINDOW_MS = 10_000L
+
+class MyAppApplication : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        System.setProperty("uniffi.component.shared.libraryOverride", "shared")
+        installCrashRecoveryHandler()
+        startKoin {
+            androidContext(this@MyAppApplication)
+            modules(appModule)
+        }
+    }
+
+    private fun installCrashRecoveryHandler() {
+        val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            try {
+                Log.e("CrashRecovery", "Uncaught exception on ${thread.name}", throwable)
+
+                val prefs = getSharedPreferences("crux_crash_recovery", MODE_PRIVATE)
+                val lastCrash = prefs.getLong("last_crash_ms", 0)
+                val now = System.currentTimeMillis()
+
+                prefs.edit()
+                    .putBoolean("crashed", true)
+                    .putString("crash_summary", throwable.message ?: throwable::class.simpleName)
+                    .putLong("last_crash_ms", now)
+                    .commit()
+
+                if (now - lastCrash > CRASH_LOOP_WINDOW_MS) {
+                    val intent = packageManager.getLaunchIntentForPackage(packageName)
+                    if (intent != null) {
+                        intent.addFlags(
+                            Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        )
+                        val pending = PendingIntent.getActivity(
+                            this@MyAppApplication, 0, intent,
+                            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                        )
+                        val alarm = getSystemService(ALARM_SERVICE) as AlarmManager
+                        alarm.set(AlarmManager.RTC, now + 200, pending)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("CrashRecovery", "Failed to schedule restart", e)
+            }
+
+            defaultHandler?.uncaughtException(thread, throwable)
+        }
+    }
+}
+```
+
+### Activity Restart Detection
+
+In `MainActivity.onCreate`, after Core initialization, read the crash flag from SharedPreferences and clear it if set. Then always call `setContent` and conditionally show a recovery snackbar:
+
+```kotlin
+override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+
+    // ... Core initialization ...
+
+    val crashPrefs = getSharedPreferences("crux_crash_recovery", MODE_PRIVATE)
+    val crashSummary = if (crashPrefs.getBoolean("crashed", false)) {
+        val summary = crashPrefs.getString("crash_summary", "an unexpected error")
+        crashPrefs.edit().clear().apply()
+        summary
+    } else {
+        null
+    }
+
+    setContent {
+        AppTheme {
+            val snackbarHostState = remember { SnackbarHostState() }
+            if (crashSummary != null) {
+                LaunchedEffect(Unit) {
+                    snackbarHostState.showSnackbar(
+                        message = "The app recovered from $crashSummary",
+                        duration = SnackbarDuration.Long
+                    )
+                }
+            }
+            Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) }) { padding ->
+                Box(modifier = Modifier.padding(padding)) {
+                    // ... normal app content
+                }
+            }
+        }
+    }
+}
+```
+
 ## Dependency Injection (Koin)
 
 When using the full Core pattern, set up Koin for DI:

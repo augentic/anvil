@@ -361,6 +361,101 @@ PullToRefreshBox(
 }
 ```
 
+## Layout Constraint Rules
+
+Components that expand to fill available space (`fillMaxSize()`, `fillMaxHeight()`, or internal equivalents like Material 3 `SearchBar` in expanded mode) must not be placed inside unbounded scrollable containers (`verticalScroll`, `horizontalScroll`). Compose throws `IllegalStateException` when a child requests infinite max constraints because the scrollable container provides unbounded height/width.
+
+### Banned Pattern
+
+Never place any of the following inside a `Column(Modifier.verticalScroll(...))` or `Row(Modifier.horizontalScroll(...))`:
+
+- `SearchBar` (expanded mode -- internally uses `fillMaxSize()`)
+- `DockedSearchBar` with `Modifier.fillMaxHeight()`
+- `BottomSheet` content that expands to fill
+- Any custom composable using `Modifier.fillMaxSize()` or `Modifier.fillMaxHeight()`
+
+```kotlin
+// WRONG -- crashes at runtime with IllegalStateException
+Column(
+    modifier = Modifier
+        .fillMaxSize()
+        .verticalScroll(rememberScrollState())
+) {
+    SearchBar(
+        query = query,
+        onQueryChange = { query = it },
+        onSearch = { onEvent(Event.Search(it)) },
+        active = searchActive,
+        onActiveChange = { searchActive = it }
+    ) { /* suggestions */ }
+
+    // ... other content
+}
+```
+
+### Correct Patterns
+
+**Option 1: Split layout** -- fixed elements above/below, only the dynamic content area scrolls.
+
+```kotlin
+Column(modifier = Modifier.fillMaxSize()) {
+    SearchBar(
+        query = query,
+        onQueryChange = { query = it },
+        onSearch = { onEvent(Event.Search(it)) },
+        active = searchActive,
+        onActiveChange = { searchActive = it }
+    ) { /* suggestions */ }
+
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .verticalScroll(rememberScrollState())
+    ) {
+        // scrollable content here
+    }
+}
+```
+
+**Option 2: LazyColumn** -- use the fixed-size component as a sticky header or non-scrolling item.
+
+```kotlin
+LazyColumn(modifier = Modifier.fillMaxSize()) {
+    item {
+        SearchBar(
+            query = query,
+            onQueryChange = { query = it },
+            onSearch = { onEvent(Event.Search(it)) },
+            active = searchActive,
+            onActiveChange = { searchActive = it }
+        ) { /* suggestions */ }
+    }
+    items(viewModel.results, key = { it.id }) { result ->
+        ResultRow(result = result, onEvent = onEvent)
+    }
+}
+```
+
+**Option 3: DockedSearchBar** -- does not expand to fill the screen, safe inside scrollable containers when full-screen expansion is not needed.
+
+```kotlin
+Column(
+    modifier = Modifier
+        .fillMaxSize()
+        .verticalScroll(rememberScrollState())
+) {
+    DockedSearchBar(
+        query = query,
+        onQueryChange = { query = it },
+        onSearch = { onEvent(Event.Search(it)) },
+        active = searchActive,
+        onActiveChange = { searchActive = it }
+    ) { /* suggestions */ }
+
+    // ... other content
+}
+```
+
 ## Status Indicators
 
 For sync status or connectivity indicators within a screen:
