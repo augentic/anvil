@@ -168,7 +168,7 @@ Each sub-agent receives and returns structured information:
 | `skip_verification` | If `true`, the skill skips its internal build-verification step (ios-writer step 11 / U8, android-writer step 15 / U8). The orchestrator sets this for shell writers and runs verification in a dedicated sub-agent afterward. Defaults to `false` for standalone invocations. |
 | `artifact_paths` | Paths to spec, design, and proposal files |
 | `orchestrated` | Reviewer sub-agents only. If `true`, the reviewer returns `design_findings` in its output and skips step 3 (`/spec:define`). The orchestrator consolidates findings across platforms. Defaults to `false` for standalone invocations, where the reviewer creates its own Specify change. |
-| `extra_context` | Phase-specific: error output for repair, baseline test log for regression checks, prior phase warnings |
+| `extra_context` | Phase-specific: error output for repair, baseline test log for regression checks, prior phase warnings. For test-writer repair sub-agents, includes paths to `crux-testing-patterns.md` and `crux-command-api.md` so the sub-agent can read the correct Crux 0.17 API surface. |
 
 **Outputs (sub-agent -> orchestrator):**
 
@@ -183,14 +183,15 @@ Each sub-agent receives and returns structured information:
 
 ### Verify-repair sub-agents
 
-Verify-repair loops also run as sub-agents. When a verify sub-agent needs to re-enter a skill for repair, it spawns a **nested repair sub-agent** for the targeted fix rather than re-reading the entire skill in its own context. The nested repair sub-agent receives only:
+Verify-repair loops also run as sub-agents. When a verify sub-agent needs to re-enter a skill for repair, it spawns a **nested repair sub-agent** for the targeted fix rather than re-reading the entire skill in its own context. The nested repair sub-agent receives:
 
 - The skill name (`vectis:core-writer` or `vectis:test-writer`)
 - The full error output to fix
 - The repair discipline constraints (minimum change, scoped diff, one failure class per re-entry)
 - The mode: `repair` (not `create` or `update`)
+- For **test-writer** repair sub-agents: paths to `crux-testing-patterns.md` and `crux-command-api.md` in `extra_context`, so the sub-agent can read the correct Crux 0.17 API surface when fixing API-surface mismatches. The test-writer repair sub-agent runs `cargo test` itself to get fresh errors and to verify its fix before returning.
 
-This keeps each verification iteration lightweight -- the verify sub-agent holds only the classification table, build commands, and iteration state, not the full 3,000+ line skill context.
+This keeps each verification iteration lightweight -- the verify sub-agent holds only the classification table, build commands, and iteration state, not the full skill context. The test-writer repair sub-agent adds ~558 lines of API reference to its context (well under the full skill size) in exchange for significantly higher fix accuracy on API-surface errors.
 
 ---
 
@@ -498,14 +499,17 @@ If failures are detected, classify each failure and route the fix to the appropr
 
 | Failure signal | Classification | Fix action |
 | --- | --- | --- |
-| Error in `#[cfg(test)] mod tests`, test helper functions, or factory functions | **Test issue** | Spawn repair sub-agent for test-writer with the error output |
+| Error in `#[cfg(test)] mod tests`, test helper functions, or factory functions | **Test issue** | Spawn repair sub-agent for test-writer with the error output and Crux API references |
 | Error in production code (`app.rs` outside `#[cfg(test)]`), missing types or methods | **Code issue** | Spawn repair sub-agent for core-writer with the error output |
 | Assertion mismatch where the *actual* value looks correct per spec | **Test issue** | Spawn repair sub-agent for test-writer -- the expected value is wrong |
 | Assertion mismatch where the *expected* value matches spec | **Code issue** | Spawn repair sub-agent for core-writer -- the handler returns the wrong result |
 | Type mismatch between handler output and test assertion | **Code issue** if handler type is wrong per spec; **test issue** if assertion type is stale | Classify per spec, spawn the appropriate repair sub-agent |
+| API surface mismatch: wrong method on `Command`, incorrect `expect_*` chain, stale builder pattern, wrong `resolve()` argument shape | **Test issue** | Spawn repair sub-agent for test-writer with the error output and Crux API references (`crux-testing-patterns.md`, `crux-command-api.md`) |
 | Unresolved import or missing crate in `Cargo.toml` | **Workspace issue** | Fix `Cargo.toml` directly (no sub-agent needed) |
 
-Each repair sub-agent receives only: the skill name, the full error output, the repair discipline constraints below, and `mode: repair`. It does **not** re-read the full skill references -- just enough context to make a targeted fix.
+Each core-writer repair sub-agent receives: the skill name, the full error output, the repair discipline constraints below, and `mode: repair`. It does **not** re-read the full skill references -- just enough context to make a targeted fix.
+
+Each test-writer repair sub-agent receives the same inputs **plus** paths to `crux-testing-patterns.md` and `crux-command-api.md` in `extra_context`. The test-writer repair sub-agent runs `cargo test` itself to get fresh errors and verify its fix before returning. It reads the Crux API references to ensure fixes match the real Crux 0.17 API surface. Test logic and spec traceability (`/// Spec:` comments, test names) are preserved -- only the API syntax is adjusted.
 
 ### Repair discipline
 
