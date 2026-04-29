@@ -1,6 +1,6 @@
 # `--shape new-feature` — `dark-mode` end-to-end
 
-This fixture pins the **happy path** of `/spec:initiative` driving the `new-feature` shape against a populated multi-project hub. Sources arrive via `--from <docs>` only; the registry is already populated, so step 3 routes work to existing projects without any registry mutation; `--auto-merge` is **not** set, so step 6 lists open PRs and stops, and the operator re-runs the umbrella after merging by hand to land step 7.
+This fixture pins the **happy path** of `/spec:plan --orchestrate` (formerly `/spec:initiative`) driving the `new-feature` shape against a populated multi-project hub. Sources arrive via `--from <docs>` only; the registry is already populated, so step 3 routes work to existing projects without any registry mutation; `--auto-merge` is **not** set, so step 6 lists open PRs and stops, and the operator re-runs the umbrella after merging by hand to land step 7.
 
 ## Scenario
 
@@ -14,7 +14,7 @@ The platform hub `shop-platform/` was bootstrapped earlier (`specify init --hub`
 The operator wants to land a `dark-mode` feature spanning both. They drop a one-page spec at `./docs/dark-mode-spec.md` and invoke:
 
 ```text
-/spec:initiative create dark-mode \
+/spec:plan --orchestrate dark-mode \
     --shape new-feature \
     --from ./docs/dark-mode-spec.md
 ```
@@ -37,7 +37,7 @@ The umbrella runs steps 1–5 in one pass, halts at step 6 (no `--auto-merge`), 
      foo-mobile      specify/dark-mode    PR #29    https://github.com/org/vectis-mobile/pull/29
 
    --auto-merge not set; merge by hand on the forge (or run
-   `specify workspace merge`) and re-run /spec:initiative create
+   `specify workspace merge`) and re-run /spec:plan --orchestrate
    dark-mode to finalize.
    ```
 
@@ -46,7 +46,7 @@ The umbrella runs steps 1–5 in one pass, halts at step 6 (no `--auto-merge`), 
 After the operator merges both PRs by hand, they re-run the umbrella:
 
 ```text
-$ /spec:initiative create dark-mode --shape new-feature --from ./docs/dark-mode-spec.md
+$ /spec:plan --orchestrate dark-mode --shape new-feature --from ./docs/dark-mode-spec.md
 ```
 
 The umbrella inspects on-disk state, sees the brief present, the plan terminal, and every PR `MERGED` on remote, and skips to step 7:

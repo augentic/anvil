@@ -21,7 +21,7 @@ shop-platform/
 
 `plan.yaml` and `initiative.md` no longer live at their pre-finalize paths
 — `specify initiative finalize` moved them atomically. Re-running
-`/spec:initiative create migrate-foo …` reports `plan-not-found` (the
+`/spec:plan --orchestrate migrate-foo …` reports `plan-not-found` (the
 explicit "already finalized" signal) and exits zero.
 
 If the operator had passed `--auto-merge --clean`-equivalent (i.e. run

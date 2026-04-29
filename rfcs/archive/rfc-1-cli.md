@@ -1,6 +1,6 @@
 # RFC-1: `specify` CLI
 
-> Status: Implemented · Depends: — · Enables: [RFC-2](../archive/rfc-2-execution.md), [RFC-3](rfc-3a-monoliths.md), [RFC-4](../rfc-4-dsl.md), [RFC-5](../rfc-5-framework-lint.md)
+> Status: Implemented · Depends: — · Enables: [RFC-2](../archive/rfc-2-execution.md), [RFC-3](rfc-3a-monoliths.md), [RFC-4](../rfc-4-dsl.md), [RFC-5](../rfc-5-lint.md)
 
 ## Abstract
 
@@ -39,9 +39,9 @@ A good litmus test: "Would this command need to understand `.specify/` directory
 5. **Migrate `init`, `merge`, and `build` skills** to use CLI commands
 6. **`specify task`** subcommands — deterministic task parsing and progress tracking
 
-The first four items establish a working binary with immediate value. Items 5–6 close the loop on the core workflow. The framework-linter port (`checks.ts` → `specify-check` crate, exposed as `specify check`) is tracked separately in [RFC-5](../rfc-5-framework-lint.md); it runs independently of Phase 1 and is not a prerequisite for RFC-2/RFC-3/RFC-4.
+The first four items establish a working binary with immediate value. Items 5–6 close the loop on the core workflow. The framework-linter port (`checks.ts` → `specify-check` crate, exposed as `specify check`) is tracked separately in [RFC-5](../rfc-5-lint.md); it runs independently of Phase 1 and is not a prerequisite for RFC-2/RFC-3/RFC-4.
 
-**CI for Phase 1.** The workspace-scaffold item (1) lands with a GitHub Actions workflow — `.github/workflows/ci.yml` — that runs on every pull request and on pushes to `main`. The minimum bar is three jobs against a stable Rust toolchain: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`. Unit tests cover each domain crate (`specify-schema`, `specify-spec`, `specify-merge`, `specify-task`, `specify-validate`, `specify-change`) directly; the root `specify` package adds at least one end-to-end integration test under `tests/` that invokes the built `specify validate` binary against a fixture change directory (e.g. `tests/fixtures/`) and asserts the JSON output matches a golden file (pinning the `schema_version: 1` contract documented in the "Output Format" section). `scripts/checks.ts` continues to run via `make checks` alongside this workflow until `specify check` reaches parity — see [RFC-5](../rfc-5-framework-lint.md).
+**CI for Phase 1.** The workspace-scaffold item (1) lands with a GitHub Actions workflow — `.github/workflows/ci.yml` — that runs on every pull request and on pushes to `main`. The minimum bar is three jobs against a stable Rust toolchain: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo test --workspace`. Unit tests cover each domain crate (`specify-schema`, `specify-spec`, `specify-merge`, `specify-task`, `specify-validate`, `specify-change`) directly; the root `specify` package adds at least one end-to-end integration test under `tests/` that invokes the built `specify validate` binary against a fixture change directory (e.g. `tests/fixtures/`) and asserts the JSON output matches a golden file (pinning the `schema_version: 1` contract documented in the "Output Format" section). `scripts/checks.ts` continues to run via `make checks` alongside this workflow until `specify check` reaches parity — see [RFC-5](../rfc-5-lint.md).
 
 #### Phase 2: Feature manifest extensions ([RFC-2](../archive/rfc-2-execution.md))
 
@@ -73,7 +73,7 @@ See [RFC-3](rfc-3a-monoliths.md) for the full design.
 
 ### Workspace Layout
 
-The CLI lives at the repo root as a Cargo workspace with a root package named `specify`. This keeps it alongside the plugins and schemas it operates on — important because integration tests can reference the real `schemas/` directory and because the framework linter added by [RFC-5](../rfc-5-framework-lint.md) needs to validate the repo's own schema files and skills from the same workspace.
+The CLI lives at the repo root as a Cargo workspace with a root package named `specify`. This keeps it alongside the plugins and schemas it operates on — important because integration tests can reference the real `schemas/` directory and because the framework linter added by [RFC-5](../rfc-5-lint.md) needs to validate the repo's own schema files and skills from the same workspace.
 
 The root `specify` package produces the user-facing binary and hosts top-level orchestration; domain logic is factored into focused crates under `crates/`.
 
@@ -114,7 +114,7 @@ specify/                              # repo root (already exists)
 
 Dependencies flow from leaves to root: `specify-error` has no internal deps; `specify-schema` / `specify-spec` / `specify-task` depend on `specify-error`; `specify-merge` depends on `specify-spec`; `specify-validate` depends on `specify-schema`, `specify-spec`, and `specify-task`; `specify-change` depends on `specify-error`. The root `specify` package depends on every domain crate and wires them together. This shape avoids cycles while still letting each crate be tested in isolation.
 
-[RFC-5](../rfc-5-framework-lint.md) adds a `specify-check` crate under `crates/` when the framework-linter port begins; it is deliberately out of scope here.
+[RFC-5](../rfc-5-lint.md) adds a `specify-check` crate under `crates/` when the framework-linter port begins; it is deliberately out of scope here.
 
 ### Why a Root Package Plus Domain Crates
 
@@ -126,7 +126,7 @@ Dependencies flow from leaves to root: `specify-error` has no internal deps; `sp
 
 **The root `specify` package** (`src/main.rs` + `src/lib.rs`) owns the user-facing binary and the glue between domain crates. `main.rs` is a thin clap dispatcher — each subcommand is ~20 lines that parse args, call into `lib.rs` (or a domain crate directly), format the result, and set the exit code. `lib.rs` is the home for top-level specify logic: `init` orchestration (which touches schema resolution, project.yaml writing, and lifecycle creation at once), project config parsing, and the curated public API that embedders (editors, future LSP, CI integrations) consume. Putting `main.rs` and `lib.rs` side-by-side at the root — rather than in a separate `specify-cli` crate — means a single `cargo install specify` produces the binary and a single `use specify::…` imports the embeddable surface.
 
-[RFC-5](../rfc-5-framework-lint.md) adds a `specify-check` crate when the framework-linter port begins. It reuses `specify-schema`'s schema and brief parsers but keeps the repo-specific check logic (symlink resolution, SKILL.md frontmatter, docs inventory) out of the runtime crates.
+[RFC-5](../rfc-5-lint.md) adds a `specify-check` crate when the framework-linter port begins. It reuses `specify-schema`'s schema and brief parsers but keeps the repo-specific check logic (symlink resolution, SKILL.md frontmatter, docs inventory) out of the runtime crates.
 
 ### Module Design: Domain Crates
 
@@ -1139,7 +1139,7 @@ prod-plugins:
 	@./scripts/prod-plugins.sh
 ```
 
-The `make checks` target remains driven by `scripts/checks.ts` for now; its migration to `specify check` is covered by [RFC-5](../rfc-5-framework-lint.md) and does not interact with the Phase 1 build target above.
+The `make checks` target remains driven by `scripts/checks.ts` for now; its migration to `specify check` is covered by [RFC-5](../rfc-5-lint.md) and does not interact with the Phase 1 build target above.
 
 ### CLI Distribution and Fallback
 
@@ -1185,4 +1185,4 @@ Upgrading `specify_version` is user-driven: running `specify init --upgrade` rew
 - [RFC-2: Feature Manifests](../archive/rfc-2-execution.md) — extends the CLI with `specify manifest` subcommands
 - [RFC-3: Multi-Repo Coordination](rfc-3a-monoliths.md) — extends the CLI with `specify federation` subcommands
 - [RFC-4: Type-Safe Skill Expression](../rfc-4-dsl.md) — extends the framework linter with skill validation
-- [RFC-5: Framework Linter](../rfc-5-framework-lint.md) — ports `checks.ts` into a `specify-check` crate and adds `specify check`
+- [RFC-5: Framework Linter](../rfc-5-lint.md) — ports `checks.ts` into a `specify-check` crate and adds `specify check`

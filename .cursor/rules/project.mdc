@@ -29,7 +29,7 @@ Multi-change initiative (Layer 3):
 Cross-repo initiative end-to-end (Layer 4 umbrella, RFC-9 §2C):
 
 ```bash
-/spec:initiative create <name> [--shape migrate-legacy|new-feature|update-existing] [--auto-merge]
+/spec:plan --orchestrate <name> [--shape migrate-legacy|new-feature|update-existing] [--auto-merge]
 ```
 
 Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
@@ -74,9 +74,8 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `drop` - discard a change without merging specs into baseline
 - `extract` - extract Specify artifacts from existing source code
 - `analyze` - plan-time capability inference; emits capability summaries
-- `plan` - author `.specify/plan.yaml` via the plan pipeline
+- `plan` - author `.specify/plan.yaml` via the plan pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C
 - `execute` - drive an initiative's plan through define, build, merge
-- `initiative` - Layer 4 umbrella that strings the cross-repo loop (brief → registry validate → plan → execute → push → optional merge → finalize) into one operator action (RFC-9 §2C)
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -122,7 +121,7 @@ See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for
 /docs/                    # Extended documentation (architecture, plugins)
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
-  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, execute, initiative)
+  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, execute)
   │   └── references/     # Artifact templates and schema resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)

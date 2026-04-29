@@ -1,11 +1,11 @@
-# Transcript — `/spec:initiative create migrate-foo --shape migrate-legacy --source monolith=… --auto-merge`
+# Transcript — `/spec:plan --orchestrate migrate-foo --shape migrate-legacy --source monolith=… --auto-merge`
 
 This transcript pins the dialogue and the shell-outs the umbrella runs against an empty hub when migrating the legacy `mono-repo-foo` monolith. Every shell-out uses post-1F+1G v1 verbs verbatim — none of the retired hyphenated, nested, or `init`-named forms appears (see the v1 [migration map](../../../../../../docs/explanation/migrating-cli-v1.md)).
 
 The transcript starts at the operator's invocation; pre-flight, all seven steps, and the terminal summary follow.
 
 ```text
-$ /spec:initiative create migrate-foo \
+$ /spec:plan --orchestrate migrate-foo \
     --shape migrate-legacy \
     --source monolith=git@github.com:org/legacy-foo.git \
     --auto-merge
@@ -242,14 +242,14 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
 
 ---
 
-## /spec:initiative — migrate-foo — landed
+## /spec:plan --orchestrate — migrate-foo — landed
 
   Brief:    .specify/archive/plans/migrate-foo-20260428/initiative.md
   Plan:     .specify/archive/plans/migrate-foo-20260428.yaml
   Registry: foo-backend, foo-mobile (added in step 3)
   PRs:      foo-backend#41 (merged), foo-mobile#18 (merged)
 
-  Re-running /spec:initiative create migrate-foo will report
+  Re-running /spec:plan --orchestrate migrate-foo will report
   plan-not-found from `specify initiative finalize` and exit 0.
 ```
 
@@ -259,4 +259,4 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
 - **Greenfield ordering.** `specify registry add` (×2) precedes `specify workspace sync`, which precedes any `specify plan add` for entries routed to the new projects. This is the 2B invariant.
 - **Cross-project contract change has no `project`.** `migrate-foo-contract` runs against the hub itself (no `Routing:` diagnostic from `/spec:execute`), exactly as the cross-repo tutorial pins.
 - **`--auto-merge` does not bypass safety guards.** `specify workspace merge` inherits the branch-pattern guard, the no-`--admin` rule, and the no-CI-override rule. The transcript shows both PRs landing on `merged` (CI green); a `pending-checks` or `failed-checks` finding would have halted the umbrella before step 7.
-- **Idempotent re-entry.** The umbrella's terminal summary points the operator at re-running `/spec:initiative create migrate-foo`, which exits zero with `plan-not-found` after the archive completes.
+- **Idempotent re-entry.** The umbrella's terminal summary points the operator at re-running `/spec:plan --orchestrate migrate-foo`, which exits zero with `plan-not-found` after the archive completes.

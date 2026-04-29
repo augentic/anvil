@@ -23,7 +23,7 @@
 ```text
 /spec:init --hub                                     # bootstrap a platform hub
 specify registry add <project> --url ... --schema ...
-/spec:initiative create <name> [--shape ...] [--auto-merge]
+/spec:plan --orchestrate <name> [--shape ...] [--auto-merge]
 ```
 
 ## All skills
@@ -39,7 +39,7 @@ specify registry add <project> --url ... --schema ...
 | `/spec:analyze` | 3 | Plan-time capability inference (invoked by `/spec:plan`) |
 | `/spec:plan` | 3 | Author a multi-change plan |
 | `/spec:execute` | 3 | Automate the plan loop |
-| `/spec:initiative` | 4 | Cross-repo umbrella: brief -> registry -> plan -> execute -> push -> merge -> finalize |
+| `/spec:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> merge -> finalize (was `/spec:initiative`) |
 | `/contracts:writer` | -- | Validate spec alignment, produce contract delta |
 | `/contracts:validator` | -- | Verify contract artifact consistency |
 | `/contracts:importer` | -- | Import and normalise external contracts (Layer 2) |

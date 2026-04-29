@@ -27,7 +27,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 1. **Layer 1 — CLI primitives.** Deterministic verbs (`specify change`, `specify plan`, `specify registry`, `specify workspace`, `specify initiative`).
 2. **Layer 2 — Change lifecycle.** The define-build-merge skills that operate on a single change.
 3. **Layer 3 — Plan & Drive.** `/spec:plan` authors `plan.yaml`; `/spec:execute` runs it.
-4. **Layer 4 — Initiative orchestration.** `/spec:initiative` (RFC-9 §2C) composes Layers 1-3 plus `specify workspace {push, merge}` and `specify initiative finalize` into a single operator action.
+4. **Layer 4 — Initiative orchestration.** `/spec:plan --orchestrate` (RFC-9 §2C, formerly `/spec:initiative`) composes Layers 1-3 plus `specify workspace {push, merge}` and `specify initiative finalize` into a single operator action.
 
 **Rationale:** Not every use case needs automation. A single change needs only Layer 2. A small initiative can be driven manually with Layer 1 CLI commands. Plan/execute automation (Layer 3) composes on top, and the cross-repo umbrella (Layer 4) composes on top of that. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
 

@@ -1,6 +1,6 @@
 # `--shape update-existing` — `polish-pass` end-to-end
 
-This fixture pins the **happy path** of `/spec:initiative` driving the `update-existing` shape against a populated multi-project hub. No `--from`, no `--source`, no `--against` — sources are unused and `/spec:plan` reads `.specify/workspace/<peer>/specs/` baselines as the dominant signal during discovery. `--auto-merge` is set so the umbrella runs through to `specify initiative finalize` in one pass.
+This fixture pins the **happy path** of `/spec:plan --orchestrate` (formerly `/spec:initiative`) driving the `update-existing` shape against a populated multi-project hub. No `--from`, no `--source`, no `--against` — sources are unused and `/spec:plan` reads `.specify/workspace/<peer>/specs/` baselines as the dominant signal during discovery. `--auto-merge` is set so the umbrella runs through to `specify initiative finalize` in one pass.
 
 ## Scenario
 
@@ -14,7 +14,7 @@ The platform hub `shop-platform/` has been driving cross-repo work for a while; 
 The operator wants a polish pass: tighten error messages on the auth flow, fix a missing accessibility label on the theme picker, and round off the documentation block in the theme-preference API. None of this is a new feature — it extends existing capabilities on both sides. They invoke:
 
 ```text
-/spec:initiative create polish-pass \
+/spec:plan --orchestrate polish-pass \
     --shape update-existing \
     --auto-merge
 ```

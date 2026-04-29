@@ -90,7 +90,7 @@ The shorthand: **tier 1 is the input the planner reads; tier 2 is the output the
 ## See also
 
 - [Cross-Repo Initiatives](../tutorials/cross-repo-initiative.md) -- end-to-end worked example that exercises tier-2 materialisation, CWD routing during execution, and `specify workspace push`/`merge`.
-- [The Layered Stack](three-layer-stack.md) -- where `/spec:plan`, `/spec:execute`, and `/spec:initiative` sit in the layered model.
+- [The Layered Stack](three-layer-stack.md) -- where `/spec:plan` (default + `--orchestrate` modes) and `/spec:execute` sit in the layered model.
 - [`/spec:plan`](../../plugins/spec/skills/plan/SKILL.md) -- the skill that triggers tier-1 materialisation (step 3(a)) and tier-2 materialisation (step 3(b)).
 - [`/spec:execute`](../../plugins/spec/skills/execute/SKILL.md) -- the skill that `chdir`s into tier-2 clones to drive define-build-merge.
 - [`specify workspace`](../reference/cli/workspace.md) -- CLI reference for `sync`, `status`, and `push`.

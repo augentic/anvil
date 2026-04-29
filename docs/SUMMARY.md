@@ -56,7 +56,7 @@
   - [/spec:drop](reference/change-skills/drop.md)
   - [/spec:extract](reference/change-skills/extract.md)
 - [Initiative Skills (Layers 3 & 4)](reference/initiative-skills/index.md)
-  - [/spec:initiative](reference/initiative-skills/initiative.md)
+  - [/spec:plan --orchestrate](reference/initiative-skills/initiative.md)
   - [/spec:plan](reference/initiative-skills/plan.md)
   - [/spec:execute](reference/initiative-skills/execute.md)
   - [/spec:analyze](reference/initiative-skills/analyze.md)

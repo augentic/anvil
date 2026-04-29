@@ -71,7 +71,7 @@ Additional commands:
 - `/spec:extract` -- Extract Specify artifacts from existing source code.
 - `/spec:plan` -- Author `.specify/plan.yaml` for a multi-change initiative (RFC-2 Layer 3 + RFC-3a: `/spec:analyze` discovery, optional multi-repo workspace sync, manifest scopes when tangled).
 - `/spec:execute` -- Drive an initiative's `plan.yaml` through `define → build → merge` automatically (RFC-2 Layer 2; `--loop` runs until `all-done`). See [Initiative authoring + execution](#initiative-authoring--execution-plans) below for the full workflow.
-- `/spec:initiative` -- Layer 4 umbrella that strings the cross-repo loop into one operator action: brief → registry → plan → execute → push → optional merge → finalize (RFC-9 §2C). Composition only; honours every halt the underlying skills surface and is idempotent on re-entry.
+- `/spec:plan --orchestrate` -- Layer 4 umbrella mode that strings the cross-repo loop into one operator action: brief → registry → plan → execute → push → optional merge → finalize (RFC-9 §2C). Composition only; honours every halt the underlying skills surface and is idempotent on re-entry. Folded into `/spec:plan` from a former `/spec:initiative` skill.
 
 ### Initiative authoring + execution (plans)
 

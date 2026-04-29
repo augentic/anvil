@@ -19,7 +19,7 @@ shop-platform/
         └── vectis-mobile/                              # tier-2 clone (durable)
 ```
 
-A second run of `/spec:initiative create polish-pass --shape
+A second run of `/spec:plan --orchestrate polish-pass --shape
 update-existing --auto-merge` reports `plan-not-found` from
 `specify initiative finalize` and exits zero — the explicit "already
 finalized" signal.

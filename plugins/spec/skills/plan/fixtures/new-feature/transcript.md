@@ -1,11 +1,11 @@
-# Transcript — `/spec:initiative create dark-mode --shape new-feature --from ./docs/dark-mode-spec.md`
+# Transcript — `/spec:plan --orchestrate dark-mode --shape new-feature --from ./docs/dark-mode-spec.md`
 
 This transcript pins the dialogue and shell-outs across **two runs** of the umbrella: the first run drives steps 1–6 and halts at step 6 (no `--auto-merge`), the second run resumes at step 7 once the operator has merged both PRs by hand. Every shell-out uses post-1F+1G v1 verbs.
 
 ## Run 1 — drive through to step 6, halt at step 6
 
 ```text
-$ /spec:initiative create dark-mode \
+$ /spec:plan --orchestrate dark-mode \
     --shape new-feature \
     --from ./docs/dark-mode-spec.md
 
@@ -196,19 +196,19 @@ Open PRs on `specify/dark-mode`:
   vectis-mobile   specify/dark-mode    PR #29    https://github.com/org/vectis-mobile/pull/29
 
 --auto-merge not set; merge by hand on the forge (or run
-`specify workspace merge`) and re-run /spec:initiative create dark-mode
+`specify workspace merge`) and re-run /spec:plan --orchestrate dark-mode
 to finalize.
 
 ---
 
-## /spec:initiative — dark-mode — paused
+## /spec:plan --orchestrate — dark-mode — paused
 
   Brief:    .specify/initiative.md
   Plan:     .specify/plan.yaml (3 changes, all `done`)
   PRs:      omnia-backend#57 (open), vectis-mobile#29 (open)
 
   Next action: merge PRs (forge UI or `specify workspace merge`),
-  then re-run /spec:initiative create dark-mode --shape new-feature
+  then re-run /spec:plan --orchestrate dark-mode --shape new-feature
   --from ./docs/dark-mode-spec.md to finalize.
 ```
 
@@ -219,7 +219,7 @@ The operator merges both PRs on github.com (squash, conventional commit titles).
 ## Run 2 — re-entry, runs step 7 only
 
 ```text
-$ /spec:initiative create dark-mode \
+$ /spec:plan --orchestrate dark-mode \
     --shape new-feature \
     --from ./docs/dark-mode-spec.md
 
@@ -288,14 +288,14 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ---
 
-## /spec:initiative — dark-mode — landed
+## /spec:plan --orchestrate — dark-mode — landed
 
   Brief:    .specify/archive/plans/dark-mode-20260428/initiative.md
   Plan:     .specify/archive/plans/dark-mode-20260428.yaml
   Registry: omnia-backend, vectis-mobile (unchanged)
   PRs:      omnia-backend#57 (merged), vectis-mobile#29 (merged)
 
-  Re-running /spec:initiative create dark-mode will report
+  Re-running /spec:plan --orchestrate dark-mode will report
   plan-not-found from `specify initiative finalize` and exit 0.
 ```
 

@@ -1,9 +1,9 @@
-# Transcript — `/spec:initiative create polish-pass --shape update-existing --auto-merge`
+# Transcript — `/spec:plan --orchestrate polish-pass --shape update-existing --auto-merge`
 
 This transcript pins the dialogue and shell-outs the umbrella runs against a populated multi-project hub when sources are unused. The discovery brief falls back to baseline accumulation in `.specify/workspace/<peer>/specs/` to surface polish opportunities; the operator approves two slices and the umbrella runs all seven steps in one pass. Every shell-out uses post-1F+1G v1 verbs.
 
 ```text
-$ /spec:initiative create polish-pass --shape update-existing --auto-merge
+$ /spec:plan --orchestrate polish-pass --shape update-existing --auto-merge
 
 Pre-flight
   shape:        update-existing
@@ -198,14 +198,14 @@ Multi-project registry; descriptions complete. Continuing.
 
 ---
 
-## /spec:initiative — polish-pass — landed
+## /spec:plan --orchestrate — polish-pass — landed
 
   Brief:    .specify/archive/plans/polish-pass-20260428/initiative.md
   Plan:     .specify/archive/plans/polish-pass-20260428.yaml
   Registry: omnia-backend, vectis-mobile (unchanged)
   PRs:      omnia-backend#62 (merged), vectis-mobile#34 (merged)
 
-  Re-running /spec:initiative create polish-pass will report
+  Re-running /spec:plan --orchestrate polish-pass will report
   plan-not-found from `specify initiative finalize` and exit 0.
 ```
 

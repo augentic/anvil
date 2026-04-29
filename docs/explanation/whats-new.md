@@ -6,7 +6,7 @@ The bulk of the additions ship under [RFC-9: Platform-First Operator Experience]
 
 ## Hub topology
 
-A **registry-only platform hub** (RFC-9 §1D) is now the canonical starting shape for a multi-repo initiative. The hub holds platform state -- `registry.yaml`, `initiative.md`, `plan.yaml`, `workspace/` -- and is never itself a code project.
+A **registry-only platform hub** (RFC-9 ?1D) is now the canonical starting shape for a multi-repo initiative. The hub holds platform state -- `registry.yaml`, `initiative.md`, `plan.yaml`, `workspace/` -- and is never itself a code project.
 
 ```bash
 specify init hub --schema-dir . --name shop-platform --hub
@@ -27,43 +27,45 @@ Specify now distinguishes two kinds of clones with very different lifecycles:
 - **Tier 1 (legacy-source clone)**: ephemeral, read-only, lives at `.specify/plans/<name>/analyze/<key>/`. Materialised by `/spec:analyze`; swept by `specify plan archive`.
 - **Tier 2 (registered project clone)**: durable, read-write, lives at `.specify/workspace/<name>/`. Materialised by `specify workspace sync`; pushed by `specify workspace push`.
 
-The distinction was always implicit; RFC-9 §1E codifies it so operators stop losing tier-1 writes or expecting tier-2 clones to disappear after an initiative.
+The distinction was always implicit; RFC-9 ?1E codifies it so operators stop losing tier-1 writes or expecting tier-2 clones to disappear after an initiative.
 
 - Explanation: [Workspace Tiers](workspace-tiers.md)
 
-## `/spec:initiative` umbrella (Layer 4)
+## `/spec:plan --orchestrate` umbrella mode (Layer 4)
 
-A new Layer 4 skill (RFC-9 §2C) drives the cross-repo loop end-to-end as a single operator action:
+A Layer 4 mode of `/spec:plan` (RFC-9 ?2C) drives the cross-repo loop end-to-end as a single operator action:
 
 ```text
-/spec:initiative create <name> [--shape ...] [--from ...] [--source ...] [--auto-merge]
+/spec:plan --orchestrate <name> [--shape ...] [--from ...] [--source ...] [--auto-merge]
 ```
 
-The umbrella composes: brief -> registry validate -> `/spec:plan` -> `/spec:execute --loop` -> `specify workspace push` -> optional `specify workspace merge` -> `specify initiative finalize`. Every step is a shell-out to a Layer 1 verb or a Layer 3 skill; the umbrella adds no new logic. Halts (self-heal, `stuck`, `registry-amendment-required`, `pending-checks`, unmerged PRs) surface verbatim, and re-running `create` against an in-progress initiative resumes at the first incomplete step.
+> **Note.** This was originally a separate `/spec:initiative` skill; it was folded into `/spec:plan` as a flag-gated `--orchestrate` mode in a progressive-disclosure pass. The seven-step umbrella sequence is unchanged.
+
+The mode composes: brief -> registry validate -> `/spec:plan` (default mode) -> `/spec:execute --loop` -> `specify workspace push` -> optional `specify workspace merge` -> `specify initiative finalize`. Every step is a shell-out to a Layer 1 verb or a Layer 3 skill; the orchestration mode adds no new logic. Halts (self-heal, `stuck`, `registry-amendment-required`, `pending-checks`, unmerged PRs) surface verbatim, and re-running `--orchestrate` against an in-progress initiative resumes at the first incomplete step.
 
 Three initiative shapes flow through the same uniform sequence: `migrate-legacy` (sources via `--source`), `new-feature` (docs via `--from`), `update-existing` (no input flags).
 
-- Reference: [`/spec:initiative`](../reference/initiative-skills/initiative.md)
+- Reference: [`/spec:plan --orchestrate`](../reference/initiative-skills/initiative.md)
 - Tutorial: [Cross-Repo Initiatives](../tutorials/cross-repo-initiative.md) -> [Landing an Initiative](../tutorials/landing-an-initiative.md)
 - Explanation: [The Layered Stack](three-layer-stack.md) (Layer 4 row)
 
 ## `specify registry add/remove`
 
-Registry mutation is now a CLI verb instead of a hand-edit (RFC-9 §2A):
+Registry mutation is now a CLI verb instead of a hand-edit (RFC-9 ?2A):
 
 ```bash
 specify registry add <name> --url <url> --schema <schema> --description "..."
 specify registry remove <name>
 ```
 
-`add` validates kebab-case names, URL classification, and the `description-missing-multi-repo` invariant after the write. `remove` warns when plan entries reference the removed project. `/spec:plan`'s registry-proposal sub-step (RFC-9 §2B) shells out to `add` automatically when assignment names a project not yet in `registry.yaml`.
+`add` validates kebab-case names, URL classification, and the `description-missing-multi-repo` invariant after the write. `remove` warns when plan entries reference the removed project. `/spec:plan`'s registry-proposal sub-step (RFC-9 ?2B) shells out to `add` automatically when assignment names a project not yet in `registry.yaml`.
 
 - Reference: [`specify registry`](../reference/cli/registry.md)
 - How-to: [Manage Registry Projects](../how-to/manage-registry-projects.md)
 
 ## `specify workspace merge`
 
-The cross-repo PR-landing verb (RFC-9 §4A):
+The cross-repo PR-landing verb (RFC-9 ?4A):
 
 ```bash
 specify workspace merge [<project>...]
@@ -76,7 +78,7 @@ Per project, checks `gh pr checks` against `specify/<initiative-name>` and runs 
 
 ## `specify plan doctor`
 
-A strict superset of `specify plan validate` with four additional health diagnostics (RFC-9 §4B):
+A strict superset of `specify plan validate` with four additional health diagnostics (RFC-9 ?4B):
 
 | Code | Severity | Meaning |
 |------|----------|---------|
@@ -92,7 +94,7 @@ A strict superset of `specify plan validate` with four additional health diagnos
 
 ## `specify initiative finalize`
 
-The canonical closure verb for the platform-first loop (RFC-9 §4C):
+The canonical closure verb for the platform-first loop (RFC-9 ?4C):
 
 ```bash
 specify initiative finalize [--clean] [--dry-run]
@@ -112,7 +114,7 @@ The `contracts` brief in the define pipeline runs alignment validation against t
 - Reference: [Contracts plugin](../reference/plugins/contracts.md), [Contracts schema](../reference/schemas/contracts.md), [Artifact Format -> Contracts](../reference/artifact-format.md#contract-artifacts-api-shape)
 - How-to: [Work with Contracts Across Repos](../how-to/cross-repo-contracts.md)
 
-## Cross-project contract validation (RFC-9 §3B)
+## Cross-project contract validation (RFC-9 ?3B)
 
 Post-merge, `/spec:execute` runs a cross-project compatibility check: for each contract the producer `produces`, find every consumer that `consumes` it and run `/contracts:validator --mode cross-project` against each consumer's workspace clone. Incompatibilities surface as warnings on the merge transcript and on the merged change's `journal.yaml` (`cross-project-warning:` entries). **Warnings never halt the loop** -- the operator triages.
 
@@ -121,14 +123,14 @@ Post-merge, `/spec:execute` runs a cross-project compatibility check: for each c
 
 ## `registry-amendment-required` outcome
 
-A new phase outcome variant (RFC-9 §2B) for cases where a phase skill discovers that a change targets a capability needing a new registry project. The outcome carries a structured payload (`{ proposed-name, proposed-url, proposed-schema, proposed-description, rationale }`); the executor classifies it as `blocked`, records the payload in the dropped change's `journal.yaml`, and surfaces the proposal to the operator. The framework never auto-modifies the registry.
+A new phase outcome variant (RFC-9 ?2B) for cases where a phase skill discovers that a change targets a capability needing a new registry project. The outcome carries a structured payload (`{ proposed-name, proposed-url, proposed-schema, proposed-description, rationale }`); the executor classifies it as `blocked`, records the payload in the dropped change's `journal.yaml`, and surfaces the proposal to the operator. The framework never auto-modifies the registry.
 
 The canonical recovery sequence: `specify registry add` -> `specify workspace sync` -> `specify plan amend <change> --project <new>` -> `specify plan transition <change> pending` -> re-run `/spec:execute`.
 
 - How-to: [Recover from `registry-amendment-required`](../how-to/recover-from-registry-amendment.md)
 - Troubleshooting: [Registry amendment required](../appendices/troubleshooting.md#registry-amendment-required)
 
-## v1.x verb renames (RFC-9 §§1F, 1G)
+## v1.x verb renames (RFC-9 ??1F, 1G)
 
 Three renames landed on top of the v1 cleanup so every noun-create verb now uses `create`:
 

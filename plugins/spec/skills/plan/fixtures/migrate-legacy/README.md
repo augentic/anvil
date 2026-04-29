@@ -1,13 +1,13 @@
 # `--shape migrate-legacy` — `migrate-foo` end-to-end
 
-This fixture pins the **happy path** of `/spec:initiative` driving the `migrate-legacy` shape against an empty platform hub. Sources arrive via `--source <key>=<git-url>`; the registry is empty, so step 3 enters the 2B greenfield path; `--auto-merge` lets the umbrella run all the way through to `specify initiative finalize`.
+This fixture pins the **happy path** of `/spec:plan --orchestrate` (formerly `/spec:initiative`) driving the `migrate-legacy` shape against an empty platform hub. Sources arrive via `--source <key>=<git-url>`; the registry is empty, so step 3 enters the 2B greenfield path; `--auto-merge` lets the umbrella run all the way through to `specify initiative finalize`.
 
 ## Scenario
 
 The operator wants to migrate the legacy `mono-repo-foo` TypeScript service onto Augentic's Omnia + Vectis stack. They start in a fresh hub repo (`shop-platform/`) created earlier with `specify init --hub`.
 
 ```text
-/spec:initiative create migrate-foo \
+/spec:plan --orchestrate migrate-foo \
     --shape migrate-legacy \
     --source monolith=git@github.com:org/legacy-foo.git \
     --auto-merge
@@ -40,7 +40,7 @@ The umbrella runs all seven steps without halting:
 - **Greenfield registry path runs inside `/spec:plan`.** The umbrella does not call `specify registry add` itself — every registry mutation passes through 2B's discovery + operator-approval flow inside the plan skill.
 - **Contract change runs against the hub.** The cross-project HTTP contract (`migrate-foo-contract`) carries no `project` field; `/spec:execute` runs it against the hub root, not inside a workspace clone.
 - **`--auto-merge` is best-effort across projects.** Each project lands independently; one project's `failed-checks` would not abort the others' merges. This fixture pins the fully-green path; per-project failure is documented in [`/spec:execute` → §Cross-project contract check](../../../execute/SKILL.md#cross-project-contract-check-rfc-9-3b) and in `specify workspace merge`'s status table.
-- **Idempotent re-entry.** Re-running `/spec:initiative create migrate-foo --shape migrate-legacy --source monolith=... --auto-merge` after a successful run reports `plan-not-found` from `specify initiative finalize` and exits zero.
+- **Idempotent re-entry.** Re-running `/spec:plan --orchestrate migrate-foo --shape migrate-legacy --source monolith=... --auto-merge` after a successful run reports `plan-not-found` from `specify initiative finalize` and exits zero.
 - **No retired CLI verbs.** Every shell-out in [`transcript.md`](transcript.md) uses the post-1F+1G v1 surface (`specify initiative create`, `specify plan {create, add, amend, validate}`, `specify change outcome show`, `specify change journal append`). The retired-verb checker enforces this — see the migration map in [docs/explanation/migrating-cli-v1.md](../../../../../../docs/explanation/migrating-cli-v1.md) for the full rename trail.
 
 ## Counter-examples (not pinned)
