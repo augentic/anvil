@@ -297,6 +297,7 @@ Output the diff summary before making edits.
 - Update the root composable `when` to add/remove cases.
 - Update existing screen composables for changed per-page view struct fields.
 - Add/remove event dispatch calls for changed Event variants.
+- Verify that any newly generated scrollable containers do not contain fill-max-size children (see `references/compose-view-patterns.md` Layout Constraint Rules).
 
 ### U7. Update build configuration
 
@@ -399,6 +400,7 @@ Gradle build files, the version catalog, the Gradle wrapper, the Makefile, `Andr
 | `UnsatisfiedLinkError: Unable to load library 'uniffi_shared'` | The CLI-generated `{AppName}Application.kt` already calls `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` first in `onCreate()`; verify the Application class was not replaced or its body reordered |
 | `CLEARTEXT communication not permitted` | Ensure the CLI was invoked with HTTP or SSE capabilities selected so it emitted `res/xml/network_security_config.xml` and the matching `networkSecurityConfig` attribute in `AndroidManifest.xml` |
 | Unhandled exception in SSE/Time coroutine | Wrap `scope.launch` blocks for async effects in `try/catch`, rethrow `CancellationException`, and resolve the effect request with a fallback response (`SseResponse.Done`, `TimeResponse.DurationElapsed`, etc.) so the Rust core is never left awaiting an unresolved ID |
+| `IllegalStateException: Vertically scrollable component was measured with an infinity maximum height constraints` | A composable that needs bounded constraints (e.g., `SearchBar` in expanded mode, `BottomSheet` content, any `fillMaxSize()` child) is inside a `verticalScroll` container. Move the component outside the scrollable area, use `LazyColumn` with bounded items, or use `DockedSearchBar`. See `references/compose-view-patterns.md` Layout Constraint Rules. |
 
 ## Verification Checklist
 
@@ -458,6 +460,8 @@ When `design-system/tokens.yaml` exists:
 - [ ] Async effects (SSE, Time) wrapped in `try/catch` inside `scope.launch`
 - [ ] `CancellationException` is always rethrown in catch blocks
 - [ ] Time `NotifyAfter`/`NotifyAt` jobs tracked in `timerJobs` map; `Clear` cancels stored job
+- [ ] No fill-max-size components (SearchBar, BottomSheet, fillMaxSize()) placed inside unbounded scrollable containers (verticalScroll, horizontalScroll)
+- [ ] Application class installs a global crash recovery handler (see references/crux-android-shell-pattern.md Crash Recovery Handler)
 
 ### Command-Line Workflow
 
@@ -482,4 +486,5 @@ When `design-system/tokens.yaml` exists:
 - **themes.xml is mandatory**: `AndroidManifest.xml` references a theme resource. The `res/values/themes.xml` file MUST exist or the build fails with `resource style/Theme.{AppName} not found`.
 - **No Android Studio required for builds**: The Gradle wrapper (`./gradlew`) handles compilation. The emulator can be launched from the command line. Android Studio is only needed for initial SDK/NDK installation or for the visual layout editor.
 - **Hot reloading**: Jetpack Compose's built-in Live Edit and `@Preview` composables provide the development-time iteration equivalent of iOS's Inject/InjectionIII. No additional library integration is needed -- Live Edit is available in Android Studio and updates composables on save. Every screen composable should include a `@Preview` with sample data (checked by AND-008) to enable visual preview without running the emulator.
+- **Crash recovery handler**: The Application class should install a global uncaught exception handler that persists crash info and restarts the Activity instead of letting the app terminate. This is especially effective for Crux apps because the core manages state -- restarting the Activity re-creates the Core and re-renders the current ViewModel. See references/crux-android-shell-pattern.md for the full pattern.
 - **Specify integration**: When `change-dir` is provided, the skill reads the `## Android Shell Requirements` section from the feature spec and the `## Android Shell Details` section from design.md. The primary input remains `app.rs` from the core; the feature spec's platform section supplements with requirements that may not be expressed in the Rust types alone (e.g., navigation style, specific UX behaviors, accessibility requirements, layout constraints).
