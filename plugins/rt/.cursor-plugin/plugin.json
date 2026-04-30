@@ -2,7 +2,7 @@
   "name": "rt",
   "displayName": "RT Migration",
   "description": "Fixture capture, repository cloning, and regression testing for migration workflows.",
-  "version": "0.24.4",
+  "version": "0.24.5",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"
