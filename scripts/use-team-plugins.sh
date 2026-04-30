@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 
 # Clear the local plugin cache so Cursor refetches from the server on next
-# restart. Use this to revert from dev-plugins back to the published versions.
+# restart. Use this to switch from local plugins back to the published versions.
 #
-# Usage: ./scripts/prod-plugins.sh
+# Usage: bash ./scripts/use-team-plugins.sh
 
 set -euo pipefail
 

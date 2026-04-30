@@ -147,24 +147,24 @@ This runs `scripts/checks.ts` via [Deno](https://deno.land). Deno must be instal
 
 ### Local plugin development
 
-Cursor's plugin cache is populated from the server when it is missing, and left alone when it already exists. The dev-plugins script exploits this by clearing the cache and repopulating it with files from your working tree. The agent then loads your local skill, rule, and reference content instead of the published versions.
+Cursor's plugin cache is populated from the server when it is missing, and left alone when it already exists. The local plugin script exploits this by clearing the cache and repopulating it with files from your working tree. The agent then loads your local skill, rule, and reference content instead of the published versions.
 
 #### Dev iteration loop
 
 1. Edit skills, rules, or references in `plugins/`.
-2. Run `make dev-plugins` to copy local files into the cache.
+2. Run `make use-local-plugins` to copy local files into the cache.
 3. Restart Cursor.
 4. Test in a target project.
 5. Repeat from step 1.
 
 ```bash
-make dev-plugins    # copy local plugins into cache
+make use-local-plugins    # copy local plugins into cache
 ```
 
 When finished, revert to published plugins:
 
 ```bash
-make prod-plugins   # clear cache; Cursor refetches from server on restart
+make use-team-plugins   # clear cache; Cursor refetches from server on restart
 ```
 
 > [!NOTE]  

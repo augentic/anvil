@@ -66,8 +66,8 @@ The phase skills themselves stay unaware of the plan — they operate change-by-
 All commands are run from the repository root:
 
 - **`make checks`** -- runs `scripts/checks.ts` via Deno for documentation and workflow consistency checks
-- **`make dev-plugins`** -- symlink local plugins into Cursor for development/testing
-- **`make prod-plugins`** -- restore Augentic marketplace plugins (reload Cursor after either)
+- **`make use-local-plugins`** -- use local plugins from the working tree for development/testing
+- **`make use-team-plugins`** -- use Augentic marketplace plugins (reload Cursor after either)
 
 ### Skill authoring
 

@@ -14,19 +14,6 @@ This directory contains the published, selectable schema definitions for the Spe
 
 A base schema directory contains all files. A child schema that uses `extends` may omit files that are inherited from the parent (the resolution algorithm falls back to the parent directory for missing files).
 
-```text
-schemas/<name>/
-├── schema.yaml      # Pipeline declarations, domain context
-└── briefs/          # Brief markdown files with YAML frontmatter
-    ├── proposal.md
-    ├── specs.md
-    ├── composition.md   # Vectis only
-    ├── design.md
-    ├── tasks.md
-    ├── build.md
-    └── merge.md
-```
-
 Child schemas that use `extends` may omit the entire `briefs/` directory or individual files within it. Missing files are resolved from the parent schema via fallback.
 
 - **`schema.yaml`**: Declares the pipeline (define, build, merge phases), each referencing a brief by file path, plus a `domain` string describing the default project context (tech stack, architecture, testing approach). Child schemas may use `extends` to inherit from a parent and only override what differs. Skills read this to know how to generate artifacts and implement tasks.

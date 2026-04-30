@@ -7,7 +7,7 @@
 # with local content, the agent will use your working-tree versions on the
 # next restart.
 #
-# Usage: ./scripts/dev-plugins.sh
+# Usage: bash ./scripts/use-local-plugins.sh
 
 set -euo pipefail
 

@@ -4,10 +4,10 @@ DENO := $(or $(shell command -v deno 2>/dev/null),$(wildcard $(HOME)/.deno/bin/d
 checks:
 	@$(DENO) run --allow-read scripts/checks.ts
 
-.PHONY: dev-plugins
-dev-plugins:
-	@./scripts/dev-plugins.sh
+.PHONY: use-local-plugins
+use-local-plugins:
+	@bash ./scripts/use-local-plugins.sh
 
-.PHONY: prod-plugins
-prod-plugins:
-	@./scripts/prod-plugins.sh
+.PHONY: use-team-plugins
+use-team-plugins:
+	@bash ./scripts/use-team-plugins.sh
