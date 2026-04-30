@@ -7,6 +7,12 @@ needs: [specs, contracts]
 
 Follow the task format conventions defined in the define skill for checkbox format, grouping, ordering, and skill directive tags.
 
+## Agent-Completable Constraint
+
+Generate only tasks that an agent can complete and verify with contract artifacts and local validators. Do not generate manual review, external service, production credentials, or user-confirmation tasks.
+
+When alignment needs review, express it as a format-skill verification task that produces machine-readable output. Use the relevant `interfaces:*` verifier intent for `$ref` resolution, schema metadata, binding completeness, and warning-free alignment checks.
+
 ## Available Skills
 
 | Directive | Skill | When to Use |

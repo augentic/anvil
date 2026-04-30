@@ -11,7 +11,7 @@ Generate or update tests for a Crux shared crate from Specify artifacts (specs +
 **Relationship to other skills**:
 
 - **core-writer** generates production code only (no tests). test-writer owns all test generation -- spec-to-test traceability, scenario coverage, and test updates.
-- The **build orchestration layer** runs a verify-repair loop after both core-writer and test-writer complete. test-writer generates tests but does not run them; compilation and test execution happen at the orchestration level.
+- The **build orchestration layer** runs a verify-repair loop after both core-writer and test-writer complete. In **create** and **update** modes, test-writer generates tests but does not run them; compilation and test execution happen at the orchestration level. In **repair** mode, test-writer runs `cargo test` itself to get fresh errors and verify fixes (see [Repair mode](#repair-mode)).
 - **core-reviewer** checks spec-to-test coverage (LOG-008) and stale tests (LOG-009) during review, using the traceability comments this skill produces.
 
 ## Arguments
@@ -59,14 +59,17 @@ This skill may be invoked as a **repair sub-agent** from the verify-repair loop.
 - `mode: repair` (not `create` or `update`)
 - The full compiler or test error output
 - The repair discipline constraints (minimum change, scoped diff)
+- Paths to Crux API references when the errors involve API-surface mismatches (provided via `extra_context`)
 
 When invoked in repair mode:
 
-1. Read the `#[cfg(test)]` module in `app.rs` and any files referenced in the error output.
-2. Diagnose the root cause from the error output.
-3. Apply the minimum change to fix the reported errors -- update test assertions, fix factory functions, correct imports.
-4. Do **not** re-read the full reference documentation or re-run the complete create/update process. The repair is scoped to the errors provided.
-5. Return the list of files modified and the fix applied.
+1. Run `cargo test` in `$PROJECT_DIR` to get the actual compiler and test errors. The passed-in error output is a starting point, but a fresh run captures the current state after any prior partial fixes in the same verify-repair iteration.
+2. Read the `#[cfg(test)]` module in `app.rs` and any files referenced in the fresh `cargo test` output from step 1.
+3. Read [crux-testing-patterns.md](references/crux-testing-patterns.md) and [crux-command-api.md](references/crux-command-api.md) to identify the correct Crux 0.17 API surface for the failing code. These references are the canonical source for method signatures, effect assertion patterns (`expect_one_effect()`, `expect_http()`, `resolve()`), HTTP/KV/SSE builder APIs, and `Command` combinators.
+4. Diagnose the root cause from the fresh `cargo test` output. Common API-surface mismatches include: wrong method name on `Command`, incorrect effect assertion chain, stale `HttpRequest`/`HttpResponse` builder pattern, wrong `resolve()` argument shape, missing or incorrect imports.
+5. Apply the minimum change to fix the reported errors -- update test assertions, fix factory functions, correct imports, adjust API calls to match the patterns in the references. **Preserve test logic and spec traceability**: do not change test names, `/// Spec:` traceability comments, or the intent of assertions (what is being checked). Only the syntax used to express them should change.
+6. Run `cargo test` again to verify the fix. If errors remain, report the remaining failures in the sub-agent output rather than returning a broken state. Do not loop internally -- the outer verify-repair loop owns iteration control.
+7. Return the list of files modified, the fix applied, and the verification result (pass or remaining errors).
 
 ## Test Generation Process: Create Mode
 
@@ -173,7 +176,7 @@ If a spec scenario does not map to a shell-facing Event (e.g., it describes inte
 
 ### Step 6: Verify Structure
 
-Before completing, verify all structural items. Do NOT run `cargo test` -- that happens at the orchestration level.
+Before completing, verify all structural items. Do NOT run `cargo test` in create or update mode -- that happens at the orchestration level. (In repair mode, `cargo test` is run by the repair process itself; see [Repair mode](#repair-mode).)
 
 - [ ] All tests are inside `#[cfg(test)] mod tests` in `app.rs`
 - [ ] Every spec scenario has a corresponding test function
@@ -274,7 +277,7 @@ This enables the spec-as-contract model: specs have teeth because tests enforce 
 
 ## Verification Checklist
 
-Before completing, verify ALL structural items. Compilation and test execution are verified at the orchestration level after test-writer completes.
+Before completing, verify ALL structural items. In create and update modes, compilation and test execution are verified at the orchestration level after test-writer completes. In repair mode, test-writer runs `cargo test` itself as part of the fix-and-verify cycle.
 
 ### Coverage
 
@@ -309,7 +312,11 @@ Before completing, verify ALL structural items. Compilation and test execution a
 
 ### Tests won't compile after core-writer changes
 
-The verify-repair loop at the orchestration level classifies failures and routes them to the correct skill. If the failure is in the test module (type mismatch, missing field on a constructed type), test-writer is re-entered with the error output to make a targeted fix.
+The verify-repair loop at the orchestration level classifies failures and routes them to the correct skill. If the failure is in the test module (type mismatch, missing field on a constructed type), test-writer is re-entered in repair mode with the error output and Crux API references. The repair sub-agent runs `cargo test` to get fresh errors, reads the testing pattern references for correct API surface, applies the minimum fix, and verifies the fix before returning.
+
+### Tests use wrong Crux API surface
+
+When test code uses method names or patterns that don't exist in Crux 0.17 (e.g., wrong `Command` methods, incorrect effect assertion chains, stale builder patterns), the repair sub-agent reads [crux-testing-patterns.md](references/crux-testing-patterns.md) and [crux-command-api.md](references/crux-command-api.md) to identify the correct API and adjusts the test syntax. Test logic (what is being tested) and spec traceability (`/// Spec:` comments, test names) are preserved -- only the API calls change.
 
 ### Scenario has no obvious Event mapping
 
