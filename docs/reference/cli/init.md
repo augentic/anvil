@@ -30,7 +30,7 @@ This is the CLI command invoked by [`/spec:init`](../../../plugins/spec/skills/i
 | `--hub` | Scaffold a registry-only platform hub instead of a regular project (RFC-9 §1D). Refuses to run when `.specify/` already exists. |
 | `--format` | Global output format: `json` for structured automation output |
 
-GitHub schema directory URIs are fetched directly by the CLI; a local `git` installation is not required for `specify init --schema-uri`. For private repositories, set `GITHUB_TOKEN` or `GH_TOKEN` in the environment.
+GitHub schema directory URIs are fetched via the local `git` executable, so existing Git credential helpers and configured Git auth are used.
 
 ## JSON output
 
