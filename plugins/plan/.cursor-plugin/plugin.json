@@ -2,7 +2,7 @@
   "name": "plan",
   "displayName": "Plan",
   "description": "Generate Statements of Work from Specify artifacts.",
-  "version": "0.24.3",
+  "version": "0.24.4",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"
