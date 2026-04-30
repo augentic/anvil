@@ -67,7 +67,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Specify Plugin (`plugins/spec/`)
 
-- `init` - initialize Specify in a project (one-time setup; supports `--hub` for a registry-only platform hub, RFC-9 §1D)
+- `init` - initialize Specify in a project from `--schema-uri` (one-time setup; supports `--hub` for a registry-only platform hub, RFC-9 §1D)
 - `define` - create a change and generate all artifacts in one step
 - `build` - validate artifacts and implement tasks from a Specify change
 - `merge` - finalize and merge a completed change

@@ -1,28 +1,56 @@
 ---
 name: specify-init
-description: Initialize Specify in a project. Decides between a regular single-project init and a registry-only platform hub. Populates `.specify/.cache/` (regular only) and invokes `specify init` (with `--hub` for hubs) to scaffold `.specify/` and write `project.yaml`. Use when setting up a new project for spec-driven development.
+description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, decides between a regular single-project init and a registry-only platform hub, then invokes `specify init` with `--schema-uri` or `--hub` to scaffold `.specify/` and write `project.yaml`. Use when setting up a new project for spec-driven development.
 argument-hint: "[schema-url]"
 ---
 
-## Prerequisites
+## CLI bootstrap
 
-**If `specify` is not on PATH:** stop and instruct the user to install the CLI via `brew install augentic/tap/specify` (preferred), `cargo install specify`, or the release script at https://specify.sh/install, then re-run. Do not attempt a prose fallback — validation rules have diverged past the point where the agent can reliably reproduce them.
+`/spec:init` is the one Specify skill that may install the CLI before continuing. Other CLI-dependent skills still stop when `specify` is missing.
 
 ## Arguments
 
 ```text
-$SCHEMA         = $ARGUMENTS[0]
+$SCHEMA_URI     = $ARGUMENTS[0]
 ```
 
-I'll decide whether this is a regular single-project init or a registry-only platform hub, populate `.specify/.cache/` if needed, and invoke `specify init` (with `--hub` for hubs) to install a starter `project.yaml`.
+I'll ensure the `specify` CLI is available, decide whether this is a regular single-project init or a registry-only platform hub, then invoke `specify init` (with `--schema-uri` for regular projects or `--hub` for hubs) to install a starter `project.yaml`.
 
 ---
 
-**Input**: None required. Optionally a schema (name or URL) and project context. The schema argument is irrelevant for hub mode and is ignored when `--hub` is set.
+**Input**: None required. Optionally a schema URI and project context. The schema argument is irrelevant for hub mode.
 
 **Steps**
 
-1. **Check if already initialized**
+1. **Ensure the CLI is available**
+
+   Run:
+
+   ```bash
+   specify --version
+   ```
+
+   If the command succeeds, continue to step 2.
+
+   If `specify` is not on PATH, tell the user:
+
+   > "The `specify` CLI is required before I can initialize this project. I can install it now with `cargo install --git https://github.com/augentic/specify-cli`, then verify `specify --version` before continuing."
+
+   Use the **AskQuestion tool** to confirm whether they want to install the CLI now.
+
+   - If they decline, stop and tell them to install the CLI manually, then re-run `/spec:init`.
+   - If they confirm, run:
+
+     ```bash
+     cargo install --git https://github.com/augentic/specify-cli
+     ```
+
+   After installation, run `specify --version` again.
+
+   - If verification succeeds, continue.
+   - If installation or verification fails, surface the error and stop. Do not attempt a prose fallback or hand-roll `.specify/` scaffolding.
+
+2. **Check if already initialized**
 
    Check whether `.specify/project.yaml` exists.
 
@@ -31,7 +59,7 @@ I'll decide whether this is a regular single-project init or a registry-only pla
    - If they decline, stop.
    - If they confirm, treat the run as `$UPGRADE=true` so the CLI rewrites `specify-version` to the running binary.
 
-2. **Decide the topology — regular project or platform hub**
+3. **Decide the topology — regular project or platform hub**
 
    See [Platform repo topologies](../../../../docs/explanation/platform-repo.md) for the full background on the two shapes. Briefly:
 
@@ -42,40 +70,20 @@ I'll decide whether this is a regular single-project init or a registry-only pla
 
    Branch:
 
-   - When `$HUB_MODE=true`, skip steps 3 and 4's schema-resolution work and jump to step 5's hub invocation.
+   - When `$HUB_MODE=true`, skip step 4's schema selection and jump to step 5's hub invocation.
    - When `$HUB_MODE=false`, continue with the schema-driven flow below.
 
-3. **Resolve schema** *(regular only — skip in hub mode)*
+4. **Choose schema URI** *(regular only — skip in hub mode)*
 
-   If `$SCHEMA` is provided (as an argument), use it directly. Otherwise, list available schemas from the `schemas/` directory (each subdirectory containing a `schema.yaml` is a schema). If only one schema exists, use it as the default and confirm with the user. If multiple schemas exist, use the **AskQuestion tool** to let the user select from the available options.
-
-   Store the result as `$SCHEMA`.
-
-4. **Populate the schema cache** *(regular only — skip in hub mode)*
-
-   The agent owns all writes to `.specify/.cache/`. The CLI reads the cache but never fetches. Before invoking `specify init`, mirror the resolved schema tree under `.specify/.cache/<name>/` so the CLI can resolve it:
+   If `$SCHEMA_URI` is provided (as an argument), use it directly. Otherwise, prefer the canonical Omnia schema URI unless project context clearly indicates another schema:
 
    ```text
-   .specify/.cache/
-   ├── .cache-meta.yaml
-   └── <schema-name>/
-       ├── schema.yaml
-       └── briefs/
-           ├── proposal.md
-           ├── specs.md
-           ├── design.md
-           ├── tasks.md
-           ├── build.md
-           └── merge.md
+   https://github.com/augentic/specify/schemas/omnia
    ```
 
-   Use the **Schema Resolution** procedure (`references/schema-resolution.md`) to locate schema files. Files needed: `schema.yaml` and every file referenced by `pipeline.{define,build,merge}[].brief`. For URL-based schemas, fetch them with **WebFetch**; for bare-name schemas, copy from the local `schemas/<name>/` tree.
+   For local development in this repository, a local schema directory such as `./schemas/omnia` is also valid. If multiple schemas are plausible, use the **AskQuestion tool** to let the user select the schema URI.
 
-   Write `.specify/.cache/.cache-meta.yaml` with:
-   - `schema_url`: the full `$SCHEMA` value. For bare-name schemas (no `/`), use `local:<name>` (e.g. `local:omnia`). For URL-based schemas, use the full URL (including `@ref` if present).
-   - `fetched_at`: current ISO-8601 timestamp.
-
-   If schema resolution or fetch fails, warn the user and stop — a valid schema is required before invoking the CLI.
+   Store the result as `$SCHEMA_URI`. Do not pre-populate `.specify/.cache/`; the CLI owns schema fetch/copy during `specify init --schema-uri`.
 
 5. **Collect project metadata and invoke `specify init`**
 
@@ -84,33 +92,29 @@ I'll decide whether this is a regular single-project init or a registry-only pla
    **Regular invocation:**
 
    ```bash
-   specify init "$SCHEMA" \
-     --schema-dir . \
+   specify init \
+     --schema-uri "$SCHEMA_URI" \
      --name "$PROJECT_NAME" \
-     ${DOMAIN:+--domain "$DOMAIN"} \
-     ${UPGRADE:+--upgrade} \
-     --format json
+     ${DOMAIN:+--domain "$DOMAIN"}
    ```
 
    **Hub invocation** (when `$HUB_MODE=true`):
 
    ```bash
-   specify init hub \
-     --schema-dir . \
+   specify init \
      --name "$PROJECT_NAME" \
      ${DOMAIN:+--domain "$DOMAIN"} \
-     --hub \
-     --format json
+     --hub
    ```
 
-   The first positional argument (`hub`) is the `schema` value — ignored in hub mode but still required by the CLI parser. Any string works; `hub` is a convenient placeholder. The CLI writes:
+   The CLI writes:
 
-   - **Regular** — `.specify/{changes,specs,archive,.cache}/`, `.specify/project.yaml` with one empty `rules:` entry per `pipeline.define` brief, `.specify/.cache/` upserted into `.gitignore`, and `specify-version` recorded.
+   - **Regular** — `.specify/{changes,specs,archive,.cache}/`, `.specify/project.yaml` with one empty `rules:` entry per `pipeline.define` brief, the resolved schema cached under `.specify/.cache/`, `.specify/.cache/` upserted into `.gitignore`, and `specify-version` recorded.
    - **Hub** — `.specify/project.yaml` with `schema: hub`, `hub: true`, no `rules:` block; `.specify/registry.yaml` with `version: 1` and `projects: []`; `.specify/initiative.md` from the canonical template named after `$PROJECT_NAME`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`. Phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines.
 
-   In both modes, parse the JSON response to capture `config-path`, `schema-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, and `hub` for reporting back to the user. The `hub` field is `true` only when `--hub` was passed.
+   For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `schema-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, and `hub`. Normal operator-facing examples should use text output.
 
-   On non-zero exit, surface the JSON `error`/`message` fields. Do not attempt a prose fallback. Hub mode in particular refuses to scaffold over an existing `.specify/` directory — if the user wants to convert an existing single-repo project into a hub, they remove `.specify/` first.
+   On non-zero exit, surface the CLI error. Do not attempt a prose fallback. Hub mode in particular refuses to scaffold over an existing `.specify/` directory — if the user wants to convert an existing single-repo project into a hub, they remove `.specify/` first.
 
 6. **Prompt for customization**
 
@@ -158,7 +162,7 @@ I'll decide whether this is a regular single-project init or a registry-only pla
 ```
 ## Specify Initialized
 
-**Schema**: $SCHEMA
+**Schema**: $SCHEMA_URI
 **Config**: .specify/project.yaml
 **Changes**: .specify/changes/
 **Baseline specs**: .specify/specs/
@@ -173,7 +177,7 @@ Next steps:
 ```
 ## Specify Initialized (Existing Codebase Detected)
 
-**Schema**: $SCHEMA
+**Schema**: $SCHEMA_URI
 **Config**: .specify/project.yaml
 **Baseline change**: .specify/changes/initial-baseline/
 
@@ -201,8 +205,10 @@ Next steps:
 ```
 
 **Guardrails**
+- `/spec:init` may install the CLI only after explicit user confirmation, using `cargo install --git https://github.com/augentic/specify-cli`
+- Always verify `specify --version` before invoking `specify init`
 - Do not overwrite an existing project.yaml without user confirmation
-- For regular projects, populate `.specify/.cache/` before invoking `specify init` — the agent owns cache writes; the CLI only reads
+- For regular projects, pass a schema URI to `specify init --schema-uri`; do not hand-populate `.specify/.cache/`
 - For hubs, never populate `.specify/.cache/` and never resolve a schema — the `hub` sentinel disables phase pipelines on the hub itself, so there is no schema to cache
 - Hub init refuses to run over an existing `.specify/`; if the user wants to convert a regular project into a hub, they must remove `.specify/` first
 - If the CLI exits non-zero, surface the error and stop; do not hand-roll the scaffold

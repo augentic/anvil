@@ -79,7 +79,7 @@ mkdir shop-platform && cd shop-platform
 git init --quiet
 git remote add origin git@github.com:org/shop-platform.git
 
-specify init hub --schema-dir . --name shop-platform --hub
+specify init --hub --name shop-platform
 ```
 
 The first positional `hub` is a placeholder for the schema argument — `--hub` mode ignores it but the parser still requires *something*. `--name` must be kebab-case because the CLI bakes it into `.specify/initiative.md`'s frontmatter.
@@ -453,7 +453,7 @@ See [`specify plan doctor`](../reference/cli/plan.md#specify-plan-doctor) for th
 Other common issues:
 
 - **`Error::DriverBusy { pid }`** — another `/spec:execute` is holding `.specify/plan.lock`. If it is dead, `specify plan lock release --pid <pid>` reclaims the stamp; otherwise wait for the live driver.
-- **`hub-cannot-be-project`** — a registry entry has `url: .` on a hub. Either remove the entry (`specify registry remove <name>`) or convert the hub to a platform-as-project shape by removing `.specify/` and re-running `specify init <schema>` without `--hub`.
+- **`hub-cannot-be-project`** — a registry entry has `url: .` on a hub. Either remove the entry (`specify registry remove <name>`) or convert the hub to a platform-as-project shape by removing `.specify/` and re-running `specify init --schema-uri <uri>` without `--hub`.
 - **Cross-project contract warnings in the merge transcript** — see [`/spec:execute` §Cross-project contract check](../../plugins/spec/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b). The merged change is still `done`; the warnings are advisory and recorded on the merged change's journal.
 
 ## Verification

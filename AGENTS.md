@@ -26,7 +26,7 @@ The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/
 
 CLI surface the skills depend on:
 
-- `specify init [--hub]` — scaffold `.specify/` and write `project.yaml`. `--hub` (RFC-9 §1D) scaffolds a registry-only platform hub instead of a regular project.
+- `specify init --schema-uri <uri>` — scaffold `.specify/`, resolve/cache the schema URI, and write `project.yaml`. `--hub` (RFC-9 §1D) scaffolds a registry-only platform hub instead of a regular project and does not require a schema URI.
 - `specify status` — project dashboard summarising registry, plan, and active changes (single-change view lives at `specify change status <name>`).
 - `specify change {create, list, status, transition, touched-specs, overlap, archive, drop, validate, merge {preview, conflict-check, run}, task {progress, mark}, outcome {set, show}, journal {append, show}}` — every per-change verb. `outcome set` stamps the `.metadata.yaml:outcome` that `/spec:execute` reads; `journal append` writes `question` / `failure` / `recovery` entries into `journal.yaml`.
 - `specify plan {create, validate, doctor, next, status, add, amend, transition, archive, lock}` — plan CRUD and lifecycle (RFC-2 Layer 1 + RFC-3a + RFC-9 §§1G/4B). `create` scaffolds an empty plan (renamed from `init` in v1.x); `add` appends an entry (renamed from the v1 entry-append `create`); `doctor` is a strict superset of `validate` with cycle / orphan-source / stale-clone / unreachable-entry diagnostics; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/spec:execute`.

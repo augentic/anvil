@@ -100,7 +100,7 @@ The diagnostic always carries the stable code `hub-cannot-be-project`, alongside
 Use `specify init --hub` to scaffold the canonical hub shape:
 
 ```bash
-specify init hub --schema-dir . --name <kebab-name> --hub
+specify init --hub --name <kebab-name>
 ```
 
 (The first positional argument is the `schema` value -- ignored in hub mode but still required by the parser. `hub` is a convenient placeholder; any value works.)
@@ -114,7 +114,7 @@ The command writes:
 
 The command **refuses** when `.specify/` already exists. This is deliberate: flipping an existing single-repo project into a hub would clobber `project.yaml`. Operators who genuinely want to convert remove `.specify/` first.
 
-For the platform-as-project shape, use the regular `specify init <schema>` (no `--hub` flag). See [`specify init`](../reference/cli/init.md) for the full flag surface and the [`/spec:init`](../../plugins/spec/skills/init/SKILL.md) skill for the agent-driven wrapper that populates the schema cache and prompts for project metadata.
+For the platform-as-project shape, use the regular `specify init --schema-uri <uri>` (no `--hub` flag). See [`specify init`](../reference/cli/init.md) for the full flag surface and the [`/spec:init`](../../plugins/spec/skills/init/SKILL.md) skill for the agent-driven wrapper that prompts for project metadata.
 
 ## See also
 

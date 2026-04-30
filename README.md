@@ -97,7 +97,7 @@ Three layers, independently useful, stacked top to bottom:
 - **`specify initiative {create, show, finalize}`** -- Operator brief at `.specify/initiative.md`. `create` was renamed from v1 `init` (RFC-9 §1F); `finalize` is the canonical closure verb that confirms every per-project PR has merged before archiving the plan (RFC-9 §4C).
 - **`specify registry {add, remove, show, validate}`** -- Platform registry at `.specify/registry.yaml`. `add` and `remove` were added by RFC-9 §2A; both validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
 - **`specify workspace {sync, status, push, merge}`** -- Materialises `.specify/workspace/<peer>/` for multi-repo planning, pushes workspace clones to remotes after execution, and squash-merges the resulting PRs once CI is green (`merge`, RFC-9 §4A).
-- **`specify init [<schema>] [--hub]`** -- Project scaffold. The `--hub` flag (RFC-9 §1D) scaffolds a registry-only platform hub instead of a regular project.
+- **`specify init --schema-uri <uri> [--hub]`** -- Project scaffold. Regular init resolves and caches the schema URI directly; the `--hub` flag (RFC-9 §1D) scaffolds a registry-only platform hub instead of a regular project.
 
 A typical initiative: `/spec:plan migrate-to-v2 --source monolith=/path/to/legacy` → review the authored plan with `specify plan status` → `/spec:execute --loop` until it reports `all-done`.
 
@@ -116,7 +116,13 @@ See the [Developer Guide](docs/reference/plugins/index.md) for the full skill re
 
 ## Installing the CLI
 
-The `specify` binary backs every skill in the `spec` plugin. Install via (preferred order):
+The `specify` binary backs every skill in the `spec` plugin. For one-stop project setup in Cursor, run `/spec:init`; if the CLI is missing, the skill can install it after confirmation with:
+
+```bash
+cargo install --git https://github.com/augentic/specify-cli
+```
+
+Manual install paths remain available:
 
 ```bash
 brew install augentic/tap/specify           # macOS + Linux (primary)

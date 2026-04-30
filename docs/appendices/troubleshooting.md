@@ -224,7 +224,7 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 **Resolution:** Two paths.
 
 - **Stay on the hub:** remove the entry. `specify registry remove <name>`. Code projects must live in their own repos and be referenced via a remote URL.
-- **Convert to platform-as-project:** if the operator actually wants the single-repo shape (the initiating repo is itself a code project), remove `.specify/` and re-run `specify init <schema>` without `--hub`. See [Platform repo topologies](../explanation/platform-repo.md).
+- **Convert to platform-as-project:** if the operator actually wants the single-repo shape (the initiating repo is itself a code project), remove `.specify/` and re-run `specify init --schema-uri <uri>` without `--hub`. See [Platform repo topologies](../explanation/platform-repo.md).
 
 ### `description-missing-multi-repo`
 

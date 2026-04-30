@@ -73,8 +73,8 @@ specify status                            # project dashboard
 specify change status <name>              # single-change view
 
 # Project setup
-specify init <schema>                     # regular single-project scaffold
-specify init hub --hub                    # registry-only platform hub (RFC-9 1D)
+specify init --schema-uri <uri>           # regular single-project scaffold
+specify init --hub                        # registry-only platform hub (RFC-9 1D)
 
 # Change management
 specify change list

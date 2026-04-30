@@ -42,7 +42,7 @@ For the full rationale and migration plan, see [rfcs/archive/rfc-10-skills.md](h
 A **registry-only platform hub** (RFC-9 ?1D) is now the canonical starting shape for a multi-repo initiative. The hub holds platform state -- `registry.yaml`, `initiative.md`, `plan.yaml`, `workspace/` -- and is never itself a code project.
 
 ```bash
-specify init hub --schema-dir . --name shop-platform --hub
+specify init --hub --name shop-platform
 ```
 
 The flag scaffolds a sentinel `project.yaml { schema: hub, hub: true, ... }` that disables phase pipelines on the hub itself, plus an empty `registry.yaml` and an `initiative.md` template. `Registry::validate_shape` extends with a `hub-only` mode that rejects any registry entry whose `url` is `.`.

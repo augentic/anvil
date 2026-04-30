@@ -23,7 +23,7 @@ The hub itself is a git repo so the platform state (registry, initiative briefs,
 ## 2. Run `specify init --hub`
 
 ```bash
-specify init hub --schema-dir . --name shop-platform --hub
+specify init --hub --name shop-platform
 ```
 
 The first positional `hub` is a placeholder -- `--hub` mode ignores the schema argument but the parser still requires *something*. `--name` must be kebab-case because the CLI bakes it into `.specify/initiative.md`'s frontmatter.

@@ -305,6 +305,8 @@ pub enum Phase {
 
 Per-brief metadata (`description`, `generates`, `needs`, `tracks`) is *not* part of the schema — it lives as YAML frontmatter on the brief markdown files referenced by `PipelineEntry.brief`. Parsing that frontmatter is the job of the `brief.rs` module described below; `schema.rs` deliberately stops at the pipeline-shape boundary so the two concerns can be tested independently.
 
+> Superseded: regular `specify init --schema-uri <uri>` now owns the initial schema fetch/copy into `.specify/.cache/`. Project-aware commands still resolve from local cache after init.
+
 Note the absence of any HTTP fetching — the `resolve` function handles local and cache paths. Remote fetching (the WebFetch step in the current skill) remains the agent's responsibility. The CLI's `specify schema resolve` subcommand outputs the resolved path so the skill knows where to find files, but the agent does the HTTP fetch if the cache is stale. This keeps the CLI dependency-free for networking and avoids duplicating the agent's authenticated GitHub access.
 
 **Cache-write ownership (M10).** The agent owns every write to `.specify/.cache/` — fetched schema files, `briefs/*`, and `.cache-meta.yaml`. The CLI only reads the cache (via `Schema::resolve` and `CacheMeta::load` below). This asymmetry is deliberate: the agent already has the HTTP client, credential handling, and retry logic for authenticated GitHub access, and the CLI stays dependency-free on the networking side. The trade-off is that the cache format becomes a cross-boundary contract — the agent writes it, the CLI parses it — so the format is pinned in `specify-schema` (see `CacheMeta` below) and published as JSON Schema at `schemas/cache-meta.schema.json` so skill prose can cite one source of truth rather than restating the format inline. This decision is revisitable: if agent-side cache writes turn out to be error-prone in practice, we can move to a `specify schema fetch <url>` subcommand that accepts pre-fetched bytes on stdin and writes the cache itself. For Phase 1, agent-owned writes keep the CLI surface smaller.
@@ -1154,7 +1156,7 @@ Downstream projects need a deterministic story for getting the `specify` binary,
 
 `apt`, `dnf`, and similar OS-native package managers are deferred — the ordering above covers the target audience until Linux-distro usage justifies the packaging overhead.
 
-**Skill fallback when the binary is missing.** Skills that invoke `specify` hard-fail with an install instruction. The surface looks like:
+**Skill fallback when the binary is missing.** `/spec:init` is the bootstrap exception: because it is the first skill most users run, it may confirm with the user, install the CLI with `cargo install --git https://github.com/augentic/specify-cli`, verify `specify --version`, and only then continue to `specify init`. All other skills that invoke `specify` hard-fail with an install instruction. The surface looks like:
 
 ```markdown
 1. **Validate artifacts**
@@ -1163,7 +1165,7 @@ Downstream projects need a deterministic story for getting the `specify` binary,
    ``` If the command is not found, stop and instruct the user to install the CLI via `brew install specify` (preferred), `cargo install specify`, or the release script at https://specify.sh/install, then re-run. Do not attempt a prose fallback — validation rules have diverged past the point where the agent can reliably reproduce them.
 ```
 
-This is a deliberate break from the current `merge` skill's "if `python3` is unavailable, follow the algorithm in `delta-merge.md`" pattern. The prose fallback worked when the CLI was a 120-line Python script; it does not scale to the validator + parser + merger + task engine. Maintaining a second implementation in skill prose would reintroduce exactly the unreliable-interpretation problem this RFC exists to solve. `specify init` (the one skill that runs before the CLI has been exercised against the project) must carry the same hard-fail guard so projects never enter a state where `project.yaml` exists but no downstream skill can read it.
+This is a deliberate break from the current `merge` skill's "if `python3` is unavailable, follow the algorithm in `delta-merge.md`" pattern. The prose fallback worked when the CLI was a 120-line Python script; it does not scale to the validator + parser + merger + task engine. Maintaining a second implementation in skill prose would reintroduce exactly the unreliable-interpretation problem this RFC exists to solve. `specify init` (the one skill that runs before the CLI has been exercised against the project) may bootstrap the binary, but it must still verify the installed CLI before writing project state so projects never enter a state where `project.yaml` exists but no downstream skill can read it.
 
 The install failure message is the only prose every CLI-invoking skill carries verbatim. It is short enough to duplicate, and centralising it in a reference doc would still require every skill to quote it.
 
