@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Spec-driven code generation plugins for Augentic.",
-    "version": "0.24.4",
+    "version": "0.24.5",
     "pluginRoot": "plugins"
   },
   "plugins": [
