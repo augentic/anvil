@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../schema.schema.json
+# yaml-language-server: $schema=../../.cursor/schemas/specify-schema.schema.json
 name: contracts
 version: 1
 description: API contract definition and validation

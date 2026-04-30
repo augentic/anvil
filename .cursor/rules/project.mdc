@@ -210,7 +210,7 @@ Optional:
 - `argument-hint` — Cursor placeholder text for the slash command.
 - `allowed-tools` — space-separated tool names. Today's policy is to omit and inherit the caller's toolbelt; declare it only when there is a clear reason to narrow the surface.
 
-Forbidden (validated by `make checks` via `schemas/skill.schema.json`):
+Forbidden (validated by `make checks` via `.cursor/schemas/skill.schema.json`):
 
 - `license` — license is declared once in the plugin manifest and the repo `LICENSE` file.
 - `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `paths` — all dropped; use the body for trigger phrases, gating, and platform notes.
@@ -258,7 +258,7 @@ The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/spe
 - SKILL.md body is ≤500 lines (post-frontmatter).
 - No SKILL.md carries a top-level `license:` (or any other forbidden frontmatter key).
 
-See `scripts/checks.ts` and `schemas/skill.schema.json` for the exact rules.
+See `scripts/checks.ts` and `.cursor/schemas/skill.schema.json` for the exact rules.
 
 ## For Contributors
 

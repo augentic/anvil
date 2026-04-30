@@ -9,6 +9,7 @@ import Ajv2020 from "npm:ajv@8/dist/2020.js";
 
 const REPO_ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const SCHEMA_DIR = join(REPO_ROOT, "schemas");
+const CURSOR_SCHEMA_DIR = join(REPO_ROOT, ".cursor", "schemas");
 const RED = "\x1b[0;31m";
 const NC = "\x1b[0m";
 
@@ -126,7 +127,7 @@ async function validateSchemaYaml(): Promise<void> {
   const ajv = new Ajv2020({ allErrors: true });
 
   const schemaSchema = JSON.parse(
-    await Deno.readTextFile(join(SCHEMA_DIR, "schema.schema.json")),
+    await Deno.readTextFile(join(CURSOR_SCHEMA_DIR, "specify-schema.schema.json")),
   );
 
   const validateSchema = ajv.compile(schemaSchema);
@@ -309,7 +310,7 @@ const KNOWN_TOOLS = new Set([
 
 async function validateSkillFrontmatter(): Promise<void> {
   const skillSchema = JSON.parse(
-    await Deno.readTextFile(join(SCHEMA_DIR, "skill.schema.json")),
+    await Deno.readTextFile(join(CURSOR_SCHEMA_DIR, "skill.schema.json")),
   );
   const ajv = new Ajv2020({ allErrors: true });
   const validate = ajv.compile(skillSchema);

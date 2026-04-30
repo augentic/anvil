@@ -30,7 +30,7 @@ No markdown file may reference a stale checklist count from an earlier version o
 
 ### 3. Schema YAML validation
 
-Every `schemas/**/schema.yaml` file (at most two directory levels deep) must validate against `schemas/schema.schema.json` using JSON Schema 2020-12.
+Every `schemas/**/schema.yaml` file (at most two directory levels deep) must validate against `.cursor/schemas/specify-schema.schema.json` using JSON Schema 2020-12.
 
 **Common fix:** check that all required fields (`name`, `version`, `description`, `pipeline`) are present and correctly typed.
 
@@ -54,7 +54,7 @@ Every symlink under `plugins/` must resolve to a valid target. Skills often syml
 
 ### 6. SKILL.md frontmatter validation
 
-Every `SKILL.md` under `plugins/` is validated against `schemas/skill.schema.json`:
+Every `SKILL.md` under `plugins/` is validated against `.cursor/schemas/skill.schema.json`:
 
 - **Required fields** -- `name` (kebab-case) and `description` (minimum 10 characters)
 - **Name match** -- the `name` field must match the parent directory name

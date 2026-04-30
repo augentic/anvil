@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify/schemas/schema.schema.json",
+  "$id": "https://github.com/augentic/specify/.cursor/schemas/specify-schema.schema.json",
   "title": "Specify schema.yaml",
   "description": "Validates the structure of a Specify schema definition file.",
   "type": "object",

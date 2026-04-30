@@ -21,7 +21,7 @@ A skill directory must contain a `SKILL.md` at the top level. It may optionally 
 
 ## SKILL.md structure
 
-Every `SKILL.md` begins with YAML frontmatter validated against `schemas/skill.schema.json`:
+Every `SKILL.md` begins with YAML frontmatter validated against `.cursor/schemas/skill.schema.json`:
 
 ```yaml
 ---
@@ -148,7 +148,7 @@ The Cursor agent reads these directives and loads the referenced skill when it r
 5. **Register the skill** in the plugin's `.cursor-plugin/plugin.json` if one exists. The marketplace manifest at `.cursor-plugin/marketplace.json` declares plugins by `source` directory; individual skills are discovered by directory walking.
 
 6. **Run `make checks`** to verify:
-   - Frontmatter validates against `schemas/skill.schema.json`
+   - Frontmatter validates against `.cursor/schemas/skill.schema.json`
    - `name` is globally unique, plugin-qualified, and matches `^[a-z][a-z0-9-]*$`
    - SKILL.md body (post-frontmatter) is ≤500 lines
    - `description` is ≤1024 characters

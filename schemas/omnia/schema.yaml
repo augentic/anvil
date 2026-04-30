@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../schema.schema.json
+# yaml-language-server: $schema=../../.cursor/schemas/specify-schema.schema.json
 name: omnia
 version: 1
 description: Omnia Rust WASM workflow

@@ -177,7 +177,7 @@ The Anthropic spec is permissive — it accepts a number of optional fields beyo
 - **`user-invocable`** — Claude Code's hide-from-`/`-menu knob. Same reasoning as `disable-model-invocation`.
 - **`paths`** — Claude Code's auto-activation glob. Specify skills are invoked by slash command, by phase pipeline, or by direct trigger phrases — not by file pattern.
 
-The forbidden list is enforced in [`schemas/skill.schema.json`](../../schemas/skill.schema.json) via `additionalProperties: false`. A skill shipping any of these keys fails `make checks`.
+The forbidden list is enforced in [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json) via `additionalProperties: false`. A skill shipping any of these keys fails `make checks`.
 
 ## Validation
 
@@ -189,7 +189,7 @@ The forbidden list is enforced in [`schemas/skill.schema.json`](../../schemas/sk
 - **Description length.** `description` is ≤1024 characters.
 - **Argument-hint shape.** `argument-hint` contains no `?`, no `--`, and no `|`.
 - **Body length.** SKILL.md body (post-frontmatter) is ≤500 lines.
-- **Forbidden keys.** No top-level `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, or `paths`. Enforced by the `additionalProperties: false` clause in `schemas/skill.schema.json`.
+- **Forbidden keys.** No top-level `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, or `paths`. Enforced by the `additionalProperties: false` clause in `.cursor/schemas/skill.schema.json`.
 
 A skill that fails any of these checks will fail CI. When a check fires, the right fix is to bring the skill into compliance, not to relax the check; the rules are deliberately mechanical so `make checks` can keep them honest without operator review.
 
