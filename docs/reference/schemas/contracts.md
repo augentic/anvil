@@ -21,11 +21,11 @@ There is no `design` stage. Contract changes define interface shapes, not implem
 
 | Brief | Skills invoked |
 |-------|---------------|
-| `build.md` | `/contracts:validator` |
+| `build.md` | `/interfaces:openapi`, `/interfaces:asyncapi`, `/interfaces:json-schema` (verifier intent) |
 
-The build brief delegates to `/contracts:validator` to verify structural correctness -- `$ref` resolution, schema metadata, binding completeness. There are no code-generation skills to invoke because contract changes produce no implementation code.
+The build brief delegates to the format-specific verifier intent of the relevant `/interfaces:*` skill (`/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming, `/interfaces:json-schema` for shared payload schemas) to verify structural correctness -- `$ref` resolution, schema metadata, binding completeness. There are no code-generation skills to invoke because contract changes produce no implementation code.
 
-A verify-repair loop runs up to 2 iterations: if the validator reports failures, `/contracts:writer` makes targeted repairs, then the validator re-checks. If issues remain after 2 iterations, they are surfaced for human review.
+A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same skill's author intent makes targeted repairs, then the verifier re-checks. If issues remain after 2 iterations, they are surfaced for human review.
 
 ### Merge phase
 

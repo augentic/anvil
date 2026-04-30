@@ -36,8 +36,9 @@ Step 3/3: merge
 # - Producer `backend.contracts.produces` includes `http/user-api.yaml`.
 # - Merged paths under contracts/ touched http/user-api.yaml.
 # - Consumers found via registry: mobile (contracts.consumes).
-# - /contracts:validator --mode cross-project --producer-contract .specify/contracts/http/user-api.yaml --consumer-workspace .specify/workspace/mobile/
-# - Validator returned summary.total-findings=2.
+# - /interfaces:openapi --mode cross-project --producer-contract .specify/contracts/http/user-api.yaml --consumer-workspace .specify/workspace/mobile/
+#   (HTTP contract → OpenAPI verifier; AsyncAPI / JSON Schema contracts route to /interfaces:asyncapi / /interfaces:json-schema.)
+# - Verifier returned summary.total-findings=2.
 # - Recording each finding via:
 #     specify change journal append update-user-api-v2 merge failure \
 #         --summary "cross-project-warning: <change-kind> in mobile for contracts/http/user-api.yaml" \

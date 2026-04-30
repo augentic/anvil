@@ -1,9 +1,7 @@
 ---
-name: ios-reviewer
+name: vectis-ios-reviewer
 description: Review generated iOS shell (SwiftUI) code for structural issues, integration correctness, and quality problems. Use when reviewing a Crux app's iOS shell after generation, or when the user mentions ios-reviewer.
-license: MIT
-argument-hint: "target-dir"
-allowed-tools: Read Grep Glob Shell SemanticSearch
+argument-hint: "<target-dir>"
 ---
 
 # Crux iOS Shell Reviewer
@@ -391,7 +389,7 @@ single Specify change that tracks all of them:
 
    - **tasks.md**: Order tasks by dependency -- spec updates first (so requirements are clear before implementation), then missing screen views, then missing effect handlers, then navigation fixes, then design system corrections, then verification. Each task references the finding ID it addresses. Include a final verification section that re-runs the ios-reviewer skill to confirm all Critical findings are resolved.
 
-4. **Show final status** using `/spec:status` and summarize: change name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
+4. **Show final status** by running `specify change status <name>` and summarize: change name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
 
 ## Severity Definitions
 

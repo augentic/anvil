@@ -195,17 +195,6 @@ changes:
     status: pending
 ```
 
-## 6. Verify across repos
-
-After the migration completes, verify each target repo:
-
-```text
-# In each target repo
-/spec:verify
-```
-
-This confirms that the generated code matches the extracted and newly authored specifications.
-
 ## The migration workflow
 
 ```text
@@ -221,9 +210,6 @@ specify plan status
 
 # Push workspace clones to remotes
 specify workspace push
-
-# Verify
-(per repo) /spec:verify
 ```
 
 ## What you learned

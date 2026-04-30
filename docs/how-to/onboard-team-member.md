@@ -17,7 +17,7 @@ The `.specify/` directory is committed to the repository. When they clone or pul
 - **`specs/`** -- the accumulated baseline specifications.
 - **`contracts/`** -- baseline API contracts (if any).
 
-They can immediately run `/spec:status` to see active changes and `/spec:verify` to check whether the code matches the baseline.
+They can immediately run `specify status` to see active changes and the project dashboard.
 
 ## Working in parallel
 
@@ -55,5 +55,4 @@ Point them to:
 ## See also
 
 - [Troubleshooting](../appendices/troubleshooting.md) -- common issues and fixes
-- [/spec:status](../reference/change-skills/status.md) -- checking project state
-- [/spec:verify](../reference/change-skills/verify.md) -- comparing code against specs
+- [specify status](../reference/cli/status.md) -- project dashboard CLI

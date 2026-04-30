@@ -1,9 +1,7 @@
 ---
-name: wiretapper
-description: Add wiretap code to a cloned legacy TypeScript repo to capture request/response and side-effect data as fixture JSON; detect patterns, generate adapters, wire entrypoint, verify compile.
-license: MIT
-argument-hint: "legacy-dir? app-name?"
-allowed-tools: Read Write StrReplace Shell Grep
+name: rt-wiretapper
+description: Add wiretap code to a cloned legacy TypeScript repo to capture request/response and side-effect data as fixture JSON; detect patterns, generate adapters, wire entrypoint, verify compile. Use when capturing fixture data from a legacy TypeScript service before migration, or when the user mentions `wiretapper`.
+argument-hint: "<legacy-dir>"
 ---
 
 # Wiretapper Skill
@@ -24,6 +22,16 @@ $APP_NAME  = $ARGUMENTS[1] OR from package.json "name" OR basename($LEGACY)   # 
 If `$LEGACY` is missing or not a directory, fail with: `"Error: legacy-dir is required and must be an existing directory."`
 
 ## Process
+
+### Step 0: Bootstrap the legacy tree (if remote)
+
+`/rt:wiretapper` only operates on a local directory. When the legacy source lives on a remote, materialise it first with the following guarded clone — the inlined replacement for the retired RT clone skill — and pass the resulting `$DEST` as `$LEGACY`:
+
+```bash
+# Quote DEST and never run rm -rf without verifying the target.
+git clone "$URL" "$DEST"
+test -d "$DEST/.git" && rm -rf "$DEST/.git"   # only if --detach mode is required
+```
 
 ### Step 1: Validate
 

@@ -1,6 +1,6 @@
 # Change Skills (Layer 2)
 
-Layer 2 skills operate on a single change inside `.specify/changes/<name>/`. They form the core define-build-merge loop and provide supporting capabilities for exploration, extraction, verification, and status inspection.
+Layer 2 skills operate on a single change inside `.specify/changes/<name>/`. They form the core define-build-merge loop and provide supporting capabilities for extracting artifacts from existing source.
 
 ## The define-build-merge loop
 
@@ -19,9 +19,6 @@ This is the primary workflow. You initialise a project once, then repeat the def
 | [/spec:build](build.md) | Implement tasks from a defined change | All artifacts, build brief | Source code, task checkmarks |
 | [/spec:merge](merge.md) | Merge completed change into baseline | Change specs + composition*, baseline | Updated baseline, archived change |
 | [/spec:drop](drop.md) | Discard a change without merging | Change metadata | Archived change (dropped) |
-| [/spec:status](status.md) | Inspect active changes and progress | Change metadata, tasks | -- (read-only) |
-| [/spec:verify](verify.md) | Detect drift between code and specs | Baseline specs, source code | -- (read-only) |
-| [/spec:explore](explore.md) | Thinking partner for ideas and requirements | Optional: change artifacts | Optional: artifact updates |
 | [/spec:extract](extract.md) | Produce specs and design from existing code | Source code | `spec.md`, `design.md` |
 
 *\* `composition.yaml` is Vectis-schema only.*

@@ -1,6 +1,6 @@
 # Generation Fixture — Spec-First Pattern
 
-Demonstrates the `/contracts:writer` and `/contracts:validator` behavior when no baseline contracts exist (the spec-first fallback pattern for single-repo services).
+Demonstrates the `/interfaces:json-schema` and `/interfaces:openapi` author and verifier behavior when no baseline contracts exist (the spec-first fallback pattern for single-repo services). The HTTP/resource specs in this fixture make `/interfaces:openapi` the primary format skill; `/interfaces:json-schema` runs first to author the shared payload schemas referenced by the OpenAPI delta.
 
 ## Scenario
 
@@ -18,6 +18,6 @@ A user registration API with three endpoints. The baseline at `.specify/contract
 - `expected/contracts/schemas/error-response.yaml` — JSON Schema for error responses
 - `expected/contracts/http/user-api.yaml` — OpenAPI 3.1 binding with three endpoints
 
-## Expected Validator Output
+## Expected Verifier Output
 
 Clean pass — all `$ref` pointers resolve, all schemas have metadata, all spec-referenced schemas have bindings.

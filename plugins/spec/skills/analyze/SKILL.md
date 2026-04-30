@@ -1,14 +1,12 @@
 ---
-name: analyze
+name: specify-analyze
 description: |
   Plan-time capability inference for both legacy code and documentation
   inputs. Emits capability summaries into discovery.md — not full specs.
   Branches internally on --kind; per-kind clustering / extraction prompts
   are schema-owned. Use when the plan-time discovery brief needs a
   capability-level inventory of a source before propose slices it.
-license: MIT
-argument-hint: "input-path output-dir kind legacy-code|documentation source-key k?"
-allowed-tools: Read Write StrReplace Shell Grep
+argument-hint: "<input-path> <output-dir>"
 ---
 
 # Analyze Skill
@@ -28,6 +26,18 @@ $DISCOVERY   = $OUTPUT_DIR/discovery.md
 ```
 
 `$INPUT_PATH` is either a filesystem path to a source tree (for `--kind legacy-code`) or to a documentation bundle (for `--kind documentation`). `$OUTPUT_DIR` is the plan working directory (`.specify/plans/<initiative>/` when called from the discovery brief); the skill writes to `$DISCOVERY` under it, and — for `--kind legacy-code` only — to the structural-metadata sidecar at `$OUTPUT_DIR/analyze/<$SOURCE_KEY>/metadata.json` (see §*Structural metadata*). `$SOURCE_KEY` is optional; when supplied, the discovery brief uses it to tag this run for a specific top-level plan source.
+
+### Cloning a source tree
+
+`/spec:analyze` only consumes local paths. When a `--source <key>=<url>` (or any caller) needs to materialise a remote git URL into `$INPUT_PATH` first, use the following guarded clone — the inlined replacement for the retired RT clone skill:
+
+```bash
+# Quote DEST and never run rm -rf without verifying the target.
+git clone "$URL" "$DEST"
+test -d "$DEST/.git" && rm -rf "$DEST/.git"   # only if --detach mode is required
+```
+
+Pass the resulting `$DEST` as `$INPUT_PATH` on the next `/spec:analyze` invocation.
 
 ## Input kinds (closed enum)
 

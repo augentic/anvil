@@ -1,22 +1,18 @@
 ---
-name: extract
-description: Extract Specify artifacts (specs + design.md) from existing source code. Produces reconstruction-grade, language-agnostic artifacts capturing domain-level business logic. Supports optional `--include` / `--exclude` / `--manifest` filters that scope which source files are read for business-logic extraction without changing the artifact output shape.
-license: MIT
-argument-hint: "source-path change-dir include glob...? exclude glob...? manifest path?"
-allowed-tools: Read Write StrReplace Shell Grep
+name: specify-extract
+description: Extract Specify artifacts (specs + design.md) from existing source code. Produces reconstruction-grade, language-agnostic artifacts capturing domain-level business logic. Supports optional `--include` / `--exclude` / `--manifest` filters that scope which source files are read for business-logic extraction without changing the artifact output shape. Use when reconstructing Specify artifacts from a legacy code tree, or when the user mentions `extract`.
+argument-hint: "<source-path> <change-dir>"
 ---
 
 ## Critical Path (Quick Reference)
 
 1. **Identify component structure** — detect source language, entry points, module organization, async patterns, and guest/entry-point layer. Pin dependency versions from the lock file, not the manifest.
-2. **Extract business logic** — apply scope filters (`--include`/`--exclude`/`--manifest`), then analyze depth-first by domain. Tag every statement `[domain]`, `[infrastructure]`, `[mechanical]`, or `[unknown]`. Copy type definitions verbatim; capture all serialization attributes, wire-format names, and field optionality.
-3. **Document external API surfaces** — trace actual deserialization code (not type declarations) for every HTTP/API call. Record exact URLs, headers, request/response shapes, auth sources, retries, and timeouts.
-4. **Capture external service dependencies** — classify each service by type (`database`, `managed table store`, `message broker`, `cache`, `identity provider`, `API`, `WebSocket`).
-5. **Capture publication & timing patterns** — document exact publication counts, delay placement, payload identity, partition keys, and message metadata.
-6. **Capture metrics and observability** — record metric names, types, emission points, and labels.
-7. **Write artifacts** — create `$SPECS_DIR/$CRATE_NAME/spec.md` (flat `### Requirement:` blocks with `ID: REQ-XXX`) and `$DESIGN_PATH` (all 14 sections from Context through Notes). Validate against the verification checklist before completing.
-
-See detailed sections below for edge cases, guardrails, and error handling.
+2. **Extract business logic** — apply scope filters (`--include`/`--exclude`/`--manifest`), then analyze depth-first by domain. Tag every statement `[domain]`, `[infrastructure]`, `[mechanical]`, or `[unknown]`. Copy type definitions verbatim; capture all serialization attributes, wire-format names, and field optionality. See [business-logic.md](business-logic.md).
+3. **Document external API surfaces** — trace actual deserialization code (not type declarations) for every HTTP/API call. Record exact URLs, headers, request/response shapes, auth sources, retries, and timeouts. See [external-api.md](external-api.md).
+4. **Capture external service dependencies** — classify each service by type (`database`, `managed table store`, `message broker`, `cache`, `identity provider`, `API`, `WebSocket`). See [dependencies.md](dependencies.md).
+5. **Capture publication & timing patterns** — document exact publication counts, delay placement, payload identity, partition keys, and message metadata. See [dependencies.md](dependencies.md).
+6. **Capture metrics and observability** — record metric names, types, emission points, and labels. See [observability.md](observability.md).
+7. **Write artifacts** — create `$SPECS_DIR/$CRATE_NAME/spec.md` (flat `### Requirement:` blocks with `ID: REQ-XXX`) and `$DESIGN_PATH` (all 14 sections from Context through Notes). See [design-template.md](design-template.md). Validate against [verification.md](verification.md) before completing.
 
 # Extract
 
@@ -34,7 +30,7 @@ Analyze a source codebase to produce reconstruction-grade, **language-agnostic**
 2. **Change Directory** (`$CHANGE_DIR`): Specify change directory (e.g., `./.specify/changes/component/`)
 3. **Include globs** (`$INCLUDE`): Zero or more `--include <glob>` values that narrow the read set for business-logic extraction. Empty ≡ today's behaviour.
 4. **Exclude globs** (`$EXCLUDE`): Zero or more `--exclude <glob>` values that remove paths from the read set for business-logic extraction. Empty ≡ today's behaviour.
-5. **Manifest path** (`$MANIFEST`): Optional single `--manifest <path>` pointing at a slice manifest (see §*Manifest shape*). Mutually exclusive with `$INCLUDE` / `$EXCLUDE`.
+5. **Manifest path** (`$MANIFEST`): Optional single `--manifest <path>` pointing at a slice manifest. Mutually exclusive with `$INCLUDE` / `$EXCLUDE`. See [scope-filters.md](scope-filters.md) §Manifest shape.
 
 ```text
 $SOURCE_PATH = $ARGUMENTS[0]
@@ -48,51 +44,13 @@ $MANIFEST    = --manifest <path>            # single; mutually exclusive with $I
 
 `$MANIFEST` is mutually exclusive with `$INCLUDE` / `$EXCLUDE`. Invoking extract with a `$MANIFEST` alongside any `$INCLUDE` or `$EXCLUDE` flag is a hard error — the driver (`/spec:execute`) and the schema's define brief should have caught it upstream at `specify plan validate` time. Extract fails fast with a clear message rather than trying to reconcile the two modes.
 
-## Scope filters
+## Scope filters at a glance
 
-Scope filters restrict **which source files are read for business-logic extraction** (Step 2 onward). They never touch Step 1 — language detection and dependency version pinning always run against the full set of sentinel files listed in §*Sentinels always read*.
+Scope filters restrict **which source files are read for business-logic extraction** (Step 2 onward). They never touch Step 1 — language detection and dependency version pinning always run against the full set of sentinel files. Empty filter set ≡ today's behaviour: extract reads the full source tree.
 
-- Globs are gitignore-style, with `**` for recursive match.
-- Globs resolve relative to `$SOURCE_PATH`.
-- Empty `$INCLUDE`, `$EXCLUDE`, and `$MANIFEST` ≡ today's behaviour: extract reads the full source tree. Small-legacy and greenfield callers see no change.
-- With `$INCLUDE` non-empty: the read set for business-logic extraction is the union of `$INCLUDE` glob matches, minus any paths that also match a glob in `$EXCLUDE`.
-- With `$MANIFEST` set: the read set is the verbatim file list from the manifest (see §*Manifest shape*). `$INCLUDE` and `$EXCLUDE` are absent in this mode.
-- A filter set that matches zero files under `$SOURCE_PATH` is a hard error — extract fails fast rather than emitting empty artifacts.
+The full filter rules, the sentinel file list, and the v1 manifest schema live in [scope-filters.md](scope-filters.md).
 
-### Sentinels always read
-
-Extract reads a fixed set of files regardless of the filter, for language / dependency detection:
-
-- `package.json`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`
-- `Cargo.toml`, `Cargo.lock`
-- `go.mod`, `go.sum`
-- `pyproject.toml`, `poetry.lock`, `requirements.txt`
-- `pom.xml`, `build.gradle[.kts]`, `gradle.lockfile`
-- `*.csproj`, `packages.lock.json`
-- top-level `README*`
-
-`$INCLUDE` cannot subtract sentinels; `$EXCLUDE` cannot hide them. Scope filters *business-logic extraction* (Step 2), not *manifest / language discovery* (Step 1).
-
-### Manifest shape
-
-v1 ships a minimal YAML manifest with `include` only:
-
-```yaml
-version: 1
-include:
-  - relative/path/to/file.ts
-  - another/file.rs
-```
-
-- Paths are **literal file paths**, resolved relative to `$SOURCE_PATH`. No globs inside a manifest — globbing lives in `$INCLUDE` / `$EXCLUDE`.
-- v1 is exactly `version` + `include` — no other top-level keys (`deny_unknown_fields`); `specify plan validate` rejects unknown keys, wrong `version`, empty `include`, `..` segments, and absolute paths in `include` (see `specify-change` `Plan::validate` / `manifest-invalid`, `manifest-empty`, `manifest-path-escape`).
-- v1 ships `include` only. Line-range subsets per file, `exclude`, and per-file symbol filters are out of scope for v1 and are the natural v2 extensions.
-- A `$MANIFEST` that is missing, malformed, or references a file that does not exist under `$SOURCE_PATH` is a hard error — fail early with a clear message.
-- Manifests are authored at plan time (by the propose brief) and referenced from the Plan's `scope.<src>.manifest` field. Extract consumes manifests; it does not author them. On disk they typically live under `.specify/plans/<initiative>/slices/` — see [`/spec:plan` working directory](../plan/SKILL.md) (§*Working directory*).
-
-For a walk-through, see [fixtures/scoped-monolith/](fixtures/scoped-monolith/).
-
-## Principles (Non-Negotiable)
+## Principles (non-negotiable)
 
 1. **Focus**: Extract only domain/business logic and its inputs/outputs. Exclude infrastructure unless part of a domain rule.
 2. **Descriptive, not interpretive**: Produce algorithmic descriptions of what the code does. Do not infer "why" unless present in source.
@@ -106,7 +64,7 @@ For a walk-through, see [fixtures/scoped-monolith/](fixtures/scoped-monolith/).
 
 ## Tags and Unknown Tokens
 
-See complete definitions in [Specify Artifact Format Specification - Tags Reference](references/specify.md#tags-reference).
+See complete definitions in [Specify Artifact Format Specification — Tags Reference](references/specify.md#tags-reference).
 
 ## Process
 
@@ -130,11 +88,11 @@ See complete definitions in [Specify Artifact Format Specification - Tags Refere
 4. External dependencies from manifest files (`package.json`, `go.mod`, `requirements.txt`, `Cargo.toml`, `pom.xml`, etc.)
 5. Async boundaries (async/await, Promises, goroutines, threads, futures, etc.)
 6. Type definitions (interfaces, types, classes, structs, enums)
-7. **Guest/entry-point layer**: Middleware (CORS, auth), error code → HTTP status mapping, body injection/transformation, parameter sourcing, and any validation performed before the domain handler. See [Entry Point Patterns](../../references/entry-point-patterns.md) for framework-specific guidance.
+7. **Guest/entry-point layer**: Middleware (CORS, auth), error code → HTTP status mapping, body injection/transformation, parameter sourcing, and any validation performed before the domain handler.
 
-Scope filters never hide manifest files from this step — see §*Sentinels always read*. Language detection and dependency extraction always run against the full set of sentinel files regardless of `$INCLUDE` / `$EXCLUDE` / `$MANIFEST`.
+Scope filters never hide manifest files from this step — see [scope-filters.md](scope-filters.md) §"Sentinels always read". Language detection and dependency extraction always run against the full set of sentinel files regardless of `$INCLUDE` / `$EXCLUDE` / `$MANIFEST`.
 
-**Dependency Version Pinning**:
+**Dependency version pinning**:
 
 Dependency version drift is a leading cause of build failures when regenerating from a specification. Capture dependency versions from the source project's **lock file**, not just the manifest.
 
@@ -147,17 +105,13 @@ Dependency version drift is a leading cause of build failures when regenerating 
 | Go | `go.mod` | `go.sum` | `go.mod` (already pinned) |
 | Java/Kotlin | `pom.xml` / `build.gradle` | Dependency tree output | Resolved dependency tree |
 
-For each dependency, record:
-- Package name
-- **Exact version** from lock file (e.g., `1.4.0`, not `^1.4`)
-- Whether it is a direct or transitive dependency
-- Any feature flags / optional features enabled
+For each dependency, record: package name, **exact version** from lock file (e.g., `1.4.0`, not `^1.4`), whether it is direct or transitive, and any feature flags / optional features enabled.
 
 In the design.md Dependencies section, list the **manifest version specifier** (e.g., `"1.0.100"` from Cargo.toml, `"^2.3.0"` from package.json) as the primary version — this is what goes into the generated project's dependency declaration. Also note the lock file resolved version for API compatibility reference.
 
 **When the lock file is absent**: Use the manifest version constraints and flag this in Risks / Open Questions.
 
-**VERIFY**: Check your understanding:
+**VERIFY**:
 
 - [ ] I've identified the primary source language correctly
 - [ ] I've found all entry points (there may be multiple)
@@ -169,486 +123,60 @@ In the design.md Dependencies section, list the **manifest version specifier** (
 
 ### Step 2: Extract Business Logic
 
-When `$INCLUDE` / `$EXCLUDE` / `$MANIFEST` are set, restrict the read set for this step and every subsequent step accordingly. Files outside the scoped read set are not analyzed here — business-logic extraction, external-surface documentation, and type capture operate only on the filtered tree. Sentinel files (§*Sentinels always read*) remain available to Step 1 but do not feed Step 2's business-logic pass unless they also match the scope filter.
+Restrict the read set per the scope filters from Step 1. Apply optional semantic-discovery hints, then analyze each function depth-first by domain. Tag every statement `[domain]` / `[infrastructure]` / `[mechanical]` / `[unknown]`. Copy type definitions verbatim from the source — never hand-write from memory. Capture every serialization attribute (renames, aliases, conditional and unconditional skips, custom converters), every input field's optionality, and every output type's full schema (including fields not populated by this component).
 
-**SEMANTIC DISCOVERY** (Optional but Recommended):
-
-If semantic search tool available (grepai, CocoIndex), use it to discover business logic patterns:
-
-```bash
-# Discover business logic hotspots
-semantic-search "business logic and validation rules" $SOURCE_PATH
-
-# Find error handling patterns
-semantic-search "error handling and edge cases" $SOURCE_PATH
-
-# Locate external dependencies
-semantic-search "HTTP API calls and external services" $SOURCE_PATH
-```
-
-Use semantic results to:
-
-- Prioritize which files/functions to analyze deeply
-- Inform tag classification ([domain] vs [infrastructure] vs [mechanical])
-- Identify hidden business logic in utility functions
-- Reduce [unknown] tags by 15-25%
-
-See [Semantic Search Reference](references/semantic-search.md) for detailed guidance.
-
-**DEPTH-FIRST ORGANIZATION**: When the source has clear functional domain boundaries (e.g., auth, catalog, payments), analyze **depth-first by domain** rather than breadth-first by artifact type. For each domain, fully analyze types → handlers → utilities → cross-references before moving to the next domain. This catches cross-cutting details like shared validation patterns, common header construction, and utility function behavior that breadth-first scanning misses.
-
-Fall back to step-by-step (all types, then all handlers, etc.) for simpler or single-domain components.
-
-**THINK**: Before extracting logic, reason through each function:
-
-1. What is the function's purpose? (What business operation does it perform?)
-2. Is it synchronous or asynchronous? (Look for async keyword, Promises, callbacks)
-3. What are the inputs and their shapes? (Full nested structure, not just top-level)
-4. What are the outputs? (Complete schema, trace through return statements)
-5. What validations are performed? (Required fields, format checks, business rules)
-6. What external calls are made? (HTTP, database, cache, pub/sub)
-7. What can go wrong? (Error handling, edge cases, failure modes)
-8. Are there any hardcoded values or config keys? (Environment variables, constants)
-9. How does data flow through the function? (Transformations, mutations)
-10. Are there conditional branches? (if/else, switch, ternary operators)
-
-**Tag Classification Reasoning**:
-
-- Is this core business logic that defines "what the business does"? → `[domain]`
-- Is this technical plumbing to communicate with external systems? → `[infrastructure]`
-- Is this simple data transformation without business meaning? → `[mechanical]`
-- Am I uncertain about the behavior or purpose? → `[unknown]`
-
-**ANALYZE**: For each function/method, document:
-
-- Symbol name and return type
-- **Execution mode** (synchronous, asynchronous, parallel)
-- Algorithm (pseudocode with tags and control flow)
-- **Conditional branches** (if/else, switch, ternary)
-- **Error handling** (try/catch, error propagation, recovery)
-- **State mutations** (what data/state is modified)
-- Preconditions and postconditions
-- Edge cases and failure modes
-- Complexity/cost notes
-- **Constants and configuration** (hardcoded values, env vars)
-  - **Config keys verbatim**: Environment variable names and config keys must be captured exactly as written in the source code. If the code reads `process.env.CC_STATIC_URL`, the artifacts must document `CC_STATIC_URL`, not a paraphrased `GTFS_STATIC_URL`. Do not rename config keys for clarity.
-  - **Active subsets**: When a lookup table is filtered at runtime by a config value, document only the active entries in the primary constant. Note the full table's existence and entry count separately. See [Context Gaps #11](references/context-gaps.md#11-active-subset-vs-full-dataset).
-
-  **Active subset identification process**:
-  1. **Identify the full table**: Count total entries, note any "unmapped" or sentinel values
-  2. **Identify the runtime filter**: What config/constant limits the active entries? Default value if config is absent?
-  3. **Document BOTH in design.md Constants section**:
-
-     ```markdown
-     - `ACTIVE_STATIONS` — source: env var `STATIONS`, default: `"0,19,40"`; semantics: Station IDs to process
-     - `STATION_ID_TO_STOP_CODE_MAP` — source: hardcoded; value: { 0: "133", 19: "9218", 40: "134" };
-       semantics: Maps active station IDs to GTFS stop codes (full table has 47 entries but only
-       stations from `ACTIVE_STATIONS` are processed)
-     ```
-
-  **Why**: Without this, downstream code generators produce code that processes all entries instead of the filtered subset.
-
-- **Input types** (full shape with nested structure)
-  - **Field optionality**: For each field in an input type, determine whether it may be absent, null, or empty at runtime. Add an `Optional?` column to the type definition table with values `yes`, `no`, or `unknown`.
-
-  **Field optionality detection rules**:
-  1. A field is `Optional? = yes` if the source code:
-     - Checks for null/undefined: `if (field != null)`
-     - Uses optional chaining: `obj?.field`
-     - Uses nullish coalescing: `field ?? defaultValue`
-     - Uses fallback patterns: `fieldA || fieldB || defaultValue`
-     - Has TypeScript type annotation with `?`: `field?: string`
-
-  2. A field is `Optional? = no` if:
-     - Accessed unconditionally without checks
-     - Marked as required in type annotations
-
-  3. Use `Optional? = unknown` if:
-     - Field is accessed but pattern is unclear
-     - Third-party library type without clear documentation
-
-  **When fallback patterns are used** (e.g., `trainUpdate.evenTrainId || trainUpdate.oddTrainId`):
-  - Mark BOTH fields as `Optional? = yes`
-  - Document the fallback logic in Algorithm section
-
-- **Output types** (full shape with nested structure)
-  - **Full schema from shared types**: When the source code constructs output objects using a type imported from an external or shared library (e.g., `new SmarTrakEvent()`, a shared DTO class), trace the **full** type definition in that library. Document ALL fields of the output type, not just the fields populated by this component. For each field, note whether this component populates it or whether it is present in the schema for other producers. This allows code generators to produce the complete output type rather than a stripped-down subset.
-  - Example: If `SmarTrakEvent` has 8 fields but this component only sets 5, document all 8 fields and annotate the 3 unused ones with "not populated by this component".
-- **Serialization mappings** (when input/output types are deserialized from or serialized to a wire format):
-  - **CRITICAL**: For EVERY field in input/output types, check for serialization decorators/annotations:
-    - TypeScript: `@JsonProperty`, `@JsonConverter`, `@Serializable`
-    - Go: struct tags like `json:"fieldName"` or `xml:"elementName"`
-    - Python: `@dataclass`, `field(metadata=...)`
-    - Java: `@JsonProperty`, `@XmlElement`
-    - C#: `[JsonProperty]`, `[XmlElement]`
-    - Rust: `serde` attrs (`rename`, `rename_all`, `default`, `skip_serializing_if`, `skip_serializing`, `deserialize_with`, `alias`)
-  - Document the wire-format field name for each property (trace through decorators/annotations)
-  - Document custom converters and their EXACT behavior:
-    - What is the input format? (e.g., string `"true"/"false"`, number as string)
-    - What is the output type? (e.g., `boolean`, `number`)
-    - Is it bidirectional or one-way?
-    - Example: `BooleanConverter: deserializes string "true"/"false" → boolean`
-  - Document XML root element names and array-wrapping configuration
-  - Add to design.md type tables with a `Wire Name` column and `Converter` column:
-
-    ```markdown
-    | Field        | Type      | Wire Name   | Converter                       | Optional? |
-    | ------------ | --------- | ----------- | ------------------------------- | --------- |
-    | `hasArrived` | `boolean` | `haEntrado` | string "true"/"false" → boolean | no        |
-    ```
-
-  - If a wire-format name cannot be determined, use `unknown — wire name not visible in source`
-  - See [Language Mapping Guide - Serialization Decorators](references/language-mapping.md#serialization-decorators-and-field-name-mappings) for per-language examples
-
-- Errors raised and propagation flow
-- Unknowns
-
-#### Type Extraction Rules
-
-Type mismatches are the single largest source of errors in extraction. Observe these rules strictly:
-
-- **Copy type definitions verbatim from source** — never hand-write types from memory
-- Capture **exact types** (e.g., `i32` vs `i64`, `int` vs `long`, `number` vs `string`)
-- Capture **ALL generated trait/interface implementations and annotations** — not just serialization ones. Missing equality implementations (Rust `PartialEq`/`Eq`, C# `IEquatable`, Python `__eq__`) cause build failures when code uses `==` comparison
-- Capture **exact serialization attributes per stack** — at BOTH struct/class level AND field level:
-  - Rust: `serde` attrs (`rename`, `rename_all`, `default`, `skip_serializing_if`, `skip_serializing`, `deserialize_with`, `alias`)
-  - C#: `JsonPropertyName`, `JsonIgnore`, `JsonConverter`
-  - TypeScript: class-transformer/class-validator decorators
-  - Python: Pydantic `Field(alias=...)`, `model_validator`
-- **Keyword-collision renames**: Check for fields where the implementation language uses a different identifier but maps to the original name via rename attribute (e.g., `balance_type` renamed to `"type"` because `type` is a reserved keyword). These are CRITICAL for wire compatibility
-- **Deserialization aliases**: Check for fields that accept multiple wire names (e.g., both `maskedPan` and `maskedPAN`). Missing aliases cause deserialization failures with real upstream data
-- **Unconditional vs conditional serialization skips**: Distinguish between conditional skip (`skip_serializing_if = "is_none"`) and unconditional skip (`skip_serializing` / `JsonIgnore`). An unconditional skip strips the field entirely from output — omitting this changes the response shape
-- **Collection/array fields**: Explicitly note which have default-when-absent behavior and which do NOT — do not assume a universal pattern
-- **Custom deserialization**: For types with custom deserialization, note that they should NOT also use generated/derived deserialization to avoid conflicting implementations
-- **Empty/marker types** (no fields): Note the type shape explicitly
-- **Enums**: Variant names AND serialization representation (string, integer, etc.)
-- **Nested types**: Follow every level of nesting
-- **Custom deserializers/converters**: Document exact behavior
-- **Wire name verification**: Check wire names by applying the project's naming convention rules (e.g., `camelCase`, `snake_case`, `PascalCase`). Flag cases where field names diverge from the convention
-- **Cross-struct tables**: When multiple types share field names, document each type's field type SEPARATELY — never merge columns for types with different field sets
-
-#### Orchestration and Shared Handler Rules
-
-- **Independent handler documentation**: When multiple handlers target the same upstream API, document each handler's request body construction INDEPENDENTLY:
-  - Exact format strings for generated IDs (e.g., `"prefix-{id}-suffix"`)
-  - Wire format differences (flat vs wrapped structures targeting the same endpoint)
-  - Body fields set to null/default — document explicitly even when identical to another handler
-  - Conditional field values (e.g., `adjustment_amount = None` for full operations vs `Some(value)` for partial)
-- **Secondary/audit API calls**: All outbound calls (including best-effort, non-critical, audit writes) must document exact request bodies with vendor-specific field names. "Best-effort" does not mean "under-specified."
-- **Response type ownership**: Track which module/file defines the canonical serialization implementation for each response type. When multiple handlers share a response type, only one should contain the impl. Document this in a deduplication table.
-- **Cross-reference check**: After documenting all handlers in a domain, verify every type field referenced in handler logic exists in the type definition, and vice versa.
-
-**VERIFY**: For each function documented, check:
-
-- [ ] I've captured the complete input schema (all nested fields with Optional? annotations)
-- [ ] I've captured the complete output schema (traced through shared types if needed)
-- [ ] I've tagged every business logic statement with [domain], [infrastructure], [mechanical], or [unknown]
-- [ ] I've documented config keys EXACTLY as written in source (not renamed)
-- [ ] I've identified active subsets for filtered lookup tables
-- [ ] I've captured wire-format field names and custom converters
-- [ ] I've documented all conditional branches and edge cases
-- [ ] I've noted execution mode (sync/async) and any concurrent operations
-- [ ] I've copied type definitions verbatim (not from memory)
-- [ ] I've captured ALL serialization attributes at both struct and field level
-- [ ] I've checked for keyword-collision renames and deserialization aliases
-- [ ] I've distinguished unconditional from conditional serialization skips
-- [ ] When uncertain, I've used [unknown] rather than guessing
+The full per-function THINK / ANALYZE / VERIFY checklist, the type extraction rules, and the orchestration / shared-handler rules live in [business-logic.md](business-logic.md).
 
 ### Step 3: Document External API Surfaces
 
-**THINK**: Before documenting each API call, reason through:
+For every HTTP/API call, trace the **actual deserialization code**, not the type declaration. The runtime response shape is determined by how the code uses the response (e.g., `const allocated: string[] = await response.json()` is `string[]`, not the wider declared interface). Document the exact URL, HTTP method, headers, request body, response shape (with a concrete JSON example), authentication source (config-driven vs hardcoded), error response codes, retries, and timeouts.
 
-1. What is the complete URL? (Is it hardcoded, from config, or dynamically constructed?)
-2. What HTTP method? (GET, POST, PUT, PATCH, DELETE)
-3. What headers are sent? (Authorization, Content-Type, custom headers)
-4. What is the request body? (Full JSON/XML structure, not just described)
-5. What does the response look like? (Trace through actual deserialization code, not type declarations)
-6. How is the response parsed? (response.json()? XML parser? Text?)
-7. What fields are actually accessed from the response? (This reveals the true shape)
-8. What happens on errors? (Status codes, error response format, retry behavior)
-9. Are there timeouts? (Explicit timeout values)
-10. Is authentication required? (API keys, tokens, basic auth)
-
-**Critical**: Trace actual deserialization, not type declarations. If code does `const allocated: string[] = await response.json()`, the response shape is `string[]`, not some broader interface type.
-
-**ANALYZE**: For each external HTTP/API call:
-
-For each external HTTP/API call:
-
-- Endpoint URL pattern (EXACT path and query parameters as constructed in source)
-- HTTP method
-- Request headers (list each, including how values are obtained -- from config, hardcoded, etc.)
-- Request body shape (exact JSON/XML structure)
-- Response body shape (CRITICAL: capture full nesting)
-- Authentication method (including where the identity/token name comes from -- config variable or hardcoded)
-- Error responses (status codes and body shapes)
-- **Retry behavior** (if present)
-- **Timeout** (if specified)
-
-**Trace actual deserialization, not type declarations.** When the source code parses an API response (e.g., `response.json()`, `JSON.parse()`), trace what the result is assigned to and how its fields are accessed. The runtime response shape is determined by how the code uses the response, not by interface declarations that may be broader. If the code does `const allocated: string[] = await response.json()`, the response shape is `string[]`, not the full interface type. Always follow the data from the HTTP response through parsing to usage to determine the true shape.
-
-**Response shape documentation**: Include a concrete JSON example showing the actual response structure. This prevents downstream code generators from fabricating wrapper types.
-
-```markdown
-- **Response shape**: `string[]` (flat JSON array)
-- **Example response**: `["NZ 1234", "NZ 5678"]`
-- **Usage**: Each string is a vehicle label; spaces are stripped before use as partition key
-```
-
-**Authentication source**: When documenting how a token or identity is obtained, capture whether the identity name is hardcoded or comes from configuration:
-
-```markdown
-- **Auth**: Bearer token from identity provider
-  - Identity name: from config `AZURE_IDENTITY` (NOT hardcoded)
-  - Token acquisition: access token requested using identity name
-```
+The full per-call rubric and authentication-source patterns live in [external-api.md](external-api.md).
 
 ### Step 4: Capture External Service Dependencies
 
-For each external service or system dependency, document thoroughly:
+Classify every external service by type — `database`, `managed table store`, `message broker`, `cache`, `identity provider`, `API`, `WebSocket` — and record the technology, connection details, operations, data formats, and authentication. Cloud-managed table/document stores (Azure Table Storage, Cosmos DB, DynamoDB) are `managed table store`, never `API`.
 
-- Service name and type — use one of: `database`, `managed table store`, `message broker`, `cache`, `identity provider`, `API`, `WebSocket`
-- Technology (e.g., PostgreSQL, Azure Table Storage, Redis, Kafka, Azure AD)
-- Connection details visible in source
-- Operations performed (read, write, publish, subscribe, query, token acquisition)
-- Data formats (if different from internal types)
-- Authentication method
-
-**Service type classification**:
-
-- **database**: SQL databases accessed via ORM, raw SQL, or repository patterns (PostgreSQL, MySQL, SQL Server, etc.)
-- **managed table store**: Cloud-managed NoSQL/table storage services accessed via SDK or REST API (Azure Table Storage via `@azure/data-tables`/`TableClient`, Azure Cosmos DB, DynamoDB, etc.). Do NOT classify these as `API` — they are managed data stores, not external HTTP APIs.
-- **cache**: Key-value stores used for caching or ephemeral state (Redis, Memcached, in-memory cache libraries)
-- **message broker**: Message queues and event streaming (Kafka, RabbitMQ, Azure Service Bus, SQS)
-- **identity provider**: Authentication/token services (Azure AD, OAuth providers, Auth0)
-- **API**: External HTTP/REST/GraphQL APIs
-- **WebSocket**: WebSocket connections for real-time messaging
+The full type taxonomy lives in [dependencies.md](dependencies.md) §Step 4.
 
 ### Step 5: Capture Publication & Timing Patterns
 
-Document exactly:
+Document exact publication counts, delay placement (BEFORE or AFTER each round), payload identity (identical or modified between rounds), retry patterns, batch vs individual, concurrency, and message metadata (partition keys, custom headers, topic construction).
 
-- **Publication count**: The exact number of times each event is published (e.g., "2 times", NOT "twice with delays" which is ambiguous). Count by reading the loop bounds in the source code (e.g., `for _ in 0..2` means 2 publications).
-- **Delay placement**: Whether the delay occurs BEFORE or AFTER each publication round. Document the exact loop structure: "sleep 5s then publish all events, repeated 2 times" is different from "publish, then sleep 5s, then publish again".
-- **Payload identity**: Whether the published payload is IDENTICAL across rounds or modified between rounds (e.g., timestamps incremented). Most patterns publish identical payloads -- document explicitly if the source modifies the payload between iterations.
-- Timing/delay operations with exact durations
-- Retry patterns with counts and backoff
-- Batch vs individual publication
-- **Concurrent operations** (parallel vs sequential)
-- **Message metadata**: For each published message, document all metadata beyond the payload:
-  - Partition/routing key (e.g., `message.key = externalId`)
-  - Custom headers (e.g., `message.headers["key"] = value`)
-  - Topic construction pattern (e.g., `${env}-${TOPIC_CONSTANT}` vs full topic from config)
-
-**Publication pattern example**:
-
-```markdown
-- **Publication pattern**: Publish all events 2 times with 5-second delay before each round
-- **Loop structure**: `for round in 0..2 { sleep(5s); for each event { publish(event) } }`
-- **Payload modification**: None -- identical event published each round
-- **Purpose**: Signal departure from station for schedule adherence
-```
+The full per-pattern guidance lives in [dependencies.md](dependencies.md) §Step 5.
 
 ### Step 6: Capture Metrics and Observability Patterns
 
-For each metric emission in the source code (counters, gauges, histograms, log-structured events):
-
-- Metric name and type (counter, gauge, histogram)
-- When it is emitted (which step in the algorithm)
-- Dimensions/labels attached
-- Purpose (operational visibility, alerting, debugging)
-
-Example artifacts:
-
-```markdown
-- **Metrics**:
-  - `events_published` — type: monotonic counter; emitted: after each successful publish; labels: none
-  - `irrelevant_station` — type: monotonic counter; emitted: when station is filtered out; labels: station ID
-  - `r9k_delay` — type: gauge; emitted: during validation; labels: none; value: message delay in seconds
-```
+Record metric names, types (counter / gauge / histogram), emission points, dimensions / labels, and purpose. See [observability.md](observability.md).
 
 ### Step 7: Write Specify Artifacts
 
-**THINK**: Before writing the artifacts, synthesize your findings:
+Synthesize findings, create `$CHANGE_DIR/` and `$SPECS_DIR/`, write `$DESIGN_PATH` with all 14 sections (Context through Notes) and `$SPECS_DIR/$CRATE_NAME/spec.md` with flat `### Requirement:` blocks tagged `ID: REQ-XXX`.
 
-1. Have I captured ALL entry points and handlers?
-2. Have I documented ALL external API calls with complete request/response shapes?
-3. Have I traced ALL config keys and constants exactly as written?
-4. Have I identified ALL business logic and tagged it appropriately?
-5. Have I captured ALL type definitions with complete nested structures?
-6. Have I noted ALL optional fields, wire-format names, and custom converters?
-7. Have I documented ALL error handling patterns?
-8. Have I captured ALL metrics, message metadata, and timing patterns?
-9. Are there any `[unknown]` tags that I should investigate further?
-10. Do the artifacts provide sufficient detail for reconstruction-grade code generation?
-11. Have I documented guest/entry-point layer behaviors?
-12. Have I captured dependency versions from the lock file?
-
-**Check for common omissions**:
-
-- [ ] Config keys captured verbatim (not renamed for clarity)
-- [ ] Active subsets identified for filtered lookup tables
-- [ ] Wire-format field names for all serialized types
-- [ ] Custom converter behavior documented
-- [ ] Field optionality marked for all input types
-- [ ] Complete output schemas (including fields not populated by this component)
-- [ ] Message partition keys and custom headers
-- [ ] Metrics with emission points and labels
-- [ ] Retry patterns and timeout values
-- [ ] Concurrent vs sequential operation patterns
-- [ ] Keyword-collision renames and deserialization aliases
-- [ ] Unconditional vs conditional serialization skips
-- [ ] Guest/entry-point behaviors (middleware, error mapping, body injection)
-- [ ] Response type deduplication table
-- [ ] Dependency versions from lock file
-
-**GENERATE**: Write Specify artifacts to `$CHANGE_DIR` using the format specified in [specify.md](references/specify.md). The artifact format follows the `augentic` schema from [augentic/lifecycle](https://github.com/augentic/lifecycle).
-
-#### 7a: Create Directory Structure
-
-Create `$CHANGE_DIR/` and `$SPECS_DIR/` directories.
-
-#### 7b: Write design.md
-
-Write `$DESIGN_PATH` with the following sections (see [specify.md](references/specify.md) Design Document Format for the full template):
-
-1. **Context** — source component path, target runtime, purpose, source files analyzed
-2. **Domain Model** — full nested type definitions with wire-format annotations; entities with attributes, relationships, and business rules. Include separate tables for field-level renames, aliases, unconditional skips, and conditional skips. Include deduplication table for shared response types.
-3. **Structures** — source code structure inventory (imports, exports, classes, functions, external dependencies)
-4. **API Contracts** — inbound endpoints with request/response schemas; outbound API calls with complete request/response shapes traced from actual deserialization
-5. **External Services** — each service with type (database, managed table store, message broker, cache, identity provider, API, WebSocket), technology, operations, connection details, authentication
-6. **Constants & Configuration** — every constant with source (hardcoded/env var), literal value, semantics, required flag, default
-7. **Business Logic** — tagged pseudocode algorithm for every handler/function. **Every controller endpoint** that delegates to a service method must have a corresponding block, including simple list endpoints — otherwise downstream code generators have no algorithm to implement. See [Context Gaps §14](references/context-gaps.md#14-simple-list-endpoints-missing-business-logic-blocks). Include: execution mode, input/output types, error handling, state mutations, preconditions, postconditions, edge cases, errors raised, unknowns
-8. **Publication & Timing Patterns** — topic/queue names, construction patterns, message counts, timing, payload structures, partition keys, custom headers
-9. **Output Event Structures** — full nested output type schemas
-10. **Implementation Constraints** — factual `[runtime]` constraints describing source behavior (do NOT prescribe target-specific solutions). Examples:
-    - `[runtime]` Source uses in-memory cache with startup/background loading
-    - `[runtime]` Source uses `setTimeout`/`setInterval` for periodic cache refresh
-    - `[runtime]` Source uses circuit breaker library for outbound HTTP
-    - `[runtime]` Source caches OAuth tokens in process memory When API response parity matters, fill **Serialization & API Fidelity** (optional fields, DateTime format, field naming, concurrency)
-11. **Source Capabilities Summary** — derive from External Services; checklist of generic capability categories (Configuration, Outbound HTTP, Message publishing, Key-value state, Authentication/Identity, Table/database access, Real-time messaging, Blob storage, Document storage)
-12. **Dependencies** — external packages with manifest version specifier (for generated project dependency declaration) and lock file resolved version (for API compatibility reference). Include feature flags / optional features enabled.
-13. **Risks / Open Questions** — unknowns, `[unknown]` items, missing lock file, ambiguous source patterns
-14. **Notes** — additional observations, source-specific constructs, performance/security considerations
-
-**IMPORTANT — Managed data store classification:**
-
-When the source code uses `@azure/data-tables`, `TableClient`, `listEntities`, `createEntity`, `updateEntity`, `deleteEntity`, or calls Azure Table Storage REST endpoints (`*.table.core.windows.net`):
-
-- The External Services section **MUST** classify these as type: `managed table store`, NOT as type: `API`.
-- The Source Capabilities Summary **MUST** check `Table/database access`.
-- Cloud-managed table/document stores (Azure Table Storage, Cosmos DB, DynamoDB) are data stores, not external HTTP APIs, regardless of their access protocol.
-- When the source uses blob storage APIs (`BlobServiceClient`, `ContainerClient`, `S3Client`, `putObject`, `getObject`), classify as type: `blob store` and check `Blob storage` in the Source Capabilities Summary.
-- When the source uses document database APIs (`MongoClient`, `CosmosClient` document API, `find`, `insertOne`), classify as type: `document store` and check `Document storage` in the Source Capabilities Summary.
-- When the source loads data from a managed table store and caches it in memory, the Source Capabilities Summary should include **both** `Table/database access` and `Key-value state`.
-
-#### 7c: Write Spec File
-
-Write a single consolidated spec file at `$SPECS_DIR/$CRATE_NAME/spec.md` using the flat baseline format:
-
-1. `## Purpose` — 1-2 sentence description of what the crate/capability does overall
-2. `### Requirement: <Behavior Name>` — one top-level block per distinct business rule (use `The system SHALL ...` format). Add `ID: REQ-XXX` immediately after the heading, numbering requirements sequentially in file order. Each requirement includes:
-   - Source traceability (source function path)
-   - `#### Scenario: <name>` entries derived from algorithm steps (happy path), error handling (error paths), and edge cases
-3. `## Error Conditions` — shared error type, description, HTTP status, and trigger conditions when the source exposes them
-4. `## Metrics` — metric name, type (counter/gauge/histogram), emission point, and labels when explicit in the source
-
-See [specify.md](references/specify.md) Spec File Format and Deriving Specs from Source Code for the complete template.
-
-**VERIFY**: After writing, validate against the checklist:
-
-- [ ] One spec file per crate at `$SPECS_DIR/$CRATE_NAME/spec.md` using flat `### Requirement:` blocks with stable `ID: REQ-XXX` lines
-- [ ] Each spec has Purpose, Requirements with BDD scenarios, and Error Conditions
-- [ ] design.md has all required sections (Context through Notes)
-- [ ] design.md Business Logic has tagged algorithm for every handler
-- [ ] Every business logic statement has a tag: [domain], [infrastructure], [mechanical], or [unknown]
-- [ ] No inference or guessing — unknowns are marked explicitly
-- [ ] Language-agnostic — no target language concepts introduced
-- [ ] Traceability — every statement traceable to source code
-- [ ] Complete type shapes — no abbreviated or simplified structures with wire-format annotations
-- [ ] Config keys verbatim — exactly as written in source
-
-Note: Steps are numbered 1-7. Ensure all steps are completed before writing the artifacts.
-
-### Output
-
-Write completed Specify artifacts to `$CHANGE_DIR`. The artifacts are a language-agnostic intermediate format that can be used for code generation in any target language.
+The pre-write synthesis checklist, the directory layout, the 14-section design.md template, the managed-data-store classification rules, and the spec file format live in [design-template.md](design-template.md). The post-write verification checklist lives in [verification.md](verification.md).
 
 ## Reference Documentation
 
 Detailed guidance and specifications are available in `references/`:
 
-- **[Specify Artifact Format Specification](references/specify.md)** - Complete artifact structure with spec and design.md templates
-- **[Language Mapping Guide](references/language-mapping.md)** - How to map common language constructs to artifact format (with examples from TypeScript, Go, Python, etc.)
-- **[Context Gaps Reference](references/context-gaps.md)** - Commonly missed details and how to capture them, including data access phrasing (§13) and ensuring every endpoint has a business logic block (§14)
-- **[Semantic Search Reference](references/semantic-search.md)** - Optional semantic search integration for improved analysis coverage
-- **[Lessons Learned](references/lessons-learned.md)** - Anti-patterns from real extraction attempts and how to avoid them
-- **[Examples](references/examples/)** - Complete analysis examples for different scenarios
+- **[Specify Artifact Format Specification](references/specify.md)** — Complete artifact structure with spec and design.md templates
+- **[Language Mapping Guide](references/language-mapping.md)** — How to map common language constructs to artifact format (with examples from TypeScript, Go, Python, etc.)
+- **[Context Gaps Reference](references/context-gaps.md)** — Commonly missed details and how to capture them, including data access phrasing (§13) and ensuring every endpoint has a business logic block (§14)
+- **[Semantic Search Reference](references/semantic-search.md)** — Optional semantic search integration for improved analysis coverage
+- **[Lessons Learned](references/lessons-learned.md)** — Anti-patterns from real extraction attempts and how to avoid them
+- **[Examples](references/examples/)** — Complete analysis examples for different scenarios
 
 ## Examples
 
 Detailed examples are available in the `references/examples/` directory:
 
-1. [outbound-http.md](references/examples/outbound-http.md) - Analyze a TypeScript HTTP handler and produce Specify artifacts
-2. [branching-caching.md](references/examples/branching-caching.md) - Capture complex conditional logic with hierarchical numbering
-3. [parallel-execution.md](references/examples/parallel-execution.md) - Document async/parallel execution patterns in artifacts
-
-## Error Handling
-
-### Common Issues and Resolutions
-
-- **TypeScript source doesn't parse**: Cause: invalid TypeScript or missing dependencies. Resolution: run `tsc --noEmit` to verify the source compiles first.
-- **Too many [unknown] tags in artifacts**: Cause: dynamic typing, metaprogramming, or unclear logic. Resolution: review the source for type annotations and add comments for clarity.
-- **Artifacts missing business logic**: Cause: functions not exported or in inaccessible modules. Resolution: check module imports and ensure key functions are exported.
-- **Artifacts missing API endpoints**: Cause: routes defined dynamically or in middleware. Resolution: check framework-specific routing patterns such as Express or Nest.
-- **Config keys not captured**: Cause: environment variables accessed indirectly. Resolution: search for `process.env` patterns across all source files.
-- **Type shapes incomplete**: Cause: complex generic types or union types. Resolution: document the full type definition and use `unknown` for unresolvable generics.
-- **Dependency version drift**: Cause: versions captured from manifest ranges instead of lock file. Resolution: always read the lock file for exact resolved versions.
-
-### Recovery Process
-
-1. Review the generated artifacts against the source code
-2. For missing sections: identify the source construct that should have been captured
-3. Re-analyze the specific source file or function
-4. For persistent [unknown] tags: add source code comments to clarify intent
-5. Re-run the full analysis
+1. [outbound-http.md](references/examples/outbound-http.md) — Analyze a TypeScript HTTP handler and produce Specify artifacts
+2. [branching-caching.md](references/examples/branching-caching.md) — Capture complex conditional logic with hierarchical numbering
+3. [parallel-execution.md](references/examples/parallel-execution.md) — Document async/parallel execution patterns in artifacts
 
 ## Verification Checklist
 
-Before completing, verify all items from the [Specify Artifact Validation Checklist](references/specify.md#validation-checklists) are satisfied.
-
-Additionally, verify these skill-specific items:
-
-**Artifact completeness**:
-
-- [ ] **One spec per crate**: Single consolidated spec file at `$SPECS_DIR/$CRATE_NAME/spec.md` with flat `### Requirement:` blocks and stable `ID: REQ-XXX` lines for each distinct behavior
-- [ ] **design.md complete**: design.md includes all required sections (Context, Domain Model, Structures, API Contracts, External Services, Constants & Configuration, Business Logic, Publication & Timing, Output Event Structures, Implementation Constraints, Source Capabilities Summary, Dependencies, Risks / Open Questions, Notes)
-- [ ] **BDD scenarios**: Each spec has Requirements with Given/When/Then scenarios derived from algorithm steps and error handling
-
-**Analysis fidelity**:
-
-- [ ] **Config keys verbatim**: Environment variable names captured exactly as written in source (not renamed for clarity). If source reads `CC_STATIC_URL`, artifacts must say `CC_STATIC_URL` -- not `GTFS_CC_STATIC_URL` or `GTFS_STATIC_URL`.
-- [ ] **API response shapes**: Each external API response includes the actual deserialized type (e.g., `string[]` vs `{ data: { all: [...] } }`), traced from actual deserialization code, not inferred from type declarations. Include a concrete JSON example.
-- [ ] **API URL fidelity**: API URL paths and query parameters match the source code exactly. Do not add or remove query parameters.
-- [ ] **Authentication source**: For each authenticated API call, document whether the identity name is hardcoded or comes from a config variable (e.g., `AZURE_IDENTITY`).
-- [ ] **Publication pattern precision**: Publication count, delay placement (before/after), and payload identity (identical or modified) documented from actual loop structure in source code.
-- [ ] **Metrics**: Metric names, types, emission points, and labels documented in the relevant spec file's Metrics section
-- [ ] **Message metadata**: Partition keys, headers, and topic construction patterns captured
-- [ ] **Wire-format field names**: All deserialized/serialized types include wire-format field name annotations where the source uses renaming decorators/annotations/config
-- [ ] **Custom converters**: Conversion logic for custom deserializers/serializers is documented (e.g., what `BooleanConverter` does)
-- [ ] **Active subsets**: Lookup tables that are filtered at runtime note which entries are active (see [Context Gaps #11](references/context-gaps.md#11-active-subset-vs-full-dataset))
-- [ ] **Field optionality**: Input type fields include an `Optional?` column indicating whether the field may be absent/null at runtime (yes/no/unknown)
-- [ ] **Output type completeness**: Output types document ALL fields from the type definition (including fields not populated by this component), with notes on which fields this component populates vs. which are present in the shared schema
-- [ ] **Output field types**: Output type fields document exact types (e.g., `integer` not `float` for integer fields, exact enum types not raw strings). When the source code uses a specific numeric type (e.g., `speed: integer`), do not generalize it (e.g., `speed: float`).
-- [ ] **External service classification**: All external services categorized by type (database, managed table store, cache, message broker, identity provider, API, WebSocket). Managed data stores (Azure Table Storage, Cosmos DB, DynamoDB) classified as `managed table store`, not `API`.
-- [ ] **Source capabilities summary**: Source Capabilities Summary checklist present in design.md, derived from External Services. `Table/database access` checked whenever source uses ORM, SQL, or managed table stores.
-- [ ] **Keyword-collision renames**: Fields using language-reserved keywords as wire names are documented with their field-level rename attributes
-- [ ] **Deserialization aliases**: Fields accepting multiple wire names are documented with all alias attributes
-- [ ] **Unconditional serialization skips**: Unconditional skip attributes distinguished from conditional ones; both documented explicitly
-- [ ] **Collection field defaults**: Each collection/array field's default-when-absent behavior checked individually (not assumed universal)
-- [ ] **Guest/entry-point behaviors**: Middleware, error mapping, body injection, parameter sourcing documented
-- [ ] **Response type ownership**: Deduplication table showing which module owns canonical serialization impl for shared types
-- [ ] **Dependency versions**: Lock file versions captured; manifest specifiers used as primary in Dependencies section
+Before completing, verify all items from the [Specify Artifact Validation Checklist](references/specify.md#validation-checklists) are satisfied, plus the skill-specific items in [verification.md](verification.md). Common error modes and recovery steps also live in that file.
 
 ## Guardrails
 

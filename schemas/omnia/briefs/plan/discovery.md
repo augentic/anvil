@@ -52,7 +52,7 @@ where `<plan-dir>` is `.specify/plans/<initiative-name>/` and `<k>` is the sourc
 - `--against <p>` (default kind `legacy-code`) → `--source-key against`.
 - `initiative.md:inputs[]` with `kind: legacy-code` → `--source-key <basename(path) kebab-cased>`.
 
-For a git-URL `--source`, clone via `/rt:git-cloner` into `legacy/<key>/` first and pass that local path to `/spec:analyze`.
+For a git-URL `--source`, materialise the URL into `legacy/<key>/` with the inlined guarded `git clone` snippet (see [`../../../../plugins/spec/skills/analyze/SKILL.md` §*Cloning a source tree*](../../../../plugins/spec/skills/analyze/SKILL.md)) and pass that local path to `/spec:analyze`.
 
 `/spec:analyze` appends capability summaries to `<plan-dir>/discovery.md` and writes structural metadata to `<plan-dir>/analyze/<k>/metadata.json` (see [`analyze/SKILL.md` §Structural metadata](../../../../plugins/spec/skills/analyze/SKILL.md) and [`analyze.md` §Legacy-code branch](./analyze.md)). This brief does NOT post-process either artifact.
 

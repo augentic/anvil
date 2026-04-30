@@ -68,13 +68,10 @@ Core commands:
 Additional commands:
 
 - `/spec:drop` -- Discard a change without merging specs into baseline.
-- `/spec:verify` -- Detect drift between your code and baseline specs.
-- `/spec:status` -- Check artifact completion, task progress, and active changes.
-- `/spec:explore` -- Think through ideas and investigate problems before or during a change.
 - `/spec:extract` -- Extract Specify artifacts from existing source code.
 - `/spec:plan` -- Author `.specify/plan.yaml` for a multi-change initiative (RFC-2 Layer 3 + RFC-3a: `/spec:analyze` discovery, optional multi-repo workspace sync, manifest scopes when tangled).
 - `/spec:execute` -- Drive an initiative's `plan.yaml` through `define → build → merge` automatically (RFC-2 Layer 2; `--loop` runs until `all-done`). See [Initiative authoring + execution](#initiative-authoring--execution-plans) below for the full workflow.
-- `/spec:initiative` -- Layer 4 umbrella that strings the cross-repo loop into one operator action: brief → registry → plan → execute → push → optional merge → finalize (RFC-9 §2C). Composition only; honours every halt the underlying skills surface and is idempotent on re-entry.
+- `/spec:plan --orchestrate` -- Layer 4 umbrella mode that strings the cross-repo loop into one operator action: brief → registry → plan → execute → push → optional merge → finalize (RFC-9 §2C). Composition only; honours every halt the underlying skills surface and is idempotent on re-entry. Folded into `/spec:plan` from a former `/spec:initiative` skill.
 
 ### Initiative authoring + execution (plans)
 
@@ -113,7 +110,7 @@ Specify ships as a Cursor plugin marketplace with six plugins:
 - **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
 - **Contracts** (`contracts`) -- API contract generation, validation, and import
 - **RT** (`rt`) -- Repository cloning, fixture capture, and regression testing for migration
-- **Plan** (`plan`) -- Requirements analysis and SoW generation
+- **Client** (`client`) -- Client-facing deliverables (Statements of Work, proposals, pricing summaries) generated from Specify artifacts
 
 See the [Developer Guide](docs/reference/plugins/index.md) for the full skill reference and artifact lifecycle.
 

@@ -1,12 +1,20 @@
 ---
-name: core-writer
+name: vectis-core-writer
 description: Generate or update a Rust Crux shared crate from Specify artifacts. Use when implementing core tasks from a Specify change, or when the user mentions core-writer.
-license: MIT
-argument-hint: "change-dir"
-allowed-tools: Read Write StrReplace Shell Grep Glob SemanticSearch
+argument-hint: "<change-dir>"
 ---
 
 # Crux Core Application Generator
+
+## Critical Path (Quick Reference)
+
+1. Read Specify artifacts (`{change-dir}/specs/<feature>/spec.md` + `{change-dir}/design.md`); extract App name, Model, Events, ViewModel/Page/Route, capabilities, and API shapes.
+2. Detect mode from `{project-dir}/shared/src/app.rs`: missing → run `specify vectis init` + `specify vectis verify`, then enter Update Mode; present → start Update Mode immediately.
+3. Build an implementation inventory of existing types and diff it against the artifact-derived target — Added / Removed / Modified / Unchanged — per category in dependency order (capabilities → views → domain → model → events → api → logic).
+4. Apply structural edits to `app.rs` (domain types → Page/ViewModel/Route → Model → Event/Effect → imports + `Cargo.toml` for new capabilities).
+5. Apply logic edits to `update()` and `view()` (per-Event match arms, business rules, model-to-ViewModel mapping for new pages); consult `references/crux-command-api.md` and `references/crux-capabilities.md`.
+6. Run `cargo check` as a sanity gate; full clippy / test / regression runs at the orchestration level via test-writer + the unified verify-repair loop.
+7. Final diff review against [`rules.md`](rules.md) — never regenerate a file from scratch; preserve helpers, comments, custom capability modules, and `Cargo.lock`.
 
 Generate or update a buildable Crux core (`shared` crate) for a multi-platform application. The core contains all business logic, state management, and side-effect orchestration. No shell code (iOS, Android, Web) is generated -- separate skills handle those.
 
@@ -382,18 +390,7 @@ Reverse of adding -- remove in this order to avoid compilation errors:
 
 ## Preservation Rules
 
-In update mode, minimize collateral changes. Follow these rules:
-
-1. **Never regenerate a file from scratch.** Always make targeted edits to existing files. The only exception is creating an entirely new file (e.g., a new custom capability module that did not exist before).
-2. **Preserve helper functions** that serve unchanged spec requirements. Do not rename, refactor, or move them unless the spec change requires it.
-3. **Preserve test utilities** -- factory functions (e.g., `make_item`), setup helpers (e.g., `seeded_model`), and test infrastructure. Update them only if the types they construct changed.
-4. **Preserve code organization** -- section header comments (e.g., `// ── Domain types ──`), module structure, and blank-line grouping.
-5. **Preserve `ffi.rs`** unless the App type name changed (which changes the `Bridge<AppType>` generic parameter).
-6. **Preserve custom capability modules** unless the spec changes their operation types or API contract.
-7. **Preserve `clippy.toml` and `rust-toolchain.toml`** unless a newly added capability introduces duplicate transitive crates or requires new build targets.
-8. **Preserve `Cargo.lock`** -- do not delete or manually edit it. Let `cargo` update it when dependencies change.
-9. **Preserve doc comments and code comments** on unchanged items.
-10. **Preserve `#[allow(...)]` attributes** on unchanged functions (e.g., `#[allow(clippy::too_many_lines)]` on `update()`).
+In update mode, minimize collateral changes. See [`rules.md`](rules.md) for the ten-rule preservation contract (never regenerate from scratch; preserve helper functions, test utilities, code organization, `ffi.rs`, custom capability modules, `clippy.toml`/`rust-toolchain.toml`, `Cargo.lock`, doc comments, and `#[allow(...)]` attributes on unchanged functions).
 
 ## Reference Documentation
 

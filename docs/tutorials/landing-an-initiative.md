@@ -1,6 +1,6 @@
 # Landing an Initiative
 
-This tutorial picks up where [Cross-Repo Initiatives](cross-repo-initiative.md) leaves off: two PRs are open against the registered projects, and the `oauth-login` plan has every entry `done`. We now exercise the **landing half** of the platform-first loop -- merging the PRs and archiving the plan -- and round it out with the `/spec:initiative` umbrella that drives each of the three initiative shapes as a single operator action.
+This tutorial picks up where [Cross-Repo Initiatives](cross-repo-initiative.md) leaves off: two PRs are open against the registered projects, and the `oauth-login` plan has every entry `done`. We now exercise the **landing half** of the platform-first loop -- merging the PRs and archiving the plan -- and round it out with the `/spec:plan --orchestrate` umbrella (formerly the `/spec:initiative` skill) that drives each of the three initiative shapes as a single operator action.
 
 It exercises Steps 8-9 of the RFC-9 §1C critical path:
 
@@ -102,7 +102,7 @@ specify initiative finalize --clean
 
 Use `--dry-run` to preview the guard table without writing anything -- useful for verifying readiness before you commit. `finalize` is **idempotent**: re-running it after manually clearing a refused guard (e.g. merging the last PR by hand) completes the archive on the second invocation. Re-running after a successful finalize returns `plan-not-found`, the explicit "already finalized" signal.
 
-> **One-shot variant -- `/spec:initiative` (RFC-9 §2C).** The Layer 4 umbrella skill composes Steps 1-9 into a single operator action: brief -> registry validate -> plan -> execute -> push -> optional merge -> finalize. The three subsections below show the umbrella driving each of the three initiative shapes against the same hub. See [`/spec:initiative`](../reference/initiative-skills/initiative.md) for the full algorithm, halt semantics, and re-entry rules.
+> **One-shot variant -- `/spec:plan --orchestrate` (RFC-9 §2C).** The Layer 4 umbrella mode (formerly `/spec:initiative`) composes Steps 1-9 into a single operator action: brief -> registry validate -> plan -> execute -> push -> optional merge -> finalize. The three subsections below show the umbrella driving each of the three initiative shapes against the same hub. See [`/spec:plan --orchestrate`](../reference/initiative-skills/initiative.md) for the full algorithm, halt semantics, and re-entry rules.
 
 ## Verification
 
@@ -119,7 +119,7 @@ Any deviation is a blocker. File the failing transcript against this tutorial; p
 
 ## Initiative shapes
 
-The platform-first loop is shape-agnostic. The same Steps 1-9 drive three initiative shapes (RFC-9 §Motivation -> *The three initiative shapes*); only the inputs to Step 4 (Plan) differ. Each shape is also drivable as a single command via the Layer 4 umbrella `/spec:initiative` (RFC-9 §2C). The transcripts below show each shape from the umbrella's perspective; the manual fallback for every step is the same Layer 1 verb the umbrella shells out to (see [Drop down a layer](../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the exact verb sequence).
+The platform-first loop is shape-agnostic. The same Steps 1-9 drive three initiative shapes (RFC-9 §Motivation -> *The three initiative shapes*); only the inputs to Step 4 (Plan) differ. Each shape is also drivable as a single command via the Layer 4 umbrella mode `/spec:plan --orchestrate` (RFC-9 §2C, formerly `/spec:initiative`). The transcripts below show each shape from the umbrella's perspective; the manual fallback for every step is the same Layer 1 verb the umbrella shells out to (see [Drop down a layer](../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the exact verb sequence).
 
 ### Variant: migrate-legacy
 
@@ -128,7 +128,7 @@ Sources arrive via `--source <key>=<git-url-or-path>`. `/spec:analyze` clones ea
 Run against an empty hub:
 
 ```text
-/spec:initiative create migrate-foo \
+/spec:plan --orchestrate migrate-foo \
     --shape migrate-legacy \
     --source monolith=git@github.com:org/legacy-foo.git \
     --auto-merge
@@ -144,7 +144,7 @@ The umbrella runs all seven steps without halting:
 6. **Land.** `--auto-merge` -> `specify workspace merge` waits for CI, sees both PRs green, squash-merges them.
 7. **Finalize.** `specify initiative finalize` archives the plan and brief.
 
-Verb sequence: `specify initiative create` -> `specify registry validate` -> `/spec:plan` -> `specify plan create` -> `specify registry add` x 2 -> `specify workspace sync` -> `specify plan add` x 3 -> `specify plan amend --project` x 2 -> `specify plan validate` -> `/spec:execute --loop` -> `specify workspace push` -> `specify workspace merge` -> `specify initiative finalize`. Full transcript and on-disk shapes: [`fixtures/migrate-legacy/`](../../plugins/spec/skills/initiative/fixtures/migrate-legacy/).
+Verb sequence: `specify initiative create` -> `specify registry validate` -> `/spec:plan` -> `specify plan create` -> `specify registry add` x 2 -> `specify workspace sync` -> `specify plan add` x 3 -> `specify plan amend --project` x 2 -> `specify plan validate` -> `/spec:execute --loop` -> `specify workspace push` -> `specify workspace merge` -> `specify initiative finalize`. Full transcript and on-disk shapes: [`fixtures/migrate-legacy/`](../../plugins/spec/skills/plan/fixtures/migrate-legacy/).
 
 ### Variant: new-feature
 
@@ -153,7 +153,7 @@ Sources arrive via `--from <docs>` only (or via `initiative.md:inputs`). Targets
 Run against the populated hub from [Cross-Repo Initiatives](cross-repo-initiative.md) Steps 1-3 (or your own equivalent):
 
 ```text
-/spec:initiative create dark-mode \
+/spec:plan --orchestrate dark-mode \
     --shape new-feature \
     --from ./docs/dark-mode-spec.md
 ```
@@ -164,7 +164,7 @@ Verb sequence (run 1, halts at step 6): `specify initiative create` -> `specify 
 
 Verb sequence (run 2, after the operator merges PRs by hand): `specify registry validate` -> `specify workspace push` (reports `up-to-date`) -> `gh pr list` -> `specify initiative finalize`.
 
-Full transcript and on-disk shapes: [`fixtures/new-feature/`](../../plugins/spec/skills/initiative/fixtures/new-feature/).
+Full transcript and on-disk shapes: [`fixtures/new-feature/`](../../plugins/spec/skills/plan/fixtures/new-feature/).
 
 ### Variant: update-existing
 
@@ -173,7 +173,7 @@ No `--from` and no `--source` -- sources are unused. Targets are existing regist
 Run against the same populated hub:
 
 ```text
-/spec:initiative create polish-pass \
+/spec:plan --orchestrate polish-pass \
     --shape update-existing \
     --auto-merge
 ```
@@ -190,7 +190,7 @@ Pre-flight forbids `--from`, `--against`, and `--source` under this shape; suppl
 
 Verb sequence: `specify initiative create` -> `specify registry validate` -> `/spec:plan` -> `specify plan create` -> `specify workspace sync` -> `specify plan add` x 2 -> `specify plan amend --project` x 2 -> `specify plan validate` -> `/spec:execute --loop` -> `specify workspace push` -> `specify workspace merge` -> `specify initiative finalize`.
 
-Full transcript and on-disk shapes: [`fixtures/update-existing/`](../../plugins/spec/skills/initiative/fixtures/update-existing/).
+Full transcript and on-disk shapes: [`fixtures/update-existing/`](../../plugins/spec/skills/plan/fixtures/update-existing/).
 
 ### Manual fallback parity
 
@@ -203,11 +203,11 @@ Each step in every shape above is a shell-out the umbrella runs verbatim. Operat
 - `--clean` prunes `.specify/workspace/<peer>/` after the archive completes; `--dry-run` previews the guard table without writing.
 - `finalize` is idempotent: re-running after a refused guard completes the archive on the second invocation; re-running after a successful finalize returns `plan-not-found` (the "already finalized" signal).
 - The same Steps 8-9 close out all three initiative shapes (`migrate-legacy`, `new-feature`, `update-existing`); only the inputs to Step 4 (Plan) differ.
-- The Layer 4 umbrella `/spec:initiative create <name>` composes Steps 1-9 into a single operator action; it is composition only and adds no behaviour beyond the underlying skills and CLI verbs.
+- The Layer 4 umbrella `/spec:plan --orchestrate <name>` composes Steps 1-9 into a single operator action; it is composition only and adds no behaviour beyond the underlying skills and CLI verbs.
 
 ## Cross-links
 
-- [`/spec:initiative`](../reference/initiative-skills/initiative.md) -- Layer 4 umbrella reference page.
+- [`/spec:plan --orchestrate`](../reference/initiative-skills/initiative.md) -- Layer 4 umbrella reference page (formerly `/spec:initiative`).
 - [Land an initiative](../how-to/land-an-initiative.md) -- focused how-to on autonomous vs supervised landing.
 - [`specify workspace merge`](../reference/cli/workspace.md#specify-workspace-merge) -- CLI reference, status vocabulary, exit-code contract.
 - [`specify initiative finalize`](../reference/cli/initiative.md#specify-initiative-finalize) -- CLI reference, the four guards, JSON v2 envelope.

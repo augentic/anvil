@@ -1,8 +1,7 @@
 ---
-name: merge
+name: specify-merge
 description: Merge a completed change. Merges delta specs into baseline and moves the change to the archive. Use when the user wants to finalize a change after implementation is complete.
-license: MIT
-argument-hint: "change-name?"
+argument-hint: "[change-name]"
 ---
 
 # Merge
@@ -22,92 +21,15 @@ This is an advisory note — this skill does not run the command itself. `/spec:
 ## Phase outcome contract
 
 This skill is the **merge** phase of the `/spec:execute` driver loop.
-The merge outcome is recorded differently depending on the path taken:
+The shared phase contract — outcome values, journal kinds, plan-mutation rules,
+the verbatim-`summary` rule, and the success/failure/deferred semantics — is
+authored once at [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md).
 
-### Success path (CLI-stamped — no `outcome set` call)
+This phase's outcome-specific deltas:
 
-When `specify change merge run` exits zero, the CLI has already stamped
-`PhaseOutcome { phase: merge, outcome: success }` into
-`.metadata.yaml` atomically with the `Merged` status transition,
-**before** the archive move. The archived `.metadata.yaml` carries
-the outcome. **Do not call `specify change outcome set` on the
-success path** — the change directory no longer exists under
-`.specify/changes/` after archiving, so the call would fail with
-"not found".
-
-`/spec:execute` reads the outcome via `specify change outcome show <name>`,
-which falls back to the archive when the active change directory is
-absent.
-
-### Failure path (skill-stamped)
-
-When `specify change merge run` exits non-zero, the filesystem is
-unchanged (the change directory still exists under
-`.specify/changes/`). Record the outcome:
-
-```bash
-specify change outcome set <name> merge failure --summary "..." [--context "..."]
-```
-
-Use `--summary` to name the failing capability and the load-bearing
-stderr line; use `--context` for verbatim detail (coherence check
-output, lifecycle error, etc.).
-
-### Deferred path (skill-stamped)
-
-When `specify change merge run` was never invoked — the user declined
-to confirm the merge preview, baseline drift surfaced by
-`change merge conflict-check` requires human arbitration, or the
-lifecycle status disagrees with the expected `Complete` — the change
-directory still exists. Record the outcome:
-
-```bash
-specify change outcome set <name> merge deferred --summary "..."
-```
-
-Use `--summary` to name the question or the reason the merge was not
-attempted.
-
-### Contract summary
-
-`/spec:execute` reads the outcome on return via
-`specify change outcome show <name> --format json` and translates it
-into a plan transition (`done` / `failed` / `blocked`). After a
-successful merge the active change directory is absent, so the CLI
-falls back to the archive. If the outcome is missing or malformed,
-`/spec:execute` treats the phase as `deferred` and stops for triage.
-The `outcome set` call (for failure and deferred) is the **last
-action** the skill takes before returning control.
-
-## Journal entries during the run
-
-Whenever the skill encounters a situation the human should see — a genuine question, a repair attempt that failed, or a notable recovery — append to `.specify/changes/<name>/journal.yaml` **during** the run, not just at the end:
-
-```bash
-specify change journal append <name> merge <kind> --summary "..." [--context "..."]
-```
-
-Kinds:
-
-- `question` — baseline drift detected by `change merge conflict-check`, the user was asked to confirm proceeding, or anything that might produce a `deferred` outcome at the end of the phase. Write one entry per question so the human sees the full trail when triaging.
-- `failure` — `specify change merge run` returned an error, or a validation step surfaced a problem that blocked the merge. Write one entry per failure; the final `outcome set` summary rolls up only the load-bearing one, but auditors still see every attempt.
-- `recovery` — a self-heal / recovery step happened. (Typically written by `/spec:execute` itself; phases rarely need to append this kind.)
-
-`journal.yaml` is a pure append-only audit log; `/spec:execute` never consumes it as a signalling channel. The `outcome` field in `.metadata.yaml` is the only state `/spec:execute` reads on phase return.
-
-## Mutating the plan mid-run
-
-Phases may shell out to `specify plan add` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
-
-Allowed:
-
-- `specify plan add <new-name> --description "...modifies <current-name>..."` when, for example, baseline conflict-check surfaces a neighbouring change that must land before this one can merge cleanly.
-- `specify plan amend <current-name> --depends-on <newly-needed>` when the phase discovers a dependency on another plan entry (e.g. a sibling change that should merge first). `amend` may target the currently-active entry — non-`status` fields on an `in-progress` entry are fair game.
-
-Forbidden:
-
-- Writing `status` through `amend`. The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/spec:execute`'s sole prerogative via `specify plan transition`.
-- Hand-editing `.specify/plan.yaml` or `.specify/changes/<name>/.metadata.yaml`. Always route through the CLI so the single-writer invariant holds.
+- `success` — baseline merge applied, lifecycle transitioned to `merged`, archive moved. **Uniquely CLI-stamped** — `specify change merge run` writes the success outcome atomically with the lifecycle transition before archiving; skills MUST NOT call `outcome set` on this path (see the reference for the rationale).
+- `failure` — `specify change merge run` exited non-zero (filesystem unchanged); record skill-side via `outcome set ... merge failure ...`.
+- `deferred` — `specify change merge run` was never invoked (user declined the preview, conflict-check needs human arbitration, lifecycle ≠ `Complete`); record skill-side via `outcome set ... merge deferred ...`.
 
 ## Input
 

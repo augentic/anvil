@@ -2,7 +2,7 @@
   "name": "omnia",
   "displayName": "Omnia Code Generation",
   "description": "Generate Rust WASM code from Specify artifacts.",
-  "version": "0.24.5",
+  "version": "0.25.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"

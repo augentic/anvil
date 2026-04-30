@@ -13,19 +13,16 @@ Humans are expected to work through stock Specify:
 - `/spec:build`
 - `/spec:merge`
 - `/spec:drop`
-- `/spec:verify` (detect drift between code and baseline specs)
-- `/spec:explore` (thinking partner for ideas and requirements)
-- `/spec:status` (check artifact completion and task progress)
 - `/spec:extract` (extract Specify artifacts from existing source code)
 - `/spec:execute` (drive an initiative's `.specify/plan.yaml` through define → build → merge; RFC-2 Layer 2, fully landed — `--dry-run` preview, supervised single-change run, self-heal on startup, `--loop` mode with terminal summary + SIGINT/SIGTERM handling, `sources` execution wiring, and post-merge cross-project contract validation per RFC-9 §3B)
 - `/spec:plan` (author `.specify/plan.yaml` via `pipeline.plan`; RFC-2 Layer 3 + RFC-3a + RFC-3b — discovery through `/spec:analyze`, optional **sync-peers** when `.specify/registry.yaml` declares multiple projects (`specify workspace sync` + `workspace.md`), propose with glob or **manifest** scopes (Stage C), **project assignment** step for multi-repo plans (RFC-3b: infers `project` per entry from registry descriptions, writes via `specify plan amend --project`), `.specify/plans/<name>/` artefacts archived with the plan; see [rfcs/rfc-3a-monoliths.md](rfcs/archive/rfc-3a-monoliths.md) and [rfcs/archive/rfc-3b-platform.md](rfcs/archive/rfc-3b-platform.md))
-- `/spec:initiative` (Layer 4 umbrella that strings the cross-repo loop into one operator action: brief → registry validate → `/spec:plan` → `/spec:execute --loop` → `specify workspace push` → optional `specify workspace merge` → `specify initiative finalize`; RFC-9 §2C, fully landed — composition only, idempotent on re-entry, supports `migrate-legacy` / `new-feature` / `update-existing` shapes through a single uniform sequence)
+- `/spec:plan --orchestrate` (Layer 4 umbrella mode that strings the cross-repo loop into one operator action: brief → registry validate → `/spec:plan` (default mode) → `/spec:execute --loop` → `specify workspace push` → optional `specify workspace merge` → `specify initiative finalize`; RFC-9 §2C, fully landed — composition only, idempotent on re-entry, supports `migrate-legacy` / `new-feature` / `update-existing` shapes through a single uniform sequence; was previously a separate `/spec:initiative` skill before being folded into `/spec:plan`)
 
 This repository provides specialist skills and references that support that workflow.
 
 ### Skill / CLI responsibility split
 
-The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:status`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, lifecycle transitions, schema and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
+The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, lifecycle transitions, schema and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
 CLI surface the skills depend on:
 
@@ -42,15 +39,15 @@ The previous standalone groups (`specify validate`, `specify spec`, `specify tas
 
 Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 
-### Contract skills
+### Interface skills
 
-The contracts plugin provides specialist skills for API contract generation and validation:
+The interfaces plugin provides format-first specialist skills for API contract generation and validation. Each skill carries author / import / verify intents internally and dispatches via its own intent table:
 
-- `/contracts:writer` — validates spec alignment with baseline contracts and produces the minimal delta for uncovered interactions
-- `/contracts:validator` — checks internal consistency of contract artifacts ($ref resolution, schema metadata, binding completeness)
-- `/contracts:importer` — imports and normalizes external API contracts (Layer 2)
+- `/interfaces:openapi` — author, import, or verify HTTP / resource-style contracts (OpenAPI 3.1)
+- `/interfaces:asyncapi` — author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0)
+- `/interfaces:json-schema` — author, import, or verify reusable payload schemas (JSON Schema)
 
-These skills are invoked by the `contracts` brief in the define pipeline. The brief is present in the `contracts` schema (for dedicated contract changes) and in the Omnia and Vectis schemas (for alignment validation during implementation changes).
+Each skill exposes the same three intents through sibling files: `author.md` (generate or extend), `importer.md` (normalise an external document), and `verifier.md` (internal consistency and the post-merge cross-project consumer check via `--mode cross-project`). These skills are invoked by the `contracts` brief in the define pipeline (the brief id, the `contracts@v1` schema, and the `.specify/contracts/` baseline directory keep their original names — `interfaces` only renames the Cursor plugin / slash-command surface). The brief is present in the `contracts` schema (for dedicated contract changes) and in the Omnia and Vectis schemas (for alignment validation during implementation changes).
 
 ### Plan-driven loop (RFC-2, all three layers landed)
 
@@ -71,6 +68,10 @@ All commands are run from the repository root:
 - **`make checks`** -- runs `scripts/checks.ts` via Deno for documentation and workflow consistency checks
 - **`make dev-plugins`** -- symlink local plugins into Cursor for development/testing
 - **`make prod-plugins`** -- restore Augentic marketplace plugins (reload Cursor after either)
+
+### Skill authoring
+
+- Every `SKILL.md` in this repository follows the house style codified in [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions); the long-form rationale (discovery model, why metadata is precious, examples of good/bad descriptions, the progressive-disclosure pattern, and the forbidden-frontmatter list) lives at [docs/explanation/skill-authoring.md](docs/explanation/skill-authoring.md).
 
 ### Gotchas
 

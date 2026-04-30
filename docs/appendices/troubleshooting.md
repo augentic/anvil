@@ -152,38 +152,38 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 
 ### `$ref` resolution failures
 
-**Symptom:** `/contracts:validator` reports that a `$ref` pointer does not resolve.
+**Symptom:** A format verifier (`/interfaces:openapi`, `/interfaces:asyncapi`, or `/interfaces:json-schema` running its verifier intent) reports that a `$ref` pointer does not resolve.
 
 **Cause:** A schema file referenced from an OpenAPI or AsyncAPI binding does not exist in either the change's `contracts/schemas/` or the baseline `.specify/contracts/schemas/`.
 
 **Resolution:**
 1. Check the `$ref` path in the binding file.
 2. Verify the referenced schema file exists and the filename matches (kebab-case, `.yaml` extension).
-3. If the schema is new, ensure `/contracts:writer` generated it. If it is a baseline schema, ensure the baseline is up to date.
+3. If the schema is new, ensure the corresponding `/interfaces:*` skill's author intent generated it (typically `/interfaces:json-schema` for shared payloads). If it is a baseline schema, ensure the baseline is up to date.
 
 ### Schema metadata incomplete
 
-**Symptom:** `/contracts:validator` reports missing `$id`, `title`, or `description` on a JSON Schema file.
+**Symptom:** `/interfaces:json-schema` (verifier intent) reports missing `$id`, `title`, or `description` on a JSON Schema file.
 
 **Cause:** The schema file was created without the required Specify metadata, or an imported external schema was not fully normalised.
 
 **Resolution:**
 1. Add the missing fields. `$id` must be `urn:specify:schemas/<filename-without-extension>`.
-2. For imported schemas, run `/contracts:importer` (Layer 2) or add the metadata manually.
+2. For imported schemas, re-run the relevant `/interfaces:*` skill's importer intent (Layer 2) or add the metadata manually.
 
 ### Binding completeness failures
 
-**Symptom:** `/contracts:validator` reports that a schema has no protocol binding.
+**Symptom:** A format verifier (`/interfaces:openapi` or `/interfaces:asyncapi` running its verifier intent) reports that a schema has no protocol binding.
 
 **Cause:** A schema that appears as a top-level request/response body or message payload in a spec scenario has no corresponding OpenAPI path or AsyncAPI channel.
 
 **Resolution:**
-1. If the schema is a shared vocabulary type (e.g. `ErrorResponse`) used only via `$ref` from other schemas, it is exempt from this check -- verify the validator is not misclassifying it.
-2. If the schema should have a binding, ensure `/contracts:writer` produced the corresponding OpenAPI or AsyncAPI file.
+1. If the schema is a shared vocabulary type (e.g. `ErrorResponse`) used only via `$ref` from other schemas, it is exempt from this check -- verify the verifier is not misclassifying it.
+2. If the schema should have a binding, ensure the relevant `/interfaces:*` skill's author intent (`/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming) produced the corresponding binding file.
 
 ### Alignment warnings
 
-**Symptom:** `/contracts:writer` reports alignment warnings in the alignment report.
+**Symptom:** An `/interfaces:*` skill's author intent reports alignment warnings in the alignment report.
 
 **Cause:** The change's specs describe interactions that partially conflict with the baseline contracts -- e.g. a response schema missing a field that a spec scenario asserts, or a spec referencing a status code the baseline binding does not define.
 
@@ -212,24 +212,6 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 **Cause:** The schema was updated upstream but the local cache was not refreshed.
 
 **Resolution:** Re-run `/spec:init` with the schema URL to refresh the cache.
-
-## Verify issues
-
-### No baseline specs
-
-**Symptom:** `/spec:verify` reports no baseline specs to verify against.
-
-**Cause:** No changes have been merged yet.
-
-**Resolution:** Complete and merge at least one change, or run the brownfield onboarding flow to establish a baseline from existing code.
-
-### Source not found for capability
-
-**Symptom:** `/spec:verify` cannot locate the implementation for a baseline spec.
-
-**Cause:** The capability naming or project structure does not match what verify expects.
-
-**Resolution:** Ensure the capability name in `.specify/specs/<name>/` corresponds to the actual source location in your project.
 
 ## Hub and registry issues
 
@@ -322,6 +304,6 @@ specify registry add <existing-name> \
 
 **Symptom:** `/spec:execute --loop`'s merge transcript shows `cross-project-warning:` entries, and the merged change's `journal.yaml` carries the same warnings.
 
-**Cause:** RFC-9 Section 3B post-merge cross-project contract validation. After a producer merges, the driver walks `contracts.produces`, finds consumer projects via `contracts.consumes`, and runs `/contracts:validator --mode cross-project` against each consumer's workspace clone. Any incompatibilities surface as warnings. Warnings never halt the loop -- the operator triages.
+**Cause:** RFC-9 Section 3B post-merge cross-project contract validation. After a producer merges, the driver walks `contracts.produces`, finds consumer projects via `contracts.consumes`, and runs the format-appropriate `/interfaces:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone — `/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming, `/interfaces:json-schema` for shared payload schemas. Any incompatibilities surface as warnings. Warnings never halt the loop -- the operator triages.
 
 **Resolution:** Read [Resolve cross-project contract warnings](../how-to/resolve-cross-project-contract-warnings.md) for the triage checklist. Typical paths: spawn a follow-up consumer change to track the producer's update, or accept the drift if the consumer is intentionally lagging.

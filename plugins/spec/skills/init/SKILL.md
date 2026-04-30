@@ -1,9 +1,7 @@
 ---
-name: init
-description: Initialize Specify in a project. Decides between a regular single-project init and a registry-only platform hub (RFC-9 §1D). Populates `.specify/.cache/` (regular only) and invokes `specify init` (with `--hub` for hubs) to scaffold `.specify/` and write `project.yaml`. Use when setting up a new project for spec-driven development.
-license: MIT
-argument-hint: "schema?"
-allowed-tools: Read Write Shell Grep WebFetch AskQuestion
+name: specify-init
+description: Initialize Specify in a project. Decides between a regular single-project init and a registry-only platform hub. Populates `.specify/.cache/` (regular only) and invokes `specify init` (with `--hub` for hubs) to scaffold `.specify/` and write `project.yaml`. Use when setting up a new project for spec-driven development.
+argument-hint: "[schema-url]"
 ---
 
 ## Prerequisites

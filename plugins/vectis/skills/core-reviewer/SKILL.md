@@ -1,12 +1,20 @@
 ---
-name: core-reviewer
+name: vectis-core-reviewer
 description: Review generated Crux core (Rust shared crate) code for structural issues, logic bugs, and quality problems. Use when reviewing a Crux app's core after generation, or when the user mentions core-reviewer.
-license: MIT
-argument-hint: "target-dir"
-allowed-tools: Read Grep Glob Shell SemanticSearch
+argument-hint: "<target-dir>"
 ---
 
 # Crux Core Reviewer
+
+## Critical Path (Quick Reference)
+
+1. Gather context — read `spec.md`, `shared/Cargo.toml`, every `.rs` file under `shared/src/`; if `reference-dir` is provided read its counterparts too.
+2. Spawn team — Structural + Quality (always); Logic only on the first iteration when `scope = full`. Each specialist applies its own check set (CRX-, LOG-, GEN-).
+3. Lead runs universal checks (UNI-001..021) with Rust-specific heuristics and an optional comparative pass when a reference app is supplied.
+4. Antagonist (see [`team-protocol.md`](team-protocol.md)) challenges every finding with evidence and counter-scans for Crux blind spots; lead synthesises into a single iteration report and assigns a confidence level.
+5. Auto-fix mechanical issues (missing serde derives, `render().and(...)` wraps, `.trim()`/empty input checks, unused deps); re-run `cargo check` / `clippy` / `test` and revert all auto-fixes on regression.
+6. Loop control — re-spawn Structural + Quality on changed files until `iteration == 3` or no mechanical fixes were applied.
+7. Express accumulated design-level findings — classify each as `code-fix` or `spec-change` and delegate to `/spec:define` to scaffold a `review-…` change.
 
 Systematically review the generated Crux core (Rust `shared` crate) for structural issues, logic bugs, and general code quality problems. Produces a severity-graded report with actionable findings and suggested fixes.
 
@@ -229,48 +237,7 @@ Flag significant divergences as Warning with a note explaining what the referenc
 
 After the specialist reports, universal checks, and comparative review are complete, the lead sends all combined findings (CRX-, LOG-, GEN-, UNI-, and CMP- prefixed) to the antagonist.
 
-**Spawn Antagonist**:
-
-```text
-You are the Antagonist Reviewer for a Crux shared crate at $TARGET_DIR.
-
-You receive findings from specialist reviewers (Structural, Logic, Quality)
-and from the lead's universal and comparative checks. Your job is to
-challenge every finding and find what they missed.
-
-For EACH finding (CRX-, LOG-, GEN-, UNI-, and CMP- prefixed):
-1. Validate evidence: Is there a real file:line reference and code snippet?
-2. Challenge severity: Is Critical really critical? Is Info actually higher?
-3. Check for false positives: Could this be a non-issue or acceptable
-   Crux pattern?
-4. Assess auto-fix safety: Could the suggested fix introduce regressions?
-
-Then perform a COUNTER-SCAN of all `.rs` files in `shared/src/` looking
-for issues ALL specialists missed. Common Crux blind spots:
-- Missing `render()` in deeply nested match arms (not just top-level)
-- Effect ordering bugs (render before vs after async command chains)
-- Model mutation without corresponding Command return
-- State machine edges that silently drop events (no-op match arms)
-- PendingOp cleanup paths that leak entries on error
-- Stale model field reads after `.and()` chains that may have mutated state
-
-Output format:
-## Confirmed: [ID] -- evidence solid, severity accurate
-## Downgraded: [ID] ORIG_SEVERITY -> NEW_SEVERITY -- rationale
-## Upgraded: [ID] ORIG_SEVERITY -> NEW_SEVERITY -- rationale
-## Disputed: [ID] -- rationale (must cite evidence for dispute)
-## New Findings: NEW-1, NEW-2, etc. with full finding details
-
-You MUST provide evidence for every challenge. Opinion alone is insufficient.
-You CANNOT remove findings entirely -- the minimum action is to downgrade.
-Severity downgrades move at most one level (Critical to Warning, not to Info).
-```
-
-The antagonist:
-
-1. Reviews every finding for evidence quality and severity accuracy
-2. Performs a counter-scan for missed Crux-specific issues
-3. Sends challenged report to lead with: confirmed, downgraded, upgraded, disputed, and new findings
+**Spawn Antagonist**: see [`team-protocol.md`](team-protocol.md) for the verbatim spawn prompt and the Crux-specific blind-spot list (missing `render()` in nested match arms, effect ordering bugs, model mutation without a `Command` return, no-op match arms that silently drop events, leaked `PendingOp` entries on error paths, stale model reads after `.and()` chains). The antagonist reviews every finding for evidence and severity, counter-scans for Crux-specific issues, and returns a challenged report (confirmed / downgraded / upgraded / disputed / new findings).
 
 #### 2f. Synthesis
 
@@ -426,7 +393,7 @@ If design-level findings exist, delegate to `/spec:define` to create a single Sp
 
    - **tasks.md**: Order tasks by dependency -- spec updates first (so requirements are clear before implementation), then data-type changes, then event signatures, then handler logic, then test updates, then new tests, then verification. Each task references the finding ID it addresses. Include a final verification section that re-runs the core-reviewer skill to confirm all Critical findings are resolved.
 
-4. **Show final status** using `/spec:status` and summarize: change name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
+4. **Show final status** by running `specify change status <name>` and summarize: change name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
 
 ## Severity Definitions
 

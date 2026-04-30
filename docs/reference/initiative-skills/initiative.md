@@ -1,13 +1,15 @@
-# /spec:initiative
+# /spec:plan --orchestrate (formerly /spec:initiative)
 
-Drive a cross-repo Specify initiative end-to-end from a single operator action: brief -> registry validate -> `/spec:plan` -> `/spec:execute --loop` -> `specify workspace push` -> optional `specify workspace merge` -> `specify initiative finalize`.
+> **Renamed.** The Layer 4 umbrella was originally a separate `/spec:initiative` skill. It has been folded into `/spec:plan` as a flag-gated `--orchestrate` mode in a progressive-disclosure pass; the seven-step sequence and every halt / re-entry semantic is unchanged. Replace `/spec:initiative create <name>` with `/spec:plan --orchestrate <name>` everywhere; the skill body now lives at [`plugins/spec/skills/plan/orchestration.md`](../../../plugins/spec/skills/plan/orchestration.md) (with [shapes](../../../plugins/spec/skills/plan/shapes.md) and [re-entry](../../../plugins/spec/skills/plan/re-entry.md) details in adjacent siblings). The CLI verbs (`specify initiative create`, `specify initiative finalize`) are unchanged.
 
-`/spec:initiative` is the Layer 4 umbrella skill (RFC-9 Section 2C). It is **composition only** -- every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the umbrella adds no new logic, owns no new on-disk state, and never invents a CLI verb.
+Drive a cross-repo Specify initiative end-to-end from a single operator action: brief -> registry validate -> `/spec:plan` (default mode) -> `/spec:execute --loop` -> `specify workspace push` -> optional `specify workspace merge` -> `specify initiative finalize`.
+
+`/spec:plan --orchestrate` is the Layer 4 umbrella mode (RFC-9 Section 2C). It is **composition only** -- every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the orchestration mode adds no new logic, owns no new on-disk state, and never invents a CLI verb.
 
 ## Synopsis
 
 ```text
-/spec:initiative create <name> \
+/spec:plan --orchestrate <name> \
     [--shape migrate-legacy | new-feature | update-existing] \
     [--from <path>[:<kind>]...] \
     [--against <path>[:<kind>]] \
@@ -16,7 +18,7 @@ Drive a cross-repo Specify initiative end-to-end from a single operator action: 
     [--dry-run]
 ```
 
-Only the `create` sub-verb is supported. Re-running `create` against an existing initiative is the canonical resume path -- see [Re-entry / idempotency](#re-entry--idempotency).
+Re-running `--orchestrate` against an existing initiative is the canonical resume path -- see [Re-entry / idempotency](#re-entry--idempotency).
 
 ## Arguments
 
@@ -85,7 +87,7 @@ The umbrella stops on:
 
 ## Re-entry / idempotency
 
-Running `/spec:initiative create <name>` against a populated initiative is the canonical resume path. The skill walks the on-disk state (`initiative.md` present? `plan.yaml` present and terminal? PRs merged on remote?) and resumes at the first incomplete step:
+Running `/spec:plan --orchestrate <name>` against a populated initiative is the canonical resume path. The mode walks the on-disk state (`initiative.md` present? `plan.yaml` present and terminal? PRs merged on remote?) and resumes at the first incomplete step:
 
 | State on entry | Resumes at |
 |----------------|------------|
@@ -128,23 +130,23 @@ The umbrella is a composition of existing skills and CLI verbs. It does not intr
 
 ```text
 # migrate-legacy: full autonomy
-/spec:initiative create migrate-foo \
+/spec:plan --orchestrate migrate-foo \
     --shape migrate-legacy \
     --source monolith=git@github.com:org/legacy-foo.git \
     --auto-merge
 
 # new-feature: supervised land (operator merges PRs by hand)
-/spec:initiative create dark-mode \
+/spec:plan --orchestrate dark-mode \
     --shape new-feature \
     --from ./docs/dark-mode-spec.md
 
 # update-existing: baseline-driven polish
-/spec:initiative create polish-pass \
+/spec:plan --orchestrate polish-pass \
     --shape update-existing \
     --auto-merge
 
 # Dry-run: read-side checks + plan preview, no writes
-/spec:initiative create migrate-foo \
+/spec:plan --orchestrate migrate-foo \
     --shape migrate-legacy \
     --source monolith=git@github.com:org/legacy-foo.git \
     --dry-run

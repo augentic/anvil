@@ -2,13 +2,13 @@
 
 Specify is organised in four layers. Each layer is independently useful, and each builds on the one below it.
 
-> **Naming note.** The pre-RFC-9 stack was a "three-layer stack" topped by `/spec:plan` and `/spec:execute`. RFC-9 §2C added the `/spec:initiative` umbrella verb at Layer 4 (Initiative Orchestration), promoting plan-and-drive to its own dedicated layer. The filename of this page (`three-layer-stack.md`) is preserved so existing cross-references keep resolving — see the [decision log entry](decision-log.md#independently-useful-layers) for the rationale.
+> **Naming note.** The pre-RFC-9 stack was a "three-layer stack" topped by `/spec:plan` and `/spec:execute`. RFC-9 §2C added the umbrella verb at Layer 4 (Initiative Orchestration), promoting plan-and-drive to its own dedicated layer. The umbrella was originally a separate `/spec:initiative` skill; it now lives as the `--orchestrate` mode of `/spec:plan`. The filename of this page (`three-layer-stack.md`) is preserved so existing cross-references keep resolving — see the [decision log entry](decision-log.md#independently-useful-layers) for the rationale.
 
 ```d2
 direction: down
 
 Layer4: "Layer 4 — Initiative Orchestration" {
-  initiative: "/spec:initiative"
+  initiative: "/spec:plan --orchestrate"
 }
 
 Layer3: "Layer 3 — Plan & Drive" {
@@ -23,10 +23,7 @@ Layer2: "Layer 2 — Change Lifecycle" {
   build: "/spec:build"
   mergeSkill: "/spec:merge"
   drop: "/spec:drop"
-  verify: "/spec:verify"
-  explore: "/spec:explore"
   extract: "/spec:extract"
-  status: "/spec:status"
 }
 
 Layer1: "Layer 1 — CLI Primitives" {
@@ -80,9 +77,6 @@ The full set of Layer 2 skills:
 | `/spec:build` | Implement tasks from a defined change |
 | `/spec:merge` | Merge completed change into baseline |
 | `/spec:drop` | Discard a change without merging |
-| `/spec:status` | Inspect active changes and progress |
-| `/spec:verify` | Detect drift between code and baseline specs |
-| `/spec:explore` | Thinking partner -- no fixed workflow |
 | `/spec:extract` | Produce specs and design from existing source code |
 
 **Who uses it:** Every Specify operator, every day. This is the primary interaction layer.
@@ -111,27 +105,27 @@ The plan is the initiative's table of contents. `/spec:plan` produces it by anal
 
 ## Layer 4: Initiative orchestration
 
-Layer 4 is a single skill — `/spec:initiative` (RFC-9 §2C) — that strings the entire platform-first loop into one operator action. It is **composition only**: every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the umbrella adds no new logic.
+Layer 4 is a flag-gated mode of `/spec:plan` — `/spec:plan --orchestrate` (RFC-9 §2C, formerly the dedicated `/spec:initiative` skill) — that strings the entire platform-first loop into one operator action. It is **composition only**: every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the orchestration mode adds no new logic.
 
 | Skill | Role |
 |-------|------|
-| `/spec:initiative` | Brief → registry validate → `/spec:plan` → `/spec:execute --loop` → `specify workspace push` → optional `specify workspace merge` → `specify initiative finalize` |
+| `/spec:plan --orchestrate` | Brief → registry validate → `/spec:plan` (default mode) → `/spec:execute --loop` → `specify workspace push` → optional `specify workspace merge` → `specify initiative finalize` |
 
 ```text
-/spec:initiative create <name> [--shape ...] [--from ...] [--source ...] [--auto-merge]
+/spec:plan --orchestrate <name> [--shape ...] [--from ...] [--source ...] [--auto-merge]
 ```
 
-The umbrella honours all the halts the underlying skills surface (self-heal, stuck, `registry-amendment-required`) and is **idempotent on re-entry** — running it again after a halt resumes from the appropriate step.
+The orchestration mode honours all the halts the underlying skills surface (self-heal, stuck, `registry-amendment-required`) and is **idempotent on re-entry** — running it again after a halt resumes from the appropriate step.
 
-**Who uses it:** Operators driving a cross-repo initiative end-to-end without leaving the platform hub. Power users still call `/spec:plan` and `/spec:execute` directly when they want partial reruns or CI-pipeline composability.
+**Who uses it:** Operators driving a cross-repo initiative end-to-end without leaving the platform hub. Power users still call `/spec:plan` (default mode) and `/spec:execute` directly when they want partial reruns or CI-pipeline composability.
 
 ## The layers compose
 
-A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `/spec:initiative` calls `/spec:plan` and `/spec:execute`; `/spec:execute` calls `/spec:define`, `/spec:build`, and `/spec:merge` -- the same skills you would invoke manually. The phase skills themselves do not know whether they are running inside an automated loop or being driven by a human.
+A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `/spec:plan --orchestrate` calls `/spec:plan` (default mode) and `/spec:execute`; `/spec:execute` calls `/spec:define`, `/spec:build`, and `/spec:merge` -- the same skills you would invoke manually. The phase skills themselves do not know whether they are running inside an automated loop or being driven by a human.
 
 This means you can always drop down a layer:
 
-- If `/spec:initiative` halts on a step, you can pick up by hand at the next CLI verb (`specify workspace push`, `specify workspace merge`, `specify initiative finalize`).
+- If `/spec:plan --orchestrate` halts on a step, you can pick up by hand at the next CLI verb (`specify workspace push`, `specify workspace merge`, `specify initiative finalize`).
 - If `/spec:execute` fails on a change, you can finish it manually with `/spec:build` and `/spec:merge`.
 - If `/spec:plan` produces a plan you want to adjust, you can edit it with `specify plan amend` and drive it yourself with `specify plan next`.
 - If a skill does something unexpected, you can inspect the underlying state with `specify change status` or `specify plan status`.

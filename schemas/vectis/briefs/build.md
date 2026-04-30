@@ -462,7 +462,7 @@ Specify change.
      Include a final task per platform that re-runs the corresponding
      reviewer skill to confirm all Critical findings are resolved.
 
-6. **Show final status** using `/spec:status`.
+6. **Show final status** by running `specify change status <name>`.
 
 ---
 

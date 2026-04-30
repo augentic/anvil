@@ -91,7 +91,7 @@ Observation-only: classifies every guard, prints the per-project status table, a
 - First run refuses on an unmerged PR -> operator merges manually -> re-run completes the archive.
 - After successful finalize, re-running returns `plan-not-found` (the explicit "already finalized" signal). This is the canonical way to confirm an initiative is closed.
 
-The umbrella skill `/spec:initiative create <name>` honours the same idempotency: re-running the umbrella against a state where every PR is merged and the plan still exists on disk skips straight to `specify initiative finalize`.
+The umbrella mode `/spec:plan --orchestrate <name>` honours the same idempotency: re-running the umbrella against a state where every PR is merged and the plan still exists on disk skips straight to `specify initiative finalize`.
 
 ## Output reference
 
@@ -105,5 +105,5 @@ Both `workspace merge` and `initiative finalize` emit the same shape of per-proj
 - [Cross-Repo Initiatives](../tutorials/cross-repo-initiative.md) -- end-to-end walkthrough that exercises this landing flow.
 - [`specify workspace`](../reference/cli/workspace.md) -- CLI reference for `merge` and `push`.
 - [`specify initiative`](../reference/cli/initiative.md) -- CLI reference for `finalize`.
-- [`/spec:initiative`](../reference/initiative-skills/initiative.md) -- the Layer 4 umbrella that automates this whole sequence with `--auto-merge`.
+- [`/spec:plan --orchestrate`](../reference/initiative-skills/initiative.md) -- the Layer 4 umbrella mode (formerly `/spec:initiative`) that automates this whole sequence with `--auto-merge`.
 - [Initiative landing issues](../appendices/troubleshooting.md#initiative-landing-issues) -- `branch-pattern-mismatch`, `plan-not-found`, dirty clones.

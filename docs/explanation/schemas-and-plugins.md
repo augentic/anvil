@@ -47,9 +47,9 @@ Specify ships as a Cursor plugin marketplace containing six plugins. Each plugin
 | **Specify** | `/spec:` | Core workflow: define, build, merge, verify, explore, extract, plan, execute |
 | **Omnia** | `/omnia:` | Rust WASM crate generation, testing, and review |
 | **Vectis** | `/vectis:` | Cross-platform Crux app generation (Rust core, iOS/Android shells, design system) |
-| **Contracts** | `/contracts:` | API contract generation, validation, and import |
-| **RT** | `/rt:` | Repository cloning, fixture capture, regression testing for migration |
-| **Plan** | `/plan:` | Statement of Work generation |
+| **Interfaces** | `/interfaces:` | API contract generation, validation, and import (OpenAPI, AsyncAPI, JSON Schema) |
+| **RT** | `/rt:` | Fixture capture and regression testing for migration |
+| **Client** | `/client:` | Client-facing deliverables (SoW, proposals, pricing) |
 
 ### How schemas and plugins compose
 

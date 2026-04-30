@@ -181,9 +181,10 @@ Step 3/3: merge
 #   /spec:define shopping-cart --source orders=git@github.com:org/orders-service.git
 
 # The driver does NOT clone here. /spec:define's brief pipeline
-# invokes /spec:extract, which in turn consults git-cloner to
-# materialize the tree into its clone cache. The --source value
-# travels through as a URL string.
+# invokes /spec:extract, which inlines a guarded `git clone`
+# snippet (see plugins/spec/skills/analyze/SKILL.md
+# §"Cloning a source tree") to materialize the tree into its
+# clone cache. The --source value travels through as a URL string.
 
 # specify plan transition shopping-cart in-progress
 # /spec:define shopping-cart --source orders=… → success

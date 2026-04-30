@@ -4,7 +4,7 @@ Specify is organized in four layers. Higher layers invoke lower layers, but you 
 
 ## From Layer 4 to Layer 3: skip the umbrella
 
-If `/spec:initiative` halts on the registry-amendment-required path, on `stuck`, or on a step you want to drive yourself, the same composition can be run by hand:
+If `/spec:plan --orchestrate` halts on the registry-amendment-required path, on `stuck`, or on a step you want to drive yourself, the same composition can be run by hand:
 
 ```bash
 specify initiative create <name>           # Step 1 — brief
@@ -16,7 +16,7 @@ specify workspace merge                    # Step 6 — land (or merge by hand o
 specify initiative finalize                # Step 7 — finalize
 ```
 
-The umbrella is **idempotent on re-entry** — re-running `/spec:initiative create <name>` after dropping down picks up from the first step that still has work to do. See [`/spec:initiative` — Re-entry / idempotency](../../plugins/spec/skills/initiative/SKILL.md#re-entry--idempotency).
+The umbrella is **idempotent on re-entry** — re-running `/spec:plan --orchestrate <name>` after dropping down picks up from the first step that still has work to do. See [`/spec:plan --orchestrate` — Re-entry / idempotency](../../plugins/spec/skills/plan/re-entry.md).
 
 ## From Layer 3 to Layer 2: manual change execution
 
@@ -106,6 +106,6 @@ Every skill is built on CLI commands. If a skill does something you don't unders
 ## See also
 
 - [The Layered Stack](../explanation/three-layer-stack.md) -- architectural explanation
-- [/spec:initiative](../../plugins/spec/skills/initiative/SKILL.md) -- the Layer 4 umbrella skill
+- [/spec:plan --orchestrate](../../plugins/spec/skills/plan/orchestration.md) -- the Layer 4 umbrella mode (formerly the `/spec:initiative` skill)
 - [CLI Reference](../reference/cli/index.md) -- all CLI commands
 - [Recover from a Failed Change](recover-failed-change.md) -- focused recovery guide

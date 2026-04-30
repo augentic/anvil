@@ -315,6 +315,18 @@ async function validateSkillFrontmatter(): Promise<void> {
   const validate = ajv.compile(skillSchema);
 
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+  const NAME_RE = /^[a-z][a-z0-9-]*$/;
+
+  // Plugin-directory → required `name:` prefix. The default is `<dir>-`. The
+  // `spec` directory is overridden to `specify-` because RFC-10 §A.1 keeps the
+  // operator-facing product name (`specify`) in the discovery namespace even
+  // though the plugin's directory and slash-command prefix are `spec`.
+  const PREFIX_OVERRIDES: Record<string, string> = {
+    spec: "specify",
+  };
+
+  // Track names for the global-uniqueness check (RFC-10 §A.1).
+  const namesByValue = new Map<string, string[]>();
 
   for await (const entry of walk(PLUGINS_DIR, {
     match: [/SKILL\.md$/],
@@ -347,11 +359,29 @@ async function validateSkillFrontmatter(): Promise<void> {
       }
     }
 
-    const dirName = entry.path.split("/").at(-2);
-    if (fm.name && fm.name !== dirName) {
-      fail(
-        `Skill name mismatch: ${rel} — name '${fm.name}' != dir '${dirName}'`,
-      );
+    // Plugin directory is the path component immediately under plugins/.
+    const relParts = relative(PLUGINS_DIR, entry.path).split("/");
+    const pluginDir = relParts[0];
+
+    const name = fm.name;
+    if (typeof name !== "string") {
+      fail(`Missing or non-string skill name: ${rel}`);
+    } else {
+      if (!NAME_RE.test(name)) {
+        fail(
+          `Invalid skill name syntax: ${rel} — '${name}' must match /^[a-z][a-z0-9-]*$/`,
+        );
+      }
+      const prefixBase = PREFIX_OVERRIDES[pluginDir] ?? pluginDir;
+      const requiredPrefix = `${prefixBase}-`;
+      if (!name.startsWith(requiredPrefix)) {
+        fail(
+          `Skill name missing plugin prefix: ${rel} — '${name}' must start with '${requiredPrefix}'`,
+        );
+      }
+      const seen = namesByValue.get(name) ?? [];
+      seen.push(rel);
+      namesByValue.set(name, seen);
     }
 
     const tools = fm["allowed-tools"];
@@ -363,6 +393,247 @@ async function validateSkillFrontmatter(): Promise<void> {
         }
       }
     }
+  }
+
+  for (const [name, paths] of namesByValue) {
+    if (paths.length > 1) {
+      fail(
+        `Duplicate skill name '${name}' across SKILL.md files: ${
+          paths.join(", ")
+        }`,
+      );
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 6b. SKILL.md body line-count ceiling (RFC-10 §D)
+// ──────────────────────────────────────────────────────────────
+
+async function checkSkillBodyLineCount(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+  const MAX_BODY_LINES = 500;
+
+  for await (const entry of walk(PLUGINS_DIR, {
+    match: [/SKILL\.md$/],
+    includeDirs: false,
+  })) {
+    if (await isUnderSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) continue;
+
+    const body = content.slice(fmMatch[0].length);
+    const lines = body.split("\n");
+    // Drop leading separator newline and trailing terminating newline so the
+    // count matches what an editor displays after the closing `---`.
+    if (lines.length > 0 && lines[0] === "") lines.shift();
+    if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+    const lineCount = lines.length;
+
+    if (lineCount > MAX_BODY_LINES) {
+      fail(
+        `Skill body too long: ${rel} — ${lineCount} body lines (limit ${MAX_BODY_LINES})`,
+      );
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 6c. SKILL.md description length ceiling (RFC-10 §D)
+// ──────────────────────────────────────────────────────────────
+
+async function checkSkillDescriptionLength(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+  const MAX_DESCRIPTION_CHARS = 1024;
+
+  for await (const entry of walk(PLUGINS_DIR, {
+    match: [/SKILL\.md$/],
+    includeDirs: false,
+  })) {
+    if (await isUnderSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) continue;
+
+    let fm: Record<string, unknown>;
+    try {
+      fm = parseYaml(fmMatch[1]) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    const description = fm.description;
+    if (typeof description !== "string") continue;
+
+    if (description.length > MAX_DESCRIPTION_CHARS) {
+      fail(
+        `Skill description too long: ${rel} — ${description.length} chars (limit ${MAX_DESCRIPTION_CHARS})`,
+      );
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 6d. SKILL.md argument-hint shape (RFC-10 §A.3, §D)
+// ──────────────────────────────────────────────────────────────
+
+async function checkSkillArgumentHint(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+  const FORBIDDEN: { token: string; reason: string }[] = [
+    { token: "?", reason: "trailing optional marker" },
+    { token: "--", reason: "flag dashes" },
+    { token: "|", reason: "alternative-value pipe" },
+  ];
+
+  for await (const entry of walk(PLUGINS_DIR, {
+    match: [/SKILL\.md$/],
+    includeDirs: false,
+  })) {
+    if (await isUnderSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) continue;
+
+    let fm: Record<string, unknown>;
+    try {
+      fm = parseYaml(fmMatch[1]) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    const hint = fm["argument-hint"];
+    if (hint === undefined || hint === null) continue;
+    if (typeof hint !== "string") {
+      fail(`Invalid argument-hint type in ${rel}: must be a string`);
+      continue;
+    }
+
+    for (const { token, reason } of FORBIDDEN) {
+      if (hint.includes(token)) {
+        fail(
+          `Invalid argument-hint in ${rel}: '${hint}' contains forbidden ${reason} '${token}'`,
+        );
+      }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 6e. SKILL.md frontmatter must not declare `license` (RFC-10 §A.4, §D)
+// ──────────────────────────────────────────────────────────────
+
+async function checkSkillNoLicense(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+
+  for await (const entry of walk(PLUGINS_DIR, {
+    match: [/SKILL\.md$/],
+    includeDirs: false,
+  })) {
+    if (await isUnderSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) continue;
+
+    let fm: Record<string, unknown>;
+    try {
+      fm = parseYaml(fmMatch[1]) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    if ("license" in fm) {
+      fail(
+        `Forbidden 'license' key in SKILL.md frontmatter: ${rel}`,
+      );
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 6f. Retired slash commands must not appear in active prose (RFC-10 §D)
+// ──────────────────────────────────────────────────────────────
+
+async function checkRetiredSlashCommands(): Promise<void> {
+  const RETIRED_SLASH_ALLOWLIST = new Set<string>([]);
+
+  const RETIRED_PATTERNS = [
+    "/plan:sow-writer",
+    "/rt:git-cloner",
+    "/contracts:writer",
+    "/contracts:validator",
+    "/contracts:importer",
+    "/contracts:management",
+  ];
+
+  const SCAN_ROOTS = [
+    join(REPO_ROOT, "plugins"),
+    join(REPO_ROOT, "docs"),
+    join(REPO_ROOT, "schemas"),
+    join(REPO_ROOT, ".cursor"),
+  ];
+
+  const scanFile = async (path: string): Promise<void> => {
+    const rel = relative(REPO_ROOT, path);
+    if (rel.startsWith("rfcs/archive/")) return;
+    if (RETIRED_SLASH_ALLOWLIST.has(rel)) return;
+
+    let content: string;
+    try {
+      content = await Deno.readTextFile(path);
+    } catch {
+      return;
+    }
+
+    const lines = content.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      for (const pattern of RETIRED_PATTERNS) {
+        if (lines[i].includes(pattern)) {
+          fail(
+            `Retired slash command in ${rel}:${
+              i + 1
+            } -- '${pattern}' (line: ${lines[i].trim()})`,
+          );
+        }
+      }
+    }
+  };
+
+  for (const root of SCAN_ROOTS) {
+    let exists = true;
+    try {
+      await Deno.stat(root);
+    } catch {
+      exists = false;
+    }
+    if (!exists) continue;
+
+    for await (const entry of walk(root, {
+      exts: [".md"],
+      includeDirs: false,
+    })) {
+      if (await isUnderSymlink(entry.path)) continue;
+      await scanFile(entry.path);
+    }
+  }
+
+  // Standalone files at the repo root.
+  for (const fname of ["AGENTS.md", "README.md"]) {
+    const fpath = join(REPO_ROOT, fname);
+    try {
+      await Deno.stat(fpath);
+    } catch {
+      continue;
+    }
+    await scanFile(fpath);
   }
 }
 
@@ -801,10 +1072,15 @@ await Promise.all([
 ]);
 await Promise.all([
   validateSkillFrontmatter(),
+  checkSkillBodyLineCount(),
+  checkSkillDescriptionLength(),
+  checkSkillArgumentHint(),
+  checkSkillNoLicense(),
   checkSkillReferences(),
   checkSkillVariables(),
   checkSkillDirectives(),
   checkPluginConsistency(),
+  checkRetiredSlashCommands(),
 ]);
 
 console.log();

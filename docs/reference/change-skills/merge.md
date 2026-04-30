@@ -68,6 +68,5 @@ Merge a completed change into the baseline.
 ## See also
 
 - [/spec:build](build.md) -- complete tasks before merging
-- [/spec:verify](verify.md) -- check drift after merging
 - [Lifecycle](../lifecycle.md) -- the merged state and archiving
 - [Directory Layout](../directory-layout.md) -- where archived changes go

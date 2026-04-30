@@ -17,7 +17,6 @@ The intended workflow is human-driven Specify. Single-change loop:
 /spec:build     # validates artifacts, then implements
 /spec:merge
 /spec:drop
-/spec:verify    # detect drift between code and baseline specs
 ```
 
 Multi-change initiative (Layer 3):
@@ -30,7 +29,7 @@ Multi-change initiative (Layer 3):
 Cross-repo initiative end-to-end (Layer 4 umbrella, RFC-9 §2C):
 
 ```bash
-/spec:initiative create <name> [--shape migrate-legacy|new-feature|update-existing] [--auto-merge]
+/spec:plan --orchestrate <name> [--shape migrate-legacy|new-feature|update-existing] [--auto-merge]
 ```
 
 Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
@@ -73,14 +72,10 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `build` - validate artifacts and implement tasks from a Specify change
 - `merge` - finalize and merge a completed change
 - `drop` - discard a change without merging specs into baseline
-- `verify` - detect drift between code and baseline specs
-- `explore` - thinking partner for ideas, investigation, and requirements
-- `status` - check artifact completion, task progress, and active changes
 - `extract` - extract Specify artifacts from existing source code
 - `analyze` - plan-time capability inference; emits capability summaries
-- `plan` - author `.specify/plan.yaml` via the plan pipeline
+- `plan` - author `.specify/plan.yaml` via the plan pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C
 - `execute` - drive an initiative's plan through define, build, merge
-- `initiative` - Layer 4 umbrella that strings the cross-repo loop (brief → registry validate → plan → execute → push → optional merge → finalize) into one operator action (RFC-9 §2C)
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -91,9 +86,10 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### RT Plugin (`plugins/rt/`)
 
-- `git-cloner` - clone a source repository for analysis
 - `replay-writer` - add regression tests from captured fixtures
 - `wiretapper` - capture fixture data from legacy services
+
+Cloning a remote source tree is no longer a dedicated skill — both callers (`/spec:analyze` and `/rt:wiretapper`) inline a guarded `git clone` snippet directly. See the *Cloning a source tree* subsection in `plugins/spec/skills/analyze/SKILL.md` (or `plugins/rt/skills/wiretapper/SKILL.md` for legacy-repo bootstrap).
 
 ### Vectis Plugin (`plugins/vectis/`)
 
@@ -106,13 +102,17 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `android-reviewer` - review Android shells via agent team (structural/quality/integration specialists + antagonist)
 - `design-system-writer` - generate VectisDesign from tokens (iOS Swift package + Android Compose library)
 
-### Contracts Plugin (`plugins/contracts/`)
+### Interfaces Plugin (`plugins/interfaces/`)
 
-- `writer` - generate or validate API contract artifacts from Specify specs
-- `validator` - validate internal consistency of contract artifacts
-- `importer` - import and normalize external API contracts (Layer 2)
+Format-first specialist skills; each carries author / import / verify intents internally and dispatches via its own intent table.
 
-### Plan Plugin (`plugins/plan/`)
+- `openapi` - author, import, or verify HTTP / resource-style contracts (OpenAPI 3.1)
+- `asyncapi` - author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0)
+- `json-schema` - author, import, or verify reusable payload schemas (JSON Schema)
+
+The persisted artifact surface is unchanged: the `contracts` brief id, the `contracts@v1` schema, the `.specify/contracts/` baseline directory, and every contract artifact path keep their original names. Only the Cursor plugin / slash-command surface is renamed (former `contracts` plugin, `/contracts:*` slash commands).
+
+### Client Plugin (`plugins/client/`)
 
 - `sow-writer` - translate Specify artifacts into client-facing SoW material
 
@@ -126,7 +126,7 @@ See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for
 /docs/                    # Extended documentation (architecture, plugins)
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
-  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, execute, initiative)
+  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, execute)
   │   └── references/     # Artifact templates and schema resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
@@ -134,7 +134,7 @@ See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for
   │   └── references/     # Crux patterns, design system references
   ├── contracts/          # API contract generation and validation plugin
   ├── rt/                 # RT migration plugin
-  └── plan/               # Plan requirements analysis plugin
+  └── client/             # Client-facing deliverables (SoW, proposals, pricing)
 /schemas/                 # Schema definitions (omnia, vectis, contracts)
 /scripts/                 # Validation and plugin management
 ```
@@ -194,9 +194,75 @@ In this repository:
 - Review Omnia references for capability and provider patterns
 - Compare against worked examples before inventing a new pattern
 
+## Skill authoring conventions
+
+Every `SKILL.md` in this repository follows the same house style. The long-form rationale lives in [docs/explanation/skill-authoring.md](../../docs/explanation/skill-authoring.md); the Anthropic upstream specs are the [Agent Skills overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) and the [best-practices guide](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices).
+
+### Frontmatter shape
+
+Required:
+
+- `name` — globally unique, plugin-qualified skill identifier.
+- `description` — what the skill does *and* when to use it, third person, ≤1024 characters.
+
+Optional:
+
+- `argument-hint` — Cursor placeholder text for the slash command.
+- `allowed-tools` — space-separated tool names. Today's policy is to omit and inherit the caller's toolbelt; declare it only when there is a clear reason to narrow the surface.
+
+Forbidden (validated by `make checks` via `schemas/skill.schema.json`):
+
+- `license` — license is declared once in the plugin manifest and the repo `LICENSE` file.
+- `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `paths` — all dropped; use the body for trigger phrases, gating, and platform notes.
+
+### `name`
+
+- Globally unique across **every** SKILL.md in the repo (Anthropic discovery is one global namespace, not per-plugin).
+- Plugin-qualified: must start with the containing plugin's directory name plus `-` (e.g. `omnia-crate-writer`, `interfaces-openapi`, `client-sow-writer`). The `spec/` plugin is the one exception: its skills use the `specify-` prefix (e.g. `specify-init`, `specify-plan`) so the operator-facing product name surfaces in discovery, even though the directory and slash-command prefix are `spec`. See RFC-10 §A.1 for the rename table.
+- Lowercase ASCII letters, digits, and hyphens only — `^[a-z][a-z0-9-]*$`, ≤64 chars.
+- Naming form: gerund (`importing-fixtures`), action-oriented verb (`define`, `merge`), or artifact-noun phrase (`crate-writer`, `core-reviewer`, `openapi`). Prefer gerunds for new skills when they read naturally; preserve established product verbs and concrete artifact nouns when those are more discoverable for operators and briefs.
+
+### `description`
+
+- Third person, single line (block-scalar literals are fine if short, but avoid them as a way to smuggle in more text).
+- States both **what** the skill does and **when** to use it. The "when" half is what lets Claude pick the right skill out of a catalogue; missing it is the most common drift.
+- ≤1024 characters (Anthropic limit; enforced by `make checks`).
+- No RFC citations, internal layer numbers, or workflow jargon — those belong in the body. Always-loaded metadata is a precious budget; spend it on triggers and capabilities.
+
+### `argument-hint`
+
+- Single short hint that names the **primary positional** argument as Cursor placeholder text (the grey hint shown after `/plugin:skill `).
+- Required positional → angle brackets: `<change-dir>`. Optional positional → square brackets: `[crate-name]`.
+- No flag names (`--dry-run`, `--source`), no `?` optional-suffix marker, no `|` alternative-value pipes. Flags and secondary positionals are documented in the body's "Invocation" section.
+- Skills that only take flags omit the field entirely (e.g. `/spec:execute`).
+
+### Critical Path (Quick Reference)
+
+Every SKILL.md ≥150 body lines must lead with a `## Critical Path (Quick Reference)` block of 5–7 bullets that name the algorithmic spine of the skill — the steps a maintainer (or Claude itself, when a sibling has not been read) must follow. Each bullet may link to the sibling that holds the depth (`See [verifier.md](verifier.md).`).
+
+The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/spec/skills/execute/`, `plugins/spec/skills/plan/`, `plugins/spec/skills/merge/`, and the three `plugins/interfaces/skills/*/` skills.
+
+### Body length
+
+- SKILL.md body (post-frontmatter) must stay under 500 lines (Anthropic guidance, enforced by `make checks`).
+- Push depth into siblings linked one level deep: `references/`, `examples/`, or topical files such as `author.md` / `importer.md` / `verifier.md`.
+- When a skill body is split, the SKILL.md retains the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points; the siblings carry the long-form rules, examples, templates, and edge-case prose.
+
+### Validation
+
+`make checks` enforces the mechanical parts of this section:
+
+- `name` matches `^[a-z][a-z0-9-]*$`, carries the plugin prefix, and is globally unique across all SKILL.md files.
+- `description` is ≤1024 characters.
+- `argument-hint` contains no `?`, no `--`, and no `|`.
+- SKILL.md body is ≤500 lines (post-frontmatter).
+- No SKILL.md carries a top-level `license:` (or any other forbidden frontmatter key).
+
+See `scripts/checks.ts` and `schemas/skill.schema.json` for the exact rules.
+
 ## For Contributors
 
-- All skills follow the shared `SKILL.md` structure
+- All skills follow the shared `SKILL.md` structure — see [docs/explanation/skill-authoring.md](../../docs/explanation/skill-authoring.md) for the full rationale.
 - Changes to generation behavior belong in the relevant skill or reference
 - Keep the repo aligned with the Specify-first operating model
 

@@ -11,31 +11,40 @@ Follow the task format conventions defined in the define skill for checkbox form
 
 Generate only tasks that an agent can complete and verify with contract artifacts and local validators. Do not generate manual review, external service, production credentials, or user-confirmation tasks.
 
-When alignment needs review, express it as a validator or writer task that produces machine-readable output. Use `contracts:validator` for `$ref` resolution, schema metadata, binding completeness, and warning-free alignment checks.
+When alignment needs review, express it as a format-skill verification task that produces machine-readable output. Use the relevant `interfaces:*` verifier intent for `$ref` resolution, schema metadata, binding completeness, and warning-free alignment checks.
 
 ## Available Skills
 
 | Directive | Skill | When to Use |
 |-----------|-------|-------------|
-| `contracts:writer` | Generate/validate contract artifacts | Contract generation tasks |
-| `contracts:validator` | Validate contract consistency | Validation tasks |
+| `interfaces:openapi` | Author or verify OpenAPI artifacts | HTTP/resource interactions |
+| `interfaces:asyncapi` | Author or verify AsyncAPI artifacts | Evented, pub/sub, streaming, or WebSocket interactions |
+| `interfaces:json-schema` | Author or verify reusable JSON Schema artifacts | Shared payload vocabulary referenced by HTTP and/or evented interactions |
+
+Pick the directive whose format matches each interface. When a change contains both HTTP and evented interactions, order the per-interface tasks `interfaces:json-schema` first (shared payloads), then `interfaces:openapi` (HTTP), then `interfaces:asyncapi` (events) so later format passes can reuse the schemas authored earlier. Each skill exposes both an author intent (generate or extend the artifact) and a verifier intent (consistency checks); the build phase runs the verifier intent of every format skill that owns artifacts in the change.
 
 ## Standard Task Groups
 
-Contract changes produce a fixed set of validation tasks. Generate one group per interface in the specs, plus a cross-cutting validation group:
+Contract changes produce a fixed set of authoring and verification tasks. Generate one group per interface in the specs, plus a cross-cutting verification group:
 
 ### Per-interface tasks
 
-For each interface in `specs/`, assign a sequential group number `<N>` (starting at 1):
+For each interface in `specs/`, emit one task per format skill the interface needs (skip formats with no interactions):
 
-- [ ] `<N>`.1 Generate contract artifacts for `<interface>` <!-- skill: contracts:writer -->
-- [ ] `<N>`.2 Validate `<interface>` contract artifacts <!-- skill: contracts:validator -->
+- [ ] `interfaces:json-schema` — Author shared payload schemas for `<interface>`
+- [ ] `interfaces:openapi` — Author OpenAPI delta for `<interface>` (HTTP interactions only)
+- [ ] `interfaces:asyncapi` — Author AsyncAPI delta for `<interface>` (evented interactions only)
+- [ ] `interfaces:json-schema` — Verify `<interface>` JSON Schema artifacts
+- [ ] `interfaces:openapi` — Verify `<interface>` OpenAPI artifacts (HTTP interactions only)
+- [ ] `interfaces:asyncapi` — Verify `<interface>` AsyncAPI artifacts (evented interactions only)
 
-### Cross-cutting validation
+### Cross-cutting verification
 
-Use the next group number after the last per-interface group (i.e. `<N+1>`):
+Emit one task per format skill present in the change. For mixed-format changes, also emit a final cross-format consistency task.
 
-- [ ] `<N+1>`.1 Validate `$ref` resolution across all contract files <!-- skill: contracts:validator -->
-- [ ] `<N+1>`.2 Verify schema metadata completeness (`$id`, `title`, `description`) <!-- skill: contracts:validator -->
-- [ ] `<N+1>`.3 Verify binding completeness for every spec-referenced schema <!-- skill: contracts:validator -->
-- [ ] `<N+1>`.4 Verify the alignment report has no unresolved warnings <!-- skill: contracts:validator -->
+- [ ] `interfaces:json-schema` — Verify `$ref` resolution and schema metadata (`$id`, `title`, `description`) across all change-local schemas
+- [ ] `interfaces:openapi` — Verify `$ref` resolution and binding completeness across the OpenAPI delta
+- [ ] `interfaces:asyncapi` — Verify `$ref` resolution and binding completeness across the AsyncAPI delta
+- [ ] `interfaces:json-schema` — Verify cross-format `$ref` consistency and report duplicate schema identities (mixed-format changes only)
+- [ ] `interfaces:openapi` — Review alignment report for warnings (HTTP interactions only)
+- [ ] `interfaces:asyncapi` — Review alignment report for warnings (evented interactions only)

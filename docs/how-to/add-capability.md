@@ -32,18 +32,7 @@ Specify detects that `notification` already exists in the baseline and generates
 
 The merge applies the delta to the baseline spec, preserving existing requirements and adding the new ones.
 
-## Verify after merging
-
-Confirm the implementation matches the updated baseline:
-
-```text
-/spec:verify notification
-```
-
-This checks only the `notification` capability. Use `/spec:verify` without arguments to verify the entire baseline.
-
 ## See also
 
 - [Iterating on a Baseline](../tutorials/iterating-on-baseline.md) -- tutorial covering delta specs in detail
 - [Artifact Format](../reference/artifact-format.md) -- delta spec format reference
-- [/spec:verify](../reference/change-skills/verify.md) -- drift detection reference

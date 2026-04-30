@@ -1,31 +1,8 @@
 # RT Plugin
 
-Fixture capture, repository cloning, and regression testing for migrations. The RT plugin supports the migration workflow by providing tools to clone legacy repositories, capture runtime fixtures, and write regression tests from those fixtures.
+Fixture capture and regression testing for migrations. The RT plugin supports the migration workflow by providing tools to capture runtime fixtures from a legacy service and write regression tests from those fixtures. Repository cloning is no longer a dedicated skill — both callers inline a guarded `git clone` snippet directly; see the *Cloning a source tree* subsection in [`plugins/spec/skills/analyze/SKILL.md`](../../../plugins/spec/skills/analyze/SKILL.md) (or [`plugins/rt/skills/wiretapper/SKILL.md`](../../../plugins/rt/skills/wiretapper/SKILL.md) for legacy-repo bootstrap).
 
 ## Skills
-
-### /rt:git-cloner
-
-Clone a source repository for analysis.
-
-**Synopsis:**
-
-```text
-/rt:git-cloner <repo-url> <dest-dir> [--detach]
-```
-
-**Inputs:**
-- `repo-url` -- Git repository URL.
-- `dest-dir` -- Local destination directory.
-- `--detach` -- Remove `.git` directory after cloning (for analysis without git history).
-
-**Behavior:**
-1. Validates the URL and destination.
-2. Clones (shallow) or pulls if the destination already exists.
-3. Verifies the clone.
-4. Reports summary (language, file count, size).
-
-Used by `/spec:plan` during the discovery phase when `--source` points to a remote repository.
 
 ### /rt:wiretapper
 
@@ -81,12 +58,12 @@ Add regression tests from captured JSON fixtures.
 
 ## Migration workflow
 
-The three RT skills form a pipeline:
+The two RT skills form a pipeline (preceded by an inlined `git clone` step when the legacy source is remote — see the snippet in [`plugins/rt/skills/wiretapper/SKILL.md`](../../../plugins/rt/skills/wiretapper/SKILL.md)):
 
 ```text
-/rt:git-cloner     --> clone the legacy repo
-/rt:wiretapper     --> instrument it and capture fixtures
-/rt:replay-writer  --> write regression tests from fixtures
+git clone "$URL" "$DEST"   --> bootstrap the legacy repo (inlined snippet)
+/rt:wiretapper             --> instrument it and capture fixtures
+/rt:replay-writer          --> write regression tests from fixtures
 ```
 
 This pipeline is typically used alongside the core Specify workflow:

@@ -1,12 +1,20 @@
 ---
-name: android-reviewer
+name: vectis-android-reviewer
 description: Review generated Android shell (Kotlin/Jetpack Compose) code for structural issues, integration correctness, and quality problems. Use when reviewing a Crux app's Android shell after generation, or when the user mentions android-reviewer.
-license: MIT
-argument-hint: "target-dir"
-allowed-tools: Read Grep Glob Shell SemanticSearch
+argument-hint: "<target-dir>"
 ---
 
 # Crux Android Shell Reviewer
+
+## Critical Path (Quick Reference)
+
+1. Gather context — read `shared/src/app.rs`, every `.kt` file under `Android/app/src/main/java/`, Gradle/manifest config, and design tokens; if `reference-dir` is provided, read its counterparts too.
+2. Spawn team — Structural + Quality (always); Integration only on the first iteration when `scope = full`. Each specialist applies its own check set (AND-, KTL-, INT-).
+3. Lead applies universal checks (UNI-001..021) with Android/Compose heuristics, skipping checks already covered by the specialists.
+4. Antagonist (see [`team-protocol.md`](team-protocol.md)) challenges every finding with evidence and counter-scans for Android blind spots; lead synthesises into a single iteration report and assigns a confidence level.
+5. Auto-fix mechanical issues (a11y `contentDescription`, design-token swaps, missing `@Preview`, `import com.example.app.*`, `CancellationException` rethrow); revert all auto-fixes if the build breaks.
+6. Loop control — re-spawn Structural + Quality on the changed files until `iteration == 3` or no mechanical fixes were applied.
+7. Express accumulated design-level findings — when `orchestrated: true` return classified `design_findings`; otherwise delegate to `/spec:define` to scaffold a `review-…` change.
 
 Systematically review the generated Android shell (Kotlin/Jetpack Compose) for structural issues, integration correctness, and general code quality problems. Produces a severity-graded report with actionable findings and suggested fixes.
 
@@ -211,53 +219,7 @@ Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004, UNI-007, U
 
 After the specialist reports and universal checks are complete, the lead sends all combined findings (AND-, KTL-, INT-, and UNI- prefixed) to the antagonist.
 
-**Spawn Antagonist**:
-
-```text
-You are the Antagonist Reviewer for a Crux Android shell at $TARGET_DIR.
-
-You receive findings from specialist reviewers (Structural, Quality,
-Integration) and from the lead's universal checks. Your job is to
-challenge every finding and find what they missed.
-
-For EACH finding (AND-, KTL-, INT-, and UNI- prefixed):
-1. Validate evidence: Is there a real file:line reference and code snippet?
-2. Challenge severity: Is Critical really critical? Is Info actually higher?
-3. Check for false positives: Could this be a non-issue or acceptable
-   Android/Compose pattern?
-4. Assess auto-fix safety: Could the suggested fix introduce regressions?
-
-Then perform a COUNTER-SCAN of all `.kt` files under
-`Android/app/src/main/java/` looking for issues ALL specialists missed.
-Common Android/Compose blind spots:
-- Coroutine leaks from `scope.launch` without Job tracking or cancellation
-- Missing `CancellationException` rethrow in catch blocks (breaks
-  structured concurrency)
-- Theme/resource mismatches between `themes.xml` and Compose theme wrapper
-- Missing `network_security_config.xml` for apps with HTTP effects
-- `@Preview` composables with stale sample data after ViewModel changes
-- Timer `Job` references not cleaned up in `onCleared()`
-- Missing `SupervisorJob` in CoroutineScope (child failure crashes parent)
-- Hardcoded design tokens not matching `tokens.yaml` values
-- Missing crash recovery handler in Application class (app terminates on Compose layout crash with no recovery)
-
-Output format:
-## Confirmed: [ID] -- evidence solid, severity accurate
-## Downgraded: [ID] ORIG_SEVERITY -> NEW_SEVERITY -- rationale
-## Upgraded: [ID] ORIG_SEVERITY -> NEW_SEVERITY -- rationale
-## Disputed: [ID] -- rationale (must cite evidence for dispute)
-## New Findings: NEW-1, NEW-2, etc. with full finding details
-
-You MUST provide evidence for every challenge. Opinion alone is insufficient.
-You CANNOT remove findings entirely -- the minimum action is to downgrade.
-Severity downgrades move at most one level (Critical to Warning, not to Info).
-```
-
-The antagonist:
-
-1. Reviews every finding for evidence quality and severity accuracy
-2. Performs a counter-scan for missed Android-specific issues
-3. Sends challenged report to lead with: confirmed, downgraded, upgraded, disputed, and new findings
+**Spawn Antagonist**: see [`team-protocol.md`](team-protocol.md) for the verbatim spawn prompt and the Android/Compose-specific blind-spot list (coroutine leaks, missing `CancellationException` rethrow, theme/resource mismatches, missing `network_security_config.xml`, stale `@Preview` data, untracked timer jobs, missing `SupervisorJob`, hardcoded tokens, missing crash recovery handler). The antagonist reviews every finding for evidence and severity, counter-scans for Android-specific issues, and returns a challenged report (confirmed / downgraded / upgraded / disputed / new findings).
 
 #### 2e. Synthesis
 
@@ -424,7 +386,7 @@ single Specify change that tracks all of them:
 
    - **tasks.md**: Order tasks by dependency -- spec updates first (so requirements are clear before implementation), then missing screen composables, then missing effect handlers, then navigation fixes, then design system corrections, then verification. Each task references the finding ID it addresses. Include a final verification section that re-runs the android-reviewer skill to confirm all Critical findings are resolved.
 
-4. **Show final status** using `/spec:status` and summarize: change name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
+4. **Show final status** by running `specify change status <name>` and summarize: change name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
 
 ## Severity Definitions
 

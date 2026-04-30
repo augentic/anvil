@@ -5,7 +5,7 @@ Canonical definitions for terms used throughout Specify.
 ## A
 
 **Alignment report**
-The output of `/contracts:writer` after running the 6-step algorithm. Summarises coverage (interactions already defined in the baseline), alignment warnings (spec-vs-baseline mismatches), generated delta (new contract files), and normalisation changes. A clean report with zero delta is the expected outcome for implementation changes in a contract-first workflow.
+The output of an `/interfaces:*` skill's author intent (`/interfaces:openapi`, `/interfaces:asyncapi`, or `/interfaces:json-schema` — picked from the brief context) after running the 6-step algorithm. Summarises coverage (interactions already defined in the baseline), alignment warnings (spec-vs-baseline mismatches), generated delta (new contract files), and normalisation changes. A clean report with zero delta is the expected outcome for implementation changes in a contract-first workflow.
 
 **API contract**
 A machine-readable interface definition at `.specify/contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Contracts capture the *shape* of interfaces -- endpoint paths, methods, payload schemas, error codes, channel names, message structures. They complement behavioral specs, which capture *what* the system does.
@@ -48,7 +48,7 @@ Authorship pattern where a dedicated contract change defines interface shapes be
 Authorship pattern where API contracts are imported from an external system or legacy API. The operator places the external files into the change's `contracts/` directory. `/spec:plan` inserts import changes when a source is flagged as external.
 
 **Cross-project contract validation**
-The post-merge check `/spec:execute` runs against the producer's `contracts.produces` list (RFC-9 Section 3B). For each produced contract, the driver finds consumer projects via `contracts.consumes`, runs `/contracts:validator --mode cross-project` against each consumer's workspace clone, and writes any incompatibilities to the merged change's `journal.yaml` as `cross-project-warning:` entries. Warnings never halt the loop; the operator triages them.
+The post-merge check `/spec:execute` runs against the producer's `contracts.produces` list (RFC-9 Section 3B). For each produced contract, the driver finds consumer projects via `contracts.consumes`, runs the format-appropriate `/interfaces:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone, and writes any incompatibilities to the merged change's `journal.yaml` as `cross-project-warning:` entries. Warnings never halt the loop; the operator triages them.
 
 ## D
 
@@ -88,7 +88,7 @@ A multi-change program coordinated through a plan. Examples: a migration, a gree
 The canonical closure verb for the platform-first loop (RFC-9 Section 4C). `specify initiative finalize` runs four guards in order -- plan-presence, plan terminal-state, per-project PR-state (`MERGED` on remote), workspace-cleanliness -- then atomically archives `plan.yaml`, `.specify/initiative.md`, and `.specify/plans/<name>/` into `.specify/archive/plans/<YYYYMMDD>-<name>/`. Idempotent: re-running after a successful finalize returns `plan-not-found`, the explicit "already finalized" signal. Optional `--clean` flag prunes `.specify/workspace/<peer>/` clones after the archive completes.
 
 **Initiative shapes (three)**
-The three input topologies the platform-first loop handles uniformly (RFC-9 Section Motivation): `migrate-legacy` (sources via `--source <key>=<git-url-or-path>`, targets are existing or newly-minted registered projects), `new-feature` (sources via `--from <docs>`, targets are existing registered projects with new ones spawned at assignment time via the registry-proposal sub-step), and `update-existing` (no input flags, targets are existing registered projects, baseline accumulation in workspace clones is the dominant signal). All three flow through the same seven-step `/spec:initiative` sequence.
+The three input topologies the platform-first loop handles uniformly (RFC-9 Section Motivation): `migrate-legacy` (sources via `--source <key>=<git-url-or-path>`, targets are existing or newly-minted registered projects), `new-feature` (sources via `--from <docs>`, targets are existing registered projects with new ones spawned at assignment time via the registry-proposal sub-step), and `update-existing` (no input flags, targets are existing registered projects, baseline accumulation in workspace clones is the dominant signal). All three flow through the same seven-step `/spec:plan --orchestrate` sequence (was `/spec:initiative` before the orchestration mode was folded into `/spec:plan`).
 
 ## L
 
@@ -96,13 +96,13 @@ The three input topologies the platform-first loop handles uniformly (RFC-9 Sect
 The `specify` CLI commands that handle all deterministic operations: change lifecycle, plan CRUD, registry mutation, workspace sync/push/merge, schema resolution, validation. The foundation that skills build on.
 
 **Layer 2 (Change lifecycle)**
-The `/spec:define`, `/spec:build`, `/spec:merge` loop and supporting skills (`/spec:init`, `/spec:drop`, `/spec:status`, `/spec:verify`, `/spec:explore`, `/spec:extract`). Each skill operates on a single change inside `.specify/changes/<name>/` and delegates deterministic work to the Layer 1 CLI.
+The `/spec:define`, `/spec:build`, `/spec:merge` loop and supporting skills (`/spec:init`, `/spec:drop`, `/spec:extract`). Each skill operates on a single change inside `.specify/changes/<name>/` and delegates deterministic work to the Layer 1 CLI.
 
 **Layer 3 (Plan & Drive)**
 The skills that coordinate multi-change programs through `.specify/plan.yaml`: `/spec:plan` (authors the plan via discovery, propose, and assignment), `/spec:execute` (automates the define-build-merge loop per change with CWD-based routing for multi-repo plans), and `/spec:analyze` (plan-time capability inference). Includes sync-peers for multi-repo registries and project assignment (RFC-3b). Originally called "Initiative orchestration"; renamed to "Plan & Drive" by RFC-9 Section 2C when Layer 4 was promoted above it.
 
 **Layer 4 (Initiative orchestration)**
-The single skill `/spec:initiative` (RFC-9 Section 2C) that strings the platform-first loop -- brief, registry validate, plan, execute, push, optional merge, finalize -- into one operator action. Composition only: every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the umbrella adds no new logic. Honours every halt the underlying skills surface and is idempotent on re-entry.
+The orchestration mode of `/spec:plan` (`/spec:plan --orchestrate`, RFC-9 Section 2C) that strings the platform-first loop -- brief, registry validate, plan, execute, push, optional merge, finalize -- into one operator action. Composition only: every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the umbrella adds no new logic. Honours every halt the underlying skills surface and is idempotent on re-entry. Was a dedicated `/spec:initiative` skill before being folded into `/spec:plan`.
 
 **Lifecycle state**
 The current status of a change: `created`, `defining`, `defined`, `building`, `complete`, `merged`, or `dropped`. `defining` and `building` are transient states indicating a phase is in-flight. Managed by the CLI via `.metadata.yaml`.
@@ -180,11 +180,6 @@ Authorship pattern where contracts are derived inline from specs during a single
 **Sync peers**
 The phase during `/spec:plan` (multi-repo only) that clones registry projects into `.specify/workspace/` and inventories their baseline specs. Produces `workspace.md`.
 
-## V
-
-**Verify**
-The read-only skill (`/spec:verify`) that compares code against baseline specs to detect drift. Classifies requirements as COVERED, DRIFTED, MISSING, or UNSPECIFIED.
-
 ## W
 
 **Workspace**
@@ -194,7 +189,7 @@ The read-only skill (`/spec:verify`) that compares code against baseline specs t
 `specify workspace merge` (RFC-9 Section 4A). Squash-merges the open PRs created by `specify workspace push` once their CI is green. Per-project, the verb checks `gh pr checks` against `specify/<initiative-name>` and runs `gh pr merge --squash` when every check is `pass` or `skipping`. Refuses any PR whose `headRefName` is not `specify/<initiative-name>` exactly (the `branch-pattern-mismatch` guard). Never `--admin`, never `--auto`. Best-effort across projects; a single project's failure surfaces in its row without aborting the others.
 
 **Workspace tier 1** (also: **Legacy-source clone**)
-The ephemeral, read-only clone materialised under `.specify/plans/<name>/analyze/<key>/` by `/spec:analyze` (typically via `/rt:git-cloner`) so the discovery brief can read source code that is not on the operator's local disk. Belongs to a single initiative and is swept into `.specify/archive/plans/<YYYYMMDD>-<name>/` by `specify plan archive`. Anything an operator edits inside a tier-1 clone moves into the archive when the initiative ends -- it never propagates back to the original source. See [Workspace tiers](../explanation/workspace-tiers.md).
+The ephemeral, read-only clone materialised under `.specify/plans/<name>/analyze/<key>/` by `/spec:analyze` (using the inlined guarded `git clone` snippet documented at [`plugins/spec/skills/analyze/SKILL.md` §*Cloning a source tree*](../../plugins/spec/skills/analyze/SKILL.md) when the source is a git URL) so the discovery brief can read source code that is not on the operator's local disk. Belongs to a single initiative and is swept into `.specify/archive/plans/<YYYYMMDD>-<name>/` by `specify plan archive`. Anything an operator edits inside a tier-1 clone moves into the archive when the initiative ends -- it never propagates back to the original source. See [Workspace tiers](../explanation/workspace-tiers.md).
 
 **Workspace tier 2** (also: **Registered project clone**)
 The durable, read-write clone materialised under `.specify/workspace/<name>/` by `specify workspace sync` from an entry in `.specify/registry.yaml`. Belongs to the platform, not to any one initiative; persists across initiatives. `/spec:execute` `chdir`s into this clone before invoking the phase skills, so the change directory, the merged baseline, and the workspace's git history accumulate here. `specify workspace push` is the explicit release gate that publishes those local commits. See [Workspace tiers](../explanation/workspace-tiers.md).

@@ -1,8 +1,6 @@
 ---
-name: guest-writer
-description: Generate a Rust project that exposes HTTP endpoints, subscribes to message topics, and handles WebSocket events in order to surface business logic via the Omnia WASI runtime.
-license: MIT
-allowed-tools: Read Write StrReplace Shell
+name: omnia-guest-writer
+description: Generate a Rust project that exposes HTTP endpoints, subscribes to message topics, and handles WebSocket events in order to surface business logic via the Omnia WASI runtime. Use when scaffolding the WASM guest wrapper for a set of generated Omnia crates or when the user mentions `guest-writer`.
 ---
 
 # Guest Generator Skill

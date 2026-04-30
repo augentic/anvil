@@ -23,7 +23,7 @@
 ```text
 /spec:init --hub                                     # bootstrap a platform hub
 specify registry add <project> --url ... --schema ...
-/spec:initiative create <name> [--shape ...] [--auto-merge]
+/spec:plan --orchestrate <name> [--shape ...] [--auto-merge]
 ```
 
 ## All skills
@@ -35,17 +35,14 @@ specify registry add <project> --url ... --schema ...
 | `/spec:build` | 2 | Implement tasks |
 | `/spec:merge` | 2 | Merge completed change into baseline |
 | `/spec:drop` | 2 | Discard a change |
-| `/spec:status` | 2 | Check progress |
-| `/spec:verify` | 2 | Detect drift between code and specs |
-| `/spec:explore` | 2 | Think through a problem |
 | `/spec:extract` | 2 | Extract specs from existing code |
 | `/spec:analyze` | 3 | Plan-time capability inference (invoked by `/spec:plan`) |
 | `/spec:plan` | 3 | Author a multi-change plan |
 | `/spec:execute` | 3 | Automate the plan loop |
-| `/spec:initiative` | 4 | Cross-repo umbrella: brief -> registry -> plan -> execute -> push -> merge -> finalize |
-| `/contracts:writer` | -- | Validate spec alignment, produce contract delta |
-| `/contracts:validator` | -- | Verify contract artifact consistency |
-| `/contracts:importer` | -- | Import and normalise external contracts (Layer 2) |
+| `/spec:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> merge -> finalize (was `/spec:initiative`) |
+| `/interfaces:openapi` | -- | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
+| `/interfaces:asyncapi` | -- | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
+| `/interfaces:json-schema` | -- | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |
 
 ## Artifacts
 

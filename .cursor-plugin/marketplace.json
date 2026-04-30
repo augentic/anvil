@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Spec-driven code generation plugins for Augentic.",
-    "version": "0.24.5",
+    "version": "0.25.0",
     "pluginRoot": "plugins"
   },
   "plugins": [
@@ -21,9 +21,9 @@
       "description": "Skills to generate Omnia Rust wasm32-wasip2 crates."
     },
     {
-      "name": "plan",
-      "source": "plan",
-      "description": "Skills to generate Statements of Work from Specify artifacts."
+      "name": "client",
+      "source": "client",
+      "description": "Skills to generate client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — from Specify artifacts."
     },
     {
       "name": "vectis",
@@ -33,12 +33,12 @@
     {
       "name": "spec",
       "source": "spec",
-      "description": "Skills for Specify workflow orchestration: init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, and execute."
+      "description": "Skills for Specify workflow orchestration: init, define, build, merge, drop, extract, analyze, plan, execute, and initiative."
     },
     {
-      "name": "contracts",
-      "source": "contracts",
-      "description": "Skills to generate and validate machine-readable API contracts (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0) from Specify artifacts."
+      "name": "interfaces",
+      "source": "interfaces",
+      "description": "Skills to author, import, and verify interface contracts — OpenAPI, AsyncAPI, JSON Schema, and future API/interface formats — from Specify artifacts."
     }
   ]
 }

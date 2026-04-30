@@ -78,7 +78,7 @@ The entry transitions back to `pending`. The next `/spec:execute` cycle picks it
 
 The driver picks up the re-queued change first (it has no unsatisfied dependencies that were not already satisfied before the halt), runs `/spec:define` -> `/spec:build` -> `/spec:merge` against the new workspace slot, and continues with the rest of the plan.
 
-If you started this initiative via `/spec:initiative create <name>`, re-running the umbrella achieves the same end state -- the umbrella's re-entry algorithm detects the now-pending change and resumes at step 4 (Execute). See [`/spec:initiative` re-entry](../reference/initiative-skills/initiative.md#re-entry--idempotency).
+If you started this initiative via `/spec:plan --orchestrate <name>`, re-running the umbrella achieves the same end state -- the umbrella's re-entry algorithm detects the now-pending change and resumes at step 4 (Execute). See [`/spec:plan --orchestrate` re-entry](../reference/initiative-skills/initiative.md#re-entry--idempotency).
 
 ## Re-route to an existing project
 
@@ -116,4 +116,4 @@ The framework reports drift; the operator decides what to do about it. Same post
 - [`specify registry`](../reference/cli/registry.md) -- CLI reference for `add` and `remove`.
 - [Manage registry projects](manage-registry-projects.md) -- the broader add/remove how-to.
 - [`/spec:execute`](../reference/initiative-skills/execute.md) -- the executor that surfaces the halt.
-- [`/spec:initiative`](../reference/initiative-skills/initiative.md) -- the umbrella skill, which composes against this same recovery sequence.
+- [`/spec:plan --orchestrate`](../reference/initiative-skills/initiative.md) -- the umbrella mode (formerly `/spec:initiative`), which composes against this same recovery sequence.

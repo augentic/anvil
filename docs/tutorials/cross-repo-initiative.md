@@ -12,7 +12,7 @@ It exercises Steps 1-7 of the RFC-9 §1C critical path:
 6. `/spec:execute --loop` with CWD routing across two workspace clones
 7. `specify workspace push` to publish branches and PRs
 
-The remaining steps -- merging the PRs and archiving the plan -- live in the follow-on tutorial [Landing an Initiative](landing-an-initiative.md). Between them, the two tutorials walk the full Steps 1-9 RFC-9 §1C path. The `/spec:initiative` umbrella variants and the three initiative shapes (migrate-legacy / new-feature / update-existing) also live there.
+The remaining steps -- merging the PRs and archiving the plan -- live in the follow-on tutorial [Landing an Initiative](landing-an-initiative.md). Between them, the two tutorials walk the full Steps 1-9 RFC-9 §1C path. The `/spec:plan --orchestrate` umbrella variants (formerly the `/spec:initiative` skill) and the three initiative shapes (migrate-legacy / new-feature / update-existing) also live there.
 
 > **Choosing your topology.** This tutorial uses the platform-hub topology because the feature spans two registered projects -- the hub holds platform state and the code lives in registered repos. If your work is single-repo, the platform-as-project shape (initiating repo with `url: .` in the registry) is simpler; see [Platform repo topologies](../explanation/platform-repo.md) for the comparison and [A Multi-Change Initiative](single-repo-initiative.md) for the single-repo flow.
 
@@ -294,7 +294,7 @@ The driver:
 4. Runs `/spec:define` → `/spec:build` → `/spec:merge` for the change.
 5. Reads the phase outcome (`success`/`failure`/`deferred`) and transitions the plan entry to `done`/`failed`/`blocked`.
 6. Restores CWD to the hub root.
-7. After a successful merge, runs the [cross-project contract check](../../plugins/spec/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b) (RFC-9 §3B): walks the producer's `contracts.produces` list, finds consumer projects via `contracts.consumes`, and runs `/contracts:validator --mode cross-project` against each consumer's workspace clone. Findings are recorded as `cross-project-warning:` entries on the merged change's `journal.yaml` and rendered in the merge transcript. **Warnings never halt the loop.**
+7. After a successful merge, runs the [cross-project contract check](../../plugins/spec/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b) (RFC-9 §3B): walks the producer's `contracts.produces` list, finds consumer projects via `contracts.consumes`, and runs the format-appropriate `/interfaces:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone — `/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming, `/interfaces:json-schema` for shared payload schemas. Findings are recorded as `cross-project-warning:` entries on the merged change's `journal.yaml` and rendered in the merge transcript. **Warnings never halt the loop.**
 8. Repeats from step 2 until `specify plan next` reports `all-done` or `stuck`.
 
 <details>
@@ -427,7 +427,7 @@ For greenfield projects (remote did not exist before this run), the per-project 
 
 Two PRs are now open against `org/shop-backend` and `org/shop-mobile`, both on the `specify/oauth-login` branch. The `oauth-login` plan still lives at `.specify/plan.yaml` with every entry `done`. The hub is in the canonical "ready to land" state.
 
-[**Continue to Landing an Initiative**](landing-an-initiative.md) for Steps 8 (squash-merge with `specify workspace merge`) and 9 (archive with `specify initiative finalize`), the `/spec:initiative` umbrella variants, and the three initiative shapes (migrate-legacy / new-feature / update-existing).
+[**Continue to Landing an Initiative**](landing-an-initiative.md) for Steps 8 (squash-merge with `specify workspace merge`) and 9 (archive with `specify initiative finalize`), the `/spec:plan --orchestrate` umbrella variants, and the three initiative shapes (migrate-legacy / new-feature / update-existing).
 
 If you stop here, the platform-first work is shipped but unmerged. The PRs sit on the forge until reviewed; nothing is blocking. You can resume landing at any time -- the umbrella is idempotent on re-entry, and the manual flow is just `specify workspace merge` then `specify initiative finalize`.
 
@@ -478,7 +478,7 @@ Any deviation is a blocker. File the failing transcript against this tutorial; p
 
 ## Initiative shapes (preview)
 
-The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three initiative shapes -- `migrate-legacy`, `new-feature`, `update-existing` -- through a single uniform sequence. The walkthrough at the top of this page is the **new-feature** shape (sources are documentation only); the other two arrive in [Landing an Initiative](landing-an-initiative.md#initiative-shapes), which also covers the `/spec:initiative` umbrella that drives each shape as a single operator action.
+The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three initiative shapes -- `migrate-legacy`, `new-feature`, `update-existing` -- through a single uniform sequence. The walkthrough at the top of this page is the **new-feature** shape (sources are documentation only); the other two arrive in [Landing an Initiative](landing-an-initiative.md#initiative-shapes), which also covers the `/spec:plan --orchestrate` umbrella that drives each shape as a single operator action.
 
 ## What you learned
 
@@ -493,7 +493,7 @@ The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three 
 
 - [Platform repo topologies](../explanation/platform-repo.md) -- registry-only hub vs platform-as-project, the validation invariant, and the on-disk shape of each.
 - [Workspace tiers](../explanation/workspace-tiers.md) -- the legacy-source vs registered-project clone distinction the loop relies on.
-- [The Layered Stack](../explanation/three-layer-stack.md) -- where `/spec:plan`, `/spec:execute`, and `/spec:initiative` sit in the layered model.
+- [The Layered Stack](../explanation/three-layer-stack.md) -- where `/spec:plan` (default + `--orchestrate` modes) and `/spec:execute` sit in the layered model.
 - [`/spec:plan`](../reference/initiative-skills/plan.md) -- Layer 3 plan authoring skill.
 - [`/spec:execute`](../reference/initiative-skills/execute.md) -- Layer 2 plan driver, including the cross-project contract check (RFC-9 §3B).
 - [`specify init`](../reference/cli/init.md) -- the `--hub` flag.
@@ -504,4 +504,4 @@ The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three 
 
 ## Next
 
-[Landing an Initiative](landing-an-initiative.md) -- merge the PRs you just pushed, finalize the initiative, and exercise the `/spec:initiative` umbrella shapes.
+[Landing an Initiative](landing-an-initiative.md) -- merge the PRs you just pushed, finalize the initiative, and exercise the `/spec:plan --orchestrate` umbrella shapes.

@@ -1,8 +1,7 @@
 ---
-name: build
+name: specify-build
 description: Implement tasks from a Specify change. Use when the user wants to start implementing, continue implementation, or work through tasks.
-license: MIT
-argument-hint: "change-name?"
+argument-hint: "[change-name]"
 ---
 
 Implement tasks from a Specify change.
@@ -13,49 +12,16 @@ When working plan-driven (a `.specify/plan.yaml` exists), the corresponding plan
 
 ## Phase outcome contract
 
-This skill is the **build** phase of the `/spec:execute` driver loop. Before returning control to the caller, always record the phase's outcome via:
+This skill is the **build** phase of the `/spec:execute` driver loop.
+The shared phase contract — outcome values, journal kinds, plan-mutation rules,
+the verbatim-`summary` rule, and the success/failure/deferred semantics — is
+authored once at [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md).
 
-```bash
-specify change outcome set <name> build <outcome> --summary "..." [--context "..."]
-```
+This phase's outcome-specific deltas:
 
-where `<outcome>` is exactly one of:
-
-- `success`  — every build brief produced its `generates` artefacts, the verify-repair loop converged, and `specify change task progress` reports `pending == 0`. The change is ready for `/spec:merge`.
-- `failure`  — a brief failed after the repair budget was exhausted (e.g. the Omnia `build.md` 3-iteration verify-repair loop could not converge; a specialist writer skill returned a non-recoverable error). Use `--summary` to name which brief and the load-bearing stderr/test line; use `--context` for verbatim detail (failing test name, compiler error tail, etc.).
-- `deferred` — human judgement is needed (task is ambiguous, implementation reveals a design issue that must be resolved before coding, artefact updates are required but not safe to do unattended). Use `--summary` to name the question.
-
-`/spec:execute` reads `.specify/changes/<name>/.metadata.yaml:outcome` on return and translates the outcome into a plan transition (`done` / `failed` / `blocked`). If the field is missing or malformed, `/spec:execute` treats the phase as `deferred` and stops for triage — do not skip the CLI call. This `outcome set` invocation is the **last action** the skill takes before returning control.
-
-## Journal entries during the run
-
-Whenever the skill encounters a situation the human should see — a genuine question, a repair attempt that failed, or a notable recovery — append to `.specify/changes/<name>/journal.yaml` **during** the run, not just at the end:
-
-```bash
-specify change journal append <name> build <kind> --summary "..." [--context "..."]
-```
-
-Kinds:
-
-- `question` — task is ambiguous, implementation reveals a design issue, or anything that might produce a `deferred` outcome at the end of the phase. Write one entry per question so the human sees the full trail when triaging.
-- `failure` — a brief (or its specialist writer) returned an error after retry. Write one entry per failure; the final `outcome set` summary rolls up only the load-bearing one, but auditors still see every attempt inside the verify-repair loop.
-- `recovery` — a self-heal / recovery step happened. (Typically written by `/spec:execute` itself; phases rarely need to append this kind.)
-
-`journal.yaml` is a pure append-only audit log; `/spec:execute` never consumes it as a signalling channel. The `outcome` field in `.metadata.yaml` is the only state `/spec:execute` reads on phase return.
-
-## Mutating the plan mid-run
-
-Phases may shell out to `specify plan add` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
-
-Allowed:
-
-- `specify plan add <new-name> --description "...modifies <current-name>..."` when implementation uncovers a neighbouring defect or a prerequisite refactor that warrants its own change.
-- `specify plan amend <current-name> --depends-on <newly-needed>` when the phase discovers a dependency on another plan entry. `amend` may target the currently-active entry — non-`status` fields on an `in-progress` entry are fair game.
-
-Forbidden:
-
-- Writing `status` through `amend`. The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/spec:execute`'s sole prerogative via `specify plan transition`.
-- Hand-editing `.specify/plan.yaml` or `.specify/changes/<name>/.metadata.yaml`. Always route through the CLI so the single-writer invariant holds.
+- `success` — every build brief converged, validation is green, and `specify change task progress` reports `pending == 0`; ready for `/spec:merge`.
+- `failure` — a test or build halted after the repair budget (Omnia's 3-iteration verify-repair loop could not converge, a specialist writer skill returned non-recoverable).
+- `deferred` — blocked on a question (an ambiguous task, a design issue surfaced during implementation, an unsafe artefact update).
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
 
