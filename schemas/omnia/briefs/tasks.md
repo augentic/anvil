@@ -17,6 +17,18 @@ When external behavior must be verified, express it as an agent-verifiable task:
 - Use build tasks for `cargo check`, `cargo test`, `cargo clippy`, and WASM target builds through the build brief's verify-repair loop.
 - Use `omnia:code-reviewer` for post-implementation review instead of human review tasks.
 
+## Self-Review
+
+After drafting `tasks.md`, re-read every checkbox line and ask, for each task:
+
+1. Could a coding agent perform this action using code, tooling, mocks, fixtures, contract validators, build commands, or one of the reviewer skills available below?
+2. If the task mentions humans, manual steps, visual inspection, real services, app store review, or user confirmation, is the action genuinely avoiding them (e.g. "without manual testing") or genuinely requiring them? Requiring them is a rewrite. Avoiding them is fine, but prefer to omit the reference entirely so future readers don't have to parse the negation.
+3. Does the list as a whole include at least one task that verifies outcomes — `omnia:test-writer`, `omnia:code-reviewer`, fixture-backed tests, or build/check steps?
+
+Rewrite any task that fails (1) or (2) before handing the file off. If (3) fails, add a verification task using a skill from the table below.
+
+For `tasks.md`, `specify change validate` checks checkbox/grouping shape only — it does not inspect task intent. Agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight.
+
 ## Available Skills
 
 | Directive             | Skill                           | When to Use                |

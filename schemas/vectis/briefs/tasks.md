@@ -25,6 +25,18 @@ When mobile or external-service behavior must be verified, express it as an agen
 Invalid: `Manually test the iOS and Android apps against the real API`.
 Valid: `Add fixture-backed effect tests covering the API success and failure responses, then verify iOS and Android shells build against the generated core`.
 
+## Self-Review
+
+After drafting `tasks.md`, re-read every checkbox line and ask, for each task:
+
+1. Could a coding agent perform this action using core/shell writers, test writers, design-system writers, reviewer skills, fixtures, mocked effects, or local build commands available below?
+2. If the task mentions humans, manual mobile testing, visual inspection, real services, physical devices, app store review, or user confirmation, is the action genuinely avoiding them (e.g. "without manual visual inspection") or genuinely requiring them? Requiring them is a rewrite. Avoiding them is fine, but prefer to omit the reference entirely so future readers don't have to parse the negation.
+3. Does the list as a whole include at least one task that verifies outcomes — `vectis:test-writer`, `vectis:core-reviewer`, `vectis:ios-reviewer`, `vectis:android-reviewer`, fixture-backed tests, or shell build commands?
+
+Rewrite any task that fails (1) or (2) before handing the file off. If (3) fails, add a verification task using a skill from the table below.
+
+For `tasks.md`, `specify change validate` checks checkbox/grouping shape only — it does not inspect task intent. Agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight.
+
 ## Available Skills
 
 | Directive                      | Skill                              | When to Use                            |

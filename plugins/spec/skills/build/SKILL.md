@@ -51,11 +51,23 @@ This phase's outcome-specific deltas:
 
 4. **Validate prerequisites (define artifacts + build-brief needs)**
 
-   Run `specify change validate <name> --format json`. Inspect the report:
+   This step has two passes: an agent judgement pass over `tasks.md` (4a), then the deterministic CLI shape check (4b). Do them in order; do not skip 4a.
+
+   **4a. Task preflight (agent judgement).** Read `.specify/changes/<name>/tasks.md` directly. For each checkbox line, confirm in context that:
+
+   1. The action is executable by an agent in this repo using code, tooling, mocks, fixtures, contract validators, build commands, or one of the reviewer / writer skills available to the schema (consult the schema's `briefs/tasks.md` Available Skills table if unsure).
+   2. The task does not require human-only action — manual app testing, real-world API credentials, visual inspection, physical-device-only checks, app store review, or asking the user to verify behavior. Read sentences in full: a task that says "without manual visual inspection" is *avoiding* the human action and is fine; a task that says "manually verify the iOS app against the real API" is requiring it and must be rewritten.
+   3. The list as a whole includes at least one verification task — tests, fixture replay, contract verification, reviewer skill, or a build/check step.
+
+   If any task fails (1) or (2), halt and ask the user to re-run `/spec:define` to rewrite the offending tasks. If (3) fails, halt and ask the user to re-run `/spec:define` to add a verification task. Do not attempt to rewrite `tasks.md` here — task authoring belongs to `/spec:define`, and per the Guardrails below `tasks.md` is not edited directly from this skill.
+
+   **4b. Validate shape.** Run `specify change validate <name> --format json`. Inspect the report:
 
    - If `passed` is `false` and the failures are about missing define-phase artifacts, halt and tell the user to run `/spec:define` to fill them in.
    - If `passed` is `false` for other reasons, report the details but ask the user whether to proceed.
    - If `passed` is `true`, continue.
+
+   The CLI's `tasks.*` rules cover only deterministic shape (checkbox format, group headings); agent-completability is judged in 4a, not here.
 
    Supplement with `specify schema pipeline build --change .specify/changes/<name> --format json` if you need to inspect the build brief's `needs` and `path` directly (e.g. to tell the user which define artifact is missing).
 

@@ -13,6 +13,18 @@ Generate only tasks that an agent can complete and verify with contract artifact
 
 When alignment needs review, express it as a format-skill verification task that produces machine-readable output. Use the relevant `interfaces:*` verifier intent for `$ref` resolution, schema metadata, binding completeness, and warning-free alignment checks.
 
+## Self-Review
+
+After drafting `tasks.md`, re-read every checkbox line and ask, for each task:
+
+1. Could a coding agent perform this action using the `interfaces:*` author/verifier intents, local validators, or contract artifacts available below?
+2. If the task mentions humans, manual review, external services, production credentials, or user confirmation, is the action genuinely avoiding them or genuinely requiring them? Requiring them is a rewrite. Avoiding them is fine, but prefer to omit the reference entirely so future readers don't have to parse the negation.
+3. Does the list as a whole include at least one verification task — an `interfaces:*` verifier intent for `$ref` resolution, schema metadata, binding completeness, or warning-free alignment?
+
+Rewrite any task that fails (1) or (2) before handing the file off. If (3) fails, add a verifier-intent task using a skill from the table below.
+
+For `tasks.md`, `specify change validate` checks checkbox/grouping shape only — it does not inspect task intent. Agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight.
+
 ## Available Skills
 
 | Directive | Skill | When to Use |
