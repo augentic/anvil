@@ -35,7 +35,7 @@ After drafting `tasks.md`, re-read every checkbox line and ask, for each task:
 
 Rewrite any task that fails (1) or (2) before handing the file off. If (3) fails, add a verification task using a skill from the table below.
 
-The CLI's `specify change validate` only checks task *shape* (checkbox format, group headings); it does not inspect intent. This self-review is the only place agent-completability is judged.
+For `tasks.md`, `specify change validate` checks checkbox/grouping shape only — it does not inspect task intent. Agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight.
 
 ## Available Skills
 

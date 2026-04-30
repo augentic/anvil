@@ -59,7 +59,7 @@ This phase's outcome-specific deltas:
    2. The task does not require human-only action — manual app testing, real-world API credentials, visual inspection, physical-device-only checks, app store review, or asking the user to verify behavior. Read sentences in full: a task that says "without manual visual inspection" is *avoiding* the human action and is fine; a task that says "manually verify the iOS app against the real API" is requiring it and must be rewritten.
    3. The list as a whole includes at least one verification task — tests, fixture replay, contract verification, reviewer skill, or a build/check step.
 
-   If any task fails (1) or (2), halt and ask the user to re-run `/spec:define` (or edit `tasks.md` directly) to rewrite the offending tasks. If (3) fails, halt and ask the user to add a verification task. Do not attempt to rewrite `tasks.md` here — task authoring belongs to `/spec:define`.
+   If any task fails (1) or (2), halt and ask the user to re-run `/spec:define` to rewrite the offending tasks. If (3) fails, halt and ask the user to re-run `/spec:define` to add a verification task. Do not attempt to rewrite `tasks.md` here — task authoring belongs to `/spec:define`, and per the Guardrails below `tasks.md` is not edited directly from this skill.
 
    **4b. Validate shape.** Run `specify change validate <name> --format json`. Inspect the report:
 
