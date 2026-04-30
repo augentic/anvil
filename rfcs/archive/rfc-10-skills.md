@@ -449,7 +449,7 @@ A `make checks` invariant enforces the mechanical parts:
 - No active docs, schemas, skill bodies, fixtures, or tests may reference retired slash commands: `/plan:sow-writer`, `/rt:git-cloner`, `/contracts:writer`, `/contracts:validator`, `/contracts:importer`, or `/contracts:management`. Archived RFCs and this migration RFC may retain historical references under an explicit allowlist.
 - `schemas/skill.schema.json` must encode the new frontmatter shape: required `name` and `description`; optional `argument-hint` and `allowed-tools`; no `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, or `paths`.
 
-The check follows the existing `scripts/checks.ts` pattern; once [RFC-5](rfc-5-lint.md) lands, it migrates into `specify-check` alongside the other framework invariants.
+The check follows the existing `scripts/checks.ts` pattern; once [RFC-5](../rfc-5-lint.md) lands, it migrates into `specify-check` alongside the other framework invariants.
 
 ### E. Cross-repo boundary
 

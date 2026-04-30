@@ -29,7 +29,7 @@ The fix is mechanical: every skill name carries its plugin domain as a prefix, s
 - `client-sow-writer`
 - `rt-wiretapper`, `rt-replay-writer`
 
-The `spec/` plugin is the one exception: its skills use the `specify-` prefix (`specify-init`, `specify-define`, `specify-build`, `specify-merge`, `specify-drop`, `specify-extract`, `specify-analyze`, `specify-plan`, `specify-execute`). The operator-facing product name is "Specify"; the plugin directory and slash-command prefix `spec` are an internal artefact. Carrying `specify-` into the discovery namespace keeps the metadata aligned with the vocabulary operators already use. The full rename table is in RFC-10 §A.1 (`rfcs/rfc-10-skill-improvements.md`).
+The `spec/` plugin is the one exception: its skills use the `specify-` prefix (`specify-init`, `specify-define`, `specify-build`, `specify-merge`, `specify-drop`, `specify-extract`, `specify-analyze`, `specify-plan`, `specify-execute`). The operator-facing product name is "Specify"; the plugin directory and slash-command prefix `spec` are an internal artefact. Carrying `specify-` into the discovery namespace keeps the metadata aligned with the vocabulary operators already use. The full rename table is in RFC-10 §A.1 (`rfcs/archive/rfc-10-skills.md`).
 
 The slash-command syntax is independent of `name`. Cursor's `/plugin:skill` form addresses the plugin directory and the skill subdirectory; renaming the frontmatter `name` does not move the slash command. `name` is a discovery handle, not a routing key.
 
@@ -198,4 +198,4 @@ A skill that fails any of these checks will fail CI. When a check fires, the rig
 - [Agent Skills overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) — Anthropic's high-level introduction to skills, frontmatter, and discovery.
 - [Agent Skills best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) — the published patterns for naming, descriptions, body length, and progressive disclosure.
 - [`docs/contributing/skill-anatomy.md`](../contributing/skill-anatomy.md) — the contributor-facing reference for skill directory structure and body sections.
-- [`rfcs/rfc-10-skill-improvements.md`](../../rfcs/rfc-10-skill-improvements.md) — the RFC that landed this house style, including the rename tables and the alternatives that were considered and rejected.
+- [`rfcs/archive/rfc-10-skills.md`](../../rfcs/archive/rfc-10-skills.md) — the RFC that landed this house style, including the rename tables and the alternatives that were considered and rejected.

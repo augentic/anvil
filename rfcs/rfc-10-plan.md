@@ -1,6 +1,6 @@
 # RFC-10 Implementation Plan
 
-> **Source RFC**: [`rfc-10-skill-improvements.md`](./rfc-10-skill-improvements.md)
+> **Source RFC**: [`archive/rfc-10-skills.md`](./archive/rfc-10-skills.md)
 > **Audience**: An execution agent landing the RFC in a sequence of small, reviewable changes. Each chunk is sized so it can be handled by a single subagent without exceeding context.
 > **Repository scope**: Almost all changes land in `specify/` (this repo). One narrow chunk reaches into `specify-cli/` (sibling at `/Users/andrewweston/rust/github.com/augentic/specify-cli`).
 

@@ -563,10 +563,7 @@ async function checkSkillNoLicense(): Promise<void> {
 // ──────────────────────────────────────────────────────────────
 
 async function checkRetiredSlashCommands(): Promise<void> {
-  const RETIRED_SLASH_ALLOWLIST = new Set<string>([
-    "rfcs/rfc-10-skill-improvements.md",
-    "rfcs/rfc-10-plan.md",
-  ]);
+  const RETIRED_SLASH_ALLOWLIST = new Set<string>([]);
 
   const RETIRED_PATTERNS = [
     "/plan:sow-writer",
