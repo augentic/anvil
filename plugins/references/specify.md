@@ -198,7 +198,9 @@ Guidelines:
 - Tasks should be small enough to complete in one session
 - Order tasks by dependency (what must be done first?)
 - Reference specs for what needs to be built, design for how to build it
-- Each task should be verifiable — you know when it's done
+- Each task MUST be agent-completable: a coding agent can perform the action and verify completion through code, local tooling, mocks, fixtures, contract validators, build commands, or reviewer skills
+- Never generate tasks that require human-only action or judgement, such as manual app testing, visual inspection, real-world API credentials, production services, physical-device-only checks, app store review, or asking the user to verify behavior
+- When behavior appears to require manual validation, write the equivalent agent-verifiable task instead (for example, a mocked API test, fixture replay, simulator/build check, contract test, or scripted smoke test)
 
 ### Skill Directive Tags
 
@@ -207,7 +209,7 @@ Tasks may optionally include a skill directive as an HTML comment. The build pha
 ```markdown
 - [ ] 2.1 Generate the domain crate <!-- skill: omnia:crate-writer -->
 - [ ] 2.2 Generate test suites <!-- skill: omnia:test-writer -->
-- [ ] 2.3 Manual integration step
+- [ ] 2.3 Add fixture-backed integration tests for API behavior <!-- skill: omnia:test-writer -->
 ```
 
 Tasks without a skill tag are implemented via the schema's default build instruction (mode detection, verification loop, etc.). Use skill tags when a task maps directly to a single specialist skill invocation.

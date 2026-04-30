@@ -11,6 +11,20 @@ Tasks are organized by build phase, not by feature. All features in the change s
 
 Each task references the single feature spec at `specs/<feature>/spec.md`. The spec contains both core requirements and any platform-specific requirements in dedicated sections.
 
+## Agent-Completable Constraint
+
+Generate only tasks that an agent can complete and verify with code or local tooling. Do not generate manual mobile app testing, real-world API, production credential, visual inspection, physical-device-only, app store, or user-confirmation tasks.
+
+When mobile or external-service behavior must be verified, express it as an agent-verifiable task:
+
+- Use `vectis:core-writer` or `vectis:test-writer` patterns to add Rust core tests, mocked effect tests, and fixture-backed API behavior checks.
+- Use `vectis:ios-writer` and `vectis:android-writer` for shell implementation tasks, followed by build or test commands available to the agent.
+- Use local fixture-backed contract tests instead of connecting the mobile app to a real-world API.
+- Use reviewer skills for code review instead of human inspection.
+
+Invalid: `Manually test the iOS and Android apps against the real API`.
+Valid: `Add fixture-backed effect tests covering the API success and failure responses, then verify iOS and Android shells build against the generated core`.
+
 ## Available Skills
 
 | Directive                      | Skill                              | When to Use                            |

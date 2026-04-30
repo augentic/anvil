@@ -7,6 +7,12 @@ needs: [specs, contracts]
 
 Follow the task format conventions defined in the define skill for checkbox format, grouping, ordering, and skill directive tags.
 
+## Agent-Completable Constraint
+
+Generate only tasks that an agent can complete and verify with contract artifacts and local validators. Do not generate manual review, external service, production credential, or user-confirmation tasks.
+
+When alignment needs review, express it as a validator or writer task that produces machine-readable output. Use `contracts:validator` for `$ref` resolution, schema metadata, binding completeness, and warning-free alignment checks.
+
 ## Available Skills
 
 | Directive | Skill | When to Use |
@@ -22,12 +28,12 @@ Contract changes produce a fixed set of validation tasks. Generate one group per
 
 For each interface in `specs/`:
 
-- [ ] `contracts:writer` — Generate contract artifacts for `<interface>`
-- [ ] `contracts:validator` — Validate `<interface>` contract artifacts
+- [ ] 1.1 Generate contract artifacts for `<interface>` <!-- skill: contracts:writer -->
+- [ ] 1.2 Validate `<interface>` contract artifacts <!-- skill: contracts:validator -->
 
 ### Cross-cutting validation
 
-- [ ] `contracts:validator` — Validate `$ref` resolution across all contract files
-- [ ] `contracts:validator` — Verify schema metadata completeness (`$id`, `title`, `description`)
-- [ ] `contracts:validator` — Verify binding completeness (every spec-referenced schema has a protocol binding)
-- [ ] `contracts:validator` — Review alignment report for warnings
+- [ ] 2.1 Validate `$ref` resolution across all contract files <!-- skill: contracts:validator -->
+- [ ] 2.2 Verify schema metadata completeness (`$id`, `title`, `description`) <!-- skill: contracts:validator -->
+- [ ] 2.3 Verify binding completeness for every spec-referenced schema <!-- skill: contracts:validator -->
+- [ ] 2.4 Verify the alignment report has no unresolved warnings <!-- skill: contracts:validator -->
