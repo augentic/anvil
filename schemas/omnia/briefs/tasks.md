@@ -7,6 +7,16 @@ needs: [specs, design]
 
 Follow the task format conventions defined in the define skill for checkbox format, grouping, ordering, and skill directive tags.
 
+## Agent-Completable Constraint
+
+Generate only tasks that an agent can complete and verify with code or local tooling. Do not generate manual verification, real-world API, production credentials, visual inspection, or user-confirmation tasks.
+
+When external behavior must be verified, express it as an agent-verifiable task:
+
+- Use `omnia:test-writer` to add MockProvider, fixture-backed, or contract-aligned tests for API and side-effect behavior.
+- Use build tasks for `cargo check`, `cargo test`, `cargo clippy`, and WASM target builds through the build brief's verify-repair loop.
+- Use `omnia:code-reviewer` for post-implementation review instead of human review tasks.
+
 ## Available Skills
 
 | Directive             | Skill                           | When to Use                |
