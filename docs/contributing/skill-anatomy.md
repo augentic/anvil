@@ -1,6 +1,6 @@
 # Anatomy of a Skill
 
-A skill is a markdown file (`SKILL.md`) that instructs a Cursor agent how to perform a specific task. Skills are the primary unit of behavior in Specify -- every `/spec:*`, `/omnia:*`, `/vectis:*`, `/contracts:*`, `/rt:*`, and `/plan:*` command maps to one skill.
+A skill is a markdown file (`SKILL.md`) that instructs a Cursor agent how to perform a specific task. Skills are the primary unit of behavior in Specify -- every `/spec:*`, `/omnia:*`, `/vectis:*`, `/interfaces:*`, `/rt:*`, and `/client:*` command maps to one skill.
 
 ## Directory structure
 
@@ -25,11 +25,9 @@ Every `SKILL.md` begins with YAML frontmatter validated against `schemas/skill.s
 
 ```yaml
 ---
-name: define
-description: Define a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build.
-license: MIT
-argument-hint: "description? artifact-id?"
-allowed-tools: Read Write StrReplace Shell Grep Glob ReadLints WebFetch
+name: specify-define
+description: Defines a new Specify change and generates every artifact (proposal, spec, design, tasks, optional contracts and composition) in one step. Use when an operator describes a change in chat, when a plan entry transitions in-progress, or when the user explicitly asks for /spec:define.
+argument-hint: "[description]"
 ---
 ```
 
@@ -39,36 +37,31 @@ Frontmatter fields appear in this canonical order:
 
 1. `name`
 2. `description`
-3. `license`
-4. `argument-hint`
-5. `allowed-tools`
-6. Optional extension fields, alphabetically (e.g. `compatibility`, `disable-model-invocation`, `metadata`, `paths`, `user-invocable`, `when_to_use`)
+3. `argument-hint` (optional)
+4. `allowed-tools` (optional; rare)
+
+No other top-level keys are permitted. RFC-10 (§D) removed `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, and `paths` from the accepted shape; `make checks` now rejects any of those keys.
 
 ### Frontmatter fields
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | yes | Skill identifier in kebab-case; lowercase letters, numbers, and hyphens; max 64 characters; must match the parent directory name. Avoid the reserved words `anthropic` and `claude` (Anthropic platform policy). |
-| `description` | yes | One-line description (minimum 10, maximum 1024 characters per Anthropic spec) including when to use the skill. Avoid XML tags. |
-| `license` | no | License identifier: SPDX ID (e.g. `MIT`, `Apache-2.0`, `BSD-3-Clause`), a custom name, or a path to a bundled `LICENSE` file. |
-| `argument-hint` | no | Argument pattern shown to the user using bare names for required and a `?` suffix for optional (e.g. `"crate-name?"`, `"source-path output-dir kind value source-key k?"`). Use literal pipes for choices (`a|b|c`) and `...` for repeatables. No `--` flag prefix, no angle or square brackets. This is a deliberate Specify house style; upstream tools treat the value as opaque text, but the divergence reduces cosmetic portability when the hint is surfaced inside Claude Code or copies of the Cursor docs verbatim. |
-| `allowed-tools` | no | Space-separated list of tools the skill may use (matches Cursor and Claude Code spec); validated against a known set plus `mcp__*` prefixed tools. |
-| `compatibility` | no | Environment requirements such as system packages or network access (Cursor). Accepts a string or object. |
-| `metadata` | no | Arbitrary key-value mapping for additional metadata (Cursor). |
-| `disable-model-invocation` | no | When `true`, the skill is only included when explicitly invoked via `/skill-name`; the agent will not auto-trigger it (Cursor + Claude Code). |
-| `when_to_use` | no | Additional trigger phrases or example requests appended to `description` in the skill listing (Claude Code). Max 1024 characters. |
-| `user-invocable` | no | When `false`, hide the skill from the `/` menu so only the agent can invoke it (Claude Code). |
-| `paths` | no | Glob patterns that limit when this skill is auto-activated (Claude Code). Accepts a comma-separated string or YAML list. |
+| `name` | yes | Globally unique, plugin-qualified, kebab-case identifier (`^[a-z][a-z0-9-]*$`, ≤64 chars). Must start with the containing plugin's directory name plus `-` (e.g. `omnia-crate-writer`, `vectis-core-writer`, `interfaces-openapi`). The `spec/` plugin uses the `specify-` prefix per RFC §A.1 (so `plugins/spec/skills/init/` carries `name: specify-init`). Reserved words `anthropic` and `claude` are not allowed. |
+| `description` | yes | Description that includes both *what* the skill does and *when* to use it, in third person (10–1024 characters). Avoid XML tags and avoid RFC / layer citations — those belong in the body. |
+| `argument-hint` | no | Cursor placeholder text shown after the user types the slash command. Single short hint with `<>` for required and `[]` for optional positional arguments; no flag names; no trailing `?`; no `--` prefix; avoid alternation pipes outside bracketed enums. Flags belong in the body's "Invocation" section. |
+| `allowed-tools` | no | Space-separated list of tools the skill may use. Recommended policy is to omit this field and inherit the caller's full toolbelt; see RFC §A.5 for the rationale. When set, values are validated against a known toolset plus `mcp__*` prefixed tools. |
 
 ### Argument-hint vs reference-doc synopsis
 
-The `argument-hint` field uses the bare-name + `?` house style above. The reference docs under `docs/reference/change-skills/` and `docs/reference/initiative-skills/` use a **narrative** synopsis convention with square brackets:
+The `argument-hint` field is single-line Cursor placeholder text — the operator sees it after typing `/plugin:skill ` in chat. Use `<required>` for required positionals and `[optional]` for optional positionals; never list flags in the hint.
+
+The reference docs under `docs/reference/change-skills/` and `docs/reference/initiative-skills/` use a **narrative** synopsis convention that documents flags as well:
 
 ```text
-/spec:define [description] [artifact-id?] [--source <key>=<path-or-url>...]
+/spec:define [description] [--source <key>=<path-or-url>...]
 ```
 
-This is documentation-only and does not match the `argument-hint` shape -- the docs use brackets because that is the conventional shorthand for "optional positional" in Unix-style man pages and shell-skill READMEs. Contributors copying a synopsis line from a reference doc into a SKILL.md frontmatter must convert it: drop the brackets, keep the `?` for optionals, drop any `--flag` prefix. The two conventions live in different places on purpose; do not "fix" the reference docs to match the frontmatter or vice versa without a discussion first.
+This is documentation-only. Contributors copying a synopsis line from a reference doc into a SKILL.md frontmatter must reduce it to a single placeholder for the primary positional argument; flag and secondary-positional documentation goes into the body's "Invocation" section.
 
 ### Cursor-specific tool names
 
@@ -146,18 +139,22 @@ The Cursor agent reads these directives and loads the referenced skill when it r
    plugins/<plugin>/skills/<skill-name>/SKILL.md
    ```
 
-2. **Write the frontmatter.** The `name` field must match the directory name exactly. Include a `description` of at least 10 characters.
+2. **Write the frontmatter.** The `name` field must be globally unique, plugin-qualified (start with the containing plugin's directory name + `-`, with `specify-` for the `spec/` plugin), and lowercase-kebab-case. Include a `description` (10–1024 characters) that names both *what* the skill does and *when* to use it.
 
-3. **Write the body.** Follow the conventions of existing skills in the same plugin. Generator skills should define an authority hierarchy; workflow skills should document the phase outcome contract.
+3. **Write the body.** Lead with a "Critical Path (Quick Reference)" 5–7 bullet block when the body will exceed 150 lines. Keep total body length under 500 lines; factor longer content into sibling files (`rules.md`, `team-protocol.md`, `categories.md`, `template.md`, etc.) linked one level deep. Generator skills should define an authority hierarchy in a sibling; workflow skills should document the phase outcome contract via the shared reference at `plugins/spec/references/phase-outcome-contract.md`.
 
-4. **Add references** if needed. Place supporting documents in a `references/` subdirectory and link to them from the skill body using relative paths like `references/guardrails.md`.
+4. **Add references** if needed. Place supporting documents in a `references/` subdirectory or alongside SKILL.md as `<topic>.md`, and link to them from the skill body using relative paths like `./rules.md` or `references/guardrails.md`.
 
 5. **Register the skill** in the plugin's `.cursor-plugin/plugin.json` if one exists. The marketplace manifest at `.cursor-plugin/marketplace.json` declares plugins by `source` directory; individual skills are discovered by directory walking.
 
 6. **Run `make checks`** to verify:
    - Frontmatter validates against `schemas/skill.schema.json`
-   - The `name` matches the directory name
-   - All `allowed-tools` entries are recognized
+   - `name` is globally unique, plugin-qualified, and matches `^[a-z][a-z0-9-]*$`
+   - SKILL.md body (post-frontmatter) is ≤500 lines
+   - `description` is ≤1024 characters
+   - `argument-hint` does not contain `?`, `--`, or `|`
+   - No retired top-level keys (`license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `paths`)
+   - Any `allowed-tools` entries are recognized
    - All `references/` and `examples/` links resolve
    - All `$VARIABLE` definitions are used and all uses are defined
 

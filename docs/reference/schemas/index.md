@@ -29,7 +29,7 @@ The Vectis schema inserts an additional stage between contracts and design:
 
 - **composition.md** -- generates `composition.yaml` (requires specs, proposal) -- screen layout with regions, groups, bindings, and event wiring
 
-The Contracts schema uses a reduced pipeline: proposal, specs, contracts, tasks (no design or composition stages). Its build phase delegates to `/contracts:validator` rather than code-generation skills.
+The Contracts schema uses a reduced pipeline: proposal, specs, contracts, tasks (no design or composition stages). Its build phase delegates to the format-appropriate `/interfaces:*` skill (verifier intent: `/interfaces:openapi`, `/interfaces:asyncapi`, or `/interfaces:json-schema`) rather than code-generation skills.
 
 ### Build pipeline (implementation)
 

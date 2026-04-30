@@ -21,9 +21,9 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 | **Specify** | `/spec:` | Core workflow orchestration | [Change Skills](../change-skills/index.md), [Initiative Skills](../initiative-skills/index.md) |
 | **Omnia** | `/omnia:` | Rust WASM crate generation and review | [Omnia](omnia.md) |
 | **Vectis** | `/vectis:` | Cross-platform Crux app generation | [Vectis](vectis.md) |
-| **Contracts** | `/contracts:` | API contract generation, validation, and import | [Contracts](contracts.md) |
+| **Interfaces** | `/interfaces:` | API contract generation, validation, and import (OpenAPI, AsyncAPI, JSON Schema) | [Interfaces](interfaces.md) |
 | **RT** | `/rt:` | Migration fixtures and regression testing | [RT](rt.md) |
-| **Plan** | `/plan:` | Statement of Work generation | [Plan](plan.md) |
+| **Client** | `/client:` | Client-facing deliverables (SoW, proposals, pricing) | [Client](client.md) |
 
 ## How plugins compose with schemas
 
@@ -32,7 +32,7 @@ The **Specify** plugin provides the workflow skeleton. Schemas determine which s
 - **Omnia schema** invokes `/omnia:*` skills.
 - **Vectis schema** invokes `/vectis:*` skills.
 
-The Contracts, RT, and Plan plugins are schema-independent. The Contracts plugin is invoked by the `contracts` brief in every schema's define pipeline (Omnia, Vectis, and Contracts). RT and Plan support migration and business analysis regardless of the target platform.
+The Interfaces, RT, and Client plugins are schema-independent. The Interfaces plugin is invoked by the `contracts` brief in every schema's define pipeline (Omnia, Vectis, and Contracts) — the brief id, schema name, and `.specify/contracts/` baseline directory keep their original names; only the Cursor plugin / slash-command surface is renamed. RT and Client support migration and client-facing deliverables regardless of the target platform.
 
 ## Artifact flow
 

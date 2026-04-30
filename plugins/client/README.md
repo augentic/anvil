@@ -1,6 +1,6 @@
-# Plan
+# Client
 
-Statement of Work generation from Specify artifacts.
+Client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — generated from Specify artifacts.
 
 ## Skills
 

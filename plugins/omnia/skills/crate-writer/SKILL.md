@@ -1,61 +1,36 @@
 ---
-name: crate-writer
-description: "Write Rust WASM crates from Specify artifacts -- greenfield creation or incremental updates -- following Omnia SDK patterns with provider-based dependency injection."
-license: MIT
-argument-hint: "crate-name?"
-allowed-tools: Read Write StrReplace Shell Grep ReadLints
+name: omnia-crate-writer
+description: "Write Rust WASM crates from Specify artifacts -- greenfield creation or incremental updates -- following Omnia SDK patterns with provider-based dependency injection. Use when implementing crate tasks from a Specify change, regenerating a crate from updated artifacts, or when the user mentions `crate-writer`."
+argument-hint: "[crate-name]"
 ---
 
 # Crate Writer
 
 Write Rust WASM crates from Specify artifacts (specs + design.md), following Omnia SDK patterns for stateless, provider-based WASM components. This skill handles both **greenfield creation** and **incremental updates** to existing crates.
 
-**Mode detection**: If `$CRATE_PATH/Cargo.toml` exists, the skill runs in **update mode** (surgical changes preserving existing behavior). Otherwise it runs in **create mode** (full crate generation from scratch).
-
 This skill accepts Specify artifacts from any producer:
 
 - **Code-Analysis artifacts** (from `/spec:extract`) -- generates/updates crates from existing source code
 - **Feature specs** (from Specify change artifacts) -- updated specs derived from requirements changes
 
-## Authority Hierarchy
+## Critical Path (Quick Reference)
 
-When conflicts arise, follow this strict precedence:
+1. **Detect mode**: `$CRATE_PATH/Cargo.toml` exists -> update; missing -> create.
+2. **Read** [rules.md](./rules.md) — the Hard Rules and Authority Hierarchy bind every step below.
+3. **Read artifacts** (`spec.md`, `design.md`) and required references; pick the matching example under [`examples/`](./examples/).
+4. **Derive Omnia capabilities** from design.md (Source Capabilities Summary, External Services, `[runtime]` constraints) via [capability-mapping.md](references/capability-mapping.md) and [wasm-constraints.md](references/wasm-constraints.md); apply artifact corrections (Hard Rule 9) before writing code.
+5. **Build the three matrices** (Side-Effect, Outbound Message, Transaction Boundary) for every changed handler; every cell must land in code.
+6. **Generate / update code** following the per-mode process below; in update mode apply categories in fixed order: structural → subtractive → modifying → additive.
+7. **Smoke check** with `cargo check`, run traceability verification, then inject or update guest wiring (when `src/lib.rs` exists). Tests come from test-writer in a later step.
 
-1. **This SKILL.md** (highest) -- generation/update rules and hard constraints
-2. **Specify artifacts (specs + design.md)** -- behavior specification (artifacts always win for changed behavior)
-3. **references/** -- authoritative patterns and SDK API
-4. **examples/** -- canonical production code patterns
-5. **Existing crate code** (UPDATE MODE ONLY) -- authoritative for unchanged behavior; trust existing code for anything the updated artifacts do not contradict
-6. **Original source** (if provided) -- reference for ambiguity only
-7. **LLM inference** (lowest) -- prohibited for `[unknown]` cases; use TODO markers
+## Mode Dispatch
 
-**Key difference between modes**: In update mode, existing crate code sits at level 5 -- authoritative for any behavior the artifacts do not explicitly change. In create mode, there is no existing code; levels 5-6 are skipped.
+| Trigger                          | Mode       | Behaviour                                                                                                |
+| -------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
+| `$CRATE_PATH/Cargo.toml` missing | **Create** | Greenfield: full crate generation from scratch using the artifacts and references.                      |
+| `$CRATE_PATH/Cargo.toml` exists  | **Update** | Incremental: inventory the crate, classify the change set, apply edits in fixed order, preserve unchanged code. |
 
-## Hard Rules
-
-Violations of any rule below fail generation or update.
-
-### Core Rules (both modes)
-
-1. **Omnia SDK only** -- all errors return `omnia_sdk::Error`; no custom error types in public API
-2. **Provider-only I/O** -- all external I/O through provider traits; no direct network/file/env access
-3. **No forbidden crates** -- see [guardrails.md](references/guardrails.md)
-4. **No mutable global state** -- no `static mut`, `OnceCell`, `lazy_static!`; `LazyLock` allowed only for immutable compile-time lookup tables
-5. **Handler trait required** -- request structs implement `Handler<P>` with delegation pattern; no custom handler structs with `new()` / `process_message()`
-6. **Strong typing** -- newtypes for IDs; enums for known value sets; no raw primitives for domain concepts
-7. **WASM compatible** -- no `std::env`, `std::fs` (use `StateStore` / `Blobstore` / `DocumentStore` / `HttpRequest`), `std::net`; `std::thread::sleep` only under `#[cfg(not(debug_assertions))]`
-8. **All operations async** -- no blocking I/O
-9. **Correct capability trait for data stores** -- SQL databases (PostgreSQL, MySQL, SQL Server) use `TableStore`; Azure Table Storage, Cosmos DB document API, and MongoDB use `DocumentStore`; Azure Blob Storage and AWS S3 use `Blobstore`; never `HttpRequest` for any managed data store. If the artifacts say "use HttpRequest" for a managed data store, override the artifacts (SKILL.md > artifacts per authority hierarchy). See [anti-patterns.md](examples/anti-patterns.md) #10.
-
-### Update-Specific Rules (update mode only)
-
-10. **No regressions** -- the build orchestration layer captures a test baseline before changes and runs a verify-repair loop after both crate-writer and test-writer complete; crate-writer must not introduce changes that break previously-passing tests
-11. **Artifacts win for changed behavior** -- when the updated artifacts contradict existing code, trust the artifacts; the old behavior is intentionally being replaced
-12. **Preserve unchanged code** -- do not reformat, restructure, or modify code regions that the change set does not touch
-13. **No silent removals** -- every subtractive change must be documented in CHANGELOG.md with the reason (artifacts no longer specify this behavior)
-14. **Testable exports** -- every modified or added handler must be exported so test-writer can generate tests; subtractive changes must be reflected in the public API so test-writer can remove stale tests
-15. **Atomic categories** -- complete all changes within a category before moving to the next; do not interleave
-16. **Structural changes require re-inventory** -- after applying structural changes, re-scan the crate before proceeding to subsequent categories
+The binding constraints (Hard Rules and the Authority Hierarchy) that govern every generation pass live in [rules.md](./rules.md). Read it before writing or modifying any code.
 
 ## Arguments
 
@@ -229,15 +204,11 @@ After generating or updating the crate, inject or update wiring in the guest pro
 - Update Provider trait impls if capabilities changed
 - Update `ensure_env!` entries for config key changes
 
-## Pre-Generation Checklist
-
-Before starting code generation, verify artifact completeness per [checklists.md](references/checklists.md#pre-generation-checklist). If ANY item is NO or UNCLEAR, mark with TODO in generated code and note in Migration.md.
+Before starting code generation, verify artifact completeness per [checklists.md](references/checklists.md#pre-generation-checklist). If any item is NO or UNCLEAR, mark with TODO in generated code and note it in Migration.md.
 
 ---
 
 ## Mode: Create
-
-**When**: `$CRATE_PATH/Cargo.toml` does NOT exist.
 
 ### Generation Process
 
@@ -316,8 +287,6 @@ Before starting code generation, verify artifact completeness per [checklists.md
 
 ## Mode: Update
 
-**When**: `$CRATE_PATH/Cargo.toml` exists.
-
 ### Update Scope
 
 Four categories of change, ordered by application priority:
@@ -329,20 +298,11 @@ Four categories of change, ordered by application priority:
 | **Modifying**   | Changes to existing business logic, validation, types, or provider bounds  | Add a field to an existing type; change validation threshold; add a new provider trait bound; update error handling | Medium     |
 | **Additive**    | New handlers, endpoints, types, or features added to an existing crate     | Add a new HTTP handler; add a new domain type; add a new test                                                       | Low        |
 
-### Application Order
-
-Changes are applied in this fixed order to minimize intermediate breakage:
-
-1. **Structural** -- type renames and relationship changes propagate to all downstream code
-2. **Subtractive** -- remove dead code before adding or modifying to avoid conflicts
-3. **Modifying** -- update existing implementations with stable references in place
-4. **Additive** -- new code depends on the already-updated type system
-
 ### Update Process
 
-#### Step 0: Read References
+Apply changes in fixed order — **structural → subtractive → modifying → additive** — to minimise intermediate breakage: type renames propagate first, dead code is removed before any new code, and additive code depends on the already-updated type system.
 
-Read all documents listed in [Required References](#required-references) including update-specific references, and at least one matching update example.
+Before starting, read every document listed in [Required References](#required-references) (including the update-specific entries) and at least one matching update example.
 
 #### Step 1: Inventory Existing Crate
 
@@ -427,7 +387,7 @@ Execute the plan in the fixed order: structural, subtractive, modifying, additiv
 
 **Structural Changes**: Rename types, modules, or restructure relationships. After completing all structural changes:
 - Run `cargo check` to verify compilation
-- Re-scan the crate to update the inventory (Hard Rule 16)
+- Re-scan the crate to update the inventory ([rules.md](./rules.md) Hard Rule 16)
 - Proceed only if compilation passes
 - Patterns: See [update-patterns.md](references/update-patterns.md#structural-patterns)
 
@@ -436,7 +396,7 @@ Execute the plan in the fixed order: structural, subtractive, modifying, additiv
 2. Remove corresponding type definitions (only if not used by remaining handlers)
 3. Remove module declarations from `lib.rs` or barrel modules
 4. Remove unused dependencies from `Cargo.toml`
-5. Document each removal in CHANGELOG.md (Hard Rule 13)
+5. Document each removal in CHANGELOG.md ([rules.md](./rules.md) Hard Rule 13)
 - Patterns: See [update-patterns.md](references/update-patterns.md#subtractive-patterns)
 
 **Modifying Changes**: Update existing handler logic, types, or provider bounds:
@@ -478,30 +438,18 @@ Full verification (fmt, clippy, test suite, regression detection) runs at the or
 
 ---
 
-## TODO Markers
+## Outputs & Quality
 
-Any functionality that cannot be fully implemented must be marked with a TODO at the call site AND documented in Migration.md. Never silently drop artifact steps. See [todo-markers.md](references/todo-markers.md) for the full marker format, capability override rules, managed data store recognition, TableStore/StateStore inference, and cache-aside patterns.
+| Topic                    | Reference                                                                                                                                                              |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TODO markers             | [todo-markers.md](references/todo-markers.md) — marker format, capability overrides, cache-aside patterns. Never silently drop artifact steps; mark at call site and document in Migration.md. |
+| Verification checklist   | [checklists.md](references/checklists.md#verification-checklist) — compilation, handler compliance, artifact fidelity, type quality, guest wiring, update-mode checks. |
+| Output documents         | [output-documents.md](references/output-documents.md) — Migration.md, Architecture.md, CHANGELOG.md (update mode), `.env.example`.                                     |
+| Troubleshooting          | [error-handling.md](references/error-handling.md#troubleshooting) — common issues and resolutions in both modes.                                                       |
 
-## Verification Checklist
-
-Before completing, verify code-quality items per [checklists.md](references/checklists.md#verification-checklist). This covers compilation, handler compliance, artifact fidelity, type quality, guest wiring, and update-mode-specific checks. Test verification runs at the orchestration level after test-writer completes.
-
-## Output Documents
-
-Generate documentation artifacts per [output-documents.md](references/output-documents.md): Migration.md, Architecture.md, CHANGELOG.md (update mode), and .env.example.
-
-## Troubleshooting
-
-See [error-handling.md](references/error-handling.md#troubleshooting) for common issues and resolutions in both create and update modes.
-
-## Output Hygiene
-
-Only emit: `.rs` source files, `Cargo.toml`, and the required docs. Do not emit `target/`, `Cargo.lock`, or build artifacts.
+Only emit `.rs` source files, `Cargo.toml`, and the required docs. Never emit `target/`, `Cargo.lock`, or build artifacts. Test verification runs at the orchestration level after test-writer completes.
 
 ## Important Notes
 
-- **Mode is auto-detected**: If `$CRATE_PATH/Cargo.toml` exists, update mode runs. Otherwise, create mode runs.
-- **Tests are test-writer's responsibility**: crate-writer generates code only. The build orchestration layer runs test-writer after crate-writer, then runs a unified verify-repair loop.
-- In update mode, changes are applied in fixed order (structural → subtractive → modifying → additive).
-- In update mode, after structural changes, the crate is re-inventoried before subsequent categories to ensure references are current.
-- When in doubt about whether a change is required (update mode), compare the specific artifact section against the existing code. If they match, no change is needed.
+- Mode is auto-detected from `$CRATE_PATH/Cargo.toml`; tests are test-writer's responsibility (a unified verify-repair loop runs after both writers).
+- In update mode, apply categories in fixed order (structural → subtractive → modifying → additive) and re-inventory after structural changes; if an artifact section already matches the existing code, do nothing.

@@ -21,7 +21,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Plugins
 
-- [Plugins](plugins/index.md) -- specialist skills organized by plugin (Omnia, Vectis, RT, Plan).
+- [Plugins](plugins/index.md) -- specialist skills organized by plugin (Omnia, Vectis, RT, Client).
 
 ### Schemas
 

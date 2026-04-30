@@ -110,7 +110,7 @@ Specify ships as a Cursor plugin marketplace with six plugins:
 - **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
 - **Contracts** (`contracts`) -- API contract generation, validation, and import
 - **RT** (`rt`) -- Repository cloning, fixture capture, and regression testing for migration
-- **Plan** (`plan`) -- Requirements analysis and SoW generation
+- **Client** (`client`) -- Client-facing deliverables (Statements of Work, proposals, pricing summaries) generated from Specify artifacts
 
 See the [Developer Guide](docs/reference/plugins/index.md) for the full skill reference and artifact lifecycle.
 

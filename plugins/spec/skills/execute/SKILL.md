@@ -1,11 +1,6 @@
 ---
-name: execute
-description: |
-  Drive an initiative through its plan.yaml: read the plan, pick the next
-  eligible change, run define → build → merge, and update status. Layer 2
-  automation over the Layer 1 specify plan CLI.
-license: MIT
-argument-hint: "dry-run? loop?"
+name: specify-execute
+description: "Drives an initiative through its plan.yaml: reads the plan, picks the next eligible change, runs define → build → merge, and updates status. Use when running the next eligible change in an initiative or processing all eligible changes via `--loop`."
 ---
 
 ## Critical Path (Quick Reference)
@@ -128,7 +123,7 @@ Self-heal is the driver's reconciliation pass. It runs **once per `/spec:execute
 
 ## Cross-project contract check (RFC-9 §3B)
 
-After a successful merge of a multi-repo change whose plan entry has a non-null `project` field and whose producer registry entry declares non-empty `contracts.produces`, the driver runs `/contracts:validator --mode cross-project` against every consumer workspace. Findings are appended to the merged change's journal as `cross-project-warning:` entries and rendered in the merge transcript. The check is non-fatal: validator findings (or even validator errors) never halt the loop, and the merged change stays `done`. See [multi-repo.md](multi-repo.md) for the full algorithm and the journal payload schema.
+After a successful merge of a multi-repo change whose plan entry has a non-null `project` field and whose producer registry entry declares non-empty `contracts.produces`, the driver runs the format-appropriate `/interfaces:*` skill in its verifier intent with `--mode cross-project` against every consumer workspace — `/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming, `/interfaces:json-schema` for shared payload schemas. Findings are appended to the merged change's journal as `cross-project-warning:` entries and rendered in the merge transcript. The check is non-fatal: verifier findings (or even verifier errors) never halt the loop, and the merged change stays `done`. See [multi-repo.md](multi-repo.md) for the full algorithm and the journal payload schema.
 
 ## What this skill does NOT do
 
@@ -137,7 +132,7 @@ After a successful merge of a multi-repo change whose plan entry has a non-null 
 | Write `.specify/plan.yaml` *entries* (`create` / `amend`) | Never — those writes are the phases' concern (they shell out to `specify plan add` / `specify plan amend` mid-run). |
 | Write `.specify/plan.yaml` *status* (`transition`) | Only via `specify plan transition`, at exactly three points in a supervised run: `pending → in-progress` before step 6, and the terminal `in-progress → {done, failed, blocked}` in steps 10/11/12. |
 | Write `.specify/changes/<name>/.metadata.yaml` (including the `outcome` field) | Never — that is the phase skills' concern via `specify change outcome set`. |
-| Write `.specify/changes/<name>/journal.yaml` | Three narrowly-scoped paths only: (1) self-heal `recovery` entries — one per reclaimed/resumed in-progress entry; (2) cross-project `cross-project-warning:` entries — one per `/contracts:validator --mode cross-project` finding on a successful multi-repo merge; (3) RFC-9 §2B `registry-amendment-required:` entries — one per `registry-amendment-required` deferral, recorded **before** `/spec:drop`. Phases own all other `type: question` / `type: failure` entries. |
+| Write `.specify/changes/<name>/journal.yaml` | Three narrowly-scoped paths only: (1) self-heal `recovery` entries — one per reclaimed/resumed in-progress entry; (2) cross-project `cross-project-warning:` entries — one per finding from the format-appropriate `/interfaces:*` skill (verifier intent, `--mode cross-project`) on a successful multi-repo merge; (3) RFC-9 §2B `registry-amendment-required:` entries — one per `registry-amendment-required` deferral, recorded **before** `/spec:drop`. Phases own all other `type: question` / `type: failure` entries. |
 | Invoke `/spec:define`, `/spec:build`, `/spec:merge`, or `/spec:drop` | Never in `--dry-run` (including dry-run self-heal); in supervised and `--loop` modes, exactly as the algorithm prescribes. |
 | Run self-heal on `in-progress` entries | Yes — see [self-heal.md](self-heal.md). Five fixtures under `fixtures/self-heal/` pin the clean / done / failed / ambiguous-halt / mid-change-resume paths. |
 | Loop across changes | `--loop` iterates `specify plan next → execute change` until no eligible change remains. The driver lock is held for the entire run (not per iteration). Individual failures / deferrals do NOT halt the loop. |

@@ -40,9 +40,9 @@ specify registry add <project> --url ... --schema ...
 | `/spec:plan` | 3 | Author a multi-change plan |
 | `/spec:execute` | 3 | Automate the plan loop |
 | `/spec:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> merge -> finalize (was `/spec:initiative`) |
-| `/contracts:writer` | -- | Validate spec alignment, produce contract delta |
-| `/contracts:validator` | -- | Verify contract artifact consistency |
-| `/contracts:importer` | -- | Import and normalise external contracts (Layer 2) |
+| `/interfaces:openapi` | -- | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
+| `/interfaces:asyncapi` | -- | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
+| `/interfaces:json-schema` | -- | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |
 
 ## Artifacts
 

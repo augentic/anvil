@@ -1,9 +1,7 @@
 ---
-name: extract
-description: Extract Specify artifacts (specs + design.md) from existing source code. Produces reconstruction-grade, language-agnostic artifacts capturing domain-level business logic. Supports optional `--include` / `--exclude` / `--manifest` filters that scope which source files are read for business-logic extraction without changing the artifact output shape.
-license: MIT
-argument-hint: "source-path change-dir include glob...? exclude glob...? manifest path?"
-allowed-tools: Read Write StrReplace Shell Grep
+name: specify-extract
+description: Extract Specify artifacts (specs + design.md) from existing source code. Produces reconstruction-grade, language-agnostic artifacts capturing domain-level business logic. Supports optional `--include` / `--exclude` / `--manifest` filters that scope which source files are read for business-logic extraction without changing the artifact output shape. Use when reconstructing Specify artifacts from a legacy code tree, or when the user mentions `extract`.
+argument-hint: "<source-path> <change-dir>"
 ---
 
 ## Critical Path (Quick Reference)

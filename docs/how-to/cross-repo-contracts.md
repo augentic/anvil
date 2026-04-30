@@ -65,7 +65,7 @@ After a producer change merges, `/spec:execute` runs a cross-project compatibili
 
 1. Read the producer project's `contracts.produces` list from `.specify/registry.yaml`.
 2. For each produced contract path, find consumer projects -- those listing the same path in `contracts.consumes`.
-3. Run `/contracts:validator --mode cross-project` against each consumer's workspace clone, passing the updated contract.
+3. Run the format-appropriate `/interfaces:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone, passing the updated contract: `/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming, `/interfaces:json-schema` for shared payload schemas.
 4. Surface each incompatibility as a warning in the merge transcript.
 5. Write each warning to the merged change's `journal.yaml` as a `cross-project-warning:` entry, so the audit trail survives the change being archived.
 
@@ -87,6 +87,6 @@ After a producer change merges, `/spec:execute` runs a cross-project compatibili
 - [Cross-Repo Initiatives](../tutorials/cross-repo-initiative.md) -- tutorial on multi-repo planning
 - [Resolve cross-project contract warnings](resolve-cross-project-contract-warnings.md) -- triage how-to for the post-merge check
 - [Cross-project contract warnings on the merge transcript](../appendices/troubleshooting.md#cross-project-contract-warnings-on-the-merge-transcript) -- troubleshooting entry
-- [Contracts plugin](../reference/plugins/contracts.md) -- plugin reference
+- [Interfaces plugin](../reference/plugins/interfaces.md) -- plugin reference
 - [Contracts schema](../reference/schemas/contracts.md) -- schema reference
 - [Artifact Format (contracts)](../reference/artifact-format.md#contract-artifacts-api-shape) -- format details

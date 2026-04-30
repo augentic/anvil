@@ -20,14 +20,13 @@ This plugin migrates existing TypeScript services to production-grade Rust WASM 
 ├── rules/
 │   └── rt.mdc            # This file
 └── skills/
-    ├── git-cloner/        # Repository cloning (optional detach)
     ├── wiretapper/        # Add wiretap to legacy repo for fixture capture
     └── replay-writer/     # Add regression tests from captured fixtures
 ```
 
-Note: Source code analysis (formerly `code-analyzer`) has moved to `/spec:extract` in the spec plugin.
+Note: Source code analysis (formerly `code-analyzer`) has moved to `/spec:extract` in the spec plugin. Repository cloning is no longer a dedicated skill — both callers (`/spec:analyze` and `/rt:wiretapper`) inline a guarded `git clone` snippet directly; see the *Cloning a source tree* subsection in [`plugins/spec/skills/analyze/SKILL.md`](../../spec/skills/analyze/SKILL.md) (or [`plugins/rt/skills/wiretapper/SKILL.md`](../skills/wiretapper/SKILL.md) for legacy-repo bootstrap).
 
-Each skill has its own SKILL.md with full details. After **clone**, **wiretapper** runs in parallel with **analyze** (wiretapper adds `src/wiretap/` to the legacy repo and wires the app entrypoint so that with `WIRETAP_ENABLED=true` the app writes `{app-name}.wiretap.json`). The RT plugin provides the analysis and fixture-capture side; code generation skills (crate-writer, guest-writer, test-writer, code-reviewer) live in the Omnia plugin.
+Each skill has its own SKILL.md with full details. After the legacy repo is cloned (via the inlined snippet), **wiretapper** runs in parallel with **analyze** (wiretapper adds `src/wiretap/` to the legacy repo and wires the app entrypoint so that with `WIRETAP_ENABLED=true` the app writes `{app-name}.wiretap.json`). The RT plugin provides the analysis and fixture-capture side; code generation skills (crate-writer, guest-writer, test-writer, code-reviewer) live in the Omnia plugin.
 
 ## TypeScript-Specific Patterns
 
@@ -75,7 +74,7 @@ The `/spec:extract` skill produces platform-agnostic Specify artifacts (specs + 
 
 - See project rule (`.cursor/rules/project.mdc`) for overall project context
 - [Extract SKILL.md](../../spec/skills/extract/SKILL.md) - Source code analysis (moved from this plugin)
-- [Wiretapper SKILL.md](skills/wiretapper/SKILL.md) - Fixture capture from legacy services
-- [Replay Writer SKILL.md](skills/replay-writer/SKILL.md) - Add tests from captured fixtures
-- [Git Cloner SKILL.md](skills/git-cloner/SKILL.md) - Repository cloning
+- [Wiretapper SKILL.md](../skills/wiretapper/SKILL.md) - Fixture capture from legacy services (also hosts the inlined clone snippet for legacy-repo bootstrap)
+- [Replay Writer SKILL.md](../skills/replay-writer/SKILL.md) - Add tests from captured fixtures
+- [Analyze SKILL.md](../../spec/skills/analyze/SKILL.md) - Plan-time discovery; hosts the inlined `git clone` snippet that replaced the retired clone skill
 - [Specify Artifact Specification](../../references/specify.md) - Artifact format details

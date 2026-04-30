@@ -14,7 +14,7 @@ Install the Augentic plugins from the Cursor marketplace:
 4. Install the plugin marketplace.
 5. Restart Cursor.
 
-This installs all six plugins (Specify, Omnia, Vectis, Contracts, RT, Plan) and their skills.
+This installs all six plugins (Specify, Omnia, Vectis, Contracts, RT, Client) and their skills.
 
 ## The `specify` CLI
 

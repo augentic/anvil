@@ -1,12 +1,20 @@
 ---
-name: sow-writer
-description: Generate a Statement of Work (SoW) document from Specify artifacts and project context.
-license: MIT
-argument-hint: "change-dir? output-path? client-name? company-name? pdf?"
-allowed-tools: Read Write StrReplace Shell Grep
+name: client-sow-writer
+description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a delivery lead asks for a SoW from completed Specify artifacts, when exporting client deliverables from a change directory, or when the user mentions `sow-writer`.
+argument-hint: "<change-dir>"
 ---
 
 # SoW Generator Skill
+
+## Critical Path (Quick Reference)
+
+1. Read Specify artifacts at `$CHANGE_DIR` (specs + `design.md`); validate required Context + Business Logic sections; determine `code-analysis` (migration) vs `requirements` (greenfield) origin.
+2. Extract project metadata (name, purpose, source reference) and derive `$OUTPUT_PATH` from `$CHANGE_DIR` unless one was supplied.
+3. Compose the SoW shell — cover page, Background framed by origin, Objectives prose paragraph, Reference Agreement clause.
+4. Generate Services — Scope statement + In-Scope bullets, Design Inputs table, Deliverables table with placeholder costs (always include an Automated Test Suite line item) and lettered Exclusions.
+5. Generate Fees + Payment Schedule with placeholder amounts and the Other Issues block (Dependencies, Assumptions, Change Requests, Warranty).
+6. Generate Acceptance, Appendix A (verbatim from `references/sow-template.md`), and Appendix B only when test-related artifact content is available.
+7. Write Markdown to `$OUTPUT_PATH`, emit a review checklist, and optionally render a branded PDF when `--pdf` is passed.
 
 ## Overview
 
@@ -18,29 +26,9 @@ This skill reads the Specify artifacts (specs and design.md) produced by `/spec:
 
 ## Writing Style
 
-The SoW must match the $COMPANY_NAME house style. Follow these rules consistently:
+The SoW must match the $COMPANY_NAME house style — first person plural, direct prose, business language, lettered items for exclusions/dependencies/assumptions, and section-specific prose patterns.
 
-### Voice and Tone
-
-- **First person plural**: Use "we" when referring to $COMPANY_NAME. "We need access to..." not "$COMPANY_NAME requires access to..."
-- **Direct and concise**: Short sentences. No filler or padding. Get to the point.
-- **Business language**: No technical jargon. Translate all technical terms from the artifacts into business language.
-- **Confident but not presumptuous**: State facts and requirements clearly. Avoid hedging language.
-
-### Section-specific Style
-
-- **Objectives**: Write as a **single prose paragraph**, not bullet points. Open with "The objective of this Statement of Work is to deliver..."
-- **Deliverables**: Each deliverable gets its **own heading** with a narrative paragraph describing what it does, followed by a "Sub-components" list using the pattern: **Bold Title** - description.
-- **Exclusions**: Terse. Lettered items with a **bold title** and 1-2 sentence description. No lengthy explanations.
-- **Dependencies**: Use "We need..." phrasing. Direct, personal voice. Brief.
-- **Assumptions**: Use "It is assumed that..." pattern. Concise. Do NOT append "If this assumption proves incorrect, we will raise a change request" to every item.
-
-### Formatting Patterns
-
-- **Lettered items** (A, B, C...) for Exclusions, Dependencies, and Assumptions — each with a bold title on the first line and description below.
-- **Sub-components** use bullet list with **Bold Title** - description pattern.
-- **Costs** are listed alongside each deliverable in the deliverables table (DESCRIPTION | COST format).
-- **Design Inputs** table lists referenced documents with links.
+See [`template.md`](template.md) for the full voice-and-tone rules and per-section formatting patterns. Follow it consistently when drafting any SoW section.
 
 ## Derived Arguments
 

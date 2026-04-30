@@ -37,7 +37,7 @@ Source code changes in the project codebase (not under `.specify/`). Task checkb
 
 ### Contract-only changes
 
-Changes using the `contracts` schema have a different build behavior. The build brief delegates to `/contracts:validator` rather than code-generation skills -- the sole output is a validation pass/fail. A verify-repair loop runs up to 2 iterations: if the validator reports failures, `/contracts:writer` makes targeted repairs, then the validator re-checks. No implementation code is generated.
+Changes using the `contracts` schema have a different build behavior. The build brief delegates to the format-appropriate `/interfaces:*` skill (verifier intent) -- `/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming, `/interfaces:json-schema` for shared payload schemas -- rather than code-generation skills. The sole output is a validation pass/fail. A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same skill's author intent makes targeted repairs, then the verifier re-checks. No implementation code is generated.
 
 ## Lifecycle transitions
 

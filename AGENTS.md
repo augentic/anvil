@@ -39,15 +39,15 @@ The previous standalone groups (`specify validate`, `specify spec`, `specify tas
 
 Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 
-### Contract skills
+### Interface skills
 
-The contracts plugin provides specialist skills for API contract generation and validation:
+The interfaces plugin provides format-first specialist skills for API contract generation and validation. Each skill carries author / import / verify intents internally and dispatches via its own intent table:
 
-- `/contracts:writer` — validates spec alignment with baseline contracts and produces the minimal delta for uncovered interactions
-- `/contracts:validator` — checks internal consistency of contract artifacts ($ref resolution, schema metadata, binding completeness)
-- `/contracts:importer` — imports and normalizes external API contracts (Layer 2)
+- `/interfaces:openapi` — author, import, or verify HTTP / resource-style contracts (OpenAPI 3.1)
+- `/interfaces:asyncapi` — author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0)
+- `/interfaces:json-schema` — author, import, or verify reusable payload schemas (JSON Schema)
 
-These skills are invoked by the `contracts` brief in the define pipeline. The brief is present in the `contracts` schema (for dedicated contract changes) and in the Omnia and Vectis schemas (for alignment validation during implementation changes).
+Each skill exposes the same three intents through sibling files: `author.md` (generate or extend), `importer.md` (normalise an external document), and `verifier.md` (internal consistency and the post-merge cross-project consumer check via `--mode cross-project`). These skills are invoked by the `contracts` brief in the define pipeline (the brief id, the `contracts@v1` schema, and the `.specify/contracts/` baseline directory keep their original names — `interfaces` only renames the Cursor plugin / slash-command surface). The brief is present in the `contracts` schema (for dedicated contract changes) and in the Omnia and Vectis schemas (for alignment validation during implementation changes).
 
 ### Plan-driven loop (RFC-2, all three layers landed)
 
@@ -68,6 +68,10 @@ All commands are run from the repository root:
 - **`make checks`** -- runs `scripts/checks.ts` via Deno for documentation and workflow consistency checks
 - **`make dev-plugins`** -- symlink local plugins into Cursor for development/testing
 - **`make prod-plugins`** -- restore Augentic marketplace plugins (reload Cursor after either)
+
+### Skill authoring
+
+- Every `SKILL.md` in this repository follows the house style codified in [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions); the long-form rationale (discovery model, why metadata is precious, examples of good/bad descriptions, the progressive-disclosure pattern, and the forbidden-frontmatter list) lives at [docs/explanation/skill-authoring.md](docs/explanation/skill-authoring.md).
 
 ### Gotchas
 

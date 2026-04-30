@@ -4,6 +4,39 @@ This page captures the **additive** changes to the Specify framework since the v
 
 The bulk of the additions ship under [RFC-9: Platform-First Operator Experience](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md) and [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md). RFC-9 closes the operator-experience gaps in the cross-repo loop; RFC-8 introduces contracts as platform-level artifacts.
 
+## RFC-10 plugin namespace renormalisation (v0.25.0)
+
+[RFC-10](https://github.com/augentic/specify/blob/main/rfcs/rfc-10-skill-improvements.md) renormalises the Cursor plugin / slash-command surface so each skill name is plugin-qualified, each plugin is a coherent capability domain, and each SKILL.md body fits inside Anthropic's 500-line ceiling. **It is a breaking change to the slash-command namespace** — the ship marker is the marketplace bump from `0.24.3` to `0.25.0`. **No persisted artifact, schema, brief id, validation rule, or registry role changed**: the `contracts` brief id, the `contracts@v1` schema, the `.specify/contracts/` baseline directory, the `contracts.*` validation rule ids, and the `contracts.{produces,consumes,imports}` registry roles all keep their original names. For the full migration map (with both old and new slash forms) see [`rfcs/rfc-10-skill-improvements.md`](https://github.com/augentic/specify/blob/main/rfcs/rfc-10-skill-improvements.md).
+
+### Renamed
+
+- The SoW-writer skill moved from the former `plan` plugin to the `client` plugin. The new slash form is `/client:sow-writer`.
+- The contracts plugin was renamed `interfaces`. Every former `/contracts:*` invocation is now `/interfaces:*` (specifics under *Split* below). The `contracts` brief id, the `contracts@v1` schema, and the `.specify/contracts/` baseline directory keep their original names — only the Cursor plugin / slash-command surface changed.
+
+### Split
+
+The former `contracts` plugin shipped three intent-named skills (`writer`, `validator`, `importer`) that each branched on format internally. The `interfaces` plugin inverts that axis: three format-named skills, each carrying author / import / verify intents internally and dispatching via a per-skill intent table.
+
+| Old (former `contracts` plugin) | New (`interfaces` plugin) |
+|---|---|
+| `writer`, `validator`, `importer` | `/interfaces:openapi`, `/interfaces:asyncapi`, `/interfaces:json-schema` |
+
+Each new skill handles author / import / verify intents internally. The former validator's `--mode {single, cross-project}` flag becomes an internal verifier option per format. `/spec:execute`'s post-merge cross-project compatibility check now picks the format-appropriate skill (`/interfaces:openapi`, `/interfaces:asyncapi`, or `/interfaces:json-schema`) and threads the verifier intent with `--mode cross-project`.
+
+### Removed
+
+- The former `rt` plugin's `git-cloner` skill has been deleted. Cloning a remote source tree is no longer a dedicated skill; the two callers (`plugins/spec/skills/analyze/SKILL.md` and `plugins/rt/skills/wiretapper/SKILL.md`) now inline a guarded `git clone` snippet directly.
+
+### Other notable changes
+
+- **Plugin-qualified skill names.** Every SKILL.md `name:` is now globally unique by construction. Skills under `plugins/<plugin>/` use the directory name as their prefix (e.g. `omnia-crate-writer`, `vectis-core-reviewer`, `interfaces-openapi`, `client-sow-writer`); skills under `plugins/spec/` use the `specify-` prefix instead (so the operator-facing product name surfaces in discovery, e.g. `specify-init`, `specify-plan`).
+- **500-line ceiling per SKILL.md.** Every skill body now fits under Anthropic's 500-line guidance; depth pushes one level out into siblings (`references/`, `examples/`, or topical files such as `author.md` / `importer.md` / `verifier.md`). `make checks` enforces the ceiling.
+- **Phase-outcome contract authored once.** The four phase skills (`define`, `build`, `merge`, `drop`) used to repeat the four-of-one outcome contract inline. They now link to a single source of truth at `plugins/spec/references/phase-outcome-contract.md`, eliminating drift.
+- **Forbidden frontmatter keys.** The skill schema (`schemas/skill.schema.json`) now rejects `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, and `paths` in SKILL.md frontmatter — license is declared once in the plugin manifest and the repo `LICENSE` file, and the rest belong in the body. The earlier "Skill frontmatter standard" section below is superseded by this list.
+- **`argument-hint` simplified.** The hint now names the **primary positional** argument only, with angle brackets for required (`<change-dir>`) and square brackets for optional (`[crate-name]`); flags and secondary positionals move into the body's *Invocation* section. The earlier `?` / `--` / `|` syntax is gone.
+
+For the full rationale and migration plan, see [rfcs/rfc-10-skill-improvements.md](https://github.com/augentic/specify/blob/main/rfcs/rfc-10-skill-improvements.md) and [rfcs/rfc-10-plan.md](https://github.com/augentic/specify/blob/main/rfcs/rfc-10-plan.md).
+
 ## Hub topology
 
 A **registry-only platform hub** (RFC-9 ?1D) is now the canonical starting shape for a multi-repo initiative. The hub holds platform state -- `registry.yaml`, `initiative.md`, `plan.yaml`, `workspace/` -- and is never itself a code project.
@@ -109,14 +142,14 @@ Runs four guards in order (plan-presence, plan terminal-state, per-project PR-st
 
 API contracts are now first-class platform artifacts at `.specify/contracts/`, alongside `registry.yaml` and `plan.yaml`. The contract format uses JSON Schema (payload definitions) plus OpenAPI 3.1 (HTTP bindings) and AsyncAPI 3.0 (messaging bindings) -- no proprietary IDL.
 
-The `contracts` brief in the define pipeline runs alignment validation against the baseline; `/spec:plan` automatically inserts a contract change before implementation changes when it detects an API boundary between projects (the contract-first authorship pattern). The Contracts plugin ships three skills: `/contracts:writer`, `/contracts:validator`, `/contracts:importer`.
+The `contracts` brief in the define pipeline runs alignment validation against the baseline; `/spec:plan` automatically inserts a contract change before implementation changes when it detects an API boundary between projects (the contract-first authorship pattern). The Interfaces plugin ships three format-first skills, each carrying author / import / verify intents internally: `/interfaces:openapi` (HTTP / resource APIs), `/interfaces:asyncapi` (evented / pub-sub / streaming), and `/interfaces:json-schema` (shared payload schemas). The `contracts` brief, schema id, and `.specify/contracts/` baseline directory keep their original names; only the Cursor plugin / slash-command surface is renamed.
 
-- Reference: [Contracts plugin](../reference/plugins/contracts.md), [Contracts schema](../reference/schemas/contracts.md), [Artifact Format -> Contracts](../reference/artifact-format.md#contract-artifacts-api-shape)
+- Reference: [Interfaces plugin](../reference/plugins/interfaces.md), [Contracts schema](../reference/schemas/contracts.md), [Artifact Format -> Contracts](../reference/artifact-format.md#contract-artifacts-api-shape)
 - How-to: [Work with Contracts Across Repos](../how-to/cross-repo-contracts.md)
 
 ## Cross-project contract validation (RFC-9 ?3B)
 
-Post-merge, `/spec:execute` runs a cross-project compatibility check: for each contract the producer `produces`, find every consumer that `consumes` it and run `/contracts:validator --mode cross-project` against each consumer's workspace clone. Incompatibilities surface as warnings on the merge transcript and on the merged change's `journal.yaml` (`cross-project-warning:` entries). **Warnings never halt the loop** -- the operator triages.
+Post-merge, `/spec:execute` runs a cross-project compatibility check: for each contract the producer `produces`, find every consumer that `consumes` it and run the format-appropriate verifier against each consumer's workspace clone (`/interfaces:openapi`, `/interfaces:asyncapi`, or `/interfaces:json-schema`, picking the verifier intent and threading `--mode cross-project`). Incompatibilities surface as warnings on the merge transcript and on the merged change's `journal.yaml` (`cross-project-warning:` entries). **Warnings never halt the loop** -- the operator triages.
 
 - How-to: [Resolve Cross-Project Contract Warnings](../how-to/resolve-cross-project-contract-warnings.md)
 - Troubleshooting: [Cross-project contract warnings on the merge transcript](../appendices/troubleshooting.md#cross-project-contract-warnings-on-the-merge-transcript)

@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: define a change, build (validate and implement) a change, merge a completed change, drop a discarded change, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Plan) build on.
+This plugin provides the core Specify workflow skills: define a change, build (validate and implement) a change, merge a completed change, drop a discarded change, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Client) build on.
 
 **Purpose**: Drive the define -> build -> merge workflow, with drop for cleanup.
 

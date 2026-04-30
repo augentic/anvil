@@ -1,8 +1,7 @@
 ---
-name: drop
+name: specify-drop
 description: Drop a change without merging specs into the baseline. Use when the user wants to discard a change that should not be merged normally.
-license: MIT
-argument-hint: "change-name?"
+argument-hint: "[change-name]"
 ---
 
 # Drop
@@ -15,7 +14,7 @@ Deterministic bookkeeping — change selection, lifecycle transition, archive mo
 
 When invoked with `--reason`, skip the confirmation `AskQuestion` calls in steps 1–3; proceed directly to step 4 with the supplied reason. The change name must be provided explicitly as the positional argument. Exit code is 0 on a clean drop, non-zero only on CLI failure.
 
-Non-interactive mode is how `/spec:execute` invokes this skill during `--loop`, supervised single-change runs, and self-heal reclaim of a `failure` / `deferred` outcome (see [`../execute/SKILL.md`](../execute/SKILL.md) steps 11b, 12b, and §"Self-heal on startup" step 2). The driver copies `outcome.summary` verbatim into `--reason`; this skill forwards the same string to `specify change drop` without prompting.
+Non-interactive mode is how `/spec:execute` invokes this skill during `--loop`, supervised single-change runs, and self-heal reclaim of a `failure` / `deferred` outcome (see [`../execute/SKILL.md`](../execute/SKILL.md) steps 11b, 12b, and §"Self-heal on startup" step 2). The driver supplies a `--reason` string assembled from the upstream phase's outcome — see the verbatim-`summary` rule in [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md). This skill forwards that string to `specify change drop` verbatim, without prompting.
 
 When working plan-driven (a `.specify/plan.yaml` exists), after `specify change drop` succeeds the plan entry should transition to `failed` or `blocked` — `failed` for a build/test failure the human does not intend to retry automatically, `blocked` when a design question needs resolving before the entry is re-entered as `pending`:
 
@@ -25,6 +24,19 @@ specify plan transition <name> blocked --reason "<short rationale>"
 ```
 
 This is an advisory note — this skill does not run the command itself. `/spec:execute` will run it automatically; in Layer 1 the human closes the loop.
+
+## Phase outcome contract
+
+This skill is the **drop** phase of the `/spec:execute` driver loop.
+The shared phase contract — outcome values, journal kinds, plan-mutation rules,
+the verbatim-`summary` rule, and the success/failure/deferred semantics — is
+authored once at [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md).
+
+This phase's outcome-specific deltas:
+
+- `success` — `specify change drop` exited zero: the change is archived with status `dropped` and the supplied `--reason` recorded in `.metadata.yaml`. The lifecycle stamp itself is the success signal — no separate `outcome set` call.
+- `failure` — `specify change drop` returned a lifecycle violation (the change is already `merged`/`dropped`, the directory is malformed); record skill-side via `outcome set ... drop failure ...`.
+- `deferred` — rare; an interactive cancel mid-flow or a precondition that needs human resolution before the drop is safe. Non-interactive runs from `/spec:execute` do not reach this path.
 
 ## Input
 

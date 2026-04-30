@@ -17,7 +17,7 @@ At least one of `--from`, `--against`, or `--source` must be supplied.
 ## Process
 
 1. **Analyse each `--source` and `--against` input.** For every non-`--from` input, invoke `/spec:extract` to produce a domain-level capability description:
-   - For a git URL `--source`: clone via `/rt:git-cloner` into `legacy/<key>/` first, then run `/spec:extract legacy/<key> .specify/plans/<name>/extract/<key>/`.
+   - For a git URL `--source`: materialise the URL into `legacy/<key>/` with the inlined guarded `git clone` snippet (see [`../../../../plugins/spec/skills/analyze/SKILL.md` §*Cloning a source tree*](../../../../plugins/spec/skills/analyze/SKILL.md)), then run `/spec:extract legacy/<key> .specify/plans/<name>/extract/<key>/`.
    - For a local path `--source` or `--against`: run `/spec:extract <path> .specify/plans/<name>/extract/<key>/` directly (use `against` as the key for `--against`).
    - The extract artefacts under `.specify/plans/<name>/extract/` are intermediate — the inventory below is the only human-facing output.
 2. **Read each `--from` artefact.** Open every `--from` file (or every file under a `--from` directory). Parse any clearly delimited capability structure (e.g. headings named "Capability", "Feature", "Screen", "Component"); otherwise treat each top-level heading as a capability candidate and record the accompanying prose verbatim.

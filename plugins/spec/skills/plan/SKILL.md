@@ -1,16 +1,7 @@
 ---
-name: plan
-description: |
-  Author the initial .specify/plan.yaml for an initiative via the pipeline.plan
-  brief pipeline (default mode), or drive a cross-repo initiative end to end
-  with --orchestrate (Layer 4 umbrella: brief → registry → plan → execute →
-  push → optional merge → finalize). Default mode is the Layer 3 authoring
-  counterpart to /spec:execute: /spec:plan writes the plan, /spec:execute runs
-  it. When `.specify/registry.yaml` declares more than one project, runs the
-  sync-peers phase (`specify workspace sync`) before propose and emits
-  `workspace.md` for cross-repo planning.
-license: MIT
-argument-hint: "initiative-name from path...? against path? source key=path-or-url...? focus area? extend? dry-run? orchestrate? shape migrate-legacy|new-feature|update-existing? auto-merge?"
+name: specify-plan
+description: "Authors `.specify/plan.yaml` for a new initiative via the `pipeline.plan` brief pipeline; with `--orchestrate`, drives the cross-repo initiative end to end. Use when scoping a new initiative or coordinating multi-repo execution from a single command."
+argument-hint: "<initiative-name>"
 ---
 
 ## Critical Path (Quick Reference)
@@ -69,7 +60,7 @@ Flags:
 - **`<initiative-name>`** — kebab-case identifier; becomes the plan's top-level `name` field. Validated with the same rules as change names (regex `^[a-z][a-z0-9-]*$`) before any other work. An invalid name is a hard exit with a clear diagnostic — the skill never rewrites or "helps" the name.
 - **`--from <path>`** — artefact file(s) or directory describing the target shape for greenfield authoring. Repeatable. Consumed by the discovery brief (L3.F). Kind defaults to `documentation`; override via `:<kind>` suffix (see §Kind defaults for CLI flags).
 - **`--against <path>`** — an existing codebase to delta against, used for refactor or modernisation initiatives. Consumed by the discovery brief (L3.F). Kind defaults to `legacy-code`; override via `:<kind>` suffix.
-- **`--source <key>=<path-or-url>`** — a named source for migration. Repeatable. The `key` is a kebab-case identifier recorded in the plan's top-level `sources` map and referenced by individual plan entries via their `sources` list; the `value` is either a local filesystem path or a git URL. The skill forwards the tuple verbatim; cloning (if any) is the discovery brief's concern via `/spec:analyze` and `git-cloner`. Kind defaults to `legacy-code`; override via `:<kind>` suffix.
+- **`--source <key>=<path-or-url>`** — a named source for migration. Repeatable. The `key` is a kebab-case identifier recorded in the plan's top-level `sources` map and referenced by individual plan entries via their `sources` list; the `value` is either a local filesystem path or a git URL. The skill forwards the tuple verbatim; cloning (if any) is the discovery brief's concern via `/spec:analyze` (which inlines a guarded `git clone` snippet — see the *Cloning a source tree* subsection in [`../analyze/SKILL.md`](../analyze/SKILL.md)). Kind defaults to `legacy-code`; override via `:<kind>` suffix.
 - **`--focus <area>`** — optional scoping hint for the propose brief (L3.G). Free-form string; the propose brief decides how to interpret it.
 - **`--extend`** — add to an existing `.specify/plan.yaml` instead of refusing. See §Modes → `--extend` for the full contract.
 - **`--dry-run`** — emit the readiness report and the proposed plan to stdout; write nothing. See §Modes → `--dry-run`.

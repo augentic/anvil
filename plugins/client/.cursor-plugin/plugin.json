@@ -1,8 +1,8 @@
 {
-  "name": "plan",
-  "displayName": "Plan",
-  "description": "Generate Statements of Work from Specify artifacts.",
-  "version": "0.24.3",
+  "name": "client",
+  "displayName": "Client",
+  "description": "Skills to generate client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — from Specify artifacts.",
+  "version": "0.25.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"
@@ -11,8 +11,9 @@
   "repository": "https://github.com/augentic/specify",
   "license": "MIT or Apache-2.0",
   "keywords": [
-    "plan",
-    "sow"
+    "client",
+    "sow",
+    "deliverables"
   ],
   "settings": {}
 }

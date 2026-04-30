@@ -5,7 +5,7 @@ Canonical definitions for terms used throughout Specify.
 ## A
 
 **Alignment report**
-The output of `/contracts:writer` after running the 6-step algorithm. Summarises coverage (interactions already defined in the baseline), alignment warnings (spec-vs-baseline mismatches), generated delta (new contract files), and normalisation changes. A clean report with zero delta is the expected outcome for implementation changes in a contract-first workflow.
+The output of an `/interfaces:*` skill's author intent (`/interfaces:openapi`, `/interfaces:asyncapi`, or `/interfaces:json-schema` — picked from the brief context) after running the 6-step algorithm. Summarises coverage (interactions already defined in the baseline), alignment warnings (spec-vs-baseline mismatches), generated delta (new contract files), and normalisation changes. A clean report with zero delta is the expected outcome for implementation changes in a contract-first workflow.
 
 **API contract**
 A machine-readable interface definition at `.specify/contracts/`. Uses three formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP endpoint bindings, and AsyncAPI 3.0 for messaging bindings. Contracts capture the *shape* of interfaces -- endpoint paths, methods, payload schemas, error codes, channel names, message structures. They complement behavioral specs, which capture *what* the system does.
@@ -48,7 +48,7 @@ Authorship pattern where a dedicated contract change defines interface shapes be
 Authorship pattern where API contracts are imported from an external system or legacy API. The operator places the external files into the change's `contracts/` directory. `/spec:plan` inserts import changes when a source is flagged as external.
 
 **Cross-project contract validation**
-The post-merge check `/spec:execute` runs against the producer's `contracts.produces` list (RFC-9 Section 3B). For each produced contract, the driver finds consumer projects via `contracts.consumes`, runs `/contracts:validator --mode cross-project` against each consumer's workspace clone, and writes any incompatibilities to the merged change's `journal.yaml` as `cross-project-warning:` entries. Warnings never halt the loop; the operator triages them.
+The post-merge check `/spec:execute` runs against the producer's `contracts.produces` list (RFC-9 Section 3B). For each produced contract, the driver finds consumer projects via `contracts.consumes`, runs the format-appropriate `/interfaces:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone, and writes any incompatibilities to the merged change's `journal.yaml` as `cross-project-warning:` entries. Warnings never halt the loop; the operator triages them.
 
 ## D
 
@@ -189,7 +189,7 @@ The phase during `/spec:plan` (multi-repo only) that clones registry projects in
 `specify workspace merge` (RFC-9 Section 4A). Squash-merges the open PRs created by `specify workspace push` once their CI is green. Per-project, the verb checks `gh pr checks` against `specify/<initiative-name>` and runs `gh pr merge --squash` when every check is `pass` or `skipping`. Refuses any PR whose `headRefName` is not `specify/<initiative-name>` exactly (the `branch-pattern-mismatch` guard). Never `--admin`, never `--auto`. Best-effort across projects; a single project's failure surfaces in its row without aborting the others.
 
 **Workspace tier 1** (also: **Legacy-source clone**)
-The ephemeral, read-only clone materialised under `.specify/plans/<name>/analyze/<key>/` by `/spec:analyze` (typically via `/rt:git-cloner`) so the discovery brief can read source code that is not on the operator's local disk. Belongs to a single initiative and is swept into `.specify/archive/plans/<YYYYMMDD>-<name>/` by `specify plan archive`. Anything an operator edits inside a tier-1 clone moves into the archive when the initiative ends -- it never propagates back to the original source. See [Workspace tiers](../explanation/workspace-tiers.md).
+The ephemeral, read-only clone materialised under `.specify/plans/<name>/analyze/<key>/` by `/spec:analyze` (using the inlined guarded `git clone` snippet documented at [`plugins/spec/skills/analyze/SKILL.md` §*Cloning a source tree*](../../plugins/spec/skills/analyze/SKILL.md) when the source is a git URL) so the discovery brief can read source code that is not on the operator's local disk. Belongs to a single initiative and is swept into `.specify/archive/plans/<YYYYMMDD>-<name>/` by `specify plan archive`. Anything an operator edits inside a tier-1 clone moves into the archive when the initiative ends -- it never propagates back to the original source. See [Workspace tiers](../explanation/workspace-tiers.md).
 
 **Workspace tier 2** (also: **Registered project clone**)
 The durable, read-write clone materialised under `.specify/workspace/<name>/` by `specify workspace sync` from an entry in `.specify/registry.yaml`. Belongs to the platform, not to any one initiative; persists across initiatives. `/spec:execute` `chdir`s into this clone before invoking the phase skills, so the change directory, the merged baseline, and the workspace's git history accumulate here. `specify workspace push` is the explicit release gate that publishes those local commits. See [Workspace tiers](../explanation/workspace-tiers.md).

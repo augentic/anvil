@@ -1,9 +1,7 @@
 ---
-name: test-writer
-description: "Generate or update test suites for Omnia Rust WASM crates from Specify artifacts -- MockProvider setup, integration tests, spec-to-test mapping, and drift detection."
-license: MIT
-argument-hint: "crate-name?"
-allowed-tools: Read Write StrReplace Shell Grep ReadLints
+name: omnia-test-writer
+description: "Generate or update test suites for Omnia Rust WASM crates from Specify artifacts -- MockProvider setup, integration tests, spec-to-test mapping, and drift detection. Use when implementing test tasks from a Specify change, regenerating tests after a crate update, or when the user mentions `test-writer`."
+argument-hint: "[crate-name]"
 ---
 
 # Test Writer

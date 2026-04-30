@@ -1,17 +1,17 @@
-# Plan Plugin
+# Client Plugin
 
-Statement of Work generation from Specify artifacts.
+Client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — generated from Specify artifacts.
 
 ## Skills
 
-### /plan:sow-writer
+### /client:sow-writer
 
 Translate Specify artifacts into a client-facing Statement of Work document.
 
 **Synopsis:**
 
 ```text
-/plan:sow-writer <change-dir> [--output <path>] [--client <name>] [--company <name>] [--pdf]
+/client:sow-writer <change-dir> [--output <path>] [--client <name>] [--company <name>] [--pdf]
 ```
 
 **Inputs:**
