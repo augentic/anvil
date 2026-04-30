@@ -1,8 +1,8 @@
 ---
 id: tasks
-description: Create the task list for contract validation
+description: Create the task list for contract build and validation
 generates: tasks.md
-needs: [specs, contracts]
+needs: [specs]
 ---
 
 Follow the task format conventions defined in the define skill for checkbox format, grouping, ordering, and skill directive tags.
@@ -17,23 +17,26 @@ When alignment needs review, express it as a format-skill verification task that
 
 | Directive | Skill | When to Use |
 |-----------|-------|-------------|
-| `interfaces:openapi` | Author or verify OpenAPI artifacts | HTTP/resource interactions |
-| `interfaces:asyncapi` | Author or verify AsyncAPI artifacts | Evented, pub/sub, streaming, or WebSocket interactions |
-| `interfaces:json-schema` | Author or verify reusable JSON Schema artifacts | Shared payload vocabulary referenced by HTTP and/or evented interactions |
+| `interfaces:openapi` | Author, import, or verify OpenAPI artifacts | HTTP/resource interactions |
+| `interfaces:asyncapi` | Author, import, or verify AsyncAPI artifacts | Evented, pub/sub, streaming, or WebSocket interactions |
+| `interfaces:json-schema` | Author, import, or verify reusable JSON Schema artifacts | Shared payload vocabulary referenced by HTTP and/or evented interactions |
 
-Pick the directive whose format matches each interface. When a change contains both HTTP and evented interactions, order the per-interface tasks `interfaces:json-schema` first (shared payloads), then `interfaces:openapi` (HTTP), then `interfaces:asyncapi` (events) so later format passes can reuse the schemas authored earlier. Each skill exposes both an author intent (generate or extend the artifact) and a verifier intent (consistency checks); the build phase runs the verifier intent of every format skill that owns artifacts in the change.
+Pick the directive whose format matches each interface. When a change contains both HTTP and evented interactions, order the per-interface tasks `interfaces:json-schema` first (shared payloads), then `interfaces:openapi` (HTTP), then `interfaces:asyncapi` (events) so later format passes can reuse the schemas authored or imported earlier. Each skill exposes author, importer, and verifier intents; the build phase selects the intent from the proposal's Authorship Mode and the presence of supplied files.
 
 ## Standard Task Groups
 
-Contract changes produce a fixed set of authoring and verification tasks. Generate one group per interface in the specs, plus a cross-cutting verification group:
+Contract changes produce a fixed set of build and verification tasks. Generate one group per interface in the specs, plus a cross-cutting verification group:
 
 ### Per-interface tasks
 
-For each interface in `specs/`, emit one task per format skill the interface needs (skip formats with no interactions):
+For each interface in `specs/`, emit one build task per format skill the interface needs (skip formats with no interactions). Use **Author** wording for prose-driven or modification changes and **Import and normalize** wording for import-driven changes:
 
 - [ ] `interfaces:json-schema` — Author shared payload schemas for `<interface>`
 - [ ] `interfaces:openapi` — Author OpenAPI delta for `<interface>` (HTTP interactions only)
 - [ ] `interfaces:asyncapi` — Author AsyncAPI delta for `<interface>` (evented interactions only)
+- [ ] `interfaces:json-schema` — Import and normalize JSON Schema artifacts for `<interface>` (import mode only)
+- [ ] `interfaces:openapi` — Import and normalize OpenAPI artifacts for `<interface>` (import mode only)
+- [ ] `interfaces:asyncapi` — Import and normalize AsyncAPI artifacts for `<interface>` (import mode only)
 - [ ] `interfaces:json-schema` — Verify `<interface>` JSON Schema artifacts
 - [ ] `interfaces:openapi` — Verify `<interface>` OpenAPI artifacts (HTTP interactions only)
 - [ ] `interfaces:asyncapi` — Verify `<interface>` AsyncAPI artifacts (evented interactions only)

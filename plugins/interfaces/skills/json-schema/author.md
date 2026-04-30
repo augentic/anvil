@@ -1,6 +1,6 @@
 # JSON Schema — Author
 
-> **When to read this.** Read this when authoring or extending standalone JSON Schema documents under `contracts/schemas/` for a Specify change — i.e. when the contracts brief during `/spec:define` selects the author intent for shared payload vocabulary, or when an operator extends the baseline for new payload types referenced (or about to be referenced) by `/interfaces:openapi` or `/interfaces:asyncapi`. Skip this file when importing external schema files (use [`importer.md`](./importer.md)) or when verifying existing artefacts (use [`verifier.md`](./verifier.md)).
+> **When to read this.** Read this when authoring or extending standalone JSON Schema documents under `contracts/schemas/` for a Specify change — i.e. when the contracts schema build brief during `/spec:build` selects the author intent for shared payload vocabulary, or when an operator extends the baseline for new payload types referenced (or about to be referenced) by `/interfaces:openapi` or `/interfaces:asyncapi`. Skip this file when importing external schema files (use [`importer.md`](./importer.md)) or when verifying existing artefacts (use [`verifier.md`](./verifier.md)).
 
 ## Inputs
 
@@ -32,7 +32,7 @@ This skill therefore runs **before** the protocol skills in any mixed-format cha
 
 ## The 4-step author algorithm
 
-The author runs four sequential steps end-to-end whenever the contracts brief asks for shared payload coverage. Each step is a focused, independently-checkable phase; downstream steps assume the upstream output is well-formed.
+The author runs four sequential steps end-to-end whenever the contracts schema build brief asks for shared payload coverage. Each step is a focused, independently-checkable phase; downstream steps assume the upstream output is well-formed.
 
 ### Step 1 — Read the baseline
 
@@ -232,7 +232,7 @@ Property naming: **always `snake_case`** in JSON Schema (`display_name`, `create
 
 ## Alignment report
 
-Every author run produces an alignment report alongside the delta files. The report is the primary output for the contracts brief — the YAML files are the artefact, but the report is how the brief decides whether the change can proceed.
+Every author run produces an alignment report alongside the delta files. The report is the primary output for the contracts schema build brief — the YAML files are the artefact, but the report is how the brief decides whether the change can proceed.
 
 ```markdown
 ## Alignment Report (Schemas)

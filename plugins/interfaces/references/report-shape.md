@@ -6,10 +6,10 @@ The verifier runs in two modes (see also [`cross-project-compatibility`](cross-p
 
 | Mode | Output format | Caller | Trigger |
 |---|---|---|---|
-| `single` (default) | Markdown | contracts brief in `/spec:define` | Post-author or post-import; verify-repair loop |
+| `single` (default) | Markdown | contracts schema build brief in `/spec:build` | Post-author or post-import; verify-repair loop |
 | `cross-project` | Structured YAML | `/spec:execute` post-merge step (RFC-9 §3B) | Producer-side merge of a contract change |
 
-`single` mode is human-readable; the contracts brief drives a verify-repair loop until the report is clean. `cross-project` mode is machine-readable; the execute driver parses `summary.total-findings` to decide whether to render a warning block in the merge transcript.
+`single` mode is human-readable; the contracts schema build brief drives a verify-repair loop until the report is clean. `cross-project` mode is machine-readable; the execute driver parses `summary.total-findings` to decide whether to render a warning block in the merge transcript.
 
 Both modes share the **read-only** contract — the verifier MUST NOT generate, modify, or delete any files in either mode.
 

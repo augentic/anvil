@@ -13,8 +13,6 @@ pipeline:
       brief: briefs/proposal.md
     - id: specs
       brief: briefs/specs.md
-    - id: contracts
-      brief: briefs/contracts.md
     - id: tasks
       brief: briefs/tasks.md
   build:

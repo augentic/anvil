@@ -1,6 +1,6 @@
 # AsyncAPI — Verifier
 
-> **When to read this.** Read this when verifying an AsyncAPI artefact — invoked by the contracts brief in `single` mode after the author or importer sibling produces output, by `/spec:execute` in `cross-project` mode after a producer's contract change merges (RFC-9 §3B), or directly by an operator running validation against an existing artefact. Skip this file when authoring (use [`author.md`](./author.md)) or normalising an external document (use [`importer.md`](./importer.md)).
+> **When to read this.** Read this when verifying an AsyncAPI artefact — invoked by the contracts schema build brief in `single` mode after the author or importer sibling produces output, by `/spec:execute` in `cross-project` mode after a producer's contract change merges (RFC-9 §3B), or directly by an operator running validation against an existing artefact. Skip this file when authoring (use [`author.md`](./author.md)) or normalising an external document (use [`importer.md`](./importer.md)).
 
 The verifier is **read-only**. It MUST NOT generate, modify, or delete any files. Its sole output is a list of issues rendered as a validation report.
 
@@ -10,7 +10,7 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 
 | Mode | Caller | Trigger | Scope | Output |
 |---|---|---|---|---|
-| `single` (default) | contracts brief in `/spec:define` | Post-author or post-import | One change's `contracts/messages/` inside one project | Markdown report for the verify-repair loop |
+| `single` (default) | contracts schema build brief in `/spec:build` | Post-author or post-import | One change's `contracts/messages/` inside one project | Markdown report for the verify-repair loop |
 | `cross-project` | `/spec:execute` post-merge step | Producer-side merge of an AsyncAPI contract change | Compare merged AsyncAPI against each consumer's tier-2 workspace clone | Structured YAML report consumed by the execute driver |
 
 `single` mode feeds the brief's verify-repair loop. `cross-project` mode emits warnings that the execute driver records in the merging change's `journal.yaml` — never halts the loop. Both modes share the read-only contract.

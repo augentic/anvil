@@ -4,7 +4,7 @@
 - **Purpose**: Dedicated API contract changes — defining or importing machine-readable interface shapes (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0) without generating implementation code
 - **Source**: Manual
 - **Target**: Contract artifacts (`.specify/contracts/`)
-- **Workflow**: `proposal` -> `specs` -> `contracts` -> `tasks` -> `build` (validation only)
+- **Workflow**: `proposal` -> `specs` -> `tasks` -> `build` (author/import + validation)
 
 ## Contents
 
@@ -13,9 +13,8 @@
 | `schema.yaml` | Pipeline stages, domain context, and per-stage brief references |
 | `briefs/proposal.md` | Generation brief for the proposal stage |
 | `briefs/specs.md` | Generation brief for the specs stage |
-| `briefs/contracts.md` | Generation brief for the contracts stage |
 | `briefs/tasks.md` | Generation brief for the tasks stage |
-| `briefs/build.md` | Validation brief for the build stage (no code generation) |
+| `briefs/build.md` | Build brief for authoring, importing, repairing, and validating contract artifacts |
 | `briefs/merge.md` | Merge brief for finalizing a change |
 
 ## Pipeline
@@ -25,15 +24,14 @@
 | Stage | Brief | Purpose |
 |-------|-------|---------|
 | proposal | briefs/proposal.md | Interface scope and motivation |
-| specs | briefs/specs.md | Interface-level behavioral requirements |
-| contracts | briefs/contracts.md | Derive contract artifacts from specs |
-| tasks | briefs/tasks.md | Validation task list |
+| specs | briefs/specs.md | Interface-level behavioral requirements or import-mode scope |
+| tasks | briefs/tasks.md | Contract build and validation task list |
 
 ### Build
 
 | Stage | Brief | Purpose |
 |-------|-------|---------|
-| build | briefs/build.md | Validate contract artifacts (no code generation) |
+| build | briefs/build.md | Author or import contract artifacts, then validate them |
 
 ### Merge
 
@@ -43,12 +41,11 @@
 
 ## Blueprints
 
-The schema declares four blueprints in dependency order:
+The schema declares three define blueprints in dependency order:
 
 1. **proposal** — interface scope and motivation (`proposal.md`)
 2. **specs** — interface-level behavioral requirements (`specs/**/*.md`), requires proposal
-3. **contracts** — contract artifacts from specs (`contracts/**/*.yaml`), requires specs
-4. **tasks** — validation task list (`tasks.md`), requires specs + contracts
+3. **tasks** — contract build and validation task list (`tasks.md`), requires specs
 
 Build requires tasks to be complete and is tracked via `tasks.md`.
 

@@ -12,7 +12,7 @@ The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong 
 
 ## Critical Path (Quick Reference)
 
-1. **Read the briefs and specs.** Open the active contracts brief and the change's `specs/` to identify which payload types the change requires; read `.specify/contracts/schemas/` (the schema baseline) to know what shared vocabulary already exists.
+1. **Read the briefs and specs.** Open the active contracts build brief and the change's `specs/` to identify which payload types the change requires; read `.specify/contracts/schemas/` (the schema baseline) to know what shared vocabulary already exists.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.
 3. **Dispatch to the sibling.** Open and follow [`author.md`](./author.md), [`importer.md`](./importer.md), or [`verifier.md`](./verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
 4. **Write outputs to `contracts/schemas/`.** Author and importer paths produce or normalise JSON Schema YAML files under `$CHANGE_DIR/contracts/schemas/` — one named type per file, kebab-case filenames, URN `$id` derived from the file path.
@@ -31,7 +31,7 @@ Optional internal flags (recognised by the verifier sibling):
 - `--mode single` — default. Validate the change's schema artefacts in isolation against the specs and any baseline bindings that reference them. Read-only, markdown report.
 - `--mode cross-project` — invoked by `/spec:execute` after a producer's contract change merges. Compares each merged schema against each consumer's tier-2 workspace clone view of the same schema. Read-only, structured YAML report. See `verifier.md` §Cross-project mode.
 
-When invoked from the `contracts` brief during `/spec:define`, `<change-dir>` is the active change directory; the brief routes the intent (author or importer) based on whether the operator dropped external schema files into `contracts/schemas/`. When invoked post-merge by `/spec:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged schemas.
+When invoked from the contracts schema build brief during `/spec:build`, `<change-dir>` is the active change directory; the brief routes the intent (author or importer) based on whether the operator supplied external schema files for `contracts/schemas/`. When invoked post-merge by `/spec:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged schemas.
 
 ## Artifact layout
 
@@ -64,21 +64,21 @@ Pick the sibling that matches the trigger. Each sibling is a self-contained algo
 
 | Intent | Trigger | Sibling |
 |---|---|---|
-| Author or extend reusable schemas from a spec | contracts brief during `/spec:define`; operator extending the baseline for new payload types | `author.md` |
+| Author or extend reusable schemas from a spec | contracts schema build brief during `/spec:build`; operator extending the baseline for new payload types | `author.md` |
 | Import or normalise external schema files | operator drops schema files into a change's `contracts/schemas/` directory | `importer.md` |
-| Verify `$ref` consistency, metadata, and cross-format consumer compatibility | contracts brief post-merge; mixed-format change verification | `verifier.md` |
+| Verify `$ref` consistency, metadata, and cross-format consumer compatibility | contracts schema build verification; post-merge cross-project checks | `verifier.md` |
 
 The three intents share a common artefact contract (filename → `$id` derivation, one-type-per-file, draft policy) but have distinct algorithms — never conflate them. An import must be followed by a verifier run before the brief considers the artefacts ready for merge; an author run normally ends with a verifier run too.
 
 ## Mixed-format ordering (run this skill first)
 
-When a change touches more than one interface format (HTTP + events + shared schemas), the `contracts` brief invokes the format skills in this fixed order:
+When a change touches more than one interface format (HTTP + events + shared schemas), the contracts schema build brief invokes the format skills in this fixed order:
 
 1. **`/interfaces:json-schema` first** — the schema vocabulary is shared and must stabilise before any binding references it. Authoring or importing a schema is a precondition for the protocol skills, not a peer step.
 2. **`/interfaces:openapi`** — HTTP operations bind to the schemas authored above via `$ref: "../schemas/<type>.yaml"`.
 3. **`/interfaces:asyncapi`** — message channels bind to the same schemas via `$ref: "../schemas/<type>.yaml"`.
 
-This ordering is non-negotiable. Running OpenAPI or AsyncAPI ahead of json-schema produces dangling `$ref`s and forces protocol authors to either inline definitions (forbidden in the baseline) or guess at shapes (forbidden by the no-invention rule). The contracts brief enforces the ordering; agent operators invoking these skills directly must follow it manually.
+This ordering is non-negotiable. Running OpenAPI or AsyncAPI ahead of json-schema produces dangling `$ref`s and forces protocol authors to either inline definitions (forbidden in the baseline) or guess at shapes (forbidden by the no-invention rule). The contracts schema build brief enforces the ordering; agent operators invoking these skills directly must follow it manually.
 
 A corollary: this skill **never** writes outside `contracts/schemas/`. Schema-shaped intents that would land in `contracts/http/` or `contracts/messages/` are out of scope — route them to the appropriate protocol skill, which then references the shared schema authored here.
 

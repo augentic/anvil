@@ -1,6 +1,6 @@
 # JSON Schema — Verifier
 
-> **When to read this.** Read this when verifying a JSON Schema artefact — invoked by the contracts brief in `single` mode after the author or importer sibling produces output, by `/spec:execute` in `cross-project` mode after a producer's contract change merges (RFC-9 §3B), or directly by an operator running validation against existing artefacts. Skip this file when authoring (use [`author.md`](./author.md)) or normalising external documents (use [`importer.md`](./importer.md)).
+> **When to read this.** Read this when verifying a JSON Schema artefact — invoked by the contracts schema build brief in `single` mode after the author or importer sibling produces output, by `/spec:execute` in `cross-project` mode after a producer's contract change merges (RFC-9 §3B), or directly by an operator running validation against existing artefacts. Skip this file when authoring (use [`author.md`](./author.md)) or normalising external documents (use [`importer.md`](./importer.md)).
 
 The verifier is **read-only**. It MUST NOT generate, modify, or delete any files. Its sole output is a list of issues rendered as a validation report.
 
@@ -10,7 +10,7 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 
 | Mode | Caller | Trigger | Scope | Output |
 |---|---|---|---|---|
-| `single` (default) | contracts brief in `/spec:define` | Post-author or post-import | One change's `contracts/schemas/` inside one project, plus the change's and baseline's HTTP / messaging consumers | Markdown report for the verify-repair loop |
+| `single` (default) | contracts schema build brief in `/spec:build` | Post-author or post-import | One change's `contracts/schemas/` inside one project, plus the change's and baseline's HTTP / messaging consumers | Markdown report for the verify-repair loop |
 | `cross-project` | `/spec:execute` post-merge step | Producer-side merge of a contract change touching schemas | Compare merged schemas against each consumer's tier-2 workspace clone | Structured YAML report consumed by the execute driver |
 
 `single` mode feeds the brief's verify-repair loop and is the natural exit point for both author and importer runs. `cross-project` mode emits warnings the execute driver records on the merging change's `journal.yaml` — never halts the loop. Both modes share the read-only contract.

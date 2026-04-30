@@ -22,9 +22,9 @@ Each schema declares:
 
 Schema URLs support an optional `@ref` suffix to pin a version (e.g. `omnia@v1`).
 
-### What schemas share
+### Implementation schema artifact chain
 
-Both schemas share the same core five-artifact dependency chain:
+Omnia and Vectis share the same core implementation artifact chain:
 
 1. **proposal** -- initial proposal document
 2. **specs** -- behavioral specifications (requires proposal)
@@ -35,6 +35,8 @@ Both schemas share the same core five-artifact dependency chain:
 The `contracts` stage validates that the change's specs align with any baseline contracts at `.specify/contracts/` and produces a minimal delta for uncovered interactions. When no baseline contracts exist, it derives interface shapes from the specs. When the change describes no API interactions, it completes as a no-op.
 
 The Vectis schema extends this with a **composition** stage between contracts and design that produces `composition.yaml` -- a structured YAML artifact describing the spatial layout of each screen (regions, groups, items, bindings, and event wiring). The composition brief requires specs and proposal as inputs, and the design brief reads the composition artifact to adopt the screen names and field names it proposes.
+
+The Contracts schema is different: define captures proposal, specs, and build tasks, while `/spec:build` authors or imports the contract artifacts and then verifies them.
 
 The artifact structure and lifecycle are schema-agnostic. Schemas fill in the brief *content* within each phase and may add schema-specific stages to the pipeline.
 

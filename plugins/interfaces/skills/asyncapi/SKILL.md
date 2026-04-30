@@ -1,6 +1,6 @@
 ---
 name: interfaces-asyncapi
-description: Authors, imports, and verifies AsyncAPI 3.0 event, pub/sub, stream, and WebSocket-style contracts for Specify changes, including channels, messages, bindings, producers, consumers, and schema references. Use when the contracts brief needs an evented interface contract, when an operator supplies or asks for an AsyncAPI document, or when verifying AsyncAPI compatibility after a merge.
+description: Authors, imports, and verifies AsyncAPI 3.0 event, pub/sub, stream, and WebSocket-style contracts for Specify changes, including channels, messages, bindings, producers, consumers, and schema references. Use when a contracts build needs an evented interface contract, when an operator supplies or asks for an AsyncAPI document, or when verifying AsyncAPI compatibility after a merge.
 argument-hint: "[change-dir]"
 ---
 
@@ -12,7 +12,7 @@ The skill is AsyncAPI-only. Shared payload schemas under `contracts/schemas/` ar
 
 ## Critical Path (Quick Reference)
 
-1. **Read the briefs and specs.** Open the active contracts brief and the change's `specs/` to identify what evented interactions the change requires; read `.specify/contracts/messages/` (the AsyncAPI baseline) to know which channels, operations, and messages already exist.
+1. **Read the briefs and specs.** Open the active contracts build brief and the change's `specs/` to identify what evented interactions the change requires; read `.specify/contracts/messages/` (the AsyncAPI baseline) to know which channels, operations, and messages already exist.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.
 3. **Dispatch to the sibling.** Open and follow [`author.md`](./author.md), [`importer.md`](./importer.md), or [`verifier.md`](./verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
 4. **Write outputs to `contracts/messages/`.** Author and importer paths produce or normalise AsyncAPI 3.0 YAML files under `$CHANGE_DIR/contracts/messages/`. Decomposed payload schemas land under `$CHANGE_DIR/contracts/schemas/` (json-schema-skill territory) — never inline them.
@@ -31,7 +31,7 @@ Optional internal flags (recognised by the verifier sibling):
 - `--mode single` — default. Validate the change's AsyncAPI artefacts in isolation against the specs and baseline. Read-only, markdown report.
 - `--mode cross-project` — invoked by `/spec:execute` after a producer's contract change merges. Compares the merged AsyncAPI document against each consumer's tier-2 workspace clone. Read-only, structured YAML report. See `verifier.md` §Cross-project mode.
 
-When invoked from the `contracts` brief during `/spec:define`, `<change-dir>` is the active change directory; the brief routes the intent (author or importer) based on whether the operator dropped an external document into `contracts/messages/`. When invoked post-merge by `/spec:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged contract.
+When invoked from the contracts schema build brief during `/spec:build`, `<change-dir>` is the active change directory; the brief routes the intent (author or importer) based on whether the operator supplied an external document for `contracts/messages/`. When invoked post-merge by `/spec:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged contract.
 
 ## Artifact layout
 
@@ -65,9 +65,9 @@ Pick the sibling that matches the trigger. Each sibling is a self-contained algo
 
 | Intent | Trigger | Sibling |
 |---|---|---|
-| Author or extend the AsyncAPI document from a spec | contracts brief during `/spec:define`; operator extending the baseline for new evented interactions | `author.md` |
+| Author or extend the AsyncAPI document from a spec | contracts schema build brief during `/spec:build`; operator extending the baseline for new evented interactions | `author.md` |
 | Import or normalise an external AsyncAPI document | operator drops an AsyncAPI file into a change's `contracts/messages/` directory | `importer.md` |
-| Verify internal consistency or run the cross-project consumer check | contracts brief post-merge (RFC-9 §3B); operator invoking validation against an existing AsyncAPI artefact | `verifier.md` |
+| Verify internal consistency or run the cross-project consumer check | contracts schema build verification; post-merge cross-project check (RFC-9 §3B); operator invoking validation against an existing AsyncAPI artefact | `verifier.md` |
 
 The three intents share a common artefact contract (channel addresses, message naming, `$ref` discipline) but have distinct algorithms — never conflate them. An import must be followed by a verifier run before the brief considers the artefact ready for merge; an author run normally ends with a verifier run too.
 

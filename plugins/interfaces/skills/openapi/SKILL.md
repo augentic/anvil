@@ -1,6 +1,6 @@
 ---
 name: interfaces-openapi
-description: Authors, imports, and verifies OpenAPI 3.1 HTTP API contracts for Specify changes, including path operations, request and response schemas, parameters, auth, examples, and baseline deltas. Use when the contracts brief needs an HTTP API contract, when an operator supplies or asks for an OpenAPI document, or when verifying OpenAPI compatibility after a merge.
+description: Authors, imports, and verifies OpenAPI 3.1 HTTP API contracts for Specify changes, including path operations, request and response schemas, parameters, auth, examples, and baseline deltas. Use when a contracts build needs an HTTP API contract, when an operator supplies or asks for an OpenAPI document, or when verifying OpenAPI compatibility after a merge.
 argument-hint: "[change-dir]"
 ---
 
@@ -12,7 +12,7 @@ The skill is OpenAPI-only. Shared payload schemas under `contracts/schemas/` are
 
 ## Critical Path (Quick Reference)
 
-1. **Read the briefs and specs.** Open the active contracts brief and the change's `specs/` to identify what the change requires; read `.specify/contracts/http/` (the HTTP baseline) to know what already exists.
+1. **Read the briefs and specs.** Open the active contracts build brief and the change's `specs/` to identify what the change requires; read `.specify/contracts/http/` (the HTTP baseline) to know what already exists.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.
 3. **Dispatch to the sibling.** Open and follow [`author.md`](./author.md), [`importer.md`](./importer.md), or [`verifier.md`](./verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
 4. **Write outputs to `contracts/http/`.** Author and importer paths produce or normalise OpenAPI 3.1 YAML files under `$CHANGE_DIR/contracts/http/`. Decomposed payload schemas land under `$CHANGE_DIR/contracts/schemas/` (json-schema-skill territory) — never inline them.
@@ -31,7 +31,7 @@ Optional internal flags (recognised by the verifier sibling):
 - `--mode single` — default. Validate the change's OpenAPI artefacts in isolation against the specs and baseline. Read-only, markdown report.
 - `--mode cross-project` — invoked by `/spec:execute` after a producer's contract change merges. Compares the merged OpenAPI document against each consumer's tier-2 workspace clone. Read-only, structured YAML report. See `verifier.md` §Cross-project mode.
 
-When invoked from the `contracts` brief during `/spec:define`, `<change-dir>` is the active change directory; the brief routes the intent (author or importer) based on whether the operator dropped an external document into `contracts/http/`. When invoked post-merge by `/spec:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged contract.
+When invoked from the contracts schema build brief during `/spec:build`, `<change-dir>` is the active change directory; the brief routes the intent (author or importer) based on whether the operator supplied an external document for `contracts/http/`. When invoked post-merge by `/spec:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged contract.
 
 ## Artifact layout
 
@@ -65,9 +65,9 @@ Pick the sibling that matches the trigger. Each sibling is a self-contained algo
 
 | Intent | Trigger | Sibling |
 |---|---|---|
-| Author or extend the OpenAPI document from a spec | contracts brief during `/spec:define`; operator extending the baseline for new HTTP interactions | `author.md` |
+| Author or extend the OpenAPI document from a spec | contracts schema build brief during `/spec:build`; operator extending the baseline for new HTTP interactions | `author.md` |
 | Import or normalise an external OpenAPI document | operator drops an OpenAPI file into a change's `contracts/http/` directory | `importer.md` |
-| Verify internal consistency or run the cross-project consumer check | contracts brief post-merge (RFC-9 §3B); operator invoking validation against an existing OpenAPI artefact | `verifier.md` |
+| Verify internal consistency or run the cross-project consumer check | contracts schema build verification; post-merge cross-project check (RFC-9 §3B); operator invoking validation against an existing OpenAPI artefact | `verifier.md` |
 
 The three intents share a common artefact contract (paths, file naming, `$ref` discipline) but have distinct algorithms — never conflate them. An import must be followed by a verifier run before the brief considers the artefact ready for merge; an author run normally ends with a verifier run too.
 
@@ -85,7 +85,7 @@ For the cross-format directory layout, baseline-vs-delta rules, and merge semant
 
 ## Cross-format coordination
 
-When a change touches more than one interface format (HTTP + events + shared schemas), the `contracts` brief invokes the format skills in this order:
+When a change touches more than one interface format (HTTP + events + shared schemas), the contracts schema build brief invokes the format skills in this order:
 
 1. `/interfaces:json-schema` first — the schema vocabulary is shared and must stabilise before the bindings reference it.
 2. `/interfaces:openapi` — HTTP operations bind to the schemas authored above.

@@ -2,7 +2,7 @@
 
 The Interfaces plugin provides format-first specialist skills for API contract generation, validation, and import. It works with three standard formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP / resource bindings, and AsyncAPI 3.0 for messaging / event bindings.
 
-The plugin renames the former `contracts` plugin and reorganises it from a verb-oriented trio (`writer`, `validator`, `importer`) to a format-first trio. The persisted artifact surface is unchanged: the `contracts` brief id, the `contracts@v1` schema, the `.specify/contracts/` baseline directory, and every contract artifact path keep their original names. Only the Cursor plugin / slash-command surface is renamed.
+The plugin renames the former `contracts` plugin and reorganises it from a verb-oriented trio (`writer`, `validator`, `importer`) to a format-first trio. The persisted artifact surface is unchanged: the `contracts@v1` schema, the `.specify/contracts/` baseline directory, and every contract artifact path keep their original names. Only the Cursor plugin / slash-command surface is renamed.
 
 ## Skills
 
@@ -16,9 +16,9 @@ Each skill carries three intents internally and dispatches via its own intent ta
 
 | Intent | Trigger | Sibling file |
 |--------|---------|--------------|
-| Author or extend | `contracts` brief during `/spec:define`; operator extending the baseline for new interactions | `author.md` |
+| Author or extend | contracts schema build brief during `/spec:build`; operator extending the baseline for new interactions | `author.md` |
 | Import or normalise | operator drops an external document into a change's `contracts/` directory | `importer.md` |
-| Verify or run cross-project consumer check | `contracts` brief in `/spec:build` (verify-repair loop); post-merge cross-project compatibility check (RFC-9 §3B) | `verifier.md` |
+| Verify or run cross-project consumer check | contracts schema build brief in `/spec:build` (verify-repair loop); post-merge cross-project compatibility check (RFC-9 §3B) | `verifier.md` |
 
 ### Author intent
 

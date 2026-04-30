@@ -12,8 +12,7 @@
 |-------|--------|-------------|
 | `proposal.md` | `proposal.md` | -- |
 | `specs.md` | `specs/<capability>/spec.md` | proposal |
-| `contracts.md` | `contracts/**/*.yaml` | specs |
-| `tasks.md` | `tasks.md` | specs, contracts |
+| `tasks.md` | `tasks.md` | specs |
 
 There is no `design` stage. Contract changes define interface shapes, not implementation design. Implementation-level concerns (auth schemes, retry policies, caching strategies) belong in the implementing project's change, not in the contract change.
 
@@ -21,11 +20,11 @@ There is no `design` stage. Contract changes define interface shapes, not implem
 
 | Brief | Skills invoked |
 |-------|---------------|
-| `build.md` | `/interfaces:openapi`, `/interfaces:asyncapi`, `/interfaces:json-schema` (verifier intent) |
+| `build.md` | `/interfaces:openapi`, `/interfaces:asyncapi`, `/interfaces:json-schema` (author, importer, and verifier intents) |
 
-The build brief delegates to the format-specific verifier intent of the relevant `/interfaces:*` skill (`/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming, `/interfaces:json-schema` for shared payload schemas) to verify structural correctness -- `$ref` resolution, schema metadata, binding completeness. There are no code-generation skills to invoke because contract changes produce no implementation code.
+The build brief delegates to the relevant `/interfaces:*` skill (`/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming, `/interfaces:json-schema` for shared payload schemas). It runs author intent for prose-derived specs, importer intent for supplied contract artifacts, and verifier intent for structural correctness -- `$ref` resolution, schema metadata, and binding completeness. There are no implementation code-generation skills to invoke because contract changes produce only contract artifacts.
 
-A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same skill's author intent makes targeted repairs, then the verifier re-checks. If issues remain after 2 iterations, they are surfaced for human review.
+A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same skill's producing intent (author or importer) makes targeted repairs, then the verifier re-checks. If issues remain after 2 iterations, they are surfaced for human review.
 
 ### Merge phase
 
@@ -53,7 +52,7 @@ The `contracts` schema and the `contracts` brief in Omnia/Vectis serve complemen
 |---------|-----------------|--------------------------------|
 | Purpose | Author or import contract artifacts | Validate spec alignment with baseline contracts |
 | Plan entry | `schema: contracts@v1` (no `project`) | Normal project-bound entry |
-| Build phase | Validation only | Code generation |
+| Build phase | Author/import + validation | Code generation |
 | Typical delta | Full contract set (new API) or import normalisation | Small or empty (alignment confirmation) |
 
 ## Domain context

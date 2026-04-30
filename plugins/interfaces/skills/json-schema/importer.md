@@ -1,6 +1,6 @@
 # JSON Schema — Importer
 
-> **When to read this.** Read this when an operator drops external JSON Schema files into a change's `contracts/schemas/` directory and the contracts brief needs them normalised onto Specify conventions. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)). When the dropped file is an OpenAPI or AsyncAPI bundle (with inline schemas), this importer routes the file out — only standalone schema documents stay here.
+> **When to read this.** Read this when an operator supplies external JSON Schema files and the contracts schema build brief needs them normalised onto Specify conventions under a change's `contracts/schemas/` directory. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)). When the supplied file is an OpenAPI or AsyncAPI bundle (with inline schemas), this importer routes the file out — only standalone schema documents stay here.
 
 ## Inputs
 

@@ -53,9 +53,9 @@ Two cleanup rules apply globally:
 
 What: reviews Omnia Rust WASM crates for a named set of failure modes. When: after `/omnia:crate-writer` or on operator request. The trigger phrases match the words an operator would type.
 
-> "Authors, imports, and verifies OpenAPI 3.1 HTTP API contracts for Specify changes, including path operations, request and response schemas, parameters, auth, examples, and baseline deltas. Use when the contracts brief needs an HTTP API contract, when an operator supplies or asks for an OpenAPI document, or when verifying OpenAPI compatibility after a merge."
+> "Authors, imports, and verifies OpenAPI 3.1 HTTP API contracts for Specify changes, including path operations, request and response schemas, parameters, auth, examples, and baseline deltas. Use when a contracts build needs an HTTP API contract, when an operator supplies or asks for an OpenAPI document, or when verifying OpenAPI compatibility after a merge."
 
-What: authors / imports / verifies OpenAPI documents, with an explicit list of what is in scope. When: three concrete triggers — the contracts brief, an operator drop, and the post-merge verification path. Note the format word `OpenAPI` appearing in both halves; that gives the discovery scorer something concrete to match.
+What: authors / imports / verifies OpenAPI documents, with an explicit list of what is in scope. When: three concrete triggers — a contracts build, an operator-supplied document, and the post-merge verification path. Note the format word `OpenAPI` appearing in both halves; that gives the discovery scorer something concrete to match.
 
 > "Captures fixture data from a legacy TypeScript service before migration by adding wiretap code that records requests, responses, and side effects to JSON. Use when capturing fixture data from a legacy TypeScript service before migration, or when the user mentions `wiretapper`."
 
