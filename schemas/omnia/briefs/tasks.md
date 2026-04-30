@@ -9,7 +9,7 @@ Follow the task format conventions defined in the define skill for checkbox form
 
 ## Agent-Completable Constraint
 
-Generate only tasks that an agent can complete and verify with code or local tooling. Do not generate manual verification, real-world API, production credential, visual inspection, or user-confirmation tasks.
+Generate only tasks that an agent can complete and verify with code or local tooling. Do not generate manual verification, real-world API, production credentials, visual inspection, or user-confirmation tasks.
 
 When external behavior must be verified, express it as an agent-verifiable task:
 

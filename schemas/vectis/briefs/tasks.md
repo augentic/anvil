@@ -13,7 +13,7 @@ Each task references the single feature spec at `specs/<feature>/spec.md`. The s
 
 ## Agent-Completable Constraint
 
-Generate only tasks that an agent can complete and verify with code or local tooling. Do not generate manual mobile app testing, real-world API, production credential, visual inspection, physical-device-only, app store, or user-confirmation tasks.
+Generate only tasks that an agent can complete and verify with code or local tooling. Do not generate manual mobile app testing, real-world API, production credentials, visual inspection, physical-device-only, app store review, or user-confirmation tasks.
 
 When mobile or external-service behavior must be verified, express it as an agent-verifiable task:
 
@@ -30,6 +30,7 @@ Valid: `Add fixture-backed effect tests covering the API success and failure res
 | Directive                      | Skill                              | When to Use                            |
 | ------------------------------ | ---------------------------------- | -------------------------------------- |
 | `vectis:core-writer`           | Generate or update Crux core       | Core implementation tasks              |
+| `vectis:test-writer`           | Generate or update test suites     | Test generation tasks                  |
 | `vectis:core-reviewer`         | AI code review for Crux core       | Post-implementation review of core     |
 | `vectis:ios-writer`            | Generate or update iOS shell       | iOS shell implementation tasks         |
 | `vectis:ios-reviewer`          | AI code review for iOS shell       | Post-implementation review of iOS      |

@@ -9,7 +9,7 @@ Follow the task format conventions defined in the define skill for checkbox form
 
 ## Agent-Completable Constraint
 
-Generate only tasks that an agent can complete and verify with contract artifacts and local validators. Do not generate manual review, external service, production credential, or user-confirmation tasks.
+Generate only tasks that an agent can complete and verify with contract artifacts and local validators. Do not generate manual review, external service, production credentials, or user-confirmation tasks.
 
 When alignment needs review, express it as a validator or writer task that produces machine-readable output. Use `contracts:validator` for `$ref` resolution, schema metadata, binding completeness, and warning-free alignment checks.
 
@@ -26,14 +26,16 @@ Contract changes produce a fixed set of validation tasks. Generate one group per
 
 ### Per-interface tasks
 
-For each interface in `specs/`:
+For each interface in `specs/`, assign a sequential group number `<N>` (starting at 1):
 
-- [ ] 1.1 Generate contract artifacts for `<interface>` <!-- skill: contracts:writer -->
-- [ ] 1.2 Validate `<interface>` contract artifacts <!-- skill: contracts:validator -->
+- [ ] `<N>`.1 Generate contract artifacts for `<interface>` <!-- skill: contracts:writer -->
+- [ ] `<N>`.2 Validate `<interface>` contract artifacts <!-- skill: contracts:validator -->
 
 ### Cross-cutting validation
 
-- [ ] 2.1 Validate `$ref` resolution across all contract files <!-- skill: contracts:validator -->
-- [ ] 2.2 Verify schema metadata completeness (`$id`, `title`, `description`) <!-- skill: contracts:validator -->
-- [ ] 2.3 Verify binding completeness for every spec-referenced schema <!-- skill: contracts:validator -->
-- [ ] 2.4 Verify the alignment report has no unresolved warnings <!-- skill: contracts:validator -->
+Use the next group number after the last per-interface group (i.e. `<N+1>`):
+
+- [ ] `<N+1>`.1 Validate `$ref` resolution across all contract files <!-- skill: contracts:validator -->
+- [ ] `<N+1>`.2 Verify schema metadata completeness (`$id`, `title`, `description`) <!-- skill: contracts:validator -->
+- [ ] `<N+1>`.3 Verify binding completeness for every spec-referenced schema <!-- skill: contracts:validator -->
+- [ ] `<N+1>`.4 Verify the alignment report has no unresolved warnings <!-- skill: contracts:validator -->
