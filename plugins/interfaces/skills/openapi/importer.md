@@ -7,7 +7,7 @@
 ```text
 $CHANGE_DIR     = .specify/changes/<change-name>
 $CONTRACTS_DIR  = $CHANGE_DIR/contracts
-$BASELINE_DIR   = .specify/contracts
+$BASELINE_DIR   = contracts
 ```
 
 **Input** — external OpenAPI or Swagger 2.0 files placed by the operator anywhere under `$CONTRACTS_DIR/`. Files may be `.yaml`, `.yml`, or `.json`.
@@ -424,7 +424,7 @@ Report semantics:
 4. **Kebab-case `.yaml` filenames** for both OpenAPI and decomposed schema files.
 5. **`$ref` resolution.** Every `$ref` in the output must resolve to a file in `$CONTRACTS_DIR/schemas/`, `$BASELINE_DIR/schemas/`, or (for `components/parameters`, `components/securitySchemes`) within the same OpenAPI document.
 6. **`$id` stability.** Never reassign a baseline `$id` value. New schemas get fresh `$id` values from the file path.
-7. **Baseline preservation.** Never modify any file in `.specify/contracts/`.
+7. **Baseline preservation.** Never modify any file in root `contracts/`.
 
 ## Verification checklist
 

@@ -12,13 +12,13 @@ The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong 
 
 ## Critical Path (Quick Reference)
 
-1. **Read the briefs and specs.** Open the active contracts build brief and the change's `specs/` to identify which payload types the change requires; read `.specify/contracts/schemas/` (the schema baseline) to know what shared vocabulary already exists.
+1. **Read the briefs and specs.** Open the active contracts build brief and the change's `specs/` to identify which payload types the change requires; read `contracts/schemas/` (the schema baseline) to know what shared vocabulary already exists.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.
 3. **Dispatch to the sibling.** Open and follow [`author.md`](./author.md), [`importer.md`](./importer.md), or [`verifier.md`](./verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
 4. **Write outputs to `contracts/schemas/`.** Author and importer paths produce or normalise JSON Schema YAML files under `$CHANGE_DIR/contracts/schemas/` — one named type per file, kebab-case filenames, URN `$id` derived from the file path.
 5. **Run the verifier.** After authoring or importing, invoke the verifier sibling to check `$ref` resolution, metadata completeness, duplicate-`$id` collisions, and cross-format consumer compatibility against any HTTP and messaging bindings that already reference the schema.
 6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the structured YAML compatibility report (cross-project mode) so the calling brief or operator can triage.
-7. **Stay within `contracts/schemas/`.** Do not modify baseline files in `.specify/contracts/`, do not touch `contracts/http/` or `contracts/messages/`, and do not invent fields the spec does not justify — mark unknowns with `[unknown]` instead.
+7. **Stay within change-local `contracts/schemas/`.** Do not modify baseline files in root `contracts/`, do not touch `contracts/http/` or `contracts/messages/`, and do not invent fields the spec does not justify — mark unknowns with `[unknown]` instead.
 
 ## Invocation
 
@@ -106,7 +106,7 @@ These constraints are non-negotiable for any of the three sibling paths:
 6. **No invention.** When the spec does not provide enough detail to derive a shape, mark the gap with `[unknown]` in the alignment report rather than guessing. Importer flags unrecognised constructs with `[import — manual review required]`.
 7. **No protocol-specific authoring.** This skill never writes path operations, channels, operations, request bodies, or response wrappers. Those belong to `/interfaces:openapi` and `/interfaces:asyncapi`.
 8. **Read-only verifier.** The verifier sibling must not create, modify, or delete any files in either mode.
-9. **Baseline immutability.** Never modify files in `.specify/contracts/`. All output goes in the change-local `contracts/` directory.
+9. **Baseline immutability.** Never modify files in root `contracts/`. All output goes in the change-local `contracts/` directory.
 
 ## Cross-format coordination
 
@@ -122,13 +122,13 @@ When authoring or importing, never silently delete or narrow a baseline schema's
 - Only emit `.yaml` files under `$CHANGE_DIR/contracts/schemas/`.
 - Create `contracts/schemas/` only when it will contain at least one file.
 - Do not modify any file outside `$CHANGE_DIR/contracts/schemas/`.
-- Do not modify baseline files in `.specify/contracts/`.
+- Do not modify baseline files in root `contracts/`.
 - Do not touch `contracts/http/` or `contracts/messages/` from this skill — even when the verifier reads them, it never writes.
 
 ## See also
 
 - [`json-schema-conventions`](../../references/json-schema-conventions.md) — JSON Schema Draft 2020-12 conventions, `$id` URN format, type mapping, naming.
-- [`artifact-structure`](../../references/artifact-structure.md) — directory layout for `.specify/contracts/`.
+- [`artifact-structure`](../../references/artifact-structure.md) — directory layout for root `contracts/`.
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for computing the minimal delta between baseline and change-local files, including the `$id` stability rule and opaque-file-replacement merge contract.
 - [`import-upgrade-policy`](../../references/import-upgrade-policy.md) — shared framework for the importer sibling (format detection, draft upgrades, lossless-vs-lossy decisions).
 - [`report-shape`](../../references/report-shape.md) — single-mode markdown and cross-project YAML report formats produced by the verifier sibling.

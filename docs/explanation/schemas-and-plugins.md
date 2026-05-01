@@ -28,13 +28,12 @@ Omnia and Vectis share the same core implementation artifact chain:
 
 1. **proposal** -- initial proposal document
 2. **specs** -- behavioral specifications (requires proposal)
-3. **contracts** -- API contract alignment validation (requires specs)
-4. **design** -- technical design (requires proposal, contracts)
-5. **tasks** -- implementation checklist (requires specs + design)
+3. **design** -- technical design (requires proposal + specs)
+4. **tasks** -- implementation checklist (requires specs + design)
 
-The `contracts` stage validates that the change's specs align with any baseline contracts at `.specify/contracts/` and produces a minimal delta for uncovered interactions. When no baseline contracts exist, it derives interface shapes from the specs. When the change describes no API interactions, it completes as a no-op.
+The specs and design briefs read any baseline contracts at `.specify/contracts/` as context. Implementation changes conform to those baseline contracts; new or changed interface shapes are introduced through dedicated `contracts@v1` changes instead of being derived inline.
 
-The Vectis schema extends this with a **composition** stage between contracts and design that produces `composition.yaml` -- a structured YAML artifact describing the spatial layout of each screen (regions, groups, items, bindings, and event wiring). The composition brief requires specs and proposal as inputs, and the design brief reads the composition artifact to adopt the screen names and field names it proposes.
+The Vectis schema extends this with a **composition** stage between specs and design that produces `composition.yaml` -- a structured YAML artifact describing the spatial layout of each screen (regions, groups, items, bindings, and event wiring). The composition brief requires specs and proposal as inputs, and the design brief reads the composition artifact to adopt the screen names and field names it proposes.
 
 The Contracts schema is different: define captures proposal, specs, and build tasks, while `/spec:build` authors or imports the contract artifacts and then verifies them.
 
@@ -60,17 +59,17 @@ The **Specify** plugin provides the workflow skeleton -- the `/spec:*` skills th
 For example, with the Omnia schema:
 
 ```text
-/spec:define --> generates artifacts using Omnia brief pipelines (incl. contracts alignment)
+/spec:define --> generates artifacts using Omnia brief pipelines
 /spec:build  --> delegates tasks to /omnia:crate-writer, /omnia:test-writer, etc.
-/spec:merge  --> merges specs + contracts into baseline (schema-agnostic)
+/spec:merge  --> merges specs into baseline (schema-agnostic)
 ```
 
 With the Vectis schema:
 
 ```text
-/spec:define --> generates artifacts using Vectis brief pipelines (incl. contracts, composition.yaml)
+/spec:define --> generates artifacts using Vectis brief pipelines (incl. composition.yaml)
 /spec:build  --> delegates tasks to /vectis:core-writer, /vectis:ios-writer, etc.
-/spec:merge  --> merges specs + contracts + composition into baseline
+/spec:merge  --> merges specs + composition into baseline
 ```
 
 The define-build-merge loop is invariant. Swapping the schema swaps the brief content and the specialist skills -- nothing else changes.

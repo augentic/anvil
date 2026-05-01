@@ -8,7 +8,7 @@
 $CHANGE_DIR     = .specify/changes/<change-name>
 $SPECS_DIR      = $CHANGE_DIR/specs
 $CONTRACTS_DIR  = $CHANGE_DIR/contracts
-$BASELINE_DIR   = .specify/contracts
+$BASELINE_DIR   = contracts
 ```
 
 ## Authority hierarchy
@@ -18,7 +18,7 @@ When sources conflict, follow this strict precedence:
 1. **This file** — author rules and hard constraints for AsyncAPI documents.
 2. **Specify artefacts** (specs) — behavioural requirements drive the channels and operations.
 3. **Format conventions** — [`../../references/asyncapi-conventions.md`](../../references/asyncapi-conventions.md), [`../../references/json-schema-conventions.md`](../../references/json-schema-conventions.md).
-4. **Baseline contracts** (`.specify/contracts/messages/`) — existing platform vocabulary; never overwrite silently.
+4. **Baseline contracts** (`contracts/messages/`) — existing platform vocabulary; never overwrite silently.
 5. **LLM inference** — prohibited for unknowns; mark with `[unknown]` and surface in the alignment report.
 
 If the specs and baseline disagree on a shape (e.g. the spec asserts a `partition_key` header that the baseline message omits), surface the mismatch in the alignment report's Warnings section. Never silently overwrite baseline channels or messages to match the specs — a human reviewer decides.
@@ -40,7 +40,7 @@ For each channel, record:
 - **Identity** — `(channelKey, address)` plus the operations that reference it.
 - **Operations** — for each operation, `(operationId, action)` where `action` is `send` or `receive`.
 - **Messages** — message name, payload schema `$ref`, header shape if any.
-- **File** — relative path from `.specify/contracts/`.
+- **File** — relative path from root `contracts/`.
 
 When `$BASELINE_DIR/messages/` is empty or absent, the baseline is empty — every spec interaction becomes delta. Record an empty inventory and proceed.
 

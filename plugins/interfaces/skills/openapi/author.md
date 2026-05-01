@@ -8,7 +8,7 @@
 $CHANGE_DIR     = .specify/changes/<change-name>
 $SPECS_DIR      = $CHANGE_DIR/specs
 $CONTRACTS_DIR  = $CHANGE_DIR/contracts
-$BASELINE_DIR   = .specify/contracts
+$BASELINE_DIR   = contracts
 ```
 
 ## Authority hierarchy
@@ -18,7 +18,7 @@ When sources conflict, follow this strict precedence:
 1. **This file** — author rules and hard constraints for OpenAPI documents.
 2. **Specify artefacts** (specs) — behavioural requirements drive the operations.
 3. **Format conventions** — [`../../references/openapi-conventions.md`](../../references/openapi-conventions.md), [`../../references/json-schema-conventions.md`](../../references/json-schema-conventions.md).
-4. **Baseline contracts** (`.specify/contracts/http/`) — existing platform vocabulary; never overwrite silently.
+4. **Baseline contracts** (`contracts/http/`) — existing platform vocabulary; never overwrite silently.
 5. **LLM inference** — prohibited for unknowns; mark with `[unknown]` and surface in the alignment report.
 
 If the specs and baseline disagree on a shape, surface the mismatch in the alignment report's Warnings section. Never silently overwrite baseline operations to match the specs — a human reviewer decides.
@@ -39,7 +39,7 @@ For each operation, record:
 
 - **Identity** — `(path, method)` tuple plus `operationId`.
 - **Shape** — request body schema, parameter list, per-status response schemas, content types.
-- **File** — relative path from `.specify/contracts/`.
+- **File** — relative path from root `contracts/`.
 
 When `$BASELINE_DIR/http/` is empty or absent, the baseline is empty — every spec interaction becomes delta. Record an empty inventory and proceed.
 

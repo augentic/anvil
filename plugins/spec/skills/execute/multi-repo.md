@@ -38,7 +38,7 @@ When all three hold, walk the producer's `produces` list and find every consumer
     --consumer-workspace .specify/workspace/<consumer>/
 ```
 
-Both arguments are paths anchored at the **initiating repo root**, not the producer's workspace clone — the post-merge check runs after the CWD restore (step 9a) so the driver sits in the initiating repo where `.specify/registry.yaml` and the central contracts live.
+Both arguments are paths anchored at the **initiating repo root**, not the producer's workspace clone — the post-merge check runs after the CWD restore (step 9a) so the driver sits in the initiating repo where `.specify/registry.yaml` and root `contracts/` live.
 
 The verifier emits a YAML report (see [shared report shape](../../../interfaces/references/report-shape.md#cross-project-mode-output-structured-yaml)). Parse `summary.total-findings`:
 

@@ -12,13 +12,12 @@
 |-------|--------|-------------|
 | `proposal.md` | `proposal.md` | -- |
 | `specs.md` | `specs/<capability>/spec.md` | proposal |
-| `contracts.md` | `contracts/**/*.yaml` | specs |
-| `design.md` | `design.md` | proposal, contracts |
+| `design.md` | `design.md` | proposal, specs |
 | `tasks.md` | `tasks.md` | specs, design |
 
 When a plan entry has `sources`, the specs brief invokes `/spec:extract` to derive requirements from legacy code.
 
-The `contracts` brief validates that the change's specs align with baseline contracts at `.specify/contracts/` and produces a minimal delta for uncovered API interactions. When no baseline contracts exist or the change has no API interactions, the brief completes as a no-op. See [Interfaces Plugin](../plugins/interfaces.md) for skill details.
+The specs and design briefs read baseline contracts at `.specify/contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. See [Interfaces Plugin](../plugins/interfaces.md) for skill details.
 
 ### Build phase
 

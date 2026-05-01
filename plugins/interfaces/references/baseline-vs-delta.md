@@ -8,7 +8,7 @@ The rules apply uniformly to OpenAPI HTTP bindings, AsyncAPI message bindings, a
 
 | Concept | Path | Lifetime |
 |---|---|---|
-| **Baseline** | `.specify/contracts/{schemas,http,messages}/` | Persists across changes; merged contracts only. |
+| **Baseline** | `contracts/{schemas,http,messages}/` | Persists across changes; merged contracts only. |
 | **Change-local delta** | `.specify/changes/<change-name>/contracts/{schemas,http,messages}/` | Exists during the change lifecycle; merged into the baseline at `specify change merge run` or discarded at `specify change drop`. |
 
 The baseline is the source of truth for the platform's current contract surface. The change-local delta is a **proposed modification**, pending review and merge. The delta directory contains **only the files this change adds or replaces** — never a full copy of the baseline.
@@ -19,7 +19,7 @@ Every author run falls into one of three patterns. The classification depends on
 
 | Pattern | Baseline state | Most spec interactions are… |
 |---|---|---|
-| **Contract-first** | Rich. A preceding contract change populated `.specify/contracts/`. | Already covered by the baseline. The delta is small or empty. |
+| **Contract-first** | Rich. A preceding contract change populated root `contracts/`. | Already covered by the baseline. The delta is small or empty. |
 | **Spec-first** | Empty. Single-repo, no external consumers. | New. The delta is the full contract set, derived from the change's specs. |
 | **Contract-given** | Imported. The baseline came from an external system via `/interfaces:<format>` `importer.md`. | Covered. The delta is non-empty only for extensions the change introduces. |
 
@@ -52,7 +52,7 @@ The baseline file lacks Specify-required metadata (e.g. `$id` on a schema, `info
 
 ## The "do not modify the baseline directly" rule
 
-All output goes into `$CHANGE_DIR/contracts/`. Never edit a file under `.specify/contracts/` from inside a change — even when the change is producing a normalisation delta, the new file lives in the change directory until merge.
+All output goes into `$CHANGE_DIR/contracts/`. Never edit a file under root `contracts/` from inside a change — even when the change is producing a normalisation delta, the new file lives in the change directory until merge.
 
 Two reasons:
 

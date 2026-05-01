@@ -2,7 +2,7 @@
 id: design
 description: Create the design document to explain HOW to implement the change
 generates: design.md
-needs: [proposal, contracts]
+needs: [proposal, specs]
 ---
 
 ## Output Structure

@@ -18,8 +18,6 @@ pipeline:
       brief: briefs/proposal.md
     - id: specs
       brief: briefs/specs.md
-    - id: contracts
-      brief: briefs/contracts.md
     - id: composition
       brief: briefs/composition.md
     - id: design

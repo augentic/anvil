@@ -13,7 +13,7 @@ Build writes only change-local contract deltas:
 - `contracts/http/*.yaml`
 - `contracts/messages/*.yaml`
 
-Build must not edit `.specify/contracts/` directly. Baseline updates happen only during merge.
+Build must not edit root `contracts/` directly. Baseline updates happen only during merge.
 
 Arguments:
 - CHANGE_ID: the name of this change (from specify status)
@@ -25,7 +25,7 @@ Read:
 - `proposal.md` for Authorship Mode, Source Material, interface scope, and producer/consumer roles.
 - `specs/**/*.md` for prose-derived behavioral requirements or lightweight import-mode scope.
 - Any source files named in proposal Source Material. If they are external contract artifacts, copy or normalize them into the change-local `contracts/` tree before verification.
-- `.specify/contracts/` as read-only baseline context.
+- Root `contracts/` as read-only baseline context.
 - `tasks.md` for progress tracking.
 
 Build consumes Specify artifacts as its primary source. Do not treat raw design documentation as the contract source unless the proposal names it as Source Material and the define phase has captured the required behavior in `specs/**/*.md`.
@@ -38,7 +38,7 @@ Classify the change's Authorship Mode from `proposal.md`:
 
 1. **Generate from prose** — author contract artifacts from `specs/**/*.md`.
 2. **Import existing contracts** — normalize supplied OpenAPI, AsyncAPI, or JSON Schema files into Specify conventions.
-3. **Modify existing contracts** — author a minimal delta against `.specify/contracts/` from the behavioral delta in `specs/**/*.md`.
+3. **Modify existing contracts** — author a minimal delta against root `contracts/` from the behavioral delta in `specs/**/*.md`.
 4. **Mixed** — combine author and importer paths when the proposal explicitly includes both prose-derived requirements and supplied contract files.
 
 Then classify required formats:

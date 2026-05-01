@@ -9,7 +9,7 @@ $CHANGE_DIR     = .specify/changes/<change-name>
 $SPECS_DIR      = $CHANGE_DIR/specs
 $CONTRACTS_DIR  = $CHANGE_DIR/contracts
 $SCHEMAS_DIR    = $CONTRACTS_DIR/schemas
-$BASELINE_DIR   = .specify/contracts
+$BASELINE_DIR   = contracts
 ```
 
 ## Authority hierarchy
@@ -19,7 +19,7 @@ When sources conflict, follow this strict precedence:
 1. **This file** — author rules and hard constraints for JSON Schema documents.
 2. **Specify artefacts** (specs) — behavioural requirements drive the field shape.
 3. **Format conventions** — [`../../references/json-schema-conventions.md`](../../references/json-schema-conventions.md).
-4. **Baseline schemas** (`.specify/contracts/schemas/`) — existing platform vocabulary; never overwrite silently.
+4. **Baseline schemas** (`contracts/schemas/`) — existing platform vocabulary; never overwrite silently.
 5. **LLM inference** — prohibited for unknowns; mark with `[unknown]` and surface in the alignment report.
 
 If specs and baseline disagree on a shape (e.g. the spec asserts a `verified_at` field that the baseline `User` schema omits), surface the mismatch in the alignment report's Warnings section. Never silently overwrite baseline schemas — a human reviewer decides whether to extend the existing schema or fork a new `$id`.

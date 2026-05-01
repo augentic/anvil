@@ -1,18 +1,26 @@
 # Directory Layout
 
-All Specify state lives under `.specify/` at your project root. This directory is created by `/spec:init` and managed by the `specify` CLI.
+Specify workflow state lives under `.specify/` at your project root. Baseline API contracts live in the root `contracts/` directory so they are visible as ordinary repository artifacts.
 
 ## Tree overview
 
-```
+```text
+contracts/                                  # Baseline API contracts
+├── schemas/                                # JSON Schema payload definitions
+│   └── <type>.yaml
+├── http/                                   # OpenAPI 3.1 bindings (when HTTP is used)
+│   └── <domain>-api.yaml
+└── messages/                               # AsyncAPI 3.0 bindings (when messaging is used)
+    └── <domain>-events.yaml
+
 .specify/
-├── project.yaml                           # Project configuration (schema, domain, rules)
-├── plan.yaml                              # Initiative plan (optional, created by /spec:plan)
-├── registry.yaml                          # Platform catalogue (optional, multi-repo only)
-├── initiative.md                          # Operator brief (optional)
-├── plan.lock                              # Advisory lock held by /spec:execute
+├── project.yaml                            # Project configuration (schema, domain, rules)
+├── plan.yaml                               # Initiative plan (optional, created by /spec:plan)
+├── registry.yaml                           # Platform catalogue (optional, multi-repo only)
+├── initiative.md                           # Operator brief (optional)
+├── plan.lock                               # Advisory lock held by /spec:execute
 │
-├── .cache/                                # Cached schema and brief files
+├── .cache/                                 # Cached schema and brief files
 │   └── <schema>/
 │       ├── schema.yaml
 │       └── briefs/
@@ -23,16 +31,7 @@ All Specify state lives under `.specify/` at your project root. This directory i
 │           ├── tasks.md
 │           ├── build.md
 │           └── merge.md
-│
-├── contracts/                              # Baseline API contracts
-│   ├── schemas/                           # JSON Schema payload definitions
-│   │   └── <type>.yaml
-│   ├── http/                              # OpenAPI 3.1 bindings (when HTTP is used)
-│   │   └── <domain>-api.yaml
-│   └── messages/                          # AsyncAPI 3.0 bindings (when messaging is used)
-│       └── <domain>-events.yaml
-│
-├── changes/                               # Active changes (one directory per change)
+├── changes/                                # Active changes (one directory per change)
 │   └── <change-name>/
 │       ├── .metadata.yaml                 # Lifecycle state (managed by CLI)
 │       ├── proposal.md                    # Why this change exists
@@ -90,7 +89,7 @@ A change directory contains the core artifacts plus `.metadata.yaml` for lifecyc
 
 ### `contracts/`
 
-Platform-level API contracts, co-located with `registry.yaml` and `plan.yaml`. Contains JSON Schema payload definitions (`schemas/`), OpenAPI 3.1 HTTP bindings (`http/`), and AsyncAPI 3.0 messaging bindings (`messages/`). Subdirectories are present only when the platform uses the corresponding transport type.
+Platform-level API contracts at the repository root. Contains JSON Schema payload definitions (`schemas/`), OpenAPI 3.1 HTTP bindings (`http/`), and AsyncAPI 3.0 messaging bindings (`messages/`). Subdirectories are present only when the platform uses the corresponding transport type.
 
 Contracts are a platform concern -- they describe interfaces *between* components, not internals of any one project. Both producer and consumer reference the same central definitions. When a change is merged, its `contracts/` files are copied here using opaque file replacement.
 

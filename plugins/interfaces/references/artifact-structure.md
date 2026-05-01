@@ -4,22 +4,19 @@ Directory layout, naming conventions, and change-level delta rules for API contr
 
 ## Baseline Directory Layout
 
-Contract artifacts live at `.specify/contracts/` — a platform-level directory alongside `registry.yaml` and `plan.yaml`:
+Contract artifacts live at root `contracts/` — a platform-level directory outside `.specify/` so interface definitions are visible as ordinary repository artifacts:
 
 ```text
-.specify/
-├── registry.yaml
-├── plan.yaml
-├── contracts/
-│   ├── schemas/           # JSON Schema payload definitions
-│   │   ├── user-registration.yaml
-│   │   ├── user.yaml
-│   │   ├── order-placed.yaml
-│   │   └── error-response.yaml
-│   ├── http/              # OpenAPI 3.1 bindings
-│   │   └── user-api.yaml
-│   └── messages/          # AsyncAPI 3.0 bindings
-│       └── order-events.yaml
+contracts/
+├── schemas/           # JSON Schema payload definitions
+│   ├── user-registration.yaml
+│   ├── user.yaml
+│   ├── order-placed.yaml
+│   └── error-response.yaml
+├── http/              # OpenAPI 3.1 bindings
+│   └── user-api.yaml
+└── messages/          # AsyncAPI 3.0 bindings
+    └── order-events.yaml
 ```
 
 ## Directory Rules
@@ -39,11 +36,11 @@ Contract artifacts live at `.specify/contracts/` — a platform-level directory 
 
 Contracts sit outside the per-capability spec tree. A single OpenAPI document or schema type often spans multiple capabilities — a `POST /users` endpoint might touch `user-registration`, `auth`, and `notifications` capabilities. Flattening contracts out of the capability hierarchy avoids the question of "which capability owns this schema?" — nobody does; it is platform vocabulary.
 
-Three platform concerns, three co-located locations:
+Three platform concerns, three top-level locations:
 
-- **`registry.yaml`** declares *who* the participants are.
-- **`plan.yaml`** declares *what* changes are planned.
-- **`.specify/contracts/`** declares *how* participants communicate.
+- **`.specify/registry.yaml`** declares *who* the participants are.
+- **`.specify/plan.yaml`** declares *what* changes are planned.
+- **`contracts/`** declares *how* participants communicate.
 
 ## Naming Conventions
 
@@ -87,7 +84,7 @@ During a change's define phase, proposed contract modifications live in the chan
 
 When `specify change merge run` processes a change (Layer 2):
 
-- Files in the change's `contracts/` are copied into `.specify/contracts/`, replacing files at the same path.
+- Files in the change's `contracts/` are copied into root `contracts/`, replacing files at the same path.
 - Files absent from the change's `contracts/` are left untouched in the baseline.
 - New files (paths that do not exist in the baseline) are added.
 
@@ -99,7 +96,7 @@ Two concurrent changes that both modify the same contract file (e.g. both add pa
 
 | Aspect | Baseline | Change-Level |
 |--------|----------|-------------|
-| Location | `.specify/contracts/` | `.specify/changes/<name>/contracts/` |
+| Location | `contracts/` | `.specify/changes/<name>/contracts/` |
 | Scope | Full platform contract surface | Only files this change adds or replaces |
 | Lifetime | Persists across changes | Exists during the change lifecycle, merged or dropped |
 | Authority | Source of truth for the current contract state | Proposed modification, pending review and merge |
@@ -108,12 +105,12 @@ The baseline is what the writer validates specs against. The change-level delta 
 
 ## Multi-Repo Distribution
 
-In multi-repo initiatives, contracts live in the initiating repo alongside `registry.yaml`. Distribution to project clones uses the workspace infrastructure:
+In multi-repo initiatives, contracts live in the initiating repo's root `contracts/` directory. Distribution to project clones uses the workspace infrastructure:
 
-- **Layer 1**: the `/spec:execute` driver copies `.specify/contracts/` into each project clone as a pre-change step.
-- **Layer 2**: `specify workspace sync` materialises `.specify/contracts/` automatically.
+- **Layer 1**: the `/spec:execute` driver copies root `contracts/` into each project clone as a pre-change step.
+- **Layer 2**: `specify workspace sync` materialises root `contracts/` automatically.
 
-Phase skills always read from `.specify/contracts/` relative to their working directory — they do not need to know whether contracts were authored locally or materialised from a central source.
+Phase skills always read from root `contracts/` relative to their working directory — they do not need to know whether contracts were authored locally or materialised from a central source.
 
 ## See Also
 

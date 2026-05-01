@@ -12,7 +12,7 @@ Sections:
 - **Authorship Mode**: One of:
   - **Generate from prose** — deriving machine-readable contracts from design documentation, requirements, or other prose source material
   - **Import existing contracts** — normalizing supplied OpenAPI, AsyncAPI, or JSON Schema artifacts into the platform baseline
-  - **Modify existing contracts** — updating contracts already present in `.specify/contracts/`
+  - **Modify existing contracts** — updating contracts already present in root `contracts/`
 - **Source Material**: List the prose documents, design notes, external contract files, or baseline contract paths that define the interface. Arbitrary source paths are allowed here; build must copy or normalize any imported contract files into the change-local `contracts/` tree before verification.
 - **Impact**: Which implementation changes depend on these contracts? Reference plan entries or future changes that will consume the contract artifacts.
 

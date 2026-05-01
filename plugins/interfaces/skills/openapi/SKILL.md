@@ -12,13 +12,13 @@ The skill is OpenAPI-only. Shared payload schemas under `contracts/schemas/` are
 
 ## Critical Path (Quick Reference)
 
-1. **Read the briefs and specs.** Open the active contracts build brief and the change's `specs/` to identify what the change requires; read `.specify/contracts/http/` (the HTTP baseline) to know what already exists.
+1. **Read the briefs and specs.** Open the active contracts build brief and the change's `specs/` to identify what the change requires; read `contracts/http/` (the HTTP baseline) to know what already exists.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.
 3. **Dispatch to the sibling.** Open and follow [`author.md`](./author.md), [`importer.md`](./importer.md), or [`verifier.md`](./verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
 4. **Write outputs to `contracts/http/`.** Author and importer paths produce or normalise OpenAPI 3.1 YAML files under `$CHANGE_DIR/contracts/http/`. Decomposed payload schemas land under `$CHANGE_DIR/contracts/schemas/` (json-schema-skill territory) — never inline them.
 5. **Run the verifier.** After authoring or importing, invoke the verifier sibling against the change directory to check `$ref` resolution, schema metadata completeness, and binding coverage.
 6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the structured YAML compatibility report (cross-project mode) so the calling brief or operator can triage.
-7. **Stay within `contracts/http/`.** Do not modify baseline files in `.specify/contracts/`, do not touch `contracts/messages/` or shared schemas beyond writing decomposed `$ref` targets, and do not invent constructs that the spec does not justify — mark unknowns with `[unknown]` instead.
+7. **Stay within change-local `contracts/http/`.** Do not modify baseline files in root `contracts/`, do not touch `contracts/messages/` or shared schemas beyond writing decomposed `$ref` targets, and do not invent constructs that the spec does not justify — mark unknowns with `[unknown]` instead.
 
 ## Invocation
 
@@ -101,7 +101,7 @@ These constraints are non-negotiable for any of the three sibling paths:
 2. **`$ref` discipline.** All schema references use relative file paths into `../schemas/`. No `#/components/schemas/...` pointers in the baseline. No inline domain types.
 3. **`$id` stability.** Once a schema has a `$id`, do not change it. New schemas get new `$id` values; the writer and importer never reassign existing ones.
 4. **Kebab-case filenames.** All `.yaml` files use kebab-case names; no PascalCase or snake_case variants.
-5. **Baseline immutability.** Never modify files in `.specify/contracts/`. All output goes in the change-local `contracts/` directory.
+5. **Baseline immutability.** Never modify files in root `contracts/`. All output goes in the change-local `contracts/` directory.
 6. **No invention.** When the spec does not provide enough detail to derive a shape, mark the gap with `[unknown]` in the alignment report rather than guessing. Importer flags unrecognised constructs with `[import — manual review required]`.
 7. **Read-only verifier.** The verifier sibling must not create, modify, or delete any files in either mode.
 
@@ -110,12 +110,12 @@ These constraints are non-negotiable for any of the three sibling paths:
 - Only emit `.yaml` files under `$CHANGE_DIR/contracts/`.
 - Create `contracts/http/`, `contracts/schemas/` only when they will contain at least one file.
 - Do not modify any file outside `$CHANGE_DIR/contracts/`.
-- Do not modify baseline files in `.specify/contracts/`.
+- Do not modify baseline files in root `contracts/`.
 
 ## See also
 
 - [`openapi-conventions`](../../references/openapi-conventions.md) — OpenAPI 3.1 structure, path/method conventions, `$ref → ../schemas/`.
-- [`artifact-structure`](../../references/artifact-structure.md) — directory layout for `.specify/contracts/`.
+- [`artifact-structure`](../../references/artifact-structure.md) — directory layout for root `contracts/`.
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for computing the minimal delta between baseline and change-local files.
 - [`import-upgrade-policy`](../../references/import-upgrade-policy.md) — shared framework for the importer sibling (format detection, upgrade targets, lossless vs lossy decisions).
 - [`report-shape`](../../references/report-shape.md) — single-mode markdown and cross-project YAML report formats produced by the verifier sibling.
