@@ -2,7 +2,7 @@
   "name": "client",
   "displayName": "Client",
   "description": "Skills to generate client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — from Specify artifacts.",
-  "version": "0.25.0",
+  "version": "0.25.1",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"
