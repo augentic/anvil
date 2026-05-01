@@ -8,8 +8,9 @@ Pipeline note:
 - In the `contracts` schema, `/spec:define` creates `proposal.md`,
   `specs/**/*.md`, and `tasks.md`; contract YAML is produced during
   `/spec:build`.
-- In Omnia and Vectis schemas, contract YAML is produced during `/spec:define`
-  because the `contracts` brief is part of the define pipeline.
+- Omnia and Vectis implementation changes consume existing baseline contracts as
+  context. New or changed interface shapes should be introduced through a
+  separate `contracts@v1` change before implementation depends on them.
 
 ## Source Document
 
@@ -75,6 +76,9 @@ plus an OpenAPI 3.1 binding.
 ```
 
 ## Expected Contract Files
+
+During `/spec:build`, the change should produce these change-local contract
+deltas. After merge, the same paths become root `contracts/` baseline files.
 
 - `contracts/http/returns-api.yaml`
 - `contracts/schemas/return-request.yaml`

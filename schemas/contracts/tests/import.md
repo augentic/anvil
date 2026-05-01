@@ -8,8 +8,9 @@ Pipeline note:
 - In the `contracts` schema, `/spec:define` creates `proposal.md`,
   `specs/**/*.md`, and `tasks.md`; import normalization is produced during
   `/spec:build`.
-- In Omnia and Vectis schemas, contract import artifacts are produced during
-  `/spec:define` only when the define pipeline includes the `contracts` brief.
+- Omnia and Vectis implementation changes consume existing baseline contracts as
+  context. Imported interface shapes should be introduced through a separate
+  `contracts@v1` change before implementation depends on them.
 
 ## Source Contract
 
@@ -84,6 +85,9 @@ resulting contract artifacts.
 ```
 
 ## Expected Contract Files
+
+During `/spec:build`, the import should produce these change-local contract
+deltas. After merge, the same paths become root `contracts/` baseline files.
 
 - `contracts/http/ticket-api.yaml`, upgraded to OpenAPI 3.1
 - `contracts/schemas/create-ticket-request.yaml`
