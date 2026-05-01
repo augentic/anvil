@@ -1,498 +1,256 @@
-# RFC-12: Interfaces
+# RFC-12: Embedded Interface Metadata
 
 > Status: Draft · Depends: [RFC-8](archive/rfc-8-api-contracts.md), [RFC-9](archive/rfc-9-platform.md), [RFC-10](archive/rfc-10-skills.md)
 
 ## Abstract
 
-RFC-8 introduced machine-readable API contracts as first-class Specify artifacts under `.specify/contracts/`. RFC-10 then renamed the Cursor plugin surface from `/contracts:*` to `/interfaces:*` while preserving the persisted artifact names: the `contracts` brief id, the `contracts@v1` schema, and the `.specify/contracts/` baseline directory.
+RFC-8 introduced machine-readable contract artifacts under `.specify/contracts/` and a `contracts@v1` schema for dedicated contract changes. RFC-10 renamed the operator-facing slash-command surface to `/interfaces:*` while preserving the persisted artifact names. The remaining gap — and the only thing this RFC addresses — is **logical interface identity**: a stable id, a SemVer version, a lifecycle status, and an authority record for each contract that the platform treats as a governed boundary.
 
-This RFC completes that integration by making **interfaces** the product concept and **contracts** the persisted artifact format. It also revisits RFC-8's central-only placement decision and adopts a hybrid model: `.specify/contracts/` remains the canonical Specify baseline, while registry metadata records producer, consumer, importer, and external-authority relationships.
+This RFC adds those four properties as a small metadata block embedded in the contract artifact itself, using the format-native extension mechanism that OpenAPI 3.1, AsyncAPI 3.0, and JSON Schema all already provide. There is no separate inventory file, no new top-level config, no change-local inventory delta, no whole-file replacement merge path, and no new workspace-distribution wiring. The block travels with the contract.
 
-The result is a single framework story:
-
-- specs describe behavior;
-- interface contracts describe wire shape;
-- the registry records who produces, consumes, or imports each interface;
-- workspace sync materializes the same baseline contracts into each project;
-- review and execute surface compatibility findings consistently.
+The result is RFC-8 plus four optional fields per top-level contract.
 
 ## Motivation
 
-RFC-8 correctly identified the missing layer between behavioral specs and implementation: wire-level interface shape. Since then, the model has partly landed.
+RFC-8 deliberately deferred logical interface identity, versioning, and lifecycle to a future RFC. Three concrete needs have emerged since:
 
-- `contracts@v1` exists for dedicated interface changes.
-- Omnia and Vectis define pipelines include a `contracts` stage.
-- `/interfaces:openapi`, `/interfaces:asyncapi`, and `/interfaces:json-schema` replaced the older lifecycle-oriented `/contracts:*` surface.
-- Cross-project compatibility warnings now run after producer contract merges.
+1. **Identity.** Contracts are referenced today by file path. Renames and refactors break references; cross-project diffs cannot tell when "the user API" simply moved. A stable kebab-case id is the smallest fix.
+2. **Versioning.** OpenAPI and AsyncAPI carry their own `info.version`; JSON Schema has none. There is no shared SemVer convention that callers can lift into release notes, deprecation policy, or compatibility decisions.
+3. **Lifecycle.** Reviewers cannot tell whether a contract is `draft`, `active`, or `deprecated`, and deprecated contracts have no machine-readable replacement pointer.
 
-What remains incomplete is the framework-level story.
-
-- "Contracts" and "interfaces" are still semantically split across docs, schemas, skills, and registry language.
-- RFC-8's central-only contract home is neutral, but it under-describes producer responsibility and external authority.
-- Cross-project validation is warning-only and not yet part of a broader review surface.
-- Registry data can list produced and consumed files, but lacks a logical interface inventory.
-- Contract lifecycle is under-specified: there is no standard way to deprecate, retire, version, or delete interface shapes.
-- Code generation can consume contracts, but the source-of-truth boundary between contract artifacts and generated code is not explicit enough for production use.
-
-This RFC treats RFC-8 as the foundation, not a mistake. The central baseline remains the right merge target for Specify, but the framework needs clearer vocabulary and richer metadata around that baseline.
-
-## Terminology
-
-Specify adopts the following terms:
-
-- **Interface**: a logical API, message boundary, or reusable payload boundary between systems.
-- **Contract**: a machine-readable artifact describing an interface, using JSON Schema, OpenAPI, or AsyncAPI.
-- **Baseline contracts**: merged contract artifacts under `.specify/contracts/`.
-- **Contract delta**: change-local proposed contract files under `.specify/changes/<name>/contracts/`.
-- **Interface inventory**: registry metadata that maps logical interfaces to contract files and project roles.
-
-The distinction is deliberate. Operators and planning language should talk about interfaces because that is the domain concept. The filesystem continues to use `contracts/` because those files are concrete artifacts.
-
-## Decision
-
-The home model for interface contracts is **hybrid**:
-
-1. `.specify/contracts/` remains the canonical Specify baseline and merge target.
-2. Producers are recorded in registry metadata, not by moving contract files into producer repos.
-3. Consumers read materialized baseline contracts from `.specify/contracts/` relative to their current project root.
-4. External contracts record upstream authority metadata, while their normalized Specify copy still lives in `.specify/contracts/`.
-
-This preserves RFC-8's neutral shared baseline while making responsibility and source authority explicit.
+A separate inventory file (an earlier sketch of this RFC) would record the same information out-of-band. That sketch was rejected because the contract artifact already exists, already has its own merge cycle, and already has format-native extension keys. A second file would duplicate identity that is intrinsic to the contract, introduce a second mutation lifecycle, and require its own validation, merge, conflict-detection, and workspace-distribution wiring. Embedding the metadata in the contract avoids every one of those problems and matches the same authoring path operators use for the rest of the contract today.
 
 ## Design
 
-### Artifact naming
+### Embedded metadata block
 
-Persisted paths do not change:
-
-```text
-.specify/
-├── contracts/
-│   ├── schemas/
-│   ├── http/
-│   └── messages/
-└── changes/
-    └── <change-name>/
-        └── contracts/
-            ├── schemas/
-            ├── http/
-            └── messages/
-```
-
-The schema id remains `contracts@v1`.
-
-Operator-facing and documentation language should prefer "interfaces" for the concept:
-
-- interfaces plugin;
-- interface inventory;
-- interface compatibility;
-- interface review.
-
-Documentation should use "contract artifacts" when referring specifically to files under `.specify/contracts/`.
-
-### Registry interface inventory
-
-Add an optional registry-level `interfaces` section:
+Every top-level contract file MAY declare an `x-specify-interface` block at the document root. The block is the same shape across all three formats:
 
 ```yaml
-interfaces:
-  - id: user-api
-    description: User registration and account management API.
-    contracts:
-      - http/user-api.yaml
-      - schemas/user-registration.yaml
-      - schemas/user.yaml
-      - schemas/error-response.yaml
-    authority:
-      kind: producer
-      project: backend
-    consumers:
-      - mobile
-    stability: public
-    compatibility: warn
-    lifecycle: active
-    version: "1.2.0"
+# contracts/http/user-api.yaml (OpenAPI 3.1)
+openapi: 3.1.0
+x-specify-interface:
+  id: user-api
+  version: "1.2.0"
+  status: active
+  authority:
+    kind: platform
+info:
+  title: User Registration API
+  version: "1.2.0"
+paths:
+  /users:
+    ...
 ```
-
-Field semantics:
-
-| Field | Type | Description |
-|---|---|---|
-| `id` | string | Stable kebab-case logical interface id. |
-| `description` | string | Human-readable purpose and boundary. |
-| `contracts` | list of paths | Contract files relative to `.specify/contracts/`. |
-| `authority.kind` | enum | `producer`, `external`, or `central`. |
-| `authority.project` | string | Required when `kind: producer`; registry project that implements the interface. |
-| `authority.source` | string | Optional URI or description for external authority. |
-| `consumers` | list of strings | Registry project names that consume the interface. |
-| `stability` | enum | `private`, `internal`, or `public`. |
-| `compatibility` | enum | `warn`, `block`, or `manual`. |
-| `lifecycle` | enum | `draft`, `active`, `deprecated`, or `retired`. |
-| `version` | string | Optional logical interface version, usually SemVer when the platform follows SemVer. |
-
-Authority kinds:
-
-- `producer`: authored inside the platform and implemented by one registry project.
-- `external`: dictated by a third-party or legacy system.
-- `central`: authored as a platform-level interface with no single producer yet.
-
-Compatibility policies:
-
-- `warn`: cross-project incompatibilities are recorded but do not halt execution.
-- `block`: breaking compatibility findings block merge or review once the enforcement layer supports it.
-- `manual`: findings are informational only; humans own compatibility.
-
-Lifecycle states:
-
-- `draft`: contract files may exist, but no implementation or consumer is expected to rely on the interface yet.
-- `active`: the interface is available for producer and consumer implementation.
-- `deprecated`: the interface remains valid, but new consumers should not be added and replacement guidance should exist in the description or linked docs.
-- `retired`: the interface is no longer available. Contract files may remain for historical review, but plan and review should reject new implementation changes that consume it.
-
-Existing project-level `contracts.produces`, `contracts.consumes`, and `contracts.imports` may remain as shorthand. Registry validation should ensure both views are consistent when both are present.
-
-### Registry invariants
-
-When `interfaces` is present, registry validation enforces:
-
-1. **Unique interface ids.** Each `interfaces[].id` is unique and kebab-case.
-2. **Valid contract paths.** Every listed contract path is relative, stays under `.specify/contracts/`, and has a recognized subdirectory (`schemas/`, `http/`, or `messages/`).
-3. **Known projects.** `authority.project` and every `consumers[]` entry reference registry projects.
-4. **Single producer authority.** `authority.kind: producer` names exactly one producing project.
-5. **External authority separation.** `authority.kind: external` does not also name a producing project.
-6. **Project-role consistency.** If project-level `contracts` roles are present, they agree with registry-level `interfaces`.
-7. **Compatibility policy validity.** `compatibility` is one of the supported policy values.
-8. **Lifecycle policy validity.** `lifecycle` is one of the supported states, and `retired` interfaces are not referenced by new plan entries except retirement or migration changes.
-9. **Version syntax validity.** When `version` is present, it follows the platform's declared version policy; SemVer is the default recommendation.
-
-The registry remains a projection, not a full developer catalog. Rich ownership data may come from Backstage or another catalog, but the Specify registry records the reviewable subset needed by plan, execute, and review.
-
-### Interface lifecycle
-
-Production use needs an explicit lifecycle for interfaces, not just file additions and replacements.
-
-New interfaces start as `draft` while the contract-first change is being authored. When the contract change merges and implementation work can begin, the interface becomes `active`. A later change may mark the interface `deprecated` to signal that consumers should migrate away while the contract remains valid. A final retirement change may mark it `retired` once known consumers have moved.
-
-Lifecycle transitions are registry changes, not contract-file moves. The contract artifacts remain in `.specify/contracts/` for review history unless the operator performs a deliberate baseline cleanup outside the normal contract-delta path.
-
-Allowed transitions:
-
-| From | To | Meaning |
-|---|---|---|
-| `draft` | `active` | Interface is ready for producer and consumer implementation. |
-| `active` | `deprecated` | Interface still works, but consumers should migrate. |
-| `deprecated` | `retired` | Interface is no longer available for new work. |
-| `retired` | `active` | Disallowed by default; create a new interface id or explicit revival change. |
-
-This keeps deletion separate from retirement. RFC-8 deliberately avoided ordinary deletion semantics for opaque contract files; RFC-12 keeps that constraint and makes retirement the normal production path.
-
-### Versioning and compatibility
-
-Contract formats already carry version-like fields (`info.version` in OpenAPI and AsyncAPI, `$id` and optional annotations in JSON Schema). Specify should not invent a new IDL versioning system, but it does need one registry-level place to express the logical interface version.
-
-The optional `interfaces[].version` field records the logical version of the interface as a whole. Format-specific version fields remain inside the contract artifacts and should agree with the registry version when a platform uses SemVer.
-
-Compatibility policy is evaluated at the interface level:
-
-- **Patch-compatible** changes include documentation changes, examples, additive optional fields, additive enum values, and new optional endpoints or channels.
-- **Minor-compatible** changes include new endpoints, new message channels, and new optional payload members that existing consumers can ignore.
-- **Breaking** changes include removed endpoints or channels, removed fields, newly required fields, narrowed types, removed enum values, and stricter additional-property constraints.
-
-The registry's `compatibility` field controls enforcement. `warn` is the default while teams establish trust in the checks. `block` is reserved for mature interfaces where compatibility findings are expected to fail review or merge. `manual` is appropriate for external systems where the platform cannot control the upstream contract.
-
-### Planning behavior
-
-`/spec:plan` treats interfaces as first-class planning objects.
-
-When an initiative crosses an API or message boundary, planning inserts a `contracts@v1` change before producer and consumer implementation changes. It also populates:
-
-- the registry interface inventory;
-- project role metadata;
-- plan entry `context` paths for relevant contract files;
-- `depends-on` edges from implementation changes to the interface change.
-
-For example:
 
 ```yaml
-changes:
-  - name: user-api-interface
-    schema: contracts@v1
-    description: Define the user registration API interface
-    status: pending
-
-  - name: user-api-backend
-    project: backend
-    description: Implement the user registration API
-    depends-on: [user-api-interface]
-    context:
-      - contracts/http/user-api.yaml
-      - contracts/schemas/user-registration.yaml
-      - contracts/schemas/user.yaml
-    status: pending
-
-  - name: registration-screen
-    project: mobile
-    description: Build the registration screen against the user API
-    depends-on: [user-api-interface]
-    context:
-      - contracts/http/user-api.yaml
-      - contracts/schemas/user-registration.yaml
-      - contracts/schemas/user.yaml
-    status: pending
+# contracts/messages/order-events.yaml (AsyncAPI 3.0)
+asyncapi: 3.0.0
+x-specify-interface:
+  id: order-events
+  version: "0.3.0-draft.1"
+  status: draft
+  authority:
+    kind: platform
+info:
+  title: Order Events
+  version: "0.3.0-draft.1"
+channels:
+  ...
 ```
-
-External or legacy APIs use the same plan shape, except `authority.kind` is `external` and the initial contract change imports or normalizes existing contract files.
-
-### External authority and imports
-
-External and legacy APIs need source metadata because Specify is not the ultimate authority for their shape. For `authority.kind: external`, the registry entry should record:
 
 ```yaml
-interfaces:
-  - id: payment-gateway
-    contracts:
-      - http/payment-gateway-api.yaml
-      - schemas/payment-request.yaml
-      - schemas/payment-response.yaml
-    authority:
-      kind: external
-      source: https://partner.example.com/openapi.yaml
-      imported-version: "2026-04-01"
-      normalized-at: "2026-04-30"
-    consumers:
-      - billing
-    stability: public
-    compatibility: manual
-    lifecycle: active
+# contracts/schemas/payment-token.yaml (governed JSON Schema)
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "urn:specify:schemas/payment-token"
+x-specify-interface:
+  id: payment-token
+  version: "2.0.0"
+  status: active
+  authority:
+    kind: external
+    source: "https://partner.example.com/payment-spec"
+title: PaymentToken
+type: object
+...
 ```
 
-Import changes may normalize older formats into Specify's target formats, decompose inline schemas, add missing metadata, and write the result as a contract delta. They must not imply that the platform can freely evolve the upstream interface. Local extensions to external contracts should either be represented as separate platform-owned interfaces or flagged explicitly for human review.
+OpenAPI 3.1 §4.2, AsyncAPI 3.0 §A.4, and JSON Schema (per RFC 8259 / draft 2020-12) all permit additional properties at the document root. `x-specify-interface` lives inside that escape hatch in every format.
 
-### Define pipeline
+### Field semantics
 
-The `contracts` brief remains between `specs` and downstream design artifacts.
+| Field                | Type   | Required                                | Description                                                                              |
+| -------------------- | ------ | --------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `id`                 | string | yes (when block present)                | Kebab-case logical id, unique across the contracts tree.                                 |
+| `version`            | string | yes                                     | SemVer, e.g. `1.2.0`. Prerelease labels (`1.0.0-draft.1`) are valid.                     |
+| `status`             | enum   | no (defaults to `active`)               | One of `draft`, `active`, `deprecated`.                                                  |
+| `authority.kind`     | enum   | yes                                     | One of `platform`, `external`.                                                           |
+| `authority.source`   | string | yes when `authority.kind: external`     | URI, repository path, or human description of the upstream authority.                    |
+| `replacement`        | string | yes when `status: deprecated`           | Replacement interface id, contract path, or short guidance for callers.                  |
 
-For Omnia:
+Anything outside this list (e.g. owner team, documentation URL, SLA tier) is out of scope for RFC-12. Skills and downstream tools may add their own `x-` extensions alongside `x-specify-interface` without coordination with this RFC.
 
-```yaml
-pipeline:
-  define:
-    - id: proposal
-      brief: briefs/proposal.md
-    - id: specs
-      brief: briefs/specs.md
-    - id: contracts
-      brief: briefs/contracts.md
-    - id: design
-      brief: briefs/design.md
-    - id: tasks
-      brief: briefs/tasks.md
-```
+### What counts as "top-level"
 
-For Vectis, `contracts` remains before `composition` and `design`.
+A contract is **top-level** when it carries an `x-specify-interface` block. That is the only marker. This convention removes the need for tools to infer governance from directory layout or schema shape.
 
-The `contracts` brief delegates by format:
+In practice:
 
-1. `/interfaces:json-schema`
-2. `/interfaces:openapi`
-3. `/interfaces:asyncapi`
+- Files under `contracts/http/` and `contracts/messages/` are usually top-level and SHOULD carry the block.
+- Files under `contracts/schemas/` are usually payload vocabulary referenced via `$ref` and SHOULD NOT carry the block. A standalone JSON Schema is top-level only when the schema itself is the governed boundary (a published payload type that other systems version against), in which case the block is added.
+- A change converts a payload schema into a top-level interface by adding the block; it converts a top-level interface back into payload vocabulary by removing the block. Both transitions are reviewed as ordinary contract diffs.
 
-The brief decides which format skills are relevant from the specs, baseline contracts, and plan `context`. Implementation changes usually produce an empty or small delta because the interface baseline already exists.
+### Coherence with format-native version fields
 
-### Format skill responsibilities
+To keep the embedded version and the format-native version from drifting:
 
-Each `/interfaces:*` skill owns author, import, and verify intents for one format family.
+- OpenAPI and AsyncAPI: `info.version` MUST equal `x-specify-interface.version`. Validation reads both and fails if they differ.
+- JSON Schema: no native version field exists. `x-specify-interface.version` stands alone. Tools that need a URI carrying the version may compose one from `$id` and `version` (e.g. `urn:specify:schemas/payment-token#2.0.0`); that composition is a tooling concern, not a contract requirement.
 
-| Skill | Owns | Does not own |
-|---|---|---|
-| `/interfaces:json-schema` | Reusable payload schemas under `contracts/schemas/` | HTTP paths, message channels |
-| `/interfaces:openapi` | HTTP bindings under `contracts/http/` | Standalone schema vocabulary, message channels |
-| `/interfaces:asyncapi` | Message bindings under `contracts/messages/` | Standalone schema vocabulary, HTTP paths |
+`$id` in JSON Schema remains an identity URI as RFC-8 specified; the RFC-12 SemVer is orthogonal.
 
-The cross-format ordering rule is stable: payload schemas are authored or imported first, then OpenAPI and AsyncAPI bindings reference them.
+### Compatibility with RFC-8 contracts
 
-### Merge semantics
+Existing RFC-8 contracts without an `x-specify-interface` block remain fully valid. Without the block:
 
-Contract artifacts continue to use opaque replacement semantics:
+- the file does not appear in `specify interface list`;
+- registry roles cannot reference it by id (path references still work as RFC-8 specified);
+- lifecycle and SemVer validation rules do not apply.
 
-- files present in the change-local `contracts/` directory replace the matching baseline files;
-- files absent from the change are left untouched;
-- new files are added;
-- deletion remains out of scope for normal contract deltas.
+Adoption is per-file and incremental. A repo gains identity for one interface by adding the block to one file; it never has to migrate the whole baseline at once.
 
-This RFC does not introduce semantic YAML merging. The conflict resolution path remains: re-run define against the updated baseline and produce a fresh delta.
+### Validation
 
-### Workspace distribution
+`specify validate` gains the following checks, run over every file under `contracts/` that carries an `x-specify-interface` block:
 
-`specify workspace sync` materializes `.specify/contracts/` into each workspace clone. Phase skills continue to read `.specify/contracts/` relative to their current working directory.
+1. `id` is kebab-case (`^[a-z][a-z0-9-]*$`) and ≤ 64 characters.
+2. `id` is unique across all top-level interfaces in the repo.
+3. `version` parses as SemVer per [semver.org](https://semver.org), including optional prerelease labels.
+4. `status` is one of `draft`, `active`, `deprecated`.
+5. `status: deprecated` requires a non-empty `replacement`.
+6. `authority.kind` is one of `platform`, `external`.
+7. `authority.kind: external` requires a non-empty `authority.source`.
+8. For OpenAPI and AsyncAPI files, `info.version` equals `x-specify-interface.version`.
+9. **Single producer.** Each interface id appears in at most one project's `contracts.produces` in `registry.yaml`. RFC-8 already validates this by file path; RFC-12 extends the same invariant to id-based references.
 
-This preserves RFC-3b's execution invariant: phase skills are unaware of multi-repo routing. The execute driver chooses the CWD; the brief and format skills see the same paths in every topology.
+Findings are emitted with the file path and the failing rule. The validator does not attempt structural compatibility comparison between baseline and proposed contracts; that judgment remains with the `/interfaces:*` verifier intents (RFC-8 §"Specialist skills", RFC-10 §C.3).
 
-Project-local materialized copies are read-only from the perspective of interface authoring. Changes still write contract deltas to `.specify/changes/<name>/contracts/` and merge through the normal Specify lifecycle.
+### CLI surface
 
-### Generated code boundary
-
-Contracts are source artifacts. Generated clients, generated server stubs, generated Rust types, Swift models, Kotlin models, and test fixtures are downstream build artifacts.
-
-Build skills may consume contracts to generate or update code, but they must not silently rewrite `.specify/contracts/` or change-local contract deltas. Any contract shape change discovered during implementation belongs in the define phase as a contract delta, followed by merge and review. This keeps the direction of authority clear:
-
-```text
-specs + registry intent
-  -> contract artifacts
-  -> generated implementation support
-  -> tests and review
-```
-
-Generated code may live in producer or consumer repositories, but it is not the Specify source of truth for the interface.
-
-### Validation and review
-
-Structural validation should become CLI-backed over time, with skills retaining authoring and import judgment. Production use needs one review surface that combines artifact validity, registry consistency, lifecycle policy, and compatibility findings.
-
-Candidate CLI surface:
+Two new commands plus one extension. The whole footprint:
 
 ```bash
-specify interface list
-specify interface show <id>
-specify interface validate [--change <name>]
-specify interface diff <id> [--against baseline]
+specify interface list           # scan contracts/, project the embedded blocks, render a table
+specify interface show <id>      # print one block plus the file path that carries it
+specify validate                 # extended to run the checks above
 ```
 
-`specify review` should include interface findings:
+`specify interface list` is a deterministic projection over the filesystem: glob-walk `contracts/**/*.yaml`, parse the embedded block when present, group by id. The command takes no flags beyond standard `--format json` for machine-readable output.
 
-- unresolved `$ref` pointers;
-- missing schema metadata;
-- producer/consumer registry inconsistencies;
-- breaking changes against known consumers;
-- contract deltas not reflected in specs;
-- specs that describe interface behavior without a matching contract.
-- active interfaces with no producing authority;
-- active interfaces with no known consumers when the stability is `public`;
-- deprecated interfaces without replacement guidance;
-- retired interfaces referenced by new plan entries;
-- generated-code changes that imply contract drift.
+`specify interface show <id>` resolves the id to its file, then prints the file path and the block. Useful for scripts and review.
 
-Cross-project compatibility remains warning-first by default. `compatibility: block` should only become enforceable after warning-mode output has proven stable across real projects.
+There is intentionally no `specify interface diff`. RFC-8 already supports `specify spec preview` for change-local contract files; structural diffs between contract files are git-diff territory; semantic compatibility findings live in the verifier intents.
 
-### Compatibility findings
+There is intentionally no CLI compatibility-findings vocabulary. RFC-8's deferral of cross-project structural diff to "when the need arises" still holds.
 
-The existing cross-project verifier vocabulary remains the starting point:
+### Registry roles
 
-- removed field;
-- required field added;
-- type narrowed;
-- enum value removed;
-- additional properties tightened;
-- removed endpoint;
-- removed status code;
-- removed channel;
-- removed operation.
+`registry.yaml` continues to use the RFC-8 `contracts.produces`, `contracts.consumes`, and `contracts.imports` lists. Two ergonomic additions:
 
-This RFC adds a policy layer around those findings. The same finding may be informational, warning-only, or blocking depending on the interface inventory's `compatibility` value and the review mode being run.
+1. **Id references.** A list entry may use `id:<interface-id>` as an alternative to a file path. The validator resolves both forms to the same interface, applies the single-producer invariant, and reports drift if the path and id disagree.
+2. **`contracts.imports` keeps its RFC-8 meaning.** A project lists a contract under `imports` when it integrates with an external authority for that interface. The embedded `authority.kind: external` records *where* the shape comes from; `contracts.imports` records *which project* depends on it. Both pieces of information are useful and not redundant.
+
+No registry schema field is removed or renamed by this RFC.
+
+### Merge, workspace distribution, and conflicts
+
+Nothing new.
+
+- The embedded block is part of the contract YAML; RFC-8's opaque-replacement merge semantics (§"Merge semantics") apply unchanged.
+- `workspace sync` materialises `contracts/` into project clones as RFC-8 specified; the embedded block rides along automatically.
+- Conflict detection (`specify spec conflict-check`) treats a file with a changed embedded block exactly like any other contract file change.
+
+There is no `interfaces.yaml`, no whole-file inventory replacement, no inventory-specific drift check, no inventory-specific workspace-sync step.
+
+### `/interfaces:*` skill responsibilities
+
+The format-family skills introduced by RFC-10 absorb the small additional authoring and verification work:
+
+- **Author intents** (`/interfaces:openapi`, `/interfaces:asyncapi`, `/interfaces:json-schema`): when generating or extending a top-level contract, populate `x-specify-interface` from the change's proposal Source Material, registry context, and operator intent. For OpenAPI/AsyncAPI files, keep `info.version` synchronised with `x-specify-interface.version`.
+- **Import intents**: when normalising an external contract, set `authority.kind: external` and record the upstream URL or repository in `authority.source`. Set `version` from the upstream's own version field when present, or `0.0.0` and `status: draft` when unknown.
+- **Verify intents**: enforce the validator rules above on the change-local file and continue to flag warning-mode compatibility findings between baseline and proposed contracts as RFC-8 specified.
+
+Cross-project compatibility checks keep the RFC-8 algorithm: post-merge of a producer-side change, walk from the changed file → producing project → consuming projects → run the appropriate verifier per pair. Findings may now reference the interface id (preferred) or the file path (RFC-8 fallback).
 
 ## Alternatives Considered
 
-### Central only
+### Separate `interfaces.yaml` inventory file
 
-This is RFC-8's model. It is simple and neutral, but incomplete: it does not say who is responsible for implementing a contract, who consumes it, or whether an external system is authoritative.
+The earlier draft of this RFC. Rejected: duplicates identity that is intrinsic to the contract; introduces a second mutation lifecycle (operator-driven vs change-driven); requires its own merge semantics, conflict-detection, validation, and workspace-sync wiring; doubles the surface that documentation and skills must reference.
 
-### Producer owned
+### `interfaces:` block inside `registry.yaml`
 
-Contracts live beside producer code. This improves producer locality, but makes consumers chase workspace clones and weakens the platform-level review story. It also breaks down for external APIs, shared schemas, and interfaces where no single project is the right owner.
+Rejected: `registry.yaml` is operator-mutated (`specify registry add` / `remove`) and `interfaces` would be change-mutated. Mixing the two lifecycles inside one file forces every reader and writer to reason about which sub-tree is change-managed, and every change PR gains a registry-shaped diff regardless of whether it touches projects.
 
-### Consumer owned
+### Enrich registry roles with version/authority/status
 
-Consumers record the contracts they depend on. This gives callers local context, but it creates multiple divergent copies of the same interface. It is useful as a generated client artifact, not as the Specify source of truth.
+Move version, status, and authority onto each entry in `contracts.produces`. Rejected: the producer is no longer the single source of truth (consumers and importers need to know the version too), and each interface ends up declared in N+1 places (once per project plus once per registry list).
 
-### Hybrid
+### Status quo (RFC-8 + RFC-10 only)
 
-The chosen model keeps the Specify baseline central and neutral while recording authority and roles in the registry. This gives producers responsibility without making producer repos the artifact home.
+The path already shipped. Rejected only weakly: it leaves identity, SemVer, lifecycle, and external authority unspecified. RFC-12 adds those four things at minimum cost.
 
 ## Non-goals
 
-- Rename `.specify/contracts/`.
-- Rename `contracts@v1`.
-- Replace OpenAPI, AsyncAPI, or JSON Schema.
-- Make behavioral specs wire-format documents.
-- Require all interface changes to block execution by default.
-- Introduce a live dependency on Backstage or another catalog.
-- Generate client or server code directly from this RFC.
+- A separate `interfaces.yaml` file or a registry `interfaces:` block.
+- A `specify interface diff` command, or any CLI surface that performs structural compatibility comparison.
+- A CLI compatibility-findings taxonomy. Findings remain skill-side.
+- Blocking compatibility enforcement during `/spec:execute`. Compatibility checks remain warning-only as RFC-8 specified.
+- Removing or renaming `contracts.imports` from registry roles.
+- Removing or renaming the `contracts@v1` schema, the `contracts/` artifact tree, or the `contracts` brief id.
+- Catalog integration (Backstage and similar). Out of scope.
+- Generated-code drift detection. Out of scope.
+- Inferring interface identity from directory layout, file name, or schema content. Identity is declared, not inferred.
 
 ## Implementation Scope
 
-### Layer 1: Documentation and vocabulary
+### specify-cli
 
-1. Update reference docs to consistently use "interfaces" for the concept and "contracts" for files.
-2. Add a decision-log entry for the hybrid interface home.
-3. Update quick-reference docs to describe `/interfaces:*` as format-family skills invoked by the `contracts` brief.
+1. New module `crates/validate/src/interfaces.rs`: parse `x-specify-interface` from any YAML file under `contracts/`, run the nine validation rules, return findings.
+2. Extension to `specify validate` (`src/main.rs` / `src/commands/`): invoke the new validator and merge findings into the standard validate output.
+3. New command group `src/commands/interface.rs`: `list` and `show <id>` subcommands.
+4. Extension to `crates/schema/src/registry.rs`: accept `id:<name>` notation in `contracts.produces`, `contracts.consumes`, `contracts.imports`; resolve to a contract path during validation.
 
-### Layer 2: Registry inventory
+Estimated total: well under 500 lines of Rust. No new merge code, no new workspace code, no new schema files, no plan-entry changes.
 
-1. Extend the registry schema with the optional `interfaces` list.
-2. Add validation for interface ids, contract paths, authority, consumers, lifecycle, version, and compatibility policy.
-3. Add consistency checks between registry-level interface inventory and project-level `contracts` roles.
-4. Update `/spec:plan` guidance so generated plans populate interface inventory entries when it detects cross-project API or message boundaries.
-5. Define lifecycle transition validation for `draft`, `active`, `deprecated`, and `retired`.
-6. Define the default version policy and how registry `version` relates to OpenAPI / AsyncAPI `info.version` and JSON Schema `$id`.
+### specify
 
-### Layer 3: Review integration
+1. Update `/interfaces:openapi`, `/interfaces:asyncapi`, `/interfaces:json-schema` author intents to populate `x-specify-interface` when authoring or importing a top-level contract.
+2. Update the same skills' verifier intents to enforce the embedded-block rules.
+3. Update the `contracts@v1` build brief to instruct the format skills to populate or update the block.
+4. Update `docs/explanation/glossary.md` and `docs/reference/quick-reference.md` with the "interface identity" terminology.
+5. Add a worked example under `schemas/contracts/fixtures/` showing a contract with the block, the validator output, and a `specify interface list` projection.
 
-1. Add CLI-backed interface validation and diff commands, or fold equivalent checks into `specify review`.
-2. Route cross-project compatibility findings through a shared review output shape.
-3. Record compatibility findings with the interface id when available, not only the contract file path.
-4. Add lifecycle review findings for deprecated interfaces without replacement guidance and retired interfaces referenced by new work.
-5. Add drift review findings for generated-code changes that imply contract changes.
-6. Support `compatibility: block` in review mode after warning-mode output stabilizes.
-
-### Layer 4: Catalog projection
-
-1. Allow registry importers to map catalog API entities into `interfaces` inventory entries.
-2. Preserve Specify's local registry as a reviewable projection rather than performing live catalog lookups during plan or execute.
-3. Record catalog source identifiers only as metadata, not as execution dependencies.
-4. Map external API source metadata into `authority.kind: external` entries without granting Specify authority to evolve upstream interfaces.
-
-### Layer 5: Build consumption
-
-1. Document how Omnia and Vectis build skills consume contract artifacts for generated types, clients, stubs, and tests.
-2. Add guardrails that build skills never modify `.specify/contracts/` or change-local `contracts/` deltas.
-3. Route implementation-discovered interface changes back to define-phase contract deltas rather than patching generated code as the source of truth.
+No changes to Omnia or Vectis schemas, briefs, or skills. No changes to RFC-8's `contracts` brief, `contracts@v1` schema, or `/spec:plan` algorithm.
 
 ## Implementation Order
 
-1. Land vocabulary and documentation cleanup so "interfaces" and "contracts" are used consistently.
-2. Extend the registry schema with interface inventory, lifecycle, version, and external-authority fields.
-3. Add registry validation for inventory consistency and lifecycle policy.
-4. Update `/spec:plan` so interface inventory, `context`, and dependency edges are populated together.
-5. Fold interface validation and compatibility findings into `specify review`.
-6. Add warning-mode lifecycle and drift findings before enabling any blocking policy.
-7. Document build-skill consumption boundaries and add checks for accidental contract mutation during build.
+1. In `specify-cli`, add the `x-specify-interface` parser and the validator rules behind `specify validate`.
+2. In `specify-cli`, add `specify interface list` and `specify interface show <id>`.
+3. In `specify-cli`, extend registry role parsing to accept `id:<name>` references.
+4. In `specify`, update the three `/interfaces:*` skills' author and verify intents.
+5. In `specify`, update the `contracts@v1` build brief and add the fixture.
+6. Document the model in the glossary and quick-reference.
+
+Steps 1–3 land independently; steps 4–6 depend on step 1 reaching `main`.
 
 ## Migration
 
-Existing projects remain valid.
+No file moves. No registry edits required. No baseline contracts broken.
 
-No file moves are required. Existing `.specify/contracts/` baselines, `contracts@v1` plan entries, and `/interfaces:*` skills continue to work.
+To adopt identity for an interface, add an `x-specify-interface` block to the relevant file, choose a SemVer value, and run `specify validate`. Repeat per interface as needed; partial adoption is supported indefinitely.
 
-Recommended migration path:
-
-1. Add registry-level `interfaces` entries for multi-project or externally consumed APIs.
-2. Keep existing project-level `contracts.produces`, `contracts.consumes`, and `contracts.imports` fields until the registry validator can derive or check both views.
-3. Mark existing interfaces `active` by default unless they are known to be deprecated or retired.
-4. Add `version` only where the platform already has an interface versioning convention; avoid inventing synthetic versions during migration.
-5. For external APIs, add `authority.kind: external` and source metadata before enabling compatibility enforcement.
-6. Run warning-mode compatibility checks before enabling any blocking policy.
-7. Update documentation and examples to prefer "interface" for the logical boundary and "contract" for the artifact file.
-
-## Open Questions
-
-- Should registry-level `interfaces` be required in multi-repo registries, or only recommended?
-- Should `compatibility: block` block merge, execute, or only CI/review?
-- Should external catalog imports populate interface inventory directly, or only project registry entries?
-- Do shared payload schemas need their own logical interface ids, or should they remain attached to OpenAPI and AsyncAPI bindings?
-- Should project-level `contracts` roles eventually be deprecated in favor of registry-level `interfaces`, or remain as denormalized convenience fields?
-- Should `version` be required for `public` interfaces, or remain optional everywhere?
-- Should retirement ever delete contract files from `.specify/contracts/`, or should deletion stay a manual baseline cleanup outside normal deltas?
-- Should generated-code drift be a best-effort review warning, or should schemas opt into stronger build-time enforcement?
+For external contracts, set `authority.kind: external` and `authority.source` when adding the block. The corresponding project entry's `contracts.imports` continues to list the file path.
 
 ## References
 
@@ -502,3 +260,4 @@ Recommended migration path:
 - [OpenAPI 3.1 Specification](https://spec.openapis.org/oas/v3.1.0)
 - [AsyncAPI 3.0 Specification](https://www.asyncapi.com/docs/reference/specification/v3.0.0)
 - [JSON Schema](https://json-schema.org/specification)
+- [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html)
