@@ -38,8 +38,8 @@ Contracts sit outside the per-capability spec tree. A single OpenAPI document or
 
 Three platform concerns, three top-level locations:
 
-- **`.specify/registry.yaml`** declares *who* the participants are.
-- **`.specify/plan.yaml`** declares *what* changes are planned.
+- **`registry.yaml`** declares *who* the participants are.
+- **`plan.yaml`** declares *what* changes are planned.
 - **`contracts/`** declares *how* participants communicate.
 
 ## Naming Conventions

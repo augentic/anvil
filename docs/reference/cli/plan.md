@@ -6,7 +6,7 @@ Scaffold, populate, validate, transition, and archive initiative plans.
 
 | Verb | When to use |
 |------|-------------|
-| [`create`](#specify-plan-create) | Scaffold an empty `.specify/plan.yaml` at the start of an initiative (renamed from v1 `plan init`). |
+| [`create`](#specify-plan-create) | Scaffold an empty `plan.yaml` at the start of an initiative (renamed from v1 `plan init`). |
 | [`add`](#specify-plan-add) | Append a new entry to the plan in `pending` state (renamed from the v1 entry-append `plan create`). |
 | [`amend`](#specify-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
 | [`transition`](#specify-plan-transition) | Move an entry through the status state machine (`pending` -> `in-progress` -> `done` / `failed` / `blocked`, plus `skipped`). |
@@ -27,7 +27,7 @@ Scaffold an empty plan.
 specify plan create <name> [--source <key>=<path>...]
 ```
 
-Creates `.specify/plan.yaml` with the given name and an empty `changes:` list. Optional `--source` entries are recorded in the plan's `sources:` section.
+Creates `plan.yaml` with the given name and an empty `changes:` list. Optional `--source` entries are recorded in the plan's `sources:` section.
 
 ### specify plan validate
 

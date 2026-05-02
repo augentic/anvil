@@ -1,6 +1,6 @@
 # AsyncAPI Conventions
 
-Rules for AsyncAPI binding files under `.specify/contracts/messages/`. These files describe messaging channels and operations, wiring message payload schemas to the shared JSON Schema definitions in `../schemas/`.
+Rules for AsyncAPI binding files under `contracts/messages/`. These files describe messaging channels and operations, wiring message payload schemas to the shared JSON Schema definitions in `../schemas/`.
 
 ## Version
 

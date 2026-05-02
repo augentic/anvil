@@ -1,6 +1,6 @@
 # Sync peers (step 3b, multi-repo only)
 
-When **`.specify/registry.yaml`** exists and declares **more than one** project (`projects.length > 1` in the JSON from `specify registry show --format json`), `/spec:plan` enters the **sync-peers** phase between discovery and propose. Single-repo initiatives (absent registry or `projects.length ≤ 1`) skip this step entirely.
+When **`registry.yaml`** exists and declares **more than one** project (`projects.length > 1` in the JSON from `specify registry show --format json`), `/spec:plan` enters the **sync-peers** phase between discovery and propose. Single-repo initiatives (absent registry or `projects.length ≤ 1`) skip this step entirely.
 
 ## Normative sequence
 

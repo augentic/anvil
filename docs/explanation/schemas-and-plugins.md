@@ -31,7 +31,7 @@ Omnia and Vectis share the same core implementation artifact chain:
 3. **design** -- technical design (requires proposal + specs)
 4. **tasks** -- implementation checklist (requires specs + design)
 
-The specs and design briefs read any baseline contracts at `.specify/contracts/` as context. Implementation changes conform to those baseline contracts; new or changed interface shapes are introduced through dedicated `contracts@v1` changes instead of being derived inline.
+The specs and design briefs read any baseline contracts at `contracts/` as context. Implementation changes conform to those baseline contracts; new or changed interface shapes are introduced through dedicated `contracts@v1` changes instead of being derived inline.
 
 The Vectis schema extends this with a **composition** stage between specs and design that produces `composition.yaml` -- a structured YAML artifact describing the spatial layout of each screen (regions, groups, items, bindings, and event wiring). The composition brief requires specs and proposal as inputs, and the design brief reads the composition artifact to adopt the screen names and field names it proposes.
 

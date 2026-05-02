@@ -3,6 +3,8 @@
 > Status: Implemented · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](rfc-2-execution.md), [RFC-3a](rfc-3a-monoliths.md), [RFC-3b](rfc-3b-platform.md), [RFC-8](rfc-8-api-contracts.md)
 >
 > This RFC is written against the v1 CLI surface ([migration map](../../docs/explanation/migrating-cli-v1.md)). Every verb shape referenced below — `specify change {validate, outcome set, journal append}`, top-level `specify {registry, initiative}`, and so on — assumes the post-v1 noun groupings. Pre-v1 shapes (`specify change phase-outcome`, `specify initiative brief …`, `specify initiative registry …`) no longer exist.
+>
+> **v2 layout note**: this RFC predates the v2 layout move (specify-cli `0.2.0`). Every reference below to `.specify/registry.yaml`, `.specify/plan.yaml`, `.specify/initiative.md`, and `.specify/contracts/` should be read as `registry.yaml`, `plan.yaml`, `initiative.md`, and `contracts/` at the repo root in current code. The hub topology, the `specify init --hub` flag, the registry add/remove verbs, and the `specify initiative finalize` archive sweep all behave identically — only the file locations changed. See [docs/explanation/whats-new.md](../../docs/explanation/whats-new.md) for the migration story.
 
 ## Abstract
 

@@ -26,7 +26,7 @@ Running OpenAPI or AsyncAPI ahead of json-schema produces dangling `$ref`s and f
 
 ### Cross-project compatibility check (RFC-9 §3B)
 
-Each format skill's `verifier.md` accepts a `--mode cross-project` flag. The `/spec:execute` driver invokes the appropriate verifier after every successful merge of a contract listed in the producer project's `registry.yaml:contracts.produces`. The verifier compares the merged contract against each consumer's tier-2 workspace clone (`.specify/workspace/<consumer>/.specify/contracts/...`) and emits a structured YAML report of breaking changes (removed fields, newly-required fields, narrowed types, removed endpoints / channels). Findings are non-fatal — the execute driver records them as `cross-project-warning:` entries in the merged change's `journal.yaml` and renders a warning block in the merge transcript, but never halts the loop.
+Each format skill's `verifier.md` accepts a `--mode cross-project` flag. The `/spec:execute` driver invokes the appropriate verifier after every successful merge of a contract listed in the producer project's `registry.yaml:contracts.produces`. The verifier compares the merged contract against each consumer's tier-2 workspace clone (`.specify/workspace/<consumer>/contracts/...`) and emits a structured YAML report of breaking changes (removed fields, newly-required fields, narrowed types, removed endpoints / channels). Findings are non-fatal — the execute driver records them as `cross-project-warning:` entries in the merged change's `journal.yaml` and renders a warning block in the merge transcript, but never halts the loop.
 
 See each format skill's `verifier.md` (§Cross-project mode) and [`/spec:execute` → §Cross-project contract check](../spec/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b) for the post-merge invocation contract. The shared `change-kind` vocabulary lives at [`references/cross-project-compatibility.md`](references/cross-project-compatibility.md).
 
@@ -40,7 +40,7 @@ Format-specific conventions:
 
 Cross-format references shared by every format skill:
 
-- [Artifact Structure](references/artifact-structure.md) — `.specify/contracts/` layout, naming, change-level delta rules
+- [Artifact Structure](references/artifact-structure.md) — `contracts/` layout, naming, change-level delta rules
 - [Baseline vs Delta](references/baseline-vs-delta.md) — three authorship patterns (contract-first / spec-first / contract-given), already-covered / new-or-modified / normalisation classification, opaque-file-replacement merge contract
 - [Import / Upgrade Policy](references/import-upgrade-policy.md) — format detection, per-format upgrade targets (Swagger 2.0 → OpenAPI 3.1; AsyncAPI 2.x → 3.0; JSON Schema Draft 4 / 6 / 7 / 2019-09 → 2020-12), lossless-vs-lossy decisions, when to refuse and ask the operator
 - [Report Shape](references/report-shape.md) — single-mode markdown and cross-project YAML report formats, severity levels, locator format, exit semantics

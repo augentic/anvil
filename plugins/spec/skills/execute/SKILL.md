@@ -17,7 +17,7 @@ The full algorithm lives in [per-change-algorithm.md](per-change-algorithm.md). 
 
 # Execute skill
 
-Drive an initiative through `.specify/plan.yaml` by automating the Layer 1 loop: `get next change` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify plan transition`.
+Drive an initiative through `plan.yaml` by automating the Layer 1 loop: `get next change` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify plan transition`.
 
 > **Status.** Layer 2 is fully landed. The driver supports multi-repo CWD routing (`project` field on plan entries), `plan next` field extensions (`project`, `description`, `sources` in JSON), workspace status checks, merge auto-commit in workspace clones, and self-heal under multi-repo. This skill ships the `--dry-run` preview, the supervised single-change run, the self-heal pass on startup, `--loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/spec:execute --loop` drives the `platform-v2` example end-to-end against a plan authored by `/spec:plan` — see [fixtures.md](fixtures.md) for the exit-gate meta-fixture.
 
@@ -26,14 +26,14 @@ Drive an initiative through `.specify/plan.yaml` by automating the Layer 1 loop:
 Specify at runtime is a three-layer stack:
 
 1. **Phase skills** (`/spec:define`, `/spec:build`, `/spec:merge`, and `/spec:drop`) — the define-build-merge loop that operates on a single change.
-2. **Plan CLI** (`specify plan {validate, next, status, create, amend, transition, archive, lock}`) — the library-backed verbs that read and write `.specify/plan.yaml`. Both humans (Layer 1) and this skill (Layer 2) drive the loop through these verbs; no other code path writes the plan file.
+2. **Plan CLI** (`specify plan {validate, next, status, create, amend, transition, archive, lock}`) — the library-backed verbs that read and write `plan.yaml`. Both humans (Layer 1) and this skill (Layer 2) drive the loop through these verbs; no other code path writes the plan file.
 3. **Driver skill** (`/spec:execute`, this one) — the Layer 2 automation that reads `plan.yaml`, picks the next entry, invokes the phase sequence, and records outcomes.
 
 The on-disk contracts the driver depends on are the same files humans read in Layer 1 — `/spec:execute` introduces no new storage of its own:
 
 | File | Owner | Role |
 |---|---|---|
-| `.specify/plan.yaml` | library (`Plan::{create, amend, transition, archive}`) | Ordered change list with per-entry status. Driver reads via `specify plan next`/`status`; writes only via `specify plan transition`. |
+| `plan.yaml` | library (`Plan::{create, amend, transition, archive}`) | Ordered change list with per-entry status. Driver reads via `specify plan next`/`status`; writes only via `specify plan transition`. |
 | `.specify/changes/<name>/.metadata.yaml` | library (`ChangeMetadata` + `specify change outcome set`) | Change lifecycle status **and** the phase's `outcome` field. Phases stamp this; the driver reads it on phase return. |
 | `.specify/changes/<name>/journal.yaml` | library (`Journal::append` + `specify change journal append`) | Append-only audit log of `question` / `failure` / `recovery` entries. Never consumed as a signalling channel — `.metadata.yaml:outcome` is the only state the driver reads. |
 | `.specify/plan.lock` | library (`PlanLockStamp`) | Advisory PID stamp held by the running driver. Prevents two `/spec:execute` invocations racing on the same plan. |
@@ -62,7 +62,7 @@ These invariants constrain this skill's behaviour.
 /spec:execute --loop       # run until no eligible change remains
 ```
 
-The plan path is fixed at `.specify/plan.yaml`; multi-plan support is a future capability.
+The plan path is fixed at `plan.yaml`; multi-plan support is a future capability.
 
 ## Driver lock
 
@@ -129,8 +129,8 @@ After a successful merge of a multi-repo change whose plan entry has a non-null 
 
 | Surface | Status |
 |---|---|
-| Write `.specify/plan.yaml` *entries* (`create` / `amend`) | Never — those writes are the phases' concern (they shell out to `specify plan add` / `specify plan amend` mid-run). |
-| Write `.specify/plan.yaml` *status* (`transition`) | Only via `specify plan transition`, at exactly three points in a supervised run: `pending → in-progress` before step 6, and the terminal `in-progress → {done, failed, blocked}` in steps 10/11/12. |
+| Write `plan.yaml` *entries* (`create` / `amend`) | Never — those writes are the phases' concern (they shell out to `specify plan add` / `specify plan amend` mid-run). |
+| Write `plan.yaml` *status* (`transition`) | Only via `specify plan transition`, at exactly three points in a supervised run: `pending → in-progress` before step 6, and the terminal `in-progress → {done, failed, blocked}` in steps 10/11/12. |
 | Write `.specify/changes/<name>/.metadata.yaml` (including the `outcome` field) | Never — that is the phase skills' concern via `specify change outcome set`. |
 | Write `.specify/changes/<name>/journal.yaml` | Three narrowly-scoped paths only: (1) self-heal `recovery` entries — one per reclaimed/resumed in-progress entry; (2) cross-project `cross-project-warning:` entries — one per finding from the format-appropriate `/contract:*` skill (verifier intent, `--mode cross-project`) on a successful multi-repo merge; (3) RFC-9 §2B `registry-amendment-required:` entries — one per `registry-amendment-required` deferral, recorded **before** `/spec:drop`. Phases own all other `type: question` / `type: failure` entries. |
 | Invoke `/spec:define`, `/spec:build`, `/spec:merge`, or `/spec:drop` | Never in `--dry-run` (including dry-run self-heal); in supervised and `--loop` modes, exactly as the algorithm prescribes. |
@@ -149,7 +149,7 @@ No other on-disk state is written by `/spec:execute` itself.
 
 ## Guardrails
 
-- Never hand-edit `.specify/plan.yaml`, `.specify/changes/<name>/.metadata.yaml`, or `.specify/changes/<name>/journal.yaml`. Route every write through the CLI verbs above — the single-writer invariant depends on it.
+- Never hand-edit `plan.yaml`, `.specify/changes/<name>/.metadata.yaml`, or `.specify/changes/<name>/journal.yaml`. Route every write through the CLI verbs above — the single-writer invariant depends on it.
 - Never skip the lock-release step. If the skill exits early after a successful acquire, run `specify plan lock release --pid <agent-session-pid>` on the way out. Stale stamps can be reclaimed by a later run, but only after a visible-to-the-operator failure.
 - Treat an unexpected `specify plan next` response shape (missing keys, unknown `reason`) as a hard failure: print the raw JSON, release the lock, and exit non-zero. Do not speculate.
 - For `--dry-run` specifically: the skill MUST NOT invoke any phase skill, MUST NOT shell out to `specify plan transition`, MUST NOT shell out to `specify change journal append`, and MUST NOT invoke `/spec:drop`. This prohibition extends to the self-heal step: dry-run self-heal is report-only ([self-heal.md](self-heal.md) §Dry-run variant). The first-line banner prefixes the rendered output with `[dry-run] `.
@@ -168,7 +168,7 @@ When `specify plan next` returns `reason: stuck`, or when the terminal summary c
 |---|---|---|---|
 | `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; doctor is the only place where the cycle path surfaces. | `specify plan amend <name> --depends-on …` to break the cycle on the offending entry, then re-run `plan doctor`. |
 | `orphan-source-key` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of validate's `unknown-source`). | Either reference the key from an entry's `sources:` list via `specify plan amend <name> --sources …` or remove it from the top-level map. Non-fatal. |
-| `stale-workspace-clone` | warning | `.specify/workspace/<project>/` clone's signature has drifted from `.specify/registry.yaml`, or no signature is readable. | `specify workspace sync` to refresh the clone. Non-fatal. |
+| `stale-workspace-clone` | warning | `.specify/workspace/<project>/` clone's signature has drifted from `registry.yaml`, or no signature is readable. | `specify workspace sync` to refresh the clone. Non-fatal. |
 | `unreachable-entry` | error | Pending entry whose dependency closure is rooted in a `failed`/`skipped` predecessor. Distinct from cycles — entries inside a cycle are reported only under `cycle-in-depends-on`. | Recover the predecessor (`specify plan transition <pred> pending` once the underlying issue is fixed) or `specify plan transition <entry> skipped --reason "…"` to drop the leaf. |
 
 The driver itself never invokes `plan doctor` — it is an operator triage verb, not a runtime check. `specify plan validate` continues to be invoked verbatim by `plan next` / `plan status` for the structural-error short-circuit; doctor's four additional codes are surfaced only when the operator asks.

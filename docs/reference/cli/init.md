@@ -14,7 +14,7 @@ specify init --hub [--name <project-name>] [--domain "<description>"]
 Two modes, picked by the presence of `--hub`:
 
 - **Regular** (no `--hub`): scaffolds a single-project workspace. Creates `.specify/{changes,specs,archive,.cache}/`, resolves `--schema-uri` into `.specify/.cache/`, writes `.specify/project.yaml` with a `rules:` entry per `pipeline.define` brief, and records the running binary's version as `specify-version`.
-- **Hub** (with `--hub`, RFC-9 §1D): scaffolds a registry-only platform hub. Creates `.specify/`, writes a sentinel `.specify/project.yaml { schema: hub, hub: true, … }`, an empty `.specify/registry.yaml { version: 1, projects: [] }`, and an `.specify/initiative.md` from the canonical template. No schema URI is needed, no cache is needed, and phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines on itself. Refuses to run when `.specify/` already exists.
+- **Hub** (with `--hub`, RFC-9 §1D): scaffolds a registry-only platform hub. Creates `.specify/`, writes a sentinel `.specify/project.yaml { schema: hub, hub: true, … }`, an empty `registry.yaml { version: 1, projects: [] }`, and an `initiative.md` from the canonical template. No schema URI is needed, no cache is needed, and phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines on itself. Refuses to run when `.specify/` already exists.
 
 In both modes the command upserts `.specify/.cache/` and `.specify/workspace/` into the project `.gitignore`.
 

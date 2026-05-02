@@ -19,10 +19,10 @@ Pre-flight
 
 ## Step 1 — Brief
 
-.specify/initiative.md is absent.
+initiative.md is absent.
 
   $ specify initiative create polish-pass
-  ok: wrote .specify/initiative.md
+  ok: wrote initiative.md
 
 Shape `update-existing` carries no sources. Suggested default body:
 
@@ -36,7 +36,7 @@ Shape `update-existing` carries no sources. Suggested default body:
   on flows that already shipped.
 
 Accept the default body? [Y/n] y
-ok: wrote .specify/initiative.md (operator can $EDITOR to refine before step 3)
+ok: wrote initiative.md (operator can $EDITOR to refine before step 3)
 
 ---
 
@@ -57,7 +57,7 @@ Multi-project registry; descriptions complete. Continuing.
   ── /spec:plan polish-pass ──
 
   $ specify plan create polish-pass
-  ok: scaffolded .specify/plan.yaml
+  ok: scaffolded plan.yaml
 
   Step 3(a) — Discovery
     No --from / --against / --source supplied.

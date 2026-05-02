@@ -15,7 +15,7 @@ Materialise, inspect, and push workspace peer clones for multi-repo initiatives.
 
 ### specify workspace sync
 
-Clone or refresh every project declared in `.specify/registry.yaml` into `.specify/workspace/<project>/`.
+Clone or refresh every project declared in `registry.yaml` into `.specify/workspace/<project>/`.
 
 ```bash
 specify workspace sync
@@ -49,7 +49,7 @@ Push workspace clones that have local commits back to their remote repositories.
 specify workspace push [<project>...]
 ```
 
-Omitting the project argument pushes all dirty clones. The initiative name for branch naming (`specify/<initiative-name>`) is read from `.specify/plan.yaml`.
+Omitting the project argument pushes all dirty clones. The initiative name for branch naming (`specify/<initiative-name>`) is read from `plan.yaml`.
 
 **Per-project algorithm:**
 
@@ -105,7 +105,7 @@ Squash-merge the open PRs created by `workspace push` once their CI is green (RF
 specify workspace merge [<project>...]
 ```
 
-Omitting the project argument considers every entry in `.specify/registry.yaml`. The initiative name (and therefore the expected PR branch `specify/<initiative-name>`) is read from `.specify/plan.yaml`.
+Omitting the project argument considers every entry in `registry.yaml`. The initiative name (and therefore the expected PR branch `specify/<initiative-name>`) is read from `plan.yaml`.
 
 **Per-project algorithm:**
 

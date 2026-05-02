@@ -1,6 +1,6 @@
 # OpenAPI Conventions
 
-Rules for OpenAPI binding files under `.specify/contracts/http/`. These files describe HTTP endpoints and wire request/response schemas to the shared JSON Schema payload definitions in `../schemas/`.
+Rules for OpenAPI binding files under `contracts/http/`. These files describe HTTP endpoints and wire request/response schemas to the shared JSON Schema payload definitions in `../schemas/`.
 
 ## Version
 

@@ -2,7 +2,7 @@
 
 The per-change algorithm runs a single plan entry to a terminal status (`done` / `failed` / `blocked`) and is the core of every mode. The [§Modes](modes.md) section wires this into the three invocations (`--dry-run`, supervised, `--loop`) by describing only the deltas from this algorithm.
 
-The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; this skill writes nothing to `.specify/plan.yaml`, `.metadata.yaml`, or `journal.yaml` directly.
+The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; this skill writes nothing to `plan.yaml`, `.metadata.yaml`, or `journal.yaml` directly.
 
 ```text
 1. Resolve the project directory (walk upward from CWD looking for
@@ -238,7 +238,7 @@ The dry-run variant uses the same line with `(if executed)` appended (mirroring 
 
 ## Subtleties
 
-- **`/spec:execute` writes only plan transitions and a narrow set of journal entries.** Every write this skill performs against `.specify/plan.yaml` goes through `specify plan transition`. It never writes `outcome` to `.metadata.yaml` (the phase does that, via `specify change outcome set`). The driver appends to `journal.yaml` in exactly two situations: (1) the self-heal step emits one `type: recovery` entry per reclaimed or resumed in-progress entry; (2) the post-merge cross-project contract check emits one `type: failure` entry per finding the validator reports, with the canonical `cross-project-warning:` summary prefix. The define / build / merge phases own all other `type: question` and `type: failure` entries; the driver never touches those.
+- **`/spec:execute` writes only plan transitions and a narrow set of journal entries.** Every write this skill performs against `plan.yaml` goes through `specify plan transition`. It never writes `outcome` to `.metadata.yaml` (the phase does that, via `specify change outcome set`). The driver appends to `journal.yaml` in exactly two situations: (1) the self-heal step emits one `type: recovery` entry per reclaimed or resumed in-progress entry; (2) the post-merge cross-project contract check emits one `type: failure` entry per finding the validator reports, with the canonical `cross-project-warning:` summary prefix. The define / build / merge phases own all other `type: question` and `type: failure` entries; the driver never touches those.
 
 - **Summary is copied verbatim into `status-reason`.** The string passed to `specify plan transition … --reason "…"` in steps 11c and 12c is byte-identical to `outcome.summary` stamped by the phase. The fixtures under `fixtures/single-change/` pin this: every `plan.yaml.after` carries `status-reason: "<exact summary from the metadata file>"`. Do not paraphrase, truncate, or reformat.
 

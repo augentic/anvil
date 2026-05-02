@@ -1,8 +1,8 @@
 {
   "name": "contract",
   "displayName": "Contracts",
-  "description": "Skills to author, import, and verify API/interface contracts — OpenAPI, AsyncAPI, JSON Schema, and future formats — from Specify artifacts.",
-  "version": "0.25.1",
+  "description": "Skills to author, import, and verify API/interface contracts \u2014 OpenAPI, AsyncAPI, JSON Schema, and future formats \u2014 from Specify artifacts.",
+  "version": "0.26.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"

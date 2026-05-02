@@ -26,7 +26,7 @@ If the CWD routing step (5a) changed the working directory, restore CWD to the s
 When step 10 transitions a change to `done`, the driver runs a non-fatal contract compatibility check **only when** the merged change satisfies all three conditions:
 
 1. The merged change has a non-null `project` field on its plan entry (multi-repo only — single-repo initiatives have no peer consumers to warn).
-2. `.specify/registry.yaml` exists and the producer's project entry declares a non-empty `contracts.produces` list.
+2. `registry.yaml` exists and the producer's project entry declares a non-empty `contracts.produces` list.
 3. At least one merged file path under the producer's `contracts/` directory matches an entry in the producer's `produces` list (i.e. the merge actually touched a produced contract — most merges that just touch specs do nothing here).
 
 When all three hold, walk the producer's `produces` list and find every consumer project (any registry entry whose `contracts.consumes` list contains the same path). RFC-12 collapsed the contract role set to `produces` and `consumes`; externally-authored contracts are encoded by the absence of any `produces` entry, not by a separate `imports` field. For each `(produced-contract, consumer)` pair, invoke the format-appropriate `/contract:*` skill in its verifier intent with `--mode cross-project` — pick the skill from the merged contract's category: `/contract:openapi` for HTTP / resource APIs (`contracts/http/*`), `/contract:asyncapi` for evented / pub-sub / streaming (`contracts/messages/*`), `/contract:json-schema` for shared payload schemas (`contracts/schemas/*`):
@@ -38,7 +38,7 @@ When all three hold, walk the producer's `produces` list and find every consumer
     --consumer-workspace .specify/workspace/<consumer>/
 ```
 
-Both arguments are paths anchored at the **initiating repo root**, not the producer's workspace clone — the post-merge check runs after the CWD restore (step 9a) so the driver sits in the initiating repo where `.specify/registry.yaml` and root `contracts/` live.
+Both arguments are paths anchored at the **initiating repo root**, not the producer's workspace clone — the post-merge check runs after the CWD restore (step 9a) so the driver sits in the initiating repo where `registry.yaml` and root `contracts/` live.
 
 The verifier emits a YAML report (see [shared report shape](../../../contract/references/report-shape.md#cross-project-mode-output-structured-yaml)). Parse `summary.total-findings`:
 

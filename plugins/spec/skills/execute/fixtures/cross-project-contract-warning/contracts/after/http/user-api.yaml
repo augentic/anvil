@@ -1,8 +1,8 @@
 # Post-merge (v2) shape of the user-api contract — what the
 # `update-user-api-v2` change's `contracts/http/user-api.yaml`
-# delta merged into `.specify/contracts/http/user-api.yaml` on
+# delta merged into `contracts/http/user-api.yaml` on
 # the producer side. The cross-project validator compares this
-# file against `../../consumer-workspace/.specify/contracts/http/user-api.yaml`.
+# file against `../../consumer-workspace/contracts/http/user-api.yaml`.
 #
 # Two breaking-against-the-consumer changes vs the v1 shape:
 # 1. `email` removed from GET /users/{id} response (PII reduction).

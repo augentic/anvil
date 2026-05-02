@@ -72,7 +72,7 @@ specify change journal append <name> <phase> <kind> --summary "..." [--context "
 
 ## Mutating the plan mid-run
 
-Phases MAY shell out to `specify plan add` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `.specify/plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
+Phases MAY shell out to `specify plan add` / `specify plan amend` mid-run when they discover something structural about the initiative. Both commands write `plan.yaml` synchronously — the new or updated entry is visible to every subsequent `/spec:execute` iteration.
 
 ### Allowed
 
@@ -82,7 +82,7 @@ Phases MAY shell out to `specify plan add` / `specify plan amend` mid-run when t
 ### Forbidden
 
 - **Writing `status` through `amend`.** The `PlanChangePatch` type has no `status` field — this is a type-system guarantee. Status transitions are `/spec:execute`'s sole prerogative via `specify plan transition`.
-- **Hand-editing `.specify/plan.yaml` or `.specify/changes/<name>/.metadata.yaml`.** Always route through the CLI so the single-writer invariant holds.
+- **Hand-editing `plan.yaml` or `.specify/changes/<name>/.metadata.yaml`.** Always route through the CLI so the single-writer invariant holds.
 
 `/spec:drop` does not mutate `plan.yaml` directly: it terminates the active change, and `/spec:execute` then issues `specify plan transition <name> failed` or `blocked` based on the upstream outcome.
 

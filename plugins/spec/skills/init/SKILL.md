@@ -87,7 +87,7 @@ I'll ensure the `specify` CLI is available, decide whether this is a regular sin
 
 5. **Collect project metadata and invoke `specify init`**
 
-   Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DOMAIN` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DOMAIN` if the user hasn't supplied one. An empty `$DOMAIN` is fine — the CLI omits the field. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `.specify/initiative.md`'s frontmatter and rejects non-kebab values.
+   Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DOMAIN` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DOMAIN` if the user hasn't supplied one. An empty `$DOMAIN` is fine — the CLI omits the field. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `initiative.md`'s frontmatter and rejects non-kebab values.
 
    **Regular invocation:**
 
@@ -110,7 +110,7 @@ I'll ensure the `specify` CLI is available, decide whether this is a regular sin
    The CLI writes:
 
    - **Regular** — `.specify/{changes,specs,archive,.cache}/`, `.specify/project.yaml` with one empty `rules:` entry per `pipeline.define` brief, the resolved schema cached under `.specify/.cache/`, `.specify/.cache/` upserted into `.gitignore`, and `specify-version` recorded.
-   - **Hub** — `.specify/project.yaml` with `schema: hub`, `hub: true`, no `rules:` block; `.specify/registry.yaml` with `version: 1` and `projects: []`; `.specify/initiative.md` from the canonical template named after `$PROJECT_NAME`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`. Phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines.
+   - **Hub** — `.specify/project.yaml` with `schema: hub`, `hub: true`, no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `initiative.md` from the canonical template named after `$PROJECT_NAME`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`. Phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines.
 
    For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `schema-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, and `hub`. Normal operator-facing examples should use text output.
 
@@ -125,8 +125,8 @@ I'll ensure the `specify` CLI is available, decide whether this is a regular sin
 
    For a **hub** init, tell the user:
    - "Specify initialized as a registry-only platform hub. Config written to `.specify/project.yaml`."
-   - "Add code projects to `.specify/registry.yaml` once they exist. The hub starts with `projects: []`."
-   - "Edit `.specify/initiative.md` to frame the first initiative this hub will drive."
+   - "Add code projects to `registry.yaml` once they exist. The hub starts with `projects: []`."
+   - "Edit `initiative.md` to frame the first initiative this hub will drive."
 
    Do NOT print "Next steps" yet — Step 7 determines which output to show.
 
@@ -195,12 +195,12 @@ Next steps:
 
 **Topology**: registry-only hub (RFC-9 §1D)
 **Config**: .specify/project.yaml (`schema: hub`, `hub: true`)
-**Registry**: .specify/registry.yaml (`version: 1`, `projects: []`)
-**Initiative brief**: .specify/initiative.md
+**Registry**: registry.yaml (`version: 1`, `projects: []`)
+**Initiative brief**: initiative.md
 
 Next steps:
-1. Add registered projects to `.specify/registry.yaml` (hand-edit, or `specify registry add` once that verb lands)
-2. Edit `.specify/initiative.md` to frame the first initiative
+1. Add registered projects to `registry.yaml` (hand-edit, or `specify registry add` once that verb lands)
+2. Edit `initiative.md` to frame the first initiative
 3. Run `/spec:plan <name>` to author a plan, then `/spec:execute --loop` to drive it
 ```
 

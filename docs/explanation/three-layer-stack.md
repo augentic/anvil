@@ -49,8 +49,8 @@ The primary command families are:
 
 - **`specify change ...`** -- per-change CRUD, validation, merge (`change merge {preview, conflict-check, run}`), task tracking (`change task {progress, mark}`), phase outcome (`change outcome {set, show}`), and journal entries (`change journal {append, show}`).
 - **`specify plan ...`** -- scaffold, populate, validate, transition, and archive an initiative plan.
-- **`specify initiative ...`** -- manage the operator-authored initiative brief at `.specify/initiative.md` and finalize an initiative once every PR has merged (`initiative {create, show, finalize}`).
-- **`specify registry ...`** -- manage the platform registry at `.specify/registry.yaml` (multi-repo initiatives) — `registry {add, remove, show, validate}`.
+- **`specify initiative ...`** -- manage the operator-authored initiative brief at `initiative.md` and finalize an initiative once every PR has merged (`initiative {create, show, finalize}`).
+- **`specify registry ...`** -- manage the platform registry at `registry.yaml` (multi-repo initiatives) — `registry {add, remove, show, validate}`.
 - **`specify workspace ...`** -- materialise, inspect, push, and merge workspace clones for multi-repo initiatives. Workspace clones are durable and read-write; the separate read-only legacy-source clones used by `/spec:analyze` live elsewhere -- see [Workspace Tiers](workspace-tiers.md) for the distinction.
 - **`specify status`** -- project dashboard summarising registry, plan, and active changes.
 
@@ -85,7 +85,7 @@ The full set of Layer 2 skills:
 
 ## Layer 3: Plan & Drive
 
-Layer 3 skills coordinate **multi-change programs** through `.specify/plan.yaml` -- an ordered, dependency-aware list of changes with status tracking. They are the authoring and execution counterparts of an initiative-scoped program.
+Layer 3 skills coordinate **multi-change programs** through `plan.yaml` -- an ordered, dependency-aware list of changes with status tracking. They are the authoring and execution counterparts of an initiative-scoped program.
 
 | Skill | Role |
 |-------|------|

@@ -2,7 +2,7 @@
 
 Inspect and validate the platform's baseline contracts under the project's `contracts/` directory. Read-only; never modifies files. (RFC-12 §"CLI surface".)
 
-The verbs are the CLI counterpart to the per-change `/contract:*` skills: skills produce contract artefacts inside a change, and these verbs project / validate the merged baseline once the change has landed in `.specify/contracts/`.
+The verbs are the CLI counterpart to the per-change `/contract:*` skills: skills produce contract artefacts inside a change, and these verbs project / validate the merged baseline once the change has landed in `contracts/`.
 
 ## Verb cheat-sheet
 

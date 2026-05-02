@@ -26,7 +26,7 @@ Inferred from the active change context — no positional arguments required:
 ```text
 $CHANGE_DIR          = .specify/changes/<change-name>
 $CHANGE_CONTRACTS    = $CHANGE_DIR/contracts/
-$BASELINE_CONTRACTS  = .specify/contracts/
+$BASELINE_CONTRACTS  = contracts/
 $CHANGE_SPECS        = $CHANGE_DIR/specs/
 ```
 
@@ -35,12 +35,12 @@ $CHANGE_SPECS        = $CHANGE_DIR/specs/
 Caller passes the producer's updated contract path and the consumer's workspace clone path:
 
 ```text
-$PRODUCER_CONTRACT  = <path-to-producer-contract>     # e.g. .specify/contracts/http/user-api.yaml
+$PRODUCER_CONTRACT  = <path-to-producer-contract>     # e.g. contracts/http/user-api.yaml
 $CONSUMER_WORKSPACE = <path-to-consumer-workspace>    # e.g. .specify/workspace/mobile/
-$CONSUMER_CONTRACTS = $CONSUMER_WORKSPACE/.specify/contracts/
+$CONSUMER_CONTRACTS = $CONSUMER_WORKSPACE/contracts/
 ```
 
-`$PRODUCER_CONTRACT` is a path relative to the initiating repo root (typically a file under `.specify/contracts/http/` after a producer change merges). `$CONSUMER_WORKSPACE` is a tier-2 workspace clone — `specify workspace sync` materialises consumer clones at `.specify/workspace/<consumer-name>/`, and the consumer's view of central contracts lives at `$CONSUMER_CONTRACTS`.
+`$PRODUCER_CONTRACT` is a path relative to the initiating repo root (typically a file under `contracts/http/` after a producer change merges). `$CONSUMER_WORKSPACE` is a tier-2 workspace clone — `specify workspace sync` materialises consumer clones at `.specify/workspace/<consumer-name>/`, and the consumer's view of central contracts lives at `$CONSUMER_CONTRACTS`.
 
 ## Prerequisites
 
@@ -77,7 +77,7 @@ For each `.yaml` file in `$CHANGE_CONTRACTS/http/`:
 Report format (one entry per failure):
 
 ```
-FAIL: contracts/http/user-api.yaml — $ref "../schemas/missing-type.yaml" does not resolve (checked change contracts/schemas/ and baseline .specify/contracts/schemas/)
+FAIL: contracts/http/user-api.yaml — $ref "../schemas/missing-type.yaml" does not resolve (checked change contracts/schemas/ and baseline contracts/schemas/)
 ```
 
 `$ref` pointers using `#/components/...` (in-document) are also checked — they must resolve to a sibling key inside the same file. The verifier does not chase external URL `$ref`s; it flags them as `WARN` (cross-format URL refs are out of scope).
@@ -213,7 +213,7 @@ The mode is **non-fatal**: cross-project warnings never stop the execute loop. T
 
 For each `(producer-contract, consumer-workspace)` pair, compare the producer's updated contract against the consumer's last-known view of the same contract. Resolve the consumer's view in this order:
 
-1. `$CONSUMER_CONTRACTS/<relative-path>` — the consumer's materialised baseline at the matching path. This is what `specify workspace sync` populates from the central `.specify/contracts/`.
+1. `$CONSUMER_CONTRACTS/<relative-path>` — the consumer's materialised baseline at the matching path. This is what `specify workspace sync` populates from the central `contracts/`.
 2. If absent, search `$CONSUMER_CONTRACTS/imports/` for a file with the same logical name (legacy import path used by some consumer clones).
 3. If still absent, the consumer has no prior view — emit a single `consumer-has-no-baseline` finding and stop. There is nothing to compare against.
 

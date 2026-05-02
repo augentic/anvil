@@ -86,15 +86,15 @@ These surfaces are untouched. Scripts that use them keep working.
 - `specify schema {resolve, check, pipeline}` -- schema and brief pipeline queries.
 - `specify plan {create, validate, doctor, next, status, add, amend, transition, archive, lock {acquire, release, status}}` -- initiative plan CRUD and lifecycle. The v1.x rename rows above renamed `init` -> `create` (file scaffold) and the entry-append `create` -> `add`; `doctor` is a strict superset of `validate` added by RFC-9 §4B.
 - `specify workspace {sync, status, push, merge}` -- multi-repo workspace clones; `merge` was added by RFC-9 §4A.
-- `specify initiative {create, show, finalize}` -- operator brief at `.specify/initiative.md`; `finalize` was added by RFC-9 §4C, and `init` was renamed to `create` in v1.x.
-- `specify registry {add, remove, show, validate}` -- platform registry at `.specify/registry.yaml`; `add` and `remove` were added by RFC-9 §2A.
+- `specify initiative {create, show, finalize}` -- operator brief at `initiative.md`; `finalize` was added by RFC-9 §4C, and `init` was renamed to `create` in v1.x.
+- `specify registry {add, remove, show, validate}` -- platform registry at `registry.yaml`; `add` and `remove` were added by RFC-9 §2A.
 - `specify vectis {init, verify, add-shell, update-versions}` -- Vectis project tooling.
 - `specify change {create, list, status, transition, touched-specs, overlap, archive, drop}` -- the existing CRUD verbs on `change`. The rename added new verbs alongside; it did not displace these.
 
 ## See also
 
 - [specify change](../reference/cli/change.md) -- per-change CRUD, validate, merge, task, outcome, journal.
-- [specify initiative](../reference/cli/initiative.md) -- operator brief at `.specify/initiative.md`.
-- [specify registry](../reference/cli/registry.md) -- platform registry at `.specify/registry.yaml`.
+- [specify initiative](../reference/cli/initiative.md) -- operator brief at `initiative.md`.
+- [specify registry](../reference/cli/registry.md) -- platform registry at `registry.yaml`.
 - [specify status](../reference/cli/status.md) -- project dashboard.
 - [CLI Reference index](../reference/cli/index.md) -- top-level command catalogue.

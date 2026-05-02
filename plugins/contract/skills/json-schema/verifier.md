@@ -27,7 +27,7 @@ Inferred from the active change context — no positional arguments required:
 $CHANGE_DIR          = .specify/changes/<change-name>
 $CHANGE_CONTRACTS    = $CHANGE_DIR/contracts/
 $CHANGE_SCHEMAS      = $CHANGE_CONTRACTS/schemas/
-$BASELINE_CONTRACTS  = .specify/contracts/
+$BASELINE_CONTRACTS  = contracts/
 $BASELINE_SCHEMAS    = $BASELINE_CONTRACTS/schemas/
 $CHANGE_SPECS        = $CHANGE_DIR/specs/
 ```
@@ -37,12 +37,12 @@ $CHANGE_SPECS        = $CHANGE_DIR/specs/
 Caller passes the producer's updated schema path and the consumer's workspace clone path:
 
 ```text
-$PRODUCER_CONTRACT  = <path-to-producer-schema>      # e.g. .specify/contracts/schemas/user.yaml
+$PRODUCER_CONTRACT  = <path-to-producer-schema>      # e.g. contracts/schemas/user.yaml
 $CONSUMER_WORKSPACE = <path-to-consumer-workspace>   # e.g. .specify/workspace/mobile/
-$CONSUMER_CONTRACTS = $CONSUMER_WORKSPACE/.specify/contracts/
+$CONSUMER_CONTRACTS = $CONSUMER_WORKSPACE/contracts/
 ```
 
-`$PRODUCER_CONTRACT` is a path relative to the initiating repo root (typically a file under `.specify/contracts/schemas/` after a producer change merges). `$CONSUMER_WORKSPACE` is a tier-2 workspace clone — `specify workspace sync` materialises consumer clones at `.specify/workspace/<consumer-name>/`, and the consumer's view of central schemas lives at `$CONSUMER_CONTRACTS/schemas/`.
+`$PRODUCER_CONTRACT` is a path relative to the initiating repo root (typically a file under `contracts/schemas/` after a producer change merges). `$CONSUMER_WORKSPACE` is a tier-2 workspace clone — `specify workspace sync` materialises consumer clones at `.specify/workspace/<consumer-name>/`, and the consumer's view of central schemas lives at `$CONSUMER_CONTRACTS/schemas/`.
 
 ## Prerequisites
 
@@ -80,7 +80,7 @@ For each `.yaml` file in `$CHANGE_SCHEMAS`:
 Report format (one entry per failure):
 
 ```
-FAIL: contracts/schemas/order.yaml — $ref "missing-type.yaml" does not resolve (checked change contracts/schemas/ and baseline .specify/contracts/schemas/)
+FAIL: contracts/schemas/order.yaml — $ref "missing-type.yaml" does not resolve (checked change contracts/schemas/ and baseline contracts/schemas/)
 FAIL: contracts/schemas/user.yaml — $ref "#/$defs/MissingSubType" does not resolve in-document
 WARN: contracts/schemas/legacy.yaml — $ref "https://example.com/schemas/foo" is an external URL; not chased
 ```
@@ -128,8 +128,8 @@ Report format:
 
 ```
 FAIL: contracts/schemas/user-billing.yaml and contracts/schemas/user-platform.yaml share $id "urn:specify:schemas/user-billing"
-FAIL: contracts/schemas/oauth-token.yaml shares $id "urn:specify:schemas/auth-token" with .specify/contracts/schemas/auth-token.yaml (filenames differ; $id reassignment is forbidden)
-INFO: contracts/schemas/user.yaml replaces .specify/contracts/schemas/user.yaml at merge ($id "urn:specify:schemas/user"); shape diff documented in alignment report
+FAIL: contracts/schemas/oauth-token.yaml shares $id "urn:specify:schemas/auth-token" with contracts/schemas/auth-token.yaml (filenames differ; $id reassignment is forbidden)
+INFO: contracts/schemas/user.yaml replaces contracts/schemas/user.yaml at merge ($id "urn:specify:schemas/user"); shape diff documented in alignment report
 ```
 
 ### Check 4 — Cross-format consumer compatibility
@@ -229,7 +229,7 @@ The mode is **non-fatal**: cross-project warnings never stop the execute loop. T
 
 For each `(producer-schema, consumer-workspace)` pair, compare the producer's updated schema against the consumer's last-known view of the same schema. Resolve the consumer's view in this order:
 
-1. `$CONSUMER_CONTRACTS/schemas/<filename>` — the consumer's materialised baseline. This is what `specify workspace sync` populates from the central `.specify/contracts/`.
+1. `$CONSUMER_CONTRACTS/schemas/<filename>` — the consumer's materialised baseline. This is what `specify workspace sync` populates from the central `contracts/`.
 2. If absent, search `$CONSUMER_CONTRACTS/imports/` for a file with the same logical name (legacy import path used by some consumer clones).
 3. If still absent, the consumer has no prior view — emit a single `consumer-has-no-baseline` finding and stop.
 

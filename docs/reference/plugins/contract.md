@@ -2,7 +2,7 @@
 
 The Contract plugin provides format-first specialist skills for API contract generation, validation, and import. It works with three standard formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP / resource bindings, and AsyncAPI 3.0 for messaging / event bindings.
 
-The plugin is the format-first reorganisation of the contract surface. The persisted artifact surface stays unchanged: the `contracts@v1` schema, the `.specify/contracts/` baseline directory, and every contract artifact path keep their original names. The Cursor plugin and slash-command surface live under `/contract:*`.
+The plugin is the format-first reorganisation of the contract surface. The persisted artifact surface stays unchanged: the `contracts@v1` schema, the `contracts/` baseline directory, and every contract artifact path keep their original names. The Cursor plugin and slash-command surface live under `/contract:*`.
 
 ## Skills
 
@@ -22,7 +22,7 @@ Each skill carries three intents internally and dispatches via its own intent ta
 
 ### Author intent
 
-Reads baseline contracts at `.specify/contracts/` and the change's specs, validates alignment, and produces the minimal delta for interactions the specs require that the baseline does not already cover. The algorithm is the same regardless of baseline state -- the three authorship patterns (contract-first, spec-first, contract-given) differ in outcome, not in code path.
+Reads baseline contracts at `contracts/` and the change's specs, validates alignment, and produces the minimal delta for interactions the specs require that the baseline does not already cover. The algorithm is the same regardless of baseline state -- the three authorship patterns (contract-first, spec-first, contract-given) differ in outcome, not in code path.
 
 The author intent produces an **alignment report** summarising:
 
@@ -61,7 +61,7 @@ Format-neutral material is shared across the three skills under `plugins/contrac
 
 | Reference | Content |
 |-----------|---------|
-| Baseline vs delta | What lives in `.specify/contracts/` versus a change's `contracts/`, and how merges promote |
+| Baseline vs delta | What lives in `contracts/` versus a change's `contracts/`, and how merges promote |
 | Cross-project compatibility | Producer / consumer roles, compatibility rules, finding categories |
 | Import upgrade policy | Swagger 2.0 → OpenAPI 3.1, AsyncAPI 2.x → 3.0, schema metadata defaults |
 | Report shape | Alignment report and verifier output schemas |

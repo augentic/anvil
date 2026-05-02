@@ -57,7 +57,7 @@ A hub is a registry-only platform repo: it holds `registry.yaml`, `initiative.md
 
 ## plan.yaml
 
-**Location:** `.specify/plan.yaml`
+**Location:** `plan.yaml`
 **Created by:** `/spec:plan` (via `specify plan create` + `specify plan add`)
 **Modified by:** `specify plan amend`, `specify plan transition`
 
@@ -121,7 +121,7 @@ changes:
 
 ## registry.yaml
 
-**Location:** `.specify/registry.yaml`
+**Location:** `registry.yaml`
 **Created by:** Operator (directly)
 **Validated by:** `specify registry validate`
 
@@ -162,7 +162,7 @@ projects:
 
 ## initiative.md
 
-**Location:** `.specify/initiative.md`
+**Location:** `initiative.md`
 **Created by:** `specify initiative create`
 **Edited by:** Operator (directly)
 

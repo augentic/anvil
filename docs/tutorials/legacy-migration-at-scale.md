@@ -22,7 +22,7 @@ At plan time, analyze scans the whole monolith cheaply to build an inventory. At
 Define the target repos where migrated capabilities will land:
 
 ```yaml
-# .specify/registry.yaml
+# registry.yaml
 version: 1
 projects:
   - name: auth-service

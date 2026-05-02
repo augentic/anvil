@@ -74,7 +74,7 @@ Define these types (see guidance below each):
 
 ## API Contracts
 
-<!-- When `.specify/contracts/http/` exists: reference the OpenAPI specifications
+<!-- When `contracts/http/` exists: reference the OpenAPI specifications
      there rather than re-describing endpoint shapes. Add implementation-level notes:
      auth, rate limits, caching, versioning strategy.
      

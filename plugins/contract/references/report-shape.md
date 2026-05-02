@@ -64,7 +64,7 @@ All checks passed (<N> $ref pointers, <N> schemas, <N> bindings verified).
 Each finding is a single bullet with a glyph, a file path (relative to the change directory), and a one-sentence description. Common shapes:
 
 ```
-FAIL: contracts/http/user-api.yaml — $ref "../schemas/missing-type.yaml" does not resolve (checked change contracts/schemas/ and baseline .specify/contracts/schemas/)
+FAIL: contracts/http/user-api.yaml — $ref "../schemas/missing-type.yaml" does not resolve (checked change contracts/schemas/ and baseline contracts/schemas/)
 FAIL: contracts/schemas/user-registration.yaml — missing required field "$id"
 FAIL: contracts/schemas/error-response.yaml — "description" is empty
 WARN: contracts/schemas/oauth-token.yaml — appears in spec but has no protocol binding (may be shared vocabulary — verify intent)

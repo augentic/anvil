@@ -23,7 +23,7 @@ The consumer's tier-2 workspace clone (under
 `.specify/workspace/mobile/`) was last sync'd against the **previous**
 contract — the v1 shape with `email` in the response and a smaller
 required list on the request. That clone's
-`.specify/contracts/http/user-api.yaml` is the consumer's "view" of
+`contracts/http/user-api.yaml` is the consumer's "view" of
 the contract, and is what the cross-project check compares against.
 
 When `specify change merge run` returns success, `/spec:execute`:
@@ -60,7 +60,7 @@ cross-project-contract-warning/
 │   ├── before/http/user-api.yaml               # baseline (v1) — same as consumer view
 │   └── after/http/user-api.yaml                # post-merge (v2) — passed to validator
 ├── consumer-workspace/                         # snapshot of .specify/workspace/mobile/
-│   └── .specify/contracts/http/user-api.yaml   # consumer's last-known view (v1)
+│   └── contracts/http/user-api.yaml   # consumer's last-known view (v1)
 ├── validator-output.yaml                       # /contract:openapi (verifier intent, --mode cross-project) output
 ├── transcript.md                               # /spec:execute success transcript with warning block
 └── expected-journal.yaml                       # update-user-api-v2/journal.yaml after recording

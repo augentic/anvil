@@ -21,7 +21,7 @@ Child schemas that use `extends` may omit the entire `briefs/` directory or indi
 
 ## Supporting JSON Schemas
 
-The JSON Schemas that validate `schema.yaml`, brief frontmatter, `.specify/plan.yaml`, and CLI JSON output live with their owners:
+The JSON Schemas that validate `schema.yaml`, brief frontmatter, `plan.yaml`, and CLI JSON output live with their owners:
 
 - `specify-cli/schemas/` owns CLI and workflow metadata schemas such as `schema.schema.json`, `brief/schema.json`, `plan/plan.schema.json`, and `plan-validate-output/schema.json`.
 - `.cursor/schemas/` owns this repository's local authoring checks, including `skill.schema.json`.

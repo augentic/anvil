@@ -58,11 +58,11 @@ This tutorial uses the [platform-hub topology](../explanation/platform-repo.md) 
 
 ```text
 shop-platform/                              # the hub repo (this tutorial's working directory)
+├── registry.yaml                           # version: 1, projects: [shop-backend, shop-mobile]
+├── initiative.md                           # operator brief for `oauth-login`
+├── plan.yaml                               # the plan authored by /spec:plan
 └── .specify/
     ├── project.yaml                        # { schema: hub, hub: true, name: shop-platform }
-    ├── registry.yaml                       # version: 1, projects: [shop-backend, shop-mobile]
-    ├── initiative.md                       # operator brief for `oauth-login`
-    ├── plan.yaml                           # the plan authored by /spec:plan
     ├── plans/oauth-login/                  # discovery, workspace, proposal markdown
     ├── archive/                            # finalised initiatives (after Step 9)
     └── workspace/
@@ -82,7 +82,7 @@ git remote add origin git@github.com:org/shop-platform.git
 specify init --hub --name shop-platform
 ```
 
-The first positional `hub` is a placeholder for the schema argument — `--hub` mode ignores it but the parser still requires *something*. `--name` must be kebab-case because the CLI bakes it into `.specify/initiative.md`'s frontmatter.
+The first positional `hub` is a placeholder for the schema argument — `--hub` mode ignores it but the parser still requires *something*. `--name` must be kebab-case because the CLI bakes it into `initiative.md`'s frontmatter.
 
 <details>
 <summary>Expected output</summary>
@@ -101,11 +101,12 @@ Initialized .specify/ as a registry-only platform hub
 The hub now has:
 
 ```text
-.specify/
-├── project.yaml      # schema: hub, hub: true
+shop-platform/
 ├── registry.yaml     # version: 1, projects: []
 ├── initiative.md     # canonical template, name: shop-platform
-└── .gitignore        # upserts .specify/.cache/ and .specify/workspace/
+├── .gitignore        # upserts .specify/.cache/ and .specify/workspace/
+└── .specify/
+    └── project.yaml  # schema: hub, hub: true
 ```
 
 `specify init --hub` refuses to run when `.specify/` already exists. To convert an existing single-repo project into a hub, remove `.specify/` first.
@@ -178,7 +179,7 @@ Scaffold the brief:
 specify initiative create oauth-login
 ```
 
-This rewrites `.specify/initiative.md` with a fresh template named after the initiative. Edit it to describe the feature and point the discovery brief at any supplementary documentation:
+This rewrites `initiative.md` with a fresh template named after the initiative. Edit it to describe the feature and point the discovery brief at any supplementary documentation:
 
 ```markdown
 ---
@@ -217,8 +218,8 @@ Run the planning skill:
 |---|---|---|
 | **Discovery** | Reads `initiative.md` and `./docs/oauth-login.md`; emits a neutral capability inventory. | `.specify/plans/oauth-login/discovery.md` |
 | **Sync peers** *(multi-repo only)* | Runs `specify workspace sync` to materialise every registry project; inventories each peer slot. | `.specify/workspace/<peer>/`, `.specify/plans/oauth-login/workspace.md` |
-| **Propose** | Decomposes the inventory into change slices via the accept / edit / reject loop; appends each accepted slice via `specify plan add`. | `.specify/plan.yaml` (entries without `project`), `.specify/plans/oauth-login/proposal.md` |
-| **Assignment** *(multi-repo only)* | Infers `project` per entry from registry descriptions, baseline specs, and schema; writes via `specify plan amend --project`. | `.specify/plan.yaml` (entries gain `project:`) |
+| **Propose** | Decomposes the inventory into change slices via the accept / edit / reject loop; appends each accepted slice via `specify plan add`. | `plan.yaml` (entries without `project`), `.specify/plans/oauth-login/proposal.md` |
+| **Assignment** *(multi-repo only)* | Infers `project` per entry from registry descriptions, baseline specs, and schema; writes via `specify plan amend --project`. | `plan.yaml` (entries gain `project:`) |
 
 When the skill detects an API boundary between the two projects, it inserts a **contract change** before the implementation changes and populates `contracts.produces` / `contracts.consumes` on the relevant registry entries. The contract change carries `schema: contracts@v1` and no `project` — it runs against the hub itself.
 
@@ -254,7 +255,7 @@ Summary: 3 pending, 0 in-progress, 0 done
 
 </details>
 
-The plan is now the single source of truth for what runs where. Run `cat .specify/plan.yaml` to see it in full — including the auto-populated `context:` lists that focus each implementation change on the contract paths it depends on.
+The plan is now the single source of truth for what runs where. Run `cat plan.yaml` to see it in full — including the auto-populated `context:` lists that focus each implementation change on the contract paths it depends on.
 
 ## 5. Inspect the workspace
 
@@ -320,7 +321,7 @@ Step 1/3: define
 Step 2/3: build
   Tasks: 2/2 complete ✓
 Step 3/3: merge
-  Baseline updated: .specify/contracts/http/oauth-login.yaml ✓
+  Baseline updated: contracts/http/oauth-login.yaml ✓
   Status: done
 
 ---
@@ -339,7 +340,7 @@ Step 2/3: build
   Tasks: 5/5 complete ✓
 Step 3/3: merge
   specify: merge add-oauth-tokens
-  Auto-commit: git add .specify/specs/ .specify/contracts/ .specify/archive/ \
+  Auto-commit: git add .specify/specs/ contracts/ .specify/archive/ \
       && git commit -m "specify: merge add-oauth-tokens"
   Baseline updated: .specify/specs/oauth-tokens/spec.md ✓
 
@@ -425,7 +426,7 @@ For greenfield projects (remote did not exist before this run), the per-project 
 
 ## Pause point
 
-Two PRs are now open against `org/shop-backend` and `org/shop-mobile`, both on the `specify/oauth-login` branch. The `oauth-login` plan still lives at `.specify/plan.yaml` with every entry `done`. The hub is in the canonical "ready to land" state.
+Two PRs are now open against `org/shop-backend` and `org/shop-mobile`, both on the `specify/oauth-login` branch. The `oauth-login` plan still lives at `plan.yaml` with every entry `done`. The hub is in the canonical "ready to land" state.
 
 [**Continue to Landing an Initiative**](landing-an-initiative.md) for Steps 8 (squash-merge with `specify workspace merge`) and 9 (archive with `specify initiative finalize`), the `/spec:plan --orchestrate` umbrella variants, and the three initiative shapes (migrate-legacy / new-feature / update-existing).
 
@@ -466,7 +467,7 @@ A reviewer (or an operator stepping through this tutorial as an integration test
 | Step 1 | `ls .specify/` | `project.yaml`, `registry.yaml`, `initiative.md`. **No** `changes/` or `specs/` (phase pipelines disabled). |
 | Step 2 | `specify registry validate` | Exit 0; no diagnostics. |
 | Step 2 | `specify registry show` | `version: 1` and two `projects[]` entries with descriptions. |
-| Step 3 | `head -10 .specify/initiative.md` | Frontmatter `name: oauth-login` and the documentation `inputs:` entry. |
+| Step 3 | `head -10 initiative.md` | Frontmatter `name: oauth-login` and the documentation `inputs:` entry. |
 | Step 4 | `specify plan validate` | Exit 0; no error-level findings. |
 | Step 4 | `specify plan status` | Three entries; the two implementation entries carry `project: shop-backend` / `project: shop-mobile`. |
 | Step 5 | `specify workspace status` | Both projects show `git-clone` materialisation, `dirty: no`. |

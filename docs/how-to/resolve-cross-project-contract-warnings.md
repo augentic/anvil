@@ -59,7 +59,7 @@ The producer change is shipping now and the consumer update is a separate beat (
 ```bash
 # After landing the current initiative (specify initiative finalize)
 specify initiative create adopt-<contract-path>-changes
-# Edit .specify/initiative.md to point at the consumer projects
+# Edit initiative.md to point at the consumer projects
 /spec:plan adopt-<contract-path>-changes --against ./
 /spec:execute --loop
 ```

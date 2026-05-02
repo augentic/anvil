@@ -74,7 +74,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `drop` - discard a change without merging specs into baseline
 - `extract` - extract Specify artifacts from existing source code
 - `analyze` - plan-time capability inference; emits capability summaries
-- `plan` - author `.specify/plan.yaml` via the plan pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C
+- `plan` - author `plan.yaml` via the plan pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C
 - `execute` - drive an initiative's plan through define, build, merge
 
 ### Omnia Plugin (`plugins/omnia/`)
@@ -110,7 +110,7 @@ Format-first specialist skills; each carries author / import / verify intents in
 - `asyncapi` - author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0)
 - `json-schema` - author, import, or verify reusable payload schemas (JSON Schema)
 
-The persisted artifact surface is unchanged: the `contracts` brief id, the `contracts@v1` schema, the `.specify/contracts/` baseline directory, and every contract artifact path keep their original names. The Cursor plugin / slash-command surface lives under `/contract:*`. The matching read-only CLI surface is `specify contract { list, validate }` (RFC-12 §"CLI surface").
+The persisted artifact surface is unchanged: the `contracts` brief id, the `contracts@v1` schema, the `contracts/` baseline directory, and every contract artifact path keep their original names. The Cursor plugin / slash-command surface lives under `/contract:*`. The matching read-only CLI surface is `specify contract { list, validate }` (RFC-12 §"CLI surface").
 
 ### Client Plugin (`plugins/client/`)
 

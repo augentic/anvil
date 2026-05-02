@@ -4,6 +4,29 @@ This page captures the **additive** changes to the Specify framework since the v
 
 The bulk of the additions ship under [RFC-9: Platform-First Operator Experience](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md) and [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md). RFC-9 closes the operator-experience gaps in the cross-repo loop; RFC-8 introduces contracts as platform-level artifacts.
 
+## v2 layout — platform artifacts at the repo root (specify-cli `0.2.0`)
+
+The on-disk layout split along a clear boundary: **operator-facing platform artifacts** (`registry.yaml`, `plan.yaml`, `initiative.md`, `contracts/`) live at the repo root; **framework-managed state** (`project.yaml`, `changes/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`. The boundary makes the responsibilities explicit — operators own everything at the root; Specify owns `.specify/`.
+
+This is a **hard cutover**. The CLI no longer reads the v1 layout. Any project-aware verb on a v1-layout project errors with the stable `legacy-layout` code (exit 1) and points the operator at:
+
+```bash
+specify migrate v2-layout
+```
+
+The migrate verb is idempotent, refuses to clobber an existing destination, and refuses to run inside a workspace clone (peer clones get migrated explicitly per-clone). See [`specify migrate v2-layout`](../reference/cli/migrate.md) for the wire shape and [Migrating to the v2 layout](../how-to/migrate-to-v2-layout.md) for the operator-facing walkthrough.
+
+Per-artifact migration map:
+
+| Artifact | v1 path | v2 path |
+|---|---|---|
+| Platform catalogue | `.specify/registry.yaml` | `registry.yaml` |
+| Initiative plan | `.specify/plan.yaml` | `plan.yaml` |
+| Operator brief | `.specify/initiative.md` | `initiative.md` |
+| API contracts | `.specify/contracts/` | `contracts/` |
+
+`project.yaml` stays under `.specify/`. The `contracts@v1` schema id, the `contracts` brief, the merge semantics, the produces/consumes registry roles, and the workspace flow are all unchanged — only the file locations moved. The decision-log entry "Platform artifacts at the repo root, framework state under `.specify/`" carries the design rationale.
+
 ## RFC-12 contract-versioning refinement
 
 [RFC-12](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-12-refine-rfc-8.md) refines RFC-8 along three axes — none of them change the artifact tree, the `contracts` brief, the `contracts@v1` schema id, the merge semantics, or the workspace flow. They are recorded as an RFC because two of the three are breaking.
@@ -15,12 +38,12 @@ The bulk of the additions ship under [RFC-9: Platform-First Operator Experience]
 
 ## RFC-10 plugin namespace renormalisation (v0.25.0)
 
-[RFC-10](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-10-skills.md) renormalises the Cursor plugin / slash-command surface so each skill name is plugin-qualified, each plugin is a coherent capability domain, and each SKILL.md body fits inside Anthropic's 500-line ceiling. **It is a breaking change to the slash-command namespace** — the ship marker is the marketplace bump from `0.24.3` to `0.25.0`. **No persisted artifact, schema, brief id, validation rule, or registry role changed by RFC-10**: the `contracts` brief id, the `contracts@v1` schema, the `.specify/contracts/` baseline directory, the `contracts.*` validation rule ids, and the `contracts.{produces,consumes,imports}` registry roles all kept their RFC-10-era names. (RFC-12 has since dropped `contracts.imports`; see the §RFC-12 entry above.) For the full migration map (with both old and new slash forms) see [`rfcs/archive/rfc-10-skills.md`](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-10-skills.md).
+[RFC-10](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-10-skills.md) renormalises the Cursor plugin / slash-command surface so each skill name is plugin-qualified, each plugin is a coherent capability domain, and each SKILL.md body fits inside Anthropic's 500-line ceiling. **It is a breaking change to the slash-command namespace** — the ship marker is the marketplace bump from `0.24.3` to `0.25.0`. **No persisted artifact, schema, brief id, validation rule, or registry role changed by RFC-10**: the `contracts` brief id, the `contracts@v1` schema, the `contracts/` baseline directory, the `contracts.*` validation rule ids, and the `contracts.{produces,consumes,imports}` registry roles all kept their RFC-10-era names. (RFC-12 has since dropped `contracts.imports`; see the §RFC-12 entry above.) For the full migration map (with both old and new slash forms) see [`rfcs/archive/rfc-10-skills.md`](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-10-skills.md).
 
 ### Renamed
 
 - The SoW-writer skill moved from the former `plan` plugin to the `client` plugin. The new slash form is `/client:sow-writer`.
-- The contracts plugin was reorganised by format. Every former `/contracts:*` invocation is now `/contract:*` (specifics under *Split* below). The `contracts` brief id, the `contracts@v1` schema, and the `.specify/contracts/` baseline directory keep their original names — only the Cursor plugin / slash-command surface changed.
+- The contracts plugin was reorganised by format. Every former `/contracts:*` invocation is now `/contract:*` (specifics under *Split* below). The `contracts` brief id, the `contracts@v1` schema, and the `contracts/` baseline directory keep their original names — only the Cursor plugin / slash-command surface changed.
 
 ### Split
 
@@ -149,9 +172,9 @@ Runs four guards in order (plan-presence, plan terminal-state, per-project PR-st
 
 ## API contracts (RFC-8)
 
-API contracts are now first-class platform artifacts at `.specify/contracts/`, alongside `registry.yaml` and `plan.yaml`. The contract format uses JSON Schema (payload definitions) plus OpenAPI 3.1 (HTTP bindings) and AsyncAPI 3.0 (messaging bindings) -- no proprietary IDL.
+API contracts are now first-class platform artifacts at `contracts/`, alongside `registry.yaml` and `plan.yaml`. The contract format uses JSON Schema (payload definitions) plus OpenAPI 3.1 (HTTP bindings) and AsyncAPI 3.0 (messaging bindings) -- no proprietary IDL.
 
-The `contracts` brief in the define pipeline runs alignment validation against the baseline; `/spec:plan` automatically inserts a contract change before implementation changes when it detects an API boundary between projects (the contract-first authorship pattern). The Contract plugin ships three format-first skills, each carrying author / import / verify intents internally: `/contract:openapi` (HTTP / resource APIs), `/contract:asyncapi` (evented / pub-sub / streaming), and `/contract:json-schema` (shared payload schemas). The `contracts` brief, schema id, and `.specify/contracts/` baseline directory keep their original names; only the Cursor plugin / slash-command surface is renamed.
+The `contracts` brief in the define pipeline runs alignment validation against the baseline; `/spec:plan` automatically inserts a contract change before implementation changes when it detects an API boundary between projects (the contract-first authorship pattern). The Contract plugin ships three format-first skills, each carrying author / import / verify intents internally: `/contract:openapi` (HTTP / resource APIs), `/contract:asyncapi` (evented / pub-sub / streaming), and `/contract:json-schema` (shared payload schemas). The `contracts` brief, schema id, and `contracts/` baseline directory keep their original names; only the Cursor plugin / slash-command surface is renamed.
 
 - Reference: [Contract plugin](../reference/plugins/contract.md), [Contracts schema](../reference/schemas/contracts.md), [Artifact Format -> Contracts](../reference/artifact-format.md#contract-artifacts-api-shape)
 - How-to: [Work with Contracts Across Repos](../how-to/cross-repo-contracts.md)

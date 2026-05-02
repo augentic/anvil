@@ -1,5 +1,5 @@
 # Snapshot of `mobile`'s tier-2 workspace clone view of the
-# user-api contract: `.specify/workspace/mobile/.specify/contracts/http/user-api.yaml`.
+# user-api contract: `.specify/workspace/mobile/contracts/http/user-api.yaml`.
 # This file is identical to `../../../../contracts/before/http/user-api.yaml`
 # in the same fixture — the consumer workspace was last sync'd
 # against the v1 baseline, so its view of the contract IS the

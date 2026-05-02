@@ -1,6 +1,6 @@
 # JSON Schema Conventions
 
-Rules for JSON Schema files under `.specify/contracts/schemas/`. These schemas define the shared payload vocabulary — domain types referenced by both OpenAPI and AsyncAPI bindings.
+Rules for JSON Schema files under `contracts/schemas/`. These schemas define the shared payload vocabulary — domain types referenced by both OpenAPI and AsyncAPI bindings.
 
 ## File Naming
 

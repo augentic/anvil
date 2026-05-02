@@ -20,10 +20,10 @@ Pre-flight
 
 ## Step 1 — Brief
 
-.specify/initiative.md is absent.
+initiative.md is absent.
 
   $ specify initiative create dark-mode
-  ok: wrote .specify/initiative.md
+  ok: wrote initiative.md
 
 Shape `new-feature` with one --from. Suggested default body:
 
@@ -38,7 +38,7 @@ Shape `new-feature` with one --from. Suggested default body:
   (omnia-backend) and the mobile shells (vectis-mobile). ...
 
 Accept the default body? [Y/n] y
-ok: wrote .specify/initiative.md
+ok: wrote initiative.md
 
 ---
 
@@ -59,7 +59,7 @@ Multi-project registry; descriptions complete. Continuing.
   ── /spec:plan dark-mode ──
 
   $ specify plan create dark-mode
-  ok: scaffolded .specify/plan.yaml
+  ok: scaffolded plan.yaml
 
   Step 3(a) — Discovery
     Reading ./docs/dark-mode-spec.md (kind: documentation)…
@@ -135,7 +135,7 @@ Multi-project registry; descriptions complete. Continuing.
   Step 1/3: define ✓
   Step 2/3: build ✓
   Step 3/3: merge
-    Baseline updated: .specify/contracts/http/dark-mode.yaml ✓
+    Baseline updated: contracts/http/dark-mode.yaml ✓
     Status: done
 
   ---
@@ -203,8 +203,8 @@ to finalize.
 
 ## /spec:plan --orchestrate — dark-mode — paused
 
-  Brief:    .specify/initiative.md
-  Plan:     .specify/plan.yaml (3 changes, all `done`)
+  Brief:    initiative.md
+  Plan:     plan.yaml (3 changes, all `done`)
   PRs:      omnia-backend#57 (open), vectis-mobile#29 (open)
 
   Next action: merge PRs (forge UI or `specify workspace merge`),
@@ -234,7 +234,7 @@ Pre-flight
 
 ## Step 1 — Brief
 
-.specify/initiative.md is present. Skipping.
+initiative.md is present. Skipping.
 
 ## Step 2 — Registry
 
@@ -243,7 +243,7 @@ Pre-flight
 
 ## Step 3 — Plan
 
-.specify/plan.yaml is present and every entry is in a terminal state
+plan.yaml is present and every entry is in a terminal state
 (done × 3). Skipping /spec:plan.
 
 ## Step 4 — Execute

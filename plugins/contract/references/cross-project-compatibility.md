@@ -16,9 +16,9 @@ The mode is **non-fatal**: cross-project warnings never stop the execute loop. T
 |---|---|
 | **Producer** | The project that owns the contract — typically the API provider. Listed in `registry.yaml:contracts.produces`. |
 | **Consumer** | A project that uses the contract — typically an API caller, event subscriber, or schema consumer. Every other project in the registry is a candidate consumer; the verifier runs against each one. |
-| **`$PRODUCER_CONTRACT`** | A path to the producer's updated contract file (e.g. `.specify/contracts/http/user-api.yaml`) after the producer change merges. |
-| **`$CONSUMER_WORKSPACE`** | A tier-2 workspace clone at `.specify/workspace/<consumer-name>/`. `specify workspace sync` materialises consumer clones from the platform's central `.specify/contracts/`. |
-| **`$CONSUMER_CONTRACTS`** | The consumer's view of central contracts at `$CONSUMER_WORKSPACE/.specify/contracts/`. |
+| **`$PRODUCER_CONTRACT`** | A path to the producer's updated contract file (e.g. `contracts/http/user-api.yaml`) after the producer change merges. |
+| **`$CONSUMER_WORKSPACE`** | A tier-2 workspace clone at `.specify/workspace/<consumer-name>/`. `specify workspace sync` materialises consumer clones from the platform's central `contracts/`. |
+| **`$CONSUMER_CONTRACTS`** | The consumer's view of central contracts at `$CONSUMER_WORKSPACE/contracts/`. |
 
 The verifier compares the producer's updated contract against the consumer's last-known view of the same contract. The consumer's view is whatever `specify workspace sync` populated — typically the central baseline from before the producer change merged.
 
@@ -26,7 +26,7 @@ The verifier compares the producer's updated contract against the consumer's las
 
 For each `(producer-contract, consumer-workspace)` pair, resolve the consumer's view of the contract in this order:
 
-1. **`$CONSUMER_CONTRACTS/<relative-path>`** — the consumer's materialised baseline at the matching path. This is what `specify workspace sync` populates from the central `.specify/contracts/`.
+1. **`$CONSUMER_CONTRACTS/<relative-path>`** — the consumer's materialised baseline at the matching path. This is what `specify workspace sync` populates from the central `contracts/`.
 2. If absent, search **`$CONSUMER_CONTRACTS/imports/`** for a file with the same logical name (legacy import path used by some consumer clones).
 3. If still absent, the consumer **has no prior view** — emit a single `consumer-has-no-baseline` finding (severity `info`) and stop. There is nothing to compare against.
 

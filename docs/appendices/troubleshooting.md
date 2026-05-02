@@ -2,6 +2,22 @@
 
 Common failure modes and their resolutions.
 
+## Layout issues
+
+### `legacy-layout` error from every CLI verb
+
+**Symptom:** Any project-aware verb (`specify status`, `specify plan ...`, `specify registry ...`, etc.) exits 1 with `error: legacy v1 layout detected; run \`specify migrate v2-layout\` to upgrade ([".specify/registry.yaml", ...])`. JSON callers see `error: "legacy-layout"`.
+
+**Cause:** The CLI was upgraded past `0.2.0` (which moved operator-facing platform artifacts to the repo root) but the project still has v1-layout files under `.specify/`.
+
+**Resolution:**
+
+```bash
+specify migrate v2-layout
+```
+
+The mover is idempotent and refuses to clobber existing destinations. See [Migrating to the v2 layout](../how-to/migrate-to-v2-layout.md) for the full walkthrough, including multi-repo platforms and collision recovery.
+
 ## Change lifecycle issues
 
 ### "Change not found"
@@ -154,7 +170,7 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 
 **Symptom:** A format verifier (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema` running its verifier intent) reports that a `$ref` pointer does not resolve.
 
-**Cause:** A schema file referenced from an OpenAPI or AsyncAPI binding does not exist in either the change's `contracts/schemas/` or the baseline `.specify/contracts/schemas/`.
+**Cause:** A schema file referenced from an OpenAPI or AsyncAPI binding does not exist in either the change's `contracts/schemas/` or the baseline `contracts/schemas/`.
 
 **Resolution:**
 1. Check the `$ref` path in the binding file.
@@ -232,7 +248,7 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 
 **Cause:** A multi-project registry must declare a `description` on every entry (the description drives `/spec:plan`'s assignment step; sparse descriptions force unresolved prompts during planning). The invariant fires when the addition produces a multi-project registry and any existing entry lacks a description, or when validate is run against an already-violating registry.
 
-**Resolution:** Add the missing descriptions. Either re-run `specify registry add` for each existing entry with `--description "..."`, or hand-edit `.specify/registry.yaml` and re-run `specify registry validate` to confirm.
+**Resolution:** Add the missing descriptions. Either re-run `specify registry add` for each existing entry with `--description "..."`, or hand-edit `registry.yaml` and re-run `specify registry validate` to confirm.
 
 ```bash
 specify registry add <existing-name> \
@@ -261,7 +277,7 @@ specify registry add <existing-name> \
 
 **Cause:** A `--source <key>=<path>` was supplied at plan time but no proposed slice ended up using it (rejected during the propose loop, or scope changed).
 
-**Resolution:** Either reference the key from an entry's `sources:` list (`specify plan amend <name> --sources <key>`) or drop the declaration via a hand-edit of `.specify/plan.yaml`. Warnings are non-fatal; the loop will proceed.
+**Resolution:** Either reference the key from an entry's `sources:` list (`specify plan amend <name> --sources <key>`) or drop the declaration via a hand-edit of `plan.yaml`. Warnings are non-fatal; the loop will proceed.
 
 ### `stale-workspace-clone`
 
@@ -296,7 +312,7 @@ specify registry add <existing-name> \
 
 **Symptom:** `specify initiative finalize` exits non-zero with `plan-not-found`.
 
-**Cause:** `.specify/plan.yaml` does not exist. This is the explicit "already finalized" signal -- a previous successful `finalize` run swept the plan into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+**Cause:** `plan.yaml` does not exist. This is the explicit "already finalized" signal -- a previous successful `finalize` run swept the plan into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
 **Resolution:** None needed -- the initiative is already closed. Inspect the archive to confirm: `ls .specify/archive/plans/`. If the plan was lost some other way (e.g. accidental `rm`), recover from version control.
 

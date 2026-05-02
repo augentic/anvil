@@ -1,6 +1,6 @@
 # Work with Contracts Across Repos
 
-API contracts define the machine-readable interface shapes between components. In a multi-repo platform, contracts live at `.specify/contracts/` -- a neutral, platform-level location alongside `registry.yaml`.
+API contracts define the machine-readable interface shapes between components. In a multi-repo platform, contracts live at `contracts/` -- a neutral, platform-level location alongside `registry.yaml`.
 
 ## The contract-first pattern
 
@@ -36,10 +36,10 @@ If you are not using `/spec:plan`, you can create contract changes manually:
 /spec:merge
 ```
 
-This produces contract artifacts at `.specify/contracts/`:
+This produces contract artifacts at `contracts/`:
 
 ```text
-.specify/contracts/
+contracts/
 ├── schemas/user-registration.yaml     # JSON Schema payload
 ├── http/user-api.yaml                 # OpenAPI 3.1 binding
 └── messages/user-events.yaml          # AsyncAPI 3.0 binding (if messaging)
@@ -55,7 +55,7 @@ When you define an implementation change (Omnia or Vectis schema), the define pi
 
 ## Distributing contracts across repos
 
-In a multi-repo setup, contracts live in the initiating repo's `.specify/contracts/`. After execution, `specify workspace push` publishes changes to each target repo. The contract files serve as the shared vocabulary -- both producer and consumer reference the same definitions.
+In a multi-repo setup, contracts live in the initiating repo's `contracts/`. After execution, `specify workspace push` publishes changes to each target repo. The contract files serve as the shared vocabulary -- both producer and consumer reference the same definitions.
 
 ## Cross-project contract validation (RFC-9 Section 3B)
 
@@ -63,7 +63,7 @@ After a producer change merges, `/spec:execute` runs a cross-project compatibili
 
 **Algorithm:**
 
-1. Read the producer project's `contracts.produces` list from `.specify/registry.yaml`.
+1. Read the producer project's `contracts.produces` list from `registry.yaml`.
 2. For each produced contract path, find consumer projects -- those listing the same path in `contracts.consumes`.
 3. Run the format-appropriate `/contract:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone, passing the updated contract: `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas.
 4. Surface each incompatibility as a warning in the merge transcript.

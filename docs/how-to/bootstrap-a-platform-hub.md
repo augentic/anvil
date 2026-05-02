@@ -26,7 +26,7 @@ The hub itself is a git repo so the platform state (registry, initiative briefs,
 specify init --hub --name shop-platform
 ```
 
-The first positional `hub` is a placeholder -- `--hub` mode ignores the schema argument but the parser still requires *something*. `--name` must be kebab-case because the CLI bakes it into `.specify/initiative.md`'s frontmatter.
+The first positional `hub` is a placeholder -- `--hub` mode ignores the schema argument but the parser still requires *something*. `--name` must be kebab-case because the CLI bakes it into `initiative.md`'s frontmatter.
 
 <details>
 <summary>Expected output</summary>
@@ -45,11 +45,12 @@ Initialized .specify/ as a registry-only platform hub
 The hub now contains:
 
 ```text
-.specify/
-├── project.yaml      # schema: hub, hub: true
+shop-platform/
 ├── registry.yaml     # version: 1, projects: []
 ├── initiative.md     # canonical template, name: shop-platform
-└── .gitignore        # upserts .specify/.cache/ and .specify/workspace/
+├── .gitignore        # upserts .specify/.cache/ and .specify/workspace/
+└── .specify/
+    └── project.yaml  # schema: hub, hub: true
 ```
 
 `specify init --hub` refuses to run when `.specify/` already exists -- the guard prevents accidentally clobbering an existing single-project setup. Remove `.specify/` first if you genuinely want to convert.

@@ -1,12 +1,14 @@
 #  RFC-12: Refine RFC-8
 
 > Status: Landed · Parent: [RFC-8](rfc-8-api-contracts.md) · Depends: [RFC-9](rfc-9-platform.md), [RFC-10](rfc-10-skills.md)
+>
+> **v2 layout note**: the `contracts/` artifact tree this RFC refines moved from `.specify/contracts/` to the repo root in the v2 layout (specify-cli `0.2.0`). The bare-`contracts/` shorthand below now resolves to `<project_root>/contracts/` rather than `<project_root>/.specify/contracts/`; nothing else in this RFC changed (the `contracts@v1` schema id, the validator rules, the registry roles, the SemVer requirement, and the optional `info.x-specify-id` are all unchanged).
 
 ## Abstract
 
 RFC-8 introduced machine-readable contract artifacts under `.specify/contracts/` and a `contracts@v1` schema. RFC-10 renamed the slash-command surface to `/interfaces:*`. RFC-12 is a refinement on top of those, not a new architectural layer: it tightens contract versioning to SemVer, adds an opt-in rename-stable identifier as an `info` extension, and removes the `contracts.imports` role. None of these change the artifact tree, the `contracts` brief, the `contracts@v1` schema id, the merge semantics, or the workspace flow. They are recorded as an RFC because two of the three are breaking changes to validator behavior or a published registry schema, and because the design alternatives considered are worth preserving for future contributors.
 
-Throughout the rest of this RFC, bare `contracts/` is shorthand for `.specify/contracts/`.
+Throughout the rest of this RFC, bare `contracts/` is shorthand for the repo-root `contracts/` directory (RFC-8 originally placed it under `.specify/`; the v2 layout move noted above relocated it).
 
 ## Motivation
 

@@ -1,6 +1,6 @@
 # specify registry
 
-Manage the platform registry at `.specify/registry.yaml` -- the catalogue of repositories that make up a multi-repo platform. Optional for single-repo projects.
+Manage the platform registry at `registry.yaml` -- the catalogue of repositories that make up a multi-repo platform. Optional for single-repo projects.
 
 The registry was promoted from `specify initiative registry ...` to a top-level noun group in the CLI cleanup: `registry.yaml` is platform-scoped (it spans every initiative the platform runs), not initiative-scoped, so the verb shape now reflects that.
 
@@ -27,7 +27,7 @@ specify registry show [--format json]
 
 ### specify registry validate
 
-Check structural and referential invariants of `.specify/registry.yaml`.
+Check structural and referential invariants of `registry.yaml`.
 
 ```bash
 specify registry validate
@@ -44,7 +44,7 @@ Used by `/spec:plan` after populating contract roles, and by operators who edit 
 
 ### specify registry add
 
-Append a new project entry to `.specify/registry.yaml`. Creates the file with `version: 1` when absent. (RFC-9 §2A.)
+Append a new project entry to `registry.yaml`. Creates the file with `version: 1` when absent. (RFC-9 §2A.)
 
 ```bash
 specify registry add <name> --url <url> --schema <schema> [--description "..."]
@@ -61,7 +61,7 @@ Used by `/spec:plan`'s registry-proposal sub-step (RFC-9 §2B) and by operators 
 
 ### specify registry remove
 
-Delete a project entry from `.specify/registry.yaml`. (RFC-9 §2A.)
+Delete a project entry from `registry.yaml`. (RFC-9 §2A.)
 
 ```bash
 specify registry remove <name>
@@ -71,11 +71,11 @@ Behaviour:
 
 - Refuses when the registry is absent or `<name>` is not declared.
 - Validates the resulting shape after the write.
-- Surfaces a non-fatal warning (on stderr in text mode, in the JSON `warnings` array) when `.specify/plan.yaml` exists and any plan entry references the removed project — naming each affected entry so the operator can rewire them via `specify plan amend <change> --project <other>` separately.
+- Surfaces a non-fatal warning (on stderr in text mode, in the JSON `warnings` array) when `plan.yaml` exists and any plan entry references the removed project — naming each affected entry so the operator can rewire them via `specify plan amend <change> --project <other>` separately.
 
 ## See also
 
-- [specify initiative](initiative.md) -- operator brief at `.specify/initiative.md`.
+- [specify initiative](initiative.md) -- operator brief at `initiative.md`.
 - [specify workspace](workspace.md) -- materialise registry projects under `.specify/workspace/<peer>/`.
 - [Configuration Files → registry.yaml](../configuration.md#registryyaml) -- file format reference.
 - [Migrating CLI v1](../../explanation/migrating-cli-v1.md) -- rename map for the cleanup.

@@ -3,7 +3,7 @@
 - **URL**: `https://github.com/augentic/specify/schemas/contracts`
 - **Purpose**: Dedicated API contract changes — defining or importing machine-readable interface shapes (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0) without generating implementation code
 - **Source**: Manual
-- **Target**: Contract artifacts (`.specify/contracts/`)
+- **Target**: Contract artifacts (`contracts/`)
 - **Workflow**: `proposal` -> `specs` -> `tasks` -> `build` (author/import + validation)
 
 ## Contents

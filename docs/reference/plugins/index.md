@@ -32,7 +32,7 @@ The **Specify** plugin provides the workflow skeleton. Schemas determine which s
 - **Omnia schema** invokes `/omnia:*` skills.
 - **Vectis schema** invokes `/vectis:*` skills.
 
-The Contract, RT, and Client plugins are schema-independent. The Contract plugin is invoked by the `contracts` brief in every schema's define pipeline (Omnia, Vectis, and Contracts) — the brief id, schema name, and `.specify/contracts/` baseline directory keep their original names; the Cursor plugin and slash-command surface live under `/contract:*`. RT and Client support migration and client-facing deliverables regardless of the target platform.
+The Contract, RT, and Client plugins are schema-independent. The Contract plugin is invoked by the `contracts` brief in every schema's define pipeline (Omnia, Vectis, and Contracts) — the brief id, schema name, and `contracts/` baseline directory keep their original names; the Cursor plugin and slash-command surface live under `/contract:*`. RT and Client support migration and client-facing deliverables regardless of the target platform.
 
 ## Artifact flow
 

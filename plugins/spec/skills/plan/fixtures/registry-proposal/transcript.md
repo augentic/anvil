@@ -3,7 +3,7 @@
 This transcript pins the dialogue and the four shell-outs the
 registry-proposal sub-step (RFC-9 §2B) triggers when an unresolved
 assignment names a project that does not yet exist in
-`.specify/registry.yaml`.
+`registry.yaml`.
 
 The transcript starts at the **end** of step 3(d) Assignment, after
 the propose brief has written all three plan entries via
@@ -45,7 +45,7 @@ Running:
         --url git@github.com:augentic/alpha-gateway.git \
         --schema omnia@v1 \
         --description "Inbound traffic gateway carved out of the monolith's edge layer."
-  ok: appended `alpha-gateway` to .specify/registry.yaml (3 projects)
+  ok: appended `alpha-gateway` to registry.yaml (3 projects)
 
   $ specify workspace sync
   ok: materialised .specify/workspace/alpha-gateway/

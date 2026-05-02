@@ -18,7 +18,7 @@ needs: [proposal, specs]
 
 ## API Contracts
 
-<!-- When `.specify/contracts/http/` exists: reference the OpenAPI specifications
+<!-- When `contracts/http/` exists: reference the OpenAPI specifications
      there rather than re-describing endpoint shapes. Add implementation-level notes
      not captured in the contract: auth schemes, rate limits, caching, versioning strategy.
      
@@ -39,7 +39,7 @@ needs: [proposal, specs]
 
 ## Publication & Timing Patterns
 
-<!-- When `.specify/contracts/messages/` exists: reference the AsyncAPI specifications
+<!-- When `contracts/messages/` exists: reference the AsyncAPI specifications
      there rather than re-describing message shapes. Add implementation-level notes
      not captured in the contract: ordering guarantees, retry policies, DLQ strategy.
      

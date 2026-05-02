@@ -1,6 +1,6 @@
 # /spec:plan
 
-Author `.specify/plan.yaml` for a new initiative.
+Author `plan.yaml` for a new initiative.
 
 ## Synopsis
 
@@ -36,7 +36,7 @@ Author `.specify/plan.yaml` for a new initiative.
 
 | Artifact | Location | Content |
 |----------|----------|---------|
-| `plan.yaml` | `.specify/plan.yaml` | Ordered change list with dependencies and status |
+| `plan.yaml` | `plan.yaml` | Ordered change list with dependencies and status |
 | `discovery.md` | `.specify/plans/<name>/discovery.md` | Capability inventory from input analysis |
 | `proposal.md` | `.specify/plans/<name>/proposal.md` | Audit trail of slice accept/edit/reject decisions |
 | `workspace.md` | `.specify/plans/<name>/workspace.md` | Peer inventory for cross-repo planning (multi-repo only) |
