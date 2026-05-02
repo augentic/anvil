@@ -48,6 +48,21 @@ Do not redundantly restate every imported field. Capture enough behavior for rev
 
 When the proposal's Authorship Mode is **Modify existing contracts**, describe only the intended behavioral delta from the current baseline. Use the existing spec folder name from `.specify/specs/<interface>/` when creating the delta spec at `specs/<interface>/spec.md`. Follow the delta structure (ADDED / MODIFIED / RENAMED / REMOVED sections) documented in the define skill's spec format conventions.
 
+### Extract from source code
+
+When the proposal's Authorship Mode is **Extract from source code**, treat the source files listed in Source Material as the structural source of truth and the proposal's Analysis Context section as the scope boundary. Read:
+
+- **Route registrations** (e.g. `app.post("/orders", ...)`, framework decorators, route tables) for endpoint paths and HTTP methods.
+- **Handler signatures and return sites** for path/query/header parameters, status codes, and error envelope conventions.
+- **Type declarations, DTOs, and validation schemas** (TypeScript interfaces, Pydantic models, Zod schemas, JSON-Schema-emitting decorators, etc.) for request/response payload shapes, required vs optional fields, enums, and nested types.
+- **Serialization and middleware code** for content-type, error shape, and response wrapper conventions when they are encoded in code.
+
+Mark wire-level details that the source does not encode — Content-Type, auth headers, pagination semantics, rate limits, idempotency-key handling, content negotiation — with `[unknown]` rather than guessing. Build will surface unresolved unknowns in the relevant format skill's alignment report.
+
+Stay within the analysis-identified scope. Do not extract endpoints or payloads that the proposal's Analysis Context does not name; if the source contains additional surface, surface it as a `[manual review required]` note rather than silently expanding the contract change.
+
+This authorship mode does not invoke `/spec:extract`; that skill produces a full Specify project. The contracts change is narrower — interface contracts only.
+
 ---
 
 Use the exact interface name from the proposal (`specs/<interface>/spec.md`). Follow this structure:

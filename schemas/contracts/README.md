@@ -55,6 +55,7 @@ Use the `contracts` schema when:
 - Defining a new API contract before implementation begins (contract-first pattern)
 - Importing an external or legacy API contract (contract-given pattern)
 - Modifying existing platform contracts independently of implementation changes
+- Reverse-engineering contracts from an existing implementation whose API surface has been identified by `/spec:analyze` (extract-from-source pattern)
 
 Use Omnia or Vectis schemas when:
 - Implementing code that conforms to existing contracts

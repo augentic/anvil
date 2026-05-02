@@ -13,7 +13,9 @@ Sections:
   - **Generate from prose** — deriving machine-readable contracts from design documentation, requirements, or other prose source material
   - **Import existing contracts** — normalizing supplied OpenAPI, AsyncAPI, or JSON Schema artifacts into the platform baseline
   - **Modify existing contracts** — updating contracts already present in root `contracts/`
-- **Source Material**: List the prose documents, design notes, external contract files, or baseline contract paths that define the interface. Arbitrary source paths are allowed here; build must copy or normalize any imported contract files into the change-local `contracts/` tree before verification.
+  - **Extract from source code** — reverse-engineering machine-readable contracts from existing implementation source (handlers, routes, typed DTOs, validation schemas) whose API surface a prior `/spec:analyze --kind legacy-code` run identified. Distinct from `/spec:extract`, which produces a full Specify project; this mode narrows to interface contracts only.
+- **Source Material**: List the prose documents, design notes, external contract files, baseline contract paths, or implementation source paths whose API surface was identified by a prior `/spec:analyze` run that define the interface. Arbitrary source paths are allowed here; build must copy or normalize any imported contract files into the change-local `contracts/` tree before verification.
+- **Analysis Context** (required when Authorship Mode is **Extract from source code**): Name the `discovery.md` capability block(s) and `entry_points` this contract change transcribes, so reviewers can trace contract scope back to the analysis decision that introduced it.
 - **Impact**: Which implementation changes depend on these contracts? Reference plan entries or future changes that will consume the contract artifacts.
 
 Keep it concise (1 page). Focus on what interfaces are being defined, not how they will be implemented — implementation details belong in the consuming schema's design.md.
@@ -37,12 +39,23 @@ List project names and their roles (producer, consumer, or both). -->
 
 ## Authorship Mode
 
-<!-- Generate from prose | Import existing contracts | Modify existing contracts -->
+<!-- Generate from prose | Import existing contracts | Modify existing contracts | Extract from source code -->
 
 ## Source Material
 
-<!-- Prose docs, design notes, external contract files, or baseline contract paths.
-For imports, list the source file paths that build should ingest. -->
+<!-- Prose docs, design notes, external contract files, baseline contract paths,
+or implementation source paths identified by /spec:analyze.
+For imports, list the source file paths that build should ingest.
+For extract-from-source, list the implementation source files whose API surface
+the analysis run identified. -->
+
+## Analysis Context
+
+<!-- Required when Authorship Mode is "Extract from source code".
+Name the discovery.md capability block(s) and entry_points this contract
+change transcribes, so reviewers can trace contract scope back to the
+analysis decision that introduced it. Example: "orders capability,
+discovery.md@plan-dir, entry_points: [POST /orders, GET /orders/:orderId]". -->
 
 ## Impact
 

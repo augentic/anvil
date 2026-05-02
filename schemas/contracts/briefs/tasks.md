@@ -41,7 +41,7 @@ Contract changes produce a fixed set of build and verification tasks. Generate o
 
 ### Per-interface tasks
 
-For each interface in `specs/`, emit one build task per format skill the interface needs (skip formats with no interactions). Use **Author** wording for prose-driven or modification changes and **Import and normalize** wording for import-driven changes:
+For each interface in `specs/`, emit one build task per format skill the interface needs (skip formats with no interactions). Use **Author** wording for prose-driven, extract-from-source, or modification changes and **Import and normalize** wording for import-driven changes:
 
 - [ ] `contract:json-schema` — Author shared payload schemas for `<interface>`
 - [ ] `contract:openapi` — Author OpenAPI delta for `<interface>` (HTTP interactions only)
