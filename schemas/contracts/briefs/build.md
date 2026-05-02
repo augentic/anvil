@@ -39,7 +39,8 @@ Classify the change's Authorship Mode from `proposal.md`:
 1. **Generate from prose** — author contract artifacts from `specs/**/*.md`.
 2. **Import existing contracts** — normalize supplied OpenAPI, AsyncAPI, or JSON Schema files into Specify conventions.
 3. **Modify existing contracts** — author a minimal delta against root `contracts/` from the behavioral delta in `specs/**/*.md`.
-4. **Mixed** — combine author and importer paths when the proposal explicitly includes both prose-derived requirements and supplied contract files.
+4. **Extract from source code** — author contract artifacts from `specs/**/*.md` derived during define from implementation source. Functionally identical to "Generate from prose" at build time; the distinct mode is preserved for traceability and to surface the elevated `[unknown]` rate to the verifier.
+5. **Mixed** — combine author and importer paths when the proposal explicitly includes both prose-derived requirements and supplied contract files.
 
 Then classify required formats:
 
@@ -49,7 +50,7 @@ Then classify required formats:
 
 ### Phase 2: Author or import
 
-For prose-driven and modification work, run author intent in this order:
+For prose-driven, extract-from-source, and modification work, run author intent in this order. Extract-from-source changes route through this same author path; the upstream specs were derived from implementation source rather than prose, but the build-time author intents are unchanged.
 
 1. `/contract:json-schema` — author the minimal JSON Schema delta for reusable payload vocabulary. Owns `$id` assignment, one-type-per-file decomposition, and schema-file naming. Skip when the change has no shared payload schemas.
 2. `/contract:openapi` — author the minimal OpenAPI delta for HTTP/resource interactions. Reuse change-local or baseline `contracts/schemas/` files; do not author competing schemas under different filenames or `$id`s. Skip when the change has no HTTP interactions.
