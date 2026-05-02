@@ -20,6 +20,9 @@ context. They do not generate new or changed interface shapes inline.
 - [`update.md`](update.md) — boundary test showing that implementation
   `design.md` updates are not a contract generation source.
 - [`import.md`](import.md) — import and normalize an existing OpenAPI document.
+- [`source.md`](source.md) — reverse-engineer JSON Schema and OpenAPI artifacts
+  from a legacy TypeScript codebase whose API surface a prior `/spec:analyze`
+  run has identified.
 
 ## Manual Test Flow
 
@@ -58,6 +61,7 @@ Run all contract test scenarios in schemas/contracts/tests/ in this order:
 2. design.md
 3. update.md
 4. import.md
+5. source.md
 
 Do not ask for confirmation between scenarios. For each scenario:
 - Read the scenario file completely before acting.
