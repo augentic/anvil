@@ -139,6 +139,24 @@ Use `FAIL` when the schema is unambiguously a top-level payload in a spec scenar
 
 When the change has **no specs**, skip Check 3 — there are no scenarios to cross-reference. Record this in the report so the brief knows the check was deliberately bypassed.
 
+### Check 4 — Identity & version (RFC-12)
+
+For every top-level OpenAPI document under `$CHANGE_CONTRACTS/http/` (root key `openapi:`), enforce the RFC-12 §Validation rules:
+
+1. **`info.version` MUST parse as SemVer.** Per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Missing, non-string, or non-SemVer values are `FAIL`.
+2. **`info.x-specify-id` (when present) MUST match `^[a-z][a-z0-9-]*$` and be ≤ 64 characters.** Format violations are `FAIL`.
+3. **Within the change directory, `info.x-specify-id` values MUST be unique.** When two top-level OpenAPI documents in `$CHANGE_CONTRACTS/http/` declare the same id, both are `FAIL`.
+
+The cross-repo uniqueness check (the same id declared by a top-level contract somewhere else under root `contracts/`) is **not** part of single mode — it is the CLI's job (`specify interface validate`), which runs after merge with the full baseline in scope. The skill only flags duplicates inside the change to keep the verifier deterministic and self-contained.
+
+Report format (one entry per failure):
+
+```
+FAIL: contracts/http/user-api.yaml — info.version `2024-01-15` is not valid SemVer
+FAIL: contracts/http/billing-api.yaml — info.x-specify-id `Billing-API` must match `^[a-z][a-z0-9-]*$` and be ≤ 64 characters
+FAIL: contracts/http/admin-api.yaml — info.x-specify-id `shared` is also declared by contracts/http/legacy-api.yaml in this change
+```
+
 ## Single-mode algorithm
 
 1. **Determine scope.**
@@ -149,7 +167,8 @@ When the change has **no specs**, skip Check 3 — there are no scenarios to cro
 2. **Run Check 1** ($ref resolution) on every `.yaml` file in `$CHANGE_CONTRACTS/http/`.
 3. **Run Check 2** (schema metadata) on every `.yaml` file in `$CHANGE_CONTRACTS/schemas/` referenced by an OpenAPI operation.
 4. **Run Check 3** (binding completeness) by cross-referencing spec scenarios with OpenAPI operations across change and baseline. Skip if no specs.
-5. **Collect findings** and produce the markdown validation report.
+5. **Run Check 4** (identity & version) on every top-level OpenAPI document in `$CHANGE_CONTRACTS/http/`.
+6. **Collect findings** and produce the markdown validation report.
 
 ## Single-mode output format
 
@@ -337,6 +356,7 @@ Before completing the run:
 - [ ] All `.yaml` files in `$CHANGE_CONTRACTS/schemas/` referenced by HTTP operations checked for `$id`, `title`, `description`.
 - [ ] Spec scenarios cross-referenced against OpenAPI bindings (when specs exist).
 - [ ] Shared vocabulary exemption applied correctly.
+- [ ] Identity & version (Check 4) enforced on every top-level OpenAPI document in `$CHANGE_CONTRACTS/http/`: SemVer `info.version`, kebab-case + ≤64-char `info.x-specify-id` when present, in-change uniqueness on declared ids.
 - [ ] Validation report produced with per-check results and summary.
 - [ ] No files created or modified.
 

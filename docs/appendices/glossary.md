@@ -84,6 +84,9 @@ A registry-only platform repo. Identified by `project.yaml: schema: hub, hub: tr
 **Initiative**
 A multi-change program coordinated through a plan. Examples: a migration, a greenfield build, a platform modernisation.
 
+**Interface id**
+The optional `info.x-specify-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0 contract (RFC-12). Kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract in the repo. The id is a **rename-stable hint** that survives file moves and `info.version` bumps — once set on a contract, never change it. Path-based references in `registry.yaml` remain canonical; the id is not a substitute. Format and uniqueness are enforced by `specify interface validate` and the `/interfaces:openapi` / `/interfaces:asyncapi` verifier intents only when the field is present — contracts without one remain valid indefinitely.
+
 **Initiative finalize**
 The canonical closure verb for the platform-first loop (RFC-9 Section 4C). `specify initiative finalize` runs four guards in order -- plan-presence, plan terminal-state, per-project PR-state (`MERGED` on remote), workspace-cleanliness -- then atomically archives `plan.yaml`, `.specify/initiative.md`, and `.specify/plans/<name>/` into `.specify/archive/plans/<YYYYMMDD>-<name>/`. Idempotent: re-running after a successful finalize returns `plan-not-found`, the explicit "already finalized" signal. Optional `--clean` flag prunes `.specify/workspace/<peer>/` clones after the archive completes.
 
@@ -179,6 +182,11 @@ Authorship pattern where contracts are derived inline from specs during a single
 
 **Sync peers**
 The phase during `/spec:plan` (multi-repo only) that clones registry projects into `.specify/workspace/` and inventories their baseline specs. Produces `workspace.md`.
+
+## T
+
+**Top-level contract**
+A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 document) or `asyncapi:` (AsyncAPI 3.0 document) (RFC-12). Format detection decides what counts — never directory layout, file name, or a custom marker. Top-level contracts are the only files subject to the RFC-12 §Validation rules (SemVer `info.version`; format + cross-repo uniqueness on `info.x-specify-id` when present). Standalone JSON Schemas under `contracts/schemas/` are payload vocabulary referenced via `$ref` from a top-level contract — they are **not** top-level themselves.
 
 ## W
 

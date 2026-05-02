@@ -63,6 +63,8 @@ For import-driven work, run importer intent for each supplied format:
 
 Importer paths must produce an import report covering lossless changes, lossy changes, unsupported constructs, and manual-review warnings.
 
+**Identity & version (RFC-12).** Every top-level OpenAPI / AsyncAPI document emitted into `$CHANGE_DIR/contracts/` (root key `openapi:` or `asyncapi:`) MUST set an `info.version` value that parses as SemVer per [semver.org](https://semver.org), including optional prerelease labels. New top-level contracts SHOULD set `info.x-specify-id` to a kebab-case slug (typically the file stem; `^[a-z][a-z0-9-]*$`, ≤ 64 characters) — a rename-stable hint that survives file moves and version bumps. The author intents enforce both rules; the importer paths preserve any source `info.x-specify-id` verbatim and surface non-SemVer `info.version` values as `[manual review required]` rather than auto-rewriting.
+
 ### Phase 3: Verify
 
 Verification runs the verifier intent of each `/interfaces:*` format skill that owns artifacts in the change. Run only the formats that produced artifacts; skip the rest.
@@ -72,6 +74,8 @@ Verification runs the verifier intent of each `/interfaces:*` format skill that 
 3. `/interfaces:asyncapi` — verifier intent: `$ref` resolution across the AsyncAPI delta and binding completeness (every spec-referenced evented schema has at least one binding).
 
 For mixed-format changes, the final verifier pass must check cross-format `$ref` consistency and report duplicate schema identities before the build can complete.
+
+The format verifier intents enforce the RFC-12 identity & version rules inline (Check 4 in `/interfaces:openapi/verifier.md` and `/interfaces:asyncapi/verifier.md`): SemVer `info.version`, kebab-case + ≤64-char `info.x-specify-id` when present, and in-change uniqueness on declared ids. The cross-repo uniqueness check (the same id declared by another top-level contract somewhere else in root `contracts/`) is **not** part of single-mode verification — it is the CLI's gate, run after merge via `specify interface validate` (RFC-12 §"CLI surface").
 
 When this brief runs as the post-merge cross-project consumer check (RFC-9 §3B), thread `--mode cross-project` through the format verifier paths so they emit the cross-project compatibility report instead of the single-change report.
 

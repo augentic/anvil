@@ -278,6 +278,11 @@ For every schema file in `$CONTRACTS_DIR/schemas/` (newly decomposed and pre-exi
 
 For the AsyncAPI document itself, verify that `info.title`, `info.version`, and `info.description` are present. Inject `info.description: "[imported — description pending review]"` if missing.
 
+**RFC-12 normalisation rules for top-level AsyncAPI documents:**
+
+- **`info.version` MUST be SemVer.** When the imported value does not parse as SemVer (e.g. `2024-01-15`, `v2`, `"1"`), do **not** auto-rewrite. Surface a `[manual review required]` entry in the import report naming the file and the offending value, and let the operator decide on the canonical SemVer string. The verifier sibling and `specify interface validate` will block on the unaltered value until the operator resolves it.
+- **Preserve `info.x-specify-id` verbatim.** When the source carries `info.x-specify-id`, copy it through unchanged — even when the value violates the kebab-case format (the verifier flags the format issue with the file path, which is enough for the operator to fix). Never invent or auto-derive an id during import; new ids are an authoring decision.
+
 For each message in `components/messages`, verify `name` and `contentType`. If `contentType` is absent, default to `application/json` and surface in the import report.
 
 ### Step 5 — Place files, validate, report

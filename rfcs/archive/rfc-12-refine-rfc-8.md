@@ -1,6 +1,6 @@
 #  RFC-12: Refine RFC-8
 
-> Status: Draft · Parent: [RFC-8](archive/rfc-8-api-contracts.md) · Depends: [RFC-9](archive/rfc-9-platform.md), [RFC-10](archive/rfc-10-skills.md)
+> Status: Landed · Parent: [RFC-8](rfc-8-api-contracts.md) · Depends: [RFC-9](rfc-9-platform.md), [RFC-10](rfc-10-skills.md)
 
 ## Abstract
 
@@ -127,9 +127,9 @@ Projects that currently declare `contracts.imports` in `registry.yaml` need a on
 
 ## References
 
-- [RFC-8: API Contracts](archive/rfc-8-api-contracts.md)
-- [RFC-9: Platform](archive/rfc-9-platform.md)
-- [RFC-10: Skill Improvements](archive/rfc-10-skills.md)
+- [RFC-8: API Contracts](rfc-8-api-contracts.md)
+- [RFC-9: Platform](rfc-9-platform.md)
+- [RFC-10: Skill Improvements](rfc-10-skills.md)
 - [OpenAPI 3.1 Specification](https://spec.openapis.org/oas/v3.1.0)
 - [AsyncAPI 3.0 Specification](https://www.asyncapi.com/docs/reference/specification/v3.0.0)
 - [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html)

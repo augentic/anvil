@@ -160,9 +160,10 @@ OpenAPI deltas fall into three categories — every operation in the delta belon
 Computation rules applied at file scope:
 
 1. **One file per API domain.** Always read the matching baseline file first. The delta file replaces it wholesale at merge time.
-2. **Preserve `info.version`.** Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the change requires a version bump, the contracts schema build brief flags it for human review.
-3. **Preserve `operationId` keys.** When extending a baseline file, every existing operation's `operationId` stays exactly as it is. New operations get fresh kebab-cased or camelCased `operationId` values that are unique across the contract tree.
-4. **Diff at the operation level.** When modifying an existing operation, change only the keys the spec asserts. Do not reformat or reorder unrelated keys — opaque file replacement means a re-ordered file looks like a wholesale rewrite to reviewers.
+2. **`info.version` MUST parse as SemVer (RFC-12).** New top-level OpenAPI documents MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the change requires a version bump, the contracts schema build brief flags it for human review. The verifier sibling and `specify interface validate` both enforce SemVer; a non-SemVer value is a hard validation failure.
+3. **`info.x-specify-id` rename-stable identifier (RFC-12).** SHOULD set `info.x-specify-id` on every new top-level OpenAPI document to a kebab-case slug (typically the file stem; `^[a-z][a-z0-9-]*$`, ≤ 64 characters). The id is a hint that survives file moves and version bumps. MUST preserve any pre-existing `info.x-specify-id` when extending the baseline; MUST NOT change it across `info.version` bumps. Path-based references in `registry.yaml` remain canonical — the id is a rename-stable hint, not a substitute.
+4. **Preserve `operationId` keys.** When extending a baseline file, every existing operation's `operationId` stays exactly as it is. New operations get fresh kebab-cased or camelCased `operationId` values that are unique across the contract tree.
+5. **Diff at the operation level.** When modifying an existing operation, change only the keys the spec asserts. Do not reformat or reorder unrelated keys — opaque file replacement means a re-ordered file looks like a wholesale rewrite to reviewers.
 
 ## Examples (`examples` keyword)
 
