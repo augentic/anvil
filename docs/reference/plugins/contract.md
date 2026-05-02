@@ -1,16 +1,16 @@
-# Interfaces
+# Contract
 
-The Interfaces plugin provides format-first specialist skills for API contract generation, validation, and import. It works with three standard formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP / resource bindings, and AsyncAPI 3.0 for messaging / event bindings.
+The Contract plugin provides format-first specialist skills for API contract generation, validation, and import. It works with three standard formats: JSON Schema for payload definitions, OpenAPI 3.1 for HTTP / resource bindings, and AsyncAPI 3.0 for messaging / event bindings.
 
-The plugin renames the former `contracts` plugin and reorganises it from a verb-oriented trio (`writer`, `validator`, `importer`) to a format-first trio. The persisted artifact surface is unchanged: the `contracts@v1` schema, the `.specify/contracts/` baseline directory, and every contract artifact path keep their original names. Only the Cursor plugin / slash-command surface is renamed.
+The plugin is the format-first reorganisation of the contract surface. The persisted artifact surface stays unchanged: the `contracts@v1` schema, the `.specify/contracts/` baseline directory, and every contract artifact path keep their original names. The Cursor plugin and slash-command surface live under `/contract:*`.
 
 ## Skills
 
 | Skill | Format | Purpose |
 |-------|--------|---------|
-| `/interfaces:openapi` | OpenAPI 3.1 | HTTP / resource APIs (paths, methods, request/response bodies) |
-| `/interfaces:asyncapi` | AsyncAPI 3.0 | Evented / pub-sub / streaming interfaces (channels, operations, messages) |
-| `/interfaces:json-schema` | JSON Schema (draft 2020-12) | Reusable payload schemas without a protocol wrapper |
+| `/contract:openapi` | OpenAPI 3.1 | HTTP / resource APIs (paths, methods, request/response bodies) |
+| `/contract:asyncapi` | AsyncAPI 3.0 | Evented / pub-sub / streaming interfaces (channels, operations, messages) |
+| `/contract:json-schema` | JSON Schema (draft 2020-12) | Reusable payload schemas without a protocol wrapper |
 
 Each skill carries three intents internally and dispatches via its own intent table. Operators or briefs select the format first; the skill then matches the prompt to one of three sibling files:
 
@@ -42,7 +42,7 @@ Read-only validation of contract artifacts after the author intent completes. Ch
 
 The verifier intent does not modify files -- it reports issues for the brief's verify-repair loop to act on.
 
-It also exposes a `--mode cross-project` flag (formerly the standalone `contracts/validator` skill's mode flag) that compares a producer's merged contract against each consumer's tier-2 workspace clone. The mode is a verifier sub-mode, not a separate skill: the algorithms and output shapes are unchanged from the previous standalone surface.
+It also exposes a `--mode cross-project` flag that compares a producer's merged contract against each consumer's tier-2 workspace clone. The mode is a verifier sub-mode, not a separate skill: the algorithms and output shapes are unchanged from the previous standalone surface.
 
 ### Importer intent (Layer 2)
 
@@ -57,7 +57,7 @@ In Layer 1, operators perform these steps manually by placing conformant files i
 
 ## References
 
-Format-neutral material is shared across the three skills under `plugins/interfaces/references/`:
+Format-neutral material is shared across the three skills under `plugins/contract/references/`:
 
 | Reference | Content |
 |-----------|---------|
@@ -66,14 +66,18 @@ Format-neutral material is shared across the three skills under `plugins/interfa
 | Import upgrade policy | Swagger 2.0 → OpenAPI 3.1, AsyncAPI 2.x → 3.0, schema metadata defaults |
 | Report shape | Alignment report and verifier output schemas |
 
-Format-specific patterns and examples (OpenAPI conventions, AsyncAPI conventions, JSON Schema conventions, artifact structure) live alongside each format's `SKILL.md` under `plugins/interfaces/skills/<format>/references/`.
+Format-specific patterns and examples (OpenAPI conventions, AsyncAPI conventions, JSON Schema conventions, artifact structure) live alongside each format's `SKILL.md` under `plugins/contract/references/`.
 
 ## How the plugin is invoked
 
-The Interfaces plugin is schema-independent. It is invoked from the `contracts` brief in the define pipeline, which is present in:
+The Contract plugin is schema-independent. It is invoked from the `contracts` brief in the define pipeline, which is present in:
 
 - The **Contracts schema** -- for dedicated contract changes (authoring and import).
 - The **Omnia schema** -- for alignment validation during implementation changes.
 - The **Vectis schema** -- for alignment validation during implementation changes.
 
 The brief picks the format-appropriate skill (OpenAPI for HTTP / resource APIs, AsyncAPI for evented / pub-sub / streaming, JSON Schema for shared payload schemas) and dispatches to its author intent (alignment validation and delta production), then to its verifier intent (post-generation consistency checks), with a verify-repair loop of up to 2 iterations.
+
+## CLI counterpart
+
+The matching read-only CLI surface lives under [`specify contract`](../cli/contract.md): `specify contract list` projects every top-level contract under `contracts/`, and `specify contract validate` runs the RFC-12 §Validation checks (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness).

@@ -1,14 +1,14 @@
 ---
-name: interfaces-asyncapi
-description: Authors, imports, and verifies AsyncAPI 3.0 event, pub/sub, stream, and WebSocket-style contracts for Specify changes, including channels, messages, bindings, producers, consumers, and schema references. Use when a contracts build needs an evented interface contract, when an operator supplies or asks for an AsyncAPI document, or when verifying AsyncAPI compatibility after a merge.
+name: contract-asyncapi
+description: Authors, imports, and verifies AsyncAPI 3.0 event, pub/sub, stream, and WebSocket-style contracts for Specify changes, including channels, messages, bindings, producers, consumers, and schema references. Use when a contracts build needs an evented contract, when an operator supplies or asks for an AsyncAPI document, or when verifying AsyncAPI compatibility after a merge.
 argument-hint: "[change-dir]"
 ---
 
 # AsyncAPI
 
-Specialist for AsyncAPI 3.0 evented interface contracts on Specify changes — pub/sub, streaming, queue, and WebSocket-style messaging. This skill owns three intents: authoring or extending the AsyncAPI document for a change, importing or normalising an externally supplied AsyncAPI document, and verifying an AsyncAPI artefact (single-mode internal consistency or cross-project consumer compatibility).
+Specialist for AsyncAPI 3.0 evented contracts on Specify changes — pub/sub, streaming, queue, and WebSocket-style messaging. This skill owns three intents: authoring or extending the AsyncAPI document for a change, importing or normalising an externally supplied AsyncAPI document, and verifying an AsyncAPI artefact (single-mode internal consistency or cross-project consumer compatibility).
 
-The skill is AsyncAPI-only. Shared payload schemas under `contracts/schemas/` are owned by the json-schema format skill (`/interfaces:json-schema`); HTTP contracts under `contracts/http/` are owned by `/interfaces:openapi`.
+The skill is AsyncAPI-only. Shared payload schemas under `contracts/schemas/` are owned by the json-schema format skill (`/contract:json-schema`); HTTP contracts under `contracts/http/` are owned by `/contract:openapi`.
 
 ## Critical Path (Quick Reference)
 
@@ -23,7 +23,7 @@ The skill is AsyncAPI-only. Shared payload schemas under `contracts/schemas/` ar
 ## Invocation
 
 ```text
-/interfaces:asyncapi <change-dir>
+/contract:asyncapi <change-dir>
 ```
 
 Optional internal flags (recognised by the verifier sibling):
@@ -47,7 +47,7 @@ AsyncAPI files live in two locations — the change-local delta and the platform
         ├── messages/
         │   └── <event-domain>-events.yaml   # Change-local delta or normalised import
         └── schemas/
-            └── <type>.yaml                  # Owned by /interfaces:json-schema
+            └── <type>.yaml                  # Owned by /contract:json-schema
 ```
 
 Conventions enforced for every AsyncAPI file in either location:
@@ -85,13 +85,13 @@ For the cross-format directory layout, baseline-vs-delta rules, and merge semant
 
 ## Cross-format coordination
 
-When a change touches more than one interface format (HTTP + events + shared schemas), the `contracts` brief invokes the format skills in this order:
+When a change touches more than one contract format (HTTP + events + shared schemas), the `contracts` brief invokes the format skills in this order:
 
-1. `/interfaces:json-schema` first — the schema vocabulary is shared and must stabilise before the bindings reference it.
-2. `/interfaces:openapi` — HTTP operations bind to the schemas authored above.
-3. `/interfaces:asyncapi` — message channels bind to the same schemas.
+1. `/contract:json-schema` first — the schema vocabulary is shared and must stabilise before the bindings reference it.
+2. `/contract:openapi` — HTTP operations bind to the schemas authored above.
+3. `/contract:asyncapi` — message channels bind to the same schemas.
 
-This skill never writes files outside `contracts/messages/` (and the change-local schema deltas it decomposes into `contracts/schemas/` during import). HTTP-shaped intents are out of scope — route them to `/interfaces:openapi`.
+This skill never writes files outside `contracts/messages/` (and the change-local schema deltas it decomposes into `contracts/schemas/` during import). HTTP-shaped intents are out of scope — route them to `/contract:openapi`.
 
 ## Hard rules
 
@@ -120,4 +120,4 @@ These constraints are non-negotiable for any of the three sibling paths:
 - [`import-upgrade-policy`](../../references/import-upgrade-policy.md) — shared framework for the importer sibling (format detection, upgrade targets, lossless vs lossy decisions).
 - [`report-shape`](../../references/report-shape.md) — single-mode markdown and cross-project YAML report formats produced by the verifier sibling.
 - [`cross-project-compatibility`](../../references/cross-project-compatibility.md) — `change-kind` vocabulary used by the verifier in `--mode cross-project`.
-- [`json-schema-conventions`](../../references/json-schema-conventions.md) — payload schema rules (owned by `/interfaces:json-schema`; linked here so authors of AsyncAPI files understand the schema files they reference).
+- [`json-schema-conventions`](../../references/json-schema-conventions.md) — payload schema rules (owned by `/contract:json-schema`; linked here so authors of AsyncAPI files understand the schema files they reference).

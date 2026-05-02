@@ -139,10 +139,10 @@ The full structural rules — path conventions, method semantics, response code 
 
 ## Schema reuse and `$ref` discipline
 
-Shared payload schemas live in `contracts/schemas/` and are owned by the json-schema format skill (`/interfaces:json-schema`). The author of an OpenAPI file does **not** create or edit schema files — it only references them.
+Shared payload schemas live in `contracts/schemas/` and are owned by the json-schema format skill (`/contract:json-schema`). The author of an OpenAPI file does **not** create or edit schema files — it only references them.
 
 - **Always `$ref`** request bodies, response bodies, and reusable parameter schemas to `../schemas/<type>.yaml`.
-- **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to `/interfaces:json-schema` (or, in the same `/spec:build` invocation, the contracts schema build brief calls the json-schema skill first per the cross-format ordering rule).
+- **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to `/contract:json-schema` (or, in the same `/spec:build` invocation, the contracts schema build brief calls the json-schema skill first per the cross-format ordering rule).
 - **`$ref` resolution scope.** All `$ref` paths must resolve either to `$CONTRACTS_DIR/schemas/` (this change's delta) or `$BASELINE_DIR/schemas/` (the platform baseline). The verifier flags any `$ref` that does not resolve.
 - **Inline `$defs`** for one-shot sub-objects used only inside one parent payload are acceptable in the schema files themselves, but not in the OpenAPI document. Keep the OpenAPI side a flat list of `$ref` pointers.
 - **`components/schemas` is forbidden** for domain types. The `components` block may host `parameters`, `headers`, or `securitySchemes` (see Auth below).
@@ -160,7 +160,7 @@ OpenAPI deltas fall into three categories — every operation in the delta belon
 Computation rules applied at file scope:
 
 1. **One file per API domain.** Always read the matching baseline file first. The delta file replaces it wholesale at merge time.
-2. **`info.version` MUST parse as SemVer (RFC-12).** New top-level OpenAPI documents MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the change requires a version bump, the contracts schema build brief flags it for human review. The verifier sibling and `specify interface validate` both enforce SemVer; a non-SemVer value is a hard validation failure.
+2. **`info.version` MUST parse as SemVer (RFC-12).** New top-level OpenAPI documents MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the change requires a version bump, the contracts schema build brief flags it for human review. The verifier sibling and `specify contract validate` both enforce SemVer; a non-SemVer value is a hard validation failure.
 3. **`info.x-specify-id` rename-stable identifier (RFC-12).** SHOULD set `info.x-specify-id` on every new top-level OpenAPI document to a kebab-case slug (typically the file stem; `^[a-z][a-z0-9-]*$`, ≤ 64 characters). The id is a hint that survives file moves and version bumps. MUST preserve any pre-existing `info.x-specify-id` when extending the baseline; MUST NOT change it across `info.version` bumps. Path-based references in `registry.yaml` remain canonical — the id is a rename-stable hint, not a substitute.
 4. **Preserve `operationId` keys.** When extending a baseline file, every existing operation's `operationId` stays exactly as it is. New operations get fresh kebab-cased or camelCased `operationId` values that are unique across the contract tree.
 5. **Diff at the operation level.** When modifying an existing operation, change only the keys the spec asserts. Do not reformat or reorder unrelated keys — opaque file replacement means a re-ordered file looks like a wholesale rewrite to reviewers.
@@ -286,7 +286,7 @@ After producing the report, run [`verifier.md`](./verifier.md) in `single` mode 
 | Spec asserts a status code with no response shape | Use `$ref: "../schemas/error-response.yaml"` (or the spec-named error schema) and add a one-sentence `description` derived from the spec's wording. |
 | Two specs claim the same `(path, method)` with different shapes | Surface the conflict as a warning; do not write a delta until the specs are reconciled. |
 | Baseline operation uses `components/schemas` (legacy from a Layer-1 import) | Do not propagate the inline form into the delta. Run [`importer.md`](./importer.md) on the baseline file first, then re-author. |
-| Spec describes pagination | Use the standard `limit` / `offset` query params from [`../../references/openapi-conventions.md`](../../references/openapi-conventions.md) §Pagination unless the spec requires cursor-based — in which case define a pagination wrapper schema via `/interfaces:json-schema`. |
+| Spec describes pagination | Use the standard `limit` / `offset` query params from [`../../references/openapi-conventions.md`](../../references/openapi-conventions.md) §Pagination unless the spec requires cursor-based — in which case define a pagination wrapper schema via `/contract:json-schema`. |
 
 ## Verification checklist
 
@@ -305,6 +305,6 @@ Before declaring the author run complete:
 - [`artifact-structure`](../../references/artifact-structure.md) — directory layout for the change-local delta and the baseline.
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for the three authorship patterns, the already-covered / new-or-modified / normalisation classification, and the opaque-file-replacement merge contract that the §Baseline-delta computation rules above operationalise for OpenAPI.
 - [`report-shape`](../../references/report-shape.md) — markdown shape for the alignment report produced by this author path.
-- [`json-schema-conventions`](../../references/json-schema-conventions.md) — schema files referenced by the OpenAPI document (owned by `/interfaces:json-schema`).
+- [`json-schema-conventions`](../../references/json-schema-conventions.md) — schema files referenced by the OpenAPI document (owned by `/contract:json-schema`).
 - [`importer.md`](./importer.md) — sibling for normalising external OpenAPI documents.
 - [`verifier.md`](./verifier.md) — sibling for validating the authored output.

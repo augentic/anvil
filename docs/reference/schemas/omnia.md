@@ -17,7 +17,7 @@
 
 When a plan entry has `sources`, the specs brief invokes `/spec:extract` to derive requirements from legacy code.
 
-The specs and design briefs read baseline contracts at `.specify/contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. See [Interfaces Plugin](../plugins/interfaces.md) for skill details.
+The specs and design briefs read baseline contracts at `.specify/contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. See [Contract Plugin](../plugins/contract.md) for skill details.
 
 ### Build phase
 

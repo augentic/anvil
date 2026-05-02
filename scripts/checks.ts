@@ -573,6 +573,9 @@ async function checkRetiredSlashCommands(): Promise<void> {
     "/contracts:validator",
     "/contracts:importer",
     "/contracts:management",
+    "/interfaces:openapi",
+    "/interfaces:asyncapi",
+    "/interfaces:json-schema",
   ];
 
   const SCAN_ROOTS = [

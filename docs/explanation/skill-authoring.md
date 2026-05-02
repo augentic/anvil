@@ -25,7 +25,7 @@ The fix is mechanical: every skill name carries its plugin domain as a prefix, s
 
 - `omnia-crate-writer`, `omnia-test-writer`, `omnia-code-reviewer`
 - `vectis-core-writer`, `vectis-ios-reviewer`, `vectis-design-system-writer`
-- `interfaces-openapi`, `interfaces-asyncapi`, `interfaces-json-schema`
+- `contract-openapi`, `contract-asyncapi`, `contract-json-schema`
 - `client-sow-writer`
 - `rt-wiretapper`, `rt-replay-writer`
 
@@ -95,7 +95,7 @@ Examples after RFC-10:
 | `/spec:plan` | `<initiative-name>` |
 | `/spec:extract` | `<source-path> <change-dir>` |
 | `/omnia:crate-writer` | `[crate-name]` |
-| `/interfaces:openapi` | `[change-dir]` |
+| `/contract:openapi` | `[change-dir]` |
 | `/spec:execute` | (omitted — flag-only invocation) |
 
 The complete set of flags and secondary positionals each skill accepts moves into a body section called "Invocation". The pattern follows `spec/execute` — block-text examples that include the flag form alongside a one-line note about what each form does.
@@ -134,7 +134,7 @@ The pattern is in active use under several skills in this repository — both as
 - `plugins/spec/skills/merge/SKILL.md` — the success / failure / deferred paths are summarised in the Critical Path; the per-path prose is kept compact.
 - `plugins/omnia/skills/code-reviewer/SKILL.md` — after RFC-10 Chunk 15: Critical Path + invocation; categories, team protocol, auto-fix, and output template each live in siblings (`categories.md`, `team-protocol.md`, `auto-fix.md`, `output.md`).
 - `plugins/omnia/skills/crate-writer/SKILL.md` — after RFC-10 Chunk 16: hard rules and authority hierarchy factored into `rules.md`; SKILL.md retains the mode-dispatch table and artifact-mapping section.
-- `plugins/interfaces/skills/openapi/SKILL.md`, `.../asyncapi/SKILL.md`, `.../json-schema/SKILL.md` — each opens with a format-specific Critical Path and dispatches to `author.md`, `importer.md`, `verifier.md` based on intent.
+- `plugins/contract/skills/openapi/SKILL.md`, `.../asyncapi/SKILL.md`, `.../json-schema/SKILL.md` — each opens with a format-specific Critical Path and dispatches to `author.md`, `importer.md`, `verifier.md` based on intent.
 
 When in doubt, look at one of these and copy the shape.
 

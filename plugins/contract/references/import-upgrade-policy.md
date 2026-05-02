@@ -1,6 +1,6 @@
 # Import / Upgrade Policy
 
-Cross-format framework for normalising externally-supplied interface contracts onto Specify conventions. Each format skill (`/interfaces:openapi`, `/interfaces:asyncapi`, `/interfaces:json-schema`) implements its own importer; this reference captures the rules they share — format detection, upgrade targets, lossless-vs-lossy decisions, and when to refuse and ask the operator.
+Cross-format framework for normalising externally-supplied contracts onto Specify conventions. Each format skill (`/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema`) implements its own importer; this reference captures the rules they share — format detection, upgrade targets, lossless-vs-lossy decisions, and when to refuse and ask the operator.
 
 ## The four legs of every importer
 
@@ -21,13 +21,13 @@ Detection runs against the top-level YAML/JSON keys of each input file. The firs
 
 | Priority | Signal | Classification | Owner |
 |---|---|---|---|
-| 1 | `swagger:` (any value) | Swagger 2.0 | `/interfaces:openapi` |
-| 2 | `openapi: "3.0.x"` | OpenAPI 3.0.x | `/interfaces:openapi` |
-| 3 | `openapi: "3.1.x"` | OpenAPI 3.1.x | `/interfaces:openapi` |
-| 4 | `asyncapi: "2.x"` | AsyncAPI 2.x | `/interfaces:asyncapi` |
-| 5 | `asyncapi: "3.0.x"` | AsyncAPI 3.0.x | `/interfaces:asyncapi` |
-| 6 | `$schema:` (no protocol key) | Standalone JSON Schema | `/interfaces:json-schema` |
-| 7 | `$id:` / `properties:` / `definitions:` / `$defs:` (no protocol key, no `$schema:`) | Probable JSON Schema (draft unknown) | `/interfaces:json-schema` |
+| 1 | `swagger:` (any value) | Swagger 2.0 | `/contract:openapi` |
+| 2 | `openapi: "3.0.x"` | OpenAPI 3.0.x | `/contract:openapi` |
+| 3 | `openapi: "3.1.x"` | OpenAPI 3.1.x | `/contract:openapi` |
+| 4 | `asyncapi: "2.x"` | AsyncAPI 2.x | `/contract:asyncapi` |
+| 5 | `asyncapi: "3.0.x"` | AsyncAPI 3.0.x | `/contract:asyncapi` |
+| 6 | `$schema:` (no protocol key) | Standalone JSON Schema | `/contract:json-schema` |
+| 7 | `$id:` / `properties:` / `definitions:` / `$defs:` (no protocol key, no `$schema:`) | Probable JSON Schema (draft unknown) | `/contract:json-schema` |
 | 8 | None of the above | Unrecognised | Skip; flag for manual review |
 
 Detection rules for every importer:
@@ -92,7 +92,7 @@ Every output file must carry the Specify-required metadata fields, regardless of
 | `$id` (schemas) | URN form `urn:specify:schemas/<filename-without-extension>`. | Generate from filename. **Never reassign** an `$id` that matches an existing baseline schema (see [`baseline-vs-delta`](baseline-vs-delta.md) — the `$id` stability rule). |
 | `title` (schemas) | PascalCase type name from filename. | Derive from filename. Do not overwrite existing `title` values. |
 | `description` (schemas, `info.description` on OpenAPI / AsyncAPI) | Non-empty string. | If absent, set to `"[imported — description pending review]"` and surface in the import report so the operator replaces it before merge. |
-| `info.title` / `info.version` (OpenAPI / AsyncAPI) | Required by the format spec. `info.version` MUST parse as SemVer per [semver.org](https://semver.org) (RFC-12). | Preserve from source verbatim; surface in the report if absent. **Do not auto-rewrite a non-SemVer `info.version`** (e.g. `2024-01-15`) — emit a `[manual review required]` entry naming the file and the offending value. The verifier and `specify interface validate` will block on the unaltered value until the operator resolves it. |
+| `info.title` / `info.version` (OpenAPI / AsyncAPI) | Required by the format spec. `info.version` MUST parse as SemVer per [semver.org](https://semver.org) (RFC-12). | Preserve from source verbatim; surface in the report if absent. **Do not auto-rewrite a non-SemVer `info.version`** (e.g. `2024-01-15`) — emit a `[manual review required]` entry naming the file and the offending value. The verifier and `specify contract validate` will block on the unaltered value until the operator resolves it. |
 | `info.x-specify-id` (OpenAPI / AsyncAPI) | Optional rename-stable id (RFC-12). When present, kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract under root `contracts/`. | Preserve from source verbatim — even when malformed (the verifier flags the format issue with the file path, which is enough for the operator to fix). **Never invent or auto-derive an id during import** — new ids are an authoring decision. |
 
 The `[imported — description pending review]` placeholder is reserved for the importer path. It appears in the verifier's output as a `WARN` to ensure the gap reaches a human before the change merges.
@@ -113,4 +113,4 @@ Every format-specific importer follows these principles:
 - [`artifact-structure`](artifact-structure.md) — directory layout for the post-import baseline shape.
 - [`baseline-vs-delta`](baseline-vs-delta.md) — `$id` stability and baseline-immutability rules that the importer obeys.
 - [`report-shape`](report-shape.md) — import report structure, including the "Manual Review Required" section.
-- Format-specific importers — `plugins/interfaces/skills/{openapi,asyncapi,json-schema}/importer.md`.
+- Format-specific importers — `plugins/contract/skills/{openapi,asyncapi,json-schema}/importer.md`.

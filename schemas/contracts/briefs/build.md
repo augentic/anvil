@@ -51,15 +51,15 @@ Then classify required formats:
 
 For prose-driven and modification work, run author intent in this order:
 
-1. `/interfaces:json-schema` — author the minimal JSON Schema delta for reusable payload vocabulary. Owns `$id` assignment, one-type-per-file decomposition, and schema-file naming. Skip when the change has no shared payload schemas.
-2. `/interfaces:openapi` — author the minimal OpenAPI delta for HTTP/resource interactions. Reuse change-local or baseline `contracts/schemas/` files; do not author competing schemas under different filenames or `$id`s. Skip when the change has no HTTP interactions.
-3. `/interfaces:asyncapi` — author the minimal AsyncAPI delta for evented, pub/sub, streaming, or WebSocket-style interactions. Follow the same schema-reuse rule as `/interfaces:openapi`. Skip when the change has no evented interactions.
+1. `/contract:json-schema` — author the minimal JSON Schema delta for reusable payload vocabulary. Owns `$id` assignment, one-type-per-file decomposition, and schema-file naming. Skip when the change has no shared payload schemas.
+2. `/contract:openapi` — author the minimal OpenAPI delta for HTTP/resource interactions. Reuse change-local or baseline `contracts/schemas/` files; do not author competing schemas under different filenames or `$id`s. Skip when the change has no HTTP interactions.
+3. `/contract:asyncapi` — author the minimal AsyncAPI delta for evented, pub/sub, streaming, or WebSocket-style interactions. Follow the same schema-reuse rule as `/contract:openapi`. Skip when the change has no evented interactions.
 
 For import-driven work, run importer intent for each supplied format:
 
-1. `/interfaces:json-schema` — import and normalize standalone JSON Schema files into `contracts/schemas/`.
-2. `/interfaces:openapi` — import and normalize OpenAPI or Swagger artifacts into `contracts/http/`, decomposing payload schemas into `contracts/schemas/` as needed.
-3. `/interfaces:asyncapi` — import and normalize AsyncAPI artifacts into `contracts/messages/`, decomposing payload schemas into `contracts/schemas/` as needed.
+1. `/contract:json-schema` — import and normalize standalone JSON Schema files into `contracts/schemas/`.
+2. `/contract:openapi` — import and normalize OpenAPI or Swagger artifacts into `contracts/http/`, decomposing payload schemas into `contracts/schemas/` as needed.
+3. `/contract:asyncapi` — import and normalize AsyncAPI artifacts into `contracts/messages/`, decomposing payload schemas into `contracts/schemas/` as needed.
 
 Importer paths must produce an import report covering lossless changes, lossy changes, unsupported constructs, and manual-review warnings.
 
@@ -67,22 +67,22 @@ Importer paths must produce an import report covering lossless changes, lossy ch
 
 ### Phase 3: Verify
 
-Verification runs the verifier intent of each `/interfaces:*` format skill that owns artifacts in the change. Run only the formats that produced artifacts; skip the rest.
+Verification runs the verifier intent of each `/contract:*` format skill that owns artifacts in the change. Run only the formats that produced artifacts; skip the rest.
 
-1. `/interfaces:json-schema` — verifier intent: `$ref` resolution and schema metadata (`$id`, `title`, `description`) for every JSON Schema file under `contracts/schemas/`.
-2. `/interfaces:openapi` — verifier intent: `$ref` resolution across the OpenAPI delta and binding completeness (every spec-referenced HTTP schema has at least one binding).
-3. `/interfaces:asyncapi` — verifier intent: `$ref` resolution across the AsyncAPI delta and binding completeness (every spec-referenced evented schema has at least one binding).
+1. `/contract:json-schema` — verifier intent: `$ref` resolution and schema metadata (`$id`, `title`, `description`) for every JSON Schema file under `contracts/schemas/`.
+2. `/contract:openapi` — verifier intent: `$ref` resolution across the OpenAPI delta and binding completeness (every spec-referenced HTTP schema has at least one binding).
+3. `/contract:asyncapi` — verifier intent: `$ref` resolution across the AsyncAPI delta and binding completeness (every spec-referenced evented schema has at least one binding).
 
 For mixed-format changes, the final verifier pass must check cross-format `$ref` consistency and report duplicate schema identities before the build can complete.
 
-The format verifier intents enforce the RFC-12 identity & version rules inline (Check 4 in `/interfaces:openapi/verifier.md` and `/interfaces:asyncapi/verifier.md`): SemVer `info.version`, kebab-case + ≤64-char `info.x-specify-id` when present, and in-change uniqueness on declared ids. The cross-repo uniqueness check (the same id declared by another top-level contract somewhere else in root `contracts/`) is **not** part of single-mode verification — it is the CLI's gate, run after merge via `specify interface validate` (RFC-12 §"CLI surface").
+The format verifier intents enforce the RFC-12 identity & version rules inline (Check 4 in `/contract:openapi/verifier.md` and `/contract:asyncapi/verifier.md`): SemVer `info.version`, kebab-case + ≤64-char `info.x-specify-id` when present, and in-change uniqueness on declared ids. The cross-repo uniqueness check (the same id declared by another top-level contract somewhere else in root `contracts/`) is **not** part of single-mode verification — it is the CLI's gate, run after merge via `specify contract validate` (RFC-12 §"CLI surface").
 
 When this brief runs as the post-merge cross-project consumer check (RFC-9 §3B), thread `--mode cross-project` through the format verifier paths so they emit the cross-project compatibility report instead of the single-change report.
 
 ### Phase 4: Verify-repair loop (max 2 iterations)
 
 If a verifier reports failures:
-1. Re-enter the same format skill (`/interfaces:openapi`, `/interfaces:asyncapi`, or `/interfaces:json-schema`) with the verifier output for targeted repair via the same intent that produced the artifact (author or importer).
+1. Re-enter the same format skill (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema`) with the verifier output for targeted repair via the same intent that produced the artifact (author or importer).
 2. Re-run that format's verifier intent.
 3. If still failing after 2 iterations, stop and surface issues for human review. Do not mark the task complete. Report the remaining failures with full output and escalate for guidance.
 

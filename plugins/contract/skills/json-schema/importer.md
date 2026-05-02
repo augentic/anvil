@@ -34,9 +34,9 @@ Walk `$CONTRACTS_DIR/` for `.yaml`, `.yml`, and `.json` files. For each file, re
 
 | Detection signal | Classification | Target |
 |---|---|---|
-| `swagger:` (any value) | **Out of scope.** Route to `/interfaces:openapi` importer. |
-| `openapi:` (any value) | **Out of scope.** Route to `/interfaces:openapi` importer. |
-| `asyncapi:` (any value) | **Out of scope.** Route to `/interfaces:asyncapi` importer. |
+| `swagger:` (any value) | **Out of scope.** Route to `/contract:openapi` importer. |
+| `openapi:` (any value) | **Out of scope.** Route to `/contract:openapi` importer. |
+| `asyncapi:` (any value) | **Out of scope.** Route to `/contract:asyncapi` importer. |
 | `$schema:` (Draft URI), no protocol key | Standalone JSON Schema | Normalise to Draft 2020-12 |
 | `$id:` present, no `$schema:`, no protocol key | Probable JSON Schema | Normalise; inject `$schema` |
 | `type:` / `properties:` / `definitions:` / `$defs:` at root, no protocol key, no `$schema:` | Probable JSON Schema (draft unknown) | Normalise; inject `$schema` and surface as `[import — draft unknown]` warning |

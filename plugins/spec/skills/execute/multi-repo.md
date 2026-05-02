@@ -29,10 +29,10 @@ When step 10 transitions a change to `done`, the driver runs a non-fatal contrac
 2. `.specify/registry.yaml` exists and the producer's project entry declares a non-empty `contracts.produces` list.
 3. At least one merged file path under the producer's `contracts/` directory matches an entry in the producer's `produces` list (i.e. the merge actually touched a produced contract — most merges that just touch specs do nothing here).
 
-When all three hold, walk the producer's `produces` list and find every consumer project (any registry entry whose `contracts.consumes` list contains the same path). RFC-12 collapsed the contract role set to `produces` and `consumes`; externally-authored contracts are encoded by the absence of any `produces` entry, not by a separate `imports` field. For each `(produced-contract, consumer)` pair, invoke the format-appropriate `/interfaces:*` skill in its verifier intent with `--mode cross-project` — pick the skill from the merged contract's category: `/interfaces:openapi` for HTTP / resource APIs (`contracts/http/*`), `/interfaces:asyncapi` for evented / pub-sub / streaming (`contracts/messages/*`), `/interfaces:json-schema` for shared payload schemas (`contracts/schemas/*`):
+When all three hold, walk the producer's `produces` list and find every consumer project (any registry entry whose `contracts.consumes` list contains the same path). RFC-12 collapsed the contract role set to `produces` and `consumes`; externally-authored contracts are encoded by the absence of any `produces` entry, not by a separate `imports` field. For each `(produced-contract, consumer)` pair, invoke the format-appropriate `/contract:*` skill in its verifier intent with `--mode cross-project` — pick the skill from the merged contract's category: `/contract:openapi` for HTTP / resource APIs (`contracts/http/*`), `/contract:asyncapi` for evented / pub-sub / streaming (`contracts/messages/*`), `/contract:json-schema` for shared payload schemas (`contracts/schemas/*`):
 
 ```bash
-/interfaces:openapi \
+/contract:openapi \
     --mode cross-project \
     --producer-contract <merged-contract-path> \
     --consumer-workspace .specify/workspace/<consumer>/
@@ -40,7 +40,7 @@ When all three hold, walk the producer's `produces` list and find every consumer
 
 Both arguments are paths anchored at the **initiating repo root**, not the producer's workspace clone — the post-merge check runs after the CWD restore (step 9a) so the driver sits in the initiating repo where `.specify/registry.yaml` and root `contracts/` live.
 
-The verifier emits a YAML report (see [shared report shape](../../../interfaces/references/report-shape.md#cross-project-mode-output-structured-yaml)). Parse `summary.total-findings`:
+The verifier emits a YAML report (see [shared report shape](../../../contract/references/report-shape.md#cross-project-mode-output-structured-yaml)). Parse `summary.total-findings`:
 
 - Zero findings: do nothing — the consumer's view matches.
 - One or more findings (any severity, including `info` for `consumer-has-no-baseline`): record each as a journal entry and render a warning block in the merge transcript.
@@ -104,9 +104,9 @@ The block is omitted entirely when `summary.total-findings == 0`. Multiple consu
 
 - **The execute loop never halts on cross-project warnings.** The merged change has already transitioned to `done`. Findings are advisory output for the operator; the driver continues to the next iteration in `--loop` mode or exits normally in supervised mode.
 - **The merged change is not re-touched** beyond the journal append. No plan transition, no metadata edit, no follow-up phase invocation.
-- **Verifier errors do not halt the driver.** If the format verifier (`/interfaces:openapi`, `/interfaces:asyncapi`, or `/interfaces:json-schema` running its verifier intent in `--mode cross-project`) exits non-zero (read failure on a consumer workspace, malformed contract), record the failure as a single `failure`-kind journal entry on the merged change with `--summary "cross-project-warning: validator-error in <consumer>"` and continue. The driver does not retry the verifier.
+- **Verifier errors do not halt the driver.** If the format verifier (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema` running its verifier intent in `--mode cross-project`) exits non-zero (read failure on a consumer workspace, malformed contract), record the failure as a single `failure`-kind journal entry on the merged change with `--summary "cross-project-warning: validator-error in <consumer>"` and continue. The driver does not retry the verifier.
 - **The check is skipped under `--dry-run`** end-to-end — dry-run never invokes phase skills (per the §Guardrails MUST-NOTs in the main SKILL.md) and the post-merge step inherits that prohibition.
 
 ### Self-heal interaction
 
-Self-heal does **not** run the cross-project check on a reclaimed `success`-on-merge entry. The check is a one-shot side-effect of the live merge transition; on the next normal `/spec:execute` startup, the merged change has already been transitioned to `done` and no producer-side work remains. If a prior crash interrupted the cross-project check itself, the operator can re-trigger it manually by re-running the format-appropriate `/interfaces:*` skill (verifier intent, `--mode cross-project`) against the same `(producer-contract, consumer-workspace)` pair — the verifier is idempotent and writes nothing to disk.
+Self-heal does **not** run the cross-project check on a reclaimed `success`-on-merge entry. The check is a one-shot side-effect of the live merge transition; on the next normal `/spec:execute` startup, the merged change has already been transitioned to `done` and no producer-side work remains. If a prior crash interrupted the cross-project check itself, the operator can re-trigger it manually by re-running the format-appropriate `/contract:*` skill (verifier intent, `--mode cross-project`) against the same `(producer-contract, consumer-workspace)` pair — the verifier is idempotent and writes nothing to disk.

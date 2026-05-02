@@ -161,7 +161,7 @@ For every top-level AsyncAPI document under `$CHANGE_CONTRACTS/messages/` (root 
 2. **`info.x-specify-id` (when present) MUST match `^[a-z][a-z0-9-]*$` and be ≤ 64 characters.** Format violations are `FAIL`.
 3. **Within the change directory, `info.x-specify-id` values MUST be unique.** When two top-level AsyncAPI documents in `$CHANGE_CONTRACTS/messages/` declare the same id, both are `FAIL`.
 
-The cross-repo uniqueness check (the same id declared by a top-level contract somewhere else under root `contracts/`) is **not** part of single mode — it is the CLI's job (`specify interface validate`), which runs after merge with the full baseline in scope. The skill only flags duplicates inside the change to keep the verifier deterministic and self-contained.
+The cross-repo uniqueness check (the same id declared by a top-level contract somewhere else under root `contracts/`) is **not** part of single mode — it is the CLI's job (`specify contract validate`), which runs after merge with the full baseline in scope. The skill only flags duplicates inside the change to keep the verifier deterministic and self-contained.
 
 Report format (one entry per failure):
 

@@ -35,9 +35,9 @@ Walk `$CONTRACTS_DIR/` for `.yaml`, `.yml`, and `.json` files. For each file, re
 |---|---|---|
 | `asyncapi: "2.x.x"` | AsyncAPI 2.x | AsyncAPI 3.0 |
 | `asyncapi: "3.0.x"` | AsyncAPI 3.0.x | No version conversion |
-| `openapi:` (any version) | **Out of scope.** Route to `/interfaces:openapi` importer. |
-| `swagger: "2.0"` | **Out of scope.** Route to `/interfaces:openapi` importer. |
-| `$schema:` (without `openapi`/`asyncapi`/`swagger`) | **Out of scope.** Route to `/interfaces:json-schema` importer. |
+| `openapi:` (any version) | **Out of scope.** Route to `/contract:openapi` importer. |
+| `swagger: "2.0"` | **Out of scope.** Route to `/contract:openapi` importer. |
+| `$schema:` (without `openapi`/`asyncapi`/`swagger`) | **Out of scope.** Route to `/contract:json-schema` importer. |
 | None of the above | Unrecognised. Skip and flag for manual review. |
 
 The detection signal is the top-level `asyncapi:` key. AsyncAPI minor versions in the 2.x range (2.0.0 through 2.6.0) all upgrade through the same conversion rules; detection only needs to distinguish 2.x from 3.0.
@@ -280,7 +280,7 @@ For the AsyncAPI document itself, verify that `info.title`, `info.version`, and 
 
 **RFC-12 normalisation rules for top-level AsyncAPI documents:**
 
-- **`info.version` MUST be SemVer.** When the imported value does not parse as SemVer (e.g. `2024-01-15`, `v2`, `"1"`), do **not** auto-rewrite. Surface a `[manual review required]` entry in the import report naming the file and the offending value, and let the operator decide on the canonical SemVer string. The verifier sibling and `specify interface validate` will block on the unaltered value until the operator resolves it.
+- **`info.version` MUST be SemVer.** When the imported value does not parse as SemVer (e.g. `2024-01-15`, `v2`, `"1"`), do **not** auto-rewrite. Surface a `[manual review required]` entry in the import report naming the file and the offending value, and let the operator decide on the canonical SemVer string. The verifier sibling and `specify contract validate` will block on the unaltered value until the operator resolves it.
 - **Preserve `info.x-specify-id` verbatim.** When the source carries `info.x-specify-id`, copy it through unchanged — even when the value violates the kebab-case format (the verifier flags the format issue with the file path, which is enough for the operator to fix). Never invent or auto-derive an id during import; new ids are an authoring decision.
 
 For each message in `components/messages`, verify `name` and `contentType`. If `contentType` is absent, default to `application/json` and surface in the import report.
@@ -344,7 +344,7 @@ Report semantics:
 
 | Scenario | Handling |
 |---|---|
-| Mixed input formats (AsyncAPI 2.x + AsyncAPI 3.0 + JSON Schema) in one directory | Process each file independently. JSON Schema files are out of scope — route them to `/interfaces:json-schema`. |
+| Mixed input formats (AsyncAPI 2.x + AsyncAPI 3.0 + JSON Schema) in one directory | Process each file independently. JSON Schema files are out of scope — route them to `/contract:json-schema`. |
 | AsyncAPI file `$ref`s a sibling file in `$CONTRACTS_DIR/` | Process the referenced file first; rewrite the `$ref` to the post-decomposition path. |
 | AsyncAPI 2.x file with both `publish` and `subscribe` on the same channel | Generate two separate operations in 3.0 — one with `action: send`, one with `action: receive`. Carry both `operationId` values forward. |
 | AsyncAPI 2.x channel key uses unusual separators (e.g. `user.registered.v2`) | Convert to camelCase key (`userRegisteredV2`); dot-notation address (`user.registered.v2`); flag the version segment in the report — channel addresses should not encode versions per the conventions reference. |

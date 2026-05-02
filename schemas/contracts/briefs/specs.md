@@ -42,7 +42,7 @@ Mark unavailable structural details with `[unknown]` rather than guessing. Build
 
 When the proposal's Authorship Mode is **Import existing contracts**, write a lightweight behavioral spec that states the imported contract's observable purpose and scope. Treat the imported files listed in the proposal's Source Material section as the structural source of truth.
 
-Do not redundantly restate every imported field. Capture enough behavior for reviewers and downstream consumers to understand what interface is being added or normalized, then let the build brief route the supplied files through the relevant `/interfaces:*` importer and verifier intents.
+Do not redundantly restate every imported field. Capture enough behavior for reviewers and downstream consumers to understand what interface is being added or normalized, then let the build brief route the supplied files through the relevant `/contract:*` importer and verifier intents.
 
 ### Modify existing contracts
 

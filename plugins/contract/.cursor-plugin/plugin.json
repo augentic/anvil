@@ -1,7 +1,7 @@
 {
-  "name": "interfaces",
-  "displayName": "Interface Contracts",
-  "description": "Skills to author, import, and verify interface contracts — OpenAPI, AsyncAPI, JSON Schema, and future API/interface formats — from Specify artifacts.",
+  "name": "contract",
+  "displayName": "Contracts",
+  "description": "Skills to author, import, and verify API/interface contracts — OpenAPI, AsyncAPI, JSON Schema, and future formats — from Specify artifacts.",
   "version": "0.25.1",
   "author": {
     "name": "Augentic",
@@ -13,7 +13,6 @@
   "keywords": [
     "api",
     "contracts",
-    "interfaces",
     "openapi",
     "asyncapi",
     "json-schema"

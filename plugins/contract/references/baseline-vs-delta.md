@@ -1,6 +1,6 @@
 # Baseline vs Delta
 
-Cross-format rules for computing the minimal delta between an interface contract baseline and the change under construction. This reference complements [`artifact-structure`](artifact-structure.md), which describes the directory layout. Here we document **how** the author paths reason about what to write.
+Cross-format rules for computing the minimal delta between a contract baseline and the change under construction. This reference complements [`artifact-structure`](artifact-structure.md), which describes the directory layout. Here we document **how** the author paths reason about what to write.
 
 The rules apply uniformly to OpenAPI HTTP bindings, AsyncAPI message bindings, and standalone JSON Schema documents — each format skill's `author.md` references this file from its delta-classification step.
 
@@ -21,7 +21,7 @@ Every author run falls into one of three patterns. The classification depends on
 |---|---|---|
 | **Contract-first** | Rich. A preceding contract change populated root `contracts/`. | Already covered by the baseline. The delta is small or empty. |
 | **Spec-first** | Empty. Single-repo, no external consumers. | New. The delta is the full contract set, derived from the change's specs. |
-| **Contract-given** | Imported. The baseline came from an external system via `/interfaces:<format>` `importer.md`. | Covered. The delta is non-empty only for extensions the change introduces. |
+| **Contract-given** | Imported. The baseline came from an external system via `/contract:<format>` `importer.md`. | Covered. The delta is non-empty only for extensions the change introduces. |
 
 The author algorithms produce the same artefact regardless of pattern. The pattern label is for the alignment report and the brief's transcript, not for branching logic.
 

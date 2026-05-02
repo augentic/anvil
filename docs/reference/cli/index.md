@@ -50,6 +50,7 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | [specify registry](registry.md) | Manage the platform registry at `.specify/registry.yaml` | Multi-repo platform |
 | [specify schema](schema.md) | Schema resolution and brief pipeline queries | Schema infrastructure |
 | [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |
+| [specify contract](contract.md) | Inspect and validate baseline contracts under `contracts/` | RFC-12 baseline gate |
 | [specify init](init.md) | Project scaffold | One-time setup |
 | [specify vectis](vectis.md) | Cross-platform Crux project scaffold and verification | Vectis-specific tooling |
 

@@ -39,15 +39,17 @@ The previous standalone groups (`specify validate`, `specify spec`, `specify tas
 
 Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 
-### Interface skills
+### Contract skills
 
-The interfaces plugin provides format-first specialist skills for API contract generation and validation. Each skill carries author / import / verify intents internally and dispatches via its own intent table:
+The contract plugin provides format-first specialist skills for API contract generation and validation. Each skill carries author / import / verify intents internally and dispatches via its own intent table:
 
-- `/interfaces:openapi` — author, import, or verify HTTP / resource-style contracts (OpenAPI 3.1)
-- `/interfaces:asyncapi` — author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0)
-- `/interfaces:json-schema` — author, import, or verify reusable payload schemas (JSON Schema)
+- `/contract:openapi` — author, import, or verify HTTP / resource-style contracts (OpenAPI 3.1)
+- `/contract:asyncapi` — author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0)
+- `/contract:json-schema` — author, import, or verify reusable payload schemas (JSON Schema)
 
-Each skill exposes the same three intents through sibling files: `author.md` (generate or extend), `importer.md` (normalise an external document), and `verifier.md` (internal consistency and the post-merge cross-project consumer check via `--mode cross-project`). These skills are invoked by the `contracts` brief in the define pipeline (the brief id, the `contracts@v1` schema, and the `.specify/contracts/` baseline directory keep their original names — `interfaces` only renames the Cursor plugin / slash-command surface). The brief is present in the `contracts` schema (for dedicated contract changes) and in the Omnia and Vectis schemas (for alignment validation during implementation changes).
+Each skill exposes the same three intents through sibling files: `author.md` (generate or extend), `importer.md` (normalise an external document), and `verifier.md` (internal consistency and the post-merge cross-project consumer check via `--mode cross-project`). These skills are invoked by the `contracts` brief in the define pipeline (the brief id, the `contracts@v1` schema, and the `.specify/contracts/` baseline directory keep their original names — `contract` is the Cursor plugin / slash-command surface only). The brief is present in the `contracts` schema (for dedicated contract changes) and in the Omnia and Vectis schemas (for alignment validation during implementation changes).
+
+The matching read-only CLI surface lives at `specify contract { list, validate }` (RFC-12 §"CLI surface") — it projects every top-level OpenAPI / AsyncAPI document under `.specify/contracts/` and runs the SemVer + id-format + cross-repo id-uniqueness checks; both verbs no-op with exit 0 when `contracts/` is absent.
 
 ### Plan-driven loop (RFC-2, all three layers landed)
 

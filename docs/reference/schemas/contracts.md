@@ -20,9 +20,9 @@ There is no `design` stage. Contract changes define interface shapes, not implem
 
 | Brief | Skills invoked |
 |-------|---------------|
-| `build.md` | `/interfaces:openapi`, `/interfaces:asyncapi`, `/interfaces:json-schema` (author, importer, and verifier intents) |
+| `build.md` | `/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema` (author, importer, and verifier intents) |
 
-The build brief delegates to the relevant `/interfaces:*` skill (`/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming, `/interfaces:json-schema` for shared payload schemas). It runs author intent for prose-derived specs, importer intent for supplied contract artifacts, and verifier intent for structural correctness -- `$ref` resolution, schema metadata, and binding completeness. There are no implementation code-generation skills to invoke because contract changes produce only contract artifacts.
+The build brief delegates to the relevant `/contract:*` skill (`/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas). It runs author intent for prose-derived specs, importer intent for supplied contract artifacts, and verifier intent for structural correctness -- `$ref` resolution, schema metadata, and binding completeness. There are no implementation code-generation skills to invoke because contract changes produce only contract artifacts.
 
 A verify-repair loop runs up to 2 iterations: if the verifier reports failures, the same skill's producing intent (author or importer) makes targeted repairs, then the verifier re-checks. If issues remain after 2 iterations, they are surfaced for human review.
 

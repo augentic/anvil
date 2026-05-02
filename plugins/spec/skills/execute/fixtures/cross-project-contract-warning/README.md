@@ -35,11 +35,11 @@ When `specify change merge run` returns success, `/spec:execute`:
    in-scope).
 3. Walks the registry to find consumers — `mobile.contracts.consumes`
    matches.
-4. Invokes `/interfaces:openapi` (verifier intent, `--mode cross-project`)
+4. Invokes `/contract:openapi` (verifier intent, `--mode cross-project`)
    with the producer's just-merged contract path and the consumer's
    workspace clone path. (HTTP / resource APIs route to OpenAPI; an
-   AsyncAPI contract would route to `/interfaces:asyncapi`, and a
-   shared payload schema to `/interfaces:json-schema`.)
+   AsyncAPI contract would route to `/contract:asyncapi`, and a
+   shared payload schema to `/contract:json-schema`.)
 5. Receives a YAML report with two findings.
 6. Records each finding as a `cross-project-warning:` `failure`-kind
    entry on the merged change's `journal.yaml` via
@@ -61,7 +61,7 @@ cross-project-contract-warning/
 │   └── after/http/user-api.yaml                # post-merge (v2) — passed to validator
 ├── consumer-workspace/                         # snapshot of .specify/workspace/mobile/
 │   └── .specify/contracts/http/user-api.yaml   # consumer's last-known view (v1)
-├── validator-output.yaml                       # /interfaces:openapi (verifier intent, --mode cross-project) output
+├── validator-output.yaml                       # /contract:openapi (verifier intent, --mode cross-project) output
 ├── transcript.md                               # /spec:execute success transcript with warning block
 └── expected-journal.yaml                       # update-user-api-v2/journal.yaml after recording
 ```
@@ -100,9 +100,9 @@ cross-project-contract-warning/
   `validator-output.yaml` finding to the journal entry shape in
   `expected-journal.yaml`. If it does not, update the fixture in the
   same change as the SKILL.md change.
-- Before changing any `/interfaces:*` skill's verifier intent
+- Before changing any `/contract:*` skill's verifier intent
   cross-project output shape, re-run the
-  [shared cross-project report shape](../../../../../interfaces/references/report-shape.md#cross-project-mode-output-structured-yaml)
+  [shared cross-project report shape](../../../../../contract/references/report-shape.md#cross-project-mode-output-structured-yaml)
   against `validator-output.yaml` and confirm shape parity.
 - The fixture is prose-only (no automated harness). A reviewer reads
   the files in order — `plan.yaml.before` → `contracts/before/...` and

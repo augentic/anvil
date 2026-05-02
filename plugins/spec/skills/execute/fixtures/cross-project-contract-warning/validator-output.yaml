@@ -1,13 +1,13 @@
 # Output of:
 #
-#   /interfaces:openapi \
+#   /contract:openapi \
 #       --mode cross-project \
 #       --producer-contract .specify/contracts/http/user-api.yaml \
 #       --consumer-workspace .specify/workspace/mobile/
 #
-# (HTTP / resource APIs route to /interfaces:openapi; an AsyncAPI contract
-# would route to /interfaces:asyncapi, and a shared payload schema to
-# /interfaces:json-schema. See `plugins/interfaces/skills/openapi/verifier.md`
+# (HTTP / resource APIs route to /contract:openapi; an AsyncAPI contract
+# would route to /contract:asyncapi, and a shared payload schema to
+# /contract:json-schema. See `plugins/contract/skills/openapi/verifier.md`
 # → §Output Format — Cross-Project.)
 # Two findings, both severity `warning`. The execute driver reads
 # `summary.total-findings` to decide whether to render the

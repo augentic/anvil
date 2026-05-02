@@ -36,8 +36,8 @@ Walk `$CONTRACTS_DIR/` for `.yaml`, `.yml`, and `.json` files. For each file, re
 | `swagger: "2.0"` | Swagger 2.0 | OpenAPI 3.1 |
 | `openapi: "3.0.x"` | OpenAPI 3.0.x | OpenAPI 3.1 |
 | `openapi: "3.1.x"` | OpenAPI 3.1.x | No version conversion |
-| `asyncapi:` (any version) | **Out of scope.** Route to `/interfaces:asyncapi` importer. |
-| `$schema:` (without `openapi`/`asyncapi`/`swagger`) | **Out of scope.** Route to `/interfaces:json-schema` importer. |
+| `asyncapi:` (any version) | **Out of scope.** Route to `/contract:asyncapi` importer. |
+| `$schema:` (without `openapi`/`asyncapi`/`swagger`) | **Out of scope.** Route to `/contract:json-schema` importer. |
 | None of the above | Unrecognised. Skip and flag for manual review. |
 
 A file with both `openapi:` and `$schema:` keys is an OpenAPI document (`openapi:` wins). Detection keys are case-sensitive — do not normalise casing before classification.
@@ -349,7 +349,7 @@ For the OpenAPI document itself, verify that `info.title`, `info.version`, and `
 
 **RFC-12 normalisation rules for top-level OpenAPI documents:**
 
-- **`info.version` MUST be SemVer.** When the imported value does not parse as SemVer (e.g. `2024-01-15`, `v2`, `"1"`), do **not** auto-rewrite. Surface a `[manual review required]` entry in the import report naming the file and the offending value, and let the operator decide on the canonical SemVer string. The verifier sibling and `specify interface validate` will block on the unaltered value until the operator resolves it.
+- **`info.version` MUST be SemVer.** When the imported value does not parse as SemVer (e.g. `2024-01-15`, `v2`, `"1"`), do **not** auto-rewrite. Surface a `[manual review required]` entry in the import report naming the file and the offending value, and let the operator decide on the canonical SemVer string. The verifier sibling and `specify contract validate` will block on the unaltered value until the operator resolves it.
 - **Preserve `info.x-specify-id` verbatim.** When the source carries `info.x-specify-id`, copy it through unchanged — even when the value violates the kebab-case format (the verifier flags the format issue with the file path, which is enough for the operator to fix). Never invent or auto-derive an id during import; new ids are an authoring decision.
 
 ### Step 6 — Place files, validate, report
@@ -412,7 +412,7 @@ Report semantics:
 
 | Scenario | Handling |
 |---|---|
-| Mixed input formats (Swagger 2.0 + OpenAPI 3.0 + JSON Schema) in one directory | Process each file independently. JSON Schema files are out of scope — route them to `/interfaces:json-schema`. |
+| Mixed input formats (Swagger 2.0 + OpenAPI 3.0 + JSON Schema) in one directory | Process each file independently. JSON Schema files are out of scope — route them to `/contract:json-schema`. |
 | OpenAPI file `$ref`s a sibling file in `$CONTRACTS_DIR/` | Process the referenced file first; rewrite the `$ref` to the post-decomposition path. |
 | Swagger 2.0 file with external `$ref` (URL or absolute path) | Cannot auto-resolve. Flag in the report; never silently drop. |
 | Name collision during decomposition (two distinct schemas, same derived filename) | Disambiguate by prefixing with the source API domain (`user-api-error.yaml` vs `billing-api-error.yaml`). |

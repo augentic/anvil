@@ -1,14 +1,14 @@
 ---
-name: interfaces-json-schema
-description: Authors, imports, and verifies standalone JSON Schema documents shared by OpenAPI, AsyncAPI, and other interface contracts. Use when a Specify change needs reusable payload schemas, when an operator supplies schema files without a protocol wrapper, or when validating schema compatibility across generated interface contracts.
+name: contract-json-schema
+description: Authors, imports, and verifies standalone JSON Schema documents shared by OpenAPI, AsyncAPI, and other contract formats. Use when a Specify change needs reusable payload schemas, when an operator supplies schema files without a protocol wrapper, or when validating schema compatibility across generated contracts.
 argument-hint: "[change-dir]"
 ---
 
 # JSON Schema
 
-Specialist for standalone JSON Schema (Draft 2020-12) documents on Specify changes — the shared payload vocabulary referenced by `/interfaces:openapi` HTTP operations and `/interfaces:asyncapi` message channels. This skill owns three intents: authoring or extending reusable payload schemas, importing or normalising externally supplied schema files, and verifying schema artefacts (single-mode internal consistency or cross-format / cross-project consumer compatibility).
+Specialist for standalone JSON Schema (Draft 2020-12) documents on Specify changes — the shared payload vocabulary referenced by `/contract:openapi` HTTP operations and `/contract:asyncapi` message channels. This skill owns three intents: authoring or extending reusable payload schemas, importing or normalising externally supplied schema files, and verifying schema artefacts (single-mode internal consistency or cross-format / cross-project consumer compatibility).
 
-The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong to `/interfaces:openapi`; evented bindings under `contracts/messages/` belong to `/interfaces:asyncapi`. Both protocol skills delegate every payload-schema decision (`$id` shape, naming, decomposition, draft policy, metadata) to this skill.
+The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong to `/contract:openapi`; evented bindings under `contracts/messages/` belong to `/contract:asyncapi`. Both protocol skills delegate every payload-schema decision (`$id` shape, naming, decomposition, draft policy, metadata) to this skill.
 
 ## Critical Path (Quick Reference)
 
@@ -23,7 +23,7 @@ The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong 
 ## Invocation
 
 ```text
-/interfaces:json-schema <change-dir>
+/contract:json-schema <change-dir>
 ```
 
 Optional internal flags (recognised by the verifier sibling):
@@ -72,11 +72,11 @@ The three intents share a common artefact contract (filename → `$id` derivatio
 
 ## Mixed-format ordering (run this skill first)
 
-When a change touches more than one interface format (HTTP + events + shared schemas), the contracts schema build brief invokes the format skills in this fixed order:
+When a change touches more than one contract format (HTTP + events + shared schemas), the contracts schema build brief invokes the format skills in this fixed order:
 
-1. **`/interfaces:json-schema` first** — the schema vocabulary is shared and must stabilise before any binding references it. Authoring or importing a schema is a precondition for the protocol skills, not a peer step.
-2. **`/interfaces:openapi`** — HTTP operations bind to the schemas authored above via `$ref: "../schemas/<type>.yaml"`.
-3. **`/interfaces:asyncapi`** — message channels bind to the same schemas via `$ref: "../schemas/<type>.yaml"`.
+1. **`/contract:json-schema` first** — the schema vocabulary is shared and must stabilise before any binding references it. Authoring or importing a schema is a precondition for the protocol skills, not a peer step.
+2. **`/contract:openapi`** — HTTP operations bind to the schemas authored above via `$ref: "../schemas/<type>.yaml"`.
+3. **`/contract:asyncapi`** — message channels bind to the same schemas via `$ref: "../schemas/<type>.yaml"`.
 
 This ordering is non-negotiable. Running OpenAPI or AsyncAPI ahead of json-schema produces dangling `$ref`s and forces protocol authors to either inline definitions (forbidden in the baseline) or guess at shapes (forbidden by the no-invention rule). The contracts schema build brief enforces the ordering; agent operators invoking these skills directly must follow it manually.
 
@@ -104,7 +104,7 @@ These constraints are non-negotiable for any of the three sibling paths:
 4. **Filename ↔ `$id` ↔ `title` coherence.** The filename (kebab-case), the `$id` URN segment (kebab-case suffix), and the `title` (PascalCase) all describe the same type. Drift between them is a verifier failure.
 5. **Kebab-case filenames.** All `.yaml` files use kebab-case names; no PascalCase or snake_case variants.
 6. **No invention.** When the spec does not provide enough detail to derive a shape, mark the gap with `[unknown]` in the alignment report rather than guessing. Importer flags unrecognised constructs with `[import — manual review required]`.
-7. **No protocol-specific authoring.** This skill never writes path operations, channels, operations, request bodies, or response wrappers. Those belong to `/interfaces:openapi` and `/interfaces:asyncapi`.
+7. **No protocol-specific authoring.** This skill never writes path operations, channels, operations, request bodies, or response wrappers. Those belong to `/contract:openapi` and `/contract:asyncapi`.
 8. **Read-only verifier.** The verifier sibling must not create, modify, or delete any files in either mode.
 9. **Baseline immutability.** Never modify files in root `contracts/`. All output goes in the change-local `contracts/` directory.
 
@@ -133,5 +133,5 @@ When authoring or importing, never silently delete or narrow a baseline schema's
 - [`import-upgrade-policy`](../../references/import-upgrade-policy.md) — shared framework for the importer sibling (format detection, draft upgrades, lossless-vs-lossy decisions).
 - [`report-shape`](../../references/report-shape.md) — single-mode markdown and cross-project YAML report formats produced by the verifier sibling.
 - [`cross-project-compatibility`](../../references/cross-project-compatibility.md) — `change-kind` vocabulary used by the verifier in `--mode cross-project` and by Check 4 in `single` mode.
-- [`openapi-conventions`](../../references/openapi-conventions.md) — referenced for understanding how `/interfaces:openapi` consumes the schemas authored here.
-- [`asyncapi-conventions`](../../references/asyncapi-conventions.md) — referenced for understanding how `/interfaces:asyncapi` consumes the schemas authored here.
+- [`openapi-conventions`](../../references/openapi-conventions.md) — referenced for understanding how `/contract:openapi` consumes the schemas authored here.
+- [`asyncapi-conventions`](../../references/asyncapi-conventions.md) — referenced for understanding how `/contract:asyncapi` consumes the schemas authored here.

@@ -164,10 +164,10 @@ Operation names must be unique across all AsyncAPI files in the contract tree.
 
 ## Schema reuse and `$ref` discipline
 
-Shared payload schemas live in `contracts/schemas/` and are owned by the json-schema format skill (`/interfaces:json-schema`). The author of an AsyncAPI file does **not** create or edit schema files — it only references them.
+Shared payload schemas live in `contracts/schemas/` and are owned by the json-schema format skill (`/contract:json-schema`). The author of an AsyncAPI file does **not** create or edit schema files — it only references them.
 
 - **Always `$ref`** message payloads to `../schemas/<type>.yaml`. The `$ref` lives on the message's `payload` field inside `components/messages`.
-- **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to `/interfaces:json-schema` (the contracts schema build brief calls the json-schema skill first per the cross-format ordering rule).
+- **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to `/contract:json-schema` (the contracts schema build brief calls the json-schema skill first per the cross-format ordering rule).
 - **`$ref` resolution scope.** All payload `$ref` paths must resolve either to `$CONTRACTS_DIR/schemas/` (this change's delta) or `$BASELINE_DIR/schemas/` (the platform baseline). The verifier flags any `$ref` that does not resolve.
 - **Headers stay inline.** Message headers describe the envelope (correlation IDs, partition keys, trace context) and are typically a small map of primitive types. Inline them as a `headers` object on the message — do not extract them to `../schemas/`. The body is the payload; the envelope is not.
 - **Internal `$ref`s for channel→message and operation→channel** stay on the `#/components/messages/...` and `#/channels/...` form — those are document-internal pointers, not cross-file schema references.
@@ -185,7 +185,7 @@ AsyncAPI deltas fall into three categories — every entry in the delta belongs 
 Computation rules applied at file scope:
 
 1. **One file per event domain.** Always read the matching baseline file first. The delta file replaces it wholesale at merge time, so it must contain every existing channel, operation, and message alongside the new ones.
-2. **`info.version` MUST parse as SemVer (RFC-12).** New top-level AsyncAPI documents MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the change requires a version bump, the contracts schema build brief flags it for human review. The verifier sibling and `specify interface validate` both enforce SemVer; a non-SemVer value is a hard validation failure.
+2. **`info.version` MUST parse as SemVer (RFC-12).** New top-level AsyncAPI documents MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the change requires a version bump, the contracts schema build brief flags it for human review. The verifier sibling and `specify contract validate` both enforce SemVer; a non-SemVer value is a hard validation failure.
 3. **`info.x-specify-id` rename-stable identifier (RFC-12).** SHOULD set `info.x-specify-id` on every new top-level AsyncAPI document to a kebab-case slug (typically the file stem; `^[a-z][a-z0-9-]*$`, ≤ 64 characters). The id is a hint that survives file moves and version bumps. MUST preserve any pre-existing `info.x-specify-id` when extending the baseline; MUST NOT change it across `info.version` bumps. Path-based references in `registry.yaml` remain canonical — the id is a rename-stable hint, not a substitute.
 4. **Preserve channel addresses and operation keys verbatim.** When extending a baseline file, every existing `address` and `operationId` stays exactly as it is. Renaming an address breaks consumers; renaming an operation breaks tooling.
 5. **Diff at the entry level.** When modifying an existing channel or message, change only the keys the spec asserts. Do not reformat or reorder unrelated keys — opaque file replacement means a re-ordered file looks like a wholesale rewrite to reviewers.
@@ -301,6 +301,6 @@ Before declaring the author run complete:
 - [`artifact-structure`](../../references/artifact-structure.md) — directory layout for the change-local delta and the baseline.
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for the three authorship patterns, the already-covered / new-or-modified / normalisation classification, and the opaque-file-replacement merge contract.
 - [`report-shape`](../../references/report-shape.md) — markdown shape for the alignment report produced by this author path.
-- [`json-schema-conventions`](../../references/json-schema-conventions.md) — schema files referenced by the AsyncAPI document (owned by `/interfaces:json-schema`).
+- [`json-schema-conventions`](../../references/json-schema-conventions.md) — schema files referenced by the AsyncAPI document (owned by `/contract:json-schema`).
 - [`importer.md`](./importer.md) — sibling for normalising external AsyncAPI documents.
 - [`verifier.md`](./verifier.md) — sibling for validating the authored output.

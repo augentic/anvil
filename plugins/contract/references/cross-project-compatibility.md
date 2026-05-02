@@ -1,6 +1,6 @@
 # Cross-Project Compatibility
 
-Shared vocabulary used by every format-skill verifier (`/interfaces:openapi`, `/interfaces:asyncapi`, `/interfaces:json-schema`) when running in `cross-project` mode. The mode runs after a producer's contract change merges and compares the merged contract against each consumer's tier-2 workspace clone to surface breaking changes that would propagate downstream (RFC-9 §3B).
+Shared vocabulary used by every format-skill verifier (`/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema`) when running in `cross-project` mode. The mode runs after a producer's contract change merges and compares the merged contract against each consumer's tier-2 workspace clone to surface breaking changes that would propagate downstream (RFC-9 §3B).
 
 For the report's structural shape and exit semantics, see [`report-shape`](report-shape.md). This reference documents the **vocabulary** — the `change-kind` enumeration the verifiers use to classify deltas, the workspace clone resolution rules, and the breaking-change classification policy.
 
@@ -117,4 +117,4 @@ The execute driver records findings on the merging change's `journal.yaml` and r
 - [`report-shape`](report-shape.md) — the structural shape of cross-project YAML reports, including `severity` levels and locator format.
 - [`baseline-vs-delta`](baseline-vs-delta.md) — single-project counterpart for delta computation; the cross-format compatibility check (Check 4 in the JSON Schema verifier) uses the same `change-kind` vocabulary against in-project baseline bindings.
 - [`artifact-structure`](artifact-structure.md) — workspace clone layout (`.specify/workspace/<peer>/`) and the materialisation contract.
-- Format-specific verifiers — `plugins/interfaces/skills/{openapi,asyncapi,json-schema}/verifier.md` (see `--mode cross-project` sections).
+- Format-specific verifiers — `plugins/contract/skills/{openapi,asyncapi,json-schema}/verifier.md` (see `--mode cross-project` sections).

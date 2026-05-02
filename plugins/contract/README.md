@@ -1,6 +1,6 @@
-# Interface Contracts
+# Contracts
 
-Format-specialist skills to author, import, and verify interface contracts — OpenAPI 3.1 HTTP APIs, AsyncAPI 3.0 evented messaging, and standalone JSON Schema (Draft 2020-12) — from Specify artifacts.
+Format-specialist skills to author, import, and verify API/interface contracts — OpenAPI 3.1 HTTP APIs, AsyncAPI 3.0 evented messaging, and standalone JSON Schema (Draft 2020-12) — from Specify artifacts.
 
 Each format skill owns three intents (author, import, verify) inside a single skill directory. The shared cross-format references under `references/` carry the format-neutral rules every skill obeys.
 
@@ -18,9 +18,9 @@ Each skill's `SKILL.md` dispatches to format-specific `author.md`, `importer.md`
 
 When a change touches more than one format (HTTP + events + shared schemas), the contracts schema build brief invokes the skills in fixed order:
 
-1. `/interfaces:json-schema` first — the schema vocabulary is shared and must stabilise before any binding references it.
-2. `/interfaces:openapi` — HTTP operations bind to the schemas above via `$ref: "../schemas/<type>.yaml"`.
-3. `/interfaces:asyncapi` — message channels bind to the same schemas via `$ref: "../schemas/<type>.yaml"`.
+1. `/contract:json-schema` first — the schema vocabulary is shared and must stabilise before any binding references it.
+2. `/contract:openapi` — HTTP operations bind to the schemas above via `$ref: "../schemas/<type>.yaml"`.
+3. `/contract:asyncapi` — message channels bind to the same schemas via `$ref: "../schemas/<type>.yaml"`.
 
 Running OpenAPI or AsyncAPI ahead of json-schema produces dangling `$ref`s and forces protocol authors to either inline definitions (forbidden in the baseline) or guess at shapes (forbidden by the no-invention rule).
 

@@ -1,6 +1,6 @@
 # Report Shape
 
-Output formats for the format-skill verifiers (`/interfaces:openapi`, `/interfaces:asyncapi`, `/interfaces:json-schema`) and — by convention — the matching alignment / import reports produced by the author and importer paths.
+Output formats for the format-skill verifiers (`/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema`) and — by convention — the matching alignment / import reports produced by the author and importer paths.
 
 The verifier runs in two modes (see also [`cross-project-compatibility`](cross-project-compatibility.md)):
 
@@ -196,4 +196,4 @@ The author / importer paths always run the verifier afterwards. If the verifier 
 - [`cross-project-compatibility`](cross-project-compatibility.md) — `change-kind` enumeration used inside cross-project YAML findings.
 - [`baseline-vs-delta`](baseline-vs-delta.md) — alignment report structure for the author paths.
 - [`import-upgrade-policy`](import-upgrade-policy.md) — import report's "Manual Review Required" section.
-- Format-specific verifiers — `plugins/interfaces/skills/{openapi,asyncapi,json-schema}/verifier.md`.
+- Format-specific verifiers — `plugins/contract/skills/{openapi,asyncapi,json-schema}/verifier.md`.

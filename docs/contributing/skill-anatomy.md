@@ -1,6 +1,6 @@
 # Anatomy of a Skill
 
-A skill is a markdown file (`SKILL.md`) that instructs a Cursor agent how to perform a specific task. Skills are the primary unit of behavior in Specify -- every `/spec:*`, `/omnia:*`, `/vectis:*`, `/interfaces:*`, `/rt:*`, and `/client:*` command maps to one skill.
+A skill is a markdown file (`SKILL.md`) that instructs a Cursor agent how to perform a specific task. Skills are the primary unit of behavior in Specify -- every `/spec:*`, `/omnia:*`, `/vectis:*`, `/contract:*`, `/rt:*`, and `/client:*` command maps to one skill.
 
 ## Directory structure
 
@@ -46,7 +46,7 @@ No other top-level keys are permitted. RFC-10 (§D) removed `license`, `compatib
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `name` | yes | Globally unique, plugin-qualified, kebab-case identifier (`^[a-z][a-z0-9-]*$`, ≤64 chars). Must start with the containing plugin's directory name plus `-` (e.g. `omnia-crate-writer`, `vectis-core-writer`, `interfaces-openapi`). The `spec/` plugin uses the `specify-` prefix per RFC §A.1 (so `plugins/spec/skills/init/` carries `name: specify-init`). Reserved words `anthropic` and `claude` are not allowed. |
+| `name` | yes | Globally unique, plugin-qualified, kebab-case identifier (`^[a-z][a-z0-9-]*$`, ≤64 chars). Must start with the containing plugin's directory name plus `-` (e.g. `omnia-crate-writer`, `vectis-core-writer`, `contract-openapi`). The `spec/` plugin uses the `specify-` prefix per RFC §A.1 (so `plugins/spec/skills/init/` carries `name: specify-init`). Reserved words `anthropic` and `claude` are not allowed. |
 | `description` | yes | Description that includes both *what* the skill does and *when* to use it, in third person (10–1024 characters). Avoid XML tags and avoid RFC / layer citations — those belong in the body. |
 | `argument-hint` | no | Cursor placeholder text shown after the user types the slash command. Single short hint with `<>` for required and `[]` for optional positional arguments; no flag names; no trailing `?`; no `--` prefix; avoid alternation pipes outside bracketed enums. Flags belong in the body's "Invocation" section. |
 | `allowed-tools` | no | Space-separated list of tools the skill may use. Recommended policy is to omit this field and inherit the caller's full toolbelt; see RFC §A.5 for the rationale. When set, values are validated against a known toolset plus `mcp__*` prefixed tools. |
