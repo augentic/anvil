@@ -173,7 +173,7 @@ the same discovery output.
 ## `--extend` behaviour
 
 Skip the `specify plan create` step (the caller — typically
-the `/spec:plan` skill — has already ensured `.specify/plan.yaml`
+the `/spec:plan` skill — has already ensured `plan.yaml`
 exists). Still run propose against the existing plan: slices whose
 names collide with existing plan entries are skipped with a note
 in the proposal; new slices go through the usual loop.

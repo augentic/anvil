@@ -10,7 +10,7 @@ Merge a completed change.
 
 Deterministic bookkeeping — change selection, prerequisite validation, merge operation computation, baseline conflict detection, the per-capability merge itself, baseline coherence validation, status transitions, and the archive move — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the merge preview, coordinating the `AskQuestion` confirmation flow, and summarising results.
 
-When working plan-driven (a `.specify/plan.yaml` exists), after `specify change merge run` returns successfully the plan entry should be transitioned to `done`:
+When working plan-driven (a `plan.yaml` exists), after `specify change merge run` returns successfully the plan entry should be transitioned to `done`:
 
 ```bash
 specify plan transition <name> done

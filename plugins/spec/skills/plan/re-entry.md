@@ -6,8 +6,8 @@ Running `/spec:plan --orchestrate <name>` a second time after a halt is the cano
 
 | State at re-entry | Resume step |
 |---|---|
-| `.specify/initiative.md` absent | step 1 |
-| brief present, `.specify/plan.yaml` absent | step 3 (with `/spec:plan` default mode running fresh) |
+| `initiative.md` absent | step 1 |
+| brief present, `plan.yaml` absent | step 3 (with `/spec:plan` default mode running fresh) |
 | `plan.yaml` present, any entry not in `{done, failed, skipped}` | step 4 (`/spec:execute --loop` resumes — self-heal reclaims any `in-progress` left by a prior crash) |
 | every plan entry terminal, no PRs pushed yet (no `specify/<name>` branch on any remote) | step 5 |
 | PRs pushed, not all `MERGED` | step 6 (with `--auto-merge`) or list-and-stop (without) |

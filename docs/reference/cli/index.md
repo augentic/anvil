@@ -4,6 +4,14 @@ The `specify` CLI is the Layer 1 foundation that every skill builds on. It owns 
 
 ## Installation
 
+When setting up a project through the Specify plugin, `/spec:init` can bootstrap a missing CLI after confirmation with:
+
+```bash
+cargo install --git https://github.com/augentic/specify-cli
+```
+
+Manual install paths remain available:
+
 ```bash
 brew install augentic/tap/specify           # macOS + Linux (primary)
 cargo install specify                       # any platform with Rust toolchain
@@ -39,10 +47,12 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | [specify change](change.md) | Per-change CRUD, validation, merge, task tracking, outcome, journal | Layer 2 operations |
 | [specify plan](plan.md) | Scaffold, populate, validate, and transition initiative plans | Layer 3 operations |
 | [specify initiative](initiative.md) | Manage the operator-authored initiative brief and finalize landed initiatives | Layers 3–4 closure |
-| [specify registry](registry.md) | Manage the platform registry at `.specify/registry.yaml` | Multi-repo platform |
+| [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
 | [specify schema](schema.md) | Schema resolution and brief pipeline queries | Schema infrastructure |
 | [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |
+| [specify contract](contract.md) | Inspect and validate baseline contracts under `contracts/` | RFC-12 baseline gate |
 | [specify init](init.md) | Project scaffold | One-time setup |
+| [specify migrate](migrate.md) | One-shot layout migrations (currently `v2-layout`) | Upgrade path |
 | [specify vectis](vectis.md) | Cross-platform Crux project scaffold and verification | Vectis-specific tooling |
 
 The previous standalone families `specify validate`, `specify spec`, `specify task`, and `specify merge` were absorbed into [`specify change`](change.md) (`change validate`, `change merge {preview, conflict-check, run}`, `change task {progress, mark}`). See [Migrating CLI v1](../../explanation/migrating-cli-v1.md) for the full rename map.

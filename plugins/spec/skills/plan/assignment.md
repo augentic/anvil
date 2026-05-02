@@ -36,7 +36,7 @@ When the registry is absent or single-project, step 3(d) is skipped entirely. No
 
 ## Step 3(d).1 — Registry proposal sub-step (RFC-9 §2B)
 
-Step 3(d) routes entries to **existing** registry projects. When the operator's response in step 3(d).3 names a project that does **not** exist in `.specify/registry.yaml`, the registry-proposal sub-step is invoked **before** continuing assignment. This sub-step is the only place `/spec:plan` ever calls `specify registry add`.
+Step 3(d) routes entries to **existing** registry projects. When the operator's response in step 3(d).3 names a project that does **not** exist in `registry.yaml`, the registry-proposal sub-step is invoked **before** continuing assignment. This sub-step is the only place `/spec:plan` ever calls `specify registry add`.
 
 **Trigger.** An unresolved (`?`) row in the assignment table where the operator types a project name that is not present in `registry.yaml:projects[].name` (case-sensitive, exact match).
 
@@ -88,6 +88,7 @@ When `/spec:plan` inserts a contract change for an API boundary between projects
 
 1. **Producer project**: Add the contract file paths to `contracts.produces` on the project that implements the API.
 2. **Consumer project**: Add the contract file paths to `contracts.consumes` on the project that calls the API.
-3. **Import changes**: Add the contract file paths to `contracts.imports` on the project integrating with the external system.
+
+RFC-12 collapsed the role set to these two. A contract that no project lists under `contracts.produces` is — by definition — externally authored; do not invent a separate field to mark it. Consumer projects that integrate with an external system still appear under `contracts.consumes`, exactly as they would for an internally-produced contract.
 
 Use `specify registry validate` to verify the invariants after populating roles. The validation is advisory — the operator can adjust role assignments.

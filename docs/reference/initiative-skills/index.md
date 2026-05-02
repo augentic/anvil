@@ -1,6 +1,6 @@
 # Initiative Skills (Layers 3 & 4)
 
-Initiative-scoped skills coordinate multi-change programs through `.specify/plan.yaml`. They sit above the [change lifecycle skills](../change-skills/index.md) and invoke them per-change. The Layer 3 skills (`/spec:plan`, `/spec:execute`, `/spec:analyze`) author and drive a plan; the Layer 4 umbrella mode (`/spec:plan --orchestrate`, RFC-9 §2C, formerly the `/spec:initiative` skill) composes plan + execute + push + merge + finalize into a single operator action — see the [layered stack](../../explanation/three-layer-stack.md) for the relationship.
+Initiative-scoped skills coordinate multi-change programs through `plan.yaml`. They sit above the [change lifecycle skills](../change-skills/index.md) and invoke them per-change. The Layer 3 skills (`/spec:plan`, `/spec:execute`, `/spec:analyze`) author and drive a plan; the Layer 4 umbrella mode (`/spec:plan --orchestrate`, RFC-9 §2C, formerly the `/spec:initiative` skill) composes plan + execute + push + merge + finalize into a single operator action — see the [layered stack](../../explanation/three-layer-stack.md) for the relationship.
 
 ## The plan-execute flow
 
@@ -46,7 +46,7 @@ Every halt -- registry validation failure, `stuck`, `registry-amendment-required
 
 | Skill | Layer | Purpose | Reads | Writes |
 |-------|-------|---------|-------|--------|
-| [/spec:plan --orchestrate](initiative.md) | 4 | Drive the cross-repo loop end-to-end (brief -> registry -> plan -> execute -> push -> optional merge -> finalize); was `/spec:initiative` | `.specify/initiative.md`, `registry.yaml`, `plan.yaml`, workspace clones | Composition only -- shells out; never writes directly |
+| [/spec:plan --orchestrate](initiative.md) | 4 | Drive the cross-repo loop end-to-end (brief -> registry -> plan -> execute -> push -> optional merge -> finalize); was `/spec:initiative` | `initiative.md`, `registry.yaml`, `plan.yaml`, workspace clones | Composition only -- shells out; never writes directly |
 | [/spec:plan](plan.md) | 3 | Author `plan.yaml` from inputs | Sources, docs, registry, baseline specs | `plan.yaml`, `discovery.md`, `proposal.md`, optional `workspace.md`; for multi-project plans, amends entries with `--project` via the assignment step |
 | [/spec:execute](execute.md) | 3 | Drive the plan through define-build-merge | `plan.yaml` | Plan status transitions (via CLI); CWD-routes into workspace clones for multi-project plans; merge may auto-commit `.specify/` in clones |
 | [/spec:analyze](analyze.md) | 3 | Plan-time capability inference (used internally by `/spec:plan`) | Source code or documentation | `discovery.md`, optional `metadata.json` |

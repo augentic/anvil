@@ -5,31 +5,32 @@ Scaffold the `.specify/` project structure.
 ## Synopsis
 
 ```bash
-specify init <schema> [--schema-dir <dir>] [--name <project-name>] [--domain "<description>"] [--upgrade] [--hub] [--format json]
+specify init --schema-uri <uri> [--name <project-name>] [--domain "<description>"]
+specify init --hub [--name <project-name>] [--domain "<description>"]
 ```
 
 ## Description
 
 Two modes, picked by the presence of `--hub`:
 
-- **Regular** (no `--hub`): scaffolds a single-project workspace. Creates `.specify/{changes,specs,archive,.cache}/`, writes `.specify/project.yaml` with a `rules:` entry per `pipeline.define` brief, and reads the schema from `.specify/.cache/` (populated by the `/spec:init` skill before invoking the CLI). Records the running binary's version as `specify-version`.
-- **Hub** (with `--hub`, RFC-9 §1D): scaffolds a registry-only platform hub. Creates `.specify/`, writes a sentinel `.specify/project.yaml { schema: hub, hub: true, … }`, an empty `.specify/registry.yaml { version: 1, projects: [] }`, and an `.specify/initiative.md` from the canonical template. The schema argument is ignored, no cache is needed, and phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines on itself. Refuses to run when `.specify/` already exists.
+- **Regular** (no `--hub`): scaffolds a single-project workspace. Creates `.specify/{changes,specs,archive,.cache}/`, resolves `--schema-uri` into `.specify/.cache/`, writes `.specify/project.yaml` with a `rules:` entry per `pipeline.define` brief, and records the running binary's version as `specify-version`.
+- **Hub** (with `--hub`, RFC-9 §1D): scaffolds a registry-only platform hub. Creates `.specify/`, writes a sentinel `.specify/project.yaml { schema: hub, hub: true, … }`, an empty `registry.yaml { version: 1, projects: [] }`, and an `initiative.md` from the canonical template. No schema URI is needed, no cache is needed, and phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines on itself. Refuses to run when `.specify/` already exists.
 
 In both modes the command upserts `.specify/.cache/` and `.specify/workspace/` into the project `.gitignore`.
 
-This is the CLI command invoked by [`/spec:init`](../../../plugins/spec/skills/init/SKILL.md). The skill adds interactive prompts (including the regular-vs-hub topology question), schema cache population, and project detection on top.
+This is the CLI command invoked by [`/spec:init`](../../../plugins/spec/skills/init/SKILL.md). The skill adds interactive prompts (including the regular-vs-hub topology question) and project detection on top.
 
 ## Options
 
 | Option | Description |
 |--------|-------------|
-| `schema` | Schema name or URL. Supports `@ref` suffix for version pinning. Ignored when `--hub` is set. |
-| `--schema-dir` | Directory to resolve the schema from (defaults to `.specify/.cache/`). Ignored when `--hub` is set. |
+| `--schema-uri` | Schema URI to fetch or copy before scaffolding. Supports local schema directories, GitHub schema directory URLs, and `@ref` suffixes for version pinning. Required unless `--hub` is set. |
 | `--name` | Project name (defaults to the project directory basename). For hub mode, must be kebab-case (the CLI bakes it into `initiative.md`'s frontmatter). |
 | `--domain` | Free-form domain description for the project |
-| `--upgrade` | Re-run on an existing project to update `specify-version` to the running binary |
 | `--hub` | Scaffold a registry-only platform hub instead of a regular project (RFC-9 §1D). Refuses to run when `.specify/` already exists. |
-| `--format` | Output format: `json` for structured output |
+| `--format` | Global output format: `json` for structured automation output |
+
+GitHub schema directory URIs are fetched via the local `git` executable, so existing Git credential helpers and configured Git auth are used.
 
 ## JSON output
 

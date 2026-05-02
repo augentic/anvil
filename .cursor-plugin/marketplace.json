@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "Spec-driven code generation plugins for Augentic.",
-    "version": "0.25.1",
+    "version": "0.26.0",
     "pluginRoot": "plugins"
   },
   "plugins": [
@@ -36,9 +36,9 @@
       "description": "Skills for Specify workflow orchestration: init, define, build, merge, drop, extract, analyze, plan, execute, and initiative."
     },
     {
-      "name": "interfaces",
-      "source": "interfaces",
-      "description": "Skills to author, import, and verify interface contracts — OpenAPI, AsyncAPI, JSON Schema, and future API/interface formats — from Specify artifacts."
+      "name": "contract",
+      "source": "contract",
+      "description": "Skills to author, import, and verify API/interface contracts — OpenAPI, AsyncAPI, JSON Schema, and future formats — from Specify artifacts."
     }
   ]
 }

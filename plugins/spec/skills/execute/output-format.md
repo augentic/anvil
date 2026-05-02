@@ -73,7 +73,7 @@ Step 3/3: merge
 
 The `(sources: [...])` suffix is rendered only when the plan entry has `sources`; greenfield entries become `### Processing: <name> (greenfield)`. The extract sub-step block inside `Step 1/3: define` is elided when the entry has no `sources`.
 
-The `⚠ Cross-project contract warnings` block is rendered only when (a) the merged change touches a contract listed in the producer's `registry.yaml:contracts.produces` list AND (b) at least one consumer's verifier invocation (the format-appropriate `/interfaces:*` skill in its verifier intent, `--mode cross-project`) reports `summary.total-findings > 0`. See [multi-repo.md](multi-repo.md) for the full algorithm and the per-finding journal payload schema.
+The `⚠ Cross-project contract warnings` block is rendered only when (a) the merged change touches a contract listed in the producer's `registry.yaml:contracts.produces` list AND (b) at least one consumer's verifier invocation (the format-appropriate `/contract:*` skill in its verifier intent, `--mode cross-project`) reports `summary.total-findings > 0`. See [multi-repo.md](multi-repo.md) for the full algorithm and the per-finding journal payload schema.
 
 ### Failure
 

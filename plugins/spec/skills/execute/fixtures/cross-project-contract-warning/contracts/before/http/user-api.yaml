@@ -1,6 +1,6 @@
 # Baseline (v1) shape of the user-api contract — what
 # `mobile`'s tier-2 workspace clone holds in its
-# `.specify/contracts/http/user-api.yaml` (it was sync'd
+# `contracts/http/user-api.yaml` (it was sync'd
 # during a prior initiative). The cross-project validator
 # compares this against `../after/http/user-api.yaml`.
 

@@ -123,7 +123,7 @@ The stable `ID: REQ-XXX` line is the merge key, not the requirement title. Requi
 
 ## API Contracts
 
-<!-- When .specify/contracts/http/ exists: reference the OpenAPI specifications
+<!-- When contracts/http/ exists: reference the OpenAPI specifications
      rather than re-describing endpoint shapes. Add implementation-level notes
      not captured in the contract: auth schemes, rate limits, caching, versioning. -->
 
@@ -135,7 +135,7 @@ The stable `ID: REQ-XXX` line is the merge key, not the requirement title. Requi
 
 ## Publication & Timing Patterns
 
-<!-- When .specify/contracts/messages/ exists: reference the AsyncAPI specifications
+<!-- When contracts/messages/ exists: reference the AsyncAPI specifications
      rather than re-describing message shapes. Add implementation-level notes
      not captured in the contract: ordering guarantees, retry policies, DLQ strategy. -->
 

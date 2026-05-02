@@ -67,14 +67,14 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Specify Plugin (`plugins/spec/`)
 
-- `init` - initialize Specify in a project (one-time setup; supports `--hub` for a registry-only platform hub, RFC-9 §1D)
+- `init` - initialize Specify in a project from `--schema-uri` (one-time setup; supports `--hub` for a registry-only platform hub, RFC-9 §1D)
 - `define` - create a change and generate all artifacts in one step
 - `build` - validate artifacts and implement tasks from a Specify change
 - `merge` - finalize and merge a completed change
 - `drop` - discard a change without merging specs into baseline
 - `extract` - extract Specify artifacts from existing source code
 - `analyze` - plan-time capability inference; emits capability summaries
-- `plan` - author `.specify/plan.yaml` via the plan pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C
+- `plan` - author `plan.yaml` via the plan pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C
 - `execute` - drive an initiative's plan through define, build, merge
 
 ### Omnia Plugin (`plugins/omnia/`)
@@ -102,7 +102,7 @@ Cloning a remote source tree is no longer a dedicated skill — both callers (`/
 - `android-reviewer` - review Android shells via agent team (structural/quality/integration specialists + antagonist)
 - `design-system-writer` - generate VectisDesign from tokens (iOS Swift package + Android Compose library)
 
-### Interfaces Plugin (`plugins/interfaces/`)
+### Contract Plugin (`plugins/contract/`)
 
 Format-first specialist skills; each carries author / import / verify intents internally and dispatches via its own intent table.
 
@@ -110,7 +110,7 @@ Format-first specialist skills; each carries author / import / verify intents in
 - `asyncapi` - author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0)
 - `json-schema` - author, import, or verify reusable payload schemas (JSON Schema)
 
-The persisted artifact surface is unchanged: the `contracts` brief id, the `contracts@v1` schema, the `.specify/contracts/` baseline directory, and every contract artifact path keep their original names. Only the Cursor plugin / slash-command surface is renamed (former `contracts` plugin, `/contracts:*` slash commands).
+The persisted artifact surface is unchanged: the `contracts` brief id, the `contracts@v1` schema, the `contracts/` baseline directory, and every contract artifact path keep their original names. The Cursor plugin / slash-command surface lives under `/contract:*`. The matching read-only CLI surface is `specify contract { list, validate }` (RFC-12 §"CLI surface").
 
 ### Client Plugin (`plugins/client/`)
 
@@ -210,7 +210,7 @@ Optional:
 - `argument-hint` — Cursor placeholder text for the slash command.
 - `allowed-tools` — space-separated tool names. Today's policy is to omit and inherit the caller's toolbelt; declare it only when there is a clear reason to narrow the surface.
 
-Forbidden (validated by `make checks` via `schemas/skill.schema.json`):
+Forbidden (validated by `make checks` via `.cursor/schemas/skill.schema.json`):
 
 - `license` — license is declared once in the plugin manifest and the repo `LICENSE` file.
 - `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `paths` — all dropped; use the body for trigger phrases, gating, and platform notes.
@@ -218,7 +218,7 @@ Forbidden (validated by `make checks` via `schemas/skill.schema.json`):
 ### `name`
 
 - Globally unique across **every** SKILL.md in the repo (Anthropic discovery is one global namespace, not per-plugin).
-- Plugin-qualified: must start with the containing plugin's directory name plus `-` (e.g. `omnia-crate-writer`, `interfaces-openapi`, `client-sow-writer`). The `spec/` plugin is the one exception: its skills use the `specify-` prefix (e.g. `specify-init`, `specify-plan`) so the operator-facing product name surfaces in discovery, even though the directory and slash-command prefix are `spec`. See RFC-10 §A.1 for the rename table.
+- Plugin-qualified: must start with the containing plugin's directory name plus `-` (e.g. `omnia-crate-writer`, `contract-openapi`, `client-sow-writer`). The `spec/` plugin is the one exception: its skills use the `specify-` prefix (e.g. `specify-init`, `specify-plan`) so the operator-facing product name surfaces in discovery, even though the directory and slash-command prefix are `spec`. See RFC-10 §A.1 for the rename table.
 - Lowercase ASCII letters, digits, and hyphens only — `^[a-z][a-z0-9-]*$`, ≤64 chars.
 - Naming form: gerund (`importing-fixtures`), action-oriented verb (`define`, `merge`), or artifact-noun phrase (`crate-writer`, `core-reviewer`, `openapi`). Prefer gerunds for new skills when they read naturally; preserve established product verbs and concrete artifact nouns when those are more discoverable for operators and briefs.
 
@@ -240,7 +240,7 @@ Forbidden (validated by `make checks` via `schemas/skill.schema.json`):
 
 Every SKILL.md ≥150 body lines must lead with a `## Critical Path (Quick Reference)` block of 5–7 bullets that name the algorithmic spine of the skill — the steps a maintainer (or Claude itself, when a sibling has not been read) must follow. Each bullet may link to the sibling that holds the depth (`See [verifier.md](verifier.md).`).
 
-The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/spec/skills/execute/`, `plugins/spec/skills/plan/`, `plugins/spec/skills/merge/`, and the three `plugins/interfaces/skills/*/` skills.
+The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/spec/skills/execute/`, `plugins/spec/skills/plan/`, `plugins/spec/skills/merge/`, and the three `plugins/contract/skills/*/` skills.
 
 ### Body length
 
@@ -258,7 +258,7 @@ The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/spe
 - SKILL.md body is ≤500 lines (post-frontmatter).
 - No SKILL.md carries a top-level `license:` (or any other forbidden frontmatter key).
 
-See `scripts/checks.ts` and `schemas/skill.schema.json` for the exact rules.
+See `scripts/checks.ts` and `.cursor/schemas/skill.schema.json` for the exact rules.
 
 ## For Contributors
 

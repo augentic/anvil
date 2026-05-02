@@ -47,7 +47,7 @@ Validate:
   ✓ No dependency cycles
   ✓ All depends-on references valid
 
-Plan created: .specify/plan.yaml (4 entries)
+Plan created: plan.yaml (4 entries)
 ```
 
 </details>
@@ -98,7 +98,7 @@ migrate-auth
   Summary: 4 pending, 0 in-progress, 0 done
 ```
 
-You can also look at `.specify/plan.yaml` directly to see the full plan structure including descriptions, sources, and dependency edges.
+You can also look at `plan.yaml` directly to see the full plan structure including descriptions, sources, and dependency edges.
 
 ## 3. Preview execution
 

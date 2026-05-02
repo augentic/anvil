@@ -2,7 +2,7 @@
 id: design
 description: Create the design document to explain HOW to implement the change
 generates: design.md
-needs: [proposal, specs, contracts]
+needs: [proposal, specs]
 ---
 
 Include sections based on the platforms declared in the proposal. The Domain Model and Capabilities sections are always present (core is always in scope). Platform-specific sections are included only when the corresponding platform is listed in the proposal.
@@ -74,7 +74,7 @@ Define these types (see guidance below each):
 
 ## API Contracts
 
-<!-- When `.specify/contracts/http/` exists: reference the OpenAPI specifications
+<!-- When `contracts/http/` exists: reference the OpenAPI specifications
      there rather than re-describing endpoint shapes. Add implementation-level notes:
      auth, rate limits, caching, versioning strategy.
      

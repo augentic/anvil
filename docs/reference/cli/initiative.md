@@ -1,12 +1,12 @@
 # specify initiative
 
-Manage the operator-authored initiative brief at `.specify/initiative.md` and close out an initiative once every per-project PR has merged.
+Manage the operator-authored initiative brief at `initiative.md` and close out an initiative once every per-project PR has merged.
 
 ## Verb cheat-sheet
 
 | Verb | When to use |
 |------|-------------|
-| [`create`](#specify-initiative-create) | Scaffold `.specify/initiative.md` from the canonical template at the start of an initiative. |
+| [`create`](#specify-initiative-create) | Scaffold `initiative.md` from the canonical template at the start of an initiative. |
 | [`show`](#specify-initiative-show) | Render the current brief (frontmatter + prose body) for tooling consumers and review. |
 | [`finalize`](#specify-initiative-finalize) | Close out a fully-landed initiative: confirm every per-project PR merged, archive `plan.yaml` + brief + working dir. |
 
@@ -14,7 +14,7 @@ Manage the operator-authored initiative brief at `.specify/initiative.md` and cl
 
 ### specify initiative create
 
-Scaffold `.specify/initiative.md` with the frontmatter template.
+Scaffold `initiative.md` with the frontmatter template.
 
 ```bash
 specify initiative create <name>
@@ -42,7 +42,7 @@ specify initiative finalize [--clean] [--dry-run]
 
 The verb runs four guards in order. **All-or-nothing:** any guard failure refuses the run with a per-project status table and leaves the on-disk state untouched.
 
-1. **Plan-presence guard.** `.specify/plan.yaml` must exist. Absent file refuses with `plan-not-found` — the canonical "initiative is already finalized" signal (the previous run swept the plan into `.specify/archive/plans/`).
+1. **Plan-presence guard.** `plan.yaml` must exist. Absent file refuses with `plan-not-found` — the canonical "initiative is already finalized" signal (the previous run swept the plan into `.specify/archive/plans/`).
 2. **Plan terminal-state guard.** Every entry must be in `done`, `failed`, or `skipped` (the in-`Plan` mapping for `dropped`). Anything `pending`, `in-progress`, or `blocked` refuses with `non-terminal-entries-present`; the diagnostic names the offending entries and points the operator at `specify plan status`.
 3. **Per-project PR-state guard.** For each registry project, `gh pr view --json state,merged,headRefName,number,url` is run against the workspace clone. Status mapping:
 
@@ -57,7 +57,7 @@ The verb runs four guards in order. **All-or-nothing:** any guard failure refuse
 
 4. **Workspace-cleanliness guard.** `git status --porcelain` for each workspace clone must be empty. Dirty clones surface as status `dirty` and refuse — protecting uncommitted work from a subsequent `--clean` run.
 
-When every guard passes, the verb runs `Plan::archive` programmatically: `plan.yaml`, `.specify/initiative.md`, and `.specify/plans/<name>/` move atomically into `.specify/archive/plans/<YYYYMMDD>-<name>/`. The archive write is preflighted (both destinations) so a collision returns an error before any file is touched.
+When every guard passes, the verb runs `Plan::archive` programmatically: `plan.yaml`, `initiative.md`, and `.specify/plans/<name>/` move atomically into `.specify/archive/plans/<YYYYMMDD>-<name>/`. The archive write is preflighted (both destinations) so a collision returns an error before any file is touched.
 
 #### `--clean`
 

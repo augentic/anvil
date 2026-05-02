@@ -40,9 +40,9 @@ specify registry add <project> --url ... --schema ...
 | `/spec:plan` | 3 | Author a multi-change plan |
 | `/spec:execute` | 3 | Automate the plan loop |
 | `/spec:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> merge -> finalize (was `/spec:initiative`) |
-| `/interfaces:openapi` | -- | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
-| `/interfaces:asyncapi` | -- | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
-| `/interfaces:json-schema` | -- | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |
+| `/contract:openapi` | -- | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
+| `/contract:asyncapi` | -- | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
+| `/contract:json-schema` | -- | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |
 
 ## Artifacts
 
@@ -50,7 +50,7 @@ specify registry add <project> --url ... --schema ...
 |----------|----------|----------|
 | `proposal.md` | Why? | `.specify/changes/<name>/proposal.md` |
 | `spec.md` | What? | `.specify/changes/<name>/specs/<cap>/spec.md` |
-| `contracts/**/*.yaml` | Shape? | `.specify/contracts/` (baseline) or `.specify/changes/<name>/contracts/` (delta) |
+| `contracts/**/*.yaml` | Shape? | `contracts/` (baseline) or `.specify/changes/<name>/contracts/` (delta) |
 | `composition.yaml` | Where? (Vectis) | `.specify/changes/<name>/composition.yaml` |
 | `design.md` | How? | `.specify/changes/<name>/design.md` |
 | `tasks.md` | Sequence? | `.specify/changes/<name>/tasks.md` |
@@ -73,8 +73,8 @@ specify status                            # project dashboard
 specify change status <name>              # single-change view
 
 # Project setup
-specify init <schema>                     # regular single-project scaffold
-specify init hub --hub                    # registry-only platform hub (RFC-9 1D)
+specify init --schema-uri <uri>           # regular single-project scaffold
+specify init --hub                        # registry-only platform hub (RFC-9 1D)
 
 # Change management
 specify change list
@@ -100,7 +100,7 @@ specify registry add <name> --url <url> --schema <schema> --description "..."
 specify registry remove <name>
 
 # Initiative brief and closure
-specify initiative create <name>          # scaffold .specify/initiative.md
+specify initiative create <name>          # scaffold initiative.md
 specify initiative show
 specify initiative finalize               # confirm PRs merged, archive plan (RFC-9 4C)
 specify initiative finalize --clean       # also prune .specify/workspace/<peer>/
@@ -127,20 +127,23 @@ specify change merge conflict-check <name>
 ## Directory structure
 
 ```
-.specify/
-├── project.yaml          # project config
+<project-root>/
+├── registry.yaml         # platform catalogue (optional, multi-repo)
 ├── plan.yaml             # initiative plan (optional)
-├── registry.yaml         # multi-repo catalogue (optional)
 ├── initiative.md         # operator brief (optional)
-├── plan.lock             # advisory lock for /spec:execute
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
-├── .cache/               # cached schema + briefs
-├── changes/              # active changes (contracts/, composition.yaml for Vectis)
-├── specs/                # merged baseline (incl. composition.yaml for Vectis)
-├── plans/                # initiative working dirs (discovery, proposal)
-├── workspace/            # peer repo clones (multi-repo only)
-└── archive/              # finalized changes and plans
+└── .specify/
+    ├── project.yaml      # project config
+    ├── plan.lock         # advisory lock for /spec:execute
+    ├── .cache/           # cached schema + briefs
+    ├── changes/          # active changes (contracts/, composition.yaml for Vectis)
+    ├── specs/            # merged baseline (incl. composition.yaml for Vectis)
+    ├── plans/            # initiative working dirs (discovery, proposal)
+    ├── workspace/        # peer repo clones (multi-repo only)
+    └── archive/          # finalized changes and plans
 ```
+
+The `0.2.0` v2 layout split operator-facing platform artifacts (root) from framework-managed state (`.specify/`); v1-layout projects upgrade with [`specify migrate v2-layout`](cli/migrate.md).
 
 ## Install
 

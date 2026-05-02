@@ -61,7 +61,7 @@ Self-heal: email-verification → done (merge success from prior run)
 #     handling path — the process simply disappears.
 
 # The plan and on-disk state immediately after SIGKILL:
-#   .specify/plan.yaml:
+#   plan.yaml:
 #     user-registration            → done
 #     email-verification           → done
 #     registration-duplicate-email-crash → done
@@ -75,7 +75,7 @@ Self-heal: email-verification → done (merge success from prior run)
 #   .specify/plan.lock: PID <agent-session-pid> (stale — process is gone)
 ```
 
-`plan.yaml.after-crash` in this directory is the snapshot of `.specify/plan.yaml` at exactly this point in time.
+`plan.yaml.after-crash` in this directory is the snapshot of `plan.yaml` at exactly this point in time.
 
 ## Run 2 — re-run recovers and continues
 

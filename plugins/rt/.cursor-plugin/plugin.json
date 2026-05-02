@@ -2,7 +2,7 @@
   "name": "rt",
   "displayName": "RT Migration",
   "description": "Fixture capture and regression testing for migration workflows.",
-  "version": "0.25.1",
+  "version": "0.26.0",
   "author": {
     "name": "Augentic",
     "email": "andrew@augentic.io"

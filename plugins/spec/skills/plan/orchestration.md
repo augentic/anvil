@@ -12,9 +12,9 @@ The orchestration mode never writes any of these files itself. Every state mutat
 
 | File / verb | Owner | Role for this mode |
 |---|---|---|
-| `.specify/initiative.md` | `specify initiative create` | Step 1 — operator brief; absent → create + prompt. |
-| `.specify/registry.yaml` | `specify registry {add, remove, show, validate}` | Step 2 — validated; multi-project enforces description invariant. |
-| `.specify/plan.yaml` | `/spec:plan` (default mode) | Step 3 — authored by the plan skill in default mode (the orchestration mode delegates to itself). |
+| `initiative.md` | `specify initiative create` | Step 1 — operator brief; absent → create + prompt. |
+| `registry.yaml` | `specify registry {add, remove, show, validate}` | Step 2 — validated; multi-project enforces description invariant. |
+| `plan.yaml` | `/spec:plan` (default mode) | Step 3 — authored by the plan skill in default mode (the orchestration mode delegates to itself). |
 | `.specify/changes/<name>/.metadata.yaml` | phase skills via `specify change outcome set` | Step 4 — read indirectly via `/spec:execute`. |
 | `.specify/plan.lock` | `/spec:execute` (Layer 2) | Held by the executor for the duration of step 4. |
 | `.specify/workspace/<peer>/` | `specify workspace {sync, push, merge}` | Steps 5–6 — peer clones containing the merged commits. |
@@ -38,7 +38,7 @@ The seven steps below are normative. Each step lists its **invocation**, the **h
 **Invocation.**
 
 ```bash
-test -f .specify/initiative.md || specify initiative create <name>
+test -f initiative.md || specify initiative create <name>
 ```
 
 When `initiative.md` is absent, run `specify initiative create <name>` and surface a prompt asking the operator to fill in the body (or accept the inferred defaults from [shapes.md](shapes.md)). When the file already exists, do not re-create it — `specify initiative create` refuses on a populated brief.
@@ -49,7 +49,7 @@ When `initiative.md` is absent, run `specify initiative create <name>` and surfa
 
 ```bash
 specify initiative create <name>
-$EDITOR .specify/initiative.md
+$EDITOR initiative.md
 ```
 
 **Failure recovery.** A non-zero exit from `specify initiative create` (e.g. `<name>` failed kebab-case validation, or a previous run partially scaffolded the brief) surfaces verbatim and exits the umbrella non-zero. The operator removes the half-written `initiative.md` (or fixes the name) and re-runs.
@@ -237,7 +237,7 @@ gh pr merge <pr> --squash     # per-PR by hand
 specify initiative finalize
 ```
 
-The verb runs four guards in order: plan-presence, plan terminal-state, per-project PR-state (`MERGED` on remote), and workspace-cleanliness (`git status --porcelain` empty). All pass → `Plan::archive` sweeps `plan.yaml`, `.specify/initiative.md`, and `.specify/plans/<name>/` into `.specify/archive/plans/<YYYYMMDD>-<name>/`. Any guard refuses → non-zero exit and the umbrella surfaces the per-project status table.
+The verb runs four guards in order: plan-presence, plan terminal-state, per-project PR-state (`MERGED` on remote), and workspace-cleanliness (`git status --porcelain` empty). All pass → `Plan::archive` sweeps `plan.yaml`, `initiative.md`, and `.specify/plans/<name>/` into `.specify/archive/plans/<YYYYMMDD>-<name>/`. Any guard refuses → non-zero exit and the umbrella surfaces the per-project status table.
 
 The umbrella runs `specify initiative finalize` **only** when:
 
@@ -261,7 +261,7 @@ specify initiative finalize --dry-run  # preview the guard table
 Under `--dry-run` with `--orchestrate` the mode is **observation-only** end-to-end. The skill MUST NOT:
 
 - run `specify initiative create` (step 1 is a no-op when the brief is missing — diagnostic only);
-- modify `.specify/registry.yaml` (step 2 runs `specify registry validate` only — read-only);
+- modify `registry.yaml` (step 2 runs `specify registry validate` only — read-only);
 - invoke `/spec:execute` (step 4 is skipped entirely);
 - run `specify workspace push` or `specify workspace merge` (steps 5 and 6 are skipped);
 - run `specify initiative finalize` (step 7 is skipped);

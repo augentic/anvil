@@ -9,6 +9,7 @@ import Ajv2020 from "npm:ajv@8/dist/2020.js";
 
 const REPO_ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const SCHEMA_DIR = join(REPO_ROOT, "schemas");
+const CURSOR_SCHEMA_DIR = join(REPO_ROOT, ".cursor", "schemas");
 const RED = "\x1b[0;31m";
 const NC = "\x1b[0m";
 
@@ -126,7 +127,7 @@ async function validateSchemaYaml(): Promise<void> {
   const ajv = new Ajv2020({ allErrors: true });
 
   const schemaSchema = JSON.parse(
-    await Deno.readTextFile(join(SCHEMA_DIR, "schema.schema.json")),
+    await Deno.readTextFile(join(CURSOR_SCHEMA_DIR, "specify-schema.schema.json")),
   );
 
   const validateSchema = ajv.compile(schemaSchema);
@@ -309,7 +310,7 @@ const KNOWN_TOOLS = new Set([
 
 async function validateSkillFrontmatter(): Promise<void> {
   const skillSchema = JSON.parse(
-    await Deno.readTextFile(join(SCHEMA_DIR, "skill.schema.json")),
+    await Deno.readTextFile(join(CURSOR_SCHEMA_DIR, "skill.schema.json")),
   );
   const ajv = new Ajv2020({ allErrors: true });
   const validate = ajv.compile(skillSchema);
@@ -572,6 +573,9 @@ async function checkRetiredSlashCommands(): Promise<void> {
     "/contracts:validator",
     "/contracts:importer",
     "/contracts:management",
+    "/interfaces:openapi",
+    "/interfaces:asyncapi",
+    "/interfaces:json-schema",
   ];
 
   const SCAN_ROOTS = [
@@ -1054,6 +1058,109 @@ async function checkRetiredAffectsField(): Promise<void> {
   }
 }
 
+async function checkV1LayoutPaths(): Promise<void> {
+  // The v2 layout (specify-cli 0.2.0) moved operator-facing platform
+  // artifacts from `.specify/` to the repo root. Doc/skill prose that
+  // still references the v1 paths is drift; this check pins the new
+  // shape so doc edits cannot regress quietly. Allowed exceptions:
+  //
+  // - rfcs/archive/* — historical RFCs carry v2-layout banners and
+  //   intentionally retain their original paths.
+  // - rfcs/roadmap.md — narrative may still reference legacy shapes.
+  // - docs/how-to/migrate-to-v2-layout.md, docs/reference/cli/migrate.md,
+  //   docs/explanation/whats-new.md, docs/explanation/decision-log.md,
+  //   docs/appendices/{glossary,troubleshooting}.md,
+  //   docs/reference/directory-layout.md — these documents *describe*
+  //   the migration and so must mention both the old and new paths.
+  // - plugins/spec/skills/init/fixtures/v2-layout-migration/* — the
+  //   illustrative fixture for the migration.
+  // - The CLI's own legacy-layout error message (in scripts that quote it).
+  const FORBIDDEN_PATTERNS: RegExp[] = [
+    /\.specify\/registry\.yaml/,
+    /\.specify\/plan\.yaml/,
+    /\.specify\/initiative\.md/,
+    /\.specify\/contracts\b/,
+  ];
+
+  const ALLOWED_PREFIXES = [
+    "rfcs/archive/",
+    "rfcs/roadmap.md",
+    "docs/how-to/migrate-to-v2-layout.md",
+    "docs/reference/cli/migrate.md",
+    "docs/reference/directory-layout.md",
+    "docs/explanation/whats-new.md",
+    "docs/explanation/decision-log.md",
+    "docs/appendices/glossary.md",
+    "docs/appendices/troubleshooting.md",
+    "plugins/spec/skills/init/fixtures/v2-layout-migration/",
+    "scripts/checks.ts",
+  ];
+
+  const SCAN_ROOTS = [
+    join(REPO_ROOT, "plugins"),
+    join(REPO_ROOT, "docs"),
+    join(REPO_ROOT, "schemas"),
+  ];
+  const SCAN_FILES = [
+    join(REPO_ROOT, "README.md"),
+    join(REPO_ROOT, "AGENTS.md"),
+    join(REPO_ROOT, ".cursor", "rules", "project.mdc"),
+  ];
+
+  const targets: string[] = [];
+  for (const root of SCAN_ROOTS) {
+    let exists = true;
+    try {
+      await Deno.stat(root);
+    } catch {
+      exists = false;
+    }
+    if (!exists) continue;
+    for await (const entry of walk(root, {
+      includeDirs: false,
+      exts: [".md", ".mdx", ".mdc", ".yaml", ".yml", ".json", ".toml"],
+    })) {
+      if (await isUnderSymlink(entry.path)) continue;
+      targets.push(entry.path);
+    }
+  }
+  for (const path of SCAN_FILES) {
+    try {
+      await Deno.stat(path);
+      targets.push(path);
+    } catch {
+      // File doesn't exist — skip.
+    }
+  }
+
+  for (const path of targets) {
+    const rel = relative(REPO_ROOT, path);
+    if (ALLOWED_PREFIXES.some((p) => rel.startsWith(p))) continue;
+
+    let content: string;
+    try {
+      content = await Deno.readTextFile(path);
+    } catch {
+      continue;
+    }
+    const lines = content.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      for (const pattern of FORBIDDEN_PATTERNS) {
+        if (pattern.test(lines[i])) {
+          fail(
+            `v1-layout path in ${rel}:${i + 1} -- ${
+              lines[i].trim()
+            } -- the v2 layout moved this artifact to the repo root; ` +
+              `update the reference or add the file to the allow-list in scripts/checks.ts ` +
+              `(see docs/how-to/migrate-to-v2-layout.md)`,
+          );
+          break;
+        }
+      }
+    }
+  }
+}
+
 // ──────────────────────────────────────────────────────────────
 // Run all checks
 // ──────────────────────────────────────────────────────────────
@@ -1069,6 +1176,7 @@ await Promise.all([
   checkInstructionPreambles(),
   checkRetiredCliVerbs(),
   checkRetiredAffectsField(),
+  checkV1LayoutPaths(),
 ]);
 await Promise.all([
   validateSkillFrontmatter(),

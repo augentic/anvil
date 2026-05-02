@@ -1,6 +1,6 @@
 # Manage Registry Projects
 
-`.specify/registry.yaml` is the platform catalogue declaring which repos are in scope for cross-repo initiatives. Projects are added and removed via `specify registry add` and `specify registry remove` (RFC-9 Section 2A) -- never by hand-editing `registry.yaml` and hoping validation passes.
+`registry.yaml` is the platform catalogue declaring which repos are in scope for cross-repo initiatives. Projects are added and removed via `specify registry add` and `specify registry remove` (RFC-9 Section 2A) -- never by hand-editing `registry.yaml` and hoping validation passes.
 
 This how-to covers the day-to-day flow: registering a new project, removing one, handling the `description-missing-multi-repo` invariant, and rewiring plan entries after a removal.
 
@@ -48,7 +48,7 @@ specify registry remove <name>
 
 The verb refuses when the registry is absent or the named project is not declared. After the write, `validate_shape` runs against the resulting registry to catch any cascading invariant breakage.
 
-A non-fatal warning fires when `.specify/plan.yaml` exists and any plan entry references the removed project. The warning names each affected entry so you can rewire them via `specify plan amend <change> --project <other>` separately. Until you rewire them, the affected entries will refuse to advance through the executor (the `project-not-in-registry` validator code blocks them).
+A non-fatal warning fires when `plan.yaml` exists and any plan entry references the removed project. The warning names each affected entry so you can rewire them via `specify plan amend <change> --project <other>` separately. Until you rewire them, the affected entries will refuse to advance through the executor (the `project-not-in-registry` validator code blocks them).
 
 ## Handle `description-missing-multi-repo`
 
@@ -60,7 +60,7 @@ description-missing-multi-repo: registry.yaml: projects[<idx>] (<name>) has no `
 
 There is no in-band fix because `registry add` cannot retro-add a description to an existing entry without overwriting it. Two recovery paths:
 
-1. **Hand-edit `.specify/registry.yaml`** to add the missing description, then re-run `specify registry add` for the new project.
+1. **Hand-edit `registry.yaml`** to add the missing description, then re-run `specify registry add` for the new project.
 2. **Recreate the offending entry**: `specify registry remove <existing>`, then `specify registry add <existing> --url <existing-url> --schema <existing-schema> --description "..."`. (This second path also triggers the plan-reference warning if the existing entry was already wired into a plan -- preferable to use the hand-edit unless the description rewrite is the intent.)
 
 The descriptions matter beyond validation: `/spec:plan`'s assignment step reads them when inferring which project each plan entry targets. Sparse descriptions force unresolved (`?`) prompts during planning. Plan a paragraph per project, not a sentence.

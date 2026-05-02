@@ -24,7 +24,7 @@ Re-running `--orchestrate` against an existing initiative is the canonical resum
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `<name>` | Yes | Kebab-case identifier matching `^[a-z][a-z0-9-]*$`. Becomes the initiative name in `.specify/initiative.md`, the plan name in `.specify/plan.yaml`, and the PR branch suffix `specify/<name>` for `specify workspace push`. |
+| `<name>` | Yes | Kebab-case identifier matching `^[a-z][a-z0-9-]*$`. Becomes the initiative name in `initiative.md`, the plan name in `plan.yaml`, and the PR branch suffix `specify/<name>` for `specify workspace push`. |
 | `--shape` | No | Explicit shape override; one of `migrate-legacy`, `new-feature`, `update-existing`. Inferred from the input flags when omitted (see [Shape inference](#shape-inference)). |
 | `--from <path>` | No | Documentation input forwarded to `/spec:plan`. Repeatable. Default kind is `documentation`; override per-input via `:<kind>` suffix. |
 | `--against <path>` | No | Refactor-target codebase forwarded to `/spec:plan`. Single-valued. Default kind is `legacy-code`. |
@@ -46,7 +46,7 @@ The umbrella drives the canonical platform-first loop:
 
 | Step | Invocation | Halts on |
 |------|------------|----------|
-| 1. Brief | `specify initiative create <name>` (when `.specify/initiative.md` is absent) | Kebab-case violation, partial scaffold |
+| 1. Brief | `specify initiative create <name>` (when `initiative.md` is absent) | Kebab-case violation, partial scaffold |
 | 2. Registry | `specify registry validate` | `description-missing-multi-repo`, `hub-cannot-be-project`, kebab-case / URL / schema violations |
 | 3. Plan | `/spec:plan <name> [--from ...] [--against ...] [--source ...]` | Operator `abort` in propose loop, `specify plan validate` failure |
 | 4. Execute | `/spec:execute --loop` | `stuck`, `halted`, `driver-interrupted`, `registry-amendment-required` |

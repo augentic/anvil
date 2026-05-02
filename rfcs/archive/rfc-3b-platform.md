@@ -333,6 +333,8 @@ For greenfield projects whose remote repos do not yet exist, `workspace sync` an
 
 **Precondition.** The initiating repo must have a populated `.specify/.cache/` with schema definitions for every `schema` identifier referenced in `registry.yaml`. `workspace sync` does not download or populate schema caches; it reuses the initiating repo's cache. If a schema identifier in a registry entry has no corresponding cache entry in the initiating repo, the per-project bootstrap fails with a diagnostic pointing the operator at `/spec:init` in the initiating repo.
 
+> Superseded: greenfield workspace bootstrapping now invokes `specify init --schema-uri <uri>`. URL-shaped registry schemas are passed through directly; bare schema identifiers are converted to local file URIs from the initiating repo's cache.
+
 `**workspace sync` (local bootstrapping).** For each registry project whose workspace slot is `missing`:
 
 1. Attempt a shallow clone from the registry entry's `url`. If the clone succeeds (brownfield), the slot is materialised as today.

@@ -4,7 +4,7 @@ Once `/spec:execute --loop` has driven every change to `done` and `specify works
 
 ## Prerequisites
 
-- An initiative whose plan is fully driven: every entry in `.specify/plan.yaml` is `done`, `failed`, or `skipped`.
+- An initiative whose plan is fully driven: every entry in `plan.yaml` is `done`, `failed`, or `skipped`.
 - `specify workspace push` has been run successfully (one PR per workspace clone with local commits ahead of `main`).
 - `gh` (the GitHub CLI) installed and authenticated against every registry remote -- both `workspace merge` and `initiative finalize` shell out to `gh`.
 
@@ -45,12 +45,12 @@ The verb runs four guards in order. **All-or-nothing:** any guard failure refuse
 
 | Guard | Refusal code | Recovery |
 |-------|--------------|----------|
-| Plan-presence (`.specify/plan.yaml` exists) | `plan-not-found` | The initiative is already finalized -- no action needed. |
+| Plan-presence (`plan.yaml` exists) | `plan-not-found` | The initiative is already finalized -- no action needed. |
 | Plan terminal-state (every entry `done`/`failed`/`skipped`) | `non-terminal-entries-present` | Drive the offending entry to terminal via `/spec:execute` or `specify plan transition`. |
 | Per-project PR-state (every `specify/<name>` PR is `MERGED`) | `unmerged` / `closed` / `branch-pattern-mismatch` / `failed` | Merge the outstanding PR (by hand or `specify workspace merge`); see [Initiative landing issues](../appendices/troubleshooting.md#initiative-landing-issues) for `branch-pattern-mismatch`. |
 | Workspace-cleanliness (`git status --porcelain` empty per clone) | `dirty` | Commit or stash uncommitted work in `.specify/workspace/<peer>/`. |
 
-When every guard passes, the verb runs `Plan::archive` programmatically. `plan.yaml`, `.specify/initiative.md`, and `.specify/plans/<name>/` move atomically into `.specify/archive/plans/<YYYYMMDD>-<name>/`. The archive write is preflighted (both destinations) so a collision returns an error before any file is touched.
+When every guard passes, the verb runs `Plan::archive` programmatically. `plan.yaml`, `initiative.md`, and `.specify/plans/<name>/` move atomically into `.specify/archive/plans/<YYYYMMDD>-<name>/`. The archive write is preflighted (both destinations) so a collision returns an error before any file is touched.
 
 ## Supervised: merge by hand, then `initiative finalize`
 

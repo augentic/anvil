@@ -15,13 +15,13 @@ The operator wants to migrate the legacy `mono-repo-foo` TypeScript service onto
 
 The umbrella runs all seven steps without halting:
 
-1. **Brief.** No `.specify/initiative.md` → `specify initiative create migrate-foo` scaffolds it; the operator confirms the inferred default body (one `legacy-code` input pointing at the monolith).
+1. **Brief.** No `initiative.md` → `specify initiative create migrate-foo` scaffolds it; the operator confirms the inferred default body (one `legacy-code` input pointing at the monolith).
 2. **Registry.** Empty registry + `--shape migrate-legacy` → hand off to the 2B greenfield path inside `/spec:plan`.
 3. **Plan.** `/spec:plan` runs discovery against the cloned monolith, proposes a two-project topology (`foo-backend`, `foo-mobile`), the operator approves both, and the registry-proposal sub-step shells `specify registry add` twice + `specify workspace sync` once before propose runs. Propose decomposes into three slices — one cross-project contract change plus one implementation slice per project — and assignment routes the implementation slices to their respective projects.
 4. **Execute.** `/spec:execute --loop` drives all three changes to `done` (contract change runs against the hub; the two implementation changes run inside their workspace clones). Terminal classification: `all-done`.
 5. **Push.** `specify workspace push` creates `specify/migrate-foo` on each project's remote and opens two PRs.
 6. **Land.** `--auto-merge` → `specify workspace merge` waits for CI, sees both PRs green, and `gh pr merge --squash`es them.
-7. **Finalize.** `specify initiative finalize` confirms both PRs `MERGED` on remote and archives `plan.yaml`, `.specify/initiative.md`, and `.specify/plans/migrate-foo/` into `.specify/archive/plans/<YYYYMMDD>-migrate-foo/`.
+7. **Finalize.** `specify initiative finalize` confirms both PRs `MERGED` on remote and archives `plan.yaml`, `initiative.md`, and `.specify/plans/migrate-foo/` into `.specify/archive/plans/<YYYYMMDD>-migrate-foo/`.
 
 ## Layout
 

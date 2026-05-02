@@ -67,12 +67,12 @@ specify initiative finalize
 
 `finalize` confirms the whole initiative is landed and atomically sweeps local plan state into the archive (RFC-9 §4C). It runs four guards in order before any move:
 
-1. **Plan-presence:** `.specify/plan.yaml` exists.
+1. **Plan-presence:** `plan.yaml` exists.
 2. **Plan terminal-state:** every entry is `done` / `failed` / `skipped`.
 3. **Per-project PR-state:** every registered project's PR on `specify/oauth-login` is `MERGED` on its remote (or has no PR at all). Refuses on `unmerged` / `closed` / `branch-pattern-mismatch` / `failed`.
 4. **Workspace-cleanliness:** `git status --porcelain` is empty for every workspace clone.
 
-Any guard failure refuses with a per-project status table and leaves the on-disk state untouched. When all guards pass, `plan.yaml`, `.specify/initiative.md`, and `.specify/plans/oauth-login/` move atomically into `.specify/archive/plans/<YYYYMMDD>-oauth-login/`.
+Any guard failure refuses with a per-project status table and leaves the on-disk state untouched. When all guards pass, `plan.yaml`, `initiative.md`, and `.specify/plans/oauth-login/` move atomically into `.specify/archive/plans/<YYYYMMDD>-oauth-login/`.
 
 <details>
 <summary>Expected output (all PRs merged, clean clones)</summary>
@@ -112,7 +112,7 @@ Continuing from the [Cross-Repo Initiatives](cross-repo-initiative.md#verificati
 |---|---|---|
 | Step 8 | `gh pr view <pr> -R org/shop-backend --json state,merged` | `{"state":"MERGED","merged":true}`. |
 | Step 9 | `ls .specify/archive/plans/` | A `oauth-login-<YYYYMMDD>.yaml` plan file plus a `oauth-login-<YYYYMMDD>/` directory holding `initiative.md` and the `plans/oauth-login/` authoring trail. |
-| Step 9 | `ls .specify/plan.yaml` | `No such file or directory` -- the plan moved to the archive. |
+| Step 9 | `ls plan.yaml` | `No such file or directory` -- the plan moved to the archive. |
 | Step 9 | `specify initiative finalize` (re-run) | Exits `1` with `error: plan-not-found` -- the canonical "already finalized" signal. |
 
 Any deviation is a blocker. File the failing transcript against this tutorial; per RFC-9 §1C the gap is in the implementation, not the design.
@@ -136,7 +136,7 @@ Run against an empty hub:
 
 The umbrella runs all seven steps without halting:
 
-1. **Brief.** `specify initiative create migrate-foo` scaffolds `.specify/initiative.md`; the operator confirms a default body listing the legacy monolith as a `legacy-code` input.
+1. **Brief.** `specify initiative create migrate-foo` scaffolds `initiative.md`; the operator confirms a default body listing the legacy monolith as a `legacy-code` input.
 2. **Registry.** Empty + `--shape migrate-legacy` -> hand off to the 2B greenfield path inside `/spec:plan`.
 3. **Plan.** `/spec:plan` runs discovery against the cloned monolith, proposes a two-project topology (`foo-backend` + `foo-mobile`), shells `specify registry add` x 2 and `specify workspace sync` once, then propose decomposes into one cross-project contract change plus one implementation slice per project. Assignment routes the implementation slices.
 4. **Execute.** `/spec:execute --loop` drives all three changes to `done` (contract change runs against the hub; the two implementation changes run inside their workspace clones).

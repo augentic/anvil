@@ -1,6 +1,6 @@
 # Specify Schemas
 
-This directory contains the schema definitions for the Specify workflow. Each schema provides a pipeline of brief references and default domain context — all within `schema.yaml` and `briefs/`.
+This directory contains the published, selectable schema definitions for the Specify workflow. Each schema provides a pipeline of brief references and default domain context within `schema.yaml` and `briefs/`.
 
 ## Schemas
 
@@ -14,23 +14,17 @@ This directory contains the schema definitions for the Specify workflow. Each sc
 
 A base schema directory contains all files. A child schema that uses `extends` may omit files that are inherited from the parent (the resolution algorithm falls back to the parent directory for missing files).
 
-```text
-schemas/<name>/
-├── schema.yaml      # Pipeline declarations, domain context
-└── briefs/          # Brief markdown files with YAML frontmatter
-    ├── proposal.md
-    ├── specs.md
-    ├── composition.md   # Vectis only
-    ├── design.md
-    ├── tasks.md
-    ├── build.md
-    └── merge.md
-```
-
 Child schemas that use `extends` may omit the entire `briefs/` directory or individual files within it. Missing files are resolved from the parent schema via fallback.
 
 - **`schema.yaml`**: Declares the pipeline (define, build, merge phases), each referencing a brief by file path, plus a `domain` string describing the default project context (tech stack, architecture, testing approach). Child schemas may use `extends` to inherit from a parent and only override what differs. Skills read this to know how to generate artifacts and implement tasks.
 - **`briefs/`**: One markdown file per pipeline entry. Each brief has YAML frontmatter declaring its `id`, `description`, `generates` pattern, and `needs` dependencies. The body contains detailed generation or implementation instructions. Referenced by file path from `schema.yaml`'s pipeline entries.
+
+## Supporting JSON Schemas
+
+The JSON Schemas that validate `schema.yaml`, brief frontmatter, `plan.yaml`, and CLI JSON output live with their owners:
+
+- `specify-cli/schemas/` owns CLI and workflow metadata schemas such as `schema.schema.json`, `brief/schema.json`, `plan/plan.schema.json`, and `plan-validate-output/schema.json`.
+- `.cursor/schemas/` owns this repository's local authoring checks, including `skill.schema.json`.
 
 ## Schema File Reference
 

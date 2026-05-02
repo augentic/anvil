@@ -117,11 +117,19 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 ## Contracts as platform-level artifacts, not per-project
 
-**Decision:** API contracts live at `.specify/contracts/` alongside `registry.yaml` and `plan.yaml`, not nested inside any project's capability tree or spec directory.
+**Decision:** API contracts live at `contracts/` alongside `registry.yaml` and `plan.yaml`, not nested inside any project's capability tree or spec directory.
 
-**Rationale:** An API contract is a shared agreement between parties -- it does not belong to the producer any more than to the consumer. Nesting contracts inside a single project's capability tree misattributes ownership and forces consumers to navigate workspace clones to find the producer's contract files. Co-locating contracts with `registry.yaml` makes the neutrality structural: `registry.yaml` declares *who* the participants are, `plan.yaml` declares *what* changes are planned, and `.specify/contracts/` declares *how* participants communicate. This mirrors established industry practice (proto repos, shared OpenAPI spec repos, contract-first design).
+**Rationale:** An API contract is a shared agreement between parties -- it does not belong to the producer any more than to the consumer. Nesting contracts inside a single project's capability tree misattributes ownership and forces consumers to navigate workspace clones to find the producer's contract files. Co-locating contracts with `registry.yaml` makes the neutrality structural: `registry.yaml` declares *who* the participants are, `plan.yaml` declares *what* changes are planned, and `contracts/` declares *how* participants communicate. This mirrors established industry practice (proto repos, shared OpenAPI spec repos, contract-first design).
 
 **Source:** [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md)
+
+## Platform artifacts at the repo root, framework state under `.specify/`
+
+**Decision:** The four operator-facing platform artifacts -- `registry.yaml`, `plan.yaml`, `initiative.md`, `contracts/` -- live at the repo root. `.specify/` retains only framework-managed state: `project.yaml`, `changes/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`. The CLI ships `specify migrate v2-layout` to upgrade existing projects in place and refuses every project-aware verb on a v1-layout project with the stable `legacy-layout` error code (hard cutover, no transition window).
+
+**Rationale:** `.specify/` started life as workflow scratch -- cache, archive, working changes, lifecycle metadata. The artifacts that have accreted there since (the registry, the operator brief, the plan, contracts) are durable, PR-reviewed, human-edited material. Putting them under a dot-prefixed framework directory understated their importance and forced operators to navigate framework internals to inspect or hand-edit them. Pulling them up to the root makes the boundary explicit: framework owns `.specify/`; operators own everything else. The hard-cutover stance avoids carrying a dual-read code path indefinitely; the migrate verb is a one-line operator action that addresses the upgrade in a single step.
+
+**Source:** specify-cli [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) (v2 layout entry); operator walkthrough at [`docs/how-to/migrate-to-v2-layout.md`](../how-to/migrate-to-v2-layout.md).
 
 ## JSON Schema + OpenAPI + AsyncAPI, not a new IDL
 

@@ -12,14 +12,13 @@
 |-------|--------|-------------|
 | `proposal.md` | `proposal.md` | -- |
 | `specs.md` | `specs/<feature>/spec.md` | proposal |
-| `contracts.md` | `contracts/**/*.yaml` | specs |
 | `composition.md` | `composition.yaml` | specs, proposal |
-| `design.md` | `design.md` | proposal, contracts |
+| `design.md` | `design.md` | proposal, specs |
 | `tasks.md` | `tasks.md` | specs, design |
 
-The `contracts` brief validates that the change's specs align with baseline contracts at `.specify/contracts/` and produces a minimal delta for uncovered API interactions. When no baseline contracts exist or the change has no API interactions, the brief completes as a no-op. See [Interfaces Plugin](../plugins/interfaces.md) for skill details.
+The specs and design briefs read baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. See [Contract Plugin](../plugins/contract.md) for skill details.
 
-The `composition` brief produces a YAML artifact (not markdown) that describes the spatial layout of each screen. It runs between contracts and design so that the design brief can adopt screen names, ViewModel variants, and field names proposed by the composition artifact. See [RFC-7](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md) for the full design.
+The `composition` brief produces a YAML artifact (not markdown) that describes the spatial layout of each screen. It runs between specs and design so that the design brief can adopt screen names, ViewModel variants, and field names proposed by the composition artifact. See [RFC-7](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md) for the full design.
 
 ### Build phase
 

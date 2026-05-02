@@ -23,7 +23,7 @@ Merge a completed change into the baseline.
 | Artifact | Location | Content |
 |----------|----------|---------|
 | Merged baseline specs | `.specify/specs/<capability>/spec.md` | Updated or new baseline spec files |
-| Merged baseline contracts | `.specify/contracts/` | Updated or new baseline contract files |
+| Merged baseline contracts | `contracts/` | Updated or new baseline contract files |
 | Merged baseline composition (Vectis) | `.specify/specs/composition.yaml` | Updated baseline screen layouts |
 | Archived change | `.specify/archive/YYYY-MM-DD-<name>/` | The full change directory, preserved for audit |
 
@@ -35,7 +35,7 @@ Merge a completed change into the baseline.
 4. Confirms with the user (unless running non-interactively).
 5. Runs `specify change merge run` which:
    - Applies spec deltas to the baseline.
-   - Copies contract files into `.specify/contracts/` using opaque file replacement -- files that share a path are replaced; files absent from the change are left untouched.
+   - Copies contract files into `contracts/` using opaque file replacement -- files that share a path are replaced; files absent from the change are left untouched.
    - Applies composition deltas to the baseline `composition.yaml` (Vectis only -- screen-level `added`/`modified`/`removed` operations with per-screen checksum conflict detection).
    - Validates coherence of the merged baseline.
    - Transitions the change to `merged`.
