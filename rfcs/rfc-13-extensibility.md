@@ -4,7 +4,7 @@
 
 ## Abstract
 
-A schema describes how to draft, build, and adopt a class of artefacts. RFC-13 reframes the runtime to match: the **immutable core** is the workflow engine plus its scaffolding (init, migrate, schema resolver, change driver, status dispatcher, extension dispatcher), and **every other top-level verb in today's CLI — `plan`, `initiative`, `registry`, `contract`, `vectis`, most of `workspace` — becomes a schema**. The core never switches on a schema name.
+A schema describes how to draft, build, and adopt a class of artefacts. RFC-13 reframes the runtime to match: the **immutable core** is the Layer 1 loop engine plus schema-agnostic scaffolding (init, migrate, schema resolver, change driver, Layer 2 workflow runner, status dispatcher, extension dispatcher), and **every other top-level verb in today's CLI — `plan`, `initiative`, `registry`, `contract`, `vectis`, most of `workspace` — becomes a schema**. The core never switches on a schema name.
 
 Today's schema surface admits only `{ name, version, description, extends?, domain?, pipeline }`, which is too small to carry that contract. The RFC adds four declarative blocks (`artifacts:`, `operations:`, `plugin:`, `config-schema:`) so a schema can describe its artefacts, CLI verbs, lifecycle hooks, and project-level configuration. Schemas that need imperative code (e.g. `vectis verify` shelling out to `xcodebuild`) ship a subprocess plugin invoked through a tiny JSON protocol.
 
@@ -72,9 +72,14 @@ None of these needs a `specs` artefact. Schemas that want behavioural specs decl
 
 "Without exception" is load-bearing. Today's `specify plan`, `specify initiative`, `specify registry`, `specify contract`, `specify vectis` top-level verbs are five schemas masquerading as core because the reframe hasn't landed; phase 4 extracts them. If a capability is schema-specific and has no place in `schema.yaml`, that is a gap in the protocol, not a licence for a new core verb.
 
-The loop's *shape* is frozen alongside the verbs: the phase set (`draft` / `build` / `adopt` — today's `define` / `build` / `merge`), the legal transition DAG, and the per-phase outcome contract recorded in `.metadata.yaml` are part of the immutable core. Schemas declare what *flows through* the phases (artefacts, briefs, validators, operations, config) but never the phases themselves. Variation that schemas legitimately want lives in (a) variable briefs per phase, (b) the optional `plan` phase, and (c) the heavy-vs-light mutation split (§Heavy vs light mutations). See §Non-Goals.
+The loop's *shape* is frozen alongside the verbs: the phase set (`draft` / `build` / `adopt` — today's `define` / `build` / `merge`), the legal transition DAG, and the per-phase outcome contract recorded in `.metadata.yaml` are part of the immutable core. Schemas declare what *flows through* the phases (artefacts, briefs, validators, operations, config) but never the phases themselves. Variation that schemas legitimately want lives in (a) variable briefs per phase, (b) workflow graphs over schema-owned steps, and (c) the heavy-vs-light mutation split (§Heavy vs light mutations). See §Non-Goals.
 
-The coordinating principle is the dual: **schemas own lifecycles; platform schemas coordinate outcomes.** Every mutable artefact has exactly one schema owner, every reviewed change runs through exactly one schema/scope, and cross-schema outcomes are achieved by a workspace-level plan graph, not by fusing schemas into a larger hidden schema. An outcome may require several schemas, projects, or scopes, but that does not create a composite runtime or a multi-owner change; the workspace-level platform schemas (`initiative`, `registry`, `plan`, and the workspace coordinator) decompose it into ordered single-owner changes.
+The coordinating principle is the dual: **schemas own artefact lifecycles; workflows coordinate schemas into outcomes.** Every mutable artefact has exactly one schema owner, every reviewed change runs through exactly one schema/scope, and cross-schema outcomes are achieved by a workflow graph, not by fusing schemas into a larger hidden schema. Outcomes are not necessarily code: they may be contracts, documentation, policy, infrastructure, fixtures, reports, generated clients, or any other schema-owned artefact. `workflow@v1` wires schema-owned steps through the common protocol.
+
+That gives Specify two fixed framework layers:
+
+- **Layer 1 — Change lifecycle.** One schema owns one artefact family; a reviewed change drafts, builds, validates, and adopts that schema's artefacts.
+- **Layer 2 — Schema coordination.** A workflow coordinates Layer 1 changes, validations, schema-declared operations, and adoption checks into an outcome graph. The graph is stored in `workflow@v1`; the runner is core-owned and schema-agnostic.
 
 ### The immutable core boundary
 
@@ -89,6 +94,7 @@ The core is what's needed to run draft-build-adopt over any schema's artefacts �
 | `specify status`                                                           | Core              | Cross-schema dispatcher.                                                                                                                              |
 | `specify ext <schema> <op>`                                                | Dispatcher        | Schema-declared operator verbs (§Operations).                                                                                                         |
 | Artefact-lifecycle bookkeeping                                             | Core, data-driven | Iterates over schema-declared artefacts.                                                                                                              |
+| Layer 2 workflow runner                                                    | Core, data-driven | Walks `workflow@v1` graphs and invokes schema-owned steps through the common protocol.                                                                 |
 | Format validators (OpenAPI, JSON Schema, spec-markdown, …)                 | Schema            | Declared as format adapters; core vendors generic ones, schemas may ship their own.                                                                   |
 | Operator verbs for a concern (`verify`, `add-shell`, `list`, `inspect`, …) | Schema            | Declared in `operations:`.                                                                                                                            |
 | Project-level config for a concern                                         | Schema            | Declared in `config-schema:`, stored under `extensions.<schema>` in `project.yaml`.                                                                   |
@@ -101,21 +107,21 @@ Today's top-level verbs that aren't in the core table above are first-party sche
 
 | Today                  | Becomes                                 | Artefact                                    | Notes                                                                                                                                                                                |
 | ---------------------- | --------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `specify plan *`       | `plan@v1` schema                        | `plan.yaml`                                 | Heavy mutations go through the plan pipeline; light mutations (`add`, `amend`, `transition`, `lock`) use `scaffold` / `config` / `transition`.                                       |
-| `specify initiative *` | `initiative@v1` schema                  | `initiative.md`                             | Tiny: one brief; `finalize` maps to `adopt` with a close-out hook that verifies every plan entry is terminal and every PR merged.                                                    |
+| `specify plan *`       | `workflow@v1` schema                    | `workflow.yaml`                             | First-party Layer 2 schema coordinator and successor to today's plan surface. Heavy mutations author the graph; light mutations use `scaffold` / `config` / `transition`.               |
+| `specify initiative *` | `initiative@v1` schema                  | `initiative.md`                             | Tiny: one brief; `finalize` maps to `adopt` with a close-out hook that verifies every referenced workflow is terminal and every PR merged.                                            |
 | `specify registry *`   | `registry@v1` schema                    | `registry.yaml`                             | Heavy mutations go through `specify change`; routine `add`/`remove` use `scaffold` / `config`. The `description-missing-multi-repo` invariant becomes a `baseline-validate` finding. |
 | `specify contract *`   | `contracts@v1` schema                   | `contracts/` baseline                       | RFC-12's SemVer + `info.x-specify-id` checks become `baseline-validate`.                                                                                                             |
 | `specify vectis *`     | `vectis@v2` schema                      | Shared / iOS / Android / design-system dirs | `verify` → `doctor`; `init` / `add-shell` → `scaffold`; `versions` → `config`.                                                                                                       |
 | `specify workspace *`  | **Open question** (see §Open Questions) | Clones directory                            | Mostly git-shelling. May stay core as the cross-schema coordinator, or become a subprocess-plugin-heavy schema.                                                                      |
 
-Every project activates at minimum `plan@v1` + `initiative@v1` + `registry@v1` alongside its domain schema. Those first-party schemas declare structured documents (`plan.yaml`, `initiative.md`, `registry.yaml`) as their primary artefacts, not `spec.md`.
+Every project activates at minimum `workflow@v1` + `initiative@v1` + `registry@v1` alongside its domain schema. `workflow@v1` is framework-level Layer 2, while `initiative@v1` and `registry@v1` remain platform schemas. All three declare structured documents (`workflow.yaml`, `initiative.md`, `registry.yaml`) as their primary artefacts, not `spec.md`.
 
 ### Heavy vs light mutations
 
 Not every schema mutation runs the full change loop. Today's `specify registry add` writes a single line; forcing it through a change directory would be absurd.
 
-- **Heavy (reviewed) mutations** — `specify change create → /spec:draft → /spec:build → /spec:adopt`, driven by the schema's pipeline. Used when the mutation needs briefs, review, overlap detection, conflict-check, and journaling. Example: `/spec:plan` authoring a new plan; `specify contract build` emitting a new `openapi.yaml`.
-- **Light (direct) mutations** — `specify ext <schema> scaffold|config|transition` without a change directory. Example: `specify ext plan scaffold entry`; `specify ext vectis config set versions.rust 1.82.0`.
+- **Heavy (reviewed) mutations** — `specify change create → /spec:draft → /spec:build → /spec:adopt`, driven by the schema's pipeline. Used when the mutation needs briefs, review, overlap detection, conflict-check, and journaling. Example: `/spec:plan` authoring a workflow graph; `specify contract build` emitting a new `openapi.yaml`.
+- **Light (direct) mutations** — `specify ext <schema> scaffold|config|transition` without a change directory. Example: `specify ext workflow scaffold entry`; `specify ext vectis config set versions.rust 1.82.0`.
 
 Schemas decide which path each verb takes by routing it through `operations:` (light) or `pipeline:` (heavy). The core enforces one invariant: the same artefact cannot be written by both paths within a single change.
 
@@ -145,7 +151,7 @@ artifacts:
     baseline: codex/
 ```
 
-`specs` carries no privilege — the linter sorts by `id` and the renderer iterates declared order, but no core code path keys off "the first artefact" or off the literal `id: specs`. Format adapters are named after the format (`markdown-spec`, `terraform-module`, `plan-yaml`, `openapi-asyncapi-bundle`), not after artefact roles. A schema like `infra@v1` declares `format: terraform-module` and never lists a `specs` entry; `plan@v1`'s sole artefact is `id: plan, format: plan-yaml`.
+`specs` carries no privilege — the linter sorts by `id` and the renderer iterates declared order, but no core code path keys off "the first artefact" or off the literal `id: specs`. Format adapters are named after the format (`markdown-spec`, `terraform-module`, `workflow-yaml`, `openapi-asyncapi-bundle`), not after artefact roles. A schema like `infra@v1` declares `format: terraform-module` and never lists a `specs` entry; `workflow@v1`'s sole artefact is `id: workflow, format: workflow-yaml`.
 
 Lifecycles:
 
@@ -171,7 +177,7 @@ No artefact mixes location fields across lifecycles. Cardinality is fixed at one
 
 ##### Multi-instance artefacts
 
-External artefacts whose `project-path` holds many sibling instances (omnia's `crates/<crate-name>/`, vectis's `<shell>/<target>/`) declare `instance-path-template:` to name the per-instance subdirectory. Managed artefacts may declare it too (a `delta:` of `specs/` with template `<crate-name>/spec.md` is exactly today's spec layout). Single-instance artefacts (`plan.yaml`, `initiative.md`) omit the field. The template names a single brief-bound variable; the producing brief resolves it from its context. The linter enforces that exactly one variable appears.
+External artefacts whose `project-path` holds many sibling instances (omnia's `crates/<crate-name>/`, vectis's `<shell>/<target>/`) declare `instance-path-template:` to name the per-instance subdirectory. Managed artefacts may declare it too (a `delta:` of `specs/` with template `<crate-name>/spec.md` is exactly today's spec layout). Single-instance artefacts (`workflow.yaml`, `initiative.md`) omit the field. The template names a single brief-bound variable; the producing brief resolves it from its context. The linter enforces that exactly one variable appears.
 
 ##### Substitution vocabulary
 
@@ -266,7 +272,7 @@ Multi-level `extends:` chains and cycles are rejected at `specify schema check`.
 
 #### 6. Cross-schema coexistence
 
-Every project activates multiple schemas — at minimum a domain schema plus `plan@v1` + `registry@v1` + `initiative@v1`. Two constraints apply across the active set:
+Every project activates multiple schemas — at minimum a domain schema plus `workflow@v1` + `registry@v1` + `initiative@v1`. Two constraints apply across the active set:
 
 - **Artefact id uniqueness.** No two active schemas may declare the same `artifact.id`.
 - **Baseline-path uniqueness.** No two active schemas may claim the same baseline path or project-path.
@@ -277,15 +283,15 @@ A repository activates exactly one **domain** schema under this RFC. Multi-domai
 
 #### Cross-schema coordination
 
-When an outcome spans schemas, the runtime does not fuse their pipelines. Platform schemas coordinate by role: `initiative@v1` records the outcome and close-out criteria, `registry@v1` identifies participating projects, the workspace coordinator resolves project/scope addresses, and `plan@v1` orders single-owner changes with dependency edges.
+When an outcome spans schemas, the runtime does not fuse their pipelines. Coordination is explicit and graph-shaped: `initiative@v1` records the outcome and close-out criteria, `registry@v1` identifies participating projects, the workspace coordinator resolves project/scope addresses, and `workflow@v1` owns the DAG of schema-addressed steps.
 
-`consumes:` is read-only coupling: one schema may read another schema's adopted baseline as context. Mutation ordering belongs to the plan graph (`needs:` between entries), not to `consumes:` or schema inheritance. A frontend/backend initiative that changes contracts first, then backend implementation, then frontend implementation is one initiative and one plan, but three reviewed changes owned by `contracts@v1`, `omnia@v1`, and `vectis@v2`.
+The workflow graph coordinates through the common protocol: nodes target schema-owned changes, validations, operations, or adoption checks; edges express ordering (`needs:`) and blocking conditions. The runner understands node kinds and protocol envelopes, not domain semantics. `consumes:` remains read-only coupling: one schema may read another schema's adopted baseline as context. A workflow may deliver code, but it may also deliver contracts, docs, infrastructure, fixtures, reports, or policy changes.
 
 ### First-party schemas and bootstrap
 
-`plan@v1`, `initiative@v1`, `registry@v1` need to be available **before any schema URL has been resolved** — `specify init` must validate `registry.yaml`, and schema resolution itself runs through `specify schema *`, which is core. Resolution: first-party schemas are **embedded in the CLI binary** and exposed through the same `schema.yaml` surface. The resolver checks the embedded set first, then falls back to URL resolution. They are still structurally schemas — same blocks, same protocol, same linter rules.
+`workflow@v1`, `initiative@v1`, `registry@v1` need to be available **before any schema URL has been resolved** — `specify init` must validate `registry.yaml`, and schema resolution itself runs through `specify schema *`, which is core. Resolution: first-party schemas are **embedded in the CLI binary** and exposed through the same `schema.yaml` surface. The resolver checks the embedded set first, then falls back to URL resolution. They are still structurally schemas — same blocks, same protocol, same linter rules.
 
-Their `version:` is part of the CLI's ABI: a `specify` upgrade that changes `plan@v1`'s pipeline is a breaking change. Projects pin via `specify_version` in `project.yaml`; embedded schema versions are not pinned independently. A project that opts out of a platform schema sets `disable-first-party: [plan]` — intentionally ugly, rarely used. Hub projects (`hub: true`) activate the three platform schemas without a domain schema; single-repo projects activate all four.
+`workflow@v1` has stronger status than an ordinary platform schema: it is the schema-shaped contract for Layer 2, backed by the core workflow runner. Its artefact format is declared like any other schema, but its execution semantics are part of the framework ABI. A `specify` upgrade that changes those semantics is therefore breaking. Projects pin via `specify_version` in `project.yaml`; embedded schema versions are not pinned independently. A project that opts out of a first-party schema sets `disable-first-party: [workflow]` — intentionally ugly, rarely used. Hub projects (`hub: true`) activate the three first-party schemas without a domain schema; single-repo projects activate all four.
 
 ### Distribution: declarative with a subprocess escape
 
@@ -395,7 +401,7 @@ specify ext       <schema> <op>       # schema-declared operator verbs
 specify completions <shell>
 ```
 
-Everything under today's `specify plan|initiative|registry|workspace|contract|vectis` — and any future schema's verbs — routes through `specify ext`. `<schema>` is the schema's `name` field, resolved against the project's active schema set (domain schema from `project.yaml:schema` plus auto-activated platform schemas, plus any peer schemas declared by `registry.yaml`); the dispatcher refuses unknown schemas. Short forms (`specify <schema> <op>`) were rejected (§Alternatives) — extensions become indistinguishable from core verbs and tab-completion shifts project-to-project.
+Everything under today's `specify plan|initiative|registry|workspace|contract|vectis` — and any future schema's verbs — routes through `specify ext`. `<schema>` is the schema's `name` field, resolved against the project's active schema set (domain schema from `project.yaml:schema` plus auto-activated framework/platform schemas, plus any peer schemas declared by `registry.yaml`); the dispatcher refuses unknown schemas. Short forms (`specify <schema> <op>`) were rejected (§Alternatives) — extensions become indistinguishable from core verbs and tab-completion shifts project-to-project.
 
 #### Discoverability
 
@@ -418,16 +424,16 @@ Help is always local — no plugin invocation, no network.
 | `specify vectis add-shell`                    | `specify ext vectis scaffold shell --target ios`                        |
 | `specify vectis update-versions`              | `specify ext vectis config set versions.rust 1.82.0`                    |
 | `specify vectis versions`                     | `specify ext vectis config show`                                        |
-| `specify plan create`                         | `specify ext plan scaffold plan` (or heavy change via plan pipeline)    |
-| `specify plan add`                            | `specify ext plan scaffold entry`                                       |
-| `specify plan amend`                          | `specify ext plan scaffold entry --amend`                               |
-| `specify plan validate`                       | `specify ext plan validate`                                             |
-| `specify plan doctor`                         | `specify ext plan doctor`                                               |
-| `specify plan status`                         | `specify ext plan list`                                                 |
-| `specify plan next`                           | `specify ext plan inspect --next`                                       |
-| `specify plan transition <name> <target>`     | `specify ext plan transition <name> <target>`                           |
-| `specify plan archive`                        | `specify change adopt` on the plan artefact                             |
-| `specify plan lock {acquire,release,status}`  | `specify ext plan config set lock.holder <pid>` / `config show`         |
+| `specify plan create`                         | `specify ext workflow scaffold workflow` (or heavy change via workflow pipeline) |
+| `specify plan add`                            | `specify ext workflow scaffold entry`                                   |
+| `specify plan amend`                          | `specify ext workflow scaffold entry --amend`                           |
+| `specify plan validate`                       | `specify ext workflow validate`                                         |
+| `specify plan doctor`                         | `specify ext workflow doctor`                                           |
+| `specify plan status`                         | `specify ext workflow list`                                             |
+| `specify plan next`                           | `specify ext workflow inspect --next`                                   |
+| `specify plan transition <name> <target>`     | `specify ext workflow transition <name> <target>`                       |
+| `specify plan archive`                        | `specify change adopt` on the workflow artefact                         |
+| `specify plan lock {acquire,release,status}`  | `specify ext workflow config set lock.holder <pid>` / `config show`     |
 | `specify registry add`                        | `specify ext registry scaffold project`                                 |
 | `specify registry remove`                     | `specify ext registry scaffold project --remove`                        |
 | `specify registry show`                       | `specify ext registry inspect`                                          |
@@ -450,18 +456,18 @@ Help is always local — no plugin invocation, no network.
 
 ## Non-Goals
 
-- **Replacing or schema-configuring the draft / build / adopt phase model.** The loop's *shape* (phase set, transition DAG, per-phase outcome contract) is part of the immutable core. Schemas declare what flows through the phases (artefacts, briefs, validators, operations, config) but never the phases themselves. Variability lives in (a) variable briefs per phase, (b) the optional `plan` phase, and (c) the heavy-vs-light split. A schema that genuinely cannot fit any of those would justify proposing a *second* fixed loop shape as a peer to this one — never open-ended phase configuration.
+- **Replacing or schema-configuring the draft / build / adopt phase model.** The loop's *shape* (phase set, transition DAG, per-phase outcome contract) is part of the immutable core. Schemas declare what flows through the phases (artefacts, briefs, validators, operations, config) but never the phases themselves. Variability lives in (a) variable briefs per phase, (b) workflow graphs over schema-owned steps, and (c) the heavy-vs-light split. A schema that genuinely cannot fit any of those would justify proposing a *second* fixed loop shape as a peer to this one — never open-ended phase configuration.
 - **Format-level contract evolution.** SemVer + `info.x-specify-id` + cross-repo uniqueness continue to be owned by RFC-12; this RFC only moves where the rules run from.
 - **WASM / in-process plugins.** Subprocess is the only extension runtime in this RFC.
 - **A general sandboxed write-fence.** Deferred until `specify check`'s write-path inventory is trustworthy enough to enforce.
 - **Cardinality > 1 on delta or baseline.** One artefact → one delta → one baseline. Revisited only if a real schema needs more.
 - **Cloud execution semantics.** Orthogonal; the subprocess protocol serialises the same either way.
 - **Back-compat for schemas without the new surface.** See §Migration — current usage footprint lets us cut over without a fallback path.
-- **Third-party platform schemas.** `plan@v1`, `registry@v1`, `initiative@v1` are first-party and bundled. Swapping them is a follow-up RFC.
+- **Third-party framework/platform schemas.** `workflow@v1`, `registry@v1`, `initiative@v1` are first-party and bundled. Swapping them is a follow-up RFC; swapping `workflow@v1` is especially constrained because it defines Layer 2's graph contract.
 - **Multiple domain schemas per repository.** Covered by [RFC-14](rfc-14-workspaces.md), strictly additive on top of this RFC's four-block protocol.
-- **Cross-schema changes in a single transaction.** Multi-schema outcomes are coordinated by initiative/plan/workspace surfaces, not by one change that writes multiple schemas' baselines. RFC-14 applies the same rule to scopes: cross-scope work is a plan with multiple entries, not a multi-scope change.
+- **Cross-schema changes in a single transaction.** Multi-schema outcomes are coordinated by workflow graphs, not by one change that writes multiple schemas' baselines. RFC-14 applies the same rule to scopes: cross-scope work is a workflow with multiple entries, not a multi-scope change.
 
-Multi-schema *per project* is in scope at the platform level — `plan` + `registry` + `initiative` always coexist with a domain schema (§Cross-schema coexistence). Multi-*domain*-schema per project is the RFC-14 layer.
+Multi-schema *per project* is in scope at the framework/platform level — `workflow` + `registry` + `initiative` always coexist with a domain schema (§Cross-schema coexistence). Multi-*domain*-schema per project is the RFC-14 layer.
 
 ## Implementation Scope
 
@@ -492,18 +498,18 @@ First-party schemas adopt `artifacts:` blocks declaring today's paths exactly �
 2. Schema surface grows `operations:` and (optionally) a `plugin:` block.
 3. `specify-ext-vectis` extracted from today's in-binary `specify_vectis` library; ships as its own binary alongside the `vectis` schema.
 
-### Phase 4 — Extract platform schemas and retire schema-specific core surfaces
+### Phase 4 — Extract framework/platform schemas and retire schema-specific core surfaces
 
 The largest phase: it proves the reframe.
 
-1. **Extract `plan@v1`, `registry@v1`, `initiative@v1` as first-party schemas** embedded in the CLI via `include_str!` or a tidy `embedded-schemas/` tree, exposed through the same resolver path as URL-resolved schemas.
+1. **Extract `workflow@v1`, `registry@v1`, `initiative@v1` as first-party schemas** embedded in the CLI via `include_str!` or a tidy `embedded-schemas/` tree, exposed through the same resolver path as URL-resolved schemas. `workflow@v1` is the Layer 2 framework schema; `registry@v1` and `initiative@v1` are platform schemas.
 2. **Cut their operator verbs over to `specify ext <schema>`** per the §"Concrete cut-overs" table; `archive` and `finalize` route through `specify change adopt` with custom adopt hooks for close-out invariants.
 3. **Delete `Commands::{Plan, Initiative, Registry, Vectis, Contract}`** from `src/cli.rs` and the matching modules under `src/commands/`.
 4. **Retire `specify_vectis` as a library dependency** of `specify-cli` and publish `specify-ext-vectis` separately.
 5. **Decide the workspace question** (§Open Questions). Either extract `workspace@v1` or document workspace as the deliberate exception.
 6. **Retire surviving hard-coded `contracts` / `specs` references** in `crates/merge/`, `crates/validate/`, `src/config.rs`, `crates/change/`.
-7. **First-party schemas publish their full surface** — `omnia`, `contracts`, `vectis`, `plan`, `registry`, `initiative` declare `artifacts:` + `operations:` + (where applicable) `plugin:` + `config-schema:` + `pipeline:`.
-8. **Auto-activation at `specify init`.** A project's `project.yaml` declares its domain schema; the core auto-activates the three platform schemas. Hubs activate the three without a domain schema.
+7. **First-party schemas publish their full surface** — `omnia`, `contracts`, `vectis`, `workflow`, `registry`, `initiative` declare `artifacts:` + `operations:` + (where applicable) `plugin:` + `config-schema:` + `pipeline:`.
+8. **Auto-activation at `specify init`.** A project's `project.yaml` declares its domain schema; the core auto-activates the Layer 2 workflow schema plus the two platform schemas. Hubs activate the three without a domain schema.
 
 Estimated total: ~3500–4500 lines of Rust + the extracted `specify-ext-vectis` binary (largely code-movement) + schema YAML in this repo. Phase 4 is ~60% of the total and may land as a sequence of smaller commits.
 
@@ -514,8 +520,8 @@ Estimated total: ~3500–4500 lines of Rust + the extracted `specify-ext-vectis`
 3. Rewrite `schemas/{contracts,omnia,vectis}/schema.yaml` to declare their full extension surface.
 4. Port brief prose to `$ARTIFACT_DELTA[<id>]` / `$ARTIFACT_BASELINE[<id>]` substitutions.
 5. Update `plugins/contract/` and `plugins/vectis/` skills to invoke `specify ext <schema> …`.
-6. **Phase 4 additions:** check in `schemas/{plan,registry,initiative}/schema.yaml` as the source-of-truth definitions for the embedded platform schemas. CLI consumes them at build time. Skills under `plugins/spec/skills/{plan,execute}/` re-route invocations to `specify ext plan …`.
-7. Document the protocol in `docs/reference/schema-extensions.md`; cross-link from each schema's README. Add glossary entries for "active schema set," "heavy mutation," "light mutation," "first-party schema."
+6. **Phase 4 additions:** check in `schemas/{workflow,registry,initiative}/schema.yaml` as the source-of-truth definitions for the embedded framework/platform schemas. CLI consumes them at build time. Skills under `plugins/spec/skills/{plan,execute}/` re-route invocations to `specify ext workflow …`.
+7. Document the protocol in `docs/reference/schema-extensions.md`; cross-link from each schema's README. Add glossary entries for "active schema set," "Layer 1," "Layer 2," "workflow graph," "heavy mutation," "light mutation," and "first-party schema."
 
 ## Migration
 
@@ -527,8 +533,8 @@ Four invariants guard the landing:
 
 1. **Omnia keeps working.** Every phase's acceptance criterion includes running `/spec:draft → /spec:build → /spec:adopt` on a canonical omnia change end-to-end.
 2. **The core never learns a schema name.** `specify check` rejects hard-coded schema-name literals in core crate sources outside tests, including first-party names after extraction.
-3. **The core never learns an artefact id either.** A companion rule rejects hard-coded artefact-id literals such as `"specs"`, `"contracts"`, `"crates"`, and `"plan"`; phase 1 retires the current canonical violations (`ProjectConfig::{specs_dir, contracts_dir}`).
-4. **Platform schemas are still schemas.** A rule verifies `plan@v1`, `registry@v1`, `initiative@v1` each pass the same validation as any third-party schema — `schema.yaml` parses against `schema.schema.json`, all declared briefs exist, `operations:` is a subset of the closed vocabulary, and so on.
+3. **The core never learns an artefact id either.** A companion rule rejects hard-coded artefact-id literals such as `"specs"`, `"contracts"`, `"crates"`, and `"workflow"`; phase 1 retires the current canonical violations (`ProjectConfig::{specs_dir, contracts_dir}`).
+4. **Framework/platform schemas are still schemas.** A rule verifies `workflow@v1`, `registry@v1`, `initiative@v1` each pass the same validation as any third-party schema — `schema.yaml` parses against `schema.schema.json`, all declared briefs exist, `operations:` is a subset of the closed vocabulary, and so on.
 
 Linter rules in `specify-check` (RFC-5) enforce, additionally:
 
@@ -568,10 +574,10 @@ Resolved with provisional answer (see body for context):
 
 - [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — owns the crates the reframe touches (`specify-schema`, `specify-merge`, `specify-validate`, `specify-change`) and the `src/cli.rs` dispatcher.
 - [RFC-8: API contracts](archive/rfc-8-api-contracts.md) — `contracts@v1` schema; delta-then-promote semantics become the `opaque-replace` default.
-- [RFC-2: Execution](archive/rfc-2-execution.md) — `/spec:execute --loop`; the plan schema's `doctor` / `transition` / `inspect --next` ops are lifted from this RFC's CLI surface.
-- [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — plan authoring pipeline; the existing two-brief `pipeline.plan` is evidence the plan-as-schema reframe is half-implemented.
+- [RFC-2: Execution](archive/rfc-2-execution.md) — `/spec:execute --loop`; the workflow schema's `doctor` / `transition` / `inspect --next` ops are lifted from this RFC's CLI surface.
+- [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — plan authoring pipeline; the existing two-brief `pipeline.plan` is the predecessor to `workflow@v1`.
 - [RFC-3b: Platform](archive/rfc-3b-platform.md) — registry routing and workspace clones.
-- [RFC-9: Platform](archive/rfc-9-platform.md) — moved registry, plan, initiative, and contracts to repo root; `/spec:plan --orchestrate` sits at the top of the post-reframe schema stack.
+- [RFC-9: Platform](archive/rfc-9-platform.md) — moved registry, plan, initiative, and contracts to repo root; `/spec:plan --orchestrate` is the predecessor to workflow-driven orchestration.
 - [RFC-12: Refine RFC-8](archive/rfc-12-refine-rfc-8.md) — SemVer + `info.x-specify-id` rules become `contracts`'s `baseline-validate` hook.
 - [RFC-5: Framework Linter](rfc-5-lint.md) — home of the lints enforcing the reframe's invariants.
 - [Roadmap](roadmap.md) — §3 motivates `read-only`; §5 / §6 / §7 are consumers of a stable core surface.
