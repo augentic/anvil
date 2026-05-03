@@ -10,7 +10,7 @@ Define a new change - create the change and generate all artifacts in one step.
 
 When ready to implement, run `/spec:build`.
 
-When working plan-driven (a `.specify/plan.yaml` exists), `specify plan next` can be run to pick the next eligible entry, and `specify plan transition <name> in-progress` claims it before `/spec:define` starts. If this skill uncovers a neighbouring change that should be tracked (e.g. a bug fix spotted during extraction), shell out to `specify plan add <name> ...` — it is the only supported way to add a new entry. Use `specify plan amend <name> ...` to edit non-status fields on the active or a pending entry; `status` stays off-limits to `amend` by design.
+When working plan-driven (a `plan.yaml` exists), `specify plan next` can be run to pick the next eligible entry, and `specify plan transition <name> in-progress` claims it before `/spec:define` starts. If this skill uncovers a neighbouring change that should be tracked (e.g. a bug fix spotted during extraction), shell out to `specify plan add <name> ...` — it is the only supported way to add a new entry. Use `specify plan amend <name> ...` to edit non-status fields on the active or a pending entry; `status` stays off-limits to `amend` by design.
 
 Deterministic bookkeeping — name validation, `.metadata.yaml` writes, schema resolution, pipeline topology, touched-specs scanning, overlap detection — is delegated to the `specify` CLI. This skill only drives the agent-side work: eliciting intent from the user, reading brief bodies, and writing the artifact files those briefs describe.
 

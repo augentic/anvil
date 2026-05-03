@@ -12,7 +12,7 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `schema-url` | Recommended | Schema URL, e.g. `https://github.com/augentic/specify/schemas/omnia`. Supports `@ref` suffix for version pinning. May be omitted if a schema is already cached. |
+| `schema-url` | Recommended | Schema URL, e.g. `https://github.com/augentic/specify/schemas/omnia`. Supports `@ref` suffix for version pinning. Required for regular projects unless the skill can infer an appropriate default. |
 
 ## When to use
 
@@ -30,8 +30,8 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 ## Behavior
 
 1. Checks whether `.specify/` already exists. If so, warns and offers to reconfigure.
-2. Caches the schema and its brief files into `.specify/.cache/`.
-3. Runs `specify init` to scaffold the directory structure and write `project.yaml`.
+2. Runs `specify init --schema-uri <uri>`; the CLI resolves the schema and caches its brief files into `.specify/.cache/`.
+3. The CLI scaffolds the directory structure and writes `project.yaml`.
 4. Detects existing source code in the project. If found, offers to create an `initial-baseline` change for `/spec:extract`.
 
 ## Lifecycle transitions

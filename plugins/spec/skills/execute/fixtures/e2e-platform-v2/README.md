@@ -32,7 +32,7 @@ The `plan.yaml.before` seed here is the *output* of an authoring run of `/spec:p
 - `discovery.md` — the inventory `/spec:plan` step 3(a) wrote.
 - `transcript.md` — the interactive accept / edit / reject loop.
 - `expected-proposal.md` — the authoring audit trail.
-- `expected-plan.yaml` — the final `.specify/plan.yaml` after the five `specify plan add` calls.
+- `expected-plan.yaml` — the final `plan.yaml` after the five `specify plan add` calls.
 
 Together the two fixture sets pin the full `/spec:plan → /spec:execute --loop` path: authoring turns `--source` / `--from` inputs into a validated `plan.yaml`, and execution drives that plan to `all-done` (or `stuck`, or a self-healable interrupt) without further human intervention.
 

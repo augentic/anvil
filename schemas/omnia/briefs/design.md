@@ -2,7 +2,7 @@
 id: design
 description: Create the design document to explain HOW to implement the change
 generates: design.md
-needs: [proposal, contracts]
+needs: [proposal, specs]
 ---
 
 ## Output Structure
@@ -18,7 +18,7 @@ needs: [proposal, contracts]
 
 ## API Contracts
 
-<!-- When `.specify/contracts/http/` exists: reference the OpenAPI specifications
+<!-- When `contracts/http/` exists: reference the OpenAPI specifications
      there rather than re-describing endpoint shapes. Add implementation-level notes
      not captured in the contract: auth schemes, rate limits, caching, versioning strategy.
      
@@ -39,7 +39,7 @@ needs: [proposal, contracts]
 
 ## Publication & Timing Patterns
 
-<!-- When `.specify/contracts/messages/` exists: reference the AsyncAPI specifications
+<!-- When `contracts/messages/` exists: reference the AsyncAPI specifications
      there rather than re-describing message shapes. Add implementation-level notes
      not captured in the contract: ordering guarantees, retry policies, DLQ strategy.
      

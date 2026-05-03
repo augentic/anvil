@@ -18,7 +18,13 @@ This installs all six plugins (Specify, Omnia, Vectis, Contracts, RT, Client) an
 
 ## The `specify` CLI
 
-The `specify` binary backs every skill in the Specify plugin. Install via one of the following methods (in order of preference):
+The `specify` binary backs every skill in the Specify plugin. If you are setting up a project through Cursor, run `/spec:init`; when the CLI is missing, the skill can install it for you with:
+
+```bash
+cargo install --git https://github.com/augentic/specify-cli
+```
+
+For manual setup, install via one of the following methods:
 
 ```bash
 # macOS + Linux (primary)

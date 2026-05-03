@@ -15,7 +15,7 @@ Materialise, inspect, and push workspace peer clones for multi-repo initiatives.
 
 ### specify workspace sync
 
-Clone or refresh every project declared in `.specify/registry.yaml` into `.specify/workspace/<project>/`.
+Clone or refresh every project declared in `registry.yaml` into `.specify/workspace/<project>/`.
 
 ```bash
 specify workspace sync
@@ -25,7 +25,7 @@ For each registry project:
 
 - **Remote URL** (`git@`, `ssh://`, `https://`, `http://`) -- shallow-clones the repo into the workspace slot.
 - **Local path** (`.`, `../foo`, `/absolute/path`) -- symlinks the resolved path into the workspace slot.
-- **Greenfield** (remote URL, repo does not yet exist) -- creates the workspace slot, runs `git init`, sets the remote, and bootstraps `.specify/project.yaml` via `specify init <schema> --schema-dir <dir>` using the initiating repo's `.specify/.cache/`.
+- **Greenfield** (remote URL, repo does not yet exist) -- creates the workspace slot, runs `git init`, sets the remote, and bootstraps `.specify/project.yaml` via `specify init --schema-uri <uri>`. URL-shaped registry schemas are passed through directly; bare schema identifiers are resolved from the initiating repo's `.specify/.cache/` as local file URIs.
 
 A partially bootstrapped slot (`.git/` present but `.specify/project.yaml` absent) is detected on re-run: `specify init` is re-attempted without re-running `git init` or `git remote add`.
 
@@ -49,7 +49,7 @@ Push workspace clones that have local commits back to their remote repositories.
 specify workspace push [<project>...]
 ```
 
-Omitting the project argument pushes all dirty clones. The initiative name for branch naming (`specify/<initiative-name>`) is read from `.specify/plan.yaml`.
+Omitting the project argument pushes all dirty clones. The initiative name for branch naming (`specify/<initiative-name>`) is read from `plan.yaml`.
 
 **Per-project algorithm:**
 
@@ -105,7 +105,7 @@ Squash-merge the open PRs created by `workspace push` once their CI is green (RF
 specify workspace merge [<project>...]
 ```
 
-Omitting the project argument considers every entry in `.specify/registry.yaml`. The initiative name (and therefore the expected PR branch `specify/<initiative-name>`) is read from `.specify/plan.yaml`.
+Omitting the project argument considers every entry in `registry.yaml`. The initiative name (and therefore the expected PR branch `specify/<initiative-name>`) is read from `plan.yaml`.
 
 **Per-project algorithm:**
 

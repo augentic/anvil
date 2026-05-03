@@ -2,6 +2,22 @@
 
 Common failure modes and their resolutions.
 
+## Layout issues
+
+### `legacy-layout` error from every CLI verb
+
+**Symptom:** Any project-aware verb (`specify status`, `specify plan ...`, `specify registry ...`, etc.) exits 1 with `error: legacy v1 layout detected; run \`specify migrate v2-layout\` to upgrade ([".specify/registry.yaml", ...])`. JSON callers see `error: "legacy-layout"`.
+
+**Cause:** The CLI was upgraded past `0.2.0` (which moved operator-facing platform artifacts to the repo root) but the project still has v1-layout files under `.specify/`.
+
+**Resolution:**
+
+```bash
+specify migrate v2-layout
+```
+
+The mover is idempotent and refuses to clobber existing destinations. See [Migrating to the v2 layout](../how-to/migrate-to-v2-layout.md) for the full walkthrough, including multi-repo platforms and collision recovery.
+
 ## Change lifecycle issues
 
 ### "Change not found"
@@ -152,38 +168,38 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 
 ### `$ref` resolution failures
 
-**Symptom:** A format verifier (`/interfaces:openapi`, `/interfaces:asyncapi`, or `/interfaces:json-schema` running its verifier intent) reports that a `$ref` pointer does not resolve.
+**Symptom:** A format verifier (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema` running its verifier intent) reports that a `$ref` pointer does not resolve.
 
-**Cause:** A schema file referenced from an OpenAPI or AsyncAPI binding does not exist in either the change's `contracts/schemas/` or the baseline `.specify/contracts/schemas/`.
+**Cause:** A schema file referenced from an OpenAPI or AsyncAPI binding does not exist in either the change's `contracts/schemas/` or the baseline `contracts/schemas/`.
 
 **Resolution:**
 1. Check the `$ref` path in the binding file.
 2. Verify the referenced schema file exists and the filename matches (kebab-case, `.yaml` extension).
-3. If the schema is new, ensure the corresponding `/interfaces:*` skill's author intent generated it (typically `/interfaces:json-schema` for shared payloads). If it is a baseline schema, ensure the baseline is up to date.
+3. If the schema is new, ensure the corresponding `/contract:*` skill's author intent generated it (typically `/contract:json-schema` for shared payloads). If it is a baseline schema, ensure the baseline is up to date.
 
 ### Schema metadata incomplete
 
-**Symptom:** `/interfaces:json-schema` (verifier intent) reports missing `$id`, `title`, or `description` on a JSON Schema file.
+**Symptom:** `/contract:json-schema` (verifier intent) reports missing `$id`, `title`, or `description` on a JSON Schema file.
 
 **Cause:** The schema file was created without the required Specify metadata, or an imported external schema was not fully normalised.
 
 **Resolution:**
 1. Add the missing fields. `$id` must be `urn:specify:schemas/<filename-without-extension>`.
-2. For imported schemas, re-run the relevant `/interfaces:*` skill's importer intent (Layer 2) or add the metadata manually.
+2. For imported schemas, re-run the relevant `/contract:*` skill's importer intent (Layer 2) or add the metadata manually.
 
 ### Binding completeness failures
 
-**Symptom:** A format verifier (`/interfaces:openapi` or `/interfaces:asyncapi` running its verifier intent) reports that a schema has no protocol binding.
+**Symptom:** A format verifier (`/contract:openapi` or `/contract:asyncapi` running its verifier intent) reports that a schema has no protocol binding.
 
 **Cause:** A schema that appears as a top-level request/response body or message payload in a spec scenario has no corresponding OpenAPI path or AsyncAPI channel.
 
 **Resolution:**
 1. If the schema is a shared vocabulary type (e.g. `ErrorResponse`) used only via `$ref` from other schemas, it is exempt from this check -- verify the verifier is not misclassifying it.
-2. If the schema should have a binding, ensure the relevant `/interfaces:*` skill's author intent (`/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming) produced the corresponding binding file.
+2. If the schema should have a binding, ensure the relevant `/contract:*` skill's author intent (`/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming) produced the corresponding binding file.
 
 ### Alignment warnings
 
-**Symptom:** An `/interfaces:*` skill's author intent reports alignment warnings in the alignment report.
+**Symptom:** An `/contract:*` skill's author intent reports alignment warnings in the alignment report.
 
 **Cause:** The change's specs describe interactions that partially conflict with the baseline contracts -- e.g. a response schema missing a field that a spec scenario asserts, or a spec referencing a status code the baseline binding does not define.
 
@@ -224,7 +240,7 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 **Resolution:** Two paths.
 
 - **Stay on the hub:** remove the entry. `specify registry remove <name>`. Code projects must live in their own repos and be referenced via a remote URL.
-- **Convert to platform-as-project:** if the operator actually wants the single-repo shape (the initiating repo is itself a code project), remove `.specify/` and re-run `specify init <schema>` without `--hub`. See [Platform repo topologies](../explanation/platform-repo.md).
+- **Convert to platform-as-project:** if the operator actually wants the single-repo shape (the initiating repo is itself a code project), remove `.specify/` and re-run `specify init --schema-uri <uri>` without `--hub`. See [Platform repo topologies](../explanation/platform-repo.md).
 
 ### `description-missing-multi-repo`
 
@@ -232,7 +248,7 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 
 **Cause:** A multi-project registry must declare a `description` on every entry (the description drives `/spec:plan`'s assignment step; sparse descriptions force unresolved prompts during planning). The invariant fires when the addition produces a multi-project registry and any existing entry lacks a description, or when validate is run against an already-violating registry.
 
-**Resolution:** Add the missing descriptions. Either re-run `specify registry add` for each existing entry with `--description "..."`, or hand-edit `.specify/registry.yaml` and re-run `specify registry validate` to confirm.
+**Resolution:** Add the missing descriptions. Either re-run `specify registry add` for each existing entry with `--description "..."`, or hand-edit `registry.yaml` and re-run `specify registry validate` to confirm.
 
 ```bash
 specify registry add <existing-name> \
@@ -261,7 +277,7 @@ specify registry add <existing-name> \
 
 **Cause:** A `--source <key>=<path>` was supplied at plan time but no proposed slice ended up using it (rejected during the propose loop, or scope changed).
 
-**Resolution:** Either reference the key from an entry's `sources:` list (`specify plan amend <name> --sources <key>`) or drop the declaration via a hand-edit of `.specify/plan.yaml`. Warnings are non-fatal; the loop will proceed.
+**Resolution:** Either reference the key from an entry's `sources:` list (`specify plan amend <name> --sources <key>`) or drop the declaration via a hand-edit of `plan.yaml`. Warnings are non-fatal; the loop will proceed.
 
 ### `stale-workspace-clone`
 
@@ -296,7 +312,7 @@ specify registry add <existing-name> \
 
 **Symptom:** `specify initiative finalize` exits non-zero with `plan-not-found`.
 
-**Cause:** `.specify/plan.yaml` does not exist. This is the explicit "already finalized" signal -- a previous successful `finalize` run swept the plan into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+**Cause:** `plan.yaml` does not exist. This is the explicit "already finalized" signal -- a previous successful `finalize` run swept the plan into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
 **Resolution:** None needed -- the initiative is already closed. Inspect the archive to confirm: `ls .specify/archive/plans/`. If the plan was lost some other way (e.g. accidental `rm`), recover from version control.
 
@@ -304,6 +320,6 @@ specify registry add <existing-name> \
 
 **Symptom:** `/spec:execute --loop`'s merge transcript shows `cross-project-warning:` entries, and the merged change's `journal.yaml` carries the same warnings.
 
-**Cause:** RFC-9 Section 3B post-merge cross-project contract validation. After a producer merges, the driver walks `contracts.produces`, finds consumer projects via `contracts.consumes`, and runs the format-appropriate `/interfaces:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone — `/interfaces:openapi` for HTTP / resource APIs, `/interfaces:asyncapi` for evented / pub-sub / streaming, `/interfaces:json-schema` for shared payload schemas. Any incompatibilities surface as warnings. Warnings never halt the loop -- the operator triages.
+**Cause:** RFC-9 Section 3B post-merge cross-project contract validation. After a producer merges, the driver walks `contracts.produces`, finds consumer projects via `contracts.consumes`, and runs the format-appropriate `/contract:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone — `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas. Any incompatibilities surface as warnings. Warnings never halt the loop -- the operator triages.
 
 **Resolution:** Read [Resolve cross-project contract warnings](../how-to/resolve-cross-project-contract-warnings.md) for the triage checklist. Typical paths: spawn a follow-up consumer change to track the producer's update, or accept the drift if the consumer is intentionally lagging.

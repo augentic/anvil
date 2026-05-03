@@ -66,7 +66,7 @@ Each module maps to a discrete section of the current script so parity can be ve
 
 #### `schema_structure.rs`
 
-Thin wrapper around `jsonschema` that validates every `schemas/*/schema.yaml` against `schemas/schema.schema.json`. This replaces `checks.ts`'s `validateSchemaYaml` (lines ~125–147) and produces one failure per JSON-Schema error with `instancePath` and message preserved in the output.
+Thin wrapper around `jsonschema` that validates every `schemas/*/schema.yaml` against `.cursor/schemas/specify-schema.schema.json`. This replaces `checks.ts`'s `validateSchemaYaml` (lines ~125-147) and produces one failure per JSON-Schema error with `instancePath` and message preserved in the output.
 
 #### `schema_integrity.rs`
 

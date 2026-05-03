@@ -1,6 +1,6 @@
 # Platform Repo Topologies
 
-A **platform repo** is the repository an operator opens when they sit down to drive a Specify initiative. It owns `.specify/registry.yaml` (the catalogue of every project in scope), `.specify/initiative.md` (the operator-authored brief), `.specify/plan.yaml` (the dependency-aware change list), and `.specify/workspace/` (the durable clones [`/spec:execute`](../../plugins/spec/skills/execute/SKILL.md) writes into). Platform-level state lives here; per-project code lives in registered project repos.
+A **platform repo** is the repository an operator opens when they sit down to drive a Specify initiative. It owns `registry.yaml` (the catalogue of every project in scope), `initiative.md` (the operator-authored brief), `plan.yaml` (the dependency-aware change list), and `.specify/workspace/` (the durable clones [`/spec:execute`](../../plugins/spec/skills/execute/SKILL.md) writes into). Platform-level state lives here; per-project code lives in registered project repos.
 
 There are two valid shapes for a platform repo. Specify supports both, but the **registry-only hub** is canonical -- it is what `specify init --hub` scaffolds, what tutorials use as their reference shape, and what the platform-first vision composes against. The other shape -- **platform-as-project** -- remains valid for single-repo and small-team cases. This page explains the difference, the on-disk shape of each, and the validation invariant that keeps the two from being silently mixed.
 
@@ -36,15 +36,15 @@ pap: "Platform-as-project" {
 
 ## The registry-only hub (canonical)
 
-In the hub topology, the platform repo is **never itself a code project**. It holds platform state and routes work to peer repos materialised under `.specify/workspace/<name>/`.
+In the hub topology, the platform repo is **never itself a code project**. It holds platform state and routes work to peer repos materialised under `.specify/workspace/<name>/`. Operator-facing platform artifacts (`registry.yaml`, `initiative.md`, `plan.yaml`) live at the repo root; framework-managed scratch (`project.yaml`, archive, workspace clones) lives under `.specify/`.
 
 ```text
 platform-repo/
+├── registry.yaml         # version: 1, projects: [<peer>, <peer>, …]
+├── initiative.md         # operator brief (per-initiative)
+├── plan.yaml             # dependency-aware change list (per-initiative)
 └── .specify/
     ├── project.yaml      # { schema: hub, hub: true, … }
-    ├── registry.yaml     # version: 1, projects: [<peer>, <peer>, …]
-    ├── initiative.md     # operator brief (per-initiative)
-    ├── plan.yaml         # dependency-aware change list (per-initiative)
     ├── archive/
     │   └── plans/        # finalised initiatives
     └── workspace/
@@ -62,16 +62,16 @@ The hub never appears in its own `registry.yaml`. Code projects always live in t
 
 ## The platform-as-project shape (still permitted)
 
-In the platform-as-project topology, the initiating repo is **both** the platform repo and a code project. The repo's own registry entry uses `url: .` to mark itself.
+In the platform-as-project topology, the initiating repo is **both** the platform repo and a code project. The repo's own registry entry uses `url: .` to mark itself. Operator-facing platform artifacts sit alongside the project's own source at the repo root; framework-managed scratch lives under `.specify/`.
 
 ```text
 my-app/
 ├── src/                  # actual application code
+├── registry.yaml         # projects: [{ name: my-app, url: . }, …]
+├── initiative.md         # (optional)
+├── plan.yaml             # (optional)
 └── .specify/
     ├── project.yaml      # { schema: omnia@v1, … }   -- a real schema
-    ├── registry.yaml     # projects: [{ name: my-app, url: . }, …]
-    ├── initiative.md     # (optional)
-    ├── plan.yaml         # (optional)
     └── changes/          # active changes for this project
 ```
 
@@ -100,7 +100,7 @@ The diagnostic always carries the stable code `hub-cannot-be-project`, alongside
 Use `specify init --hub` to scaffold the canonical hub shape:
 
 ```bash
-specify init hub --schema-dir . --name <kebab-name> --hub
+specify init --hub --name <kebab-name>
 ```
 
 (The first positional argument is the `schema` value -- ignored in hub mode but still required by the parser. `hub` is a convenient placeholder; any value works.)
@@ -108,13 +108,13 @@ specify init hub --schema-dir . --name <kebab-name> --hub
 The command writes:
 
 - `.specify/project.yaml` with `schema: hub`, `hub: true`, the kebab-cased name, and a current `specify-version` floor. The `rules:` block is omitted -- a hub has no phase pipelines to scaffold.
-- `.specify/registry.yaml` with `version: 1` and `projects: []`. Hub-mode validation runs against this seed; populating the registry happens via `specify registry add` (RFC-9 §2A) or by hand-editing.
-- `.specify/initiative.md` from the canonical template, named after the project. The brief is per-initiative -- subsequent initiatives overwrite it via `specify initiative create`.
+- `registry.yaml` with `version: 1` and `projects: []`. Hub-mode validation runs against this seed; populating the registry happens via `specify registry add` (RFC-9 §2A) or by hand-editing.
+- `initiative.md` from the canonical template, named after the project. The brief is per-initiative -- subsequent initiatives overwrite it via `specify initiative create`.
 - `.gitignore` upserts for `.specify/.cache/` and `.specify/workspace/`.
 
 The command **refuses** when `.specify/` already exists. This is deliberate: flipping an existing single-repo project into a hub would clobber `project.yaml`. Operators who genuinely want to convert remove `.specify/` first.
 
-For the platform-as-project shape, use the regular `specify init <schema>` (no `--hub` flag). See [`specify init`](../reference/cli/init.md) for the full flag surface and the [`/spec:init`](../../plugins/spec/skills/init/SKILL.md) skill for the agent-driven wrapper that populates the schema cache and prompts for project metadata.
+For the platform-as-project shape, use the regular `specify init --schema-uri <uri>` (no `--hub` flag). See [`specify init`](../reference/cli/init.md) for the full flag surface and the [`/spec:init`](../../plugins/spec/skills/init/SKILL.md) skill for the agent-driven wrapper that prompts for project metadata.
 
 ## See also
 

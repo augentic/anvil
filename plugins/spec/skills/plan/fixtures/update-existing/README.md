@@ -21,7 +21,7 @@ The operator wants a polish pass: tighten error messages on the auth flow, fix a
 
 The umbrella runs all seven steps in one pass:
 
-1. **Brief.** `specify initiative create polish-pass` scaffolds `.specify/initiative.md` with **empty** `inputs:` (no `--from` / `--source` / `--against`). The operator writes one paragraph naming the capabilities being polished.
+1. **Brief.** `specify initiative create polish-pass` scaffolds `initiative.md` with **empty** `inputs:` (no `--from` / `--source` / `--against`). The operator writes one paragraph naming the capabilities being polished.
 2. **Registry.** `specify registry validate` passes (multi-project, descriptions complete). No mutation.
 3. **Plan.** `/spec:plan polish-pass` runs discovery against the empty input set; the discovery brief falls back to **baseline accumulation** in `.specify/workspace/<peer>/specs/` and surfaces the polish opportunities. Sync-peers refreshes both clones; propose decomposes into two slices (one per project, no contract change because the polish does not change the API surface); assignment routes each slice to its existing project; validate passes.
 4. **Execute.** `/spec:execute --loop` drives both changes to `done`. Terminal classification: `all-done`.

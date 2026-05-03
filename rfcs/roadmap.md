@@ -36,7 +36,7 @@ This keeps every integration honest: if a behavior matters, it belongs in one de
 
 ### Treat The Registry As A Projection
 
-`.specify/registry.yaml` should remain a compact execution snapshot, not grow into a full developer catalog. Catalog systems such as Backstage are better suited to long-lived organizational knowledge: owners, teams, systems, domains, APIs, databases, dependencies, and documentation.
+`registry.yaml` should remain a compact execution snapshot, not grow into a full developer catalog. Catalog systems such as Backstage are better suited to long-lived organizational knowledge: owners, teams, systems, domains, APIs, databases, dependencies, and documentation.
 
 Specify should consume that knowledge through importers and projections:
 
@@ -123,7 +123,7 @@ The first supported adapter should map Backstage catalog entities into `registry
 
 The output should be an explicit file diff, not an implicit remote dependency. Operators should be able to review the projected registry before planning or execution.
 
-Non-goal: replacing `registry.yaml`, `.specify/project.yaml`, `.specify/plan.yaml`, or workspace state with live Backstage lookups.
+Non-goal: replacing `registry.yaml`, `.specify/project.yaml`, `plan.yaml`, or workspace state with live Backstage lookups.
 
 ### 3. Standards As A First-Class Codex
 

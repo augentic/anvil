@@ -9,7 +9,7 @@ Specify ships as a Cursor plugin marketplace containing six plugins. Each plugin
 | Specify | `plugins/spec/` | `/spec:` | Core workflow (define, build, merge, verify, etc.) |
 | Omnia | `plugins/omnia/` | `/omnia:` | Rust WASM crate generation and review |
 | Vectis | `plugins/vectis/` | `/vectis:` | Cross-platform Crux app generation |
-| Interfaces | `plugins/interfaces/` | `/interfaces:` | API contract generation and validation (OpenAPI, AsyncAPI, JSON Schema) |
+| Contract | `plugins/contract/` | `/contract:` | API contract generation and validation (OpenAPI, AsyncAPI, JSON Schema) |
 | RT | `plugins/rt/` | `/rt:` | Fixture capture and regression testing |
 | Client | `plugins/client/` | `/client:` | Client-facing deliverables (SoW, proposals, pricing summaries) |
 
@@ -61,24 +61,24 @@ The `checks.ts` script validates that every plugin with a `.cursor-plugin/plugin
 
 ## Dev/prod workflow
 
-Cursor's plugin cache is populated from the server when missing and left alone when present. The dev-plugins script exploits this by clearing the cache and repopulating it with your local files.
+Cursor's plugin cache is populated from the server when missing and left alone when present. The local plugin script exploits this by clearing the cache and repopulating it with your local files.
 
 ### Iteration loop
 
 1. Edit skills, rules, or references in `plugins/`.
-2. Run `make dev-plugins` to copy local files into the Cursor cache.
+2. Run `make use-local-plugins` to copy local files into the Cursor cache.
 3. **Restart Cursor** (a window reload is not sufficient).
 4. Test in a target project.
 5. Repeat from step 1.
 
 ```bash
-make dev-plugins    # copy local plugins into Cursor cache
+make use-local-plugins    # copy local plugins into Cursor cache
 ```
 
 When finished, revert to published plugins:
 
 ```bash
-make prod-plugins   # clear cache; Cursor refetches from server on restart
+make use-team-plugins   # clear cache; Cursor refetches from server on restart
 ```
 
 ### Testing schema changes
@@ -124,7 +124,7 @@ After this initial setup, the plugin participates in the normal dev/prod workflo
 There is no automated test harness for skills (they are markdown documents interpreted by an LLM). Testing is manual:
 
 1. Run `make checks` to validate structural consistency.
-2. Run `make dev-plugins` and restart Cursor.
+2. Run `make use-local-plugins` and restart Cursor.
 3. Open a target project and invoke the skill.
 4. Verify the skill produces the expected artifacts and CLI interactions.
 5. Check edge cases: missing inputs, invalid state, error recovery paths.

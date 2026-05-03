@@ -13,7 +13,7 @@ Core workflow orchestration for spec-driven development: define changes, build t
 | [drop](skills/drop/SKILL.md) | `/spec:drop` | Discard a change without merging |
 | [extract](skills/extract/SKILL.md) | `/spec:extract` | Extract Specify artifacts from existing source code |
 | [analyze](skills/analyze/SKILL.md) | `/spec:analyze` | Plan-time capability inference; emits capability summaries into `discovery.md` |
-| [plan](skills/plan/SKILL.md) | `/spec:plan` | Author `.specify/plan.yaml` via the plan pipeline |
+| [plan](skills/plan/SKILL.md) | `/spec:plan` | Author `plan.yaml` via the plan pipeline |
 | [execute](skills/execute/SKILL.md) | `/spec:execute` | Drive an initiative's plan through define, build, merge |
 
 ## References

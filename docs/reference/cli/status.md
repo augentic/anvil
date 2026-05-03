@@ -12,8 +12,8 @@ specify status [--format json|table]
 
 `specify status` (no arguments) is the operator's project dashboard. It rolls up three views into one call:
 
-- **`registry`** -- summary of `.specify/registry.yaml` (project count, multi-repo flag).
-- **`plan`** -- progress of `.specify/plan.yaml` (per-status counts, current `in-progress` entry, blocking entries).
+- **`registry`** -- summary of `registry.yaml` (project count, multi-repo flag).
+- **`plan`** -- progress of `plan.yaml` (per-status counts, current `in-progress` entry, blocking entries).
 - **`changes`** -- active changes under `.specify/changes/` with lifecycle state and task progress.
 
 For the focused single-change view, use [`specify change status <name>`](change.md). The bare `specify status` is no longer overloaded with a positional `<name>` argument -- that responsibility moved to `change status` in the CLI cleanup.

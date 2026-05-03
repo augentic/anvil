@@ -23,7 +23,7 @@ The umbrella runs steps 1–5 in one pass, halts at step 6 (no `--auto-merge`), 
 
 ### First run (steps 1–6, halts at step 6)
 
-1. **Brief.** `specify initiative create dark-mode` scaffolds `.specify/initiative.md`; the operator confirms a default body that lists `./docs/dark-mode-spec.md` as a `documentation` input.
+1. **Brief.** `specify initiative create dark-mode` scaffolds `initiative.md`; the operator confirms a default body that lists `./docs/dark-mode-spec.md` as a `documentation` input.
 2. **Registry.** `specify registry validate` passes — both existing projects have descriptions.
 3. **Plan.** `/spec:plan dark-mode --from ./docs/dark-mode-spec.md` runs discovery against the docs, syncs peers (multi-project registry), proposes three slices (one cross-project contract change for the theme-preference API plus one implementation slice per project), assigns each implementation slice to its existing project, and validates. **No registry mutation** — both projects are already registered.
 4. **Execute.** `/spec:execute --loop` drives all three changes to `done`. Terminal classification: `all-done`.

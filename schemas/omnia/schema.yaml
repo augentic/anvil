@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=../schema.schema.json
+# yaml-language-server: $schema=../../.cursor/schemas/specify-schema.schema.json
 name: omnia
 version: 1
 description: Omnia Rust WASM workflow
@@ -18,8 +18,6 @@ pipeline:
       brief: briefs/proposal.md
     - id: specs
       brief: briefs/specs.md
-    - id: contracts
-      brief: briefs/contracts.md
     - id: design
       brief: briefs/design.md
     - id: tasks

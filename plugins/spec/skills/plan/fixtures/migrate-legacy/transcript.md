@@ -21,10 +21,10 @@ Pre-flight
 
 ## Step 1 — Brief
 
-.specify/initiative.md is absent.
+initiative.md is absent.
 
   $ specify initiative create migrate-foo
-  ok: wrote .specify/initiative.md
+  ok: wrote initiative.md
 
 Shape `migrate-legacy` carries one --source. Suggested default body:
 
@@ -39,7 +39,7 @@ Shape `migrate-legacy` carries one --source. Suggested default body:
   Augentic platform.
 
 Accept the default body? [Y/n] y
-ok: wrote .specify/initiative.md (operator can $EDITOR to refine before step 3)
+ok: wrote initiative.md (operator can $EDITOR to refine before step 3)
 
 ---
 
@@ -60,7 +60,7 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
   ── /spec:plan migrate-foo ──
 
   $ specify plan create migrate-foo --source monolith=git@github.com:org/legacy-foo.git
-  ok: scaffolded .specify/plan.yaml
+  ok: scaffolded plan.yaml
 
   Step 3(a) — Discovery
     Cloned monolith → .specify/plans/migrate-foo/analyze/monolith/
@@ -82,10 +82,10 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
 
     Greenfield bootstrap — running:
       $ specify registry add foo-backend --url git@github.com:org/foo-backend.git --schema omnia@v1 --description "Backend service migrated from the legacy mono-repo-foo TypeScript monolith. Owns user accounts, order processing, and the HTTP API that the mobile app calls into."
-      ok: appended `foo-backend` to .specify/registry.yaml (1 project)
+      ok: appended `foo-backend` to registry.yaml (1 project)
 
       $ specify registry add foo-mobile --url git@github.com:org/foo-mobile.git --schema vectis@v1 --description "iOS and Android mobile clients migrated from the legacy mono-repo-foo monolith's mobile shells. Owns the storefront, checkout, and account-management flows."
-      ok: appended `foo-mobile` to .specify/registry.yaml (2 projects)
+      ok: appended `foo-mobile` to registry.yaml (2 projects)
 
       $ specify workspace sync
       ok: materialised .specify/workspace/foo-backend/
@@ -156,7 +156,7 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
   Step 1/3: define ✓
   Step 2/3: build ✓
   Step 3/3: merge
-    Baseline updated: .specify/contracts/http/migrate-foo.yaml ✓
+    Baseline updated: contracts/http/migrate-foo.yaml ✓
     Status: done
 
   ---

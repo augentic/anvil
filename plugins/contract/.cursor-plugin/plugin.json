@@ -1,0 +1,21 @@
+{
+  "name": "contract",
+  "displayName": "Contracts",
+  "description": "Skills to author, import, and verify API/interface contracts \u2014 OpenAPI, AsyncAPI, JSON Schema, and future formats \u2014 from Specify artifacts.",
+  "version": "0.26.0",
+  "author": {
+    "name": "Augentic",
+    "email": "andrew@augentic.io"
+  },
+  "homepage": "https://github.com/augentic/specify",
+  "repository": "https://github.com/augentic/specify",
+  "license": "MIT or Apache-2.0",
+  "keywords": [
+    "api",
+    "contracts",
+    "openapi",
+    "asyncapi",
+    "json-schema"
+  ],
+  "settings": {}
+}

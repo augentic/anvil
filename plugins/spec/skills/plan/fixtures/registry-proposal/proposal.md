@@ -18,7 +18,7 @@
 
 ## Registry amendments (RFC-9 §2B)
 
-The registry-proposal sub-step (step 3(d).1) added one new project to `.specify/registry.yaml`:
+The registry-proposal sub-step (step 3(d).1) added one new project to `registry.yaml`:
 
 | Name | URL | Schema | Description |
 |---|---|---|---|

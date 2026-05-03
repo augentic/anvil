@@ -8,8 +8,6 @@ Each schema lives under `schemas/<name>/`:
 
 ```text
 schemas/
-├── schema.schema.json          # JSON Schema that validates schema.yaml files
-├── skill.schema.json           # JSON Schema that validates SKILL.md frontmatter
 ├── omnia/
 │   ├── schema.yaml             # Pipeline declarations + domain context
 │   └── briefs/
@@ -38,12 +36,12 @@ schemas/
 
 ## `schema.yaml`
 
-The `schema.yaml` file is the schema's entry point. It declares the pipeline phases and provides default domain context. The file is validated against `schemas/schema.schema.json`.
+The `schema.yaml` file is the schema's entry point. It declares the pipeline phases and provides default domain context. It is validated against `.cursor/schemas/specify-schema.schema.json` in this repository and against `specify-cli/schemas/schema.schema.json` in the CLI.
 
 Here is the Omnia schema as a concrete example:
 
 ```yaml
-# yaml-language-server: $schema=../schema.schema.json
+# yaml-language-server: $schema=../../.cursor/schemas/specify-schema.schema.json
 name: omnia
 version: 1
 description: Omnia Rust WASM workflow
@@ -185,7 +183,7 @@ The CLI resolves the schema to a local directory by checking `.specify/.cache/` 
 3. **Write the briefs.** Each brief needs YAML frontmatter with at minimum `id` and `description`. The `needs` array declares dependencies on other briefs. The body contains the agent instructions for that pipeline stage.
 
 4. **Validate.** Run `make checks` -- the `checks.ts` script verifies:
-   - `schema.yaml` validates against `schemas/schema.schema.json`
+   - `schema.yaml` validates against `.cursor/schemas/specify-schema.schema.json`
    - All `brief` paths resolve to existing files
    - Brief frontmatter `id` matches the pipeline entry `id`
    - All `needs` references point to declared brief IDs

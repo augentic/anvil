@@ -69,21 +69,21 @@ Additional commands:
 
 - `/spec:drop` -- Discard a change without merging specs into baseline.
 - `/spec:extract` -- Extract Specify artifacts from existing source code.
-- `/spec:plan` -- Author `.specify/plan.yaml` for a multi-change initiative (RFC-2 Layer 3 + RFC-3a: `/spec:analyze` discovery, optional multi-repo workspace sync, manifest scopes when tangled).
+- `/spec:plan` -- Author `plan.yaml` for a multi-change initiative (RFC-2 Layer 3 + RFC-3a: `/spec:analyze` discovery, optional multi-repo workspace sync, manifest scopes when tangled).
 - `/spec:execute` -- Drive an initiative's `plan.yaml` through `define → build → merge` automatically (RFC-2 Layer 2; `--loop` runs until `all-done`). See [Initiative authoring + execution](#initiative-authoring--execution-plans) below for the full workflow.
 - `/spec:plan --orchestrate` -- Layer 4 umbrella mode that strings the cross-repo loop into one operator action: brief → registry → plan → execute → push → optional merge → finalize (RFC-9 §2C). Composition only; honours every halt the underlying skills surface and is idempotent on re-entry. Folded into `/spec:plan` from a former `/spec:initiative` skill.
 
 ### Initiative authoring + execution (plans)
 
-A **plan** (`.specify/plan.yaml`) is an initiative's table of contents — an ordered, dependency-aware list of changes with per-entry status. It turns a sprawling effort (greenfield build, legacy migration, platform modernisation) into a series of self-contained Specify changes that accumulate in the baseline as each one merges. See [rfcs/archive/rfc-2-execution.md](rfcs/archive/rfc-2-execution.md) (status: **Implemented**) for the full design.
+A **plan** (`plan.yaml`) is an initiative's table of contents — an ordered, dependency-aware list of changes with per-entry status. It turns a sprawling effort (greenfield build, legacy migration, platform modernisation) into a series of self-contained Specify changes that accumulate in the baseline as each one merges. See [rfcs/archive/rfc-2-execution.md](rfcs/archive/rfc-2-execution.md) (status: **Implemented**) for the full design.
 
 Three layers, independently useful, stacked top to bottom:
 
-- **`/spec:plan <initiative-name> --source <key>=<path-or-url> ...`** authors `plan.yaml` (Layer 3). Runs `pipeline.plan` — discovery (`/spec:analyze`), optional **sync-peers** + `workspace.md` when `.specify/registry.yaml` lists multiple projects, then propose — with an interactive accept / edit / reject loop per slice. See [rfcs/archive/rfc-3a-monoliths.md](rfcs/archive/rfc-3a-monoliths.md) and [rfcs/archive/rfc-3b-platform.md](rfcs/archive/rfc-3b-platform.md).
+- **`/spec:plan <initiative-name> --source <key>=<path-or-url> ...`** authors `plan.yaml` (Layer 3). Runs `pipeline.plan` — discovery (`/spec:analyze`), optional **sync-peers** + `workspace.md` when `registry.yaml` lists multiple projects, then propose — with an interactive accept / edit / reject loop per slice. See [rfcs/archive/rfc-3a-monoliths.md](rfcs/archive/rfc-3a-monoliths.md) and [rfcs/archive/rfc-3b-platform.md](rfcs/archive/rfc-3b-platform.md).
 - **`/spec:execute --loop`** drives the plan to completion (Layer 2). Picks the next eligible entry, runs `/spec:define → /spec:build → /spec:merge`, transitions status, repeats until `all-done` or `stuck`. `--dry-run` previews; a bare invocation runs one change then stops.
 - **`specify plan {create, validate, doctor, next, status, add, amend, transition, archive, lock}`** are the Layer 1 plan CRUD and lifecycle CLI primitives both skills shell out to. They stay available for hand-driven initiatives where automation is overkill:
 
-  - `specify plan create <name> [--source ...]` -- Scaffold `.specify/plan.yaml` with an empty `changes:` list (renamed from v1 `plan init` by RFC-9 §1G).
+  - `specify plan create <name> [--source ...]` -- Scaffold `plan.yaml` with an empty `changes:` list (renamed from v1 `plan init` by RFC-9 §1G).
   - `specify plan validate` -- Structural and referential integrity checks (duplicate names, dependency cycles, unknown `depends-on` / `sources`, at most one `in-progress`).
   - `specify plan doctor` -- Strict superset of `validate` with four extra health diagnostics: `cycle-in-depends-on`, `unreachable-entry`, `orphan-source-key`, `stale-workspace-clone` (RFC-9 §4B).
   - `specify plan next` -- Report the next eligible entry (first `pending` whose `depends-on` is all `done`).
@@ -94,10 +94,10 @@ Three layers, independently useful, stacked top to bottom:
   - `specify plan archive` -- Move a completed `plan.yaml` (and its `.specify/plans/<name>/` working directory) to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
   - `specify plan lock {acquire, release, status}` -- Advisory `.specify/plan.lock` PID stamp held by the `/spec:execute` driver.
 
-- **`specify initiative {create, show, finalize}`** -- Operator brief at `.specify/initiative.md`. `create` was renamed from v1 `init` (RFC-9 §1F); `finalize` is the canonical closure verb that confirms every per-project PR has merged before archiving the plan (RFC-9 §4C).
-- **`specify registry {add, remove, show, validate}`** -- Platform registry at `.specify/registry.yaml`. `add` and `remove` were added by RFC-9 §2A; both validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
+- **`specify initiative {create, show, finalize}`** -- Operator brief at `initiative.md`. `create` was renamed from v1 `init` (RFC-9 §1F); `finalize` is the canonical closure verb that confirms every per-project PR has merged before archiving the plan (RFC-9 §4C).
+- **`specify registry {add, remove, show, validate}`** -- Platform registry at `registry.yaml`. `add` and `remove` were added by RFC-9 §2A; both validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
 - **`specify workspace {sync, status, push, merge}`** -- Materialises `.specify/workspace/<peer>/` for multi-repo planning, pushes workspace clones to remotes after execution, and squash-merges the resulting PRs once CI is green (`merge`, RFC-9 §4A).
-- **`specify init [<schema>] [--hub]`** -- Project scaffold. The `--hub` flag (RFC-9 §1D) scaffolds a registry-only platform hub instead of a regular project.
+- **`specify init --schema-uri <uri> [--hub]`** -- Project scaffold. Regular init resolves and caches the schema URI directly; the `--hub` flag (RFC-9 §1D) scaffolds a registry-only platform hub instead of a regular project.
 
 A typical initiative: `/spec:plan migrate-to-v2 --source monolith=/path/to/legacy` → review the authored plan with `specify plan status` → `/spec:execute --loop` until it reports `all-done`.
 
@@ -116,7 +116,13 @@ See the [Developer Guide](docs/reference/plugins/index.md) for the full skill re
 
 ## Installing the CLI
 
-The `specify` binary backs every skill in the `spec` plugin. Install via (preferred order):
+The `specify` binary backs every skill in the `spec` plugin. For one-stop project setup in Cursor, run `/spec:init`; if the CLI is missing, the skill can install it after confirmation with:
+
+```bash
+cargo install --git https://github.com/augentic/specify-cli
+```
+
+Manual install paths remain available:
 
 ```bash
 brew install augentic/tap/specify           # macOS + Linux (primary)
@@ -141,24 +147,24 @@ This runs `scripts/checks.ts` via [Deno](https://deno.land). Deno must be instal
 
 ### Local plugin development
 
-Cursor's plugin cache is populated from the server when it is missing, and left alone when it already exists. The dev-plugins script exploits this by clearing the cache and repopulating it with files from your working tree. The agent then loads your local skill, rule, and reference content instead of the published versions.
+Cursor's plugin cache is populated from the server when it is missing, and left alone when it already exists. The local plugin script exploits this by clearing the cache and repopulating it with files from your working tree. The agent then loads your local skill, rule, and reference content instead of the published versions.
 
 #### Dev iteration loop
 
 1. Edit skills, rules, or references in `plugins/`.
-2. Run `make dev-plugins` to copy local files into the cache.
+2. Run `make use-local-plugins` to copy local files into the cache.
 3. Restart Cursor.
 4. Test in a target project.
 5. Repeat from step 1.
 
 ```bash
-make dev-plugins    # copy local plugins into cache
+make use-local-plugins    # copy local plugins into cache
 ```
 
 When finished, revert to published plugins:
 
 ```bash
-make prod-plugins   # clear cache; Cursor refetches from server on restart
+make use-team-plugins   # clear cache; Cursor refetches from server on restart
 ```
 
 > [!NOTE]  
