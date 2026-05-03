@@ -4,15 +4,15 @@
 
 ## Abstract
 
-Define the **UI specification workflow** that produces every input the vectis shell writers need to render a Crux application: the layout (`composition.yaml`), the design tokens (`tokens.yaml`), the asset inventory (`assets.yaml` + image files), and the per-screen requirements that flow through `/spec:define` into `/spec:build`. RFC-7 introduced `composition.yaml` as a multi-source artifact and described its skeleton/wired duality, but only the manual-authoring and one Figma-import path were ever fleshed out, and the tokens / assets surface stayed implicit. This RFC scopes:
+Define the **UI specification workflow** that produces every input the vectis shell writers need to render a Crux application: the layout intent (`layout.yaml`), the design tokens (`tokens.yaml`), the asset inventory (`assets.yaml` + image files), and the per-screen requirements that flow through `/spec:define` into `/spec:build`. RFC-7 introduced `composition.yaml` as a multi-source artifact and described its skeleton/wired duality; this RFC makes that boundary explicit by using `layout.yaml` for pre-define input and reserving `composition.yaml` for the wired Specify artifact. This RFC scopes:
 
-- **three peer specialist "composition-inferer" skills** — one each for Figma, screenshot/image inputs, and existing source code — that emit a `composition.yaml` skeleton from their respective inputs;
-- the **`tokens.yaml` and `assets.yaml`** artifacts that travel alongside the skeleton, with the operator and (where useful) the inferers as joint sources;
-- the **`/spec:define`** contract that turns a skeleton + requirements into a wired `composition.yaml` plus the existing vectis define briefs;
+- **three peer specialist "layout-inferer" skills** — one each for Figma, screenshot/image inputs, and existing source code — that emit `layout.yaml` from their respective inputs;
+- the **`tokens.yaml` and `assets.yaml`** artifacts that travel alongside the layout, with the operator and (where useful) the inferers as joint sources;
+- the **`/spec:define`** contract that turns layout intent + requirements into a wired `composition.yaml` plus the existing vectis define briefs;
 - the **`/spec:build`** consumption surface where the shell writers see the wired composition, tokens, assets, and image files as a single coherent input set;
-- the **dissolution of `design-system` as a peer "platform"** in proposals and the build phase. The "design system" name is reserved for the *input* artifacts the operator maintains (`composition.yaml`, `tokens.yaml`, `assets.yaml`, and any future component vocabulary). The lower-level reusable components — today the `VectisDesign` Swift Package and `vectis-design` Compose library emitted by `vectis:design-system-writer` — fold into each shell writer. iOS and Android stay the only runtime platforms; nothing parallel to them is generated.
+- the **dissolution of `design-system` as a peer "platform"** in proposals and the build phase. The "design system" name is reserved for the *input* artifacts the operator maintains (`layout.yaml`, `tokens.yaml`, `assets.yaml`, and any future component vocabulary). The lower-level reusable components — today the `VectisDesign` Swift Package and `vectis-design` Compose library emitted by `vectis:design-system-writer` — fold into each shell writer. iOS and Android stay the only runtime platforms; nothing parallel to them is generated.
 
-The previous RFC-11 (`screenshots → composition`) is folded into this RFC as the `image-composition-inferer` subsection. The previously-implicit "design-system workflow baked into vectis" — `tokens.yaml` + `vectis:design-system-writer` — is rethought here as one slice of the broader pipeline rather than a standalone surface, and the peer-platform packaging that grew up around it is removed (§L).
+The previous RFC-11 (`screenshots → composition`) is folded into this RFC as the `image-layout-inferer` subsection. The previously-implicit "design-system workflow baked into vectis" — `tokens.yaml` + `vectis:design-system-writer` — is rethought here as one slice of the broader pipeline rather than a standalone surface, and the peer-platform packaging that grew up around it is removed (§L).
 
 ## Motivation
 
@@ -22,239 +22,467 @@ The previous RFC-11 (`screenshots → composition`) is folded into this RFC as t
 
 The diagram describes the target pipeline at a glance:
 
-1. **Three sources** can drive the skeleton — a Figma file, a set of screenshots/images, or an existing codebase. Each has a dedicated *composition-inferer* skill (green) that produces a `composition.yaml (skeleton)`.
-2. **The operator** is a peer source — they can hand-author the skeleton directly, and they always own the `requirements`, `tokens.yaml`, and the raw image files. `assets.yaml` is derived from those image files, with the operator confirming names and per-platform choices.
-3. **`/spec:define`** consumes the skeleton plus requirements and emits the wired `composition.yaml` plus the rest of the vectis define briefs.
+1. **Three sources** can drive the layout — a Figma file, a set of screenshots/images, or an existing codebase. Each has a dedicated *layout-inferer* skill (green) that produces `layout.yaml`.
+2. **The operator** is a peer source — they can hand-author `layout.yaml` directly, and they always own the `requirements`, `tokens.yaml`, and the raw image files. `assets.yaml` is derived from those image files, with the operator confirming names and per-platform choices.
+3. **`/spec:define`** consumes `layout.yaml` plus requirements and emits the wired `composition.yaml` plus the rest of the vectis define briefs.
 4. **`/spec:build`** consumes the wired composition along with the asset inventory, the design tokens, and the raw image files.
 
 Everything to the left of `/spec:define` is *UI input material*. Everything from `/spec:define` onward is the existing Specify lifecycle. This RFC scopes the left half and the contract at the seam.
 
 ### What ships today
 
-- **Composition.** [RFC-7](archive/rfc-7-ui.md) defined the artifact and the skeleton/wired modes. Two source paths are operational: agent-inferred-from-specs (low fidelity) and hand-authored. The Figma adapter is described but not implemented; the legacy-app and screenshot paths are open.
+- **Composition.** [RFC-7](archive/rfc-7-ui.md) defined the artifact and the skeleton/wired modes. This RFC renames the pre-define skeleton surface to `layout.yaml`, while keeping the post-define/baseline artifact as `composition.yaml`. Two source paths are operational today: agent-inferred-from-specs (low fidelity) and hand-authored. The Figma adapter is described but not implemented; the legacy-app and screenshot paths are open.
 - **Tokens.** [`vectis:design-system-writer`](../plugins/vectis/skills/design-system-writer/SKILL.md) regenerates iOS Swift Package + Android Compose library from a hand-authored `design-system/tokens.yaml`. There is no JSON Schema for `tokens.yaml`; value shapes (colour / font / scalar) are inferred from the first entry per category.
-- **Assets.** No artifact and no skill. Image files end up in shell-specific asset catalogues (`Assets.xcassets`, `res/drawable*/`) by hand or by ad-hoc shell-writer copy steps. The composition vocabulary references icons and images by bare name with no central index.
-- **Requirements.** Travel today as the user prompt + the existing vectis specs/proposal briefs. The diagram treats `requirements` as a first-class input to `/spec:define`, peer to the skeleton — making it explicit that the skeleton is *layout intent* and the requirements are *behavioural intent* and they meet at define time.
-- **Define / build.** The vectis define pipeline already includes a [composition brief](../schemas/vectis/briefs/composition.md) that reads an existing skeleton when present and otherwise infers one. The build brief hands `composition.yaml`, `app.rs`, `tokens.yaml`, and the spec shell sections to each shell writer. There is no asset hand-off yet.
+- **Assets.** No artifact and no skill. Image files end up in shell-specific asset catalogues (`Assets.xcassets`, `res/drawable*/`) by hand or by ad-hoc shell-writer copy steps. The layout/composition vocabulary references icons and images by bare name with no central index.
+- **Requirements.** Travel today as the user prompt + the existing vectis specs/proposal briefs. The diagram treats `requirements` as a first-class input to `/spec:define`, peer to `layout.yaml` — making it explicit that layout is *presentation intent* and requirements are *behavioural intent* and they meet at define time.
+- **Define / build.** The vectis define pipeline already includes a [composition brief](../schemas/vectis/briefs/composition.md) that reads existing layout input when present and otherwise infers one. The build brief hands `composition.yaml`, `app.rs`, `tokens.yaml`, and the spec shell sections to each shell writer. There is no asset hand-off yet.
 
 ### What is missing
 
-- **No source-of-truth path for the skeleton beyond Figma-on-paper and hand-authoring.** Real teams arrive with screenshots, a deployed app, or both, and currently have to hand-translate them into composition vocabulary.
+- **No source-of-truth path for layout intent beyond Figma-on-paper and hand-authoring.** Real teams arrive with screenshots, a deployed app, or both, and currently have to hand-translate them into layout vocabulary.
 - **No shared inferer contract.** Each prospective source (Figma, image, code) faces the same problems — schema grounding, ambiguity reporting, idempotent re-runs, multi-source merging — with no shared scaffolding.
 - **No assets pipeline.** Image files have no inventory artifact, no per-platform mapping (`@2x`/`@3x` vs density buckets), no token-style naming, and no resolution check at validate time.
 - **No published tokens schema.** Adding a category (motion, elevation, iconography) requires coordinated edits across writer + per-platform templates with no validator.
-- **No formal define contract.** What `/spec:define` requires from the skeleton vs. produces in the wired composition is RFC-7 prose; it has never been pinned as an interface that three different inferer skills can target consistently.
+- **No formal define contract.** What `/spec:define` requires from `layout.yaml` vs. produces in wired `composition.yaml` is RFC-7 prose; it has never been pinned as an interface that three different inferer skills can target consistently.
 - **No build hand-off for assets / tokens beyond ad-hoc.** The shell writers need to know which images and tokens this build expects, but they receive that knowledge by inference rather than as a manifest.
-- **`design-system` is wired as a peer "platform" of `ios` and `android`.** The proposal brief lists it alongside the runtime platforms ([`schemas/vectis/briefs/proposal.md`](../schemas/vectis/briefs/proposal.md)), the build brief runs it as the first phase ([`schemas/vectis/briefs/build.md`](../schemas/vectis/briefs/build.md)), the plan-time discovery and propose briefs treat it as a tier ([`schemas/vectis/briefs/plan/discovery.md`](../schemas/vectis/briefs/plan/discovery.md), [`propose.md`](../schemas/vectis/briefs/plan/propose.md)), and `vectis:design-system-writer` ships a Swift Package and a Compose library into `design-system/ios/` and `design-system/android/` that the iOS and Android shells consume as external dependencies. This is an anomaly: nothing is *deployed* to "design-system" — the artifact is a build-time prerequisite for the real runtime targets. Conflating the input surface (the operator-maintained `tokens.yaml`, `composition.yaml`, `assets.yaml`) with the per-platform emit (Swift / Kotlin token files) creates redundant lifecycle scaffolding (its own platforms entry, its own build phase, its own writer skill, its own task ordering) and an unnatural shared-library boundary that each shell would otherwise own internally.
+- **`design-system` is wired as a peer "platform" of `ios` and `android`.** The proposal brief lists it alongside the runtime platforms ([`schemas/vectis/briefs/proposal.md`](../schemas/vectis/briefs/proposal.md)), the build brief runs it as the first phase ([`schemas/vectis/briefs/build.md`](../schemas/vectis/briefs/build.md)), the plan-time discovery and propose briefs treat it as a tier ([`schemas/vectis/briefs/plan/discovery.md`](../schemas/vectis/briefs/plan/discovery.md), [`propose.md`](../schemas/vectis/briefs/plan/propose.md)), and `vectis:design-system-writer` ships a Swift Package and a Compose library into `design-system/ios/` and `design-system/android/` that the iOS and Android shells consume as external dependencies. This is an anomaly: nothing is *deployed* to "design-system" — the artifact is a build-time prerequisite for the real runtime targets. Conflating the input surface (the operator-maintained `layout.yaml`, `tokens.yaml`, `assets.yaml`) with the per-platform emit (Swift / Kotlin token files) creates redundant lifecycle scaffolding (its own platforms entry, its own build phase, its own writer skill, its own task ordering) and an unnatural shared-library boundary that each shell would otherwise own internally.
 
 ### Non-goals
 
-- **Not a redesign of `composition.yaml` or its schema.** RFC-7 already settled the artifact; this RFC defines the producers and consumers around it.
+- **Not a redesign of the composition schema.** RFC-7 already settled the artifact shape; this RFC separates its pre-define input filename (`layout.yaml`) from its wired lifecycle filename (`composition.yaml`) and defines the producers and consumers around that boundary.
 - **Not a redesign of the Specify lifecycle.** `/spec:define` and `/spec:build` are existing skills; this RFC scopes their *contract* with the new producers, not their internal flow.
 - **Not a design tool.** Specify does not replace Figma or any image editor. The inferers ingest existing artefacts; visual editing stays upstream.
 - **Not a runtime theming engine.** Output is generated source the shells compile against, same as today; no dynamic theme-swap protocol.
 - **Not a hosted service.** All inputs and outputs stay local and reviewable, per the [roadmap directional principles](roadmap.md#directional-principles).
-- **No spec generation from screenshots, Figma, or code by these skills.** The inferers produce *composition skeletons only*. Behavioural specs continue to come from `/spec:define`, `/spec:extract`, or hand-authoring.
+- **No spec generation from screenshots, Figma, or code by these skills.** The inferers produce `layout.yaml` only. Behavioural specs continue to come from `/spec:define`, `/spec:extract`, or hand-authoring.
 
 ## Detailed Design
 
-> This section is intentionally a scaffold. Subsections marked **TBD** are the questions that need to be resolved over follow-up sessions; the bullets are the open questions, not the answers.
+This section records the v1 decisions for the UI input workflow. Deferred items are called out explicitly where they remain outside the v1 contract.
 
-### A. Composition inferers — shared contract
+### A. Layout inferers — shared contract
 
-**TBD.** The three inferer skills share enough surface that the contract should be defined once. Open questions:
+The three inferer skills share one contract documented in `plugins/vectis/references/layout-inferer-contract.md`. They differ only in how they read source material. Their common job is to produce or refine `layout.yaml`: a schema-valid, unwired layout input that `/spec:define` can later wire to specs and Crux types as `composition.yaml`.
 
-- **Inputs and arguments.** What is the common argument shape across inferers (target change-dir, output path, optional baseline `composition.yaml` to update, optional per-screen hints)?
-- **Output.** All three produce a `composition.yaml` skeleton conformant with [`schemas/vectis/composition.schema.json`](../schemas/vectis/composition.schema.json) — no `bind`, `event`, `maps_to`, or `*-when`. They MAY emit token references (`color: primary`, `gap: md`) when the source provides enough signal; they MAY emit `# GAP: …` and `# TODO: …` YAML comments per the existing convention.
-- **Provenance.** Each inferer stamps `provenance.sources[]` with its `kind` (`figma`, `screenshots`, `legacy`) and a `uri` / `captured_at`. Multi-source merges append rather than overwrite.
-- **Idempotence and re-runs.** When a baseline skeleton exists, the inferer adds and refines but does not silently delete operator-edited content. Open question: per-screen "owned by inferer" markers vs. always-additive merge.
-- **Verification.** Each inferer's emit step round-trips through schema validation and surfaces the gap report in its terminal output.
-- **Skill shape.** A single `vectis-composition-inferer` skill with a required `--source <kind>` flag, or three sibling skills (`vectis-figma-composition-inferer`, `vectis-image-composition-inferer`, `vectis-code-composition-inferer`) sharing a `references/inferer-contract.md`? See §H.
+Common arguments:
 
-### B. Skill 1 — `figma-composition-inferer`
+- `--change-dir <path>`: optional Specify change directory. When supplied, the inferer writes `<change-dir>/layout.yaml` unless `--output` is also supplied.
+- `--output <path>`: optional explicit output path. Defaults to the active change directory's `layout.yaml`, then `design-system/layout.yaml` for pre-define authoring outside a change.
+- `--baseline <path>`: optional existing `layout.yaml` or wired `composition.yaml` to refine. When omitted, the inferer looks for output-path content, then `design-system/layout.yaml`, then `.specify/specs/composition.yaml`.
+- `--screen <slug>=<hint>`: optional repeatable screen hint. Hints can name screen boundaries, source frame IDs, screenshot groups, or source-code view entrypoints.
+- `--tokens <path>` and `--assets <path>`: optional paths used only for reference validation and token / asset name reuse. Inferers do not need these files to run.
 
-**TBD.** Open questions:
+Output rules:
 
-- **Input.** A Figma file URL + access token, an exported Figma JSON, or both? Does the skill assume a Figma plugin / MCP server or shell out to the Figma REST API directly?
-- **Mapping.** RFC-7 §"Figma Import" already lists the Figma Auto Layout → composition vocabulary mapping (frames, layoutMode, itemSpacing, padding, alignment, sizing). This skill operationalises that mapping.
-- **Variables.** Figma Variables (colours, numbers, strings) are the natural source for `tokens.yaml` enrichment as well — does this skill emit a `tokens.yaml` skeleton on the side, or is that a separate `figma-tokens-inferer`?
-- **Components vs. instances.** How are Figma components surfaced — flattened into composition, or surfaced as a candidate for a future component-primitives layer (see §G)?
+- Inferers MUST emit schema-valid `layout.yaml` documents using the composition schema's unwired subset: screen names, regions, groups, item vocabulary, token references, asset references, states, and platform overrides are allowed; `maps_to`, `bind`, `event`, `error`, and `*-when` wiring are not.
+- Inferers MAY use token references when the source supplies a named token, variable, or style that can be confidently mapped to `tokens.yaml`. Otherwise they should prefer raw layout values only when the composition schema permits them, and add `# TODO` comments where tokenisation is expected later.
+- Inferers MAY reference asset IDs only when they resolve through `assets.yaml` or are emitted with a matching `# TODO` gap asking the operator to add the asset inventory entry.
+- Inferers MUST append to `provenance.sources[]` rather than replacing it. The composition schema should add provenance kinds `screenshots` and `code` alongside existing `figma`, `legacy`, and `manual`; `legacy` remains valid for broad source-code migration runs.
+- Multi-source output is a single `layout.yaml`. Per-screen provenance is represented through comments adjacent to screen entries in v1, not a schema change. A future schema can promote that into structured per-screen metadata if needed.
 
-### C. Skill 2 — `image-composition-inferer`
+Idempotence rules:
 
-**TBD.** This is the previous RFC-11 scope, generalised. Open questions (carried forward; resolve here, do not split into a separate RFC):
+- Re-runs are additive and conservative. An inferer may add new screens, add missing regions, fill empty hints, or refine content it previously emitted when the same source still supports the refinement.
+- Inferers MUST NOT silently delete screens, groups, layout properties, token references, or comments that may have been operator-edited. When source material no longer contains a previously inferred element, the inferer reports a stale-source warning instead of removing the YAML.
+- V1 does not use "owned by inferer" markers. The merge rule is easier to review: preserve existing structure, append new evidence, and surface conflicts as comments / terminal warnings.
 
-- **Inputs.** One or more screenshot files per screen (PNG/JPEG/HEIC). Optional grouping signal — which screenshots represent the same screen in different states (loading/empty/populated/error) vs. distinct screens. Optional platform hint (`ios` / `android` / `web`) so the agent ignores platform chrome.
-- **Pipeline.** Triage screenshots into screens/states → infer regions (`header`, `body`, `footer`, `fab`) → infer container tree (groups with `direction`, `gap`, `padding`, `align`, `justify`, sizing, surface decoration) → map visual elements to leaf items.
-- **Vision model.** What capability tier does the skill assume on the host runtime? Does it ship reference fixtures (screenshot → expected composition) for regression?
-- **Token extraction.** This skill explicitly does **not** attempt to reverse `tokens.yaml` from pixels (token inference is its own quality bar, see §F). It MAY emit raw values where tokens would normally appear and surface a gap report.
+Verification:
 
-### D. Skill 3 — `code-composition-inferer`
+- Every inferer validates the emitted YAML against `schemas/vectis/composition.schema.json`.
+- Every inferer runs the cross-artifact reference checks available from §E and §F when `assets.yaml` or `tokens.yaml` exists.
+- The terminal summary includes: screens added, screens refined, warnings, unresolved gaps, source provenance appended, and the exact output path.
 
-**TBD.** Open questions:
+Skill shape is decided in §J: three sibling skills share this contract rather than one flag-dispatched skill.
 
-- **Input.** A path to an existing application's source tree, plus optional include/exclude globs (mirroring `/spec:extract`). What languages / frameworks are first-class in v1 — SwiftUI, Compose, React/JSX, Vue, Flutter, plain HTML/CSS, all of them?
-- **Strategy.** Static analysis (parse view files, recover container hierarchy from declarative UI code) vs. agent-driven reading vs. hybrid. Declarative-UI source (SwiftUI, Compose, JSX) is the realistic v1 target; imperative UI (UIKit, AppKit, Win32) is a follow-up.
-- **Relationship to `/spec:extract`.** `/spec:extract` already reverse-engineers specs from source code. Does `code-composition-inferer` become a sibling specialist that `/spec:extract` invokes when a `composition.yaml` skeleton is wanted alongside the specs, or stay independent (operator-invoked only)?
-- **Asset capture.** Does this skill harvest image files from the source tree into a candidate `assets/` directory + `assets.yaml` skeleton? See §E.
+### B. Skill 1 — `figma-layout-inferer`
+
+`vectis-figma-layout-inferer` accepts either captured Figma JSON or a Figma file URL with credentials supplied by the operator's environment. Exported JSON is the preferred deterministic input for CI, tests, and review. REST capture is a convenience path that writes the captured JSON beside the output when the operator requests it.
+
+Input modes:
+
+- `--figma-json <path>`: read an already-exported Figma file / node payload. This is the default recommended path.
+- `--figma-url <url>`: fetch from the Figma REST API using `FIGMA_TOKEN` or an explicitly configured local credential. The skill does not require a hosted service or a Figma MCP server.
+- `--node <id>`: optional repeatable node selection for narrowing the import to specific frames.
+
+Mapping:
+
+- Frames and sections become candidate screens when named like app screens or selected through `--screen` / `--node`.
+- Auto Layout maps directly to layout groups: `layoutMode` -> `direction`, `itemSpacing` -> `gap`, padding fields -> `padding`, alignment -> `align` / `justify`, and resizing constraints -> `size`.
+- Text, vector, instance, image fill, and interactive component-like nodes map to the closest layout item vocabulary. Unknown node kinds become comments rather than custom schema extensions.
+- Figma component instances are flattened into normal layout groups/items in v1. The skill records candidate component names as comments for the future component-primitives RFC (§G), but it does not emit `components.yaml`.
+
+Variables and styles:
+
+- Figma Variables and styles are not written directly by the layout inferer. When variable/style metadata is present, the inferer reuses token names that already exist in `tokens.yaml` and reports unmapped variables as a gap.
+- Token import belongs to `vectis-tokens-inferer` (§F). A single operator flow may run Figma layout import followed by token import, but the artifacts remain separate so layout inference cannot accidentally rewrite the token source of truth.
+
+### C. Skill 2 — `image-layout-inferer`
+
+`vectis-image-layout-inferer` converts screenshots or other UI images into `layout.yaml`. It is explicitly a layout recovery tool, not a visual design extraction system.
+
+Inputs:
+
+- One or more PNG, JPEG, or HEIC files.
+- Optional `--platform ios|android|web` so the skill can ignore system chrome and recognise platform conventions.
+- Optional `--group <screen-slug>:<path>,<path>` to identify screenshots that represent states of the same screen.
+- Optional `--state <screen-slug>:<state-name>=<path>` for explicit loading / empty / populated / error state mapping.
+
+Pipeline:
+
+1. **Triage.** Group images into screens and states, using explicit hints first and visual similarity second.
+2. **Crop platform chrome.** Remove status bars, navigation bars, browser chrome, and emulator frames when a platform hint is present.
+3. **Infer regions.** Identify header, body, footer, fab, overlays, and repeated content zones.
+4. **Infer containers.** Recover rows, columns, cards, lists, grids, padding, gap, alignment, fill/hug sizing, and surface decoration.
+5. **Infer leaves.** Map visible text, controls, images, icons, progress indicators, fields, and segmented controls to layout items.
+6. **Emit gaps.** Add comments for ambiguous grouping, unreadable text, uncertain icon identity, or layout choices requiring operator confirmation.
+
+Vision assumptions:
+
+- The skill assumes the agent runtime can inspect attached images. If no vision-capable runtime is available, it stops with a clear prerequisite message instead of pretending to infer layout from filenames.
+- The skill ships regression fixtures in its own skill directory: screenshot inputs paired with expected `layout.yaml` fragments. These fixtures are not exhaustive visual tests; they guard the pipeline's contract and common layout patterns.
+
+Token and asset extraction:
+
+- The image inferer does not reverse-engineer `tokens.yaml` from pixels. It may emit token-like TODO comments such as `# TODO: replace measured gap 16 with spacing token` but does not invent token names from colours or font sizes.
+- The image inferer may reference asset placeholders when screenshots clearly contain illustrations or icons, but it does not crop production assets out of screenshots. Asset inventory remains operator-supplied or handled by `vectis-assets-inferer` (§E).
+
+### D. Skill 3 — `code-layout-inferer`
+
+`vectis-code-layout-inferer` recovers layout structure from existing UI source code. V1 focuses on declarative UI frameworks where hierarchy is explicit in source: SwiftUI, Jetpack Compose, and React/JSX. Vue, Flutter, HTML/CSS, UIKit, AppKit, Android Views/XML, and other imperative or split-template frameworks are deferred until the first three paths are reliable.
+
+Inputs:
+
+- `--source <path>`: existing application source tree.
+- `--include <glob>` / `--exclude <glob>`: optional scope filters mirroring `/spec:extract`.
+- `--entry <symbol-or-path>`: optional repeatable view entrypoint hint.
+- The common inferer arguments from §A.
+
+Strategy:
+
+- Use a hybrid approach. Prefer syntax-aware parsing for obvious hierarchy (`VStack`, `HStack`, `LazyColumn`, `Row`, `Column`, JSX elements), then use agent reading to resolve local helper views, modifiers, style constants, and conditional branches.
+- Recover container hierarchy and layout intent, not business behavior. Navigation calls, event handlers, and state bindings are useful hints for item names, but wired `event` / `bind` keys remain `/spec:define` responsibility.
+- Treat reusable source-code components as inline structure in v1. Emit comments for candidate components that may later inform `components.yaml`.
+
+Relationship to `/spec:extract`:
+
+- The skill is an independent sibling, not a hidden phase inside `/spec:extract`. `/spec:extract` continues to reconstruct behavioral specs and design from source. Operators who want both behavior and UI layout run both skills, usually as part of a plan-time migration flow.
+- `/spec:plan` may invoke the code layout inferer during discovery when the initiative explicitly asks for UI reconstruction, but the default source-code extraction path remains behavior-first.
+
+Asset capture:
+
+- The code inferer may discover asset references in source (`Image("hero")`, `painterResource`, `src="/logo.svg"`). It reports these references and can pass candidate directories to `vectis-assets-inferer`, but it does not copy files or author `assets.yaml` itself.
 
 ### E. Assets pipeline — `assets.yaml` + image files
 
-**TBD.** The diagram introduces `assets.yaml` as a first-class artifact derived from the operator-supplied image files. Open questions:
+`assets.yaml` is the inventory for image and icon files used by `layout.yaml` before define and by wired `composition.yaml` after define. It lives at `design-system/assets.yaml` by default and points at files under `design-system/assets/`. The operator owns the final naming and role metadata; tools may draft or update the file, but the manifest is intended to be reviewed like any other source artifact.
 
-- **Schema.** What does `assets.yaml` look like? Candidate shape:
+V1 schema sketch:
 
-  ```yaml
-  version: 1
-  assets:
-    onboarding-hero:
-      kind: raster
-      sources:
-        ios:
-          1x: assets/onboarding-hero.png
-          2x: assets/onboarding-hero@2x.png
-          3x: assets/onboarding-hero@3x.png
-        android:
-          mdpi: assets/android/onboarding-hero-mdpi.png
-          xhdpi: assets/android/onboarding-hero-xhdpi.png
-          xxhdpi: assets/android/onboarding-hero-xxhdpi.png
-      tint: primary           # token ref, optional
-      role: illustration       # decorative | icon | illustration | photo
-  ```
+```yaml
+version: 1
 
-- **Vector / SVG handling.** Do vector assets get a `kind: vector` shape with per-platform export rules (PDF for iOS, VectorDrawable for Android), or stay raster-only in v1?
-- **Iconography.** Icons referenced from composition (`icon: { name: trash }`) — does this skill resolve them against `assets.yaml`, against a curated platform symbol set (SF Symbols, Material Symbols), or both?
-- **Authoring vs. inference.** Does an `assets-inferer` skill exist (sibling to the composition inferers) that walks an asset directory and produces a draft `assets.yaml`, or does the operator hand-author?
-- **Composition contract.** `composition.yaml` items that reference an asset (`image`, `icon`, decorative `group.background`?) must resolve against `assets.yaml`. Where does the resolution check live (validator vs. inferer vs. shell writer)?
-- **Build-time hand-off.** How is `assets.yaml` + the raw image files fed to the iOS / Android writers — copied into the shell asset catalogue at build, or symlinked, or referenced in place?
+provenance:
+  sources:
+    - kind: manual
+
+assets:
+  onboarding-hero:
+    kind: raster
+    role: illustration
+    alt: "People organizing tasks"
+    sources:
+      ios:
+        1x: assets/onboarding-hero.png
+        2x: assets/onboarding-hero@2x.png
+        3x: assets/onboarding-hero@3x.png
+      android:
+        mdpi: assets/android/onboarding-hero-mdpi.png
+        xhdpi: assets/android/onboarding-hero-xhdpi.png
+        xxhdpi: assets/android/onboarding-hero-xxhdpi.png
+
+  close:
+    kind: symbol
+    role: icon
+    symbols:
+      ios: xmark
+      android: close
+    tint: onSurface
+```
+
+Rules:
+
+- **Asset IDs** are kebab-case and are the only names `layout.yaml` / `composition.yaml` may reference. Shell-specific filenames remain implementation detail.
+- **Kinds** are `raster`, `vector`, and `symbol`. `raster` points at density-specific image files. `vector` points at source vector files and optional platform exports. `symbol` maps a semantic icon ID to curated platform symbol sets: SF Symbols for iOS and Material Symbols / Icons for Android.
+- **Roles** are `decorative`, `icon`, `illustration`, and `photo`. `decorative` assets do not require `alt`; all other image-like assets SHOULD carry `alt` text for shell accessibility labels. Pure symbols used inside labelled controls may omit `alt` when the surrounding control supplies the accessible label.
+- **Vector support is in v1.** SVG/PDF/vector-drawable conversion is not a hosted service; the manifest records either already-exported platform files or a source vector plus `# TODO` comments naming missing exports. Shell writers copy only files that exist.
+- **Tint** is an optional token reference. It is valid for `symbol` and single-colour vector assets. Raster tinting is opt-in and shell-specific; writers may ignore it unless the platform supports safe template rendering.
+- **Resolution checks live in the input validation gate.** During define, validate `layout.yaml` references when `assets.yaml` exists. Before shell generation, validate that every `image`, `icon`, and asset-like background reference in `composition.yaml` resolves to an `assets.yaml` entry or to an allowed platform symbol mapping in that entry. Missing files are errors; missing optional densities are warnings unless the target platform has no usable source.
+- **Build hand-off is copy-on-generate.** iOS and Android writers copy referenced assets into their own asset catalogs (`Assets.xcassets`, `res/drawable*`, or equivalent) during generation. They do not symlink or reference `design-system/assets/` in place, because generated shell projects should remain buildable from their own platform directory after generation.
+
+An `assets-inferer` skill is in scope for v1 as a helper, not a required phase. It walks `design-system/assets/` or an imported legacy asset directory, groups density variants by filename convention, drafts `assets.yaml`, and reports ambiguous names for operator review. It does not make visual-semantic decisions beyond conservative defaults (`role: illustration` for large rasters, `role: icon` for small square glyphs, `kind: symbol` only when a mapping is explicitly provided).
 
 ### F. Tokens artifact — input only
 
-**TBD.** `tokens.yaml` stays an *input* artifact the operator maintains alongside `composition.yaml` and `assets.yaml`. The emit half — Swift / Kotlin token files, Theme scaffolds, the `VectisDesign` Swift Package, the `vectis-design` Compose library — is no longer this surface's responsibility; it folds into the shell writers per §L. Open questions:
+`tokens.yaml` stays an input artifact the operator maintains alongside `layout.yaml` and `assets.yaml`. It lives at `design-system/tokens.yaml` by default. The emit half folds into the shell writers per §L; there is no standalone generated design-system package.
 
-- **Schema.** Publish a JSON Schema for `tokens.yaml`. Today value shapes are inferred; declare them per-category. Decide one-file vs. split (`tokens/colour.yaml`, `tokens/typography.yaml`, …).
-- **Vocabulary scope.** Beyond colour / typography / spacing / cornerRadius (current): elevation, border, motion, iconography (links to §E), opacity, gradient. Composition's `group.elevation` / `group.border` already reference token names with no backing category — close that gap first.
-- **Provenance.** Carry `provenance.sources[]` analogous to composition, supporting `manual`, `figma-variables`, `style-dictionary`, `tokens-studio`, `legacy`.
-- **Authoring / import.** Does a `vectis-tokens-inferer` skill (or a Figma-side intent of the figma inferer) import tokens from Figma Variables / Style Dictionary / Tokens Studio JSON / W3C DTCG? Or stays manual?
-- **Multi-brand / theming.** No support today beyond light/dark. Skeleton question: does the artifact gain a `themes:` map, or is multi-brand a per-file mechanism?
-- **Verification.** Cross-artifact: every token referenced from `composition.yaml` resolves; every token defined is referenced (or marked unused). The check lives once at the input layer; each shell writer trusts the resolved tokens at emit time rather than re-validating.
-- **Canonical intermediate.** Open question: declare a canonical intermediate (W3C DTCG) that *each* shell writer consumes, or keep YAML as the contract and let each shell writer parse it directly. This decision is now scoped per §L (intermediate lives at the input surface, not at a separate emit surface).
-- **Fallback policy.** The implicit Material 3 / HIG fallback when `tokens.yaml` is absent is currently spread across the shell writers; with §L it stays there by design — each shell writer owns the no-tokens path explicitly. The RFC formalises the contract ("when `tokens.yaml` is absent, the writer SHALL …") rather than relocating it.
+V1 publishes a JSON Schema for one file, not a split directory. One file keeps the shell-writer handoff simple and preserves the existing `design-system/tokens.yaml` convention. Splitting into `tokens/colors.yaml`, `tokens/typography.yaml`, and similar can be introduced later as an import/export convenience without changing the canonical contract.
+
+V1 schema sketch:
+
+```yaml
+version: 1
+
+provenance:
+  sources:
+    - kind: manual
+
+colors:
+  primary:
+    light: "#007AFF"
+    dark: "#0A84FF"
+
+typography:
+  title:
+    size: 28
+    weight: bold
+    lineHeight: 34
+
+spacing:
+  md: 16
+
+cornerRadius:
+  md: 8
+
+elevation:
+  card: 2
+
+border:
+  subtle:
+    width: 1
+    color: outline
+
+opacity:
+  disabled: 0.38
+```
+
+Rules:
+
+- **Declared categories replace value-shape inference.** The schema defines value shapes per category. `colors` use light/dark `#RRGGBB`; `typography` uses numeric `size`, optional `lineHeight`, optional `letterSpacing`, and known weights; `spacing`, `cornerRadius`, `elevation`, and `opacity` are scalar categories with explicit units documented by the schema; `border` is a composite category with `width`, `color`, and optional `radius`.
+- **Initial vocabulary is intentionally bounded.** V1 includes `colors`, `typography`, `spacing`, `cornerRadius`, `elevation`, `border`, and `opacity`. `motion`, `gradient`, icon families, and full component primitives are deferred. Composition already references elevation and border-like concepts, so those categories close the immediate schema gap.
+- **Provenance mirrors composition.** `provenance.sources[]` supports `manual`, `figma-variables`, `style-dictionary`, `tokens-studio`, `dtcg`, and `legacy`. Importers append sources rather than replacing existing provenance.
+- **Import is a helper skill.** `vectis-tokens-inferer` imports from Figma Variables JSON, Style Dictionary, Tokens Studio JSON, or W3C DTCG into the canonical YAML. The canonical artifact remains `tokens.yaml`; W3C DTCG is an import/export format, not the internal intermediate each shell writer consumes.
+- **No multi-brand in v1.** The only built-in theme axis is light/dark. Multi-brand support is deferred until there is a concrete downstream need. When it lands, it should add an explicit `themes:` map rather than relying on multiple token files with implicit naming conventions.
+- **Verification is cross-artifact.** Before shell generation, validate that every token reference in `composition.yaml` and `assets.yaml` resolves to `tokens.yaml`. Undefined references are errors. Defined-but-unused tokens are warnings unless marked with `unused: allowed` or a similar schema-approved marker.
+- **Fallback policy belongs to shell writers.** When `tokens.yaml` is absent, ios-writer uses platform-native HIG defaults and android-writer uses Material 3 defaults. When `tokens.yaml` is present but incomplete, shell writers may use platform defaults for categories that are absent, but MUST NOT silently substitute defaults for a token name that is referenced and missing.
 
 ### G. Component primitives (deferred decision)
 
-**TBD.** RFC-7 sketched a `design-system/components.yaml` for reusable item compositions (cards, list rows, dialog footers, error states). Per §L, components are no longer a separate emit target; if this artifact lands it is *input* the shell writers consume, not output a peer skill emits. Open questions:
+Reusable component primitives are deferred to a later RFC. RFC-11 reserves the input slot but does not define `components.yaml`.
 
-- Does it land in this RFC or wait for its own?
-- If it lands: where does it sit on the diagram — between `tokens.yaml` and the wired composition, or as a sibling artifact the inferers can produce?
-- Does the figma inferer surface Figma components into this artifact?
-- Does the build hand-off change? (Default per §L: each shell writer reads `components.yaml` directly and bakes the platform-specific implementation into its own tree — no shared library.)
-- Are there *cross-platform* primitives that would benefit from a shared declarative form, or are component primitives inherently per-platform code that each shell writer maintains as part of its own component library? If the latter, the artifact is a vocabulary the composition references, not a component definition.
+V1 treats Figma components, repeated screenshot structures, and repeated source-code view fragments as provenance signals only. Inferers may report "candidate component" gaps, but they still flatten the structure into `layout.yaml` groups and items. Shell writers may create platform-local helper views/composables as an implementation detail, but those helpers are not a cross-platform artifact and are not referenced from the composition schema.
+
+When a future component artifact lands, it should be an input sibling of `layout.yaml`, `tokens.yaml`, and `assets.yaml`, not a generated shared library. Each shell writer would read it directly and bake the platform implementation into its own tree, following the same rule as §L.
 
 ### H. `/spec:define` contract
 
-**TBD.** The seam at the centre of the diagram. Open questions:
+`/spec:define` is the handoff from UI input material to the normal Specify lifecycle. It consumes layout intent from `layout.yaml` and behavioral intent from the operator's request / define briefs, then emits the wired artifacts that `/spec:build` can implement.
 
-- **Inputs the brief expects.** The skeleton (when present), the requirements, optional `tokens.yaml` and `assets.yaml`. Today the [composition brief](../schemas/vectis/briefs/composition.md) handles the skeleton + spec inputs; this RFC formalises the rest.
-- **Outputs the brief produces.** Wired `composition.yaml` (`bind`, `event`, `maps_to`, `*-when`) plus the existing vectis define briefs (`proposal.md`, `spec.md`, `design.md`, `tasks.md`, `contracts.md`). Does anything new get produced (e.g. a `theme.md` summarising token usage)?
-- **Multi-source skeleton handling.** When two inferers have contributed (e.g. Figma for some screens, screenshots for others), how is the merge surfaced — single skeleton, per-screen provenance, or operator-confirmed pre-define merge step?
-- **Requirements artifact.** The diagram shows `requirements` as a first-class input. Is this the existing user prompt + spec brief output, or a new artifact (a pre-define `requirements.md`) the operator authors before invoking define?
-- **Idempotence.** Re-running define with an updated skeleton MUST update only the wired keys it owns; operator-edited skeletons MUST survive intact.
+Inputs:
+
+- **Requirements.** No new `requirements.md` artifact in v1. The diagram's `requirements` input means the operator prompt plus any plan entry context and existing Specify define briefs. If a team wants a durable pre-define requirements file, they pass it through the existing prompt / source context mechanism rather than adding another canonical artifact.
+- **Layout.** Optional `layout.yaml` in the active change directory, `design-system/layout.yaml`, or baseline `.specify/specs/composition.yaml` used as a starting point for iterative changes, resolved in that order.
+- **Tokens.** Optional `design-system/tokens.yaml` or change-local `tokens.yaml` when supplied. Define reads token names for reference consistency; it does not emit platform code.
+- **Assets.** Optional `design-system/assets.yaml` plus files under `design-system/assets/`. Define validates references and may add TODO comments for missing asset IDs, but it does not copy files into shells.
+
+Outputs:
+
+- The existing vectis define artifacts: `proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, `contracts.md` when the schema pipeline includes contracts, and a wired `composition.yaml`.
+- No `theme.md` or token summary artifact in v1. Token and asset usage is visible through `composition.yaml`, `tokens.yaml`, and `assets.yaml`; adding a generated summary would create another source of drift.
+
+Wiring responsibilities:
+
+- Preserve layout-owned structure: regions, group hierarchy, direction, gap, padding, align, justify, size, background, corner radius, elevation, token references, asset references, comments, and platform overrides.
+- Add define-owned wiring: `maps_to`, `bind`, `event`, `error`, overlay `trigger`, navigation targets, and conditional visual keys such as `strikethrough-when`.
+- Add missing screens only when specs describe a screen that has no layout entry. These additions are marked with provenance / comments so the operator can distinguish inferred-from-requirements layout from externally supplied layout.
+- Do not rewrite token names or asset IDs unless they are invalid and the replacement is confirmed by an existing `tokens.yaml` / `assets.yaml` entry. Otherwise emit a gap comment and validation warning.
+
+Multi-source handling:
+
+- Inferers merge into one `layout.yaml` before define runs. `/spec:define` does not perform a separate pre-define merge ceremony.
+- `provenance.sources[]` preserves the source list. Per-screen source hints may remain comments in v1.
+- Conflicts are resolved by preservation: existing layout structure wins; define adds wiring around it and reports conflicts rather than choosing between competing layouts.
+
+Idempotence:
+
+- Re-running define may update the wiring keys it owns when specs or `design.md` change.
+- Re-running define MUST NOT rearrange groups, remove operator comments, rename layout-only items, or delete screens solely because the current requirements are silent.
+- If a previously wired `bind` / `event` no longer resolves after a spec or design change, define reports the stale wiring and either updates it when there is a single obvious replacement or leaves a `# GAP` comment for operator review.
 
 ### I. `/spec:build` contract
 
-**TBD.** The right edge of the diagram. Open questions:
+`/spec:build` consumes the wired UI input set and delegates implementation to core and shell writers. It does not invoke a design-system writer.
 
-- **Inputs the build brief expects.** Today: wired `composition.yaml`, `app.rs`, `tokens.yaml`, spec shell sections. Add: `assets.yaml` and the raw image files. The [build brief](../schemas/vectis/briefs/build.md) handoff list grows accordingly.
-- **Build phase ordering.** Today: design-system → core → shells. With §L: **core → shells**. The shell writers each consume `tokens.yaml` and `assets.yaml` directly and emit Theme / colour-scheme / typography / spacing / asset wiring inside their own tree (`iOS/`, `Android/`). There is no "design-system first" phase, no shared library to build before the shells, and no `:vectis-design` Gradle module / `VectisDesign` Swift Package between the tokens and the views.
-- **Per-shell asset wiring.** ios-writer copies / references `assets.yaml` entries into `Assets.xcassets`; android-writer into `res/drawable*/` density buckets. Where does the copy/reference logic live — in each shell writer, or in a shared `vectis-assets-writer` step that runs ahead of the shell writers? Per §L the default answer is **inside each shell writer**, mirroring how tokens emit folds in.
-- **Token wiring.** `tokens.yaml` flows directly to each shell writer. Each writer owns the token-emit templates that today live under `plugins/vectis/skills/design-system-writer/references/swift-token-templates.md` and `kotlin-token-templates.md` — those references migrate into the corresponding shell-writer skills.
-- **Reviewer surface.** ios-reviewer and android-reviewer gain checks for unresolved asset references (mirroring the existing token-resolution checks). The token-resolution checks themselves stay in the same place; only the emit they validate moves into the shell writer's own tree.
+Inputs:
+
+- Wired `composition.yaml` from the active change or baseline.
+- `design.md`, `specs/**/*.md`, and generated / existing `app.rs`.
+- Optional `design-system/tokens.yaml`.
+- Optional `design-system/assets.yaml` and referenced files under `design-system/assets/`.
+- Proposal `Platforms`, limited to `core`, `ios`, `android`, and future `web`.
+
+Validation gate:
+
+- Validate `composition.yaml` schema and existing RFC-7 coverage rules: field coverage, event coverage, ViewModel mapping, overlay trigger consistency, and navigation consistency.
+- When `tokens.yaml` exists, validate token schema and every token reference from `composition.yaml` / `assets.yaml`.
+- When `assets.yaml` exists, validate asset schema, file existence, platform density/source coverage, and every asset reference from `composition.yaml`.
+- Errors halt shell generation for affected screens or platforms. Warnings are reported but do not block generation.
+
+Build phase ordering:
+
+1. **Core.** Generate / update the Crux shared crate and tests.
+2. **Shells.** Generate / update iOS and Android shells after core verification. Shell generation can run in parallel because both depend on the verified core and read-only input artifacts.
+3. **Shell verification and review.** Verification remains serial where build tools contend for shared Rust artifacts; reviewer sub-agents can run in parallel when they touch disjoint shell trees.
+
+Shell handoff:
+
+- ios-writer receives `composition.yaml`, `tokens.yaml`, `assets.yaml`, image files, `app.rs`, `design.md`, and the iOS shell requirements. It emits SwiftUI layout, theme/token code, and asset catalog entries inside `iOS/`.
+- android-writer receives the same artifact set plus Android shell requirements. It emits Compose layout, Material 3 theme/token code, and drawable/resource entries inside `Android/`.
+- The shell writers own copy/reference logic for assets. There is no shared `vectis-assets-writer` in v1.
+- The shell writers own token emit templates. The Swift templates that currently live under `design-system-writer` migrate to ios-writer; the Kotlin templates migrate to android-writer.
+
+Reviewer surface:
+
+- ios-reviewer and android-reviewer check unresolved asset references, missing copied resources, stale external design-system dependencies, and hardcoded visual literals that should come from tokens.
+- Reviewers do not re-run the full input validation contract. They check generated platform code against the already-validated input set and flag drift introduced during generation.
 
 ### J. Skill shape, naming, and plugin layout
 
-**TBD.** Following the [skill-authoring conventions](../docs/explanation/skill-authoring.md). Open questions:
+All v1 skills live under `plugins/vectis/skills/`. A sibling `ui` plugin remains an alternative for the day another runtime stack consumes the same artifacts, but it is unnecessary while Vectis is the only concrete shell target.
 
-- **Composition inferers.** Three skills (`vectis-figma-composition-inferer`, `vectis-image-composition-inferer`, `vectis-code-composition-inferer`) sharing `references/inferer-contract.md`, vs. one skill (`vectis-composition-inferer`) with a required `--source` flag and three sibling pipelines. The diagram's three green boxes lean toward the former; the interfaces plugin pattern leans toward the latter.
-- **Tokens / assets surfaces.** Are these skills (`vectis-tokens-inferer`, `vectis-assets-inferer`) under the vectis plugin, or do they justify a sibling plugin (`design`)?
-- **Existing skill fate.** `vectis:design-system-writer` is **removed** as a peer skill (per §L). Its emit logic and references (`swift-token-templates.md`, `kotlin-token-templates.md`, the Material 3 / HIG fallback policy in `design-system-integration.md`) migrate into `vectis:ios-writer` and `vectis:android-writer`. Open question: is the slash-command kept as a deprecated alias for one release, or removed outright?
-- **Slash-command surface.** `/vectis:figma-composition-inferer <args>` etc., or one command `/vectis:infer-composition --source <kind>`?
-- **Plugin home.** All under `plugins/vectis/skills/`, or a new top-level `plugins/ui/` for the source-agnostic surface (composition inferers, assets, tokens) that vectis and any future UI plugin consumes?
+Skill surface:
+
+- `vectis-figma-layout-inferer` (`/vectis:figma-layout-inferer`)
+- `vectis-image-layout-inferer` (`/vectis:image-layout-inferer`)
+- `vectis-code-layout-inferer` (`/vectis:code-layout-inferer`)
+- `vectis-tokens-inferer` (`/vectis:tokens-inferer`)
+- `vectis-assets-inferer` (`/vectis:assets-inferer`)
+
+The three layout inferers share `plugins/vectis/references/layout-inferer-contract.md`. They are separate skills, not one `--source` dispatcher, because each source has different prerequisites, fixtures, troubleshooting, and examples. Keeping them separate also matches the diagram's three producer boxes and improves skill discovery.
+
+`vectis-tokens-inferer` and `vectis-assets-inferer` are helpers for authoring input artifacts. They do not run automatically during `/spec:define` or `/spec:build`; operators invoke them when importing from external material.
+
+`vectis:design-system-writer` is removed as an implementation skill and kept for one release as a deprecated no-op alias. Its body should explain the new path and exit without generating files. New briefs, tasks, and plans MUST NOT mention it.
+
+Reference migration:
+
+- `plugins/vectis/skills/design-system-writer/references/swift-token-templates.md` moves to `plugins/vectis/skills/ios-writer/references/`.
+- `plugins/vectis/skills/design-system-writer/references/kotlin-token-templates.md` moves to `plugins/vectis/skills/android-writer/references/`.
+- iOS and Android `design-system-integration.md` files are rewritten to describe shell-local token/theme code instead of external package/module consumption.
 
 ### K. Migration
 
-**TBD.** How a project that already has the today-shape upgrades. Open questions:
+Migration is a one-release transition that preserves existing inputs while removing generated shared libraries.
 
-- **Existing `tokens.yaml`.** Forward-compatible (new categories additive, value-shape inference preserved) or one-shot migration?
-- **Existing `composition.yaml`.** No change expected — RFC-7 schema is preserved; the inferers target the same artifact.
-- **Existing `vectis:design-system-writer`.** Removed per §L. Existing projects ship a one-shot consolidation: delete `design-system/ios/` and `design-system/android/` from the repo, regenerate the iOS shell with `/vectis:ios-writer` and the Android shell with `/vectis:android-writer` so the token / Theme code is emitted *inside* `iOS/` and `Android/` instead of as an external library, and drop `:vectis-design` from `settings.gradle.kts` plus the `VectisDesign` package reference from XcodeGen `project.yml`. Open question: provide a one-shot `vectis-design-system-dissolve` migration skill, or document the steps and let operators run them by hand?
-- **Existing proposals.** Proposals that list `design-system` under `Platforms` need a migration. Either the proposal brief silently treats `design-system` as a no-op (back-compat) or `/spec:define` rewrites it on next regeneration. The proposal brief's `Platforms` enum loses the `design-system` entry; the `## Design System Requirements` spec section is reframed as token / asset requirements that ship with whichever runtime platform they affect.
-- **Existing build / plan briefs.** The "design-system first" build phase, the design-system tier in `plan/discovery.md` and `plan/propose.md`, the `vectis:design-system-writer` directive in `tasks.md`, and the design-system tasking heuristics all retire. The plan brief gains an explicit note that token / asset / composition entries are *cross-cutting inputs* that depend on shared-core where appropriate but produce code only via the shell entries that consume them.
-- **No `assets.yaml` today.** New projects get one from day one; existing projects need a one-shot inventory pass (manual or via a forthcoming `assets-inferer`).
-- **Downstream consumer repos.** Should regenerate cleanly with no manual edits beyond the one-shot consolidation above. The first regeneration after dissolution is a structural change (library removed, code moved into the shell trees) and SHOULD ship as its own change so the diff stays reviewable.
+Existing `tokens.yaml`:
+
+- Existing `design-system/tokens.yaml` files remain valid if they use the current categories (`colors`, `typography`, `spacing`, `cornerRadius`) and value shapes.
+- The new schema is additive for `elevation`, `border`, and `opacity`. Existing projects do not need a one-shot token rewrite unless they relied on undocumented category shapes.
+- The first validation pass should report schema warnings with clear category/value paths so operators can fix ambiguous tokens in place.
+
+Existing layout / composition files:
+
+- Existing input-only `design-system/composition.yaml` files should be renamed to `design-system/layout.yaml`. Existing wired `.specify/specs/composition.yaml` baselines and active change `composition.yaml` outputs remain valid.
+- The only schema adjustment is provenance vocabulary expansion for `screenshots` and `code`; existing `figma`, `legacy`, and `manual` values remain valid.
+
+Existing generated design-system libraries:
+
+- Projects that have `design-system/ios/` and `design-system/android/` should migrate in a dedicated change before unrelated feature work.
+- The migration deletes generated library outputs, regenerates iOS and Android shells so theme/token code lives inside each shell tree, removes XcodeGen / Swift Package references to `VectisDesign`, and removes `:vectis-design` Gradle includes and dependencies.
+- Do not add a one-shot `vectis-design-system-dissolve` skill in v1. The migration is structural but straightforward, and the normal shell writers should own the final generated shape. Document the steps and let reviewers catch stale dependencies.
+
+Existing proposals, specs, tasks, and plans:
+
+- New `proposal.md` files cannot list `design-system` in `Platforms`.
+- Existing proposal deltas that still list `design-system` are treated as legacy input. `/spec:define` should rewrite them on next regeneration by removing `design-system` and attaching token / asset requirements to the affected shell platforms.
+- Existing `## Design System Requirements` sections are migrated into platform-neutral requirements only when they describe observable behavior, or into iOS / Android shell requirements when they describe platform rendering obligations.
+- Existing plan/discovery/propose language that refers to a design-system tier is replaced with cross-cutting UI input language. Token / asset / composition-only plan entries are allowed when they are independently reviewable, but they do not produce code except through later shell entries.
+
+Existing assets:
+
+- Projects without `assets.yaml` can continue if composition does not reference images/icons that need an inventory.
+- When assets are referenced, run `vectis-assets-inferer` or hand-author `design-system/assets.yaml` before shell generation.
+
+Downstream consumer repos:
+
+- The first regeneration after dissolution SHOULD ship as its own change so reviewers can separate structural movement from feature behavior.
+- After migration, downstream repos should build without manual edits beyond removing stale external design-system dependencies and accepting regenerated shell-local theme/resource files.
 
 ### L. Dissolving the `design-system` peer platform
 
-**TBD.** This subsection scopes the cleanup the user-visible surface needs to absorb. The design-system anomaly is the `What is missing` bullet that has the most cross-cutting blast radius — it touches the proposal vocabulary, the build phase ordering, the plan-time tier model, the vectis plugin's skill set, and the per-shell consumer rules.
+`design-system` is no longer a peer platform in proposals, tasks, plans, or build orchestration. The name remains useful only for the operator-maintained input directory: `design-system/layout.yaml`, `design-system/tokens.yaml`, `design-system/assets.yaml`, and `design-system/assets/<images>`. Nothing under that directory is generated as a runtime dependency.
 
 The principle:
 
-- **The "design system" name belongs to inputs, not emit.** `composition.yaml`, `tokens.yaml`, `assets.yaml`, and any future component vocabulary (§G) are the *design system* an operator maintains over time. They are the artifacts the inferers produce / refine and that `/spec:define` consumes.
-- **There is no peer platform between the inputs and the runtime shells.** iOS and Android (and future web) are the only platforms. Each runtime shell writer reads the input artifacts directly and emits everything it needs — Theme, colour scheme, typography, spacing, corner radius, asset wiring, reusable component primitives — *inside its own tree*.
+- **The "design system" name belongs to inputs, not emit.** `layout.yaml`, `tokens.yaml`, `assets.yaml`, and any future component vocabulary (§G) are the design system an operator maintains over time. They are the artifacts the inferers produce / refine and that `/spec:define` consumes.
+- **There is no generated platform between inputs and runtime shells.** iOS and Android (and future web) are the only runtime platforms. Each shell writer reads the input artifacts directly and emits everything it needs inside its own tree: theme code, colour scheme, typography, spacing, corner radius, asset catalog wiring, and any reusable shell-local components.
 
 What this means concretely:
 
-- **Proposal brief.** The `Platforms` enum (`schemas/vectis/briefs/proposal.md`) drops `design-system`. The remaining values are `core`, `ios`, `android`, `web`. The `Platforms` block continues to drive build-phase scope.
-- **Specs brief.** The `## Design System Requirements` section in `schemas/vectis/briefs/specs.md` becomes a regular per-platform shell section (or merges into existing iOS / Android sections), since there is no separate platform to host design-system-only requirements.
-- **Build brief.** The dependency order in `schemas/vectis/briefs/build.md` becomes **core → shells** (parallel iOS / Android). The "Design system" build subsection retires. The shell writers depend only on core.
-- **Plan briefs.** Discovery (`plan/discovery.md`) drops the design-system tier; capabilities that used to surface there reframe as cross-cutting inputs that the per-shell entries consume. Propose (`plan/propose.md`) drops the "design system next" rung; design-token / component entries (when they exist as plan slices at all) become inputs to the per-shell slices that read them.
-- **Tasks brief.** The build-phase task ordering in `schemas/vectis/briefs/tasks.md` becomes "core first, shells second" (no design-system tier). The skill table drops `vectis:design-system-writer`.
-- **Composition brief.** The token-availability check in `schemas/vectis/briefs/composition.md` continues to reference `tokens.yaml` and is unchanged in behaviour; the trigger phrase ("`design-system` is listed in the proposal's Platforms") simplifies to "`tokens.yaml` exists".
-- **Vectis plugin.** `plugins/vectis/skills/design-system-writer/` is removed. Its references — `swift-token-templates.md` and `kotlin-token-templates.md` — migrate to `plugins/vectis/skills/ios-writer/references/` and `plugins/vectis/skills/android-writer/references/` respectively. The Theme.swift / Theme.kt scaffolds, `Package.swift`, and `vectis-design` `build.gradle.kts` templates fold into the corresponding shell-writer scaffolds. The Material 3 / HIG fallback policy that today lives in `design-system-integration.md` becomes a normative section of each shell writer.
-- **Generated layout.** The `design-system/` repo-root directory shrinks to only the *input* artifacts: `design-system/composition.yaml`, `design-system/tokens.yaml`, `design-system/assets.yaml`, `design-system/assets/<images>`. The `design-system/ios/` Swift Package and `design-system/android/` Compose library disappear; the equivalent emitted code lives under `iOS/` (e.g. `iOS/<App>/Theme/`) and `Android/` (e.g. `Android/app/src/main/kotlin/.../theme/`).
+- **Proposal brief.** The `Platforms` enum (`schemas/vectis/briefs/proposal.md`) drops `design-system`. The remaining values are `core`, `ios`, `android`, and future `web`. `Platforms` continues to determine build scope; token or asset work is represented as input context for the shell platforms that consume it.
+- **Specs brief.** `schemas/vectis/briefs/specs.md` retires `## Design System Requirements`. Requirements about tokens, assets, or component usage are written in the platform-neutral body only when they affect observable product behavior, or in `## iOS Shell Requirements` / `## Android Shell Requirements` when they are platform-specific rendering obligations.
+- **Build brief.** `schemas/vectis/briefs/build.md` runs **core -> shells**. There is no design-system phase, no shared design-system verification step, no `VectisDesign` Swift Package, and no `:vectis-design` Gradle module. iOS and Android shell writers consume `tokens.yaml` and `assets.yaml` directly.
+- **Plan briefs.** `schemas/vectis/briefs/plan/discovery.md` drops the design-system tier. Discovery reports layout, tokens, assets, and future components as cross-cutting UI inputs, with ordering hints naming the shell capabilities that consume them. `schemas/vectis/briefs/plan/propose.md` no longer creates a "design-tokens" rung between core and shells by default; token or asset changes become plan entries only when they are independently reviewable input-artifact work, and shell entries depend on them when needed.
+- **Tasks brief.** `schemas/vectis/briefs/tasks.md` orders build work as core first, shells second. The skill table drops `vectis:design-system-writer`; shell tasks mention the relevant input artifacts when `layout.yaml`, `tokens.yaml`, or `assets.yaml` are in scope, and the generated `composition.yaml` when shell implementation consumes wired composition.
+- **Composition brief.** The token-availability check in `schemas/vectis/briefs/composition.md` continues to reference `tokens.yaml`; its trigger simplifies to "`design-system/tokens.yaml` exists" or an explicit `tokens.yaml` path is supplied by the change. It no longer keys off `design-system` appearing in `Platforms`.
+- **Vectis plugin.** `plugins/vectis/skills/design-system-writer/` is removed as an implementation skill. Its platform-specific references migrate into the shell writers: Swift token templates and HIG fallback policy into `plugins/vectis/skills/ios-writer/references/`, Kotlin token templates and Material 3 fallback policy into `plugins/vectis/skills/android-writer/references/`.
+- **Generated layout.** The generated Theme and token code lives inside the shell trees. iOS emits its theme files under the app target, for example `iOS/<App>/Theme/`. Android emits its theme files under the app source tree, for example `Android/app/src/main/kotlin/.../ui/theme/`. The exact file split is a shell-writer concern, but generated apps MUST NOT depend on `import VectisDesign` or `implementation(project(":vectis-design"))`.
 
-Open questions specific to §L:
+Compatibility policy:
 
-- **Naming.** Is "design system" still the right umbrella for the input artifacts when no library by that name is generated? Candidates: keep `design-system/` as the directory name (operator-facing continuity), rename to something like `ui/` or `design/` (consistency with the §J plugin-home question), or move the artifacts inline under `.specify/` (consistency with other Specify artifacts). Default: keep `design-system/` for the directory; treat the name as a folder convention rather than a generated boundary.
-- **Where Theme / scheme code lives in each shell.** Open question for ios-writer / android-writer: is the emitted Theme code one Swift file (e.g. `iOS/<App>/Theme/Theme.swift` containing `VectisColors`, `VectisTypography`, …) or split as today? The answer is per-shell-writer; this RFC only mandates that the code lives *inside* the shell's tree.
-- **Per-shell duplication.** With shared emit gone, the colour / font / spacing token tables are read twice (once per shell writer) instead of once. Open question: does that justify a shared parser library, or is the parsing trivial enough that "twice" is fine? Default position: trivial; each writer parses YAML directly.
-- **Reviewer impact.** ios-reviewer and android-reviewer continue to enforce token-only colour / font / spacing references in app code. Open question: do they gain a stricter check that the token *definitions* live inside the shell tree (not as an external library reference), or does the absence of `import VectisDesign` / `:vectis-design` already cover that?
-- **`vectis:design-system-writer` users.** Operators may have references / scripts pointed at `/vectis:design-system-writer`. Open question: keep the slash-command alive as a thin wrapper that prints "use `/vectis:ios-writer` and `/vectis:android-writer` instead" for one release, or delete it cleanly?
-- **Web shell.** Web is listed in the proposal `Platforms` as future. With §L, when web lands it follows the same pattern: it parses tokens / assets directly and emits its own theme code. Confirm this is the intended trajectory rather than re-introducing a shared web design-system library.
+- Keep `/vectis:design-system-writer` for one release as a deprecated alias that performs no generation and reports the replacement path: run `/vectis:ios-writer` and `/vectis:android-writer` for the shell platforms that consume `tokens.yaml` / `assets.yaml`. New plans and tasks MUST NOT emit the alias.
+- Reviewers continue checking that generated app code uses token-backed colour, typography, spacing, and radius APIs rather than hardcoded literals. They also flag stale external design-system dependencies (`import VectisDesign`, `:vectis-design`, `design-system/ios`, `design-system/android`) as migration issues.
+- Per-shell token parsing duplication is accepted for v1. The token schema is small, and shell-local parsing keeps each platform's fallback behavior explicit. A shared parser library is deferred until at least three shell targets need the same implementation.
+- Future web follows the same rule: it consumes wired `composition.yaml`, `tokens.yaml`, and `assets.yaml` directly and emits theme / asset code inside the web shell. This RFC does not reintroduce a shared web design-system package.
 
 ## Open Questions
 
-Consolidated for the next iteration session(s):
+Resolved in this RFC:
 
-1. Shared inferer contract — where does it live, what does it pin? (§A)
-2. Figma access model — REST + token, plugin/MCP, or exported JSON? Variables → tokens overlap. (§B)
-3. Image-inferer pipeline shape — one agent loop vs. staged passes; vision-model assumption. (§C)
-4. Code inferer scope — declarative-UI v1, framework coverage, relationship to `/spec:extract`. (§D)
-5. `assets.yaml` schema, vector handling, iconography source-of-truth, build-time hand-off. (§E)
-6. Tokens schema publication, vocabulary scope, multi-brand, canonical intermediate (W3C DTCG?) given each shell now consumes tokens directly. (§F)
-7. Whether the component-primitives layer lands here or waits, and whether component primitives are inherently per-shell or warrant a shared declarative form. (§G)
-8. `/spec:define` input/output contract; merge semantics for multi-source skeletons; nature of the `requirements` input. (§H)
-9. `/spec:build` asset / token hand-off shape; per-shell vs. shared assets-writer step; build-phase ordering after design-system retires. (§I)
-10. Skill decomposition (three vs. one), plugin home (vectis vs. new `ui` plugin), command surface, fate of `vectis:design-system-writer` (deprecated alias vs. clean delete). (§J)
-11. Migration story for projects with today's `tokens.yaml`, ad-hoc asset layouts, and the existing `design-system/{ios,android}/` shared libraries. (§K)
-12. Dissolving the `design-system` peer platform — directory naming, per-shell duplication of token parsing, reviewer enforcement, web-shell trajectory. (§L)
+1. Shared inferer contract lives at `plugins/vectis/references/layout-inferer-contract.md`; three sibling skills share it (§A, §J).
+2. Figma supports exported JSON as the preferred path and REST capture via local credentials as a convenience; token import is handled by `vectis-tokens-inferer` (§B, §F).
+3. Image inference uses a staged vision-assisted pipeline and ships fixtures; it does not infer tokens from pixels (§C).
+4. Code inference targets SwiftUI, Compose, and React/JSX in v1; it is independent from `/spec:extract` (§D).
+5. `assets.yaml` is a v1 artifact with raster, vector, and symbol entries; shell writers copy assets into their own platform catalogs (§E, §I).
+6. `tokens.yaml` gets a one-file schema; YAML remains canonical, W3C DTCG is import/export only, and multi-brand is deferred (§F).
+7. Component primitives are deferred; repeated structures are flattened into `layout.yaml` in v1 (§G).
+8. `/spec:define` consumes requirements, optional `layout.yaml`, tokens, and assets; it emits the existing define artifacts plus wired `composition.yaml`, with no new `requirements.md` or `theme.md` (§H).
+9. `/spec:build` runs core -> shells; shell writers consume tokens/assets directly; no shared assets-writer or design-system phase exists in v1 (§I, §L).
+10. Skill surface stays under Vectis; `vectis:design-system-writer` becomes a one-release deprecated no-op alias (§J).
+11. Migration is a documented one-change consolidation, not a special migration skill (§K).
+12. `design-system/` remains the input directory name; generated theme/resource code lives inside each shell tree; web follows the same pattern when it lands (§L).
+
+Deferred beyond v1:
+
+- `components.yaml` and any cross-platform component primitive vocabulary.
+- Multi-brand / multi-theme token structures beyond light/dark.
+- A shared parser library for tokens/assets across three or more shell targets.
+- A sibling `ui` plugin for source-agnostic UI artifacts if non-Vectis consumers appear.
+- Imperative UI and additional declarative frameworks for `code-layout-inferer`.
 
 ## Alternatives Considered
 
-**TBD.** Candidates to evaluate when the design firms up:
-
-- **Status quo.** Keep the surface narrow: hand-author skeletons and `tokens.yaml`, no assets artifact. Cheap to maintain; defeats the point for any team starting from a deployed app or a Figma file.
-- **One mega-inferer.** A single `vectis-ui-inferer` that takes any of (Figma, screenshots, code) and dispatches internally. Fewer skills to maintain; harder to give each source the depth it needs and obscures the diagram's three-box clarity.
-- **Adopt an external token spec wholesale.** Replace `tokens.yaml` with W3C DTCG and outsource authoring to existing tools. Reduces what Specify owns; couples vectis to an external spec's evolution.
+- **Status quo.** Keep the surface narrow: hand-author `layout.yaml` and `tokens.yaml`, no assets artifact. Cheap to maintain; defeats the point for any team starting from a deployed app or a Figma file.
+- **One mega-inferer.** A single `vectis-ui-inferer` that takes any of (Figma, screenshots, code) and dispatches internally. Fewer skills to maintain; rejected because each source has different prerequisites, fixtures, failure modes, and examples, and separate skills are easier for agents to select.
+- **Adopt an external token spec wholesale.** Replace `tokens.yaml` with W3C DTCG and outsource authoring to existing tools. Reduces what Specify owns; rejected for v1 because shell writers need a small stable contract and DTCG can remain an import/export format.
 - **Fold everything into composition.** Make `composition.yaml` the only source of truth for layout, tokens, and assets. Conceptually simple; loses the ability to evolve tokens / assets independently and conflates concerns RFC-7 deliberately separated.
-- **Spin a sibling `ui` plugin.** Move composition / inferers / tokens / assets into a UI plugin that vectis (and future shell plugins) consume. Forward-looking if web / desktop / TV shells arrive; over-engineered if vectis stays the only consumer.
+- **Spin a sibling `ui` plugin.** Move composition / inferers / tokens / assets into a UI plugin that vectis (and future shell plugins) consume. Forward-looking if web / desktop / TV shells arrive; deferred until there is a second concrete consumer.
 - **Keep `design-system` as a peer platform** (status-quo for §L). Preserve `vectis:design-system-writer` and the shared `VectisDesign` / `vectis-design` libraries between tokens and shells. Pros: emit logic lives once, the shell writers stay smaller, downstream apps can import the libraries directly. Cons: introduces a build artifact that is never deployed on its own, complicates the proposal `Platforms` vocabulary, forces an external-library boundary onto theming code that each shell would otherwise own internally, and leaks platform packaging concerns (Swift Package, Gradle module, version pinning) into a surface whose only legitimate role is *input*. Rejected because the cost of the peer-platform shape exceeds the benefit of single-emit; the duplication §L introduces (each shell writer parses tokens / assets directly) is small and self-contained.
 
 ## References
 
 - [RFC-7: View Layout Artifact for UI Generation](archive/rfc-7-ui.md) — the composition artifact and skeleton/wired duality this RFC operationalises
-- [`schemas/vectis/composition.schema.json`](../schemas/vectis/composition.schema.json) — the composition schema the inferers must validate against
-- [`schemas/vectis/briefs/composition.md`](../schemas/vectis/briefs/composition.md) — the existing composition brief that consumes the skeleton at define time
+- [`schemas/vectis/composition.schema.json`](../schemas/vectis/composition.schema.json) — the schema that both `layout.yaml` input and wired `composition.yaml` output validate against
+- [`schemas/vectis/briefs/composition.md`](../schemas/vectis/briefs/composition.md) — the existing composition brief that consumes `layout.yaml` at define time and emits wired `composition.yaml`
 - [`schemas/vectis/briefs/build.md`](../schemas/vectis/briefs/build.md) — the build brief whose hand-off list grows with `assets.yaml` + image files, and whose phase ordering simplifies once design-system retires (§I, §L)
 - [`schemas/vectis/briefs/proposal.md`](../schemas/vectis/briefs/proposal.md) — the proposal brief whose `Platforms` vocabulary loses `design-system` (§L)
 - [`schemas/vectis/briefs/specs.md`](../schemas/vectis/briefs/specs.md) — the specs brief whose `## Design System Requirements` section reframes once the peer platform retires (§L)
@@ -263,7 +491,6 @@ Consolidated for the next iteration session(s):
 - [`plugins/vectis/skills/design-system-writer/SKILL.md`](../plugins/vectis/skills/design-system-writer/SKILL.md) — the current emit-only design-system skill that this RFC dissolves (§F, §L); its references migrate into the shell writers
 - [`plugins/vectis/skills/ios-writer/references/design-system-integration.md`](../plugins/vectis/skills/ios-writer/references/design-system-integration.md) — current iOS consumer-side rules (token usage, fallback policy)
 - [`plugins/vectis/skills/android-writer/references/design-system-integration.md`](../plugins/vectis/skills/android-writer/references/design-system-integration.md) — current Android consumer-side rules and Material 3 fallback policy
-- [`plugins/spec/skills/extract/SKILL.md`](../plugins/spec/skills/extract/SKILL.md) — the existing source-code extraction skill that the `code-composition-inferer` may sit alongside (§D)
-- [`plugins/interfaces/`](../plugins/interfaces/) — author / import / verify intent pattern relevant to the inferer / skill-shape decisions (§J)
+- [`plugins/spec/skills/extract/SKILL.md`](../plugins/spec/skills/extract/SKILL.md) — the existing source-code extraction skill that the `code-layout-inferer` may sit alongside (§D)
 - [Roadmap](roadmap.md) — directional principles (CLI-authoritative, local-and-reviewable, separation of workflow / standards / artifacts) this RFC must respect
 - [`rfcs/assets/ui-spec.png`](assets/ui-spec.png) — the high-level diagram this RFC scopes
