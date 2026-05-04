@@ -73,6 +73,12 @@ Common arguments for the image-fronted first pass are intentionally minimal, and
 | `--baseline <path>` | Provides an existing `layout.yaml` or wired `composition.yaml` that the inferer should refine. | Existing output-path content, then `design-system/layout.yaml`, then `.specify/specs/composition.yaml`. | Explicit `--baseline` wins over discovered local or baseline files. | Gives the image inferer, and later sibling inferers, the same idempotence hook: preserve operator edits, append new evidence, and refine existing layout instead of regenerating from scratch. |
 | `--screen <slug>=<hint>` | Supplies repeatable screen-boundary hints. Hints can name source frame IDs, screenshot groups, or source-code view entrypoints. | No explicit hints; inferers derive screen candidates from their source material. | Supplied hints constrain or name inferred candidates, but do not force invalid schema output. | Screen identity is the first ambiguity every source type hits. Shared hints stabilize screen names and boundaries before `/spec:define` wires them to specs and routes. |
 
+Argument placeholders:
+
+- `<path>` is a local file or directory path, relative or absolute, such as `screenshots/login.png` or `.specify/changes/onboarding/layout.yaml`.
+- `<slug>` is the stable kebab-case identifier for a logical screen, such as `login`, `task-list`, or `settings-detail`.
+- `<hint>` is source-specific evidence that helps name or bound a screen, such as a Figma frame ID, a screenshot group name, or a source-code view entrypoint.
+
 Arguments deliberately left out of the first-pass common surface:
 
 - `--change-dir <path>` is redundant with default active-change discovery plus `--output` for explicit routing. If active-change detection is ambiguous, the operator can pass `--output .specify/changes/<name>/layout.yaml`.
@@ -115,8 +121,8 @@ Skill shape is decided in §J: `image-layout-inferer` is implemented first, with
 Input modes:
 
 - `--figma-json <path>`: read an already-exported Figma file / node payload. This is the default recommended path.
-- `--figma-url <url>`: fetch from the Figma REST API using `FIGMA_TOKEN` or an explicitly configured local credential. The skill does not require a hosted service or a Figma MCP server.
-- `--node <id>`: optional repeatable node selection for narrowing the import to specific frames.
+- `--figma-url <url>`: fetch from the Figma REST API using `FIGMA_TOKEN` or an explicitly configured local credential. A `url` is the normal Figma file or node URL copied from the browser.
+- `--node <id>`: optional repeatable node selection for narrowing the import to specific frames. An `id` is a Figma node identifier, such as `12:34` or the `node-id` value in a copied Figma URL.
 
 Mapping:
 
@@ -136,10 +142,13 @@ Variables and styles:
 
 Inputs:
 
-- One or more PNG, JPEG, or HEIC files.
+- One or more PNG or JPEG files. These are the accepted first-pass formats because they have the broadest agent-runtime and tooling support for visual inspection.
+- HEIC, TIFF, PDF, SVG, WebP, GIF, and other formats are not accepted directly. Operators should convert screenshots to PNG or JPEG before invoking the inferer.
 - Optional `--platform ios|android|web` so the skill can ignore system chrome and recognise platform conventions.
 - Optional `--group <screen-slug>:<path>,<path>` to identify screenshots that represent states of the same screen.
 - Optional `--state <screen-slug>:<state-name>=<path>` for explicit loading / empty / populated / error state mapping.
+- A `screen-slug` is the stable kebab-case identifier for a logical screen, such as `login`, `task-list`, or `settings-detail`. It names the screen before `/spec:define` wires the layout to routes, specs, ViewModels, and events.
+- A `state-name` is the stable kebab-case identifier for a visual state of that screen, such as `loading`, `empty`, `populated`, or `error`.
 
 Pipeline:
 
@@ -169,8 +178,8 @@ For instance, a future implementation might focus on declarative UI frameworks w
 Inputs:
 
 - `--source <path>`: existing application source tree.
-- `--include <glob>` / `--exclude <glob>`: optional scope filters mirroring `/spec:extract`.
-- `--entry <symbol-or-path>`: optional repeatable view entrypoint hint.
+- `--include <glob>` / `--exclude <glob>`: optional scope filters mirroring `/spec:extract`. A `glob` is a file-match pattern such as `src/**/*.tsx` or `Sources/**/Views/*.swift`.
+- `--entry <symbol-or-path>`: optional repeatable view entrypoint hint. A `symbol-or-path` is either a view symbol such as `ContentView` / `LoginScreen`, or a file path such as `src/screens/Login.tsx`.
 - The common inferer arguments from §A.
 
 Strategy:
