@@ -4,9 +4,9 @@
 
 ## Abstract
 
-A capability describes how Specify's existing `define → build → merge` loop handles an outcome domain and the artefacts that domain owns. RFC-13 reframes the runtime to match: the **immutable core** is the per-project loop engine plus capability-agnostic scaffolding (init, migrate, capability resolver, change driver, and artefact adoption). Platform features such as registry, workspace materialisation, and workflow orchestration are separated into first-party Specify components rather than being folded into either the core or the capability model.
+A capability describes how Specify's existing `define → build → merge` loop handles an outcome domain and the artefacts that domain owns. RFC-13 reframes the runtime to match: the **immutable core** is the per-project loop engine plus capability-agnostic scaffolding (init, migrate, capability resolver, change driver, and artefact adoption). Platform features such as registry materialisation and workflow orchestration are separated into first-party Specify components rather than being folded into either the core or the capability model.
 
-Today's `schema.yaml` surface admits only `{ name, version, description, pipeline }`, which is too small to carry that contract and uses the wrong noun. This RFC renames the extension primitive to **capability** and makes `pipeline:` an explicit member of the capability manifest alongside new fields (`artifacts:` and optional `consumes:`) so a capability can describe its phase briefs, artefacts, and read-only dependencies. It also draws a line around non-capability foundation components: topology belongs to `specify-registry`, clone/materialisation behavior belongs to `specify-workspace`, and orchestration belongs above the core loop.
+Today's `schema.yaml` surface admits only `{ name, version, description, pipeline }`, which is too small to carry that contract and uses the wrong noun. This RFC renames the extension primitive to **capability** and makes `pipeline:` an explicit member of the capability manifest alongside new fields (`artifacts:` and optional `consumes:`) so a capability can describe its phase briefs, artefacts, and read-only dependencies. It also draws a line around non-capability foundation components: topology and local materialisation belong to `specify-registry`, and orchestration belongs above the core loop.
 
 ## Motivation
 
@@ -71,19 +71,18 @@ The core is what's needed to run the fixed change loop over one project root and
 | Format validators (OpenAPI, JSON Schema, spec-markdown, …)                 | Capability        | Declared as format adapters; core vendors generic ones, capabilities may ship their own.                                                     |
 
 
-The left-hand column is frozen as the core responsibility boundary; new capability behavior lands on the right. Platform components sit above this table: they may choose a project root, prepare a workspace slot, or sequence several changes, but they call the core loop rather than becoming part of it.
+The left-hand column is frozen as the core responsibility boundary; new capability behavior lands on the right. Platform components sit above this table: they may choose a project root, prepare a materialised registry checkout, or sequence several changes, but they call the core loop rather than becoming part of it.
 
 ### Platform components are not capabilities
 
-Registry, workspace, and workflow are first-party Specify components because they are substrate for multi-project operation, not outcome domains. They may have commands, libraries, and files, but they do not participate in the capability manifest protocol and they are not activated through `capability.yaml`.
+Registry and workflow are first-party Specify components because they are substrate for multi-project operation, not outcome domains. They may have commands, libraries, and files, but they do not participate in the capability manifest protocol and they are not activated through `capability.yaml`.
 
 | Component | Primary file / state | Responsibility | Must not own |
 | --------- | -------------------- | -------------- | ------------ |
-| `specify-registry` | `registry.yaml` | Topology ledger: project ids, repository locations, human descriptions, and each project's default capability. | Workspace clone state, plan status, contract relationships, validation findings, or PR metadata. |
-| `specify-workspace` | `.specify/workspace/` | Materialise registry projects as clones or symlinks; report dirty state; push or merge project work when explicitly asked. | Registry mutation, change execution, or capability-specific validation. |
-| `specify-workflow` | `workflow.yaml` / `plan.yaml` | Coordinate ordered changes by consuming registry project ids, workspace paths, and core phase outcomes. | Domain artefact ownership or hidden multi-capability transactions. |
+| `specify-registry` | `registry.yaml` + `.specify/workspace/` | Topology ledger plus local materialised view: project ids, repository locations, human descriptions, default capabilities, clone/symlink resolution, dirty-state reporting, and explicit push/merge operations for checked-out registry projects. | Plan status, contract relationships, validation findings, workflow execution, capability-specific validation, or PR metadata beyond the local project operation being requested. |
+| `specify-workflow` | `workflow.yaml` / `plan.yaml` | Coordinate ordered changes by consuming registry project ids, materialised project paths, and core phase outcomes. | Domain artefact ownership or hidden multi-capability transactions. |
 
-The dependency direction is one-way: `specify-core` knows nothing about registry, workspace, or workflow. `specify-workflow` may depend on `specify-registry`, `specify-workspace`, and the core loop because orchestration composes those lower-level services.
+The dependency direction is one-way: `specify-core` knows nothing about registry or workflow. `specify-workflow` may depend on `specify-registry` and the core loop because orchestration composes those lower-level services.
 
 ### What becomes a capability
 
@@ -95,10 +94,10 @@ Not every top-level noun becomes a capability. Capability is reserved for outcom
 | `specify plan *`       | `specify-workflow` component            | `workflow.yaml` / `plan.yaml`               | Plan authoring, inspection, status, locking, and transitions are orchestration behavior above the core loop.                                                                         |
 | `/spec:execute`        | workflow execution skill / command      | workflow state                              | The existing execute driver moves to the workflow surface. It may keep `/spec:execute` only as a compatibility alias that delegates to workflow execution.                           |
 | `specify initiative *` | workflow-owned initiative artifact      | `initiative.md`                             | The operator brief and close-out checks are orchestration state, not a separate capability.                                                                                          |
-| `specify registry *`   | `specify-registry` component            | `registry.yaml`                             | Registry remains operator-owned topology. It is validated and mutated directly; it is not reviewed through the change loop.                                                          |
+| `specify registry *`   | `specify-registry` component            | `registry.yaml` + `.specify/workspace/`     | Registry remains operator-owned topology plus local materialisation. It is validated and mutated directly; it is not reviewed through the change loop.                                |
 | `specify contract *`   | `contracts@v1` capability               | `contracts/` baseline                       | RFC-12's SemVer + `info.x-specify-id` checks become capability validation behavior.                                                                                                  |
 | `specify vectis *`     | `vectis@v2` capability                  | Shared / iOS / Android / design-system dirs | Vectis-specific validation and merge behavior moves into Vectis skills and declared artefact mechanics.                                                                              |
-| `specify workspace *`  | `specify-workspace` component           | `.specify/workspace/`                       | Workspace consumes registry topology to materialise project roots; clone state is not a capability-owned artifact.                                                                   |
+| `specify workspace *`  | removed; folded into registry           | `.specify/workspace/`                       | No compatibility alias is retained. Materialisation commands move to the registry surface, and `.specify/workspace/` is derived registry state.                                       |
 
 ### Capability manifest and protocol
 
@@ -248,7 +247,7 @@ A repository activates exactly one **domain** capability under this RFC. Multi-d
 
 #### Cross-capability coordination
 
-When an outcome spans capabilities, the runtime does not fuse their pipelines. Coordination is explicit and platform-owned: initiative material records the outcome and close-out criteria, `specify-registry` identifies participating projects, `specify-workspace` resolves project roots, and `specify-workflow` owns any DAG of capability-addressed steps.
+When an outcome spans capabilities, the runtime does not fuse their pipelines. Coordination is explicit and platform-owned: initiative material records the outcome and close-out criteria, `specify-registry` identifies participating projects and resolves their materialised project roots, and `specify-workflow` owns any DAG of capability-addressed steps.
 
 The workflow graph, if present, coordinates capability-owned changes, validations, or checks; edges express ordering (`needs:`) and blocking conditions. Any read-only baseline access used by those nodes is still declared by the target capability through `consumes:` (§Consumes). A workflow may deliver code, but it may also deliver contracts, docs, infrastructure, fixtures, reports, or policy changes.
 
@@ -333,18 +332,19 @@ Pure-declarative capabilities (YAML + markdown + a format adapter the core vendo
 
 Skill-owned imperative code runs through the same mechanisms agents already use today: checked-in helper scripts, generated code, shell commands, package-manager tools, and language-specific toolchains invoked by the skill. The security posture is therefore the existing skill/tooling posture, not a second plugin trust model hidden behind `capability.yaml`.
 
-#### Workspace-clone path resolution
+#### Registry-materialised path resolution
 
-When workflow execution materialises registry-declared projects, every `artifacts.*.{baseline, project-path, delta}` resolves relative to **the clone's project root**, not the hub's. `specify-workspace` supplies the normalized project-root mapping used by registry-aware workflow execution; the core receives only the project root it should run against.
+When workflow execution materialises registry-declared projects, every `artifacts.*.{baseline, project-path, delta}` resolves relative to **the clone's project root**, not the hub's. `specify-registry` supplies the normalized project-root mapping used by registry-aware workflow execution; the core receives only the project root it should run against.
 
 ## Alternatives Considered
 
 - **Subprocess capability plugins.** Rejected because capability skills already own imperative behavior and already have mechanisms for invoking scripts, tools, and generated code. A second plugin runtime would duplicate the skill layer and introduce a separate trust model.
 - **WASM-component plugins.** Rejected for the same reason as subprocess plugins; sandboxing imperative capability code belongs in the agent/tool execution model, not in `capability.yaml`.
 - **In-process dynamic-library plugins.** Rejected because Rust ABI instability disqualifies them and because the capability protocol does not need a second imperative extension path.
-- **Keep `specify workspace *` as a core exception.** Rejected because it weakens the core boundary. Workspace is a first-party Specify component above core, not a core verb family.
-- **Extract a standalone `workspace@v1` capability.** Rejected because workspace materialisation is topology-driven substrate for workflow execution, not an outcome domain with capability-owned artifacts.
-- **Treat registry, initiative, and workflow as capabilities.** Rejected because it recreates the "everything is extensible" monolith in a new vocabulary. Registry is a topology ledger, workspace is clone/materialisation state, and workflow is orchestration; each has a different lifecycle from capability-owned domain artefacts.
+- **Keep `specify workspace *` as a core exception.** Rejected because it weakens the core boundary. Registry materialisation is first-party Specify behavior above core, not a core verb family.
+- **Extract a standalone `workspace@v1` capability.** Rejected because materialisation is topology-driven substrate for workflow execution, not an outcome domain with capability-owned artifacts.
+- **Split registry and workspace into separate components.** Rejected because they are two faces of the same domain: declared topology and its local materialised view. Keeping them separate also overloads "workspace" just as RFC-14 needs that noun for in-repo scopes.
+- **Treat registry, initiative, and workflow as capabilities.** Rejected because it recreates the "everything is extensible" monolith in a new vocabulary. Registry is topology plus local materialisation, initiative is orchestration input, and workflow is orchestration; each has a different lifecycle from capability-owned domain artefacts.
 - **Multiple imperative escape hatches.** Rejected because capability skills are the single imperative escape hatch.
 - **Keep `artifacts:` adoption-only.** Rejected because artifacts need format validators and read-only dependencies to describe real capability behavior.
 - **A top-level `artifacts.yaml` next to `capability.yaml`.** Rejected because the extension surfaces are capability-bound, not project-bound.
@@ -358,7 +358,7 @@ When workflow execution materialises registry-declared projects, every `artifact
 - **Cardinality > 1 on location fields.** One artefact may declare at most one `delta:`, one `baseline:`, and one `project-path:`. Revisited only if a real capability needs more.
 - **Cloud execution semantics.** Orthogonal; capability skills should run through whatever tool execution model the host provides.
 - **Back-compat for capabilities without the new surface.** See §Migration — current usage footprint lets us cut over without a fallback path.
-- **Third-party replacements for foundation components.** Registry, workspace, and workflow are first-party Specify components in this RFC. Swapping them or making them externally pluggable is a follow-up RFC.
+- **Third-party replacements for foundation components.** Registry and workflow are first-party Specify components in this RFC. Swapping them or making them externally pluggable is a follow-up RFC.
 - **Multiple domain capabilities per repository.** Covered by [RFC-14](rfc-14-workspaces.md), strictly additive on top of this RFC's capability manifest protocol.
 - **Cross-capability changes in a single transaction.** Multi-capability outcomes are coordinated by workflow entries, not by one change that writes multiple capabilities' baselines. RFC-14 applies the same rule to scopes: cross-scope work is a workflow with multiple entries, not a multi-scope change.
 
@@ -372,10 +372,10 @@ Multi-capability *per project* is in scope for domain capabilities (§Cross-capa
 | Capability | A versioned Specify extension manifest that declares phase briefs, artefacts, and read-only dependencies. |
 | Domain capability | The primary project capability such as `omnia@v1`, `contracts@v1`, or `vectis@v2`. RFC-14 adds multiple domain capabilities through scopes. |
 | First-party capability | A domain capability bundled with the CLI release and resolved through the same manifest path as URL capabilities. |
-| Platform component | A first-party Specify subsystem above core, such as `specify-registry`, `specify-workspace`, or `specify-workflow`. Platform components are not capabilities. |
+| Platform component | A first-party Specify subsystem above core, such as `specify-registry` or `specify-workflow`. Platform components are not capabilities. |
 | Workflow component | `specify-workflow`, the first-party component that owns orchestration state and execution. It is not a core runner and not a capability. |
 | Format adapter | The handler for artefact syntax and validation, such as `markdown-spec`, `openapi`, `asyncapi`, or `json-schema`. |
-| Workspace resolver | The `specify-workspace` service that maps registry-declared projects to materialised project roots. |
+| Registry materialisation resolver | The `specify-registry` service that maps registry-declared projects to materialised project roots. |
 
 ## Implementation Scope
 
@@ -430,14 +430,14 @@ Acceptance: a capability can add or rename an artefact location without changing
 
 The largest phase: it proves the reframe without changing the lifecycle model.
 
-1. **Extract `specify-registry` as the topology crate.** Move `registry.yaml` parsing, add/remove/show helpers, and topology validation out of the schema/capability crate. Registry entries carry project id, repository URL, description, and default capability; they must not embed contract roles, workspace state, plan status, or validation findings.
-2. **Extract `specify-workspace` as the materialisation crate.** It consumes `specify-registry` entries and owns clone/symlink resolution, workspace status, push, and merge support. The core receives only a resolved project root.
+1. **Extract `specify-registry` as the topology and materialisation crate.** Move `registry.yaml` parsing, add/remove/show helpers, topology validation, clone/symlink resolution, dirty-state reporting, push, and merge support out of the schema/capability crate. Registry entries carry project id, repository URL, description, and default capability; they must not embed contract roles, plan status, workflow status, or validation findings.
+2. **Keep `.specify/workspace/` as derived registry state.** The directory may continue to hold clones or symlinks, but its contents are the local materialised view of `registry.yaml`, not a separate component-owned topology.
 3. **Extract `specify-workflow` as the orchestration crate.** Plan/workflow authoring, next-entry selection, locking, status updates, recovery, and initiative close-out move here. `/spec:execute` becomes a workflow-surface command or skill; any retained `/spec:execute` spelling is only a compatibility alias.
 4. **Keep workflow helpers internal to workflow execution.** Workflow may use skill-owned scripts or library helpers for next-entry selection, locking, status updates, and recovery. Generic change-loop reads such as `specify change outcome show` stay core.
 5. **Delete concern-specific core type surfaces where the artifact model replaces them.** `Commands::{Vectis, Contract}` and the matching command modules stop being the place where artifact validation and merge behavior live.
 6. **Retire surviving hard-coded `contracts` / `specs` references** in `crates/merge/`, `crates/validate/`, `src/config.rs`, `crates/change/`.
 7. **First-party domain capabilities publish their full surface** — `omnia`, `contracts`, and `vectis` declare `artifacts:` + `pipeline:`. Platform components publish their own file formats and command contracts separately.
-8. **Initialization wires components, not active capabilities.** A project's `project.yaml` declares its domain capability. Hub init enables registry/workspace/workflow component files as platform state, but the core does not auto-activate them as capabilities.
+8. **Initialization wires components, not active capabilities.** A project's `project.yaml` declares its domain capability. Hub init enables registry and workflow component files as platform state, but the core does not auto-activate them as capabilities.
 
 Phase 4 may land as a sequence of smaller commits, but every commit keeps the existing `define → build → merge` lifecycle intact.
 
@@ -448,7 +448,7 @@ Phase 4 may land as a sequence of smaller commits, but every commit keeps the ex
 3. Port brief prose to `$ARTIFACT_DELTA[<id>]` / `$ARTIFACT_BASELINE[<id>]` substitutions.
 4. Move `plugins/spec/skills/execute/` to the workflow surface; keep any `/spec:execute` material as a compatibility shim only.
 5. Update `plugins/contract/`, `plugins/vectis/`, and workflow-facing skills to own any imperative validation, generation, or review behavior that used to sit behind in-binary command modules.
-6. Document the manifest protocol in `docs/reference/capabilities.md`; cross-link from each capability's README. Add companion references for `specify-registry`, `specify-workspace`, and `specify-workflow`, including their dependency direction relative to core.
+6. Document the manifest protocol in `docs/reference/capabilities.md`; cross-link from each capability's README. Add companion references for `specify-registry` and `specify-workflow`, including registry materialisation behavior and their dependency direction relative to core.
 
 ## Migration
 
@@ -481,7 +481,7 @@ Four invariants guard the landing:
 1. **Omnia keeps working.** Every phase's acceptance criterion includes running `/spec:define → /spec:build → /spec:merge` on a canonical omnia change end-to-end.
 2. **The core never learns a capability name.** `specify check` rejects hard-coded capability-name literals in core crate sources outside tests, including first-party domain capability names after extraction.
 3. **The core never learns an artefact id either.** A companion rule rejects hard-coded artefact-id literals such as `"specs"`, `"contracts"`, and `"crates"`; phase 2 retires the current canonical violations (`ProjectConfig::{specs_dir, contracts_dir}`).
-4. **Platform components stay outside the active capability set.** A rule verifies `specify-core` does not depend on `specify-registry`, `specify-workspace`, or `specify-workflow`; dependency direction flows from workflow down to workspace/registry/core, never the reverse.
+4. **Platform components stay outside the active capability set.** A rule verifies `specify-core` does not depend on `specify-registry` or `specify-workflow`; dependency direction flows from workflow down to registry/core, never the reverse.
 
 The hard-coded-name lints are RFC-5 design work, not a naive string-literal ban. RFC-5 should define the crate allowlist, generated-code exemptions, test exemptions, and AST-aware matching needed to avoid flagging unrelated prose or diagnostics.
 
@@ -506,7 +506,7 @@ Resolved with provisional answer (see body for context):
 - **Default `artifact-validate`.** No core default — validation is where format semantics matter most and a silent default would mask missing capability work.
 - **Format-adapter catalog.** Fixed in-core catalog to start; revisit when a third-party capability wants to ship its own adapter.
 - **First-party capability versioning.** Bundled domain capabilities track the CLI release as an ABI surface; projects pin via `specify_version` only.
-- **Workspace ownership.** Resolved by extracting `specify-workspace`; workflow and registry data drive materialisation, and the core only receives a project root.
+- **Registry materialisation ownership.** Resolved by extracting `specify-registry`; registry data drives materialisation, workflow consumes the resolved project roots, and the core only receives a project root.
 
 ## References
 
@@ -514,7 +514,7 @@ Resolved with provisional answer (see body for context):
 - [RFC-8: API contracts](archive/rfc-8-api-contracts.md) — `contracts@v1` capability; delta-then-promote semantics become the `opaque-replace` default.
 - [RFC-2: Execution](archive/rfc-2-execution.md) — `/spec:execute --loop`; informs the `specify-workflow` extraction, but this RFC does not change the lifecycle model.
 - [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — plan authoring pipeline; the existing two-brief `pipeline.plan` is the predecessor to workflow authoring.
-- [RFC-3b: Platform](archive/rfc-3b-platform.md) — registry routing and workspace clones.
+- [RFC-3b: Platform](archive/rfc-3b-platform.md) — registry routing and materialised project clones.
 - [RFC-9: Platform](archive/rfc-9-platform.md) — moved registry, plan, initiative, and contracts to repo root; `/spec:plan --orchestrate` is the predecessor to workflow-driven orchestration, but not to a retained workflow CLI family.
 - [RFC-12: Refine RFC-8](archive/rfc-12-refine-rfc-8.md) — SemVer + `info.x-specify-id` rules become contracts capability validation behavior.
 - [RFC-5: Framework Linter](rfc-5-lint.md) — home of the lints enforcing the reframe's invariants, including the hard-coded-name lint design.
