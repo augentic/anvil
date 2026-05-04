@@ -1,12 +1,12 @@
 # RFC-13: Capabilities
 
-> Status: Draft · Supersedes: earlier draft at this path (artifact-lifecycle-only framing) · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-8](archive/rfc-8-api-contracts.md), [RFC-9](archive/rfc-9-platform.md), [RFC-12](archive/rfc-12-refine-rfc-8.md) · Enables: [RFC-14](rfc-14-workspaces.md)
+> Status: Draft · Supersedes: earlier draft at this path (artifact-adoption-only framing) · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-8](archive/rfc-8-api-contracts.md), [RFC-9](archive/rfc-9-platform.md), [RFC-12](archive/rfc-12-refine-rfc-8.md) · Enables: [RFC-14](rfc-14-workspaces.md)
 
 ## Abstract
 
-A capability describes how to draft, build, and adopt a class of artefacts. RFC-13 reframes the runtime to match: the **immutable core** is the **Layer 1 draft-build-adopt loop engine** plus capability-agnostic scaffolding (init, migrate, capability resolver, change driver, **Layer 2 workflow runner**, operation dispatcher), and **every capability-specific surface in today's CLI — `plan`, `initiative`, `registry`, `contract`, `vectis`, most of `workspace` — becomes capability-owned**. The core never switches on a capability name.
+A capability describes how to draft, build, and adopt a class of artefacts. RFC-13 reframes the runtime to match: the **immutable core** is the **Layer 1 draft-build-adopt loop engine** plus capability-agnostic scaffolding (init, migrate, capability resolver, change driver, **Layer 2 workflow runner**, operation dispatcher, workflow document handling), and **every capability-specific surface in today's CLI — `initiative`, `registry`, `contract`, `vectis`, most of `workspace` — becomes capability-owned**. The existing `plan` surface becomes the core workflow document and runner surface, not a capability. The core never switches on a capability name.
 
-Today's `schema.yaml` surface admits only `{ name, version, description, extends?, domain?, pipeline }`, which is too small to carry that contract and uses the wrong noun. This RFC renames the extension primitive to **capability** and adds four declarative blocks (`artifacts:`, `operations:`, `plugin:`, `config-schema:`) so a capability can describe its artefacts, CLI verbs, lifecycle hooks, and project-level configuration. Capabilities that need imperative code (e.g. `vectis verify` shelling out to `xcodebuild`) ship a subprocess plugin invoked through a tiny JSON protocol. "Schema" remains the term for JSON Schema / validation shapes only.
+Today's `schema.yaml` surface admits only `{ name, version, description, extends?, domain?, pipeline }`, which is too small to carry that contract and uses the wrong noun. This RFC renames the extension primitive to **capability** and adds four declarative blocks (`artifacts:`, `operations:`, `plugin:`, `config-schema:`) so a capability can describe its artefacts, CLI verbs, adoption hooks, and project-level configuration. Capabilities that need imperative code (e.g. `vectis verify` shelling out to `xcodebuild`) ship a subprocess plugin invoked through a tiny JSON protocol. "Schema" remains the term for JSON Schema / validation shapes only.
 
 ## Motivation
 
@@ -26,29 +26,29 @@ Every new concern — infra, client SDKs, standards, codex rules, design tokens,
 
 `schema:` in `.specify/project.yaml` is already URL-resolvable, with project-local caching under `.specify/.cache/` and inheritance via `extends`. The rename changes the noun, not the distribution model: capabilities are still remote, versioned, composable artefacts. The migration maps `schema:` to `capability:` and `schema.yaml` to `capability.yaml` (§Migration).
 
-### Artefact lifecycles, one runtime
+### Artefact adoption modes, one runtime
 
-A change under any current capability produces outputs governed by one of these lifecycles (§Design widens to four — `managed`, `external`, `read-only`, `audited`):
-
-
-| Artifact                                                               | Build writes to                      | Baseline location      | Adopt promotes?              | Drop reverts?    |
-| ---------------------------------------------------------------------- | ------------------------------------ | ---------------------- | ---------------------------- | ---------------- |
-| Behavioral specs (declared by `omnia@v1`, `contracts@v1`, `vectis@v2`) | `.specify/changes/<name>/specs/`     | `.specify/specs/`      | Yes (file-level merge)       | Yes              |
-| Contracts (`contracts@v1`)                                             | `.specify/changes/<name>/contracts/` | `<root>/contracts/`    | Yes (whole-file replacement) | Yes              |
-| Crates (`omnia@v1`)                                                    | `<root>/crates/<crate>/`             | (no separate baseline) | No                           | No (git-managed) |
-| Shared / iOS / Android / design-system (`vectis@v2`)                   | `<root>/<dir>/`                      | (no separate baseline) | No                           | No (git-managed) |
+A change under any current capability produces capability-owned artefacts with different adoption modes (§Design widens to four — `staged`, `direct`, `read-only`, `audited`):
 
 
-The first two rows are *managed* — Specify owns a versioned baseline; the bottom two are *external* — git provides versioning. The asymmetry is correct; today it is encoded in Rust rather than declared by the capability.
+| Artifact                                                               | Mode     | Build writes to                      | Adopt behavior                | Drop behavior             |
+| ---------------------------------------------------------------------- | -------- | ------------------------------------ | ----------------------------- | ------------------------- |
+| Behavioral specs (declared by `omnia@v1`, `contracts@v1`, `vectis@v2`) | `staged` | `.specify/changes/<name>/specs/`     | Promote via file-level merge  | Discard the staged delta  |
+| Contracts (`contracts@v1`)                                             | `staged` | `.specify/changes/<name>/contracts/` | Promote via whole-file replace | Discard the staged delta  |
+| Crates (`omnia@v1`)                                                    | `direct` | `<root>/crates/<crate>/`             | Already in project tree       | Git handles rollback      |
+| Shared / iOS / Android / design-system (`vectis@v2`)                   | `direct` | `<root>/<dir>/`                      | Already in project tree       | Git handles rollback      |
 
-The strategy: **every artefact's write location(s) are declared by the capability in `artifacts:`, never inferred by the core and never invented by a brief.** Managed artefacts declare `delta:` + `baseline:`; external artefacts declare `project-path:`; read-only artefacts declare `baseline:`; audited artefacts declare `baseline:` plus a recorded checksum. Brief prose references each location through a closed substitution vocabulary (§"Substitution vocabulary"); literal paths are forbidden. Workspace clones resolve every declared location relative to the clone root (§"Workspace-clone path resolution").
+
+Every row is capability-managed. The mode only describes mechanics: whether build stages a delta for adopt, writes directly into the project tree for git review, exposes read-only context, or records an audited direct-write checksum. Today that distinction is encoded in Rust rather than declared by the capability.
+
+The strategy: **every artefact's write location(s) and adoption mode are declared by the capability in `artifacts:`, never inferred by the core and never invented by a brief.** Staged artefacts declare `delta:` + `baseline:`; direct artefacts declare `project-path:`; read-only artefacts declare `baseline:`; audited artefacts declare `baseline:` plus a recorded checksum. Brief prose references each location through a closed substitution vocabulary (§"Substitution vocabulary"); literal paths are forbidden. Workspace clones resolve every declared location relative to the clone root (§"Workspace-clone path resolution").
 
 `spec.md` is an artefact like any other. It appears today because behaviour drives the current generators; capabilities whose primary deliverable is not behavioural declare their own artefact and skip `specs`.
 
 ### What the status quo blocks
 
-- A future `infra@v1` cannot declare "the `terraform/` directory is a managed baseline" without patching `specify-cli`.
-- A future `standards@v1` (roadmap §3) needs `read-only` baselines that sibling changes cite but never mutate; today the only lifecycles are `managed` and `external`.
+- A future `infra@v1` cannot declare "the `terraform/` directory is a staged baseline" without patching `specify-cli`.
+- A future `standards@v1` (roadmap §3) needs `read-only` baselines that sibling changes cite but never mutate; today the adoption mechanics are hard-coded for specs, contracts, and direct code generation.
 - The format validators behind `specify contract validate` live in the core's public API, so a third-party capability cannot ship an equivalent without patching core.
 - Capability-specific operator verbs (`vectis init`, `vectis verify`, `vectis add-shell`, `contract list`, `contract validate`) live in `src/cli.rs`, so adding a concern grows the core surface instead of an extension catalogue.
 
@@ -57,13 +57,13 @@ The strategy: **every artefact's write location(s) are declared by the capabilit
 With `capability.yaml` owning artifacts, operations, hooks, and configuration, new concerns ship as capabilities. None of these requires a core patch:
 
 
-| Capability         | Artefact declaration                                                                          | Headline ops                                                           |
-| ------------------ | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `infra@v1`         | `terraform`, `lifecycle: managed`, `merge-strategy: opaque-replace`                           | `list`, `validate` (`terraform validate`), `doctor`, `scaffold module` |
-| `client-sdk@v1`    | `extends: contracts`; own artefact `clients`, `lifecycle: external`, `project-path: clients/` | `scaffold target --lang typescript`, `doctor`                          |
-| `standards@v1`     | `codex`, `lifecycle: read-only`, `baseline: codex/`                                           | `list`, `inspect <rule-id>`, `validate`                                |
-| `design-tokens@v1` | Managed token source + external generated outputs (Swift / Kotlin / CSS)                      | `doctor` = regenerate-and-diff                                         |
-| `fixtures@v1`      | `fixtures`, `lifecycle: audited`, `baseline: fixtures/`                                       | `list`, `inspect`, `scaffold capture`                                  |
+| Capability         | Artefact declaration                                                                   | Headline ops                                                           |
+| ------------------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `infra@v1`         | `terraform`, `mode: staged`, `merge-strategy: opaque-replace`                          | `list`, `validate` (`terraform validate`), `doctor`, `scaffold module` |
+| `client-sdk@v1`    | `extends: contracts`; own artefact `clients`, `mode: direct`, `project-path: clients/` | `scaffold target --lang typescript`, `doctor`                          |
+| `standards@v1`     | `codex`, `mode: read-only`, `baseline: codex/`                                         | `list`, `inspect <rule-id>`, `validate`                                |
+| `design-tokens@v1` | Staged token source + direct generated outputs (Swift / Kotlin / CSS)                  | `doctor` = regenerate-and-diff                                         |
+| `fixtures@v1`      | `fixtures`, `mode: audited`, `baseline: fixtures/`                                     | `list`, `inspect`, `scaffold capture`                                  |
 
 
 None of these needs a `specs` artefact. Capabilities that want behavioural specs declare one and stage a producing brief; capabilities that do not simply omit it.
@@ -74,16 +74,16 @@ None of these needs a `specs` artefact. Capabilities that want behavioural specs
 
 **A capability describes how to draft-build-adopt a class of artefacts.** Layer 1 is the draft-build-adopt loop; capabilities populate it with per-class choices (artefacts, validators, operator verbs, configuration). The core never switches on a capability name, never carries capability-specific type surfaces, and never ships capability-specific operator verbs. Imperative extension code is owned by the capability; the core invokes it through a fixed protocol.
 
-"Without exception" is load-bearing. Today's `specify plan`, `specify initiative`, `specify registry`, `specify contract`, `specify vectis` top-level verbs are five capabilities masquerading as core because the reframe hasn't landed; phase 4 extracts them. If a capability-specific feature has no place in `capability.yaml`, that is a gap in the protocol, not a licence for a new core verb.
+"Without exception" is load-bearing for capability-specific behavior. Today's `specify initiative`, `specify registry`, `specify contract`, `specify vectis` top-level verbs are capabilities masquerading as core because the reframe hasn't landed; phase 4 extracts them. Today's `specify plan` surface is different: it is the operator face of the core Layer 2 workflow runner and its `workflow.yaml` control document. If a capability-specific feature has no place in `capability.yaml`, that is a gap in the protocol, not a licence for a new core verb.
 
 Layer 1 is the draft-build-adopt loop. Its *shape* is frozen alongside the verbs: the phase set (`draft` / `build` / `adopt` — today's `define` / `build` / `merge`), the legal transition DAG, and the per-phase outcome contract recorded in `.metadata.yaml` are part of the immutable core. Capabilities declare what *flows through* the phases (artefacts, briefs, validators, operations, config) but never the phases themselves. Variation that capabilities legitimately want lives in (a) variable briefs per phase, (b) Layer 2 workflow graphs over capability-owned steps, and (c) the heavy-vs-light mutation split (§Heavy vs light mutations). See §Non-Goals.
 
-The coordinating principle is the dual: **capabilities own artefact lifecycles; workflows coordinate capabilities into outcomes.** Every mutable artefact has exactly one capability owner, every reviewed change runs through exactly one capability/scope, and cross-capability outcomes are achieved by a workflow graph, not by fusing capabilities into a larger hidden capability. Outcomes are not necessarily code: they may be contracts, documentation, policy, infrastructure, fixtures, reports, generated clients, or any other capability-owned artefact. `workflow@v1` wires capability-owned steps through the common protocol.
+The coordinating principle is the dual: **capabilities own artefacts and their adoption behavior; core workflows coordinate capabilities into outcomes.** Every capability-owned mutable artefact has exactly one capability owner, every reviewed change runs through exactly one capability/scope, and cross-capability outcomes are achieved by a workflow graph, not by fusing capabilities into a larger hidden capability. Outcomes are not necessarily code: they may be contracts, documentation, policy, infrastructure, fixtures, reports, generated clients, or any other capability-owned artefact. The core `workflow.yaml` document wires capability-owned steps through the common protocol.
 
 That gives Specify two fixed framework layers:
 
 - **Layer 1 — Draft-build-adopt.** One capability owns one artefact family; a reviewed change drafts, builds, validates, and adopts that capability's artefacts.
-- **Layer 2 — Workflow.** A workflow coordinates Layer 1 changes, validations, capability-declared operations, and adoption checks into an outcome graph. The graph is stored in `workflow@v1`; the runner is core-owned and capability-agnostic.
+- **Layer 2 — Workflow.** A core workflow coordinates Layer 1 changes, validations, capability-declared operations, and adoption checks into an outcome graph. The graph is stored in `workflow.yaml`; the runner is core-owned and capability-agnostic.
 
 ### The immutable core boundary
 
@@ -97,8 +97,8 @@ The core is what's needed to run Layer 1 draft-build-adopt over any capability's
 | `specify capability *`                                                      | Core              | Resolve, check, pipeline. Replaces today's `specify schema *`.                                                                                |
 | `specify change *`                                                         | Core              | Layer 1 draft-build-adopt: create, list, status, validate, adopt, drop, transition, archive, journal, outcome, touched-specs, overlap, task. |
 | Capability operation dispatcher                                            | Core, data-driven | Invokes capability-declared operations through the common protocol.                                                                           |
-| Artefact-lifecycle bookkeeping                                             | Core, data-driven | Iterates over capability-declared artefacts.                                                                                                  |
-| Layer 2 workflow runner                                                    | Core, data-driven | Walks `workflow@v1` graphs and invokes capability-owned steps through the common protocol.                                                     |
+| Artefact adoption bookkeeping                                              | Core, data-driven | Iterates over capability-declared artefacts.                                                                                                  |
+| Layer 2 workflow runner + `workflow.yaml`                                  | Core, data-driven | Walks workflow graphs and invokes capability-owned steps through the common protocol.                                                          |
 | Format validators (OpenAPI, JSON Schema, spec-markdown, …)                 | Capability        | Declared as format adapters; core vendors generic ones, capabilities may ship their own.                                                       |
 | Operator verbs for a concern (`verify`, `add-shell`, `list`, `inspect`, …) | Capability        | Declared in `operations:`.                                                                                                                    |
 | Project-level config for a concern                                         | Capability        | Declared in `config-schema:`, stored under `extensions.<capability>` in `project.yaml`.                                                       |
@@ -108,12 +108,12 @@ The left-hand column is frozen as the core responsibility boundary; new capabili
 
 ### What becomes a capability
 
-Today's top-level verbs that aren't in the core table above are first-party capabilities bundled with the CLI (§First-party capabilities and bootstrap):
+Today's top-level verbs split into core workflow surface and first-party capabilities bundled with the CLI (§First-party capabilities and framework documents):
 
 
 | Today                  | Becomes                                 | Artefact                                    | Notes                                                                                                                                                                                |
 | ---------------------- | --------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `specify plan *`       | `workflow@v1` capability                | `workflow.yaml`                             | First-party Layer 2 workflow capability and successor to today's plan surface. Heavy mutations author the graph; light mutations use `scaffold` / `config` / `transition`.           |
+| `specify plan *`       | Core workflow surface                   | `workflow.yaml`                             | Successor to today's plan surface. The graph is a core control document; execution semantics are framework ABI.                                                                      |
 | `specify initiative *` | `initiative@v1` capability              | `initiative.md`                             | Tiny: one brief; `finalize` maps to `adopt` with a close-out hook that verifies every referenced workflow is terminal and every PR merged.                                           |
 | `specify registry *`   | `registry@v1` capability                | `registry.yaml`                             | Heavy mutations go through `specify change`; routine `add`/`remove` use `scaffold` / `config`. The `description-missing-multi-repo` invariant becomes a `baseline-validate` finding. |
 | `specify contract *`   | `contracts@v1` capability               | `contracts/` baseline                       | RFC-12's SemVer + `info.x-specify-id` checks become `baseline-validate`.                                                                                                             |
@@ -121,14 +121,14 @@ Today's top-level verbs that aren't in the core table above are first-party capa
 | `specify workspace *`  | **Open question** (see §Open Questions) | Clones directory                            | Mostly git-shelling. May stay core as the cross-capability coordinator, or become a subprocess-plugin-heavy capability.                                                              |
 
 
-Every project activates at minimum `workflow@v1` + `initiative@v1` + `registry@v1` alongside its domain capability. `workflow@v1` is framework-level Layer 2, while `initiative@v1` and `registry@v1` remain platform capabilities. All three declare structured documents (`workflow.yaml`, `initiative.md`, `registry.yaml`) as their primary artefacts, not `spec.md`.
+Every project gets the core workflow runner and `workflow.yaml` document alongside the active capability set. Projects also activate `initiative@v1` and `registry@v1` as first-party platform capabilities alongside their domain capability. The platform capabilities declare structured documents (`initiative.md`, `registry.yaml`) as their primary artefacts, not `spec.md`; `workflow.yaml` is a core control document.
 
 ### Heavy vs light mutations
 
 Not every capability mutation runs the full change loop. Today's `specify registry add` writes a single line; forcing it through a change directory would be absurd.
 
-- **Heavy (reviewed) mutations** — `specify change create → /spec:draft → /spec:build → /spec:adopt`, driven by the capability's pipeline. Used when the mutation needs briefs, review, overlap detection, conflict-check, and journaling. Example: `/spec:plan` authoring a workflow graph; `specify contract build` emitting a new `openapi.yaml`.
-- **Light (direct) mutations** — capability-declared operations such as `scaffold`, `config`, or `transition`, invoked without a change directory. Example: a workflow capability can scaffold an entry; a vectis capability can update its configured Rust version.
+- **Heavy (reviewed) mutations** — `specify change create → /spec:draft → /spec:build → /spec:adopt`, driven by the capability's pipeline. Used when the mutation needs briefs, review, overlap detection, conflict-check, and journaling. Example: `specify contract build` emitting a new `openapi.yaml`.
+- **Light (immediate) mutations** — capability-declared operations such as `scaffold`, `config`, or `transition`, invoked without a change directory. Example: a registry capability can add a project entry; a vectis capability can update its configured Rust version.
 
 Capabilities decide which path each verb takes by routing it through `operations:` (light) or `pipeline:` (heavy). The core enforces one invariant: the same artefact cannot be written by both paths within a single change.
 
@@ -136,76 +136,76 @@ Capabilities decide which path each verb takes by routing it through `operations
 
 The capability surface gains four new top-level blocks, each a flat vocabulary the core knows and the capability populates.
 
-#### 1. Artifacts (declarative lifecycle)
+#### 1. Artifacts (declarative adoption)
 
-Every output location a capability owns is declared once, with an explicit lifecycle. The canonical example covers all three relevant patterns:
+Every output location a capability owns is declared once, with an explicit adoption mode. The canonical example covers the common patterns:
 
 ```yaml
 # omnia@v1 — Rust + WASM services. Specs drive code generation.
 artifacts:
   - id: specs
-    lifecycle: managed                  # managed | external | read-only | audited
+    mode: staged                        # staged | direct | read-only | audited
     delta: specs/
     baseline: .specify/specs/
     merge-strategy: three-way           # three-way | opaque-replace | none
     format: markdown-spec               # core or capability-declared format adapter
   - id: crates
-    lifecycle: external
+    mode: direct
     project-path: crates/
     instance-path-template: <crate-name>/
   - id: codex
-    lifecycle: read-only
+    mode: read-only
     baseline: codex/
 ```
 
-`specs` carries no privilege — the linter sorts by `id` and the renderer iterates declared order, but no core code path keys off "the first artefact" or off the literal `id: specs`. Format adapters are named after the format (`markdown-spec`, `terraform-module`, `workflow-yaml`, `openapi-asyncapi-bundle`), not after artefact roles. A capability like `infra@v1` declares `format: terraform-module` and never lists a `specs` entry; `workflow@v1`'s sole artefact is `id: workflow, format: workflow-yaml`.
+`specs` carries no privilege — the linter sorts by `id` and the renderer iterates declared order, but no core code path keys off "the first artefact" or off the literal `id: specs`. Format adapters are named after the format (`markdown-spec`, `terraform-module`, `openapi-asyncapi-bundle`), not after artefact roles. A capability like `infra@v1` declares `format: terraform-module` and never lists a `specs` entry. `workflow.yaml` is intentionally absent from this example because it is a core control document, not a capability artefact.
 
-Lifecycles:
+Modes:
 
-- `managed` — Specify-owned baseline; build writes to `$CHANGE_DIR/<delta>/`; adopt promotes via `merge-strategy`; drop discards the delta; sibling changes read the baseline as conformance context.
-- `external` — downstream toolchain owns the artifact; build writes directly; git provides versioning; no adopt, no drop, no conflict-check.
-- `read-only` — Specify-owned baseline that no change mutates; cited by generators and reviewers (roadmap §3 codex).
+- `staged` — build writes to `$CHANGE_DIR/<delta>/`; adopt promotes to the declared baseline via `merge-strategy`; drop discards the delta; sibling changes read the baseline as conformance context.
+- `direct` — build writes directly into a declared project path; git provides review and rollback; there is no separate promote/drop step for the artefact.
+- `read-only` — declared baseline context that no change mutates; cited by generators and reviewers (roadmap §3 codex).
 - `audited` — direct-write baseline with a checksum recorded in the change; adopt bumps the checksum, drop reverts. Implementation deferred but reserved.
 
 `merge-strategy` and `format` are explicit fields rather than implied by id. The core ships generic implementations for `three-way` (today's spec merge) and `opaque-replace` (today's contract merge) so pure-declarative capabilities work without extension code.
 
 ##### Location fields
 
-Every artefact entry pairs its lifecycle with a fixed set of location fields:
+Every artefact entry pairs its mode with a fixed set of location fields:
 
 
-| Lifecycle   | Required location fields | Meaning                                                          |
-| ----------- | ------------------------ | ---------------------------------------------------------------- |
-| `managed`   | `delta:` + `baseline:`   | build writes to delta, adopt promotes to baseline                |
-| `external`  | `project-path:`          | build writes directly into the project tree; no Specify baseline |
-| `read-only` | `baseline:`              | sibling changes cite, no change mutates                          |
-| `audited`   | `baseline:`              | direct-write baseline; change records a checksum, adopt bumps it |
+| Mode        | Required location fields | Meaning                                               |
+| ----------- | ------------------------ | ----------------------------------------------------- |
+| `staged`    | `delta:` + `baseline:`   | build writes to delta, adopt promotes to baseline     |
+| `direct`    | `project-path:`          | build writes directly into the project tree           |
+| `read-only` | `baseline:`              | sibling changes cite, no change mutates               |
+| `audited`   | `baseline:`              | direct-write baseline; change records a checksum      |
 
 
-No artefact mixes location fields across lifecycles. Cardinality is fixed at one per field per artefact (§Non-Goals).
+No artefact mixes location fields across modes. Cardinality is fixed at one per field per artefact (§Non-Goals).
 
 ##### Multi-instance artefacts
 
-External artefacts whose `project-path` holds many sibling instances (omnia's `crates/<crate-name>/`, vectis's `<shell>/<target>/`) declare `instance-path-template:` to name the per-instance subdirectory. Managed artefacts may declare it too (a `delta:` of `specs/` with template `<crate-name>/spec.md` is exactly today's spec layout). Single-instance artefacts (`workflow.yaml`, `initiative.md`) omit the field. The template names a single brief-bound variable; the producing brief resolves it from its context. The linter enforces that exactly one variable appears.
+Direct artefacts whose `project-path` holds many sibling instances (omnia's `crates/<crate-name>/`, vectis's `<shell>/<target>/`) declare `instance-path-template:` to name the per-instance subdirectory. Staged artefacts may declare it too (a `delta:` of `specs/` with template `<crate-name>/spec.md` is exactly today's spec layout). Single-instance capability artefacts (`initiative.md`, `registry.yaml`) omit the field. The template names a single brief-bound variable; the producing brief resolves it from its context. The linter enforces that exactly one variable appears.
 
 ##### Substitution vocabulary
 
 The closed vocabulary in brief prose covers every declared location:
 
 
-| Substitution                    | Resolves to                                          | Available for                     |
-| ------------------------------- | ---------------------------------------------------- | --------------------------------- |
-| `$ARTIFACT_DELTA[<id>]`         | the artefact's declared `delta:` path                | `managed`                         |
-| `$ARTIFACT_BASELINE[<id>]`      | the artefact's declared `baseline:` path             | `managed`, `read-only`, `audited` |
-| `$ARTIFACT_PROJECT_PATH[<id>]`  | the artefact's declared `project-path:`              | `external`                        |
-| `$ARTIFACT_INSTANCE_PATH[<id>]` | the location resolved with `instance-path-template:` | any lifecycle that declares one   |
+| Substitution                    | Resolves to                                          | Available for                    |
+| ------------------------------- | ---------------------------------------------------- | -------------------------------- |
+| `$ARTIFACT_DELTA[<id>]`         | the artefact's declared `delta:` path                | `staged`                         |
+| `$ARTIFACT_BASELINE[<id>]`      | the artefact's declared `baseline:` path             | `staged`, `read-only`, `audited` |
+| `$ARTIFACT_PROJECT_PATH[<id>]`  | the artefact's declared `project-path:`              | `direct`                         |
+| `$ARTIFACT_INSTANCE_PATH[<id>]` | the location resolved with `instance-path-template:` | any mode that declares one       |
 
 
 Direct literal paths are forbidden and flagged by `specify check`.
 
 ##### Brief-to-artefact binding
 
-Briefs declare which artefact id(s) they produce via a `produces:` frontmatter field, the symmetric counterpart to `needs:` and `tracks:`. The field binds the brief to one or more ids in the active capability's `artifacts:` block, which is what lets substitutions resolve at render time and what lets `specify check` verify that every declared `managed` artefact has a producing brief in `pipeline.build`:
+Briefs declare which artefact id(s) they produce via a `produces:` frontmatter field, the symmetric counterpart to `needs:` and `tracks:`. The field binds the brief to one or more ids in the active capability's `artifacts:` block, which is what lets substitutions resolve at render time and what lets `specify check` verify that every staged artefact has a producing brief in `pipeline.build`:
 
 ```yaml
 ---
@@ -217,7 +217,7 @@ tracks: tasks
 ---
 ```
 
-A brief that produces a multi-instance artefact resolves the instance variable from its own context. The linter enforces that every artefact whose lifecycle requires authoring (`managed`, `external`, `audited`) appears in some brief's `produces:` list. `read-only` artefacts are exempt.
+A brief that produces a multi-instance artefact resolves the instance variable from its own context. The linter enforces that every artefact whose mode requires authoring (`staged`, `direct`, `audited`) appears in some brief's `produces:` list. `read-only` artefacts are exempt.
 
 #### 2. Operations (operator surface)
 
@@ -226,31 +226,31 @@ A **closed vocabulary** of operator verbs. Capabilities pick which they implemen
 
 | Op                      | Meaning                                                       | Today's equivalent                                                                                                         |
 | ----------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `list`                  | Enumerate baseline artefact instances                         | `specify contract list`, `specify plan status`                                                                             |
-| `validate`              | Run the capability's baseline-wide conformance checks         | `specify contract validate`, `specify plan validate`, `specify registry validate`                                          |
-| `inspect <id>`          | Structured projection of one instance (or `--next`, `--show`) | `specify plan next`, `specify initiative show`, `specify registry show`                                                    |
-| `doctor`                | Full diagnostic / "does it still build / satisfy invariants"  | `specify vectis verify`, `specify plan doctor`                                                                             |
-| `scaffold <kind>`       | One-shot generator                                            | `specify plan add`, `specify registry add`, `specify vectis init`, `specify vectis add-shell`, `specify initiative create` |
+| `list`                  | Enumerate baseline artefact instances                         | `specify contract list`, `specify registry status`                                                                         |
+| `validate`              | Run the capability's baseline-wide conformance checks         | `specify contract validate`, `specify registry validate`                                                                   |
+| `inspect <id>`          | Structured projection of one instance (or `--next`, `--show`) | `specify initiative show`, `specify registry show`                                                                         |
+| `doctor`                | Full diagnostic / "does it still build / satisfy invariants"  | `specify vectis verify`                                                                                                    |
+| `scaffold <kind>`       | One-shot generator                                            | `specify registry add`, `specify vectis init`, `specify vectis add-shell`, `specify initiative create`                     |
 | `config` (get/set/show) | Read/write the capability's `extensions.<capability>` block   | `specify vectis update-versions`, `specify vectis versions`                                                                |
-| `transition <target>`   | State-machine step on an existing instance                    | `specify plan transition`, `specify plan lock`                                                                             |
+| `transition <target>`   | State-machine step on an existing instance                    | capability-owned lifecycle moves; core workflow has analogous `plan transition` / `plan lock` commands                     |
 
 
-The vocabulary is closed so tab-completion, JSON schemas, and cross-extension muscle memory stay stable. A capability that needs a novel verb proposes it as a protocol RFC. `transition` exists because state-machine steps recur across plan, change, and initiative.
+The vocabulary is closed so tab-completion, JSON schemas, and cross-extension muscle memory stay stable. A capability that needs a novel verb proposes it as a protocol RFC. `transition` exists because state-machine steps recur across capability artefacts and the core workflow surface, even though workflow itself is not a capability.
 
 Each op has a standard JSON-in / JSON-out contract; every capability's `list` has the same output shape, every `validate` has the same finding shape, every `scaffold` returns the same written-files summary. The concrete schema locations are implementation detail, but the shared result shapes are part of the protocol.
 
 #### 3. Hooks (core-facing callbacks)
 
-Invoked by core verbs on declared artefacts matching the hook's lifecycle:
+Invoked by core verbs on declared artefacts matching the hook's mode:
 
 
 | Hook                          | Invoked during                  | Default                                      | Capability responsibility         |
 | ----------------------------- | ------------------------------- | ---------------------------------------- | --------------------------------- |
-| `artifact-validate <id>`      | `specify change validate`       | none (capability MUST provide for `managed`) | format + brief rules on the delta |
+| `artifact-validate <id>`      | `specify change validate`       | none (capability MUST provide for `staged`) | format + brief rules on the delta |
 | `artifact-preview-adopt <id>` | `specify change adopt preview`  | core default by `merge-strategy`         | produce structured preview        |
 | `artifact-adopt <id>`         | `specify change adopt run`      | core default by `merge-strategy`         | produce merged baseline content   |
 | `artifact-drop <id>`          | `specify change drop`           | no-op                                        | capability-side cleanup           |
-| `baseline-validate <id>`      | capability `validate` operation     | none (capability MUST provide for `managed`) | project-wide conformance      |
+| `baseline-validate <id>`      | capability `validate` operation     | none (capability MUST provide for `staged`) | project-wide conformance      |
 
 
 Defaults for `three-way` and `opaque-replace` mean a pure-declarative YAML + markdown capability gets a working draft-build-adopt loop for free.
@@ -279,7 +279,7 @@ Absent blocks use the capability's defaults. The core validates at `ProjectConfi
 
 | Block            | Composition rule                                                                                                                                                       |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `artifacts:`     | Merge by `id`. Child entry with same `id` **replaces** the parent (no field-level merge; lifecycle swap would be too subtle to allow silently). Child MAY add new ids. |
+| `artifacts:`     | Merge by `id`. Child entry with same `id` **replaces** the parent (no field-level merge; mode swap would be too subtle to allow silently). Child MAY add new ids.      |
 | `operations:`    | Set-union of op names, child-wins on duplicates. Parent's unreferenced ops remain available.                                                                           |
 | `plugin:`        | Child fully replaces parent. A plugin binary is a single artifact, not a composition. Child with no `plugin:` block inherits the parent's.                             |
 | `config-schema:` | Layered via `allOf: [parent-schema, child-schema]`. Child can only tighten the parent's shape; broadening requires replacing.                                          |
@@ -289,7 +289,7 @@ Multi-level `extends:` chains and cycles are rejected at `specify capability che
 
 #### 6. Cross-capability coexistence
 
-Every project activates multiple capabilities — at minimum a domain capability plus `workflow@v1` + `registry@v1` + `initiative@v1`. Two constraints apply across the active set:
+Every project activates multiple capabilities — at minimum a domain capability plus `registry@v1` + `initiative@v1`. The core workflow document exists alongside that set but is not a member of it. Two constraints apply across the active capability set:
 
 - **Artefact id uniqueness.** No two active capabilities may declare the same `artifact.id`.
 - **Baseline-path uniqueness.** No two active capabilities may claim the same baseline path or project-path.
@@ -300,22 +300,22 @@ A repository activates exactly one **domain** capability under this RFC. Multi-d
 
 #### Cross-capability coordination
 
-When an outcome spans capabilities, the runtime does not fuse their pipelines. Coordination is explicit and graph-shaped: `initiative@v1` records the outcome and close-out criteria, `registry@v1` identifies participating projects, the workspace coordinator resolves project/scope addresses, and `workflow@v1` owns the DAG of capability-addressed steps.
+When an outcome spans capabilities, the runtime does not fuse their pipelines. Coordination is explicit and graph-shaped: `initiative@v1` records the outcome and close-out criteria, `registry@v1` identifies participating projects, the workspace coordinator resolves project/scope addresses, and core-owned `workflow.yaml` records the DAG of capability-addressed steps.
 
 The workflow graph coordinates through the common protocol: nodes target capability-owned changes, validations, operations, or adoption checks; edges express ordering (`needs:`) and blocking conditions. The runner understands node kinds and protocol envelopes, not domain semantics. `consumes:` remains read-only coupling: one capability may read another capability's adopted baseline as context. A workflow may deliver code, but it may also deliver contracts, docs, infrastructure, fixtures, reports, or policy changes.
 
-### First-party capabilities and bootstrap
+### First-party capabilities and framework documents
 
-`workflow@v1`, `initiative@v1`, `registry@v1` need to be available **before any capability URL has been resolved** — `specify init` must validate `registry.yaml`, and capability resolution itself runs through `specify capability *`, which is core. Resolution: first-party capabilities are **embedded in the CLI binary** and exposed through the same `capability.yaml` surface. The resolver checks the embedded set first, then falls back to URL resolution. They are still structurally capabilities — same blocks, same protocol, same linter rules.
+`initiative@v1` and `registry@v1` need to be available **before any capability URL has been resolved** — `specify init` must validate `registry.yaml`, and capability resolution itself runs through `specify capability *`, which is core. Resolution: first-party platform capabilities are **embedded in the CLI binary** and exposed through the same `capability.yaml` surface. The resolver checks the embedded set first, then falls back to URL resolution. They are still structurally capabilities — same blocks, same protocol, same linter rules.
 
-`workflow@v1` has stronger status than an ordinary platform capability: it is the capability-shaped contract for Layer 2 workflow, backed by the core workflow runner. Its artefact format is declared like any other capability, but its execution semantics are part of the framework ABI. A `specify` upgrade that changes those semantics is therefore breaking. Projects pin via `specify_version` in `project.yaml`; embedded capability versions are not pinned independently. A project that opts out of a first-party capability sets `disable-first-party: [workflow]` — intentionally ugly, rarely used. Hub projects (`hub: true`) activate the three first-party capabilities without a domain capability; single-repo projects activate all four.
+Workflow is not a first-party capability. It is a core framework document plus runner: `workflow.yaml` stores the Layer 2 graph, and the core workflow runner executes that graph by invoking capability-owned changes, validations, operations, and adoption checks through the common protocol. A `specify` upgrade that changes workflow graph semantics is therefore breaking. Projects pin those semantics via `specify_version` in `project.yaml`; there is no separate workflow capability version and no `disable-first-party: [workflow]` escape hatch. Hub projects (`hub: true`) activate the two first-party platform capabilities without a domain capability; single-repo projects activate both alongside the domain capability.
 
 ### Distribution: declarative with a subprocess escape
 
 
 | Model                                                     | Reach                                                                                | Distribution            | Sandbox               | Verdict                                                                    |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------- | --------------------- | -------------------------------------------------------------------------- |
-| Pure declarative (YAML + markdown + named format adapter) | Artifact lifecycle, brief rendering, format validation the core vendors              | Capability repo only    | Total                 | **Default path.**                                                          |
+| Pure declarative (YAML + markdown + named format adapter) | Artifact adoption, brief rendering, format validation the core vendors               | Capability repo only    | Total                 | **Default path.**                                                          |
 | Subprocess plugin (`git-foo` convention)                  | Imperative ops needing host toolchain (`xcodebuild`, `cargo`, `gradle`, `terraform`) | PATH-installed binary   | None (operator privs) | **Escape hatch.**                                                          |
 | WASM component (wasm32-wasip2)                            | Sandboxed imperative ops                                                             | Bundled in capability cache | Strong             | **Deferred.** Can't reach host toolchains without a host-function surface. |
 
@@ -411,7 +411,7 @@ This RFC freezes the capability operation protocol, not the final operator-facin
 
 The CLI may expose that dispatcher as a dedicated prefix, as capability-scoped subcommands, as compatibility aliases for first-party capabilities, or as some combination of those. That choice is deliberately left to the implementation phase because it is product UX, not the immutable core boundary.
 
-Capability-specific top-level families in today's CLI still leave the core. `plan`, `initiative`, `registry`, `contract`, and `vectis` become first-party capabilities with declared artefacts and operations; workflow close-out actions such as `archive` and `finalize` can still route through `specify change adopt` when they promote a capability-owned artefact.
+Capability-specific top-level families in today's CLI still leave the core. `initiative`, `registry`, `contract`, and `vectis` become capabilities with declared artefacts and operations. `plan` stays in the core as the operator surface for authoring and executing `workflow.yaml`; workflow close-out actions can still invoke capability operations or route through `specify change adopt` when they promote a capability-owned artefact.
 
 
 ## Alternatives Considered
@@ -422,7 +422,7 @@ Capability-specific top-level families in today's CLI still leave the core. `pla
 - **Freeze the final capability-operation CLI in this RFC.** Rejected because the architectural boundary only needs a dispatcher and protocol; command spelling is product UX and can be resolved during implementation.
 - **Keep capability-specific top-level subcommands.** Rejected because the core surface would keep growing with every concern.
 - **Multiple escape hatches.** Rejected because several plugin models would split the ecosystem.
-- **Keep `artifacts:` lifecycle-only.** Rejected because artifacts are only one of four capability-specific surfaces hard-coded today.
+- **Keep `artifacts:` adoption-only.** Rejected because artifacts are only one of four capability-specific surfaces hard-coded today.
 - **A top-level `artifacts.yaml` next to `capability.yaml`.** Rejected because the extension surfaces are capability-bound, not project-bound.
 
 ## Non-Goals
@@ -434,33 +434,34 @@ Capability-specific top-level families in today's CLI still leave the core. `pla
 - **Cardinality > 1 on delta or baseline.** One artefact → one delta → one baseline. Revisited only if a real capability needs more.
 - **Cloud execution semantics.** Orthogonal; the subprocess protocol serialises the same either way.
 - **Back-compat for capabilities without the new surface.** See §Migration — current usage footprint lets us cut over without a fallback path.
-- **Third-party framework/platform capabilities.** `workflow@v1`, `registry@v1`, `initiative@v1` are first-party and bundled. Swapping them is a follow-up RFC; swapping `workflow@v1` is especially constrained because it defines Layer 2's graph contract.
+- **Third-party platform capabilities.** `registry@v1` and `initiative@v1` are first-party and bundled. Swapping them is a follow-up RFC.
+- **Replacing the core workflow runner.** `workflow.yaml` and Layer 2 execution are core framework surfaces. Alternative workflow engines or graph formats require a framework RFC, not a capability.
 - **Multiple domain capabilities per repository.** Covered by [RFC-14](rfc-14-workspaces.md), strictly additive on top of this RFC's four-block protocol.
 - **Cross-capability changes in a single transaction.** Multi-capability outcomes are coordinated by workflow graphs, not by one change that writes multiple capabilities' baselines. RFC-14 applies the same rule to scopes: cross-scope work is a workflow with multiple entries, not a multi-scope change.
 
-Multi-capability *per project* is in scope at the framework/platform level — `workflow` + `registry` + `initiative` always coexist with a domain capability (§Cross-capability coexistence). Multi-*domain*-capability per project is the RFC-14 layer.
+Multi-capability *per project* is in scope at the platform level — `registry` + `initiative` always coexist with a domain capability, and core workflow coordinates them (§Cross-capability coexistence). Multi-*domain*-capability per project is the RFC-14 layer.
 
 ## Implementation Scope
 
-A staged landing, each stage independently testable and shippable. Every stage preserves working `/spec:draft → /spec:build → /spec:adopt` for the `omnia` capability (the only capability currently in real use).
+An incremental landing, each stage independently testable and shippable. Every stage preserves working `/spec:draft → /spec:build → /spec:adopt` for the `omnia` capability (the only capability currently in real use).
 
 ### Phase 1 — Artifact declarations
 
-Lands the lifecycle surface, widened to the four-value taxonomy.
+Lands the artefact adoption surface, widened to the four-value mode taxonomy.
 
-1. New `artifacts:` fields parsed in `crates/schema/src/` (renamed to a capability crate in the cut-over) — `id`, `lifecycle`, the location-field set, `instance-path-template`, `merge-strategy`, `format`. JSON Schema additions in the capability manifest schema enforce the lifecycle ↔ location-field pairings from §"Location fields".
-2. `crates/merge/` refactor: replace the hard-coded `specs_dir` + `contracts_dir` pair with iteration over the active capability's `managed` artifacts, dispatched on `merge-strategy`. Core ships `three-way` and `opaque-replace` defaults.
+1. New `artifacts:` fields parsed in `crates/schema/src/` (renamed to a capability crate in the cut-over) — `id`, `mode`, the location-field set, `instance-path-template`, `merge-strategy`, `format`. JSON Schema additions in the capability manifest schema enforce the mode ↔ location-field pairings from §"Location fields".
+2. `crates/merge/` refactor: replace the hard-coded `specs_dir` + `contracts_dir` pair with iteration over the active capability's `staged` artifacts, dispatched on `merge-strategy`. Core ships `three-way` and `opaque-replace` defaults.
 3. `crates/validate/`: add `--artifact <id>` filter; brief renderer learns the closed substitution vocabulary.
 4. `src/config.rs`: drop `specs_dir` / `contracts_dir`; add `ProjectConfig::{baseline_path, delta_path, project_path}(&capability, artifact_id)`. An instance-resolving variant takes the brief context and applies `instance-path-template`.
 5. Brief frontmatter parser learns `produces:` (single id or list). Brief loader binds each entry to an artefact in the active capability; unbound ids fail load with a diagnostic.
-6. `specify check` (RFC-5) lints flag direct literal paths and the per-artefact invariants (verifier brief present for `managed`, no baseline / project-path collision, pipeline stays within declared artifacts, every authoring-required artefact appears in some brief's `produces:` list, every `instance-path-template` names exactly one variable).
+6. `specify check` (RFC-5) lints flag direct literal paths and the per-artefact invariants (verifier brief present for `staged`, no baseline / project-path collision, pipeline stays within declared artifacts, every authoring-required artefact appears in some brief's `produces:` list, every `instance-path-template` names exactly one variable).
 
 First-party capabilities adopt `artifacts:` blocks declaring today's paths exactly — no filesystem changes.
 
 ### Phase 2 — Brief renderer + hook defaults
 
 1. Generalise the brief renderer so capabilities can declare additional substitution variables.
-2. Formalise the five lifecycle hooks. Wire `three-way` and `opaque-replace` as defaults for `artifact-preview-adopt` and `artifact-adopt`.
+2. Formalise the five adoption hooks. Wire `three-way` and `opaque-replace` as defaults for `artifact-preview-adopt` and `artifact-adopt`.
 3. Move `validate_baseline_contracts` out of `crates/validate/src/` into a `format: openapi-asyncapi-bundle` adapter declared by the contracts capability. The core validate crate stops knowing the word "contract".
 
 ### Phase 3 — Operations surface
@@ -469,18 +470,19 @@ First-party capabilities adopt `artifacts:` blocks declaring today's paths exact
 2. Capability surface grows `operations:` and (optionally) a `plugin:` block.
 3. `specify-ext-vectis` extracted from today's in-binary `specify_vectis` library; ships as its own binary alongside the `vectis` capability.
 
-### Phase 4 — Extract framework/platform capabilities and retire capability-specific core surfaces
+### Phase 4 — Extract platform capabilities and retire capability-specific core surfaces
 
 The largest phase: it proves the reframe.
 
-1. **Extract `workflow@v1`, `registry@v1`, `initiative@v1` as first-party capabilities** embedded in the CLI via `include_str!` or a tidy `embedded-capabilities/` tree, exposed through the same resolver path as URL-resolved capabilities. `workflow@v1` is the Layer 2 framework capability; `registry@v1` and `initiative@v1` are platform capabilities.
-2. **Cut their operator verbs over to the capability operation dispatcher**; `archive` and `finalize` route through `specify change adopt` with custom adopt hooks for close-out invariants.
-3. **Delete `Commands::{Plan, Initiative, Registry, Vectis, Contract}`** from `src/cli.rs` and the matching modules under `src/commands/`.
-4. **Retire `specify_vectis` as a library dependency** of `specify-cli` and publish `specify-ext-vectis` separately.
-5. **Decide the workspace question** (§Open Questions). Either extract `workspace@v1` or document workspace as the deliberate exception.
-6. **Retire surviving hard-coded `contracts` / `specs` references** in `crates/merge/`, `crates/validate/`, `src/config.rs`, `crates/change/`.
-7. **First-party capabilities publish their full surface** — `omnia`, `contracts`, `vectis`, `workflow`, `registry`, `initiative` declare `artifacts:` + `operations:` + (where applicable) `plugin:` + `config-schema:` + `pipeline:`.
-8. **Auto-activation at `specify init`.** A project's `project.yaml` declares its domain capability; the core auto-activates the Layer 2 workflow capability plus the two platform capabilities. Hubs activate the three without a domain capability.
+1. **Extract `registry@v1` and `initiative@v1` as first-party capabilities** embedded in the CLI via `include_str!` or a tidy `embedded-capabilities/` tree, exposed through the same resolver path as URL-resolved capabilities.
+2. **Keep `plan` as the core workflow surface** backed by `workflow.yaml` and the Layer 2 runner. The core workflow commands author, inspect, validate, and execute the graph; graph nodes invoke capability-owned steps through the operation dispatcher.
+3. **Cut platform capability operator verbs over to the capability operation dispatcher**; `archive` and `finalize` route through `specify change adopt` with custom adopt hooks for close-out invariants when they promote capability-owned artefacts.
+4. **Delete `Commands::{Initiative, Registry, Vectis, Contract}`** from `src/cli.rs` and the matching modules under `src/commands/`; refactor `Commands::Plan` into the core workflow command implementation instead of a capability dispatcher entry.
+5. **Retire `specify_vectis` as a library dependency** of `specify-cli` and publish `specify-ext-vectis` separately.
+6. **Decide the workspace question** (§Open Questions). Either extract `workspace@v1` or document workspace as the deliberate exception.
+7. **Retire surviving hard-coded `contracts` / `specs` references** in `crates/merge/`, `crates/validate/`, `src/config.rs`, `crates/change/`.
+8. **First-party capabilities publish their full surface** — `omnia`, `contracts`, `vectis`, `registry`, `initiative` declare `artifacts:` + `operations:` + (where applicable) `plugin:` + `config-schema:` + `pipeline:`. Core publishes the `workflow.yaml` schema separately from capability manifests.
+9. **Auto-activation at `specify init`.** A project's `project.yaml` declares its domain capability; the core auto-activates the two platform capabilities and always enables the Layer 2 workflow runner. Hubs activate the two platform capabilities without a domain capability.
 
 Phase 4 is the largest slice and may land as a sequence of smaller commits.
 
@@ -491,8 +493,8 @@ Phase 4 is the largest slice and may land as a sequence of smaller commits.
 3. Rewrite `capabilities/{contracts,omnia,vectis}/capability.yaml` to declare their full extension surface.
 4. Port brief prose to `$ARTIFACT_DELTA[<id>]` / `$ARTIFACT_BASELINE[<id>]` substitutions.
 5. Update `plugins/contract/` and `plugins/vectis/` skills to invoke capability operations through the new dispatcher.
-6. **Phase 4 additions:** check in `capabilities/{workflow,registry,initiative}/capability.yaml` as the source-of-truth definitions for the embedded framework/platform capabilities. CLI consumes them at build time. Skills under `plugins/spec/skills/{plan,execute}/` re-route invocations to workflow capability operations.
-7. Document the protocol in `docs/reference/capabilities.md`; cross-link from each capability's README. Add glossary entries for "active capability set," "Layer 1," "Layer 2," "workflow graph," "heavy mutation," "light mutation," and "first-party capability."
+6. **Phase 4 additions:** check in `capabilities/{registry,initiative}/capability.yaml` as the source-of-truth definitions for the embedded platform capabilities. CLI consumes them at build time. Check in the core `workflow.yaml` schema separately, and keep skills under `plugins/spec/skills/{plan,execute}/` pointed at core workflow commands rather than workflow capability operations.
+7. Document the protocol in `docs/reference/capabilities.md`; cross-link from each capability's README. Add glossary entries for "active capability set," "Layer 1," "Layer 2," "workflow graph," "core workflow document," "heavy mutation," "light mutation," and "first-party capability."
 
 ## Migration
 
@@ -515,9 +517,9 @@ JSON Schema remains JSON Schema. `config-schema:` and `*.schema.json` continue t
 Four invariants guard the landing:
 
 1. **Omnia keeps working.** Every phase's acceptance criterion includes running `/spec:draft → /spec:build → /spec:adopt` on a canonical omnia change end-to-end.
-2. **The core never learns a capability name.** `specify check` rejects hard-coded capability-name literals in core crate sources outside tests, including first-party names after extraction.
-3. **The core never learns an artefact id either.** A companion rule rejects hard-coded artefact-id literals such as `"specs"`, `"contracts"`, `"crates"`, and `"workflow"`; phase 1 retires the current canonical violations (`ProjectConfig::{specs_dir, contracts_dir}`).
-4. **Framework/platform capabilities are still capabilities.** A rule verifies `workflow@v1`, `registry@v1`, `initiative@v1` each pass the same validation as any third-party capability — `capability.yaml` parses against the capability manifest JSON Schema, all declared briefs exist, `operations:` is a subset of the closed vocabulary, and so on.
+2. **The core never learns a domain capability name.** `specify check` rejects hard-coded domain capability-name literals in core crate sources outside tests and the embedded first-party capability catalogue.
+3. **The core never learns a capability artefact id either.** A companion rule rejects hard-coded capability artefact-id literals such as `"specs"`, `"contracts"`, and `"crates"`; phase 1 retires the current canonical violations (`ProjectConfig::{specs_dir, contracts_dir}`). Core control document ids such as `workflow` are allowed only in the workflow module.
+4. **Platform capabilities are still capabilities.** A rule verifies `registry@v1` and `initiative@v1` each pass the same validation as any third-party capability — `capability.yaml` parses against the capability manifest JSON Schema, all declared briefs exist, `operations:` is a subset of the closed vocabulary, and so on.
 
 Linter rules in `specify-check` (RFC-5) enforce, additionally:
 
@@ -525,8 +527,8 @@ Linter rules in `specify-check` (RFC-5) enforce, additionally:
 - A capability's `plugin.binary` MUST resolve on PATH or be declared absent.
 - A capability's `config-schema:` MUST parse as a JSON Schema.
 - **Active-capability-set invariants:** artefact-id, baseline-path, and project-path uniqueness across active capabilities.
-- **First-party capability parity:** embedded capabilities pass every rule URL-resolved capabilities must pass.
-- **Brief-binding completeness:** every artefact whose lifecycle requires authoring (`managed`, `external`, `audited`) appears in some brief's `produces:` list. `read-only` artefacts are exempt.
+- **First-party capability parity:** embedded platform capabilities pass every rule URL-resolved capabilities must pass.
+- **Brief-binding completeness:** every artefact whose mode requires authoring (`staged`, `direct`, `audited`) appears in some brief's `produces:` list. `read-only` artefacts are exempt.
 - **Path-substitution discipline:** brief prose references locations only via the closed substitution vocabulary; direct literal paths fail the lint.
 
 ## Open Questions
@@ -534,16 +536,16 @@ Linter rules in `specify-check` (RFC-5) enforce, additionally:
 Genuinely open:
 
 1. **Distribution model beyond subprocess.** When does WASM become worth adding? Provisional: revisit when the third capability asks, or when a hosting constraint forces sandboxing (RFC-7 cloud execution).
-2. **Lifecycle naming.** `managed` / `external` / `read-only` / `audited` survived the earlier draft; confirm or replace (`specify-owned` / `tooling-owned` / `baselined` / `live`) one more time before phase 1.
+2. **Mode naming.** `staged` / `direct` / `read-only` / `audited` is the provisional vocabulary; confirm or replace one more time before phase 1.
 3. **Workspace: capability or core exception?** `specify workspace` is mostly git-shelling and doesn't fit "draft-build-adopt a class of artefacts" cleanly. Provisional: stay core as the cross-capability coordinator, documented as the deliberate exception. Phase 4 locks the decision.
 4. **Operator CLI spelling.** Dedicated prefix, capability-scoped subcommands, compatibility aliases, or a mix? Provisional: choose during implementation after testing discoverability and completion behavior.
-5. **Heavy vs light mutation boundary.** Declared per-op in `capability.yaml`, or inferred by whether the op writes to a `managed` artefact? Provisional: declared per-op via a `mutation: heavy | light` field on `operations:` entries.
+5. **Heavy vs light mutation boundary.** Declared per-op in `capability.yaml`, or inferred by whether the op writes to a staged artefact? Provisional: declared per-op via a `mutation: heavy | light` field on `operations:` entries.
 6. **Instance-variable resolution for multi-instance briefs.** Should the capability declare the binding source explicitly (e.g. `instance-source: artifact:specs.subdirs`), or remain a brief-side concern wired through skill code? Provisional: brief-side for now; revisit when a capability appears whose binding can't be expressed as a one-liner.
 
 Resolved with provisional answer (see body for context):
 
-- **Multiple capabilities per project / `capability:` shape.** Resolved by [RFC-14](rfc-14-workspaces.md): `package:` / `workspace:` shape, scope-aware uniqueness rules, back-compat shim for Mode-A repos, `disable-first-party:` survives.
-- **Artifact taxonomy in phase 1.** Ship `managed`, `external`, `read-only`; reserve `audited` as a parse-time future-use error.
+- **Multiple capabilities per project / `capability:` shape.** Resolved by [RFC-14](rfc-14-workspaces.md): `package:` / `workspace:` shape, scope-aware uniqueness rules, back-compat shim for Mode-A repos, first-party platform capability controls survive.
+- **Artifact mode taxonomy in phase 1.** Ship `staged`, `direct`, `read-only`; reserve `audited` as a parse-time future-use error.
 - **Operations vocabulary closed vs open.** Closed; novel ops require a protocol RFC.
 - **Config location.** Nested `extensions.<name>` under `project.yaml`; revisit if extension count grows past a dozen.
 - **Plugin resolution.** PATH-based (`specify-ext-<capability>`), matching `git-foo`. Capability-local complicates caching.
@@ -557,8 +559,8 @@ Resolved with provisional answer (see body for context):
 
 - [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — owns the crates the reframe touches (`specify-schema`, `specify-merge`, `specify-validate`, `specify-change`) and the `src/cli.rs` dispatcher.
 - [RFC-8: API contracts](archive/rfc-8-api-contracts.md) — `contracts@v1` capability; delta-then-promote semantics become the `opaque-replace` default.
-- [RFC-2: Execution](archive/rfc-2-execution.md) — `/spec:execute --loop`; the workflow capability's `doctor` / `transition` / `inspect --next` ops inform this RFC's operation vocabulary.
-- [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — plan authoring pipeline; the existing two-brief `pipeline.plan` is the predecessor to `workflow@v1`.
+- [RFC-2: Execution](archive/rfc-2-execution.md) — `/spec:execute --loop`; the workflow runner's `doctor` / `transition` / `inspect --next` behavior informs this RFC's operation vocabulary.
+- [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — plan authoring pipeline; the existing two-brief `pipeline.plan` is the predecessor to core `workflow.yaml`.
 - [RFC-3b: Platform](archive/rfc-3b-platform.md) — registry routing and workspace clones.
 - [RFC-9: Platform](archive/rfc-9-platform.md) — moved registry, plan, initiative, and contracts to repo root; `/spec:plan --orchestrate` is the predecessor to workflow-driven orchestration.
 - [RFC-12: Refine RFC-8](archive/rfc-12-refine-rfc-8.md) — SemVer + `info.x-specify-id` rules become `contracts`'s `baseline-validate` hook.
