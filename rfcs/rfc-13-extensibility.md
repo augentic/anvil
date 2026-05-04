@@ -76,7 +76,7 @@ None of these needs a `specs` artefact. Capabilities that want behavioural specs
 
 "Without exception" is load-bearing. Today's `specify plan`, `specify initiative`, `specify registry`, `specify contract`, `specify vectis` top-level verbs are five capabilities masquerading as core because the reframe hasn't landed; phase 4 extracts them. If a capability-specific feature has no place in `capability.yaml`, that is a gap in the protocol, not a licence for a new core verb.
 
-Layer 1 is the draft-build-adopt loop. Its *shape* is frozen alongside the verbs: the phase set (`draft` / `build` / `adopt` — today's `define` / `build` / `merge`), the legal transition DAG, and the per-phase outcome contract recorded in `.metadata.yaml` are part of the immutable core. Capabilities declare what *flows through* the phases (artefacts, briefs, validators, operations, config) but never the phases themselves. Variation that capabilities legitimately want lives in (a) variable briefs per phase, (b) Layer 2 workflow graphs over capability-owned steps, and (c) the heavy-vs-light mutation split (§Heavy vs light mutations). See §Non-Goals.
+Layer 1 is the draft-build-adopt loop. Its *shape* is frozen alongside the verbs: the phase set (`draft` / `build` / `adopt` — today's `define` / `build` / `merge`), the legal transition DAG, and the per-phase outcome contract recorded in `.metadata.yaml` are part of the immutable core. Capabilities declare what *flows through* the phases (artefacts, briefs, validators, operations, config) but never the phases themselves. Variation that capabilities legitimately want lives in (a) variable briefs per phase, (b) Layer 2 workflow graphs over capability-owned steps, (c) the heavy-vs-light mutation split (§Heavy vs light mutations), and (d) capability-specific adopt hooks that make the accepted artefact's intended world-state true. See §Non-Goals.
 
 The coordinating principle is the dual: **capabilities own artefacts and their adoption behavior; workflows coordinate capabilities into outcomes.** Every mutable artefact has exactly one capability owner, every reviewed change runs through exactly one capability/scope, and cross-capability outcomes are achieved by a workflow graph, not by fusing capabilities into a larger hidden capability. Outcomes are not necessarily code: they may be contracts, documentation, policy, infrastructure, fixtures, reports, generated clients, or any other capability-owned artefact. `workflow@v1` wires capability-owned steps through the common protocol.
 
@@ -84,6 +84,8 @@ That gives Specify two fixed framework layers:
 
 - **Layer 1 — Draft-build-adopt.** One capability owns one artefact family; a reviewed change drafts, builds, validates, and adopts that capability's artefacts.
 - **Layer 2 — Workflow.** A workflow coordinates Layer 1 changes, validations, capability-declared operations, and adoption checks into an outcome graph. The graph is stored in `workflow@v1`; the runner is core-owned and capability-agnostic.
+
+`workflow@v1` keeps the same Layer 1 shape: draft proposes a graph, build validates and enriches it, and adopt executes the accepted graph. The execution engine remains core-owned because scheduling, terminal states, interruption, and resumability are framework semantics, but the operator reaches it through `workflow@v1`'s adopt behavior rather than through a second lifecycle. Today's `/spec:execute` survives as compatibility spelling for "resume/adopt this workflow" during migration, not as a peer phase.
 
 ### The immutable core boundary
 
@@ -113,7 +115,7 @@ Today's top-level verbs that aren't in the core table above are first-party capa
 
 | Today                  | Becomes                                 | Artefact                                    | Notes                                                                                                                                                                                |
 | ---------------------- | --------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `specify plan *`       | `workflow@v1` capability                | `workflow.yaml`                             | First-party Layer 2 workflow capability and successor to today's plan surface. Heavy mutations author the graph; light mutations use `scaffold` / `config` / `transition`.           |
+| `specify plan *`       | `workflow@v1` capability                | `workflow.yaml`                             | First-party Layer 2 workflow capability and successor to today's plan surface. Heavy mutations author the graph; adopt executes it through the core runner; light mutations use `scaffold` / `config` / `transition`. |
 | `specify initiative *` | `initiative@v1` capability              | `initiative.md`                             | Tiny: one brief; `finalize` maps to `adopt` with a close-out hook that verifies every referenced workflow is terminal and every PR merged.                                           |
 | `specify registry *`   | `registry@v1` capability                | `registry.yaml`                             | Heavy mutations go through `specify change`; routine `add`/`remove` use `scaffold` / `config`. The `description-missing-multi-repo` invariant becomes a `baseline-validate` finding. |
 | `specify contract *`   | `contracts@v1` capability               | `contracts/` baseline                       | RFC-12's SemVer + `info.x-specify-id` checks become `baseline-validate`.                                                                                                             |
@@ -255,6 +257,8 @@ Invoked by core verbs on declared artefacts matching the hook's mode:
 
 Defaults for `three-way` and `opaque-replace` mean a pure-declarative YAML + markdown capability gets a working draft-build-adopt loop for free.
 
+Most `artifact-adopt` hooks are short: promote a staged delta, record a checksum, or run a close-out check. `workflow@v1` is the first long-running adopt hook. Its adopt hook hands the accepted `workflow.yaml` graph to the core Layer 2 runner, then records the workflow outcome (`done`, `failed`, `blocked`, or `interrupted`) in the same phase-outcome contract every change uses. Re-running adopt resumes from the recorded graph state rather than starting over. This keeps execution inside draft-build-adopt while preserving core ownership of scheduling semantics.
+
 #### 4. Config (per-capability settings)
 
 A per-extension block in `.specify/project.yaml`, validated against a capability-declared `config.schema.json`:
@@ -304,11 +308,21 @@ When an outcome spans capabilities, the runtime does not fuse their pipelines. C
 
 The workflow graph coordinates through the common protocol: nodes target capability-owned changes, validations, operations, or adoption checks; edges express ordering (`needs:`) and blocking conditions. The runner understands node kinds and protocol envelopes, not domain semantics. `consumes:` remains read-only coupling: one capability may read another capability's adopted baseline as context. A workflow may deliver code, but it may also deliver contracts, docs, infrastructure, fixtures, reports, or policy changes.
 
+Workflow execution is therefore not a separate phase after adoption. For a workflow change, `adopt` means "make the accepted graph true": the core runner walks nodes, invokes capability-owned steps, persists progress, and returns a terminal or resumable outcome. Operators may still type `/spec:execute` while the CLI transitions, but the command is an alias for resuming the workflow adopt operation.
+
+##### Example: landing an initiative
+
+The end-to-end human loop stays three reviewed capability changes plus workflow execution inside `workflow@v1` adopt:
+
+1. **Initiative.** The `initiative@v1` capability drafts, builds, and adopts `initiative.md`. The artefact is prose containing the desired outcome, scope, impacted projects, feature list, and close-out criteria.
+2. **Plan and execute.** The `workflow@v1` capability drafts, builds, and adopts `workflow.yaml`. The operator reviews the graph, dependencies, target projects/scopes, and change boundaries before adopt. For `workflow@v1`, adopt means "make the accepted graph true": the core runner executes `workflow.yaml`, and each node invokes a capability-owned step such as create/change/draft/build/adopt, validate, doctor, inspect, or transition.
+3. **Initiative close-out.** The `initiative@v1` capability's finalize/adopt action verifies that referenced workflows are terminal, required PRs have merged, and the close-out criteria in `initiative.md` are satisfied.
+
 ### First-party capabilities and bootstrap
 
 `workflow@v1`, `initiative@v1`, `registry@v1` need to be available **before any capability URL has been resolved** — `specify init` must validate `registry.yaml`, and capability resolution itself runs through `specify capability *`, which is core. Resolution: first-party capabilities are **embedded in the CLI binary** and exposed through the same `capability.yaml` surface. The resolver checks the embedded set first, then falls back to URL resolution. They are still structurally capabilities — same blocks, same protocol, same linter rules.
 
-`workflow@v1` has stronger status than an ordinary platform capability: it is the capability-shaped contract for Layer 2 workflow, backed by the core workflow runner. Its artefact format is declared like any other capability, but its execution semantics are part of the framework ABI. A `specify` upgrade that changes those semantics is therefore breaking. Projects pin via `specify_version` in `project.yaml`; embedded capability versions are not pinned independently. A project that opts out of a first-party capability sets `disable-first-party: [workflow]` — intentionally ugly, rarely used. Hub projects (`hub: true`) activate the three first-party capabilities without a domain capability; single-repo projects activate all four.
+`workflow@v1` has stronger status than an ordinary platform capability: it is the capability-shaped contract for Layer 2 workflow, backed by the core workflow runner. Its artefact format is declared like any other capability, but its execution semantics and long-running adopt behavior are part of the framework ABI. A `specify` upgrade that changes those semantics is therefore breaking. Projects pin via `specify_version` in `project.yaml`; embedded capability versions are not pinned independently. A project that opts out of a first-party capability sets `disable-first-party: [workflow]` — intentionally ugly, rarely used. Hub projects (`hub: true`) activate the three first-party capabilities without a domain capability; single-repo projects activate all four.
 
 ### Distribution: declarative with a subprocess escape
 
@@ -411,7 +425,7 @@ This RFC freezes the capability operation protocol, not the final operator-facin
 
 The CLI may expose that dispatcher as a dedicated prefix, as capability-scoped subcommands, as compatibility aliases for first-party capabilities, or as some combination of those. That choice is deliberately left to the implementation phase because it is product UX, not the immutable core boundary.
 
-Capability-specific top-level families in today's CLI still leave the core. `plan`, `initiative`, `registry`, `contract`, and `vectis` become first-party capabilities with declared artefacts and operations; workflow close-out actions such as `archive` and `finalize` can still route through `specify change adopt` when they promote a capability-owned artefact.
+Capability-specific top-level families in today's CLI still leave the core. `plan`, `initiative`, `registry`, `contract`, and `vectis` become first-party capabilities with declared artefacts and operations; workflow close-out actions such as `archive` and `finalize` can still route through `specify change adopt` when they promote a capability-owned artefact. `/spec:execute` remains accepted as transitional spelling for `workflow@v1` adopt/resume so existing operators do not have to relearn the loop immediately; the lifecycle model is still draft-build-adopt.
 
 
 ## Alternatives Considered
@@ -427,7 +441,7 @@ Capability-specific top-level families in today's CLI still leave the core. `pla
 
 ## Non-Goals
 
-- **Replacing or capability-configuring Layer 1 draft-build-adopt.** The loop's *shape* (phase set, transition DAG, per-phase outcome contract) is part of the immutable core. Capabilities declare what flows through the phases (artefacts, briefs, validators, operations, config) but never the phases themselves. Variability lives in (a) variable briefs per phase, (b) Layer 2 workflow graphs over capability-owned steps, and (c) the heavy-vs-light split. A capability that genuinely cannot fit any of those would justify proposing a *second* fixed loop shape as a peer to this one — never open-ended phase configuration.
+- **Replacing or capability-configuring Layer 1 draft-build-adopt.** The loop's *shape* (phase set, transition DAG, per-phase outcome contract) is part of the immutable core. Capabilities declare what flows through the phases (artefacts, briefs, validators, operations, config) but never the phases themselves. Variability lives in (a) variable briefs per phase, (b) Layer 2 workflow graphs over capability-owned steps, (c) the heavy-vs-light split, and (d) capability adopt hooks, including long-running resumable hooks such as `workflow@v1` execution. A capability that genuinely cannot fit any of those would justify proposing a *second* fixed loop shape as a peer to this one — never open-ended phase configuration.
 - **Format-level contract evolution.** SemVer + `info.x-specify-id` + cross-repo uniqueness continue to be owned by RFC-12; this RFC only moves where the rules run from.
 - **WASM / in-process plugins.** Subprocess is the only extension runtime in this RFC.
 - **A general sandboxed write-fence.** Deferred until `specify check`'s write-path inventory is trustworthy enough to enforce.
@@ -474,7 +488,7 @@ First-party capabilities adopt `artifacts:` blocks declaring today's paths exact
 The largest phase: it proves the reframe.
 
 1. **Extract `workflow@v1`, `registry@v1`, `initiative@v1` as first-party capabilities** embedded in the CLI via `include_str!` or a tidy `embedded-capabilities/` tree, exposed through the same resolver path as URL-resolved capabilities. `workflow@v1` is the Layer 2 framework capability; `registry@v1` and `initiative@v1` are platform capabilities.
-2. **Cut their operator verbs over to the capability operation dispatcher**; `archive` and `finalize` route through `specify change adopt` with custom adopt hooks for close-out invariants.
+2. **Cut their operator verbs over to the capability operation dispatcher**; workflow execution routes through `workflow@v1` adopt/resume, while `archive` and `finalize` route through `specify change adopt` with custom adopt hooks for close-out invariants.
 3. **Delete `Commands::{Plan, Initiative, Registry, Vectis, Contract}`** from `src/cli.rs` and the matching modules under `src/commands/`.
 4. **Retire `specify_vectis` as a library dependency** of `specify-cli` and publish `specify-ext-vectis` separately.
 5. **Decide the workspace question** (§Open Questions). Either extract `workspace@v1` or document workspace as the deliberate exception.
@@ -491,7 +505,7 @@ Phase 4 is the largest slice and may land as a sequence of smaller commits.
 3. Rewrite `capabilities/{contracts,omnia,vectis}/capability.yaml` to declare their full extension surface.
 4. Port brief prose to `$ARTIFACT_DELTA[<id>]` / `$ARTIFACT_BASELINE[<id>]` substitutions.
 5. Update `plugins/contract/` and `plugins/vectis/` skills to invoke capability operations through the new dispatcher.
-6. **Phase 4 additions:** check in `capabilities/{workflow,registry,initiative}/capability.yaml` as the source-of-truth definitions for the embedded framework/platform capabilities. CLI consumes them at build time. Skills under `plugins/spec/skills/{plan,execute}/` re-route invocations to workflow capability operations.
+6. **Phase 4 additions:** check in `capabilities/{workflow,registry,initiative}/capability.yaml` as the source-of-truth definitions for the embedded framework/platform capabilities. CLI consumes them at build time. Skills under `plugins/spec/skills/{plan,execute}/` re-route invocations to workflow capability operations, with execute treated as workflow adopt/resume compatibility spelling.
 7. Document the protocol in `docs/reference/capabilities.md`; cross-link from each capability's README. Add glossary entries for "active capability set," "Layer 1," "Layer 2," "workflow graph," "heavy mutation," "light mutation," and "first-party capability."
 
 ## Migration
@@ -557,7 +571,7 @@ Resolved with provisional answer (see body for context):
 
 - [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — owns the crates the reframe touches (`specify-schema`, `specify-merge`, `specify-validate`, `specify-change`) and the `src/cli.rs` dispatcher.
 - [RFC-8: API contracts](archive/rfc-8-api-contracts.md) — `contracts@v1` capability; delta-then-promote semantics become the `opaque-replace` default.
-- [RFC-2: Execution](archive/rfc-2-execution.md) — `/spec:execute --loop`; the workflow capability's `doctor` / `transition` / `inspect --next` ops inform this RFC's operation vocabulary.
+- [RFC-2: Execution](archive/rfc-2-execution.md) — `/spec:execute --loop`; its loop semantics move under `workflow@v1` adopt/resume, while the workflow capability's `doctor` / `transition` / `inspect --next` ops inform this RFC's operation vocabulary.
 - [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — plan authoring pipeline; the existing two-brief `pipeline.plan` is the predecessor to `workflow@v1`.
 - [RFC-3b: Platform](archive/rfc-3b-platform.md) — registry routing and workspace clones.
 - [RFC-9: Platform](archive/rfc-9-platform.md) — moved registry, plan, initiative, and contracts to repo root; `/spec:plan --orchestrate` is the predecessor to workflow-driven orchestration.
