@@ -45,7 +45,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` complete · `[!]` blo
 | 1.1   | [x]    | Author `schemas/vectis/tokens.schema.json`                             | specify        | §F, Appendix A                    |
 | 1.2   | [x]    | Author `schemas/vectis/assets.schema.json`                             | specify        | §E, Appendix B                    |
 | 1.3   | [x]    | Patch `composition.schema.json` (provenance kinds + `component` key)   | specify        | §A, §G, Appendix F.1, F.2         |
-| 1.4   | [ ]    | Add `artifacts:` block + companion validator patch                     | specify        | §H, §L                            |
+| 1.4   | [x]    | Add `artifacts:` block + companion validator patch                     | specify        | §H, §L                            |
 | 1.5   | [ ]    | Scaffold `specify vectis validate <mode> [path]` subcommand surface    | specify-cli    | §H, §I                            |
 | 1.6   | [ ]    | Implement `validate tokens` mode                                       | specify-cli    | §H, Appendix A                    |
 | 1.7   | [ ]    | Implement `validate assets` mode                                       | specify-cli    | §E, §H, Appendix B                |
@@ -155,7 +155,7 @@ The document-level `version` constant **stays at `1`** (Appendix F preamble). F.
 
 **Sub-agent chores.** None.
 
-**Status.** `[ ]`
+**Status.** `[x]` — landed locally on `screenshot`. `schemas/vectis/schema.yaml` grew the `artifacts:` block verbatim from RFC §H's worked v1 shape (every key — `layout`, `tokens`, `assets`, `asset-files`, `composition`, `design`, `specs`, `tasks` — with `role` / `paths` / `schema` / `validates_with` / `consumed_by` / `produced_by` / `merge_strategy` populated as written). The companion patch on `.cursor/schemas/specify-schema.schema.json` adds `artifacts` as an optional top-level property with `additionalProperties: { type: object }` (deliberately loose per §H "Deferred beyond v1"); existing `additionalProperties: false` at the top level remains, so unknown top-level keys are still rejected. Smoke-validated nine cases against the patched validator (real on-disk `vectis` / `omnia` / `contracts` schemas all pass; minimal schema with no `artifacts:` passes; empty `artifacts:` block passes; `artifacts:` with arbitrary entry shapes passes — confirming the loose contract; non-object entry value rejected; unknown sibling top-level key still rejected). `make checks` passed. Confirmed no other on-disk schema currently uses an `artifacts:` key, so the patch is purely additive.
 
 ---
 
