@@ -42,7 +42,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` complete · `[!]` blo
 
 | #     | Status | Phase                                                                  | Repo(s)        | RFC anchors                       |
 | ----- | ------ | ---------------------------------------------------------------------- | -------------- | --------------------------------- |
-| 1.1   | [ ]    | Author `schemas/vectis/tokens.schema.json`                             | specify        | §F, Appendix A                    |
+| 1.1   | [x]    | Author `schemas/vectis/tokens.schema.json`                             | specify        | §F, Appendix A                    |
 | 1.2   | [ ]    | Author `schemas/vectis/assets.schema.json`                             | specify        | §E, Appendix B                    |
 | 1.3   | [ ]    | Patch `composition.schema.json` (provenance kinds + `component` key)   | specify        | §A, §G, Appendix F.1, F.2         |
 | 1.4   | [ ]    | Add `artifacts:` block + companion validator patch                     | specify        | §H, §L                            |
@@ -77,13 +77,13 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` complete · `[!]` blo
 **Acceptance.**
 
 - `schemas/vectis/tokens.schema.json` exists, contains the Appendix A schema, parses as valid JSON Schema 2020-12.
-- `version: { "const": 1 }` is enforced; provenance enum is the seven values from §F (`manual`, `figma-variables`, `style-dictionary`, `tokens-studio`, `dtcg`, `legacy`).
+- `version: { "const": 1 }` is enforced; provenance enum is the six values from §F (`manual`, `figma-variables`, `style-dictionary`, `tokens-studio`, `dtcg`, `legacy`).
 - Both Appendix D's example `tokens.yaml` and an empty-but-valid `{ "version": 1 }` document validate cleanly under any standard 2020-12 validator (use `ajv` or `python-jsonschema` as a one-shot smoke check; do not commit the smoke harness).
 - `make checks` passes.
 
 **Sub-agent chores.** None — this is a single file authored carefully against the appendix.
 
-**Status.** `[ ]`
+**Status.** `[x]` — landed locally on `main`; smoke-validated Appendix D, `{version:1}`, and a deliberately broken hex against `Ajv2020 + addFormats`; `make checks` passed. (Plan typo fixed in same change: "seven values" → "six values" — RFC §F enumerates six.)
 
 ---
 
