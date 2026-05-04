@@ -250,14 +250,14 @@ Invoked by core verbs on declared artefacts matching the hook's mode:
 | ----------------------------- | ------------------------------- | ---------------------------------------- | --------------------------------- |
 | `artifact-validate <id>`      | `specify change validate`       | none (capability MUST provide for `staged`) | format + brief rules on the delta |
 | `artifact-preview-adopt <id>` | `specify change adopt preview`  | core default by `merge-strategy`         | produce structured preview        |
-| `artifact-adopt <id>`         | `specify change adopt run`      | core default by `merge-strategy`         | produce merged baseline content   |
+| `artifact-adopt <id>`         | `specify change adopt run`      | core default by `merge-strategy`         | promote or realize the accepted artefact |
 | `artifact-drop <id>`          | `specify change drop`           | no-op                                        | capability-side cleanup           |
 | `baseline-validate <id>`      | capability `validate` operation     | none (capability MUST provide for `staged`) | project-wide conformance      |
 
 
 Defaults for `three-way` and `opaque-replace` mean a pure-declarative YAML + markdown capability gets a working draft-build-adopt loop for free.
 
-Most `artifact-adopt` hooks are short: promote a staged delta, record a checksum, or run a close-out check. `workflow@v1` is the first long-running adopt hook. Its adopt hook hands the accepted `workflow.yaml` graph to the core Layer 2 runner, then records the workflow outcome (`done`, `failed`, `blocked`, or `interrupted`) in the same phase-outcome contract every change uses. Re-running adopt resumes from the recorded graph state rather than starting over. This keeps execution inside draft-build-adopt while preserving core ownership of scheduling semantics.
+Most `artifact-adopt` hooks are short: promote a staged delta, record a checksum, or run a close-out check. `workflow@v1` is the first long-running adopt hook. Its adopt hook first promotes the accepted `workflow.yaml` graph to the workflow baseline, then hands that baseline graph to the core Layer 2 runner. The runner records per-node progress alongside the workflow artefact and records the workflow outcome (`done`, `failed`, `blocked`, or `interrupted`) in the same phase-outcome contract every change uses. Re-running adopt resumes from the recorded graph state rather than starting over. This keeps execution inside draft-build-adopt while preserving core ownership of scheduling semantics.
 
 #### 4. Config (per-capability settings)
 
@@ -308,11 +308,11 @@ When an outcome spans capabilities, the runtime does not fuse their pipelines. C
 
 The workflow graph coordinates through the common protocol: nodes target capability-owned changes, validations, operations, or adoption checks; edges express ordering (`needs:`) and blocking conditions. The runner understands node kinds and protocol envelopes, not domain semantics. `consumes:` remains read-only coupling: one capability may read another capability's adopted baseline as context. A workflow may deliver code, but it may also deliver contracts, docs, infrastructure, fixtures, reports, or policy changes.
 
-Workflow execution is therefore not a separate phase after adoption. For a workflow change, `adopt` means "make the accepted graph true": the core runner walks nodes, invokes capability-owned steps, persists progress, and returns a terminal or resumable outcome. Operators may still type `/spec:execute` while the CLI transitions, but the command is an alias for resuming the workflow adopt operation.
+Workflow execution is therefore not a separate phase after adoption. For a workflow change, `adopt` means "make the accepted graph true": the graph is promoted to the workflow baseline, the core runner walks nodes, invokes capability-owned steps, persists progress next to that baseline graph, and returns a terminal or resumable outcome. Operators may still type `/spec:execute` while the CLI transitions, but the command is an alias for resuming the workflow adopt operation.
 
 ##### Example: landing an initiative
 
-The end-to-end human loop stays three reviewed capability changes plus workflow execution inside `workflow@v1` adopt:
+The end-to-end human loop has three operator checkpoints, with workflow execution inside `workflow@v1` adopt:
 
 1. **Initiative.** The `initiative@v1` capability drafts, builds, and adopts `initiative.md`. The artefact is prose containing the desired outcome, scope, impacted projects, feature list, and close-out criteria.
 2. **Plan and execute.** The `workflow@v1` capability drafts, builds, and adopts `workflow.yaml`. The operator reviews the graph, dependencies, target projects/scopes, and change boundaries before adopt. For `workflow@v1`, adopt means "make the accepted graph true": the core runner executes `workflow.yaml`, and each node invokes a capability-owned step such as create/change/draft/build/adopt, validate, doctor, inspect, or transition.
@@ -489,7 +489,7 @@ The largest phase: it proves the reframe.
 
 1. **Extract `workflow@v1`, `registry@v1`, `initiative@v1` as first-party capabilities** embedded in the CLI via `include_str!` or a tidy `embedded-capabilities/` tree, exposed through the same resolver path as URL-resolved capabilities. `workflow@v1` is the Layer 2 framework capability; `registry@v1` and `initiative@v1` are platform capabilities.
 2. **Cut their operator verbs over to the capability operation dispatcher**; workflow execution routes through `workflow@v1` adopt/resume, while `archive` and `finalize` route through `specify change adopt` with custom adopt hooks for close-out invariants.
-3. **Delete `Commands::{Plan, Initiative, Registry, Vectis, Contract}`** from `src/cli.rs` and the matching modules under `src/commands/`.
+3. **Delete `Commands::{Plan, Initiative, Registry, Vectis, Contract}`** from `src/cli.rs` and the matching modules under `src/commands/`. Route today's `/spec:execute` skill/command to `workflow@v1` adopt/resume as compatibility spelling; after the cut-over it is not a separate lifecycle verb.
 4. **Retire `specify_vectis` as a library dependency** of `specify-cli` and publish `specify-ext-vectis` separately.
 5. **Decide the workspace question** (§Open Questions). Either extract `workspace@v1` or document workspace as the deliberate exception.
 6. **Retire surviving hard-coded `contracts` / `specs` references** in `crates/merge/`, `crates/validate/`, `src/config.rs`, `crates/change/`.
@@ -506,13 +506,13 @@ Phase 4 is the largest slice and may land as a sequence of smaller commits.
 4. Port brief prose to `$ARTIFACT_DELTA[<id>]` / `$ARTIFACT_BASELINE[<id>]` substitutions.
 5. Update `plugins/contract/` and `plugins/vectis/` skills to invoke capability operations through the new dispatcher.
 6. **Phase 4 additions:** check in `capabilities/{workflow,registry,initiative}/capability.yaml` as the source-of-truth definitions for the embedded framework/platform capabilities. CLI consumes them at build time. Skills under `plugins/spec/skills/{plan,execute}/` re-route invocations to workflow capability operations, with execute treated as workflow adopt/resume compatibility spelling.
-7. Document the protocol in `docs/reference/capabilities.md`; cross-link from each capability's README. Add glossary entries for "active capability set," "Layer 1," "Layer 2," "workflow graph," "heavy mutation," "light mutation," and "first-party capability."
+7. Document the protocol in `docs/reference/capabilities.md`; cross-link from each capability's README. Add glossary entries for "active capability set," "Layer 1," "Layer 2," "workflow graph," "long-running adopt," "heavy mutation," "light mutation," and "first-party capability."
 
 ## Migration
 
 Only the `omnia` capability and the core loop are in real-world use. `specify contract *`, `specify vectis *`, and the bulk of `specify plan|initiative|registry *` have no durable external user base to protect. The operator-facing CLI reshapes considerably in phase 4, but the behaviour behind each verb is preserved.
 
-**Hard cut-over, no fallback path.** Each phase's minor version is a breaking change for the surfaces it touches. No deprecation window, no `artifacts:`-absent fallback, no aliasing of old CLI verbs. Pre-reframe capability manifests fail to load against the post-reframe CLI with a clear diagnostic pointing at this RFC and the capability rename.
+**Hard cut-over, no fallback path.** Each phase's minor version is a breaking change for the surfaces it touches. No deprecation window and no `artifacts:`-absent fallback: pre-reframe capability manifests fail to load against the post-reframe CLI with a clear diagnostic pointing at this RFC and the capability rename. The one deliberate compatibility alias is `/spec:execute`, which maps to `workflow@v1` adopt/resume during the transition because it preserves the new lifecycle semantics rather than reviving a separate execution phase.
 
 The rename is part of that cut-over:
 
