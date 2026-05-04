@@ -13,15 +13,13 @@ Define the **UI specification workflow** that produces every input the vectis sh
 - the **`/spec:build`** consumption surface where the shell writers see the wired composition, tokens, assets, and image files as a single coherent input set;
 - the **dissolution of `design-system` as a peer "platform"** in proposals and the build phase. The "design system" name is reserved for the *input* artifacts the operator maintains (`layout.yaml`, `tokens.yaml`, `assets.yaml`, and any future component vocabulary). The lower-level reusable components — today the `VectisDesign` Swift Package and `vectis-design` Compose library emitted by `vectis:design-system-writer` — fold into each shell writer. iOS and Android stay the only runtime platforms; nothing parallel to them is generated.
 
-The previous RFC-11 (`screenshots → composition`) is folded into this RFC as the `image-layout-inferer` subsection. The previously-implicit "design-system workflow baked into vectis" — `tokens.yaml` + `vectis:design-system-writer` — is rethought here as one slice of the broader pipeline rather than a standalone surface, and the peer-platform packaging that grew up around it is removed (§L).
-
 ## Motivation
 
-### What the diagram captures
+### What `assets/ui-spec.png` captures
 
 ![Proposed UI specification workflow](assets/ui-spec.png)
 
-The diagram describes the target pipeline at a glance:
+The diagram embedded above from [`rfcs/assets/ui-spec.png`](assets/ui-spec.png) describes the target pipeline at a glance:
 
 1. **Three sources** can drive the layout — a Figma file, a set of screenshots/images, or an existing codebase. Each has a dedicated *layout-inferer* skill (green) that produces `layout.yaml`.
 2. **The operator** is a peer source — they can hand-author `layout.yaml` directly, and they always own the `requirements`, `tokens.yaml`, and the raw image files. `assets.yaml` is derived from those image files, with the operator confirming names and per-platform choices.
@@ -42,7 +40,7 @@ Everything to the left of `/spec:define` is *UI input material*. Everything from
 
 - **No source-of-truth path for layout intent beyond Figma-on-paper and hand-authoring.** Real teams arrive with screenshots, a deployed app, or both, and currently have to hand-translate them into layout vocabulary.
 - **No shared inferer contract.** Each prospective source (Figma, image, code) faces the same problems — schema grounding, ambiguity reporting, idempotent re-runs, multi-source merging — with no shared scaffolding.
-- **No assets pipeline.** Image files have no inventory artifact, no per-platform mapping (`@2x`/`@3x` vs density buckets), no token-style naming, and no resolution check at validate time.
+- **No assets pipeline.** Image files have no inventory artifact, no assets manifest schema, no per-platform mapping (`@2x`/`@3x` vs density buckets), no token-style naming, and no resolution check at validate time.
 - **No published tokens schema.** Adding a category (motion, elevation, iconography) requires coordinated edits across writer + per-platform templates with no validator.
 - **No formal define contract.** What `/spec:define` requires from `layout.yaml` vs. produces in wired `composition.yaml` is RFC-7 prose; it has never been pinned as an interface that three different inferer skills can target consistently.
 - **No build hand-off for assets / tokens beyond ad-hoc.** The shell writers need to know which images and tokens this build expects, but they receive that knowledge by inference rather than as a manifest.
@@ -65,13 +63,24 @@ This section records the v1 decisions for the UI input workflow. Deferred items 
 
 The three inferer skills share one contract documented in `plugins/vectis/references/layout-inferer-contract.md`. They differ only in how they read source material. Their common job is to produce or refine `layout.yaml`: a schema-valid, unwired layout input that `/spec:define` can later wire to specs and Crux types as `composition.yaml`.
 
-Common arguments:
+Common arguments for V1 are intentionally minimal:
 
-- `--change-dir <path>`: optional Specify change directory. When supplied, the inferer writes `<change-dir>/layout.yaml` unless `--output` is also supplied.
-- `--output <path>`: optional explicit output path. Defaults to the active change directory's `layout.yaml`, then `design-system/layout.yaml` for pre-define authoring outside a change.
-- `--baseline <path>`: optional existing `layout.yaml` or wired `composition.yaml` to refine. When omitted, the inferer looks for output-path content, then `design-system/layout.yaml`, then `.specify/specs/composition.yaml`.
-- `--screen <slug>=<hint>`: optional repeatable screen hint. Hints can name screen boundaries, source frame IDs, screenshot groups, or source-code view entrypoints.
-- `--tokens <path>` and `--assets <path>`: optional paths used only for reference validation and token / asset name reuse. Inferers do not need these files to run.
+| Argument | How it is used | Meaningful default | Precedence / override | Why it is shared |
+| --- | --- | --- | --- | --- |
+| `--output <path>` | Names the exact file the inferer should write. | Active change directory's `layout.yaml`, then `design-system/layout.yaml` for pre-define authoring outside a change. | Explicit `--output` wins over all project defaults. | Supports reviewable local authoring outside the normal lifecycle and lets tests / fixtures write to temporary paths instead of a project tree. |
+| `--baseline <path>` | Provides an existing `layout.yaml` or wired `composition.yaml` that the inferer should refine. | Existing output-path content, then `design-system/layout.yaml`, then `.specify/specs/composition.yaml`. | Explicit `--baseline` wins over discovered local or baseline files. | Gives all three inferers the same idempotence hook: preserve operator edits, append new evidence, and refine existing layout instead of regenerating from scratch. |
+| `--screen <slug>=<hint>` | Supplies repeatable screen-boundary hints. Hints can name source frame IDs, screenshot groups, or source-code view entrypoints. | No explicit hints; inferers derive screen candidates from their source material. | Supplied hints constrain or name inferred candidates, but do not force invalid schema output. | Screen identity is the first ambiguity every source type hits. Shared hints stabilize screen names and boundaries before `/spec:define` wires them to specs and routes. |
+
+Arguments deliberately left out of the V1 common surface:
+
+- `--change-dir <path>` is redundant with default active-change discovery plus `--output` for explicit routing. If active-change detection is ambiguous, the operator can pass `--output .specify/changes/<name>/layout.yaml`.
+- `--tokens <path>` and `--assets <path>` are not common V1 arguments. Inferers should auto-discover `design-system/tokens.yaml` and `design-system/assets.yaml` when those files exist, then use them for reference checks. Non-standard token or asset locations can wait until there is demonstrated demand, or live in a source-specific skill if one import path truly needs it.
+
+Operator ergonomics and scoping:
+
+- V1 optimizes for reviewable, bounded inference runs. Operators SHOULD run an inferer for one screen or one small coherent flow at a time, especially when refining an existing `layout.yaml`.
+- Inferers MAY accept multiple same-source inputs in one run when those inputs clearly describe the same screen set, such as several screenshot states, selected Figma nodes, or related source-code view entrypoints.
+- Mixed-source reconciliation is not a separate V1 mode. Operators run the relevant inferers one at a time against the same `layout.yaml`, review the diff after each run, and use `--screen` hints when screen identity is ambiguous.
 
 Output rules:
 
