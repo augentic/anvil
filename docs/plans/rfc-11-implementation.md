@@ -43,7 +43,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` complete · `[!]` blo
 | #     | Status | Phase                                                                  | Repo(s)        | RFC anchors                       |
 | ----- | ------ | ---------------------------------------------------------------------- | -------------- | --------------------------------- |
 | 1.1   | [x]    | Author `schemas/vectis/tokens.schema.json`                             | specify        | §F, Appendix A                    |
-| 1.2   | [ ]    | Author `schemas/vectis/assets.schema.json`                             | specify        | §E, Appendix B                    |
+| 1.2   | [x]    | Author `schemas/vectis/assets.schema.json`                             | specify        | §E, Appendix B                    |
 | 1.3   | [ ]    | Patch `composition.schema.json` (provenance kinds + `component` key)   | specify        | §A, §G, Appendix F.1, F.2         |
 | 1.4   | [ ]    | Add `artifacts:` block + companion validator patch                     | specify        | §H, §L                            |
 | 1.5   | [ ]    | Scaffold `specify vectis validate <mode> [path]` subcommand surface    | specify-cli    | §H, §I                            |
@@ -105,7 +105,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` complete · `[!]` blo
 
 **Sub-agent chores.** None.
 
-**Status.** `[ ]`
+**Status.** `[x]` — landed locally on `screenshot`; smoke-validated Appendix E and 13 supplementary cases (including `vector` with only `source:`, only `sources:`, raster with no densities, asset-id case violation, `sources.web` rejection, and `provenance.kind: dtcg` rejection — distinct from `tokens.schema.json`'s broader provenance enum) against `Ajv2020 + addFormats`; `make checks` passed.
 
 ---
 
@@ -117,7 +117,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` complete · `[!]` blo
 
 **Scope.** Two additive patches against `schemas/vectis/composition.schema.json`:
 
-1. **F.1.** Extend `provenanceSource.kind` enum to `["figma", "legacy", "manual", "screenshots", "code"]`.
+1. **F.1.** Extend `provenanceSource.kind` enum to `["figma", "legacy", "manual", "screenshots", "code"]`. Note: this matches `assets.schema.json`'s provenance enum (Phase 1.2 / Appendix B) but is intentionally **distinct** from `tokens.schema.json`'s broader enum (`manual, figma-variables, style-dictionary, tokens-studio, dtcg, legacy`) — three artifacts, three deliberately scoped enums. Do not "harmonise".
 2. **F.2.** Add the optional `component` key on `groupProps.properties` with the exact pattern + reserved-slug `not.enum` guard from Appendix F.2.
 
 The document-level `version` constant **stays at `1`** (Appendix F preamble). F.3 is a non-action: the unwired-subset enforcement does **not** become a parallel `$defs` branch — it lives in CLI `layout` mode (Phase 1.8).
