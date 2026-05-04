@@ -44,7 +44,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` complete · `[!]` blo
 | ----- | ------ | ---------------------------------------------------------------------- | -------------- | --------------------------------- |
 | 1.1   | [x]    | Author `schemas/vectis/tokens.schema.json`                             | specify        | §F, Appendix A                    |
 | 1.2   | [x]    | Author `schemas/vectis/assets.schema.json`                             | specify        | §E, Appendix B                    |
-| 1.3   | [ ]    | Patch `composition.schema.json` (provenance kinds + `component` key)   | specify        | §A, §G, Appendix F.1, F.2         |
+| 1.3   | [x]    | Patch `composition.schema.json` (provenance kinds + `component` key)   | specify        | §A, §G, Appendix F.1, F.2         |
 | 1.4   | [ ]    | Add `artifacts:` block + companion validator patch                     | specify        | §H, §L                            |
 | 1.5   | [ ]    | Scaffold `specify vectis validate <mode> [path]` subcommand surface    | specify-cli    | §H, §I                            |
 | 1.6   | [ ]    | Implement `validate tokens` mode                                       | specify-cli    | §H, Appendix A                    |
@@ -131,7 +131,7 @@ The document-level `version` constant **stays at `1`** (Appendix F preamble). F.
 
 **Sub-agent chores.** None.
 
-**Status.** `[ ]`
+**Status.** `[x]` — landed locally on `screenshot`; F.1 extends `provenanceSource.kind` to `["figma","legacy","manual","screenshots","code"]`; F.2 adds the optional `component` key on `groupProps.properties` with the exact pattern + reserved-slug `not.enum` from Appendix F.2; document-level `version` constant left at `1`. Smoke-validated 22 cases against `Ajv2020 + addFormats` (Appendix C verbatim, all five `kind` values incl. new `screenshots`/`code`, `kind: screenshot` and `kind: figma-variables` rejected, all four reserved slugs rejected via `not.enum` at `#/properties/component/not`, four invalid slug patterns rejected via `pattern`, two structurally-divergent `task-row` instances pass — confirms F.3's "identity is CLI-mode, not schema" intent — and `version: 2` rejected). `make checks` passed. Pre-existing Ajv strict-mode warning on the schema's existing `oneOf {required: [screens], not: {required: [delta]}}` block (declared properties live at root, not inside the `oneOf`) is unrelated to this phase but worth flagging for Phase 1.5 / 1.6 if the chosen Rust JSON Schema crate is similarly strict — schema is valid 2020-12, just chatty under Ajv `strict: true`.
 
 ---
 
