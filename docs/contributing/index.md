@@ -45,5 +45,4 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 - [Anatomy of a Schema](schema-anatomy.md) -- how schemas declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
 - [CLI Architecture](cli-architecture.md) -- crate graph, dispatch pattern, and JSON contract
-- [Adding a CLI Command](adding-a-command.md) -- step-by-step guide to extending the CLI
 - [Consistency Checks](checks.md) -- what `make checks` enforces and how to extend it

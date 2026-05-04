@@ -6,15 +6,15 @@
 
 [RFC-13](rfc-13-extensibility.md) reframes the runtime so that **schemas are the only extension point**, and lands one domain schema (`omnia` / `contracts` / `vectis` / …) plus three first-party platform schemas (`plan@v1`, `registry@v1`, `initiative@v1`) per project. RFC-14 is the follow-up that lets a single repository carry **more than one domain schema** — for example, a service repo that maintains both Rust+WASM code (`omnia@v1`) and the API contracts that surround it (`contracts@v1`), or a platform repo that hosts code, infrastructure, and design tokens side by side.
 
-The shape borrowed from Cargo is that of `Cargo.toml`: one file format that collapses to a single package, a workspace of members, or both at once. RFC-14 maps the same model onto `.specify/project.yaml` — `package:` declares an optional root domain schema, `workspace:` declares an optional list of nested **member scopes**, and at least one of the two must be present. Every artifact, change, brief substitution, and `specify ext` call gains a **scope coordinate**; everything else from RFC-13 (the four-block protocol, the closed operations vocabulary, the lifecycle hooks, the subprocess plugin contract) is preserved unchanged.
+The shape borrowed from Cargo is that of `Cargo.toml`: one file format that collapses to a single package, a workspace of members, or both at once. RFC-14 maps the same model onto `.specify/project.yaml` — `package:` declares an optional root domain schema, `workspace:` declares an optional list of nested **member scopes**, and at least one of the two must be present. Every artifact, change, brief substitution, and capability skill action gains a **scope coordinate**; everything else from RFC-13's manifest protocol is preserved unchanged.
 
-This is the test of whether RFC-13 got the abstraction right: workspaces should fit on top of the four-block protocol without re-opening it. RFC-14 confirms that read by changing **path resolution** and **change scoping**, and nothing inside the protocol itself.
+This is the test of whether RFC-13 got the abstraction right: workspaces should fit on top of the capability protocol without re-opening it. RFC-14 confirms that read by changing **path resolution** and **change scoping**, and nothing inside the protocol itself.
 
 ## Motivation
 
 ### The unstated singleton
 
-RFC-13 is explicit that multiple schemas coexist (§"Cross-schema coexistence"), but the coexistence it describes is one **domain** schema plus the three **platform** schemas. The shape of `project.yaml` reflects that: `schema:` is a singular field, `extends:` is inheritance rather than composition, and §"What this enables" lists candidate schemas (`infra@v1`, `client-sdk@v1`, `standards@v1`, `design-tokens@v1`, `fixtures@v1`) that each replace the existing domain schema rather than coexisting with it.
+RFC-13 is explicit that multiple schemas coexist (§"Cross-schema coexistence"), but the coexistence it describes is one **domain** schema plus the three **platform** schemas. The shape of `project.yaml` reflects that: `schema:` is a singular field, and §"What this enables" lists candidate schemas (`infra@v1`, `client-sdk@v1`, `standards@v1`, `design-tokens@v1`, `fixtures@v1`) that each replace the existing domain schema rather than coexisting with it.
 
 The two open questions RFC-13 leaves on this point —
 
@@ -114,7 +114,7 @@ The member's `schema:` URL is **always declared in the workspace root** `project
 
 ### Scope as a first-class lifecycle dimension
 
-Every artefact, change, brief substitution, and `specify ext` invocation is associated with exactly one **scope**. The scope is one of:
+Every artefact, change, brief substitution, and capability skill action is associated with exactly one **scope**. The scope is one of:
 
 - **Root scope** (`""`) — owns artefacts whose paths sit at the project root. Active when `package:` is declared.
 - **Member scope** (`<path>`) — owns artefacts under `<workspace-root>/<path>/`. One per `workspace.members[]` entry.
@@ -200,32 +200,11 @@ The alternative — letting a single change carry deltas for multiple scopes' ba
 
 Repos that need an atomic update across two scopes (e.g., contract + implementation in lock-step) accept the two-change overhead. The `plan@v1` schema is gaining a `needs:` field for this purpose anyway under RFC-2; the same field handles cross-scope dependencies inside a workspace and cross-repo dependencies across workspaces.
 
-### `specify ext` gets a scope qualifier
+### Capability skills get scope context
 
-RFC-13 introduces `specify ext <schema> <op>` as the schema-extension dispatcher. In a workspace where the same schema is active in two scopes (e.g., `infra@v1` in both `infra-aws/` and `infra-gcp/`), the call `specify ext infra doctor` is ambiguous. RFC-14 resolves with the same cwd-inference + flag-override pattern as `specify change create`:
+Capability skill behavior is scoped by the change or workflow entry that invokes it. In a workspace where the same capability is active in two scopes (e.g., `infra@v1` in both `infra-aws/` and `infra-gcp/`), the resolved scope path must be part of the skill context so diagnostics and written paths can be attributed unambiguously.
 
-```bash
-# cwd inference
-cd infra-aws/ && specify ext infra doctor
-
-# explicit flag
-specify ext infra doctor --scope infra-aws/
-
-# all scopes that activate the schema
-specify ext infra doctor --all-scopes
-```
-
-`--all-scopes` is a workspace-wide convenience that fans out to every scope activating `<schema>` and merges the results in the same shape as a single-scope call (one `findings` array, with each finding tagged with its originating scope). This is the workspace analogue of Cargo's `--workspace` flag for `cargo test`.
-
-When a schema is active in exactly one scope, no qualifier is needed and the dispatcher resolves automatically — Mode A repos see no change at the call site.
-
-#### Discoverability
-
-RFC-13 §Discoverability defines three layers of `specify ext` help. RFC-14 layers a fourth view that is workspace-aware:
-
-- `specify ext` — lists every schema active **in the workspace** (across every scope), grouped by scope. Driven by the cached `describe` response per scope.
-- `specify ext <schema>` — when the schema is active in multiple scopes, lists each scope and the ops the schema implements there.
-- `specify ext <schema> <op> --help` — unchanged from RFC-13; per-op help is auto-derived from `op-args-schema`.
+When a capability is active in exactly one scope, the same cwd-inference rule used by `specify change create` resolves the scope automatically. Mode A repos see no change at the call site.
 
 ### Workspace-level concerns
 
@@ -246,22 +225,18 @@ Every per-scope artefact (`changes/`, scope-local rules) lives under `<scope>/.s
 
 Re-stating for clarity, because the surface area RFC-14 leaves alone is large:
 
-- The four-block protocol (`artifacts:`, `operations:`, `plugin:`, `config-schema:`).
-- The closed operations vocabulary (`list`, `validate`, `inspect`, `doctor`, `scaffold`, `config`, `transition`).
-- The five lifecycle hooks (`artifact-validate`, `artifact-preview-adopt`, `artifact-adopt`, `artifact-drop`, `baseline-validate`).
+- The manifest protocol (`artifacts:`, `consumes:`).
 - The lifecycle taxonomy (`managed`, `external`, `read-only`, `audited`).
-- The subprocess plugin protocol — invocation envelope, args envelope, result envelope, exit codes, `describe` self-description, protocol versioning.
-- Heavy-vs-light mutation classification per operation.
 - First-party schemas embedded in the CLI binary and exposed through the same resolver as URL-resolved schemas.
 - The `consumes:` field for read-only inter-schema dependencies (RFC-14 only adds the `@<scope>` qualifier when disambiguation is needed).
 
-The reframe principle — "schemas are the only extension point, without exception" — is preserved. Workspaces are not a new extension point; they are a structural composition of existing schema activations across a path-prefix tree. The core never learns the word "scope" except in the path-resolution and dispatcher layers; everything inside a schema's pipeline is unchanged.
+The reframe principle — "schemas are the only extension point, without exception" — is preserved. Workspaces are not a new extension point; they are a structural composition of existing schema activations across a path-prefix tree. The core never learns the word "scope" except in path-resolution and change-selection layers; everything inside a schema's pipeline is unchanged.
 
 ## Alternatives Considered
 
 **One repo per domain schema.** The status quo. Already used and works, but pays cost in registry edits, workspace sync, and cross-repo plan correlation for what is logically one team's repository. Rejected as the only path because the per-repo overhead is real and growing.
 
-**Multi-domain via inheritance (`extends:`).** Considered: a `super-schema@v1` that `extends:` both `omnia@v1` and `contracts@v1`. Rejected: `extends:` is composition along the pipeline axis (parent phases then child phases), not along the artefact axis. Forcing two unrelated artefact families through one fused pipeline produces a pipeline neither schema's authors signed up for, and the inherited operations would collide on artefact ids.
+**Multi-domain through a fused capability.** Considered: a `super-schema@v1` that manually combines both `omnia@v1` and `contracts@v1`. Rejected: forcing two unrelated artefact families through one fused pipeline produces a pipeline neither schema's authors signed up for, and artefact ids would still collide without scopes.
 
 **A flat `schemas: [<url>, …]` list at the project root.** Considered as the minimum-pain shape — no scopes, just multiple domain schemas, each with project-root path resolution. Rejected because it reintroduces RFC-13's "baseline-path uniqueness across active schemas" rule with no escape valve: two schemas that both want a `specs` baseline at `.specify/specs/` would collide. The scope prefix is what makes the multi-domain case actually work.
 
@@ -271,7 +246,7 @@ The reframe principle — "schemas are the only extension point, without excepti
 
 **Cross-scope changes as an opt-in.** Considered: a single change that writes deltas to two scopes' baselines, gated by a `cross-scope: true` flag. Rejected for the three reasons in §Cross-scope changes are forbidden — it breaks the core principle, re-couples the lifecycles, and `plan@v1` already solves the dependency-ordering problem.
 
-**Schema-local `plugin/` inside each member directory.** Considered: in a workspace, every member ships its plugin binary under `<member-path>/plugin/`. Rejected: RFC-13 §Open Questions #7 already answered "PATH-based, matching `git-foo`," and member-local plugin paths would create resolution rules that change between the workspace root and a member subdirectory. Plugins are workspace-wide on PATH; the schema URL is the per-scope element.
+**Schema-local executable extensions inside each member directory.** Considered: in a workspace, every member ships separate executable helpers under `<member-path>/`. Rejected: imperative behavior belongs to capability skills and their existing tool/script mechanisms; member-local executable discovery would create resolution rules that change between the workspace root and a member subdirectory.
 
 ## Non-Goals
 
@@ -310,14 +285,7 @@ Mode A repos parse identically under the new shape via the back-compat shim — 
 3. The change directory physically lives at `<workspace-root>/<scope>/.specify/changes/<name>/`.
 4. Cross-scope changes are rejected: writing a delta outside the change's declared scope errors with `cross-scope-write-forbidden` pointing at this RFC.
 
-### Phase 4 — Workspace-aware `specify ext` dispatcher
-
-1. Dispatcher resolves `<schema>` against the workspace's active scope set; cwd inference and `--scope <path>` flag override.
-2. `--all-scopes` fan-out for ops that make sense workspace-wide (`list`, `validate`, `doctor`).
-3. `specify ext` (no args) renders a scope-grouped index of every active schema in the workspace.
-4. `specify check` lint: a scope's `extensions.<schema>` block in `scope.yaml` validates against the same JSON Schema as the workspace-root `extensions.<schema>` block, then layers via `allOf`.
-
-### Phase 5 — `specify migrate v1-to-workspaces`
+### Phase 4 — `specify migrate v1-to-workspaces`
 
 1. One-shot migration that turns a `schema:` at the top level of `project.yaml` into `package.schema:`, preserves `domain:` and `rules:` under `package:`, and writes an empty `workspace.members: []` block iff the operator passed `--add-workspace`.
 2. The `hub: true` flag is rewritten to "no `package:`, `workspace:` only." A back-compat shim continues to read `hub: true` for two minor releases, with a deprecation warning pointing at the new shape.
@@ -332,7 +300,7 @@ Mode A repos parse identically under the new shape via the back-compat shim — 
 5. Document scope-aware `consumes:` in `docs/reference/schema-extensions.md` (the RFC-13 docs landing).
 6. Add a glossary entry for "workspace," "scope," "root scope," "member scope," and "workspace-root concern."
 
-Estimated total: ~1500–2000 lines of Rust + schema updates + fixture refresh + plugin doc updates. Substantially smaller than RFC-13 because the four-block protocol carries the heavy lifting; RFC-14 is mostly a `Scope` parameter threaded through existing call sites and three new lints in `specify check`.
+Estimated total: ~1200–1700 lines of Rust + schema updates + fixture refresh + plugin doc updates. Substantially smaller than RFC-13 because the capability protocol carries the heavy lifting; RFC-14 is mostly a `Scope` parameter threaded through existing call sites and three new lints in `specify check`.
 
 ## Migration
 
@@ -343,7 +311,7 @@ Two invariants guard the landing:
 1. **Mode A keeps working byte-for-byte.** Every phase's acceptance criterion runs `/spec:draft → /spec:build → /spec:adopt` on the canonical omnia change with the **flat** `schema: <url>` shape preserved. No path on disk changes for Mode A repos.
 2. **Multi-mode parity.** A workspace with one member at `./` (a redundant but legal Mode C shape) produces byte-identical paths to a Mode A project — i.e., the root scope is the empty path, not a path component named `root`.
 
-The `hub: true` flag is **deprecated, not removed** in the same release that lands RFC-14. A back-compat shim translates `hub: true` to "no `package:`, `workspace.members: []`" and emits a one-time deprecation warning pointing at the new shape. The shim is removed two minor releases later, matching the RFC-13 protocol-version retirement schedule.
+The `hub: true` flag is **deprecated, not removed** in the same release that lands RFC-14. A back-compat shim translates `hub: true` to "no `package:`, `workspace.members: []`" and emits a one-time deprecation warning pointing at the new shape. The shim is removed two minor releases later, matching RFC-13's hard cut-over posture.
 
 `specify migrate v1-to-workspaces` is **opt-in** rather than required. A repo only needs to migrate if its operator wants to add a member scope; until then, the flat shape continues to parse.
 
@@ -361,13 +329,12 @@ The `hub: true` flag is **deprecated, not removed** in the same release that lan
 8. **Cross-repo plan entries that target a `<repo>/<scope>` pair.** `plan@v1`'s entry shape today carries `project: <repo-name>`. With workspaces, an entry may target a specific scope. Provisional: extend the entry shape with optional `scope: <path>`; absent scope means the root scope or the only scope; required when the target repo activates more than one scope and the entry doesn't otherwise disambiguate. RFC-14 leaves the exact shape to a small follow-up patch on the `plan@v1` schema.
 9. **Should `specify init` enforce a Mode A default?** When an operator runs `specify init` without flags, do they get Mode A (a flat `schema:`) or the new `package: schema:` shape? Provisional: Mode A — the migration shim keeps both shapes equivalent, and the flat shape stays the default for the common case until a real opt-in (`--workspace`, `--add-scope`) happens. A future minor release may flip the default once workspaces are common.
 10. **Workspace-level rules (`rules:` block).** Today `rules:` lives next to `schema:` at the project root. Under `package:` / `workspace:` split, where does a workspace-wide `rules:` block go? Provisional: `rules:` is per-scope (under `package.rules:` or `scope.yaml:rules:`), with no workspace-wide default. A workspace-wide rules-override mechanism is a future RFC if the duplication becomes painful.
-11. **`--all-scopes` for mutating ops.** `specify ext infra doctor --all-scopes` is read-only and well-defined. What about mutating ops like `scaffold` or `config set`? Provisional: `--all-scopes` is read-only by default; mutating ops require `--scope` or cwd inference. A future RFC may add a `--for-each-scope` mutator if real workflows need it.
-12. **First-party schema versioning across scopes.** RFC-13 §First-party schemas pins platform-schema versions to the CLI version. In a workspace, the CLI version is one — so the platform schemas are uniformly versioned across scopes. Confirm this stays true even in `workspace.members[]` entries that pin older domain-schema versions. Provisional: yes — domain schemas are independently pinnable; platform schemas track the CLI.
-13. **Backward-compat shim retirement.** The `hub: true` and flat `schema: <url>` shims continue to work for two minor releases. Confirm this is the right window. Provisional: two minors, matching the RFC-13 protocol-version retirement schedule. Adjust if real adoption is slower than expected.
+11. **First-party schema versioning across scopes.** RFC-13 §First-party schemas pins platform-schema versions to the CLI version. In a workspace, the CLI version is one — so the platform schemas are uniformly versioned across scopes. Confirm this stays true even in `workspace.members[]` entries that pin older domain-schema versions. Provisional: yes — domain schemas are independently pinnable; platform schemas track the CLI.
+12. **Backward-compat shim retirement.** The `hub: true` and flat `schema: <url>` shims continue to work for two minor releases. Confirm this is the right window. Provisional: two minors, matching RFC-13's hard cut-over posture. Adjust if real adoption is slower than expected.
 
 ## References
 
-- [RFC-13: Immutable core + schema extensions](rfc-13-extensibility.md) — owns the four-block schema protocol that RFC-14 layers scope-resolution on top of. The §Cross-schema coexistence rules are the direct ancestors of RFC-14's scope-aware uniqueness rules; §Open Questions #2 and #13 are the points this RFC resolves.
+- [RFC-13: Immutable core + schema extensions](rfc-13-extensibility.md) — owns the capability protocol that RFC-14 layers scope-resolution on top of. The §Cross-schema coexistence rules are the direct ancestors of RFC-14's scope-aware uniqueness rules; §Open Questions #2 and #13 are the points this RFC resolves.
 - [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — owns `crates/specify-platform/`, where `ProjectConfig` parses today's `project.yaml`. Phase 1 of this RFC widens that parser.
 - [RFC-2: Execution](archive/rfc-2-execution.md) — owns the `plan@v1` schema and `/spec:execute --loop`. RFC-14's "cross-scope changes route through the plan loop" stance leans on RFC-2's existing dependency-ordering primitives.
 - [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — plan authoring; the per-entry `scope:` field is a minor extension to RFC-3a's plan-entry shape.

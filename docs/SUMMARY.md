@@ -112,5 +112,4 @@
 - [Anatomy of a Schema](contributing/schema-anatomy.md)
 - [Plugin Development](contributing/plugin-development.md)
 - [CLI Architecture](contributing/cli-architecture.md)
-- [Adding a CLI Command](contributing/adding-a-command.md)
 - [Consistency Checks](contributing/checks.md)
