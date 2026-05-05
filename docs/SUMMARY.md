@@ -81,6 +81,8 @@
   - [Omnia Capability](reference/capabilities/omnia.md)
   - [Vectis Capability](reference/capabilities/vectis.md)
   - [Contracts Capability](reference/capabilities/contracts.md)
+- [Registry](reference/registry.md)
+- [Change Component](reference/change-component.md)
 - [Configuration Files](reference/configuration.md)
 
 ---
