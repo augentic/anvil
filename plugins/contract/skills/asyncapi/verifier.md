@@ -24,10 +24,10 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 Inferred from the active change context — no positional arguments required:
 
 ```text
-$CHANGE_DIR          = .specify/changes/<change-name>
-$CHANGE_CONTRACTS    = $CHANGE_DIR/contracts/
+$SLICE_DIR          = .specify/changes/<change-name>
+$CHANGE_CONTRACTS    = $SLICE_DIR/contracts/
 $BASELINE_CONTRACTS  = contracts/
-$CHANGE_SPECS        = $CHANGE_DIR/specs/
+$CHANGE_SPECS        = $SLICE_DIR/specs/
 ```
 
 ### `cross-project` mode

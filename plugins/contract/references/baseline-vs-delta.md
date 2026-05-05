@@ -42,7 +42,7 @@ If alignment fails, **record a warning** in the alignment report. The author **n
 
 The spec describes interactions absent from the baseline, or asserts new claims about a baseline element. Add to the delta:
 
-- **Wholly new elements.** New endpoints, channels, or types — write a new file under the appropriate subdirectory of `$CHANGE_DIR/contracts/`.
+- **Wholly new elements.** New endpoints, channels, or types — write a new file under the appropriate subdirectory of `$SLICE_DIR/contracts/`.
 - **Extensions to baseline elements.** New status codes on a baseline operation, new optional fields on a baseline schema. The delta file must contain **both the existing baseline content and the new additions** because merge is opaque file replacement (see §Opaque file replacement below).
 - **Backwards-incompatible changes.** Newly-required fields, removed fields, narrowed types. Surface as warnings in the alignment report; the change is permitted but the brief must flag it for human review.
 
@@ -52,7 +52,7 @@ The baseline file lacks Specify-required metadata (e.g. `$id` on a schema, `info
 
 ## The "do not modify the baseline directly" rule
 
-All output goes into `$CHANGE_DIR/contracts/`. Never edit a file under root `contracts/` from inside a change — even when the change is producing a normalisation delta, the new file lives in the change directory until merge.
+All output goes into `$SLICE_DIR/contracts/`. Never edit a file under root `contracts/` from inside a change — even when the change is producing a normalisation delta, the new file lives in the change directory until merge.
 
 Two reasons:
 

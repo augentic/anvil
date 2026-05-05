@@ -15,7 +15,7 @@ The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong 
 1. **Read the briefs and specs.** Open the active contracts build brief and the change's `specs/` to identify which payload types the change requires; read `contracts/schemas/` (the schema baseline) to know what shared vocabulary already exists.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.
 3. **Dispatch to the sibling.** Open and follow [`author.md`](./author.md), [`importer.md`](./importer.md), or [`verifier.md`](./verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
-4. **Write outputs to `contracts/schemas/`.** Author and importer paths produce or normalise JSON Schema YAML files under `$CHANGE_DIR/contracts/schemas/` — one named type per file, kebab-case filenames, URN `$id` derived from the file path.
+4. **Write outputs to `contracts/schemas/`.** Author and importer paths produce or normalise JSON Schema YAML files under `$SLICE_DIR/contracts/schemas/` — one named type per file, kebab-case filenames, URN `$id` derived from the file path.
 5. **Run the verifier.** After authoring or importing, invoke the verifier sibling to check `$ref` resolution, metadata completeness, duplicate-`$id` collisions, and cross-format consumer compatibility against any HTTP and messaging bindings that already reference the schema.
 6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the structured YAML compatibility report (cross-project mode) so the calling brief or operator can triage.
 7. **Stay within change-local `contracts/schemas/`.** Do not modify baseline files in root `contracts/`, do not touch `contracts/http/` or `contracts/messages/`, and do not invent fields the spec does not justify — mark unknowns with `[unknown]` instead.
@@ -119,9 +119,9 @@ When authoring or importing, never silently delete or narrow a baseline schema's
 
 ## Output hygiene
 
-- Only emit `.yaml` files under `$CHANGE_DIR/contracts/schemas/`.
+- Only emit `.yaml` files under `$SLICE_DIR/contracts/schemas/`.
 - Create `contracts/schemas/` only when it will contain at least one file.
-- Do not modify any file outside `$CHANGE_DIR/contracts/schemas/`.
+- Do not modify any file outside `$SLICE_DIR/contracts/schemas/`.
 - Do not modify baseline files in root `contracts/`.
 - Do not touch `contracts/http/` or `contracts/messages/` from this skill — even when the verifier reads them, it never writes.
 

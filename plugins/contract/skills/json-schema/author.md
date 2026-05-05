@@ -5,9 +5,9 @@
 ## Inputs
 
 ```text
-$CHANGE_DIR     = .specify/changes/<change-name>
-$SPECS_DIR      = $CHANGE_DIR/specs
-$CONTRACTS_DIR  = $CHANGE_DIR/contracts
+$SLICE_DIR     = .specify/changes/<change-name>
+$SPECS_DIR      = $SLICE_DIR/specs
+$CONTRACTS_DIR  = $SLICE_DIR/contracts
 $SCHEMAS_DIR    = $CONTRACTS_DIR/schemas
 $BASELINE_DIR   = contracts
 ```
@@ -259,7 +259,7 @@ Every author run produces an alignment report alongside the delta files. The rep
 - `pagination.yaml` — added missing `description`
 ```
 
-After producing the report, run [`verifier.md`](./verifier.md) in `single` mode against `$CHANGE_DIR` to confirm `$ref` resolution, metadata completeness, duplicate-`$id` checks, and cross-format consumer compatibility before declaring the artefacts ready.
+After producing the report, run [`verifier.md`](./verifier.md) in `single` mode against `$SLICE_DIR` to confirm `$ref` resolution, metadata completeness, duplicate-`$id` checks, and cross-format consumer compatibility before declaring the artefacts ready.
 
 ## Edge cases
 
@@ -283,7 +283,7 @@ Before declaring the author run complete:
 - [ ] Property names are `snake_case`.
 - [ ] No invented fields; every property traces back to a spec scenario or a baseline schema.
 - [ ] Alignment report enumerates coverage, warnings, generated delta files, backwards-compatibility flags, and normalisation entries.
-- [ ] [`verifier.md`](./verifier.md) (single mode) ran clean against `$CHANGE_DIR`.
+- [ ] [`verifier.md`](./verifier.md) (single mode) ran clean against `$SLICE_DIR`.
 
 ## See also
 

@@ -27,16 +27,16 @@ Analyze a source codebase to produce reconstruction-grade, **language-agnostic**
 ## Derived Arguments
 
 1. **Source Path** (`$SOURCE_PATH`): Path to the source codebase
-2. **Change Directory** (`$CHANGE_DIR`): Specify change directory (e.g., `./.specify/changes/component/`)
+2. **Change Directory** (`$SLICE_DIR`): Specify change directory (e.g., `./.specify/changes/component/`)
 3. **Include globs** (`$INCLUDE`): Zero or more `--include <glob>` values that narrow the read set for business-logic extraction. Empty ≡ today's behaviour.
 4. **Exclude globs** (`$EXCLUDE`): Zero or more `--exclude <glob>` values that remove paths from the read set for business-logic extraction. Empty ≡ today's behaviour.
 5. **Manifest path** (`$MANIFEST`): Optional single `--manifest <path>` pointing at a slice manifest. Mutually exclusive with `$INCLUDE` / `$EXCLUDE`. See [scope-filters.md](scope-filters.md) §Manifest shape.
 
 ```text
 $SOURCE_PATH = $ARGUMENTS[0]
-$CHANGE_DIR  = $ARGUMENTS[1]
-$SPECS_DIR   = $CHANGE_DIR/specs
-$DESIGN_PATH = $CHANGE_DIR/design.md
+$SLICE_DIR  = $ARGUMENTS[1]
+$SPECS_DIR   = $SLICE_DIR/specs
+$DESIGN_PATH = $SLICE_DIR/design.md
 $INCLUDE     = [--include <glob> ...]       # repeatable; possibly empty
 $EXCLUDE     = [--exclude <glob> ...]       # repeatable; possibly empty
 $MANIFEST    = --manifest <path>            # single; mutually exclusive with $INCLUDE/$EXCLUDE
@@ -151,7 +151,7 @@ Record metric names, types (counter / gauge / histogram), emission points, dimen
 
 ### Step 7: Write Specify Artifacts
 
-Synthesize findings, create `$CHANGE_DIR/` and `$SPECS_DIR/`, write `$DESIGN_PATH` with all 14 sections (Context through Notes) and `$SPECS_DIR/$CRATE_NAME/spec.md` with flat `### Requirement:` blocks tagged `ID: REQ-XXX`.
+Synthesize findings, create `$SLICE_DIR/` and `$SPECS_DIR/`, write `$DESIGN_PATH` with all 14 sections (Context through Notes) and `$SPECS_DIR/$CRATE_NAME/spec.md` with flat `### Requirement:` blocks tagged `ID: REQ-XXX`.
 
 The pre-write synthesis checklist, the directory layout, the 14-section design.md template, the managed-data-store classification rules, and the spec file format live in [design-template.md](design-template.md). The post-write verification checklist lives in [verification.md](verification.md).
 

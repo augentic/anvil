@@ -64,7 +64,7 @@ For import-driven work, run importer intent for each supplied format:
 
 Importer paths must produce an import report covering lossless changes, lossy changes, unsupported constructs, and manual-review warnings.
 
-**Identity & version (RFC-12).** Every top-level OpenAPI / AsyncAPI document emitted into `$CHANGE_DIR/contracts/` (root key `openapi:` or `asyncapi:`) MUST set an `info.version` value that parses as SemVer per [semver.org](https://semver.org), including optional prerelease labels. New top-level contracts SHOULD set `info.x-specify-id` to a kebab-case slug (typically the file stem; `^[a-z][a-z0-9-]*$`, ≤ 64 characters) — a rename-stable hint that survives file moves and version bumps. The author intents enforce both rules; the importer paths preserve any source `info.x-specify-id` verbatim and surface non-SemVer `info.version` values as `[manual review required]` rather than auto-rewriting.
+**Identity & version (RFC-12).** Every top-level OpenAPI / AsyncAPI document emitted into `$SLICE_DIR/contracts/` (root key `openapi:` or `asyncapi:`) MUST set an `info.version` value that parses as SemVer per [semver.org](https://semver.org), including optional prerelease labels. New top-level contracts SHOULD set `info.x-specify-id` to a kebab-case slug (typically the file stem; `^[a-z][a-z0-9-]*$`, ≤ 64 characters) — a rename-stable hint that survives file moves and version bumps. The author intents enforce both rules; the importer paths preserve any source `info.x-specify-id` verbatim and surface non-SemVer `info.version` values as `[manual review required]` rather than auto-rewriting.
 
 ### Phase 3: Verify
 

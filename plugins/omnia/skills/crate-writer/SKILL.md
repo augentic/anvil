@@ -38,9 +38,9 @@ The binding constraints (Hard Rules and the Authority Hierarchy) that govern eve
 $CRATE_NAME     = $ARGUMENTS[0]
 
 # Path derivation
-$CHANGE_DIR     = .specify/changes/$CRATE_NAME
-$SPECS_DIR      = $CHANGE_DIR/specs
-$DESIGN_PATH    = $CHANGE_DIR/design.md
+$SLICE_DIR     = .specify/changes/$CRATE_NAME
+$SPECS_DIR      = $SLICE_DIR/specs
+$DESIGN_PATH    = $SLICE_DIR/design.md
 $CRATE_PATH     = crates/$CRATE_NAME
 ```
 
@@ -212,7 +212,7 @@ Before starting code generation, verify artifact completeness per [checklists.md
 
 ### Generation Process
 
-1. Read Specify artifacts from `$CHANGE_DIR`:
+1. Read Specify artifacts from `$SLICE_DIR`:
    - Read the spec file from `$SPECS_DIR/$CRATE_NAME/spec.md` (single consolidated file with flat `### Requirement:` / `#### Scenario:` blocks)
    - Read design.md from `$DESIGN_PATH`
 2. **Derive Omnia capabilities from artifacts:**
@@ -325,7 +325,7 @@ The inventory is an in-memory working model, not a persisted artifact. For each 
 
 #### Step 2: Derive Change Set
 
-Read the updated artifacts from `$CHANGE_DIR` (specs and design.md) and compare them against the inventory:
+Read the updated artifacts from `$SLICE_DIR` (specs and design.md) and compare them against the inventory:
 
 | Artifacts vs Inventory                                                             | Classification  |
 | ---------------------------------------------------------------------------------- | --------------- |

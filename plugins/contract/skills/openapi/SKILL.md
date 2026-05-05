@@ -15,7 +15,7 @@ The skill is OpenAPI-only. Shared payload schemas under `contracts/schemas/` are
 1. **Read the briefs and specs.** Open the active contracts build brief and the change's `specs/` to identify what the change requires; read `contracts/http/` (the HTTP baseline) to know what already exists.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.
 3. **Dispatch to the sibling.** Open and follow [`author.md`](./author.md), [`importer.md`](./importer.md), or [`verifier.md`](./verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
-4. **Write outputs to `contracts/http/`.** Author and importer paths produce or normalise OpenAPI 3.1 YAML files under `$CHANGE_DIR/contracts/http/`. Decomposed payload schemas land under `$CHANGE_DIR/contracts/schemas/` (json-schema-skill territory) — never inline them.
+4. **Write outputs to `contracts/http/`.** Author and importer paths produce or normalise OpenAPI 3.1 YAML files under `$SLICE_DIR/contracts/http/`. Decomposed payload schemas land under `$SLICE_DIR/contracts/schemas/` (json-schema-skill territory) — never inline them.
 5. **Run the verifier.** After authoring or importing, invoke the verifier sibling against the change directory to check `$ref` resolution, schema metadata completeness, and binding coverage.
 6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the structured YAML compatibility report (cross-project mode) so the calling brief or operator can triage.
 7. **Stay within change-local `contracts/http/`.** Do not modify baseline files in root `contracts/`, do not touch `contracts/messages/` or shared schemas beyond writing decomposed `$ref` targets, and do not invent constructs that the spec does not justify — mark unknowns with `[unknown]` instead.
@@ -107,9 +107,9 @@ These constraints are non-negotiable for any of the three sibling paths:
 
 ## Output hygiene
 
-- Only emit `.yaml` files under `$CHANGE_DIR/contracts/`.
+- Only emit `.yaml` files under `$SLICE_DIR/contracts/`.
 - Create `contracts/http/`, `contracts/schemas/` only when they will contain at least one file.
-- Do not modify any file outside `$CHANGE_DIR/contracts/`.
+- Do not modify any file outside `$SLICE_DIR/contracts/`.
 - Do not modify baseline files in root `contracts/`.
 
 ## See also

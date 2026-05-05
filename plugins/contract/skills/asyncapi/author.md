@@ -5,9 +5,9 @@
 ## Inputs
 
 ```text
-$CHANGE_DIR     = .specify/changes/<change-name>
-$SPECS_DIR      = $CHANGE_DIR/specs
-$CONTRACTS_DIR  = $CHANGE_DIR/contracts
+$SLICE_DIR     = .specify/changes/<change-name>
+$SPECS_DIR      = $SLICE_DIR/specs
+$CONTRACTS_DIR  = $SLICE_DIR/contracts
 $BASELINE_DIR   = contracts
 ```
 
@@ -270,7 +270,7 @@ Report semantics:
 - **Warnings require human review.** The author never resolves spec-vs-baseline mismatches automatically.
 - **A non-empty delta** is normal for contract-only changes and for spec-first changes where the baseline is empty.
 
-After producing the report, run [`verifier.md`](./verifier.md) in `single` mode against `$CHANGE_DIR` to validate `$ref` resolution, schema metadata, and binding coverage before declaring the artefact ready.
+After producing the report, run [`verifier.md`](./verifier.md) in `single` mode against `$SLICE_DIR` to validate `$ref` resolution, schema metadata, and binding coverage before declaring the artefact ready.
 
 ## Edge cases
 
@@ -293,7 +293,7 @@ Before declaring the author run complete:
 - [ ] When extending a baseline file, every existing channel, operation, and message is preserved verbatim alongside the new ones.
 - [ ] Channel keys are camelCase; addresses are dot-notation; operation keys are unique across the contract tree.
 - [ ] Alignment report enumerates coverage, warnings, generated delta files, and normalisation entries.
-- [ ] [`verifier.md`](./verifier.md) (single mode) ran clean against `$CHANGE_DIR`.
+- [ ] [`verifier.md`](./verifier.md) (single mode) ran clean against `$SLICE_DIR`.
 
 ## See also
 

@@ -35,11 +35,11 @@ The human workflow is:
 
 ```text
 $PROJECT_DIR      = <workspace root>
-$CHANGE_DIR       = $PROJECT_DIR/.specify/changes/<change-name>
-$SPECS_DIR        = $CHANGE_DIR/specs
-$DESIGN_PATH      = $CHANGE_DIR/design.md
-$PROPOSAL_PATH    = $CHANGE_DIR/proposal.md
-$TASKS_PATH       = $CHANGE_DIR/tasks.md
+$SLICE_DIR       = $PROJECT_DIR/.specify/changes/<change-name>
+$SPECS_DIR        = $SLICE_DIR/specs
+$DESIGN_PATH      = $SLICE_DIR/design.md
+$PROPOSAL_PATH    = $SLICE_DIR/proposal.md
+$TASKS_PATH       = $SLICE_DIR/tasks.md
 $BASELINE_SPECS   = $PROJECT_DIR/.specify/specs
 ```
 

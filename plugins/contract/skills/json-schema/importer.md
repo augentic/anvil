@@ -5,8 +5,8 @@
 ## Inputs
 
 ```text
-$CHANGE_DIR     = .specify/changes/<change-name>
-$CONTRACTS_DIR  = $CHANGE_DIR/contracts
+$SLICE_DIR     = .specify/changes/<change-name>
+$CONTRACTS_DIR  = $SLICE_DIR/contracts
 $SCHEMAS_DIR    = $CONTRACTS_DIR/schemas
 $BASELINE_DIR   = contracts
 ```
@@ -166,7 +166,7 @@ Move each schema file to `$SCHEMAS_DIR/`. Remove the original file when the oper
 
 #### Validate
 
-Run [`verifier.md`](./verifier.md) in `single` mode against `$CHANGE_DIR` to confirm `$ref` resolution, metadata completeness, duplicate-`$id` checks, and cross-format compatibility. If the verifier reports issues, re-enter Steps 2–4 for targeted repair before producing the report.
+Run [`verifier.md`](./verifier.md) in `single` mode against `$SLICE_DIR` to confirm `$ref` resolution, metadata completeness, duplicate-`$id` checks, and cross-format compatibility. If the verifier reports issues, re-enter Steps 2–4 for targeted repair before producing the report.
 
 #### Report
 

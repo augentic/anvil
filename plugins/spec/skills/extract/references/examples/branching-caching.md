@@ -7,11 +7,11 @@ Service with multiple conditional branches, cache-or-fetch pattern, and early re
 ## Input Parameters
 
 ```bash
-extract ./src/data-service.ts $CHANGE_DIR
+extract ./src/data-service.ts $SLICE_DIR
 ```
 
 - **TypeScript Source**: `./src/data-service.ts`
-- **Specify Output**: `$CHANGE_DIR` (specs/ + design.md)
+- **Specify Output**: `$SLICE_DIR` (specs/ + design.md)
 
 ## TypeScript Source Code
 

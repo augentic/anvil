@@ -5,8 +5,8 @@
 ## Inputs
 
 ```text
-$CHANGE_DIR     = .specify/changes/<change-name>
-$CONTRACTS_DIR  = $CHANGE_DIR/contracts
+$SLICE_DIR     = .specify/changes/<change-name>
+$CONTRACTS_DIR  = $SLICE_DIR/contracts
 $BASELINE_DIR   = contracts
 ```
 
@@ -367,7 +367,7 @@ Remove the original file when the canonical location differs from where the oper
 
 #### Validate
 
-Run [`verifier.md`](./verifier.md) in `single` mode against `$CHANGE_DIR` to confirm `$ref` resolution, schema metadata completeness, and binding coverage. If the verifier reports issues, re-enter Steps 4–5 for targeted repair before producing the report.
+Run [`verifier.md`](./verifier.md) in `single` mode against `$SLICE_DIR` to confirm `$ref` resolution, schema metadata completeness, and binding coverage. If the verifier reports issues, re-enter Steps 4–5 for targeted repair before producing the report.
 
 #### Report
 
