@@ -254,7 +254,7 @@ version: 1
 
 provenance:              # optional: where this layout came from
   sources:
-    - kind: manual       # figma | legacy | manual
+    - kind: manual       # figma | legacy | manual | screenshots | code
 
 screens:
   <screen-slug>:         # kebab-case screen identifier

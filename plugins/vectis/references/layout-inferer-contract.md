@@ -66,7 +66,7 @@ The `component: <slug>` directive is the v1 cross-shell factoring contract (see 
 Emission policy:
 
 - An inferer MAY emit `component: <slug>` only when **either** of these holds:
-  - the operator confirms a candidate (e.g. via a hint, a previous accepted `layout.yaml`, or a pre-existing slug already on the group), or
+  - the operator confirms a candidate via the existing layout itself — a previous accepted `layout.yaml` containing the slug, or a pre-existing `component: <slug>` already on the group in `--baseline`. There is no CLI flag for component approval in v1; promotion of a single-occurrence candidate is operator-edit work.
   - the inferer observes structurally identical groups in **≥2 screens of the same run**.
 - Otherwise the inferer MUST flatten the group and emit a `# candidate component: <slug>` comment adjacent to each occurrence so the operator can promote it explicitly in a later edit. Single-occurrence candidates always remain comments, never directives.
 - Slugs MUST match `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` (kebab-case). The reserved region names — `header`, `body`, `footer`, `fab` — MUST NOT be used as slugs (the schema enforces this; inferers MUST avoid producing them in the first place).
