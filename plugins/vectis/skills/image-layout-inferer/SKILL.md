@@ -19,7 +19,7 @@ The producer surface every layout inferer shares (arguments, output rules, idemp
 3. **Stage the recovery.** Walk top-down: regions (header / body / footer / fab / overlays / state replacements) → containers (rows, columns, lists, grids, cards, padding, gap, alignment, sizing, surface decoration) → leaves (text, controls, images, icons, fields).
 4. **Detect candidate components conservatively.** Compare groups across screens for structural identity (§G); emit `component: <slug>` only when the operator confirms it or the same skeleton appears in **≥2 screens of the same run**, otherwise leave a `# candidate component: <slug>` comment. See [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md#component-directive-emission).
 5. **Reference siblings, never invent.** Use `tokens.yaml` / `assets.yaml` names only when they already resolve; otherwise emit raw values plus `# TODO` comments and a gap entry.
-6. **Validate before writing.** Call `specify vectis validate layout [<output-path>]`; non-zero exit blocks the write. When sibling token / asset manifests exist, also call `specify vectis validate composition [<output-path>]` so cross-artifact resolution surfaces in the same run.
+6. **Stage, validate, then rename.** Write the inferred YAML to `<output-path>.tmp`, run `specify vectis validate layout <output-path>.tmp` (and `specify vectis validate composition <output-path>.tmp` when sibling token / asset manifests exist), and only on a clean / warnings-only result atomically rename onto `<output-path>`. Errors delete the staging file and exit non-zero; the previous `<output-path>` is preserved untouched.
 7. **Print the terminal summary** named in the contract: screens added, screens refined, warnings, unresolved gaps, source provenance entries appended, candidate components, exact output path.
 
 ## Authority Hierarchy
@@ -189,18 +189,20 @@ Detection rule: if `--baseline` is supplied OR a file exists at the resolved `--
 
 ## Verification
 
-Verification is the contract's deterministic gate; full surface lives in [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md#verification). The image inferer MUST:
+Verification is the contract's deterministic gate; full surface — including the stage-then-validate-then-rename rationale — lives in [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md#verification). The validator reads its input from disk, so the image inferer MUST:
 
-1. Run `specify vectis validate layout [<output-path>]` **before writing** (or before reporting success on an in-place refinement). Errors MUST block the write; warnings MUST be forwarded into the terminal summary but do not block.
-2. Run `specify vectis validate composition [<output-path>]` after writing whenever a sibling `tokens.yaml` or `assets.yaml` exists at the canonical paths from `schemas/vectis/schema.yaml`'s `artifacts:` block. The CLI auto-invokes the `tokens` and `assets` modes when those siblings exist; reports surface in the same envelope.
-3. Surface the validator output verbatim into the terminal summary (the operator should never have to re-run validation by hand to see what failed).
+1. Write the inferred YAML to a sibling staging path (`<output-path>.tmp`) instead of writing `<output-path>` directly. Refine runs MUST stage even when an existing `<output-path>` already validates clean, otherwise the validator inspects the prior content rather than the new content.
+2. Run `specify vectis validate layout <output-path>.tmp` against the staging path explicitly (do not rely on default-path resolution here). Errors MUST block the rename; warnings MUST be forwarded into the terminal summary but do not block.
+3. Run `specify vectis validate composition <output-path>.tmp` against the same staging path whenever a sibling `tokens.yaml` or `assets.yaml` exists at the canonical paths from `schemas/vectis/schema.yaml`'s `artifacts:` block. The CLI auto-invokes the `tokens` and `assets` modes when those siblings exist; reports surface in the same envelope and fold into the same rename-blocking gate.
+4. On a clean or warnings-only result, atomically rename `<output-path>.tmp` onto `<output-path>`. On errors, delete the staging file and exit non-zero — the previous `<output-path>` (if any) is left untouched.
+5. Surface the validator output verbatim into the terminal summary (the operator should never have to re-run validation by hand to see what failed).
 
 The skill MUST NOT roll its own schema, structural-identity, or cross-artifact reference validation. Every check the contract requires has an authoritative `specify vectis validate <mode>` verb; reimplementing them in skill prose causes drift.
 
 Exit semantics:
 
-- **Errors** — non-zero exit; nothing is written. Surface the report and stop.
-- **Warnings only** — zero exit; the write proceeds and warnings appear in the terminal summary.
+- **Errors** — non-zero exit; the staging file is removed and `<output-path>` is left untouched. Surface the report and stop.
+- **Warnings only** — zero exit; the staging file is renamed onto `<output-path>` and warnings appear in the terminal summary.
 - **Clean** — zero exit silently except for the terminal summary itself.
 
 ## Terminal summary

@@ -83,23 +83,29 @@ When the inferer is uncertain whether observed similarity meets the structural-i
 
 ## Verification
 
-Every inferer MUST invoke the deterministic CLI validators **before writing or reporting success**, then translate any reported errors into terminal output the operator can act on. The validators live in the [`specify` CLI](../../../rfcs/rfc-11-ui-spec.md) and are the only authoritative source of pass/fail.
+Every inferer MUST invoke the deterministic CLI validators **before reporting success**, then translate any reported errors into terminal output the operator can act on. The validators live in the [`specify` CLI](../../../rfcs/rfc-11-ui-spec.md), read their input from disk, and are the only authoritative source of pass/fail.
 
-Pre-write check:
+Because the validator reads a file path, "errors block writes" is enforced through a **stage-then-validate-then-rename** sequence rather than a literal pre-write check. Validating before any write would either error on a missing file (greenfield) or re-check the previous run's content (refine):
 
-```bash
-specify vectis validate layout [<output-path>]
-```
+1. Write the inferred output to a sibling staging path (`<output-path>.tmp`). Refine runs MUST stage even when an existing `<output-path>` already validates clean — the validator never sees the new content otherwise.
+2. Run the validator against the staging path explicitly:
 
-This validates YAML syntax, the composition schema, the unwired-subset rules above, and the §G structural-identity rule for any `component:` directives present. The path argument is optional; the CLI resolves the default from the [`artifacts:` block](../../../schemas/vectis/schema.yaml) (`artifacts.layout.paths.change_local` then `artifacts.layout.paths.project`) when no path is given. Errors block writes; warnings surface in the terminal summary but do not block.
+    ```bash
+    specify vectis validate layout <output-path>.tmp
+    ```
+
+3. On a clean or warnings-only result, atomically rename the staging file onto `<output-path>` (`rename(2)` / `mv <output-path>.tmp <output-path>`).
+4. On errors, delete the staging file, surface the validator report verbatim, and exit non-zero. Any prior `<output-path>` is preserved untouched.
+
+This validates YAML syntax, the composition schema, the unwired-subset rules above, and the §G structural-identity rule for any `component:` directives present. Pass the staging path explicitly so a failed run cannot validate stale or default-resolved content; the optional default-path resolution (`artifacts.layout.paths.change_local` then `artifacts.layout.paths.project` from the [`artifacts:` block](../../../schemas/vectis/schema.yaml)) exists for ad-hoc operator invocations, not for the inferer's own gate. Errors block the rename; warnings surface in the terminal summary but do not block.
 
 Cross-artifact reference checks (when the sibling input artifacts exist):
 
 ```bash
-specify vectis validate composition [<path>]
+specify vectis validate composition <output-path>.tmp
 ```
 
-`composition` mode auto-invokes `tokens` and `assets` modes when sibling `tokens.yaml` / `assets.yaml` files exist (whether change-local or via `artifacts.tokens.paths` / `artifacts.assets.paths`). Inferers SHOULD run this against the layout output whenever sibling token / asset manifests are present so unresolved token names and missing asset IDs surface in the same run.
+Inferers SHOULD run `composition` mode against the **same staging path** before the atomic rename — never against a default-resolved path or the prior `<output-path>` — so token / asset references in the new content are checked, not last run's. `composition` mode auto-invokes `tokens` and `assets` modes when sibling `tokens.yaml` / `assets.yaml` files exist (whether change-local or via `artifacts.tokens.paths` / `artifacts.assets.paths`); their reports surface in the same envelope. Errors fold into the same rename-blocking gate as `validate layout`; warnings forward into the terminal summary.
 
 The full per-mode surface every inferer can call:
 
