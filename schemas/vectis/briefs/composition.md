@@ -7,14 +7,52 @@ needs: [specs, proposal]
 
 Generate a `composition.yaml` file describing the spatial composition of every screen in the application. The artifact uses the region-based format with `group` containers and item vocabulary defined in RFC-7, and follows the schema at `schemas/vectis/composition.schema.json`. Groups carry flexbox-like layout properties (`direction`, `gap`, `padding`, `align`, `justify`) and optional sizing and surface decoration.
 
+This brief is the v1 reader of the [`artifacts:` block](../schema.yaml) (RFC-11 §H). It discovers `layout.yaml` first via `artifacts.layout.paths.change_local` then `artifacts.layout.paths.project` and falls back to existing `composition.yaml` baselines only when no layout is present. It calls `specify vectis validate layout` (or `validate composition` when the resolved input is already wired) on the input before consuming it, and `specify vectis validate composition` on its output for cross-artifact token / asset checks.
+
 ## Input Resolution
 
-Before generating, check whether a `composition.yaml` already exists — first in the active change directory (`.specify/changes/<name>/`), then in the baseline (`.specify/specs/`).
+Resolve the starting point for this run by checking inputs in this order. Stop at the first match.
 
-1. **Existing `composition.yaml` found** (skeleton or baseline from a prior change) — use it as the starting point. Preserve the region structure and all `group` layout properties (`direction`, `gap`, `padding`, `align`, `justify`, `size`, `background`, `corner_radius`, `elevation`). Add `maps_to`, `bind`, `event`, and `*-when` keys to leaf items based on the specs. Do not rearrange groups or modify layout properties.
-2. **No existing `composition.yaml`** — infer layout from the specs and proposal. Use `group` containers to express how items should be arranged (rows vs columns), their spacing and alignment, and their sizing behavior. Use the item vocabulary for leaf content.
+1. **`layout.yaml` from the active change** — `artifacts.layout.paths.change_local` (today: `.specify/changes/<name>/layout.yaml`). Layout is unwired UI input produced by an inferer (e.g. [`vectis:image-layout-inferer`](../../../plugins/vectis/skills/image-layout-inferer/SKILL.md)) or hand-authored by the operator. The brief wires it into a `composition.yaml`.
+2. **`layout.yaml` from the project** — `artifacts.layout.paths.project` (today: `design-system/layout.yaml`). Same shape as change-local layout; used when the change is iterating against the project-wide baseline without introducing new layout intent.
+3. **`composition.yaml` from the active change** (`.specify/changes/<name>/composition.yaml`). A previously wired composition the brief is refining. Preserve every wiring key already present and re-validate against current specs.
+4. **`composition.yaml` from the baseline** (`.specify/specs/composition.yaml`). The merged baseline. Use when the change has no local layout or composition yet and is proposing a delta.
+5. **No input** — infer layout from the specs and proposal alone. Use `group` containers to express how items should be arranged (rows vs columns), spacing, alignment, and sizing behavior. Use the item vocabulary for leaf content.
+
+The `artifacts:` block in [`schemas/vectis/schema.yaml`](../schema.yaml) is the sole authoritative source of layout file locations. Read the path templates from there rather than hard-coding them — the CLI validators below honour the same cascade automatically when no explicit `[path]` is supplied.
 
 When a `design-system/tokens.yaml` file exists or `design-system` is listed in the proposal's Platforms, reference token names for `style`, `color`, and `size` properties.
+
+### Validate the resolved input
+
+Before consuming the resolved input, run the deterministic CLI validator. The verb depends on which artifact resolved:
+
+- For `layout.yaml` (cases 1–2 above) — validate the unwired subset (composition schema + `screens` only + no define-owned wiring keys + the §G structural-identity rule for any `component:` directives present):
+
+  ```bash
+  specify vectis validate layout
+  ```
+
+- For `composition.yaml` (cases 3–4 above) — validate the wired lifecycle artifact (composition schema + cross-artifact token / asset / wiring resolution + the §G structural-identity rule):
+
+  ```bash
+  specify vectis validate composition
+  ```
+
+Both verbs auto-discover the resolved path via the `artifacts:` block and exit non-zero on errors, zero with a printed warning report on warnings, and zero silently on a clean run. **Errors block this brief** — surface the report verbatim to the operator and stop; the brief MUST NOT fabricate a wired composition from invalid input. Warnings flow through into the operator-facing summary at the end of the brief but do not block consumption.
+
+If case 5 applies (no input at all), there is nothing to validate up front; proceed directly to the steps below.
+
+## Wiring Responsibilities
+
+The brief's job is the wiring layer on top of layout-owned structure. The following rules come straight from RFC-11 §H "Wiring responsibilities" and MUST be honoured on every run:
+
+- **Preserve layout-owned structure.** Regions, group hierarchy, `direction`, `gap`, `padding`, `align`, `justify`, `size`, `background`, `corner_radius`, `elevation`, token references, asset references, the `component: <slug>` directive on groups, comments, and `platforms.*` overrides all originate with the layout author and stay as-is.
+- **Add only define-owned wiring.** `maps_to`, `bind`, `event`, `error`, overlay `trigger`, navigation targets encoded in event values, and conditional visual keys such as `strikethrough-when` are this brief's responsibility — and only this brief's.
+- **Add screens only when specs require them.** When a spec describes a screen the layout has no entry for, add it with a `# inferred-from-requirements` comment so the operator can spot define-derived layout next to externally supplied layout.
+- **Do not silently insert or remove a `component:` slug.** When this brief observes structurally identical groups across screens that suggest a missing slug, propose it as a `# GAP` comment adjacent to each occurrence (e.g. `# GAP: candidate component task-row`). Promotion to a directive is operator work; demotion of an existing directive is also operator work.
+- **Do not rewrite token names or asset IDs** unless the existing reference is invalid AND a single confirmed replacement exists in `tokens.yaml` / `assets.yaml`. When neither holds, emit a `# GAP` comment naming the unresolved reference and stop wiring that property — `specify vectis validate composition` treats unresolved token / asset references as **errors** (not warnings), so the post-write gate will block the brief and the operator will see the validator report verbatim. The brief MUST NOT invent a replacement to silence the gate; an explicit `# GAP` plus a hard exit is the contract.
+- **Single-artifact handoff.** v1 has no separate pre-define merge ceremony. The brief consumes one resolved input from the cascade above and reports any conflicts with prior structure as `# GAP` comments — it does not attempt to reconcile multiple layout sources itself. Future RFCs may define a richer multi-source workflow.
 
 ## Steps
 
@@ -22,7 +60,7 @@ When a `design-system/tokens.yaml` file exists or `design-system` is listed in t
 
 Read all spec files and extract every distinct screen or page the user interacts with. Each distinct view becomes a screen entry keyed by a kebab-case slug derived from the spec's screen description.
 
-Screen identification heuristics (when no skeleton exists):
+Screen identification heuristics (when no layout or composition entry exists for the screen):
 
 1. **Explicit view requirements.** Requirements whose title or body describes "a screen," "a page," or "a view" each map to a screen entry. Example: "Requirement: Todo List View" → screen `todo-list`.
 2. **Navigation references.** Scenarios that describe navigating to a destination imply a screen for that destination. Example: "WHEN user taps add THEN the app navigates to the add todo form" → screen `add-todo`.
@@ -35,8 +73,8 @@ When the spec is ambiguous about whether two behaviors belong to the same screen
 
 For each screen:
 
-- **If a skeleton exists for this screen:** Read its region and group structure. The skeleton provides the container tree — which items appear in each region, how they are grouped (rows, columns, cards), their spacing and alignment, and their token references. Do not restructure groups or modify layout properties.
-- **If no skeleton exists:** Infer regions and group structure from the spec's behavioral requirements. Place the screen title and navigation actions in `header`, primary content in `body` (choosing `list`, `grid`, `form`, or group-based layout based on the data shape), secondary actions in `footer`, and a primary creation action as `fab` when appropriate. Use `group` containers to express layout intent: `direction: row` for items that should sit side-by-side, `direction: column` for stacked content, `size: { width: fill }` for elements that should expand, and surface decoration (`background`, `corner_radius`) for card-like containers.
+- **If a layout entry exists for this screen** (resolved input from cases 1–4 above): Read its region and group structure. The layout provides the container tree — which items appear in each region, how they are grouped (rows, columns, cards), their spacing and alignment, and their token references. Do not restructure groups or modify layout properties (per Wiring Responsibilities above).
+- **If no layout entry exists:** Infer regions and group structure from the spec's behavioral requirements. Place the screen title and navigation actions in `header`, primary content in `body` (choosing `list`, `grid`, `form`, or group-based layout based on the data shape), secondary actions in `footer`, and a primary creation action as `fab` when appropriate. Use `group` containers to express layout intent: `direction: row` for items that should sit side-by-side, `direction: column` for stacked content, `size: { width: fill }` for elements that should expand, and surface decoration (`background`, `corner_radius`) for card-like containers.
 
 ### 3. Enrich with Bindings
 
@@ -66,12 +104,29 @@ If the proposal targets multiple platforms and the spec's platform-specific requ
 ### 7. Surface Gaps
 
 Report any of:
-- A skeleton screen with no matching spec (the screen may be decorative or the spec may be incomplete).
-- A spec screen with no skeleton entry (the skeleton may need updating or the screen was added in this change).
+- A layout screen with no matching spec (the screen may be decorative or the spec may be incomplete).
+- A spec screen with no layout entry (the layout may need updating or the screen was added in this change — see the `# inferred-from-requirements` rule under Wiring Responsibilities).
 - A spec-described data element that has no natural visual representation in any region.
 - A spec-described interaction that has no interactive item to wire to.
+- Structurally recurring groups that look like a missing `component:` slug (per Wiring Responsibilities).
 
 Include gap reports as YAML comments in the output (e.g., `# GAP: spec describes "export" action but no item wired to Export event`).
+
+### 8. Validate the Output
+
+After writing `composition.yaml`, run the cross-artifact validator:
+
+```bash
+specify vectis validate composition
+```
+
+This re-validates the wired composition against the patched composition schema and **automatically invokes** `specify vectis validate tokens` and `specify vectis validate assets` whenever sibling `tokens.yaml` / `assets.yaml` files exist (whether change-local or via `artifacts.tokens.paths` / `artifacts.assets.paths`). It enforces the §G structural-identity rule on every `component: <slug>` instance in the document.
+
+- **Errors** — block the brief. Fix `composition.yaml` (or the input artifacts) and re-run; the brief MUST NOT report success while errors remain.
+- **Warnings only** — proceed, and forward the warning report into the operator-facing summary so the operator can decide whether to act now or in a follow-up change.
+- **Clean** — proceed silently.
+
+The build phase repeats `specify vectis validate composition` on the resolved artifact set (RFC-11 §I), so any warning the brief leaves behind will reappear there too.
 
 ## Output Structure
 
@@ -80,7 +135,7 @@ version: 1
 
 provenance:
   sources:
-    - kind: manual  # or figma, legacy — based on skeleton origin
+    - kind: manual  # or figma, legacy, screenshots, code — based on layout origin
 
 screens:
   <screen-slug>:
@@ -100,6 +155,7 @@ screens:
               direction: row
               gap: <token>
               align: center
+              # component: <slug>          # only if already present in layout
               items:
                 # leaf items with bind, event, token references
                 # nested groups for sub-layout (e.g., column stack)

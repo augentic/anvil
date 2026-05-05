@@ -236,12 +236,16 @@ Tasks without a skill tag are implemented via the schema's default build instruc
 
 ## Composition document (Vectis only)
 
-`composition.yaml` describes the spatial layout of each screen. It is a schema-validated YAML document produced by the Vectis schema's define pipeline between the specs and design stages. The JSON Schema lives at `schemas/vectis/composition.schema.json`. (See [Decision Log: Composition as a separate artifact](../explanation/decision-log.md#composition-as-a-separate-artifact-not-embedded-in-specs-or-design) for the rationale.)
+`composition.yaml` describes the spatial layout of each screen, enriched with the wiring (`bind`, `event`, `maps_to`, overlay `trigger`, navigation, `*-when`) that connects layout to ViewModels and specs. It is a schema-validated YAML document produced by the Vectis schema's define pipeline between the specs and design stages. The JSON Schema lives at `schemas/vectis/composition.schema.json`. (See [Decision Log: Composition as a separate artifact](../explanation/decision-log.md#composition-as-a-separate-artifact-not-embedded-in-specs-or-design) for the rationale.)
 
-### Two modes
+### Layout vs composition
 
-- **Skeleton mode** -- regions and layout structure without `bind`, `event`, or `maps_to` keys. Produced by external tools (Figma adapters, legacy extractors) or manual authoring before the define pipeline runs.
-- **Wired mode** -- the same regions enriched with data bindings, event wiring, and ViewModel traceability. Produced by the define pipeline and consumed by shell writers.
+RFC-11 split the pre-define and post-define surfaces into two sibling artifacts; both share the same JSON Schema:
+
+- **`layout.yaml` (unwired layout input)** — regions, group hierarchy, gap / padding / align / size, token references, asset references, and the optional cross-shell `component: <slug>` directive, *without* the wiring keys above. Produced by layout inferers ([`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers per RFC-11 §B/D) or hand-authored. Validated by `specify vectis validate layout`, which enforces the unwired-subset rule and the RFC-11 §G structural-identity rule.
+- **`composition.yaml` (wired lifecycle artifact)** — the same regions enriched with the wiring keys above. Produced by the define pipeline (the composition brief reads `layout.yaml` when present) and consumed by shell writers. Validated by `specify vectis validate composition`, which auto-invokes `tokens` / `assets` modes when sibling manifests exist.
+
+(RFC-7 expressed this distinction as "skeleton mode" vs "wired mode" of a single `composition.yaml`; RFC-11 made the boundary explicit by separating the filenames.)
 
 ### Format
 
@@ -250,12 +254,12 @@ version: 1
 
 provenance:              # optional: where this layout came from
   sources:
-    - kind: manual       # figma | legacy | manual
+    - kind: manual       # figma | legacy | manual | screenshots | code
 
 screens:
   <screen-slug>:         # kebab-case screen identifier
     name: "Screen Name"
-    maps_to: "ViewModel::ScreenName(ScreenNameView)"  # wired mode only
+    maps_to: "ViewModel::ScreenName(ScreenNameView)"  # composition.yaml only — not in layout.yaml
 
     header:
       title: "Title"

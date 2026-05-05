@@ -160,7 +160,7 @@ The user's request should include a change name (kebab-case) OR a description of
      - Simple filename (e.g., `proposal.md`): write to `.specify/changes/<name>/<generates>`.
      - Glob pattern (e.g., `specs/**/*.md`): the brief determines how many files to create and where within the pattern.
    - Create the artifact file following the brief, applying `domain` and effective rules as constraints.
-   - **YAML output handling:** Dispatch on the `generates` extension. Files ending in `.md` are written as-is. Files ending in `.yaml` (e.g., `composition.yaml`) must be valid YAML — validate the agent's output before writing. The brief's prose instructions may direct the agent to check for an existing artifact in the change directory or baseline (e.g., the composition brief reads an existing `composition.yaml` as a skeleton); the agent reads the file system directly when the brief instructs it.
+   - **YAML output handling:** Dispatch on the `generates` extension. Files ending in `.md` are written as-is. Files ending in `.yaml` (e.g., `composition.yaml`) must be valid YAML — validate the agent's output before writing. The brief's prose instructions may direct the agent to check for an existing artifact in the change directory or baseline (e.g., the composition brief reads an existing `layout.yaml` or `composition.yaml` as the starting point); the agent reads the file system directly when the brief instructs it.
    - Verify the file exists after writing before proceeding to the next brief.
 
    ### Spec format conventions
