@@ -47,7 +47,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` complete · `[!]` blo
 | 1.3   | [x]    | Patch `composition.schema.json` (provenance kinds + `component` key)   | specify        | §A, §G, Appendix F.1, F.2         |
 | 1.4   | [x]    | Add `artifacts:` block + companion validator patch                     | specify        | §H, §L                            |
 | 1.5   | [x]    | Scaffold `specify vectis validate <mode> [path]` subcommand surface    | specify-cli    | §H, §I                            |
-| 1.6   | [ ]    | Implement `validate tokens` mode                                       | specify-cli    | §H, Appendix A                    |
+| 1.6   | [x]    | Implement `validate tokens` mode                                       | specify-cli    | §H, Appendix A                    |
 | 1.7   | [ ]    | Implement `validate assets` mode                                       | specify-cli    | §E, §H, Appendix B                |
 | 1.8   | [ ]    | Implement `validate layout` mode                                       | specify-cli    | §A, §G, §H, Appendix F            |
 | 1.9   | [ ]    | Implement `validate composition` mode (incl. auto-invoke)              | specify-cli    | §G, §H, §I                        |
@@ -208,7 +208,7 @@ The document-level `version` constant **stays at `1`** (Appendix F preamble). F.
 
 **Sub-agent chores.** Sub-agent can author the test fixtures and the test bodies once the validator surface is in.
 
-**Status.** `[ ]`
+**Status.** `[x]` — landed locally on `screenshot` (specify-cli). `crates/vectis/Cargo.toml` grew `jsonschema.workspace = true` + `serde-saphyr.workspace = true` (deps) and `tempfile.workspace = true` (dev-dep). The Appendix A schema was vendored verbatim into [`crates/vectis/embedded/tokens.schema.json`](../../../specify-cli/crates/vectis/embedded/tokens.schema.json) (the `specify` repo is a different git repo from `specify-cli`, so embedding requires a copy; `diff` against `schemas/vectis/tokens.schema.json` is byte-identical). [`crates/vectis/src/validate.rs`](../../../specify-cli/crates/vectis/src/validate.rs) replaces the `Tokens` stub with a real validator: reads the YAML at the supplied path (default fallback `design-system/tokens.yaml`), parses via `serde_saphyr::from_str::<serde_json::Value>`, and runs the schema via a `OnceLock<Result<jsonschema::Validator, String>>` so the schema compiles once per process. Errors carry `{ path: <JSON Pointer>, message }` shapes (`instance_path()` + `to_string()`). YAML parse failures fold into the same `errors` array (`path: ""`); missing files surface as `VectisError::InvalidProject` (the v2 error envelope, distinct from validator findings). Embed-compile failure surfaces as `VectisError::Internal` (build-time invariant). Five unit tests in `validate.rs` (Appendix D verbatim, version-only minimum, broken hex pointed at `/colors/primary/light`, `screenshots` rejected to confirm the §F enum stays distinct from composition's, malformed YAML, missing-file → `InvalidProject`, plus stub-modes regression). Four new integration tests in [`tests/vectis.rs`](../../../specify-cli/tests/vectis.rs) (clean-run envelope shape, broken-hex exit-1 + path field, missing-file → `invalid-project`, explicit-path positional). The previous `vectis_validate_modes_emit_not_implemented_envelope` test was renamed to `vectis_validate_stub_modes_emit_not_implemented_envelope` and now covers the four still-stubbed modes (`layout`, `composition`, `assets`, `all`). Dispatcher change in [`src/commands/vectis.rs`](../../../specify-cli/src/commands/vectis.rs): a new `validate_exit_code(value: &Value) -> CliResult` helper inspects the envelope's `errors` array (and recurses through `results[*].report` for the `mode: "all"` shape Phase 1.10 will produce) so validate exits 1 when errors are present and 0 otherwise — the only contract change beyond what Phase 1.5's status note predicted, kept tight to the dispatcher arm. `cargo test --workspace` (898 tests, 1 ignored), `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt -- --check`, and `make checks` (specify) all pass. **Forward-looking artifacts for Phases 1.7–1.10:** `validate_exit_code` already handles the nested `results: [...]` shape (Phase 1.10 only needs to extend `render_validate_text`, not the dispatcher). The `OnceLock` validator pattern is the canonical recipe for embedded schemas — Phases 1.7 and 1.9 should mirror it for `assets.schema.json` and `composition.schema.json`. The `tempfile` dev-dep is now available crate-wide.
 
 ---
 
@@ -220,10 +220,13 @@ The document-level `version` constant **stays at `1`** (Appendix F preamble). F.
 
 **Scope.** Schema-validate `assets.yaml` against the Phase 1.2 schema, then layer the cross-artifact checks §E demands:
 
+- **Vendor** `schemas/vectis/assets.schema.json` from the `specify` repo into `specify-cli/crates/vectis/embedded/assets.schema.json`. The two repos are separate git checkouts, so the embed needs a copy; verify with `diff` after copying so byte-identity is preserved (Phase 1.6 followed the same pattern for `tokens.schema.json`).
+- Reuse Phase 1.6's `OnceLock<Result<Validator, String>>` pattern for the schema (lazy compile per process; surfaces compile failure as `VectisError::Internal`). Don't introduce a sibling singleton — extract a helper if the duplication looks worth it once Phase 1.8 / 1.9 land their schemas too.
 - Verify that every `filePath` resolves to a file under the directory containing `assets.yaml` (typically `design-system/assets/**`). Missing files are errors.
 - For every `vector` and `raster` asset referenced by a sibling `composition.yaml` (when one exists at the canonical paths from §H), require `sources.<platform>` for each *targeted* shell platform (the platform set is determined by the proposal — for v1 just check both `ios` and `android` if the platform is plausibly present; the formal "targeted shell platforms" wiring lands when the build brief invokes this mode in Phase 3.5).
 - Missing optional densities are warnings unless the target platform has no usable source (then error).
 - Asset references **from** `composition.yaml` are resolved here when a sibling composition is present; they are *also* re-checked from the `composition` mode in Phase 1.9 when that mode auto-invokes this one — make sure both invocations produce identical reports.
+- Reuse the per-mode envelope shape Phase 1.5 fixed (`{ mode, path, errors, warnings }`); the `validate_exit_code` helper in `src/commands/vectis.rs` already exits 1 when `errors` is non-empty, so no dispatcher changes are needed for the assets mode.
 
 **Acceptance.**
 
@@ -246,6 +249,8 @@ The document-level `version` constant **stays at `1`** (Appendix F preamble). F.
 
 **Scope.** Validate `layout.yaml` as the **unwired subset** of `composition.schema.json`:
 
+- **Vendor** `schemas/vectis/composition.schema.json` from the `specify` repo into `specify-cli/crates/vectis/embedded/composition.schema.json`. Phase 1.6 set the precedent for `tokens.schema.json`; the same byte-identity-via-`diff` discipline applies. This vendored copy is shared with Phase 1.9 (`composition` mode) — both phases compile from the same embedded schema.
+- Reuse Phase 1.6's `OnceLock<Result<Validator, String>>` recipe; if Phase 1.7 already extracted a generic helper for embedded JSON schemas, reuse it here too.
 - YAML syntax + composition schema validation (the patched schema from Phase 1.3).
 - `screens` only — reject documents that use `delta`.
 - Reject define-owned wiring keys anywhere in the document: `maps_to`, `bind`, `event`, `error`, overlay `trigger`, navigation events, and any `*-when` keys (e.g. `strikethrough-when`). Matched keys produce an error with the YAML path.
@@ -274,10 +279,10 @@ The document-level `version` constant **stays at `1`** (Appendix F preamble). F.
 
 **Scope.** Composition is the lifecycle artifact — it allows both `screens` (baseline) and `delta` (change-local) shapes. The mode performs:
 
-1. Schema validation against the patched `composition.schema.json`.
+1. Schema validation against the patched `composition.schema.json` (already vendored under `specify-cli/crates/vectis/embedded/composition.schema.json` by Phase 1.8 — reuse the same embed and validator rather than vendoring twice).
 2. Cross-artifact resolution: every `maps_to`, `bind`, `event`, overlay `trigger`, navigation target, token reference, and asset reference must resolve. (RFC-7 already specifies the field/event/ViewModel/overlay/navigation coverage rules; this phase carries them forward through whatever helper RFC-7 left in place.)
 3. The §G structural-identity rule across all instances of every `component:` slug.
-4. **Auto-invoke** `tokens` mode when a sibling `tokens.yaml` exists, and `assets` mode when a sibling `assets.yaml` exists. Reports from those modes are folded into the composition report so callers do not need to invoke them separately (this is what §H's last two paragraphs and §I's "validation gate" require).
+4. **Auto-invoke** `tokens` mode when a sibling `tokens.yaml` exists, and `assets` mode when a sibling `assets.yaml` exists. Reports from those modes are folded into the composition report so callers do not need to invoke them separately (this is what §H's last two paragraphs and §I's "validation gate" require). The folding shape SHOULD reuse the Phase 1.10 `results: [{ mode, report }, ...]` envelope so `validate_exit_code` (already recursion-aware as of Phase 1.6) picks the right exit code without dispatcher changes.
 
 **Acceptance.**
 
@@ -301,7 +306,7 @@ The document-level `version` constant **stays at `1`** (Appendix F preamble). F.
 **Scope.** Two work items that finally make the v1 reader of the `artifacts:` block real:
 
 1. Implement default-path resolution: when no `[path]` is supplied, each mode reads `schemas/vectis/schema.yaml` `artifacts:` block and uses `paths.change_local` then `paths.project` (then `paths.baseline` for composition) in order. If `artifacts:` is absent, fall back to the canonical paths in §H "Inputs". An explicit `[path]` argument always wins.
-2. Implement the `all` convenience verb: runs `layout` (against active change), `composition` (active change → baseline fallback), `tokens`, `assets` and emits a combined report. Exit code is the worst of any sub-mode (errors > warnings > clean). JSON shape: `{ "mode": "all", "results": [{ "mode": ..., "report": ... }, ...] }` — keep it composable. Phase 1.5 sized `render_validate_text` (in `src/commands/vectis.rs`) for the **per-mode** flat shape only; this phase MUST extend it to recognise `mode == "all"` and recurse through `results[*]` so the text path renders one section per sub-mode. Tests should cover both shapes.
+2. Implement the `all` convenience verb: runs `layout` (against active change), `composition` (active change → baseline fallback), `tokens`, `assets` and emits a combined report. Exit code is the worst of any sub-mode (errors > warnings > clean). JSON shape: `{ "mode": "all", "results": [{ "mode": ..., "report": ... }, ...] }` — keep it composable. Phase 1.5 sized `render_validate_text` (in `src/commands/vectis.rs`) for the **per-mode** flat shape only; this phase MUST extend it to recognise `mode == "all"` and recurse through `results[*]` so the text path renders one section per sub-mode. Tests should cover both shapes. Note: Phase 1.6 already taught the dispatcher's `validate_exit_code` helper to recurse through `results[*].report`, so this phase only extends the **text renderer**, not the exit-code path.
 
 **Acceptance.**
 
