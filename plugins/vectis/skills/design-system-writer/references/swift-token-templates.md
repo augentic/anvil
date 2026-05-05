@@ -29,9 +29,9 @@ Each entry:
 public static let {name} = Color(light: "{light}", dark: "{dark}")
 ```
 
-Group entries with a blank line between semantic groups. Groups are determined by name prefix root:
+Group entries with a blank line between semantic groups. Groups are determined by name prefix root. YAML token IDs are kebab-case (`on-primary`, `surface-secondary`); the Swift `static let` names below are the camelCased form the writer emits.
 
-| Prefix root | Tokens |
+| Prefix root | Tokens (Swift identifier form) |
 |---|---|
 | `primary` | `primary`, `primaryContainer`, `onPrimary`, `onPrimaryContainer` |
 | `secondary` | `secondary`, `secondaryContainer`, `onSecondary`, `onSecondaryContainer` |
@@ -209,7 +209,7 @@ public static let {name} = Font.system(size: {size}, weight: .{weight})
 
 | YAML value | Swift value |
 |---|---|
-| `ultraLight` | `.ultraLight` |
+| `ultra-light` | `.ultraLight` |
 | `thin` | `.thin` |
 | `light` | `.light` |
 | `regular` | `.regular` |

@@ -50,7 +50,7 @@ Each token category has a **value shape** that determines code patterns on both 
 | **Font** | Values have `size` and `weight` keys | `Font.system(size:weight:)` static | `TextStyle` + `vectisTypography(): Typography` |
 | **Scalar** | Values are plain numbers | `CGFloat` static | `Dp` in `object` |
 
-Read `references/swift-token-templates.md` and `references/kotlin-token-templates.md` for exact templates, weight mapping, and Material 3 `ColorScheme` field mapping (`surfaceSecondary` → `surfaceVariant`, `shadow` → `scrim`, etc.).
+Read `references/swift-token-templates.md` and `references/kotlin-token-templates.md` for exact templates, weight mapping, and Material 3 `ColorScheme` field mapping (`surface-secondary` → `surfaceVariant`, `shadow` → `scrim`, etc.). YAML token IDs are kebab-case per `tokens.schema.json`; Swift / Kotlin output names are the camelCased form.
 
 ---
 
@@ -217,11 +217,13 @@ Kotlin: map `light` into `vectisLightColorScheme()`, `dark` into `vectisDarkColo
 
 ### Font shape
 
+YAML token IDs are kebab-case (per `tokens.schema.json`); Swift / Kotlin output names are the camelCased form (`large-title` → `largeTitle`).
+
 YAML:
 
 ```yaml
 typography:
-  largeTitle:
+  large-title:
     size: 34
     weight: bold
 ```

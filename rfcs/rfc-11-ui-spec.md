@@ -234,7 +234,7 @@ assets:
     symbols:
       ios: xmark
       android: close
-    tint: onSurface
+    tint: on-surface
 ```
 
 Rules:
@@ -781,7 +781,7 @@ This schema defines the shape that `/spec:define`'s `tokens` validation mode (§
         {
           "type": "string",
           "enum": [
-            "ultralight",
+            "ultra-light",
             "thin",
             "light",
             "regular",
@@ -1114,10 +1114,10 @@ screens:
                           style: body
                       - text:
                           style: caption
-                          color: onSurfaceVariant
+                          color: on-surface-variant
                 - icon:
                     name: chevron-right
-                    color: onSurfaceVariant
+                    color: on-surface-variant
     fab:
       icon: plus
       label: Add task
@@ -1141,7 +1141,7 @@ screens:
                 - text:
                     content: Tap the + button to add your first task.
                     style: body
-                    color: onSurfaceVariant
+                    color: on-surface-variant
       loading:
         when: tasks.is_loading
         replaces: body
