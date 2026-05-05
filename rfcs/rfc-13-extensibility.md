@@ -4,9 +4,11 @@
 
 ## Abstract
 
-A capability describes how Specify's existing `define → build → merge` loop handles an outcome domain and the artefacts that domain owns. RFC-13 reframes the runtime to match: the **immutable core** is the per-project loop engine plus capability-agnostic scaffolding (init, migrate, capability resolver, change driver, and artefact adoption). Platform features such as registry materialisation and workflow orchestration are separated into first-party Specify components rather than being folded into either the core or the capability model.
+A capability describes how Specify's existing `define → build → merge` loop handles an outcome domain and the artefacts that domain owns. RFC-13 reframes the runtime to match: the **immutable core** is the per-project loop engine plus capability-agnostic scaffolding (init, migrate, capability resolver, slice driver, and artefact adoption). Platform features such as registry materialisation and change orchestration are separated into first-party Specify components rather than being folded into either the core or the capability model.
 
-Today's `schema.yaml` surface admits only `{ name, version, description, pipeline }`, which is too small to carry that contract and uses the wrong noun. This RFC renames the extension primitive to **capability** and makes `pipeline:` an explicit member of the capability manifest alongside new fields (`artifacts:` and optional `consumes:`) so a capability can describe its phase briefs, artefacts, and read-only dependencies. It also draws a line around non-capability foundation components: topology and local materialisation belong to `specify-registry`, and orchestration belongs above the core loop.
+This RFC also renames two lifecycle nouns. The umbrella concept that coordinates a multi-slice outcome — formerly **initiative** — becomes **change**. The single unit that flows through the fixed `define → build → merge` loop — formerly called a change — becomes a **slice**. A change holds one or more slices through its `plan.yaml`; each slice is a per-project transaction with its own proposal, specs, design, tasks, and merge step. The §Migration table records the cut-over.
+
+Today's `schema.yaml` surface admits only `{ name, version, description, pipeline }`, which is too small to carry that contract and uses the wrong noun. This RFC renames the extension primitive to **capability** and makes `pipeline:` an explicit member of the capability manifest alongside new fields (`artifacts:` and optional `consumes:`) so a capability can describe its phase briefs, artefacts, and read-only dependencies. It also draws a line around non-capability foundation components: topology and local materialisation belong to `specify-registry`, and change orchestration belongs above the core loop.
 
 ## Motivation
 
@@ -35,12 +37,12 @@ Today the runtime knows too much about a small set of artefacts:
 - Crates and Vectis shells are written directly into the project tree.
 - Read-only baselines exist as an intended roadmap concern, but there is no manifest surface for declaring them.
 
-Those are valid mechanics, but they are not core truths. The capability should declare which artefacts it owns, where they live, and how the fixed change loop treats them.
+Those are valid mechanics, but they are not core truths. The capability should declare which artefacts it owns, where they live, and how the fixed slice loop treats them.
 
 ### What the status quo blocks
 
 - A future `infra@v1` cannot declare "the `terraform/` directory is a staged baseline" without patching `specify-cli`.
-- A future `standards@v1` (roadmap §3) needs `read-only` baselines that sibling changes cite but never mutate; today the adoption mechanics are hard-coded for specs, contracts, and direct code generation.
+- A future `standards@v1` (roadmap §3) needs `read-only` baselines that sibling slices cite but never mutate; today the adoption mechanics are hard-coded for specs, contracts, and direct code generation.
 - The format validators behind `specify contract validate` live in the core's public API, so a third-party capability cannot ship an equivalent without patching core.
 
 ## Design
@@ -53,55 +55,72 @@ If a capability-specific artifact behavior has no place in `capability.yaml`, th
 
 The `define → build → merge` loop's *shape* is frozen: the phase set, legal transition DAG, and per-phase outcome contract recorded in `.metadata.yaml` are part of the immutable core. Capabilities declare what *flows through* the phases (artefacts, briefs, validators, and read-only dependencies) but never the phases themselves. Variation that capabilities legitimately want lives in variable briefs per phase and capability-specific skill behavior around declared artefacts. See §Non-Goals.
 
-The coordinating principle is: **capabilities own outcome artefacts and their adoption; platform components coordinate where and when those per-project changes run**.
+The coordinating principle is: **capabilities own outcome artefacts and their adoption; platform components coordinate where and when those per-project slices run**.
 
-Every mutable artefact has exactly one capability owner, every reviewed change runs through exactly one capability/scope, and cross-capability outcomes are represented by explicit workflow entries rather than by fusing capabilities into a larger hidden capability. Outcomes are not necessarily code: they may be contracts, documentation, policy, infrastructure, fixtures, reports, generated clients, or any other capability-owned artefact.
+Every mutable artefact has exactly one capability owner, every reviewed slice runs through exactly one capability/scope, and cross-capability outcomes are represented by explicit change plan entries rather than by fusing capabilities into a larger hidden capability. Outcomes are not necessarily code: they may be contracts, documentation, policy, infrastructure, fixtures, reports, generated clients, or any other capability-owned artefact.
 
 ### The immutable core boundary
 
-The core is what's needed to run the fixed change loop over one project root and one resolved capability — no more:
+The core is what's needed to run the fixed slice loop over one project root and one resolved capability — no more:
 
 | Surface                                                                    | Owner             | What it does                                                                                                                                 |
 | -------------------------------------------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `specify init`                                                             | Core              | Bootstrap `.specify/`, resolve capability URL(s), cache briefs. Runs before any capability has loaded.                                       |
 | `specify migrate <migration>`                                              | Core              | One-shot layout migrations.                                                                                                                  |
 | `specify capability *`                                                     | Core              | Resolve, check, pipeline. Replaces today's `specify schema *`.                                                                               |
-| `specify change *`                                                         | Core              | Fixed change loop: create, list, status, validate, merge, drop, transition, archive, journal, outcome, touched-specs, overlap, task.         |
+| `specify slice *`                                                          | Core              | Fixed slice loop: create, list, status, validate, merge, drop, transition, archive, journal, outcome, touched-specs, overlap, task.          |
 | Artefact merge bookkeeping                                                 | Core, data-driven | Iterates over capability-declared artefacts.                                                                                                 |
 | Format validators (OpenAPI, JSON Schema, spec-markdown, …)                 | Capability        | Declared as format adapters; core vendors generic ones, capabilities may ship their own.                                                     |
 
 
-The left-hand column is frozen as the core responsibility boundary; new capability behavior lands on the right. Platform components sit above this table: they may choose a project root, prepare a materialised registry checkout, or sequence several changes, but they call the core loop rather than becoming part of it.
+The left-hand column is frozen as the core responsibility boundary; new capability behavior lands on the right. Platform components sit above this table: they may choose a project root, prepare a materialised registry checkout, or sequence several slices, but they call the core loop rather than becoming part of it.
 
 ### Platform components are not capabilities
 
-Registry and workflow are first-party Specify components because they are substrate for multi-project operation, not outcome domains. They may have commands, libraries, and files, but they do not participate in the capability manifest protocol and they are not activated through `capability.yaml`.
+Registry and the change component are first-party Specify components because they are substrate for multi-project operation, not outcome domains. They may have commands, libraries, and files, but they do not participate in the capability manifest protocol and they are not activated through `capability.yaml`.
 
 | Component | Primary file / state | Responsibility | Must not own |
 | --------- | -------------------- | -------------- | ------------ |
-| `specify-registry` | `registry.yaml` + `.specify/workspace/` | Topology ledger plus local materialised view: project ids, repository locations, human descriptions, default capabilities, clone/symlink resolution, dirty-state reporting, and explicit push/merge operations for checked-out registry projects. | Plan status, contract relationships, validation findings, workflow execution, capability-specific validation, or PR metadata beyond the local project operation being requested. |
-| `specify-workflow` | `workflow.yaml` / `plan.yaml` | Coordinate ordered changes by consuming registry project ids, materialised project paths, and core phase outcomes. | Domain artefact ownership or hidden multi-capability transactions. |
+| `specify-registry` | `registry.yaml` + `.specify/workspace/` | Topology ledger plus local materialised view: project ids, repository locations, human descriptions, default capabilities, clone/symlink resolution, dirty-state reporting, and explicit push/merge operations for checked-out registry projects. | Change or plan status, contract relationships, validation findings, change execution, capability-specific validation, or PR metadata beyond the local project operation being requested. |
+| `specify-change` | `change.md` + `plan.yaml` | Coordinate an operator outcome from brief through executable plan, execution state, and close-out by consuming registry project ids, materialised project paths, and core phase outcomes. | Domain artefact ownership, topology materialisation, or hidden multi-capability transactions. |
 
-The dependency direction is one-way: `specify-core` knows nothing about registry or workflow. `specify-workflow` may depend on `specify-registry` and the core loop because orchestration composes those lower-level services.
+The dependency direction is one-way: `specify-core` knows nothing about registry or change orchestration. `specify-change` may depend on `specify-registry` and the core loop because orchestration composes those lower-level services.
 
 ### What becomes a capability
 
-Not every top-level noun becomes a capability. Capability is reserved for outcome domains whose artefacts flow through the fixed loop. Foundation and orchestration surfaces become separate Specify components:
+Not every top-level noun becomes a capability. Capability is reserved for outcome domains whose artefacts flow through the fixed loop. Foundation and orchestration surfaces become separate Specify components.
 
+The durable post-RFC surfaces are:
 
-| Today                  | Becomes                                 | Primary state / artefact                    | Notes                                                                                                                                                                                |
-| ---------------------- | --------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `specify plan *`       | `specify-workflow` component            | `workflow.yaml` / `plan.yaml`               | Plan authoring, inspection, status, locking, and transitions are orchestration behavior above the core loop.                                                                         |
-| `/spec:execute`        | workflow execution skill / command      | workflow state                              | The existing execute driver moves to the workflow surface. It may keep `/spec:execute` only as a compatibility alias that delegates to workflow execution.                           |
-| `specify initiative *` | workflow-owned initiative artifact      | `initiative.md`                             | The operator brief and close-out checks are orchestration state, not a separate capability.                                                                                          |
-| `specify registry *`   | `specify-registry` component            | `registry.yaml` + `.specify/workspace/`     | Registry remains operator-owned topology plus local materialisation. It is validated and mutated directly; it is not reviewed through the change loop.                                |
-| `specify contract *`   | `contracts@v1` capability               | `contracts/` baseline                       | RFC-12's SemVer + `info.x-specify-id` checks become capability validation behavior.                                                                                                  |
-| `specify vectis *`     | `vectis@v2` capability                  | Shared / iOS / Android / design-system dirs | Vectis-specific validation and merge behavior moves into Vectis skills and declared artefact mechanics.                                                                              |
-| `specify workspace *`  | removed; folded into registry           | `.specify/workspace/`                       | No compatibility alias is retained. Materialisation commands move to the registry surface, and `.specify/workspace/` is derived registry state.                                       |
+| Surface                 | Owner / kind                   | Primary state / artefact                    | Notes                                                                                                                |
+| ----------------------- | ------------------------------ | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `specify init`          | Core                           | `.specify/` + `project.yaml`                | Bootstraps a project or hub before any capability has loaded.                                                        |
+| `specify capability *`  | Core                           | capability manifest cache                   | Resolves, checks, and renders capability pipelines. Replaces today's `specify schema *`.                             |
+| `specify slice *`       | Core                           | `.specify/slices/`                          | Runs the fixed per-project slice loop against one resolved capability.                                               |
+| `specify registry *`    | `specify-registry` component   | `registry.yaml` + `.specify/workspace/`     | Owns topology plus the local materialised view. It is validated and mutated directly, not reviewed through the loop. |
+| `specify change *`      | `specify-change` component     | `change.md` + `plan.yaml`                   | Owns change brief, planning graph, execution state, finalization, and archive.                                       |
+| `contracts@v1`          | Capability                     | `contracts/` baseline                       | RFC-12's SemVer + `info.x-specify-id` checks become capability validation behavior.                                  |
+| `vectis@v2`             | Capability                     | Shared / iOS / Android / design-system dirs | Vectis-specific validation and merge behavior moves into Vectis skills and declared artefact mechanics.              |
+
+The removed or compatibility surfaces are:
+
+| Current / old surface  | Result                      | Replacement                                      | Notes                                                                                                                                  |
+| ---------------------- | --------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `specify schema *`     | Renamed                     | `specify capability *`                           | Vocabulary cut-over from schema to capability.                                                                                         |
+| `specify change *` (today's per-loop unit) | Renamed                | `specify slice *`                                | The single unit that flows through `define → build → merge` is now a slice; `change` is reused for the orchestration surface below.    |
+| `specify plan *`       | Folded into change          | `specify change plan *`                          | Plan authoring, inspection, status, locking, and transitions are change subresource behavior, not a separate top-level domain.         |
+| `specify initiative *` | Renamed                     | `specify change *`                               | The umbrella orchestration noun moves from `initiative` to `change`. The verb set (`create`, `plan`, `execute`, `finalize`, `archive`) is preserved. |
+| `/spec:plan`           | Compatibility alias if kept | change planning skill / command                  | The assisted planning skill authors or refreshes the change's executable plan.                                                         |
+| `/spec:execute`        | Compatibility alias if kept | change execution skill / command                 | The existing execute driver moves to the change surface and delegates to change execution if the old spelling survives.                |
+| `specify workspace *`  | Removed                     | `specify registry *`                             | No compatibility alias is retained. Materialisation commands move to the registry surface, and `.specify/workspace/` is registry state. |
+| `specify contract *`   | Folded into capability      | `contracts@v1` capability validation and skills  | Contract format validation and adoption behavior move out of core command modules.                                                      |
+| `specify vectis *`     | Folded into capability      | `vectis@v2` capability validation and skills     | Vectis-specific behavior moves out of core command modules.                                                                            |
+
+The durable post-RFC command surface should make `change` the operator-facing orchestration noun. `plan` may remain the file name (`plan.yaml`) and a subresource in command help, but it should not survive as a peer top-level CLI family. The intended shape is `specify change create`, `specify change plan {add,amend,next,status,doctor,lock}`, `specify change execute`, `specify change finalize`, and `specify change archive`. Compatibility aliases for `/spec:plan`, `/spec:execute`, or `specify plan *` may delegate into that surface during the cut-over, but new documentation should teach the change-owned form.
 
 ### Capability manifest and protocol
 
-The capability manifest is the declarative surface the core loads before running the change loop. It combines the existing phase-brief pipeline with the new extension surface:
+The capability manifest is the declarative surface the core loads before running the slice loop. It combines the existing phase-brief pipeline with the new extension surface:
 
 ```yaml
 name: omnia
@@ -150,9 +169,9 @@ artifacts:
 
 Modes:
 
-- `staged` — build writes to `$CHANGE_DIR/<delta>/`; merge promotes to the declared baseline via `merge-strategy`; drop discards the delta; sibling changes read the baseline as conformance context.
+- `staged` — build writes to `$SLICE_DIR/<delta>/`; merge promotes to the declared baseline via `merge-strategy`; drop discards the delta; sibling slices read the baseline as conformance context.
 - `direct` — build writes directly into a declared project path; git provides review and rollback; there is no separate promote/drop step for the artefact.
-- `read-only` — declared baseline context that no change mutates; cited by generators and reviewers (roadmap §3 codex).
+- `read-only` — declared baseline context that no slice mutates; cited by generators and reviewers (roadmap §3 codex).
 
 An `audited` mode for checksum-recorded direct writes is deferred. The phase 2 manifest parser should reserve the word and fail with a future-use diagnostic rather than treating it as a supported mode.
 
@@ -167,14 +186,14 @@ Every artefact entry pairs its mode with a fixed set of location fields:
 | ----------- | ------------------------ | ------------------------------------------------- |
 | `staged`    | `delta:` + `baseline:`   | build writes to delta, merge promotes to baseline |
 | `direct`    | `project-path:`          | build writes directly into the project tree       |
-| `read-only` | `baseline:`              | sibling changes cite, no change mutates           |
+| `read-only` | `baseline:`              | sibling slices cite, no slice mutates             |
 
 
 No artefact mixes location fields across modes. Cardinality is fixed at one `delta:`, one `baseline:`, and one `project-path:` per artefact (§Non-Goals).
 
 ##### Multi-instance artefacts
 
-Direct artefacts whose `project-path` holds many sibling instances (omnia's `crates/<crate-name>/`, vectis's `<shell>/<target>/`) declare `instance-path-template:` to name the per-instance subdirectory. Staged artefacts may declare it too (a `delta:` of `specs/` with template `<crate-name>/spec.md` is exactly today's spec layout). Single-instance artefacts (`workflow.yaml`, `initiative.md`) omit the field. The template names a single brief-bound variable; the producing brief resolves it from its context. The linter enforces that exactly one variable appears.
+Direct artefacts whose `project-path` holds many sibling instances (omnia's `crates/<crate-name>/`, vectis's `<shell>/<target>/`) declare `instance-path-template:` to name the per-instance subdirectory. Staged artefacts may declare it too (a `delta:` of `specs/` with template `<crate-name>/spec.md` is exactly today's spec layout). Single-instance artefacts (`change.md`, `plan.yaml`) omit the field. The template names a single brief-bound variable; the producing brief resolves it from its context. The linter enforces that exactly one variable appears.
 
 ##### Substitution vocabulary
 
@@ -213,10 +232,10 @@ The core handles deterministic artifact mechanics from the manifest:
 
 | Event | Core default | Capability responsibility |
 | ----- | ------------ | ------------------------- |
-| Change delta validation | Apply generic format checks where a declared `format:` has a core adapter. | Capability skills add domain-specific checks during define, build, review, or merge briefs. |
+| Slice delta validation | Apply generic format checks where a declared `format:` has a core adapter. | Capability skills add domain-specific checks during define, build, review, or merge briefs. |
 | Merge preview | Render the declared `merge-strategy` preview for staged artifacts. | Capability skills interpret the preview and raise behavioral risks in the phase output. |
 | Merge run | Promote staged deltas via `merge-strategy`; accept direct artifact writes through git review. | Capability skills perform any prerequisite generation, verification, or close-out before merge is marked complete. |
-| Drop | Remove the change delta. | Capability skills document any direct-write cleanup required by their artifacts. |
+| Drop | Remove the slice delta. | Capability skills document any direct-write cleanup required by their artifacts. |
 
 Defaults for `three-way` and `opaque-replace` mean a pure-declarative YAML + markdown capability gets a working `define → build → merge` loop for free. Anything beyond those deterministic mechanics belongs in the capability's skills and references, where imperative code can already be included, invoked, and reviewed without adding a new core plugin runtime.
 
@@ -228,7 +247,7 @@ Rules:
 
 - A consumed capability MUST be active in the same project.
 - Consuming a capability grants no write access and creates no shared ownership of the consumed artefacts.
-- A consumed baseline is context for generation, validation, review, or workflow coordination; it is not part of the consuming capability's merge transaction.
+- A consumed baseline is context for generation, validation, review, or change coordination; it is not part of the consuming capability's merge transaction.
 - `specify check` validates that consumed capability names and referenced artefact ids resolve in the active capability set.
 - RFC-14 adds the `@<scope>` qualifier for workspaces: optional when there is a single provider, mandatory when multiple scopes could provide the consumed capability.
 
@@ -247,19 +266,18 @@ A repository activates exactly one **domain** capability under this RFC. Multi-d
 
 #### Cross-capability coordination
 
-When an outcome spans capabilities, the runtime does not fuse their pipelines. Coordination is explicit and platform-owned: initiative material records the outcome and close-out criteria, `specify-registry` identifies participating projects and resolves their materialised project roots, and `specify-workflow` owns any DAG of capability-addressed steps.
+When an outcome spans capabilities, the runtime does not fuse their pipelines. Coordination is explicit and platform-owned: `specify-change` records the operator outcome, close-out criteria, executable plan, execution state, and finalization checks, while `specify-registry` identifies participating projects and resolves their materialised project roots.
 
-The workflow graph, if present, coordinates capability-owned changes, validations, or checks; edges express ordering (`needs:`) and blocking conditions. Any read-only baseline access used by those nodes is still declared by the target capability through `consumes:` (§Consumes). A workflow may deliver code, but it may also deliver contracts, docs, infrastructure, fixtures, reports, or policy changes.
+The change plan coordinates capability-owned slices, validations, or checks; edges express ordering (`needs:`) and blocking conditions. Any read-only baseline access used by those nodes is still declared by the target capability through `consumes:` (§Consumes). A change may deliver code, but it may also deliver contracts, docs, infrastructure, fixtures, reports, or policy artefacts.
 
-This RFC does not define a core workflow runner. Workflow authoring, validation, execution, and re-entry are `specify-workflow` concerns. The existing `/spec:execute` skill is therefore not a new core lifecycle command; it migrates to the workflow surface, where it remains the long-running orchestrator that calls core phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`) and workflow-owned deterministic helpers.
+This RFC does not define a core change runner. Change planning, validation, execution, re-entry, and finalization are `specify-change` concerns. The existing `/spec:execute` skill is therefore not a new core lifecycle command; it migrates to the change surface, where it remains the long-running orchestrator that calls core phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`) and change-owned deterministic helpers.
 
-##### Example: landing an initiative
+##### Example: landing a change
 
-The end-to-end human loop has three operator checkpoints:
+The end-to-end human loop has two operator checkpoints:
 
-1. **Initiative.** The operator authors or refreshes `initiative.md`. The artefact is prose containing the desired outcome, scope, impacted projects, feature list, and close-out criteria.
-2. **Workflow.** `specify-workflow` authors or updates `workflow.yaml` / `plan.yaml`. The operator reviews the graph, dependencies, target projects/scopes, and change boundaries before execution.
-3. **Initiative close-out.** The workflow finalization action verifies that referenced workflows are terminal, required PRs have merged, and the close-out criteria in `initiative.md` are satisfied.
+1. **Change definition.** The operator authors or refreshes `change.md`; `specify-change` authors or updates the change's `plan.yaml`. The operator reviews the desired outcome, scope, impacted projects, feature list, close-out criteria, dependencies, target projects/scopes, and slice boundaries before execution.
+2. **Change execution and close-out.** The change execution action drives eligible plan entries through the core slice loop. The finalization action verifies that the plan is terminal, required PRs have merged, and the close-out criteria in `change.md` are satisfied.
 
 ### Worked `capability.yaml` example
 
@@ -334,7 +352,7 @@ Skill-owned imperative code runs through the same mechanisms agents already use 
 
 #### Registry-materialised path resolution
 
-When workflow execution materialises registry-declared projects, every `artifacts.*.{baseline, project-path, delta}` resolves relative to **the clone's project root**, not the hub's. `specify-registry` supplies the normalized project-root mapping used by registry-aware workflow execution; the core receives only the project root it should run against.
+When change execution materialises registry-declared projects, every `artifacts.*.{baseline, project-path, delta}` resolves relative to **the clone's project root**, not the hub's. `specify-registry` supplies the normalized project-root mapping used by registry-aware change execution; the core receives only the project root it should run against.
 
 ## Alternatives Considered
 
@@ -342,9 +360,10 @@ When workflow execution materialises registry-declared projects, every `artifact
 - **WASM-component plugins.** Rejected for the same reason as subprocess plugins; sandboxing imperative capability code belongs in the agent/tool execution model, not in `capability.yaml`.
 - **In-process dynamic-library plugins.** Rejected because Rust ABI instability disqualifies them and because the capability protocol does not need a second imperative extension path.
 - **Keep `specify workspace *` as a core exception.** Rejected because it weakens the core boundary. Registry materialisation is first-party Specify behavior above core, not a core verb family.
-- **Extract a standalone `workspace@v1` capability.** Rejected because materialisation is topology-driven substrate for workflow execution, not an outcome domain with capability-owned artifacts.
+- **Extract a standalone `workspace@v1` capability.** Rejected because materialisation is topology-driven substrate for change execution, not an outcome domain with capability-owned artifacts.
 - **Split registry and workspace into separate components.** Rejected because they are two faces of the same domain: declared topology and its local materialised view. Keeping them separate also overloads "workspace" just as RFC-14 needs that noun for in-repo scopes.
-- **Treat registry, initiative, and workflow as capabilities.** Rejected because it recreates the "everything is extensible" monolith in a new vocabulary. Registry is topology plus local materialisation, initiative is orchestration input, and workflow is orchestration; each has a different lifecycle from capability-owned domain artefacts.
+- **Treat registry or change orchestration as capabilities.** Rejected because it recreates the "everything is extensible" monolith in a new vocabulary. Registry is topology plus local materialisation, and the change component is orchestration from operator brief through plan execution and close-out; each has a different lifecycle from capability-owned domain artefacts.
+- **Split change orchestration and workflow into separate components.** Rejected because they are two faces of the same domain: operator intent and the executable graph that lands it. Keeping them separate gives the plan a false top-level identity, just as keeping workspace separate from registry gave materialisation a false top-level identity.
 - **Multiple imperative escape hatches.** Rejected because capability skills are the single imperative escape hatch.
 - **Keep `artifacts:` adoption-only.** Rejected because artifacts need format validators and read-only dependencies to describe real capability behavior.
 - **A top-level `artifacts.yaml` next to `capability.yaml`.** Rejected because the extension surfaces are capability-bound, not project-bound.
@@ -358,9 +377,9 @@ When workflow execution materialises registry-declared projects, every `artifact
 - **Cardinality > 1 on location fields.** One artefact may declare at most one `delta:`, one `baseline:`, and one `project-path:`. Revisited only if a real capability needs more.
 - **Cloud execution semantics.** Orthogonal; capability skills should run through whatever tool execution model the host provides.
 - **Back-compat for capabilities without the new surface.** See §Migration — current usage footprint lets us cut over without a fallback path.
-- **Third-party replacements for foundation components.** Registry and workflow are first-party Specify components in this RFC. Swapping them or making them externally pluggable is a follow-up RFC.
+- **Third-party replacements for foundation components.** Registry and the change component are first-party Specify components in this RFC. Swapping them or making them externally pluggable is a follow-up RFC.
 - **Multiple domain capabilities per repository.** Covered by [RFC-14](rfc-14-workspaces.md), strictly additive on top of this RFC's capability manifest protocol.
-- **Cross-capability changes in a single transaction.** Multi-capability outcomes are coordinated by workflow entries, not by one change that writes multiple capabilities' baselines. RFC-14 applies the same rule to scopes: cross-scope work is a workflow with multiple entries, not a multi-scope change.
+- **Cross-capability slices in a single transaction.** Multi-capability outcomes are coordinated by change plan entries, not by one slice that writes multiple capabilities' baselines. RFC-14 applies the same rule to scopes: cross-scope work is a change plan with multiple entries, not a multi-scope slice.
 
 Multi-capability *per project* is in scope for domain capabilities (§Cross-capability coexistence). Multi-*domain*-capability per project is the RFC-14 layer.
 
@@ -370,16 +389,18 @@ Multi-capability *per project* is in scope for domain capabilities (§Cross-capa
 | ---- | ------- |
 | Active capability set | The domain capability set active for a project or scope. Platform components are outside this set. |
 | Capability | A versioned Specify extension manifest that declares phase briefs, artefacts, and read-only dependencies. |
+| Change | The umbrella orchestration concept (formerly *initiative*): an operator-defined outcome that coordinates one or more slices through `change.md` + `plan.yaml`. |
+| Slice | The single unit that flows through the fixed `define → build → merge` loop (formerly *change*): a per-project transaction with its own proposal, specs, design, tasks, and merge step. |
 | Domain capability | The primary project capability such as `omnia@v1`, `contracts@v1`, or `vectis@v2`. RFC-14 adds multiple domain capabilities through scopes. |
 | First-party capability | A domain capability bundled with the CLI release and resolved through the same manifest path as URL capabilities. |
-| Platform component | A first-party Specify subsystem above core, such as `specify-registry` or `specify-workflow`. Platform components are not capabilities. |
-| Workflow component | `specify-workflow`, the first-party component that owns orchestration state and execution. It is not a core runner and not a capability. |
+| Platform component | A first-party Specify subsystem above core, such as `specify-registry` or `specify-change`. Platform components are not capabilities. |
+| Change component | `specify-change`, the first-party component that owns operator brief, plan, orchestration state, execution, finalization, and archive. It is not a core runner and not a capability. |
 | Format adapter | The handler for artefact syntax and validation, such as `markdown-spec`, `openapi`, `asyncapi`, or `json-schema`. |
 | Registry materialisation resolver | The `specify-registry` service that maps registry-declared projects to materialised project roots. |
 
 ## Implementation Scope
 
-An incremental landing, each stage independently testable and shippable. Every stage preserves working `/spec:define → /spec:build → /spec:merge` for the `omnia` capability (the only capability currently in real use). The phases are delivery slices for this RFC, not separate RFCs.
+An incremental landing, each stage independently testable and shippable. Every stage preserves working `/spec:define → /spec:build → /spec:merge` for the `omnia` capability (the only capability currently in real use). The phases are delivery increments for this RFC, not separate RFCs.
 
 Sizing guide:
 
@@ -401,7 +422,7 @@ Lands the rename without changing artefact mechanics.
 3. Preserve the existing `pipeline:` behavior byte-for-byte so the only behavior change in this phase is the vocabulary cut-over.
 4. Update docs, fixtures, and diagnostics to use **capability** for Specify extensions and **schema** only for validation schemas.
 
-Acceptance: a canonical omnia change still completes through `/spec:define → /spec:build → /spec:merge`, and pre-cut-over manifests fail with a clear "schema has become capability" diagnostic.
+Acceptance: a canonical omnia slice still completes through `/spec:define → /spec:build → /spec:merge`, and pre-cut-over manifests fail with a clear "schema has become capability" diagnostic.
 
 ### Phase 2 — Artifact declarations and adoption
 
@@ -420,7 +441,7 @@ Acceptance: the core no longer carries fixed `specs` / `contracts` path helpers,
 Lands the authoring contract that lets briefs refer to capability-owned locations without hard-coded paths.
 
 1. Brief frontmatter parser learns `produces:` (single id or list). Brief loader binds each entry to an artefact in the active capability; unbound ids fail load with a diagnostic.
-2. Brief renderer learns the closed substitution vocabulary (`$ARTIFACT_DELTA[...]`, `$ARTIFACT_BASELINE[...]`, `$ARTIFACT_PROJECT[...]`, `$CHANGE_DIR`) and resolves instance templates from brief context.
+2. Brief renderer learns the closed substitution vocabulary (`$ARTIFACT_DELTA[...]`, `$ARTIFACT_BASELINE[...]`, `$ARTIFACT_PROJECT[...]`, `$SLICE_DIR`) and resolves instance templates from brief context.
 3. `specify check` (RFC-5) lints flag direct literal paths and the per-artefact invariants: verifier brief present for `staged`, no baseline / project-path collision, pipeline stays within declared artefacts, every authoring-required artefact appears in some brief's `produces:` list, and every `instance-path-template` names exactly one variable.
 4. Port capability brief prose to the substitution vocabulary.
 
@@ -430,35 +451,35 @@ Acceptance: a capability can add or rename an artefact location without changing
 
 The largest phase: it proves the reframe without changing the lifecycle model.
 
-1. **Extract `specify-registry` as the topology and materialisation crate.** Move `registry.yaml` parsing, add/remove/show helpers, topology validation, clone/symlink resolution, dirty-state reporting, push, and merge support out of the schema/capability crate. Registry entries carry project id, repository URL, description, and default capability; they must not embed contract roles, plan status, workflow status, or validation findings.
+1. **Extract `specify-registry` as the topology and materialisation crate.** Move `registry.yaml` parsing, add/remove/show helpers, topology validation, clone/symlink resolution, dirty-state reporting, push, and merge support out of the schema/capability crate. Registry entries carry project id, repository URL, description, and default capability; they must not embed contract roles, change status, plan status, or validation findings.
 2. **Keep `.specify/workspace/` as derived registry state.** The directory may continue to hold clones or symlinks, but its contents are the local materialised view of `registry.yaml`, not a separate component-owned topology.
-3. **Extract `specify-workflow` as the orchestration crate.** Plan/workflow authoring, next-entry selection, locking, status updates, recovery, and initiative close-out move here. `/spec:execute` becomes a workflow-surface command or skill; any retained `/spec:execute` spelling is only a compatibility alias.
-4. **Keep workflow helpers internal to workflow execution.** Workflow may use skill-owned scripts or library helpers for next-entry selection, locking, status updates, and recovery. Generic change-loop reads such as `specify change outcome show` stay core.
+3. **Extract `specify-change` as the orchestration crate.** Change brief management, plan authoring, next-entry selection, locking, status updates, recovery, execution, finalization, and archive move here. `/spec:plan` and `/spec:execute` become change-surface commands or skills; any retained `/spec:plan` or `/spec:execute` spelling is only a compatibility alias.
+4. **Keep change helpers internal to change execution.** The change component may use skill-owned scripts or library helpers for next-entry selection, locking, status updates, and recovery. Generic slice-loop reads such as `specify slice outcome show` stay core.
 5. **Delete concern-specific core type surfaces where the artifact model replaces them.** `Commands::{Vectis, Contract}` and the matching command modules stop being the place where artifact validation and merge behavior live.
-6. **Retire surviving hard-coded `contracts` / `specs` references** in `crates/merge/`, `crates/validate/`, `src/config.rs`, `crates/change/`.
+6. **Retire surviving hard-coded `contracts` / `specs` references** in `crates/merge/`, `crates/validate/`, `src/config.rs`, and the slice-loop crate (today's `crates/change/`, renamed in this phase to `crates/slice/`).
 7. **First-party domain capabilities publish their full surface** — `omnia`, `contracts`, and `vectis` declare `artifacts:` + `pipeline:`. Platform components publish their own file formats and command contracts separately.
-8. **Initialization wires components, not active capabilities.** A project's `project.yaml` declares its domain capability. Hub init enables registry and workflow component files as platform state, but the core does not auto-activate them as capabilities.
+8. **Initialization wires components, not active capabilities.** A project's `project.yaml` declares its domain capability. Hub init enables registry and change-component files as platform state, but the core does not auto-activate them as capabilities.
 
-Phase 4 may land as a sequence of smaller commits, but every commit keeps the existing `define → build → merge` lifecycle intact.
+Phase 4 may land as a sequence of smaller commits, but every commit keeps the existing `define → build → merge` lifecycle intact. The lifecycle vocabulary cut-over (today's `change` → `slice`, today's `initiative` → `change`) lands in this phase together with the component extractions that depend on it; the old surfaces are not preserved as deprecated aliases.
 
 ### This repo (`augentic/specify`)
 
 1. Add `capabilities/capability.schema.json` (or rename the existing manifest schema) to cover `artifacts:` and `consumes:`.
 2. Rewrite `capabilities/{contracts,omnia,vectis}/capability.yaml` to declare their full extension surface.
 3. Port brief prose to `$ARTIFACT_DELTA[<id>]` / `$ARTIFACT_BASELINE[<id>]` substitutions.
-4. Move `plugins/spec/skills/execute/` to the workflow surface; keep any `/spec:execute` material as a compatibility shim only.
-5. Update `plugins/contract/`, `plugins/vectis/`, and workflow-facing skills to own any imperative validation, generation, or review behavior that used to sit behind in-binary command modules.
-6. Document the manifest protocol in `docs/reference/capabilities.md`; cross-link from each capability's README. Add companion references for `specify-registry` and `specify-workflow`, including registry materialisation behavior and their dependency direction relative to core.
+4. Move `plugins/spec/skills/plan/` and `plugins/spec/skills/execute/` to the change surface; keep any `/spec:plan` or `/spec:execute` material as a compatibility shim only.
+5. Update `plugins/contract/`, `plugins/vectis/`, and change-facing skills to own any imperative validation, generation, or review behavior that used to sit behind in-binary command modules.
+6. Document the manifest protocol in `docs/reference/capabilities.md`; cross-link from each capability's README. Add companion references for `specify-registry` and `specify-change`, including registry materialisation behavior, change planning/execution behavior, and their dependency direction relative to core.
 
 ## Migration
 
-Only the `omnia` capability and the core loop are in real-world use. `specify contract *`, `specify vectis *`, and the bulk of `specify plan|initiative|registry|workspace *` have no durable external user base to protect.
+Only the `omnia` capability and the core loop are in real-world use. `specify contract *`, `specify vectis *`, and the bulk of today's `specify plan|initiative|registry|workspace *` have no durable external user base to protect.
 
-**Hard cut-over, no fallback path.** Each phase's minor version is a breaking change for the surfaces it touches. No deprecation window and no `artifacts:`-absent fallback: pre-reframe capability manifests fail to load against the post-reframe CLI with a clear diagnostic pointing at this RFC and the capability rename. `/spec:execute` is not retained as a `spec` plugin responsibility; if the spelling survives, it delegates to the workflow surface.
+**Hard cut-over, no fallback path.** Each phase's minor version is a breaking change for the surfaces it touches. No deprecation window and no `artifacts:`-absent fallback: pre-reframe capability manifests fail to load against the post-reframe CLI with a clear diagnostic pointing at this RFC and the capability rename. `/spec:plan` and `/spec:execute` are not retained as `spec` plugin responsibilities; if either spelling survives, it delegates to the change surface.
 
 ### Migration TL;DR
 
-The rename is part of that cut-over:
+Two vocabulary cut-overs land together: the **schema → capability** rename for the extension primitive, and the **change → slice** / **initiative → change** lifecycle rename. Every row below is a hard cut-over with a load-time diagnostic; no compatibility aliases are kept.
 
 
 | Current term / surface                    | Post-RFC term / surface                       |
@@ -468,9 +489,21 @@ The rename is part of that cut-over:
 | `project.yaml:schema`                     | `project.yaml:capability`                     |
 | `specify schema {resolve,check,pipeline}` | `specify capability {resolve,check,pipeline}` |
 | `schemas/<name>/schema.yaml`              | `capabilities/<name>/capability.yaml`         |
+| Change (single per-loop unit)             | Slice                                         |
+| Initiative (umbrella orchestration)       | Change                                        |
+| `specify change *` (today's per-loop)     | `specify slice *`                             |
+| `specify initiative *`                    | `specify change *`                            |
+| `.specify/changes/`                       | `.specify/slices/`                            |
+| `initiative.md`                           | `change.md`                                   |
+| `specify-initiative` (crate / component)  | `specify-change`                              |
+| `specify-change` (crate, slice loop)      | `specify-slice`                               |
+| `crates/change/`                          | `crates/slice/`                               |
+| `$CHANGE_DIR` (brief substitution)        | `$SLICE_DIR`                                  |
 
 
 JSON Schema remains JSON Schema. `*.schema.json` continues to name validation schemas, not Specify capabilities.
+
+The `change → slice` / `initiative → change` rows reuse the noun "change" with a new meaning. Inside a Specify project the post-cut-over reading is unambiguous: a *change* is the operator-defined umbrella, a *slice* is what flows through `define → build → merge`, and "the change loop" no longer exists as a phrase — call it the *slice loop*.
 
 ### Deferred phase rename
 
@@ -478,10 +511,10 @@ This RFC does **not** rename `define` / `merge` to `draft` / `adopt`. That renam
 
 Four invariants guard the landing:
 
-1. **Omnia keeps working.** Every phase's acceptance criterion includes running `/spec:define → /spec:build → /spec:merge` on a canonical omnia change end-to-end.
+1. **Omnia keeps working.** Every phase's acceptance criterion includes running `/spec:define → /spec:build → /spec:merge` on a canonical omnia slice end-to-end.
 2. **The core never learns a capability name.** `specify check` rejects hard-coded capability-name literals in core crate sources outside tests, including first-party domain capability names after extraction.
 3. **The core never learns an artefact id either.** A companion rule rejects hard-coded artefact-id literals such as `"specs"`, `"contracts"`, and `"crates"`; phase 2 retires the current canonical violations (`ProjectConfig::{specs_dir, contracts_dir}`).
-4. **Platform components stay outside the active capability set.** A rule verifies `specify-core` does not depend on `specify-registry` or `specify-workflow`; dependency direction flows from workflow down to registry/core, never the reverse.
+4. **Platform components stay outside the active capability set.** A rule verifies `specify-core` does not depend on `specify-registry` or `specify-change`; dependency direction flows from the change component down to registry/core, never the reverse.
 
 The hard-coded-name lints are RFC-5 design work, not a naive string-literal ban. RFC-5 should define the crate allowlist, generated-code exemptions, test exemptions, and AST-aware matching needed to avoid flagging unrelated prose or diagnostics.
 
@@ -506,16 +539,16 @@ Resolved with provisional answer (see body for context):
 - **Default `artifact-validate`.** No core default — validation is where format semantics matter most and a silent default would mask missing capability work.
 - **Format-adapter catalog.** Fixed in-core catalog to start; revisit when a third-party capability wants to ship its own adapter.
 - **First-party capability versioning.** Bundled domain capabilities track the CLI release as an ABI surface; projects pin via `specify_version` only.
-- **Registry materialisation ownership.** Resolved by extracting `specify-registry`; registry data drives materialisation, workflow consumes the resolved project roots, and the core only receives a project root.
+- **Registry materialisation ownership.** Resolved by extracting `specify-registry`; registry data drives materialisation, the change component consumes the resolved project roots, and the core only receives a project root.
 
 ## References
 
-- [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — owns the crates the reframe touches (`specify-schema`, `specify-merge`, `specify-validate`, `specify-change`) and the `src/cli.rs` dispatcher.
+- [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — owns the crates the reframe touches (today's `specify-schema`, `specify-merge`, `specify-validate`, and `specify-change`; the slice loop crate is renamed to `specify-slice` in this RFC) and the `src/cli.rs` dispatcher.
 - [RFC-8: API contracts](archive/rfc-8-api-contracts.md) — `contracts@v1` capability; delta-then-promote semantics become the `opaque-replace` default.
-- [RFC-2: Execution](archive/rfc-2-execution.md) — `/spec:execute --loop`; informs the `specify-workflow` extraction, but this RFC does not change the lifecycle model.
-- [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — plan authoring pipeline; the existing two-brief `pipeline.plan` is the predecessor to workflow authoring.
+- [RFC-2: Execution](archive/rfc-2-execution.md) — `/spec:execute --loop`; informs the `specify-change` (formerly `specify-initiative`) extraction, but this RFC does not change the lifecycle model.
+- [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — plan authoring pipeline; the existing two-brief `pipeline.plan` is the predecessor to change plan authoring.
 - [RFC-3b: Platform](archive/rfc-3b-platform.md) — registry routing and materialised project clones.
-- [RFC-9: Platform](archive/rfc-9-platform.md) — moved registry, plan, initiative, and contracts to repo root; `/spec:plan --orchestrate` is the predecessor to workflow-driven orchestration, but not to a retained workflow CLI family.
+- [RFC-9: Platform](archive/rfc-9-platform.md) — moved registry, plan, initiative, and contracts to repo root; `/spec:plan --orchestrate` is the predecessor to change-driven orchestration, but not to retained top-level plan CLI families.
 - [RFC-12: Refine RFC-8](archive/rfc-12-refine-rfc-8.md) — SemVer + `info.x-specify-id` rules become contracts capability validation behavior.
 - [RFC-5: Framework Linter](rfc-5-lint.md) — home of the lints enforcing the reframe's invariants, including the hard-coded-name lint design.
 - [Roadmap](roadmap.md) — §3 motivates `read-only`; §5 / §6 / §7 are consumers of a stable core surface.
