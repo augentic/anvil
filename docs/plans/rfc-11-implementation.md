@@ -46,7 +46,7 @@ Status legend: `[ ]` pending · `[~]` in progress · `[x]` complete · `[!]` blo
 | 1.2   | [x]    | Author `schemas/vectis/assets.schema.json`                             | specify        | §E, Appendix B                    |
 | 1.3   | [x]    | Patch `composition.schema.json` (provenance kinds + `component` key)   | specify        | §A, §G, Appendix F.1, F.2         |
 | 1.4   | [x]    | Add `artifacts:` block + companion validator patch                     | specify        | §H, §L                            |
-| 1.5   | [ ]    | Scaffold `specify vectis validate <mode> [path]` subcommand surface    | specify-cli    | §H, §I                            |
+| 1.5   | [x]    | Scaffold `specify vectis validate <mode> [path]` subcommand surface    | specify-cli    | §H, §I                            |
 | 1.6   | [ ]    | Implement `validate tokens` mode                                       | specify-cli    | §H, Appendix A                    |
 | 1.7   | [ ]    | Implement `validate assets` mode                                       | specify-cli    | §E, §H, Appendix B                |
 | 1.8   | [ ]    | Implement `validate layout` mode                                       | specify-cli    | §A, §G, §H, Appendix F            |
@@ -181,7 +181,7 @@ The document-level `version` constant **stays at `1`** (Appendix F preamble). F.
 
 **Sub-agent chores.** Sub-agent can scaffold the new module structure (Cargo manifest entry, `mod.rs`, error variant additions on `VectisError`, JSON shape derives) once the parent agent has decided the JSON Schema crate.
 
-**Status.** `[ ]`
+**Status.** `[x]` — landed locally on `screenshot` (specify-cli). `VectisAction::Validate(specify_vectis::ValidateArgs)` added in [`src/cli.rs`](../../../specify-cli/src/cli.rs); the dispatch arm + a forward-compatible `render_validate_text` helper added in [`src/commands/vectis.rs`](../../../specify-cli/src/commands/vectis.rs); the new `crates/vectis/src/validate.rs` returns `CommandOutcome::Stub { command: "validate <mode>" }` for every variant and is gated by `#[allow(clippy::missing_const_for_fn, reason = "stub today; Phases 1.6-1.10 add IO and YAML parsing.")]` so the signature does not flip when the body grows. `ValidateMode` is a clap `ValueEnum` (`layout|composition|tokens|assets|all`) — same kebab-case spelling as the `command` field, the `as_str()` accessor, and the JSON `mode` payload that Phases 1.6+ will populate. Three new integration tests in [`tests/vectis.rs`](../../../specify-cli/tests/vectis.rs) (`vectis_validate_help_lists_every_mode_and_path_positional`, `vectis_validate_modes_emit_not_implemented_envelope`, `vectis_validate_accepts_explicit_path_positional`) plus three unit tests in `validate.rs` lock the contract; `vectis_help_lists_subcommands` was extended with `validate`. `cargo test --workspace` (831 tests, 1 ignored), `cargo clippy --workspace --all-targets -- -D warnings`, and `cargo fmt -- --check` all pass; `make checks` (specify) still green. **JSON Schema crate decision:** Phases 1.6–1.10 use `jsonschema = { version = "0.46", default-features = false }` — already a workspace dep at [`specify-cli/Cargo.toml`](../../../specify-cli/Cargo.toml) (lines 42, 125) and used by `crates/schema/src/schema.rs::validate_against_meta`. Phase 1.6 should add it to `crates/vectis/Cargo.toml` (workspace = true) and reuse the `jsonschema::validator_for(...)` + `iter_errors(...)` pattern rather than introducing a sibling. The dep is **not** added in this phase because every mode is still a stub; pulling it in unused would trip `cargo deny` / unused-dep warnings.
 
 ---
 
@@ -193,10 +193,11 @@ The document-level `version` constant **stays at `1`** (Appendix F preamble). F.
 
 **Scope.** Replace the `Tokens` mode stub from Phase 1.5 with a real validator: parse the YAML at the supplied path, validate against the embedded `schemas/vectis/tokens.schema.json` from Phase 1.1, and report category/value-shape errors with paths the operator can act on.
 
+- Add `jsonschema.workspace = true` to `crates/vectis/Cargo.toml` (the dep is already declared at the workspace level — see Phase 1.5 status note for the rationale). Reuse the `jsonschema::validator_for(&meta_schema)` + `iter_errors(instance)` pattern from `crates/schema/src/schema.rs::validate_against_meta` rather than introducing a sibling helper.
 - Embed `tokens.schema.json` into the binary (mirror however `specify-vectis` already embeds template assets — see `crates/vectis/embedded/`).
 - Default path: `design-system/tokens.yaml` for now (the `artifacts:`-block default-path lookup arrives in Phase 1.10; until then accept the explicit `[path]` argument or use the canonical fallback).
 - Exit codes per §H: non-zero on errors, zero with a printed warning report on warnings, zero silently on a clean run.
-- JSON output uses the v2 contract (kebab-case top level, `errors`/`warnings` arrays with `path` + `message` shapes — match the conventions already in `VectisError::to_json`).
+- JSON output uses the v2 contract (kebab-case top level, `errors`/`warnings` arrays with `path` + `message` shapes — match the conventions already in `VectisError::to_json`). Phase 1.5 fixed the per-mode envelope shape: `{ "mode": "tokens", "path": "...", "errors": [{ "path": "...", "message": "..." }], "warnings": [{ "path": "...", "message": "..." }] }`. The forward-compatible `render_validate_text` in `src/commands/vectis.rs` already consumes this shape — flipping the dispatcher arm from `Ok(CommandOutcome::Stub {...})` to `Ok(CommandOutcome::Success(value))` is the only contract change Phase 1.6 needs.
 
 **Acceptance.**
 
@@ -300,7 +301,7 @@ The document-level `version` constant **stays at `1`** (Appendix F preamble). F.
 **Scope.** Two work items that finally make the v1 reader of the `artifacts:` block real:
 
 1. Implement default-path resolution: when no `[path]` is supplied, each mode reads `schemas/vectis/schema.yaml` `artifacts:` block and uses `paths.change_local` then `paths.project` (then `paths.baseline` for composition) in order. If `artifacts:` is absent, fall back to the canonical paths in §H "Inputs". An explicit `[path]` argument always wins.
-2. Implement the `all` convenience verb: runs `layout` (against active change), `composition` (active change → baseline fallback), `tokens`, `assets` and emits a combined report. Exit code is the worst of any sub-mode (errors > warnings > clean). JSON shape: `{ "results": [{ "mode": ..., "report": ... }, ...] }` — keep it composable.
+2. Implement the `all` convenience verb: runs `layout` (against active change), `composition` (active change → baseline fallback), `tokens`, `assets` and emits a combined report. Exit code is the worst of any sub-mode (errors > warnings > clean). JSON shape: `{ "mode": "all", "results": [{ "mode": ..., "report": ... }, ...] }` — keep it composable. Phase 1.5 sized `render_validate_text` (in `src/commands/vectis.rs`) for the **per-mode** flat shape only; this phase MUST extend it to recognise `mode == "all"` and recurse through `results[*]` so the text path renders one section per sub-mode. Tests should cover both shapes.
 
 **Acceptance.**
 
