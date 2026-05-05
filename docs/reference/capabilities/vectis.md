@@ -1,6 +1,7 @@
-# Vectis Schema
+# Vectis Capability
 
-- **URL:** `https://github.com/augentic/specify/schemas/vectis`
+- **Identifier:** `vectis` (bundled, first-party)
+- **URL:** `https://github.com/augentic/specify/capabilities/vectis`
 - **Purpose:** Cross-platform Crux application development
 - **Target:** Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell), VectisDesign (design system)
 
@@ -52,7 +53,7 @@ See [Vectis Plugin](../plugins/vectis.md) for full skill documentation.
 
 ## Feature-centric specs
 
-The Vectis schema organises specs by **feature** (what the app does), not by software component. A single feature spec at `specs/<feature>/spec.md` contains:
+The Vectis capability organises specs by **feature** (what the app does), not by software component. A single feature spec at `specs/<feature>/spec.md` contains:
 
 - **Core requirements** (main body) -- platform-neutral behavioral requirements that drive the Crux shared crate.
 - **Platform sections** (optional) -- `## iOS Shell Requirements`, `## Android Shell Requirements`, etc.
@@ -74,7 +75,7 @@ The proposal declares which platforms a change targets:
 
 ## Domain context
 
-The Vectis schema injects domain context about:
+The Vectis capability's briefs and skills carry domain context about:
 
 - Crux application architecture (Model, Event, ViewModel, Effect, `update()`, `view()`).
 - Crux capabilities (Render, HTTP, Key-Value, Time, Platform).
@@ -84,12 +85,10 @@ The Vectis schema injects domain context about:
 
 ## Project configuration
 
-After `/spec:init` with the Vectis schema:
+After `/spec:init vectis`, `project.yaml` carries:
 
 ```yaml
-schema: https://github.com/augentic/specify/schemas/vectis
-domain: |
-  Describe your app's domain, purpose, and constraints here.
+capability: https://github.com/augentic/specify/capabilities/vectis
 rules:
   - "Project-specific constraints go here"
 ```

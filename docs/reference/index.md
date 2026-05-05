@@ -6,7 +6,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Core concepts
 
-- [Artifact Format](artifact-format.md) -- full specification of the core artifacts (proposal, spec, design, tasks) and schema-specific artifacts (composition), including delta formats, tags, and validation checklists.
+- [Artifact Format](artifact-format.md) -- full specification of the core artifacts (proposal, spec, design, tasks) and capability-specific artifacts (composition), including delta formats, tags, and validation checklists.
 - [Lifecycle](lifecycle.md) -- state diagram, transitions, `.metadata.yaml` shape, plan entry states.
 - [Directory Layout](directory-layout.md) -- annotated `.specify/` tree with explanations.
 
@@ -17,15 +17,15 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### CLI
 
-- [CLI Reference](cli/index.md) -- all `specify` subcommands grouped by family (status, change, plan, initiative, registry, workspace, schema, init, vectis).
+- [CLI Reference](cli/index.md) -- all `specify` subcommands grouped by family (status, change, plan, initiative, registry, workspace, capability, init, vectis).
 
 ### Plugins
 
 - [Plugins](plugins/index.md) -- specialist skills organized by plugin (Omnia, Vectis, RT, Client).
 
-### Schemas
+### Capabilities
 
-- [Schemas](schemas/index.md) -- brief pipelines, specialist skills, and domain context for each schema (Omnia, Vectis).
+- [Capabilities](capabilities/index.md) -- brief pipelines, specialist skills, and domain context for each first-party capability (Omnia, Vectis, Contracts).
 
 ### Configuration
 
@@ -41,7 +41,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 | Understand lifecycle states | [Lifecycle](lifecycle.md) |
 | Configure my project | [Configuration Files](configuration.md) |
 | See what a plugin provides | [Plugins](plugins/index.md) |
-| Understand schema differences | [Schemas](schemas/index.md) |
+| Understand capability differences | [Capabilities](capabilities/index.md) |
 | Look up a term | [Glossary](../appendices/glossary.md) |
 | Troubleshoot an error | [Troubleshooting](../appendices/troubleshooting.md) |
 

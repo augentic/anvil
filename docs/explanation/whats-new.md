@@ -77,7 +77,7 @@ A **registry-only platform hub** (RFC-9 ?1D) is now the canonical starting shape
 specify init --hub --name shop-platform
 ```
 
-The flag scaffolds a sentinel `project.yaml { schema: hub, hub: true, ... }` that disables phase pipelines on the hub itself, plus an empty `registry.yaml` and an `initiative.md` template. `Registry::validate_shape` extends with a `hub-only` mode that rejects any registry entry whose `url` is `.`.
+The flag scaffolds a sentinel `project.yaml { hub: true, ... }` (the `capability:` field is omitted on hubs) that disables phase pipelines on the hub itself, plus an empty `registry.yaml` and an `initiative.md` template. `Registry::validate_shape` extends with a `hub-only` mode that rejects any registry entry whose `url` is `.`.
 
 The platform-as-project shape (initiating repo with `url: .`) is still permitted for single-repo and small-team cases.
 
@@ -174,9 +174,9 @@ Runs four guards in order (plan-presence, plan terminal-state, per-project PR-st
 
 API contracts are now first-class platform artifacts at `contracts/`, alongside `registry.yaml` and `plan.yaml`. The contract format uses JSON Schema (payload definitions) plus OpenAPI 3.1 (HTTP bindings) and AsyncAPI 3.0 (messaging bindings) -- no proprietary IDL.
 
-The `contracts` brief in the define pipeline runs alignment validation against the baseline; `/spec:plan` automatically inserts a contract change before implementation changes when it detects an API boundary between projects (the contract-first authorship pattern). The Contract plugin ships three format-first skills, each carrying author / import / verify intents internally: `/contract:openapi` (HTTP / resource APIs), `/contract:asyncapi` (evented / pub-sub / streaming), and `/contract:json-schema` (shared payload schemas). The `contracts` brief, schema id, and `contracts/` baseline directory keep their original names; only the Cursor plugin / slash-command surface is renamed.
+The `contracts` brief in the define pipeline runs alignment validation against the baseline; `/spec:plan` automatically inserts a contract change before implementation changes when it detects an API boundary between projects (the contract-first authorship pattern). The Contract plugin ships three format-first skills, each carrying author / import / verify intents internally: `/contract:openapi` (HTTP / resource APIs), `/contract:asyncapi` (evented / pub-sub / streaming), and `/contract:json-schema` (shared payload schemas). The `contracts` brief, capability id, and `contracts/` baseline directory keep their original names; only the Cursor plugin / slash-command surface is renamed.
 
-- Reference: [Contract plugin](../reference/plugins/contract.md), [Contracts schema](../reference/schemas/contracts.md), [Artifact Format -> Contracts](../reference/artifact-format.md#contract-artifacts-api-shape)
+- Reference: [Contract plugin](../reference/plugins/contract.md), [Contracts capability](../reference/capabilities/contracts.md), [Artifact Format -> Contracts](../reference/artifact-format.md#contract-artifacts-api-shape)
 - How-to: [Work with Contracts Across Repos](../how-to/cross-repo-contracts.md)
 
 ## Cross-project contract validation (RFC-9 ?3B)

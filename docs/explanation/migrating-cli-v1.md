@@ -82,8 +82,8 @@ After running the bulk pass:
 
 These surfaces are untouched. Scripts that use them keep working.
 
-- `specify init ...` -- project scaffold (extended with `--hub` in RFC-9 §1D, additive only).
-- `specify schema {resolve, check, pipeline}` -- schema and brief pipeline queries.
+- `specify init ...` -- project scaffold (extended with `--hub` in RFC-9 §1D, additive only; positional argument shape was renamed to `<capability>` by RFC-13 §Migration).
+- `specify capability {resolve, check, pipeline}` -- capability and brief pipeline queries (renamed from `specify schema {resolve, check, pipeline}` by RFC-13 §Migration).
 - `specify plan {create, validate, doctor, next, status, add, amend, transition, archive, lock {acquire, release, status}}` -- initiative plan CRUD and lifecycle. The v1.x rename rows above renamed `init` -> `create` (file scaffold) and the entry-append `create` -> `add`; `doctor` is a strict superset of `validate` added by RFC-9 §4B.
 - `specify workspace {sync, status, push, merge}` -- multi-repo workspace clones; `merge` was added by RFC-9 §4A.
 - `specify initiative {create, show, finalize}` -- operator brief at `initiative.md`; `finalize` was added by RFC-9 §4C, and `init` was renamed to `create` in v1.x.

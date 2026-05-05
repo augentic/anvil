@@ -11,7 +11,7 @@ $ /spec:plan --orchestrate dark-mode \
 
 Pre-flight
   shape:        new-feature
-  hub:          shop-platform/.specify/project.yaml (schema: hub, hub: true)
+  hub:          shop-platform/.specify/project.yaml (hub: true; capability omitted)
   specify:      0.x.y on PATH
   gh:           v2.x.y on PATH (advisory only — not required without --auto-merge)
   initiative:   dark-mode (kebab-case ok)
@@ -225,7 +225,7 @@ $ /spec:plan --orchestrate dark-mode \
 
 Pre-flight
   shape:        new-feature
-  hub:          shop-platform/.specify/project.yaml (schema: hub, hub: true)
+  hub:          shop-platform/.specify/project.yaml (hub: true; capability omitted)
   specify:      0.x.y on PATH
   gh:           v2.x.y on PATH
   initiative:   dark-mode (kebab-case ok)

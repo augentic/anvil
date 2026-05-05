@@ -8,7 +8,7 @@ argument-hint: "<initiative-name>"
 
 1. **Parse and validate inputs** — validate `<initiative-name>` as kebab-case. Require at least one of `--from`, `--against`, `--source`, or a populated `initiative.md:inputs`. Refuse if `plan.yaml` already exists (unless `--extend`).
 2. **Scaffold the plan** — `specify plan create <initiative-name> [--source <key>=<path-or-url> ...]`. Skipped under `--extend`.
-3. **Run the plan brief pipeline** from `schema.yaml`:
+3. **Run the plan brief pipeline** from `capability.yaml`:
    - **(a) Discovery** — invoke the discovery brief via `/spec:analyze`; writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** (RFC-9 §2B) before step 3(b) when no `registry.yaml` exists yet. See [discovery.md](discovery.md).
    - **(b) Sync peers** (multi-repo only) — `specify workspace sync` + author `workspace.md`. See [sync-peers.md](sync-peers.md).
    - **(c) Propose** — run the propose brief; iterate accept/edit/reject/abort per slice; `specify plan add` for each accepted slice. See [propose.md](propose.md).
@@ -20,7 +20,7 @@ argument-hint: "<initiative-name>"
 
 # Plan skill
 
-Author `plan.yaml` for a new initiative by running the `pipeline.plan` brief pipeline declared in the active schema's `schema.yaml`. `/spec:plan` is the Layer 3 authoring counterpart to `/spec:execute`: one *writes* the plan, the other *runs* it.
+Author `plan.yaml` for a new initiative by running the `pipeline.plan` brief pipeline declared in the active capability's `capability.yaml`. `/spec:plan` is the Layer 3 authoring counterpart to `/spec:execute`: one *writes* the plan, the other *runs* it.
 
 > **Status.** Layer 3 is fully landed: discovery (step 3(a)) routes through `/spec:analyze`; when the registry declares **more than one project**, a **sync-peers** step (3(b)) runs `specify workspace sync` and authors `workspace.md` before propose (step 3(c)); after propose, an **assignment** step (3(d)) infers and writes `project` per entry for multi-repo routing.
 
@@ -37,8 +37,8 @@ The on-disk contracts the authoring skill depends on are:
 | File / directory | Owner | Role |
 |---|---|---|
 | `plan.yaml` | library (`Plan::{init, create, amend, transition, archive}`) | Ordered change list with per-entry status. `/spec:plan` writes only via `specify plan create` (step 2) and `specify plan add` (step 3c). |
-| `.specify/plans/<name>/` | schema (`pipeline.plan` briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify plan archive` alongside the plan itself. |
-| `schema.yaml:pipeline.plan` | schema (`Phase::Plan`) | Declares the ordered list of authoring briefs for the project's schema. Resolved via `specify schema pipeline --phase plan`. |
+| `.specify/plans/<name>/` | capability (`pipeline.plan` briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify plan archive` alongside the plan itself. |
+| `capability.yaml:pipeline.plan` | capability (`Phase::Plan`) | Declares the ordered list of authoring briefs for the project's capability. Resolved via `specify capability pipeline --phase plan`. |
 
 ## Invocation
 
@@ -132,10 +132,10 @@ Follow these steps in order on every invocation. Each step is normative; every s
 
    Skipped entirely when --extend is set.
 
-3. Run the plan brief pipeline from schema.yaml.
+3. Run the plan brief pipeline from capability.yaml.
 
    Resolve the ordered list of briefs via:
-     specify schema pipeline --phase plan \
+     specify capability pipeline --phase plan \
          --change .specify/plans/<name> --format json
 
    Then run each brief in order:
@@ -239,11 +239,11 @@ Under `--orchestrate --dry-run`, the umbrella is observation-only end-to-end: th
 - **Execute the plan.** Never. Execution is `/spec:execute`'s concern (Layer 2). `/spec:plan` exits with a hand-off summary that points the operator at `/spec:execute --loop`.
 - **Modify existing plan entries.** Never. `--extend` is append-only; pre-existing entries are left untouched. Editing a pending entry mid-authoring is done via `specify plan amend` by the human, not by this skill.
 - **Skip `specify plan validate`.** Never. Step 4 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero.
-- **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/spec:execute`.** Never. `/spec:plan` only invokes the briefs declared in `schema.yaml`'s `pipeline.plan`, plus the `specify plan` CLI for scaffolding, entry creation, and validation.
+- **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/spec:execute`.** Never. `/spec:plan` only invokes the briefs declared in `capability.yaml`'s `pipeline.plan`, plus the `specify plan` CLI for scaffolding, entry creation, and validation.
 - **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/spec:execute`; authoring runs outside that lock.
 - **Write `plan.yaml` directly.** Never. Every write goes through `specify plan create` (step 2, skipped under `--extend`), `specify plan add` (step 3c, one call per accepted slice), or `specify plan amend` (step 3d, `--project` assignment on multi-repo plans).
 - **Clone git URLs from this skill.** Never for **discovery** inputs: `--source` git URLs are passed through to `/spec:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync` (Layer 1 CLI), invoked only in the sync-peers step when `len(registry.projects) > 1`.
-- **Author propose brief bodies.** Never. The propose brief body is owned by the schema; the skill only drives the accept / edit / reject loop against whatever the brief emits.
+- **Author propose brief bodies.** Never. The propose brief body is owned by the capability; the skill only drives the accept / edit / reject loop against whatever the brief emits.
 - **Auto-repair a failing `specify plan validate`.** Never. Step 4's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify plan amend` / `specify plan transition skipped` fix, never an in-skill edit.
 
 The state the skill mutates:
@@ -262,4 +262,4 @@ No other on-disk state is written by `/spec:plan` itself.
 - Validate `<initiative-name>` before any filesystem read or CLI shell-out. A bad name should never leave a half-written plan behind.
 - For `--dry-run` specifically: the skill MUST NOT shell out to `specify plan create`, `specify plan add`, `specify plan amend`, or `specify plan transition`; MUST NOT create `.specify/plans/<name>/`; MUST NOT write `discovery.md` or any other file under `.specify/`. The discovery brief's input-reading side still runs so the stdout inventory preview is real.
 - For `--extend` specifically: step 2 is skipped in full; step 3(c) only appends entries via `specify plan add` — it never calls `specify plan transition` on existing entries. The only `specify plan amend` call is step 3(d) Assignment (`--project`), which tags newly created entries, not pre-existing ones. Draft slices whose names collide with existing plan entries are skipped with decision `skip-existing` in `proposal.md`.
-- Treat an unexpected `specify schema pipeline --phase plan` response shape (missing keys, unknown brief IDs, empty pipeline) as a hard failure: print the raw JSON and exit non-zero. Do not speculate about brief ordering.
+- Treat an unexpected `specify capability pipeline --phase plan` response shape (missing keys, unknown brief IDs, empty pipeline) as a hard failure: print the raw JSON and exit non-zero. Do not speculate about brief ordering.

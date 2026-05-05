@@ -232,7 +232,7 @@ Tasks may include a skill directive as an HTML comment. The build phase parses t
 - [ ] 2.3 Manual integration step
 ```
 
-Tasks without a skill tag are implemented via the schema's default build instruction.
+Tasks without a skill tag are implemented via the capability's default build instruction.
 
 ## Composition document (Vectis only)
 

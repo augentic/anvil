@@ -55,7 +55,7 @@ This phase's outcome-specific deltas:
 
    **4a. Task preflight (agent judgement).** Read `.specify/changes/<name>/tasks.md` directly. For each checkbox line, confirm in context that:
 
-   1. The action is executable by an agent in this repo using code, tooling, mocks, fixtures, contract validators, build commands, or one of the reviewer / writer skills available to the schema (consult the schema's `briefs/tasks.md` Available Skills table if unsure).
+   1. The action is executable by an agent in this repo using code, tooling, mocks, fixtures, contract validators, build commands, or one of the reviewer / writer skills available to the capability (consult the capability's `briefs/tasks.md` Available Skills table if unsure).
    2. The task does not require human-only action — manual app testing, real-world API credentials, visual inspection, physical-device-only checks, app store review, or asking the user to verify behavior. Read sentences in full: a task that says "without manual visual inspection" is *avoiding* the human action and is fine; a task that says "manually verify the iOS app against the real API" is requiring it and must be rewritten.
    3. The list as a whole includes at least one verification task — tests, fixture replay, contract verification, reviewer skill, or a build/check step.
 
@@ -69,13 +69,13 @@ This phase's outcome-specific deltas:
 
    The CLI's `tasks.*` rules cover only deterministic shape (checkbox format, group headings); agent-completability is judged in 4a, not here.
 
-   Supplement with `specify schema pipeline build --change .specify/changes/<name> --format json` if you need to inspect the build brief's `needs` and `path` directly (e.g. to tell the user which define artifact is missing).
+   Supplement with `specify capability pipeline build --change .specify/changes/<name> --format json` if you need to inspect the build brief's `needs` and `path` directly (e.g. to tell the user which define artifact is missing).
 
 5. **Read the build brief and supporting artifacts**
 
-   `specify schema pipeline build --change .specify/changes/<name> --format json` returns the build brief's `path`, `needs`, and `tracks`. Read the brief body from that path; the build loop follows it step-by-step.
+   `specify capability pipeline build --change .specify/changes/<name> --format json` returns the build brief's `path`, `needs`, and `tracks`. Read the brief body from that path; the build loop follows it step-by-step.
 
-   Read the tracked tasks file (its path comes from `specify change task progress` below) and every define-phase artifact you need for context (paths available via `specify schema pipeline define --change <change-dir> --format json`).
+   Read the tracked tasks file (its path comes from `specify change task progress` below) and every define-phase artifact you need for context (paths available via `specify capability pipeline define --change <change-dir> --format json`).
 
 6. **Show current progress**
 

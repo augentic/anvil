@@ -12,7 +12,7 @@ specify (binary)
 ├── specify-drift       Code-vs-baseline drift detection
 ├── specify-error       Shared error types
 ├── specify-merge       Delta merge engine, conflict detection
-├── specify-schema      Schema resolution, caching, brief pipelines
+├── specify-capability  Capability resolution, caching, brief pipelines
 ├── specify-spec        Spec parsing, delta operations, requirement IDs
 ├── specify-task        Task file parsing, checkbox tracking
 ├── specify-validate    Artifact validation (structural + semantic)
@@ -31,7 +31,7 @@ change: specify-change
 drift: specify-drift
 error: specify-error
 merge: specify-merge
-schema: specify-schema
+capability: specify-capability
 spec: specify-spec
 task: specify-task
 validate: specify-validate
@@ -40,28 +40,28 @@ vectis: "specify-vectis (isolated)"
 specify -> change
 specify -> drift
 specify -> merge
-specify -> schema
+specify -> capability
 specify -> spec
 specify -> task
 specify -> validate
 specify -> vectis
 
 change -> error
-change -> schema
+change -> capability
 drift -> error
 drift -> spec
 merge -> error
 merge -> spec
-merge -> schema
+merge -> capability
 merge -> change
 validate -> error
-validate -> schema
+validate -> capability
 validate -> spec
 validate -> task
 validate -> change
 spec -> error
 task -> error
-schema -> error
+capability -> error
 ```
 
 `specify-vectis` is intentionally isolated -- it depends only on external crates (`clap`, `ureq`, `syn`, `toml`) and has no internal `specify-*` dependencies. This keeps the Crux bootstrap tooling decoupled from the rest of the system.
@@ -77,10 +77,10 @@ src/main.rs  →  Cli::parse()  →  commands::run(cli)  →  ExitCode
 The CLI definition lives in `src/cli.rs`:
 
 - **`Cli`** -- top-level struct with a global `--format text|json` flag and a `Commands` subcommand
-- **`Commands`** -- enum with one variant per top-level subcommand (`Init`, `Status`, `Schema`, `Change`, `Plan`, `Initiative`, `Registry`, `Workspace`, `Completions`, `Vectis`). The pre-v1 standalone `Validate`, `Merge`, `Spec`, and `Task` variants were folded into `Change` during the v1 cleanup; `Registry` was added by RFC-9 §2A.
-- **Nested enums** -- subcommands with their own variants (e.g. `PlanAction`, `ChangeAction`, `InitiativeAction`, `RegistryAction`, `WorkspaceAction`, `VectisAction`)
+- **`Commands`** -- enum with one variant per top-level subcommand (`Init`, `Status`, `Capability`, `Change`, `Plan`, `Initiative`, `Registry`, `Workspace`, `Completions`, `Vectis`). The pre-v1 standalone `Validate`, `Merge`, `Spec`, and `Task` variants were folded into `Change` during the v1 cleanup; `Registry` was added by RFC-9 §2A; `Schema` was renamed to `Capability` by RFC-13 §Migration.
+- **Nested enums** -- subcommands with their own variants (e.g. `PlanAction`, `ChangeAction`, `InitiativeAction`, `RegistryAction`, `WorkspaceAction`, `VectisAction`, `CapabilityAction`)
 
-The dispatcher in `src/commands/mod.rs` matches on the command variant and routes to a handler function. Most commands load a `CommandContext` from `.specify/project.yaml` (via `CommandContext::require`); a few "bare" commands (like `Init` and `Schema Resolve`) run without project context.
+The dispatcher in `src/commands/mod.rs` matches on the command variant and routes to a handler function. Most commands load a `CommandContext` from `.specify/project.yaml` (via `CommandContext::require`); a few "bare" commands (like `Init` and `Capability Resolve`) run without project context.
 
 Each handler function returns a `CliResult` that maps to an exit code.
 
@@ -88,8 +88,8 @@ Each handler function returns a `CliResult` that maps to an exit code.
 
 All JSON output follows the v2 contract:
 
-- **Kebab-case keys** -- `app-name`, `project-dir`, `schema-version` (never `app_name` or `projectDir`)
-- **`schema-version: 2`** -- auto-injected on every object response by the `emit_json` helper
+- **Kebab-case keys** -- `app-name`, `project-dir`, `schema-version` (never `app_name` or `projectDir`); the `schema-version` JSON envelope key is intentionally kept as the wire-protocol version stamp and is unrelated to the Specify capability noun
+- **`schema-version: 2`** -- auto-injected on every object response by the `emit_json` helper (envelope version, distinct from any Specify capability version)
 - **Kebab-case error variants** -- `missing-prerequisites`, `invalid-project`, `io` (never `missing_prerequisites`)
 
 The `--format` flag is global on `Cli` and controls output:
@@ -141,7 +141,7 @@ The root `specify` crate re-exports types from all workspace crates as a curated
 pub use specify_change::{ChangeMetadata, LifecycleStatus, Plan, ...};
 pub use specify_error::{Error, ValidationStatus, ...};
 pub use specify_merge::{MergeResult, PreviewResult, ...};
-pub use specify_schema::{Schema, Pipeline, Brief, ...};
+pub use specify_capability::{Capability, Pipeline, Brief, ...};
 // ... and so on for each domain crate
 ```
 

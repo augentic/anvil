@@ -9,7 +9,7 @@ This tutorial walks you through the complete Specify workflow: initialise a proj
 Open your project in Cursor and type the following in the agent chat:
 
 ```text
-/spec:init https://github.com/augentic/specify/schemas/omnia
+/spec:init https://github.com/augentic/specify/capabilities/omnia
 ```
 
 > Replace `omnia` with `vectis` if you are building a cross-platform Crux application.
@@ -19,7 +19,7 @@ Open your project in Cursor and type the following in the agent chat:
 
 ```text
 Specify Initialized
-  Schema: omnia@latest
+  Capability: omnia@latest
   Project config: .specify/project.yaml
   Cache: .specify/.cache/omnia/
 ```
@@ -123,7 +123,7 @@ Implementation Complete
 The agent reads the build brief and works through the tasks in `tasks.md`. For each task:
 
 - If the task has a **skill directive tag** (see [Glossary](../appendices/glossary.md)) (e.g. `<!-- skill: omnia:crate-writer -->`), the agent delegates to that specialist skill.
-- If the task has no tag, the agent implements it using the schema's default build instruction.
+- If the task has no tag, the agent implements it using the capability's default build instruction.
 
 As each task completes, the agent marks it done via `specify change task mark`. You can watch the checkboxes flip in `tasks.md`.
 

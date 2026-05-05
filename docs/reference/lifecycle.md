@@ -60,7 +60,7 @@ Each change directory contains a `.metadata.yaml` file managed exclusively by th
 - **`status`** -- the current lifecycle state.
 - **`created_at`** / **`updated_at`** -- ISO 8601 timestamps.
 - **`outcome`** -- phase outcome (`success`, `failure`, `deferred`) written by `specify change outcome set`. Used by `/spec:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`.
-- **`schema`** -- the schema URL used for this change.
+- **`schema`** -- the capability identifier used for this change. (The YAML key is still spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/rfc-13-extensibility.md).)
 - **`touched_specs`** -- the list of spec files this change affects.
 
 Never hand-edit `.metadata.yaml`. All writes flow through the CLI.

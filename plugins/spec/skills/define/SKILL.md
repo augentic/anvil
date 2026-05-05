@@ -80,21 +80,21 @@ The user's request should include a change name (kebab-case) OR a description of
 
 2. **Read project config**
 
-   Read `.specify/project.yaml` (use the Read tool) for `schema`, `domain`, and `rules`:
+   Read `.specify/project.yaml` (use the Read tool) for `capability`, `domain`, and `rules`:
 
-   - `schema`: Schema identifier. If `.specify/project.yaml` is missing, run `/spec:init` first and stop.
-   - `domain`: Project-level domain context. If absent or a placeholder, fall back to the schema's `domain` (available at `<resolved_schema_dir>/schema.yaml`, where `<resolved_schema_dir>` comes from any brief `path` returned by step 6).
+   - `capability`: Capability identifier. If `.specify/project.yaml` is missing, run `/spec:init` first and stop.
+   - `domain`: Project-level domain context. If absent or a placeholder, fall back to any domain guidance carried by the active capability's briefs and references (resolved under `<resolved_capability_dir>/`, where `<resolved_capability_dir>` comes from any brief `path` returned by step 6).
    - `rules`: Per-brief rule overrides. Optional; empty values mean "no rules apply."
 
    **IMPORTANT**: `domain` and `rules` guide how you write artifacts. Do NOT copy them into any artifact output.
 
-   Schema resolution and pipeline topology are handled by the CLI in later steps — there is no need to invoke `specify schema resolve` explicitly here.
+   Capability resolution and pipeline topology are handled by the CLI in later steps — there is no need to invoke `specify capability resolve` explicitly here.
 
 3. **Check for regenerate mode**
 
    If the user specified an artifact ID (e.g., `design`):
 
-   a. Run `specify change status <name> --format json` to confirm the change exists and its `status` is `defined` or `building`. If the CLI errors with `not_found`, the change is missing; if `status` is some other value, warn before proceeding. b. Run `specify schema pipeline define --change .specify/changes/<name> --format json` to resolve the brief for the target artifact ID. The returned `briefs[]` array lists every define brief in topological order with each brief's `path`, `needs`, and `generates`. c. For the brief matching the requested artifact ID, verify each entry in its `needs` is already present (the `present` field on the pipeline response). d. Read the required dependency artifacts for context (their paths come from each brief's `generates` joined to `.specify/changes/<name>/`). e. Read the brief file itself from the returned `path`. f. Regenerate ONLY the specified artifact following the brief, applying `domain` and effective rules as constraints. g. Do NOT change the `.metadata.yaml` status — there is no `specify change transition` call in regenerate mode. h. Show output:
+   a. Run `specify change status <name> --format json` to confirm the change exists and its `status` is `defined` or `building`. If the CLI errors with `not_found`, the change is missing; if `status` is some other value, warn before proceeding. b. Run `specify capability pipeline define --change .specify/changes/<name> --format json` to resolve the brief for the target artifact ID. The returned `briefs[]` array lists every define brief in topological order with each brief's `path`, `needs`, and `generates`. c. For the brief matching the requested artifact ID, verify each entry in its `needs` is already present (the `present` field on the pipeline response). d. Read the required dependency artifacts for context (their paths come from each brief's `generates` joined to `.specify/changes/<name>/`). e. Read the brief file itself from the returned `path`. f. Regenerate ONLY the specified artifact following the brief, applying `domain` and effective rules as constraints. g. Do NOT change the `.metadata.yaml` status — there is no `specify change transition` call in regenerate mode. h. Show output:
 
       ```markdown
       ## Artifact Regenerated
@@ -143,10 +143,10 @@ The user's request should include a change name (kebab-case) OR a description of
    Run:
 
    ```bash
-   specify schema pipeline define --change .specify/changes/<name> --format json
+   specify capability pipeline define --change .specify/changes/<name> --format json
    ```
 
-   The response lists every define brief in topological order with its absolute `path`, `needs` edges, `generates` target, and current `present` flag relative to this change. Use this list — not `schema.yaml` directly — to drive the generation loop.
+   The response lists every define brief in topological order with its absolute `path`, `needs` edges, `generates` target, and current `present` flag relative to this change. Use this list — not `capability.yaml` directly — to drive the generation loop.
 
 7. **Create artifacts in dependency order**
 
@@ -190,9 +190,9 @@ The user's request should include a change name (kebab-case) OR a description of
 
    ### Task format conventions
 
-   Follow the task format and guidelines in `references/specify.md` (Tasks Document section). The instruction file provides the available-skills table per schema. The build phase parses checkbox format to track progress.
+   Follow the task format and guidelines in `references/specify.md` (Tasks Document section). The instruction file provides the available-skills table per capability. The build phase parses checkbox format to track progress.
 
-   **Agent-completable task invariant:** Every generated task MUST be executable and verifiable by an agent using code, local tooling, mocks, fixtures, contract validators, build commands, or reviewer skills. Never generate tasks that depend on manual app testing, real-world API credentials, visual inspection, physical-device-only checks, app store review, or asking the user to verify behavior. If a requirement appears to call for human validation, encode the equivalent code-based test or scripted verification task instead. After writing `tasks.md`, complete the **Self-Review** step in the schema's `tasks` brief: re-read every checkbox in context and rewrite any task that fails the agent-completability check. For `tasks.md`, `specify change validate` checks checkbox/grouping shape only — it does not inspect task intent, so agent-completability must be judged here at write-time (and is re-checked by `/spec:build` as a preflight).
+   **Agent-completable task invariant:** Every generated task MUST be executable and verifiable by an agent using code, local tooling, mocks, fixtures, contract validators, build commands, or reviewer skills. Never generate tasks that depend on manual app testing, real-world API credentials, visual inspection, physical-device-only checks, app store review, or asking the user to verify behavior. If a requirement appears to call for human validation, encode the equivalent code-based test or scripted verification task instead. After writing `tasks.md`, complete the **Self-Review** step in the capability's `tasks` brief: re-read every checkbox in context and rewrite any task that fails the agent-completability check. For `tasks.md`, `specify change validate` checks checkbox/grouping shape only — it does not inspect task intent, so agent-completability must be judged here at write-time (and is re-checked by `/spec:build` as a preflight).
 
    **Skill directives (optional):** Tasks may include an HTML comment tag that names a specialist skill to invoke during build. The build phase parses these tags and delegates the task to the referenced skill instead of following the default build instruction.
 
@@ -221,7 +221,7 @@ The user's request should include a change name (kebab-case) OR a description of
 
 ## Guardrails
 
-- Create all artifacts for briefs returned by `specify schema pipeline define` before declaring the change ready.
+- Create all artifacts for briefs returned by `specify capability pipeline define` before declaring the change ready.
 - Always read dependency artifacts (from each brief's `needs`) before creating a new one.
 - **All artifacts MUST be written under `.specify/changes/<name>/`**.
 - If context is critically unclear, ask the user -- but prefer making reasonable decisions to keep momentum.

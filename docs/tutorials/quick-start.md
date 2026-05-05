@@ -9,7 +9,7 @@ This gets you from zero to a merged change with no explanation. For the "why" be
 Open your project in Cursor and type in the agent chat:
 
 ```text
-/spec:init https://github.com/augentic/specify/schemas/omnia
+/spec:init https://github.com/augentic/specify/capabilities/omnia
 ```
 
 <details>
@@ -17,14 +17,14 @@ Open your project in Cursor and type in the agent chat:
 
 ```text
 Specify Initialized
-  Schema: omnia@latest
+  Capability: omnia@latest
   Project config: .specify/project.yaml
   Cache: .specify/.cache/omnia/
 ```
 
 </details>
 
-> Use `schemas/vectis` instead if you are building a cross-platform Crux application.
+> Use `vectis` (or its URL form) instead if you are building a cross-platform Crux application.
 
 ## 2. Define
 

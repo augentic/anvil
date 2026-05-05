@@ -31,7 +31,7 @@ Optional internal flags (recognised by the verifier sibling):
 - `--mode single` — default. Validate the change's schema artefacts in isolation against the specs and any baseline bindings that reference them. Read-only, markdown report.
 - `--mode cross-project` — invoked by `/spec:execute` after a producer's contract change merges. Compares each merged schema against each consumer's tier-2 workspace clone view of the same schema. Read-only, structured YAML report. See `verifier.md` §Cross-project mode.
 
-When invoked from the contracts schema build brief during `/spec:build`, `<change-dir>` is the active change directory; the brief routes the intent (author or importer) based on whether the operator supplied external schema files for `contracts/schemas/`. When invoked post-merge by `/spec:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged schemas.
+When invoked from the contracts capability build brief during `/spec:build`, `<change-dir>` is the active change directory; the brief routes the intent (author or importer) based on whether the operator supplied external schema files for `contracts/schemas/`. When invoked post-merge by `/spec:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged schemas.
 
 ## Artifact layout
 
@@ -64,21 +64,21 @@ Pick the sibling that matches the trigger. Each sibling is a self-contained algo
 
 | Intent | Trigger | Sibling |
 |---|---|---|
-| Author or extend reusable schemas from a spec | contracts schema build brief during `/spec:build`; operator extending the baseline for new payload types | `author.md` |
+| Author or extend reusable schemas from a spec | contracts capability build brief during `/spec:build`; operator extending the baseline for new payload types | `author.md` |
 | Import or normalise external schema files | operator drops schema files into a change's `contracts/schemas/` directory | `importer.md` |
-| Verify `$ref` consistency, metadata, and cross-format consumer compatibility | contracts schema build verification; post-merge cross-project checks | `verifier.md` |
+| Verify `$ref` consistency, metadata, and cross-format consumer compatibility | contracts capability build verification; post-merge cross-project checks | `verifier.md` |
 
 The three intents share a common artefact contract (filename → `$id` derivation, one-type-per-file, draft policy) but have distinct algorithms — never conflate them. An import must be followed by a verifier run before the brief considers the artefacts ready for merge; an author run normally ends with a verifier run too.
 
 ## Mixed-format ordering (run this skill first)
 
-When a change touches more than one contract format (HTTP + events + shared schemas), the contracts schema build brief invokes the format skills in this fixed order:
+When a change touches more than one contract format (HTTP + events + shared schemas), the contracts capability build brief invokes the format skills in this fixed order:
 
 1. **`/contract:json-schema` first** — the schema vocabulary is shared and must stabilise before any binding references it. Authoring or importing a schema is a precondition for the protocol skills, not a peer step.
 2. **`/contract:openapi`** — HTTP operations bind to the schemas authored above via `$ref: "../schemas/<type>.yaml"`.
 3. **`/contract:asyncapi`** — message channels bind to the same schemas via `$ref: "../schemas/<type>.yaml"`.
 
-This ordering is non-negotiable. Running OpenAPI or AsyncAPI ahead of json-schema produces dangling `$ref`s and forces protocol authors to either inline definitions (forbidden in the baseline) or guess at shapes (forbidden by the no-invention rule). The contracts schema build brief enforces the ordering; agent operators invoking these skills directly must follow it manually.
+This ordering is non-negotiable. Running OpenAPI or AsyncAPI ahead of json-schema produces dangling `$ref`s and forces protocol authors to either inline definitions (forbidden in the baseline) or guess at shapes (forbidden by the no-invention rule). The contracts capability build brief enforces the ordering; agent operators invoking these skills directly must follow it manually.
 
 A corollary: this skill **never** writes outside `contracts/schemas/`. Schema-shaped intents that would land in `contracts/http/` or `contracts/messages/` are out of scope — route them to the appropriate protocol skill, which then references the shared schema authored here.
 

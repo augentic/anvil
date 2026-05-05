@@ -31,7 +31,7 @@ Optional internal flags (recognised by the verifier sibling):
 - `--mode single` — default. Validate the change's AsyncAPI artefacts in isolation against the specs and baseline. Read-only, markdown report.
 - `--mode cross-project` — invoked by `/spec:execute` after a producer's contract change merges. Compares the merged AsyncAPI document against each consumer's tier-2 workspace clone. Read-only, structured YAML report. See `verifier.md` §Cross-project mode.
 
-When invoked from the contracts schema build brief during `/spec:build`, `<change-dir>` is the active change directory; the brief routes the intent (author or importer) based on whether the operator supplied an external document for `contracts/messages/`. When invoked post-merge by `/spec:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged contract.
+When invoked from the contracts capability build brief during `/spec:build`, `<change-dir>` is the active change directory; the brief routes the intent (author or importer) based on whether the operator supplied an external document for `contracts/messages/`. When invoked post-merge by `/spec:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged contract.
 
 ## Artifact layout
 
@@ -65,9 +65,9 @@ Pick the sibling that matches the trigger. Each sibling is a self-contained algo
 
 | Intent | Trigger | Sibling |
 |---|---|---|
-| Author or extend the AsyncAPI document from a spec | contracts schema build brief during `/spec:build`; operator extending the baseline for new evented interactions | `author.md` |
+| Author or extend the AsyncAPI document from a spec | contracts capability build brief during `/spec:build`; operator extending the baseline for new evented interactions | `author.md` |
 | Import or normalise an external AsyncAPI document | operator drops an AsyncAPI file into a change's `contracts/messages/` directory | `importer.md` |
-| Verify internal consistency or run the cross-project consumer check | contracts schema build verification; post-merge cross-project check (RFC-9 §3B); operator invoking validation against an existing AsyncAPI artefact | `verifier.md` |
+| Verify internal consistency or run the cross-project consumer check | contracts capability build verification; post-merge cross-project check (RFC-9 §3B); operator invoking validation against an existing AsyncAPI artefact | `verifier.md` |
 
 The three intents share a common artefact contract (channel addresses, message naming, `$ref` discipline) but have distinct algorithms — never conflate them. An import must be followed by a verifier run before the brief considers the artefact ready for merge; an author run normally ends with a verifier run too.
 

@@ -63,7 +63,7 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 **Decision:** The execute driver routes each change to its target project by changing working directory to the workspace clone before invoking phase skills. Phase skills (`/spec:define`, `/spec:build`, `/spec:merge`) are completely unaware of multi-repo routing -- they run unmodified in whatever directory the driver places them in.
 
-**Rationale:** The alternative (passing a `--project` flag through to every phase skill) would have required changes to every skill and every brief pipeline. CWD-based routing keeps the routing decision in one place (the driver) and preserves the invariant that phase skills operate on "the current project." Phase skills discover the schema via their normal `.specify/project.yaml` walk from CWD.
+**Rationale:** The alternative (passing a `--project` flag through to every phase skill) would have required changes to every skill and every brief pipeline. CWD-based routing keeps the routing decision in one place (the driver) and preserves the invariant that phase skills operate on "the current project." Phase skills discover the capability via their normal `.specify/project.yaml` walk from CWD.
 
 **Source:** [RFC-3b: Platform Changes, §Execution routing](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
@@ -71,15 +71,15 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 **Decision:** Each plan change targets exactly one registry project. Capabilities that span multiple repos are decomposed into separate plan entries (one per project) linked by `depends-on` edges.
 
-**Rationale:** Allowing a single change to span repos would require the execution loop to manage multiple project roots, multiple schemas, and multiple baseline merge targets within one define-build-merge cycle. Decomposing cross-cutting capabilities into per-project entries keeps the loop simple and matches the existing baseline-accumulation model where each merge has a single target.
+**Rationale:** Allowing a single change to span repos would require the execution loop to manage multiple project roots, multiple capabilities, and multiple baseline merge targets within one define-build-merge cycle. Decomposing cross-cutting capabilities into per-project entries keeps the loop simple and matches the existing baseline-accumulation model where each merge has a single target.
 
 **Source:** [RFC-3b: Platform Changes, §One change, one project](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
 ## Project assignment is a framework concern
 
-**Decision:** Inferring which registry project each plan entry targets (the assignment step) runs in the plan skill at the framework level, not inside schema-owned propose briefs. Propose creates entries without `--project`; the plan skill's assignment step writes the routing after propose completes.
+**Decision:** Inferring which registry project each plan entry targets (the assignment step) runs in the plan skill at the framework level, not inside capability-owned propose briefs. Propose creates entries without `--project`; the plan skill's assignment step writes the routing after propose completes.
 
-**Rationale:** A multi-repo plan spans projects with different schemas, so assignment is inherently a cross-schema concern. Placing it in individual propose briefs would duplicate the logic across schemas and create an ordering problem (the brief would need to know about projects it does not own). Keeping it in the plan skill also means propose briefs are unchanged -- a single-repo propose brief works identically in a multi-repo plan.
+**Rationale:** A multi-repo plan spans projects with different capabilities, so assignment is inherently a cross-capability concern. Placing it in individual propose briefs would duplicate the logic across capabilities and create an ordering problem (the brief would need to know about projects it does not own). Keeping it in the plan skill also means propose briefs are unchanged -- a single-repo propose brief works identically in a multi-repo plan.
 
 **Source:** [RFC-3b: Platform Changes, §Assignment algorithm](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
@@ -153,8 +153,8 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 **Rationale:** When specs evolve over multiple changes, the system needs a way to match "this modification applies to that requirement." Titles are human-facing and change frequently. Stable IDs give the merge engine a reliable key while keeping the spec format readable.
 
-## Schema-agnostic lifecycle, schema-specific briefs
+## Capability-agnostic lifecycle, capability-specific briefs
 
-**Decision:** The lifecycle (states, transitions, core artifacts, baseline accumulation) is invariant across schemas. Schemas control the *content* of brief pipelines, may add schema-specific stages (e.g. Vectis adds `composition` to the define pipeline), and determine which specialist skills are invoked during build.
+**Decision:** The lifecycle (states, transitions, core artifacts, baseline accumulation) is invariant across capabilities. Capabilities control the *content* of brief pipelines, may add capability-specific stages (e.g. Vectis adds `composition` to the define pipeline), and determine which specialist skills are invoked during build.
 
-**Rationale:** The workflow is the value -- define-build-merge, baseline accumulation, drift detection. Making this schema-agnostic means every project gets the same tooling regardless of target platform. Schemas customise the generation content and may extend the pipeline without fragmenting the workflow.
+**Rationale:** The workflow is the value -- define-build-merge, baseline accumulation, drift detection. Making this capability-agnostic means every project gets the same tooling regardless of target platform. Capabilities customise the generation content and may extend the pipeline without fragmenting the workflow.

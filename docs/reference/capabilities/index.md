@@ -1,10 +1,10 @@
 # Capabilities
 
-> Status: Draft (Phase 1.5 of [RFC-13](../../rfcs/rfc-13-extensibility.md) landed). The post-RFC manifest shape and dependency invariants are pinned and the first-party capabilities (`omnia`, `contracts`, `vectis`) now live at [`capabilities/<name>/capability.yaml`](../../capabilities/). The `pipeline.plan` block on the omnia and vectis manifests is permitted **transitionally** by [`capability.schema.json`](../../capabilities/capability.schema.json); it migrates to the change-component planning skill in Phase 3.11 and is then actively rejected by the schema.
+> Status: Draft (Phase 1.5 of [RFC-13](../../../rfcs/rfc-13-extensibility.md) landed). The post-RFC manifest shape and dependency invariants are pinned and the first-party capabilities (`omnia`, `contracts`, `vectis`) now live at [`capabilities/<name>/capability.yaml`](../../../capabilities/). The `pipeline.plan` block on the omnia and vectis manifests is permitted **transitionally** by [`capability.schema.json`](../../../capabilities/capability.schema.json); it migrates to the change-component planning skill in Phase 3.11 and is then actively rejected by the schema.
 
 ## What is a capability?
 
-A capability is a versioned Specify extension that describes how the fixed `define → build → merge` slice loop creates an outcome domain's artefacts. **Capabilities own outcome artefacts and their mechanics; platform components coordinate where and when those per-project slices run** ([RFC-13 §Principle](../../rfcs/rfc-13-extensibility.md#principle)). The phase set, transition DAG, and per-phase outcome contract recorded in `.metadata.yaml` are part of the immutable Specify core. Capabilities populate the loop with per-domain briefs and skills, but never declare the phases themselves.
+A capability is a versioned Specify extension that describes how the fixed `define → build → merge` slice loop creates an outcome domain's artefacts. **Capabilities own outcome artefacts and their mechanics; platform components coordinate where and when those per-project slices run** ([RFC-13 §Principle](../../../rfcs/rfc-13-extensibility.md#principle)). The phase set, transition DAG, and per-phase outcome contract recorded in `.metadata.yaml` are part of the immutable Specify core. Capabilities populate the loop with per-domain briefs and skills, but never declare the phases themselves.
 
 Outcomes are not necessarily code: a capability can deliver contracts, documentation, policy, infrastructure, fixtures, generated clients, or any other reviewable artefact. Imperative behaviour (validation, generation, review, adoption, cleanup) lives in the capability's skills and helper scripts, not in the manifest.
 
@@ -55,7 +55,7 @@ The post-RFC manifest deliberately drops the legacy `domain` and `extends` field
 
 ## Pipeline and the slice loop
 
-`pipeline:` declares which briefs the core renders for each fixed slice phase. The set of phases is frozen by [RFC-13](../../rfcs/rfc-13-extensibility.md#design): exactly **`define`**, **`build`**, and **`merge`**. Variation that capabilities legitimately want lives in the briefs they enumerate per phase and in skill-owned imperative behaviour — never in the phase list itself.
+`pipeline:` declares which briefs the core renders for each fixed slice phase. The set of phases is frozen by [RFC-13](../../../rfcs/rfc-13-extensibility.md#design): exactly **`define`**, **`build`**, and **`merge`**. Variation that capabilities legitimately want lives in the briefs they enumerate per phase and in skill-owned imperative behaviour — never in the phase list itself.
 
 `pipeline.plan` is intentionally **absent** from the post-RFC manifest. Planning is orchestration, not capability-owned slice work, and lives on the `specify change` platform component:
 
@@ -63,11 +63,11 @@ The post-RFC manifest deliberately drops the legacy `domain` and `extends` field
 - the change plan (`plan.yaml`) sequences slices across one or more projects,
 - planning briefs and the `/spec:plan` (later: `/change:plan`) authoring loop sit on the change surface rather than inside any capability's manifest.
 
-> **Transitional allowance (RFC-13 §Phase 1.5 → §Phase 3.11).** The first-party omnia and vectis manifests still ship a `pipeline.plan` block today. To keep them loadable, [`capability.schema.json`](../../capabilities/capability.schema.json) permits (but does not require) `pipeline.plan` for the duration of Phase 1.5. The block is moved out — and the schema is tightened to actively reject it — in Phase 3.11. Capability authors should not introduce new `pipeline.plan` entries.
+> **Transitional allowance (RFC-13 §Phase 1.5 → §Phase 3.11).** The first-party omnia and vectis manifests still ship a `pipeline.plan` block today. To keep them loadable, [`capability.schema.json`](../../../capabilities/capability.schema.json) permits (but does not require) `pipeline.plan` for the duration of Phase 1.5. The block is moved out — and the schema is tightened to actively reject it — in Phase 3.11. Capability authors should not introduce new `pipeline.plan` entries.
 
 A slice flowing through `define → build → merge` therefore reads exactly one capability's pipeline. Cross-capability outcomes are coordinated by change plan entries, not by fusing capabilities into a larger hidden pipeline.
 
-The merge brief signals go/no-go through the existing slice outcome contract (`specify slice outcome set` and `specify slice journal append`); the core does not parse capability diagnostics — they round-trip as opaque journal entries. See [RFC-13 §Merge and adoption contract](../../rfcs/rfc-13-extensibility.md#merge-and-adoption-contract).
+The merge brief signals go/no-go through the existing slice outcome contract (`specify slice outcome set` and `specify slice journal append`); the core does not parse capability diagnostics — they round-trip as opaque journal entries. See [RFC-13 §Merge and adoption contract](../../../rfcs/rfc-13-extensibility.md#merge-and-adoption-contract).
 
 ## Dependency direction
 
@@ -79,7 +79,7 @@ specify-change ──▶ specify-registry ──▶ specify-core
 
 `specify-core` owns the slice loop and capability resolution. `specify-registry` owns topology (`registry.yaml`) plus the local materialised view (`.specify/workspace/`). `specify-change` owns operator intent (`change.md`) plus the executable plan (`plan.yaml`) and orchestrates slices through the core loop, possibly across projects materialised by the registry.
 
-The invariant is: **`specify-core` does not depend on `specify-registry` or `specify-change`**, and `specify-registry` does not depend on `specify-change`. Platform components compose downward; they never re-enter the core. This is enforced as a lint via [RFC-5](../../rfcs/rfc-5-lint.md) (see also [RFC-13 §Migration](../../rfcs/rfc-13-extensibility.md#migration), invariant 4).
+The invariant is: **`specify-core` does not depend on `specify-registry` or `specify-change`**, and `specify-registry` does not depend on `specify-change`. Platform components compose downward; they never re-enter the core. This is enforced as a lint via [RFC-5](../../../rfcs/rfc-5-lint.md) (see also [RFC-13 §Migration](../../../rfcs/rfc-13-extensibility.md#migration), invariant 4).
 
 Registry and the change component are first-party Specify components, but they are **not** capabilities: they do not appear in any `capability.yaml`, they are not activated through the manifest protocol, and the core never switches on a capability name to invoke them.
 
@@ -91,13 +91,13 @@ The security posture is therefore the skill and tooling posture: capability skil
 
 ## Validation
 
-The wire-level schema is [`capabilities/capability.schema.json`](../../capabilities/capability.schema.json) (JSON Schema draft 2020-12). It enforces the field set and shape described above and is the source of truth for both first-party and third-party capability authors.
+The wire-level schema is [`capabilities/capability.schema.json`](../../../capabilities/capability.schema.json) (JSON Schema draft 2020-12). It enforces the field set and shape described above and is the source of truth for both first-party and third-party capability authors.
 
-`make checks` validates every first-party manifest under [`capabilities/`](../../capabilities/) against this schema and runs the pipeline-integrity checks (unique brief ids, brief paths resolve, brief frontmatter `id` matches the manifest, no cycles in the `needs:` graph).
+`make checks` validates every first-party manifest under [`capabilities/`](../../../capabilities/) against this schema and runs the pipeline-integrity checks (unique brief ids, brief paths resolve, brief frontmatter `id` matches the manifest, no cycles in the `needs:` graph).
 
 ## See also
 
-- [RFC-13: Extensibility](../../rfcs/rfc-13-extensibility.md) — capability protocol, platform components, and migration plan.
-- [RFC-14: Workspaces](../../rfcs/rfc-14-workspaces.md) — multi-domain repositories layered on top of the capability manifest protocol.
+- [RFC-13: Extensibility](../../../rfcs/rfc-13-extensibility.md) — capability protocol, platform components, and migration plan.
+- [RFC-14: Workspaces](../../../rfcs/rfc-14-workspaces.md) — multi-domain repositories layered on top of the capability manifest protocol.
 - `docs/reference/registry.md` — registry topology and workspace materialisation (lands in Phase 2.10 of the RFC-13 plan).
 - `docs/reference/change-component.md` — change brief, plan, execution, and finalization (lands in Phase 2.10 of the RFC-13 plan).

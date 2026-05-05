@@ -58,4 +58,4 @@ Updates Crux, UniFFI, Gradle, and Swift package version pins across the project.
 ## See also
 
 - [Vectis Plugin](../plugins/vectis.md) -- Crux development plugin overview
-- [Vectis Schema](../schemas/vectis.md) -- schema for cross-platform projects
+- [Vectis Capability](../capabilities/vectis.md) -- capability reference for cross-platform projects

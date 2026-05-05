@@ -114,12 +114,12 @@ In addition to appending capability summaries to `$DISCOVERY`, the code branch (
 | ---- | ---- | ---- |
 | `version` | integer | `1` for v1. Do not bump this version. |
 | `source_key` | string | Matches the directory segment; redundant but stable on its own. |
-| `language` | string | Detected primary source language (kebab-case: `typescript`, `javascript`, `rust`, `go`, `python`, `java`, `kotlin`, `csharp`, …). Per-schema convention — schemas pin their own valid set. |
-| `loc` | integer | Total source lines of code. Schema-owned convention (non-blank non-comment preferred; raw line count acceptable). Must be consistent across runs of the same schema. |
-| `module_count` | integer | Total module count. Schema-owned definition (TS: files; Java: classes; Python: modules; …). |
+| `language` | string | Detected primary source language (kebab-case: `typescript`, `javascript`, `rust`, `go`, `python`, `java`, `kotlin`, `csharp`, …). Per-capability convention — capabilities pin their own valid set. |
+| `loc` | integer | Total source lines of code. Capability-owned convention (non-blank non-comment preferred; raw line count acceptable). Must be consistent across runs of the same capability. |
+| `module_count` | integer | Total module count. Capability-owned definition (TS: files; Java: classes; Python: modules; …). |
 | `top_level_modules` | array[string] | Immediate children of the source root, alphabetically sorted, relative path strings. May be empty. |
 
-All fields are required. The detection algorithm that produces each field is owned by the schema-specific code branch prompt (`schemas/<schema>/briefs/plan/analyze.md`); this SKILL only pins the field names, types, and on-disk shape.
+All fields are required. The detection algorithm that produces each field is owned by the capability-specific code branch prompt (`capabilities/<capability>/briefs/plan/analyze.md`); this SKILL only pins the field names, types, and on-disk shape.
 
 **Idempotency.** Same rules as §*Output contract*: no timestamps, no host state, byte-stable field order matching the shape above, and alphabetically-sorted `top_level_modules`. Re-running analyze on unchanged inputs emits byte-identical metadata. This lets `specify plan validate` diff the file across runs without drift.
 
@@ -137,19 +137,19 @@ All fields are required. The detection algorithm that produces each field is own
 
 A byte-stable output lets the propose brief cache its slicing decisions and surfaces regressions via `git diff`.
 
-## Per-kind prompts (schema-owned)
+## Per-kind prompts (capability-owned)
 
-The detailed clustering / extraction prompt for each `--kind` value lives under `schemas/<schema>/briefs/plan/analyze.md`:
+The detailed clustering / extraction prompt for each `--kind` value lives under `capabilities/<capability>/briefs/plan/analyze.md`:
 
 - `capabilities/omnia/briefs/plan/analyze.md` — Omnia's per-kind prompt (documentation branch and code branch).
-- Other schemas ship their own.
+- Other capabilities ship their own.
 
-`/spec:analyze` resolves the active schema via `specify schema resolve` and invokes the relevant brief internally. The skill does **not** embed clustering heuristics; those are schema-specific judgement calls (import-graph vs docstring vs endpoint-name weighting, confidence thresholds, etc.).
+`/spec:analyze` resolves the active capability via `specify capability resolve` and invokes the relevant brief internally. The skill does **not** embed clustering heuristics; those are capability-specific judgement calls (import-graph vs docstring vs endpoint-name weighting, confidence thresholds, etc.).
 
 ## Process
 
 1. **Validate arguments.** Reject if `$KIND` is not in the closed enum, if `$INPUT_PATH` does not exist, or if `$OUTPUT_DIR` is not writable. Each failure is a hard exit with a clear diagnostic; no partial write to `$DISCOVERY` ever ships.
-2. **Resolve schema and per-kind brief path.** Run `specify schema resolve` and load `schemas/<schema>/briefs/plan/analyze.md`.
+2. **Resolve capability and per-kind brief path.** Run `specify capability resolve` and load `capabilities/<capability>/briefs/plan/analyze.md`.
 3. **Invoke the brief against `$KIND`.** The brief owns clustering (for `legacy-code`) or extraction (for `documentation`) and emits capability summaries in the shape pinned above.
 4. **Write outputs.**
    - **4a.** Write / append to `$DISCOVERY` with the idempotent ordering rules (both branches), optionally tagging each emitted capability with `$SOURCE_KEY`. Report the list of capability names written on stdout for the discovery brief to aggregate.
@@ -169,7 +169,7 @@ The detailed clustering / extraction prompt for each `--kind` value lives under 
 ## Guardrails
 
 - Never emit full specs; analyze produces capability summaries only. Deep extraction is [`../extract/SKILL.md`](../extract/SKILL.md)'s job, run per-slice at define time.
-- Never embed clustering heuristics in this SKILL; those live in the schema-owned per-kind brief (§*Per-kind prompts*).
+- Never embed clustering heuristics in this SKILL; those live in the capability-owned per-kind brief (§*Per-kind prompts*).
 - Never let timestamps, absolute paths, or run IDs leak into `$DISCOVERY` or the structural-metadata sidecar — idempotency is a hard contract, not a nicety.
 - Never mutate files outside `$DISCOVERY` and `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json`. The structural-metadata sidecar is written by the code branch only; the documentation branch must leave the slot untouched.
 - NEVER add fields to `metadata.json` beyond the six pinned in §*Structural metadata*.

@@ -1,6 +1,7 @@
-# Omnia Schema
+# Omnia Capability
 
-- **URL:** `https://github.com/augentic/specify/schemas/omnia`
+- **Identifier:** `omnia` (bundled, first-party)
+- **URL:** `https://github.com/augentic/specify/capabilities/omnia`
 - **Purpose:** Rust WASM development (greenfield or migration)
 - **Target:** Rust WASM (Omnia SDK)
 
@@ -46,7 +47,7 @@ See [Omnia Plugin](../plugins/omnia.md) for full skill documentation.
 
 ## Domain context
 
-The Omnia schema injects domain context about:
+The Omnia capability's briefs and skills carry domain context about:
 
 - Omnia SDK patterns (provider traits, side-effect abstractions).
 - WASM constraints (no filesystem, no threading).
@@ -55,13 +56,10 @@ The Omnia schema injects domain context about:
 
 ## Project configuration
 
-After `/spec:init` with the Omnia schema, `project.yaml` can include:
+After `/spec:init omnia`, `project.yaml` carries:
 
 ```yaml
-schema: https://github.com/augentic/specify/schemas/omnia
-domain: |
-  Describe your service's domain, purpose, and constraints here.
-  This context is available to all briefs during artifact generation.
+capability: https://github.com/augentic/specify/capabilities/omnia
 rules:
   - "Project-specific constraints go here"
 ```

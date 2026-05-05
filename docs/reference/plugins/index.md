@@ -25,21 +25,21 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 | **RT** | `/rt:` | Migration fixtures and regression testing | [RT](rt.md) |
 | **Client** | `/client:` | Client-facing deliverables (SoW, proposals, pricing) | [Client](client.md) |
 
-## How plugins compose with schemas
+## How plugins compose with capabilities
 
-The **Specify** plugin provides the workflow skeleton. Schemas determine which specialist plugin skills are invoked during the build phase:
+The **Specify** plugin provides the workflow skeleton. Capabilities determine which specialist plugin skills are invoked during the build phase:
 
-- **Omnia schema** invokes `/omnia:*` skills.
-- **Vectis schema** invokes `/vectis:*` skills.
+- **Omnia capability** invokes `/omnia:*` skills.
+- **Vectis capability** invokes `/vectis:*` skills.
 
-The Contract, RT, and Client plugins are schema-independent. The Contract plugin is invoked by the `contracts` brief in every schema's define pipeline (Omnia, Vectis, and Contracts) — the brief id, schema name, and `contracts/` baseline directory keep their original names; the Cursor plugin and slash-command surface live under `/contract:*`. RT and Client support migration and client-facing deliverables regardless of the target platform.
+The Contract, RT, and Client plugins are capability-independent. The Contract plugin is invoked by the `contracts` brief in every capability's define pipeline (Omnia, Vectis, and Contracts) — the brief id, capability name, and `contracts/` baseline directory keep their original names; the Cursor plugin and slash-command surface live under `/contract:*`. RT and Client support migration and client-facing deliverables regardless of the target platform.
 
 ## Artifact flow
 
 ```text
-/spec:define  -->  generates artifacts using schema briefs
+/spec:define  -->  generates artifacts using capability briefs
 /spec:build   -->  delegates tasks to specialist plugin skills
-/spec:merge   -->  merges specs into baseline (schema-agnostic)
+/spec:merge   -->  merges specs into baseline (capability-agnostic)
 ```
 
 Specialist skills read the artifacts produced by `/spec:define` and generate code. The artifacts are the interface between the core workflow and the specialist plugins.

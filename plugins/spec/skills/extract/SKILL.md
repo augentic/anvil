@@ -42,7 +42,7 @@ $EXCLUDE     = [--exclude <glob> ...]       # repeatable; possibly empty
 $MANIFEST    = --manifest <path>            # single; mutually exclusive with $INCLUDE/$EXCLUDE
 ```
 
-`$MANIFEST` is mutually exclusive with `$INCLUDE` / `$EXCLUDE`. Invoking extract with a `$MANIFEST` alongside any `$INCLUDE` or `$EXCLUDE` flag is a hard error — the driver (`/spec:execute`) and the schema's define brief should have caught it upstream at `specify plan validate` time. Extract fails fast with a clear message rather than trying to reconcile the two modes.
+`$MANIFEST` is mutually exclusive with `$INCLUDE` / `$EXCLUDE`. Invoking extract with a `$MANIFEST` alongside any `$INCLUDE` or `$EXCLUDE` flag is a hard error — the driver (`/spec:execute`) and the capability's define brief should have caught it upstream at `specify plan validate` time. Extract fails fast with a clear message rather than trying to reconcile the two modes.
 
 ## Scope filters at a glance
 

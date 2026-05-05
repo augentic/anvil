@@ -88,5 +88,5 @@ After a producer change merges, `/spec:execute` runs a cross-project compatibili
 - [Resolve cross-project contract warnings](resolve-cross-project-contract-warnings.md) -- triage how-to for the post-merge check
 - [Cross-project contract warnings on the merge transcript](../appendices/troubleshooting.md#cross-project-contract-warnings-on-the-merge-transcript) -- troubleshooting entry
 - [Contract plugin](../reference/plugins/contract.md) -- plugin reference
-- [Contracts schema](../reference/schemas/contracts.md) -- schema reference
+- [Contracts capability](../reference/capabilities/contracts.md) -- capability reference
 - [Artifact Format (contracts)](../reference/artifact-format.md#contract-artifacts-api-shape) -- format details

@@ -58,7 +58,7 @@ The umbrella inspects on-disk state, sees the brief present, the plan terminal, 
 | File | Pins |
 |---|---|
 | [`inputs/registry.yaml`](inputs/registry.yaml) | Pre-populated registry — two existing projects with descriptions. Unchanged across the run. |
-| [`inputs/project.yaml`](inputs/project.yaml) | Hub `project.yaml` with `schema: hub` and `hub: true`. |
+| [`inputs/project.yaml`](inputs/project.yaml) | Hub `project.yaml` with `hub: true` (the `capability:` field is omitted on hubs). |
 | [`inputs/dark-mode-spec.md`](inputs/dark-mode-spec.md) | The documentation input forwarded to `/spec:plan` via `--from`. |
 | [`expected/registry.yaml.after`](expected/registry.yaml.after) | Byte-identical to `inputs/registry.yaml` — the `new-feature` shape never mutates the registry. |
 | [`expected/plan.yaml.after`](expected/plan.yaml.after) | Terminal plan: three entries `done`. |

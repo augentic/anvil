@@ -27,4 +27,4 @@ This is the primary workflow. You initialise a project once, then repeat the def
 
 Each skill is an agent-driven orchestrator. Deterministic operations are delegated to the `specify` CLI (Layer 1). Skills never hand-edit `.metadata.yaml`, never create directories under `.specify/`, and never move files to the archive directly.
 
-During `/spec:build`, tasks with skill directive tags (e.g. `<!-- skill: omnia:crate-writer -->`) are delegated to the named specialist plugin skill. Tasks without tags are implemented via the schema's default build instruction.
+During `/spec:build`, tasks with skill directive tags (e.g. `<!-- skill: omnia:crate-writer -->`) are delegated to the named specialist plugin skill. Tasks without tags are implemented via the capability's default build instruction.

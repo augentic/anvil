@@ -11,17 +11,17 @@ This plugin provides the core Specify workflow skills: define a change, build (v
 
 **Purpose**: Drive the define -> build -> merge workflow, with drop for cleanup.
 
-## Schema Structure
+## Capability Structure
 
-Schemas define the artifact graph, briefs, and heading conventions. Each schema directory contains:
+Capabilities define the artifact graph, briefs, and heading conventions. Each capability directory contains:
 
 ```text
-schemas/<name>/
-├── schema.yaml
+capabilities/<name>/
+├── capability.yaml
 └── briefs/
 ```
 
-`schema.yaml` defines the pipeline phases — detailed guidance lives in brief files with YAML frontmatter. Schemas can extend other schemas via the `extends` field.
+`capability.yaml` defines the pipeline phases — detailed guidance lives in brief files with YAML frontmatter.
 
 ## Change Lifecycle
 
@@ -54,7 +54,7 @@ defining -> defined -> building -> complete -> merged
 
 - **init**: One-time project setup -- creates `.specify/` directory structure and `project.yaml`
 - **define**: Create a change directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:define <name> <blueprint-id>`.
-- **build**: Validate artifacts against `schema.yaml` rules and cross-blueprint consistency, then implement tasks from the change, marking them complete as you go
+- **build**: Validate artifacts against `capability.yaml` rules and cross-blueprint consistency, then implement tasks from the change, marking them complete as you go
 - **merge**: Preview merge operations, finalize a completed change, merge delta specs into baseline
 - **drop**: Discard an active change, set `status: dropped`, and move it to archive without merging specs
 - **extract**: Extract Specify artifacts (specs + design.md) from existing source code

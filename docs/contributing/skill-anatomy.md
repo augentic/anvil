@@ -122,7 +122,7 @@ The litmus test: "Would this operation need to understand `.specify/` directory 
 
 ## How skills delegate to other skills
 
-Skills can invoke other skills using `<!-- skill: plugin:skill-name -->` directives in their body. For example, `/spec:build` delegates implementation to specialist skills declared by the active schema:
+Skills can invoke other skills using `<!-- skill: plugin:skill-name -->` directives in their body. For example, `/spec:build` delegates implementation to specialist skills declared by the active capability:
 
 ```markdown
 <!-- skill: omnia:crate-writer -->

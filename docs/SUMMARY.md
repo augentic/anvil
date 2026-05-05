@@ -66,7 +66,7 @@
   - [specify plan](reference/cli/plan.md)
   - [specify initiative](reference/cli/initiative.md)
   - [specify registry](reference/cli/registry.md)
-  - [specify schema](reference/cli/schema.md)
+  - [specify capability](reference/cli/capability.md)
   - [specify workspace](reference/cli/workspace.md)
   - [specify contract](reference/cli/contract.md)
   - [specify init](reference/cli/init.md)
@@ -77,10 +77,10 @@
   - [Contract](reference/plugins/contract.md)
   - [RT](reference/plugins/rt.md)
   - [Client](reference/plugins/client.md)
-- [Schemas](reference/schemas/index.md)
-  - [Omnia Schema](reference/schemas/omnia.md)
-  - [Vectis Schema](reference/schemas/vectis.md)
-  - [Contracts Schema](reference/schemas/contracts.md)
+- [Capabilities](reference/capabilities/index.md)
+  - [Omnia Capability](reference/capabilities/omnia.md)
+  - [Vectis Capability](reference/capabilities/vectis.md)
+  - [Contracts Capability](reference/capabilities/contracts.md)
 - [Configuration Files](reference/configuration.md)
 
 ---
@@ -89,7 +89,7 @@
 
 - [The Layered Stack](explanation/three-layer-stack.md)
 - [Artifacts in Depth](explanation/artifacts.md)
-- [Schemas and Plugins](explanation/schemas-and-plugins.md)
+- [Capabilities and Plugins](explanation/capabilities-and-plugins.md)
 - [Platform Repo Topologies](explanation/platform-repo.md)
 - [Workspace Tiers](explanation/workspace-tiers.md)
 - [Decision Log](explanation/decision-log.md)
@@ -109,7 +109,7 @@
 
 - [Overview](contributing/index.md)
 - [Anatomy of a Skill](contributing/skill-anatomy.md)
-- [Anatomy of a Schema](contributing/schema-anatomy.md)
+- [Anatomy of a Capability](contributing/capability-anatomy.md)
 - [Plugin Development](contributing/plugin-development.md)
 - [CLI Architecture](contributing/cli-architecture.md)
 - [Consistency Checks](contributing/checks.md)

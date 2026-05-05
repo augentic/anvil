@@ -34,7 +34,7 @@ The umbrella runs all seven steps in one pass:
 | File | Pins |
 |---|---|
 | [`inputs/registry.yaml`](inputs/registry.yaml) | Pre-populated multi-project registry. Unchanged across the run. |
-| [`inputs/project.yaml`](inputs/project.yaml) | Hub `project.yaml` with `schema: hub` and `hub: true`. |
+| [`inputs/project.yaml`](inputs/project.yaml) | Hub `project.yaml` with `hub: true` (the `capability:` field is omitted on hubs). |
 | [`expected/registry.yaml.after`](expected/registry.yaml.after) | Byte-identical to `inputs/registry.yaml`. |
 | [`expected/plan.yaml.after`](expected/plan.yaml.after) | Terminal plan: two entries `done`. |
 | [`expected/initiative.md.after`](expected/initiative.md.after) | Brief as scaffolded by step 1 with empty `inputs:` and operator-supplied prose. |

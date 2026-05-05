@@ -208,26 +208,26 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 2. If the spec is correct, update the baseline contract in a dedicated contract change.
 3. If the baseline is correct, update the spec to conform.
 
-## Schema and init issues
+## Capability and init issues
 
-### Schema resolution failure
+### Capability resolution failure
 
-**Symptom:** `/spec:init` fails to resolve the schema URL.
+**Symptom:** `/spec:init` fails to resolve the capability identifier.
 
-**Cause:** Invalid URL, network error, or the `@ref` suffix does not exist.
+**Cause:** Invalid identifier or URL, network error, or the `@ref` suffix does not exist.
 
 **Resolution:**
-1. Verify the URL format: `https://github.com/augentic/specify/schemas/<name>[@<ref>]`
+1. Verify the identifier format: a bare name (e.g. `omnia`), an `https://github.com/augentic/specify/capabilities/<name>[@<ref>]` URL, or a `file:///…` URI.
 2. Check network connectivity.
 3. Try without a ref suffix to use the latest version.
 
-### Cache stale after schema update
+### Cache stale after capability update
 
 **Symptom:** Skills use outdated brief content.
 
-**Cause:** The schema was updated upstream but the local cache was not refreshed.
+**Cause:** The capability was updated upstream but the local cache was not refreshed.
 
-**Resolution:** Re-run `/spec:init` with the schema URL to refresh the cache.
+**Resolution:** Re-run `/spec:init <capability>` to refresh the cache.
 
 ## Hub and registry issues
 
@@ -240,7 +240,7 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 **Resolution:** Two paths.
 
 - **Stay on the hub:** remove the entry. `specify registry remove <name>`. Code projects must live in their own repos and be referenced via a remote URL.
-- **Convert to platform-as-project:** if the operator actually wants the single-repo shape (the initiating repo is itself a code project), remove `.specify/` and re-run `specify init --schema-uri <uri>` without `--hub`. See [Platform repo topologies](../explanation/platform-repo.md).
+- **Convert to platform-as-project:** if the operator actually wants the single-repo shape (the initiating repo is itself a code project), remove `.specify/` and re-run `specify init <capability>` without `--hub`. See [Platform repo topologies](../explanation/platform-repo.md).
 
 ### `description-missing-multi-repo`
 

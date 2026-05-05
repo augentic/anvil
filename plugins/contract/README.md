@@ -16,7 +16,7 @@ Each skill's `SKILL.md` dispatches to format-specific `author.md`, `importer.md`
 
 ### Mixed-format ordering
 
-When a change touches more than one format (HTTP + events + shared schemas), the contracts schema build brief invokes the skills in fixed order:
+When a change touches more than one format (HTTP + events + shared schemas), the contracts capability build brief invokes the skills in fixed order:
 
 1. `/contract:json-schema` first — the schema vocabulary is shared and must stabilise before any binding references it.
 2. `/contract:openapi` — HTTP operations bind to the schemas above via `$ref: "../schemas/<type>.yaml"`.

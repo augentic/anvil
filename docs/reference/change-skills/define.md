@@ -35,7 +35,7 @@ Create a new change and generate all artifacts in one step.
 ## Behavior
 
 1. Creates the change directory via `specify change create <name>`.
-2. Reads the schema's `pipeline.define` brief sequence.
+2. Reads the capability's `pipeline.define` brief sequence.
 3. Generates artifacts in dependency order: proposal, then specs (which may invoke `/spec:extract` if `sources` are present), then composition (Vectis only -- produces `composition.yaml`), then design, then tasks. The composition stage produces a YAML file rather than markdown; the skill dispatches on the `generates` extension in the brief frontmatter.
 4. Scans `touched-specs` via `specify change touched-specs`.
 5. Transitions the change to `defined`.

@@ -62,7 +62,7 @@ shop-platform/                              # the hub repo (this tutorial's work
 ├── initiative.md                           # operator brief for `oauth-login`
 ├── plan.yaml                               # the plan authored by /spec:plan
 └── .specify/
-    ├── project.yaml                        # { schema: hub, hub: true, name: shop-platform }
+    ├── project.yaml                        # { hub: true, name: shop-platform } (capability: omitted)
     ├── plans/oauth-login/                  # discovery, workspace, proposal markdown
     ├── archive/                            # finalised initiatives (after Step 9)
     └── workspace/
@@ -82,14 +82,14 @@ git remote add origin git@github.com:org/shop-platform.git
 specify init --hub --name shop-platform
 ```
 
-The first positional `hub` is a placeholder for the schema argument — `--hub` mode ignores it but the parser still requires *something*. `--name` must be kebab-case because the CLI bakes it into `initiative.md`'s frontmatter.
+In hub mode, **no positional** capability argument is passed — `--hub` is the discriminator. Combining a capability positional with `--hub` is rejected with `init-requires-capability-or-hub`. `--name` must be kebab-case because the CLI bakes it into `initiative.md`'s frontmatter.
 
 <details>
 <summary>Expected output</summary>
 
 ```text
 Initialized .specify/ as a registry-only platform hub
-  schema: hub
+  capability: (none — hub mode)
   config: /…/shop-platform/.specify/project.yaml
   cache present: false
   directories created: /…/shop-platform/.specify
@@ -106,12 +106,12 @@ shop-platform/
 ├── initiative.md     # canonical template, name: shop-platform
 ├── .gitignore        # upserts .specify/.cache/ and .specify/workspace/
 └── .specify/
-    └── project.yaml  # schema: hub, hub: true
+    └── project.yaml  # hub: true (capability: omitted)
 ```
 
 `specify init --hub` refuses to run when `.specify/` already exists. To convert an existing single-repo project into a hub, remove `.specify/` first.
 
-> **Why hub mode?** A hub gets `schema: hub` (the sentinel that disables phase pipelines on the hub itself) and `hub: true` (the validation flag that rejects any registry entry whose `url` is `.`). Together these pin the platform repo's identity unambiguously. See [Platform repo topologies](../explanation/platform-repo.md) for the full contract.
+> **Why hub mode?** A hub gets `hub: true` (the validation flag that rejects any registry entry whose `url` is `.`) and **omits** `capability:` (the absence of which is what disables phase pipelines on the hub itself). Together these pin the platform repo's identity unambiguously. See [Platform repo topologies](../explanation/platform-repo.md) for the full contract.
 
 ## 2. Register the two projects
 
@@ -454,7 +454,7 @@ See [`specify plan doctor`](../reference/cli/plan.md#specify-plan-doctor) for th
 Other common issues:
 
 - **`Error::DriverBusy { pid }`** — another `/spec:execute` is holding `.specify/plan.lock`. If it is dead, `specify plan lock release --pid <pid>` reclaims the stamp; otherwise wait for the live driver.
-- **`hub-cannot-be-project`** — a registry entry has `url: .` on a hub. Either remove the entry (`specify registry remove <name>`) or convert the hub to a platform-as-project shape by removing `.specify/` and re-running `specify init --schema-uri <uri>` without `--hub`.
+- **`hub-cannot-be-project`** — a registry entry has `url: .` on a hub. Either remove the entry (`specify registry remove <name>`) or convert the hub to a platform-as-project shape by removing `.specify/` and re-running `specify init <capability>` without `--hub`.
 - **Cross-project contract warnings in the merge transcript** — see [`/spec:execute` §Cross-project contract check](../../plugins/spec/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b). The merged change is still `done`; the warnings are advisory and recorded on the merged change's journal.
 
 ## Verification
@@ -463,7 +463,7 @@ A reviewer (or an operator stepping through this tutorial as an integration test
 
 | After | Command | Expect |
 |---|---|---|
-| Step 1 | `cat .specify/project.yaml` | Lines containing `schema: hub` and `hub: true`. |
+| Step 1 | `cat .specify/project.yaml` | A line containing `hub: true` and **no** `capability:` line. |
 | Step 1 | `ls .specify/` | `project.yaml`, `registry.yaml`, `initiative.md`. **No** `changes/` or `specs/` (phase pipelines disabled). |
 | Step 2 | `specify registry validate` | Exit 0; no diagnostics. |
 | Step 2 | `specify registry show` | `version: 1` and two `projects[]` entries with descriptions. |
@@ -484,7 +484,7 @@ The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three 
 ## What you learned
 
 - The platform-hub topology (`specify init --hub`) is the canonical starting shape for multi-repo initiatives. The hub holds platform state and never carries code.
-- `specify registry add` registers code projects with kebab-case names, schema identifiers, and domain descriptions. Descriptions drive automated assignment in `/spec:plan`.
+- `specify registry add` registers code projects with kebab-case names, capability identifiers, and domain descriptions. Descriptions drive automated assignment in `/spec:plan`.
 - `specify initiative create` scaffolds the operator brief; the `inputs:` frontmatter feeds the discovery brief.
 - `/spec:plan` runs discovery -> sync-peers -> propose -> assignment, and finishes with `specify plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
 - `/spec:execute --loop` `chdir`s into each workspace clone, runs define-build-merge, transitions the plan entry, and routes back. Multi-repo CWD routing is invisible to the phase skills.

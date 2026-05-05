@@ -1,6 +1,6 @@
 # OpenAPI — Importer
 
-> **When to read this.** Read this when an operator supplies an external OpenAPI (or Swagger 2.0) document and the contracts schema build brief needs the file normalised onto Specify conventions under a change's `contracts/http/` directory. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)).
+> **When to read this.** Read this when an operator supplies an external OpenAPI (or Swagger 2.0) document and the contracts capability build brief needs the file normalised onto Specify conventions under a change's `contracts/http/` directory. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)).
 
 ## Inputs
 

@@ -35,7 +35,7 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 |-------------|---------------|
 | The operation must be idempotent | The response depends on context |
 | The output is structured (JSON, exit codes) | The output is natural language |
-| Correctness is verifiable (schema validation) | Correctness requires semantic understanding |
+| Correctness is verifiable (schema validation, manifest checks) | Correctness requires semantic understanding |
 | The operation is repeated across many skills | The operation is unique to one skill |
 | Failure modes are enumerable | Failure modes are open-ended |
 
@@ -48,7 +48,7 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | [specify plan](plan.md) | Scaffold, populate, validate, and transition initiative plans | Layer 3 operations |
 | [specify initiative](initiative.md) | Manage the operator-authored initiative brief and finalize landed initiatives | Layers 3–4 closure |
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
-| [specify schema](schema.md) | Schema resolution and brief pipeline queries | Schema infrastructure |
+| [specify capability](capability.md) | Capability resolution and brief pipeline queries | Capability infrastructure |
 | [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |
 | [specify contract](contract.md) | Inspect and validate baseline contracts under `contracts/` | RFC-12 baseline gate |
 | [specify init](init.md) | Project scaffold | One-time setup |

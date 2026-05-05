@@ -12,7 +12,7 @@ $ /spec:plan --orchestrate migrate-foo \
 
 Pre-flight
   shape:        migrate-legacy
-  hub:          shop-platform/.specify/project.yaml (schema: hub, hub: true)
+  hub:          shop-platform/.specify/project.yaml (hub: true; capability omitted)
   specify:      0.x.y on PATH
   gh:           v2.x.y on PATH
   initiative:   migrate-foo (kebab-case ok)

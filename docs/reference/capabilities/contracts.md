@@ -1,6 +1,7 @@
-# Contracts Schema
+# Contracts Capability
 
-- **URL:** `https://github.com/augentic/specify/schemas/contracts`
+- **Identifier:** `contracts` (bundled, first-party)
+- **URL:** `https://github.com/augentic/specify/capabilities/contracts`
 - **Purpose:** Dedicated API contract changes -- defining or importing machine-readable interface shapes
 - **Target:** Contract artifacts (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0) at root `contracts/`
 
@@ -36,34 +37,36 @@ Contract files use **opaque replacement** semantics during merge -- the entire f
 
 ## When to use
 
-Use the `contracts` schema when:
+Use the `contracts` capability when:
 
 - **Contract-first:** Defining a new API contract before implementation begins. `/spec:plan` inserts these automatically when it detects an API boundary between projects.
 - **Contract-given:** Importing an external or legacy API contract into the platform. The operator places the external files into the change's `contracts/` directory.
 - **Standalone modification:** Modifying existing platform contracts independently of implementation changes.
 
-Use Omnia or Vectis schemas when implementing code that conforms to existing contracts. Their specs and design briefs read baseline contracts as context, but implementation changes do not author contract deltas. Use a separate `contracts@v1` change when an implementation needs a new or changed interface shape.
+Use the Omnia or Vectis capabilities when implementing code that conforms to existing contracts. Their specs and design briefs read baseline contracts as context, but implementation changes do not author contract deltas. Use a separate `contracts@v1` change when an implementation needs a new or changed interface shape.
 
-## Contracts schema vs implementation schemas
+## Contracts capability vs implementation capabilities
 
-The `contracts` schema and the implementation schemas serve complementary purposes:
+The `contracts` capability and the implementation capabilities serve complementary purposes:
 
-| Concern | Contracts schema | Omnia/Vectis schemas |
-|---------|-----------------|--------------------------------|
+| Concern | Contracts capability | Omnia/Vectis capabilities |
+|---------|----------------------|---------------------------|
 | Purpose | Author or import contract artifacts | Implement code that conforms to baseline contracts |
 | Plan entry | `schema: contracts@v1` (no `project`) | Normal project-bound entry |
 | Build phase | Author/import + validation | Code generation |
 | Typical delta | Full contract set (new API), import normalisation, or contract modification | Spec/design/code changes with no contract artifact delta |
 
+> The plan-entry key on the table above is still spelled `schema:` because the `plan.yaml` per-entry field name is intentionally kept distinct from the capability rename — it identifies the artefact-path identifier the entry targets, not the capability that owns the work. RFC-13 leaves that key unchanged in Phase 1; the change → slice / initiative → change rename in Phase 3 will revisit `plan.yaml` field names as a separate cut-over.
+
 ## Domain context
 
-The Contracts schema injects domain context about:
+The Contracts capability's briefs and skills carry domain context about:
 
 - JSON Schema (draft 2020-12) conventions for payload definitions.
 - OpenAPI 3.1 structure for HTTP endpoint bindings.
 - AsyncAPI 3.0 structure for messaging bindings.
 - Artifact structure and naming conventions for root `contracts/`.
 
-## Schema framework
+## Capability framework
 
-For general schema concepts -- directory structure, field reference for `schema.yaml`, schema resolution, composition, caching, and rules override -- see the [Schemas overview](index.md).
+For general capability concepts -- directory structure, manifest field reference for `capability.yaml`, capability resolution, and pipeline declarations -- see the [Capabilities overview](index.md).

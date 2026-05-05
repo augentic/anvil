@@ -26,14 +26,14 @@ The hub itself is a git repo so the platform state (registry, initiative briefs,
 specify init --hub --name shop-platform
 ```
 
-The first positional `hub` is a placeholder -- `--hub` mode ignores the schema argument but the parser still requires *something*. `--name` must be kebab-case because the CLI bakes it into `initiative.md`'s frontmatter.
+In hub mode, **no positional** capability argument is passed -- `--hub` is the discriminator. Combining a capability positional with `--hub` is rejected with `init-requires-capability-or-hub`. `--name` must be kebab-case because the CLI bakes it into `initiative.md`'s frontmatter.
 
 <details>
 <summary>Expected output</summary>
 
 ```text
 Initialized .specify/ as a registry-only platform hub
-  schema: hub
+  capability: (none — hub mode)
   config: /…/shop-platform/.specify/project.yaml
   cache present: false
   directories created: /…/shop-platform/.specify
@@ -50,7 +50,7 @@ shop-platform/
 ├── initiative.md     # canonical template, name: shop-platform
 ├── .gitignore        # upserts .specify/.cache/ and .specify/workspace/
 └── .specify/
-    └── project.yaml  # schema: hub, hub: true
+    └── project.yaml  # hub: true (capability: omitted)
 ```
 
 `specify init --hub` refuses to run when `.specify/` already exists -- the guard prevents accidentally clobbering an existing single-project setup. Remove `.specify/` first if you genuinely want to convert.
@@ -101,7 +101,7 @@ The hub is now ready to drive an initiative. The recommended next step is the cr
 
 | Check | Command | Expect |
 |-------|---------|--------|
-| Hub markers in place | `cat .specify/project.yaml` | Lines containing `schema: hub` and `hub: true`. |
+| Hub markers in place | `cat .specify/project.yaml` | A line containing `hub: true` and **no** `capability:` line. |
 | Phase pipelines disabled | `ls .specify/` | `project.yaml`, `registry.yaml`, `initiative.md`. **No** `changes/` or `specs/`. |
 | Registry validates | `specify registry validate` | Exit 0, no diagnostics. |
 | Both projects listed | `specify registry show` | `version: 1` and two `projects[]` entries with descriptions. |

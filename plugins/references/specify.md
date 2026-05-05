@@ -88,7 +88,7 @@ Source: <source function or design section>
 
 ### Delta Spec Format (Modified Crate)
 
-When modifying an existing crate, delta specs use the operation headers defined in the spec format (`## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, `## RENAMED Requirements`). Requirement blocks still use `### Requirement:` and `#### Scenario:` headings, but the stable merge key is the `ID: REQ-XXX` line rather than the display name. See the schema's `briefs/specs.md` for the full delta structure and the merge skill for how deltas merge into the baseline.
+When modifying an existing crate, delta specs use the operation headers defined in the spec format (`## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, `## RENAMED Requirements`). Requirement blocks still use `### Requirement:` and `#### Scenario:` headings, but the stable merge key is the `ID: REQ-XXX` line rather than the display name. See the capability's `briefs/specs.md` for the full delta structure and the merge skill for how deltas merge into the baseline.
 
 ### Deriving Specs From Source Code (extract)
 
@@ -168,7 +168,7 @@ Generator-owned binding decisions such as Omnia trait composition remain in spec
 
 ## Proposal Document
 
-Use `proposal.md` to capture why the change exists and what is in scope. The schema's brief file (`briefs/proposal.md`) provides the full output template.
+Use `proposal.md` to capture why the change exists and what is in scope. The capability's brief file (`briefs/proposal.md`) provides the full output template.
 
 The **Crates** section creates the contract between proposal and specs phases. Each crate listed will need a corresponding spec file at `specs/<name>/spec.md`. For repository sources, the analyzer discovers crates automatically.
 
@@ -212,7 +212,7 @@ Tasks may optionally include a skill directive as an HTML comment. The build pha
 - [ ] 2.3 Add fixture-backed integration tests for API behavior <!-- skill: omnia:test-writer -->
 ```
 
-Tasks without a skill tag are implemented via the schema's default build instruction (mode detection, verification loop, etc.). Use skill tags when a task maps directly to a single specialist skill invocation.
+Tasks without a skill tag are implemented via the capability's default build instruction (mode detection, verification loop, etc.). Use skill tags when a task maps directly to a single specialist skill invocation.
 
 ## Tags Reference
 

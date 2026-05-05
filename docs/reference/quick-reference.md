@@ -22,7 +22,7 @@
 
 ```text
 /spec:init --hub                                     # bootstrap a platform hub
-specify registry add <project> --url ... --schema ...
+specify registry add <project> --url ... --schema ...      # `--schema` flag is the legacy spelling; renamed in a later phase
 /spec:plan --orchestrate <name> [--shape ...] [--auto-merge]
 ```
 
@@ -73,7 +73,7 @@ specify status                            # project dashboard
 specify change status <name>              # single-change view
 
 # Project setup
-specify init --schema-uri <uri>           # regular single-project scaffold
+specify init <capability>                 # regular single-project scaffold (positional capability identifier or URL)
 specify init --hub                        # registry-only platform hub (RFC-9 1D)
 
 # Change management
@@ -116,13 +116,13 @@ specify change merge preview <name>
 specify change merge conflict-check <name>
 ```
 
-## Schemas
+## Capabilities
 
-| Schema | URL | Target |
-|--------|-----|--------|
-| Omnia | `https://github.com/augentic/specify/schemas/omnia` | Rust WASM |
-| Vectis | `https://github.com/augentic/specify/schemas/vectis` | Crux cross-platform |
-| Contracts | `https://github.com/augentic/specify/schemas/contracts` | API contracts |
+| Capability | URL | Target |
+|------------|-----|--------|
+| Omnia | `https://github.com/augentic/specify/capabilities/omnia` | Rust WASM |
+| Vectis | `https://github.com/augentic/specify/capabilities/vectis` | Crux cross-platform |
+| Contracts | `https://github.com/augentic/specify/capabilities/contracts` | API contracts |
 
 ## Directory structure
 
@@ -135,7 +135,7 @@ specify change merge conflict-check <name>
 └── .specify/
     ├── project.yaml      # project config
     ├── plan.lock         # advisory lock for /spec:execute
-    ├── .cache/           # cached schema + briefs
+    ├── .cache/           # cached capability manifest + briefs
     ├── changes/          # active changes (contracts/, composition.yaml for Vectis)
     ├── specs/            # merged baseline (incl. composition.yaml for Vectis)
     ├── plans/            # initiative working dirs (discovery, proposal)

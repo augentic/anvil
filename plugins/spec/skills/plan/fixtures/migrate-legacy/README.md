@@ -28,7 +28,7 @@ The umbrella runs all seven steps without halting:
 | File | Pins |
 |---|---|
 | [`inputs/registry.yaml.before`](inputs/registry.yaml.before) | Empty registry that 2B's greenfield path materialises in step 3. |
-| [`inputs/project.yaml`](inputs/project.yaml) | Hub `project.yaml` with `schema: hub` and `hub: true`. |
+| [`inputs/project.yaml`](inputs/project.yaml) | Hub `project.yaml` with `hub: true` (the `capability:` field is omitted on hubs). |
 | [`expected/registry.yaml.after`](expected/registry.yaml.after) | Two-project registry after the greenfield path runs. |
 | [`expected/plan.yaml.after`](expected/plan.yaml.after) | Terminal plan: three entries `done`. |
 | [`expected/initiative.md.after`](expected/initiative.md.after) | Brief as scaffolded by step 1 (`specify initiative create`) plus the operator-confirmed default body. |

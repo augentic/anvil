@@ -32,7 +32,7 @@ Layer1: "Layer 1 — CLI Primitives" {
   initCli: "specify initiative"
   registryCli: "specify registry"
   workspaceCli: "specify workspace"
-  schemaCli: "specify schema"
+  capabilityCli: "specify capability"
   statusCli: "specify status"
 }
 
@@ -66,7 +66,7 @@ Layer 2 skills operate on a **single change** inside `.specify/changes/<name>/`.
 /spec:define  -->  /spec:build  -->  /spec:merge
 ```
 
-Each skill is an agent-driven orchestrator. It elicits intent from the user, reads brief pipelines declared by the active schema, writes artifacts, invokes specialist plugin skills (e.g. `/omnia:crate-writer`), and renders summaries. Deterministic work is delegated to the Layer 1 CLI underneath.
+Each skill is an agent-driven orchestrator. It elicits intent from the user, reads brief pipelines declared by the active capability, writes artifacts, invokes specialist plugin skills (e.g. `/omnia:crate-writer`), and renders summaries. Deterministic work is delegated to the Layer 1 CLI underneath.
 
 The full set of Layer 2 skills:
 

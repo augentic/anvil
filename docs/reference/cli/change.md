@@ -120,7 +120,7 @@ Checks include:
 
 - **Structural checks** -- artifact files exist, conform to expected format, required sections present.
 - **Referential checks** -- specs referenced in the proposal exist, requirement IDs are unique and stable.
-- **Schema checks** -- artifacts conform to the active schema's rules.
+- **Capability checks** -- artifacts conform to the active capability's rules.
 - **Composition checks** (Vectis only) -- structural validation of `composition.yaml` plus cross-artifact checks (field coverage, event coverage, ViewModel mapping, overlay trigger consistency, navigation graph consistency). See [Artifact Format > Composition](../artifact-format.md#composition-document-vectis-only) for the full checklist.
 
 Returns a JSON report with `Pass` / `Fail` / `Deferred` classifications. The Pass/Fail/Deferred model lets the CLI handle structural checks while the agent evaluates semantic ones; see the [Decision Log](../../explanation/decision-log.md) for the rationale.

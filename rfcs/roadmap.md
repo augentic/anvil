@@ -14,7 +14,7 @@ This roadmap captures the next strategic corrections and extensions. The goal is
 AI engineering at scale needs three connected layers:
 
 1. **Platform layer.** Authenticated access to models, tools, sandboxes, logs, and long-running execution.
-2. **Knowledge layer.** Explicit context about repositories, owners, dependencies, standards, schemas, and current plans.
+2. **Knowledge layer.** Explicit context about repositories, owners, dependencies, standards, capabilities, and current plans.
 3. **Enforcement layer.** Continuous review, compatibility checks, standards checks, and stale-context detection.
 
 Specify should own the spec-driven workflow semantics across those layers:
@@ -23,7 +23,7 @@ Specify should own the spec-driven workflow semantics across those layers:
 - artifacts become executable plans;
 - plans route work to repositories;
 - repositories are changed through controlled phases;
-- changes are reviewed against schemas, contracts, and standards;
+- changes are reviewed against capabilities, contracts, and standards;
 - outcomes are recorded for recovery and audit.
 
 ## Directional Principles
@@ -87,7 +87,7 @@ Current RFC-10 work should remain the immediate priority:
 
 Next, add a first-class repository context output:
 
-- generate concise `AGENTS.md` files from Specify project metadata, schema references, repo inspection, and registry data;
+- generate concise `AGENTS.md` files from Specify project metadata, capability references, repo inspection, and registry data;
 - include runtime, test command, lint command, navigation hints, conventions, boundaries, and dependencies;
 - keep the file short enough to sit directly in agent context;
 - add checks that warn when repo structure changes imply `AGENTS.md` should be refreshed.
@@ -144,11 +144,11 @@ Each rule should have:
 - a concise trigger;
 - normative guidance;
 - examples or references where useful;
-- applicability metadata for schemas, plugins, or languages.
+- applicability metadata for capabilities, plugins, or languages.
 
 Skills should be able to cite codex rules while generating artifacts. Reviewers should cite the same rule ids when reporting violations.
 
-This should complement, not replace, artifact schemas. Schemas define structure. Codex rules define durable engineering policy.
+This should complement, not replace, artifact schemas. Artifact schemas define structure. Codex rules define durable engineering policy.
 
 ### 4. CI-Native Specify Review
 
@@ -208,7 +208,7 @@ Non-goal: placing independent plan, registry, or lifecycle logic in the MCP serv
 Add structured event emission for major workflow operations:
 
 - command name and version;
-- project and schema;
+- project and capability;
 - change or plan entry;
 - phase start and finish;
 - validation result;

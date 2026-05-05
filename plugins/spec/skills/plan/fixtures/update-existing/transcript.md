@@ -7,7 +7,7 @@ $ /spec:plan --orchestrate polish-pass --shape update-existing --auto-merge
 
 Pre-flight
   shape:        update-existing
-  hub:          shop-platform/.specify/project.yaml (schema: hub, hub: true)
+  hub:          shop-platform/.specify/project.yaml (hub: true; capability omitted)
   specify:      0.x.y on PATH
   gh:           v2.x.y on PATH
   initiative:   polish-pass (kebab-case ok)
