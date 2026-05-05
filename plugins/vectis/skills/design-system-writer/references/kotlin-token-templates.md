@@ -16,7 +16,7 @@ Concrete Kotlin code templates for each token value shape. The design-system-wri
 
 | YAML value | Kotlin `FontWeight` |
 |---|---|
-| `ultraLight` | `FontWeight.ExtraLight` |
+| `ultra-light` | `FontWeight.ExtraLight` |
 | `thin` | `FontWeight.Thin` |
 | `light` | `FontWeight.Light` |
 | `regular` | `FontWeight.Normal` |
@@ -66,12 +66,12 @@ Map each YAML color token to Material 3 `ColorScheme` parameters via `lightColor
 
 ### Semantic name → `ColorScheme` parameter mapping
 
-YAML keys that match M3 names map directly (`primary`, `onPrimary`, `primaryContainer`, `onPrimaryContainer`, `secondary`, …, `error`, `onError`, `surface`, `onSurface`, `outline`).
+YAML token IDs are kebab-case (per `tokens.schema.json`). Kebab-case YAML keys whose camelCased form matches an M3 `ColorScheme` parameter map directly: `primary` → `primary`, `on-primary` → `onPrimary`, `primary-container` → `primaryContainer`, `on-primary-container` → `onPrimaryContainer`, `secondary` → `secondary`, …, `error` → `error`, `on-error` → `onError`, `surface` → `surface`, `on-surface` → `onSurface`, `outline` → `outline`.
 
 | YAML key | `ColorScheme` parameter |
 |---|---|
-| `surfaceSecondary` | `surfaceVariant` |
-| `onSurfaceSecondary` | `onSurfaceVariant` |
+| `surface-secondary` | `surfaceVariant` |
+| `on-surface-secondary` | `onSurfaceVariant` |
 | `shadow` | `scrim` |
 | `outline` | `outline` |
 

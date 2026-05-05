@@ -59,6 +59,11 @@
           "items": { "$ref": "#/$defs/pipelineEntry" }
         }
       }
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "Optional artifact contract — declares per-artifact paths, schemas, and lifecycle hand-offs. Entry-value shape is intentionally loose in v1; a follow-on RFC tightens it once a second automated consumer exists (see RFC-11 §H).",
+      "additionalProperties": { "type": "object" }
     }
   },
   "$defs": {

@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify/schemas/vectis/tokens.schema.json",
+  "title": "Specify Tokens Artifact",
+  "description": "Schema for tokens.yaml — design tokens consumed by shell writers.",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "provenance": { "$ref": "#/$defs/provenance" },
+    "colors": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/tokenName" },
+      "additionalProperties": { "$ref": "#/$defs/colorEntry" }
+    },
+    "typography": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/tokenName" },
+      "additionalProperties": { "$ref": "#/$defs/typographyEntry" }
+    },
+    "spacing": { "$ref": "#/$defs/scalarMap" },
+    "cornerRadius": { "$ref": "#/$defs/scalarMap" },
+    "elevation": { "$ref": "#/$defs/scalarMap" },
+    "border": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/tokenName" },
+      "additionalProperties": { "$ref": "#/$defs/borderEntry" }
+    },
+    "opacity": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/tokenName" },
+      "additionalProperties": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1
+      }
+    }
+  },
+
+  "$defs": {
+    "tokenName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+      "description": "Kebab-case token identifier."
+    },
+    "tokenRef": {
+      "type": "string",
+      "description": "Reference to a token name defined elsewhere in this document (typically a colors entry for border.color)."
+    },
+    "hexColor": {
+      "type": "string",
+      "pattern": "^#[0-9A-Fa-f]{6}$",
+      "description": "#RRGGBB hex colour."
+    },
+    "weight": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "ultra-light",
+            "thin",
+            "light",
+            "regular",
+            "medium",
+            "semibold",
+            "bold",
+            "heavy",
+            "black"
+          ]
+        },
+        {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 900,
+          "multipleOf": 100
+        }
+      ]
+    },
+    "scalarMap": {
+      "type": "object",
+      "propertyNames": { "$ref": "#/$defs/tokenName" },
+      "additionalProperties": { "type": "number", "minimum": 0 }
+    },
+
+    "provenance": {
+      "type": "object",
+      "required": ["sources"],
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/provenanceSource" }
+        }
+      }
+    },
+    "provenanceSource": {
+      "type": "object",
+      "required": ["kind"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "figma-variables",
+            "style-dictionary",
+            "tokens-studio",
+            "dtcg",
+            "legacy"
+          ]
+        },
+        "uri": { "type": "string", "format": "uri" },
+        "captured_at": { "type": "string", "format": "date-time" }
+      }
+    },
+
+    "colorEntry": {
+      "type": "object",
+      "required": ["light", "dark"],
+      "additionalProperties": false,
+      "properties": {
+        "light": { "$ref": "#/$defs/hexColor" },
+        "dark": { "$ref": "#/$defs/hexColor" }
+      }
+    },
+
+    "typographyEntry": {
+      "type": "object",
+      "required": ["size"],
+      "additionalProperties": false,
+      "properties": {
+        "size": { "type": "number", "exclusiveMinimum": 0 },
+        "weight": { "$ref": "#/$defs/weight" },
+        "lineHeight": { "type": "number", "exclusiveMinimum": 0 },
+        "letterSpacing": { "type": "number" }
+      }
+    },
+
+    "borderEntry": {
+      "type": "object",
+      "required": ["width", "color"],
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "number", "minimum": 0 },
+        "color": { "$ref": "#/$defs/tokenRef" },
+        "radius": { "type": "number", "minimum": 0 }
+      }
+    }
+  }
+}

@@ -30,3 +30,71 @@ pipeline:
   merge:
     - id: merge
       brief: briefs/merge.md
+
+# Artifact contract (RFC-11 §H). Documentation-first metadata that names the UI
+# input set, define-phase outputs, and the build/merge consumption surface. v1
+# ships exactly one automated consumer: the composition.md brief reads
+# `artifacts.layout.paths.change_local` then `artifacts.layout.paths.project` to
+# discover layout.yaml. Every other field is documentation for v1; promoting
+# additional consumers (e.g. build/merge using `consumed_by` for orchestration)
+# is a follow-on RFC.
+artifacts:
+  layout:
+    role: input
+    paths:
+      change_local: .specify/changes/<name>/layout.yaml
+      project: design-system/layout.yaml
+    schema: composition.schema.json
+    validates_with: layout
+    consumed_by: [define]
+  tokens:
+    role: input
+    paths:
+      change_local: .specify/changes/<name>/tokens.yaml
+      project: design-system/tokens.yaml
+    schema: tokens.schema.json
+    validates_with: tokens
+    consumed_by: [define, build]
+    merge_strategy: input-delta
+  assets:
+    role: input
+    paths:
+      change_local: .specify/changes/<name>/assets.yaml
+      project: design-system/assets.yaml
+    schema: assets.schema.json
+    validates_with: assets
+    consumed_by: [define, build]
+    merge_strategy: input-delta
+  asset-files:
+    role: input
+    paths:
+      change_local: .specify/changes/<name>/assets/**
+      project: design-system/assets/**
+    consumed_by: [build]
+    merge_strategy: input-delta
+  composition:
+    role: define-output
+    paths:
+      change_local: .specify/changes/<name>/composition.yaml
+      baseline: .specify/specs/composition.yaml
+    schema: composition.schema.json
+    validates_with: composition
+    produced_by: [define]
+    consumed_by: [build, merge]
+  design:
+    role: define-output
+    paths: { change_local: .specify/changes/<name>/design.md }
+    produced_by: [define]
+    consumed_by: [build]
+  specs:
+    role: define-output
+    paths:
+      change_local: .specify/changes/<name>/specs/**/*.md
+      baseline: .specify/specs/**/*.md
+    produced_by: [define]
+    consumed_by: [build, merge]
+  tasks:
+    role: define-output
+    paths: { change_local: .specify/changes/<name>/tasks.md }
+    produced_by: [define]
+    consumed_by: [build]

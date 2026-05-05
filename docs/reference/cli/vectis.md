@@ -55,6 +55,16 @@ specify vectis update-versions [--verify]
 
 Updates Crux, UniFFI, Gradle, and Swift package version pins across the project. With `--verify`, checks that all pins are coherent without modifying files.
 
+### specify vectis versions
+
+Show the resolved version pins.
+
+```bash
+specify vectis versions [--dir <path>] [--version-file <path>]
+```
+
+Resolves the version-pin hierarchy (embedded → user → project → `--version-file` override) and emits the resolved set. Read-only — skills and briefs shell out to this instead of hardcoding dependency versions. Pair with `--format json` for a machine-readable payload.
+
 ## See also
 
 - [Vectis Plugin](../plugins/vectis.md) -- Crux development plugin overview
