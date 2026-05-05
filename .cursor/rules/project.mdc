@@ -67,7 +67,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Specify Plugin (`plugins/spec/`)
 
-- `init` - initialize Specify in a project from `--schema-uri` (one-time setup; supports `--hub` for a registry-only platform hub, RFC-9 §1D)
+- `init` - initialize Specify in a project from a positional `<capability>` (one-time setup; mutually exclusive with `--hub`, which scaffolds a registry-only platform hub per RFC-9 §1D and writes only `hub: true` to `project.yaml`)
 - `define` - create a change and generate all artifacts in one step
 - `build` - validate artifacts and implement tasks from a Specify change
 - `merge` - finalize and merge a completed change
@@ -110,7 +110,7 @@ Format-first specialist skills; each carries author / import / verify intents in
 - `asyncapi` - author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0)
 - `json-schema` - author, import, or verify reusable payload schemas (JSON Schema)
 
-The persisted artifact surface is unchanged: the `contracts` brief id, the `contracts@v1` schema, the `contracts/` baseline directory, and every contract artifact path keep their original names. The Cursor plugin / slash-command surface lives under `/contract:*`. The matching read-only CLI surface is `specify contract { list, validate }` (RFC-12 §"CLI surface").
+The persisted artifact surface is unchanged: the `contracts` brief id, the `contracts@v1` capability, the `contracts/` baseline directory, and every contract artifact path keep their original names. The Cursor plugin / slash-command surface lives under `/contract:*`. The matching read-only CLI surface is `specify contract { list, validate }` (RFC-12 §"CLI surface").
 
 ### Client Plugin (`plugins/client/`)
 
@@ -127,7 +127,7 @@ See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
   ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, execute)
-  │   └── references/     # Artifact templates and schema resolution
+  │   └── references/     # Artifact templates and capability resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
   ├── vectis/             # Vectis Crux development plugin
@@ -135,7 +135,7 @@ See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for
   ├── contracts/          # API contract generation and validation plugin
   ├── rt/                 # RT migration plugin
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
-/schemas/                 # Schema definitions (omnia, vectis, contracts)
+/capabilities/            # Capability manifests (omnia, vectis, contracts) — each ships `capability.yaml`
 /scripts/                 # Validation and plugin management
 ```
 

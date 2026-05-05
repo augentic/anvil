@@ -1,7 +1,7 @@
 ---
 name: specify-init
-description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, decides between a regular single-project init and a registry-only platform hub, then invokes `specify init` with `--schema-uri` or `--hub` to scaffold `.specify/` and write `project.yaml`. Use when setting up a new project for spec-driven development.
-argument-hint: "[schema-url]"
+description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, decides between a regular single-project init and a registry-only platform hub, then invokes `specify init <capability>` (regular) or `specify init --hub` (hub) to scaffold `.specify/` and write `project.yaml`. Use when setting up a new project for spec-driven development.
+argument-hint: "<capability>"
 ---
 
 ## CLI bootstrap
@@ -11,14 +11,21 @@ argument-hint: "[schema-url]"
 ## Arguments
 
 ```text
-$SCHEMA_URI     = $ARGUMENTS[0]
+$CAPABILITY     = $ARGUMENTS[0]
 ```
 
-I'll ensure the `specify` CLI is available, decide whether this is a regular single-project init or a registry-only platform hub, then invoke `specify init` (with `--schema-uri` for regular projects or `--hub` for hubs) to install a starter `project.yaml`.
+I'll ensure the `specify` CLI is available, decide whether this is a regular single-project init or a registry-only platform hub, then invoke `specify init <capability>` (regular) or `specify init --hub` (hub) to install a starter `project.yaml`.
 
 ---
 
-**Input**: None required. Optionally a schema URI and project context. The schema argument is irrelevant for hub mode.
+**Input**: None required. Optionally a capability identifier (a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI) and project context. The capability argument is irrelevant for hub mode and must be omitted there.
+
+**Capability vs `--hub` is mutually exclusive.** The CLI rejects both pathological invocations with the same diagnostic:
+
+- `specify init` (no positional, no `--hub`) → exits with `init-requires-capability-or-hub`.
+- `specify init <capability> --hub` (both supplied) → exits with `init-requires-capability-or-hub`.
+
+A regular project must declare a capability; a hub must declare `--hub` and never carries a `capability:`. See [RFC-13 §Migration "Hub project shape"](../../../../rfcs/rfc-13-extensibility.md#migration) for the post-cut-over shape.
 
 **Steps**
 
@@ -63,56 +70,56 @@ I'll ensure the `specify` CLI is available, decide whether this is a regular sin
 
    See [Platform repo topologies](../../../../docs/explanation/platform-repo.md) for the full background on the two shapes. Briefly:
 
-   - **Regular project** — a single repository that contains both code and `.specify/`. The most common shape; choose this for single-repo projects, small teams, and any case where the operator just wants to track changes against the code in this repo. Phase pipelines (define / build / merge) run against this repo's working tree.
+   - **Regular project** — a single repository that contains both code and `.specify/`. The most common shape; choose this for single-repo projects, small teams, and any case where the operator just wants to track changes against the code in this repo. Phase pipelines (define / build / merge) run against this repo's working tree, driven by the active **capability**.
    - **Platform hub** (RFC-9 §1D) — a registry-only repository that holds platform state (`registry.yaml`, `initiative.md`, `plan.yaml`, `workspace/`) but never carries code itself. Choose this when the platform spans multiple repos and the operator wants the platform repo's identity to be unambiguous. Phase pipelines are disabled on the hub itself; code lives in registered project repos under `.specify/workspace/<name>/`.
 
    Ask the user via **AskQuestion tool** unless the answer is obvious from context (e.g. an existing `Cargo.toml` / `package.json` / `src/` strongly implies a regular project, while an empty directory in a multi-repo organisation often points at a hub). Treat the result as `$HUB_MODE=true|false`.
 
    Branch:
 
-   - When `$HUB_MODE=true`, skip step 4's schema selection and jump to step 5's hub invocation.
-   - When `$HUB_MODE=false`, continue with the schema-driven flow below.
+   - When `$HUB_MODE=true`, skip step 4's capability selection and jump to step 5's hub invocation.
+   - When `$HUB_MODE=false`, continue with the capability-driven flow below.
 
-4. **Choose schema URI** *(regular only — skip in hub mode)*
+4. **Choose capability** *(regular only — skip in hub mode)*
 
-   If `$SCHEMA_URI` is provided (as an argument), use it directly. Otherwise, prefer the canonical Omnia schema URI unless project context clearly indicates another schema:
+   If `$CAPABILITY` is provided (as an argument), use it directly. Otherwise, prefer the canonical Omnia capability identifier unless project context clearly indicates another capability:
 
    ```text
-   https://github.com/augentic/specify/schemas/omnia
+   https://github.com/augentic/specify/capabilities/omnia
    ```
 
-   For local development in this repository, a local schema directory such as `./schemas/omnia` is also valid. If multiple schemas are plausible, use the **AskQuestion tool** to let the user select the schema URI.
+   For local development in this repository, a local capability directory such as `./capabilities/omnia` is also valid. If multiple capabilities are plausible, use the **AskQuestion tool** to let the user select which one.
 
-   Store the result as `$SCHEMA_URI`. Do not pre-populate `.specify/.cache/`; the CLI owns schema fetch/copy during `specify init --schema-uri`.
+   Store the result as `$CAPABILITY`. Do not pre-populate `.specify/.cache/`; the CLI owns capability fetch/copy during `specify init <capability>`.
 
 5. **Collect project metadata and invoke `specify init`**
 
    Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DOMAIN` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DOMAIN` if the user hasn't supplied one. An empty `$DOMAIN` is fine — the CLI omits the field. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `initiative.md`'s frontmatter and rejects non-kebab values.
 
-   **Regular invocation:**
+   **Regular invocation** (capability is the required first positional):
 
    ```bash
-   specify init \
-     --schema-uri "$SCHEMA_URI" \
+   specify init "$CAPABILITY" \
      --name "$PROJECT_NAME" \
      ${DOMAIN:+--domain "$DOMAIN"}
    ```
 
-   **Hub invocation** (when `$HUB_MODE=true`):
+   **Hub invocation** (when `$HUB_MODE=true` — no positional, `--hub` is the discriminator):
 
    ```bash
-   specify init \
+   specify init --hub \
      --name "$PROJECT_NAME" \
-     ${DOMAIN:+--domain "$DOMAIN"} \
-     --hub
+     ${DOMAIN:+--domain "$DOMAIN"}
    ```
+
+   Never combine the two: `specify init "$CAPABILITY" --hub` errors with `init-requires-capability-or-hub`. `specify init` with neither supplied errors with the same diagnostic.
 
    The CLI writes:
 
-   - **Regular** — `.specify/{changes,specs,archive,.cache}/`, `.specify/project.yaml` with one empty `rules:` entry per `pipeline.define` brief, the resolved schema cached under `.specify/.cache/`, `.specify/.cache/` upserted into `.gitignore`, and `specify-version` recorded.
-   - **Hub** — `.specify/project.yaml` with `schema: hub`, `hub: true`, no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `initiative.md` from the canonical template named after `$PROJECT_NAME`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`. Phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines.
+   - **Regular** — `.specify/{changes,specs,archive,.cache}/`, `.specify/project.yaml` with `capability:` set to the resolved value and one empty `rules:` entry per `pipeline.define` brief, the resolved capability manifest cached under `.specify/.cache/`, `.specify/.cache/` upserted into `.gitignore`, and `specify-version` recorded.
+   - **Hub** — `.specify/project.yaml` with `hub: true` only (the `capability:` field is **omitted** — its absence is the sentinel that disables capability resolution on the hub itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `initiative.md` from the canonical template named after `$PROJECT_NAME`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`. Phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines.
 
-   For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `schema-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, and `hub`. Normal operator-facing examples should use text output.
+   For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `capability-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, and `hub`. Normal operator-facing examples should use text output.
 
    On non-zero exit, surface the CLI error. Do not attempt a prose fallback. Hub mode in particular refuses to scaffold over an existing `.specify/` directory — if the user wants to convert an existing single-repo project into a hub, they remove `.specify/` first.
 
@@ -121,10 +128,10 @@ I'll ensure the `specify` CLI is available, decide whether this is a regular sin
    For a **regular** init, tell the user:
    - "Specify initialized. Config written to `.specify/project.yaml`."
    - "Edit the `domain` field to describe your project's tech stack, architecture, and testing approach."
-   - "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/<schema>/schema.yaml`."
+   - "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/<capability>/capability.yaml`."
 
    For a **hub** init, tell the user:
-   - "Specify initialized as a registry-only platform hub. Config written to `.specify/project.yaml`."
+   - "Specify initialized as a registry-only platform hub. Config written to `.specify/project.yaml` (`hub: true`, no `capability:`)."
    - "Add code projects to `registry.yaml` once they exist. The hub starts with `projects: []`."
    - "Edit `initiative.md` to frame the first initiative this hub will drive."
 
@@ -162,7 +169,7 @@ I'll ensure the `specify` CLI is available, decide whether this is a regular sin
 ```
 ## Specify Initialized
 
-**Schema**: $SCHEMA_URI
+**Capability**: $CAPABILITY
 **Config**: .specify/project.yaml
 **Changes**: .specify/changes/
 **Baseline specs**: .specify/specs/
@@ -177,7 +184,7 @@ Next steps:
 ```
 ## Specify Initialized (Existing Codebase Detected)
 
-**Schema**: $SCHEMA_URI
+**Capability**: $CAPABILITY
 **Config**: .specify/project.yaml
 **Baseline change**: .specify/changes/initial-baseline/
 
@@ -194,7 +201,7 @@ Next steps:
 ## Specify Initialized (Platform Hub)
 
 **Topology**: registry-only hub (RFC-9 §1D)
-**Config**: .specify/project.yaml (`schema: hub`, `hub: true`)
+**Config**: .specify/project.yaml (`hub: true`; `capability:` omitted)
 **Registry**: registry.yaml (`version: 1`, `projects: []`)
 **Initiative brief**: initiative.md
 
@@ -208,7 +215,8 @@ Next steps:
 - `/spec:init` may install the CLI only after explicit user confirmation, using `cargo install --git https://github.com/augentic/specify-cli`
 - Always verify `specify --version` before invoking `specify init`
 - Do not overwrite an existing project.yaml without user confirmation
-- For regular projects, pass a schema URI to `specify init --schema-uri`; do not hand-populate `.specify/.cache/`
-- For hubs, never populate `.specify/.cache/` and never resolve a schema — the `hub` sentinel disables phase pipelines on the hub itself, so there is no schema to cache
+- For regular projects, pass the capability identifier (bare name or URL) as the **first positional argument** to `specify init`; do not hand-populate `.specify/.cache/`
+- For hubs, never populate `.specify/.cache/` and never resolve a capability — the absence of `capability:` (paired with `hub: true`) disables phase pipelines on the hub itself, so there is nothing to cache
+- Never combine a capability positional with `--hub`; the CLI rejects that combination with `init-requires-capability-or-hub`
 - Hub init refuses to run over an existing `.specify/`; if the user wants to convert a regular project into a hub, they must remove `.specify/` first
 - If the CLI exits non-zero, surface the error and stop; do not hand-roll the scaffold

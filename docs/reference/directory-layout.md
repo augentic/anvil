@@ -18,12 +18,12 @@ contracts/                                  # Baseline API contracts
     └── <domain>-events.yaml
 
 .specify/
-├── project.yaml                            # Project configuration (schema, domain, rules)
+├── project.yaml                            # Project configuration (capability, domain, rules) — `capability:` is omitted on hubs (where `hub: true` is the sentinel)
 ├── plan.lock                               # Advisory lock held by /spec:execute
 │
-├── .cache/                                 # Cached schema and brief files
-│   └── <schema>/
-│       ├── schema.yaml
+├── .cache/                                 # Cached capability manifest and brief files
+│   └── <capability>/
+│       ├── capability.yaml
 │       └── briefs/
 │           ├── proposal.md
 │           ├── specs.md
@@ -102,7 +102,7 @@ The baseline. When a change is merged, its spec deltas are applied here. For Vec
 
 ### `.cache/`
 
-Schema and brief files fetched at `/spec:init` time. These are read by phase skills during define and build. The cache is populated once per schema version and updated when you re-init with a different schema URL or ref.
+Capability manifest and brief files fetched at `/spec:init` time. These are read by phase skills during define and build. The cache is populated once per capability version and updated when you re-init with a different capability identifier or ref. The active capability is named by the project's `capability` field in `project.yaml`; on a hub the field is omitted (and `.cache/` is not scaffolded).
 
 ### `plans/`
 
