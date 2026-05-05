@@ -33,7 +33,7 @@ CLI surface the skills depend on:
 - `specify initiative {create, show, finalize}` — operator brief at `initiative.md` plus the canonical closure verb (RFC-9 §4C). `create` was renamed from v1 `init`; `finalize` confirms every per-project PR has merged before archiving.
 - `specify registry {add, remove, show, validate}` — platform registry at `registry.yaml`. `add` and `remove` were added by RFC-9 §2A; both validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
 - `specify workspace {sync, status, push, merge}` — materialises `.specify/workspace/<peer>/` for multi-repo planning, pushes workspace clones to remotes after execution, and squash-merges the resulting PRs once CI is green (`merge`, RFC-9 §4A).
-- `specify schema {resolve, check, pipeline}` — schema resolution and brief topology.
+- `specify capability {resolve, check, pipeline}` — capability resolution and brief topology (renamed from `specify schema {resolve, check, pipeline}` by RFC-13 §Migration).
 
 The previous standalone groups (`specify validate`, `specify spec`, `specify task`, `specify merge`) and the previous nested verbs (`specify initiative {brief, registry}`, `specify change phase-outcome`, `specify change journal-append`) were folded into `specify change` and top-level `registry` / `initiative` in the CLI cleanup. See [docs/explanation/migrating-cli-v1.md](docs/explanation/migrating-cli-v1.md) for the rename map.
 
