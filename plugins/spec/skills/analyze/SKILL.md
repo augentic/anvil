@@ -141,7 +141,7 @@ A byte-stable output lets the propose brief cache its slicing decisions and surf
 
 The detailed clustering / extraction prompt for each `--kind` value lives under `schemas/<schema>/briefs/plan/analyze.md`:
 
-- `schemas/omnia/briefs/plan/analyze.md` — Omnia's per-kind prompt (documentation branch and code branch).
+- `capabilities/omnia/briefs/plan/analyze.md` — Omnia's per-kind prompt (documentation branch and code branch).
 - Other schemas ship their own.
 
 `/spec:analyze` resolves the active schema via `specify schema resolve` and invokes the relevant brief internally. The skill does **not** embed clustering heuristics; those are schema-specific judgement calls (import-graph vs docstring vs endpoint-name weighting, confidence thresholds, etc.).

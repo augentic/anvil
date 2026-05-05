@@ -2,7 +2,7 @@
 
 ## What this fixture pins
 
-The invocation in [`invocation.txt`](invocation.txt) — `/spec:plan traffic --source monolith=./inputs` — passes a single legacy-code input through the discovery brief, which dispatches it to [`/spec:analyze --kind legacy-code`](../../../../analyze/SKILL.md) per [`schemas/omnia/briefs/plan/discovery.md`](../../../../../../../schemas/omnia/briefs/plan/discovery.md). The fixture pins the byte-stable output of that round-trip: [`expected/discovery.md`](expected/discovery.md) (three capability summaries) and [`expected/plans/traffic/analyze/monolith/metadata.json`](expected/plans/traffic/analyze/monolith/metadata.json) (structural-metadata sidecar).
+The invocation in [`invocation.txt`](invocation.txt) — `/spec:plan traffic --source monolith=./inputs` — passes a single legacy-code input through the discovery brief, which dispatches it to [`/spec:analyze --kind legacy-code`](../../../../analyze/SKILL.md) per [`capabilities/omnia/briefs/plan/discovery.md`](../../../../../../../capabilities/omnia/briefs/plan/discovery.md). The fixture pins the byte-stable output of that round-trip: [`expected/discovery.md`](expected/discovery.md) (three capability summaries) and [`expected/plans/traffic/analyze/monolith/metadata.json`](expected/plans/traffic/analyze/monolith/metadata.json) (structural-metadata sidecar).
 
 ## Fixture-build choice: (c) purpose-built three-capability tree
 
@@ -15,7 +15,7 @@ The C22 brief gave three options:
 **Picked (c).** Rationale:
 
 - (b) creates a documented drift trap: the inputs would produce four capabilities but the expected pins only three, so re-runs under the eventual C23 discovery brief never match.
-- (a) requires mutating the C21 fixture (`schemas/omnia/briefs/ fixtures/plan/analyze/legacy-code/`), which is explicitly out of scope per the C22 guardrails — C21 stands as the Omnia-brief-level pin for the four-capability case.
+- (a) requires mutating the C21 fixture (`capabilities/omnia/briefs/ fixtures/plan/analyze/legacy-code/`), which is explicitly out of scope per the C22 guardrails — C21 stands as the Omnia-brief-level pin for the four-capability case.
 - (c) lets the two fixtures serve different layers: C21 pins the `/spec:analyze` brief output on a four-capability tree; this fixture pins the `/spec:plan` discovery brief output on a three-capability tree. The three files that overlap (`register.ts`, `validation.ts`, `verify.ts`, `common/ validation.ts`) are authored verbatim from C21 so the `user-registration` and `email-verification` blocks remain byte-identical across the two fixtures.
 
 ## RFC cross-reference
@@ -24,7 +24,7 @@ The [`user-registration` block](expected/discovery.md) in [`expected/discovery.m
 
 ## Clustering signals exercised
 
-The three capabilities were chosen to exercise the specific clustering heuristics pinned in [`schemas/omnia/briefs/plan/analyze.md` §*Legacy-code branch*](../../../../../../../schemas/omnia/briefs/plan/analyze.md):
+The three capabilities were chosen to exercise the specific clustering heuristics pinned in [`capabilities/omnia/briefs/plan/analyze.md` §*Legacy-code branch*](../../../../../../../capabilities/omnia/briefs/plan/analyze.md):
 
 - **Import-edge clustering.** `src/users/register.ts` imports from both `./validation` (local to `src/users/`) and `../auth/verify` (cross-module). The import cone drives `user-registration` to claim all three files (`register.ts`, `users/validation.ts`, `auth/verify.ts`). `email-verification` only claims `auth/verify.ts` because `verify.ts`'s exports (`consumeVerificationToken`) have standalone entry points not reached from `register.ts`.
 - **Docstring capability markers.** Each source file's header docstring names its capability in an imperative one-sentence `summary` shape (e.g. "Create new user accounts with email verification."). The analyze brief lifts these verbatim into `summary:` fields.

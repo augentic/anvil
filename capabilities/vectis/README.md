@@ -1,6 +1,6 @@
 # Vectis Schema
 
-- **URL**: `https://github.com/augentic/specify/schemas/vectis`
+- **URL**: `https://github.com/augentic/specify/capabilities/vectis`
 - **Purpose**: Cross-platform Crux application development
 - **Source**: Manual
 - **Target**: Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell), VectisDesign (design system)
@@ -10,7 +10,7 @@
 
 | File | Description |
 |------|-------------|
-| `schema.yaml` | Pipeline stages, domain context, and per-stage brief references |
+| `capability.yaml` | Pipeline stages and per-stage brief references |
 | `composition.schema.json` | JSON Schema for `composition.yaml` validation |
 | `briefs/proposal.md` | Generation brief for the proposal stage |
 | `briefs/specs.md` | Generation brief for the specs stage |

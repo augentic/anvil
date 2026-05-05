@@ -1,6 +1,6 @@
 # Contracts Schema
 
-- **URL**: `https://github.com/augentic/specify/schemas/contracts`
+- **URL**: `https://github.com/augentic/specify/capabilities/contracts`
 - **Purpose**: Dedicated API contract changes — defining or importing machine-readable interface shapes (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0) without generating implementation code
 - **Source**: Manual
 - **Target**: Contract artifacts (`contracts/`)
@@ -10,7 +10,7 @@
 
 | File | Description |
 |------|-------------|
-| `schema.yaml` | Pipeline stages, domain context, and per-stage brief references |
+| `capability.yaml` | Pipeline stages and per-stage brief references |
 | `briefs/proposal.md` | Generation brief for the proposal stage |
 | `briefs/specs.md` | Generation brief for the specs stage |
 | `briefs/tasks.md` | Generation brief for the tasks stage |

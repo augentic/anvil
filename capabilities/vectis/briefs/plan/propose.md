@@ -1,6 +1,6 @@
 ---
 id: propose
-description: Decompose inventory into plan entries. Vectis heuristic: shared-core first, per-shell last.
+description: "Decompose inventory into plan entries. Vectis heuristic: shared-core first, per-shell last."
 needs: [discovery]
 generates: .specify/plans/<name>/proposal.md
 ---
@@ -126,7 +126,7 @@ Skip the `specify plan create` step (the caller, typically the `/spec:plan` skil
 ## Notes
 
 - Heuristics applied (Vectis, from
-  `schemas/vectis/briefs/plan/propose.md`): shared-core first
+  `capabilities/vectis/briefs/plan/propose.md`): shared-core first
   (slices 1–2), design-system next (slice 3), per-shell last
   (slices 4–5). Each shell slice depends on the corresponding
   `-core` entry plus `design-tokens`.

@@ -17,7 +17,7 @@ Arguments (used by all skills):
 
 Before invoking shell writers, check whether a `composition.yaml` exists in the change directory (`.specify/changes/<name>/composition.yaml`) or baseline (`.specify/specs/composition.yaml`). When present, run composition validation checks before proceeding to shell generation:
 
-1. **Schema validity** — `composition.yaml` conforms to the JSON Schema at `schemas/vectis/composition.schema.json`. Schema violations are **errors** that halt shell generation.
+1. **Schema validity** — `composition.yaml` conforms to the JSON Schema at `capabilities/vectis/composition.schema.json`. Schema violations are **errors** that halt shell generation.
 2. **Field coverage** — every field in each per-page view struct (from `design.md`) appears as a `bind` value on some item in the corresponding screen. Missing bindings are **warnings**.
 3. **Event coverage** — every shell-facing Event variant relevant to a screen has an `event` wiring on some item in that screen's regions. Missing event wiring is a **warning**.
 4. **ViewModel mapping** — every `maps_to` value references a declared ViewModel variant from `design.md`. Mismatches are **errors**.

@@ -8,7 +8,7 @@ import { relative, join, dirname, resolve, fromFileUrl } from "jsr:@std/path@1";
 import Ajv2020 from "npm:ajv@8/dist/2020.js";
 
 const REPO_ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
-const SCHEMA_DIR = join(REPO_ROOT, "schemas");
+const CAPABILITIES_DIR = join(REPO_ROOT, "capabilities");
 const CURSOR_SCHEMA_DIR = join(REPO_ROOT, ".cursor", "schemas");
 const RED = "\x1b[0;31m";
 const NC = "\x1b[0m";
@@ -103,7 +103,7 @@ async function checkStaleClaims(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 3. Schema YAML files validate against JSON Schema
+// 3. Capability manifests validate against capability.schema.json
 // ──────────────────────────────────────────────────────────────
 
 interface PipelineEntry {
@@ -111,44 +111,44 @@ interface PipelineEntry {
   brief: string;
 }
 
-interface SchemaYaml {
+interface CapabilityYaml {
   name: string;
   version?: number;
   description?: string;
-  domain?: string;
   pipeline: {
+    plan?: PipelineEntry[];
     define: PipelineEntry[];
     build: PipelineEntry[];
     merge: PipelineEntry[];
   };
 }
 
-async function validateSchemaYaml(): Promise<void> {
+async function validateCapabilityYaml(): Promise<void> {
   const ajv = new Ajv2020({ allErrors: true });
 
-  const schemaSchema = JSON.parse(
-    await Deno.readTextFile(join(CURSOR_SCHEMA_DIR, "specify-schema.schema.json")),
+  const capabilitySchema = JSON.parse(
+    await Deno.readTextFile(join(CAPABILITIES_DIR, "capability.schema.json")),
   );
 
-  const validateSchema = ajv.compile(schemaSchema);
+  const validate = ajv.compile(capabilitySchema);
 
-  for await (const entry of walk(SCHEMA_DIR, {
+  for await (const entry of walk(CAPABILITIES_DIR, {
     maxDepth: 2,
     includeDirs: false,
-    match: [/schema\.yaml$/],
+    match: [/capability\.yaml$/],
   })) {
     const rel = relative(REPO_ROOT, entry.path);
     const data = parseYaml(await Deno.readTextFile(entry.path));
-    if (!validateSchema(data)) {
-      for (const err of validateSchema.errors ?? []) {
-        fail(`Schema validation failed: ${rel} — ${err.instancePath} ${err.message}`);
+    if (!validate(data)) {
+      for (const err of validate.errors ?? []) {
+        fail(`Capability validation failed: ${rel} — ${err.instancePath} ${err.message}`);
       }
     }
   }
 }
 
 // ──────────────────────────────────────────────────────────────
-// 4. Schema referential integrity
+// 4. Capability manifest referential integrity
 //    (pipeline brief paths, frontmatter needs references, id uniqueness)
 // ──────────────────────────────────────────────────────────────
 
@@ -170,22 +170,26 @@ async function parseBriefFrontmatter(
   }
 }
 
-async function checkSchemaIntegrity(): Promise<void> {
-  for await (const entry of walk(SCHEMA_DIR, {
+async function checkCapabilityIntegrity(): Promise<void> {
+  for await (const entry of walk(CAPABILITIES_DIR, {
     maxDepth: 2,
     includeDirs: false,
-    match: [/schema\.yaml$/],
+    match: [/capability\.yaml$/],
   })) {
     const dirPath = dirname(entry.path);
     const name = dirPath.split("/").pop()!;
-    const schema = parseYaml(
+    const manifest = parseYaml(
       await Deno.readTextFile(entry.path),
-    ) as SchemaYaml;
+    ) as CapabilityYaml;
 
-    const pipeline = schema.pipeline;
+    const pipeline = manifest.pipeline;
     if (!pipeline) continue;
 
+    // Include `plan` while it remains transitionally permitted by
+    // capability.schema.json (see RFC-13 §Phase 1.5). Phase 3.11 drops
+    // the property and this entry collapses back to the slice phases.
     const allEntries: PipelineEntry[] = [
+      ...(pipeline.plan ?? []),
       ...(pipeline.define ?? []),
       ...(pipeline.build ?? []),
       ...(pipeline.merge ?? []),
@@ -195,7 +199,7 @@ async function checkSchemaIntegrity(): Promise<void> {
     for (const pe of allEntries) {
       if (ids.has(pe.id)) {
         fail(
-          `Schema integrity: ${name}/schema.yaml: duplicate pipeline entry id '${pe.id}'`,
+          `Capability integrity: ${name}/capability.yaml: duplicate pipeline entry id '${pe.id}'`,
         );
       }
       ids.add(pe.id);
@@ -206,7 +210,7 @@ async function checkSchemaIntegrity(): Promise<void> {
         await Deno.stat(join(dirPath, pe.brief));
       } catch {
         fail(
-          `Schema integrity: ${name}/schema.yaml: brief not found for '${pe.id}': ${pe.brief}`,
+          `Capability integrity: ${name}/capability.yaml: brief not found for '${pe.id}': ${pe.brief}`,
         );
         continue;
       }
@@ -214,14 +218,14 @@ async function checkSchemaIntegrity(): Promise<void> {
       const fm = await parseBriefFrontmatter(join(dirPath, pe.brief));
       if (!fm) {
         fail(
-          `Schema integrity: ${name}/schema.yaml: brief '${pe.id}' has no valid frontmatter: ${pe.brief}`,
+          `Capability integrity: ${name}/capability.yaml: brief '${pe.id}' has no valid frontmatter: ${pe.brief}`,
         );
         continue;
       }
 
       if (fm.id !== pe.id) {
         fail(
-          `Schema integrity: ${name}/schema.yaml: pipeline id '${pe.id}' does not match brief frontmatter id '${fm.id}'`,
+          `Capability integrity: ${name}/capability.yaml: pipeline id '${pe.id}' does not match brief frontmatter id '${fm.id}'`,
         );
       }
 
@@ -230,7 +234,7 @@ async function checkSchemaIntegrity(): Promise<void> {
         for (const dep of needs) {
           if (!ids.has(dep)) {
             fail(
-              `Schema integrity: ${name}/schema.yaml: brief '${pe.id}' needs undeclared '${dep}'`,
+              `Capability integrity: ${name}/capability.yaml: brief '${pe.id}' needs undeclared '${dep}'`,
             );
           }
         }
@@ -266,7 +270,9 @@ async function checkSchemaIntegrity(): Promise<void> {
       }
     }
     if (visited < ids.size) {
-      fail(`Schema integrity: ${name}/schema.yaml: cycle in brief needs graph`);
+      fail(
+        `Capability integrity: ${name}/capability.yaml: cycle in brief needs graph`,
+      );
     }
   }
 }
@@ -581,7 +587,7 @@ async function checkRetiredSlashCommands(): Promise<void> {
   const SCAN_ROOTS = [
     join(REPO_ROOT, "plugins"),
     join(REPO_ROOT, "docs"),
-    join(REPO_ROOT, "schemas"),
+    join(REPO_ROOT, "capabilities"),
     join(REPO_ROOT, ".cursor"),
   ];
 
@@ -985,7 +991,7 @@ async function checkRetiredCliVerbs(): Promise<void> {
 async function checkInstructionPreambles(): Promise<void> {
   const OUTPUT_LOCATION_RE = /^> \*\*Output location\*\*: `\.specify\/changes\//m;
 
-  for await (const entry of walk(SCHEMA_DIR, {
+  for await (const entry of walk(CAPABILITIES_DIR, {
     maxDepth: 3,
     includeDirs: false,
     match: [/instructions\/[a-z]+\.md$/],
@@ -1099,7 +1105,7 @@ async function checkV1LayoutPaths(): Promise<void> {
   const SCAN_ROOTS = [
     join(REPO_ROOT, "plugins"),
     join(REPO_ROOT, "docs"),
-    join(REPO_ROOT, "schemas"),
+    join(REPO_ROOT, "capabilities"),
   ];
   const SCAN_FILES = [
     join(REPO_ROOT, "README.md"),
@@ -1171,8 +1177,8 @@ await Promise.all([
   checkSymlinks(),
 ]);
 await Promise.all([
-  validateSchemaYaml(),
-  checkSchemaIntegrity(),
+  validateCapabilityYaml(),
+  checkCapabilityIntegrity(),
   checkInstructionPreambles(),
   checkRetiredCliVerbs(),
   checkRetiredAffectsField(),

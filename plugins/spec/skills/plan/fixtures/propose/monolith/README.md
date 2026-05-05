@@ -2,7 +2,7 @@
 
 Pins the 1:1 capability → slice mapping the propose brief applies to a unified-YAML `discovery.md`. Consumes the C22 fixture's discovery output verbatim and emits a three-entry `plan.yaml` with rich `description` fields carrying file-path hints from each capability's `sources:` list and delta-targeting intent.
 
-This fixture is the acceptance target for [RFC-3a C24](../../../../../../../rfcs/archive/rfc-3a-monoliths.md) (the decomposition-heuristic rewrite in [`schemas/omnia/briefs/plan/propose.md`](../../../../../../../schemas/omnia/briefs/plan/propose.md)).
+This fixture is the acceptance target for [RFC-3a C24](../../../../../../../rfcs/archive/rfc-3a-monoliths.md) (the decomposition-heuristic rewrite in [`capabilities/omnia/briefs/plan/propose.md`](../../../../../../../capabilities/omnia/briefs/plan/propose.md)).
 
 | Path | Role |
 | --- | --- |

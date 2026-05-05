@@ -236,7 +236,7 @@ Tasks without a skill tag are implemented via the schema's default build instruc
 
 ## Composition document (Vectis only)
 
-`composition.yaml` describes the spatial layout of each screen. It is a schema-validated YAML document produced by the Vectis schema's define pipeline between the specs and design stages. The JSON Schema lives at `schemas/vectis/composition.schema.json`. (See [Decision Log: Composition as a separate artifact](../explanation/decision-log.md#composition-as-a-separate-artifact-not-embedded-in-specs-or-design) for the rationale.)
+`composition.yaml` describes the spatial layout of each screen. It is a schema-validated YAML document produced by the Vectis schema's define pipeline between the specs and design stages. The JSON Schema lives at `capabilities/vectis/composition.schema.json`. (See [Decision Log: Composition as a separate artifact](../explanation/decision-log.md#composition-as-a-separate-artifact-not-embedded-in-specs-or-design) for the rationale.)
 
 ### Two modes
 
@@ -420,7 +420,7 @@ Contract deletion is rare and handled as a manual baseline edit. The change-leve
 
 ### Composition (Vectis only)
 
-- `composition.yaml` conforms to the JSON Schema at `schemas/vectis/composition.schema.json`
+- `composition.yaml` conforms to the JSON Schema at `capabilities/vectis/composition.schema.json`
 - Screen slugs are kebab-case
 - Every per-page view struct field has a `bind` on some item (wired mode)
 - Every shell-facing Event has an `event` wiring (wired mode)

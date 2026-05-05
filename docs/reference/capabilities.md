@@ -1,6 +1,6 @@
 # Capabilities
 
-> Status: Draft (Phase 0.1 of [RFC-13](../../rfcs/rfc-13-extensibility.md)). The post-RFC manifest shape and dependency invariants are pinned; the first-party capabilities (`omnia`, `contracts`, `vectis`) migrate from `schemas/<name>/schema.yaml` to `capabilities/<name>/capability.yaml` in Phase 1.5.
+> Status: Draft (Phase 1.5 of [RFC-13](../../rfcs/rfc-13-extensibility.md) landed). The post-RFC manifest shape and dependency invariants are pinned and the first-party capabilities (`omnia`, `contracts`, `vectis`) now live at [`capabilities/<name>/capability.yaml`](../../capabilities/). The `pipeline.plan` block on the omnia and vectis manifests is permitted **transitionally** by [`capability.schema.json`](../../capabilities/capability.schema.json); it migrates to the change-component planning skill in Phase 3.11 and is then actively rejected by the schema.
 
 ## What is a capability?
 
@@ -57,11 +57,13 @@ The post-RFC manifest deliberately drops the legacy `domain` and `extends` field
 
 `pipeline:` declares which briefs the core renders for each fixed slice phase. The set of phases is frozen by [RFC-13](../../rfcs/rfc-13-extensibility.md#design): exactly **`define`**, **`build`**, and **`merge`**. Variation that capabilities legitimately want lives in the briefs they enumerate per phase and in skill-owned imperative behaviour — never in the phase list itself.
 
-`pipeline.plan` is intentionally **absent** from the manifest. Planning is orchestration, not capability-owned slice work, and lives on the `specify change` platform component:
+`pipeline.plan` is intentionally **absent** from the post-RFC manifest. Planning is orchestration, not capability-owned slice work, and lives on the `specify change` platform component:
 
 - the change brief (`change.md`) records operator intent,
 - the change plan (`plan.yaml`) sequences slices across one or more projects,
 - planning briefs and the `/spec:plan` (later: `/change:plan`) authoring loop sit on the change surface rather than inside any capability's manifest.
+
+> **Transitional allowance (RFC-13 §Phase 1.5 → §Phase 3.11).** The first-party omnia and vectis manifests still ship a `pipeline.plan` block today. To keep them loadable, [`capability.schema.json`](../../capabilities/capability.schema.json) permits (but does not require) `pipeline.plan` for the duration of Phase 1.5. The block is moved out — and the schema is tightened to actively reject it — in Phase 3.11. Capability authors should not introduce new `pipeline.plan` entries.
 
 A slice flowing through `define → build → merge` therefore reads exactly one capability's pipeline. Cross-capability outcomes are coordinated by change plan entries, not by fusing capabilities into a larger hidden pipeline.
 
@@ -91,7 +93,7 @@ The security posture is therefore the skill and tooling posture: capability skil
 
 The wire-level schema is [`capabilities/capability.schema.json`](../../capabilities/capability.schema.json) (JSON Schema draft 2020-12). It enforces the field set and shape described above and is the source of truth for both first-party and third-party capability authors.
 
-Once Phase 1.5 lands the `schemas/<name>/schema.yaml` → `capabilities/<name>/capability.yaml` move, `make checks` will validate every first-party manifest against this schema and run the existing pipeline-integrity checks (unique brief ids, brief paths resolve, brief frontmatter `id` matches the manifest, no cycles in the `needs:` graph).
+`make checks` validates every first-party manifest under [`capabilities/`](../../capabilities/) against this schema and runs the pipeline-integrity checks (unique brief ids, brief paths resolve, brief frontmatter `id` matches the manifest, no cycles in the `needs:` graph).
 
 ## See also
 

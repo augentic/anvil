@@ -1,6 +1,6 @@
 # Omnia Schema
 
-- **URL**: `https://github.com/augentic/specify/schemas/omnia`
+- **URL**: `https://github.com/augentic/specify/capabilities/omnia`
 - **Purpose**: Rust WASM development (greenfield or migration)
 - **Source**: Git Repository, Source Code, or Manual (all analyzed via `/spec:extract`)
 - **Target**: Rust WASM (Omnia SDK)
@@ -10,7 +10,7 @@
 
 | File | Description |
 |------|-------------|
-| `schema.yaml` | Pipeline stages, domain context, and per-stage brief references |
+| `capability.yaml` | Pipeline stages and per-stage brief references |
 | `briefs/proposal.md` | Generation brief for the proposal stage |
 | `briefs/specs.md` | Generation brief for the specs stage |
 | `briefs/design.md` | Generation brief for the design stage |

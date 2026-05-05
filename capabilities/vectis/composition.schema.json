@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/augentic/specify/schemas/vectis/composition.schema.json",
+  "$id": "https://github.com/augentic/specify/capabilities/vectis/composition.schema.json",
   "title": "Specify Composition Artifact",
   "description": "Schema for composition.yaml — region-based screen layout descriptions.",
   "type": "object",

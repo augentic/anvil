@@ -1,6 +1,6 @@
 # Propose (step 3c)
 
-Step 3(c) invokes the propose brief declared in `pipeline.plan` (for Omnia, `schemas/omnia/briefs/plan/propose.md`; for Vectis, `schemas/vectis/briefs/plan/propose.md`; other schemas ship their own). Propose reads `discovery.md`, applies the schema's slice heuristics to decompose the inventory into draft change slices with `depends-on` edges, and iterates with the human on each slice (accept / edit / reject / abort). For every accepted slice, the skill shells out to:
+Step 3(c) invokes the propose brief declared in `pipeline.plan` (for Omnia, `capabilities/omnia/briefs/plan/propose.md`; for Vectis, `capabilities/vectis/briefs/plan/propose.md`; other schemas ship their own). Propose reads `discovery.md`, applies the schema's slice heuristics to decompose the inventory into draft change slices with `depends-on` edges, and iterates with the human on each slice (accept / edit / reject / abort). For every accepted slice, the skill shells out to:
 
 ```text
 specify plan add <name> \

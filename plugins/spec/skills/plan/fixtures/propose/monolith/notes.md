@@ -8,7 +8,7 @@ The C22 monolith discovery fixture produces three capability summaries keyed by 
 
 ## 1:1 mapping — capability → plan entry
 
-Per [`schemas/omnia/briefs/plan/propose.md` §Mapping rule](../../../../../../../schemas/omnia/briefs/plan/propose.md):
+Per [`capabilities/omnia/briefs/plan/propose.md` §Mapping rule](../../../../../../../capabilities/omnia/briefs/plan/propose.md):
 
 | Capability                                         | Plan entry `name`     | `sources`    | `description` (carries path hints + delta intent)                                                                   | `depends-on`                                    |
 | -------------------------------------------------- | --------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |

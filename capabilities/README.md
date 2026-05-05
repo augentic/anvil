@@ -1,16 +1,15 @@
 # Capabilities
 
-This directory holds first-party Specify **capability manifests**. A capability describes how Specify's `define → build → merge` slice loop creates an outcome domain's artefacts: it bundles a small declarative manifest with the skills and references that implement the domain's behaviour.
-
-Today this directory contains only [`capability.schema.json`](capability.schema.json). The first-party domain capabilities (`omnia`, `contracts`, `vectis`) still live under [`schemas/`](../schemas/) and migrate here in Phase 1.5 of the [RFC-13](../rfcs/rfc-13-extensibility.md) landing — at which point each will gain its own `capabilities/<name>/capability.yaml`.
+This directory holds the first-party Specify **capability manifests**. A capability describes how Specify's `define → build → merge` slice loop creates an outcome domain's artefacts: it bundles a small declarative manifest with the skills and references that implement the domain's behaviour.
 
 ## What's here
 
-- `capability.schema.json` — JSON Schema (draft 2020-12) that every `capability.yaml` validates against. The post-RFC-13 manifest carries only `name`, `version`, `description`, and `pipeline { define, build, merge }`; the schema actively rejects the dropped `domain`, `extends`, and `pipeline.plan` fields.
+- [`capability.schema.json`](capability.schema.json) — JSON Schema (draft 2020-12) that every `capability.yaml` validates against. The post-RFC-13 manifest carries only `name`, `version`, `description`, and `pipeline { define, build, merge }`; the schema actively rejects the dropped `domain` and `extends` fields. `pipeline.plan` is permitted **transitionally** through RFC-13 §Phase 1.5 so the omnia and vectis manifests stay loadable while their planning briefs migrate to the change-component planning skill in §Phase 3.11.
+- [`omnia/`](omnia/capability.yaml) — Omnia Rust WASM workflow.
+- [`contracts/`](contracts/capability.yaml) — API contract definition and validation (JSON Schema, OpenAPI 3.1, AsyncAPI 3.0).
+- [`vectis/`](vectis/capability.yaml) — Vectis Crux cross-platform workflow (Rust core, iOS shell, Android shell, design system).
 
-## What's coming
-
-Once Phase 1.5 lands, each first-party capability ships a directory of the shape:
+Each first-party capability ships a directory of the shape:
 
 ```text
 capabilities/<name>/
@@ -29,4 +28,4 @@ Imperative behaviour (validation, generation, review, adoption, cleanup) lives i
 
 ## Validation
 
-`make checks` validates manifests in this directory against `capability.schema.json` once Phase 1.5 lands them; the same schema is the source of truth for any third-party capability author.
+`make checks` validates every `capability.yaml` in this directory against `capability.schema.json` and runs the integrity checks (unique brief ids, brief paths resolve, brief frontmatter `id` matches the manifest, no cycles in the `needs:` graph). The same schema is the source of truth for any third-party capability author.
