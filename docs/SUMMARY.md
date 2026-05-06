@@ -70,7 +70,7 @@
   - [specify workspace](reference/cli/workspace.md)
   - [specify-contract-validate](reference/cli/contract.md)
   - [specify init](reference/cli/init.md)
-  - [specify vectis](reference/cli/vectis.md)
+  - [specify-vectis](reference/cli/vectis.md)
 - [Plugins](reference/plugins/index.md)
   - [Omnia](reference/plugins/omnia.md)
   - [Vectis](reference/plugins/vectis.md)

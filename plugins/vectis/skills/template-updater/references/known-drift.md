@@ -3,10 +3,10 @@
 Concrete fix items carried into this skill from earlier RFC-6 chunks. Each item is reproducible today via:
 
 ```sh
-specify vectis update-versions --dry-run --verify
+specify-vectis update-versions --dry-run --verify
 ```
 
-Run via `<specify-cli>/target/debug/specify` after `cargo build -p specify` in the `specify-cli` checkout, or via an installed `specify` binary, against live registries. When the skill runs against a new bump, it should check this list **first**: if the reproduced failure matches an item below, follow that item's playbook rather than re-diagnosing from scratch.
+Run via `<specify-cli>/target/debug/specify-vectis` after `cargo build -p specify-vectis` in the `specify-cli` checkout, or via an installed `specify-vectis` binary, against live registries. When the skill runs against a new bump, it should check this list **first**: if the reproduced failure matches an item below, follow that item's playbook rather than re-diagnosing from scratch.
 
 When a fix ships, remove the item from this file in the same commit that lands the fix. Stale entries make the skill softer than intended.
 
@@ -30,7 +30,7 @@ When a fix ships, remove the item from this file in the same commit that lands t
    - `uniffi = "=0.31.0"`
    - `cargo_swift = "0.11"`
 3. Update the rationale comment block in `embedded/versions.toml` to note the decoupling -- the existing block says "mixing 0.31 runtime with 0.29 bindgen fails", which is no longer true once step 1 lands.
-4. Validate against the full cap matrix via `specify vectis update-versions --dry-run --verify`.
+4. Validate against the full cap matrix via `specify-vectis update-versions --dry-run --verify`.
 
 **Alternative**: wait for a `crux_core` release that tracks `uniffi_bindgen = "=0.31.0"`. In that case the fix is a plain pin bump in `<specify-cli>/crates/vectis/embedded/versions.toml`, no template surgery.
 
@@ -38,7 +38,7 @@ When a fix ships, remove the item from this file in the same commit that lands t
 
 ## 2. AGP 9.x vs `rust-android-gradle 0.9.6`
 
-**Symptom**: `specify vectis update-versions --dry-run` auto-proposes `android.agp = "9.1.1"` (latest on Google Maven). Scaffolding with that pin fails during `gradle wrapper` bootstrap (or later, during `:app:assembleDebug`) with a trace containing `java.lang.NoSuchMethodError: org.gradle.api.internal.file.copy.CopySpecInternal.setFileMode(Integer)`.
+**Symptom**: `specify-vectis update-versions --dry-run` auto-proposes `android.agp = "9.1.1"` (latest on Google Maven). Scaffolding with that pin fails during `gradle wrapper` bootstrap (or later, during `:app:assembleDebug`) with a trace containing `java.lang.NoSuchMethodError: org.gradle.api.internal.file.copy.CopySpecInternal.setFileMode(Integer)`.
 
 **Root cause**: AGP 9.x requires Gradle 9.x, which removed the `setFileMode(Integer)` method. `rust-android-gradle = 0.9.6` still calls it during plugin classpath evaluation. Any flow that loads the `rust-android-gradle` plugin on Gradle 9.x throws during project evaluation, which is before the wrapper task can even run.
 
@@ -86,17 +86,17 @@ Chunk 8 already pinned Gradle-the-wrapper to 8.13 via a scratch bootstrap (`init
 
 ## 4. `facet_generate` req-string normalisation (cosmetic)
 
-**Symptom**: `specify vectis update-versions --dry-run` proposes `crux.facet_generate = "^0.15"` (copying the string verbatim from `crux_core 0.17.0`'s published `Cargo.toml` dep req). The current pin is `=0.15`. Cargo treats them as equivalent; the diff is purely textual.
+**Symptom**: `specify-vectis update-versions --dry-run` proposes `crux.facet_generate = "^0.15"` (copying the string verbatim from `crux_core 0.17.0`'s published `Cargo.toml` dep req). The current pin is `=0.15`. Cargo treats them as equivalent; the diff is purely textual.
 
 **Fix path** (choose one):
 
 - **Normalise on query**: in `update_versions::query::crates_io_latest_stable` (or a wrapper) inside `<specify-cli>/crates/vectis/src/update_versions/query.rs`, convert `^0.x` / `^0.x.y` to `=0.x.y` before emitting. This preserves the RFC-6 hard-pin convention for every Crux-adjacent coordinate.
 - **Document the exception**: if `facet_generate` is legitimately minor-pinned upstream, change `<specify-cli>/crates/vectis/embedded/versions.toml` to carry `= "^0.15"` and update the RFC-6 "hard pins" block to note that `facet_generate` tracks semver-minor. The hard-pin set in the RFC was vetted for `facet` + `crux_core` co-dependencies; `facet_generate` may follow a different policy.
 
-This item is purely cosmetic -- no build or verify step actually fails. It is listed so `specify vectis update-versions` runs don't emit a noisy "changed" entry on every invocation when nothing has substantively moved.
+This item is purely cosmetic -- no build or verify step actually fails. It is listed so `specify-vectis update-versions` runs don't emit a noisy "changed" entry on every invocation when nothing has substantively moved.
 
 ---
 
 ## Sizing reminder
 
-All four items above were concretely produced by chunk 11's `specify vectis update-versions --verify` verification. When chunk 13 (this skill) runs for the first time against live registries, the only item it is blocked from fixing mechanically is **item 1** -- that needs a code edit in `<specify-cli>/templates/vectis/core/codegen.rs` that is a meaningful piece of work. Items 2, 3, and 4 are short, scoped, and should land first.
+All four items above were concretely produced by chunk 11's `specify-vectis update-versions --verify` verification. When chunk 13 (this skill) runs for the first time against live registries, the only item it is blocked from fixing mechanically is **item 1** -- that needs a code edit in `<specify-cli>/templates/vectis/core/codegen.rs` that is a meaningful piece of work. Items 2, 3, and 4 are short, scoped, and should land first.

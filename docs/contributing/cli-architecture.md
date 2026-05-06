@@ -113,7 +113,7 @@ The exit-code contract is documented in `src/main.rs` and is part of the public 
 |------|----------|---------|
 | `0` | `Success` | Operation completed successfully |
 | `1` | `GenericFailure` | I/O error, parse error, or any unclassified failure |
-| `2` | `ValidationFailed` | `specify validate` failed, or `specify vectis` missing prerequisites |
+| `2` | `ValidationFailed` | `specify validate` failed, or `specify-vectis` missing prerequisites |
 | `3` | `VersionTooOld` | Binary version is below the `specify_version` floor in `.specify/project.yaml` |
 
 The mapping from error variants to exit codes:

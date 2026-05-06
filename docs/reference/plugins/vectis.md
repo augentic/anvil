@@ -2,6 +2,8 @@
 
 Generate cross-platform [Crux](https://github.com/redbadger/crux) applications: Rust shared core, SwiftUI iOS shell, Kotlin/Jetpack Compose Android shell, and VectisDesign token system.
 
+> **CLI entry point.** Vectis project scaffolding and verification ship as the standalone [`specify-vectis`](../cli/vectis.md) binary (RFC-13 §4.3a) — the five canonical verbs (`init`, `verify`, `add-shell`, `update-versions`, `versions`) are accessible either via `specify-vectis` on `$PATH` or via the `specify-vectis` library API for in-process callers. The pre-RFC-13 `specify vectis ...` subcommand tree was retired in chunk 2.6.
+
 ## Why Crux
 
 - Support multiple runtime platforms -- iOS, Android, Web, macOS, Linux, Windows -- from a single shared core.
@@ -66,7 +68,7 @@ Generate or update the Rust Crux shared crate from Specify artifacts.
 **Outputs:** `shared/Cargo.toml`, `shared/src/app.rs` (Model, Event, ViewModel, Effect, `update()`, `view()`, tests), `shared/src/ffi.rs`, `shared/src/lib.rs`, workspace `Cargo.toml`, `clippy.toml`, `rust-toolchain.toml`.
 
 **Modes:**
-- **Create** -- invokes `specify vectis init` to scaffold, then applies feature-specific code.
+- **Create** -- invokes `specify-vectis init` to scaffold, then applies feature-specific code.
 - **Update** -- reads existing `app.rs`, compares against specs, and makes targeted edits.
 
 ### /vectis:test-writer
@@ -125,7 +127,7 @@ Token value shapes: color (`light`/`dark`), font (`size`/`weight`), scalar (plai
 
 Fix Vectis CLI templates and version pins when upstream crate or tooling bumps break freshly scaffolded projects.
 
-**When to use:** `specify vectis update-versions --verify` reports failures, or a Crux/UniFFI/Gradle release introduces template drift.
+**When to use:** `specify-vectis update-versions --verify` reports failures, or a Crux/UniFFI/Gradle release introduces template drift.
 
 ## Platforms
 

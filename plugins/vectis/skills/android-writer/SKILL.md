@@ -6,10 +6,12 @@ argument-hint: "<slice-dir>"
 
 # Crux Android Shell Generator
 
+> **`specify-vectis` is a standalone binary.** RFC-13 §4.3a ships the Vectis tooling as the `specify-vectis` executable (no longer a `specify vectis ...` subcommand tree). The five canonical verbs — `init`, `verify`, `add-shell`, `update-versions`, `versions` — are reachable either via the binary on `$PATH` (used in the bash blocks below) or via the `specify-vectis` library API for in-process callers; flags and positional arguments are unchanged.
+
 ## Critical Path (Quick Reference)
 
 1. Read `{app-dir}/shared/src/app.rs` (and optional `slice-dir` shell-requirements + `composition.yaml`); extract App name, ViewModel/Effect/Event/Route variants and the capability set.
-2. Detect mode by checking `{project-dir}/app/src/main/java/*/Core.kt`: missing → run `specify vectis add-shell android` then enter Update Mode; present → start Update Mode immediately.
+2. Detect mode by checking `{project-dir}/app/src/main/java/*/Core.kt`: missing → run `specify-vectis add-shell android` then enter Update Mode; present → start Update Mode immediately.
 3. Build an implementation inventory of existing Kotlin code (effect handlers, ViewModel cases, screen composables, event dispatches, capability clients, DI modules).
 4. Diff Rust core types vs Kotlin inventory by category (Effect → ViewModel → view-fields → Event → Route) and emit a summary edit plan.
 5. Apply changes: expand or strip CAP blocks in `Core.kt` + `AndroidManifest.xml` + Gradle, add/remove screen composables for each ViewModel variant, update the root `when`, dispatch new Events.
@@ -20,7 +22,7 @@ Generate or update a buildable Kotlin/Jetpack Compose Android shell for an exist
 
 When an existing Android shell is detected, the skill operates in **update mode**: it compares the current `app.rs` types against the existing Kotlin code and makes targeted edits rather than regenerating from scratch.
 
-When no Android shell exists yet, the skill runs `specify vectis add-shell android --dir {app-dir}` (optionally with `--android-package`) to scaffold the project. The CLI owns all build infrastructure: `Android/Makefile`, the `build.gradle.kts` / `settings.gradle.kts` / `gradle.properties` triad, the `gradle/libs.versions.toml` version catalog, `app/build.gradle.kts` and `shared/build.gradle.kts`, the Gradle wrapper (`gradlew`, `gradlew.bat`, `gradle/wrapper/`), `local.properties`, `AndroidManifest.xml` (including conditional `networkSecurityConfig` when HTTP/SSE is selected), the `{AppName}Application.kt` entry point with the UniFFI library override, a render-only baseline `Core.kt` with CAP markers, `MainActivity.kt`, the `ui/screens/HomeScreen.kt` starter, and `res/xml/network_security_config.xml` when needed. Once the scaffold exists this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
+When no Android shell exists yet, the skill runs `specify-vectis add-shell android --dir {app-dir}` (optionally with `--android-package`) to scaffold the project. The CLI owns all build infrastructure: `Android/Makefile`, the `build.gradle.kts` / `settings.gradle.kts` / `gradle.properties` triad, the `gradle/libs.versions.toml` version catalog, `app/build.gradle.kts` and `shared/build.gradle.kts`, the Gradle wrapper (`gradlew`, `gradlew.bat`, `gradle/wrapper/`), `local.properties`, `AndroidManifest.xml` (including conditional `networkSecurityConfig` when HTTP/SSE is selected), the `{AppName}Application.kt` entry point with the UniFFI library override, a render-only baseline `Core.kt` with CAP markers, `MainActivity.kt`, the `ui/screens/HomeScreen.kt` starter, and `res/xml/network_security_config.xml` when needed. Once the scaffold exists this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
 
 This skill targets **Kotlin 2.x**, **Jetpack Compose** with Material 3, and minimum SDK 34.
 
@@ -194,13 +196,13 @@ class SseClient { ... }
 
 ## Mode Detection
 
-- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes `specify vectis add-shell android` to scaffold the baseline, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
+- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes `specify-vectis add-shell android` to scaffold the baseline, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- `{project-dir}/` **does** exist and contains `.kt` files. Read existing code, diff against the core, and make targeted edits (steps U1--U8 below).
 
 Detection rule: check for `{project-dir}/app/src/main/java/*/Core.kt`. If present, switch to update mode. If not, run:
 
 ```bash
-specify vectis add-shell android --dir {app-dir} [--android-package com.example.app]
+specify-vectis add-shell android --dir {app-dir} [--android-package com.example.app]
 ```
 
 `{app-dir}` is the parent directory of `shared/`; the CLI derives the `Android/` sibling directory automatically. `--android-package` is optional and defaults to `com.vectis.<appname-lowercase>`. On non-zero exit, surface the CLI's structured error output to the user and stop -- do **not** attempt to hand-author Gradle files, the wrapper, `AndroidManifest.xml`, or any of the baseline `.kt` files.
@@ -228,7 +230,7 @@ Read `{app-dir}/shared/src/app.rs` and extract all types listed in the Input Ana
 Run:
 
 ```bash
-specify vectis add-shell android --dir {app-dir} [--android-package <package>]
+specify-vectis add-shell android --dir {app-dir} [--android-package <package>]
 ```
 
 `--android-package` is optional; when omitted, the CLI uses `com.vectis.<appname-lowercase>`. The CLI generates the full Gradle project (root + `app` + `shared` modules), the Gradle wrapper artefacts via a scratch bootstrap, `local.properties` with the detected SDK path, and a render-only baseline shell in `Android/app/src/main/java/<package-path>/` with CAP markers for every optional capability. The output is structured JSON. On non-zero exit, surface the CLI's error output to the user and stop.
@@ -243,7 +245,7 @@ After the CLI returns green, treat the scaffolded Android shell as an existing i
 - Rewrite the root composable in `MainActivity.kt` to cover every ViewModel variant.
 - Apply any `## Android Shell Requirements` from the active Specify change (when `slice-dir` is provided).
 
-Dependency version pins (Kotlin, AGP, Ktor, Koin, Compose BOM, etc.) come from the CLI's embedded `versions.toml`; use `specify vectis update-versions` to refresh them rather than hand-editing `libs.versions.toml` / `shared/build.gradle.kts`.
+Dependency version pins (Kotlin, AGP, Ktor, Koin, Compose BOM, etc.) come from the CLI's embedded `versions.toml`; use `specify-vectis update-versions` to refresh them rather than hand-editing `libs.versions.toml` / `shared/build.gradle.kts`.
 
 ## Process: Update Mode
 
@@ -315,7 +317,7 @@ Output the diff summary before making edits.
 
 ### U8. Build and verify
 
-Pre-flight checks before build (all generated by `specify vectis add-shell android` -- this step just confirms nothing drifted):
+Pre-flight checks before build (all generated by `specify-vectis add-shell android` -- this step just confirms nothing drifted):
 
 1. Verify `{project-dir}/gradlew` exists.
 2. Verify `local.properties` has `sdk.dir` set.
@@ -363,7 +365,7 @@ In Update Mode, minimize collateral changes — never regenerate from scratch; p
 | `references/compose-view-patterns.md` | Screen patterns, lists, forms, navigation, accessibility |
 | `references/design-system-integration.md` | Design system token usage in composables |
 
-Gradle build files, the version catalog, the Gradle wrapper, the Makefile, `AndroidManifest.xml`, CAP-marker scaffolding for the baseline `Core.kt` / `app/build.gradle.kts` / `libs.versions.toml`, Java-21 auto-pinning, and the starter Kotlin layout are owned by the CLI's embedded templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/src/init/android.rs` and `<specify-cli>/templates/vectis/android/`). Do not hand-edit those files in Create Mode; let `specify vectis add-shell android` write them and then modify in Update Mode.
+Gradle build files, the version catalog, the Gradle wrapper, the Makefile, `AndroidManifest.xml`, CAP-marker scaffolding for the baseline `Core.kt` / `app/build.gradle.kts` / `libs.versions.toml`, Java-21 auto-pinning, and the starter Kotlin layout are owned by the CLI's embedded templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/src/init/android.rs` and `<specify-cli>/templates/vectis/android/`). Do not hand-edit those files in Create Mode; let `specify-vectis add-shell android` write them and then modify in Update Mode.
 
 ## Examples
 
@@ -381,19 +383,19 @@ Gradle build files, the version catalog, the Gradle wrapper, the Makefile, `Andr
 | `app.rs` not found | Verify `app-dir` points to a Crux app with `shared/src/app.rs` |
 | Unknown Effect variant | Add a placeholder `is Effect.XXX -> { }` and report |
 | Gradle sync fails | Check `build.gradle.kts` syntax; verify NDK version matches installed |
-| Build fails with missing types | Run `make build` to regenerate types; verify `uniffi` is pinned to the expected version (run `specify vectis update-versions --dry-run` to inspect). Run `specify vectis verify` to detect mismatches |
+| Build fails with missing types | Run `make build` to regenerate types; verify `uniffi` is pinned to the expected version (run `specify-vectis update-versions --dry-run` to inspect). Run `specify-vectis verify` to detect mismatches |
 | `cargoBuild` fails with `target may not be installed` | Run `rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android` |
 | NDK not found | Install via `sdkmanager "ndk;29.0.14206865"` or Android Studio SDK Manager |
 | Python 3 not found | Required by rust-android-gradle; install via system package manager |
-| `./gradlew: No such file or directory` | Scaffold was missing the wrapper -- re-run `specify vectis add-shell android` (the CLI bootstraps `gradlew` from a scratch Gradle invocation) |
-| `Minimum supported Gradle version is X.Y` | Gradle/AGP drift -- run `specify vectis update-versions` and re-run `specify vectis add-shell android` (the CLI pins `gradle-wrapper.properties` to match AGP from `versions.toml`) |
+| `./gradlew: No such file or directory` | Scaffold was missing the wrapper -- re-run `specify-vectis add-shell android` (the CLI bootstraps `gradlew` from a scratch Gradle invocation) |
+| `Minimum supported Gradle version is X.Y` | Gradle/AGP drift -- run `specify-vectis update-versions` and re-run `specify-vectis add-shell android` (the CLI pins `gradle-wrapper.properties` to match AGP from `versions.toml`) |
 | `java.lang.IllegalArgumentException: 25.0.1` (or similar Java version parse error) | Set `org.gradle.java.home` to Java 21 in `gradle.properties` (the CLI auto-pins this when Java 21 is detected; if none was detected at scaffold time, set it by hand) |
-| `resource style/Theme.{AppName} not found` | Scaffold was missing `res/values/themes.xml` -- re-run `specify vectis add-shell android` |
+| `resource style/Theme.{AppName} not found` | Scaffold was missing `res/values/themes.xml` -- re-run `specify-vectis add-shell android` |
 | `Unresolved reference 'Event'` (or `ViewModel`, `Effect`, etc.) | Add `import com.example.app.*` imports to the affected Kotlin file |
 | `Unresolved reference 'CoreFfi'` | Add `import uniffi.shared.CoreFfi` to `Core.kt` |
 | `Unresolved reference 'Icons'` | Add `material-icons-extended` dependency to `libs.versions.toml` + `app/build.gradle.kts` |
 | `Namespace 'X' is used in multiple modules` | Use `com.vectis.{appname}.shared` namespace for the shared module |
-| `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- run `specify vectis verify` to detect mismatches and `specify vectis update-versions --dry-run` to see expected pins |
+| `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- run `specify-vectis verify` to detect mismatches and `specify-vectis update-versions --dry-run` to see expected pins |
 | `This declaration needs opt-in` (unsigned types) | Add `@OptIn(ExperimentalUnsignedTypes::class)` to the class |
 
 ### Runtime crashes

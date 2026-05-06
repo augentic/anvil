@@ -6,10 +6,12 @@ argument-hint: "<slice-dir>"
 
 # Crux Core Application Generator
 
+> **`specify-vectis` is a standalone binary.** RFC-13 §4.3a ships the Vectis tooling as the `specify-vectis` executable (no longer a `specify vectis ...` subcommand tree). The five canonical verbs — `init`, `verify`, `add-shell`, `update-versions`, `versions` — are reachable either via the binary on `$PATH` (used in the bash blocks below) or via the `specify-vectis` library API for in-process callers; flags and positional arguments are unchanged.
+
 ## Critical Path (Quick Reference)
 
 1. Read Specify artifacts (`{slice-dir}/specs/<feature>/spec.md` + `{slice-dir}/design.md`); extract App name, Model, Events, ViewModel/Page/Route, capabilities, and API shapes.
-2. Detect mode from `{project-dir}/shared/src/app.rs`: missing → run `specify vectis init` + `specify vectis verify`, then enter Update Mode; present → start Update Mode immediately.
+2. Detect mode from `{project-dir}/shared/src/app.rs`: missing → run `specify-vectis init` + `specify-vectis verify`, then enter Update Mode; present → start Update Mode immediately.
 3. Build an implementation inventory of existing types and diff it against the artifact-derived target — Added / Removed / Modified / Unchanged — per category in dependency order (capabilities → views → domain → model → events → api → logic).
 4. Apply structural edits to `app.rs` (domain types → Page/ViewModel/Route → Model → Event/Effect → imports + `Cargo.toml` for new capabilities).
 5. Apply logic edits to `update()` and `view()` (per-Event match arms, business rules, model-to-ViewModel mapping for new pages); consult `references/crux-command-api.md` and `references/crux-capabilities.md`.
@@ -20,7 +22,7 @@ Generate or update a buildable Crux core (`shared` crate) for a multi-platform a
 
 When an existing project is detected, the skill operates in **update mode**: it compares the Specify artifacts against the current implementation and makes targeted edits rather than regenerating from scratch.
 
-When no project exists yet, the skill runs `specify vectis init` (and `specify vectis verify`) to scaffold the workspace, shared crate, and toolchain using the embedded Crux version pins. The CLI is the single source of truth for Cargo manifests, `rust-toolchain.toml`, `.gitignore`, `ffi.rs`, `codegen.rs`, and the `lib.rs`/`app.rs` skeleton. Once the scaffold exists this skill switches to **update mode** and layers feature-specific changes over the generated baseline.
+When no project exists yet, the skill runs `specify-vectis init` (and `specify-vectis verify`) to scaffold the workspace, shared crate, and toolchain using the embedded Crux version pins. The CLI is the single source of truth for Cargo manifests, `rust-toolchain.toml`, `.gitignore`, `ffi.rs`, `codegen.rs`, and the `lib.rs`/`app.rs` skeleton. Once the scaffold exists this skill switches to **update mode** and layers feature-specific changes over the generated baseline.
 
 ## Arguments
 
@@ -83,7 +85,7 @@ If the design describes effects not covered by published capabilities, generate 
 
 The skill operates in one of two modes depending on whether an existing project is found:
 
-- **Create Mode** -- used when `{project-dir}/shared/src/app.rs` does **not** exist. The skill invokes `specify vectis init` to scaffold the baseline, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
+- **Create Mode** -- used when `{project-dir}/shared/src/app.rs` does **not** exist. The skill invokes `specify-vectis init` to scaffold the baseline, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- used when `{project-dir}/shared/src/app.rs` **does** exist. Reads the existing code, diffs it against the artifacts, and makes targeted edits (steps U1--U8 below).
 
 The Specify artifacts always represent the **full desired state** of the application, not a partial diff. In update mode the skill compares the full artifacts against the existing implementation to determine what changed.
@@ -91,8 +93,8 @@ The Specify artifacts always represent the **full desired state** of the applica
 Detection rule: check for the file `{project-dir}/shared/src/app.rs`. If the file exists, switch to update mode. If not, run:
 
 ```bash
-specify vectis init {AppName} --dir {project-dir} --caps {detected-caps}
-specify vectis verify --dir {project-dir}
+specify-vectis init {AppName} --dir {project-dir} --caps {detected-caps}
+specify-vectis verify --dir {project-dir}
 ```
 
 `{AppName}` is the derived App struct name (see Derived Arguments). `{detected-caps}` is the comma-separated list from Capability Detection (e.g. `http,kv`; omit the flag or pass an empty string when only Render is needed). If either command fails, report the CLI's structured error output to the user and stop -- do **not** attempt a manual scaffold as a fallback.
@@ -138,8 +140,8 @@ If a required section is missing or too vague to determine Model and Events, ask
 Derive `{AppName}` (see Derived Arguments § App struct name) and `{caps}` (see Capability Detection; comma-separated, lowercase, in artifact order). Then run:
 
 ```bash
-specify vectis init {AppName} --dir {project-dir} --caps {caps}
-specify vectis verify --dir {project-dir}
+specify-vectis init {AppName} --dir {project-dir} --caps {caps}
+specify-vectis verify --dir {project-dir}
 ```
 
 Both commands produce structured JSON. On non-zero exit, surface the CLI's error output to the user and stop -- do not attempt to hand-author any of the scaffolded files. The CLI's `init` is atomic (it refuses to overwrite a pre-existing workspace), and its `verify` step runs `cargo check`, `cargo clippy --all-targets -- -D warnings`, `cargo deny check`, `cargo vet`, and codegen for Swift + Kotlin; a green verify is a precondition for this skill to do useful Update-Mode work.
@@ -157,7 +159,7 @@ After the CLI returns green, treat the scaffolded project as an existing impleme
 
 The scaffolded `app.rs` ships with placeholder `update()` arms (each capability's arm calls `render()` with a `#[allow(clippy::match_same_arms)]` on the function and `#[allow(dead_code)]` on each capability `type` alias). Update Mode replaces those placeholders with real logic; when the placeholder bodies are gone, drop the two render-only-baseline `#[allow(...)]` attributes -- leaving them in place is harmless under `-D warnings` but masks future regressions.
 
-`specify vectis init` also seeds `deny.toml` with a `[licenses] private = { ignore = true }` allowance and an `[advisories] ignore = [...]` list for today's unavoidable transitive advisories, plus `publish = false` in `shared/Cargo.toml`. Do not hand-seed `supply-chain/config.toml` exemptions -- `specify vectis verify` bootstraps them via `cargo vet regenerate exemptions` on the first run. If the user later decides to publish the `shared` crate, both `publish = false` **and** a matching `license = "..."` field must land in the same edit (they pair together).
+`specify-vectis init` also seeds `deny.toml` with a `[licenses] private = { ignore = true }` allowance and an `[advisories] ignore = [...]` list for today's unavoidable transitive advisories, plus `publish = false` in `shared/Cargo.toml`. Do not hand-seed `supply-chain/config.toml` exemptions -- `specify-vectis verify` bootstraps them via `cargo vet regenerate exemptions` on the first run. If the user later decides to publish the `shared` crate, both `publish = false` **and** a matching `license = "..."` field must land in the same edit (they pair together).
 
 ## Test Generation
 
@@ -404,7 +406,7 @@ Consult these references during generation. Do not deviate from the patterns the
 | `references/crux-custom-capabilities.md` | Building custom Operation + capability (SSE example) |
 | `references/crux-testing-patterns.md` | Testing effects, events, resolving requests |
 
-Version pins, Cargo workspace layout, `rust-toolchain.toml`, `ffi.rs`, `codegen.rs`, and `.gitignore` are owned by the CLI's embedded templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/embedded/` and `<specify-cli>/crates/vectis/src/init/core.rs`). When a spec change requires updating a pinned version, run `specify vectis update-versions` rather than editing files in this crate by hand.
+Version pins, Cargo workspace layout, `rust-toolchain.toml`, `ffi.rs`, `codegen.rs`, and `.gitignore` are owned by the CLI's embedded templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/embedded/` and `<specify-cli>/crates/vectis/src/init/core.rs`). When a spec change requires updating a pinned version, run `specify-vectis update-versions` rather than editing files in this crate by hand.
 
 ## Examples
 
@@ -422,7 +424,7 @@ See `references/examples/` for complete worked examples:
 |---|---|
 | `cargo check` fails with unresolved import | Verify capability crate is in `[workspace.dependencies]` and `shared/Cargo.toml` |
 | `Command` type mismatch | Ensure `update()` returns `Command<Effect, Event>` |
-| `facet` derive errors | Ensure `facet` is pinned to the expected version (run `specify vectis update-versions --dry-run` to inspect); run `specify vectis verify` to check. Add `#[repr(C)]` to enums |
+| `facet` derive errors | Ensure `facet` is pinned to the expected version (run `specify-vectis update-versions --dry-run` to inspect); run `specify-vectis verify` to check. Add `#[repr(C)]` to enums |
 | `uniffi` build failures | Ensure `uniffi` is behind `feature = "uniffi"` gate, not unconditional |
 | Missing `Operation` impl for custom capability | Each custom request type must `impl Operation` with `type Output` |
 | `#[serde(skip)]` on Event variant causes deserialization panic | Internal variants must never be sent from the shell; guard with `#[facet(skip)]` too |
@@ -482,7 +484,7 @@ Before completing, verify. Items marked **(update)** apply only in update mode; 
 
 ## Important Notes
 
-- **Crux versions**: The CLI owns all version pins via its embedded `versions.toml`. Use `specify vectis update-versions` to refresh the pinned set; never hand-edit Cargo dependency versions in a generated project. `crux_core`, `facet`, `uniffi`, and companion crates are selected by the CLI so that `crux_core`'s bundled `uniffi_bindgen` matches the runtime `uniffi` crate.
+- **Crux versions**: The CLI owns all version pins via its embedded `versions.toml`. Use `specify-vectis update-versions` to refresh the pinned set; never hand-edit Cargo dependency versions in a generated project. `crux_core`, `facet`, `uniffi`, and companion crates are selected by the CLI so that `crux_core`'s bundled `uniffi_bindgen` matches the runtime `uniffi` crate.
 - **No `Capabilities` struct**: The 0.17 API does not use a `Capabilities` struct. Define `Effect` directly as an enum with `#[effect(facet_typegen)]`. The `App` trait requires `type Effect = Effect;`.
 - **`Command` is generic**: Return `Command<Effect, Event>` from `update()`.
 - **`#[repr(C)]` on Event enums**: Required by `facet` for enums that cross the FFI boundary.

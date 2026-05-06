@@ -88,7 +88,7 @@ These surfaces are untouched. Scripts that use them keep working.
 - `specify workspace {sync, status, push, merge}` -- multi-repo workspace clones; `merge` was added by RFC-9 §4A.
 - `specify change {create, show, finalize}` -- operator brief at `change.md`; `finalize` was added by RFC-9 §4C, and `init` was renamed to `create` in v1.x. The umbrella verbs were renamed from `specify initiative *` to `specify change *` by RFC-13 §3.5.
 - `specify registry {add, remove, show, validate}` -- platform registry at `registry.yaml`; `add` and `remove` were added by RFC-9 §2A.
-- `specify vectis {init, verify, add-shell, update-versions}` -- Vectis project tooling.
+- `specify vectis {init, verify, add-shell, update-versions}` -- Vectis project tooling. RFC-13 §4.3a later re-extracted these as the standalone [`specify-vectis`](../reference/cli/vectis.md) binary (the in-binary subcommand tree on `specify` itself was retired in chunk 2.6); the verb names, flags, and JSON envelopes are unchanged. `versions` was added by RFC-13 §4.3a alongside the re-extraction.
 - `specify slice {create, list, status, transition, touched-specs, overlap, archive, drop}` -- the per-slice CRUD verbs (renamed from the v1.x `specify change *` group by RFC-13 §3.2). The rename added new verbs alongside; it did not displace these.
 
 ## See also

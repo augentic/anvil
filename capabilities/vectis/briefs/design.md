@@ -108,7 +108,7 @@ Define these types (see guidance below each):
 
 <!-- Runtime and dependency constraints. Query the CLI for current resolved pins:
 
-    specify vectis update-versions --dir $PROJECT_DIR --dry-run --format json
+    specify-vectis update-versions --dir $PROJECT_DIR --dry-run --format json
 
 Include the resolved Crux, facet, and uniffi pins from that output.
 Standard platform constraints:
