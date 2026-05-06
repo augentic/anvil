@@ -6,7 +6,7 @@
 
 [RFC-13](rfc-13-extensibility.md) moves capability-specific deterministic behavior out of the `specify` binary and into capability-owned skills. Those skills still need helper code: contracts need SemVer / `info.x-specify-id` checks, and Vectis needs scaffolding and verification logic.
 
-This alternate RFC keeps the user experience to one installed binary: `specify`. Capability helpers are declared in `capability.yaml` as WebAssembly modules and executed by `specify` through Wasmtime.
+This RFC keeps the user experience to one installed binary: `specify`. Capability helpers are declared in `capability.yaml` as WebAssembly modules and executed by `specify` using Wasmtime.
 
 First-party impact: contract validation becomes a small WASI module; Vectis helper behavior moves behind a WASI command module or a WASM component. Capability skills invoke helpers through `specify capability tool run`, not through host-installed binaries or language runtimes.
 
@@ -55,7 +55,7 @@ tools:
     runtime: wasm-wasi
     source: github-release
     repo: augentic/specify-tools
-    asset: "contract-validate-{version}.wasm"
+    asset: "contract-{version}.wasm"
     sha256: "<64 hex chars>"
     permissions:
       read:
@@ -299,11 +299,13 @@ This is additive for capabilities without `tools:`.
 
 For first-party capabilities:
 
+
 | Draft RFC-13 shape                     | Wasmtime RFC-15 shape                                  |
 | -------------------------------------- | ------------------------------------------------------ |
 | `specify-contract-validate` binary     | `contract-validate.wasm` declared in `capability.yaml` |
 | manually installed `specify-vectis`    | `specify-vectis.wasm` or narrower Vectis WASI modules  |
 | bare `specify-vectis verify` in skills | `specify capability tool run specify-vectis -- verify` |
+
 
 No compatibility shim is needed because these helper binaries have not shipped as a public surface yet.
 
@@ -354,3 +356,4 @@ If this alternative is accepted, RFC-13's "WASM-component plugins" alternative s
 - [RFC-12: Refine RFC-8](archive/rfc-12-refine-rfc-8.md) - owns the contract validation behavior that moves to a helper.
 - [RFC-1: `specify` CLI](archive/rfc-1-cli.md) - owns the CLI and capability resolver.
 - [RFC-5: Framework Linter](rfc-5-lint.md) - home for the follow-up lints.
+

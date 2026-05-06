@@ -1,6 +1,6 @@
 # RFC-13: Extensibility
 
-> Status: Draft · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-8](archive/rfc-8-api-contracts.md), [RFC-9](archive/rfc-9-platform.md), [RFC-12](archive/rfc-12-refine-rfc-8.md) · Enables: [RFC-14](rfc-14-workspaces.md)
+> Status: Implemented · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-8](archive/rfc-8-api-contracts.md), [RFC-9](archive/rfc-9-platform.md), [RFC-12](archive/rfc-12-refine-rfc-8.md) · Enables: [RFC-14](rfc-14-workspaces.md)
 
 ## Abstract
 
@@ -96,8 +96,8 @@ The durable post-RFC surfaces are:
 | Surface                | Owner / kind                 | Primary state / artefact                    | Notes                                                                                                                |
 | ---------------------- | ---------------------------- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `specify init`         | Core                         | `.specify/` + `project.yaml`                | Bootstraps a project before any capability has loaded.                                                               |
-| `specify capability` * | Core                         | capability manifest cache                   | Resolves, checks, and renders capability pipelines. Replaces `specify schema `*.                                     |
-| `specify slice *`      | Core                         | `.specify/slices/`                          | Runs the fixed per-project slice loop against one resolved capability.                                               |
+| `specify capability` * | Core                         | capability manifest cache                   | Resolves, checks, and renders capability pipelines. Replaces `specify schema` *.                                     |
+| `specify slice `*      | Core                         | `.specify/slices/`                          | Runs the fixed per-project slice loop against one resolved capability.                                               |
 | `specify registry *`   | `specify registry` component | `registry.yaml` + `.specify/workspace/`     | Owns topology plus the local materialised view. It is validated and mutated directly, not reviewed through the loop. |
 | `specify change *`     | `specify change` component   | `change.md` + `plan.yaml`                   | Owns change brief, planning graph, execution state, finalization, and archive.                                       |
 | `contracts@v1`         | Capability                   | `contracts/` baseline                       | RFC-12's SemVer + `info.x-specify-id` checks become capability validation behavior.                                  |
@@ -295,14 +295,14 @@ Extracts the platform components without touching the change/slice noun yet, so 
 6. **Retire surviving hard-coded `contracts` / `specs` references** in core crates where they encode concern-specific behavior. The core may carry generic per-loop-unit layout helpers, but it must not decide contract or Vectis behavior by name.
 7. **Initialization wires components, not active capabilities.** A project's `project.yaml` declares its domain capability; platform-component files (`registry.yaml`, `plan.yaml`, `change.md`) are scaffolded by their owning components, not by the capability resolver.
 
-Acceptance: the core no longer exposes first-party capability command modules or public validation APIs, `specify registry` and `specify change` are independently testable crates, and the fixed `define → build → merge` lifecycle remains intact under the **pre-rename** noun set (`specify change `* for the per-loop unit, `.specify/changes/`, `$CHANGE_DIR`).
+Acceptance: the core no longer exposes first-party capability command modules or public validation APIs, `specify registry` and `specify change` are independently testable crates, and the fixed `define → build → merge` lifecycle remains intact under the **pre-rename** noun set (`specify change` * for the per-loop unit, `.specify/changes/`, `$CHANGE_DIR`).
 
 ### Phase 3 — Lifecycle vocabulary cut-over
 
 Renames the per-loop unit and the umbrella orchestration noun in one phase, and ships the on-disk migrations operator projects need to upgrade. Splitting this from Phase 2 keeps the orchestration extraction and the noun rename independently bisectable.
 
-1. **Rename the per-loop-unit surface.** `specify change `* → `specify slice *`, `crates/change/` → `crates/slice/`, the `specify-change` library crate → `specify-slice`. Brief substitutions follow: `$CHANGE_DIR` → `$SLICE_DIR`. Outcome and journal helpers move with the rename: `specify change outcome show` → `specify slice outcome show`, `specify change journal append` → `specify slice journal append`.
-2. **Rename the umbrella orchestration surface.** `specify initiative `* → `specify change *`, `initiative.md` → `change.md`, `specify-initiative` library crate → `specify-change`. The verb set (`create`, `plan`, `execute`, `finalize`, `archive`) is preserved across the rename.
+1. **Rename the per-loop-unit surface.** `specify change` * → `specify slice `*, `crates/change/` → `crates/slice/`, the `specify-change` library crate → `specify-slice`. Brief substitutions follow: `$CHANGE_DIR` → `$SLICE_DIR`. Outcome and journal helpers move with the rename: `specify change outcome show` → `specify slice outcome show`, `specify change journal append` → `specify slice journal append`.
+2. **Rename the umbrella orchestration surface.** `specify initiative` * → `specify change `*, `initiative.md` → `change.md`, `specify-initiative` library crate → `specify-change`. The verb set (`create`, `plan`, `execute`, `finalize`, `archive`) is preserved across the rename.
 3. **Add `specify migrate slice-layout`.** Renames `.specify/changes/` to `.specify/slices/` on disk and rewrites any in-tree `$CHANGE_DIR` substitutions in skill markdown to `$SLICE_DIR`. Idempotent; refuses to run when an in-progress per-loop-unit carries an unfinished phase (operator must finish or drop the in-progress unit before migrating).
 4. **Add `specify migrate change-noun`.** Renames `initiative.md` to `change.md` at the repo root. Operator-facing platform artefacts (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) remain at the repo root per RFC-9 §1B; this migration is purely the noun cut-over from initiative to change.
 5. **Update fixtures, tests, and brief templates** to use the post-rename noun set. Post-rename docs never use "the change loop"; the per-loop unit is a *slice* and the umbrella is a *change*.
