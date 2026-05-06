@@ -6,9 +6,16 @@ tracks: tasks
 ---
 
 Arguments (used by all skills):
-- CHANGE_ID: the name of this change (from specify status)
-- CRATE_NAME: the spec folder name (specs/<crate>/spec.md)
-- CRATE_PATH: crates/CRATE_NAME
+- SLICE_ID: the name of this slice (from `specify status`)
+- CRATE_NAME: the spec folder name (`specs/<crate>/spec.md`)
+- CRATE_PATH: `crates/CRATE_NAME`
+
+The four implementing skills invoked below are bundled with the omnia capability:
+
+- [`omnia-guest-writer`](../../../plugins/omnia/skills/guest-writer/SKILL.md) — generate the WASM guest project
+- [`omnia-crate-writer`](../../../plugins/omnia/skills/crate-writer/SKILL.md) — generate or update the domain crate
+- [`omnia-test-writer`](../../../plugins/omnia/skills/test-writer/SKILL.md) — generate or update the test suite
+- [`omnia-code-reviewer`](../../../plugins/omnia/skills/code-reviewer/SKILL.md) — AI code review of the generated crate
 
 ## Mode detection
 
@@ -50,7 +57,7 @@ Run the remediation process described below.
 Before any changes, record the current test state:
 
 ```bash
-cd $CRATE_PATH && cargo test 2>&1 | tee /tmp/${CHANGE_ID}-${CRATE_NAME}-baseline.txt
+cd $CRATE_PATH && cargo test 2>&1 | tee /tmp/${SLICE_ID}-${CRATE_NAME}-baseline.txt
 ```
 
 Record which tests pass and which fail. This baseline is used in Phase 2 to detect regressions.
