@@ -104,17 +104,6 @@ re-list them here, only call out platform-specific customisations on top.
 - Koin DI requirements (when multiple non-Render effects)
 - Capability client details (Ktor for HTTP/SSE, SharedPreferences for KV) -->
 
-## Design System Details
-
-<!-- Include when design-system is listed in Platforms.
-Do NOT reproduce the contents of `tokens.yaml` / `assets.yaml` here — those
-manifests are the source of truth and the CLI validates them deterministically
-(`specify vectis validate tokens` / `validate assets`). This section captures
-design intent that is not in the manifests:
-- Fallback policy when a referenced token or asset is absent
-- Brand variants or theming decisions deferred to operator review
-- Downstream consumers and integration points -->
-
 ## Implementation Constraints
 
 <!-- Runtime and dependency constraints. Query the CLI for current resolved pins:
@@ -126,8 +115,7 @@ Standard platform constraints:
 - Swift 6, iOS 17+ deployment target
 - Kotlin 2.x, Jetpack Compose, Material 3, min SDK 34
 - Java 21 LTS (NOT Java 25+)
-- VectisDesign: Swift Package (iOS) and Compose Material 3 library (Android)
-  from tokens.yaml -->
+-->
 
 ## Dependencies
 

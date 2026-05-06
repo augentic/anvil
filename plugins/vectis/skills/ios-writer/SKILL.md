@@ -263,7 +263,7 @@ When `composition.yaml` is absent, the existing inference behavior is unchanged 
 | `references/crux-ios-shell-pattern.md` | Core.swift template, effect handling, serialization protocol |
 | `references/swiftui-view-patterns.md` | Screen patterns, lists, forms, navigation, accessibility |
 | `references/design-system-integration.md` | Shell-local theme + asset integration: generated layout under `iOS/<App>/Theme/`, HIG fallback when `tokens.yaml` is absent, asset copy-on-generate rules, component-directive contract |
-| `references/swift-token-templates.md` | Concrete Swift code templates per token category (color, typography, scalar, border, theme bundle); migrated from `design-system-writer` per RFC-11 §J |
+| `references/swift-token-templates.md` | Concrete Swift code templates per token category (color, typography, scalar, border, theme bundle); shell-local emission per RFC-11 §J |
 
 XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffolding (`project.yml` packages, Inject SPM wiring, CAP markers, starter screens) are owned by the CLI's embedded templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/src/init/ios.rs` and `<specify-cli>/templates/vectis/ios/`). Do not hand-edit those files in Create Mode; let `specify vectis add-shell ios` write them and then modify in Update Mode.
 

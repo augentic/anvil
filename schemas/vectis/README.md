@@ -3,8 +3,8 @@
 - **URL**: `https://github.com/augentic/specify/schemas/vectis`
 - **Purpose**: Cross-platform Crux application development
 - **Source**: Manual
-- **Target**: Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell), VectisDesign (design system)
-- **Workflow**: `proposal` -> `specs` -> `composition` -> `design` -> `tasks` -> `build` (core-writer, ios-writer, android-writer, design-system-writer)
+- **Target**: Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell)
+- **Workflow**: `proposal` -> `specs` -> `composition` -> `design` -> `tasks` -> `build` (core-writer, ios-writer, android-writer)
 
 ## Contents
 
@@ -52,7 +52,6 @@ The proposal declares which platforms a change targets. Platforms determine whic
 | `ios` | SwiftUI iOS shell | `vectis:ios-writer` |
 | `android` | Kotlin/Jetpack Compose Android shell | `vectis:android-writer` |
 | `web` | Web shell (future) | — |
-| `design-system` | VectisDesign from tokens.yaml (iOS SPM + Android library) | `vectis:design-system-writer` |
 
 ## Schema Framework
 

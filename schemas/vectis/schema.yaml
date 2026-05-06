@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=../../.cursor/schemas/specify-schema.schema.json
 name: vectis
-version: 2
+version: 3
 description: Vectis workflow
 domain: |
-  Tech stack: Rust (Crux 0.17.0), Swift 6 (SwiftUI, iOS 17+), Kotlin 2.x (Jetpack Compose, Material 3), VectisDesign tokens
+  Tech stack: Rust (Crux 0.17.0), Swift 6 (SwiftUI, iOS 17+), Kotlin 2.x (Jetpack Compose, Material 3)
   Architecture: Crux App trait with Model, Event, ViewModel, Effect, Command
   Testing: Rust integration tests (cargo test), Xcode build verification (make build), Gradle build verification (./gradlew :app:assembleDebug)
 

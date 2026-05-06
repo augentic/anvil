@@ -44,7 +44,7 @@ Specify owns the workflow contract. This repository contributes specialist analy
 When conflicts arise, follow this strict precedence order:
 
 1. **SKILL.md** - generation rules and hard constraints
-2. **Specify artifacts** - `proposal.md`, `spec.md`, `composition.yaml`, `design.md`, `tasks.md`
+2. **Specify artifacts** - `proposal.md`, `spec.md`, `composition.yaml`, `design.md`, `tasks.md` (Vectis also: `layout.yaml`, `tokens.yaml`, `assets.yaml`)
 3. **plugins/references/** - authoritative patterns and examples
 4. **Source** - reference for ambiguity only
 5. **LLM inference** - only after explicit evidence; prefer `[unknown]`
@@ -60,6 +60,9 @@ Specify artifacts have separate responsibilities:
 - **`composition.yaml`**: spatial layout of screens — regions, groups, item bindings, and event wiring (Vectis only)
 - **`design.md`**: domain model, APIs, integrations, configuration, technical logic
 - **`tasks.md`**: implementation sequencing only
+- **`layout.yaml`**: unwired layout input — screen regions, groups, and item vocabulary before `/spec:define` wires them to specs and Crux types (Vectis only)
+- **`tokens.yaml`**: design tokens — colours, typography, spacing, radii, and elevation values consumed by shell writers (Vectis only)
+- **`assets.yaml`**: asset inventory — raster, vector, and symbol entries with per-platform source mappings (Vectis only)
 
 Behavioral specs should remain platform-neutral. Omnia trait selection, guest wiring, and WASM translation belong in specialist skills and references.
 
@@ -100,7 +103,8 @@ Cloning a remote source tree is no longer a dedicated skill — both callers (`/
 - `ios-reviewer` - review iOS shells via agent team (structural/quality/integration specialists + antagonist)
 - `android-writer` - generate or update Kotlin/Jetpack Compose Android shells
 - `android-reviewer` - review Android shells via agent team (structural/quality/integration specialists + antagonist)
-- `design-system-writer` - generate VectisDesign from tokens (iOS Swift package + Android Compose library)
+- `image-layout-inferer` - reconstruct `layout.yaml` from screenshot images via vision-assisted pipeline
+- `template-updater` - fix Vectis CLI templates and version pins when upstream bumps break a fresh scaffold
 
 ### Contract Plugin (`plugins/contract/`)
 

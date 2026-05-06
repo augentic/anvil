@@ -248,7 +248,7 @@ When adding a fixture, follow the existing convention:
 ## See also
 
 - [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md) — the producer-side contract every layout inferer follows (arguments, output rules, idempotence rules, component-directive emission policy, verification, terminal summary).
-- [RFC-11: UI Specification Workflow](../../../../rfcs/rfc-11-ui-spec.md) — normative source for §A (shared contract), §C (image inferer specifics), §G (component primitives), §J (skill naming + plugin layout).
+- [RFC-11: UI Specification Workflow](../../../../rfcs/archive/rfc-11-ui-spec.md) — normative source for §A (shared contract), §C (image inferer specifics), §G (component primitives), §J (skill naming + plugin layout).
 - [`schemas/vectis/composition.schema.json`](../../../../schemas/vectis/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against.
 - [`schemas/vectis/tokens.schema.json`](../../../../schemas/vectis/tokens.schema.json) and [`schemas/vectis/assets.schema.json`](../../../../schemas/vectis/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume when their files exist.
 - [`schemas/vectis/schema.yaml`](../../../../schemas/vectis/schema.yaml) — the `artifacts:` block the CLI consults for default-path resolution.

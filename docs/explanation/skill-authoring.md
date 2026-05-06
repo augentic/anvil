@@ -24,7 +24,7 @@ The `name` field is not scoped per plugin — it is global across every SKILL.md
 The fix is mechanical: every skill name carries its plugin domain as a prefix, separated by `-`. Examples:
 
 - `omnia-crate-writer`, `omnia-test-writer`, `omnia-code-reviewer`
-- `vectis-core-writer`, `vectis-ios-reviewer`, `vectis-design-system-writer`
+- `vectis-core-writer`, `vectis-ios-reviewer`, `vectis-android-writer`
 - `contract-openapi`, `contract-asyncapi`, `contract-json-schema`
 - `client-sow-writer`
 - `rt-wiretapper`, `rt-replay-writer`

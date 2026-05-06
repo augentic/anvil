@@ -326,8 +326,8 @@ delta:
 
 - A document has either `screens` (baseline) or `delta` (per-change), never both.
 - Screen slugs are kebab-case (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`).
-- Every field in a per-page view struct should appear as a `bind` value (wired mode).
-- Every shell-facing Event should have an `event` wiring (wired mode).
+- Every field in a per-page view struct should appear as a `bind` value (composition.yaml only).
+- Every shell-facing Event should have an `event` wiring (composition.yaml only).
 - `event` values follow PascalCase: `EventName` or `EventName(arg1, arg2)`.
 
 For the full schema definition and item vocabulary, see [RFC-7](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md).
@@ -426,9 +426,9 @@ Contract deletion is rare and handled as a manual baseline edit. The change-leve
 
 - `composition.yaml` conforms to the JSON Schema at `schemas/vectis/composition.schema.json`
 - Screen slugs are kebab-case
-- Every per-page view struct field has a `bind` on some item (wired mode)
-- Every shell-facing Event has an `event` wiring (wired mode)
-- `maps_to` values reference declared ViewModel variants from the design (wired mode)
+- Every per-page view struct field has a `bind` on some item (composition.yaml only)
+- Every shell-facing Event has an `event` wiring (composition.yaml only)
+- `maps_to` values reference declared ViewModel variants from the design (composition.yaml only)
 - Overlay `trigger` values match an `event` name in the same screen
 - `Navigate(X)` targets have corresponding screen slugs and Route variants
 

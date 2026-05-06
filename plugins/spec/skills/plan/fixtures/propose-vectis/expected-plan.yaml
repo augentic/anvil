@@ -26,7 +26,7 @@ changes:
   - theme-core
   sources:
   - legacy-tokens
-  description: Colour, typography, and spacing tokens generated into the iOS Swift Package and the Android vectis-design Compose library.
+  description: Colour, typography, and spacing tokens migrated from the legacy iOS / Android codebases into a single tokens.yaml catalogue; each shell reads it directly and emits shell-local theme code.
   status-reason: null
 - name: counter-ios-view
   status: pending
@@ -35,7 +35,7 @@ changes:
   - design-tokens
   sources:
   - legacy-ios
-  description: SwiftUI view that binds to the counter App trait and renders with the iOS design-tokens Swift Package.
+  description: SwiftUI view that binds to the counter App trait and renders with shell-local theme code generated from tokens.yaml.
   status-reason: null
 - name: counter-android-view
   status: pending
@@ -44,5 +44,5 @@ changes:
   - design-tokens
   sources:
   - legacy-android
-  description: Jetpack Compose Material 3 screen that binds to the counter App trait and renders with the Android vectis-design library.
+  description: Jetpack Compose Material 3 screen that binds to the counter App trait and renders with shell-local theme code generated from tokens.yaml.
   status-reason: null
