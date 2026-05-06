@@ -103,6 +103,8 @@ Cloning a remote source tree is no longer a dedicated skill — both callers (`/
 - `ios-reviewer` - review iOS shells via agent team (structural/quality/integration specialists + antagonist)
 - `android-writer` - generate or update Kotlin/Jetpack Compose Android shells
 - `android-reviewer` - review Android shells via agent team (structural/quality/integration specialists + antagonist)
+- `image-layout-inferer` - reconstruct `layout.yaml` from screenshot images via vision-assisted pipeline
+- `template-updater` - fix Vectis CLI templates and version pins when upstream bumps break a fresh scaffold
 
 ### Contract Plugin (`plugins/contract/`)
 

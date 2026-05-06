@@ -27,6 +27,7 @@ This plugin generates cross-platform applications using the Crux framework (Rust
     ├── ios-reviewer/         # AI-powered code review for iOS shell
     ├── android-writer/       # Crux core → Kotlin/Jetpack Compose Android shell
     ├── android-reviewer/     # AI-powered code review for Android shell
+    ├── image-layout-inferer/ # Reconstruct layout.yaml from screenshot images
     └── template-updater/     # Fix CLI templates + pins when upstream bumps break a fresh scaffold
 ```
 

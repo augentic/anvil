@@ -38,7 +38,7 @@ Per-artifact migration map:
 
 ## Vectis schema v3 — design-system-writer removed (RFC-11)
 
-[RFC-11](https://github.com/augentic/specify/blob/main/rfcs/rfc-11-ui-spec.md) dissolves the standalone `vectis:design-system-writer` skill and the `design-system` platform enum value. Each shell writer (`ios-writer`, `android-writer`) now reads `tokens.yaml` and `assets.yaml` directly and emits shell-local theme + asset code under its own tree (`iOS/<App>/Theme/` for iOS, `Android/.../ui/theme/` for Android). The `schemas/vectis/schema.yaml` version bumps from `2` to `3` and the `plugins/vectis/skills/design-system-writer/` directory is deleted. Projects that reference `design-system` in their Platforms list or import `VectisDesign` / `:vectis-design` should migrate to the shell-local theming model.
+[RFC-11](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-11-ui-spec.md) dissolves the standalone `vectis:design-system-writer` skill and the `design-system` platform enum value. Each shell writer (`ios-writer`, `android-writer`) now reads `tokens.yaml` and `assets.yaml` directly and emits shell-local theme + asset code under its own tree (`iOS/<App>/Theme/` for iOS, `Android/.../ui/theme/` for Android). The `schemas/vectis/schema.yaml` version bumps from `2` to `3` and the `plugins/vectis/skills/design-system-writer/` directory is deleted. Projects that reference `design-system` in their Platforms list or import `VectisDesign` / `:vectis-design` should migrate to the shell-local theming model.
 
 ## RFC-10 plugin namespace renormalisation (v0.25.0)
 
