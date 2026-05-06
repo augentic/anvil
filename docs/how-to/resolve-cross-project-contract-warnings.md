@@ -111,5 +111,5 @@ Path D is verified by re-running `/spec:execute --loop` against the redone produ
 
 - [Cross-Repo Contracts](cross-repo-contracts.md) -- the broader contracts how-to, including the full Section 3B description.
 - [Cross-project contract warnings on the merge transcript](../appendices/troubleshooting.md#cross-project-contract-warnings-on-the-merge-transcript) -- troubleshooting entry.
-- [`/spec:execute` Cross-project contract check](../../plugins/spec/skills/execute/SKILL.md) -- skill documentation for the executor's post-merge step.
+- [`/spec:execute` Cross-project contract check](../../plugins/change/skills/execute/SKILL.md) -- skill documentation for the executor's post-merge step.
 - [Contract plugin](../reference/plugins/contract.md) -- the format-first skills (`/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema`) whose verifier intent the executor invokes in `--mode cross-project`.

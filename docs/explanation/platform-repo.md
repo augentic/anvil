@@ -1,6 +1,6 @@
 # Platform Repo Topologies
 
-A **platform repo** is the repository an operator opens when they sit down to drive a Specify initiative. It owns `registry.yaml` (the catalogue of every project in scope), `initiative.md` (the operator-authored brief), `plan.yaml` (the dependency-aware change list), and `.specify/workspace/` (the durable clones [`/spec:execute`](../../plugins/spec/skills/execute/SKILL.md) writes into). Platform-level state lives here; per-project code lives in registered project repos.
+A **platform repo** is the repository an operator opens when they sit down to drive a Specify initiative. It owns `registry.yaml` (the catalogue of every project in scope), `initiative.md` (the operator-authored brief), `plan.yaml` (the dependency-aware change list), and `.specify/workspace/` (the durable clones [`/spec:execute`](../../plugins/change/skills/execute/SKILL.md) writes into). Platform-level state lives here; per-project code lives in registered project repos.
 
 There are two valid shapes for a platform repo. Specify supports both, but the **registry-only hub** is canonical -- it is what `specify init --hub` scaffolds, what tutorials use as their reference shape, and what the platform-first vision composes against. The other shape -- **platform-as-project** -- remains valid for single-repo and small-team cases. This page explains the difference, the on-disk shape of each, and the validation invariant that keeps the two from being silently mixed.
 

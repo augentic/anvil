@@ -948,6 +948,7 @@ async function checkRetiredCliVerbs(): Promise<void> {
 
   const SCAN_ROOTS = [
     join(REPO_ROOT, "plugins", "spec", "skills"),
+    join(REPO_ROOT, "plugins", "change", "skills"),
     join(REPO_ROOT, "docs"),
   ];
 
@@ -1024,7 +1025,14 @@ async function checkRetiredAffectsField(): Promise<void> {
   const FIXTURE_NAME_RE = /\.ya?ml(\.[a-z-]+)?$/;
   const AFFECTS_RE = /^\s*affects:/;
 
+  // RFC-13 §3.9 moved the plan/execute fixtures from `plugins/spec/skills/`
+  // to `plugins/change/skills/`. Both locations are scanned here so the
+  // retired-affects check tolerates partial-rollback states (e.g. a
+  // checkout pre-3.9 still has the spec-plugin paths) without losing
+  // coverage on the post-3.9 layout.
   const FIXTURE_ROOTS = [
+    join(REPO_ROOT, "plugins", "change", "skills", "execute", "fixtures"),
+    join(REPO_ROOT, "plugins", "change", "skills", "plan", "fixtures"),
     join(REPO_ROOT, "plugins", "spec", "skills", "execute", "fixtures"),
     join(REPO_ROOT, "plugins", "spec", "skills", "plan", "fixtures"),
   ];

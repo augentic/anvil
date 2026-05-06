@@ -1,16 +1,16 @@
 # Sync peers (step 3b, multi-repo only)
 
-When **`registry.yaml`** exists and declares **more than one** project (`projects.length > 1` in the JSON from `specify registry show --format json`), `/spec:plan` enters the **sync-peers** phase between discovery and propose. Single-repo initiatives (absent registry or `projects.length ≤ 1`) skip this step entirely.
+When **`registry.yaml`** exists and declares **more than one** project (`projects.length > 1` in the JSON from `specify registry show --format json`), `/change:plan` enters the **sync-peers** phase between discovery and propose. Single-repo changes (absent registry or `projects.length ≤ 1`) skip this step entirely.
 
 ## Normative sequence
 
-1. Shell out to **`specify workspace sync`** from the project root. This materialises `.specify/workspace/<project-name>/` (symlink for local / relative `url:` values; shallow `git clone` / `git fetch` for remotes — see the CLI). Treat a non-zero exit as a hard failure for `/spec:plan`.
-2. Walk each materialised peer root read-only and author **`.specify/plans/<initiative-name>/workspace.md`** — the peer inventory the propose brief consumes alongside `discovery.md`.
+1. Shell out to **`specify workspace sync`** from the project root. This materialises `.specify/workspace/<project-name>/` (symlink for local / relative `url:` values; shallow `git clone` / `git fetch` for remotes — see the CLI). Treat a non-zero exit as a hard failure for `/change:plan`.
+2. Walk each materialised peer root read-only and author **`.specify/plans/<change-name>/workspace.md`** — the peer inventory the propose brief consumes alongside `discovery.md`.
 
 ## `workspace.md` shape (pin for idempotency)
 
 ```markdown
-# Workspace — <initiative-name>
+# Workspace — <change-name>
 
 ## <registry-project-name>
 
@@ -32,7 +32,7 @@ Re-running on an unchanged registry + workspace cache MUST yield byte-identical 
 
 ## Mode interactions
 
-**`--dry-run`.** Do **not** shell `specify workspace sync`; do **not** write `workspace.md`. You MAY print a short preview of what `workspace.md` *would* contain after a real sync, but only to stdout — no writes under `.specify/workspace/` or `.specify/plans/`.
+**`--dry-run`.** Do **not** shell `specify workspace sync`; do **not** write `workspace.md`. You MAY print a short preview of what `workspace.md` *would* contain after a real sync, but only to stdout — no writes under `.specify/workspace/` or `.specify/plans/<change-name>/`.
 
 **`--extend`.** Do **not** shell `specify workspace sync` during the sync-peers step — operators refresh clones explicitly between runs. If `.specify/workspace/` already exists, still **rewrite** `workspace.md` from the current on-disk cache (read-only walk) so propose sees an up-to-date peer inventory without an implicit `git fetch`.
 

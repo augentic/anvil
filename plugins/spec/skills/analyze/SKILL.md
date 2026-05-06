@@ -48,7 +48,7 @@ Pass the resulting `$DEST` as `$INPUT_PATH` on the next `/spec:analyze` invocati
 | `legacy-code`   | Cluster code into capability summaries (schema-owned algorithm).      |
 | `documentation` | Extract capability summaries from prose / PDFs / runbooks / API docs. |
 
-Any other value is a hard error; the skill exits non-zero before writing anything to `$DISCOVERY`. See [`../plan/SKILL.md` §*Input kinds*](../plan/SKILL.md) for the normative enum definition — `/spec:analyze` is the enforcement site for unknown-kind errors, but the vocabulary itself is pinned by the plan skill. Do not extend it.
+Any other value is a hard error; the skill exits non-zero before writing anything to `$DISCOVERY`. See [`../../../change/skills/plan/SKILL.md` §*Input kinds*](../../../change/skills/plan/SKILL.md) for the normative enum definition — `/spec:analyze` is the enforcement site for unknown-kind errors, but the vocabulary itself is pinned by the plan skill. Do not extend it.
 
 ## Output contract
 
@@ -157,7 +157,7 @@ The detailed clustering / extraction prompt for each `--kind` value lives under 
 
 ## Error handling
 
-- **Unknown `--kind`** — hard exit. The diagnostic names the closed enum and points at [`../plan/SKILL.md` §*Input kinds*](../plan/SKILL.md).
+- **Unknown `--kind`** — hard exit. The diagnostic names the closed enum and points at [`../../../change/skills/plan/SKILL.md` §*Input kinds*](../../../change/skills/plan/SKILL.md).
 - **Missing `$INPUT_PATH`** — hard exit; no placeholder entry.
 - **Malformed brief output** (missing required field, non-enum confidence, non-string summary) — halt with a diagnostic that names the offending capability and the brief path; do not write a partially-valid `$DISCOVERY`.
 - **Metadata sidecar on the documentation branch** — hard guardrail, not a runtime error: `$KIND = documentation` MUST NOT write `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json`. The documentation branch has no code structure to measure, so the slot stays absent for doc inputs.

@@ -1,6 +1,6 @@
 # Monolith fixture source tree
 
-Tiny three-capability TypeScript monolith consumed by [`../invocation.txt`](../invocation.txt). Each capability is isolated in its own `src/` subtree so the clustering heuristic in [`/spec:analyze --kind legacy-code`](../../../../../analyze/SKILL.md) can recover the three expected boundaries cleanly.
+Tiny three-capability TypeScript monolith consumed by [`../invocation.txt`](../invocation.txt). Each capability is isolated in its own `src/` subtree so the clustering heuristic in [`/spec:analyze --kind legacy-code`](../../../../../../../spec/skills/analyze/SKILL.md) can recover the three expected boundaries cleanly.
 
 ## Layout
 

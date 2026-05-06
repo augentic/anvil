@@ -1,6 +1,6 @@
 # Plugins
 
-Specify ships as a Cursor plugin marketplace containing six plugins. Each plugin provides specialist skills and reference documentation for a specific domain.
+Specify ships as a Cursor plugin marketplace containing seven plugins. Each plugin provides specialist skills and reference documentation for a specific domain.
 
 ## Plugin model
 
@@ -18,7 +18,8 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 
 | Plugin | Prefix | Purpose | Reference |
 |--------|--------|---------|-----------|
-| **Specify** | `/spec:` | Core workflow orchestration | [Change Skills](../change-skills/index.md), [Initiative Skills](../initiative-skills/index.md) |
+| **Specify** | `/spec:` | Per-slice workflow orchestration: init, define, build, merge, drop, extract, analyze. Carries deprecation shims for the historical `/spec:plan` and `/spec:execute` commands while RFC-13 §3.9 lands. | [Change Skills](../change-skills/index.md) |
+| **Change** | `/change:` | Cross-repo change orchestration: `/change:plan` (Layer 3 authoring + Layer 4 umbrella under `--orchestrate`) and `/change:execute` (Layer 2 driver). | [Initiative Skills](../initiative-skills/index.md), [Change](change.md) |
 | **Omnia** | `/omnia:` | Rust WASM crate generation and review | [Omnia](omnia.md) |
 | **Vectis** | `/vectis:` | Cross-platform Crux app generation | [Vectis](vectis.md) |
 | **Contract** | `/contract:` | API contract generation, validation, and import (OpenAPI, AsyncAPI, JSON Schema) | [Contract](contract.md) |

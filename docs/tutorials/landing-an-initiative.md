@@ -144,7 +144,7 @@ The umbrella runs all seven steps without halting:
 6. **Land.** `--auto-merge` -> `specify workspace merge` waits for CI, sees both PRs green, squash-merges them.
 7. **Finalize.** `specify initiative finalize` archives the plan and brief.
 
-Verb sequence: `specify initiative create` -> `specify registry validate` -> `/spec:plan` -> `specify plan create` -> `specify registry add` x 2 -> `specify workspace sync` -> `specify plan add` x 3 -> `specify plan amend --project` x 2 -> `specify plan validate` -> `/spec:execute --loop` -> `specify workspace push` -> `specify workspace merge` -> `specify initiative finalize`. Full transcript and on-disk shapes: [`fixtures/migrate-legacy/`](../../plugins/spec/skills/plan/fixtures/migrate-legacy/).
+Verb sequence: `specify initiative create` -> `specify registry validate` -> `/spec:plan` -> `specify plan create` -> `specify registry add` x 2 -> `specify workspace sync` -> `specify plan add` x 3 -> `specify plan amend --project` x 2 -> `specify plan validate` -> `/spec:execute --loop` -> `specify workspace push` -> `specify workspace merge` -> `specify initiative finalize`. Full transcript and on-disk shapes: [`fixtures/migrate-legacy/`](../../plugins/change/skills/plan/fixtures/migrate-legacy/).
 
 ### Variant: new-feature
 
@@ -164,7 +164,7 @@ Verb sequence (run 1, halts at step 6): `specify initiative create` -> `specify 
 
 Verb sequence (run 2, after the operator merges PRs by hand): `specify registry validate` -> `specify workspace push` (reports `up-to-date`) -> `gh pr list` -> `specify initiative finalize`.
 
-Full transcript and on-disk shapes: [`fixtures/new-feature/`](../../plugins/spec/skills/plan/fixtures/new-feature/).
+Full transcript and on-disk shapes: [`fixtures/new-feature/`](../../plugins/change/skills/plan/fixtures/new-feature/).
 
 ### Variant: update-existing
 
@@ -190,7 +190,7 @@ Pre-flight forbids `--from`, `--against`, and `--source` under this shape; suppl
 
 Verb sequence: `specify initiative create` -> `specify registry validate` -> `/spec:plan` -> `specify plan create` -> `specify workspace sync` -> `specify plan add` x 2 -> `specify plan amend --project` x 2 -> `specify plan validate` -> `/spec:execute --loop` -> `specify workspace push` -> `specify workspace merge` -> `specify initiative finalize`.
 
-Full transcript and on-disk shapes: [`fixtures/update-existing/`](../../plugins/spec/skills/plan/fixtures/update-existing/).
+Full transcript and on-disk shapes: [`fixtures/update-existing/`](../../plugins/change/skills/plan/fixtures/update-existing/).
 
 ### Manual fallback parity
 

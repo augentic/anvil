@@ -1,6 +1,6 @@
 # Mixed-input discovery fixture
 
-Pins the combined `discovery.md` shape produced by the Omnia discovery brief when a single `/spec:plan` invocation receives both a `documentation` input and a `legacy-code` input. Both kinds dispatch to [`/spec:analyze`](../../../../analyze/SKILL.md) (RFC-3a C19 + C23); the two emitted blocks share the fenced-YAML capability-summary shape and collate alphabetically under `## Capability inventory`.
+Pins the combined `discovery.md` shape produced by the Omnia discovery brief when a single `/change:plan` invocation receives both a `documentation` input and a `legacy-code` input. Both kinds dispatch to [`/spec:analyze`](../../../../../../spec/skills/analyze/SKILL.md) (RFC-3a C19 + C23); the two emitted blocks share the fenced-YAML capability-summary shape and collate alphabetically under `## Capability inventory`.
 
 | Path                                                              | Role                                                                                                  |
 | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |

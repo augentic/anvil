@@ -1,6 +1,6 @@
 # Monolith discovery fixture
 
-Pins the `.specify/plans/<name>/discovery.md` shape for a small, purpose-built three-capability TypeScript monolith passed through [`/spec:analyze --kind legacy-code`](../../../../analyze/SKILL.md) via [`capabilities/omnia/briefs/plan/discovery.md`](../../../../../../../capabilities/omnia/briefs/plan/discovery.md). Sibling of [`mixed-inputs/`](../mixed-inputs/), which pins the combined documentation + legacy-code shape.
+Pins the `.specify/plans/<name>/discovery.md` shape for a small, purpose-built three-capability TypeScript monolith passed through [`/spec:analyze --kind legacy-code`](../../../../../../spec/skills/analyze/SKILL.md) via [`capabilities/omnia/briefs/plan/discovery.md`](../../../../../../../capabilities/omnia/briefs/plan/discovery.md). Sibling of [`mixed-inputs/`](../mixed-inputs/), which pins the combined documentation + legacy-code shape.
 
 This fixture is the acceptance target for:
 
@@ -32,7 +32,7 @@ The Omnia fixture at [`capabilities/omnia/briefs/fixtures/plan/analyze/legacy-co
 
 - `# Discovery — traffic` header + `## Capability inventory` wrapper emitted by [`capabilities/omnia/briefs/plan/discovery.md`](../../../../../../../capabilities/omnia/briefs/plan/discovery.md) before dispatching to `/spec:analyze`.
 - Three `### <name>` + fenced YAML blocks, alphabetically sorted by name, all prefixed with `<!-- source-key: monolith -->` (emitted by the skill because `--source monolith=…` supplies the key).
-- Fixed YAML field order (`summary`, `sources`, `depends-on`, `hints`, `confidence`) per [`analyze/SKILL.md` §Output contract](../../../../analyze/SKILL.md).
+- Fixed YAML field order (`summary`, `sources`, `depends-on`, `hints`, `confidence`) per [`analyze/SKILL.md` §Output contract](../../../../../../spec/skills/analyze/SKILL.md).
 - Alphabetic ordering within `sources`, `depends-on`, `hints.entry_points`, `hints.external_deps`.
 - `shared-validation` omits `hints:` entirely (a legal shape).
 - **No** `## Constraints (from documentation)` or `## Open questions (from documentation)` blocks — those are documentation-branch-only and this fixture has no documentation inputs.

@@ -4,10 +4,10 @@ This file pins the rendered output for each mode. Behavioural fixtures pinning e
 
 ## `--dry-run`
 
-Emits a compact snapshot of the plan's current state and the change the driver *would* run next. The progress line has exactly six status counters in a fixed order so downstream parsers see a stable shape.
+Emits a compact snapshot of the plan's current state and the slice the driver *would* run next. The progress line has exactly six status counters in a fixed order so downstream parsers see a stable shape.
 
 ```text
-[dry-run] /spec:execute — <plan-name>
+[dry-run] /change:execute — <plan-name>
 
 Progress: done <N>, in-progress <N>, pending <N>, blocked <N>, failed <N>, skipped <N> (total <N>)
 
@@ -16,11 +16,11 @@ Next: <name> (sources: [<sources>])
 No changes written.
 ```
 
-Variants the skill picks based on `specify plan next`:
+Variants the skill picks based on `specify change plan next`:
 
 - `reason: "in-progress"` — replace the `Next:` line with: `Active: <name> (driver would resume/adopt this entry)`
-- `reason: "all-done"` — replace with: `Initiative complete — no eligible changes remain.`
-- `reason: "stuck"` — replace with: `Stuck — no eligible changes. Pending: [<names>]. Blocked: [<names>]. Failed: [<names>].`
+- `reason: "all-done"` — replace with: `Change complete — no eligible slices remain.`
+- `reason: "stuck"` — replace with: `Stuck — no eligible slices. Pending: [<names>]. Blocked: [<names>]. Failed: [<names>].`
 
 The canonical shape is pinned by `fixtures/dry-run/`.
 
@@ -30,16 +30,16 @@ Under multi-repo routing, the `--dry-run` output includes a `Routing:` diagnosti
 [dry-run] Routing: <name> → <project> (<resolved-path>)
 ```
 
-## Supervised / per-change transcript
+## Supervised / per-slice transcript
 
 Three variants (success / failure / deferred), each pinned by a behavioural fixture under `fixtures/single-change/`.
 
 ### Success
 
 ```text
-## /spec:execute — <plan-name>
+## /change:execute — <plan-name>
 
-### Initiative: <plan-name>
+### Change: <plan-name>
 Progress: done <N>, in-progress <N>, pending <N>, blocked <N>, failed <N>, skipped <N> (total <N>)
 
 ---
@@ -78,9 +78,9 @@ The `⚠ Cross-project contract warnings` block is rendered only when (a) the me
 ### Failure
 
 ```text
-## /spec:execute — <plan-name>
+## /change:execute — <plan-name>
 
-### Initiative: <plan-name>
+### Change: <plan-name>
 Progress: done <N>, in-progress <N>, pending <N>, blocked <N>, failed <N>, skipped <N> (total <N>)
 
 ---
@@ -91,12 +91,12 @@ Step 1/3: define
   Artifacts: proposal.md, specs, design.md, tasks.md ✓
 
 Step 2/3: build
-  ✗ Build failed — change dropped, plan entry transitioned to failed
+  ✗ Build failed — slice dropped, plan entry transitioned to failed
 
   Summary: <outcome.summary verbatim>
   Journal: .specify/changes/<name>/journal.yaml
   Action needed: Fix the underlying error, then retry via
-    specify plan transition <name> pending
+    specify change plan transition <name> pending
   Status: failed
 ```
 
@@ -105,9 +105,9 @@ The phase that fails is whichever returned `outcome: failure`; the step header n
 ### Deferred
 
 ```text
-## /spec:execute — <plan-name>
+## /change:execute — <plan-name>
 
-### Initiative: <plan-name>
+### Change: <plan-name>
 Progress: done <N>, in-progress <N>, pending <N>, blocked <N>, failed <N>, skipped <N> (total <N>)
 
 ---
@@ -115,25 +115,25 @@ Progress: done <N>, in-progress <N>, pending <N>, blocked <N>, failed <N>, skipp
 ### Processing: <name> (greenfield)
 
 Step 1/3: define
-  ⚠ Question recorded — change deferred to blocked
+  ⚠ Question recorded — slice deferred to blocked
 
   Question: <outcome.summary verbatim>
   Journal: .specify/changes/<name>/journal.yaml
-  Action needed: Enrich the plan description (specify plan amend …) with the missing
+  Action needed: Enrich the plan description (specify change plan amend …) with the missing
     detail, then unflag (blocked → pending) to retry.
   Status: blocked
 ```
 
-The `⚠ Question recorded — change deferred to blocked` line is the canonical deferred banner; do not reword. `Question:` carries the phase's `outcome.summary` verbatim.
+The `⚠ Question recorded — slice deferred to blocked` line is the canonical deferred banner; do not reword. `Question:` carries the phase's `outcome.summary` verbatim.
 
 When the deferral classification was `registry-amendment-required` (RFC-9 §2B), an additional `Proposed registry amendment` block is appended immediately after the `Status: blocked` line. The block layout, field names, and "Action needed" line are pinned by [per-change-algorithm.md](per-change-algorithm.md) → §"Surface the proposal in the per-change transcript". The block is omitted entirely on plain `deferred` outcomes.
 
 ## Terminal summary (`--loop` exit)
 
-At the end of every `--loop` run — success, interruption, or halt — `/spec:execute` emits a single terminal summary block. Fixtures under `fixtures/loop/` pin one example per `Completion:` value.
+At the end of every `--loop` run — success, interruption, or halt — `/change:execute` emits a single terminal summary block. Fixtures under `fixtures/loop/` pin one example per `Completion:` value.
 
 ```text
-## /spec:execute — <plan-name> — terminated
+## /change:execute — <plan-name> — terminated
 
 ### Final state
 Progress: done <N>, in-progress <N>, pending <N>, blocked <N>, failed <N>, skipped <N> (total <N>)
@@ -167,10 +167,10 @@ Section rules:
 
 | Classification | Condition | Next action template |
 |---|---|---|
-| `all-done` | Every entry's status is in `{done, skipped}`. | `Initiative complete. Land remote PRs (specify workspace merge or merge them by hand on the forge), then close out via specify plan finalize — see [specify plan](../../../../docs/reference/cli/plan.md#specify-plan-finalize) for the closure verb.` |
-| `stuck` | Some entries remain in `{pending, blocked, failed}` but none are eligible (pending entries have unmet deps; no eligible sibling exists). | `Resolve blocked/failed entries (specify plan amend + specify plan transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify plan archive --force.` |
-| `halted` | Self-heal detected an ambiguous on-disk state on startup and refused to speculate. Individual mid-loop failures or deferrals do NOT reach `halted`. | `Manually triage the halted change: inspect .specify/changes/<name>/.metadata.yaml against plan.yaml, repair the contradiction, then re-run /spec:execute --loop.` |
-| `driver-interrupted` | SIGINT or SIGTERM arrived mid-run. The current phase finished (or no phase was in flight), subsequent phases were skipped, the active plan entry is still `in-progress`, the lock was released. | `Re-run /spec:execute --loop — self-heal will reclaim the interrupted change on the next startup.` |
+| `all-done` | Every entry's status is in `{done, skipped}`. | `Change complete. Land remote PRs (specify workspace merge or merge them by hand on the forge), then close out via specify change finalize — see [specify change](../../../../docs/reference/cli/change.md#specify-change-finalize) for the closure verb.` |
+| `stuck` | Some entries remain in `{pending, blocked, failed}` but none are eligible (pending entries have unmet deps; no eligible sibling exists). | `Resolve blocked/failed entries (specify change plan amend + specify change plan transition <name> blocked → pending / failed → pending) or accept the partial change and run specify change plan archive --force.` |
+| `halted` | Self-heal detected an ambiguous on-disk state on startup and refused to speculate. Individual mid-loop failures or deferrals do NOT reach `halted`. | `Manually triage the halted slice: inspect .specify/changes/<name>/.metadata.yaml against plan.yaml, repair the contradiction, then re-run /change:execute --loop.` |
+| `driver-interrupted` | SIGINT or SIGTERM arrived mid-run. The current phase finished (or no phase was in flight), subsequent phases were skipped, the active plan entry is still `in-progress`, the lock was released. | `Re-run /change:execute --loop — self-heal will reclaim the interrupted slice on the next startup.` |
 
 The distinction between `stuck` and `halted` matters for operator routing: `stuck` means the plan is well-formed but needs human-level priority decisions; `halted` means the on-disk state itself is inconsistent and needs forensic triage before the loop can run safely again.
 

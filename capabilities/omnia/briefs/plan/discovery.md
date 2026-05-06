@@ -18,7 +18,7 @@ At least one of `--from`, `--against`, or `--source` must be supplied.
 
 ## Input dispatch (per-kind)
 
-Every input reaching this brief is pre-classified by kind (see [`../../../../plugins/spec/skills/plan/SKILL.md` §*Kind defaults for CLI flags*](../../../../plugins/spec/skills/plan/SKILL.md)). Dispatch per kind — one [`/spec:analyze`](../../../../plugins/spec/skills/analyze/SKILL.md) invocation per input, processed in CLI declaration order (`--from` entries before `--source` entries before `--against`; within each flag, left-to-right), and `initiative.md:inputs[]` entries interleaved in file order after the CLI inputs of matching kind.
+Every input reaching this brief is pre-classified by kind (see [`../../../../plugins/change/skills/plan/SKILL.md` §*Kind defaults for CLI flags*](../../../../plugins/change/skills/plan/SKILL.md)). Dispatch per kind — one [`/spec:analyze`](../../../../plugins/spec/skills/analyze/SKILL.md) invocation per input, processed in CLI declaration order (`--from` entries before `--source` entries before `--against`; within each flag, left-to-right), and `initiative.md:inputs[]` entries interleaved in file order after the CLI inputs of matching kind.
 
 ### `kind: documentation`
 
@@ -119,4 +119,4 @@ See [`analyze/SKILL.md` §Idempotency](../../../../plugins/spec/skills/analyze/S
 
 ## Example fragment
 
-See [`../../../../plugins/spec/skills/plan/fixtures/discovery/monolith/expected/discovery.md`](../../../../plugins/spec/skills/plan/fixtures/discovery/monolith/expected/discovery.md) for a single-`--source` legacy-code invocation that produces three capability summaries (no documentation appendix), and [`../../../../plugins/spec/skills/plan/fixtures/discovery/mixed-inputs/expected/discovery.md`](../../../../plugins/spec/skills/plan/fixtures/discovery/mixed-inputs/expected/discovery.md) for a mixed documentation + legacy-code invocation that produces four capability summaries plus the documentation appendix blocks.
+See [`../../../../plugins/change/skills/plan/fixtures/discovery/monolith/expected/discovery.md`](../../../../plugins/change/skills/plan/fixtures/discovery/monolith/expected/discovery.md) for a single-`--source` legacy-code invocation that produces three capability summaries (no documentation appendix), and [`../../../../plugins/change/skills/plan/fixtures/discovery/mixed-inputs/expected/discovery.md`](../../../../plugins/change/skills/plan/fixtures/discovery/mixed-inputs/expected/discovery.md) for a mixed documentation + legacy-code invocation that produces four capability summaries plus the documentation appendix blocks.

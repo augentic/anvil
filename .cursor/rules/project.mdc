@@ -19,17 +19,17 @@ The intended workflow is human-driven Specify. Single-change loop:
 /spec:drop
 ```
 
-Multi-change initiative (Layer 3):
+Multi-slice change (Layer 3):
 
 ```bash
-/spec:plan <name> --source legacy=./path
-/spec:execute --loop
+/change:plan <name> --source legacy=./path
+/change:execute --loop
 ```
 
-Cross-repo initiative end-to-end (Layer 4 umbrella, RFC-9 §2C):
+Cross-repo change end-to-end (Layer 4 umbrella, RFC-9 §2C):
 
 ```bash
-/spec:plan --orchestrate <name> [--shape migrate-legacy|new-feature|update-existing] [--auto-merge]
+/change:plan --orchestrate <name> [--shape migrate-legacy|new-feature|update-existing] [--auto-merge]
 ```
 
 Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
@@ -68,14 +68,19 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 ### Specify Plugin (`plugins/spec/`)
 
 - `init` - initialize Specify in a project from a positional `<capability>` (one-time setup; mutually exclusive with `--hub`, which scaffolds a registry-only platform hub per RFC-9 §1D and writes only `hub: true` to `project.yaml`)
-- `define` - create a change and generate all artifacts in one step
-- `build` - validate artifacts and implement tasks from a Specify change
-- `merge` - finalize and merge a completed change
-- `drop` - discard a change without merging specs into baseline
+- `define` - create a slice and generate all artifacts in one step
+- `build` - validate artifacts and implement tasks from a Specify slice
+- `merge` - finalize and merge a completed slice
+- `drop` - discard a slice without merging specs into baseline
 - `extract` - extract Specify artifacts from existing source code
 - `analyze` - plan-time capability inference; emits capability summaries
-- `plan` - author `plan.yaml` via the plan pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C
-- `execute` - drive an initiative's plan through define, build, merge
+- `plan` - **deprecated alias** that delegates to `/change:plan` (RFC-13 §3.9). Removed before the post-RFC release.
+- `execute` - **deprecated alias** that delegates to `/change:execute` (RFC-13 §3.9). Removed before the post-RFC release.
+
+### Change Plugin (`plugins/change/`)
+
+- `plan` - author `plan.yaml` via the planning brief pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C. Was `/spec:plan` until RFC-13 §3.9.
+- `execute` - drive a change's plan through define, build, merge. Was `/spec:execute` until RFC-13 §3.9.
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -234,7 +239,7 @@ Forbidden (validated by `make checks` via `.cursor/schemas/skill.schema.json`):
 - Single short hint that names the **primary positional** argument as Cursor placeholder text (the grey hint shown after `/plugin:skill `).
 - Required positional → angle brackets: `<change-dir>`. Optional positional → square brackets: `[crate-name]`.
 - No flag names (`--dry-run`, `--source`), no `?` optional-suffix marker, no `|` alternative-value pipes. Flags and secondary positionals are documented in the body's "Invocation" section.
-- Skills that only take flags omit the field entirely (e.g. `/spec:execute`).
+- Skills that only take flags omit the field entirely (e.g. `/change:execute`).
 
 ### Critical Path (Quick Reference)
 

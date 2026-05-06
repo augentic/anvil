@@ -1,12 +1,12 @@
 # Multi-repo routing and cross-project contract check
 
-For multi-repo initiatives the driver `chdir`s into a registered project clone under `.specify/workspace/<project>/` before invoking the phase skills, then restores CWD before the terminal plan transition. After a successful merge in a multi-repo change, the driver runs a non-fatal contract compatibility check against every consumer workspace.
+For multi-repo changes the driver `chdir`s into a registered project clone under `.specify/workspace/<project>/` before invoking the phase skills, then restores CWD before the terminal plan transition. After a successful merge in a multi-repo slice, the driver runs a non-fatal contract compatibility check against every consumer workspace.
 
-These clones are the read-write **tier-2** workspace; they outlive the initiative and are pushed to remotes by `specify workspace push`. The read-only **tier-1** legacy-source clones used by `/spec:analyze` at plan time are a separate concern entirely. See [Workspace Tiers](../../../../docs/explanation/workspace-tiers.md) for the full contrast.
+These clones are the read-write **tier-2** workspace; they outlive the change and are pushed to remotes by `specify workspace push`. The read-only **tier-1** legacy-source clones used by `/spec:analyze` at plan time are a separate concern entirely. See [Workspace Tiers](../../../../docs/explanation/workspace-tiers.md) for the full contrast.
 
-## CWD routing (per-change algorithm step 5a)
+## CWD routing (per-slice algorithm step 5a)
 
-Read `project` from the `specify plan next` response (step 4 of the per-change algorithm). If `project` is non-null:
+Read `project` from the `specify change plan next` response (step 4 of the per-slice algorithm). If `project` is non-null:
 
 - Resolve the target directory from `registry.yaml`: relative-path `url` → resolved filesystem path; remote `url` → `.specify/workspace/<name>/`.
 - Check workspace freshness via `specify workspace status` for that slot. If `missing`, halt with a diagnostic pointing the operator at `specify workspace sync`. Release the lock and exit non-zero.
@@ -17,15 +17,15 @@ Read `project` from the `specify plan next` response (step 4 of the per-change a
 
 If `project` is null, skip this step entirely (single-repo path).
 
-## CWD restore (per-change algorithm step 9a)
+## CWD restore (per-slice algorithm step 9a)
 
-If the CWD routing step (5a) changed the working directory, restore CWD to the saved initiating repo root. This ensures `specify plan transition` (which reads `plan.yaml` in the initiating repo) runs from the correct directory. In `--loop` mode, the CWD routing and CWD restore steps bracket every iteration so that `specify plan next` always runs from the initiating repo root.
+If the CWD routing step (5a) changed the working directory, restore CWD to the saved initiating repo root. This ensures `specify change plan transition` (which reads `plan.yaml` in the initiating repo) runs from the correct directory. In `--loop` mode, the CWD routing and CWD restore steps bracket every iteration so that `specify change plan next` always runs from the initiating repo root.
 
 ## Cross-project contract check (RFC-9 §3B)
 
-When step 10 transitions a change to `done`, the driver runs a non-fatal contract compatibility check **only when** the merged change satisfies all three conditions:
+When step 10 transitions a slice to `done`, the driver runs a non-fatal contract compatibility check **only when** the merged slice satisfies all three conditions:
 
-1. The merged change has a non-null `project` field on its plan entry (multi-repo only — single-repo initiatives have no peer consumers to warn).
+1. The merged slice has a non-null `project` field on its plan entry (multi-repo only — single-repo changes have no peer consumers to warn).
 2. `registry.yaml` exists and the producer's project entry declares a non-empty `contracts.produces` list.
 3. At least one merged file path under the producer's `contracts/` directory matches an entry in the producer's `produces` list (i.e. the merge actually touched a produced contract — most merges that just touch specs do nothing here).
 
@@ -47,7 +47,7 @@ The verifier emits a YAML report (see [shared report shape](../../../contract/re
 
 ### Recording the findings
 
-For every finding, append one journal entry to **the merged change** (not the consumer's change) via:
+For every finding, append one journal entry to **the merged slice** (not the consumer's slice) via:
 
 ```bash
 specify change journal append <merged-change-name> merge failure \
@@ -102,11 +102,11 @@ The block is omitted entirely when `summary.total-findings == 0`. Multiple consu
 
 ### Non-fatal semantics
 
-- **The execute loop never halts on cross-project warnings.** The merged change has already transitioned to `done`. Findings are advisory output for the operator; the driver continues to the next iteration in `--loop` mode or exits normally in supervised mode.
-- **The merged change is not re-touched** beyond the journal append. No plan transition, no metadata edit, no follow-up phase invocation.
-- **Verifier errors do not halt the driver.** If the format verifier (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema` running its verifier intent in `--mode cross-project`) exits non-zero (read failure on a consumer workspace, malformed contract), record the failure as a single `failure`-kind journal entry on the merged change with `--summary "cross-project-warning: validator-error in <consumer>"` and continue. The driver does not retry the verifier.
+- **The execute loop never halts on cross-project warnings.** The merged slice has already transitioned to `done`. Findings are advisory output for the operator; the driver continues to the next iteration in `--loop` mode or exits normally in supervised mode.
+- **The merged slice is not re-touched** beyond the journal append. No plan transition, no metadata edit, no follow-up phase invocation.
+- **Verifier errors do not halt the driver.** If the format verifier (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema` running its verifier intent in `--mode cross-project`) exits non-zero (read failure on a consumer workspace, malformed contract), record the failure as a single `failure`-kind journal entry on the merged slice with `--summary "cross-project-warning: validator-error in <consumer>"` and continue. The driver does not retry the verifier.
 - **The check is skipped under `--dry-run`** end-to-end — dry-run never invokes phase skills (per the §Guardrails MUST-NOTs in the main SKILL.md) and the post-merge step inherits that prohibition.
 
 ### Self-heal interaction
 
-Self-heal does **not** run the cross-project check on a reclaimed `success`-on-merge entry. The check is a one-shot side-effect of the live merge transition; on the next normal `/spec:execute` startup, the merged change has already been transitioned to `done` and no producer-side work remains. If a prior crash interrupted the cross-project check itself, the operator can re-trigger it manually by re-running the format-appropriate `/contract:*` skill (verifier intent, `--mode cross-project`) against the same `(producer-contract, consumer-workspace)` pair — the verifier is idempotent and writes nothing to disk.
+Self-heal does **not** run the cross-project check on a reclaimed `success`-on-merge entry. The check is a one-shot side-effect of the live merge transition; on the next normal `/change:execute` startup, the merged slice has already been transitioned to `done` and no producer-side work remains. If a prior crash interrupted the cross-project check itself, the operator can re-trigger it manually by re-running the format-appropriate `/contract:*` skill (verifier intent, `--mode cross-project`) against the same `(producer-contract, consumer-workspace)` pair — the verifier is idempotent and writes nothing to disk.

@@ -16,7 +16,7 @@ specify workspace merge                    # Step 6 — land (or merge by hand o
 specify initiative finalize                # Step 7 — finalize
 ```
 
-The umbrella is **idempotent on re-entry** — re-running `/spec:plan --orchestrate <name>` after dropping down picks up from the first step that still has work to do. See [`/spec:plan --orchestrate` — Re-entry / idempotency](../../plugins/spec/skills/plan/re-entry.md).
+The umbrella is **idempotent on re-entry** — re-running `/spec:plan --orchestrate <name>` after dropping down picks up from the first step that still has work to do. See [`/spec:plan --orchestrate` — Re-entry / idempotency](../../plugins/change/skills/plan/re-entry.md).
 
 ## From Layer 3 to Layer 2: manual change execution
 
@@ -106,6 +106,6 @@ Every skill is built on CLI commands. If a skill does something you don't unders
 ## See also
 
 - [The Layered Stack](../explanation/three-layer-stack.md) -- architectural explanation
-- [/spec:plan --orchestrate](../../plugins/spec/skills/plan/orchestration.md) -- the Layer 4 umbrella mode (formerly the `/spec:initiative` skill)
+- [/spec:plan --orchestrate](../../plugins/change/skills/plan/orchestration.md) -- the Layer 4 umbrella mode (formerly the `/spec:initiative` skill)
 - [CLI Reference](../reference/cli/index.md) -- all CLI commands
 - [Recover from a Failed Change](recover-failed-change.md) -- focused recovery guide

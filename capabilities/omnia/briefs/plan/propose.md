@@ -127,7 +127,7 @@ After the last accepted slice, run `specify plan validate`. If it reports errors
 
 ## Example — monolith fixture
 
-Given [`plugins/spec/skills/plan/fixtures/discovery/monolith/expected/discovery.md`](../../../../plugins/spec/skills/plan/fixtures/discovery/monolith/expected/discovery.md):
+Given [`plugins/spec/skills/plan/fixtures/discovery/monolith/expected/discovery.md`](../../../../plugins/change/skills/plan/fixtures/discovery/monolith/expected/discovery.md):
 
 - `email-verification` (sources: `src/auth/verify.ts`; depends-on: —)
 - `shared-validation` (sources: `src/common/validation.ts`; depends-on: —)

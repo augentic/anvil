@@ -2,7 +2,7 @@
 
 ## What this fixture pins
 
-The invocation in [`invocation.txt`](invocation.txt) supplies one `documentation` input (`ops-runbook.md`, defaulting to `kind: documentation` via `--from`) and one `legacy-code` input (`--source legacy=./inputs/legacy-service`, defaulting to `kind: legacy-code`). Both kinds dispatch to [`/spec:analyze`](../../../../analyze/SKILL.md) per the [discovery brief](../../../../../../../capabilities/omnia/briefs/plan/discovery.md), one invocation per input:
+The invocation in [`invocation.txt`](invocation.txt) supplies one `documentation` input (`ops-runbook.md`, defaulting to `kind: documentation` via `--from`) and one `legacy-code` input (`--source legacy=./inputs/legacy-service`, defaulting to `kind: legacy-code`). Both kinds dispatch to [`/spec:analyze`](../../../../../../spec/skills/analyze/SKILL.md) per the [discovery brief](../../../../../../../capabilities/omnia/briefs/plan/discovery.md), one invocation per input:
 
 | Kind            | Skill invocation                                               | Output shape                                                      |
 | --------------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |

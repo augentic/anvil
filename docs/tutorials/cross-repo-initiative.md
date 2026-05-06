@@ -295,7 +295,7 @@ The driver:
 4. Runs `/spec:define` → `/spec:build` → `/spec:merge` for the change.
 5. Reads the phase outcome (`success`/`failure`/`deferred`) and transitions the plan entry to `done`/`failed`/`blocked`.
 6. Restores CWD to the hub root.
-7. After a successful merge, runs the [cross-project contract check](../../plugins/spec/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b) (RFC-9 §3B): walks the producer's `contracts.produces` list, finds consumer projects via `contracts.consumes`, and runs the format-appropriate `/contract:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone — `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas. Findings are recorded as `cross-project-warning:` entries on the merged change's `journal.yaml` and rendered in the merge transcript. **Warnings never halt the loop.**
+7. After a successful merge, runs the [cross-project contract check](../../plugins/change/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b) (RFC-9 §3B): walks the producer's `contracts.produces` list, finds consumer projects via `contracts.consumes`, and runs the format-appropriate `/contract:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone — `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas. Findings are recorded as `cross-project-warning:` entries on the merged change's `journal.yaml` and rendered in the merge transcript. **Warnings never halt the loop.**
 8. Repeats from step 2 until `specify plan next` reports `all-done` or `stuck`.
 
 <details>
@@ -377,7 +377,7 @@ Next action: Initiative complete — no further action needed.
 
 Each implementation change auto-commits inside its workspace clone (`git add .specify/specs/ … && git commit -m "specify: merge <name>"`). This is what `specify workspace push` ships in Step 7.
 
-> **Failure handling.** If a change fails mid-loop, `/spec:execute` invokes `/spec:drop`, transitions the entry to `failed` (verbatim `outcome.summary` as `--reason`), and continues. Subsequent changes that depend on the failed one stay `pending` until you `specify plan transition <pred> pending` to retry, or `specify plan transition <entry> skipped --reason …` to drop the dependency leaf. See `/spec:execute`'s [§Output format → Failure transcript](../../plugins/spec/skills/execute/SKILL.md) for the recovery prompt.
+> **Failure handling.** If a change fails mid-loop, `/spec:execute` invokes `/spec:drop`, transitions the entry to `failed` (verbatim `outcome.summary` as `--reason`), and continues. Subsequent changes that depend on the failed one stay `pending` until you `specify plan transition <pred> pending` to retry, or `specify plan transition <entry> skipped --reason …` to drop the dependency leaf. See `/spec:execute`'s [§Output format → Failure transcript](../../plugins/change/skills/execute/SKILL.md) for the recovery prompt.
 
 ## 7. Push branches and PRs
 
@@ -455,7 +455,7 @@ Other common issues:
 
 - **`Error::DriverBusy { pid }`** — another `/spec:execute` is holding `.specify/plan.lock`. If it is dead, `specify plan lock release --pid <pid>` reclaims the stamp; otherwise wait for the live driver.
 - **`hub-cannot-be-project`** — a registry entry has `url: .` on a hub. Either remove the entry (`specify registry remove <name>`) or convert the hub to a platform-as-project shape by removing `.specify/` and re-running `specify init <capability>` without `--hub`.
-- **Cross-project contract warnings in the merge transcript** — see [`/spec:execute` §Cross-project contract check](../../plugins/spec/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b). The merged change is still `done`; the warnings are advisory and recorded on the merged change's journal.
+- **Cross-project contract warnings in the merge transcript** — see [`/spec:execute` §Cross-project contract check](../../plugins/change/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b). The merged change is still `done`; the warnings are advisory and recorded on the merged change's journal.
 
 ## Verification
 

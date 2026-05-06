@@ -44,7 +44,7 @@ The specs brief infers which existing baselines this change modifies by reading 
 
 The brief logs the inferred delta targets in the journal. If the description does not reference any existing baselines, all extracted specs remain in fresh new-crate form.
 
-The authoritative contract for how `/spec:execute` builds these flag values lives in [`../execute/SKILL.md` → §Argument resolution (`sources`)](../execute/SKILL.md). The downstream contract for how extract's native filter flags work lives in [`../extract/SKILL.md`](../extract/SKILL.md) (§Scope filters, §Sentinels always read, §Manifest shape).
+The authoritative contract for how `/spec:execute` builds these flag values lives in [`../../../change/skills/execute/SKILL.md` → §Argument resolution (`sources`)](../../../change/skills/execute/SKILL.md). The downstream contract for how extract's native filter flags work lives in [`../extract/SKILL.md`](../extract/SKILL.md) (§Scope filters, §Sentinels always read, §Manifest shape).
 
 ---
 

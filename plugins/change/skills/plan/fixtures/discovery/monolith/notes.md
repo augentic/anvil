@@ -2,7 +2,7 @@
 
 ## What this fixture pins
 
-The invocation in [`invocation.txt`](invocation.txt) — `/spec:plan traffic --source monolith=./inputs` — passes a single legacy-code input through the discovery brief, which dispatches it to [`/spec:analyze --kind legacy-code`](../../../../analyze/SKILL.md) per [`capabilities/omnia/briefs/plan/discovery.md`](../../../../../../../capabilities/omnia/briefs/plan/discovery.md). The fixture pins the byte-stable output of that round-trip: [`expected/discovery.md`](expected/discovery.md) (three capability summaries) and [`expected/plans/traffic/analyze/monolith/metadata.json`](expected/plans/traffic/analyze/monolith/metadata.json) (structural-metadata sidecar).
+The invocation in [`invocation.txt`](invocation.txt) — `/change:plan traffic --source monolith=./inputs` — passes a single legacy-code input through the discovery brief, which dispatches it to [`/spec:analyze --kind legacy-code`](../../../../../../spec/skills/analyze/SKILL.md) per [`capabilities/omnia/briefs/plan/discovery.md`](../../../../../../../capabilities/omnia/briefs/plan/discovery.md). The fixture pins the byte-stable output of that round-trip: [`expected/discovery.md`](expected/discovery.md) (three capability summaries) and [`expected/plans/traffic/analyze/monolith/metadata.json`](expected/plans/traffic/analyze/monolith/metadata.json) (structural-metadata sidecar).
 
 ## Fixture-build choice: (c) purpose-built three-capability tree
 
@@ -40,7 +40,7 @@ The three capabilities were chosen to exercise the specific clustering heuristic
 - **`hints.entry_points` order.** Alphabetical — `[GET /auth/verify, POST /auth/verify-email]` for `email-verification`.
 - **`hints.external_deps` order.** Alphabetical kebab-case — `[postgres, sendgrid]`.
 - **`<!-- source-key: monolith -->` marker.** Emitted by the `/spec:analyze` skill (not this brief) immediately before every `### <name>` heading on this invocation.
-- **`metadata.json` field order.** `version`, `source_key`, `language`, `loc`, `module_count`, `top_level_modules` — per [`analyze/SKILL.md` §Structural metadata](../../../../analyze/SKILL.md).
+- **`metadata.json` field order.** `version`, `source_key`, `language`, `loc`, `module_count`, `top_level_modules` — per [`analyze/SKILL.md` §Structural metadata](../../../../../../spec/skills/analyze/SKILL.md).
 - **`top_level_modules` order.** Alphabetical relative paths.
 - **No host state.** No timestamps, environment variables, absolute paths, or run IDs in either artifact.
 
