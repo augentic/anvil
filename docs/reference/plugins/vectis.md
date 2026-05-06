@@ -85,7 +85,7 @@ Review Crux core code using an agent team (structural, logic, quality specialist
 
 Generate or update the SwiftUI iOS shell.
 
-**Inputs:** `app.rs`, `spec.md`, `design.md`, `tokens.yaml`, and `composition.yaml` (when present). When `composition.yaml` is present, the region structure and group container tree provide deterministic layout instructions -- groups map to `HStack`/`VStack`/`ZStack` with their layout properties, sizing maps to `.frame()` modifiers, and surface decoration maps to styled container views. When absent, the writer falls back to convention-based inference. Platform-specific overrides from `composition.yaml` `platforms.ios` take precedence over shared regions.
+**Inputs:** `app.rs`, `spec.md`, `design.md`, `tokens.yaml`, `assets.yaml`, and `composition.yaml` (when present). When `composition.yaml` is present, the region structure and group container tree provide deterministic layout instructions -- groups map to `HStack`/`VStack`/`ZStack` with their layout properties, sizing maps to `.frame()` modifiers, and surface decoration maps to styled container views. When absent, the writer falls back to convention-based inference. Platform-specific overrides from `composition.yaml` `platforms.ios` take precedence over shared regions.
 
 **Outputs:** `project.yml`, `Makefile`, `Core.swift` (bridge), `ContentView.swift`, per-screen views under `Views/`, app entry point, shell-local theme code under `Theme/`.
 
@@ -99,7 +99,7 @@ Review iOS shell code using an agent team (structural, quality, integration spec
 
 Generate or update the Kotlin/Jetpack Compose Android shell.
 
-**Inputs:** `app.rs`, `spec.md`, `design.md`, `tokens.yaml`, and `composition.yaml` (when present). When `composition.yaml` is present, groups map to `Row`/`Column`/`Box` with `Arrangement`/`Alignment`, sizing maps to `Modifier.fillMaxWidth()` etc., and surface decoration maps to `Card`/`Surface`. When absent, the writer falls back to inference. Platform-specific overrides from `composition.yaml` `platforms.android` take precedence over shared regions.
+**Inputs:** `app.rs`, `spec.md`, `design.md`, `tokens.yaml`, `assets.yaml`, and `composition.yaml` (when present). When `composition.yaml` is present, groups map to `Row`/`Column`/`Box` with `Arrangement`/`Alignment`, sizing maps to `Modifier.fillMaxWidth()` etc., and surface decoration maps to `Card`/`Surface`. When absent, the writer falls back to inference. Platform-specific overrides from `composition.yaml` `platforms.android` take precedence over shared regions.
 
 **Outputs:** Gradle build files, `Core.kt` (bridge), `MainActivity.kt`, per-screen composables under `ui/screens/`, Material 3 theme. All composables use Material 3 tokens.
 
@@ -108,6 +108,18 @@ Generate or update the Kotlin/Jetpack Compose Android shell.
 ### /vectis:android-reviewer
 
 Review Android shell code using an agent team (structural, quality, integration specialists + antagonist).
+
+### /vectis:image-layout-inferer
+
+Reconstruct `layout.yaml` from one or more screenshot images using a staged vision-assisted pipeline.
+
+**Inputs:** PNG or JPEG images of application screens. Optional `--platform ios|android|web` hint for chrome cropping. Optional `--baseline` to refine an existing `layout.yaml` rather than starting fresh.
+
+**Outputs:** `layout.yaml` -- a schema-valid, unwired layout document that `/spec:define` can later wire into `composition.yaml`. Validates output via `specify vectis validate layout` before writing.
+
+**Pipeline:** triage images into screens/states, crop platform chrome, infer regions (header/body/footer/fab/overlays), infer containers (rows, columns, cards, lists), infer leaves (text, controls, images, icons), detect candidate components across screens, emit gap comments for ambiguities.
+
+**When to use:** an operator supplies PNG or JPEG screenshots and wants a layout document without hand-authoring YAML; or when refining an existing `layout.yaml` from new screenshot evidence. Follows the shared layout-inferer contract at `plugins/vectis/references/layout-inferer-contract.md`.
 
 ### /vectis:template-updater
 
@@ -146,11 +158,14 @@ Each shell writer reads `tokens.yaml` and `assets.yaml` directly and emits shell
 
 | Path | Purpose |
 |------|---------|
+| `design-system/layout.yaml` | Unwired layout intent (screen regions, groups, items) -- input to `/spec:define` |
 | `design-system/spec.md` | Semantic color roles, typography, spacing rules |
 | `design-system/tokens.yaml` | Concrete token values (source of truth) |
 | `design-system/assets.yaml` | Asset manifest (images, icons, vectors) |
 
-Update flow: edit `tokens.yaml` or `assets.yaml`, then re-run the relevant shell writer.
+`layout.yaml` is the pre-define UI input produced by layout inferers or hand-authored by the operator. `/spec:define` consumes it alongside requirements and emits the wired `composition.yaml`. Shell writers consume the wired composition, not `layout.yaml` directly.
+
+Update flow: edit `tokens.yaml` or `assets.yaml`, then re-run the relevant shell writer. For layout changes, edit `layout.yaml` and re-run `/spec:define`.
 
 ## Working with Xcode
 
