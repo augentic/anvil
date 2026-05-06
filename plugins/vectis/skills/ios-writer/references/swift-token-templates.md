@@ -56,7 +56,7 @@ top of the worked Theme.swift example below).
 
 Token enums use the **default internal** access level. They are part of the
 shell target, not a library, so there is no `public` API surface to expose.
-The previous design-system-writer emitted `public enum Vectis…` because it
+The previous standalone token approach emitted `public enum Vectis…` because it
 generated a separate Swift Package; the shell-local equivalent drops the
 modifier entirely. Existing screen-view code that referenced `VectisColors.primary`
 keeps working unchanged because `internal` is the default Swift visibility for

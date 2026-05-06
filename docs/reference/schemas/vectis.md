@@ -2,7 +2,7 @@
 
 - **URL:** `https://github.com/augentic/specify/schemas/vectis`
 - **Purpose:** Cross-platform Crux application development
-- **Target:** Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell), VectisDesign (design system)
+- **Target:** Rust (Crux shared crate), Swift (iOS shell), Kotlin (Android shell)
 
 ## Brief pipeline
 
@@ -24,9 +24,9 @@ The `composition` brief produces a YAML artifact (not markdown) that describes t
 
 | Brief | Skills invoked |
 |-------|---------------|
-| `build.md` | `/vectis:design-system-writer`, `/vectis:core-writer`, `/vectis:test-writer`, `/vectis:core-reviewer`, `/vectis:ios-writer`, `/vectis:ios-reviewer`, `/vectis:android-writer`, `/vectis:android-reviewer` |
+| `build.md` | `/vectis:core-writer`, `/vectis:test-writer`, `/vectis:core-reviewer`, `/vectis:ios-writer`, `/vectis:ios-reviewer`, `/vectis:android-writer`, `/vectis:android-reviewer` |
 
-Build order: design-system first, core second, shells last. Each skill reads the single feature spec and extracts the sections relevant to it. When `composition.yaml` is present, the build phase runs composition validation checks (field coverage, event coverage, ViewModel mapping) before invoking shell writers. Shell writers use `composition.yaml` as the primary layout guide when present, falling back to inference when absent.
+Build order: core first, shells second. Each skill reads the single feature spec and extracts the sections relevant to it. When `composition.yaml` is present, the build phase runs composition validation checks (field coverage, event coverage, ViewModel mapping) before invoking shell writers. Shell writers use `composition.yaml` as the primary layout guide when present, falling back to inference when absent.
 
 ### Merge phase
 
@@ -45,7 +45,6 @@ Build order: design-system first, core second, shells last. Each skill reads the
 | `/vectis:ios-reviewer` | Agent team review of iOS shell |
 | `/vectis:android-writer` | Generate or update Kotlin/Compose Android shell |
 | `/vectis:android-reviewer` | Agent team review of Android shell |
-| `/vectis:design-system-writer` | Generate VectisDesign from tokens.yaml |
 | `/vectis:template-updater` | Fix CLI templates when upstream versions change |
 
 See [Vectis Plugin](../plugins/vectis.md) for full skill documentation.
@@ -70,7 +69,6 @@ The proposal declares which platforms a change targets:
 | `ios` | `vectis:ios-writer` | SwiftUI iOS shell |
 | `android` | `vectis:android-writer` | Kotlin/Jetpack Compose Android shell |
 | `web` | -- | Web shell (future) |
-| `design-system` | `vectis:design-system-writer` | VectisDesign from tokens.yaml |
 
 ## Domain context
 
@@ -80,7 +78,7 @@ The Vectis schema injects domain context about:
 - Crux capabilities (Render, HTTP, Key-Value, Time, Platform).
 - UniFFI FFI scaffolding for cross-platform bridging.
 - SwiftUI and Jetpack Compose patterns for shell implementation.
-- VectisDesign token system for design consistency.
+- Shell-local theme code emitted from `tokens.yaml` by each shell writer.
 
 ## Project configuration
 

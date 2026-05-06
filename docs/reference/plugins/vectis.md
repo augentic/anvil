@@ -1,6 +1,6 @@
 # Vectis Plugin
 
-Generate cross-platform [Crux](https://github.com/redbadger/crux) applications: Rust shared core, SwiftUI iOS shell, Kotlin/Jetpack Compose Android shell, and VectisDesign token system.
+Generate cross-platform [Crux](https://github.com/redbadger/crux) applications: Rust shared core, SwiftUI iOS shell, and Kotlin/Jetpack Compose Android shell.
 
 ## Why Crux
 
@@ -87,7 +87,7 @@ Generate or update the SwiftUI iOS shell.
 
 **Inputs:** `app.rs`, `spec.md`, `design.md`, `tokens.yaml`, and `composition.yaml` (when present). When `composition.yaml` is present, the region structure and group container tree provide deterministic layout instructions -- groups map to `HStack`/`VStack`/`ZStack` with their layout properties, sizing maps to `.frame()` modifiers, and surface decoration maps to styled container views. When absent, the writer falls back to convention-based inference. Platform-specific overrides from `composition.yaml` `platforms.ios` take precedence over shared regions.
 
-**Outputs:** `project.yml`, `Makefile`, `Core.swift` (bridge), `ContentView.swift`, per-screen views under `Views/`, app entry point. All views use the VectisDesign package.
+**Outputs:** `project.yml`, `Makefile`, `Core.swift` (bridge), `ContentView.swift`, per-screen views under `Views/`, app entry point, shell-local theme code under `Theme/`.
 
 **Modes:** Create (scaffold + generate) and Update (targeted edits).
 
@@ -109,18 +109,6 @@ Generate or update the Kotlin/Jetpack Compose Android shell.
 
 Review Android shell code using an agent team (structural, quality, integration specialists + antagonist).
 
-### /vectis:design-system-writer
-
-Generate VectisDesign from `tokens.yaml`.
-
-**Inputs:** `design-system/tokens.yaml` (single source of truth).
-
-**Outputs:**
-- iOS: Swift Package under `design-system/ios/` (`VectisDesign`).
-- Android: Gradle module under `design-system/android/` (`vectis-design`).
-
-Token value shapes: color (`light`/`dark`), font (`size`/`weight`), scalar (plain number).
-
 ### /vectis:template-updater
 
 Fix Vectis CLI templates and version pins when upstream crate or tooling bumps break freshly scaffolded projects.
@@ -136,9 +124,8 @@ Platforms are declared in the proposal and determine which skills the build phas
 | `core` | `vectis:core-writer` | Rust Crux shared crate (always required) |
 | `ios` | `vectis:ios-writer` | SwiftUI iOS shell |
 | `android` | `vectis:android-writer` | Kotlin/Jetpack Compose Android shell |
-| `design-system` | `vectis:design-system-writer` | VectisDesign from tokens.yaml |
 
-Build order: design-system first, core second, shells last.
+Build order: core first, shells second.
 
 ## Capabilities
 
@@ -155,16 +142,15 @@ The core-writer detects which Crux capabilities your app needs from the design d
 
 ## Design system
 
-The design system provides platform-agnostic tokens with platform-specific implementations:
+Each shell writer reads `tokens.yaml` and `assets.yaml` directly and emits shell-local theme + asset code under its own tree (`iOS/<App>/Theme/` for iOS, `Android/.../ui/theme/` for Android). There is no shared design-system library.
 
 | Path | Purpose |
 |------|---------|
 | `design-system/spec.md` | Semantic color roles, typography, spacing rules |
 | `design-system/tokens.yaml` | Concrete token values (source of truth) |
-| `design-system/ios/` | VectisDesign Swift Package |
-| `design-system/android/` | vectis-design Gradle module (Compose M3) |
+| `design-system/assets.yaml` | Asset manifest (images, icons, vectors) |
 
-Update flow: edit `tokens.yaml` then regenerate with the design-system-writer skill.
+Update flow: edit `tokens.yaml` or `assets.yaml`, then re-run the relevant shell writer.
 
 ## Working with Xcode
 

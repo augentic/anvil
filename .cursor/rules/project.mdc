@@ -100,7 +100,6 @@ Cloning a remote source tree is no longer a dedicated skill — both callers (`/
 - `ios-reviewer` - review iOS shells via agent team (structural/quality/integration specialists + antagonist)
 - `android-writer` - generate or update Kotlin/Jetpack Compose Android shells
 - `android-reviewer` - review Android shells via agent team (structural/quality/integration specialists + antagonist)
-- `design-system-writer` - generate VectisDesign from tokens (iOS Swift package + Android Compose library)
 
 ### Contract Plugin (`plugins/contract/`)
 

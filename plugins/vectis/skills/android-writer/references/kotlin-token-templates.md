@@ -18,7 +18,7 @@ BOM versions aligned with the app module the CLI scaffolded (see
 [`crux-android-shell-pattern.md`](crux-android-shell-pattern.md)).
 
 **Package**: `com.vectis.<appname>.ui.theme` (matching the rest of the app
-module's package convention). The previous `design-system-writer` emitted
+module's package convention). The previous standalone token approach emitted
 `package com.vectis.design` because it produced a separate Gradle module;
 the shell-local equivalent uses the app's own package tree so no external
 Gradle dependency is needed. However, because `ui.theme` is a sibling
@@ -65,7 +65,7 @@ worked Theme.kt example below).
 Generated declarations use the **default `internal` / public-by-omission**
 visibility. They are part of the app module, not a library, so there is no
 `public` API surface to expose to other Gradle modules. The previous
-`design-system-writer` emitted top-level declarations with implicit `public`
+standalone token approach emitted top-level declarations with implicit `public`
 visibility because it generated a separate library module; the shell-local
 equivalent leaves the modifier off entirely. Existing screen composable code
 that referenced `VectisColors` / `VectisSpacing` / `VectisCornerRadius` /
@@ -478,7 +478,7 @@ The standard Android shell build (`make build` → `./gradlew :shared:cargoBuild
 [`SKILL.md`](../SKILL.md#u8-build-and-verify)) compiles every generated
 file as part of the app module. There is no separate
 `./gradlew :vectis-design:compileDebugKotlin` step — the previous
-design-system-writer emitted a `vectis-design` Gradle library that needed
+standalone token approach emitted a `vectis-design` Gradle library that needed
 its own compile pass before the app module could pick it up; the
 shell-local equivalent compiles in lockstep with the app sources.
 
