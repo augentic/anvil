@@ -13,26 +13,26 @@ The brief infers `--include src/common/validation/**` from the path hint and log
 ## Per-source loop (one iteration)
 
 ```text
-/spec:extract ./legacy/monolith <change-dir>/.extract/monolith/ \
+/spec:extract ./legacy/monolith <slice-dir>/.extract/monolith/ \
     --include 'src/common/validation/**'
 ```
 
 ## After `/spec:extract` returns
 
 ```text
-<change-dir>/.extract/monolith/specs/shared-validation/spec.md
-<change-dir>/.extract/monolith/specs/user-registration/spec.md
-<change-dir>/.extract/monolith/specs/email-verification/spec.md
-<change-dir>/.extract/monolith/design.md
+<slice-dir>/.extract/monolith/specs/shared-validation/spec.md
+<slice-dir>/.extract/monolith/specs/user-registration/spec.md
+<slice-dir>/.extract/monolith/specs/email-verification/spec.md
+<slice-dir>/.extract/monolith/design.md
 ```
 
 ## After the merge step (single source, no `## Source:` wrapper)
 
 ```text
-<change-dir>/specs/shared-validation/spec.md      ← from .extract/monolith/specs/
-<change-dir>/specs/user-registration/spec.md      ← from .extract/monolith/specs/
-<change-dir>/specs/email-verification/spec.md     ← from .extract/monolith/specs/
-<change-dir>/design.md                            ← from .extract/monolith/design.md
+<slice-dir>/specs/shared-validation/spec.md      ← from .extract/monolith/specs/
+<slice-dir>/specs/user-registration/spec.md      ← from .extract/monolith/specs/
+<slice-dir>/specs/email-verification/spec.md     ← from .extract/monolith/specs/
+<slice-dir>/design.md                            ← from .extract/monolith/design.md
 ```
 
 ## After delta composition
@@ -40,15 +40,15 @@ The brief infers `--include src/common/validation/**` from the path hint and log
 The description references "user-registration" and "email-verification" as delta targets. The brief checks `.specify/specs/` for baselines and finds both. Each match is rewritten in delta form; unmatched extracted capabilities stay as fresh new-crate specs.
 
 ```text
-<change-dir>/specs/user-registration/spec.md
+<slice-dir>/specs/user-registration/spec.md
   └─ DELTA against .specify/specs/user-registration/spec.md
      (shared validation rules moved out to shared-validation)
 
-<change-dir>/specs/email-verification/spec.md
+<slice-dir>/specs/email-verification/spec.md
   └─ DELTA against .specify/specs/email-verification/spec.md
      (shared validation rules moved out to shared-validation)
 
-<change-dir>/specs/shared-validation/spec.md
+<slice-dir>/specs/shared-validation/spec.md
   └─ NEW-CRATE spec for the extracted validation capability
      (no baseline; no inferred delta match)
 ```
@@ -62,7 +62,7 @@ Both inferred delta targets (`user-registration`, `email-verification`) matched 
 Retained by default for human review. Operator cleans up manually:
 
 ```text
-rm -rf <change-dir>/.extract/
+rm -rf <slice-dir>/.extract/
 ```
 
 once the change is merged. Never committed.

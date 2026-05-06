@@ -9,7 +9,7 @@ Generate a `composition.yaml` file describing the spatial composition of every s
 
 ## Input Resolution
 
-Before generating, check whether a `composition.yaml` already exists — first in the active change directory (`.specify/changes/<name>/`), then in the baseline (`.specify/specs/`).
+Before generating, check whether a `composition.yaml` already exists — first in the active slice directory (`.specify/slices/<name>/`), then in the baseline (`.specify/specs/`).
 
 1. **Existing `composition.yaml` found** (skeleton or baseline from a prior change) — use it as the starting point. Preserve the region structure and all `group` layout properties (`direction`, `gap`, `padding`, `align`, `justify`, `size`, `background`, `corner_radius`, `elevation`). Add `maps_to`, `bind`, `event`, and `*-when` keys to leaf items based on the specs. Do not rearrange groups or modify layout properties.
 2. **No existing `composition.yaml`** — infer layout from the specs and proposal. Use `group` containers to express how items should be arranged (rows vs columns), their spacing and alignment, and their sizing behavior. Use the item vocabulary for leaf content.

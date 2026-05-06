@@ -7,7 +7,7 @@ generates: proposal.md
 Sections:
 
 - **Why**: 1-2 sentences on the problem or opportunity. What problem does this solve? Why now?
-- **Source**: One line describing where the change's material comes from — a code path, repository URL, documentation artefact (e.g. an epic key), or **Manual** for greenfield / handwritten changes. The line is descriptive; the pipeline is driven by the plan entry's `sources:` list, which `/spec:execute` forwards to `/spec:define` as `--source <key>=<path-or-url>` flags. **Manual** means no `--source` flag is supplied and the specs brief's manual branch runs — see `capabilities/omnia/briefs/specs.md`.
+- **Source**: One line describing where the change's material comes from — a code path, repository URL, documentation artefact (e.g. an epic key), or **Manual** for greenfield / handwritten changes. The line is descriptive; the pipeline is driven by the plan entry's `sources:` list, which `/change:execute` forwards to `/spec:define` as `--source <key>=<path-or-url>` flags. **Manual** means no `--source` flag is supplied and the specs brief's manual branch runs — see `capabilities/omnia/briefs/specs.md`.
 - **What Changes**: Bullet list of changes. Be specific about new capabilities, modifications, or removals. Mark breaking changes with **BREAKING**.
 - **Crates**: Identify which specs will be created or modified:
   - **New Crates**: List crates being introduced. Each becomes a new `specs/<name>/spec.md`. Use kebab-case names (e.g., `user-auth`, `data-export`).

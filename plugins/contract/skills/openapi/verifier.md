@@ -1,6 +1,6 @@
 # OpenAPI — Verifier
 
-> **When to read this.** Read this when verifying an OpenAPI artefact — invoked by the contracts capability build brief in `single` mode after the author or importer sibling produces output, by `/spec:execute` in `cross-project` mode after a producer's contract change merges (RFC-9 §3B), or directly by an operator running validation against an existing artefact. Skip this file when authoring (use [`author.md`](./author.md)) or normalising an external document (use [`importer.md`](./importer.md)).
+> **When to read this.** Read this when verifying an OpenAPI artefact — invoked by the contracts capability build brief in `single` mode after the author or importer sibling produces output, by `/change:execute` in `cross-project` mode after a producer's contract change merges (RFC-9 §3B), or directly by an operator running validation against an existing artefact. Skip this file when authoring (use [`author.md`](./author.md)) or normalising an external document (use [`importer.md`](./importer.md)).
 
 The verifier is **read-only**. It MUST NOT generate, modify, or delete any files. Its sole output is a list of issues rendered as a validation report.
 
@@ -11,7 +11,7 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 | Mode | Caller | Trigger | Scope | Output |
 |---|---|---|---|---|
 | `single` (default) | contracts capability build brief in `/spec:build` | Post-author or post-import | One change's `contracts/http/` inside one project | Markdown report for the verify-repair loop |
-| `cross-project` | `/spec:execute` post-merge step | Producer-side merge of an OpenAPI contract change | Compare merged OpenAPI against each consumer's tier-2 workspace clone | Structured YAML report consumed by the execute driver |
+| `cross-project` | `/change:execute` post-merge step | Producer-side merge of an OpenAPI contract change | Compare merged OpenAPI against each consumer's tier-2 workspace clone | Structured YAML report consumed by the execute driver |
 
 `single` mode feeds the brief's verify-repair loop. `cross-project` mode emits warnings that the execute driver records in the merging change's `journal.yaml` — never halts the loop. Both modes share the read-only contract.
 
@@ -21,10 +21,10 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 
 ### `single` mode
 
-Inferred from the active change context — no positional arguments required:
+Inferred from the active slice context — no positional arguments required:
 
 ```text
-$SLICE_DIR          = .specify/changes/<change-name>
+$SLICE_DIR          = .specify/slices/<slice-name>
 $CHANGE_CONTRACTS    = $SLICE_DIR/contracts/
 $BASELINE_CONTRACTS  = contracts/
 $CHANGE_SPECS        = $SLICE_DIR/specs/
@@ -62,7 +62,7 @@ Three independent checks run against `$CHANGE_CONTRACTS/http/` and the schemas i
 
 ### Check 1 — `$ref` resolution
 
-All `$ref` pointers in OpenAPI files must resolve to existing schema files. Resolution scope spans both the change directory and the baseline:
+All `$ref` pointers in OpenAPI files must resolve to existing schema files. Resolution scope spans both the slice directory and the baseline:
 
 - `$CHANGE_CONTRACTS/schemas/`
 - `$BASELINE_CONTRACTS/schemas/`
@@ -106,7 +106,7 @@ Every schema that appears as a top-level request body, response body, or paramet
 
 Resolution scope for the binding:
 
-- `$CHANGE_CONTRACTS/http/` — operations added by this change.
+- `$CHANGE_CONTRACTS/http/` — operations added by this slice.
 - `$BASELINE_CONTRACTS/http/` — operations already in the platform baseline.
 
 #### Determining spec-referenced schemas
@@ -137,7 +137,7 @@ WARN: contracts/schemas/oauth-token.yaml — appears in spec but has no protocol
 
 Use `FAIL` when the schema is unambiguously a top-level payload in a spec scenario. Use `WARN` when classification is ambiguous — the verify-repair loop surfaces the warning for human review.
 
-When the change has **no specs**, skip Check 3 — there are no scenarios to cross-reference. Record this in the report so the brief knows the check was deliberately bypassed.
+When the slice has **no specs**, skip Check 3 — there are no scenarios to cross-reference. Record this in the report so the brief knows the check was deliberately bypassed.
 
 ### Check 4 — Identity & version (RFC-12)
 
@@ -145,16 +145,16 @@ For every top-level OpenAPI document under `$CHANGE_CONTRACTS/http/` (root key `
 
 1. **`info.version` MUST parse as SemVer.** Per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Missing, non-string, or non-SemVer values are `FAIL`.
 2. **`info.x-specify-id` (when present) MUST match `^[a-z][a-z0-9-]*$` and be ≤ 64 characters.** Format violations are `FAIL`.
-3. **Within the change directory, `info.x-specify-id` values MUST be unique.** When two top-level OpenAPI documents in `$CHANGE_CONTRACTS/http/` declare the same id, both are `FAIL`.
+3. **Within the slice directory, `info.x-specify-id` values MUST be unique.** When two top-level OpenAPI documents in `$CHANGE_CONTRACTS/http/` declare the same id, both are `FAIL`.
 
-The cross-repo uniqueness check (the same id declared by a top-level contract somewhere else under root `contracts/`) is **not** part of single mode — it is the CLI's job (`specify contract validate`), which runs after merge with the full baseline in scope. The skill only flags duplicates inside the change to keep the verifier deterministic and self-contained.
+The cross-repo uniqueness check (the same id declared by a top-level contract somewhere else under root `contracts/`) is **not** part of single mode — it is the CLI's job (`specify contract validate`), which runs after merge with the full baseline in scope. The skill only flags duplicates inside the slice to keep the verifier deterministic and self-contained.
 
 Report format (one entry per failure):
 
 ```
 FAIL: contracts/http/user-api.yaml — info.version `2024-01-15` is not valid SemVer
 FAIL: contracts/http/billing-api.yaml — info.x-specify-id `Billing-API` must match `^[a-z][a-z0-9-]*$` and be ≤ 64 characters
-FAIL: contracts/http/admin-api.yaml — info.x-specify-id `shared` is also declared by contracts/http/legacy-api.yaml in this change
+FAIL: contracts/http/admin-api.yaml — info.x-specify-id `shared` is also declared by contracts/http/legacy-api.yaml in this slice
 ```
 
 ## Single-mode algorithm
@@ -205,9 +205,9 @@ All checks passed (12 $ref pointers, 6 schemas, 4 operations verified).
 
 ## Cross-project mode
 
-`cross-project` mode runs **after** a producer's contract change merges. The execute driver (`/spec:execute`) calls the verifier once per `(producer-contract, consumer-workspace)` pair to detect breaking changes that would propagate downstream.
+`cross-project` mode runs **after** a producer's contract change merges. The execute driver (`/change:execute`) calls the verifier once per `(producer-contract, consumer-workspace)` pair to detect breaking changes that would propagate downstream.
 
-The mode is **non-fatal**: cross-project warnings never stop the execute loop. The driver records each warning to the merged change's `journal.yaml` (via `specify change journal append`) and renders a warning block in the merge transcript so the operator can triage.
+The mode is **non-fatal**: cross-project warnings never stop the execute loop. The driver records each warning to the merged slice's `journal.yaml` (via `specify slice journal append`) and renders a warning block in the merge transcript so the operator can triage.
 
 ### Compatibility checks
 
@@ -322,7 +322,7 @@ Path segments containing dots (e.g. `application/json`) are kept verbatim — lo
 | `$ref` target exists in baseline but not in change | Pass — baseline is a valid resolution target. |
 | `$ref` target exists in change but not in baseline | Pass — change-level schemas are valid resolution targets. |
 | Mixed resolution: some targets in baseline, some in change | Pass — both directories are valid resolution scope. |
-| No spec files in the change | Skip Check 3; record the skip in the report. |
+| No spec files in the slice | Skip Check 3; record the skip in the report. |
 | Schema referenced only via `$ref` from other schemas | Exempt from Check 3 (shared vocabulary). |
 | Operation uses `components/schemas` (legacy) | `$ref` resolution still verified inside the document; emit `WARN` recommending importer normalisation. |
 
@@ -376,7 +376,7 @@ Before completing the run:
 
 - [`../../references/openapi-conventions.md`](../../references/openapi-conventions.md) — OpenAPI 3.1 structure rules.
 - [`../../references/json-schema-conventions.md`](../../references/json-schema-conventions.md) — schema metadata rules.
-- [`../../references/artifact-structure.md`](../../references/artifact-structure.md) — directory layout for the change-local delta and the baseline.
+- [`../../references/artifact-structure.md`](../../references/artifact-structure.md) — directory layout for the slice-local delta and the baseline.
 - [`../../references/report-shape.md`](../../references/report-shape.md) — single-mode markdown report and cross-project YAML report formats this verifier emits, including severity levels and locator format.
 - [`../../references/cross-project-compatibility.md`](../../references/cross-project-compatibility.md) — `change-kind` enumeration, consumer-view resolution, breaking-change classification policy.
 - [`author.md`](./author.md) — sibling for spec-driven authoring.

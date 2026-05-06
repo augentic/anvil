@@ -1,6 +1,6 @@
-# Your First Change
+# Your First Slice
 
-This tutorial walks you through the complete Specify workflow: initialise a project, define a change, build the implementation, and merge the result into the baseline. By the end you will understand the core define-build-merge loop that underpins everything else in Specify.
+This tutorial walks you through the complete Specify workflow: initialise a project, define a slice, build the implementation, and merge the result into the baseline. By the end you will understand the core define-build-merge loop that underpins everything else in Specify.
 
 **Prerequisites:** [Cursor IDE, Augentic plugins, and the `specify` CLI installed](../orientation/prerequisites.md).
 
@@ -31,15 +31,15 @@ Specify creates the `.specify/` directory:
 ```
 .specify/
 ├── project.yaml           # project configuration
-├── .cache/omnia/           # cached schema and briefs
-├── changes/               # will hold active changes
+├── .cache/omnia/           # cached capability and briefs
+├── slices/                # will hold active slices
 ├── specs/                 # will hold merged baseline specs
-└── archive/               # will hold finalized changes
+└── archive/               # will hold finalized slices
 ```
 
 Open `.specify/project.yaml` and review it. This is where you describe your project's domain, tech stack, and any constraints the agent should know about. Customise it to match your project.
 
-## 2. Define a change
+## 2. Define a slice
 
 Now describe what you want to build:
 
@@ -51,7 +51,7 @@ Now describe what you want to build:
 <summary>Expected output</summary>
 
 ```text
-Change created: add-greeting-endpoint
+Slice created: add-greeting-endpoint
 
 Generating artifacts...
   ✓ proposal.md
@@ -59,7 +59,7 @@ Generating artifacts...
   ✓ design.md
   ✓ tasks.md
 
-Change defined (4 tasks).
+Slice defined (4 tasks).
 ```
 
 </details>
@@ -88,17 +88,17 @@ specify status
 <summary>Expected output</summary>
 
 ```text
-Active changes:
+Active slices:
   add-greeting-endpoint  defined  (4 tasks, 0 complete)
 ```
 
 </details>
 
-You will see the change listed with status `defined`, all artifacts marked complete, and the task count.
+You will see the slice listed with status `defined`, all artifacts marked complete, and the task count.
 
 ## 4. Build the implementation
 
-Now implement the change:
+Now implement the slice:
 
 ```text
 /spec:build
@@ -125,13 +125,13 @@ The agent reads the build brief and works through the tasks in `tasks.md`. For e
 - If the task has a **skill directive tag** (see [Glossary](../appendices/glossary.md)) (e.g. `<!-- skill: omnia:crate-writer -->`), the agent delegates to that specialist skill.
 - If the task has no tag, the agent implements it using the capability's default build instruction.
 
-As each task completes, the agent marks it done via `specify change task mark`. You can watch the checkboxes flip in `tasks.md`.
+As each task completes, the agent marks it done via `specify slice task mark`. You can watch the checkboxes flip in `tasks.md`.
 
-When all tasks are complete, the change transitions to `complete`.
+When all tasks are complete, the slice transitions to `complete`.
 
 ## 5. Merge into the baseline
 
-Finalise the change:
+Finalise the slice:
 
 ```text
 /spec:merge
@@ -154,9 +154,9 @@ Merge complete.
 The agent:
 
 1. **Previews** the merge -- shows what will be added to the baseline.
-2. **Checks for conflicts** -- verifies the baseline has not changed since you defined the change.
+2. **Checks for conflicts** -- verifies the baseline has not changed since you defined the slice.
 3. **Asks for confirmation.**
-4. **Merges** -- applies the spec deltas to `.specify/specs/` and archives the change.
+4. **Merges** -- applies the spec deltas to `.specify/specs/` and archives the slice.
 
 After merging, look at `.specify/specs/`:
 
@@ -166,7 +166,7 @@ After merging, look at `.specify/specs/`:
     └── spec.md    # your greeting spec is now part of the baseline
 ```
 
-This baseline (see [Glossary](../appendices/glossary.md)) is permanent. Future changes will see it and build on it. The change directory has been moved to the archive:
+This baseline (see [Glossary](../appendices/glossary.md)) is permanent. Future slices will see it and build on it. The slice directory has been moved to the archive:
 
 ```
 .specify/archive/
@@ -178,9 +178,9 @@ This baseline (see [Glossary](../appendices/glossary.md)) is permanent. Future c
     └── specs/greeting/spec.md
 ```
 
-## 6. Aside: dropping a change
+## 6. Aside: dropping a slice
 
-If at any point you decide a change should not be merged -- it was exploratory, superseded, or just wrong -- you can discard it:
+If at any point you decide a slice should not be merged -- it was exploratory, superseded, or just wrong -- you can discard it:
 
 ```text
 /spec:drop
@@ -190,16 +190,16 @@ If at any point you decide a change should not be merged -- it was exploratory, 
 <summary>Expected output</summary>
 
 ```text
-Drop change add-greeting-endpoint? (y/n): y
+Drop slice add-greeting-endpoint? (y/n): y
 
-Change dropped.
+Slice dropped.
   Archived: .specify/archive/2026-04-27-add-greeting-endpoint/
   Baseline unchanged.
 ```
 
 </details>
 
-The change is archived with status `dropped`. Baseline specs remain unchanged. You can provide a reason to skip the interactive confirmation:
+The slice is archived with status `dropped`. Baseline specs remain unchanged. You can provide a reason to skip the interactive confirmation:
 
 ```text
 /spec:drop --reason "Superseded by a different approach"
@@ -210,11 +210,11 @@ The change is archived with status `dropped`. Baseline specs remain unchanged. Y
 - **`/spec:init`** sets up the project once.
 - **`/spec:define`** generates all artifacts from a description.
 - **`/spec:build`** implements the tasks, delegating to specialist skills.
-- **`/spec:merge`** applies specs to the baseline and archives the change.
-- **`/spec:drop`** discards a change without affecting the baseline.
+- **`/spec:merge`** applies specs to the baseline and archives the slice.
+- **`/spec:drop`** discards a slice without affecting the baseline.
 - Artifacts separate *why*, *what*, *how*, and *sequence*.
-- The baseline accumulates over time, giving future changes context.
+- The baseline accumulates over time, giving future slices context.
 
 ## Next
 
-[Iterating on a Baseline](iterating-on-baseline.md) -- make a second change that modifies an existing capability and learn about delta specs.
+[Iterating on a Baseline](iterating-on-baseline.md) -- make a second slice that modifies an existing capability and learn about delta specs.

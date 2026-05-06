@@ -23,7 +23,7 @@ After drafting `tasks.md`, re-read every checkbox line and ask, for each task:
 
 Rewrite any task that fails (1) or (2) before handing the file off. If (3) fails, add a verifier-intent task using a skill from the table below.
 
-For `tasks.md`, `specify change validate` checks checkbox/grouping shape only — it does not inspect task intent. Agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight.
+For `tasks.md`, `specify slice validate` checks checkbox/grouping shape only — it does not inspect task intent. Agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight.
 
 ## Available Skills
 

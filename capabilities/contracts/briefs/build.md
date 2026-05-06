@@ -78,7 +78,7 @@ For mixed-format changes, the final verifier pass must check cross-format `$ref`
 
 The format verifier intents enforce the RFC-12 identity & version rules inline (Check 4 in `/contract:openapi/verifier.md` and `/contract:asyncapi/verifier.md`): SemVer `info.version`, kebab-case + ≤64-char `info.x-specify-id` when present, and in-change uniqueness on declared ids. The cross-repo uniqueness check (the same id declared by another top-level contract somewhere else in root `contracts/`) is **not** part of single-mode verification — it is the CLI's gate, run after merge via `specify contract validate` (RFC-12 §"CLI surface").
 
-When this brief runs as the post-merge cross-project consumer check (RFC-9 §3B), thread `--mode cross-project` through the format verifier paths so they emit the cross-project compatibility report instead of the single-change report.
+When this brief runs as the post-merge cross-project consumer check (RFC-9 §3B), thread `--mode cross-project` through the format verifier paths so they emit the cross-project compatibility report instead of the single-slice report.
 
 ### Phase 4: Verify-repair loop (max 2 iterations)
 

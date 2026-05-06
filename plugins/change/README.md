@@ -16,4 +16,4 @@ The `change` plugin owns RFC-13's umbrella orchestration noun. Per-loop phase sk
 - [`specify change`](../../docs/reference/cli/change.md) — the CLI surface that owns `plan.yaml` lifecycle, lock acquisition, and umbrella finalization.
 - [`specify registry`](../../docs/reference/cli/registry.md) — the registry topology component the change skills consume but never mutate directly.
 - [`specify workspace`](../../docs/reference/cli/workspace.md) — workspace materialisation, push, and merge for multi-repo runs.
-- [Initiative skills overview](../../docs/reference/initiative-skills/index.md) — the layered stack and the change-vs-spec ownership split.
+- [Initiative skills overview](../../docs/reference/change-skills/index.md) — the layered stack and the change-vs-spec ownership split.

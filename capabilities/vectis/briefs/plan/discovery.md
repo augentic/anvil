@@ -4,7 +4,7 @@ description: Read --from artefacts and/or analyse codebases; emit a neutral capa
 generates: .specify/plans/<name>/discovery.md
 ---
 
-Produce a neutral, schema-agnostic capability inventory for the initiative, grouped into the Crux-stack tiers Vectis ships in: **shared core** (Rust `App` traits, domain types, cross-platform business logic), **iOS shell** (SwiftUI views and bindings), **Android shell** (Jetpack Compose views and bindings), and **design system** (tokens and the generated component libraries). Discovery is read-only: it does NOT write to `plan.yaml` and does NOT propose slices. Its only output is the inventory that `propose.md` will decompose.
+Produce a neutral, schema-agnostic capability inventory for the change, grouped into the Crux-stack tiers Vectis ships in: **shared core** (Rust `App` traits, domain types, cross-platform business logic), **iOS shell** (SwiftUI views and bindings), **Android shell** (Jetpack Compose views and bindings), and **design system** (tokens and the generated component libraries). Discovery is read-only: it does NOT write to `plan.yaml` and does NOT propose slices. Its only output is the inventory that `propose.md` will decompose.
 
 ## Inputs
 

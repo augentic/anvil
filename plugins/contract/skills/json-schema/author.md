@@ -5,7 +5,7 @@
 ## Inputs
 
 ```text
-$SLICE_DIR     = .specify/changes/<change-name>
+$SLICE_DIR     = .specify/slices/<slice-name>
 $SPECS_DIR      = $SLICE_DIR/specs
 $CONTRACTS_DIR  = $SLICE_DIR/contracts
 $SCHEMAS_DIR    = $CONTRACTS_DIR/schemas
@@ -78,7 +78,7 @@ Build a structured list of **spec-derived types**, one entry per named type:
 
 When a spec scenario references a type by name without describing its fields ("respond with a `User`"), check whether the type is already defined in `$BASELINE_DIR/schemas/`. If so, record the reference and skip — there is no new schema to author. If not, surface the gap as a `[unknown]` finding in the alignment report and (typically) halt; a downstream protocol skill cannot wire `$ref` to a non-existent file.
 
-When the change has **no specs** (rare for the author intent — usually a contract-only import change), skip steps 2–4 and route to [`importer.md`](./importer.md) instead.
+When the slice has **no specs** (rare for the author intent — usually a contract-only import slice), skip steps 2–4 and route to [`importer.md`](./importer.md) instead.
 
 ### Step 3 — Compute the minimal delta
 
@@ -99,8 +99,8 @@ If alignment fails, record a warning with `{ baseline_file, spec_requirement_id,
 The spec describes a type absent from the baseline, or asserts new fields on an existing baseline type. Add to the schema delta:
 
 - New top-level types: write a new file under `$SCHEMAS_DIR/<kebab-name>.yaml`.
-- New optional fields on an existing baseline type: produce a delta file that copies the baseline schema verbatim plus the new property; surface the change as a compatibility note (additive optional fields are backwards-compatible).
-- New required fields on an existing baseline type: produce the delta file but flag the change as a backwards-incompatible warning — every consumer of the baseline schema will need to update.
+- New optional fields on an existing baseline type: produce a delta file that copies the baseline schema verbatim plus the new property; surface the slice as a compatibility note (additive optional fields are backwards-compatible).
+- New required fields on an existing baseline type: produce the delta file but flag the slice as a backwards-incompatible warning — every consumer of the baseline schema will need to update.
 - Type narrowing on an existing field (tighter `pattern`, narrower `enum`, lower `maximum`, etc.): also flag as a warning.
 
 #### Normalisation
@@ -159,7 +159,7 @@ When a spec scenario describes a payload that contains nested object shapes:
 | Used in two or more parent schemas | Extract to its own file `<sub-type>.yaml` and `$ref` from each parent |
 | Already exists in `$BASELINE_DIR/schemas/` with a matching shape | Drop the inline definition; replace with `$ref: "<baseline-file>.yaml"` (relative path resolves either to change-local or baseline scope per [`../../references/artifact-structure.md`](../../references/artifact-structure.md)) |
 
-The author's job is to predict reuse: when in doubt, extract. A file-local `$defs` entry can later be promoted to its own file without breaking consumers (the `$ref` rewrite is mechanical), but a wrongly-inlined shape that other schemas need is harder to refactor across an in-flight change.
+The author's job is to predict reuse: when in doubt, extract. A file-local `$defs` entry can later be promoted to its own file without breaking consumers (the `$ref` rewrite is mechanical), but a wrongly-inlined shape that other schemas need is harder to refactor across an in-flight slice.
 
 ## Schema-file naming policy
 
@@ -232,7 +232,7 @@ Property naming: **always `snake_case`** in JSON Schema (`display_name`, `create
 
 ## Alignment report
 
-Every author run produces an alignment report alongside the delta files. The report is the primary output for the contracts capability build brief — the YAML files are the artefact, but the report is how the brief decides whether the change can proceed.
+Every author run produces an alignment report alongside the delta files. The report is the primary output for the contracts capability build brief — the YAML files are the artefact, but the report is how the brief decides whether the slice can proceed.
 
 ```markdown
 ## Alignment Report (Schemas)
@@ -288,7 +288,7 @@ Before declaring the author run complete:
 ## See also
 
 - [`json-schema-conventions`](../../references/json-schema-conventions.md) — full convention reference for `$id`, metadata, `$ref`, type mapping, naming.
-- [`artifact-structure`](../../references/artifact-structure.md) — directory layout for the change-local delta and the baseline.
+- [`artifact-structure`](../../references/artifact-structure.md) — directory layout for the slice-local delta and the baseline.
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for the three authorship patterns, the already-covered / new-or-modified / normalisation classification, and the opaque-file-replacement merge contract that the §Step 3 delta computation operationalises for schemas.
 - [`report-shape`](../../references/report-shape.md) — markdown shape for the alignment report produced by this author path.
 - [`importer.md`](./importer.md) — sibling for normalising external schema files.

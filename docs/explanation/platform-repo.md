@@ -1,6 +1,6 @@
 # Platform Repo Topologies
 
-A **platform repo** is the repository an operator opens when they sit down to drive a Specify initiative. It owns `registry.yaml` (the catalogue of every project in scope), `initiative.md` (the operator-authored brief), `plan.yaml` (the dependency-aware change list), and `.specify/workspace/` (the durable clones [`/spec:execute`](../../plugins/change/skills/execute/SKILL.md) writes into). Platform-level state lives here; per-project code lives in registered project repos.
+A **platform repo** is the repository an operator opens when they sit down to drive a Specify initiative. It owns `registry.yaml` (the catalogue of every project in scope), `change.md` (the operator-authored brief), `plan.yaml` (the dependency-aware change list), and `.specify/workspace/` (the durable clones [`/change:execute`](../../plugins/change/skills/execute/SKILL.md) writes into). Platform-level state lives here; per-project code lives in registered project repos.
 
 There are two valid shapes for a platform repo. Specify supports both, but the **registry-only hub** is canonical -- it is what `specify init --hub` scaffolds, what tutorials use as their reference shape, and what the platform-first vision composes against. The other shape -- **platform-as-project** -- remains valid for single-repo and small-team cases. This page explains the difference, the on-disk shape of each, and the validation invariant that keeps the two from being silently mixed.
 
@@ -11,7 +11,7 @@ hub: "Registry-only hub" {
   shape: rectangle
   hubProj: "project.yaml\n{hub: true}" {shape: page}
   hubReg: "registry.yaml\n[peer-a, peer-b]" {shape: page}
-  hubInit: "initiative.md" {shape: page}
+  hubInit: "change.md" {shape: page}
   hubPlan: "plan.yaml" {shape: page}
   hubWs: "workspace/" {shape: cylinder}
   peerA: "workspace/peer-a/\n(clone of peer-a)" {shape: cylinder}
@@ -36,13 +36,13 @@ pap: "Platform-as-project" {
 
 ## The registry-only hub (canonical)
 
-In the hub topology, the platform repo is **never itself a code project**. It holds platform state and routes work to peer repos materialised under `.specify/workspace/<name>/`. Operator-facing platform artifacts (`registry.yaml`, `initiative.md`, `plan.yaml`) live at the repo root; framework-managed scratch (`project.yaml`, archive, workspace clones) lives under `.specify/`.
+In the hub topology, the platform repo is **never itself a code project**. It holds platform state and routes work to peer repos materialised under `.specify/workspace/<name>/`. Operator-facing platform artifacts (`registry.yaml`, `change.md`, `plan.yaml`) live at the repo root; framework-managed scratch (`project.yaml`, archive, workspace clones) lives under `.specify/`.
 
 ```text
 platform-repo/
 ├── registry.yaml         # version: 1, projects: [<peer>, <peer>, …]
-├── initiative.md         # operator brief (per-initiative)
-├── plan.yaml             # dependency-aware change list (per-initiative)
+├── change.md         # operator brief (per-change)
+├── plan.yaml             # dependency-aware change list (per-change)
 └── .specify/
     ├── project.yaml      # { hub: true, … }   -- `capability:` is omitted on a hub
     ├── archive/
@@ -67,7 +67,7 @@ In the platform-as-project topology, the initiating repo is **both** the platfor
 my-app/
 ├── src/                  # actual application code
 ├── registry.yaml         # projects: [{ name: my-app, url: . }, …]
-├── initiative.md         # (optional)
+├── change.md         # (optional)
 ├── plan.yaml             # (optional)
 └── .specify/
     ├── project.yaml      # { capability: omnia@v1, … }   -- a real capability
@@ -76,7 +76,7 @@ my-app/
 
 The `url: .` entry tells `specify workspace sync` to materialise the platform repo as its own workspace slot via a symlink. Phase pipelines run normally because `project.yaml:capability:` resolves to a real capability manifest. `project.yaml:hub` is absent (or `false`).
 
-**When to choose platform-as-project.** Single-repo projects, small teams that have not factored their codebase into multiple repos, and migrations where peeling code out into a separate platform repo is itself unnecessary churn. The platform-first vision still works in this shape -- the operator just runs `/spec:plan`, `/spec:execute`, and `workspace push` against the same repo they edit code in.
+**When to choose platform-as-project.** Single-repo projects, small teams that have not factored their codebase into multiple repos, and migrations where peeling code out into a separate platform repo is itself unnecessary churn. The platform-first vision still works in this shape -- the operator just runs `/change:plan`, `/change:execute`, and `workspace push` against the same repo they edit code in.
 
 ## Validation rules
 
@@ -108,7 +108,7 @@ The command writes:
 
 - `.specify/project.yaml` with `hub: true`, the kebab-cased name, and a current `specify-version` floor. **`capability:` is omitted** -- the absence of the field is what tells the CLI to disable capability resolution. The `rules:` block is also omitted; a hub has no phase pipelines to scaffold.
 - `registry.yaml` with `version: 1` and `projects: []`. Hub-mode validation runs against this seed; populating the registry happens via `specify registry add` (RFC-9 §2A) or by hand-editing.
-- `initiative.md` from the canonical template, named after the project. The brief is per-initiative -- subsequent initiatives overwrite it via `specify initiative create`.
+- `change.md` from the canonical template, named after the project. The brief is per-change -- subsequent initiatives overwrite it via `specify change create`.
 - `.gitignore` upserts for `.specify/.cache/` and `.specify/workspace/`.
 
 The command **refuses** when `.specify/` already exists. This is deliberate: flipping an existing single-repo project into a hub would clobber `project.yaml`. Operators who genuinely want to convert remove `.specify/` first.
@@ -117,7 +117,7 @@ For the platform-as-project shape, use the regular `specify init <capability>` f
 
 ## See also
 
-- [Cross-Repo Initiatives](../tutorials/cross-repo-initiative.md) -- end-to-end worked example that bootstraps a hub via `specify init --hub` and drives an initiative across two registered projects.
+- [Cross-Repo Initiatives](../tutorials/cross-repo-change.md) -- end-to-end worked example that bootstraps a hub via `specify init --hub` and drives a change across two registered projects.
 - [The Layered Stack](three-layer-stack.md) -- where the platform repo fits in the layered model.
 - [Workspace Tiers](workspace-tiers.md) -- the legacy-source vs registered-project clone distinction the hub relies on.
 - [`specify init`](../reference/cli/init.md) -- CLI reference for the `--hub` flag.

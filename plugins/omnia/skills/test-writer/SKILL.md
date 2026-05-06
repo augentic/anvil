@@ -21,7 +21,7 @@ $CRATE_NAME     = $ARGUMENTS[0]
 
 # Path derivation
 $CRATE_PATH     = crates/$CRATE_NAME
-$SLICE_DIR     = .specify/changes/$CRATE_NAME
+$SLICE_DIR     = .specify/slices/$CRATE_NAME
 $SPECS_DIR      = $SLICE_DIR/specs
 $DESIGN_PATH    = $SLICE_DIR/design.md
 ```

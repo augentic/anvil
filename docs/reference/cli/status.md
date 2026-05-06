@@ -1,6 +1,6 @@
 # specify status
 
-Project dashboard summarising registry, plan, and active changes.
+Project dashboard summarising registry, plan, and active slices.
 
 ## Synopsis
 
@@ -14,9 +14,9 @@ specify status [--format json|table]
 
 - **`registry`** -- summary of `registry.yaml` (project count, multi-repo flag).
 - **`plan`** -- progress of `plan.yaml` (per-status counts, current `in-progress` entry, blocking entries).
-- **`changes`** -- active changes under `.specify/changes/` with lifecycle state and task progress.
+- **`changes`** -- active slices under `.specify/slices/` with lifecycle state and task progress.
 
-For the focused single-change view, use [`specify change status <name>`](change.md). The bare `specify status` is no longer overloaded with a positional `<name>` argument -- that responsibility moved to `change status` in the CLI cleanup.
+For the focused single-slice view, use [`specify slice status <name>`](change.md). The bare `specify status` is no longer overloaded with a positional `<name>` argument -- that responsibility moved to `change status` in the CLI cleanup.
 
 ## Options
 
@@ -40,12 +40,12 @@ The top-level keys mirror the noun groups they summarise:
 |-----|-------------|
 | `registry` | Project count, schemas in use, multi-repo flag (or `null` when no `registry.yaml` exists). |
 | `plan` | Per-status counts (`pending`, `in-progress`, `done`, `blocked`, `failed`, `skipped`), current entry, blocking entries (or `null` when no `plan.yaml` exists). |
-| `changes` | Array of active changes, each with `name`, `status`, `schema`, `tasks`, `artifacts`. |
+| `changes` | Array of active slices, each with `name`, `status`, `schema`, `tasks`, `artifacts`. |
 
 ## See also
 
-- [specify change status](change.md) -- detailed per-change status
-- [specify change list](change.md) -- list active changes
-- [specify plan status](plan.md) -- per-entry plan view
+- [specify slice status](change.md) -- detailed per-slice status
+- [specify slice list](change.md) -- list active slices
+- [specify change plan status](plan.md) -- per-entry plan view
 - [specify registry show](registry.md) -- raw registry contents
 - [Migrating CLI v1](../../explanation/migrating-cli-v1.md) -- rename map for the cleanup.

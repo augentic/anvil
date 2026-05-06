@@ -29,7 +29,7 @@ Checks that `capability.yaml` conforms to the capability JSON Schema, all refere
 Show the brief pipeline for a phase.
 
 ```bash
-specify capability pipeline <phase> [--change <change-dir>] [--format json]
+specify capability pipeline <phase> [--change <slice-dir>] [--format json]
 ```
 
 | Phase | Description |
@@ -43,7 +43,7 @@ specify capability pipeline <phase> [--change <change-dir>] [--format json]
 
 Returns the ordered list of briefs with their dependencies. Each brief entry includes its absolute `path`, `needs` edges, `generates` target, and current `present` flag.
 
-When `--change` is provided, the `present` flag reflects whether each brief's output already exists in the given change directory.
+When `--change` is provided, the `present` flag reflects whether each brief's output already exists in the given slice directory.
 
 ## See also
 

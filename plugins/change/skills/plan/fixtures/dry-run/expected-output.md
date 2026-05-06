@@ -1,4 +1,4 @@
-[dry-run] /spec:plan — demo
+[dry-run] /change:plan — demo
 
 Initiative: demo Sources:
   - monolith: /tmp/legacy Pipeline: pipeline.plan (discovery, propose)

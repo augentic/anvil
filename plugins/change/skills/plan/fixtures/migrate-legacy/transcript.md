@@ -1,11 +1,11 @@
-# Transcript — `/spec:plan --orchestrate migrate-foo --shape migrate-legacy --source monolith=… --auto-merge`
+# Transcript — `/change:plan --orchestrate migrate-foo --shape migrate-legacy --source monolith=… --auto-merge`
 
 This transcript pins the dialogue and the shell-outs the umbrella runs against an empty hub when migrating the legacy `mono-repo-foo` monolith. Every shell-out uses post-1F+1G v1 verbs verbatim — none of the retired hyphenated, nested, or `init`-named forms appears (see the v1 [migration map](../../../../../../docs/explanation/migrating-cli-v1.md)).
 
 The transcript starts at the operator's invocation; pre-flight, all seven steps, and the terminal summary follow.
 
 ```text
-$ /spec:plan --orchestrate migrate-foo \
+$ /change:plan --orchestrate migrate-foo \
     --shape migrate-legacy \
     --source monolith=git@github.com:org/legacy-foo.git \
     --auto-merge
@@ -21,10 +21,10 @@ Pre-flight
 
 ## Step 1 — Brief
 
-initiative.md is absent.
+change.md is absent.
 
-  $ specify initiative create migrate-foo
-  ok: wrote initiative.md
+  $ specify change create migrate-foo
+  ok: wrote change.md
 
 Shape `migrate-legacy` carries one --source. Suggested default body:
 
@@ -39,7 +39,7 @@ Shape `migrate-legacy` carries one --source. Suggested default body:
   Augentic platform.
 
 Accept the default body? [Y/n] y
-ok: wrote initiative.md (operator can $EDITOR to refine before step 3)
+ok: wrote change.md (operator can $EDITOR to refine before step 3)
 
 ---
 
@@ -49,17 +49,17 @@ ok: wrote initiative.md (operator can $EDITOR to refine before step 3)
   ok: registry is empty (0 projects)
 
 Shape is `migrate-legacy` and the registry is empty.
-Handing off to /spec:plan's greenfield path (RFC-9 §2B).
+Handing off to /change:plan's greenfield path (RFC-9 §2B).
 
 ---
 
 ## Step 3 — Plan
 
-  $ /spec:plan migrate-foo --source monolith=git@github.com:org/legacy-foo.git
+  $ /change:plan migrate-foo --source monolith=git@github.com:org/legacy-foo.git
 
-  ── /spec:plan migrate-foo ──
+  ── /change:plan migrate-foo ──
 
-  $ specify plan create migrate-foo --source monolith=git@github.com:org/legacy-foo.git
+  $ specify change plan create migrate-foo --source monolith=git@github.com:org/legacy-foo.git
   ok: scaffolded plan.yaml
 
   Step 3(a) — Discovery
@@ -97,17 +97,17 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
   Step 3(c) — Propose
     Slice 1: migrate-foo-contract  (sources: monolith; depends-on: —)            [accept] [edit] [reject] [abort]
     > accept
-    $ specify plan add migrate-foo-contract --sources monolith --description "Define the cross-project HTTP contract between foo-backend and foo-mobile. Inferred from the legacy monolith's internal call sites (src/api/)."
+    $ specify change plan add migrate-foo-contract --sources monolith --description "Define the cross-project HTTP contract between foo-backend and foo-mobile. Inferred from the legacy monolith's internal call sites (src/api/)."
     ok: appended `migrate-foo-contract` to plan.yaml
 
     Slice 2: migrate-foo-backend   (sources: monolith; depends-on: migrate-foo-contract)
     > accept
-    $ specify plan add migrate-foo-backend --sources monolith --depends-on migrate-foo-contract --description "Migrate the backend layer of mono-repo-foo onto Omnia: user accounts, orders, and the HTTP surface the contract pins."
+    $ specify change plan add migrate-foo-backend --sources monolith --depends-on migrate-foo-contract --description "Migrate the backend layer of mono-repo-foo onto Omnia: user accounts, orders, and the HTTP surface the contract pins."
     ok: appended `migrate-foo-backend` to plan.yaml
 
     Slice 3: migrate-foo-mobile    (sources: monolith; depends-on: migrate-foo-contract)
     > accept
-    $ specify plan add migrate-foo-mobile --sources monolith --depends-on migrate-foo-contract --description "Migrate the mobile shells onto Vectis Crux: storefront, checkout, and account-management screens. Consumes the migrate-foo-contract HTTP API."
+    $ specify change plan add migrate-foo-mobile --sources monolith --depends-on migrate-foo-contract --description "Migrate the mobile shells onto Vectis Crux: storefront, checkout, and account-management screens. Consumes the migrate-foo-contract HTTP API."
     ok: appended `migrate-foo-mobile` to plan.yaml
 
   Step 3(d) — Assignment
@@ -118,28 +118,28 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
   | 2 | migrate-foo-backend    | foo-backend    | Description overlap: backend, HTTP, accounts.     |
   | 3 | migrate-foo-mobile     | foo-mobile     | Description overlap: mobile, storefront, checkout. |
 
-    $ specify plan amend migrate-foo-backend --project foo-backend
+    $ specify change plan amend migrate-foo-backend --project foo-backend
     ok: migrate-foo-backend.project = foo-backend
-    $ specify plan amend migrate-foo-mobile --project foo-mobile
+    $ specify change plan amend migrate-foo-mobile --project foo-mobile
     ok: migrate-foo-mobile.project = foo-mobile
 
   Wrote .specify/plans/migrate-foo/proposal.md
 
   Step 4 — Validate
-    $ specify plan validate
+    $ specify change plan validate
     PASS
 
   Done. Next steps:
-    - specify plan status
-    - /spec:execute --loop
+    - specify change plan status
+    - /change:execute --loop
 
 ---
 
 ## Step 4 — Execute
 
-  $ /spec:execute --loop
+  $ /change:execute --loop
 
-  ## /spec:execute — migrate-foo
+  ## /change:execute — migrate-foo
 
   ### Initiative: migrate-foo
   Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (total 3)
@@ -148,8 +148,8 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
 
   Self-heal: no in-progress entries found.
 
-  # specify plan next --format json → { "next": "migrate-foo-contract", "project": null, ... }
-  # specify plan transition migrate-foo-contract in-progress
+  # specify change plan next --format json → { "next": "migrate-foo-contract", "project": null, ... }
+  # specify change plan transition migrate-foo-contract in-progress
 
   ### Processing: migrate-foo-contract (sources: [monolith])
 
@@ -161,7 +161,7 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
 
   ---
 
-  # specify plan next --format json → { "next": "migrate-foo-backend", "project": "foo-backend", ... }
+  # specify change plan next --format json → { "next": "migrate-foo-backend", "project": "foo-backend", ... }
 
   Routing: migrate-foo-backend → foo-backend (.specify/workspace/foo-backend/)
 
@@ -176,7 +176,7 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
 
   ---
 
-  # specify plan next --format json → { "next": "migrate-foo-mobile", "project": "foo-mobile", ... }
+  # specify change plan next --format json → { "next": "migrate-foo-mobile", "project": "foo-mobile", ... }
 
   Routing: migrate-foo-mobile → foo-mobile (.specify/workspace/foo-mobile/)
 
@@ -189,7 +189,7 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
 
   ---
 
-  ## /spec:execute — migrate-foo — terminated
+  ## /change:execute — migrate-foo — terminated
 
   ### Final state
   Progress: done 3, in-progress 0, pending 0, blocked 0, failed 0, skipped 0 (total 3)
@@ -198,7 +198,7 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
 
   Next action: Initiative complete. Land remote PRs (specify workspace
     merge or merge them by hand on the forge), then close out via
-    specify initiative finalize.
+    specify change finalize.
 
 ---
 
@@ -228,7 +228,7 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
 
 ## Step 7 — Finalize
 
-  $ specify initiative finalize
+  $ specify change finalize
   specify: initiative finalize — migrate-foo (specify/migrate-foo)
 
     foo-backend         merged                   PR #41   https://github.com/org/foo-backend/pull/41
@@ -242,21 +242,21 @@ Handing off to /spec:plan's greenfield path (RFC-9 §2B).
 
 ---
 
-## /spec:plan --orchestrate — migrate-foo — landed
+## /change:plan --orchestrate — migrate-foo — landed
 
-  Brief:    .specify/archive/plans/migrate-foo-20260428/initiative.md
+  Brief:    .specify/archive/plans/migrate-foo-20260428/change.md
   Plan:     .specify/archive/plans/migrate-foo-20260428.yaml
   Registry: foo-backend, foo-mobile (added in step 3)
   PRs:      foo-backend#41 (merged), foo-mobile#18 (merged)
 
-  Re-running /spec:plan --orchestrate migrate-foo will report
-  plan-not-found from `specify initiative finalize` and exit 0.
+  Re-running /change:plan --orchestrate migrate-foo will report
+  plan-not-found from `specify change finalize` and exit 0.
 ```
 
 ## Invariants pinned by this transcript
 
-- **Verb hygiene.** Every shell-out is a post-1F+1G v1 verb: `specify initiative create`, `specify plan {create, add, amend, validate}`, `specify registry {add, validate}`, `specify workspace {sync, push, merge}`, `specify change journal append` (inside the executor's self-heal — not visible here because the run is clean), `specify initiative finalize`. No retired verbs appear anywhere in the trace.
-- **Greenfield ordering.** `specify registry add` (×2) precedes `specify workspace sync`, which precedes any `specify plan add` for entries routed to the new projects. This is the 2B invariant.
-- **Cross-project contract change has no `project`.** `migrate-foo-contract` runs against the hub itself (no `Routing:` diagnostic from `/spec:execute`), exactly as the cross-repo tutorial pins.
+- **Verb hygiene.** Every shell-out is a post-Phase-3 verb: `specify change create`, `specify change plan {create, add, amend, validate}`, `specify registry {add, validate}`, `specify workspace {sync, push, merge}`, `specify slice journal append` (inside the executor's self-heal — not visible here because the run is clean), `specify change finalize`. No retired verbs appear anywhere in the trace.
+- **Greenfield ordering.** `specify registry add` (×2) precedes `specify workspace sync`, which precedes any `specify change plan add` for entries routed to the new projects. This is the 2B invariant.
+- **Cross-project contract change has no `project`.** `migrate-foo-contract` runs against the hub itself (no `Routing:` diagnostic from `/change:execute`), exactly as the cross-repo tutorial pins.
 - **`--auto-merge` does not bypass safety guards.** `specify workspace merge` inherits the branch-pattern guard, the no-`--admin` rule, and the no-CI-override rule. The transcript shows both PRs landing on `merged` (CI green); a `pending-checks` or `failed-checks` finding would have halted the umbrella before step 7.
-- **Idempotent re-entry.** The umbrella's terminal summary points the operator at re-running `/spec:plan --orchestrate migrate-foo`, which exits zero with `plan-not-found` after the archive completes.
+- **Idempotent re-entry.** The umbrella's terminal summary points the operator at re-running `/change:plan --orchestrate migrate-foo`, which exits zero with `plan-not-found` after the archive completes.

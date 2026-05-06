@@ -2,21 +2,21 @@
 
 Self-heal is the driver's reconciliation pass. It runs **once per `/change:execute` invocation**, under the driver lock, immediately after the lock is acquired and before `specify change plan next`. Its job is to make the plan agree with what actually finished on disk before the previous driver crashed — not to do any new work.
 
-Two invariants frame the whole step. First, `.metadata.yaml:outcome` is the single authoritative signal: the driver never consults `journal.yaml`, tempfiles, or stderr transcripts to decide what happened. Second, nothing in self-heal speculates. Every ambiguity (missing outcome with no change dir, outcome field that contradicts `LifecycleStatus`, two archives with equal timestamps, …) halts the driver with a non-zero exit so a human can triage. A speculative transition could silently mark a failed change as `done` and that failure mode is strictly worse than "one extra triage per N runs".
+Two invariants frame the whole step. First, `.metadata.yaml:outcome` is the single authoritative signal: the driver never consults `journal.yaml`, tempfiles, or stderr transcripts to decide what happened. Second, nothing in self-heal speculates. Every ambiguity (missing outcome with no slice dir, outcome field that contradicts `LifecycleStatus`, two archives with equal timestamps, …) halts the driver with a non-zero exit so a human can triage. A speculative transition could silently mark a failed change as `done` and that failure mode is strictly worse than "one extra triage per N runs".
 
 ## Algorithm
 
 For every plan entry `E` whose `status` is `in-progress`, in the order they appear in `plan.yaml` (the loop tolerates more than one even though `specify change plan next` would flag that as a validation warning):
 
 1. **Locate the latest `.metadata.yaml` for `E.name`.**
-   - First check `.specify/changes/<name>/.metadata.yaml` — the active slice directory. If present, that is the file to read.
-   - If absent, inspect `.specify/archive/`. Archive directory names end with `-<name>` (the `YYYY-MM-DD-<name>` convention from `specify change archive`). Multiple matches are legal: a slice that failed and was later retried leaves one archive per attempt. Pick the most recent by `created-at` inside its `.metadata.yaml` (falling back to `defined-at`, then the directory's `YYYY-MM-DD` prefix); the outcome itself is surfaced by `specify change outcome show <name> --format json` once the active directory is back in place.
+   - First check `.specify/slices/<name>/.metadata.yaml` — the active slice directory. If present, that is the file to read.
+   - If absent, inspect `.specify/archive/`. Archive directory names end with `-<name>` (the `YYYY-MM-DD-<name>` convention from `specify change archive`). Multiple matches are legal: a slice that failed and was later retried leaves one archive per attempt. Pick the most recent by `created-at` inside its `.metadata.yaml` (falling back to `defined-at`, then the directory's `YYYY-MM-DD` prefix); the outcome itself is surfaced by `specify slice outcome show <name> --format json` once the active directory is back in place.
    - If nothing is found anywhere, the plan entry is `in-progress` but no slice has ever been created — typically because the prior driver crashed between `specify change plan transition pending → in-progress` (step 5) and `/spec:define` (step 6). Treat this as mid-slice resume with `LifecycleStatus = None` — jump to step 3 below.
 
 **Multi-repo self-heal.** For each `in-progress` entry `E` in `plan.yaml`, self-heal reads `E.project` from the plan entry. If non-null:
-1. Resolve the target project directory from `registry.yaml` (same resolution as step 5a of the per-change algorithm).
+1. Resolve the target project directory from `registry.yaml` (same resolution as step 5a of the per-slice algorithm).
 2. Check workspace freshness for that slot. If `missing`, halt — same semantics as the main loop.
-3. Look for `.specify/changes/<E.name>/.metadata.yaml` under the resolved project root instead of the initiating repo root. The classification logic (step 2 of self-heal) and recovery journal append (step 4) are unchanged.
+3. Look for `.specify/slices/<E.name>/.metadata.yaml` under the resolved project root instead of the initiating repo root. The classification logic (step 2 of self-heal) and recovery journal append (step 4) are unchanged.
 4. Restore CWD to the initiating repo root after each entry's reconciliation.
 
 For entries without a `project` field, self-heal follows the standard single-repo path.
@@ -49,7 +49,7 @@ For entries without a `project` field, self-heal follows the standard single-rep
 
 4. **Append one `type: recovery` entry to `journal.yaml`** for every entry self-heal actually resolved or resumed (not for halts):
    ```bash
-   specify change journal append <name> <phase> recovery \
+   specify slice journal append <name> <phase> recovery \
        --summary "Self-heal on startup: <action>" \
        --context "before=<plan-status>/<lifecycle-status>, after=<resolved-status-or-phase>"
    ``` where `<phase>` is the phase the recovery relates to (the `outcome.phase` for terminal cases; the phase about to run for mid-slice resume). Example `<action>` strings:
@@ -73,11 +73,11 @@ Self-heal: <name> — resuming <phase> (LifecycleStatus=<lifecycle>)
 Self-heal halted: <name> has outcome=<outcome> phase=<phase> but LifecycleStatus=<lifecycle>. Manual triage required.
 ```
 
-The halt variant is followed by `Exit 2` (`EXIT_VALIDATION_FAILED`; see the exit-code table in specify-cli `src/main.rs`); the other variants fall through to step 4 of the per-change algorithm. Fixture-pinned examples live under `fixtures/self-heal/`.
+The halt variant is followed by `Exit 2` (`EXIT_VALIDATION_FAILED`; see the exit-code table in specify-cli `src/main.rs`); the other variants fall through to step 4 of the per-slice algorithm. Fixture-pinned examples live under `fixtures/self-heal/`.
 
 ## Dry-run variant (report-only)
 
-Under `--dry-run`, self-heal runs the same classification scan but performs **no writes**: no `specify change plan transition`, no `specify change journal append`, no `/spec:drop`. Instead it prints what the writing path *would* do:
+Under `--dry-run`, self-heal runs the same classification scan but performs **no writes**: no `specify change plan transition`, no `specify slice journal append`, no `/spec:drop`. Instead it prints what the writing path *would* do:
 
 ```text
 Self-heal (dry-run): no in-progress entries found.

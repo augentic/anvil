@@ -1,13 +1,13 @@
-# Snapshot of .specify/changes/email-verification/.metadata.yaml as
-# self-heal reads it on startup. The prior /spec:execute run completed
+# Snapshot of .specify/slices/email-verification/.metadata.yaml as
+# self-heal reads it on startup. The prior /change:execute run completed
 # /spec:merge (which stamped outcome: merge success and flipped
 # LifecycleStatus to merged) but crashed before running the terminal
-# `specify plan transition email-verification done` in step 10 of the
+# `specify change plan transition email-verification done` in step 10 of the
 # supervised run. Self-heal resolves the discrepancy: plan says
 # in-progress, on-disk says done.
 #
 # This file is illustrative — the real on-disk form is whatever
-# `specify change outcome set email-verification merge success
+# `specify slice outcome set email-verification merge success
 #   --summary "..."` writes, shaped per
 # crates/change/src/lib.rs::ChangeMetadata in augentic/specify-cli.
 

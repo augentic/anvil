@@ -1,8 +1,8 @@
 # Legacy Migration at Scale
 
-Migrating a large legacy codebase is one of the most demanding uses of Specify. This tutorial shows how to decompose a monolith into a multi-repo, multi-change initiative using the analyze/extract split -- the strategy that makes this tractable.
+Migrating a large legacy codebase is one of the most demanding uses of Specify. This tutorial shows how to decompose a monolith into a multi-repo, multi-slice initiative using the analyze/extract split -- the strategy that makes this tractable.
 
-**Prerequisites:** Familiarity with [multi-change initiatives](single-repo-initiative.md) and [cross-repo planning](cross-repo-initiative.md).
+**Prerequisites:** Familiarity with [multi-slice initiatives](single-repo-change.md) and [cross-repo planning](cross-repo-change.md).
 
 ## The scaling challenge
 
@@ -52,7 +52,7 @@ projects:
 Point the plan skill at the monolith:
 
 ```text
-/spec:plan modernise-platform --source monolith=/path/to/legacy-monolith
+/change:plan modernise-platform --source monolith=/path/to/legacy-monolith
 ```
 
 <details>
@@ -126,7 +126,7 @@ After all slices are accepted, the plan skill's assignment step (3d) matches eac
 | 3 | extract-email-dispatch   | notification-service | baseline spec: email-templates exists   |
 ```
 
-The operator can override any assignment. Once confirmed, the plan skill writes each routing decision via `specify plan amend <name> --project <project>`.
+The operator can override any assignment. Once confirmed, the plan skill writes each routing decision via `specify change plan amend <name> --project <project>`.
 
 ## 3. Handle tangled code
 
@@ -134,7 +134,7 @@ Legacy monoliths often have tangled dependencies. A capability's source files ma
 
 ### Manifest scopes
 
-For tangled codebases, you can provide a **manifest** -- a file listing exactly which source files a change should extract from:
+For tangled codebases, you can provide a **manifest** -- a file listing exactly which source files a slice should extract from:
 
 ```text
 # migration-manifest.txt
@@ -144,36 +144,36 @@ src/middleware/auth.ts
 src/shared/crypto.ts
 ```
 
-During the propose phase, you can edit a change to include a manifest reference. At define time, `/spec:extract` uses the manifest to scope its deep analysis.
+During the propose phase, you can edit a slice to include a manifest reference. At define time, `/spec:extract` uses the manifest to scope its deep analysis.
 
-### Overlapping changes
+### Overlapping slices
 
-When multiple changes touch the same source files, `specify change overlap` detects the overlap and reports it. You can then:
+When multiple slices touch the same source files, `specify slice overlap` detects the overlap and reports it. You can then:
 
-- Merge the changes into one.
+- Merge the slices into one.
 - Sequence them with `depends-on` so one extracts first.
 - Accept the overlap if the capabilities are truly independent.
 
 ## 4. Execute the migration
 
 ```text
-/spec:execute --loop
+/change:execute --loop
 ```
 
-For each change in dependency order:
+For each slice in dependency order:
 
-1. **Define** -- `/spec:define` invokes `/spec:extract` against the monolith source files relevant to this change. This is the **deep extraction** -- full behavioral specs and design.
+1. **Define** -- `/spec:define` invokes `/spec:extract` against the monolith source files relevant to this slice. This is the **deep extraction** -- full behavioral specs and design.
 2. **Build** -- Specialist skills generate the new implementation in the target repo.
 3. **Merge** -- Specs merge into the target repo's baseline.
 
-Each merged change adds to the target repo's baseline. Subsequent changes see the accumulated baseline and produce deltas against it.
+Each merged slice adds to the target repo's baseline. Subsequent slices see the accumulated baseline and produce deltas against it.
 
-## 5. Mix extraction and greenfield changes
+## 5. Mix extraction and greenfield slices
 
 A migration plan often includes both:
 
-- **Extraction changes** -- migrating existing capabilities from the monolith (have `sources`).
-- **Greenfield changes** -- adding new capabilities that do not exist in the legacy code (no `sources`).
+- **Extraction slices** -- migrating existing capabilities from the monolith (have `sources`).
+- **Greenfield slices** -- adding new capabilities that do not exist in the legacy code (no `sources`).
 
 Both types coexist in a single plan. The define phase handles them differently:
 
@@ -200,13 +200,13 @@ changes:
 ```text
 # One-time setup
 Create registry.yaml with target repos
-/spec:plan modernise-platform --source monolith=/path/to/legacy
+/change:plan modernise-platform --source monolith=/path/to/legacy
 
 # Review
-specify plan status
+specify change plan status
 
 # Execute
-/spec:execute --loop
+/change:execute --loop
 
 # Push workspace clones to remotes
 specify workspace push

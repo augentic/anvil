@@ -12,7 +12,7 @@ A change named `archived-feature` ran to completion under a pre-RFC-9 binary, wa
 - Carries one of the three original `Outcome` variants — here, `success` from the merge phase.
 - Uses the existing kebab-case schema for every other field.
 
-A subsequent `/spec:execute` run, built from the post-RFC-9 binary, has reasons to read this archived file (e.g. `specify change outcome show <name>` falls back to the archive when the active change directory is gone — see `crates/change` and `src/commands/change.rs::resolve_archived_metadata`). The new reader MUST:
+A subsequent `/change:execute` run, built from the post-RFC-9 binary, has reasons to read this archived file (e.g. `specify slice outcome show <name>` falls back to the archive when the active slice directory is gone — see `crates/change` and `src/commands/change.rs::resolve_archived_metadata`). The new reader MUST:
 
 1. Accept the absent `version:` field as the implicit `1`.
 2. Deserialise `outcome.outcome: success` as `Outcome::Success` (the closed unit variant).
@@ -23,7 +23,7 @@ A subsequent `/spec:execute` run, built from the post-RFC-9 binary, has reasons 
 | File | Pins |
 |---|---|
 | [`archived/.metadata.yaml.before`](archived/.metadata.yaml.before) | A pre-bump `.metadata.yaml` exactly as a pre-RFC-9 binary would have written it. No `version:` field; one of the three closed `Outcome` variants. |
-| [`expected-outcome-show.json`](expected-outcome-show.json) | The shape the post-bump `specify change outcome show <name> --format json` emits when reading the pre-bump file via the archive fallback. The `outcome.proposal` key is **absent** (the variant is `success`, not `registry-amendment-required`); the `outcome.outcome` is the kebab-case discriminant string `success`. |
+| [`expected-outcome-show.json`](expected-outcome-show.json) | The shape the post-bump `specify slice outcome show <name> --format json` emits when reading the pre-bump file via the archive fallback. The `outcome.proposal` key is **absent** (the variant is `success`, not `registry-amendment-required`); the `outcome.outcome` is the kebab-case discriminant string `success`. |
 | [`expected-loaded-internal.yaml`](expected-loaded-internal.yaml) | The internal `ChangeMetadata` representation after loading: `version: 1` (defaulted), every other field as on disk. |
 
 ## Key invariants

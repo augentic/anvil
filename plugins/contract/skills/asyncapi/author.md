@@ -5,7 +5,7 @@
 ## Inputs
 
 ```text
-$SLICE_DIR     = .specify/changes/<change-name>
+$SLICE_DIR     = .specify/slices/<slice-name>
 $SPECS_DIR      = $SLICE_DIR/specs
 $CONTRACTS_DIR  = $SLICE_DIR/contracts
 $BASELINE_DIR   = contracts
@@ -72,9 +72,9 @@ Build a structured list of **spec interactions**, one per channel:
   source: specs/order-flow.md REQ-021
 ```
 
-When a spec scenario references a payload type by name (e.g. "publish an `OrderPlaced` event"), check whether the type is defined in this change's `$CONTRACTS_DIR/schemas/` or already in `$BASELINE_DIR/schemas/`. The schema is owned by the json-schema format skill — your job is only to wire the `$ref` correctly.
+When a spec scenario references a payload type by name (e.g. "publish an `OrderPlaced` event"), check whether the type is defined in this slice's `$CONTRACTS_DIR/schemas/` or already in `$BASELINE_DIR/schemas/`. The schema is owned by the json-schema format skill — your job is only to wire the `$ref` correctly.
 
-When the change has **no specs** (e.g. an importer-only change followed by a normalisation pass), skip steps 2–4 and route to [`importer.md`](./importer.md).
+When the slice has **no specs** (e.g. an importer-only change followed by a normalisation pass), skip steps 2–4 and route to [`importer.md`](./importer.md).
 
 ### Step 3 — Compute the minimal delta
 
@@ -100,7 +100,7 @@ The spec describes a channel, operation, or message that is absent from the base
 - New `components.messages.<Name>` entries when the spec introduces a message the baseline lacks.
 - New message headers when the spec asserts an envelope field.
 
-When extending an existing event domain (e.g. adding `user.deleted` to `user-events.yaml` which already defines `user.registered` and `user.updated`), the delta file must contain **both the existing channels/operations/messages and the new ones**. Merge is opaque file replacement: the change-level file replaces the baseline file wholesale, so omitting existing entries would silently delete them.
+When extending an existing event domain (e.g. adding `user.deleted` to `user-events.yaml` which already defines `user.registered` and `user.updated`), the delta file must contain **both the existing channels/operations/messages and the new ones**. Merge is opaque file replacement: the slice-level file replaces the baseline file wholesale, so omitting existing entries would silently delete them.
 
 #### Normalisation
 
@@ -168,7 +168,7 @@ Shared payload schemas live in `contracts/schemas/` and are owned by the json-sc
 
 - **Always `$ref`** message payloads to `../schemas/<type>.yaml`. The `$ref` lives on the message's `payload` field inside `components/messages`.
 - **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to `/contract:json-schema` (the contracts capability build brief calls the json-schema skill first per the cross-format ordering rule).
-- **`$ref` resolution scope.** All payload `$ref` paths must resolve either to `$CONTRACTS_DIR/schemas/` (this change's delta) or `$BASELINE_DIR/schemas/` (the platform baseline). The verifier flags any `$ref` that does not resolve.
+- **`$ref` resolution scope.** All payload `$ref` paths must resolve either to `$CONTRACTS_DIR/schemas/` (this slice's delta) or `$BASELINE_DIR/schemas/` (the platform baseline). The verifier flags any `$ref` that does not resolve.
 - **Headers stay inline.** Message headers describe the envelope (correlation IDs, partition keys, trace context) and are typically a small map of primitive types. Inline them as a `headers` object on the message — do not extract them to `../schemas/`. The body is the payload; the envelope is not.
 - **Internal `$ref`s for channel→message and operation→channel** stay on the `#/components/messages/...` and `#/channels/...` form — those are document-internal pointers, not cross-file schema references.
 
@@ -180,12 +180,12 @@ AsyncAPI deltas fall into three categories — every entry in the delta belongs 
 |---|---|---|
 | **Channels / operations / messages added** | Address, operationId, or message name not in the baseline | New entry under the corresponding top-level block |
 | **Modified** | Baseline entry, but the spec asserts a new field, header, or operation direction | Edit the baseline entry in-place inside the delta file (preserving every other property byte-for-byte) and surface the diff in the alignment report |
-| **Removed** | Baseline entry that no spec scenario references and the change explicitly deprecates it | **Out of scope.** AsyncAPI deltas have no remove semantics — removal is a manual baseline edit. Surface as a warning in the alignment report so a human can act |
+| **Removed** | Baseline entry that no spec scenario references and the slice explicitly deprecates it | **Out of scope.** AsyncAPI deltas have no remove semantics — removal is a manual baseline edit. Surface as a warning in the alignment report so a human can act |
 
 Computation rules applied at file scope:
 
 1. **One file per event domain.** Always read the matching baseline file first. The delta file replaces it wholesale at merge time, so it must contain every existing channel, operation, and message alongside the new ones.
-2. **`info.version` MUST parse as SemVer (RFC-12).** New top-level AsyncAPI documents MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the change requires a version bump, the contracts capability build brief flags it for human review. The verifier sibling and `specify contract validate` both enforce SemVer; a non-SemVer value is a hard validation failure.
+2. **`info.version` MUST parse as SemVer (RFC-12).** New top-level AsyncAPI documents MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the slice requires a version bump, the contracts capability build brief flags it for human review. The verifier sibling and `specify contract validate` both enforce SemVer; a non-SemVer value is a hard validation failure.
 3. **`info.x-specify-id` rename-stable identifier (RFC-12).** SHOULD set `info.x-specify-id` on every new top-level AsyncAPI document to a kebab-case slug (typically the file stem; `^[a-z][a-z0-9-]*$`, ≤ 64 characters). The id is a hint that survives file moves and version bumps. MUST preserve any pre-existing `info.x-specify-id` when extending the baseline; MUST NOT change it across `info.version` bumps. Path-based references in `registry.yaml` remain canonical — the id is a rename-stable hint, not a substitute.
 4. **Preserve channel addresses and operation keys verbatim.** When extending a baseline file, every existing `address` and `operationId` stays exactly as it is. Renaming an address breaks consumers; renaming an operation breaks tooling.
 5. **Diff at the entry level.** When modifying an existing channel or message, change only the keys the spec asserts. Do not reformat or reorder unrelated keys — opaque file replacement means a re-ordered file looks like a wholesale rewrite to reviewers.
@@ -242,7 +242,7 @@ Headers describe the message envelope, not the payload. Payload shape belongs in
 
 ## Alignment report
 
-Every author run produces an alignment report alongside the delta files. The report is the primary output for the contracts capability build brief — the YAML files are the artefact, but the report is how the brief decides whether the change can proceed.
+Every author run produces an alignment report alongside the delta files. The report is the primary output for the contracts capability build brief — the YAML files are the artefact, but the report is how the brief decides whether the slice can proceed.
 
 ```markdown
 ## Alignment Report (Messaging)
@@ -266,7 +266,7 @@ Every author run produces an alignment report alongside the delta files. The rep
 
 Report semantics:
 
-- **Zero delta with zero warnings** is the expected outcome for an implementation change in a contract-first workflow — specs already align with the pre-existing AsyncAPI document.
+- **Zero delta with zero warnings** is the expected outcome for an implementation slice in a contract-first workflow — specs already align with the pre-existing AsyncAPI document.
 - **Warnings require human review.** The author never resolves spec-vs-baseline mismatches automatically.
 - **A non-empty delta** is normal for contract-only changes and for spec-first changes where the baseline is empty.
 
@@ -298,7 +298,7 @@ Before declaring the author run complete:
 ## See also
 
 - [`asyncapi-conventions`](../../references/asyncapi-conventions.md) — file structure, channel and operation conventions, message definitions, header rules.
-- [`artifact-structure`](../../references/artifact-structure.md) — directory layout for the change-local delta and the baseline.
+- [`artifact-structure`](../../references/artifact-structure.md) — directory layout for the slice-local delta and the baseline.
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for the three authorship patterns, the already-covered / new-or-modified / normalisation classification, and the opaque-file-replacement merge contract.
 - [`report-shape`](../../references/report-shape.md) — markdown shape for the alignment report produced by this author path.
 - [`json-schema-conventions`](../../references/json-schema-conventions.md) — schema files referenced by the AsyncAPI document (owned by `/contract:json-schema`).

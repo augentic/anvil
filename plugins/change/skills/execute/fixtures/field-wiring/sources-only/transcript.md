@@ -1,6 +1,6 @@
-# sources-only — `/spec:execute` resolves a single source key
+# sources-only — `/change:execute` resolves a single source key
 
-The plan entry `user-registration` declares `sources: [monolith]` and a description with no delta-targeting intent. `/spec:execute` looks up `monolith` in the plan's top-level `sources` map, finds the local path `/path/to/legacy-codebase`, and passes the pair through to `/spec:define` as a single `--source` flag.
+The plan entry `user-registration` declares `sources: [monolith]` and a description with no delta-targeting intent. `/change:execute` looks up `monolith` in the plan's top-level `sources` map, finds the local path `/path/to/legacy-codebase`, and passes the pair through to `/spec:define` as a single `--source` flag.
 
 ## Resolution trace
 
@@ -26,7 +26,7 @@ Contents of `invocation.txt`:
 
 ## Rendered define step
 
-When the driver emits the per-change output block for this entry, the `Processing:` header suffix carries the `sources` list and the define step body shows the extract sub-step with the resolved path on the `Source:` line:
+When the driver emits the per-slice output block for this entry, the `Processing:` header suffix carries the `sources` list and the define step body shows the extract sub-step with the resolved path on the `Source:` line:
 
 ```text
 ### Processing: user-registration (sources: [monolith])

@@ -1,6 +1,6 @@
 # Specify Guidance Supplement
 
-This repository uses stock Specify as the executable workflow contract. This document is a repository-specific supplement describing how Augentic specialists use `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:define -> /spec:build -> /spec:merge`, with `/spec:drop` available when a change should be discarded instead of merged. Artifact validation is performed automatically by `/spec:build` before implementation begins.
+This repository uses stock Specify as the executable workflow contract. This document is a repository-specific supplement describing how Augentic specialists use `proposal.md`, `spec.md`, `design.md`, and `tasks.md` during `/spec:define -> /spec:build -> /spec:merge`, with `/spec:drop` available when a slice should be discarded instead of merged. Artifact validation is performed automatically by `/spec:build` before implementation begins.
 
 ## Overview
 
@@ -8,7 +8,7 @@ Specify artifacts split change intent into four human-facing layers:
 
 | Artifact | Purpose |
 | --- | --- |
-| `proposal.md` | Why the change exists, what is in scope, and which capabilities are affected |
+| `proposal.md` | Why the slice exists, what is in scope, and which capabilities are affected |
 | `specs/*/spec.md` | Behavioral requirements only: what the system must do |
 | `design.md` | Technical shape and decisions needed to implement the behavior |
 | `tasks.md` | Implementation sequencing and checkpoints |
@@ -19,9 +19,9 @@ Specialist skills in this repo consume those artifacts, but they should not rede
 
 Artifacts move through the normal Specify lifecycle:
 
-1. `.specify/changes/<change>/` holds the working change.
+1. `.specify/slices/<change>/` holds the working slice.
 2. `.specify/specs/` holds the merged baseline specs.
-3. `.specify/changes/archive/` holds finalized changes, including merged and dropped changes.
+3. `.specify/slices/archive/` holds finalized changes, including merged and dropped changes.
 
 The human workflow is:
 
@@ -35,7 +35,7 @@ The human workflow is:
 
 ```text
 $PROJECT_DIR      = <workspace root>
-$SLICE_DIR       = $PROJECT_DIR/.specify/changes/<change-name>
+$SLICE_DIR       = $PROJECT_DIR/.specify/slices/<slice-name>
 $SPECS_DIR        = $SLICE_DIR/specs
 $DESIGN_PATH      = $SLICE_DIR/design.md
 $PROPOSAL_PATH    = $SLICE_DIR/proposal.md
@@ -102,7 +102,7 @@ Create a consolidated spec file from the source behavior:
 
 ## Design Document (Technical "How")
 
-`design.md` carries the technical shape needed to implement the change. It may reference constraints relevant to generation, but it should not hardcode target-specific bindings as part of the behavioral contract. When design sections refer to behavior from specs, cite the stable requirement IDs (for example, `REQ-003`) rather than relying on requirement titles staying unchanged.
+`design.md` carries the technical shape needed to implement the slice. It may reference constraints relevant to generation, but it should not hardcode target-specific bindings as part of the behavioral contract. When design sections refer to behavior from specs, cite the stable requirement IDs (for example, `REQ-003`) rather than relying on requirement titles staying unchanged.
 
 ### Design Document Format
 
@@ -168,7 +168,7 @@ Generator-owned binding decisions such as Omnia trait composition remain in spec
 
 ## Proposal Document
 
-Use `proposal.md` to capture why the change exists and what is in scope. The capability's brief file (`briefs/proposal.md`) provides the full output template.
+Use `proposal.md` to capture why the slice exists and what is in scope. The capability's brief file (`briefs/proposal.md`) provides the full output template.
 
 The **Crates** section creates the contract between proposal and specs phases. Each crate listed will need a corresponding spec file at `specs/<name>/spec.md`. For repository sources, the analyzer discovers crates automatically.
 
@@ -200,7 +200,7 @@ Guidelines:
 - Each task MUST be agent-completable: a coding agent can perform the action and verify completion through code, local tooling, mocks, fixtures, contract validators, build commands, or reviewer skills
 - Never generate tasks that require human-only action or judgement, such as manual app testing, visual inspection, real-world API credentials, production services, physical-device-only checks, app store review, or asking the user to verify behavior
 - When behavior appears to require manual validation, write the equivalent agent-verifiable task instead (for example, a mocked API test, fixture replay, simulator/build check, contract test, or scripted smoke test)
-- Before handing `tasks.md` off, the generating agent re-reads every checkbox and rewrites any task whose action requires human-only judgement or whose meaning could be misread out of context. For `tasks.md`, `specify change validate` checks checkbox/grouping shape only (checkbox format, group headings); it does not inspect task intent, so agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight
+- Before handing `tasks.md` off, the generating agent re-reads every checkbox and rewrites any task whose action requires human-only judgement or whose meaning could be misread out of context. For `tasks.md`, `specify slice validate` checks checkbox/grouping shape only (checkbox format, group headings); it does not inspect task intent, so agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight
 
 ### Skill Directive Tags
 

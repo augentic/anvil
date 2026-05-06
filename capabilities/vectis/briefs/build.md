@@ -15,7 +15,7 @@ Arguments (used by all skills):
 
 ## Composition validation gate
 
-Before invoking shell writers, check whether a `composition.yaml` exists in the change directory (`.specify/changes/<name>/composition.yaml`) or baseline (`.specify/specs/composition.yaml`). When present, run composition validation checks before proceeding to shell generation:
+Before invoking shell writers, check whether a `composition.yaml` exists in the slice directory (`.specify/slices/<name>/composition.yaml`) or baseline (`.specify/specs/composition.yaml`). When present, run composition validation checks before proceeding to shell generation:
 
 1. **Schema validity** — `composition.yaml` conforms to the JSON Schema at `capabilities/vectis/composition.schema.json`. Schema violations are **errors** that halt shell generation.
 2. **Field coverage** — every field in each per-page view struct (from `design.md`) appears as a `bind` value on some item in the corresponding screen. Missing bindings are **warnings**.
@@ -88,7 +88,7 @@ both reviews done
 When both reviews complete, the orchestrator consolidates design-level
 findings from both platforms into a single Specify change rather than
 letting each reviewer call `/spec:define` independently. This avoids
-concurrent writes to `.specify/changes/` and produces a unified
+concurrent writes to `.specify/slices/` and produces a unified
 cross-platform review change. See **Consolidate design-level findings**
 below.
 
@@ -462,7 +462,7 @@ Specify change.
      Include a final task per platform that re-runs the corresponding
      reviewer skill to confirm all Critical findings are resolved.
 
-6. **Show final status** by running `specify change status <name>`.
+6. **Show final status** by running `specify slice status <name>`.
 
 ---
 

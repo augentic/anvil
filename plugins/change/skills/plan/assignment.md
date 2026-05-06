@@ -76,7 +76,7 @@ Step 3(d) routes entries to **existing** registry projects. When the operator's 
 
    The skill never bundles the registry-add and the plan-amend into one step — the registry is the producer of legal project names; the plan is the consumer. Two writes, two verbs, in that order.
 
-5. **Audit trail.** Append a `Registry amendments` block to `.specify/plans/<change-name>/proposal.md` listing every `(name, url, schema, description)` tuple created during the run, plus the rationale (the entry that triggered the proposal). The block sits after the assignment table.
+5. **Audit trail.** Append a `Registry amendments` block to `.specify/plans/<slice-name>/proposal.md` listing every `(name, url, schema, description)` tuple created during the run, plus the rationale (the entry that triggered the proposal). The block sits after the assignment table.
 
 **`--dry-run`.** Do **not** shell `specify registry add` or `specify workspace sync`; do **not** invoke `specify change plan amend`. The dry-run output emits a `Would propose registry amendments:` block listing the same `(name, url, schema, description)` tuples the writing path would have created, plus the rationale per entry. The block sits after the assignment preview.
 

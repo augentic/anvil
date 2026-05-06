@@ -1,6 +1,6 @@
-# combined — `/spec:execute` forwards sources; delta targeting is description-driven
+# combined — `/change:execute` forwards sources; delta targeting is description-driven
 
-The plan entry `registration-hardening` declares `sources: [monolith]` and a description that references `user-registration`. This is the canonical shape for a refactor that re-reads a legacy source while delta-targeting an already-merged baseline. `/spec:execute` resolves the source key and passes it through as `--source`. Delta targeting is inferred by the define skill from the entry's description — no explicit flag is needed.
+The plan entry `registration-hardening` declares `sources: [monolith]` and a description that references `user-registration`. This is the canonical shape for a refactor that re-reads a legacy source while delta-targeting an already-merged baseline. `/change:execute` resolves the source key and passes it through as `--source`. Delta targeting is inferred by the define skill from the entry's description — no explicit flag is needed.
 
 ## Resolution trace
 
@@ -35,7 +35,7 @@ No `--affects` flag — the define skill infers delta targets from the change's 
 
 ## Rendered define step
 
-When the driver emits the per-change output block for this entry, the `Processing:` header suffix carries the `sources` list, and the define step body shows the extract sub-step with the resolved path. Delta targeting (from the description) is handled inside define:
+When the driver emits the per-slice output block for this entry, the `Processing:` header suffix carries the `sources` list, and the define step body shows the extract sub-step with the resolved path. Delta targeting (from the description) is handled inside define:
 
 ```text
 ### Processing: registration-hardening (sources: [monolith])

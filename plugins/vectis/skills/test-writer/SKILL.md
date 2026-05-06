@@ -20,7 +20,7 @@ Generate or update tests for a Crux shared crate from Specify artifacts (specs +
 $FEATURE_NAME   = $ARGUMENTS[0]
 
 # Path derivation
-$SLICE_DIR     = .specify/changes/<active-change>
+$SLICE_DIR     = .specify/slices/<active-change>
 $SPECS_DIR      = $SLICE_DIR/specs
 $SPEC_PATH      = $SPECS_DIR/$FEATURE_NAME/spec.md
 $DESIGN_PATH    = $SLICE_DIR/design.md

@@ -1,10 +1,10 @@
-# Final state of .specify/changes/update-user-api-v2/journal.yaml
+# Final state of .specify/slices/update-user-api-v2/journal.yaml
 # (or its archived equivalent under .specify/archive/...) after the
 # post-merge cross-project check has run.
 #
-# Both entries were appended by /spec:execute via:
+# Both entries were appended by /change:execute via:
 #
-#   specify change journal append update-user-api-v2 merge failure \
+#   specify slice journal append update-user-api-v2 merge failure \
 #       --summary "cross-project-warning: <change-kind> in mobile for contracts/http/user-api.yaml" \
 #       --context "<the structured payload below>"
 #

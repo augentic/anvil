@@ -1,6 +1,6 @@
-# Archive shape after the second run's `specify initiative finalize`
+# Archive shape after the second run's `specify change finalize`
 
-After the second run of `/spec:plan --orchestrate dark-mode …` (step 7
+After the second run of `/change:plan --orchestrate dark-mode …` (step 7
 only — re-entry detects all PRs already merged on remote), the hub's
 on-disk state looks like:
 
@@ -13,7 +13,7 @@ shop-platform/
     │   └── plans/
     │       ├── dark-mode-<YYYYMMDD>.yaml           # the archived plan
     │       └── dark-mode-<YYYYMMDD>/               # archived authoring trail
-    │           ├── initiative.md
+    │           ├── change.md
     │           └── plans/
     │               └── dark-mode/                  # discovery, workspace, proposal markdown
     └── workspace/
@@ -21,6 +21,6 @@ shop-platform/
         └── vectis-mobile/                          # tier-2 clone (durable)
 ```
 
-A third run of `/spec:plan --orchestrate dark-mode …` reports
-`plan-not-found` from `specify initiative finalize` and exits zero —
+A third run of `/change:plan --orchestrate dark-mode …` reports
+`plan-not-found` from `specify change finalize` and exits zero —
 the explicit "already finalized" signal.

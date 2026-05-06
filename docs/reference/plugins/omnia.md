@@ -11,7 +11,7 @@ Generate or update Rust crates from Specify artifacts.
 **Invocation:** Via skill directive tag in `tasks.md` (`<!-- skill: omnia:crate-writer -->`) or directly.
 
 **Inputs:**
-- `crate-name` -- derives the change directory and crate path.
+- `crate-name` -- derives the slice directory and crate path.
 - Reads `spec.md`, `design.md`, and baseline specs.
 
 **Outputs:**

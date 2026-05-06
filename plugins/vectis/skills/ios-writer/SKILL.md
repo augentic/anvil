@@ -1,7 +1,7 @@
 ---
 name: vectis-ios-writer
 description: Generate or update a SwiftUI iOS shell for a Crux application from Specify artifacts. Use when implementing iOS shell tasks from a Specify change, or when the user mentions ios-writer.
-argument-hint: "<change-dir>"
+argument-hint: "<slice-dir>"
 ---
 
 # Crux iOS Shell Generator
@@ -20,7 +20,7 @@ This skill targets **Swift 6** and **SwiftUI** with iOS 17+ deployment target.
 |---|---|---|
 | `app-dir` | **Yes** | Path to the Crux app directory (must contain `shared/src/app.rs`) |
 | `project-dir` | No | Directory for the iOS shell. Defaults to `{app-dir}/iOS` |
-| `change-dir` | No | Path to `.specify/changes/<change>/`. When provided, the skill reads the `## iOS Shell Requirements` section from `{change-dir}/specs/{feature-name}/spec.md` for platform-specific requirements |
+| `slice-dir` | No | Path to `.specify/slices/<change>/`. When provided, the skill reads the `## iOS Shell Requirements` section from `{slice-dir}/specs/{feature-name}/spec.md` for platform-specific requirements |
 
 ## Prerequisites
 
@@ -62,9 +62,9 @@ Also read:
 - `design-system/tokens.yaml` -- design tokens for styling
 - `design-system/spec.md` -- design system usage rules
 
-When `change-dir` is provided, also read:
-- `{change-dir}/specs/{feature-name}/spec.md` -- read the `## iOS Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## iOS Shell Details` section of `{change-dir}/design.md` for platform design decisions.
-- `{change-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- composition artifact for deterministic layout instructions (when present).
+When `slice-dir` is provided, also read:
+- `{slice-dir}/specs/{feature-name}/spec.md` -- read the `## iOS Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## iOS Shell Details` section of `{slice-dir}/design.md` for platform design decisions.
+- `{slice-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- composition artifact for deterministic layout instructions (when present).
 
 ## Mode Detection
 
@@ -114,7 +114,7 @@ After the CLI returns green, treat the scaffolded iOS shell as an existing imple
 - Strip CAP markers for capabilities the core does not use, and expand CAP blocks (with real effect handlers + helpers) for capabilities the core does use.
 - Replace the `HomeScreen` starter with real per-ViewModel-variant screen files driven by the core's `ViewModel` enum + per-page view structs.
 - Rewrite `ContentView.swift`'s `switch` to cover every ViewModel variant.
-- Apply any `## iOS Shell Requirements` from the active Specify change (when `change-dir` is provided).
+- Apply any `## iOS Shell Requirements` from the active Specify change (when `slice-dir` is provided).
 
 ## Process: Update Mode
 
@@ -124,7 +124,7 @@ Use this process when `{project-dir}/` already exists with Swift files.
 
 Same as create mode step 1 (read `{app-dir}/shared/src/app.rs` and extract the full type inventory using the Input Analysis table above).
 
-When `change-dir` is provided, also read the `## iOS Shell Requirements` section from `{change-dir}/specs/{feature-name}/spec.md` and the `## iOS Shell Details` section from `{change-dir}/design.md` for platform-specific requirements.
+When `slice-dir` is provided, also read the `## iOS Shell Requirements` section from `{slice-dir}/specs/{feature-name}/spec.md` and the `## iOS Shell Details` section from `{slice-dir}/design.md` for platform-specific requirements.
 
 ### U2. Read existing Swift code
 
@@ -305,4 +305,4 @@ XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffold
 - **Generated types**: Two Swift packages are produced: `SharedTypes` (domain types via facet_typegen) and `Shared` (UniFFI bindings + XCFramework via cargo-swift).
 - **Hot reloading**: All generated shells include the [Inject](https://github.com/krzysztofzablocki/Inject) library for hot reloading during development. Inject is a no-op in Release builds (stripped by LLVM), so the boilerplate can remain permanently. Each developer must install [InjectionIII](https://github.com/nicklama/InjectionIII/releases) separately. The CLI wires Inject into `project.yml` (SPM package + Debug-only `OTHER_LDFLAGS: -Xlinker -interposable` + `EMIT_FRONTEND_COMMAND_LINES: YES`); Update Mode only has to add `@ObserveInjection`/`.enableInjection()` to new screen views.
 - **ScrollView interaction hazards**: Do not place `TextField` or small `Button` elements inside a `ScrollView` within a `NavigationStack`. The `UIScrollView` touch-delay mechanism (`delaysContentTouches`) suppresses taps on non-`UIButton` views. Use `.safeAreaInset(edge:)` to pin interactive controls outside the scroll content, or use `List` which handles this internally. Similarly, avoid nesting a horizontal `ScrollView` (e.g. chip row) inside a vertical `ScrollView` -- the compound gesture conflicts cause missed taps. Pin the inner scrollable with `.safeAreaInset`, or ensure all tappable elements use `Button` with `.buttonStyle(.plain)`. See `references/swiftui-view-patterns.md` for examples.
-- **Specify integration**: When `change-dir` is provided, the skill reads the `## iOS Shell Requirements` section from the feature spec and the `## iOS Shell Details` section from design.md. The primary input remains `app.rs` from the core; the feature spec's platform section supplements with requirements that may not be expressed in the Rust types alone (e.g., navigation style, specific UX behaviors, accessibility requirements, layout constraints).
+- **Specify integration**: When `slice-dir` is provided, the skill reads the `## iOS Shell Requirements` section from the feature spec and the `## iOS Shell Details` section from design.md. The primary input remains `app.rs` from the core; the feature spec's platform section supplements with requirements that may not be expressed in the Rust types alone (e.g., navigation style, specific UX behaviors, accessibility requirements, layout constraints).

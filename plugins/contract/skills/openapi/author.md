@@ -5,7 +5,7 @@
 ## Inputs
 
 ```text
-$SLICE_DIR     = .specify/changes/<change-name>
+$SLICE_DIR     = .specify/slices/<slice-name>
 $SPECS_DIR      = $SLICE_DIR/specs
 $CONTRACTS_DIR  = $SLICE_DIR/contracts
 $BASELINE_DIR   = contracts
@@ -64,9 +64,9 @@ Build a structured list of **spec interactions**, one per `(path, method)` tuple
   source: specs/auth.md REQ-014
 ```
 
-When a spec scenario references a payload type by name (e.g. "respond with a `User`"), check whether the type is defined in this change's `$SPECS_DIR/` or already in `$BASELINE_DIR/schemas/`. The schema is owned by the json-schema format skill — your job is only to wire the `$ref` correctly.
+When a spec scenario references a payload type by name (e.g. "respond with a `User`"), check whether the type is defined in this slice's `$SPECS_DIR/` or already in `$BASELINE_DIR/schemas/`. The schema is owned by the json-schema format skill — your job is only to wire the `$ref` correctly.
 
-When the change has **no specs** (e.g. an importer-only change followed by a normalisation pass), skip steps 2–4 and route to [`importer.md`](./importer.md).
+When the slice has **no specs** (e.g. an importer-only change followed by a normalisation pass), skip steps 2–4 and route to [`importer.md`](./importer.md).
 
 ### Step 3 — Compute the minimal delta
 
@@ -91,7 +91,7 @@ The spec describes an operation that is absent from the baseline, or a baseline 
 - New response status codes on an existing operation (only when the spec requires them).
 - New request body fields (only when the spec asserts them).
 
-When extending an existing API domain (e.g. adding `POST /users/verify` to `user-api.yaml` which already defines `POST /users` and `GET /users/{user_id}`), the delta file must contain **both the existing operations and the new ones**. Merge is opaque file replacement: the change-level file replaces the baseline file wholesale, so omitting existing operations would silently delete them.
+When extending an existing API domain (e.g. adding `POST /users/verify` to `user-api.yaml` which already defines `POST /users` and `GET /users/{user_id}`), the delta file must contain **both the existing operations and the new ones**. Merge is opaque file replacement: the slice-level file replaces the baseline file wholesale, so omitting existing operations would silently delete them.
 
 #### Normalisation
 
@@ -143,7 +143,7 @@ Shared payload schemas live in `contracts/schemas/` and are owned by the json-sc
 
 - **Always `$ref`** request bodies, response bodies, and reusable parameter schemas to `../schemas/<type>.yaml`.
 - **Never inline** a domain type. If the spec mentions a new payload type, route the schema work to `/contract:json-schema` (or, in the same `/spec:build` invocation, the contracts capability build brief calls the json-schema skill first per the cross-format ordering rule).
-- **`$ref` resolution scope.** All `$ref` paths must resolve either to `$CONTRACTS_DIR/schemas/` (this change's delta) or `$BASELINE_DIR/schemas/` (the platform baseline). The verifier flags any `$ref` that does not resolve.
+- **`$ref` resolution scope.** All `$ref` paths must resolve either to `$CONTRACTS_DIR/schemas/` (this slice's delta) or `$BASELINE_DIR/schemas/` (the platform baseline). The verifier flags any `$ref` that does not resolve.
 - **Inline `$defs`** for one-shot sub-objects used only inside one parent payload are acceptable in the schema files themselves, but not in the OpenAPI document. Keep the OpenAPI side a flat list of `$ref` pointers.
 - **`components/schemas` is forbidden** for domain types. The `components` block may host `parameters`, `headers`, or `securitySchemes` (see Auth below).
 
@@ -155,12 +155,12 @@ OpenAPI deltas fall into three categories — every operation in the delta belon
 |---|---|---|
 | **Operations added** | `(path, method)` not in the baseline | New entry under `paths.<path>.<method>` |
 | **Operations modified** | Baseline operation, but the spec asserts a new status code, response field, or required request field | Edit the baseline operation in-place inside the delta file (preserving every other property byte-for-byte) and surface the diff in the alignment report |
-| **Operations removed** | Baseline operation that no spec scenario references and the change explicitly deprecates it | **Out of scope.** OpenAPI deltas have no remove semantics — removal is a manual baseline edit. Surface as a warning in the alignment report so a human can act |
+| **Operations removed** | Baseline operation that no spec scenario references and the slice explicitly deprecates it | **Out of scope.** OpenAPI deltas have no remove semantics — removal is a manual baseline edit. Surface as a warning in the alignment report so a human can act |
 
 Computation rules applied at file scope:
 
 1. **One file per API domain.** Always read the matching baseline file first. The delta file replaces it wholesale at merge time.
-2. **`info.version` MUST parse as SemVer (RFC-12).** New top-level OpenAPI documents MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the change requires a version bump, the contracts capability build brief flags it for human review. The verifier sibling and `specify contract validate` both enforce SemVer; a non-SemVer value is a hard validation failure.
+2. **`info.version` MUST parse as SemVer (RFC-12).** New top-level OpenAPI documents MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels (`1.0.0-draft.1`). Do not bump the baseline's `info.version` automatically — version policy is a platform decision, not an authoring decision. If the slice requires a version bump, the contracts capability build brief flags it for human review. The verifier sibling and `specify contract validate` both enforce SemVer; a non-SemVer value is a hard validation failure.
 3. **`info.x-specify-id` rename-stable identifier (RFC-12).** SHOULD set `info.x-specify-id` on every new top-level OpenAPI document to a kebab-case slug (typically the file stem; `^[a-z][a-z0-9-]*$`, ≤ 64 characters). The id is a hint that survives file moves and version bumps. MUST preserve any pre-existing `info.x-specify-id` when extending the baseline; MUST NOT change it across `info.version` bumps. Path-based references in `registry.yaml` remain canonical — the id is a rename-stable hint, not a substitute.
 4. **Preserve `operationId` keys.** When extending a baseline file, every existing operation's `operationId` stays exactly as it is. New operations get fresh kebab-cased or camelCased `operationId` values that are unique across the contract tree.
 5. **Diff at the operation level.** When modifying an existing operation, change only the keys the spec asserts. Do not reformat or reorder unrelated keys — opaque file replacement means a re-ordered file looks like a wholesale rewrite to reviewers.
@@ -248,7 +248,7 @@ Never invent scopes. The spec must list the scope identifiers and their meanings
 
 ## Alignment report
 
-Every author run produces an alignment report alongside the delta files. The report is the primary output for the contracts capability build brief — the YAML files are the artefact, but the report is how the brief decides whether the change can proceed.
+Every author run produces an alignment report alongside the delta files. The report is the primary output for the contracts capability build brief — the YAML files are the artefact, but the report is how the brief decides whether the slice can proceed.
 
 ```markdown
 ## Alignment Report (HTTP)
@@ -272,7 +272,7 @@ Every author run produces an alignment report alongside the delta files. The rep
 
 Report semantics:
 
-- **Zero delta with zero warnings** is the expected outcome for an implementation change in a contract-first workflow — specs already align with the pre-existing contract.
+- **Zero delta with zero warnings** is the expected outcome for an implementation slice in a contract-first workflow — specs already align with the pre-existing contract.
 - **Warnings require human review.** The author never resolves spec-vs-baseline mismatches automatically.
 - **A non-empty delta** is normal for contract-only changes and for spec-first changes where the baseline is empty.
 
@@ -302,7 +302,7 @@ Before declaring the author run complete:
 ## See also
 
 - [`openapi-conventions`](../../references/openapi-conventions.md) — file structure, paths, methods, response codes, `operationId`.
-- [`artifact-structure`](../../references/artifact-structure.md) — directory layout for the change-local delta and the baseline.
+- [`artifact-structure`](../../references/artifact-structure.md) — directory layout for the slice-local delta and the baseline.
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for the three authorship patterns, the already-covered / new-or-modified / normalisation classification, and the opaque-file-replacement merge contract that the §Baseline-delta computation rules above operationalise for OpenAPI.
 - [`report-shape`](../../references/report-shape.md) — markdown shape for the alignment report produced by this author path.
 - [`json-schema-conventions`](../../references/json-schema-conventions.md) — schema files referenced by the OpenAPI document (owned by `/contract:json-schema`).

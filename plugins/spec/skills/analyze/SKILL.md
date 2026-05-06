@@ -121,9 +121,9 @@ In addition to appending capability summaries to `$DISCOVERY`, the code branch (
 
 All fields are required. The detection algorithm that produces each field is owned by the capability-specific code branch prompt (`capabilities/<capability>/briefs/plan/analyze.md`); this SKILL only pins the field names, types, and on-disk shape.
 
-**Idempotency.** Same rules as §*Output contract*: no timestamps, no host state, byte-stable field order matching the shape above, and alphabetically-sorted `top_level_modules`. Re-running analyze on unchanged inputs emits byte-identical metadata. This lets `specify plan validate` diff the file across runs without drift.
+**Idempotency.** Same rules as §*Output contract*: no timestamps, no host state, byte-stable field order matching the shape above, and alphabetically-sorted `top_level_modules`. Re-running analyze on unchanged inputs emits byte-identical metadata. This lets `specify change plan validate` diff the file across runs without drift.
 
-**Consumers.** `specify plan validate` reads this metadata to emit the non-blocking `scope-missing-on-monolith` warning. No other consumer exists in v1; propose reads capability summaries from `$DISCOVERY`, not this sidecar.
+**Consumers.** `specify change plan validate` reads this metadata to emit the non-blocking `scope-missing-on-monolith` warning. No other consumer exists in v1; propose reads capability summaries from `$DISCOVERY`, not this sidecar.
 
 ## Idempotency
 

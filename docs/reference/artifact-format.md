@@ -100,13 +100,13 @@ Reason: <why this requirement is being removed>
 ID: REQ-004
 ````
 
-The four operation sections are `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, and `## RENAMED Requirements`. All are optional -- include only the sections relevant to the change.
+The four operation sections are `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, and `## RENAMED Requirements`. All are optional -- include only the sections relevant to the slice.
 
 The stable `ID: REQ-XXX` line is the merge key, not the requirement title. Requirement titles may change across deltas; IDs must not.
 
 ## Design document (technical "how")
 
-`design.md` carries the technical shape needed to implement the change.
+`design.md` carries the technical shape needed to implement the slice.
 
 ### Format
 
@@ -193,7 +193,7 @@ When design sections reference behavior from specs, cite the stable requirement 
 
 ## Proposal document
 
-`proposal.md` captures why the change exists and what is in scope. The schema's brief file provides the full output template.
+`proposal.md` captures why the slice exists and what is in scope. The schema's brief file provides the full output template.
 
 The **Crates** (or **Capabilities**) section creates the contract between proposal and specs phases -- each capability listed will need a corresponding spec file at `specs/<name>/spec.md`.
 
@@ -320,7 +320,7 @@ delta:
 
 ### Key rules
 
-- A document has either `screens` (baseline) or `delta` (per-change), never both.
+- A document has either `screens` (baseline) or `delta` (per-slice), never both.
 - Screen slugs are kebab-case (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`).
 - Every field in a per-page view struct should appear as a `bind` value (wired mode).
 - Every shell-facing Event should have an `event` wiring (wired mode).
@@ -393,9 +393,9 @@ Contracts capture *interface shape* -- endpoint paths, methods, payload schemas,
 
 ### Delta semantics
 
-Contract files use **opaque replacement** semantics during merge -- unlike spec files which use the ADDED/MODIFIED/REMOVED delta format, contract files are replaced wholesale. When a change modifies an existing binding (e.g. adding new endpoints to `user-api.yaml`), the delta file must include both existing and new paths -- the merge replaces the baseline file entirely.
+Contract files use **opaque replacement** semantics during merge -- unlike spec files which use the ADDED/MODIFIED/REMOVED delta format, contract files are replaced wholesale. When a slice modifies an existing binding (e.g. adding new endpoints to `user-api.yaml`), the delta file must include both existing and new paths -- the merge replaces the baseline file entirely.
 
-Contract deletion is rare and handled as a manual baseline edit. The change-level directory can express additions and replacements but not deletions.
+Contract deletion is rare and handled as a manual baseline edit. The slice-level directory can express additions and replacements but not deletions.
 
 ## Validation checklists
 

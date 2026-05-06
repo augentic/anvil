@@ -54,12 +54,12 @@ All contract files use **kebab-case** names with `.yaml` extensions, consistent 
 
 One type per schema file. A single binding file may contain multiple related endpoints or channels.
 
-## Change-Level Delta
+## Slice-Level Delta
 
-During a change's define phase, proposed contract modifications live in the change directory:
+During a slice's define phase, proposed contract modifications live in the slice directory:
 
 ```text
-.specify/changes/add-oauth/
+.specify/slices/add-oauth/
 ├── contracts/
 │   ├── schemas/
 │   │   └── oauth-token.yaml        # New type
@@ -72,42 +72,42 @@ During a change's define phase, proposed contract modifications live in the chan
 
 ### Delta Rules
 
-1. **Only changed files.** The change-level `contracts/` directory contains only the files this change adds or replaces — not a full copy of the baseline. This keeps the diff reviewable and makes it clear what a single change contributes to the platform's contract surface.
+1. **Only changed files.** The slice-level `contracts/` directory contains only the files this slice adds or replaces — not a full copy of the baseline. This keeps the diff reviewable and makes it clear what a single change contributes to the platform's contract surface.
 
 2. **Opaque replacement.** Contract files use whole-file replacement semantics. Unlike spec files which use the ADDED/MODIFIED/REMOVED delta format, contract files are replaced wholesale. JSON Schema and OpenAPI/AsyncAPI files have their own versioning semantics (`$id`, `info.version`); a second delta-merge algorithm for YAML contract files would add complexity without benefit.
 
-3. **No deletion mechanism.** The change-level directory can express additions and replacements but not deletions. There is no mechanism to say "remove this file from the baseline." Contract deletion (retiring an endpoint or decommissioning a channel) is rare and is handled as a manual baseline edit.
+3. **No deletion mechanism.** The slice-level directory can express additions and replacements but not deletions. There is no mechanism to say "remove this file from the baseline." Contract deletion (retiring an endpoint or decommissioning a channel) is rare and is handled as a manual baseline edit.
 
-4. **Same subdirectory structure.** The change-level `contracts/` directory mirrors the baseline structure: `schemas/`, `http/`, `messages/`. A change that adds a new schema and updates an HTTP binding has both `contracts/schemas/new-type.yaml` and `contracts/http/existing-api.yaml`.
+4. **Same subdirectory structure.** The slice-level `contracts/` directory mirrors the baseline structure: `schemas/`, `http/`, `messages/`. A change that adds a new schema and updates an HTTP binding has both `contracts/schemas/new-type.yaml` and `contracts/http/existing-api.yaml`.
 
 ### Merge Semantics
 
-When `specify change merge run` processes a change (Layer 2):
+When `specify slice merge run` processes a slice (Layer 2):
 
-- Files in the change's `contracts/` are copied into root `contracts/`, replacing files at the same path.
-- Files absent from the change's `contracts/` are left untouched in the baseline.
+- Files in the slice's `contracts/` are copied into root `contracts/`, replacing files at the same path.
+- Files absent from the slice's `contracts/` are left untouched in the baseline.
 - New files (paths that do not exist in the baseline) are added.
 
 ### Conflict Detection
 
-Two concurrent changes that both modify the same contract file (e.g. both add paths to `http/user-api.yaml`) will conflict. `specify change merge conflict-check` detects this: if the baseline file was modified after the change's `defined-at` timestamp, the merge is blocked. Resolution: re-run the change's define phase against the updated baseline.
+Two concurrent changes that both modify the same contract file (e.g. both add paths to `http/user-api.yaml`) will conflict. `specify slice merge conflict-check` detects this: if the baseline file was modified after the slice's `defined-at` timestamp, the merge is blocked. Resolution: re-run the slice's define phase against the updated baseline.
 
 ## Baseline vs Change-Level
 
 | Aspect | Baseline | Change-Level |
 |--------|----------|-------------|
-| Location | `contracts/` | `.specify/changes/<name>/contracts/` |
-| Scope | Full platform contract surface | Only files this change adds or replaces |
-| Lifetime | Persists across changes | Exists during the change lifecycle, merged or dropped |
+| Location | `contracts/` | `.specify/slices/<name>/contracts/` |
+| Scope | Full platform contract surface | Only files this slice adds or replaces |
+| Lifetime | Persists across changes | Exists during the slice lifecycle, merged or dropped |
 | Authority | Source of truth for the current contract state | Proposed modification, pending review and merge |
 
-The baseline is what the writer validates specs against. The change-level delta is what the writer produces when specs describe interactions not covered by the baseline.
+The baseline is what the writer validates specs against. The slice-level delta is what the writer produces when specs describe interactions not covered by the baseline.
 
 ## Multi-Repo Distribution
 
 In multi-repo initiatives, contracts live in the initiating repo's root `contracts/` directory. Distribution to project clones uses the workspace infrastructure:
 
-- **Layer 1**: the `/spec:execute` driver copies root `contracts/` into each project clone as a pre-change step.
+- **Layer 1**: the `/change:execute` driver copies root `contracts/` into each project clone as a pre-change step.
 - **Layer 2**: `specify workspace sync` materialises root `contracts/` automatically.
 
 Phase skills always read from root `contracts/` relative to their working directory — they do not need to know whether contracts were authored locally or materialised from a central source.

@@ -218,7 +218,7 @@ This demonstrates the "preserve unchanged code" hard rule.
 ## Verification
 
 - [x] Baseline `cargo test` captured (all existing tests pass)
-- [x] Only files in the change set were modified (4 files)
+- [x] Only files in the slice set were modified (4 files)
 - [x] Validation constants match artifact specification
 - [x] New field follows output type conventions (`skip_serializing_if`, doc comment)
 - [x] Test assertions updated for new threshold boundaries

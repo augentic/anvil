@@ -1,4 +1,4 @@
-# Pre-state — empty hub registry. The greenfield path inside /spec:plan
+# Pre-state — empty hub registry. The greenfield path inside /change:plan
 # (RFC-9 §2B) materialises foo-backend and foo-mobile during step 3.
 version: 1
 projects: []

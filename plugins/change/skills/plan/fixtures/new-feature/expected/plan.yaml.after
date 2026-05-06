@@ -1,4 +1,4 @@
-# Terminal plan after step 4 (/spec:execute --loop) drained every entry.
+# Terminal plan after step 4 (/change:execute --loop) drained every entry.
 # The contract change runs against the hub (no `project`); the two
 # implementation changes carry the project assignments written by
 # step 3(d).

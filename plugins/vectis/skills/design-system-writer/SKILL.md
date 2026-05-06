@@ -1,7 +1,7 @@
 ---
 name: vectis-design-system-writer
 description: Generate or update the platform-specific design system implementation from tokens.yaml for iOS (Swift Package) and Android (Jetpack Compose Material 3 library). Use when implementing design-system tasks from a Specify change, or when the user mentions design-system-writer.
-argument-hint: "<change-dir>"
+argument-hint: "<slice-dir>"
 ---
 
 # Design System Writer
@@ -23,7 +23,7 @@ Unlike core-writer or ios-writer, there is no create vs update distinction. The 
 | `output-dir` | No | Path to the iOS Swift Package directory. Defaults to `design-system/ios` |
 | `android-output-dir` | No | Path to the Android library module root. Defaults to `design-system/android` |
 | `android-package` | No | Kotlin package for generated sources. Defaults to `com.vectis.design` |
-| `change-dir` | No | Path to a Specify change directory. When provided, the skill reads the `## Design System Requirements` section from `{change-dir}/specs/{feature-name}/spec.md` for context on what token changes are expected. |
+| `slice-dir` | No | Path to a Specify slice directory. When provided, the skill reads the `## Design System Requirements` section from `{slice-dir}/specs/{feature-name}/spec.md` for context on what token changes are expected. |
 
 ## Process
 

@@ -1,6 +1,6 @@
 # Capabilities
 
-> Status: Draft (Phase 1.5 of [RFC-13](../../../rfcs/rfc-13-extensibility.md) landed). The post-RFC manifest shape and dependency invariants are pinned and the first-party capabilities (`omnia`, `contracts`, `vectis`) now live at [`capabilities/<name>/capability.yaml`](../../../capabilities/). The `pipeline.plan` block on the omnia and vectis manifests is permitted **transitionally** by [`capability.schema.json`](../../../capabilities/capability.schema.json); it migrates to the change-component planning skill in Phase 3.11 and is then actively rejected by the schema.
+> Status: Draft (Phase 1.5 of [RFC-13](../../../rfcs/rfc-13-extensibility.md) landed). The post-RFC manifest shape and dependency invariants are pinned and the first-party capabilities (`omnia`, `contracts`, `vectis`) now live at [`capabilities/<name>/capability.yaml`](../../../capabilities/). The `pipeline.plan` block on the omnia and vectis manifests is permitted **transitionally** by [`capability.schema.json`](../../../capabilities/capability.schema.json); it migrates to the slice-component planning skill in Phase 3.11 and is then actively rejected by the schema.
 
 ## What is a capability?
 
@@ -59,9 +59,9 @@ The post-RFC manifest deliberately drops the legacy `domain` and `extends` field
 
 `pipeline.plan` is intentionally **absent** from the post-RFC manifest. Planning is orchestration, not capability-owned slice work, and lives on the `specify change` platform component:
 
-- the change brief (`change.md`) records operator intent,
-- the change plan (`plan.yaml`) sequences slices across one or more projects,
-- planning briefs and the `/spec:plan` (later: `/change:plan`) authoring loop sit on the change surface rather than inside any capability's manifest.
+- the slice brief (`change.md`) records operator intent,
+- the slice plan (`plan.yaml`) sequences slices across one or more projects,
+- planning briefs and the `/change:plan` (later: `/change:plan`) authoring loop sit on the slice surface rather than inside any capability's manifest.
 
 > **Transitional allowance (RFC-13 §Phase 1.5 → §Phase 3.11).** The first-party omnia and vectis manifests still ship a `pipeline.plan` block today. To keep them loadable, [`capability.schema.json`](../../../capabilities/capability.schema.json) permits (but does not require) `pipeline.plan` for the duration of Phase 1.5. The block is moved out — and the schema is tightened to actively reject it — in Phase 3.11. Capability authors should not introduce new `pipeline.plan` entries.
 
@@ -81,7 +81,7 @@ specify-change ──▶ specify-registry ──▶ specify-core
 
 The invariant is: **`specify-core` does not depend on `specify-registry` or `specify-change`**, and `specify-registry` does not depend on `specify-change`. Platform components compose downward; they never re-enter the core. This is enforced as a lint via [RFC-5](../../../rfcs/rfc-5-lint.md) (see also [RFC-13 §Migration](../../../rfcs/rfc-13-extensibility.md#migration), invariant 4).
 
-Registry and the change component are first-party Specify components, but they are **not** capabilities: they do not appear in any `capability.yaml`, they are not activated through the manifest protocol, and the core never switches on a capability name to invoke them.
+Registry and the slice component are first-party Specify components, but they are **not** capabilities: they do not appear in any `capability.yaml`, they are not activated through the manifest protocol, and the core never switches on a capability name to invoke them.
 
 ## Distribution
 

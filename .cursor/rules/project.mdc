@@ -7,9 +7,18 @@ alwaysApply: true
 
 This repository provides specialist skills and references for Specify-driven development on Augentic's Omnia runtime and Crux cross-platform framework.
 
+## Vocabulary
+
+Two lifecycle nouns recur throughout this codebase. RFC-13 §Migration locked their meaning:
+
+- **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
+- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, and the `specify change *` CLI verbs (which include the `specify change plan *` subresource).
+
+Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "initiative". Both were renamed in Phase 3 of the RFC; "the change loop" no longer exists as a phrase — it is the *slice loop*.
+
 ## Operating Model
 
-The intended workflow is human-driven Specify. Single-change loop:
+The intended workflow is human-driven Specify. Single-slice loop:
 
 ```bash
 /spec:init      # once per project (use --hub for a registry-only platform hub)
@@ -55,7 +64,7 @@ When conflicts arise, follow this strict precedence order:
 
 Specify artifacts have separate responsibilities:
 
-- **`proposal.md`**: why the change exists and what is in scope
+- **`proposal.md`**: why the slice exists and what is in scope
 - **`spec.md`**: behavioral requirements, scenarios, error conditions, optional metrics
 - **`composition.yaml`**: spatial layout of screens — regions, groups, item bindings, and event wiring (Vectis only)
 - **`design.md`**: domain model, APIs, integrations, configuration, technical logic
@@ -79,8 +88,8 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Change Plugin (`plugins/change/`)
 
-- `plan` - author `plan.yaml` via the planning brief pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C. Was `/spec:plan` until RFC-13 §3.9.
-- `execute` - drive a change's plan through define, build, merge. Was `/spec:execute` until RFC-13 §3.9.
+- `plan` - author `plan.yaml` via the planning brief pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C. Was `/change:plan` until RFC-13 §3.9.
+- `execute` - drive a change's plan through define, build, merge per slice. Was `/change:execute` until RFC-13 §3.9.
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -182,7 +191,7 @@ In downstream consumer projects:
 
 In this repository:
 
-- **Working artifacts**: `$PROJECT_DIR/.specify/changes/<change-name>/`
+- **Working artifacts**: `$PROJECT_DIR/.specify/slices/<slice-name>/`
 - **Baseline specs**: `$PROJECT_DIR/.specify/specs/`
 
 ## Troubleshooting
@@ -237,7 +246,7 @@ Forbidden (validated by `make checks` via `.cursor/schemas/skill.schema.json`):
 ### `argument-hint`
 
 - Single short hint that names the **primary positional** argument as Cursor placeholder text (the grey hint shown after `/plugin:skill `).
-- Required positional → angle brackets: `<change-dir>`. Optional positional → square brackets: `[crate-name]`.
+- Required positional → angle brackets: `<slice-dir>`. Optional positional → square brackets: `[crate-name]`.
 - No flag names (`--dry-run`, `--source`), no `?` optional-suffix marker, no `|` alternative-value pipes. Flags and secondary positionals are documented in the body's "Invocation" section.
 - Skills that only take flags omit the field entirely (e.g. `/change:execute`).
 

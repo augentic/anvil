@@ -1,11 +1,11 @@
 # AsyncAPI — Importer
 
-> **When to read this.** Read this when an operator supplies an external AsyncAPI document and the contracts capability build brief needs the file normalised onto Specify conventions under a change's `contracts/messages/` directory. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)).
+> **When to read this.** Read this when an operator supplies an external AsyncAPI document and the contracts capability build brief needs the file normalised onto Specify conventions under a slice's `contracts/messages/` directory. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)).
 
 ## Inputs
 
 ```text
-$SLICE_DIR     = .specify/changes/<change-name>
+$SLICE_DIR     = .specify/slices/<slice-name>
 $CONTRACTS_DIR  = $SLICE_DIR/contracts
 $BASELINE_DIR   = contracts
 ```
@@ -240,7 +240,7 @@ Disambiguation: when two extracted schemas would produce the same filename, appe
 
 Before writing each extracted schema, compare it to any existing file with the same name in `$BASELINE_DIR/schemas/`:
 
-- **Structurally equivalent** (same `properties`, `required`, types) — drop the extracted file and replace inline references with `$ref` to the baseline file. No new schema file in the change.
+- **Structurally equivalent** (same `properties`, `required`, types) — drop the extracted file and replace inline references with `$ref` to the baseline file. No new schema file in the slice.
 - **Differs structurally** — disambiguate by prefixing with the event domain (`order-placed-billing.yaml`) and write the new file.
 
 #### Replacement

@@ -36,7 +36,7 @@ This skill uses an agent team with 3 specialist reviewers and 1 antagonist. The 
 
 Read the following files from `{target-dir}`:
 
-- `spec.md` -- the app specification (required for logic specialist). Look under `.specify/changes/<change>/specs/<feature>/spec.md` (the Vectis artifact path), not at the project root.
+- `spec.md` -- the app specification (required for logic specialist). Look under `.specify/slices/<change>/specs/<feature>/spec.md` (the Vectis artifact path), not at the project root.
 - `shared/Cargo.toml` -- dependencies and features
 - All `.rs` files under `shared/src/` -- focus on `app.rs` (the `update()` function)
 
@@ -368,7 +368,7 @@ Universal checks with a Spec-change indicator (UNI-002, UNI-004, UNI-007, UNI-00
 
 If design-level findings exist, delegate to `/spec:define` to create a single Specify change that tracks all of them:
 
-1. **Derive a change name** from the app name and append the current date-time for traceability:
+1. **Derive a slice name** from the app name and append the current date-time for traceability:
 
    ```
    review-{app-name}-{YYYY-MM-DDTHH-MM}
@@ -381,11 +381,11 @@ If design-level findings exist, delegate to `/spec:define` to create a single Sp
    date -u +"%Y-%m-%dT%H-%M"
    ```
 
-2. **Delegate to `/spec:define`** with the derived change name and a description synthesized from the accumulated design-level findings. Provide the following guidance for artifact generation:
+2. **Delegate to `/spec:define`** with the derived slice name and a description synthesized from the accumulated design-level findings. Provide the following guidance for artifact generation:
 
 3. **Content guidelines for each artifact**:
 
-   - **proposal.md**: The "Why" section summarizes the accumulated review findings by severity and risk, distinguishing spec-change findings (requirements gaps) from code-fix findings (implementation bugs). The "What Changes" section lists each design-level finding as a bullet, prefixed with `[spec]` or `[code]` to indicate its classification. Note which mechanical fixes were already applied across all iterations and how many review cycles ran. The "Impact" section identifies affected files, shell contract changes, and migration concerns.
+   - **proposal.md**: The "Why" section summarizes the accumulated review findings by severity and risk, distinguishing spec-change findings (requirements gaps) from code-fix findings (implementation bugs). The "What Changes" section lists each design-level finding as a bullet, prefixed with `[spec]` or `[code]` to indicate its classification. Note which mechanical fixes were already applied across all iterations and how many review cycles ran. The "Impact" section identifies affected files, shell contract slices, and migration concerns.
 
    - **design.md**: Each design-level finding becomes a Decision section with rationale and alternatives considered. Group related findings (e.g., all timestamp-related changes under one decision). Reference the specific check IDs (CRX-xxx, LOG-xxx, UNI-xxx) that motivated each decision. For spec-change findings, explain why the current spec is insufficient and what the proposed requirement should be.
 
@@ -393,7 +393,7 @@ If design-level findings exist, delegate to `/spec:define` to create a single Sp
 
    - **tasks.md**: Order tasks by dependency -- spec updates first (so requirements are clear before implementation), then data-type changes, then event signatures, then handler logic, then test updates, then new tests, then verification. Each task references the finding ID it addresses. Include a final verification section that re-runs the core-reviewer skill to confirm all Critical findings are resolved.
 
-4. **Show final status** by running `specify change status <name>` and summarize: change name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
+4. **Show final status** by running `specify slice status <name>` and summarize: slice name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
 
 ## Severity Definitions
 

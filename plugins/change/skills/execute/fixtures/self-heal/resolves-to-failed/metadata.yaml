@@ -1,7 +1,7 @@
-# Snapshot of .specify/changes/checkout-api/.metadata.yaml as self-heal
+# Snapshot of .specify/slices/checkout-api/.metadata.yaml as self-heal
 # reads it on startup. /spec:build exhausted its verify-repair budget
 # and stamped outcome: build failure before returning; the prior
-# /spec:execute run crashed before reaching the step-11 drop path
+# /change:execute run crashed before reaching the step-11 drop path
 # (`/spec:drop checkout-api --reason "..."` then `specify plan
 # transition checkout-api failed --reason "..."`).
 #

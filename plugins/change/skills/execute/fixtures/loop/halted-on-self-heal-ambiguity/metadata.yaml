@@ -1,4 +1,4 @@
-# Snapshot of .specify/changes/shopping-cart/.metadata.yaml that the
+# Snapshot of .specify/slices/shopping-cart/.metadata.yaml that the
 # --loop invocation's self-heal pass reads on startup. Identical in
 # shape to fixtures/self-heal/ambiguous-halt/metadata.yaml: the file
 # is internally contradictory (status == defining but outcome.phase

@@ -4,7 +4,7 @@ API contracts define the machine-readable interface shapes between components. I
 
 ## The contract-first pattern
 
-When `/spec:plan` detects an API boundary between two projects in the registry, it automatically inserts a **contract change** before the implementation changes:
+When `/change:plan` detects an API boundary between two projects in the registry, it automatically inserts a **contract change** before the implementation changes:
 
 ```yaml
 changes:
@@ -26,7 +26,7 @@ The contract change defines the interface (JSON Schema payloads, OpenAPI binding
 
 ## Manual contract workflow
 
-If you are not using `/spec:plan`, you can create contract changes manually:
+If you are not using `/change:plan`, you can create contract changes manually:
 
 ```text
 /spec:init https://github.com/augentic/specify/schemas/contracts
@@ -59,7 +59,7 @@ In a multi-repo setup, contracts live in the initiating repo's `contracts/`. Aft
 
 ## Cross-project contract validation (RFC-9 Section 3B)
 
-After a producer change merges, `/spec:execute` runs a cross-project compatibility check against every consumer project. The check is post-merge (the producer's contract is already in the baseline), advisory (warnings never halt the loop), and operator-triaged.
+After a producer change merges, `/change:execute` runs a cross-project compatibility check against every consumer project. The check is post-merge (the producer's contract is already in the baseline), advisory (warnings never halt the loop), and operator-triaged.
 
 **Algorithm:**
 
@@ -71,20 +71,20 @@ After a producer change merges, `/spec:execute` runs a cross-project compatibili
 
 **Where the warnings appear:**
 
-- The `/spec:execute` merge transcript prints a per-warning block (consumer project, contract path, finding type, finding detail) right after the per-change merge summary.
-- `specify change journal show <change>` displays the same warnings keyed by `cross-project-warning:` even after the change is archived.
+- The `/change:execute` merge transcript prints a per-warning block (consumer project, contract path, finding type, finding detail) right after the per-slice merge summary.
+- `specify slice journal show <change>` displays the same warnings keyed by `cross-project-warning:` even after the change is archived.
 
 **Triage:**
 
 - If the consumer project is intentionally lagging (e.g. mobile shipping a release behind the backend), accept the drift. The warning is in the journal for audit.
-- If the consumer needs to be updated to match, spawn a follow-up consumer change in the same plan or in a follow-up initiative. Use `specify plan add <name> --project <consumer> --depends-on <producer-change>` to wire it up.
+- If the consumer needs to be updated to match, spawn a follow-up consumer change in the same plan or in a follow-up initiative. Use `specify change plan add <name> --project <consumer> --depends-on <producer-change>` to wire it up.
 - See [Resolve cross-project contract warnings](resolve-cross-project-contract-warnings.md) for the full triage checklist.
 
 **What the check does not do:** it never halts the loop, never modifies the consumer's specs, never auto-creates a follow-up change. The framework reports drift; the operator decides what to do about it.
 
 ## See also
 
-- [Cross-Repo Initiatives](../tutorials/cross-repo-initiative.md) -- tutorial on multi-repo planning
+- [Cross-Repo Initiatives](../tutorials/cross-repo-change.md) -- tutorial on multi-repo planning
 - [Resolve cross-project contract warnings](resolve-cross-project-contract-warnings.md) -- triage how-to for the post-merge check
 - [Cross-project contract warnings on the merge transcript](../appendices/troubleshooting.md#cross-project-contract-warnings-on-the-merge-transcript) -- troubleshooting entry
 - [Contract plugin](../reference/plugins/contract.md) -- plugin reference

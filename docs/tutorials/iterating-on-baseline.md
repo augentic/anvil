@@ -4,7 +4,7 @@ In the [previous tutorial](first-change.md), you created a greeting capability a
 
 **Prerequisites:** Complete [Your First Change](first-change.md). You should have a baseline spec at `.specify/specs/greeting/spec.md`.
 
-## 1. Define a change that modifies an existing capability
+## 1. Define a slice that modifies an existing capability
 
 ```text
 /spec:define "Add support for an optional language parameter to the greeting endpoint, defaulting to English"
@@ -32,7 +32,7 @@ Change defined (3 tasks).
 
 This time, Specify detects that the `greeting` capability already exists in the baseline. Instead of writing a fresh spec, it generates a **delta spec** (see [Glossary](../appendices/glossary.md)) that describes only what changed.
 
-Open `.specify/changes/<name>/specs/greeting/spec.md` and notice the delta structure:
+Open `.specify/slices/<name>/specs/greeting/spec.md` and notice the delta structure:
 
 ```markdown
 ## ADDED Requirements
@@ -86,7 +86,7 @@ When merge runs, it applies the delta to the baseline. Open `.specify/specs/gree
 - `REQ-003` is a new requirement in the baseline (added).
 - `REQ-002` (the error case from the first change) is unchanged.
 
-The baseline is the accumulated state of all merged changes.
+The baseline is the accumulated state of all merged slices.
 
 ## Understanding delta merges
 

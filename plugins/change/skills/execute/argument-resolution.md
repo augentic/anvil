@@ -1,6 +1,6 @@
 # Argument resolution (`sources`)
 
-Step 6 of the [per-slice algorithm](per-change-algorithm.md) turns the plan entry's `sources` field into command-line arguments for `/spec:define`. Scope and delta-targeting intent are carried in the entry's `description` field and inferred by the define skill; the driver does not forward them as separate flags.
+Step 6 of the [per-slice algorithm](per-slice-algorithm.md) turns the plan entry's `sources` field into command-line arguments for `/spec:define`. Scope and delta-targeting intent are carried in the entry's `description` field and inferred by the define skill; the driver does not forward them as separate flags.
 
 - **`sources`** — a list of keys into the plan's top-level `sources` map. Each key resolves to either a local filesystem path or a git URL. The resolved values are handed to `/spec:define` as `--source <key>=<path-or-url>` tuples, preserving the key so define's brief pipeline can retain provenance when it hands the value to `/spec:extract` (which inlines a guarded `git clone` snippet for URL values — see the *Cloning a source tree* subsection in [`../../../spec/skills/analyze/SKILL.md`](../../../spec/skills/analyze/SKILL.md)) or an analogous plugin.
 

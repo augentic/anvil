@@ -1,17 +1,17 @@
 # Specify Developer Guide
 
-Specify turns ad-hoc AI prompting into a repeatable, auditable workflow. Every change you make through Specify produces durable artifacts -- proposals, behavioral specs, technical designs, and task lists -- that accumulate as your project's living specification.
+Specify turns ad-hoc AI prompting into a repeatable, auditable workflow. Every slice you make through Specify produces durable artifacts -- proposals, behavioral specs, technical designs, and task lists -- that accumulate as your project's living specification.
 
 ## What you get
 
 - **Durable reasoning.** The thinking that connects intent to implementation is captured in version-controlled artifacts, not lost when the chat session ends.
-- **Baseline accumulation.** Each merged change adds to a growing specification. Future changes build on what came before rather than starting from scratch.
-- **Automated execution.** For multi-change initiatives, `/spec:execute` drives the define-build-merge loop change by change, in dependency order.
+- **Baseline accumulation.** Each merged slice adds to a growing specification. Future slices build on what came before rather than starting from scratch.
+- **Automated execution.** For multi-slice changes, `/change:execute` drives the define-build-merge loop slice by slice, in dependency order.
 
 ## See it in action
 
 ```text
-/spec:init https://github.com/augentic/specify/schemas/omnia
+/spec:init https://github.com/augentic/specify/capabilities/omnia
 
 /spec:define "Add a greeting endpoint that accepts a name and returns a message"
   --> generates proposal.md, spec.md, design.md, tasks.md
@@ -29,9 +29,9 @@ That is the entire core workflow. Everything else in Specify builds on this loop
 
 - **New to Specify?** Read [What is Specify?](orientation/index.md), install the [Prerequisites](orientation/prerequisites.md), then follow the [Quick Start](tutorials/quick-start.md).
 
-- **Have an existing codebase?** Start with the [Brownfield Onboarding](tutorials/brownfield-onboarding.md) tutorial to extract specs from your source code, then return to [Your First Change](tutorials/first-change.md).
+- **Have an existing codebase?** Start with the [Brownfield Onboarding](tutorials/brownfield-onboarding.md) tutorial to extract specs from your source code, then return to [Your First Slice](tutorials/first-change.md).
 
-- **Planning a large initiative?** Read [Your First Change](tutorials/first-change.md) and [Iterating on a Baseline](tutorials/iterating-on-baseline.md) first, then skip to [A Multi-Change Initiative](tutorials/single-repo-initiative.md).
+- **Planning a large change?** Read [Your First Slice](tutorials/first-change.md) and [Iterating on a Baseline](tutorials/iterating-on-baseline.md) first, then skip to [A Multi-Slice Change](tutorials/single-repo-change.md).
 
 - **Returning after a few releases?** [What's New Since v0.23](explanation/whats-new.md) catalogues the additive RFC-8 and RFC-9 work; the [v1 migration map](explanation/migrating-cli-v1.md) covers the rename pulse.
 

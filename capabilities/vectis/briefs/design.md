@@ -133,7 +133,7 @@ Standard platform constraints:
 
 ## Composition Awareness
 
-When a `composition.yaml` exists in the change directory or baseline (`.specify/specs/`), read it and use it as an additional input:
+When a `composition.yaml` exists in the slice directory or baseline (`.specify/specs/`), read it and use it as an additional input:
 
 - **ViewModel adoption:** Adopt the screen names, ViewModel variant names, and field names proposed by the composition artifact. Adjust naming only when Rust conventions or domain model considerations require it.
 - **Field completeness:** Every `bind` value in `composition.yaml` must appear as a field in the corresponding per-page view struct. If a `bind` references a field not described in the spec, flag the mismatch.

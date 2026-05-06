@@ -12,7 +12,7 @@ my-project/
     ├── project.yaml
     ├── registry.yaml          # version: 1, projects: [{ name: my-project, url: ., schema: omnia@v1 }]
     ├── plan.yaml              # name: refactor-checkout, changes: […]
-    ├── initiative.md          # name: refactor-checkout
+    ├── change.md          # name: refactor-checkout
     └── contracts/
         ├── schemas/
         │   └── checkout-payload.yaml
@@ -30,7 +30,7 @@ $ specify --format json status
 {
   "schema-version": 2,
   "error": "legacy-layout",
-  "message": "legacy v1 layout detected; run `specify migrate v2-layout` to upgrade ([\".specify/registry.yaml\", \".specify/plan.yaml\", \".specify/initiative.md\", \".specify/contracts\"])",
+  "message": "legacy v1 layout detected; run `specify migrate v2-layout` to upgrade ([\".specify/registry.yaml\", \".specify/plan.yaml\", \".specify/change.md\", \".specify/contracts\"])",
   "exit_code": 1
 }
 ```
@@ -47,7 +47,7 @@ $ specify --format json migrate v2-layout
   "moves": [
     { "from": ".specify/registry.yaml", "to": "registry.yaml", "status": "moved" },
     { "from": ".specify/plan.yaml",     "to": "plan.yaml",     "status": "moved" },
-    { "from": ".specify/initiative.md", "to": "initiative.md", "status": "moved" },
+    { "from": ".specify/change.md", "to": "change.md", "status": "moved" },
     { "from": ".specify/contracts",     "to": "contracts",     "status": "moved" }
   ],
   "any-legacy-present": true,
@@ -63,7 +63,7 @@ my-project/
 │   └── lib.rs
 ├── registry.yaml              # operator-facing (root)
 ├── plan.yaml                  # operator-facing (root)
-├── initiative.md              # operator-facing (root)
+├── change.md              # operator-facing (root)
 ├── contracts/                 # operator-facing (root)
 │   ├── schemas/
 │   │   └── checkout-payload.yaml

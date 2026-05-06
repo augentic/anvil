@@ -26,7 +26,7 @@ Three capabilities, alphabetical order:
 
 ## Relationship to the Omnia analyze fixture
 
-The Omnia fixture at [`capabilities/omnia/briefs/fixtures/plan/analyze/legacy-code/`](../../../../../../../capabilities/omnia/briefs/fixtures/plan/analyze/legacy-code/) pins the **brief-level** output of `/spec:analyze --kind legacy-code` on a four-capability tree (adds `billing-subscription`). This fixture pins the **plan-level** combined `discovery.md` produced after `/spec:plan`'s discovery brief wraps the analyze output in `# Discovery — <name>` + `## Capability inventory`. Different layers, different scopes, different owners — the two fixtures do not share source trees or expected outputs.
+The Omnia fixture at [`capabilities/omnia/briefs/fixtures/plan/analyze/legacy-code/`](../../../../../../../capabilities/omnia/briefs/fixtures/plan/analyze/legacy-code/) pins the **brief-level** output of `/spec:analyze --kind legacy-code` on a four-capability tree (adds `billing-subscription`). This fixture pins the **plan-level** combined `discovery.md` produced after `/change:plan`'s discovery brief wraps the analyze output in `# Discovery — <name>` + `## Capability inventory`. Different layers, different scopes, different owners — the two fixtures do not share source trees or expected outputs.
 
 ## What this fixture pins
 

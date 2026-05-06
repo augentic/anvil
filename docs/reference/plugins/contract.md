@@ -17,12 +17,12 @@ Each skill carries three intents internally and dispatches via its own intent ta
 | Intent | Trigger | Sibling file |
 |--------|---------|--------------|
 | Author or extend | contracts schema build brief during `/spec:build`; operator extending the baseline for new interactions | `author.md` |
-| Import or normalise | operator drops an external document into a change's `contracts/` directory | `importer.md` |
+| Import or normalise | operator drops an external document into a slice's `contracts/` directory | `importer.md` |
 | Verify or run cross-project consumer check | contracts schema build brief in `/spec:build` (verify-repair loop); post-merge cross-project compatibility check (RFC-9 §3B) | `verifier.md` |
 
 ### Author intent
 
-Reads baseline contracts at `contracts/` and the change's specs, validates alignment, and produces the minimal delta for interactions the specs require that the baseline does not already cover. The algorithm is the same regardless of baseline state -- the three authorship patterns (contract-first, spec-first, contract-given) differ in outcome, not in code path.
+Reads baseline contracts at `contracts/` and the slice's specs, validates alignment, and produces the minimal delta for interactions the specs require that the baseline does not already cover. The algorithm is the same regardless of baseline state -- the three authorship patterns (contract-first, spec-first, contract-given) differ in outcome, not in code path.
 
 The author intent produces an **alignment report** summarising:
 
@@ -30,7 +30,7 @@ The author intent produces an **alignment report** summarising:
 - **New (delta produced)** -- interactions the specs require that the baseline does not cover.
 - **Normalisation** -- baseline files that received missing metadata (`$id`, `description`).
 
-A clean report with zero delta is the expected outcome for implementation changes in a contract-first workflow.
+A clean report with zero delta is the expected outcome for implementation slices in a contract-first workflow.
 
 ### Verifier intent
 
@@ -53,7 +53,7 @@ Automates the manual import workflow for external contracts:
 3. **Schema decomposition** -- extracts inline schema definitions into separate files under `contracts/schemas/`.
 4. **Metadata injection** -- adds `$id`, `$schema`, `title`, `description` where missing.
 
-In Layer 1, operators perform these steps manually by placing conformant files into the change's `contracts/` directory.
+In Layer 1, operators perform these steps manually by placing conformant files into the slice's `contracts/` directory.
 
 ## References
 
@@ -61,7 +61,7 @@ Format-neutral material is shared across the three skills under `plugins/contrac
 
 | Reference | Content |
 |-----------|---------|
-| Baseline vs delta | What lives in `contracts/` versus a change's `contracts/`, and how merges promote |
+| Baseline vs delta | What lives in `contracts/` versus a slice's `contracts/`, and how merges promote |
 | Cross-project compatibility | Producer / consumer roles, compatibility rules, finding categories |
 | Import upgrade policy | Swagger 2.0 → OpenAPI 3.1, AsyncAPI 2.x → 3.0, schema metadata defaults |
 | Report shape | Alignment report and verifier output schemas |
@@ -73,8 +73,8 @@ Format-specific patterns and examples (OpenAPI conventions, AsyncAPI conventions
 The Contract plugin is schema-independent. It is invoked from the `contracts` brief in the define pipeline, which is present in:
 
 - The **Contracts schema** -- for dedicated contract changes (authoring and import).
-- The **Omnia schema** -- for alignment validation during implementation changes.
-- The **Vectis schema** -- for alignment validation during implementation changes.
+- The **Omnia schema** -- for alignment validation during implementation slices.
+- The **Vectis schema** -- for alignment validation during implementation slices.
 
 The brief picks the format-appropriate skill (OpenAPI for HTTP / resource APIs, AsyncAPI for evented / pub-sub / streaming, JSON Schema for shared payload schemas) and dispatches to its author intent (alignment validation and delta production), then to its verifier intent (post-generation consistency checks), with a verify-repair loop of up to 2 iterations.
 

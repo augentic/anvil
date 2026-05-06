@@ -91,7 +91,7 @@ Cross-checks `plugins/` against `.cursor-plugin/marketplace.json`:
 Files matching `capabilities/**/instructions/<name>.md` must contain an output location preamble:
 
 ```markdown
-> **Output location**: `.specify/changes/...`
+> **Output location**: `.specify/slices/...`
 ```
 
 This prevents cross-plugin path contamination by making every instruction file declare where its output goes.

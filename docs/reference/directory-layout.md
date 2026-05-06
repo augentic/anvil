@@ -1,13 +1,13 @@
 # Directory Layout
 
-Specify draws a clear boundary between **operator-facing platform artifacts** and **framework-managed workflow state**. Operator artifacts (`registry.yaml`, `plan.yaml`, `initiative.md`, `contracts/`) live at your project root so they are visible as ordinary repository artifacts and review well in PRs. Framework state — caches, working changes, baseline specs, archive, workspace clones, the advisory plan lock — lives under `.specify/`.
+Specify draws a clear boundary between **operator-facing platform artifacts** and **framework-managed workflow state**. Operator artifacts (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at your project root so they are visible as ordinary repository artifacts and review well in PRs. Framework state — caches, working changes, baseline specs, archive, workspace clones, the advisory plan lock — lives under `.specify/`.
 
 ## Tree overview
 
 ```text
 registry.yaml                               # Platform catalogue (optional, multi-repo only)
-plan.yaml                                   # Initiative plan (optional, created by /spec:plan)
-initiative.md                               # Operator brief (optional)
+plan.yaml                                   # Initiative plan (optional, created by /change:plan)
+change.md                               # Operator brief (optional)
 
 contracts/                                  # Baseline API contracts
 ├── schemas/                                # JSON Schema payload definitions
@@ -19,7 +19,7 @@ contracts/                                  # Baseline API contracts
 
 .specify/
 ├── project.yaml                            # Project configuration (capability, domain, rules) — `capability:` is omitted on hubs (where `hub: true` is the sentinel)
-├── plan.lock                               # Advisory lock held by /spec:execute
+├── plan.lock                               # Advisory lock held by /change:execute
 │
 ├── .cache/                                 # Cached capability manifest and brief files
 │   └── <capability>/
@@ -32,10 +32,10 @@ contracts/                                  # Baseline API contracts
 │           ├── tasks.md
 │           ├── build.md
 │           └── merge.md
-├── changes/                                # Active changes (one directory per change)
-│   └── <change-name>/
+├── changes/                                # Active slices (one directory per change)
+│   └── <slice-name>/
 │       ├── .metadata.yaml                 # Lifecycle state (managed by CLI)
-│       ├── proposal.md                    # Why this change exists
+│       ├── proposal.md                    # Why this slice exists
 │       ├── composition.yaml               # Screen layout (Vectis only)
 │       ├── design.md                      # Technical design
 │       ├── tasks.md                       # Implementation checklist
@@ -67,7 +67,7 @@ contracts/                                  # Baseline API contracts
 │       └── ...                            # Peer repo clone (writable during execution)
 │
 └── archive/                               # Finalized changes and plans
-    ├── YYYY-MM-DD-<change-name>/          # Merged or dropped changes
+    ├── YYYY-MM-DD-<slice-name>/          # Merged or dropped slices
     │   ├── .metadata.yaml
     │   ├── proposal.md
     │   ├── composition.yaml               # Vectis only
@@ -84,21 +84,21 @@ contracts/                                  # Baseline API contracts
 
 ### `changes/`
 
-Each active change gets its own directory under `changes/`. The directory name is kebab-case and validated by the CLI when you run `specify change create`.
+Each active slice gets its own directory under `changes/`. The directory name is kebab-case and validated by the CLI when you run `specify slice create`.
 
-A change directory contains the core artifacts plus `.metadata.yaml` for lifecycle state. The `specs/` subdirectory holds one spec file per capability. Vectis changes also include `composition.yaml` for screen layout.
+A slice directory contains the core artifacts plus `.metadata.yaml` for lifecycle state. The `specs/` subdirectory holds one spec file per capability. Vectis changes also include `composition.yaml` for screen layout.
 
 ### `contracts/`
 
 Platform-level API contracts at the repository root. Contains JSON Schema payload definitions (`schemas/`), OpenAPI 3.1 HTTP bindings (`http/`), and AsyncAPI 3.0 messaging bindings (`messages/`). Subdirectories are present only when the platform uses the corresponding transport type.
 
-Contracts are a platform concern -- they describe interfaces *between* components, not internals of any one project. Both producer and consumer reference the same central definitions. When a change is merged, its `contracts/` files are copied here using opaque file replacement.
+Contracts are a platform concern -- they describe interfaces *between* components, not internals of any one project. Both producer and consumer reference the same central definitions. When a slice is merged, its `contracts/` files are copied here using opaque file replacement.
 
-A change directory may also contain a `contracts/` subdirectory holding the proposed additions or replacements for that change only. The change-level directory contains only the files the change adds or replaces -- not a full copy of the baseline.
+A slice directory may also contain a `contracts/` subdirectory holding the proposed additions or replacements for that change only. The slice-level directory contains only the files the slice adds or replaces -- not a full copy of the baseline.
 
 ### `specs/`
 
-The baseline. When a change is merged, its spec deltas are applied here. For Vectis projects, composition deltas are also merged into a baseline `composition.yaml` in this directory, with per-screen checksums tracked in `.composition-checksums.yaml` for conflict detection. Baseline specs represent the current known state of the system -- what has been specified and implemented so far.
+The baseline. When a slice is merged, its spec deltas are applied here. For Vectis projects, composition deltas are also merged into a baseline `composition.yaml` in this directory, with per-screen checksums tracked in `.composition-checksums.yaml` for conflict detection. Baseline specs represent the current known state of the system -- what has been specified and implemented so far.
 
 ### `.cache/`
 
@@ -110,15 +110,15 @@ Working directories for initiative authoring. Each plan gets a subdirectory cont
 
 ### `workspace/`
 
-Cloned peer repositories for multi-repo initiatives. Created by `specify workspace sync`. Read-only during planning (`/spec:plan`); writable during execution (`/spec:execute`) -- define, build, and merge write into the clone's `.specify/` tree. Committed changes are pushed explicitly via `specify workspace push`.
+Cloned peer repositories for multi-repo initiatives. Created by `specify workspace sync`. Read-only during planning (`/change:plan`); writable during execution (`/change:execute`) -- define, build, and merge write into the clone's `.specify/` tree. Committed changes are pushed explicitly via `specify workspace push`.
 
 ### `archive/`
 
-Terminal storage for merged changes, dropped changes, and archived plans. Preserves the full directory for audit. Nothing in `archive/` is read by the active workflow -- it exists for traceability.
+Terminal storage for merged slices, dropped slices, and archived plans. Preserves the full directory for audit. Nothing in `archive/` is read by the active workflow -- it exists for traceability.
 
 ## Files that do not live under `.specify/`
 
-Operator-facing platform artifacts (`registry.yaml`, `plan.yaml`, `initiative.md`, `contracts/`) and source code generated by `/spec:build` (e.g. `crates/<name>/` for Omnia, `shared/src/` for Vectis) all live at the repo root, alongside the project's normal directory structure. Specify owns `.specify/`; everything else is yours. The boundary makes the responsibilities explicit:
+Operator-facing platform artifacts (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) and source code generated by `/spec:build` (e.g. `crates/<name>/` for Omnia, `shared/src/` for Vectis) all live at the repo root, alongside the project's normal directory structure. Specify owns `.specify/`; everything else is yours. The boundary makes the responsibilities explicit:
 
 - **Operator artifacts** — durable, PR-reviewed, often hand-edited. Live at the root so reviewers see them at a glance and tooling can reference them with short, stable paths.
 - **Framework state** — CLI-managed, frequently mutated, sometimes ephemeral. Lives under `.specify/` so the dot-prefix signals "framework owns this".

@@ -1,4 +1,4 @@
-# Snapshot of .specify/changes/shopping-cart/.metadata.yaml as self-heal
+# Snapshot of .specify/slices/shopping-cart/.metadata.yaml as self-heal
 # reads it. The file is internally contradictory:
 #
 #   status == defining     → /spec:define has not yet stamped `defined`;

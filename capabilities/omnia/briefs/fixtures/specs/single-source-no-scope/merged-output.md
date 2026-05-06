@@ -7,21 +7,21 @@ Pins the small-legacy case: a source-driven run with a single `--source` and a d
 No path hints in description → no inferred filters. Extract invocation:
 
 ```text
-/spec:extract ./legacy <change-dir>/.extract/legacy/
+/spec:extract ./legacy <slice-dir>/.extract/legacy/
 ```
 
 ## After `/spec:extract` returns
 
 ```text
-<change-dir>/.extract/legacy/specs/<...>/spec.md
-<change-dir>/.extract/legacy/design.md
+<slice-dir>/.extract/legacy/specs/<...>/spec.md
+<slice-dir>/.extract/legacy/design.md
 ```
 
 ## After the merge step (single source, no `## Source:` wrapper)
 
 ```text
-<change-dir>/specs/<...>/spec.md   ← from .extract/legacy/specs/
-<change-dir>/design.md             ← from .extract/legacy/design.md
+<slice-dir>/specs/<...>/spec.md   ← from .extract/legacy/specs/
+<slice-dir>/design.md             ← from .extract/legacy/design.md
 ```
 
 No name-collision check fires — only one source contributed.

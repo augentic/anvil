@@ -1,7 +1,7 @@
 ---
 name: client-sow-writer
-description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a delivery lead asks for a SoW from completed Specify artifacts, when exporting client deliverables from a change directory, or when the user mentions `sow-writer`.
-argument-hint: "<change-dir>"
+description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a delivery lead asks for a SoW from completed Specify artifacts, when exporting client deliverables from a slice directory, or when the user mentions `sow-writer`.
+argument-hint: "<slice-dir>"
 ---
 
 # SoW Generator Skill
@@ -33,7 +33,7 @@ See [`template.md`](template.md) for the full voice-and-tone rules and per-secti
 ## Derived Arguments
 
 ```text
-$SLICE_DIR  = $ARGUMENTS[0]                           # Path to Specify change directory
+$SLICE_DIR  = $ARGUMENTS[0]                           # Path to Specify slice directory
 $OUTPUT_PATH = $ARGUMENTS[1] OR derive_from_change_dir # Output SoW path
 $CLIENT_NAME  = $ARGUMENTS[2] OR "unknown — to be confirmed" # Client organisation name
 $COMPANY_NAME = $ARGUMENTS[3] OR "Propellerhead"             # Company name (default: Propellerhead)

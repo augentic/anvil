@@ -1,14 +1,14 @@
 ---
 name: vectis-core-writer
 description: Generate or update a Rust Crux shared crate from Specify artifacts. Use when implementing core tasks from a Specify change, or when the user mentions core-writer.
-argument-hint: "<change-dir>"
+argument-hint: "<slice-dir>"
 ---
 
 # Crux Core Application Generator
 
 ## Critical Path (Quick Reference)
 
-1. Read Specify artifacts (`{change-dir}/specs/<feature>/spec.md` + `{change-dir}/design.md`); extract App name, Model, Events, ViewModel/Page/Route, capabilities, and API shapes.
+1. Read Specify artifacts (`{slice-dir}/specs/<feature>/spec.md` + `{slice-dir}/design.md`); extract App name, Model, Events, ViewModel/Page/Route, capabilities, and API shapes.
 2. Detect mode from `{project-dir}/shared/src/app.rs`: missing → run `specify vectis init` + `specify vectis verify`, then enter Update Mode; present → start Update Mode immediately.
 3. Build an implementation inventory of existing types and diff it against the artifact-derived target — Added / Removed / Modified / Unchanged — per category in dependency order (capabilities → views → domain → model → events → api → logic).
 4. Apply structural edits to `app.rs` (domain types → Page/ViewModel/Route → Model → Event/Effect → imports + `Cargo.toml` for new capabilities).
@@ -26,16 +26,16 @@ When no project exists yet, the skill runs `specify vectis init` (and `specify v
 
 | Argument | Required | Description |
 |---|---|---|
-| `change-dir` | **Yes** | Path to the active Specify change directory (`.specify/changes/<change>/`). |
-| `feature-name` | **Yes** | Spec folder name under `{change-dir}/specs/` identifying the feature to generate. |
+| `slice-dir` | **Yes** | Path to the active Specify slice directory (`.specify/slices/<change>/`). |
+| `feature-name` | **Yes** | Spec folder name under `{slice-dir}/specs/` identifying the feature to generate. |
 | `project-dir` | No | Directory to create the project in. Defaults to current directory. |
 
 ## Input Artifacts
 
 The skill reads from Specify artifacts rather than a standalone spec file:
 
-- **Spec**: `{change-dir}/specs/{feature-name}/spec.md` -- behavioral requirements using `### Requirement:` / `#### Scenario:` format. The skill reads the **core requirements** (main body of the spec). Platform-specific sections (e.g. `## iOS Shell Requirements`) are not relevant to core generation and are ignored.
-- **Design**: `{change-dir}/design.md` -- domain model, capabilities, API contracts, and technical design decisions.
+- **Spec**: `{slice-dir}/specs/{feature-name}/spec.md` -- behavioral requirements using `### Requirement:` / `#### Scenario:` format. The skill reads the **core requirements** (main body of the spec). Platform-specific sections (e.g. `## iOS Shell Requirements`) are not relevant to core generation and are ignored.
+- **Design**: `{slice-dir}/design.md` -- domain model, capabilities, API contracts, and technical design decisions.
 
 The skill maps artifact content to Crux code constructs:
 
@@ -121,7 +121,7 @@ Use this process when no existing project is found at `{project-dir}`. The CLI o
 
 ### 1. Read and analyze the Specify artifacts
 
-Read the spec at `{change-dir}/specs/{feature-name}/spec.md` and the design at `{change-dir}/design.md`. Extract core requirements from the main body of the spec (stop before any `## ... Shell Requirements` or `## Design System Requirements` sections):
+Read the spec at `{slice-dir}/specs/{feature-name}/spec.md` and the design at `{slice-dir}/design.md`. Extract core requirements from the main body of the spec (stop before any `## ... Shell Requirements` or `## Design System Requirements` sections):
 - The core concept and app name (from the design overview or feature name)
 - State that needs to be tracked (from **Design Domain Model** -> Model)
 - Actions the user can take (from **Spec Requirements** with feature scenarios -> shell-facing Event variants)
@@ -169,7 +169,7 @@ Use this process when `{project-dir}/shared/src/app.rs` already exists. The goal
 
 ### U1. Read and analyze the Specify artifacts
 
-Same extraction as create mode step 1. Read `{change-dir}/specs/{feature-name}/spec.md` and `{change-dir}/design.md`. Build the full picture of the desired application state: app name, features, data model, UI, capabilities, API shapes, and business rules.
+Same extraction as create mode step 1. Read `{slice-dir}/specs/{feature-name}/spec.md` and `{slice-dir}/design.md`. Build the full picture of the desired application state: app name, features, data model, UI, capabilities, API shapes, and business rules.
 
 ### U2. Read existing code
 
@@ -348,7 +348,7 @@ Common change patterns and which code elements they touch. Use this as a checkli
 
 1. Update the Event variant payload if the signature changed.
 2. Update the match arm logic in `update()`.
-3. Update any Model or ViewModel fields affected by the change.
+3. Update any Model or ViewModel fields affected by the slice.
 4. Ensure modified Event variant remains testable (test-writer will update tests).
 
 ### Adding a capability

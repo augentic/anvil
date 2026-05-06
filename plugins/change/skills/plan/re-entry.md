@@ -6,7 +6,7 @@ Running `/change:plan --orchestrate <name>` a second time after a halt is the ca
 
 | State at re-entry | Resume step |
 |---|---|
-| change brief absent (`change.md` / legacy `initiative.md`) | step 1 |
+| change brief absent (`change.md` / legacy `change.md`) | step 1 |
 | brief present, `plan.yaml` absent | step 3 (with `/change:plan` default mode running fresh) |
 | `plan.yaml` present, any entry not in `{done, failed, skipped}` | step 4 (`/change:execute --loop` resumes — self-heal reclaims any `in-progress` left by a prior crash) |
 | every plan entry terminal, no PRs pushed yet (no `specify/<name>` branch on any remote) | step 5 |

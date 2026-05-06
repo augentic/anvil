@@ -1,6 +1,6 @@
 # JSON Schema — Verifier
 
-> **When to read this.** Read this when verifying a JSON Schema artefact — invoked by the contracts capability build brief in `single` mode after the author or importer sibling produces output, by `/spec:execute` in `cross-project` mode after a producer's contract change merges (RFC-9 §3B), or directly by an operator running validation against existing artefacts. Skip this file when authoring (use [`author.md`](./author.md)) or normalising external documents (use [`importer.md`](./importer.md)).
+> **When to read this.** Read this when verifying a JSON Schema artefact — invoked by the contracts capability build brief in `single` mode after the author or importer sibling produces output, by `/change:execute` in `cross-project` mode after a producer's contract change merges (RFC-9 §3B), or directly by an operator running validation against existing artefacts. Skip this file when authoring (use [`author.md`](./author.md)) or normalising external documents (use [`importer.md`](./importer.md)).
 
 The verifier is **read-only**. It MUST NOT generate, modify, or delete any files. Its sole output is a list of issues rendered as a validation report.
 
@@ -10,8 +10,8 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 
 | Mode | Caller | Trigger | Scope | Output |
 |---|---|---|---|---|
-| `single` (default) | contracts capability build brief in `/spec:build` | Post-author or post-import | One change's `contracts/schemas/` inside one project, plus the change's and baseline's HTTP / messaging consumers | Markdown report for the verify-repair loop |
-| `cross-project` | `/spec:execute` post-merge step | Producer-side merge of a contract change touching schemas | Compare merged schemas against each consumer's tier-2 workspace clone | Structured YAML report consumed by the execute driver |
+| `single` (default) | contracts capability build brief in `/spec:build` | Post-author or post-import | One change's `contracts/schemas/` inside one project, plus the slice's and baseline's HTTP / messaging consumers | Markdown report for the verify-repair loop |
+| `cross-project` | `/change:execute` post-merge step | Producer-side merge of a contract change touching schemas | Compare merged schemas against each consumer's tier-2 workspace clone | Structured YAML report consumed by the execute driver |
 
 `single` mode feeds the brief's verify-repair loop and is the natural exit point for both author and importer runs. `cross-project` mode emits warnings the execute driver records on the merging change's `journal.yaml` — never halts the loop. Both modes share the read-only contract.
 
@@ -21,10 +21,10 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 
 ### `single` mode
 
-Inferred from the active change context — no positional arguments required:
+Inferred from the active slice context — no positional arguments required:
 
 ```text
-$SLICE_DIR          = .specify/changes/<change-name>
+$SLICE_DIR          = .specify/slices/<slice-name>
 $CHANGE_CONTRACTS    = $SLICE_DIR/contracts/
 $CHANGE_SCHEMAS      = $CHANGE_CONTRACTS/schemas/
 $BASELINE_CONTRACTS  = contracts/
@@ -120,7 +120,7 @@ Algorithm:
 
 | Collision kind | Severity | Description |
 |---|---|---|
-| Two delta files share `$id` | `FAIL` | The change is internally inconsistent. |
+| Two delta files share `$id` | `FAIL` | The slice is internally inconsistent. |
 | Delta file shares `$id` with a baseline file but the **filenames** differ | `FAIL` | The author / importer reassigned a baseline `$id` (forbidden by the `$id` stability rule). |
 | Delta file shares `$id` with a baseline file and the filenames match | `INFO` | Expected — the delta replaces the baseline file at merge time. |
 
@@ -139,7 +139,7 @@ Every schema in `$CHANGE_SCHEMAS` is potentially referenced by an existing OpenA
 Resolution scope:
 
 - **Producers of `$ref`** are the binding files in `$BASELINE_CONTRACTS/http/` and `$BASELINE_CONTRACTS/messages/`. The verifier inspects each binding's `$ref` values to discover which schemas it consumes.
-- **Producers of `$ref`** in the change directory (`$CHANGE_CONTRACTS/http/`, `$CHANGE_CONTRACTS/messages/`) are also inspected — a mixed-format change may be authoring its own bindings concurrently.
+- **Producers of `$ref`** in the slice directory (`$CHANGE_CONTRACTS/http/`, `$CHANGE_CONTRACTS/messages/`) are also inspected — a mixed-format change may be authoring its own bindings concurrently.
 
 Algorithm:
 
@@ -157,7 +157,7 @@ Algorithm:
 | `enum-value-added` | (no warning) | Backwards-compatible additive change. |
 | `description-changed` | (no warning) | Behavioural docstring drift; not a wire change. |
 
-3. **For each schema with no consumers**, skip Check 4 — there is no binding-side risk surface inside the change. The compatibility risk lives entirely in `cross-project` mode (downstream projects may have their own consumers).
+3. **For each schema with no consumers**, skip Check 4 — there is no binding-side risk surface inside the slice. The compatibility risk lives entirely in `cross-project` mode (downstream projects may have their own consumers).
 
 Report format:
 
@@ -167,7 +167,7 @@ WARN: contracts/schemas/order.yaml — added required property `currency`; basel
 WARN: contracts/schemas/error-response.yaml — narrowed enum on `code` field (removed value `RATE_LIMITED`); 4 baseline bindings reference this schema
 ```
 
-When the change has **no specs**, Check 4 still runs — the binding consumers exist independently of the spec scenarios.
+When the slice has **no specs**, Check 4 still runs — the binding consumers exist independently of the spec scenarios.
 
 ## Single-mode algorithm
 
@@ -221,9 +221,9 @@ All checks passed (19 $ref pointers, 7 schemas, 0 $id collisions, 0 backwards-in
 
 ## Cross-project mode
 
-`cross-project` mode runs **after** a producer's contract change merges. The execute driver (`/spec:execute`) calls the verifier once per `(producer-schema, consumer-workspace)` pair to detect breaking changes that propagate downstream.
+`cross-project` mode runs **after** a producer's contract change merges. The execute driver (`/change:execute`) calls the verifier once per `(producer-schema, consumer-workspace)` pair to detect breaking changes that propagate downstream.
 
-The mode is **non-fatal**: cross-project warnings never stop the execute loop. The driver records each warning on the merging change's `journal.yaml` (via `specify change journal append`) and renders a warning block in the merge transcript so the operator can triage.
+The mode is **non-fatal**: cross-project warnings never stop the execute loop. The driver records each warning on the merging change's `journal.yaml` (via `specify slice journal append`) and renders a warning block in the merge transcript so the operator can triage.
 
 ### Compatibility checks
 
@@ -339,7 +339,7 @@ Locators are emitted for human triage, not parsed.
 | Baseline has schemas but change does not | Pass — verifier only checks change-level artefacts. |
 | `$ref` target exists in baseline but not in change | Pass — baseline is a valid resolution target. |
 | `$ref` target exists in change but not in baseline | Pass — change-level schemas are valid resolution targets. |
-| Change adds a schema with no consumers in either change or baseline bindings | Skip Check 4 for that schema (no consumer surface inside the change). |
+| Change adds a schema with no consumers in either change or baseline bindings | Skip Check 4 for that schema (no consumer surface inside the slice). |
 | Schema declares `additionalProperties` neither true nor false | Pass — the field is genuinely optional. Authors default to `false`; importers preserve absence. |
 | File-local `$defs` entry referenced only inside its parent | Pass — file-local sub-types are valid. |
 | File contains a `$schema` URI for an older draft | Emit `WARN` recommending importer normalisation; do not fail. |
@@ -394,7 +394,7 @@ Before completing the run:
 ## See also
 
 - [`../../references/json-schema-conventions.md`](../../references/json-schema-conventions.md) — Draft 2020-12 conventions, `$id` URN format, metadata rules.
-- [`../../references/artifact-structure.md`](../../references/artifact-structure.md) — directory layout for the change-local delta and the baseline.
+- [`../../references/artifact-structure.md`](../../references/artifact-structure.md) — directory layout for the slice-local delta and the baseline.
 - [`../../references/report-shape.md`](../../references/report-shape.md) — single-mode markdown report and cross-project YAML report formats this verifier emits, including severity levels and locator format.
 - [`../../references/cross-project-compatibility.md`](../../references/cross-project-compatibility.md) — `change-kind` enumeration (used by both Check 4 and `--mode cross-project`), consumer-view resolution, breaking-change classification policy.
 - [`author.md`](./author.md) — sibling for spec-driven authoring.

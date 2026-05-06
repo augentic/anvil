@@ -1,7 +1,7 @@
 ---
 name: specify-extract
 description: Extract Specify artifacts (specs + design.md) from existing source code. Produces reconstruction-grade, language-agnostic artifacts capturing domain-level business logic. Supports optional `--include` / `--exclude` / `--manifest` filters that scope which source files are read for business-logic extraction without changing the artifact output shape. Use when reconstructing Specify artifacts from a legacy code tree, or when the user mentions `extract`.
-argument-hint: "<source-path> <change-dir>"
+argument-hint: "<source-path> <slice-dir>"
 ---
 
 ## Critical Path (Quick Reference)
@@ -27,7 +27,7 @@ Analyze a source codebase to produce reconstruction-grade, **language-agnostic**
 ## Derived Arguments
 
 1. **Source Path** (`$SOURCE_PATH`): Path to the source codebase
-2. **Change Directory** (`$SLICE_DIR`): Specify change directory (e.g., `./.specify/changes/component/`)
+2. **Change Directory** (`$SLICE_DIR`): Specify slice directory (e.g., `./.specify/slices/component/`)
 3. **Include globs** (`$INCLUDE`): Zero or more `--include <glob>` values that narrow the read set for business-logic extraction. Empty ≡ today's behaviour.
 4. **Exclude globs** (`$EXCLUDE`): Zero or more `--exclude <glob>` values that remove paths from the read set for business-logic extraction. Empty ≡ today's behaviour.
 5. **Manifest path** (`$MANIFEST`): Optional single `--manifest <path>` pointing at a slice manifest. Mutually exclusive with `$INCLUDE` / `$EXCLUDE`. See [scope-filters.md](scope-filters.md) §Manifest shape.
@@ -42,7 +42,7 @@ $EXCLUDE     = [--exclude <glob> ...]       # repeatable; possibly empty
 $MANIFEST    = --manifest <path>            # single; mutually exclusive with $INCLUDE/$EXCLUDE
 ```
 
-`$MANIFEST` is mutually exclusive with `$INCLUDE` / `$EXCLUDE`. Invoking extract with a `$MANIFEST` alongside any `$INCLUDE` or `$EXCLUDE` flag is a hard error — the driver (`/spec:execute`) and the capability's define brief should have caught it upstream at `specify plan validate` time. Extract fails fast with a clear message rather than trying to reconcile the two modes.
+`$MANIFEST` is mutually exclusive with `$INCLUDE` / `$EXCLUDE`. Invoking extract with a `$MANIFEST` alongside any `$INCLUDE` or `$EXCLUDE` flag is a hard error — the driver (`/change:execute`) and the capability's define brief should have caught it upstream at `specify change plan validate` time. Extract fails fast with a clear message rather than trying to reconcile the two modes.
 
 ## Scope filters at a glance
 

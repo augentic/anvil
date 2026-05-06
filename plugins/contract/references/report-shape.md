@@ -7,7 +7,7 @@ The verifier runs in two modes (see also [`cross-project-compatibility`](cross-p
 | Mode | Output format | Caller | Trigger |
 |---|---|---|---|
 | `single` (default) | Markdown | contracts capability build brief in `/spec:build` | Post-author or post-import; verify-repair loop |
-| `cross-project` | Structured YAML | `/spec:execute` post-merge step (RFC-9 §3B) | Producer-side merge of a contract change |
+| `cross-project` | Structured YAML | `/change:execute` post-merge step (RFC-9 §3B) | Producer-side merge of a contract change |
 
 `single` mode is human-readable; the contracts capability build brief drives a verify-repair loop until the report is clean. `cross-project` mode is machine-readable; the execute driver parses `summary.total-findings` to decide whether to render a warning block in the merge transcript.
 
@@ -61,7 +61,7 @@ All checks passed (<N> $ref pointers, <N> schemas, <N> bindings verified).
 
 ### Per-finding format
 
-Each finding is a single bullet with a glyph, a file path (relative to the change directory), and a one-sentence description. Common shapes:
+Each finding is a single bullet with a glyph, a file path (relative to the slice directory), and a one-sentence description. Common shapes:
 
 ```
 FAIL: contracts/http/user-api.yaml — $ref "../schemas/missing-type.yaml" does not resolve (checked change contracts/schemas/ and baseline contracts/schemas/)
@@ -145,10 +145,10 @@ The report is well-formed even when empty — the execute driver always parses `
 | Field | Type | Description |
 |---|---|---|
 | `severity` | `error` / `warning` / `info` | See severity table above. |
-| `contract` | path | The producer-side contract that contains the change. Same path as `producer.contract` for single-format checks. |
+| `contract` | path | The producer-side contract that contains the slice. Same path as `producer.contract` for single-format checks. |
 | `change-kind` | string | A value from the [`cross-project-compatibility`](cross-project-compatibility.md) `change-kind` enumeration. |
 | `locator` | string | A dot-separated path into the contract document. See §Locator format below. |
-| `details` | string (typically multi-line) | Human-prose explanation. Surfaces in the merge transcript and the change's `journal.yaml`. Use `>` (folded scalar) for multi-line entries. |
+| `details` | string (typically multi-line) | Human-prose explanation. Surfaces in the merge transcript and the slice's `journal.yaml`. Use `>` (folded scalar) for multi-line entries. |
 
 ### Locator format
 

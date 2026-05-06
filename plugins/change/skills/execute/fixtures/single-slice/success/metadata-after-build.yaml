@@ -1,0 +1,14 @@
+# Snapshot of .specify/slices/user-registration/.metadata.yaml after
+# /spec:build returns success. The driver reads `.outcome.outcome`
+# (== success) and proceeds to step 8 (invoke /spec:merge).
+
+name: user-registration
+status: complete
+created-at: 2026-04-19T10:00:00Z
+updated-at: 2026-04-19T10:27:08Z
+schema: omnia
+outcome:
+  phase: build
+  outcome: success
+  at: 2026-04-19T10:27:08Z
+  summary: "5/5 tasks complete; verify-repair loop converged in 1 iteration."

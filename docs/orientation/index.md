@@ -1,14 +1,14 @@
 # What is Specify?
 
-Specify is a plugin system that orchestrates **spec-driven software development** inside [Cursor](https://cursor.com). It replaces ad-hoc prompting with a structured workflow: you describe what you want to build, Specify generates a set of interdependent artifacts that capture intent, requirements, design, and implementation sequencing, then specialist AI skills implement the change from those artifacts.
+Specify is a plugin system that orchestrates **spec-driven software development** inside [Cursor](https://cursor.com). It replaces ad-hoc prompting with a structured workflow: you describe what you want to build, Specify generates a set of interdependent artifacts that capture intent, requirements, design, and implementation sequencing, then specialist AI skills implement the slice from those artifacts.
 
 ## The core idea
 
-Every change flows through three phases:
+Every slice flows through three phases:
 
 1. **Define** -- Describe what you want to build. Specify generates a proposal, behavioral specs, technical design, and an implementation task list.
 2. **Build** -- The agent works through the task list, delegating to specialist skills that generate code from the artifacts.
-3. **Merge** -- The change's specs merge into your project's baseline, building a cumulative record of what the system does.
+3. **Merge** -- The slice's specs merge into your project's baseline, building a cumulative record of what the system does.
 
 ```d2
 direction: right
@@ -30,12 +30,12 @@ Without Specify, an AI coding agent receives a prompt and produces code. The rea
 
 Specify makes that reasoning durable:
 
-- **`proposal.md`** captures *why* the change exists and what is in scope.
+- **`proposal.md`** captures *why* the slice exists and what is in scope.
 - **`spec.md`** captures *what* the system must do -- behavioral requirements with scenarios.
 - **`design.md`** captures *how* the behavior will be implemented -- domain models, APIs, business logic.
 - **`tasks.md`** captures the *sequence* -- what to build first, what depends on what.
 
-These artifacts are version-controlled alongside your code. They serve as the contract between human intent and agent execution, and they accumulate as a baseline that future changes build on.
+These artifacts are version-controlled alongside your code. They serve as the contract between human intent and agent execution, and they accumulate as a baseline that future slices build on.
 
 ## Specify and git
 
@@ -48,17 +48,17 @@ You interact with Specify through **skills** -- commands prefixed with `/spec:` 
 | Skill | Layer | Purpose |
 |-------|-------|---------|
 | `/spec:init` | 2 | One-time project setup (`--hub` for a registry-only platform hub) |
-| `/spec:define` | 2 | Generate artifacts for a new change |
-| `/spec:build` | 2 | Implement tasks from a defined change |
+| `/spec:define` | 2 | Generate artifacts for a new slice |
+| `/spec:build` | 2 | Implement tasks from a defined slice |
 | `/spec:merge` | 2 | Merge completed specs into baseline |
-| `/spec:drop` | 2 | Discard a change |
+| `/spec:drop` | 2 | Discard a slice |
 | `/spec:extract` | 2 | Extract specs from existing code |
-| `/spec:analyze` | 3 | Plan-time capability inference (used internally by `/spec:plan`) |
-| `/spec:plan` | 3 | Author a multi-change initiative plan |
-| `/spec:execute` | 3 | Drive a plan through the define-build-merge loop |
-| `/spec:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> optional merge -> finalize (was `/spec:initiative`) |
+| `/spec:analyze` | 3 | Plan-time capability inference (used internally by `/change:plan`) |
+| `/change:plan` | 3 | Author a multi-slice change plan |
+| `/change:execute` | 3 | Drive a plan through the define-build-merge loop |
+| `/change:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> optional merge -> finalize (was `/spec:initiative`) |
 
-Skills are grouped by layer. Layer 2 owns single-change work; Layer 3 coordinates multi-change initiatives; Layer 4 strings the cross-repo loop into one operator action. See [The Layered Stack](../explanation/three-layer-stack.md) for when to climb between layers.
+Skills are grouped by layer. Layer 2 owns single-slice work; Layer 3 coordinates multi-slice changes; Layer 4 strings the cross-repo loop into one operator action. See [The Layered Stack](../explanation/three-layer-stack.md) for when to climb between layers.
 
 Behind these skills, a Rust CLI binary (`specify`) handles every deterministic operation -- validation, lifecycle transitions, spec merging, task tracking. The agent keeps judgment; the CLI keeps correctness.
 

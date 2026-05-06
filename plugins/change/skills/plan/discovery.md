@@ -2,15 +2,15 @@
 
 ## Step 3(a) — Discovery
 
-Step 3(a) invokes the discovery brief declared in `pipeline.plan` (for Omnia, `capabilities/omnia/briefs/plan/discovery.md`; other capabilities ship their own). Discovery consumes the `--from`, `--against`, and `--source` inputs, dispatching each input per its `kind` through `/spec:analyze` (both `documentation` and `legacy-code` branches), and merges the results into a single neutral capability inventory at `.specify/plans/<change-name>/discovery.md`. The skill's job is to faithfully run the brief and pass inputs through; the algorithm (per-input handling, dedup rules, ordering) lives in the brief — see `capabilities/omnia/briefs/plan/discovery.md` for the authoritative contract.
+Step 3(a) invokes the discovery brief declared in `pipeline.plan` (for Omnia, `capabilities/omnia/briefs/plan/discovery.md`; other capabilities ship their own). Discovery consumes the `--from`, `--against`, and `--source` inputs, dispatching each input per its `kind` through `/spec:analyze` (both `documentation` and `legacy-code` branches), and merges the results into a single neutral capability inventory at `.specify/plans/<slice-name>/discovery.md`. The skill's job is to faithfully run the brief and pass inputs through; the algorithm (per-input handling, dedup rules, ordering) lives in the brief — see `capabilities/omnia/briefs/plan/discovery.md` for the authoritative contract.
 
-Discovery is read-only with respect to `plan.yaml`. The output header is exactly `# Discovery — <change-name>` with no timestamps, run IDs, or working-directory paths, and re-running discovery on unchanged inputs MUST produce byte-equivalent output — the brief owns the ordering, the skill does not impose its own. An existing `discovery.md` is overwritten unless `--extend` is set (see [SKILL.md](SKILL.md) §"Modes → `--extend`"). The shape of a single-`--source` inventory against a small pre-seeded source tree is pinned by `fixtures/discovery/expected-discovery.md` against `fixtures/discovery/legacy/`.
+Discovery is read-only with respect to `plan.yaml`. The output header is exactly `# Discovery — <slice-name>` with no timestamps, run IDs, or working-directory paths, and re-running discovery on unchanged inputs MUST produce byte-equivalent output — the brief owns the ordering, the skill does not impose its own. An existing `discovery.md` is overwritten unless `--extend` is set (see [SKILL.md](SKILL.md) §"Modes → `--extend`"). The shape of a single-`--source` inventory against a small pre-seeded source tree is pinned by `fixtures/discovery/expected-discovery.md` against `fixtures/discovery/legacy/`.
 
 ## Greenfield discovery → initial registry topology (RFC-9 §2B)
 
 When `/change:plan` runs **before** any `registry.yaml` exists and the discovery brief surfaces capabilities that cluster into more than one project (e.g. a TypeScript backend monolith with a separate Crux mobile shell, or two unrelated services in a single migration), the skill enters the **greenfield registry-bootstrap** flow between discovery (step 3(a)) and propose (step 3(c)). Single-project greenfield runs (`--from <single-codebase>`, no clear cluster split) skip this flow and continue as a standard single-repo change.
 
-**Detection.** The discovery brief decides whether the capability inventory implies more than one project. The brief writes a `## Proposed registry topology` section to `.specify/plans/<change-name>/discovery.md` whenever its clustering produces ≥ 2 candidate projects. Absence of that section (or a section with exactly one candidate) means single-repo — the bootstrap flow is skipped.
+**Detection.** The discovery brief decides whether the capability inventory implies more than one project. The brief writes a `## Proposed registry topology` section to `.specify/plans/<slice-name>/discovery.md` whenever its clustering produces ≥ 2 candidate projects. Absence of that section (or a section with exactly one candidate) means single-repo — the bootstrap flow is skipped.
 
 **Normative sequence**
 
@@ -41,7 +41,7 @@ When `/change:plan` runs **before** any `registry.yaml` exists and the discovery
    ```
 
    Materialise every new slot under `.specify/workspace/<name>/`. Then proceed to step 3(b) Sync peers (which now has a multi-project registry to inventory) and step 3(c) Propose.
-5. **Plan scaffold ordering.** Step 2 (`specify change plan create`) MUST run **before** the bootstrap flow — `plan.yaml` is independent of `registry.yaml`. Use the post-3.5 verb `specify change plan create <name>` (NOT the retired `specify plan create` or the v1 `plan init`). The bootstrap flow runs between step 3(a) discovery and step 3(b) sync-peers; it never re-creates the plan.
+5. **Plan scaffold ordering.** Step 2 (`specify change plan create`) MUST run **before** the bootstrap flow — `plan.yaml` is independent of `registry.yaml`. Use the post-3.5 verb `specify change plan create <name>` (NOT the retired `specify change plan create` or the v1 `plan init`). The bootstrap flow runs between step 3(a) discovery and step 3(b) sync-peers; it never re-creates the plan.
 
 **`--dry-run`.** Render the `Proposed registry` table to stdout with a `Would create registry entries:` heading; do **not** shell `specify registry add` or `specify workspace sync`. The discovery brief still runs (so the clustering preview is real); only the writing path is suppressed.
 

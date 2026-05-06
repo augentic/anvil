@@ -1,14 +1,14 @@
 ---
 name: vectis-android-writer
 description: Generate or update a Kotlin/Jetpack Compose Android shell for a Crux application. Use when the user wants to create an Android shell, scaffold Android UI, or generate Compose views for a Crux app, or mentions android-writer.
-argument-hint: "<change-dir>"
+argument-hint: "<slice-dir>"
 ---
 
 # Crux Android Shell Generator
 
 ## Critical Path (Quick Reference)
 
-1. Read `{app-dir}/shared/src/app.rs` (and optional `change-dir` shell-requirements + `composition.yaml`); extract App name, ViewModel/Effect/Event/Route variants and the capability set.
+1. Read `{app-dir}/shared/src/app.rs` (and optional `slice-dir` shell-requirements + `composition.yaml`); extract App name, ViewModel/Effect/Event/Route variants and the capability set.
 2. Detect mode by checking `{project-dir}/app/src/main/java/*/Core.kt`: missing → run `specify vectis add-shell android` then enter Update Mode; present → start Update Mode immediately.
 3. Build an implementation inventory of existing Kotlin code (effect handlers, ViewModel cases, screen composables, event dispatches, capability clients, DI modules).
 4. Diff Rust core types vs Kotlin inventory by category (Effect → ViewModel → view-fields → Event → Route) and emit a summary edit plan.
@@ -30,7 +30,7 @@ This skill targets **Kotlin 2.x**, **Jetpack Compose** with Material 3, and mini
 |---|---|---|
 | `app-dir` | **Yes** | Path to the Crux app directory (must contain `shared/src/app.rs`) |
 | `project-dir` | No | Directory for the Android shell. Defaults to `{app-dir}/Android` |
-| `change-dir` | No | Path to `.specify/changes/<change>/`. When provided, the skill reads the `## Android Shell Requirements` section from `{change-dir}/specs/{feature-name}/spec.md` for platform-specific requirements |
+| `slice-dir` | No | Path to `.specify/slices/<change>/`. When provided, the skill reads the `## Android Shell Requirements` section from `{slice-dir}/specs/{feature-name}/spec.md` for platform-specific requirements |
 
 ## Prerequisites
 
@@ -82,9 +82,9 @@ Also read:
 - `design-system/tokens.yaml` -- design tokens for styling
 - `design-system/spec.md` -- design system usage rules
 
-When `change-dir` is provided, also read:
-- `{change-dir}/specs/{feature-name}/spec.md` -- read the `## Android Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## Android Shell Details` section of `{change-dir}/design.md` for platform design decisions.
-- `{change-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- composition artifact for deterministic layout instructions (when present).
+When `slice-dir` is provided, also read:
+- `{slice-dir}/specs/{feature-name}/spec.md` -- read the `## Android Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## Android Shell Details` section of `{slice-dir}/design.md` for platform design decisions.
+- `{slice-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- composition artifact for deterministic layout instructions (when present).
 
 ## Generated Type Conventions (CRITICAL)
 
@@ -241,7 +241,7 @@ After the CLI returns green, treat the scaffolded Android shell as an existing i
 - Expand matching CAP blocks in `AndroidManifest.xml` (`INTERNET` permission, `networkSecurityConfig`), `app/build.gradle.kts` (Ktor / Koin dependencies), and `libs.versions.toml` (capability library versions) -- or strip them if the capability is absent.
 - Replace the `HomeScreen` starter with real per-ViewModel-variant screen files driven by the core's `ViewModel` enum + per-page view structs.
 - Rewrite the root composable in `MainActivity.kt` to cover every ViewModel variant.
-- Apply any `## Android Shell Requirements` from the active Specify change (when `change-dir` is provided).
+- Apply any `## Android Shell Requirements` from the active Specify change (when `slice-dir` is provided).
 
 Dependency version pins (Kotlin, AGP, Ktor, Koin, Compose BOM, etc.) come from the CLI's embedded `versions.toml`; use `specify vectis update-versions` to refresh them rather than hand-editing `libs.versions.toml` / `shared/build.gradle.kts`.
 
@@ -253,7 +253,7 @@ Use this process when `{project-dir}/` already exists with Kotlin files.
 
 Same as create mode step 1 (read `{app-dir}/shared/src/app.rs` and extract the full type inventory using the Input Analysis table above).
 
-When `change-dir` is provided, also read the `## Android Shell Requirements` section from `{change-dir}/specs/{feature-name}/spec.md` and the `## Android Shell Details` section from `{change-dir}/design.md` for platform-specific requirements.
+When `slice-dir` is provided, also read the `## Android Shell Requirements` section from `{slice-dir}/specs/{feature-name}/spec.md` and the `## Android Shell Details` section from `{slice-dir}/design.md` for platform-specific requirements.
 
 ### U2. Read existing Kotlin code
 
@@ -475,4 +475,4 @@ When `design-system/tokens.yaml` exists:
 
 ## Important Notes
 
-The platform-level normative facts — UniFFI bridging and library override, generated-type packages, Gradle wrapper bootstrap, Java 21 pin, network security config, defensive `CoreFFI` error handling, mandatory `themes.xml`, the crash-recovery pattern, and how `change-dir` integrates — are covered in [`rules.md`](rules.md). Read it once at the start of any Android run before editing the scaffold.
+The platform-level normative facts — UniFFI bridging and library override, generated-type packages, Gradle wrapper bootstrap, Java 21 pin, network security config, defensive `CoreFFI` error handling, mandatory `themes.xml`, the crash-recovery pattern, and how `slice-dir` integrates — are covered in [`rules.md`](rules.md). Read it once at the start of any Android run before editing the scaffold.

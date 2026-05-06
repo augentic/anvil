@@ -50,7 +50,7 @@ The verifier emits a YAML report (see [shared report shape](../../../contract/re
 For every finding, append one journal entry to **the merged slice** (not the consumer's slice) via:
 
 ```bash
-specify change journal append <merged-change-name> merge failure \
+specify slice journal append <merged-change-name> merge failure \
     --summary "cross-project-warning: <change-kind> in <consumer> for <contract>" \
     --context "$(cat <<'YAML'
 contract: <contract-path>
@@ -83,7 +83,7 @@ The append uses the verbatim journal-append shape — the `--context` is a multi
 
 ### Warning block in the merge transcript
 
-When at least one finding is recorded, the success transcript (see [output-format.md](output-format.md) → Supervised / per-change transcript → Success) renders a labelled warning block **immediately after** the `Status: done` line:
+When at least one finding is recorded, the success transcript (see [output-format.md](output-format.md) → Supervised / per-slice transcript → Success) renders a labelled warning block **immediately after** the `Status: done` line:
 
 ```text
 ⚠ Cross-project contract warnings
@@ -94,7 +94,7 @@ When at least one finding is recorded, the success transcript (see [output-forma
     - removed-field at paths./users/{id}.get.responses.200.content.application/json.schema.properties.email
     - required-field-added at paths./users.post.requestBody.content.application/json.schema.required
 
-  Recorded 2 finding(s) to .specify/changes/<name>/journal.yaml.
+  Recorded 2 finding(s) to .specify/slices/<name>/journal.yaml.
   Action needed: review the warning(s); the consumer change(s) may need a follow-up.
 ```
 

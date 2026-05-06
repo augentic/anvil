@@ -1,4 +1,4 @@
-# `/spec:execute` — cross-project contract warning fixture
+# `/change:execute` — cross-project contract warning fixture
 
 Pins the post-merge cross-project contract compatibility check from
 **RFC-9 §3B**. The fixture exercises the wire-level safety net that
@@ -26,9 +26,9 @@ required list on the request. That clone's
 `contracts/http/user-api.yaml` is the consumer's "view" of
 the contract, and is what the cross-project check compares against.
 
-When `specify change merge run` returns success, `/spec:execute`:
+When `specify slice merge run` returns success, `/change:execute`:
 
-1. Transitions the plan entry to `done` (step 10 in the per-change
+1. Transitions the plan entry to `done` (step 10 in the per-slice
    algorithm).
 2. Reads `registry.yaml` and observes that `backend.contracts.produces`
    includes `http/user-api.yaml` (so the post-merge check is
@@ -42,8 +42,8 @@ When `specify change merge run` returns success, `/spec:execute`:
    shared payload schema to `/contract:json-schema`.)
 5. Receives a YAML report with two findings.
 6. Records each finding as a `cross-project-warning:` `failure`-kind
-   entry on the merged change's `journal.yaml` via
-   `specify change journal append`.
+   entry on the merged slice's `journal.yaml` via
+   `specify slice journal append`.
 7. Renders the `⚠ Cross-project contract warnings` block in the merge
    transcript.
 8. Continues the loop (the warnings are non-fatal).
@@ -62,7 +62,7 @@ cross-project-contract-warning/
 ├── consumer-workspace/                         # snapshot of .specify/workspace/mobile/
 │   └── contracts/http/user-api.yaml   # consumer's last-known view (v1)
 ├── validator-output.yaml                       # /contract:openapi (verifier intent, --mode cross-project) output
-├── transcript.md                               # /spec:execute success transcript with warning block
+├── transcript.md                               # /change:execute success transcript with warning block
 └── expected-journal.yaml                       # update-user-api-v2/journal.yaml after recording
 ```
 

@@ -1,4 +1,4 @@
-## /spec:execute — platform-v2
+## /change:execute — platform-v2
 
 ### Initiative: platform-v2
 Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (total 3)
@@ -7,8 +7,8 @@ Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (tota
 
 Self-heal: no in-progress entries found.
 
-# specify plan next --format json → { "next": "ingest-pipeline", "project": "traffic", "description": "Extract the Kafka ingestion pipeline into a standalone capability.", "sources": ["monolith"] }
-# specify plan transition ingest-pipeline in-progress
+# specify change plan next --format json → { "next": "ingest-pipeline", "project": "traffic", "description": "Extract the Kafka ingestion pipeline into a standalone capability.", "sources": ["monolith"] }
+# specify change plan transition ingest-pipeline in-progress
 # specify workspace status traffic → materialised
 # CWD saved: /path/to/initiating-repo
 # Source resolution: monolith → /path/to/legacy-codebase (absolute)
@@ -32,13 +32,13 @@ Step 3/3: merge
   Baseline updated: .specify/specs/ingest-pipeline/spec.md ✓
 
 # CWD restored: /path/to/initiating-repo
-# specify plan transition ingest-pipeline done
+# specify change plan transition ingest-pipeline done
   Status: done
 
 ---
 
-# specify plan next --format json → { "next": "operator-dashboard", "project": "command-centre", "description": "Build the operator alerting dashboard.", "sources": null }
-# specify plan transition operator-dashboard in-progress
+# specify change plan next --format json → { "next": "operator-dashboard", "project": "command-centre", "description": "Build the operator alerting dashboard.", "sources": null }
+# specify change plan transition operator-dashboard in-progress
 # specify workspace status command-centre → materialised
 # CWD saved: /path/to/initiating-repo
 
@@ -53,17 +53,17 @@ Step 2/3: build
   ✗ Build failed — change dropped, plan entry transitioned to failed
 
   Summary: Missing API contract from traffic service.
-  Journal: .specify/changes/operator-dashboard/journal.yaml
+  Journal: .specify/slices/operator-dashboard/journal.yaml
   Action needed: Fix the underlying error, then retry via
-    specify plan transition operator-dashboard pending
+    specify change plan transition operator-dashboard pending
 
 # CWD restored: /path/to/initiating-repo
-# specify plan transition operator-dashboard failed --reason "Missing API contract from traffic service."
+# specify change plan transition operator-dashboard failed --reason "Missing API contract from traffic service."
   Status: failed
 
 ---
 
-## /spec:execute — platform-v2 — terminated
+## /change:execute — platform-v2 — terminated
 
 ### Final state
 Progress: done 1, in-progress 0, pending 1, blocked 0, failed 1, skipped 0 (total 3)
@@ -76,4 +76,4 @@ Failed:
 Pending (dependencies not satisfied):
   - traffic-api (waits on: operator-dashboard)
 
-Next action: Resolve blocked/failed entries (specify plan amend + specify plan transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify plan archive --force.
+Next action: Resolve blocked/failed entries (specify change plan amend + specify change plan transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify change plan archive --force.

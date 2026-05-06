@@ -1,4 +1,4 @@
-# Terminal plan after step 4 (/spec:execute --loop) drained every entry.
+# Terminal plan after step 4 (/change:execute --loop) drained every entry.
 # No contract change — the polish pass does not change the API surface.
 # Two entries, both `done`, each routed to its existing project.
 version: 1

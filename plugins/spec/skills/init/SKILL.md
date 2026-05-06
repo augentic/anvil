@@ -71,7 +71,7 @@ A regular project must declare a capability; a hub must declare `--hub` and neve
    See [Platform repo topologies](../../../../docs/explanation/platform-repo.md) for the full background on the two shapes. Briefly:
 
    - **Regular project** — a single repository that contains both code and `.specify/`. The most common shape; choose this for single-repo projects, small teams, and any case where the operator just wants to track changes against the code in this repo. Phase pipelines (define / build / merge) run against this repo's working tree, driven by the active **capability**.
-   - **Platform hub** (RFC-9 §1D) — a registry-only repository that holds platform state (`registry.yaml`, `initiative.md`, `plan.yaml`, `workspace/`) but never carries code itself. Choose this when the platform spans multiple repos and the operator wants the platform repo's identity to be unambiguous. Phase pipelines are disabled on the hub itself; code lives in registered project repos under `.specify/workspace/<name>/`.
+   - **Platform hub** (RFC-9 §1D) — a registry-only repository that holds platform state (`registry.yaml`, `change.md`, `plan.yaml`, `workspace/`) but never carries code itself. Choose this when the platform spans multiple repos and the operator wants the platform repo's identity to be unambiguous. Phase pipelines are disabled on the hub itself; code lives in registered project repos under `.specify/workspace/<name>/`.
 
    Ask the user via **AskQuestion tool** unless the answer is obvious from context (e.g. an existing `Cargo.toml` / `package.json` / `src/` strongly implies a regular project, while an empty directory in a multi-repo organisation often points at a hub). Treat the result as `$HUB_MODE=true|false`.
 
@@ -94,7 +94,7 @@ A regular project must declare a capability; a hub must declare `--hub` and neve
 
 5. **Collect project metadata and invoke `specify init`**
 
-   Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DOMAIN` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DOMAIN` if the user hasn't supplied one. An empty `$DOMAIN` is fine — the CLI omits the field. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `initiative.md`'s frontmatter and rejects non-kebab values.
+   Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DOMAIN` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DOMAIN` if the user hasn't supplied one. An empty `$DOMAIN` is fine — the CLI omits the field. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `change.md`'s frontmatter and rejects non-kebab values.
 
    **Regular invocation** (capability is the required first positional):
 
@@ -117,7 +117,7 @@ A regular project must declare a capability; a hub must declare `--hub` and neve
    The CLI writes:
 
    - **Regular** — `.specify/{changes,specs,archive,.cache}/`, `.specify/project.yaml` with `capability:` set to the resolved value and one empty `rules:` entry per `pipeline.define` brief, the resolved capability manifest cached under `.specify/.cache/`, `.specify/.cache/` upserted into `.gitignore`, and `specify-version` recorded.
-   - **Hub** — `.specify/project.yaml` with `hub: true` only (the `capability:` field is **omitted** — its absence is the sentinel that disables capability resolution on the hub itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `initiative.md` from the canonical template named after `$PROJECT_NAME`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`. Phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines.
+   - **Hub** — `.specify/project.yaml` with `hub: true` only (the `capability:` field is **omitted** — its absence is the sentinel that disables capability resolution on the hub itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `change.md` from the canonical template named after `$PROJECT_NAME`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`. Phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines.
 
    For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `capability-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, and `hub`. Normal operator-facing examples should use text output.
 
@@ -133,7 +133,7 @@ A regular project must declare a capability; a hub must declare `--hub` and neve
    For a **hub** init, tell the user:
    - "Specify initialized as a registry-only platform hub. Config written to `.specify/project.yaml` (`hub: true`, no `capability:`)."
    - "Add code projects to `registry.yaml` once they exist. The hub starts with `projects: []`."
-   - "Edit `initiative.md` to frame the first initiative this hub will drive."
+   - "Edit `change.md` to frame the first initiative this hub will drive."
 
    Do NOT print "Next steps" yet — Step 7 determines which output to show.
 
@@ -153,16 +153,16 @@ A regular project must declare a capability; a hub must declare `--hub` and neve
    > "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This uses `/spec:extract`."
 
    Options:
-   - **Yes, generate baseline specs** — proceed to create the change
+   - **Yes, generate baseline specs** — proceed to create the slice
    - **No, skip for now** — show the greenfield output and stop (user can run `/spec:extract` manually later)
 
-   If the user chooses **yes**, create the change via the CLI:
+   If the user chooses **yes**, create the slice via the CLI:
 
    ```bash
-   specify change create initial-baseline --format json
+   specify slice create initial-baseline --format json
    ```
 
-   The CLI validates the name, creates `.specify/changes/initial-baseline/specs/`, and writes the initial `.metadata.yaml` (status `defining`, `created_at` timestamp). Show the **brownfield output** and stop.
+   The CLI validates the name, creates `.specify/slices/initial-baseline/specs/`, and writes the initial `.metadata.yaml` (status `defining`, `created_at` timestamp). Show the **brownfield output** and stop.
 
 **Output (greenfield — regular project, no existing codebase, or user declined extraction)**
 
@@ -171,7 +171,7 @@ A regular project must declare a capability; a hub must declare `--hub` and neve
 
 **Capability**: $CAPABILITY
 **Config**: .specify/project.yaml
-**Changes**: .specify/changes/
+**Changes**: .specify/slices/
 **Baseline specs**: .specify/specs/
 
 Next steps:
@@ -186,11 +186,11 @@ Next steps:
 
 **Capability**: $CAPABILITY
 **Config**: .specify/project.yaml
-**Baseline change**: .specify/changes/initial-baseline/
+**Baseline change**: .specify/slices/initial-baseline/
 
 Next steps:
 1. Edit `.specify/project.yaml` to describe your project
-2. Run `/spec:extract . .specify/changes/initial-baseline/` to analyze the codebase
+2. Run `/spec:extract . .specify/slices/initial-baseline/` to analyze the codebase
 3. After extraction, run `/spec:merge initial-baseline` to promote specs to baseline
 4. Then run `/spec:define` for future changes
 ```
@@ -203,12 +203,12 @@ Next steps:
 **Topology**: registry-only hub (RFC-9 §1D)
 **Config**: .specify/project.yaml (`hub: true`; `capability:` omitted)
 **Registry**: registry.yaml (`version: 1`, `projects: []`)
-**Initiative brief**: initiative.md
+**Initiative brief**: change.md
 
 Next steps:
 1. Add registered projects to `registry.yaml` (hand-edit, or `specify registry add` once that verb lands)
-2. Edit `initiative.md` to frame the first initiative
-3. Run `/spec:plan <name>` to author a plan, then `/spec:execute --loop` to drive it
+2. Edit `change.md` to frame the first initiative
+3. Run `/change:plan <name>` to author a plan, then `/change:execute --loop` to drive it
 ```
 
 **Guardrails**

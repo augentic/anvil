@@ -1,4 +1,4 @@
-# Archive shape after `specify initiative finalize`
+# Archive shape after `specify change finalize`
 
 After step 7 succeeds, the hub's on-disk state looks like:
 
@@ -11,7 +11,7 @@ shop-platform/
     │   └── plans/
     │       ├── polish-pass-<YYYYMMDD>.yaml             # the archived plan
     │       └── polish-pass-<YYYYMMDD>/                 # archived authoring trail
-    │           ├── initiative.md
+    │           ├── change.md
     │           └── plans/
     │               └── polish-pass/                    # discovery, workspace, proposal markdown
     └── workspace/
@@ -19,7 +19,7 @@ shop-platform/
         └── vectis-mobile/                              # tier-2 clone (durable)
 ```
 
-A second run of `/spec:plan --orchestrate polish-pass --shape
+A second run of `/change:plan --orchestrate polish-pass --shape
 update-existing --auto-merge` reports `plan-not-found` from
-`specify initiative finalize` and exits zero — the explicit "already
+`specify change finalize` and exits zero — the explicit "already
 finalized" signal.

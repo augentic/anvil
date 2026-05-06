@@ -1,2 +1,2 @@
-/spec:extract ./legacy/monolith <change-dir>/.extract/monolith/ \
+/spec:extract ./legacy/monolith <slice-dir>/.extract/monolith/ \
     --include 'src/common/validation/**'

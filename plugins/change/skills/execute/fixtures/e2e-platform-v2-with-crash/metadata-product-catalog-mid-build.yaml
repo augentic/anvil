@@ -1,6 +1,6 @@
-# .specify/changes/product-catalog/.metadata.yaml
+# .specify/slices/product-catalog/.metadata.yaml
 # Illustrative snapshot of product-catalog's on-disk state at the
-# moment the first /spec:execute --loop run was SIGKILL'd. /spec:build
+# moment the first /change:execute --loop run was SIGKILL'd. /spec:build
 # had been running — some tasks were marked complete in tasks.md on
 # disk — but the phase had not yet reached its terminal `specify
 # change phase-outcome` call. No `outcome` field has been written.
@@ -20,4 +20,4 @@ touched-specs:
   - { capability: product-catalog, classification: new }
 
 # No `outcome` field — /spec:build did not reach its
-# `specify change outcome set` call before SIGKILL arrived.
+# `specify slice outcome set` call before SIGKILL arrived.

@@ -35,7 +35,7 @@ After drafting `tasks.md`, re-read every checkbox line and ask, for each task:
 
 Rewrite any task that fails (1) or (2) before handing the file off. If (3) fails, add a verification task using a skill from the table below.
 
-For `tasks.md`, `specify change validate` checks checkbox/grouping shape only — it does not inspect task intent. Agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight.
+For `tasks.md`, `specify slice validate` checks checkbox/grouping shape only — it does not inspect task intent. Agent-completability is judged here at write-time and re-checked by `/spec:build` as a preflight.
 
 ## Available Skills
 
@@ -52,7 +52,7 @@ For `tasks.md`, `specify change validate` checks checkbox/grouping shape only �
 
 ## Composition Awareness
 
-When a `composition.yaml` exists in the change directory, express the dependency between shell tasks and the composition artifact in the task ordering:
+When a `composition.yaml` exists in the slice directory, express the dependency between shell tasks and the composition artifact in the task ordering:
 
 - Shell writer tasks (`vectis:ios-writer`, `vectis:android-writer`) depend on `composition.yaml` when present. When composition validation fails, the corresponding shell task is blocked.
 - When `composition.yaml` is absent, shell writers fall back to inference and no composition-related blocking applies.

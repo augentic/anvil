@@ -27,7 +27,7 @@ Branch on the flag surface handed to `/spec:define`:
 - **Source-driven** — at least one `--source <key>=<path>` flag is present. Run the per-source extract loop below, then merge.
 - **Manual** — no `--source` flags are present. Author specs by hand using the manual templates at the bottom of this brief.
 
-> **Migration note.** Proposals that used to name a single *Repository* URL or *Source-code* path are still valid; `/spec:execute` (or the operator on a direct invocation) translates those into a single `--source <key>=<path>` flag before reaching this brief. The proposal's Source section is a secondary signal for context only — the authoritative branching trigger is the `--source` flag set.
+> **Migration note.** Proposals that used to name a single *Repository* URL or *Source-code* path are still valid; `/change:execute` (or the operator on a direct invocation) translates those into a single `--source <key>=<path>` flag before reaching this brief. The proposal's Source section is a secondary signal for context only — the authoritative branching trigger is the `--source` flag set.
 
 ---
 
@@ -42,12 +42,12 @@ For each `--source <key>=<path>` flag, processed in declaration order:
    - When the description contains path-like references for this source, use each as an `--include` glob on `/spec:extract`. Treat bare directory names as recursive globs (e.g. `src/auth/` becomes `src/auth/**`).
    - When the description contains no path hints for this source, run extract on the full source tree (no filter flags).
 
-   Log the inferred scope in the journal via `specify change journal append <name> define question --summary "Inferred scope for <key>: <filters>"`. This gives operators an audit trail of what was extracted.
+   Log the inferred scope in the journal via `specify slice journal append <name> define question --summary "Inferred scope for <key>: <filters>"`. This gives operators an audit trail of what was extracted.
 
 2. **Invoke `/spec:extract`:**
 
    ```text
-   /spec:extract <path> <change-dir>/.extract/<key>/ [inferred filters]
+   /spec:extract <path> <slice-dir>/.extract/<key>/ [inferred filters]
    ```
 
    `/spec:extract` resolves globs relative to `<path>`, applies the *sentinels always read* rule, and treats a zero-match filter as a hard error. See `plugins/spec/skills/extract/SKILL.md` for the full contract.
@@ -55,46 +55,46 @@ For each `--source <key>=<path>` flag, processed in declaration order:
 3. **Merge the per-source output into the change root.**
 
    ```text
-   <change-dir>/.extract/<key>/specs/    →  <change-dir>/specs/
-   <change-dir>/.extract/<key>/design.md →  <change-dir>/design.md
+   <slice-dir>/.extract/<key>/specs/    →  <slice-dir>/specs/
+   <slice-dir>/.extract/<key>/design.md →  <slice-dir>/design.md
    ```
 
    Merge policy:
 
-   - **`specs/`** — copy each extracted capability's directory to `<change-dir>/specs/<capability>/`. If two source keys both emit a spec for the same capability name, that is a **name collision**: halt with a brief-level error and surface both colliding paths. The propose brief is responsible for preventing this by forcing distinct capability names across sources or consolidating duplicates under one source. Do not attempt to auto-resolve.
+   - **`specs/`** — copy each extracted capability's directory to `<slice-dir>/specs/<capability>/`. If two source keys both emit a spec for the same capability name, that is a **name collision**: halt with a brief-level error and surface both colliding paths. The propose brief is responsible for preventing this by forcing distinct capability names across sources or consolidating duplicates under one source. Do not attempt to auto-resolve.
    - **`design.md`** — concatenate per-source design sections in `--source` declaration order. When two or more sources contribute, wrap each section under a level-2 heading `## Source: <key>` so the merged artifact makes provenance obvious. When there is exactly one source, emit the section content without the wrapper — the small-legacy case stays clean.
 
-After every `--source` has been processed and merged, the merged `<change-dir>/specs/` and `<change-dir>/design.md` are the specs-phase output.
+After every `--source` has been processed and merged, the merged `<slice-dir>/specs/` and `<slice-dir>/design.md` are the specs-phase output.
 
 ### `.extract/<key>/` scratch directory
 
-- `<change-dir>/.extract/<key>/` is per-source scratch. Each iteration writes its full extract output here (specs, design, per-module YAML, traceability dumps).
-- **Default: keep after merge.** Retention helps human review — inspect the per-source output while the change is in-flight. Deletion is manual: `rm -rf <change-dir>/.extract/` once the change is merged.
+- `<slice-dir>/.extract/<key>/` is per-source scratch. Each iteration writes its full extract output here (specs, design, per-module YAML, traceability dumps).
+- **Default: keep after merge.** Retention helps human review — inspect the per-source output while the change is in-flight. Deletion is manual: `rm -rf <slice-dir>/.extract/` once the change is merged.
 - The scratch tree MUST NOT be committed with the change. Treat `.extract/` as operator-disciplined local-only state; `.gitignore` wiring is a downstream concern and not handled by this brief.
 
 ### Delta composition (affects inference)
 
-After the per-source loop has merged its extracted specs into `<change-dir>/specs/`, determine whether this change modifies existing baselines by reading the plan entry's `description` for references to prior change names (e.g. "delta-target user-registration", "modifies email-verification", "refactors out of user-registration and email-verification").
+After the per-source loop has merged its extracted specs into `<slice-dir>/specs/`, determine whether this change modifies existing baselines by reading the plan entry's `description` for references to prior change names (e.g. "delta-target user-registration", "modifies email-verification", "refactors out of user-registration and email-verification").
 
-For each referenced name, check whether a baseline exists at `.specify/specs/<name>/spec.md`. Collect the confirmed names into the **inferred affects set**. Log the inferred set in the journal via `specify change journal append <name> define question --summary "Inferred delta targets: <names>"`.
+For each referenced name, check whether a baseline exists at `.specify/specs/<name>/spec.md`. Collect the confirmed names into the **inferred affects set**. Log the inferred set in the journal via `specify slice journal append <name> define question --summary "Inferred delta targets: <names>"`.
 
 If the inferred affects set is non-empty, run the following four-step pass. If the description does not reference any existing baselines, skip this section entirely — all extracted specs remain in fresh new-crate form.
 
-1. **Reuse the merged extract output — do not re-invoke extract.** The per-source loop above has already written one `<change-dir>/specs/<capability>/spec.md` for every capability the merged extract covers. That merged tree is the input to the matching step; no additional `/spec:extract` call is needed here. Extract remains baseline-unaware — it never reads `.specify/specs/`.
+1. **Reuse the merged extract output — do not re-invoke extract.** The per-source loop above has already written one `<slice-dir>/specs/<capability>/spec.md` for every capability the merged extract covers. That merged tree is the input to the matching step; no additional `/spec:extract` call is needed here. Extract remains baseline-unaware — it never reads `.specify/specs/`.
 
-2. **Rewrite matched capabilities in DELTA form.** For each name in the inferred affects set, check for a merged spec at `<change-dir>/specs/<name>/spec.md`. When one exists:
+2. **Rewrite matched capabilities in DELTA form.** For each name in the inferred affects set, check for a merged spec at `<slice-dir>/specs/<name>/spec.md`. When one exists:
 
    - Read the baseline at `.specify/specs/<name>/spec.md`.
-   - Diff the extracted capability spec against the baseline and rewrite `<change-dir>/specs/<name>/spec.md` using the ADDED / MODIFIED / RENAMED / REMOVED delta structure documented under the define skill's [Spec format conventions → Delta-specific workflows](../../../plugins/spec/skills/define/SKILL.md#spec-format-conventions).
-   - The delta form replaces the fresh-spec form at `<change-dir>/specs/<name>/spec.md`; do not keep both. The baseline at `.specify/specs/<name>/spec.md` stays untouched until the change merges.
+   - Diff the extracted capability spec against the baseline and rewrite `<slice-dir>/specs/<name>/spec.md` using the ADDED / MODIFIED / RENAMED / REMOVED delta structure documented under the define skill's [Spec format conventions → Delta-specific workflows](../../../plugins/spec/skills/define/SKILL.md#spec-format-conventions).
+   - The delta form replaces the fresh-spec form at `<slice-dir>/specs/<name>/spec.md`; do not keep both. The baseline at `.specify/specs/<name>/spec.md` stays untouched until the change merges.
 
 3. **Leave unmatched capabilities as fresh specs.** Capabilities whose names do not match any inferred affects target keep the new-crate spec form already written by the per-source merge. No rewrite, no additional work.
 
-4. **Warn on inferred targets with no extract match.** For each name in the inferred affects set with no corresponding `<change-dir>/specs/<name>/spec.md` after the merge, emit a brief-level warning naming the orphan target. Suggest that the description may be inaccurate — the operator can amend it via `specify plan amend <change> --description "..."`.
+4. **Warn on inferred targets with no extract match.** For each name in the inferred affects set with no corresponding `<slice-dir>/specs/<name>/spec.md` after the merge, emit a brief-level warning naming the orphan target. Suggest that the description may be inaccurate — the operator can amend it via `specify change plan amend <change> --description "..."`.
 
    The warning is informational; the brief continues.
 
-After this pass, `<change-dir>/specs/<name>/spec.md` is in delta form for every matched inferred target, in fresh new-crate form for every unmatched extracted capability, and absent for every unmatched inferred target (with a warning logged).
+After this pass, `<slice-dir>/specs/<name>/spec.md` is in delta form for every matched inferred target, in fresh new-crate form for every unmatched extracted capability, and absent for every unmatched inferred target (with a warning logged).
 
 ---
 

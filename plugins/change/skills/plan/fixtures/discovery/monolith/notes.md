@@ -16,7 +16,7 @@ The C22 brief gave three options:
 
 - (b) creates a documented drift trap: the inputs would produce four capabilities but the expected pins only three, so re-runs under the eventual C23 discovery brief never match.
 - (a) requires mutating the C21 fixture (`capabilities/omnia/briefs/ fixtures/plan/analyze/legacy-code/`), which is explicitly out of scope per the C22 guardrails — C21 stands as the Omnia-brief-level pin for the four-capability case.
-- (c) lets the two fixtures serve different layers: C21 pins the `/spec:analyze` brief output on a four-capability tree; this fixture pins the `/spec:plan` discovery brief output on a three-capability tree. The three files that overlap (`register.ts`, `validation.ts`, `verify.ts`, `common/ validation.ts`) are authored verbatim from C21 so the `user-registration` and `email-verification` blocks remain byte-identical across the two fixtures.
+- (c) lets the two fixtures serve different layers: C21 pins the `/spec:analyze` brief output on a four-capability tree; this fixture pins the `/change:plan` discovery brief output on a three-capability tree. The three files that overlap (`register.ts`, `validation.ts`, `verify.ts`, `common/ validation.ts`) are authored verbatim from C21 so the `user-registration` and `email-verification` blocks remain byte-identical across the two fixtures.
 
 ## RFC cross-reference
 

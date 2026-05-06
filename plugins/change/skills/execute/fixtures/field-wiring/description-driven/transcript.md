@@ -1,6 +1,6 @@
-# description-driven — `/spec:execute` forwards a description-driven delta target
+# description-driven — `/change:execute` forwards a description-driven delta target
 
-The plan entry `registration-duplicate-email-crash` carries a `description` that mentions `user-registration` but declares no `sources`. `/spec:execute` passes the change name to `/spec:define` without any extra flags. The define skill reads the description and infers that the change targets the `user-registration` baseline — delta targeting is description-driven, not flag-driven.
+The plan entry `registration-duplicate-email-crash` carries a `description` that mentions `user-registration` but declares no `sources`. `/change:execute` passes the change name to `/spec:define` without any extra flags. The define skill reads the description and infers that the change targets the `user-registration` baseline — delta targeting is description-driven, not flag-driven.
 
 ## Resolution trace
 
@@ -29,7 +29,7 @@ No `--affects` flag — the define skill infers delta targets from the change's 
 
 ## Rendered define step
 
-When the driver emits the per-change output block for this entry, the `Processing:` header carries the change name only (no signal annotations), and the define step body has **no** extract sub-step — the plan entry has no sources to extract from:
+When the driver emits the per-slice output block for this entry, the `Processing:` header carries the change name only (no signal annotations), and the define step body has **no** extract sub-step — the plan entry has no sources to extract from:
 
 ```text
 ### Processing: registration-duplicate-email-crash
@@ -38,7 +38,7 @@ Step 1/3: define
   Artifacts: proposal.md, specs, design.md, tasks.md ✓
 ```
 
-Delta targeting — define locating `.specify/specs/user-registration/spec.md` and preparing to emit delta specs under `.specify/changes/registration-duplicate-email-crash/specs/user-registration/spec.md` — happens inside define. The define skill reads the entry's description, identifies `user-registration` as an existing baseline spec, and automatically treats the change as a delta against it. The driver-level transcript does not call it out as its own sub-step; the delta-vs-new classification surfaces later, after `specify change touched-specs --scan` runs in step 8 of the define skill.
+Delta targeting — define locating `.specify/specs/user-registration/spec.md` and preparing to emit delta specs under `.specify/slices/registration-duplicate-email-crash/specs/user-registration/spec.md` — happens inside define. The define skill reads the entry's description, identifies `user-registration` as an existing baseline spec, and automatically treats the change as a delta against it. The driver-level transcript does not call it out as its own sub-step; the delta-vs-new classification surfaces later, after `specify slice touched-specs --scan` runs in step 8 of the define skill.
 
 ## Invariants pinned
 

@@ -1,1 +1,1 @@
-/spec:plan traffic --source monolith=./inputs
+/change:plan traffic --source monolith=./inputs

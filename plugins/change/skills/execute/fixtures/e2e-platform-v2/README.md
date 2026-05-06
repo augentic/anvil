@@ -1,6 +1,6 @@
-# `/spec:execute --loop` — `platform-v2` meta-fixture
+# `/change:execute --loop` — `platform-v2` meta-fixture
 
-This is the Layer 2 exit-gate meta-fixture. It pins the behaviour of `/spec:execute --loop` driven against the full nine-entry `platform-v2` plan, exercising every argument-resolution shape end to end:
+This is the Layer 2 exit-gate meta-fixture. It pins the behaviour of `/change:execute --loop` driven against the full nine-entry `platform-v2` plan, exercising every argument-resolution shape end to end:
 
 - greenfield (`notification-preferences`)
 - description-driven delta targeting, single target (`registration-duplicate-email-crash`)
@@ -17,24 +17,24 @@ The `combined/` shape (both `sources` and a description-driven delta target on o
 | File | Role |
 |---|---|
 | `plan.yaml.before` | Seed — RFC-2 §"The Plan" YAML verbatim. |
-| `metadata-email-verification-crashed.yaml` | Illustrative `.specify/changes/email-verification/.metadata.yaml` the seeded workspace carries — outcome: success on merge, stamped by a prior driver that crashed before running `specify plan transition`. |
+| `metadata-email-verification-crashed.yaml` | Illustrative `.specify/slices/email-verification/.metadata.yaml` the seeded workspace carries — outcome: success on merge, stamped by a prior driver that crashed before running `specify change plan transition`. |
 | `plan.yaml.after` | Terminal plan state — seven entries `done`, `checkout-api` still `failed`, `checkout-ui` still `pending` (unmet dep on `checkout-api`). |
 | `transcript.md` | Narrative timeline: self-heal + five iterations + terminal summary. |
 
 ## Relationship to the sibling fixture
 
-`../e2e-platform-v2-with-crash/` uses the same seed but injects a SIGKILL mid-iteration-4 (`/spec:build product-catalog`). A second `/spec:execute --loop` run's self-heal resumes the interrupted build phase, and the initiative continues to the same terminal state. The two `plan.yaml.after` files in these fixtures are byte-for-byte identical — crash recovery is observably indistinguishable from the uncrashed run at the plan level.
+`../e2e-platform-v2-with-crash/` uses the same seed but injects a SIGKILL mid-iteration-4 (`/spec:build product-catalog`). A second `/change:execute --loop` run's self-heal resumes the interrupted build phase, and the change continues to the same terminal state. The two `plan.yaml.after` files in these fixtures are byte-for-byte identical — crash recovery is observably indistinguishable from the uncrashed run at the plan level.
 
 ## Authoring → execution path
 
-The `plan.yaml.before` seed here is the *output* of an authoring run of `/spec:plan`. For a pinned five-slice authoring run that produces an analogous plan shape, see [`../../../plan/fixtures/propose/`](../../../plan/fixtures/propose/):
+The `plan.yaml.before` seed here is the *output* of an authoring run of `/change:plan`. For a pinned five-slice authoring run that produces an analogous plan shape, see [`../../../plan/fixtures/propose/`](../../../plan/fixtures/propose/):
 
-- `discovery.md` — the inventory `/spec:plan` step 3(a) wrote.
+- `discovery.md` — the inventory `/change:plan` step 3(a) wrote.
 - `transcript.md` — the interactive accept / edit / reject loop.
 - `expected-proposal.md` — the authoring audit trail.
-- `expected-plan.yaml` — the final `plan.yaml` after the five `specify plan add` calls.
+- `expected-plan.yaml` — the final `plan.yaml` after the five `specify change plan add` calls.
 
-Together the two fixture sets pin the full `/spec:plan → /spec:execute --loop` path: authoring turns `--source` / `--from` inputs into a validated `plan.yaml`, and execution drives that plan to `all-done` (or `stuck`, or a self-healable interrupt) without further human intervention.
+Together the two fixture sets pin the full `/change:plan → /change:execute --loop` path: authoring turns `--source` / `--from` inputs into a validated `plan.yaml`, and execution drives that plan to `all-done` (or `stuck`, or a self-healable interrupt) without further human intervention.
 
 ## Terminal classification note
 

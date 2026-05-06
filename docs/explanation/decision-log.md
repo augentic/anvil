@@ -24,10 +24,10 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** The system is structured in four layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them.
 
-1. **Layer 1 — CLI primitives.** Deterministic verbs (`specify change`, `specify plan`, `specify registry`, `specify workspace`, `specify initiative`).
+1. **Layer 1 — CLI primitives.** Deterministic verbs (`specify change`, `specify plan`, `specify registry`, `specify workspace`, `specify change`).
 2. **Layer 2 — Change lifecycle.** The define-build-merge skills that operate on a single change.
-3. **Layer 3 — Plan & Drive.** `/spec:plan` authors `plan.yaml`; `/spec:execute` runs it.
-4. **Layer 4 — Initiative orchestration.** `/spec:plan --orchestrate` (RFC-9 §2C, formerly `/spec:initiative`) composes Layers 1-3 plus `specify workspace {push, merge}` and `specify initiative finalize` into a single operator action.
+3. **Layer 3 — Plan & Drive.** `/change:plan` authors `plan.yaml`; `/change:execute` runs it.
+4. **Layer 4 — Initiative orchestration.** `/change:plan --orchestrate` (RFC-9 §2C, formerly `/spec:initiative`) composes Layers 1-3 plus `specify workspace {push, merge}` and `specify change finalize` into a single operator action.
 
 **Rationale:** Not every use case needs automation. A single change needs only Layer 2. A small initiative can be driven manually with Layer 1 CLI commands. Plan/execute automation (Layer 3) composes on top, and the cross-repo umbrella (Layer 4) composes on top of that. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
 
@@ -37,7 +37,7 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 ## Plan as a data file, not a configuration
 
-**Decision:** The plan (`plan.yaml`) is an ordered list of changes with status, not a pipeline configuration. There is no planning configuration file. The internal flow of `/spec:plan` is fixed.
+**Decision:** The plan (`plan.yaml`) is an ordered list of changes with status, not a pipeline configuration. There is no planning configuration file. The internal flow of `/change:plan` is fixed.
 
 **Rationale:** Configurability adds a debugging surface ("why did step X run?") before the system is well-understood. A fixed flow with no config is easier to reason about, and configurability can be added later without migration.
 
@@ -45,9 +45,9 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 ## Analyze/extract split
 
-**Decision:** Plan-time capability discovery (`/spec:analyze`) is separate from define-time deep extraction (`/spec:extract`). Analyze scans the whole source cheaply; extract runs deeply against a per-change slice.
+**Decision:** Plan-time capability discovery (`/spec:analyze`) is separate from define-time deep extraction (`/spec:extract`). Analyze scans the whole source cheaply; extract runs deeply against a per-slice slice.
 
-**Rationale:** A large monolith cannot be fully extracted in one pass -- it would be too slow and expensive. The two-skill split makes large migrations tractable: cheap scanning builds the inventory, deep extraction happens per-change where it is focused and affordable.
+**Rationale:** A large monolith cannot be fully extracted in one pass -- it would be too slow and expensive. The two-skill split makes large migrations tractable: cheap scanning builds the inventory, deep extraction happens per-slice where it is focused and affordable.
 
 **Source:** [RFC-3a: Monolith Migration Planning, Large-Monolith Decomposition](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3a-monoliths.md)
 
@@ -55,7 +55,7 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 **Decision:** Multi-repo coordination uses a `registry.yaml` platform catalogue and an automatic sync-peers phase, not a configuration DSL or federation protocol.
 
-**Rationale:** The same `/spec:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what schema they use, what domain they own). Sync-peers runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
+**Rationale:** The same `/change:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what schema they use, what domain they own). Sync-peers runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
 
 **Source:** [RFC-3a: Monolith Migration Planning](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3a-monoliths.md), [RFC-3b: Platform Changes](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
@@ -143,7 +143,7 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 **Decision:** Contract files use opaque file replacement during merge -- the entire file is replaced rather than delta-merged. Unlike spec files (which use ADDED/MODIFIED/REMOVED sections), contract files are replaced wholesale.
 
-**Rationale:** JSON Schema and OpenAPI/AsyncAPI files have their own versioning semantics (`$id`, `info.version`). Introducing a second delta-merge algorithm for YAML contract files would add complexity without clear benefit over replacement. Two concurrent changes that modify the same contract file are caught by `specify change merge conflict-check` (baseline modification after the change's `defined-at` timestamp), and the resolution is to re-run the define phase against the updated baseline.
+**Rationale:** JSON Schema and OpenAPI/AsyncAPI files have their own versioning semantics (`$id`, `info.version`). Introducing a second delta-merge algorithm for YAML contract files would add complexity without clear benefit over replacement. Two concurrent changes that modify the same contract file are caught by `specify slice merge conflict-check` (baseline modification after the change's `defined-at` timestamp), and the resolution is to re-run the define phase against the updated baseline.
 
 **Source:** [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md)
 

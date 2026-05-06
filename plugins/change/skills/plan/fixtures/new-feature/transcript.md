@@ -1,11 +1,11 @@
-# Transcript — `/spec:plan --orchestrate dark-mode --shape new-feature --from ./docs/dark-mode-spec.md`
+# Transcript — `/change:plan --orchestrate dark-mode --shape new-feature --from ./docs/dark-mode-spec.md`
 
 This transcript pins the dialogue and shell-outs across **two runs** of the umbrella: the first run drives steps 1–6 and halts at step 6 (no `--auto-merge`), the second run resumes at step 7 once the operator has merged both PRs by hand. Every shell-out uses post-1F+1G v1 verbs.
 
 ## Run 1 — drive through to step 6, halt at step 6
 
 ```text
-$ /spec:plan --orchestrate dark-mode \
+$ /change:plan --orchestrate dark-mode \
     --shape new-feature \
     --from ./docs/dark-mode-spec.md
 
@@ -20,10 +20,10 @@ Pre-flight
 
 ## Step 1 — Brief
 
-initiative.md is absent.
+change.md is absent.
 
-  $ specify initiative create dark-mode
-  ok: wrote initiative.md
+  $ specify change create dark-mode
+  ok: wrote change.md
 
 Shape `new-feature` with one --from. Suggested default body:
 
@@ -38,7 +38,7 @@ Shape `new-feature` with one --from. Suggested default body:
   (omnia-backend) and the mobile shells (vectis-mobile). ...
 
 Accept the default body? [Y/n] y
-ok: wrote initiative.md
+ok: wrote change.md
 
 ---
 
@@ -54,11 +54,11 @@ Multi-project registry; descriptions complete. Continuing.
 
 ## Step 3 — Plan
 
-  $ /spec:plan dark-mode --from ./docs/dark-mode-spec.md
+  $ /change:plan dark-mode --from ./docs/dark-mode-spec.md
 
-  ── /spec:plan dark-mode ──
+  ── /change:plan dark-mode ──
 
-  $ specify plan create dark-mode
+  $ specify change plan create dark-mode
   ok: scaffolded plan.yaml
 
   Step 3(a) — Discovery
@@ -77,17 +77,17 @@ Multi-project registry; descriptions complete. Continuing.
   Step 3(c) — Propose
     Slice 1: dark-mode-contract  (sources: —; depends-on: —)              [accept] [edit] [reject] [abort]
     > accept
-    $ specify plan add dark-mode-contract --description "Define the cross-project HTTP contract for the per-user theme preference: GET/PUT /v1/users/me/theme with body { theme: light | dark | system }."
+    $ specify change plan add dark-mode-contract --description "Define the cross-project HTTP contract for the per-user theme preference: GET/PUT /v1/users/me/theme with body { theme: light | dark | system }."
     ok: appended `dark-mode-contract` to plan.yaml
 
     Slice 2: dark-mode-backend   (depends-on: dark-mode-contract)
     > accept
-    $ specify plan add dark-mode-backend --depends-on dark-mode-contract --description "Persist a per-user `theme` setting. Implement GET and PUT endpoints from the contract. Default `system` for users who have never set the preference."
+    $ specify change plan add dark-mode-backend --depends-on dark-mode-contract --description "Persist a per-user `theme` setting. Implement GET and PUT endpoints from the contract. Default `system` for users who have never set the preference."
     ok: appended `dark-mode-backend` to plan.yaml
 
     Slice 3: dark-mode-mobile    (depends-on: dark-mode-contract)
     > accept
-    $ specify plan add dark-mode-mobile --depends-on dark-mode-contract --description "Settings screen exposes a three-way picker bound to the theme-preference API. Every screen honours the active theme via design system tokens. Cache the preference locally for cold-launch."
+    $ specify change plan add dark-mode-mobile --depends-on dark-mode-contract --description "Settings screen exposes a three-way picker bound to the theme-preference API. Every screen honours the active theme via design system tokens. Cache the preference locally for cold-launch."
     ok: appended `dark-mode-mobile` to plan.yaml
 
   Step 3(d) — Assignment
@@ -98,28 +98,28 @@ Multi-project registry; descriptions complete. Continuing.
   | 2 | dark-mode-backend    | omnia-backend  | Description overlap: theme-preference API, persistence.  |
   | 3 | dark-mode-mobile     | vectis-mobile  | Description overlap: settings screens, theme-aware UI.   |
 
-    $ specify plan amend dark-mode-backend --project omnia-backend
+    $ specify change plan amend dark-mode-backend --project omnia-backend
     ok: dark-mode-backend.project = omnia-backend
-    $ specify plan amend dark-mode-mobile --project vectis-mobile
+    $ specify change plan amend dark-mode-mobile --project vectis-mobile
     ok: dark-mode-mobile.project = vectis-mobile
 
   Wrote .specify/plans/dark-mode/proposal.md
 
   Step 4 — Validate
-    $ specify plan validate
+    $ specify change plan validate
     PASS
 
   Done. Next steps:
-    - specify plan status
-    - /spec:execute --loop
+    - specify change plan status
+    - /change:execute --loop
 
 ---
 
 ## Step 4 — Execute
 
-  $ /spec:execute --loop
+  $ /change:execute --loop
 
-  ## /spec:execute — dark-mode
+  ## /change:execute — dark-mode
 
   ### Initiative: dark-mode
   Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (total 3)
@@ -128,7 +128,7 @@ Multi-project registry; descriptions complete. Continuing.
 
   Self-heal: no in-progress entries found.
 
-  # specify plan next --format json → { "next": "dark-mode-contract", "project": null, ... }
+  # specify change plan next --format json → { "next": "dark-mode-contract", "project": null, ... }
 
   ### Processing: dark-mode-contract (greenfield)
 
@@ -140,7 +140,7 @@ Multi-project registry; descriptions complete. Continuing.
 
   ---
 
-  # specify plan next → { "next": "dark-mode-backend", "project": "omnia-backend", ... }
+  # specify change plan next → { "next": "dark-mode-backend", "project": "omnia-backend", ... }
 
   Routing: dark-mode-backend → omnia-backend (.specify/workspace/omnia-backend/)
 
@@ -154,7 +154,7 @@ Multi-project registry; descriptions complete. Continuing.
 
   ---
 
-  # specify plan next → { "next": "dark-mode-mobile", "project": "vectis-mobile", ... }
+  # specify change plan next → { "next": "dark-mode-mobile", "project": "vectis-mobile", ... }
 
   Routing: dark-mode-mobile → vectis-mobile (.specify/workspace/vectis-mobile/)
 
@@ -167,7 +167,7 @@ Multi-project registry; descriptions complete. Continuing.
 
   ---
 
-  ## /spec:execute — dark-mode — terminated
+  ## /change:execute — dark-mode — terminated
 
   ### Final state
   Progress: done 3, in-progress 0, pending 0, blocked 0, failed 0, skipped 0 (total 3)
@@ -196,19 +196,19 @@ Open PRs on `specify/dark-mode`:
   vectis-mobile   specify/dark-mode    PR #29    https://github.com/org/vectis-mobile/pull/29
 
 --auto-merge not set; merge by hand on the forge (or run
-`specify workspace merge`) and re-run /spec:plan --orchestrate dark-mode
+`specify workspace merge`) and re-run /change:plan --orchestrate dark-mode
 to finalize.
 
 ---
 
-## /spec:plan --orchestrate — dark-mode — paused
+## /change:plan --orchestrate — dark-mode — paused
 
-  Brief:    initiative.md
+  Brief:    change.md
   Plan:     plan.yaml (3 changes, all `done`)
   PRs:      omnia-backend#57 (open), vectis-mobile#29 (open)
 
   Next action: merge PRs (forge UI or `specify workspace merge`),
-  then re-run /spec:plan --orchestrate dark-mode --shape new-feature
+  then re-run /change:plan --orchestrate dark-mode --shape new-feature
   --from ./docs/dark-mode-spec.md to finalize.
 ```
 
@@ -219,7 +219,7 @@ The operator merges both PRs on github.com (squash, conventional commit titles).
 ## Run 2 — re-entry, runs step 7 only
 
 ```text
-$ /spec:plan --orchestrate dark-mode \
+$ /change:plan --orchestrate dark-mode \
     --shape new-feature \
     --from ./docs/dark-mode-spec.md
 
@@ -234,7 +234,7 @@ Pre-flight
 
 ## Step 1 — Brief
 
-initiative.md is present. Skipping.
+change.md is present. Skipping.
 
 ## Step 2 — Registry
 
@@ -244,11 +244,11 @@ initiative.md is present. Skipping.
 ## Step 3 — Plan
 
 plan.yaml is present and every entry is in a terminal state
-(done × 3). Skipping /spec:plan.
+(done × 3). Skipping /change:plan.
 
 ## Step 4 — Execute
 
-Plan is fully terminal. Skipping /spec:execute.
+Plan is fully terminal. Skipping /change:execute.
 
 ## Step 5 — Push
 
@@ -274,7 +274,7 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ## Step 7 — Finalize
 
-  $ specify initiative finalize
+  $ specify change finalize
   specify: initiative finalize — dark-mode (specify/dark-mode)
 
     omnia-backend         merged                   PR #57   https://github.com/org/omnia-backend/pull/57
@@ -288,20 +288,20 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ---
 
-## /spec:plan --orchestrate — dark-mode — landed
+## /change:plan --orchestrate — dark-mode — landed
 
-  Brief:    .specify/archive/plans/dark-mode-20260428/initiative.md
+  Brief:    .specify/archive/plans/dark-mode-20260428/change.md
   Plan:     .specify/archive/plans/dark-mode-20260428.yaml
   Registry: omnia-backend, vectis-mobile (unchanged)
   PRs:      omnia-backend#57 (merged), vectis-mobile#29 (merged)
 
-  Re-running /spec:plan --orchestrate dark-mode will report
-  plan-not-found from `specify initiative finalize` and exit 0.
+  Re-running /change:plan --orchestrate dark-mode will report
+  plan-not-found from `specify change finalize` and exit 0.
 ```
 
 ## Invariants pinned by this transcript
 
-- **Verb hygiene.** Every shell-out is a post-1F+1G v1 verb: `specify initiative {create, finalize}`, `specify plan {create, add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`. No retired verbs.
+- **Verb hygiene.** Every shell-out is a post-Phase-3 verb: `specify change {create, finalize}`, `specify change plan {create, add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`. No retired verbs.
 - **No registry mutation under `new-feature`.** `registry.yaml` is byte-identical between run-1 input and run-2 output. The 2B registry-proposal sub-step does not fire because every assignment routes to an existing project.
 - **Step 6 stops without `--auto-merge`.** The umbrella never invokes `gh pr merge` or `specify workspace merge` in run 1. It surfaces the open-PR list and exits zero. The operator's manual merges happen off-fixture.
 - **Re-entry is idempotent.** Run 2 traverses every step but does **work** only at step 7. Each earlier step short-circuits because its on-disk state is already terminal: brief present, registry unchanged, plan terminal, workspace clones up-to-date, every PR `MERGED` on remote.

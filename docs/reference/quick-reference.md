@@ -14,8 +14,8 @@
 ### Multi-change initiative
 
 ```text
-/spec:plan <name> --source legacy=./path    # author plan
-/spec:execute --loop                        # run until done
+/change:plan <name> --source legacy=./path    # author plan
+/change:execute --loop                        # run until done
 ```
 
 ### Cross-repo umbrella
@@ -23,7 +23,7 @@
 ```text
 /spec:init --hub                                     # bootstrap a platform hub
 specify registry add <project> --url ... --schema ...      # `--schema` flag is the legacy spelling; renamed in a later phase
-/spec:plan --orchestrate <name> [--shape ...] [--auto-merge]
+/change:plan --orchestrate <name> [--shape ...] [--auto-merge]
 ```
 
 ## All skills
@@ -33,13 +33,13 @@ specify registry add <project> --url ... --schema ...      # `--schema` flag is 
 | `/spec:init` | 2 | One-time project setup (`--hub` for a platform hub) |
 | `/spec:define` | 2 | Generate artifacts for a new change |
 | `/spec:build` | 2 | Implement tasks |
-| `/spec:merge` | 2 | Merge completed change into baseline |
-| `/spec:drop` | 2 | Discard a change |
+| `/spec:merge` | 2 | Merge completed slice into baseline |
+| `/spec:drop` | 2 | Discard a slice |
 | `/spec:extract` | 2 | Extract specs from existing code |
-| `/spec:analyze` | 3 | Plan-time capability inference (invoked by `/spec:plan`) |
-| `/spec:plan` | 3 | Author a multi-change plan |
-| `/spec:execute` | 3 | Automate the plan loop |
-| `/spec:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> merge -> finalize (was `/spec:initiative`) |
+| `/spec:analyze` | 3 | Plan-time capability inference (invoked by `/change:plan`) |
+| `/change:plan` | 3 | Author a multi-slice plan |
+| `/change:execute` | 3 | Automate the plan loop |
+| `/change:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> merge -> finalize (was `/spec:initiative`) |
 | `/contract:openapi` | -- | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
 | `/contract:asyncapi` | -- | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
 | `/contract:json-schema` | -- | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |
@@ -48,12 +48,12 @@ specify registry add <project> --url ... --schema ...      # `--schema` flag is 
 
 | Artifact | Question | Location |
 |----------|----------|----------|
-| `proposal.md` | Why? | `.specify/changes/<name>/proposal.md` |
-| `spec.md` | What? | `.specify/changes/<name>/specs/<cap>/spec.md` |
-| `contracts/**/*.yaml` | Shape? | `contracts/` (baseline) or `.specify/changes/<name>/contracts/` (delta) |
-| `composition.yaml` | Where? (Vectis) | `.specify/changes/<name>/composition.yaml` |
-| `design.md` | How? | `.specify/changes/<name>/design.md` |
-| `tasks.md` | Sequence? | `.specify/changes/<name>/tasks.md` |
+| `proposal.md` | Why? | `.specify/slices/<name>/proposal.md` |
+| `spec.md` | What? | `.specify/slices/<name>/specs/<cap>/spec.md` |
+| `contracts/**/*.yaml` | Shape? | `contracts/` (baseline) or `.specify/slices/<name>/contracts/` (delta) |
+| `composition.yaml` | Where? (Vectis) | `.specify/slices/<name>/composition.yaml` |
+| `design.md` | How? | `.specify/slices/<name>/design.md` |
+| `tasks.md` | Sequence? | `.specify/slices/<name>/tasks.md` |
 
 ## Lifecycle states
 
@@ -70,22 +70,22 @@ created --> defining --> defined --> building --> complete --> merged
 ```bash
 # Status
 specify status                            # project dashboard
-specify change status <name>              # single-change view
+specify slice status <name>              # single-slice view
 
 # Project setup
 specify init <capability>                 # regular single-project scaffold (positional capability identifier or URL)
 specify init --hub                        # registry-only platform hub (RFC-9 1D)
 
 # Change management
-specify change list
-specify change transition <name> <target>
+specify slice list
+specify slice transition <name> <target>
 
 # Plan management
-specify plan status
-specify plan next
-specify plan doctor                       # validate + cycle / orphan / stale-clone / unreachable
-specify plan transition <name> <target>
-specify plan lock status
+specify change plan status
+specify change plan next
+specify change plan doctor                       # validate + cycle / orphan / stale-clone / unreachable
+specify change plan transition <name> <target>
+specify change plan lock status
 
 # Workspace (multi-repo)
 specify workspace sync
@@ -100,20 +100,20 @@ specify registry add <name> --url <url> --schema <schema> --description "..."
 specify registry remove <name>
 
 # Initiative brief and closure
-specify initiative create <name>          # scaffold initiative.md
-specify initiative show
-specify initiative finalize               # confirm PRs merged, archive plan (RFC-9 4C)
-specify initiative finalize --clean       # also prune .specify/workspace/<peer>/
+specify slice create <name>          # scaffold change.md
+specify change show
+specify change finalize               # confirm PRs merged, archive plan (RFC-9 4C)
+specify change finalize --clean       # also prune .specify/workspace/<peer>/
 
 # Plan authoring (multi-repo)
-specify plan add <name> --project <project>
-specify plan amend <name> --project <project>
+specify change plan add <name> --project <project>
+specify change plan amend <name> --project <project>
 
 # Per-change inspection
-specify change validate <name>
-specify change task progress <name>
-specify change merge preview <name>
-specify change merge conflict-check <name>
+specify slice validate <name>
+specify slice task progress <name>
+specify slice merge preview <name>
+specify slice merge conflict-check <name>
 ```
 
 ## Capabilities
@@ -130,13 +130,13 @@ specify change merge conflict-check <name>
 <project-root>/
 ├── registry.yaml         # platform catalogue (optional, multi-repo)
 ├── plan.yaml             # initiative plan (optional)
-├── initiative.md         # operator brief (optional)
+├── change.md         # operator brief (optional)
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
 └── .specify/
     ├── project.yaml      # project config
-    ├── plan.lock         # advisory lock for /spec:execute
+    ├── plan.lock         # advisory lock for /change:execute
     ├── .cache/           # cached capability manifest + briefs
-    ├── changes/          # active changes (contracts/, composition.yaml for Vectis)
+    ├── changes/          # active slices (contracts/, composition.yaml for Vectis)
     ├── specs/            # merged baseline (incl. composition.yaml for Vectis)
     ├── plans/            # initiative working dirs (discovery, proposal)
     ├── workspace/        # peer repo clones (multi-repo only)

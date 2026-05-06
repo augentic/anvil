@@ -1,6 +1,6 @@
 # Bootstrap a Platform Hub
 
-A **platform hub** is a registry-only Specify repo that holds platform state -- `registry.yaml`, `initiative.md`, `plan.yaml`, `workspace/` -- but is never itself a code project. It is the canonical starting shape for any cross-repo Specify initiative.
+A **platform hub** is a registry-only Specify repo that holds platform state -- `registry.yaml`, `change.md`, `plan.yaml`, `workspace/` -- but is never itself a code project. It is the canonical starting shape for any cross-repo Specify initiative.
 
 This how-to gets you from an empty directory to a registered hub with two code projects in under five minutes. For the full conceptual treatment see [Platform repo topologies](../explanation/platform-repo.md).
 
@@ -18,7 +18,7 @@ git init --quiet
 git remote add origin git@github.com:org/shop-platform.git
 ```
 
-The hub itself is a git repo so the platform state (registry, initiative briefs, archived plans) is version-controlled alongside any other operator-owned material.
+The hub itself is a git repo so the platform state (registry, change briefs, archived plans) is version-controlled alongside any other operator-owned material.
 
 ## 2. Run `specify init --hub`
 
@@ -26,7 +26,7 @@ The hub itself is a git repo so the platform state (registry, initiative briefs,
 specify init --hub --name shop-platform
 ```
 
-In hub mode, **no positional** capability argument is passed -- `--hub` is the discriminator. Combining a capability positional with `--hub` is rejected with `init-requires-capability-or-hub`. `--name` must be kebab-case because the CLI bakes it into `initiative.md`'s frontmatter.
+In hub mode, **no positional** capability argument is passed -- `--hub` is the discriminator. Combining a capability positional with `--hub` is rejected with `init-requires-capability-or-hub`. `--name` must be kebab-case because the CLI bakes it into `change.md`'s frontmatter.
 
 <details>
 <summary>Expected output</summary>
@@ -47,7 +47,7 @@ The hub now contains:
 ```text
 shop-platform/
 ├── registry.yaml     # version: 1, projects: []
-├── initiative.md     # canonical template, name: shop-platform
+├── change.md     # canonical template, name: shop-platform
 ├── .gitignore        # upserts .specify/.cache/ and .specify/workspace/
 └── .specify/
     └── project.yaml  # hub: true (capability: omitted)
@@ -86,7 +86,7 @@ specify registry show
 - Every entry has a `description` (the `description-missing-multi-repo` invariant fires above one project).
 - No entry has `url: .` (the `hub-cannot-be-project` invariant fires when `project.yaml: hub: true`).
 
-`show` renders the registry as parsed YAML so you can spot-check the descriptions before they feed into `/spec:plan`'s assignment step.
+`show` renders the registry as parsed YAML so you can spot-check the descriptions before they feed into `/change:plan`'s assignment step.
 
 ## 5. Commit the platform state
 
@@ -95,20 +95,20 @@ git add .specify/ .gitignore
 git commit -m "Bootstrap shop-platform hub with two registered projects"
 ```
 
-The hub is now ready to drive an initiative. The recommended next step is the cross-repo tutorial.
+The hub is now ready to drive a change. The recommended next step is the cross-repo tutorial.
 
 ## Verification
 
 | Check | Command | Expect |
 |-------|---------|--------|
 | Hub markers in place | `cat .specify/project.yaml` | A line containing `hub: true` and **no** `capability:` line. |
-| Phase pipelines disabled | `ls .specify/` | `project.yaml`, `registry.yaml`, `initiative.md`. **No** `changes/` or `specs/`. |
+| Phase pipelines disabled | `ls .specify/` | `project.yaml`, `registry.yaml`, `change.md`. **No** `changes/` or `specs/`. |
 | Registry validates | `specify registry validate` | Exit 0, no diagnostics. |
 | Both projects listed | `specify registry show` | `version: 1` and two `projects[]` entries with descriptions. |
 
 ## See also
 
-- [Cross-Repo Initiatives](../tutorials/cross-repo-initiative.md) -- end-to-end tutorial driving the first initiative through this hub.
+- [Cross-Repo Initiatives](../tutorials/cross-repo-change.md) -- end-to-end tutorial driving the first initiative through this hub.
 - [Manage registry projects](manage-registry-projects.md) -- add and remove projects after the first bootstrap.
 - [Platform repo topologies](../explanation/platform-repo.md) -- when to choose hub vs platform-as-project.
 - [`specify init`](../reference/cli/init.md) -- CLI reference for the `--hub` flag.

@@ -1,6 +1,6 @@
 # Modes
 
-Each mode below describes only the *delta* from the [per-slice algorithm](per-change-algorithm.md). The 13 steps in that file are the common core; the mode-specific rules are the outer loop, the writing-vs-reporting substitution table, and the interrupt handling.
+Each mode below describes only the *delta* from the [per-slice algorithm](per-slice-algorithm.md). The 13 steps in that file are the common core; the mode-specific rules are the outer loop, the writing-vs-reporting substitution table, and the interrupt handling.
 
 ## Supervised (default)
 
@@ -14,7 +14,7 @@ Run the per-slice algorithm with every **write** substituted for a **report** (s
 |---|---|
 | `specify change plan transition <name> in-progress` (step 5) | Not invoked. The preview shows the plan in its current state. |
 | `specify change plan transition <name> {done,failed,blocked}` (steps 10–12) | Not invoked. Diagnostics use the "Would transition" wording (see [self-heal.md](self-heal.md) §Dry-run variant). |
-| `specify change journal append … recovery …` (self-heal step 4) | Not invoked. |
+| `specify slice journal append … recovery …` (self-heal step 4) | Not invoked. |
 | `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` (steps 6–8, 11b, 12b) | Not invoked. `--dry-run` is read-only end to end — the self-heal scan is report-only too. |
 
 Step 4's `specify change plan next` / `specify change plan status` calls still run — they are read-only. The rendered output follows the §`--dry-run` output format in [output-format.md](output-format.md); every line carries the `[dry-run] ` banner so the operator cannot mistake a preview for a real run.

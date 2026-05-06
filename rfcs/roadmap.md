@@ -54,13 +54,13 @@ Specify should make a clear distinction between:
 
 - **Workflow skills**: phase orchestration and specialist generation behavior.
 - **Standards**: durable engineering rules with stable identifiers.
-- **Artifacts**: change-local and baseline material produced by the workflow.
+- **Artifacts**: slice-local and baseline material produced by the workflow.
 
 This avoids overloading `SKILL.md` with general policy, and gives reviewers and generators a shared rule vocabulary.
 
 ### Optimize For Background Execution Later
 
-The local `/spec:execute --loop` path should remain first-class, but the primitives should be portable to cloud execution: plan locks, journals, phase outcomes, workspace state, review results, and recovery records should all be serializable and durable.
+The local `/change:execute --loop` path should remain first-class, but the primitives should be portable to cloud execution: plan locks, journals, phase outcomes, workspace state, review results, and recovery records should all be serializable and durable.
 
 The long-term shape is:
 
@@ -158,7 +158,7 @@ Add a review mode that can run locally or in CI:
 
 ```bash
 specify review
-specify review --change <name>
+specify review --slice <name>
 specify review --format json
 ```
 
@@ -191,11 +191,11 @@ Expose a thin MCP server over CLI-backed operations:
 - `specify_status`;
 - `specify_registry_show`;
 - `specify_workspace_status`;
-- `specify_plan_status`;
-- `specify_plan_next`;
-- `specify_plan_doctor`;
-- `specify_change_validate`;
-- `specify_change_outcome_show`.
+- `specify_change_plan_status`;
+- `specify_change_plan_next`;
+- `specify_change_plan_doctor`;
+- `specify_slice_validate`;
+- `specify_slice_outcome_show`.
 
 The MCP server should be mostly read-oriented at first. Mutating tools can come later, but only as wrappers around existing CLI verbs with the same validation and failure semantics.
 
@@ -209,7 +209,7 @@ Add structured event emission for major workflow operations:
 
 - command name and version;
 - project and capability;
-- change or plan entry;
+- slice or plan entry;
 - phase start and finish;
 - validation result;
 - skill invoked;
@@ -243,7 +243,7 @@ Requirements:
 - explicit human approval gates;
 - controlled push and PR/MR creation;
 - deterministic recovery after interruption;
-- parity with local `/spec:execute --loop`.
+- parity with local `/change:execute --loop`.
 
 Candidate surface:
 
@@ -275,7 +275,7 @@ This should remain a long-term track. Local execution is the proving ground.
 
 ### Long Term
 
-- Add cloud-hosted `/spec:execute --loop` equivalents.
+- Add cloud-hosted `/change:execute --loop` equivalents.
 - Support durable background agents with sandboxed workspace clones.
 - Add first-class PR/MR creation and review loops.
 - Support catalog-backed initiatives across many repositories.

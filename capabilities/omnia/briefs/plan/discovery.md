@@ -4,9 +4,9 @@ description: Read --from artefacts and/or analyse codebases; emit a neutral capa
 generates: .specify/plans/<name>/discovery.md
 ---
 
-Produce a neutral, schema-agnostic capability inventory for the initiative. Discovery is read-only: it does NOT write to `plan.yaml` and does NOT propose slices. Its only output is the inventory that `propose.md` will decompose.
+Produce a neutral, schema-agnostic capability inventory for the change. Discovery is read-only: it does NOT write to `plan.yaml` and does NOT propose slices. Its only output is the inventory that `propose.md` will decompose.
 
-Every input reaching this brief carries a `kind` drawn from the closed enum `{legacy-code, documentation}`. Any other value is a brief-level error; the brief must refuse to produce an inventory rather than guess a default or silently skip the input. Kind assignment for CLI-supplied inputs is performed upstream by `/spec:plan` (see its SKILL.md §*Kind defaults for CLI flags*); this brief receives pre-classified inputs and does not re-apply defaults.
+Every input reaching this brief carries a `kind` drawn from the closed enum `{legacy-code, documentation}`. Any other value is a brief-level error; the brief must refuse to produce an inventory rather than guess a default or silently skip the input. Kind assignment for CLI-supplied inputs is performed upstream by `/change:plan` (see its SKILL.md §*Kind defaults for CLI flags*); this brief receives pre-classified inputs and does not re-apply defaults.
 
 ## Inputs
 
@@ -18,7 +18,7 @@ At least one of `--from`, `--against`, or `--source` must be supplied.
 
 ## Input dispatch (per-kind)
 
-Every input reaching this brief is pre-classified by kind (see [`../../../../plugins/change/skills/plan/SKILL.md` §*Kind defaults for CLI flags*](../../../../plugins/change/skills/plan/SKILL.md)). Dispatch per kind — one [`/spec:analyze`](../../../../plugins/spec/skills/analyze/SKILL.md) invocation per input, processed in CLI declaration order (`--from` entries before `--source` entries before `--against`; within each flag, left-to-right), and `initiative.md:inputs[]` entries interleaved in file order after the CLI inputs of matching kind.
+Every input reaching this brief is pre-classified by kind (see [`../../../../plugins/change/skills/plan/SKILL.md` §*Kind defaults for CLI flags*](../../../../plugins/change/skills/plan/SKILL.md)). Dispatch per kind — one [`/spec:analyze`](../../../../plugins/spec/skills/analyze/SKILL.md) invocation per input, processed in CLI declaration order (`--from` entries before `--source` entries before `--against`; within each flag, left-to-right), and `change.md:inputs[]` entries interleaved in file order after the CLI inputs of matching kind.
 
 ### `kind: documentation`
 
@@ -33,7 +33,7 @@ where `<plan-dir>` is `.specify/plans/<initiative-name>/` — the same directory
 - `--from <p>` → `--source-key <basename(p) without extension, kebab-cased>`.
 - `--source <k>=<p>:documentation` → `--source-key <k>`.
 - `--against <p>:documentation` → `--source-key against`.
-- `initiative.md:inputs[]` with `kind: documentation` → `--source-key <basename(path) without extension, kebab-cased>` (v1 brief schema has no `key:` field on `inputs[]`; adding one requires an RFC update per the closed-enum posture).
+- `change.md:inputs[]` with `kind: documentation` → `--source-key <basename(path) without extension, kebab-cased>` (v1 brief schema has no `key:` field on `inputs[]`; adding one requires an RFC update per the closed-enum posture).
 
 `/spec:analyze` appends capability summaries to `<plan-dir>/discovery.md` in the shape pinned at [`analyze/SKILL.md` §Output contract](../../../../plugins/spec/skills/analyze/SKILL.md), plus the documentation-branch `## Constraints (from documentation)` and `## Open questions (from documentation)` appendix blocks pinned in [`analyze.md` §Documentation branch](./analyze.md).
 
@@ -50,7 +50,7 @@ where `<plan-dir>` is `.specify/plans/<initiative-name>/` and `<k>` is the sourc
 - `--source <k>=<p>` (default kind `legacy-code`) → `--source-key <k>`.
 - `--source <k>=<p>:legacy-code` (explicit) → `--source-key <k>`.
 - `--against <p>` (default kind `legacy-code`) → `--source-key against`.
-- `initiative.md:inputs[]` with `kind: legacy-code` → `--source-key <basename(path) kebab-cased>`.
+- `change.md:inputs[]` with `kind: legacy-code` → `--source-key <basename(path) kebab-cased>`.
 
 For a git-URL `--source`, materialise the URL into `legacy/<key>/` with the inlined guarded `git clone` snippet (see [`../../../../plugins/spec/skills/analyze/SKILL.md` §*Cloning a source tree*](../../../../plugins/spec/skills/analyze/SKILL.md)) and pass that local path to `/spec:analyze`.
 

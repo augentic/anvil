@@ -6,7 +6,7 @@
 
 The registry is the first-party Specify component that owns *project topology* — the declared list of projects, their repository locations, human descriptions, and default capability — **and** the local *materialised view* of those projects under `.specify/workspace/`. It is not a capability: it has commands, libraries, and files, but it does not participate in the capability manifest protocol and is not activated through `capability.yaml`. See [RFC-13 §"Platform components are not capabilities"](../../rfcs/rfc-13-extensibility.md#platform-components-are-not-capabilities) and [RFC-13 §"Registry-materialised execution"](../../rfcs/rfc-13-extensibility.md#registry-materialised-execution).
 
-Capabilities own outcome artefacts and their mechanics; the registry coordinates *where* — which project a slice runs against and how that project's working tree is materialised. The change component (see [`change-component.md`](change-component.md)) coordinates *when* — sequencing slices across one or more registry projects.
+Capabilities own outcome artefacts and their mechanics; the registry coordinates *where* — which project a slice runs against and how that project's working tree is materialised. The slice component (see [`change-component.md`](change-component.md)) coordinates *when* — sequencing slices across one or more registry projects.
 
 ## Files and state
 
@@ -70,21 +70,21 @@ None of these verbs go through `define → build → merge`. The registry is sub
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `specify workspace sync`   | Materialise `.specify/workspace/<name>/` for every registry entry — symlink for `.`/relative URLs, shallow `git clone` for remotes. Idempotent. Updates `.gitignore`.                |
 | `specify workspace status` | Per-project materialisation report — slot type (symlink, git-clone, missing), HEAD sha, dirty flag, `.specify/` summary.                                                             |
-| `specify workspace push`   | Push each clone's `specify/<change-name>` branch to its remote and open a PR. Branch name resolves from `plan.yaml`.                                                                 |
+| `specify workspace push`   | Push each clone's `specify/<slice-name>` branch to its remote and open a PR. Branch name resolves from `plan.yaml`.                                                                 |
 | `specify workspace merge`  | Squash-merge open PRs once their CI is green ([RFC-9 §4A](../../rfcs/archive/rfc-9-platform.md)). Refuses on `branch-pattern-mismatch`; never `--admin`/`--auto`.                    |
 
 The registry-materialisation resolver — the registry service that maps a registry-declared project to its materialised project root — is what change execution consumes when running the slice loop against a peer project (see [RFC-13 §"Registry-materialised execution"](../../rfcs/rfc-13-extensibility.md#registry-materialised-execution)). Capability skills run relative to *the clone's project root*; the core receives only the project root it should run against.
 
 ## Dependency direction
 
-The registry sits between the change component and the lower-level core/capability crates. The post-Phase-3 dependency edge is one-way:
+The registry sits between the slice component and the lower-level core/capability crates. The post-Phase-3 dependency edge is one-way:
 
 ```text
 specify-change → specify-registry → specify-capability
                                  → specify-core
 ```
 
-The invariant: **`specify-core` does not depend on `specify-registry`**, and `specify-registry` does not depend on `specify-change`. The change component MAY depend on the registry because orchestration composes registry materialisation; the reverse is forbidden. RFC-13 invariant #4 spells this out and [RFC-5](../../rfcs/rfc-5-lint.md) is the home for the lint that enforces it. See [RFC-13 §Migration](../../rfcs/rfc-13-extensibility.md#migration).
+The invariant: **`specify-core` does not depend on `specify-registry`**, and `specify-registry` does not depend on `specify-change`. The slice component MAY depend on the registry because orchestration composes registry materialisation; the reverse is forbidden. RFC-13 invariant #4 spells this out and [RFC-5](../../rfcs/rfc-5-lint.md) is the home for the lint that enforces it. See [RFC-13 §Migration](../../rfcs/rfc-13-extensibility.md#migration).
 
 > **Crate naming on the rfc-13 branch.** The umbrella crate is currently named `specify-initiative` on disk; Phase 3.4 of the RFC-13 plan renames it to `specify-change`. This page describes the post-Phase-3 surface so it stays accurate after the rename — read every reference to `specify-change` (the umbrella) as `specify-initiative` while you are working on the rfc-13 branch.
 
@@ -92,7 +92,7 @@ The invariant: **`specify-core` does not depend on `specify-registry`**, and `sp
 
 The registry is topology plus local materialisation. It is **not** a place to park orchestration, validation findings, or PR metadata. Mirror of the [RFC-13 §"Platform components are not capabilities"](../../rfcs/rfc-13-extensibility.md#platform-components-are-not-capabilities) table:
 
-- Change or plan status — owned by `specify change` (`change.md`, `plan.yaml`, `.specify/changes/<name>/.metadata.yaml`).
+- Change or plan status — owned by `specify change` (`change.md`, `plan.yaml`, `.specify/slices/<name>/.metadata.yaml`).
 - Contract relationships beyond the per-project role declarations — owned by the `contracts@v1` capability.
 - Validation findings — owned by capability skills and helper binaries.
 - Change execution — owned by `specify change` (the orchestration umbrella).

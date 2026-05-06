@@ -5,12 +5,12 @@ needs: [discovery]
 generates: .specify/plans/<name>/proposal.md
 ---
 
-Turn the capability inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered capability. Capability boundaries were decided upstream by `/spec:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify plan add` for every accepted slice. This is the single-writer edge for `plan.yaml` during propose: every entry is added via `specify plan add` (without `--project`) — the brief never edits `plan.yaml` directly. Project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
+Turn the capability inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered capability. Capability boundaries were decided upstream by `/spec:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify change plan add` for every accepted slice. This is the single-writer edge for `plan.yaml` during propose: every entry is added via `specify change plan add` (without `--project`) — the brief never edits `plan.yaml` directly. Project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
 
 ## Input
 
 - `.specify/plans/<name>/discovery.md` (authored by `discovery.md`). If the file is missing, stop and report — the discovery brief must run first.
-- **`.specify/plans/<name>/workspace.md`** when present (multi-repo / Layer 2). Authored by `/spec:plan` step 3(b) after `specify workspace sync`. Summarises each peer under `.specify/workspace/<project>/` so propose can attach capabilities that land in a peer repo. When absent, assume single-repo mode — every `<!-- source-key: <k> -->` MUST resolve to a key in the initiative plan's top-level `sources:` map.
+- **`.specify/plans/<name>/workspace.md`** when present (multi-repo / Layer 2). Authored by `/change:plan` step 3(b) after `specify workspace sync`. Summarises each peer under `.specify/workspace/<project>/` so propose can attach capabilities that land in a peer repo. When absent, assume single-repo mode — every `<!-- source-key: <k> -->` MUST resolve to a key in the change plan's top-level `sources:` map.
 - Assumed shape: unified capability summaries as `### <name>` headings + fenced YAML (`summary`, `sources`, `depends-on`, optional `hints`, `confidence`), each prefixed by a `<!-- source-key: <k> -->` HTML comment. Optional trailing `## Constraints` and `## Open questions` sections (documentation inputs only) are operator context; they do not drive slice emission.
 
 ## Decomposition — 1:1 capability → slice
@@ -34,9 +34,9 @@ The `<!-- source-key: <k> -->` HTML comment immediately above each `### <name>` 
 
 ### Peer registry sources (multi-repo)
 
-Project assignment is handled by the plan skill's assignment step (RFC-3b §*Assignment algorithm*), not by the propose brief. The propose brief creates entries without `--project`. `workspace.md` is operator-facing context: which peers were synced, where their `.specify/` trees live under `.specify/workspace/<name>/`, and whether their checkouts are clean. **Authoring rule:** every plan entry MUST still list only `sources:` keys that exist in the initiative plan's top-level `sources:` map (the single-writer CLI enforces this today).
+Project assignment is handled by the plan skill's assignment step (RFC-3b §*Assignment algorithm*), not by the propose brief. The propose brief creates entries without `--project`. `workspace.md` is operator-facing context: which peers were synced, where their `.specify/` trees live under `.specify/workspace/<name>/`, and whether their checkouts are clean. **Authoring rule:** every plan entry MUST still list only `sources:` keys that exist in the change plan's top-level `sources:` map (the single-writer CLI enforces this today).
 
-When the assignment step (3(d)) routes an entry to a project that does not yet exist in `registry.yaml`, the plan skill — not this brief — runs the **registry-proposal sub-step** (RFC-9 §2B; see `plugins/spec/skills/plan/SKILL.md` → §"Step 3(d).1 — Registry proposal sub-step"). The sub-step shells out to `specify registry add`, then `specify workspace sync`, then `specify plan amend --project <name>` for the entry. This brief never proposes registry entries directly — its single-writer responsibility is `specify plan add` for each accepted slice.
+When the assignment step (3(d)) routes an entry to a project that does not yet exist in `registry.yaml`, the plan skill — not this brief — runs the **registry-proposal sub-step** (RFC-9 §2B; see `plugins/spec/skills/plan/SKILL.md` → §"Step 3(d).1 — Registry proposal sub-step"). The sub-step shells out to `specify registry add`, then `specify workspace sync`, then `specify change plan amend --project <name>` for the entry. This brief never proposes registry entries directly — its single-writer responsibility is `specify change plan add` for each accepted slice.
 
 ### Documentation capabilities (no source-key marker for code)
 
@@ -47,7 +47,7 @@ Capabilities produced from `/spec:analyze --kind documentation` carry `sources:`
 
 ### Emit order
 
-Emit in dependency order using `depends-on`: leaves first, transitive dependents later. Within a layer, emit alphabetically by `name`. This mirrors the topological order `specify plan next` walks at execution time.
+Emit in dependency order using `depends-on`: leaves first, transitive dependents later. Within a layer, emit alphabetically by `name`. This mirrors the topological order `specify change plan next` walks at execution time.
 
 ### Rich description generation
 
@@ -67,14 +67,14 @@ The generated description is presented to the operator in the interactive loop a
 
 ## Omnia carry-through
 
-Capability names flow directly into change names; the one-WASM-crate-per-change convention is preserved at `/spec:define` time, not here. No grouping, no renaming, no cross-capability merges in this brief — edits happen through the interactive loop, one slice at a time.
+Capability names flow directly into change names; the one-WASM-crate-per-slice convention is preserved at `/spec:define` time, not here. No grouping, no renaming, no cross-capability merges in this brief — edits happen through the interactive loop, one slice at a time.
 
-## `specify plan add` invocation
+## `specify change plan add` invocation
 
 For each accepted slice, shell out once:
 
 ```text
-specify plan add <name> \
+specify change plan add <name> \
     --sources <source-key> \
     --depends-on <dep1> [--depends-on <dep2> ...] \
     --description "<rich prose>"
@@ -91,10 +91,10 @@ For each candidate slice in emit order:
 3. Show **depends-on** graph preview.
 4. If `confidence: low`, prepend **⚠ review before accepting** to the first line of the prompt.
 5. Accept one of four actions:
-   - **accept** — shell out to `specify plan add` with the mapped flags above. Record the entry in the proposal table.
+   - **accept** — shell out to `specify change plan add` with the mapped flags above. Record the entry in the proposal table.
    - **edit** — reprompt for changed field(s) (name, sources, depends-on, description) and re-present. Loop until accept or reject. Edits may rename the capability, drop a dependency edge, or refine the description prose.
    - **reject** — drop the slice. Upcoming slices with an implicit `depends-on` on this slice lose that edge before they are presented; if a later slice is semantically blocked by the rejection, flag it during its own review.
-   - **abort** — stop the loop. Already-accepted entries remain on disk (written by `specify plan add`); the brief writes `proposal.md` with decisions to date and exits non-zero, pointing the operator at `/spec:plan --extend` to resume.
+   - **abort** — stop the loop. Already-accepted entries remain on disk (written by `specify change plan add`); the brief writes `proposal.md` with decisions to date and exits non-zero, pointing the operator at `/change:plan --extend` to resume.
 
 Present slices in the order the emit rule produces; do not re-order mid-loop beyond dropping stale dependency edges after a reject.
 
@@ -123,7 +123,7 @@ The table MUST include every slice presented to the human — edited and rejecte
 
 ## Final step
 
-After the last accepted slice, run `specify plan validate`. If it reports errors, write the error block into the "Notes" section of `proposal.md` and stop — human triage is required before execution can begin. Do not attempt to auto-repair plan errors from within this brief.
+After the last accepted slice, run `specify change plan validate`. If it reports errors, write the error block into the "Notes" section of `proposal.md` and stop — human triage is required before execution can begin. Do not attempt to auto-repair plan errors from within this brief.
 
 ## Example — monolith fixture
 
@@ -135,16 +135,16 @@ Given [`plugins/spec/skills/plan/fixtures/discovery/monolith/expected/discovery.
 
 Propose emits (dependency order, alphabetical within layer):
 
-1. ```text specify plan add email-verification \
+1. ```text specify change plan add email-verification \
        --sources monolith \
        --description "Verify a newly registered account via a one-time email token. Focus on src/auth/verify.ts."
    ```
 2. ```text
-   specify plan add shared-validation \
+   specify change plan add shared-validation \
        --sources monolith \
        --description "Validate common user-facing inputs with reusable primitives. Focus on src/common/validation/."
    ```
-3. ```text specify plan add user-registration \
+3. ```text specify change plan add user-registration \
        --sources monolith \
        --depends-on email-verification --depends-on shared-validation \
        --description "Create new user accounts with email verification. Relevant files: src/auth/verify.ts, src/users/register.ts, src/users/validation.ts. Delta-targets email-verification."
@@ -163,17 +163,17 @@ prose during the edit step (e.g. narrowing to
 Emit the proposed plan to stdout as a preview of the same table
 structure that would be written to `proposal.md`. Do NOT:
 
-- call `specify plan add`,
+- call `specify change plan add`,
 - write `proposal.md`,
-- run `specify plan validate`.
+- run `specify change plan validate`.
 
 `--dry-run` is read-only; it is safe to invoke repeatedly against
 the same discovery output.
 
 ## `--extend` behaviour
 
-Skip the `specify plan create` step (the caller — typically
-the `/spec:plan` skill — has already ensured `plan.yaml`
+Skip the `specify change plan create` step (the caller — typically
+the `/change:plan` skill — has already ensured `plan.yaml`
 exists). Still run propose against the existing plan: slices whose
 names collide with existing plan entries are skipped with a note
 in the proposal; new slices go through the usual loop.

@@ -896,7 +896,8 @@ async function checkRetiredCliVerbs(): Promise<void> {
   const ALLOWLIST = new Set<string>([
     "docs/explanation/migrating-cli-v1.md",
     "docs/reference/cli/change.md",
-    "docs/reference/cli/initiative.md",
+    "docs/reference/cli/slice.md",
+    "docs/reference/cli/plan.md",
     "docs/reference/cli/registry.md",
     "docs/reference/cli/status.md",
   ]);
@@ -904,25 +905,26 @@ async function checkRetiredCliVerbs(): Promise<void> {
   const PATTERNS: DenyPattern[] = [
     {
       pattern: /\bspecify validate /,
-      hint: "use `specify change validate <name>`",
+      hint: "use `specify slice validate <name>`",
     },
     {
       pattern: /\bspecify merge /,
-      hint: "use `specify change merge run <name>`",
+      hint: "use `specify slice merge run <name>`",
     },
     {
       pattern: /\bspecify spec /,
       hint:
-        "use `specify change merge {preview, conflict-check}` (the `spec` group is retired)",
+        "use `specify slice merge {preview, conflict-check}` (the `spec` group is retired)",
     },
     {
       pattern: /\bspecify task /,
       hint:
-        "use `specify change task {progress, mark}` (the `task` group is retired)",
+        "use `specify slice task {progress, mark}` (the `task` group is retired)",
     },
     {
       pattern: /\bspecify initiative brief\b/,
-      hint: "use `specify initiative {init, show}`",
+      hint:
+        "use `specify change {create, show}` (the `initiative` family was renamed to `change` by RFC-13 §3.5)",
     },
     {
       pattern: /\bspecify initiative registry\b/,
@@ -930,19 +932,27 @@ async function checkRetiredCliVerbs(): Promise<void> {
     },
     {
       pattern: /\bspecify change phase-outcome\b/,
-      hint: "use `specify change outcome set ...`",
+      hint:
+        "use `specify slice outcome set ...` (per-loop verbs moved from `change` to `slice` by RFC-13 §3.2)",
     },
     {
       pattern: /\bspecify change journal-append\b/,
-      hint: "use `specify change journal append ...`",
+      hint:
+        "use `specify slice journal append ...` (per-loop verbs moved from `change` to `slice` by RFC-13 §3.2)",
     },
     {
-      // The bare `specify change outcome <name>` form (no `set`/`show` after
+      // The bare `specify slice outcome <name>` form (no `set`/`show` after
       // `outcome`) is ambiguous after the cleanup. Reads must use `outcome
       // show`; writes must use `outcome set`.
-      pattern: /\bspecify change outcome (?!set\b|show\b)/,
+      pattern: /\bspecify slice outcome (?!set\b|show\b)/,
       hint:
-        "use `specify change outcome show <name>` to read or `specify change outcome set <name> <phase> <outcome> ...` to write",
+        "use `specify slice outcome show <name>` to read or `specify slice outcome set <name> <phase> <outcome> ...` to write",
+    },
+    {
+      // Likewise for the bare `specify slice journal <name>` form.
+      pattern: /\bspecify slice journal (?!append\b|show\b)/,
+      hint:
+        "use `specify slice journal show <name>` to read or `specify slice journal append <name> <phase> <kind> ...` to write",
     },
   ];
 
@@ -990,7 +1000,11 @@ async function checkRetiredCliVerbs(): Promise<void> {
 // ──────────────────────────────────────────────────────────────
 
 async function checkInstructionPreambles(): Promise<void> {
-  const OUTPUT_LOCATION_RE = /^> \*\*Output location\*\*: `\.specify\/changes\//m;
+  // Per-Phase-3 the slice working dir moved from `.specify/changes/` to
+  // `.specify/slices/`. Both paths are accepted here for the duration of
+  // the cut-over so vendored capability instruction files that still
+  // reference the historical path do not silently fail this check.
+  const OUTPUT_LOCATION_RE = /^> \*\*Output location\*\*: `\.specify\/(changes|slices)\//m;
 
   for await (const entry of walk(CAPABILITIES_DIR, {
     maxDepth: 3,
@@ -1092,7 +1106,11 @@ async function checkV1LayoutPaths(): Promise<void> {
   const FORBIDDEN_PATTERNS: RegExp[] = [
     /\.specify\/registry\.yaml/,
     /\.specify\/plan\.yaml/,
+    // The umbrella brief was renamed initiative.md → change.md by RFC-13 §3.5
+    // (Phase 3.7 ships `specify migrate change-noun`). Either spelling under
+    // `.specify/` is wrong post-v2-layout — the brief lives at the repo root.
     /\.specify\/initiative\.md/,
+    /\.specify\/change\.md/,
     /\.specify\/contracts\b/,
   ];
 

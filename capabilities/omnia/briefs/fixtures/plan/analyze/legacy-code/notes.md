@@ -8,7 +8,7 @@ The legacy-code branch of `/spec:analyze` is byte-deterministic. Re-running
 
 on an unchanged `inputs/monolith/` tree MUST produce byte-identical `expected/discovery.md` and `expected/plans/legacy-code/analyze/monolith/metadata.json`.
 
-This is the acceptance gate for propose-time slicing stability: propose (RFC-3a C24) caches its `scope.<k>.include` decisions off each capability's `sources` list, and `specify plan validate` (RFC-3a C25) diffs `metadata.json` across runs to surface drift. If either artifact drifts under unchanged inputs, both downstream consumers see spurious change signals.
+This is the acceptance gate for propose-time slicing stability: propose (RFC-3a C24) caches its `scope.<k>.include` decisions off each capability's `sources` list, and `specify change plan validate` (RFC-3a C25) diffs `metadata.json` across runs to surface drift. If either artifact drifts under unchanged inputs, both downstream consumers see spurious change signals.
 
 ## Specific stability points
 

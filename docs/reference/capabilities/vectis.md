@@ -63,7 +63,7 @@ All requirement IDs share one flat `REQ-###` namespace. Platform sections contin
 
 ## Platforms
 
-The proposal declares which platforms a change targets:
+The proposal declares which platforms a slice targets:
 
 | Platform | Skill | Description |
 |----------|-------|-------------|

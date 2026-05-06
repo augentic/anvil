@@ -11,11 +11,11 @@ Translate Specify artifacts into a client-facing Statement of Work document.
 **Synopsis:**
 
 ```text
-/client:sow-writer <change-dir> [--output <path>] [--client <name>] [--company <name>] [--pdf]
+/client:sow-writer <slice-dir> [--output <path>] [--client <name>] [--company <name>] [--pdf]
 ```
 
 **Inputs:**
-- `change-dir` -- Path to the Specify change directory containing artifacts.
+- `slice-dir` -- Path to the Specify slice directory containing artifacts.
 - `--output` -- Output file path (defaults to `SOW-<change-name>.md`).
 - `--client` -- Client name for the document.
 - `--company` -- Company name for the document.
@@ -26,7 +26,7 @@ Translate Specify artifacts into a client-facing Statement of Work document.
 - Optional PDF version.
 
 **Behavior:**
-1. Validates that the change directory contains the required artifacts.
+1. Validates that the slice directory contains the required artifacts.
 2. Generates the SoW with the following sections:
    - Cover page
    - Introduction and background

@@ -33,17 +33,17 @@ A verify-repair loop runs up to 2 iterations: if the verifier reports failures, 
 |-------|---------------|
 | `merge.md` | -- (standard merge operations) |
 
-Contract files use **opaque replacement** semantics during merge -- the entire file is replaced rather than delta-merged. When `specify merge` processes the change, it copies the change's `contracts/` files into root `contracts/`, replacing files that share a path.
+Contract files use **opaque replacement** semantics during merge -- the entire file is replaced rather than delta-merged. When `specify merge` processes the slice, it copies the slice's `contracts/` files into root `contracts/`, replacing files that share a path.
 
 ## When to use
 
 Use the `contracts` capability when:
 
-- **Contract-first:** Defining a new API contract before implementation begins. `/spec:plan` inserts these automatically when it detects an API boundary between projects.
-- **Contract-given:** Importing an external or legacy API contract into the platform. The operator places the external files into the change's `contracts/` directory.
-- **Standalone modification:** Modifying existing platform contracts independently of implementation changes.
+- **Contract-first:** Defining a new API contract before implementation begins. `/change:plan` inserts these automatically when it detects an API boundary between projects.
+- **Contract-given:** Importing an external or legacy API contract into the platform. The operator places the external files into the slice's `contracts/` directory.
+- **Standalone modification:** Modifying existing platform contracts independently of implementation slices.
 
-Use the Omnia or Vectis capabilities when implementing code that conforms to existing contracts. Their specs and design briefs read baseline contracts as context, but implementation changes do not author contract deltas. Use a separate `contracts@v1` change when an implementation needs a new or changed interface shape.
+Use the Omnia or Vectis capabilities when implementing code that conforms to existing contracts. Their specs and design briefs read baseline contracts as context, but implementation slices do not author contract deltas. Use a separate `contracts@v1` change when an implementation needs a new or changed interface shape.
 
 ## Contracts capability vs implementation capabilities
 
@@ -56,7 +56,7 @@ The `contracts` capability and the implementation capabilities serve complementa
 | Build phase | Author/import + validation | Code generation |
 | Typical delta | Full contract set (new API), import normalisation, or contract modification | Spec/design/code changes with no contract artifact delta |
 
-> The plan-entry key on the table above is still spelled `schema:` because the `plan.yaml` per-entry field name is intentionally kept distinct from the capability rename — it identifies the artefact-path identifier the entry targets, not the capability that owns the work. RFC-13 leaves that key unchanged in Phase 1; the change → slice / initiative → change rename in Phase 3 will revisit `plan.yaml` field names as a separate cut-over.
+> The plan-entry key on the table above is still spelled `schema:` because the `plan.yaml` per-entry field name is intentionally kept distinct from the capability rename — it identifies the artefact-path identifier the entry targets, not the capability that owns the work. RFC-13 leaves that key unchanged in Phase 1; the slice → slice / initiative → change rename in Phase 3 will revisit `plan.yaml` field names as a separate cut-over.
 
 ## Domain context
 

@@ -21,7 +21,7 @@ endpoint details initially high level:
 
 ## Updated Design Detail
 
-Then update `.specify/changes/loyalty-enrollment/design.md` with more specific
+Then update `.specify/slices/loyalty-enrollment/design.md` with more specific
 contract detail:
 
 ```markdown

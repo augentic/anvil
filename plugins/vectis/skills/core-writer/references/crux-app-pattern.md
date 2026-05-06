@@ -173,7 +173,7 @@ pub struct Model {
 
 ### Page transitions in `update()`
 
-Set `model.page` to transition between views. The shell sees the change on the next `view()` call (triggered by a `render()`).
+Set `model.page` to transition between views. The shell sees the slice on the next `view()` call (triggered by a `render()`).
 
 ```rust
 Event::Initialize => {
