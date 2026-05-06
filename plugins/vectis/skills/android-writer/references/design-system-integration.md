@@ -1,105 +1,130 @@
 # Design System Integration
 
-How to use the **VectisDesign** Android library in generated shell composables.
+How the Android writer integrates `tokens.yaml` and `assets.yaml` into a
+generated Compose shell. Tokens become **shell-local** Theme code under
+`Android/app/src/main/java/com/vectis/<appname>/ui/theme/`; referenced
+asset files are **copied** into `Android/app/src/main/res/drawable*/`,
+`mipmap*/`, and `raw/` during generation. There is no separate
+`:vectis-design` Gradle module, no
+`implementation(project(":vectis-design"))` dependency, and no path back
+into `design-system/android/` from the rendered shell project.
 
-## Token source
+This file complements [`kotlin-token-templates.md`](kotlin-token-templates.md),
+which carries the concrete code templates per token shape.
 
-Design tokens live in `design-system/tokens.yaml` at the repo root. The **design-system-writer** skill regenerates:
+## Authority hierarchy
 
-- `design-system/ios/` — Swift Package `VectisDesign` (SwiftUI)
-- `design-system/android/` — Gradle module `vectis-design` (Jetpack Compose Material 3)
+When this document conflicts with another source, follow this precedence:
 
-Both are mechanical outputs from the same YAML. The Android app does **not** duplicate hex or `sp` literals in `ui/theme/Color.kt` or `Type.kt` when this library is present.
+1. `tokens.yaml` and `assets.yaml` — the operator-owned input artifacts.
+2. RFC-11 §E (assets pipeline), §F (tokens artifact), §I (shell handoff +
+   component directive), §L (no generated platform between inputs and shells).
+3. [`kotlin-token-templates.md`](kotlin-token-templates.md) — concrete code
+   templates per token category.
+4. This document — integration policy and fallback rules.
 
-## Gradle wiring
+## Generated layout
 
-From the Android project directory (typically `{workspace}/Android/`):
+When `tokens.yaml` is present, the Android writer emits theme code under
+the app module's package tree:
 
-1. **`settings.gradle.kts`** — include the library and point `projectDir` at the generated module (adjust the relative path to match the repo layout):
-
-   ```kotlin
-   include(":vectis-design")
-   project(":vectis-design").projectDir = file("../design-system/android")
-   ```
-
-2. **`app/build.gradle.kts`** — depend on the module (same version catalog / Compose BOM as `app`; the library’s `build.gradle.kts` uses the same BOM pattern):
-
-   ```kotlin
-   implementation(project(":vectis-design"))
-   ```
-
-See `android-project-config.md` for full Gradle templates.
-
-## App theme
-
-When tokens exist, the app exposes only a thin `AppTheme` in `ui/theme/Theme.kt` that delegates to `VectisTheme`:
-
-```kotlin
-import androidx.compose.runtime.Composable
-import com.vectis.design.VectisTheme
-
-@Composable
-fun AppTheme(content: @Composable () -> Unit) {
-    VectisTheme(content = content)
-}
+```
+Android/
+├── build.gradle.kts
+├── settings.gradle.kts
+├── app/
+│   ├── build.gradle.kts
+│   └── src/main/
+│       ├── AndroidManifest.xml
+│       ├── java/com/vectis/<appname>/
+│       │   ├── <AppName>Application.kt
+│       │   ├── MainActivity.kt
+│       │   ├── core/
+│       │   │   └── Core.kt
+│       │   ├── ui/
+│       │   │   ├── screens/...
+│       │   │   ├── components/                # one file per component: <slug>
+│       │   │   │   └── TaskRow.kt
+│       │   │   └── theme/                     # generated from tokens.yaml
+│       │   │       ├── Colors.kt
+│       │   │       ├── Typography.kt
+│       │   │       ├── Spacing.kt
+│       │   │       ├── (Elevation.kt, Border.kt, Opacity.kt, … as needed)
+│       │   │       └── Theme.kt
+│       │   └── di/...
+│       └── res/                               # generated from assets.yaml
+│           ├── drawable-mdpi/<asset-id>.png
+│           ├── drawable-hdpi/<asset-id>.png
+│           ├── drawable-xhdpi/<asset-id>.png
+│           ├── drawable-xxhdpi/<asset-id>.png
+│           ├── drawable-xxxhdpi/<asset-id>.png
+│           ├── drawable/<asset-id>.xml         # vector drawable
+│           └── values/themes.xml
+└── shared/
+    └── build.gradle.kts
 ```
 
-`VectisTheme` applies **static** light/dark `ColorScheme` values from `tokens.yaml` (not Material You dynamic wallpaper colors), matching iOS `Color(light:dark:)` behavior.
+The CLI's `specify-vectis add-shell android` scaffold produces the package
+tree (`<AppName>Application.kt`, `MainActivity.kt`, `core/Core.kt`, the
+starter `ui/screens/HomeScreen.kt`), the `res/values/themes.xml` baseline,
+and the Gradle / manifest / version-catalog wiring. The Android writer
+adds `ui/components/`, `ui/theme/`, and the per-density drawable
+directories on first generation when the corresponding input artifacts
+exist. The Android Gradle plugin already lists `app/src/main/java/` as a
+source root; nested directories are picked up automatically — no
+`build.gradle.kts` edits are required when adding new theme or component
+files.
 
-## Using colors
+The generated app **MUST NOT** depend on
+`implementation(project(":vectis-design"))` and **MUST NOT** declare an
+`include(":vectis-design")` line in `settings.gradle.kts`, an
+`implementation` dependency on a `com.vectis.design` AAR, or a path under
+`design-system/android/` (per RFC-11 §L "Generated layout"). The
+`Android/` shell must build from its own platform directory after
+generation.
 
-Prefer **`MaterialTheme.colorScheme`** in composables — `VectisTheme` installs the token-derived scheme:
+## Token integration
+
+### Reading `tokens.yaml`
+
+The Android writer's primary token input is `tokens.yaml`. Resolution
+order matches RFC-11 §H "Inputs":
+
+1. Slice-local `.specify/slices/<name>/tokens.yaml`, when present.
+2. Project-level `design-system/tokens.yaml`.
+3. Neither — fall through to the Material 3 fallback policy below.
+
+When `tokens.yaml` is present, generate one Theme file per category under
+`Android/app/src/main/java/com/vectis/<appname>/ui/theme/` per
+[`kotlin-token-templates.md`](kotlin-token-templates.md). The token file
+generation is mechanical: each YAML category maps to either an M3
+constructor slot (colors, typography) or a top-level `object` keyed by
+the camelCased token id (spacing, cornerRadius, elevation, opacity).
+Adding a new category extends both `kotlin-token-templates.md` and this
+document.
+
+### Using token references in views
+
+Reference Theme types from screen composables and components —
+they are part of the same Gradle module as the views that consume them,
+so no external Gradle dependency is needed. However, because theme files
+live in `com.vectis.<appname>.ui.theme` while screens and components live
+in sibling packages (`ui.screens`, `ui.components`), an explicit
+`import com.vectis.<appname>.ui.theme.*` is required in each consumer file
+(Kotlin only auto-imports within the exact same package):
 
 ```kotlin
 Text(
     text = "Hello",
-    color = MaterialTheme.colorScheme.onSurface
+    color = MaterialTheme.colorScheme.onSurface,
 )
 
-Surface(color = MaterialTheme.colorScheme.primary) { ... }
+Surface(color = MaterialTheme.colorScheme.primary) { /* ... */ }
 
-Button(
-    onClick = { ... },
-    colors = ButtonDefaults.buttonColors(
-        containerColor = MaterialTheme.colorScheme.error
-    )
-) { Text("Delete") }
-```
-
-Do not use hardcoded `Color(0xFF...)` in `app/` screen code; hex appears only inside the generated `design-system/android/` library.
-
-## Using typography
-
-Use **`MaterialTheme.typography`** — slots are filled from YAML via `vectisTypography()` inside `VectisTheme`:
-
-```kotlin
-Text(
-    text = "Title",
-    style = MaterialTheme.typography.titleLarge
-)
-
-Text(
-    text = "Body text",
-    style = MaterialTheme.typography.bodyLarge
-)
-```
-
-For a **direct** token match to Swift’s `VectisTypography.title`, you may use `com.vectis.design.VectisTypography.title` as a `TextStyle` when needed.
-
-## Using spacing and corner radius
-
-Import the generated objects (default package `com.vectis.design`):
-
-```kotlin
-import com.vectis.design.VectisCornerRadius
-import com.vectis.design.VectisSpacing
-```
-
-```kotlin
 Column(
-    verticalArrangement = Arrangement.spacedBy(VectisSpacing.md)
+    verticalArrangement = Arrangement.spacedBy(VectisSpacing.md),
 ) {
-    // ...
+    // children spaced 16dp apart
 }
 
 Modifier
@@ -107,43 +132,370 @@ Modifier
     .padding(vertical = VectisSpacing.sm)
 
 Surface(
-    shape = RoundedCornerShape(VectisCornerRadius.md)
-) { ... }
+    shape = RoundedCornerShape(VectisCornerRadius.md),
+) { /* ... */ }
 ```
 
-## Fallback when no design system
+Prefer **`MaterialTheme.colorScheme`** and **`MaterialTheme.typography`**
+in composables — `VectisTheme` installs the token-derived scheme and
+Typography, so consumer code stays idiomatic Compose:
 
-When `design-system/tokens.yaml` does not exist, generate composables using Material 3 defaults in `ui/theme/` (`Color.kt`, `Type.kt`, `Theme.kt` with `dynamicLightColorScheme` / `dynamicDarkColorScheme` on Android 12+), as described in `compose-view-patterns.md`.
+```kotlin
+Text(
+    text = "Title",
+    style = MaterialTheme.typography.titleLarge,
+)
 
-## Disabled state convention
+Button(
+    onClick = { /* ... */ },
+    colors = ButtonDefaults.buttonColors(
+        containerColor = MaterialTheme.colorScheme.error,
+    ),
+) { Text("Delete") }
+```
+
+Use `VectisTypography.<token>` directly only when a TextStyle does not
+have an M3 slot equivalent (rare). Never emit hardcoded
+`Color(0xFF…)`, inline `TextStyle(fontSize = 17.sp, …)`, or magic
+numbers in generated views.
+
+`VectisTheme` applies **static** light/dark `ColorScheme` values from
+`tokens.yaml` (not Material You dynamic wallpaper colors), matching iOS
+`Color(light:dark:)` behavior.
+
+### Disabled state convention
 
 For disabled interactive elements, apply 38% alpha to the normal color:
 
 ```kotlin
 Text(
     text = "Disabled",
-    color = MaterialTheme.colorScheme.primary.copy(alpha = if (isDisabled) 0.38f else 1f)
+    color = MaterialTheme.colorScheme.primary.copy(
+        alpha = if (isDisabled) VectisOpacity.disabled else 1f,
+    ),
 )
 ```
 
-## Icons
+When `tokens.yaml` does not define an `opacity.disabled` token, fall back
+to the literal `0.38f`.
 
-Use Material Icons with theme colors:
+### Token reference resolution and CLI gate
+
+The deterministic check that every token reference in `composition.yaml`
+resolves to a `tokens.yaml` entry lives in
+`specify-vectis validate composition` (RFC-11 §H, Phase 1.9): when sibling
+`tokens.yaml` exists, the validator auto-invokes `tokens` mode and reports
+unresolved references as errors before the Android writer is called. The
+writer does not need to re-validate references at generation time; it
+consumes the already-validated input set.
+
+## Material 3 fallback policy
+
+When `tokens.yaml` is **absent** the Android writer falls back to
+platform-native Material 3 defaults instead of emitting a `ui/theme/`
+directory (RFC-11 §F "Fallback policy belongs to shell writers"). The
+skill emits a minimal `<AppName>Theme` composable (or rewrites the
+scaffold's `Theme.kt`) that wraps `MaterialTheme` with the standard
+dynamic / static Material 3 schemes; screen views reference the M3
+defaults directly.
+
+Per-category fallback:
+
+| Category | M3 fallback |
+|---|---|
+| Colors | `MaterialTheme.colorScheme.*` (M3 defaults). On Android 12+ devices use `dynamicLightColorScheme(LocalContext.current)` / `dynamicDarkColorScheme(LocalContext.current)`; on earlier API levels use `lightColorScheme()` / `darkColorScheme()` with no arguments (M3's static defaults). |
+| Typography | `MaterialTheme.typography.*` (M3 defaults — `bodyLarge`, `titleLarge`, etc.); the M3 type scale already covers the Material 3 specification. |
+| Spacing | Inline `8.dp` (`sm`), `16.dp` (`md`), and `24.dp` (`lg`) literals; or `Arrangement.spacedBy(8.dp)` for stack spacing. |
+| Corner radius | Inline `8.dp` for medium, `12.dp` for large, `RoundedCornerShape(...)` calls. |
+| Elevation | `CardDefaults.cardElevation()` (M3 defaults) for cards; `Modifier.shadow(2.dp)` for ad-hoc shadows. |
+| Opacity | Inline `0.38f` for disabled states, `0.6f` for de-emphasised text. |
+
+The Material 3 fallback `Theme.kt` looks like:
 
 ```kotlin
+package com.vectis.<appname>.ui.theme
+
+import android.os.Build
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+
+@Composable
+fun <AppName>Theme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    dynamicColor: Boolean = true,
+    content: @Composable () -> Unit,
+) {
+    val context = LocalContext.current
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        darkTheme -> darkColorScheme()
+        else -> lightColorScheme()
+    }
+    MaterialTheme(
+        colorScheme = colorScheme,
+        content = content,
+    )
+}
+```
+
+When `tokens.yaml` is **present but incomplete** (some categories defined,
+others absent), shell writers MAY use the same Material 3 default for the
+**absent** categories. Shell writers MUST NOT silently substitute defaults
+for a token name that is referenced from `composition.yaml` but missing
+from `tokens.yaml` — that condition is an error reported by
+`specify-vectis validate composition` and halts shell generation for the
+affected screen. The writer surfaces the validator output verbatim and
+declines to emit code that papers over the missing token.
+
+When the M3 fallback is in use, the Android writer prefers Compose's
+built-in dynamic color (Android 12+) over hex-coded defaults. This keeps
+the no-tokens path operator-friendly: a freshly scaffolded app looks
+correct on both light and dark appearances and adapts to wallpaper colors
+on Android 12+ without any token authoring.
+
+## Asset integration
+
+### Reading `assets.yaml`
+
+The Android writer's primary asset input is `assets.yaml`. Resolution
+order matches RFC-11 §I "Inputs":
+
+1. Slice-local `.specify/slices/<name>/assets.yaml`, when present, plus
+   files under `.specify/slices/<name>/assets/`.
+2. Project-level `design-system/assets.yaml` plus files under
+   `design-system/assets/`.
+3. Neither — generate composables without referenced asset entries (any
+   composition that references an asset id will already have failed
+   validation at the CLI gate).
+
+The deterministic check that every asset reference in `composition.yaml`
+resolves to an `assets.yaml` entry lives in
+`specify-vectis validate composition` (auto-invokes `assets` mode when
+present). Missing files are errors; missing optional densities are
+warnings (per Phase 1.7). The writer consumes the already-validated input
+set.
+
+### Copy-on-generate
+
+Per RFC-11 §E "Build hand-off is copy-on-generate", the Android writer
+**copies** referenced asset files into the app module's `res/` tree at
+generation time. The generated shell project must build from its own
+platform directory after generation; it MUST NOT symlink, alias, or
+path-reference `design-system/assets/` from `build.gradle.kts`, nor
+consume files from `<change>/assets/` at runtime. Per-platform copy
+targets:
+
+| Asset `kind` | Source key(s) read | Target resource location |
+|---|---|---|
+| `raster` | `sources.android.{mdpi,hdpi,xhdpi,xxhdpi,xxxhdpi}` | `res/drawable-<density>/<asset-id>.png` (or `.jpg`) — one file per declared density bucket. |
+| `vector` | `sources.android` (`.xml` Vector Drawable preferred; `.svg` is **not** an Android resource type and MUST be converted to a Vector Drawable beforehand) | `res/drawable/<asset-id>.xml`. The canonical `source:` is provenance only — never copied. |
+| `symbol` | `symbols.android` | No resource copy — emit `Icons.Default.<glyph>` (or an explicit `material-icons-extended` reference) at the call site. |
+
+Reference the copied asset by its kebab-case asset id at the call site:
+
+```kotlin
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.res.painterResource
+
+// raster / vector
+Image(
+    painter = painterResource(id = R.drawable.onboarding_hero),
+    contentDescription = "Onboarding illustration",
+)
+
+// symbol entry's symbols.android value
 Icon(
-    imageVector = Icons.Default.Add,
-    contentDescription = "Add item",
-    tint = MaterialTheme.colorScheme.primary
+    imageVector = Icons.Default.Close,
+    contentDescription = "Close",
+    tint = MaterialTheme.colorScheme.onSurface,
 )
 ```
+
+Android resource ids are lowercase-with-underscores. Asset ids in
+`assets.yaml` are kebab-case (e.g. `onboarding-hero`); the Android writer
+translates the id to `R.drawable.onboarding_hero` at the call site, and
+copies the file into `res/drawable-*/<asset-id-with-underscores>.png`
+accordingly.
+
+For symbols the `tint` token (when present in `assets.yaml`) becomes a
+`tint = MaterialTheme.colorScheme.<tint>` argument on the `Icon`
+composable. Single colour vector drawables MAY also be tinted via
+`Modifier.colorFilter(...)` when the drawable's path has
+`android:fillColor="?attr/colorControlNormal"` or similar attribute
+indirection.
+
+### Missing platform exports
+
+When a `vector` asset is referenced from `composition.yaml` but
+`sources.android` is missing, the validator reports an error and shell
+generation halts for the affected screen (per RFC-11 §E "Missing vector
+exports are validation errors, not deferred TODOs"). The Android writer
+does **not** silently fall back to a placeholder, generate from the
+canonical `source:` SVG at build time, or skip the screen. The legitimate
+operator responses are to add an Android Vector Drawable export to
+`assets.yaml`, re-declare the asset as `kind: raster` with per-density
+`sources.android`, re-declare it as `kind: symbol` with a Material Icons
+glyph mapping, or remove the reference from `composition.yaml`.
+
+### Stale resource cleanup
+
+When an asset entry is removed from `assets.yaml`, the Android writer
+deletes the corresponding `res/drawable-*/<asset-id>.png` (or `.xml`)
+files. Operator-authored resources (e.g. `mipmap-*/ic_launcher*.png`,
+custom XML drawables outside the asset id namespace) are preserved; the
+writer only deletes entries it generated.
+
+## Component directive contract
+
+When a `composition.yaml` `group` carries `component: <slug>` (RFC-11 §G,
+§I), the Android writer emits **one named `@Composable`** per slug under
+`Android/app/src/main/java/com/vectis/<appname>/ui/components/`,
+PascalCased from the slug:
+
+| `composition.yaml` slug | Generated file | Composable signature |
+|---|---|---|
+| `task-row` | `ui/components/TaskRow.kt` | `@Composable fun TaskRow(...)` |
+| `news-card` | `ui/components/NewsCard.kt` | `@Composable fun NewsCard(...)` |
+
+Every call site in `composition.yaml` becomes a use of the named
+composable. Props are inferred from variation observed across instances
+of the slug per RFC-11 §I "Component directive contract":
+
+- `bind`, `event`, `error`, `asset`, token references, `*-when` keys, and
+  free text content that **differ** across instances become parameters on
+  the generated composable.
+- Values that are **constant** across all instances are baked into the
+  composable body.
+
+The structural-identity rule (§G) is enforced by
+`specify-vectis validate composition` before the Android writer runs, so
+the writer can trust that every instance of the slug shares the same
+skeleton and only the wiring varies.
+
+The directive is platform-agnostic; the inferred prop shape is
+per-platform. iOS may emit a slightly different prop signature for the
+same slug — v1 does not require cross-shell prop agreement (RFC-11 §I
+closing paragraph).
+
+### Component examples
+
+For a `task-row` slug whose instances all carry the same skeleton (a
+`Row` of a checkbox, a title `Text`, and a `Spacer`), but whose `bind`,
+`event`, and `strikethrough-when` keys vary across screens:
+
+```kotlin
+package com.vectis.<appname>.ui.components
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.outlined.Circle
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextDecoration
+import com.vectis.<appname>.ui.theme.VectisSpacing
+
+@Composable
+fun TaskRow(
+    title: String,
+    isCompleted: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(VectisSpacing.sm),
+        modifier = modifier
+            .padding(horizontal = VectisSpacing.md, vertical = VectisSpacing.sm),
+    ) {
+        IconButton(onClick = onToggle) {
+            Icon(
+                imageVector = if (isCompleted) {
+                    Icons.Default.CheckCircle
+                } else {
+                    Icons.Outlined.Circle
+                },
+                contentDescription = if (isCompleted) "Mark incomplete" else "Mark complete",
+                tint = if (isCompleted) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
+        }
+
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyLarge,
+            textDecoration = if (isCompleted) TextDecoration.LineThrough else null,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+```
+
+The call site becomes:
+
+```kotlin
+LazyColumn {
+    items(viewModel.tasks, key = { it.id }) { task ->
+        TaskRow(
+            title = task.title,
+            isCompleted = task.isCompleted,
+            onToggle = { onEvent(Event.Toggle(task.id)) },
+        )
+    }
+}
+```
+
+instead of the flattened `Row { ... }` body it would have produced
+without the directive.
 
 ## Review compliance
 
-The android-reviewer skill expects:
+The `vectis-android-reviewer` skill checks generated composables for:
 
-1. `MaterialTheme.colorScheme` for semantic colors in **app** sources (no hardcoded hex in `app/...`).
-2. `MaterialTheme.typography` (or `VectisTypography` tokens) for text styles.
-3. `VectisSpacing` / `VectisCornerRadius` from `com.vectis.design` for layout metrics.
+1. Token-backed visual literals when `tokens.yaml` is present —
+   `MaterialTheme.colorScheme` (or `VectisColors`-equivalent if the
+   writer emits a fallback object) for color references,
+   `MaterialTheme.typography` (or `VectisTypography`) for text styles,
+   `VectisSpacing` for spacing values, `VectisCornerRadius` for corner
+   radii, `VectisElevation` for elevation values.
+2. **No** stale external design-system dependencies —
+   `implementation(project(":vectis-design"))`,
+   `include(":vectis-design")`, `import com.vectis.design.*`,
+   `design-system/android/`, `design-system/ios/` (RFC-11 §I "Reviewer
+   surface" + §L "Compatibility policy").
+3. Asset references that resolve to entries in the shell-local
+   `app/src/main/res/drawable*/` tree (no string-literal paths into
+   `design-system/assets/`).
+4. Groups that visibly recur in `composition.yaml` without a
+   `component:` slug — flagged so the operator can promote them to a
+   named component before drift compounds (RFC-11 §I "Reviewer surface").
 
-The generated library under `design-system/android/` may contain `Color(0xFF...)` produced from YAML; that is expected.
+When `tokens.yaml` is absent (M3 fallback path), the reviewer accepts
+`MaterialTheme.colorScheme.*` slots, `MaterialTheme.typography.*` slots,
+`Icons.Default.*` references, and the inline-literal `dp` / `sp` /
+`alpha` values listed in the M3 fallback table. Hardcoded
+`Color(0xFF…)` outside generated theme files remains a defect even on
+the fallback path because the operator can always introduce
+`tokens.yaml` later.
+
+Exceptions are allowed for generated theme files (`Colors.kt` legitimately
+contains `Color(0xFF…)` produced from YAML, and `Typography.kt`
+legitimately contains `TextStyle(fontSize = 17.sp, …)`); the reviewer
+detects the `// Generated from design-system/tokens.yaml` header and
+skips those files.

@@ -1,8 +1,8 @@
 # Vectis Plugin
 
-Generate cross-platform [Crux](https://github.com/redbadger/crux) applications: Rust shared core, SwiftUI iOS shell, Kotlin/Jetpack Compose Android shell, and VectisDesign token system.
+Generate cross-platform [Crux](https://github.com/redbadger/crux) applications: Rust shared core, SwiftUI iOS shell, and Kotlin/Jetpack Compose Android shell.
 
-> **CLI entry point.** Vectis project scaffolding and verification ship as the standalone [`specify-vectis`](../cli/vectis.md) binary (RFC-13 §4.3a) — the five canonical verbs (`init`, `verify`, `add-shell`, `update-versions`, `versions`) are accessible either via `specify-vectis` on `$PATH` or via the `specify-vectis` library API for in-process callers. The pre-RFC-13 `specify vectis ...` subcommand tree was retired in chunk 2.6.
+> **CLI entry point.** Vectis project scaffolding, verification, version management, and UI input validation ship as the standalone [`specify-vectis`](../cli/vectis.md) binary (RFC-13 §4.3a) — the six canonical verbs (`init`, `verify`, `add-shell`, `update-versions`, `versions`, `validate`) are accessible either via `specify-vectis` on `$PATH` or via the `specify-vectis` library API for in-process callers. The pre-RFC-13 `specify vectis ...` subcommand tree was retired in chunk 2.6.
 
 ## Why Crux
 
@@ -87,9 +87,9 @@ Review Crux core code using an agent team (structural, logic, quality specialist
 
 Generate or update the SwiftUI iOS shell.
 
-**Inputs:** `app.rs`, `spec.md`, `design.md`, `tokens.yaml`, and `composition.yaml` (when present). When `composition.yaml` is present, the region structure and group container tree provide deterministic layout instructions -- groups map to `HStack`/`VStack`/`ZStack` with their layout properties, sizing maps to `.frame()` modifiers, and surface decoration maps to styled container views. When absent, the writer falls back to convention-based inference. Platform-specific overrides from `composition.yaml` `platforms.ios` take precedence over shared regions.
+**Inputs:** `app.rs`, `spec.md`, `design.md`, `tokens.yaml`, `assets.yaml`, and `composition.yaml` (when present). When `composition.yaml` is present, the region structure and group container tree provide deterministic layout instructions -- groups map to `HStack`/`VStack`/`ZStack` with their layout properties, sizing maps to `.frame()` modifiers, and surface decoration maps to styled container views. When absent, the writer falls back to convention-based inference. Platform-specific overrides from `composition.yaml` `platforms.ios` take precedence over shared regions.
 
-**Outputs:** `project.yml`, `Makefile`, `Core.swift` (bridge), `ContentView.swift`, per-screen views under `Views/`, app entry point. All views use the VectisDesign package.
+**Outputs:** `project.yml`, `Makefile`, `Core.swift` (bridge), `ContentView.swift`, per-screen views under `Views/`, app entry point, shell-local theme code under `Theme/`.
 
 **Modes:** Create (scaffold + generate) and Update (targeted edits).
 
@@ -101,7 +101,7 @@ Review iOS shell code using an agent team (structural, quality, integration spec
 
 Generate or update the Kotlin/Jetpack Compose Android shell.
 
-**Inputs:** `app.rs`, `spec.md`, `design.md`, `tokens.yaml`, and `composition.yaml` (when present). When `composition.yaml` is present, groups map to `Row`/`Column`/`Box` with `Arrangement`/`Alignment`, sizing maps to `Modifier.fillMaxWidth()` etc., and surface decoration maps to `Card`/`Surface`. When absent, the writer falls back to inference. Platform-specific overrides from `composition.yaml` `platforms.android` take precedence over shared regions.
+**Inputs:** `app.rs`, `spec.md`, `design.md`, `tokens.yaml`, `assets.yaml`, and `composition.yaml` (when present). When `composition.yaml` is present, groups map to `Row`/`Column`/`Box` with `Arrangement`/`Alignment`, sizing maps to `Modifier.fillMaxWidth()` etc., and surface decoration maps to `Card`/`Surface`. When absent, the writer falls back to inference. Platform-specific overrides from `composition.yaml` `platforms.android` take precedence over shared regions.
 
 **Outputs:** Gradle build files, `Core.kt` (bridge), `MainActivity.kt`, per-screen composables under `ui/screens/`, Material 3 theme. All composables use Material 3 tokens.
 
@@ -111,17 +111,17 @@ Generate or update the Kotlin/Jetpack Compose Android shell.
 
 Review Android shell code using an agent team (structural, quality, integration specialists + antagonist).
 
-### /vectis:design-system-writer
+### /vectis:image-layout-inferer
 
-Generate VectisDesign from `tokens.yaml`.
+Reconstruct `layout.yaml` from one or more screenshot images using a staged vision-assisted pipeline.
 
-**Inputs:** `design-system/tokens.yaml` (single source of truth).
+**Inputs:** PNG or JPEG images of application screens. Optional `--platform ios|android|web` hint for chrome cropping. Optional `--baseline` to refine an existing `layout.yaml` rather than starting fresh.
 
-**Outputs:**
-- iOS: Swift Package under `design-system/ios/` (`VectisDesign`).
-- Android: Gradle module under `design-system/android/` (`vectis-design`).
+**Outputs:** `layout.yaml` -- a schema-valid, unwired layout document that `/spec:define` can later wire into `composition.yaml`. Validates output via `specify-vectis validate layout` before writing.
 
-Token value shapes: color (`light`/`dark`), font (`size`/`weight`), scalar (plain number).
+**Pipeline:** triage images into screens/states, crop platform chrome, infer regions (header/body/footer/fab/overlays), infer containers (rows, columns, cards, lists), infer leaves (text, controls, images, icons), detect candidate components across screens, emit gap comments for ambiguities.
+
+**When to use:** an operator supplies PNG or JPEG screenshots and wants a layout document without hand-authoring YAML; or when refining an existing `layout.yaml` from new screenshot evidence. Follows the shared layout-inferer contract at `plugins/vectis/references/layout-inferer-contract.md`.
 
 ### /vectis:template-updater
 
@@ -138,9 +138,8 @@ Platforms are declared in the proposal and determine which skills the build phas
 | `core` | `vectis:core-writer` | Rust Crux shared crate (always required) |
 | `ios` | `vectis:ios-writer` | SwiftUI iOS shell |
 | `android` | `vectis:android-writer` | Kotlin/Jetpack Compose Android shell |
-| `design-system` | `vectis:design-system-writer` | VectisDesign from tokens.yaml |
 
-Build order: design-system first, core second, shells last.
+Build order: core first, shells second.
 
 ## Capabilities
 
@@ -157,16 +156,18 @@ The core-writer detects which Crux capabilities your app needs from the design d
 
 ## Design system
 
-The design system provides platform-agnostic tokens with platform-specific implementations:
+Each shell writer reads `tokens.yaml` and `assets.yaml` directly and emits shell-local theme + asset code under its own tree (`iOS/<App>/Theme/` for iOS, `Android/.../ui/theme/` for Android). There is no shared design-system library.
 
 | Path | Purpose |
 |------|---------|
+| `design-system/layout.yaml` | Unwired layout intent (screen regions, groups, items) -- input to `/spec:define` |
 | `design-system/spec.md` | Semantic color roles, typography, spacing rules |
 | `design-system/tokens.yaml` | Concrete token values (source of truth) |
-| `design-system/ios/` | VectisDesign Swift Package |
-| `design-system/android/` | vectis-design Gradle module (Compose M3) |
+| `design-system/assets.yaml` | Asset manifest (images, icons, vectors) |
 
-Update flow: edit `tokens.yaml` then regenerate with the design-system-writer skill.
+`layout.yaml` is the pre-define UI input produced by layout inferers or hand-authored by the operator. `/spec:define` consumes it alongside requirements and emits the wired `composition.yaml`. Shell writers consume the wired composition, not `layout.yaml` directly.
+
+Update flow: edit `tokens.yaml` or `assets.yaml`, then re-run the relevant shell writer. For layout changes, edit `layout.yaml` and re-run `/spec:define`.
 
 ## Working with Xcode
 

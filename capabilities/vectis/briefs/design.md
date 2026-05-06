@@ -7,6 +7,8 @@ needs: [proposal, specs]
 
 Include sections based on the platforms declared in the proposal. The Domain Model and Capabilities sections are always present (core is always in scope). Platform-specific sections are included only when the corresponding platform is listed in the proposal.
 
+`design.md` is a *reader* of the wired UI input set — `composition.yaml` (the lifecycle artifact emitted by [`briefs/composition.md`](composition.md) earlier in this define run), `tokens.yaml`, and `assets.yaml` — not a parallel surface for the same information (RFC-11 §H). It MUST NOT reproduce the layout tree, the asset manifest, or the token catalog; reference those artifacts by name and capture only the design implications they impose: screen names, ViewModel variants, per-page view structs, Route needs, `bind` field completeness, capability fan-out, token usage policy, asset usage policy, and platform-specific shell notes. Do not consume `layout.yaml` from `design.md` — that is the composition brief's job; `design.md` reads only the wired output.
+
 ## Output Structure
 
 ```markdown
@@ -84,25 +86,23 @@ Define these types (see guidance below each):
 ## iOS Shell Details
 
 <!-- Include when ios is listed in Platforms.
+Screen names and ViewModel variants come from `composition.yaml` — do not
+re-list them here, only call out platform-specific customisations on top.
 - Navigation style (single, stack, tabs)
-- Screen customizations per ViewModel variant
+- Per-screen customisations that go beyond what composition.yaml expresses
 - Platform features (haptics, share sheet, etc.)
 - Design system overrides -->
 
 ## Android Shell Details
 
 <!-- Include when android is listed in Platforms.
+Screen names and ViewModel variants come from `composition.yaml` — do not
+re-list them here, only call out platform-specific customisations on top.
 - Navigation patterns (single activity, bottom nav, drawer)
-- Material 3 screen customizations per ViewModel variant
+- Material 3 customisations per ViewModel variant that go beyond composition.yaml
 - Platform features (edge-to-edge, system bars, haptics)
 - Koin DI requirements (when multiple non-Render effects)
 - Capability client details (Ktor for HTTP/SSE, SharedPreferences for KV) -->
-
-## Design System Details
-
-<!-- Include when design-system is listed in Platforms.
-- Token categories and value shapes
-- Downstream consumers -->
 
 ## Implementation Constraints
 
@@ -115,8 +115,7 @@ Standard platform constraints:
 - Swift 6, iOS 17+ deployment target
 - Kotlin 2.x, Jetpack Compose, Material 3, min SDK 34
 - Java 21 LTS (NOT Java 25+)
-- VectisDesign: Swift Package (iOS) and Compose Material 3 library (Android)
-  from tokens.yaml -->
+-->
 
 ## Dependencies
 
@@ -131,12 +130,15 @@ Standard platform constraints:
 <!-- Additional observations or considerations -->
 ```
 
-## Composition Awareness
+## Reading the wired composition
 
-When a `composition.yaml` exists in the slice directory or baseline (`.specify/specs/`), read it and use it as an additional input:
+By the time this brief runs, the composition brief has already emitted `composition.yaml` for any UI-bearing slice (the define pipeline orders `composition` before `design` — see [`capability.yaml`](../capability.yaml)). Read `composition.yaml` along with sibling `tokens.yaml` and `assets.yaml` (when present in the slice or under `design-system/`) and use them as the authoritative sources for layout-derived implications. The CLI helpers `specify-vectis validate composition` (with auto-invoked `tokens` / `assets` modes) are the deterministic gate; this brief does not duplicate their checks.
 
-- **ViewModel adoption:** Adopt the screen names, ViewModel variant names, and field names proposed by the composition artifact. Adjust naming only when Rust conventions or domain model considerations require it.
-- **Field completeness:** Every `bind` value in `composition.yaml` must appear as a field in the corresponding per-page view struct. If a `bind` references a field not described in the spec, flag the mismatch.
-- **Gap surfacing:** Report any `bind` in composition that has no spec backing, or any spec-described data element with no composition binding.
+- **Resolution.** Look for `composition.yaml` first at `.specify/slices/<name>/composition.yaml`, then at `.specify/specs/composition.yaml`. The same lookup applies to `tokens.yaml` and `assets.yaml`: slice-local files first, then project-level `design-system/tokens.yaml` / `design-system/assets.yaml`.
+- **ViewModel adoption.** Adopt the screen names, ViewModel variant names, and field names proposed by `composition.yaml`. Adjust naming only when Rust conventions or domain model considerations require it.
+- **Field completeness.** Every `bind` value in `composition.yaml` must appear as a field in the corresponding per-page view struct. If a `bind` references a field not described in the spec, flag the mismatch.
+- **Token usage policy.** Reference token names from `tokens.yaml` (e.g. `colors.primary.dark`) only as policy notes — for example, "the iOS shell falls back to system colors when this token is absent". Do NOT enumerate the token catalog; `tokens.yaml` is the source of truth and `specify-vectis validate tokens` is its gate.
+- **Asset usage policy.** Reference assets by ID (matching `assets.yaml`) and capture only design-level usage notes — for example, "the empty-tasks hero is rendered at 2:1 aspect ratio". Do NOT enumerate the asset manifest; `assets.yaml` is the source of truth and `specify-vectis validate assets` is its gate.
+- **Gap surfacing.** Report any `bind` in composition that has no spec backing, any spec-described data element with no composition binding, and any token / asset reference that does not resolve in the matching manifest.
 
-When `composition.yaml` is absent, infer the ViewModel shape from specs alone (the current behavior). This preserves backward compatibility for projects that predate RFC-7.
+When `composition.yaml` is absent (e.g. the change has no UI platforms in the proposal so the composition brief was skipped, or the project predates RFC-7 and has no baseline composition), infer the ViewModel shape from specs alone.

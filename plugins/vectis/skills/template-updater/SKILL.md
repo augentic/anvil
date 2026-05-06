@@ -6,7 +6,7 @@ argument-hint: "[cli-repo-dir]"
 
 # Vectis Template Updater
 
-> **`specify-vectis` is a standalone binary.** RFC-13 §4.3a ships the Vectis tooling as the `specify-vectis` executable (no longer a `specify vectis ...` subcommand tree). The five canonical verbs — `init`, `verify`, `add-shell`, `update-versions`, `versions` — are reachable either via the binary on `$PATH` (used in the bash blocks below) or via the `specify-vectis` library API for in-process callers; flags and positional arguments are unchanged.
+> **`specify-vectis` is a standalone binary.** RFC-13 §4.3a ships the Vectis tooling as the `specify-vectis` executable (no longer a `specify vectis ...` subcommand tree). The six canonical verbs — `init`, `verify`, `add-shell`, `update-versions`, `versions`, `validate` — are reachable either via the binary on `$PATH` (used in the bash blocks below) or via the `specify-vectis` library API for in-process callers; flags and positional arguments are unchanged.
 
 Close the loop on version bumps. When `specify-vectis update-versions` proposes new crate pins but the scratch scaffold produced from those pins no longer compiles (or `cargo clippy --all-targets -- -D warnings`, `cargo deny check`, `cargo vet`, `codegen swift`, `codegen kotlin`, iOS `xcodebuild`, or Android `assembleDebug` fails), this skill diagnoses the breakage, edits the right template files + template modules, and proves the fix by re-running the full cap matrix.
 

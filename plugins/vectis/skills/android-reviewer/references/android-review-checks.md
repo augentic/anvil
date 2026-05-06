@@ -51,11 +51,11 @@ Composables should use design system color tokens when available, not hardcoded 
 **Detection**: Search `.kt` files under the **app module** source roots (typically `app/src/main/java/` or `app/src/main/kotlin/`) for:
 - `Color(0x` or `Color(red =` (explicit color construction)
 - `Color.Red`, `Color.Blue`, etc. (named colors used as semantic colors)
-- Hex color patterns `0xFF[0-9A-Fa-f]{6}` outside generated design-system code
+- Hex color patterns `0xFF[0-9A-Fa-f]{6}` outside generated theme files
 
 Exclude Material Theme color references (`MaterialTheme.colorScheme.*`).
 
-**Do not flag** the generated **VectisDesign** Android library under `design-system/android/` — it legitimately contains `Color(0xFF...)` emitted from `tokens.yaml`.
+**Do not flag** generated theme files under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/` that carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header — these legitimately contain `Color(0xFF...)` emitted from `tokens.yaml` by `vectis:android-writer` (RFC-11 §L "Generated layout"). Detect the carve-out by reading the first 5 lines of each `.kt` file and skipping when the header is present.
 
 **Fix**: Replace with the appropriate design system color token or `MaterialTheme.colorScheme` reference.
 
@@ -67,7 +67,7 @@ Composables should use design system typography tokens or `MaterialTheme.typogra
 
 **Detection**: Search **app module** `.kt` files for `TextStyle(fontSize` or `fontSize = ` with numeric literals without a preceding design system reference.
 
-Exclude icon sizing in `Icon` composables. Exclude generated sources under `design-system/android/` (token `TextStyle` definitions).
+Exclude icon sizing in `Icon` composables. Exclude generated theme files under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/` that carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header (token `TextStyle` definitions live there post-RFC-11; the same header-based carve-out as AND-005 applies).
 
 **Fix**: Replace with the appropriate design system typography token or `MaterialTheme.typography` reference.
 
@@ -77,9 +77,9 @@ Exclude icon sizing in `Icon` composables. Exclude generated sources under `desi
 
 Padding and spacing values should use design system spacing tokens, not magic numbers.
 
-**Detection**: In **app module** composables, search for `.padding(` or `Arrangement.spacedBy(` with numeric literals (`X.dp`) that are not `0.dp`. Check that the value matches a token; flag if it does not. Skip generated `design-system/android/` sources.
+**Detection**: In **app module** composables, search for `.padding(` or `Arrangement.spacedBy(` with numeric literals (`X.dp`) that are not `0.dp`. Check that the value matches a token; flag if it does not. Skip generated theme files under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/` carrying the `// Generated from design-system/tokens.yaml — do not edit manually.` header (the same header-based carve-out as AND-005 / AND-006).
 
-**Fix**: Replace with the appropriate design system spacing token (e.g. `VectisSpacing.md` from `com.vectis.design`).
+**Fix**: Replace with the appropriate design system spacing token (e.g. `VectisSpacing.md`). Post-RFC-11, the writer emits `VectisSpacing` as a shell-local `Spacing.kt` file under `ui/theme/` (`com.vectis.<appname>.ui.theme` package). Consumers in sibling packages (`ui.screens`, `ui.components`) must have `import com.vectis.<appname>.ui.theme.*` — do not use the legacy `import com.vectis.design.*`.
 
 ## AND-008: Missing Preview
 
@@ -330,3 +330,23 @@ The Application class should install a global `Thread.setDefaultUncaughtExceptio
 **Detection**: In the Application class, search for `Thread.setDefaultUncaughtExceptionHandler` or `Thread.getDefaultUncaughtExceptionHandler`. If absent, flag as missing. If present, verify it: (a) schedules restart via `PendingIntent` / `AlarmManager` rather than calling `startActivity` + `exitProcess` directly, (b) delegates to the previous `defaultHandler` after scheduling, and (c) includes a crash-loop guard. Also check `MainActivity` for crash flag detection in `onCreate` (reading from SharedPreferences key `"crux_crash_recovery"` or equivalent).
 
 **Fix**: Add the crash recovery handler to the Application class and the crash flag detection to `MainActivity.onCreate`. See `crux-android-shell-pattern.md` Crash Recovery Handler section.
+
+## AND-027: Recurring Composition Group Without Component Directive
+
+**Severity**: Info
+
+Per RFC-11 §I "Reviewer surface" + §G "Component directive", any `group` shape that visibly recurs across `composition.yaml` (≥2 instances on the same screen, or ≥2 instances across different screens) without a `component: <slug>` directive is a candidate for promotion to a named component. Without the directive, the Android shell ends up with parallel inline copies of the same Compose subtree across `ui/screens/*.kt` files; when the layout changes the operator must hand-edit every copy, and drift compounds silently. The reviewer flags candidate slugs for the operator to evaluate; promotion itself remains an authoring decision (it requires editing `composition.yaml` and adding a sibling `Android/app/src/main/java/com/vectis/<appname>/ui/components/<Slug>.kt` file via `vectis:android-writer`).
+
+**Detection**: When the wired `composition.yaml` is available (sibling at the change-local or baseline path — see SKILL.md "Gather context"):
+
+1. Walk the composition tree collecting every `group` node.
+2. Compute a structural skeleton for each group (the same `*-when` presence + nested-item-kind shape that `specify-vectis validate composition` uses for the §G structural-identity rule).
+3. Group instances by skeleton equality. For any skeleton that appears in ≥2 instances **without** a sibling `component:` directive on any of those instances, flag the recurrence as a candidate component.
+4. Cross-check the Android shell: if the recurring composition group already corresponds to an extracted `@Composable` under `ui/components/`, downgrade severity to **Info** and note the existing extraction; otherwise emit at the canonical Info severity (the operator will promote both surfaces in lockstep).
+
+When `composition.yaml` is absent (composition-less change, or a change that only touches `app.rs` types), skip this check entirely — there is no source-of-truth recurrence signal in shell code alone.
+
+**Fix**: This is a candidate finding, not a defect. Suggest one of two actions and let the operator pick:
+
+1. **Promote to component.** Add `component: <slug>` to the recurring group(s) in `composition.yaml` (kebab-case slug; not a reserved region name like `header` / `body` / `footer` / `fab`); regenerate the Android shell via `vectis:android-writer`; the writer emits a single `ui/components/<Slug>.kt` `@Composable` and rewrites every call site to use it (RFC-11 §I "Component directive contract").
+2. **Accept the inline duplication.** When the recurring group is intentionally distinct (e.g. two visually similar groups that diverge in a way the skeleton check cannot see — different gesture handling, different state semantics), document the divergence in the composition or in `design.md` and accept the finding.

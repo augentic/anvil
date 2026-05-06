@@ -73,7 +73,7 @@
       "required": ["kind"],
       "additionalProperties": false,
       "properties": {
-        "kind": { "type": "string", "enum": ["figma", "legacy", "manual"] },
+        "kind": { "type": "string", "enum": ["figma", "legacy", "manual", "screenshots", "code"] },
         "uri": { "type": "string", "format": "uri" },
         "captured_at": { "type": "string", "format": "date-time" }
       }
@@ -237,6 +237,12 @@
       "type": "object",
       "required": ["items"],
       "properties": {
+        "component": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+          "not": { "enum": ["header", "body", "footer", "fab"] },
+          "description": "Optional cross-shell component slug (RFC-11 §G). Reserved slugs (header/body/footer/fab) are rejected to avoid region-name collisions."
+        },
         "direction": { "type": "string", "enum": ["row", "column", "stack"] },
         "gap": { "oneOf": [{ "type": "string" }, { "type": "number" }] },
         "padding": {

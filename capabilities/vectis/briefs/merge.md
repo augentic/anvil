@@ -8,7 +8,15 @@ Before merging, confirm all task checkboxes in `tasks.md` are complete and the s
 
 Follow the [`specify-merge`](../../../plugins/spec/skills/merge/SKILL.md) skill for the driver-side flow — slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The Vectis capability adds **one capability-specific gate** on top of that flow: the post-merge cap-matrix re-verification via the standalone `specify-vectis` binary (RFC-13 §4.3a + §"Merge and adoption contract"). The `specify slice merge run` step promotes spec deltas (markdown) and composition deltas (YAML) under `.specify/specs/` and `.specify/specs/composition.yaml`; this brief then re-runs `specify-vectis verify` against the project root to confirm the resulting baseline still scaffolds and compiles end-to-end.
 
-The `specify slice merge run` command merges both spec deltas and composition deltas in a single operation. Review the composition delta alongside spec changes in the `specify slice merge preview` output before confirming the merge.
+The `specify slice merge run` command merges both spec deltas and composition deltas in a single operation. The merge surface is broader than spec / design / task deltas: per RFC-11 §I "Merge handoff", `composition.yaml`, `tokens.yaml`, `assets.yaml`, and any referenced asset files under `design-system/assets/**` (or slice-local `assets/`) are reviewable lifecycle artifacts when they appear in a slice. `composition.yaml` continues to merge into the Specify baseline; token and asset updates merge into `design-system/tokens.yaml`, `design-system/assets.yaml`, and `design-system/assets/**` respectively. Review every UI input delta alongside the spec / design / task changes in the `specify slice merge preview` output before confirming the merge so reviewers can understand which downstream shell generations will be affected.
+
+After `specify slice merge run` succeeds, re-run the deterministic UI input validator against the merged baseline:
+
+```bash
+specify-vectis validate composition
+```
+
+The validator discovers the now-merged baseline `composition.yaml` and auto-invokes `tokens` / `assets` modes against any sibling `tokens.yaml` / `assets.yaml`. Run this even when the current slice did not generate any platform code, because later shell work may consume the merged baseline input set (RFC-11 §I "Merge handoff"). The same exit semantics apply: errors block merge finalisation, warnings flow into the operator-facing summary, clean runs are silent. When `composition.yaml` is absent from the merged baseline (no UI input set in the project), the validator exits cleanly without performing wired-mode checks.
 
 ## Capability-specific adoption gate
 
@@ -24,7 +32,7 @@ esac
 
 `specify-vectis verify` is the canonical end-to-end gate for the Vectis cap matrix. It runs the per-assembly pipeline — `cargo check`, `cargo clippy --all-targets -- -D warnings`, `cargo deny check`, `cargo vet`, Swift codegen, Kotlin codegen, plus shell-specific compile steps when iOS or Android are present — and emits a structured JSON envelope listing each step. Failures include the first N lines of combined stdout/stderr per failing step, which the brief threads into `--context` on the journal entry below.
 
-When the slice modified neither the core nor a shell (e.g. a docs-only or design-system-only slice that touched no Crux code), still run the verifier after merge — the cap matrix as a whole must remain green, and the binary is cheap on a clean baseline. The post-merge gate intentionally validates the merged baseline, not the staged delta, because shell verification (UniFFI bridging, Java 21 / Gradle wrapper, cargo-swift, cap-marker expansion) is only meaningful once the spec-level deltas are promoted and the writers have a stable baseline to scaffold against.
+When the slice modified neither the core nor a shell (e.g. a docs-only or UI-input-only slice that touched no Crux code), still run the verifier after merge — the cap matrix as a whole must remain green, and the binary is cheap on a clean baseline. The post-merge gate intentionally validates the merged baseline, not the staged delta, because shell verification (UniFFI bridging, Java 21 / Gradle wrapper, cargo-swift, cap-marker expansion) is only meaningful once the spec-level deltas are promoted and the writers have a stable baseline to scaffold against.
 
 If the operator wants to re-confirm an individual scaffold or rebuild the full cap matrix before merge, the equivalent pre-merge gate is `specify-vectis verify --dir "$PROJECT_ROOT"` invoked through `/spec:build`. This brief intentionally re-runs the same binary post-merge so cross-cap regressions (e.g. an `sse` slice that lands cleanly in isolation but breaks the `http,kv,time,platform,sse` combo's `cargo deny` gate) surface against the merged tree, not the pre-merge slice.
 
@@ -34,7 +42,7 @@ If the operator wants to re-confirm an individual scaffold or rebuild the full c
 
 When the verifier reports a failure, the JSON envelope's `assemblies.{core,ios,android}.steps[]` array identifies the first failing step per assembly (each step carries `name` + `passed` + `error`). Use the assembly + step name as the load-bearing string in the journal `--summary`; route the full envelope (or the failing step's stderr tail) through `--context`.
 
-Design-system regressions (Swift Package or `vectis-design` Compose module) do **not** surface through `specify-vectis verify` — that pipeline covers core + shells only. The design-system-writer skill runs its own `swift build` and `./gradlew :vectis-design:compileDebugKotlin` checks during the build phase; a design-system regression that survives into merge will surface here as a downstream shell failure (e.g. the iOS shell's `make build` fails because `VectisDesign` no longer compiles). Treat that as the same `failure` mode below.
+Token, asset, and layout regressions surface through `specify-vectis validate composition` before the cap-matrix verifier runs. If a shell-local theme or asset emission problem survives into merge despite the validator, it will surface here as a downstream shell failure (e.g. the iOS shell's `make build` fails because a generated asset catalog is malformed). Treat that as the same `failure` mode below.
 
 If the cap-matrix failure looks like a version-pin drift (e.g. `cargo deny check` flagged a new RUSTSEC advisory, AGP / Gradle / uniffi mismatch surfaced after an `update-versions` ran in this slice), `specify-vectis update-versions --verify` is the matching diagnostic — but it is *not* the merge brief's job to run. Record the failure and surface it; the operator decides whether the next step is `/vectis:template-updater` (template fix), a pin rollback, or a follow-up slice.
 

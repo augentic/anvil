@@ -205,3 +205,23 @@ A horizontal `ScrollView` (e.g. a chip row or filter bar) nested inside a vertic
 **Detection**: Search screen view files for a `ScrollView(.horizontal` that appears inside a vertical `ScrollView` (or inside a `VStack`/`LazyVStack` within a vertical `ScrollView`). Flag if the inner `ScrollView` contains tappable elements (`Button`, `.onTapGesture`, `NavigationLink`) that do not use `.buttonStyle(.plain)`.
 
 **Fix**: Move the inner horizontal scrollable outside the outer `ScrollView` using `.safeAreaInset(edge:)`. If nesting is unavoidable, ensure all tappable elements use `Button` with `.buttonStyle(.plain)`. See `ios-writer/references/swiftui-view-patterns.md` for examples.
+
+## IOS-019: Recurring Composition Group Without Component Directive
+
+**Severity**: Info
+
+Per RFC-11 §I "Reviewer surface" + §G "Component directive", any `group` shape that visibly recurs across `composition.yaml` (≥2 instances on the same screen, or ≥2 instances across different screens) without a `component: <slug>` directive is a candidate for promotion to a named component. Without the directive, the iOS shell ends up with parallel inline copies of the same SwiftUI subtree across `Views/*.swift` files; when the layout changes the operator must hand-edit every copy, and drift compounds silently. The reviewer flags candidate slugs for the operator to evaluate; promotion itself remains an authoring decision (it requires editing `composition.yaml` and adding a sibling `iOS/<App>/Components/<Slug>.swift` file via `vectis:ios-writer`).
+
+**Detection**: When the wired `composition.yaml` is available (sibling at the change-local or baseline path — see SKILL.md "Gather context"):
+
+1. Walk the composition tree collecting every `group` node.
+2. Compute a structural skeleton for each group (the same `*-when` presence + nested-item-kind shape that `specify-vectis validate composition` uses for the §G structural-identity rule).
+3. Group instances by skeleton equality. For any skeleton that appears in ≥2 instances **without** a sibling `component:` directive on any of those instances, flag the recurrence as a candidate component.
+4. Cross-check the iOS shell: if the recurring composition group already corresponds to an extracted SwiftUI sub-view under `iOS/<App>/Components/`, downgrade severity to **Info** and note the existing extraction; otherwise emit at the canonical Info severity (the operator will promote both surfaces in lockstep).
+
+When `composition.yaml` is absent (composition-less change, or a change that only touches `app.rs` types), skip this check entirely — there is no source-of-truth recurrence signal in shell code alone.
+
+**Fix**: This is a candidate finding, not a defect. Suggest one of two actions and let the operator pick:
+
+1. **Promote to component.** Add `component: <slug>` to the recurring group(s) in `composition.yaml` (kebab-case slug; not a reserved region name like `header` / `body` / `footer` / `fab`); regenerate the iOS shell via `vectis:ios-writer`; the writer emits a single `iOS/<App>/Components/<Slug>.swift` view and rewrites every call site to use it (RFC-11 §I "Component directive contract").
+2. **Accept the inline duplication.** When the recurring group is intentionally distinct (e.g. two visually similar groups that diverge in a way the skeleton check cannot see — different gesture handling, different state semantics), document the divergence in the composition or in `design.md` and accept the finding.

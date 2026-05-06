@@ -15,35 +15,45 @@ Arguments (used by all skills):
 
 ## Composition validation gate
 
-Before invoking shell writers, check whether a `composition.yaml` exists in the slice directory (`.specify/slices/<name>/composition.yaml`) or baseline (`.specify/specs/composition.yaml`). When present, run composition validation checks before proceeding to shell generation:
+Before invoking shell writers, run the deterministic UI input validator from `specify-vectis`. The validator discovers `composition.yaml` from the active slice first, then the baseline, and auto-invokes `tokens` / `assets` modes against any sibling `tokens.yaml` / `assets.yaml` (per RFC-11 §H + §I "Validation gate"):
 
-1. **Schema validity** — `composition.yaml` conforms to the JSON Schema at `capabilities/vectis/composition.schema.json`. Schema violations are **errors** that halt shell generation.
-2. **Field coverage** — every field in each per-page view struct (from `design.md`) appears as a `bind` value on some item in the corresponding screen. Missing bindings are **warnings**.
-3. **Event coverage** — every shell-facing Event variant relevant to a screen has an `event` wiring on some item in that screen's regions. Missing event wiring is a **warning**.
-4. **ViewModel mapping** — every `maps_to` value references a declared ViewModel variant from `design.md`. Mismatches are **errors**.
-5. **Overlay trigger consistency** — every overlay `trigger` value matches an `event` name (without arguments) used somewhere in the same screen's regions. Inconsistencies are **errors**.
-6. **Navigation consistency** — every `Navigate(X)` argument has a corresponding screen slug in composition and a corresponding Route variant in `design.md`. Missing targets are **errors**.
+```bash
+specify-vectis validate composition
+```
 
-**Severity handling:** Errors halt shell generation for the affected screen(s). The agent reports the errors and does not proceed until they are resolved. Warnings are logged and reported but do not block generation.
+That single call covers:
 
-When `composition.yaml` is absent, skip this validation gate entirely — shell writers fall back to inference from `app.rs` types as before.
+1. **Composition schema validity** — `composition.yaml` conforms to `capabilities/vectis/composition.schema.json` (regions, group hierarchy, allowed wiring keys, slug grammar, reserved-slug prohibitions).
+2. **RFC-7 wiring coverage** — every field in each per-page view struct (from `design.md`) appears as a `bind` value; every shell-facing Event variant relevant to a screen has an `event` wiring; every `maps_to` resolves to a declared ViewModel variant; every overlay `trigger` matches an `event` name in the same screen; every `Navigate(X)` argument has a corresponding screen slug and Route variant.
+3. **§G structural identity** — every `component:` slug reused across screens has a structurally identical skeleton (per the RFC-11 §G edge cases for `*-when`-gated sub-groups, state-replaced bodies, and per-instance `platforms.*` overrides).
+4. **Auto-invoked `tokens` mode** — when a sibling `tokens.yaml` is present, every token reference in `composition.yaml` (and in `assets.yaml` when present) resolves against it.
+5. **Auto-invoked `assets` mode** — when a sibling `assets.yaml` is present, every `image:` / `icon:` / `icon-button:` / `fab:` reference in `composition.yaml` resolves to a declared asset id, every declared asset file exists on disk, and per-platform raster densities / vector exports cover the targeted shell platforms.
+
+**Severity handling:** Errors halt shell generation for the affected screen(s). The agent reports the errors and does not proceed until they are resolved. Warnings are logged and reported but do not block generation. The same exit semantics applied by every `specify-vectis validate <mode>` invocation hold here (errors → non-zero, warnings → zero with report, clean → zero silently).
+
+When `composition.yaml` is absent (no UI input set in either the slice or the baseline), `specify-vectis validate composition` exits cleanly without performing the wired-mode checks; shell writers then fall back to inference from `app.rs` types as before. The CLI also short-circuits cleanly when no `tokens.yaml` / `assets.yaml` siblings exist — auto-invocation is gated on file presence, not on `Platforms` membership.
 
 ### Shell writer handoff
 
-Pass the `composition.yaml` artifact to the shell writer alongside `app.rs`, `design.md`, and `tokens.yaml`. When present, the shell writer uses it as the primary layout guide (mapping regions and items to platform-native views). When absent, the shell writer falls back to inference from `app.rs` types.
+Each shell writer (ios-writer, android-writer, future react-writer) receives the same wired UI input set: `composition.yaml`, `tokens.yaml`, `assets.yaml` (and the asset files referenced from it), `app.rs`, `design.md`, and the matching platform-specific shell requirements section (`## iOS Shell Requirements`, `## Android Shell Requirements`). The writers own:
+
+- **Layout and component emission.** Each `component: <slug>` directive in `composition.yaml` becomes a single named view / composable per slug, PascalCased (`task-row` → `TaskRow`); call sites become uses of that named element. Props are inferred from variation observed across instances of the slug (per RFC-11 §I "Component directive contract"). Where the named element lives is per-platform (`iOS/<App>/Components/`, `Android/.../ui/components/`).
+- **Theme / token emission.** Tokens are read directly from `tokens.yaml` and emitted as shell-local theme code under each platform's tree (`iOS/<App>/Theme/`, `Android/.../ui/theme/`). When `tokens.yaml` is absent, each writer applies its platform-native fallback (HIG for iOS, Material 3 for Android). Generated apps MUST NOT depend on `import VectisDesign` (iOS) or `:vectis-design` Gradle module (Android) — those surfaces were retired by RFC-11 §J.
+- **Asset emission.** Assets are read directly from `assets.yaml` and copied into each platform's native asset surface (`iOS/<App>/Resources/Assets.xcassets/`, `Android/app/src/main/res/drawable*/`); SF Symbols / Material icons resolve at the call site without copy. Missing platform exports for a `kind: vector` asset are CLI-validation errors, not deferred TODOs (RFC-11 §E).
+
+The shell writers do not call the validation gate themselves — the orchestrator runs it once, before either writer fires, so both writers consume an already-validated input set.
 
 ## Platform detection
 
-Read the proposal to determine which platforms are in scope. Process platforms in this dependency order:
+Read the proposal to determine which platforms are in scope. The Vectis Platforms enum is `core` / `ios` / `android` / `web` (RFC-11 §L). Token, asset, and layout work is **input context** for those platforms — never a peer platform. Process platforms in this dependency order:
 
-1. **design-system** first (other platforms may depend on tokens)
-2. **core** next (shells depend on the core)
-3. **ios** and **android** shells (independent of each other)
-4. **web** shell (future)
+1. **core** first (shells depend on the core).
+2. **ios** and **android** shells (independent of each other; can run in parallel).
+3. **web** shell (future).
 
 ### Parallel shell generation
 
-iOS and Android shells have no dependencies on each other -- both depend on core + design-system only. When both platforms are in scope, spawn their **generation** sub-agents (Phase 1) concurrently after core verify-repair completes. Pass `skip_verification: true` to each writer so they produce code without invoking build tools (ios-writer skips step 11; android-writer skips step 15):
+iOS and Android shells have no dependencies on each other -- both depend only on the verified core and the read-only UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml`, asset files). When both platforms are in scope, spawn their **generation** sub-agents (Phase 1) concurrently after core verify-repair completes. Pass `skip_verification: true` to each writer so they produce code without invoking build tools (ios-writer skips step 11; android-writer skips step 15):
 
 ```
 core verify-repair done
@@ -68,11 +78,12 @@ process management.
 **Why review is parallel:** The review phases are pure code-analysis
 agent teams (3 specialists + 1 antagonist). The iOS reviewer reads and
 auto-fixes files exclusively under `iOS/` (plus read-only access to
-`shared/src/app.rs` and `design-system/`); the Android reviewer does
-the same under `Android/`. They use different formatting tools
-(`swiftformat` vs Kotlin formatter) and never invoke `cargo`, Gradle,
-or Xcode. With no shared mutable state and no build-tool contention,
-they are safe to run concurrently without degrading review accuracy.
+`shared/src/app.rs`, `composition.yaml`, `tokens.yaml`, and
+`assets.yaml`); the Android reviewer does the same under `Android/`.
+They use different formatting tools (`swiftformat` vs Kotlin
+formatter) and never invoke `cargo`, Gradle, or Xcode. With no shared
+mutable state and no build-tool contention, they are safe to run
+concurrently without degrading review accuracy.
 
 ```
 both writers done
@@ -133,7 +144,7 @@ Each `/vectis:*` skill invocation and each verify-repair loop runs in its **own 
 
 ### Why sub-agents
 
-A full greenfield build loads design-system, core, test, iOS, and Android skills sequentially. Without delegation, the orchestrator's context accumulates thousands of lines of skill instructions, reference material, generated code, and compiler output that are irrelevant to later phases. Sub-agents start fresh, carrying only the material needed for their specific task.
+A full greenfield build loads core, test, iOS, and Android skills sequentially. Without delegation, the orchestrator's context accumulates thousands of lines of skill instructions, reference material, generated code, and compiler output that are irrelevant to later phases. Sub-agents start fresh, carrying only the material needed for their specific task.
 
 ### Delegation pattern
 
@@ -266,9 +277,9 @@ Spawn a sub-agent to run the skill. The reviewer internally creates its own agen
 
 ## iOS shell
 
-Only run this section if `ios` is listed in the proposal's Platforms.
+Only run this section if `ios` is listed in the proposal's Platforms. The composition validation gate above MUST have passed before this section runs.
 
-The ios-writer reads `app.rs` as its primary input, supplemented by the `## iOS Shell Requirements` section of the feature spec and the `## iOS Shell Details` section of design.md.
+The ios-writer reads the wired UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml`, and the asset files referenced from `assets.yaml`) plus `app.rs`, the `## iOS Shell Requirements` section of the feature spec, and the `## iOS Shell Details` section of `design.md`. It emits SwiftUI layout + named components per `component:` slug, shell-local theme code under `iOS/<App>/Theme/` (HIG fallback when `tokens.yaml` is absent), and asset catalog entries under `iOS/<App>/Resources/Assets.xcassets/`. Generated apps MUST NOT depend on `import VectisDesign` (RFC-11 §J / §L).
 
 Check whether the iOS shell directory exists and contains `.swift` files:
 
@@ -327,9 +338,9 @@ agent-teams.md).
 
 ## Android shell
 
-Only run this section if `android` is listed in the proposal's Platforms.
+Only run this section if `android` is listed in the proposal's Platforms. The composition validation gate above MUST have passed before this section runs.
 
-The android-writer reads `app.rs` as its primary input, supplemented by the `## Android Shell Requirements` section of the feature spec and the `## Android Shell Details` section of design.md.
+The android-writer reads the wired UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml`, and the asset files referenced from `assets.yaml`) plus `app.rs`, the `## Android Shell Requirements` section of the feature spec, and the `## Android Shell Details` section of `design.md`. It emits Compose layout + named composables per `component:` slug, shell-local theme code under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/` (Material 3 fallback when `tokens.yaml` is absent), and drawable resources under `Android/app/src/main/res/drawable*/`. Generated apps MUST NOT depend on `:vectis-design` Gradle module references (RFC-11 §J / §L).
 
 Check whether the Android shell directory exists and contains `.kt` files:
 
@@ -383,18 +394,6 @@ directly. The orchestrator consolidates these findings across
 platforms after both reviews complete. The reviewer internally
 creates its own agent team (3 specialists + antagonist per
 agent-teams.md).
-
----
-
-## Design system
-
-Only run this section if `design-system` is listed in the proposal's Platforms.
-
-The design-system-writer reads `tokens.yaml` as its primary input, supplemented by the `## Design System Requirements` section of the feature spec if present.
-
-1. /vectis:design-system-writer -- regenerate iOS Swift Package and Android `vectis-design` library from tokens
-
-Spawn a sub-agent to run the skill. The skill includes `swift build` for the iOS package and `./gradlew :vectis-design:compileDebugKotlin` for the Android module once the shell's `settings.gradle.kts` includes `:vectis-design`. Verification is internal to the skill.
 
 ---
 

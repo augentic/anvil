@@ -35,15 +35,17 @@
 - **Ordering hints**: depends on counter-core, design-tokens.
 - **Scope hints**: legacy `CounterActivity.kt` + `CounterView` composable to be reshaped into a Crux-bound Compose screen.
 
-### Design system
+## Cross-cutting UI inputs
 
-#### design-tokens
+### design-tokens
 
+- **Artifact**: `tokens.yaml`
 - **Source(s)**: legacy-tokens (legacy/design-tokens.yaml)
-- **Description**: Colour, typography, and spacing tokens shared across iOS and Android; generated into a Swift Package and an Android `vectis-design` Compose library.
+- **Description**: Colour, typography, and spacing tokens migrated from the legacy iOS / Android codebases into a single `tokens.yaml` catalogue. `vectis:ios-writer` and `vectis:android-writer` read it directly per RFC-11 §L; there is no separate design-system generation step.
 - **Ordering hints**: depends on theme-core; consumed by counter-ios-view, counter-android-view.
+- **Scope hints**: lift the legacy iOS Asset Catalog colour set and the Android `colors.xml` palette into a single `tokens.yaml` authored under `design-system/`.
 
 ## Open questions
 
 - Should `theme-core` own the light/dark mode toggle state, or is that a shell-local concern read from each OS's system appearance API?
-- Do we ship the Android `vectis-design` library as a sibling module in the same Gradle build, or as a published artifact?
+- The legacy Android codebase ships custom motion / elevation tokens that have no iOS counterpart — surface them as Android-only theme entries during shell generation, or omit them from `tokens.yaml` entirely until iOS catches up?

@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=../capability.schema.json
 name: vectis
-version: 2
+version: 3
 description: Vectis workflow
 
 pipeline:

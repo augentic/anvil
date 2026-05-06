@@ -2,7 +2,7 @@
 
 Interactive record of the six-slice Vectis authoring run pinned by the companion fixtures ([`discovery.md`](discovery.md), [`expected-proposal.md`](expected-proposal.md), [`expected-plan.yaml`](expected-plan.yaml)). Prefix legend: `>` is operator input; lines without `>` are the skill's output or a shelled-out CLI invocation.
 
-Slices are presented in the Vectis heuristic order — shared-core first (slices 1–2), design-system next (slice 4), per-shell last (slices 5–6) — with cross-cutting refactors (slice 3) presented *before* the shell slices that would seed their edges so a reject only trims upcoming drafts, never already-written entries. The skill drops stale `depends-on` edges from draft slices after a reject, so no downstream amend is ever needed during propose (the propose step never calls `specify change plan amend` — that is a human verb, or for multi-project plans, the plan skill's assignment step 3(d) uses it to write `--project`).
+Slices are presented in the Vectis heuristic order — shared-core first (slices 1–2), UI-input slices when independently reviewable (slice 4), per-shell last (slices 5–6) — with cross-cutting refactors (slice 3) presented *before* the UI-input and shell slices that would seed their edges so a reject only trims upcoming drafts, never already-written entries. The `design-tokens` slice was promoted under propose heuristic 2 (legacy token palette is large enough to warrant an independent review pass); trivially-coupled token edits would instead fold into the consuming shell entry. The skill drops stale `depends-on` edges from draft slices after a reject, so no downstream amend is ever needed during propose (the propose step never calls `specify change plan amend` — that is a human verb, or for multi-project plans, the plan skill's assignment step 3(d) uses it to write `--project`).
 
 ## Slice 1/6: counter-core
 
@@ -86,9 +86,10 @@ The brief's remaining drafts had seeded `depends-on: [extract-shared-viewmodel-a
 Slice 4/6: design-tokens
   sources:     [legacy-tokens]
   depends-on:  [theme-core]
-  description: Colour, typography, and spacing tokens generated
-               into the iOS Swift Package and the Android
-               vectis-design Compose library.
+  description: Colour, typography, and spacing tokens migrated
+               from the legacy iOS / Android codebases into a
+               single tokens.yaml catalogue; each shell reads it
+               directly and emits shell-local theme code.
 
 Accept? [y / edit / no / abort]
 ```
@@ -101,7 +102,7 @@ Accept? [y / edit / no / abort]
 $ specify change plan add design-tokens \
     --sources legacy-tokens \
     --depends-on theme-core \
-    --description "Colour, typography, and spacing tokens generated into the iOS Swift Package and the Android vectis-design Compose library."
+    --description "Colour, typography, and spacing tokens migrated from the legacy iOS / Android codebases into a single tokens.yaml catalogue; each shell reads it directly and emits shell-local theme code."
 Created plan entry 'design-tokens' with status 'pending'.
 ```
 
@@ -114,8 +115,8 @@ Slice 5/6: counter-ios-view
   sources:     [legacy-ios]
   depends-on:  [counter-core, design-tokens]
   description: SwiftUI view that binds to the counter App trait
-               and renders with the iOS design-tokens Swift
-               Package.
+               and renders with shell-local theme code generated
+               from tokens.yaml.
 
 Accept? [y / edit / no / abort]
 ```
@@ -129,7 +130,7 @@ $ specify change plan add counter-ios-view \
     --sources legacy-ios \
     --depends-on counter-core \
     --depends-on design-tokens \
-    --description "SwiftUI view that binds to the counter App trait and renders with the iOS design-tokens Swift Package."
+    --description "SwiftUI view that binds to the counter App trait and renders with shell-local theme code generated from tokens.yaml."
 Created plan entry 'counter-ios-view' with status 'pending'.
 ```
 
@@ -156,7 +157,7 @@ Accept? [y / edit / no / abort]
 
 ```text
 > description
-  New description: Jetpack Compose Material 3 screen that binds to the counter App trait and renders with the Android vectis-design library.
+  New description: Jetpack Compose Material 3 screen that binds to the counter App trait and renders with shell-local theme code generated from tokens.yaml.
 ```
 
 ```text
@@ -172,8 +173,8 @@ Slice 6/6: counter-android-view
   sources:     [legacy-android]
   depends-on:  [counter-core, design-tokens]
   description: Jetpack Compose Material 3 screen that binds to the
-               counter App trait and renders with the Android
-               vectis-design library.
+               counter App trait and renders with shell-local
+               theme code generated from tokens.yaml.
 
 Accept? [y / edit / no / abort]
 ```
@@ -187,7 +188,7 @@ $ specify change plan add counter-android-view \
     --sources legacy-android \
     --depends-on counter-core \
     --depends-on design-tokens \
-    --description "Jetpack Compose Material 3 screen that binds to the counter App trait and renders with the Android vectis-design library."
+    --description "Jetpack Compose Material 3 screen that binds to the counter App trait and renders with shell-local theme code generated from tokens.yaml."
 Created plan entry 'counter-android-view' with status 'pending'.
 ```
 
