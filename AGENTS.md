@@ -58,7 +58,7 @@ The contract plugin provides format-first specialist skills for API contract gen
 
 Each skill exposes the same three intents through sibling files: `author.md` (generate or extend), `importer.md` (normalise an external document), and `verifier.md` (internal consistency and the post-merge cross-project consumer check via `--mode cross-project`). These skills are invoked by the `contracts` brief in the define pipeline (the brief id, the `contracts@v1` capability, and the `contracts/` baseline directory keep their original names — `contract` is the Cursor plugin / slash-command surface only). The brief is present in the `contracts` capability (for dedicated contract slices) and in the Omnia and Vectis capabilities (for alignment validation during implementation slices).
 
-The matching read-only CLI surface lives at `specify contract { list, validate }` (RFC-12 §"CLI surface") — it projects every top-level OpenAPI / AsyncAPI document under `contracts/` and runs the SemVer + id-format + cross-repo id-uniqueness checks; both verbs no-op with exit 0 when `contracts/` is absent.
+The matching CLI surface is the standalone `specify-contract-validate` binary (RFC-13 §"Merge and adoption contract" + chunk 4.2a) — it walks a baseline `contracts/` directory and runs the SemVer + id-format + cross-repo id-uniqueness checks (RFC-12 §"CLI surface"), exiting `0` clean / `1` findings / `2` invocation error. The pre-RFC-13 in-binary `specify contract { list, validate }` family was retired in chunk 2.7 when contracts became a first-party capability owning its own validation behavior; the contracts capability merge brief now shells out to the standalone binary as the post-merge baseline gate.
 
 ### Plan-driven loop (RFC-2, all three layers landed)
 

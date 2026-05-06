@@ -31,9 +31,11 @@ A verify-repair loop runs up to 2 iterations: if the verifier reports failures, 
 
 | Brief | Skills invoked |
 |-------|---------------|
-| `merge.md` | -- (standard merge operations) |
+| `merge.md` | `specify-merge` driver + `specify-contract-validate` post-merge gate |
 
-Contract files use **opaque replacement** semantics during merge -- the entire file is replaced rather than delta-merged. When `specify merge` processes the slice, it copies the slice's `contracts/` files into root `contracts/`, replacing files that share a path.
+Contract files use **opaque replacement** semantics during merge -- the entire file is replaced rather than delta-merged. When `specify slice merge run` processes the slice, it copies the slice's `contracts/` files into root `contracts/`, replacing files that share a path.
+
+After the standard delta merge succeeds, the merge brief shells out to the standalone [`specify-contract-validate`](../cli/contract.md) binary against the merged baseline. The binary enforces the RFC-12 §Validation rules (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness) and is the contracts capability's adoption gate per RFC-13 §"Merge and adoption contract". The merge brief maps the binary's exit code to the §Merge and adoption contract three-branch outcome contract (`success` / `failure` / `deferred`); see [`capabilities/contracts/briefs/merge.md`](../../../capabilities/contracts/briefs/merge.md) for the full wiring.
 
 ## When to use
 

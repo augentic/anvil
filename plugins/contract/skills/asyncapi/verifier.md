@@ -1,6 +1,6 @@
 # AsyncAPI — Verifier
 
-> **When to read this.** Read this when verifying an AsyncAPI artefact — invoked by the contracts capability build brief in `single` mode after the author or importer sibling produces output, by `/change:execute` in `cross-project` mode after a producer's contract change merges (RFC-9 §3B), or directly by an operator running validation against an existing artefact. Skip this file when authoring (use [`author.md`](./author.md)) or normalising an external document (use [`importer.md`](./importer.md)).
+> **When to read this.** Read this when verifying an AsyncAPI artefact — invoked by the contracts capability build brief in `single` mode after the author or importer sibling produces output, by the contracts capability merge brief in `cross-project` mode against the merged baseline (RFC-13 §"Merge and adoption contract"), or directly by an operator running validation against an existing artefact. Skip this file when authoring (use [`author.md`](./author.md)) or normalising an external document (use [`importer.md`](./importer.md)).
 
 The verifier is **read-only**. It MUST NOT generate, modify, or delete any files. Its sole output is a list of issues rendered as a validation report.
 
@@ -10,12 +10,12 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 
 | Mode | Caller | Trigger | Scope | Output |
 |---|---|---|---|---|
-| `single` (default) | contracts capability build brief in `/spec:build` | Post-author or post-import | One change's `contracts/messages/` inside one project | Markdown report for the verify-repair loop |
-| `cross-project` | `/change:execute` post-merge step | Producer-side merge of an AsyncAPI contract change | Compare merged AsyncAPI against each consumer's tier-2 workspace clone | Structured YAML report consumed by the execute driver |
+| `single` (default) | contracts capability build brief in `/spec:build` | Post-author or post-import | One slice's `contracts/messages/` inside one project | Markdown report for the verify-repair loop |
+| `cross-project` | contracts capability merge brief; `/change:execute` post-merge step | Producer-side merge of an AsyncAPI contract change | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation | JSON envelope produced by `specify-contract-validate` |
 
-`single` mode feeds the brief's verify-repair loop. `cross-project` mode emits warnings that the execute driver records in the merging change's `journal.yaml` — never halts the loop. Both modes share the read-only contract.
+`single` mode feeds the brief's verify-repair loop. `cross-project` mode is a thin delegate over the standalone `specify-contract-validate` binary (RFC-13 §4.2a) — the verifier shells out to the binary and surfaces its findings; it does not implement its own cross-baseline check. Both modes share the read-only contract.
 
-`--mode` was previously exposed as a top-level flag on the standalone validator skill in the (now retired) `contracts` plugin, invoked as `--mode {single, cross-project}` (RFC-10 §C.3). It is now an internal flag of the format-specific verifier; the surface area, algorithms, and output shapes are unchanged.
+`--mode` was previously exposed as a top-level flag on the standalone validator skill in the (now retired) `contracts` plugin (RFC-10 §C.3). It is now an internal flag of the format-specific verifier. `cross-project` was further re-homed in RFC-13 §"Merge and adoption contract": the consumer-compatibility heuristic that lived in this file pre-RFC-13 has been retired in favour of the deterministic baseline check that `specify-contract-validate` runs on the merged `contracts/` directory. Single-mode behaviour is unchanged.
 
 ## Inputs
 
@@ -32,15 +32,13 @@ $CHANGE_SPECS        = $SLICE_DIR/specs/
 
 ### `cross-project` mode
 
-Caller passes the producer's updated contract path and the consumer's workspace clone path:
+Caller passes the merged baseline directory:
 
 ```text
-$PRODUCER_CONTRACT  = <path-to-producer-contract>     # e.g. contracts/messages/order-events.yaml
-$CONSUMER_WORKSPACE = <path-to-consumer-workspace>    # e.g. .specify/workspace/mobile/
-$CONSUMER_CONTRACTS = $CONSUMER_WORKSPACE/contracts/
+$BASELINE_CONTRACTS = $PROJECT_ROOT/contracts   # the merged baseline, post-`specify slice merge run`
 ```
 
-`$PRODUCER_CONTRACT` is a path relative to the initiating repo root (typically a file under `contracts/messages/` after a producer change merges). `$CONSUMER_WORKSPACE` is a tier-2 workspace clone — `specify workspace sync` materialises consumer clones at `.specify/workspace/<consumer-name>/`, and the consumer's view of central contracts lives at `$CONSUMER_CONTRACTS`.
+The verifier shells out to `specify-contract-validate` (RFC-13 §4.2a), which walks every top-level OpenAPI 3.1 / AsyncAPI 3.0 document under `$BASELINE_CONTRACTS` and enforces the RFC-12 §Validation rules. No producer / consumer arguments are accepted — the binary's scope is the baseline as a whole.
 
 ## Prerequisites
 
@@ -53,8 +51,8 @@ If `$CHANGE_CONTRACTS/messages/` does not exist or contains no files, report all
 
 ### `cross-project` mode
 
-- `$PRODUCER_CONTRACT` exists and is readable. Otherwise exit non-zero with a `cannot-read-producer-contract` diagnostic.
-- `$CONSUMER_WORKSPACE` exists. If `$CONSUMER_CONTRACTS` is absent (the consumer has never sync'd), emit a single `consumer-has-no-baseline` finding (severity `info`) and exit zero.
+- `specify-contract-validate` is on `$PATH` (chunk 4.2a ships it alongside `specify`).
+- `$BASELINE_CONTRACTS` (`$PROJECT_ROOT/contracts`) is the directory the binary will walk. The binary itself handles the "directory is absent" case by exiting `2` with a stderr diagnostic; callers MUST NOT pre-stat the path.
 
 ## Single-mode checks
 
@@ -161,7 +159,7 @@ For every top-level AsyncAPI document under `$CHANGE_CONTRACTS/messages/` (root 
 2. **`info.x-specify-id` (when present) MUST match `^[a-z][a-z0-9-]*$` and be ≤ 64 characters.** Format violations are `FAIL`.
 3. **Within the slice directory, `info.x-specify-id` values MUST be unique.** When two top-level AsyncAPI documents in `$CHANGE_CONTRACTS/messages/` declare the same id, both are `FAIL`.
 
-The cross-repo uniqueness check (the same id declared by a top-level contract somewhere else under root `contracts/`) is **not** part of single mode — it is the CLI's job (`specify contract validate`), which runs after merge with the full baseline in scope. The skill only flags duplicates inside the slice to keep the verifier deterministic and self-contained.
+The cross-repo uniqueness check (the same id declared by a top-level contract somewhere else under root `contracts/`) is **not** part of single mode — it is the merge-phase gate's job, run by `specify-contract-validate` against the merged baseline (RFC-13 §"Merge and adoption contract"). The single-mode skill only flags duplicates inside the slice to keep the verifier deterministic and self-contained.
 
 Report format (one entry per failure):
 
@@ -220,118 +218,71 @@ All checks passed (9 $ref pointers, 6 schemas, 4 channels, 5 operations verified
 
 ## Cross-project mode
 
-`cross-project` mode runs **after** a producer's contract change merges. The execute driver (`/change:execute`) calls the verifier once per `(producer-contract, consumer-workspace)` pair to detect breaking changes that would propagate downstream.
+`cross-project` mode runs **after** a producer's contract change merges. The contracts capability merge brief invokes it as the post-merge baseline gate (RFC-13 §"Merge and adoption contract"); `/change:execute` re-uses the same gate per project after a producer-side merge (RFC-9 §3B).
 
-The mode is **non-fatal**: cross-project warnings never stop the execute loop. The driver records each warning to the merged slice's `journal.yaml` (via `specify slice journal append`) and renders a warning block in the merge transcript so the operator can triage.
+The mode is a thin delegate over `specify-contract-validate` (RFC-13 §4.2a). The verifier sibling does not implement an independent cross-project algorithm — it shells out to the binary, exits with the binary's exit code, and lets the caller (the merge brief, or `/change:execute`) consume the JSON envelope. The deterministic checks the binary enforces are the RFC-12 §Validation rules:
 
-### Compatibility checks
+- `contract.version-is-semver` — every top-level OpenAPI 3.1 / AsyncAPI 3.0 document's `info.version` parses as SemVer (per [semver.org](https://semver.org), prerelease labels included).
+- `contract.id-format` — when `info.x-specify-id` is present, the value matches `^[a-z][a-z0-9-]*$` and is ≤ 64 characters.
+- `contract.id-unique` — every present `info.x-specify-id` is unique across all top-level contracts under `$BASELINE_CONTRACTS`.
 
-For each `(producer-contract, consumer-workspace)` pair, compare the producer's updated contract against the consumer's last-known view of the same contract. Resolve the consumer's view in this order:
+### Invocation
 
-1. `$CONSUMER_CONTRACTS/<relative-path>` — the consumer's materialised baseline at the matching path. This is what `specify workspace sync` populates from the central `contracts/`.
-2. If absent, search `$CONSUMER_CONTRACTS/imports/` for a file with the same logical name (legacy import path used by some consumer clones).
-3. If still absent, the consumer has no prior view — emit a single `consumer-has-no-baseline` finding and stop.
+```bash
+specify-contract-validate "$PROJECT_ROOT/contracts" --format json > /tmp/contract-findings.json
+case $? in
+  0) ;;  # clean — no findings, baseline is well-formed
+  1) ;;  # findings present — caller MUST treat as `failure`
+  2) ;;  # validator could not run — caller MUST treat as `failure` and journal stderr
+esac
+```
 
-When both files are present, classify each delta into a `change-kind`:
+`--format json` is the canonical shape callers parse; `--format text` is the human-readable variant the operator can re-run by hand. Both produce the same exit code.
 
-| `change-kind` | Severity | Description |
+### JSON envelope
+
+The standalone binary writes a single JSON object to stdout in `--format json`. The shape is byte-for-byte identical to the envelope the retired in-binary contract validator emitted before chunk 2.7 (preserved by chunk 4.2a):
+
+```json
+{
+  "schema-version": 2,
+  "contracts-dir": "<absolute-baseline-path>",
+  "ok": false,
+  "findings": [
+    { "path": "contracts/messages/order-events.yaml", "rule-id": "contract.version-is-semver", "detail": "info.version `2024-01-15` is not valid SemVer (must parse per semver.org, including optional prerelease labels)" },
+    { "path": "contracts/messages/billing-events.yaml", "rule-id": "contract.id-unique", "detail": "info.x-specify-id `shared` also appears in contracts/http/legacy-api.yaml" }
+  ],
+  "exit-code": 1
+}
+```
+
+Field semantics:
+
+- `schema-version` — currently `2`; bumps follow RFC-12. Callers MUST validate this before parsing the rest of the envelope.
+- `contracts-dir` — the absolute path the binary walked, echoing the positional argument.
+- `ok` — `true` iff `findings` is empty.
+- `findings[].path` — repo-relative when the parent of `<baseline-dir>` matches the path's prefix, otherwise absolute. Suitable for verbatim rendering in operator-facing reports.
+- `findings[].rule-id` — one of `contract.version-is-semver`, `contract.id-format`, `contract.id-unique`.
+- `findings[].detail` — single-line human-readable description.
+- `exit-code` — mirrors the process exit code (`0` clean / `1` findings / `2` invocation error).
+
+Callers that need to journal individual findings (the merge brief on a `failure` outcome) parse `findings[]` and feed `{ rule-id, path, detail }` triples through `specify slice journal append --kind failure`. The merge brief's `--summary` MUST name the load-bearing finding (typically `findings[0].rule-id` plus a one-line restatement of `findings[0].detail`); the full envelope rides along on `--context`.
+
+### Exit semantics
+
+| Exit code | Meaning | Caller action |
 |---|---|---|
-| `removed-channel` | `warning` | A channel `address` (or its YAML key) defined in the consumer's view is gone from the producer's update. Consumer subscribers will receive nothing on that topic. |
-| `removed-operation` | `warning` | An operation key defined in the consumer's view (e.g. `consumeOrderPlaced`) is missing. Consumer code that referenced the operation by id will break. |
-| `removed-message` | `warning` | A message in `components/messages` defined in the consumer's view is gone. Channels that referenced the message and the consumer's deserializers will fail. |
-| `removed-field` | `warning` | A property the consumer's view defined on a message payload is no longer present. Consumer code that reads the field will receive `undefined` after the next workspace sync. |
-| `required-field-added` | `warning` | A new field is `required` in a message payload. Consumers producing the prior shape will be rejected by stricter validators (and producers consuming the prior shape will under-fill the schema). |
-| `type-narrowed` | `warning` | A property's `type` (or `format`, `enum`, numeric range) became stricter on a payload field or message header. Consumer values that were valid before may now be rejected. |
-| `action-flipped` | `warning` | An operation's `action` changed from `send` to `receive` or vice versa. Consumer code that produced or consumed messages will be wired the wrong way. |
-| `content-type-changed` | `warning` | A message's `contentType` changed (e.g. `application/json` → `application/avro`). Consumer deserializers built for the prior content type will fail. |
-| `consumer-has-no-baseline` | `info` | The consumer's workspace clone has no prior view of this contract (first-time materialisation). No incompatibility — the consumer will pick up the new shape on its next `workspace sync`. |
+| `0` | Clean — no findings. | Proceed to the next merge-brief step (e.g. `specify slice merge run`). |
+| `1` | One or more findings. | Record `failure`; halt the merge brief. The slice's deltas remain unmerged. |
+| `2` | Validator could not run (path missing, not a directory, internal error). | Record `failure`; journal the stderr line. The slice's deltas remain unmerged. |
 
-Findings outside this table (additive optional fields, new channels, new operations, additional messages) are **not warnings** — they are backwards-compatible and the consumer keeps working unchanged.
+The mode is **deterministic**: the binary is a thin shell over `specify_validate::validate_baseline_contracts` (in the `specify-cli` workspace). Repeated invocations against the same baseline produce identical findings.
 
-### Cross-project algorithm
+### Why a binary delegate?
 
-1. **Read inputs.**
-   - Producer contract: parse `$PRODUCER_CONTRACT`. On read failure, exit non-zero with a `cannot-read-producer-contract` diagnostic.
-   - Consumer view: locate the consumer's matching file under `$CONSUMER_CONTRACTS` using the resolution order above.
-   - If no consumer view is found, emit one `consumer-has-no-baseline` finding and skip steps 2–4.
-2. **Confirm format.** Read the top-level keys; the file must have `asyncapi: "3.x"`. If it has `openapi:` or `$schema:` instead, emit a `format-mismatch` finding and exit zero — the wrong verifier was invoked.
-3. **Run AsyncAPI compatibility checks.**
-   - Walk `channels[*]` in the consumer's view; for each channel, locate the matching `address` in the producer's contract. Classify removals.
-   - Walk `operations[*]` in the consumer's view; for each operation, locate the matching key in the producer's contract. Classify removals and `action` flips.
-   - Walk `components.messages[*]`; for each message the consumer's view defined, check whether the producer still defines it and whether `contentType`, headers, and payload `$ref` shape are compatible.
-   - Walk payload schemas reached through message `$ref`; classify removed properties, newly-required properties, and type narrowings on shared properties.
-4. **Collect findings.** Each finding records `{ severity, contract, change-kind, locator, details }`.
-5. **Emit the structured YAML report** (see [Cross-project output format](#cross-project-output-format)).
+Per RFC-13 §"Merge and adoption contract" and §Open Question 4, the contracts capability owns merge gating; the core no longer ships an in-binary contract validator (chunk 2.7 deleted that command surface). The standalone `specify-contract-validate` binary (chunk 4.2a) is the replacement: a deterministic, capability-owned gate the merge brief can shell out to without crossing the core boundary or re-introducing concern-specific behavior into core crates.
 
-The verifier does not walk the consumer's spec or source code in this mode — that level of analysis is out of scope and would re-couple the verifier to the consumer's implementation. The conservative output is "the wire shape changed in a backwards-incompatible direction; the operator should triage."
-
-## Cross-project output format
-
-```yaml
-mode: cross-project
-producer:
-  contract: contracts/messages/order-events.yaml
-consumer:
-  workspace: .specify/workspace/mobile/
-findings:
-  - severity: warning
-    contract: contracts/messages/order-events.yaml
-    change-kind: removed-field
-    locator: components.messages.OrderPlacedMessage.payload.properties.currency
-    details: >
-      The producer's update removes the `currency` field from the
-      OrderPlaced payload. The consumer's last-known view defines this
-      field; consumer code that reads it will receive `undefined` after
-      the next workspace sync.
-  - severity: warning
-    contract: contracts/messages/order-events.yaml
-    change-kind: action-flipped
-    locator: operations.consumeOrderPlaced.action
-    details: >
-      Producer flipped `consumeOrderPlaced.action` from `receive` to
-      `send`. Consumer code wired as a subscriber will silently emit
-      messages instead of consuming them.
-summary:
-  total-findings: 2
-  warnings: 2
-  errors: 0
-```
-
-When no findings are produced (the consumer's view matches the producer's update, or the consumer has no prior view):
-
-```yaml
-mode: cross-project
-producer:
-  contract: contracts/messages/order-events.yaml
-consumer:
-  workspace: .specify/workspace/mobile/
-findings: []
-summary:
-  total-findings: 0
-  warnings: 0
-  errors: 0
-```
-
-The report is well-formed even when empty — the execute driver always parses `summary.total-findings` to decide whether to render a warning block in the merge transcript.
-
-### Locator format
-
-`locator` strings are dot-separated paths into the contract document, following AsyncAPI's natural traversal order:
-
-- Channel-scoped locators: `channels.<key>.address`, `channels.<key>.messages.<message-key>`.
-- Operation-scoped locators: `operations.<key>.action`, `operations.<key>.channel`, `operations.<key>.messages`.
-- Message-scoped locators: `components.messages.<MessageName>.contentType`, `components.messages.<MessageName>.headers.properties.<field>`, `components.messages.<MessageName>.payload.properties.<field>`.
-- Required-field changes on payloads: `components.messages.<MessageName>.payload.required`.
-
-Path segments containing dots (e.g. an address like `order.placed`) are kept verbatim — locators are emitted for human triage, not parsed.
-
-### Cross-project exit semantics
-
-`cross-project` mode exits **0** even when warnings are present. The mode is non-fatal by design (RFC-9 §3B). Exit non-zero only when:
-
-- `$PRODUCER_CONTRACT` cannot be read (`cannot-read-producer-contract`).
-- `$CONSUMER_WORKSPACE` cannot be reached (e.g. permission denied).
-- The producer's contract is malformed and cannot be parsed (`producer-contract-malformed`).
+The pre-RFC-13 consumer-compatibility heuristic that the verifier markdowns described — comparing a producer contract against each consumer's tier-2 workspace clone, classifying breaking changes into a `change-kind` vocabulary — has been retired in this chunk. The deterministic baseline check is the canonical post-merge gate; richer consumer-side analysis is a follow-up that future RFCs can re-introduce on top of the merge brief if operator demand warrants it (RFC-13 §Open Question 1).
 
 ## Edge cases
 
@@ -353,13 +304,13 @@ Path segments containing dots (e.g. an address like `order.placed`) are kept ver
 
 | Scenario | Behavior |
 |---|---|
-| `$CONSUMER_CONTRACTS` does not exist (consumer never sync'd) | Emit `consumer-has-no-baseline` finding (severity `info`); exit 0. |
-| Consumer's view matches the producer's update byte-for-byte | Empty `findings`; exit 0. |
-| `$PRODUCER_CONTRACT` cannot be read | Exit non-zero with `cannot-read-producer-contract`. |
-| Producer contract is malformed YAML | Exit non-zero with `producer-contract-malformed`. |
-| Format mismatch (consumer has OpenAPI / JSON Schema at the same path) | Emit `format-mismatch` finding (severity `warning`); exit 0. |
-| Consumer view contains additive fields the producer never defined | Pass silently — additive fields are the consumer's prerogative. |
-| Channel address renamed but the YAML key is the same | Treat as `removed-channel` (the consumer's wire identity is the address, not the key). |
+| `$BASELINE_CONTRACTS` is absent | Binary exits `2` with `error: baseline directory does not exist`. Caller records `failure`. |
+| `$BASELINE_CONTRACTS` is empty (no top-level contracts) | Binary exits `0` with `findings: []`. Treated as clean. |
+| Top-level contract has non-SemVer `info.version` | Finding `contract.version-is-semver`; exit `1`. Caller records `failure`. |
+| Top-level contract has malformed `info.x-specify-id` | Finding `contract.id-format`; exit `1`. |
+| Two top-level contracts share the same `info.x-specify-id` | Finding `contract.id-unique` against each colliding path; exit `1`. |
+| YAML file under `$BASELINE_CONTRACTS` is malformed | Skipped by the binary (the format-verifier owns YAML diagnostics in `single` mode); does not surface as a cross-project finding. |
+| `specify-contract-validate` is not on `$PATH` | The shell-out fails with `command not found`; caller records `failure` with the resolve diagnostic on `--context`. |
 
 ## Guardrails
 
@@ -367,8 +318,8 @@ Path segments containing dots (e.g. an address like `order.placed`) are kept ver
 - Report every issue with the file path and a description of the problem.
 - When uncertain whether a schema is shared vocabulary or a standalone payload, use `WARN` rather than `FAIL` (in `single` mode).
 - Do not attempt to fix issues — report them. Repair belongs to the author or importer sibling.
-- **Cross-project warnings are non-fatal.** Always exit 0 in `cross-project` mode unless the input cannot be read or parsed. The execute driver decides whether to halt; the verifier only reports.
-- Do not walk consumer source code or specs in `cross-project` mode. The consumer-side analysis stops at the contract file the consumer's workspace clone holds.
+- **`cross-project` mode is fatal.** Treat exit codes `1` (findings) and `2` (invocation error) as `failure` per RFC-13 §"Merge and adoption contract". The merge brief MUST halt; the slice's deltas remain unmerged until the operator resolves the finding.
+- Do not re-implement the binary's checks. The verifier sibling's `cross-project` mode is a delegate; the canonical algorithm lives in `crates/validate/src/contracts.rs` of the `specify-cli` workspace.
 
 ## Verification checklist
 
@@ -390,12 +341,10 @@ Before completing the run:
 
 Before completing the run:
 
-- [ ] `$PRODUCER_CONTRACT` parsed successfully (or reported as `cannot-read-producer-contract`).
-- [ ] Consumer's matching view located under `$CONSUMER_CONTRACTS` (or reported as `consumer-has-no-baseline`).
-- [ ] AsyncAPI compatibility checks ran (channels, operations, messages, payload schemas, headers, content types).
-- [ ] Each delta classified into a known `change-kind`.
-- [ ] YAML report emitted with `mode`, `producer`, `consumer`, `findings`, and `summary`.
-- [ ] Exit status reflects exit-semantics rules (0 with findings; non-zero only on read failure).
+- [ ] `specify-contract-validate "$PROJECT_ROOT/contracts" --format json` invoked exactly once.
+- [ ] Stdout (the JSON envelope) captured for the caller (typically the merge brief's `--context`).
+- [ ] Exit code propagated verbatim to the caller (`0` clean / `1` findings / `2` invocation error).
+- [ ] No findings re-classified, suppressed, or downgraded — the binary's output is authoritative.
 - [ ] No files created or modified.
 
 ## See also
@@ -403,7 +352,7 @@ Before completing the run:
 - [`../../references/asyncapi-conventions.md`](../../references/asyncapi-conventions.md) — AsyncAPI 3.0 structure rules.
 - [`../../references/json-schema-conventions.md`](../../references/json-schema-conventions.md) — schema metadata rules.
 - [`../../references/artifact-structure.md`](../../references/artifact-structure.md) — directory layout for the slice-local delta and the baseline.
-- [`../../references/report-shape.md`](../../references/report-shape.md) — single-mode markdown report and cross-project YAML report formats this verifier emits, including severity levels and locator format.
-- [`../../references/cross-project-compatibility.md`](../../references/cross-project-compatibility.md) — `change-kind` enumeration, consumer-view resolution, breaking-change classification policy.
+- [`../../references/report-shape.md`](../../references/report-shape.md) — single-mode markdown report shape this verifier emits.
+- [`../../../../capabilities/contracts/briefs/merge.md`](../../../../capabilities/contracts/briefs/merge.md) — merge brief that owns the post-merge `specify-contract-validate` invocation and the §Merge and adoption contract three-branch outcome wiring.
 - [`author.md`](./author.md) — sibling for spec-driven authoring.
 - [`importer.md`](./importer.md) — sibling for normalising external documents.

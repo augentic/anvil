@@ -68,7 +68,7 @@
   - [specify registry](reference/cli/registry.md)
   - [specify capability](reference/cli/capability.md)
   - [specify workspace](reference/cli/workspace.md)
-  - [specify contract](reference/cli/contract.md)
+  - [specify-contract-validate](reference/cli/contract.md)
   - [specify init](reference/cli/init.md)
   - [specify vectis](reference/cli/vectis.md)
 - [Plugins](reference/plugins/index.md)

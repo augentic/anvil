@@ -349,7 +349,7 @@ For the OpenAPI document itself, verify that `info.title`, `info.version`, and `
 
 **RFC-12 normalisation rules for top-level OpenAPI documents:**
 
-- **`info.version` MUST be SemVer.** When the imported value does not parse as SemVer (e.g. `2024-01-15`, `v2`, `"1"`), do **not** auto-rewrite. Surface a `[manual review required]` entry in the import report naming the file and the offending value, and let the operator decide on the canonical SemVer string. The verifier sibling and `specify contract validate` will block on the unaltered value until the operator resolves it.
+- **`info.version` MUST be SemVer.** When the imported value does not parse as SemVer (e.g. `2024-01-15`, `v2`, `"1"`), do **not** auto-rewrite. Surface a `[manual review required]` entry in the import report naming the file and the offending value, and let the operator decide on the canonical SemVer string. The single-mode verifier (Check 4) and the merge-time `specify-contract-validate` gate (RFC-13 §"Merge and adoption contract") will block on the unaltered value until the operator resolves it.
 - **Preserve `info.x-specify-id` verbatim.** When the source carries `info.x-specify-id`, copy it through unchanged — even when the value violates the kebab-case format (the verifier flags the format issue with the file path, which is enough for the operator to fix). Never invent or auto-derive an id during import; new ids are an authoring decision.
 
 ### Step 6 — Place files, validate, report
