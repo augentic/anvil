@@ -8,11 +8,11 @@ argument-hint: "<target-dir>"
 
 ## Critical Path (Quick Reference)
 
-1. Gather context — read `shared/src/app.rs`, every `.kt` file under `Android/app/src/main/java/`, Gradle/manifest config, and design tokens; if `reference-dir` is provided, read its counterparts too.
+1. Gather context — read `shared/src/app.rs`, every `.kt` file under `Android/app/src/main/java/`, Gradle/manifest config, and the wired UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml` — change-local then baseline / project paths per RFC-11 §H); if `reference-dir` is provided, read its counterparts too.
 2. Spawn team — Structural + Quality (always); Integration only on the first iteration when `scope = full`. Each specialist applies its own check set (AND-, KTL-, INT-).
 3. Lead applies universal checks (UNI-001..021) with Android/Compose heuristics, skipping checks already covered by the specialists.
 4. Antagonist (see [`team-protocol.md`](team-protocol.md)) challenges every finding with evidence and counter-scans for Android blind spots; lead synthesises into a single iteration report and assigns a confidence level.
-5. Auto-fix mechanical issues (a11y `contentDescription`, design-token swaps, missing `@Preview`, `import com.example.app.*`, `CancellationException` rethrow); revert all auto-fixes if the build breaks.
+5. Auto-fix mechanical issues (a11y `contentDescription`, design-token swaps, missing `@Preview`, generated-FFI-type imports `import com.example.app.*`, `CancellationException` rethrow, removing stale `import com.vectis.design.*` migration debt); revert all auto-fixes if the build breaks.
 6. Loop control — re-spawn Structural + Quality on the changed files until `iteration == 3` or no mechanical fixes were applied.
 7. Express accumulated design-level findings — when `orchestrated: true` return classified `design_findings`; otherwise delegate to `/spec:define` to scaffold a `review-…` change.
 
@@ -50,9 +50,13 @@ Read the following files from `{target-dir}`:
 
 If `reference-dir` is provided, also read the corresponding files from the reference app.
 
-Also read:
-- `design-system/tokens.yaml` -- expected design tokens
-- `design-system/spec.md` -- design system usage rules
+Also read the wired UI input set (RFC-11 §H + §I) to compare generated code against the validated artifacts:
+
+- `composition.yaml` -- canonical layout (change-local `.specify/changes/<name>/composition.yaml` then baseline `.specify/specs/composition.yaml`); the source of truth for component-directive (`component: <slug>`) detection and recurring-group identification
+- `tokens.yaml` -- expected design tokens (change-local then `design-system/tokens.yaml`); the source of truth for token-usage checks
+- `assets.yaml` -- expected asset catalog (change-local then `design-system/assets.yaml`); the source of truth for asset-reference checks
+
+If any of these artifacts are absent, the corresponding cross-artifact checks (AND-005..007 token-usage, AND-027 recurring-group candidate component) degrade gracefully rather than failing the review — the reviewer reports the absence in its summary and skips the dependent finding category.
 
 ### 2. Review-fix cycle (max 3 iterations)
 
@@ -80,14 +84,14 @@ You are a Structural Reviewer for a Crux Android shell at $TARGET_DIR.
 
 Read `references/android-review-checks.md`.
 
-Apply checks AND-001 through AND-026 against the Kotlin source. These are
+Apply checks AND-001 through AND-027 against the Kotlin source. These are
 pattern-based checks that verify the shell correctly maps to the Crux core:
 
 - Screen composable / ViewModel variant correspondence
 - Effect handler completeness
 - Event dispatch coverage
 - Route/navigation completeness
-- Design system token usage
+- Design system token usage (resolved against shell-local `Android/app/src/main/java/com/vectis/<appname>/ui/theme/`)
 - Root composable `when` exhaustiveness
 - UniFFI library override presence
 - Generated type import correctness
@@ -98,6 +102,7 @@ pattern-based checks that verify the shell correctly maps to the Crux core:
 - Build configuration correctness
 - Fill-max-size components inside unbounded scrollable containers
 - Crash recovery handler presence in Application class
+- Recurring composition groups without a `component:` slug (RFC-11 §I "Reviewer surface")
 
 For each finding, report: check ID (AND-NNN), file:line, code snippet,
 severity (Critical or Warning), risk description, suggested fix, and
@@ -303,13 +308,15 @@ The **lead** applies all auto-fixes directly (specialists and antagonist have co
 Apply fixes for findings that are mechanical and confirmed or upgraded (not disputed):
 
 - Adding missing accessibility `contentDescription` values
-- Adding missing design system imports
-- Replacing hardcoded colors with design system tokens
-- Replacing hardcoded spacing with design system tokens
+- Removing stale `import com.vectis.design.*` lines (RFC-11 migration debt — same-package consumers in `com.vectis.<appname>.ui.*` resolve the names without the import)
+- Replacing hardcoded colors with design system tokens (resolved from the shell-local `ui/theme/Color.kt` / `MaterialTheme.colorScheme`)
+- Replacing hardcoded spacing with design system tokens (resolved from the shell-local `ui/theme/Spacing.kt`)
 - Adding missing `@Preview` composables
 - Adding missing `@OptIn(ExperimentalUnsignedTypes::class)` annotations
-- Adding missing `import com.example.app.*` statements
+- Adding missing `import com.example.app.*` statements (generated FFI types — distinct from the legacy `com.vectis.design` package retired by RFC-11)
 - Adding `CancellationException` rethrow to catch blocks
+
+Do NOT auto-promote a recurring group into a `component:` slug (AND-027). That finding is intentionally surfaced as a candidate for the operator to review — promoting it requires a `composition.yaml` edit and per-platform component file scaffolding, which sit outside the reviewer's mechanical-fix scope.
 
 Do NOT auto-fix structural issues (missing screen composables, missing effect handlers) without confirmation -- these may require design decisions about layout and interaction. Respect antagonist regression flags.
 
@@ -411,7 +418,7 @@ Before completing review:
 
 ### Scan Coverage
 
-- [ ] Structural Specialist: AND-001 through AND-026 checked
+- [ ] Structural Specialist: AND-001 through AND-027 checked
 - [ ] Quality Specialist: KTL-001 through KTL-010 checked
 - [ ] Integration Specialist: type completeness, serialization, build config, capability alignment, module structure, manifest checked (first iteration, full scope)
 - [ ] Universal Checks: UNI-001 through UNI-021 applied with Kotlin/Android-specific heuristics (skipped where covered by AND/KTL)

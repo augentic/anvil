@@ -35,9 +35,13 @@ Read the following files from `{target-dir}`:
 
 If `reference-dir` is provided, also read the corresponding files from the reference app.
 
-Also read:
-- `design-system/tokens.yaml` -- expected design tokens
-- `design-system/spec.md` -- design system usage rules
+Also read the wired UI input set (RFC-11 §H + §I) to compare generated code against the validated artifacts:
+
+- `composition.yaml` -- canonical layout (change-local `.specify/changes/<name>/composition.yaml` then baseline `.specify/specs/composition.yaml`); the source of truth for component-directive (`component: <slug>`) detection and recurring-group identification
+- `tokens.yaml` -- expected design tokens (change-local then `design-system/tokens.yaml`); the source of truth for token-usage checks
+- `assets.yaml` -- expected asset catalog (change-local then `design-system/assets.yaml`); the source of truth for asset-reference checks
+
+If any of these artifacts are absent, the corresponding cross-artifact checks (IOS-005..007 token-usage, IOS-019 recurring-group candidate component) degrade gracefully rather than failing the review — the reviewer reports the absence in its summary and skips the dependent finding category.
 
 ### 2. Review-fix cycle (max 3 iterations)
 
@@ -65,16 +69,17 @@ You are a Structural Reviewer for a Crux iOS shell at $TARGET_DIR.
 
 Read `references/ios-review-checks.md`.
 
-Apply checks IOS-001 through IOS-018 against the Swift source. These are
+Apply checks IOS-001 through IOS-019 against the Swift source. These are
 pattern-based checks that verify the shell correctly maps to the Crux core:
 
 - ViewModel/screen view correspondence
 - Effect handler completeness
 - Event dispatch coverage
 - Route/navigation completeness
-- Design system token usage
+- Design system token usage (resolved against shell-local `iOS/<App>/Theme/`)
 - ContentView switch exhaustiveness
 - ScrollView interaction hazards (touch delay, nested gesture conflicts)
+- Recurring composition groups without a `component:` slug (RFC-11 §I "Reviewer surface")
 
 For each finding, report: check ID (IOS-NNN), file:line, code snippet,
 severity (Critical or Warning), risk description, suggested fix, and
@@ -308,11 +313,13 @@ The **lead** applies all auto-fixes directly (specialists and antagonist have co
 Apply fixes for findings that are mechanical and confirmed or upgraded (not disputed):
 
 - Adding missing accessibility labels
-- Adding missing `import VectisDesign`
-- Replacing hardcoded colors with `VectisColors` tokens
-- Replacing hardcoded spacing with `VectisSpacing` tokens
+- Removing stale `import VectisDesign` lines (RFC-11 migration debt — same-target Swift code resolves the names without the import)
+- Replacing hardcoded colors with `VectisColors` tokens (resolved from the shell-local `iOS/<App>/Theme/Colors.swift`)
+- Replacing hardcoded spacing with `VectisSpacing` tokens (resolved from the shell-local `iOS/<App>/Theme/Spacing.swift`)
 - Adding missing `#Preview` blocks
 - Adding missing Inject boilerplate (`import Inject`, `@ObserveInjection var inject`, `.enableInjection()`) to view files
+
+Do NOT auto-promote a recurring group into a `component:` slug (IOS-019). That finding is intentionally surfaced as a candidate for the operator to review — promoting it requires a `composition.yaml` edit and per-platform component file scaffolding, which sit outside the reviewer's mechanical-fix scope.
 
 Do NOT auto-fix structural issues (missing screen views, missing effect handlers) without confirmation -- these may require design decisions about layout and interaction. Respect antagonist regression flags.
 
@@ -414,7 +421,7 @@ Before completing review:
 
 ### Scan Coverage
 
-- [ ] Structural Specialist: IOS-001 through IOS-018 checked
+- [ ] Structural Specialist: IOS-001 through IOS-019 checked
 - [ ] Quality Specialist: SWF-001 through SWF-010 checked
 - [ ] Integration Specialist: type completeness, serialization, build config, capability alignment checked (first iteration, full scope)
 - [ ] Universal Checks: UNI-001 through UNI-021 applied with Swift-specific heuristics (skipped where covered by IOS/SWF)
