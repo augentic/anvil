@@ -13,10 +13,11 @@ Sections:
   - **Modified Features**: List existing features whose REQUIREMENTS are changing. Only include if spec-level behavior changes (not just implementation details). Each needs a delta spec file. Check `.specify/specs/` for existing spec names. Leave empty if no requirement changes.
 - **Platforms**: Declare which platforms this change targets. This determines which skills the build phase invokes:
   - **core** — always required. The Rust Crux shared crate containing all business logic. Uses `vectis:core-writer` for generation and `vectis:core-reviewer` for review.
-  - **ios** — SwiftUI iOS shell. Uses `vectis:ios-writer` for generation and `vectis:ios-reviewer` for review. Requires a core to exist.
-  - **android** — Kotlin/Jetpack Compose Android shell. Uses `vectis:android-writer` for generation and `vectis:android-reviewer` for review. Requires a core to exist.
+  - **ios** — SwiftUI iOS shell. Uses `vectis:ios-writer` for generation and `vectis:ios-reviewer` for review. Requires a core to exist. Each shell writer reads `tokens.yaml` and `assets.yaml` directly and emits shell-local theme + asset code under its own tree (no shared design-system library).
+  - **android** — Kotlin/Jetpack Compose Android shell. Uses `vectis:android-writer` for generation and `vectis:android-reviewer` for review. Requires a core to exist. Each shell writer reads `tokens.yaml` and `assets.yaml` directly and emits shell-local theme + asset code under its own tree (no shared design-system library).
   - **web** — Web shell (future).
-  - **design-system** — VectisDesign generated from tokens.yaml: iOS Swift Package and Android `vectis-design` Compose library. Uses `vectis:design-system-writer`.
+
+  Token, asset, and layout work is **input context** rather than a peer platform — `design-system/tokens.yaml`, `design-system/assets.yaml`, and `design-system/layout.yaml` are operator-maintained inputs that the shell platforms above consume directly. List only the runtime shells that need to render the change in `Platforms`.
 - **Impact**: Affected code, APIs, dependencies, or systems.
 
 IMPORTANT: The Features section creates the contract between proposal and specs phases. Research existing specs before filling this in — each feature listed will need a corresponding spec file. Platforms determine implementation scope, not spec scope — a single feature spec covers all platforms.
@@ -60,12 +61,14 @@ Leave empty if no requirement changes. -->
 ## Platforms
 
 <!-- Which platforms this change targets. Determines which build skills run.
-core is always required. Add others as applicable.
+core is always required. Add the runtime shells the change needs to render on.
+Token, asset, and layout work is input context for the shells listed here —
+do not list it as a platform.
 
 Example:
 - core
 - ios
-- design-system -->
+- android -->
 
 ## Impact
 

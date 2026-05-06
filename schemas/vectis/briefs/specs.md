@@ -130,28 +130,19 @@ Guidance for Android shell requirements:
 - Design system overrides become requirements if they affect behavior.
 - Do NOT duplicate core requirements — reference the core spec for business logic.
 
-### Design System Requirements section
+### Token / asset / component requirements
 
-If the proposal lists `design-system` in Platforms and the feature involves token changes, add a `## Design System Requirements` section. Continue sequential `REQ-XXX` numbering.
+`design-system` is no longer a peer platform (per RFC-11 §L), so there is no `## Design System Requirements` section. Place token, asset, and component-usage requirements where they best describe the behavior:
 
-```markdown
-## Design System Requirements
+- **Observable product behavior** (e.g. "the unread badge SHALL use the alert colour", "the empty state SHALL render the `empty-tasks-hero` image") goes in the platform-neutral core requirements body. Reference token names and asset ids by name; the catalog itself lives in `tokens.yaml` / `assets.yaml`, which both shells read directly.
+- **Platform-specific rendering obligations** (e.g. "the iOS shell SHALL apply the navigation-bar tint via the iOS `Theme/Colors.swift` palette", "the Android shell SHALL surface elevation tokens through Material 3 surface containers") go in the corresponding `## iOS Shell Requirements` or `## Android Shell Requirements` section above.
+- **Cross-shell component identity** (the `component: <slug>` directive on a recurring group in `composition.yaml`) is a layout / composition concern and does not need a spec requirement unless the slug itself is part of the observable product (e.g. accessibility labels, semantic role).
 
-### Requirement: <Token Change>
-
-ID: REQ-009
-
-The design system SHALL <token change description>.
-
-#### Scenario: <Token Application>
-
-- **WHEN** <the token is applied>
-- **THEN** <expected visual outcome>
-```
+Do not author requirements that simply enumerate the contents of `tokens.yaml` or `assets.yaml` — the catalogs are validated by `specify vectis validate composition` (with auto-invoked `tokens` / `assets` modes). Specs describe behavior; the manifests describe inventory.
 
 ---
 
-Repeat `### Requirement:` blocks for each distinct behavior, incrementing `ID: REQ-XXX` sequentially across all sections (core, iOS, Android, design-system share one namespace).
+Repeat `### Requirement:` blocks for each distinct behavior, incrementing `ID: REQ-XXX` sequentially across all sections (core, iOS, Android share one namespace).
 
 **Modified Features**: Use the existing spec folder name from `.specify/specs/<feature>/` when creating the delta spec at `specs/<feature>/spec.md`. Follow this structure:
 
