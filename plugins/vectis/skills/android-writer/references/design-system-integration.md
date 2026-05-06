@@ -105,10 +105,13 @@ document.
 
 ### Using token references in views
 
-Reference Theme types directly from screen composables and components —
+Reference Theme types from screen composables and components —
 they are part of the same Gradle module as the views that consume them,
-so no `import com.vectis.design.*` is needed; Kotlin imports same-package
-declarations automatically:
+so no external Gradle dependency is needed. However, because theme files
+live in `com.vectis.<appname>.ui.theme` while screens and components live
+in sibling packages (`ui.screens`, `ui.components`), an explicit
+`import com.vectis.<appname>.ui.theme.*` is required in each consumer file
+(Kotlin only auto-imports within the exact same package):
 
 ```kotlin
 Text(

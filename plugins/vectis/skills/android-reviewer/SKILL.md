@@ -12,7 +12,7 @@ argument-hint: "<target-dir>"
 2. Spawn team — Structural + Quality (always); Integration only on the first iteration when `scope = full`. Each specialist applies its own check set (AND-, KTL-, INT-).
 3. Lead applies universal checks (UNI-001..021) with Android/Compose heuristics, skipping checks already covered by the specialists.
 4. Antagonist (see [`team-protocol.md`](team-protocol.md)) challenges every finding with evidence and counter-scans for Android blind spots; lead synthesises into a single iteration report and assigns a confidence level.
-5. Auto-fix mechanical issues (a11y `contentDescription`, design-token swaps, missing `@Preview`, generated-FFI-type imports `import com.example.app.*`, `CancellationException` rethrow, removing stale `import com.vectis.design.*` migration debt); revert all auto-fixes if the build breaks.
+5. Auto-fix mechanical issues (a11y `contentDescription`, design-token swaps, missing `@Preview`, generated-FFI-type imports `import com.example.app.*`, `CancellationException` rethrow, replacing stale `import com.vectis.design.*` with `import com.vectis.<appname>.ui.theme.*`); revert all auto-fixes if the build breaks.
 6. Loop control — re-spawn Structural + Quality on the changed files until `iteration == 3` or no mechanical fixes were applied.
 7. Express accumulated design-level findings — when `orchestrated: true` return classified `design_findings`; otherwise delegate to `/spec:define` to scaffold a `review-…` change.
 
@@ -56,7 +56,7 @@ Also read the wired UI input set (RFC-11 §H + §I) to compare generated code ag
 - `tokens.yaml` -- expected design tokens (change-local then `design-system/tokens.yaml`); the source of truth for token-usage checks
 - `assets.yaml` -- expected asset catalog (change-local then `design-system/assets.yaml`); the source of truth for asset-reference checks
 
-If any of these artifacts are absent, the corresponding cross-artifact checks (AND-005..007 token-usage, AND-027 recurring-group candidate component) degrade gracefully rather than failing the review — the reviewer reports the absence in its summary and skips the dependent finding category.
+If any of these artifacts are absent, the corresponding **cross-artifact comparison** portions of the checks degrade gracefully rather than failing the review — the reviewer reports the absence in its summary. When `tokens.yaml` is absent, AND-005..007 skip the token-name cross-reference but **still enforce** the no-hardcoded-literal rules (no `Color(0xFF…)`, no inline `TextStyle`, no magic `dp` spacing outside generated theme files), since the Material 3 fallback path expects `MaterialTheme.colorScheme.*` / `MaterialTheme.typography.*` references instead of arbitrary visual literals. When `composition.yaml` is absent, AND-027 (recurring-group candidate component) is skipped entirely.
 
 ### 2. Review-fix cycle (max 3 iterations)
 
@@ -308,7 +308,7 @@ The **lead** applies all auto-fixes directly (specialists and antagonist have co
 Apply fixes for findings that are mechanical and confirmed or upgraded (not disputed):
 
 - Adding missing accessibility `contentDescription` values
-- Removing stale `import com.vectis.design.*` lines (RFC-11 migration debt — same-package consumers in `com.vectis.<appname>.ui.*` resolve the names without the import)
+- Replacing stale `import com.vectis.design.*` lines with `import com.vectis.<appname>.ui.theme.*` (RFC-11 migration debt — theme types live in the `ui.theme` sibling package and require an explicit import from `ui.screens` / `ui.components`)
 - Replacing hardcoded colors with design system tokens (resolved from the shell-local `ui/theme/Color.kt` / `MaterialTheme.colorScheme`)
 - Replacing hardcoded spacing with design system tokens (resolved from the shell-local `ui/theme/Spacing.kt`)
 - Adding missing `@Preview` composables

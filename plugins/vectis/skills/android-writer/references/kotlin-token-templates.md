@@ -20,9 +20,11 @@ BOM versions aligned with the app module the CLI scaffolded (see
 **Package**: `com.vectis.<appname>.ui.theme` (matching the rest of the app
 module's package convention). The previous `design-system-writer` emitted
 `package com.vectis.design` because it produced a separate Gradle module;
-the shell-local equivalent uses the app's own package so screen composables
-can reference Theme types without an `import` (Kotlin imports same-package
-declarations automatically).
+the shell-local equivalent uses the app's own package tree so no external
+Gradle dependency is needed. However, because `ui.theme` is a sibling
+package to `ui.screens` and `ui.components`, consumer files must include
+an explicit `import com.vectis.<appname>.ui.theme.*` (Kotlin only
+auto-imports declarations within the exact same package).
 
 ## File layout
 

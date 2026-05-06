@@ -79,7 +79,7 @@ Padding and spacing values should use design system spacing tokens, not magic nu
 
 **Detection**: In **app module** composables, search for `.padding(` or `Arrangement.spacedBy(` with numeric literals (`X.dp`) that are not `0.dp`. Check that the value matches a token; flag if it does not. Skip generated theme files under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/` carrying the `// Generated from design-system/tokens.yaml — do not edit manually.` header (the same header-based carve-out as AND-005 / AND-006).
 
-**Fix**: Replace with the appropriate design system spacing token (e.g. `VectisSpacing.md`, which post-RFC-11 resolves in the same `com.vectis.<appname>.ui.theme` package as the consumer composable — no `import com.vectis.design...` is needed; the writer emits it as a shell-local `Spacing.kt` file under `ui/theme/`).
+**Fix**: Replace with the appropriate design system spacing token (e.g. `VectisSpacing.md`). Post-RFC-11, the writer emits `VectisSpacing` as a shell-local `Spacing.kt` file under `ui/theme/` (`com.vectis.<appname>.ui.theme` package). Consumers in sibling packages (`ui.screens`, `ui.components`) must have `import com.vectis.<appname>.ui.theme.*` — do not use the legacy `import com.vectis.design.*`.
 
 ## AND-008: Missing Preview
 

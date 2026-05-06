@@ -193,7 +193,7 @@ Output the diff summary before making edits.
 
 ### U6a. Refresh `Theme/` from `tokens.yaml`
 
-When `tokens.yaml` is present, regenerate `iOS/<App>/Theme/` from the YAML per [`references/swift-token-templates.md`](references/swift-token-templates.md): one Swift file per token category (with `spacing` / `cornerRadius` colocated in `Theme/Spacing.swift`), plus the structural `Theme/Theme.swift` scaffold. Files carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header (except `Theme.swift`) so a subsequent regeneration overwrites them safely.
+When `tokens.yaml` is present, regenerate `iOS/<App>/Theme/` from the YAML per [`references/swift-token-templates.md`](references/swift-token-templates.md): one Swift file per token category (with `spacing` / `cornerRadius` colocated in `Theme/Spacing.swift`), plus the structural `Theme/Theme.swift` scaffold. Files carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header (except `Theme.swift`) so a subsequent regeneration overwrites them safely. The header always uses the canonical project-level path `design-system/tokens.yaml` regardless of whether the current generation reads from a change-local file — this keeps the header stable across the change lifecycle and avoids breaking header-based detection of generated files.
 
 When a category is removed from `tokens.yaml`, delete the corresponding file under `Theme/`. Files that lack the "Generated from" header are operator-owned and must be preserved. When `tokens.yaml` is **absent** the writer skips this step entirely and follows the HIG fallback policy from [`references/design-system-integration.md`](references/design-system-integration.md).
 

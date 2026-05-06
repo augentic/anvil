@@ -55,7 +55,7 @@ Until Phase 4.1 lands:
 
 - New briefs, tasks, and plans MUST NOT name `/vectis:design-system-writer`. The alias is a one-way exit ramp for legacy artifacts, not a recommended skill.
 - The CLI does not enforce this prohibition at write time; the plan briefs and tasks brief simply omit the skill from their available-skills tables (RFC-11 §K "Step 3c", landing in Phase 3.5 / 3.6).
-- The `references/` directory is intentionally empty. Phases 3.1 and 3.2 moved every template into the shell writers; Phase 4.1 deletes the now-empty directory along with the rest of this skill.
+- The `references/` directory no longer contains any tracked files — Phases 3.1 and 3.2 moved every template into the shell writers. Phase 4.1 removes the skill directory entirely.
 
 ## See also
 
