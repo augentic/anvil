@@ -29,8 +29,7 @@ WASI modules solve the immediate problem without making the whole Specify workfl
 ```yaml
 tools:
   - name: contract
-    version: 1.0
-    source: "https://github.com/augentic/specify-tools/releases/download/1.0/contract-1.0.wasm"
+    source: "https://github.com/augentic/specify-tools/releases/download/1.0.0/contract.wasm"
     permissions:
       read:
         - "$PROJECT_DIR/contracts"
@@ -40,35 +39,33 @@ tools:
 
 The first landing supports only:
 
-- `wasm32-wasip2` command modules;
+- WASI Preview 2 command components built for `wasm32-wasip2`;
 - absolute local paths, `file:` URIs, and `https:` URIs addressed by `source`;
-- exact SemVer versions;
 - filesystem permissions expressed as directory preopens.
 
-The runtime is fixed by the first implementation rather than configured per tool. `source` is a literal absolute local path, `file:` URI, or `https:` URI for the WASM module; relative paths, source variables, and other URI schemes are not supported. `version` remains explicit for display, validation, and cache metadata, but the resolver does not parse version information out of `source`. Missing `tools:` means no behavior change.
+The runtime is fixed by the first implementation rather than configured per tool. `source` is a literal absolute local path, `file:` URI, or `https:` URI for the WASM component; relative paths, source variables, and other URI schemes are not supported. `version` remains explicit for display, validation, and cache metadata, but the resolver does not parse version information out of `source`. Missing `tools:` means no behavior change.
+
+RFC-15 reopens the RFC-13 closed manifest field set only to add optional tools:. The post-RFC manifest remains closed: unknown top-level fields are still rejected, and tools: is the only new top-level property. Capability references and capabilities/capability.schema.json must be updated in the same implementation change.
 
 ### Tool Shape
 
-The first version uses WASI command modules, not WIT components. A tool receives normal CLI arguments, stdin, stdout, and stderr, then exits with a process status code.
+The first version uses the standard WASI CLI command world. A tool receives normal CLI arguments, stdin, stdout, and stderr, then exits with a process status code.
 
 ```bash
 cargo build --target wasm32-wasip2 --release
 ```
 
-This keeps tool authoring simple and is enough to replace the immediate host binaries and scripts. `runtime: wasm-component` can follow later when validators need typed diagnostics or structured imports and exports.
+This keeps tool authoring simple and is enough to replace the immediate host binaries and scripts. Custom WIT worlds can follow later when validators need typed diagnostics or structured imports and exports.
 
 ### Resolver and Cache
 
-When a resolved capability declares tools, `specify` ensures each requested module exists in a global cache:
+When a resolved capability declares tools, `specify` ensures each requested module exists within the capability's cache:
 
 ```text
-~/.cache/specify/tools/<source-digest>/tool.wasm
-~/.cache/specify/tools/<source-digest>/metadata.json
+~/.cache/specify/<capability-identifier>/<tools>/<name>-<version>.wasm
 ```
 
-`source-digest` is a filesystem-safe digest of the literal `source` string. Cache reuse first keys by source, then confirms `metadata.json` still matches the manifest fields that affect execution: tool name, version, source, and permissions snapshot.
-
-The first landing treats cached source contents as immutable. If bytes at a URI or local path change without the `source` string changing, `specify` may continue using the cached copy until the operator removes it with `specify ext gc` or changes the manifest source. Content verification and refresh semantics are future work.
+The first landing treats cached source contents as immutable. If bytes at a URI or local path change without the `source` string changing, `specify` may continue using the cached copy until the operator removes it with `specify tool gc` or changes the manifest source. Content verification and refresh semantics are future work.
 
 For each tool, the resolver:
 
@@ -84,7 +81,7 @@ The cache is global because WASI modules are portable across supported hosts. Ca
 Skills and briefs invoke helpers through `specify`, not through cache paths:
 
 ```bash
-specify ext run contract -- validate "$PROJECT_DIR/contracts"
+specify tool run contract -- validate "$PROJECT_DIR/contracts"
 ```
 
 On `run`, the host:
@@ -92,13 +89,17 @@ On `run`, the host:
 1. Resolves the current project's capability.
 2. Resolves and loads the named tool.
 3. Expands `$PROJECT_DIR` and `$CAPABILITY_DIR`.
-4. Rejects permission paths outside those roots.
-5. Instantiates the module with WASI.
-6. Preopens declared read and write directories.
-7. Wires args, stdio, and a minimal environment.
-8. Returns the module exit code and typed resolver or runtime errors.
+4. Canonicalizes the project root, capability root, and expanded permission paths.
+5. Rejects permission paths whose resolved targets escape those roots.
+6. Sets the module working directory to the project root.
+7. Instantiates the module with WASI.
+8. Preopens declared read and write directories.
+9. Wires args, stdio, and a minimal environment.
+10. Returns the module exit code and typed resolver or runtime errors.
 
-The host remains capability-agnostic. It knows modules, permissions, paths, and process IO. It does not know what contracts, Vectis, Omnia, or a third-party capability does.
+The minimal environment exposes only `PROJECT_DIR` and `CAPABILITY_DIR` in the first landing. No ambient host environment is inherited. Permission directories must already exist before they are preopened; a tool that needs to create nested paths should request a preopen for an existing parent directory. Symlinks are resolved during canonicalization, so a symlink that points outside `$PROJECT_DIR` or `$CAPABILITY_DIR` is denied even if its textual path starts inside an allowed root.
+
+The host remains capability-agnostic. It knows modules, permissions, paths, and process IO. It does not know what contracts, Vectis, Omnia, or a third-party capability does. Wasmtime is linked into the main `specify` binary for the first landing so users still install a single executable.
 
 ### Permissions
 
@@ -124,27 +125,27 @@ This is narrower than agent tool execution by design. Capability helpers should 
 
 ### CLI Surface
 
-Add a small `specify ext` surface for declared capability tools:
+Add a small `specify tool` surface for declared capability tools:
 
 ```bash
-specify ext run <name> -- [args...]   # fetch if needed, then run the named tool through Wasmtime
-specify ext list                      # show declared tools and cache status
-specify ext fetch [<name>]            # prefetch one or all tools
-specify ext show <name>               # show metadata, permissions, and cache status
-specify ext gc                        # remove unused cached versions
+specify tool run <name> -- [args...]   # fetch if needed, then run the named tool through Wasmtime
+specify tool list                      # show declared tools and cache status
+specify tool fetch [<name>]            # prefetch one or all tools
+specify tool show <name>               # show metadata, permissions, and cache status
+specify tool gc                        # remove unused cached versions
 ```
 
-`fetch` and `gc` mutate only `~/.cache/specify/tools/`. `run` mutates project state only through directories granted by the tool manifest.
+`fetch` and `gc` mutate only `~/.cache/specify/<capability-identifier>/<tools>/`. `run` mutates project state only through directories granted by the tool manifest.
 
 The first version does not expose a path-printing shortcut. Cached modules are not user-invoked host executables, and exposing cache paths would invite bypassing the Wasmtime host.
 
-`specify ext` is a capability-agnostic core surface. It amends RFC-13 by adding a generic declared-tool runner next to `specify capability`; it does not add capability-specific commands or let capabilities replace the fixed slice loop.
+`specify tool` is a capability-agnostic core surface. It amends RFC-13 by adding a generic declared-tool runner next to `specify capability`; it does not add capability-specific commands or let capabilities replace the fixed slice loop.
 
 ### Trust and Offline Behavior
 
 Tool trust follows capability trust: the operator already trusts the capability manifest, and that manifest names the modules it needs. The first landing intentionally does not add content hashes or signatures; those can follow once the basic declared-tool path is working.
 
-Cached modules work offline. First use without network fails with a typed resolver error. Air-gapped users can pre-populate the cache with `specify ext fetch --all` on a connected machine.
+Cached modules work offline. First use without network fails with a typed resolver error. Air-gapped users can pre-populate the cache with `specify tool fetch` on a connected machine; with no name, `fetch` resolves every declared tool for the current capability.
 
 Wasmtime does not remove the need to trust a capability. It narrows the blast radius and makes the helper boundary reviewable.
 
@@ -153,11 +154,11 @@ Wasmtime does not remove the need to trust a capability. It narrows the blast ra
 1. **Manifest support.** Add `tools:` to the capability schema and parsed type. `specify capability check` validates names, exact SemVer versions, absolute local paths, `file:` or `https:` URIs in `source`, and permission paths.
 2. **Resolver.** Add local-path and URI source resolution, atomic module caching, cache metadata, cache reuse, and failure tests.
 3. **Wasmtime host.** Add a CLI-layer host that builds a WASI context from manifest permissions, preopens allowed directories, wires stdio, passes args, and propagates exit status.
-4. **CLI integration.** Add `specify ext {run,list,fetch,show,gc}`. Add `$CAPABILITY_DIR` substitution for permission expansion.
+4. **CLI integration.** Add `specify tool {run,list,fetch,show,gc}`. Add `$CAPABILITY_DIR` substitution for permission expansion.
 5. **First-party modules.** Replace the provisional contract validator binary with `contract.wasm`. Move narrow Vectis helper behavior to WASI modules where it fits the filesystem-only model; leave host toolchain calls in Vectis skills when they need platform SDKs, language toolchains, or networked registries.
 6. **Docs and lints.** Document capability WASI tools and add lints for overly broad write access and skills invoking undeclared helper binaries when a declared tool exists.
 
-Acceptance coverage should include manifest validation, cache hit and miss, cache key isolation for same-name tools from different sources, local-path source resolution, URI source resolution, network failure, allowed and denied filesystem access, non-zero exit propagation, and a fixture capability that runs a synthetic tool.
+Acceptance coverage should include manifest validation, cache hit and miss, local-path source resolution, URI source resolution, network failure, allowed and denied filesystem access, non-zero exit propagation, and a fixture capability that runs a synthetic tool.
 
 ## Migration
 
@@ -170,7 +171,7 @@ First-party capability changes:
 | -------------------------------------- | ------------------------------------------------------ |
 | `specify-contract` binary              | `contract.wasm` declared in `capability.yaml`          |
 | manually installed `specify-vectis`    | narrow Vectis WASI modules where filesystem-only works |
-| bare `specify-vectis verify` in skills | `specify ext run vectis-verify -- [args...]`           |
+| bare `specify-vectis verify` in skills | `specify tool run vectis-verify -- [args...]`           |
 
 
 No compatibility shim is needed because these helper binaries have not shipped as public surface.
@@ -187,8 +188,6 @@ If accepted, RFC-13 should be amended to say open-ended capability plugins remai
 
 **`cargo install` / `cargo binstall`.** Rejected because it assumes Rust tooling and exposes distribution details to skills.
 
-**WASM components from the first landing.** Deferred. Components are likely right for structured diagnostics, but CLI-style WASI command modules are enough for the immediate helper problem.
-
 **Native fallback entries in `tools:`.** Rejected for the first landing because mixed runtimes blur the security story. Native host tooling should stay explicit in skills until a separate RFC expands the model.
 
 ## Non-Goals
@@ -204,15 +203,14 @@ If accepted, RFC-13 should be amended to say open-ended capability plugins remai
 
 ## Open Questions
 
-1. **Wasmtime location.** Should Wasmtime live in the main `specify` binary, or behind an optional crate feature for smaller installs?
-2. **WASI target expansion.** The first landing standardizes on `wasm32-wasip2`; should a later release add `wasm32-wasip1` for older toolchains?
-3. **Structured diagnostics.** When should `runtime: wasm-component` and a WIT interface become mandatory for validators?
-4. **Permission UX.** Should operators see a one-time prompt when a newly resolved capability tool requests write access, or is capability trust enough?
-5. **Content verification and signing.** SHA256 pins and signatures can follow once the basic declared-tool path is proven.
-6. **Supported URI schemes.** `oci:`, `s3:`, and enterprise mirrors are plausible later source schemes.
-7. **Version requirements and source templates.** SemVer ranges and source interpolation can follow once literal sources are working.
-8. **Cache location.** Provisional: use the global cache by default, with `SPECIFY_TOOLS_CACHE` for CI and hermetic use.
-9. **Resolver concurrency.** Use a per-tool cache lock if concurrent resolves become an issue.
+1. **WASI target expansion.** The first landing standardizes on `wasm32-wasip2`; should a later release add `wasm32-wasip1` for older toolchains?
+2. **Structured diagnostics.** When should `runtime: wasm-component` and a WIT interface become mandatory for validators?
+3. **Permission UX.** Should operators see a one-time prompt when a newly resolved capability tool requests write access, or is capability trust enough?
+4. **Content verification and signing.** SHA256 pins and signatures can follow once the basic declared-tool path is proven.
+5. **Supported URI schemes.** `oci:`, `s3:`, and enterprise mirrors are plausible later source schemes.
+6. **Version requirements and source templates.** SemVer ranges and source interpolation can follow once literal sources are working.
+7. **Cache location.** Provisional: use the global cache by default, with `SPECIFY_TOOLS_CACHE` for CI and hermetic use.
+8. **Resolver concurrency.** Use a per-tool cache lock if concurrent resolves become an issue.
 
 ## References
 
