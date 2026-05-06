@@ -1,5 +1,5 @@
 ---
-description: Vectis plugin context -- Crux cross-platform application generation, iOS shell development, Android shell development, and design system management
+description: Vectis plugin context -- Crux cross-platform application generation, iOS shell development, Android shell development, and UI input artifact management (layout, tokens, assets)
 alwaysApply: true
 ---
 
