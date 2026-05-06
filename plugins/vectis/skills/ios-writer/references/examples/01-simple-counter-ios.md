@@ -29,6 +29,11 @@ examples/counter/
             Views/
                 LoadingScreen.swift
                 CounterScreen.swift
+            Theme/                # generated from design-system/tokens.yaml
+                Colors.swift
+                Typography.swift
+                Spacing.swift
+                Theme.swift
 ```
 
 ## `iOS/project.yml`
@@ -40,8 +45,6 @@ packages:
     path: ./generated/SharedTypes
   Shared:
     path: ./generated/Shared
-  VectisDesign:
-    path: ../../../design-system/ios
   Inject:
     url: https://github.com/krzysztofzablocki/Inject.git
     from: "1.5.2"
@@ -60,7 +63,6 @@ targets:
     dependencies:
       - package: SharedTypes
       - package: Shared
-      - package: VectisDesign
       - package: Inject
     info:
       path: Counter/Info.plist
@@ -226,7 +228,6 @@ class Core: ObservableObject {
 ```swift
 import Inject
 import SwiftUI
-import VectisDesign
 
 struct ContentView: View {
     @ObservedObject var core: Core
@@ -251,7 +252,6 @@ struct ContentView: View {
 ```swift
 import Inject
 import SwiftUI
-import VectisDesign
 
 struct LoadingScreen: View {
     @ObserveInjection var inject
@@ -281,7 +281,6 @@ struct LoadingScreen: View {
 ```swift
 import Inject
 import SwiftUI
-import VectisDesign
 
 struct CounterScreen: View {
     let viewModel: CounterView
@@ -346,7 +345,7 @@ struct CounterScreen: View {
 
 1. **One screen per ViewModel variant** -- `LoadingScreen` and `CounterScreen`.
 2. **Event callback pattern** -- screens receive `(Event) -> Void`, not the `Core`.
-3. **VectisDesign tokens** -- all colors, fonts, and spacing from the design system.
+3. **Shell-local theme tokens** -- all colors, fonts, and spacing resolve to the shell-local `Theme/` enums (`VectisColors`, `VectisTypography`, `VectisSpacing`) generated from `tokens.yaml`. There is no external Swift Package and no `import VectisDesign` (RFC-11 §L "Generated layout").
 4. **Preview support** -- every screen has a `#Preview` with sample data.
 5. **Accessibility** -- interactive icons have `accessibilityLabel`.
 6. **Render-only Core.swift** -- the simplest possible effect handler.

@@ -164,7 +164,6 @@ class Core: ObservableObject {
 ```swift
 import Inject
 import SwiftUI
-import VectisDesign
 
 struct ContentView: View {
     @ObservedObject var core: Core
@@ -193,7 +192,6 @@ struct ContentView: View {
 ```swift
 import Inject
 import SwiftUI
-import VectisDesign
 
 struct ErrorScreen: View {
     let viewModel: ErrorView
@@ -259,7 +257,6 @@ struct ErrorScreen: View {
 ```swift
 import Inject
 import SwiftUI
-import VectisDesign
 
 struct CounterScreen: View {
     let viewModel: CounterView

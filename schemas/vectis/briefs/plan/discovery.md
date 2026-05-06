@@ -1,10 +1,10 @@
 ---
 id: discovery
-description: Read --from artefacts and/or analyse codebases; emit a neutral capability inventory grouped by shared-core / iOS / Android / design-system.
+description: Read --from artefacts and/or analyse codebases; emit a neutral capability inventory grouped by shared-core / iOS / Android, plus a cross-cutting UI inputs section for layout / tokens / assets work.
 generates: .specify/plans/<name>/discovery.md
 ---
 
-Produce a neutral, schema-agnostic capability inventory for the initiative, grouped into the Crux-stack tiers Vectis ships in: **shared core** (Rust `App` traits, domain types, cross-platform business logic), **iOS shell** (SwiftUI views and bindings), **Android shell** (Jetpack Compose views and bindings), and **design system** (tokens and the generated component libraries). Discovery is read-only: it does NOT write to `plan.yaml` and does NOT propose slices. Its only output is the inventory that `propose.md` will decompose.
+Produce a neutral, schema-agnostic capability inventory for the initiative, grouped into the three Crux-stack tiers Vectis ships in: **shared core** (Rust `App` traits, domain types, cross-platform business logic), **iOS shell** (SwiftUI views and bindings), and **Android shell** (Jetpack Compose views and bindings). When the initiative also touches **input artifacts** that the shells consume — `layout.yaml`, `tokens.yaml`, `assets.yaml`, and future `components.yaml` — surface them in a separate **cross-cutting UI inputs** section after the three tiers (RFC-11 §L: token / asset / layout work is input context, not a peer platform). Discovery is read-only: it does NOT write to `plan.yaml` and does NOT propose slices. Its only output is the inventory that `propose.md` will decompose.
 
 ## Inputs
 
@@ -21,11 +21,11 @@ At least one of `--from`, `--against`, or `--source` must be supplied.
    - For a local path `--source` or `--against`: run `/spec:extract <path> .specify/plans/<name>/extract/<key>/` directly (use `against` as the key for `--against`).
    - The extract artefacts under `.specify/plans/<name>/extract/` are intermediate — the inventory below is the only human-facing output.
 2. **Read each `--from` artefact.** Open every `--from` file (or every file under a `--from` directory). Parse any clearly delimited capability structure (e.g. headings named "Capability", "Feature", "Screen", "Component"); otherwise treat each top-level heading as a capability candidate and record the accompanying prose verbatim.
-3. **Classify each capability into a Crux tier.** Every capability lands in exactly one of four tiers:
+3. **Classify each capability into a Crux tier or UI input.** Every capability lands in exactly one of three tiers or, when it describes an operator-maintained input artifact, in the cross-cutting **UI inputs** section instead:
    - **Shared core** — cross-platform business logic expressed as a Crux `App` trait (`Model`, `Event`, `ViewModel`, `Effect`, `Command`). Anything that must run identically on iOS and Android belongs here. Heuristic: if a legacy screen has behaviour that is platform-agnostic (state machines, data fetching, validation), the behaviour is shared-core; only the rendering is shell.
    - **iOS shell** — SwiftUI views, iOS-specific bindings, platform extensions (`UIKit` bridges, Swift Package integrations). Names typically end in `-ios-view`, `-ios-binding`, or describe an iOS-only affordance.
    - **Android shell** — Jetpack Compose views, Material 3 components, Kotlin bindings. Names typically end in `-android-view`, `-android-binding`, or describe an Android-only affordance.
-   - **Design system** — design tokens (`tokens.yaml`) and the generated iOS Swift Package + Android `vectis-design` Compose library. A capability lands here only when it describes *tokens* or *reusable component primitives*, not when it describes a feature screen that happens to consume tokens. Record the chosen tier on each capability. Capabilities that legitimately span tiers (e.g. "counter" covering the shared `App` AND the iOS/Android views) are split into one entry per tier so `propose.md` can slice them independently.
+   - **Cross-cutting UI inputs** — operator-maintained input artifacts the shells read directly per RFC-11 §L: `layout.yaml`, `tokens.yaml`, `assets.yaml`, and future `components.yaml`. A capability lands here only when it describes the *input artifact itself* (e.g. "lift legacy CSS variables into `tokens.yaml`", "import Figma layout into `layout.yaml`"), not when it describes a feature screen that happens to consume tokens. UI inputs are NOT a peer Crux tier — they have no runtime presence — and `vectis:ios-writer` / `vectis:android-writer` consume them directly without an intermediate "design-system" generation step. Record the artifact name on each UI-input capability so `propose.md` can decide whether the work is independently reviewable. Capabilities that legitimately span tiers (e.g. "counter" covering the shared `App` AND the iOS/Android views) are split into one entry per tier so `propose.md` can slice them independently; capabilities that span a tier and a UI input (e.g. a screen that requires both a new shared-core ViewModel AND new tokens) are similarly split, with the UI input surfacing in the cross-cutting section.
 4. **Merge into a single inventory.** Deduplicate capabilities that recur across sources within the same tier (e.g. "counter-core" in both a brief and a monolith extract). Record every source that mentions a capability rather than picking one.
 5. **Write `.specify/plans/<name>/discovery.md`.** The output has a fixed shape (see "Output" below). Overwrite any existing file.
 
@@ -66,17 +66,29 @@ At least one of `--from`, `--against`, or `--source` must be supplied.
 
 <!-- same shape as iOS shell, one subsection per capability -->
 
-### Design system
+## Cross-cutting UI inputs
 
-#### <capability name>
+<!-- UI inputs (layout.yaml, tokens.yaml, assets.yaml, future
+components.yaml) are operator-maintained input artifacts the shells
+consume — they are NOT a peer Crux tier (RFC-11 §L). Surface each
+input the initiative authors, migrates, or refines as a subsection
+here. Omit the entire section when no UI-input work is in scope.
+Subsections are level-3 headings (no enclosing tier wrapper, unlike
+the capability subsections above which sit one level deeper inside
+their tier heading). -->
 
+### <input name>
+
+- **Artifact**: `tokens.yaml` | `assets.yaml` | `layout.yaml` |
+  `components.yaml`
 - **Source(s)**: <key>, <path>, ...
 - **Description**: <one or two sentences, source-neutral>
 - **Ordering hints**: <e.g. "consumed by counter-ios-view,
   counter-android-view"; omit if none>
-- **Scope hints**: <omit if none>
+- **Scope hints**: <e.g. "lift legacy SCSS variables into
+  tokens.yaml"; omit if none>
 
-<!-- repeat one subsection per design-system capability -->
+<!-- repeat one subsection per UI input in scope -->
 
 ## Open questions
 
@@ -84,13 +96,13 @@ At least one of `--from`, `--against`, or `--source` must be supplied.
 - <...>
 ```
 
-Empty tiers are emitted as the `### <tier>` heading followed by an `_No capabilities in this tier._` italic line; the four tier headings are always present so downstream tooling can rely on their order.
+Empty tiers are emitted as the `### <tier>` heading followed by an `_No capabilities in this tier._` italic line; the three tier headings (shared core, iOS shell, Android shell) are always present so downstream tooling can rely on their order. The `## Cross-cutting UI inputs` section is omitted entirely when no input-artifact work is in scope — its absence is meaningful (no UI inputs to surface), so do not emit a placeholder italic line for it.
 
 ## Idempotency
 
 Running discovery twice on the same inputs MUST produce the same `discovery.md`. Implications:
 
-- Tier order is fixed: shared core, iOS shell, Android shell, design system. Within each tier, order capabilities alphabetically by name.
+- Tier order is fixed: shared core, iOS shell, Android shell. Within each tier, order capabilities alphabetically by name. The cross-cutting UI inputs section, when emitted, follows the three tiers — order its subsections alphabetically by input name (the same as a tier).
 - Do not include timestamps, run IDs, or working-directory paths.
 - `/spec:extract` re-runs on unchanged sources must yield equivalent inventory text; if a re-extract surfaces new detail, it replaces the prior inventory entry wholesale.
 
@@ -147,22 +159,30 @@ Running discovery twice on the same inputs MUST produce the same `discovery.md`.
 - **Scope hints**: legacy `CounterActivity.kt` + `CounterView`
   composable to be reshaped into a Crux-bound Compose screen.
 
-### Design system
+## Cross-cutting UI inputs
 
-#### design-tokens
+### design-tokens
 
+- **Artifact**: `tokens.yaml`
 - **Source(s)**: legacy-tokens (legacy/design-tokens.yaml)
-- **Description**: Colour, typography, and spacing tokens shared
-  across iOS and Android; generated into a Swift Package and an
-  Android `vectis-design` Compose library.
+- **Description**: Colour, typography, and spacing tokens migrated
+  from the legacy iOS / Android codebases into a single
+  `tokens.yaml` catalogue. `vectis:ios-writer` and
+  `vectis:android-writer` read it directly per RFC-11 §L; there is
+  no separate design-system generation step.
 - **Ordering hints**: depends on theme-core; consumed by
   counter-ios-view, counter-android-view.
+- **Scope hints**: lift the legacy iOS Asset Catalog colour set and
+  the Android `colors.xml` palette into a single `tokens.yaml`
+  authored under `design-system/`.
 
 ## Open questions
 
 - Should `theme-core` own the light/dark mode toggle state, or
   is that a shell-local concern read from each OS's system
   appearance API?
-- Do we ship the Android `vectis-design` library as a sibling
-  module in the same Gradle build, or as a published artifact?
+- The legacy Android codebase ships custom motion / elevation
+  tokens that have no iOS counterpart — surface them as
+  Android-only theme entries during shell generation, or omit
+  them from `tokens.yaml` entirely until iOS catches up?
 ```

@@ -73,15 +73,15 @@ A view's `body` computed property should not exceed 50 lines. Complex views shou
 
 **Fix**: Extract sections into private sub-view properties or separate view structs.
 
-## SWF-006: Missing VectisDesign Import
+## SWF-006: Stale VectisDesign Import
 
 **Severity**: Warning
 
-Every `.swift` file in `Views/` that uses design system tokens must import `VectisDesign`.
+`VectisDesign` was the pre-RFC-11 Swift Package that exposed shared design-system types. Post-RFC-11 (§J / §L), `vectis:ios-writer` emits the same `VectisColors` / `VectisTypography` / `VectisSpacing` / `VectisCornerRadius` enums as **shell-local** Swift files under `iOS/<App>/Theme/`. Same-target Swift code resolves the names without any `import` statement, so `import VectisDesign` lines that survive a regeneration are stale migration debt — they refer to a package that the writer no longer scaffolds and that the project no longer declares as a dependency.
 
-**Detection**: Search for `VectisColors`, `VectisTypography`, `VectisSpacing`, or `VectisCornerRadius` usage without a corresponding `import VectisDesign`.
+**Detection**: Search every `.swift` file (production + previews + tests) for `import VectisDesign`. Flag every occurrence.
 
-**Fix**: Add `import VectisDesign` at the top of the file.
+**Fix**: Remove the `import VectisDesign` line. The `VectisColors` / `VectisTypography` / `VectisSpacing` / `VectisCornerRadius` references that follow it resolve against the shell-local `iOS/<App>/Theme/` files in the same target. If the project still declares a `VectisDesign` Swift Package dependency (in `project.yml` or the Xcode project), flag that as a follow-up cleanup task per the ios-writer's Update Mode Step U7 (RFC-11 Phase 3.1).
 
 ## SWF-007: Deprecated API Usage
 

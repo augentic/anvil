@@ -9,7 +9,6 @@ The root content view switches on the `ViewModel` enum to display the appropriat
 ```swift
 import Inject
 import SwiftUI
-import VectisDesign
 
 struct ContentView: View {
     @ObservedObject var core: Core
@@ -32,6 +31,8 @@ struct ContentView: View {
     }
 }
 ```
+
+Token references (`VectisColors`, `VectisTypography`, `VectisSpacing`, `VectisCornerRadius`) used throughout this document resolve to the shell-local `Theme/` files generated under `iOS/<App>/Theme/` from `tokens.yaml` (see [`design-system-integration.md`](design-system-integration.md) and [`swift-token-templates.md`](swift-token-templates.md)). They are part of the same target as the views below, so no `import` is needed. When `tokens.yaml` is absent, follow the HIG fallback table in `design-system-integration.md` instead.
 
 ### Rules
 

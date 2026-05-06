@@ -21,7 +21,7 @@ Resolve the starting point for this run by checking inputs in this order. Stop a
 
 The `artifacts:` block in [`schemas/vectis/schema.yaml`](../schema.yaml) is the sole authoritative source of layout file locations. Read the path templates from there rather than hard-coding them — the CLI validators below honour the same cascade automatically when no explicit `[path]` is supplied.
 
-When a `design-system/tokens.yaml` file exists or `design-system` is listed in the proposal's Platforms, reference token names for `style`, `color`, and `size` properties.
+When a `design-system/tokens.yaml` file exists, or an explicit `tokens.yaml` path is supplied by the change (via [`artifacts.tokens.paths`](../schema.yaml) — typically `.specify/changes/<name>/tokens.yaml`), reference token names for `style`, `color`, and `size` properties. The trigger keys off **file existence**, not Platforms membership: `design-system` is no longer a peer platform (RFC-11 §L), so its presence in the proposal's `Platforms` is neither sufficient nor necessary — the post-write `specify vectis validate composition` gate will auto-invoke `tokens` mode whenever a sibling `tokens.yaml` is present, and the absence of one short-circuits the check cleanly.
 
 ### Validate the resolved input
 

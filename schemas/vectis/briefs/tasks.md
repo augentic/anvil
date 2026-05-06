@@ -7,7 +7,7 @@ needs: [specs, design]
 
 Follow the task format conventions defined in the define skill for checkbox format, grouping, ordering, and skill directive tags.
 
-Tasks are organized by build phase, not by feature. All features in the change share a single task list ordered: design-system first, core second, shells last.
+Tasks are organized by build phase, not by feature. All features in the change share a single task list ordered: core first, shells second. Token, asset, and layout work is input context for the shells (read directly by `vectis:ios-writer` and `vectis:android-writer` from `tokens.yaml` / `assets.yaml` / `composition.yaml`) — it is not a separate task tier (RFC-11 §J / §L).
 
 Each task references the single feature spec at `specs/<feature>/spec.md`. The spec contains both core requirements and any platform-specific requirements in dedicated sections.
 
@@ -29,7 +29,7 @@ Valid: `Add fixture-backed effect tests covering the API success and failure res
 
 After drafting `tasks.md`, re-read every checkbox line and ask, for each task:
 
-1. Could a coding agent perform this action using core/shell writers, test writers, design-system writers, reviewer skills, fixtures, mocked effects, or local build commands available below?
+1. Could a coding agent perform this action using core/shell writers, test writers, reviewer skills, fixtures, mocked effects, or local build commands available below?
 2. If the task mentions humans, manual mobile testing, visual inspection, real services, physical devices, app store review, or user confirmation, is the action genuinely avoiding them (e.g. "without manual visual inspection") or genuinely requiring them? Requiring them is a rewrite. Avoiding them is fine, but prefer to omit the reference entirely so future readers don't have to parse the negation.
 3. Does the list as a whole include at least one task that verifies outcomes — `vectis:test-writer`, `vectis:core-reviewer`, `vectis:ios-reviewer`, `vectis:android-reviewer`, fixture-backed tests, or shell build commands?
 
@@ -44,11 +44,10 @@ For `tasks.md`, `specify change validate` checks checkbox/grouping shape only �
 | `vectis:core-writer`           | Generate or update Crux core       | Core implementation tasks              |
 | `vectis:test-writer`           | Generate or update test suites     | Test generation tasks                  |
 | `vectis:core-reviewer`         | AI code review for Crux core       | Post-implementation review of core     |
-| `vectis:ios-writer`            | Generate or update iOS shell       | iOS shell implementation tasks         |
+| `vectis:ios-writer`            | Generate or update iOS shell       | iOS shell implementation tasks (reads `composition.yaml` / `tokens.yaml` / `assets.yaml` directly; emits shell-local theme + asset code under `iOS/`) |
 | `vectis:ios-reviewer`          | AI code review for iOS shell       | Post-implementation review of iOS      |
-| `vectis:android-writer`        | Generate or update Android shell   | Android shell implementation tasks     |
+| `vectis:android-writer`        | Generate or update Android shell   | Android shell implementation tasks (reads `composition.yaml` / `tokens.yaml` / `assets.yaml` directly; emits shell-local theme + drawable resources under `Android/`) |
 | `vectis:android-reviewer`      | AI code review for Android shell   | Post-implementation review of Android  |
-| `vectis:design-system-writer`  | Regenerate iOS + Android design system from tokens | Design system generation tasks         |
 
 ## Composition Awareness
 

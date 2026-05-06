@@ -8,9 +8,11 @@ argument-hint: "<change-dir>"
 
 Generate or update a buildable SwiftUI iOS shell for an existing Crux core application. The shell renders the core's `ViewModel`, dispatches `Event` values from user interactions, and handles platform side-effects (HTTP, KV, SSE) on behalf of the core.
 
+The iOS writer reads `tokens.yaml`, `assets.yaml`, and `composition.yaml` directly and emits **shell-local** theme + asset catalog code inside the iOS shell tree (RFC-11 §L "Generated layout"). There is no shared Swift Package, no `import VectisDesign`, and no path back into `design-system/ios/` from the rendered shell project. When `tokens.yaml` is absent, the writer falls back to platform-native HIG defaults (RFC-11 §F "Fallback policy belongs to shell writers"). See [`references/design-system-integration.md`](references/design-system-integration.md) for the full integration contract and [`references/swift-token-templates.md`](references/swift-token-templates.md) for the per-category Swift code templates.
+
 When an existing iOS shell is detected, the skill operates in **update mode**: it compares the current `app.rs` types against the existing Swift code and makes targeted edits rather than regenerating from scratch.
 
-When no iOS shell exists yet, the skill runs `specify vectis add-shell ios --dir {app-dir}` to scaffold the project. The CLI owns `iOS/project.yml`, `iOS/Makefile`, the Inject SPM wiring, the `{AppName}App.swift` entry point, a render-only `Core.swift` with CAP markers, a baseline `ContentView.swift`, and the starter `Views/LoadingScreen.swift` / `Views/HomeScreen.swift`. Once the scaffold exists this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
+When no iOS shell exists yet, the skill runs `specify vectis add-shell ios --dir {app-dir}` to scaffold the project. The CLI owns `iOS/project.yml`, `iOS/Makefile`, the Inject SPM wiring, the `{AppName}App.swift` entry point, a render-only `Core.swift` with CAP markers, a baseline `ContentView.swift`, and the starter `Views/LoadingScreen.swift` / `Views/HomeScreen.swift`. The writer adds `Theme/`, `Components/`, and `Resources/Assets.xcassets/` on first generation when the corresponding inputs exist. Once the scaffold exists this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
 
 This skill targets **Swift 6** and **SwiftUI** with iOS 17+ deployment target.
 
@@ -52,19 +54,21 @@ The ios-writer reads the Crux core source to determine what the shell must rende
 | Surface decoration | `composition.yaml` `background`, `corner_radius`, `elevation` on groups | Styled container views with background, cornerRadius, shadow |
 | Field bindings | `composition.yaml` `bind` keys on items | Property bindings in views |
 | Event wiring | `composition.yaml` `event` keys on items | `onEvent()` interaction handlers |
-| Token references | `composition.yaml` `style`, `color`, `gap`, `padding` | `VectisTypography.*` / `VectisColors.*` / `VectisSpacing.*` |
+| Token references | `composition.yaml` `style`, `color`, `gap`, `padding` | Shell-local Theme types: `VectisTypography.*` / `VectisColors.*` / `VectisSpacing.*` (defined under `iOS/<App>/Theme/`, generated from `tokens.yaml`) |
+| Component directive | `composition.yaml` `group.component: <slug>` | One named SwiftUI `View` per slug under `iOS/<App>/Components/`, PascalCased (`task-row` → `TaskRow`) |
+| Asset references | `composition.yaml` `image:` / `icon:` / `icon-button:` / `fab:` resolved through `assets.yaml` | `Image("<asset-id>")` for raster / vector copied into `iOS/<App>/Resources/Assets.xcassets/`; `Image(systemName: "<sf-symbol>")` for `kind: symbol` entries |
 | Conditional rendering | `composition.yaml` `states` and `*-when` keys | `if`/`switch` in view code |
 | Iteration | `composition.yaml` `list.each` / `grid.each` + `item` keys | `ForEach` / `List` / `LazyVStack` |
 
 Also read:
 - `{app-dir}/shared/src/lib.rs` -- custom capability modules
 - `{app-dir}/shared/Cargo.toml` -- capability dependencies
-- `design-system/tokens.yaml` -- design tokens for styling
-- `design-system/spec.md` -- design system usage rules
+- `tokens.yaml` -- design tokens for styling. Resolution order: change-local `{change-dir}/tokens.yaml`, then project-level `design-system/tokens.yaml`. When neither exists the writer falls back to platform-native HIG defaults (see [`references/design-system-integration.md`](references/design-system-integration.md)).
+- `assets.yaml` plus referenced files -- asset inventory for image / icon / symbol references in `composition.yaml`. Resolution order: change-local `{change-dir}/assets.yaml` plus `{change-dir}/assets/`, then `design-system/assets.yaml` plus `design-system/assets/`. The writer copies referenced files into `iOS/<App>/Resources/Assets.xcassets/` per the copy-on-generate rule (RFC-11 §E, §I).
 
 When `change-dir` is provided, also read:
 - `{change-dir}/specs/{feature-name}/spec.md` -- read the `## iOS Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## iOS Shell Details` section of `{change-dir}/design.md` for platform design decisions.
-- `{change-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- composition artifact for deterministic layout instructions (when present).
+- `{change-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- wired composition artifact for deterministic layout instructions. Cross-artifact reference checks (every `bind` / `event` / token / asset reference resolves) are owned by `specify vectis validate composition`; the writer consumes the already-validated input set rather than re-validating at generation time.
 
 ## Mode Detection
 
@@ -146,13 +150,16 @@ Extract from existing Swift code:
 | Effect handlers | Cases in `processEffect` switch |
 | ViewModel cases | Cases in `ContentView` switch |
 | Screen views | `.swift` files in `Views/` |
+| Component views | `.swift` files in `Components/` (one per `component: <slug>`) |
+| Theme files | `.swift` files in `Theme/` (one per `tokens.yaml` category, plus `Theme.swift`) |
+| Asset catalog entries | Subdirectories of `Resources/Assets.xcassets/` (one per `assets.yaml` entry of `kind: raster` or `kind: vector`) |
 | Event dispatches | All `onEvent(...)` calls |
-| Design system usage | `VectisColors`, `VectisTypography`, `VectisSpacing` references |
+| Design system usage | `VectisColors`, `VectisTypography`, `VectisSpacing`, `VectisCornerRadius` references; presence or absence of `import VectisDesign` (legacy — must be removed) |
 | Inject integration | `import Inject`, `@ObserveInjection`, `.enableInjection()` per view |
 
 ### U4. Diff analysis
 
-Compare the Rust core types (from U1) against the Swift inventory (from U3). For each category, classify items as Added, Removed, Modified, or Unchanged.
+Compare the Rust core types (from U1) and the input artifacts (`tokens.yaml`, `assets.yaml`, `composition.yaml`) against the Swift inventory (from U3). For each category, classify items as Added, Removed, Modified, or Unchanged.
 
 Walk through in this order:
 
@@ -161,6 +168,10 @@ Walk through in this order:
 3. **Per-page view struct fields** -- changed display data affects screen views.
 4. **Event variants** -- new or removed user actions affect screen views.
 5. **Route variants** -- new or removed navigation destinations affect navigation code.
+6. **Token categories** -- categories added / removed / changed in `tokens.yaml` map to files added / removed / rewritten under `Theme/` (per [`references/swift-token-templates.md`](references/swift-token-templates.md)). Categories absent from `tokens.yaml` follow the HIG fallback in [`references/design-system-integration.md`](references/design-system-integration.md).
+7. **Asset entries** -- entries added / removed / changed in `assets.yaml` map to copies / deletions / re-copies under `Resources/Assets.xcassets/` per the copy-on-generate rule.
+8. **Component directives** -- `component: <slug>` entries in `composition.yaml` map to files added / removed / refreshed under `Components/`.
+9. **Legacy VectisDesign references** -- any `import VectisDesign` line, any `package: VectisDesign` entry in `project.yml`, and any `path: ../../../design-system/ios` package declaration are migration debt and MUST be removed (RFC-11 §L "Compatibility policy"); the shell-local `Theme/` files now satisfy the same role.
 
 Output the diff summary before making edits.
 
@@ -178,12 +189,34 @@ Output the diff summary before making edits.
 - Update existing screen views for changed per-page view struct fields.
 - Add/remove event dispatch calls for changed Event variants.
 - If Inject is missing from any view file (including `ContentView.swift`, `{AppName}App.swift`, and all screen views), add the boilerplate: `import Inject`, `@ObserveInjection var inject` property, and `.enableInjection()` as the outermost body modifier.
+- Remove any lingering `import VectisDesign` lines from screen / component / app entry-point files. Token references (`VectisColors.*`, `VectisSpacing.*`, etc.) keep working unchanged because they now resolve to the shell-local `Theme/` files in the same target.
+
+### U6a. Refresh `Theme/` from `tokens.yaml`
+
+When `tokens.yaml` is present, regenerate `iOS/<App>/Theme/` from the YAML per [`references/swift-token-templates.md`](references/swift-token-templates.md): one Swift file per token category (with `spacing` / `cornerRadius` colocated in `Theme/Spacing.swift`), plus the structural `Theme/Theme.swift` scaffold. Files carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header (except `Theme.swift`) so a subsequent regeneration overwrites them safely. The header always uses the canonical project-level path `design-system/tokens.yaml` regardless of whether the current generation reads from a change-local file — this keeps the header stable across the change lifecycle and avoids breaking header-based detection of generated files.
+
+When a category is removed from `tokens.yaml`, delete the corresponding file under `Theme/`. Files that lack the "Generated from" header are operator-owned and must be preserved. When `tokens.yaml` is **absent** the writer skips this step entirely and follows the HIG fallback policy from [`references/design-system-integration.md`](references/design-system-integration.md).
+
+### U6b. Refresh `Components/` from `composition.yaml`
+
+For every `group` carrying `component: <slug>` (RFC-11 §G, §I), emit one named SwiftUI `View` under `iOS/<App>/Components/<PascalCaseSlug>.swift`. Props are inferred from variation observed across instances of the slug: `bind`, `event`, `error`, `asset`, token references, `*-when` keys, and free text content that differ across instances become parameters; values constant across all instances are baked into the view body. The structural-identity rule is enforced by `specify vectis validate composition` before this skill runs, so the writer can trust every instance of the slug shares the same skeleton.
+
+When a slug disappears from `composition.yaml`, delete the corresponding `Components/<PascalCaseSlug>.swift` file and rewrite each former call site to inline the group body. See [`references/design-system-integration.md`](references/design-system-integration.md) for a worked `task-row` example.
+
+### U6c. Refresh `Resources/Assets.xcassets/` from `assets.yaml`
+
+For every `assets.yaml` entry referenced from `composition.yaml`, copy the per-platform iOS source(s) into `iOS/<App>/Resources/Assets.xcassets/<asset-id>.imageset/` (raster or vector). `kind: symbol` entries do not generate a catalog entry — emit `Image(systemName: "<sf-symbol>")` at the call site instead. The canonical `source:` SVG (when present in a vector entry) is provenance only and is **never** copied into the shell tree.
+
+When an entry is removed from `assets.yaml` or its references are removed from `composition.yaml`, delete the corresponding generated catalog entry. Operator-authored entries (e.g. `AppIcon.appiconset/`) are preserved.
+
+Missing iOS exports for `vector` entries referenced from `composition.yaml` are validation errors, not deferred TODOs (RFC-11 §E "Missing vector exports"). If the validator reports a missing export the writer halts shell generation for the affected screen and surfaces the validator output verbatim — it does **not** silently fall back to the canonical SVG, generate a placeholder, or skip the screen.
 
 ### U7. Update build configuration
 
 - Update `project.yml` if new dependencies are needed.
 - Update `Makefile` if build targets changed.
 - If `project.yml` lacks the `Inject` SPM package, add it along with the `- package: Inject` target dependency, Debug-only `OTHER_LDFLAGS` (`["-w", "-Xlinker", "-interposable"]`), and `EMIT_FRONTEND_COMMAND_LINES: "YES"` in the Debug config.
+- Remove any legacy `VectisDesign` package declaration (`packages: VectisDesign: { path: ../../../design-system/ios }`) and the matching `- package: VectisDesign` target dependency. The shell-local `Theme/` files satisfy the same role without an external Swift Package; leaving the entries causes XcodeGen to fail when `design-system/ios/` no longer exists post-Phase 4.1.
 
 ### U8. Format and verify
 
@@ -229,7 +262,8 @@ When `composition.yaml` is absent, the existing inference behavior is unchanged 
 |---|---|
 | `references/crux-ios-shell-pattern.md` | Core.swift template, effect handling, serialization protocol |
 | `references/swiftui-view-patterns.md` | Screen patterns, lists, forms, navigation, accessibility |
-| `references/design-system-integration.md` | VectisDesign token usage in views |
+| `references/design-system-integration.md` | Shell-local theme + asset integration: generated layout under `iOS/<App>/Theme/`, HIG fallback when `tokens.yaml` is absent, asset copy-on-generate rules, component-directive contract |
+| `references/swift-token-templates.md` | Concrete Swift code templates per token category (color, typography, scalar, border, theme bundle); migrated from `design-system-writer` per RFC-11 §J |
 
 XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffolding (`project.yml` packages, Inject SPM wiring, CAP markers, starter screens) are owned by the CLI's embedded templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/src/init/ios.rs` and `<specify-cli>/templates/vectis/ios/`). Do not hand-edit those files in Create Mode; let `specify vectis add-shell ios` write them and then modify in Update Mode.
 
@@ -248,7 +282,9 @@ XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffold
 | Unknown Effect variant | Add a placeholder `case` with a `fatalError("unhandled")` and report |
 | `xcodegen` fails | Check `project.yml` syntax; verify path references |
 | Build fails with missing types | Verify `uniffi` is pinned to the expected version (run `specify vectis update-versions --dry-run` to inspect). Run `specify vectis verify` to detect mismatches |
-| VectisDesign not found | Check package path in `project.yml` relative to `{project-dir}` |
+| Build fails on `import VectisDesign` | Legacy migration debt — the shell now emits theme code under `iOS/<App>/Theme/` (RFC-11 §L). Drop the `import` line and the `package: VectisDesign` entry from `project.yml`; existing token references (`VectisColors.*`, `VectisSpacing.*`, etc.) keep working because the Theme files live in the same target |
+| `specify vectis validate composition` reports unresolved token / asset reference | The composition is referencing a token or asset id that is not declared in `tokens.yaml` / `assets.yaml`. The writer halts; the operator must either add the missing entry or remove the reference (RFC-11 §F, §I "Validation gate") |
+| Missing iOS export for a `kind: vector` asset | Per RFC-11 §E, this is an error and not a deferred TODO. Halt shell generation for the affected screen and report the missing `sources.ios` field |
 
 ## Verification Checklist
 
@@ -266,14 +302,40 @@ XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffold
 - [ ] Every shell-facing Event variant is dispatched by at least one view
 - [ ] `Core.swift` is `@MainActor` and `ObservableObject`
 - [ ] App entry point uses `@StateObject` for the core
-- [ ] App entry point applies `.vectisTheme()`
+- [ ] App entry point applies `.vectisTheme()` when `tokens.yaml` is present (the modifier is defined in the shell-local `Theme/Theme.swift`); HIG-fallback shells omit the modifier
 
 ### Design System
 
+When `tokens.yaml` is **present**:
+
+- [ ] `iOS/<App>/Theme/` exists with one Swift file per token category plus `Theme.swift`
 - [ ] All color references use `VectisColors` (no hardcoded hex)
 - [ ] All font references use `VectisTypography` (no inline `.system(size:)`)
 - [ ] All spacing values use `VectisSpacing` (no magic numbers)
 - [ ] All corner radius values use `VectisCornerRadius`
+- [ ] No `import VectisDesign` lines anywhere in the shell tree
+- [ ] No `package: VectisDesign` entry in `project.yml`
+- [ ] No `path: ../../../design-system/ios` reference in `project.yml`
+
+When `tokens.yaml` is **absent** (HIG fallback path):
+
+- [ ] No `iOS/<App>/Theme/` directory generated
+- [ ] Color references use SwiftUI semantic colors (`.primary`, `.secondary`, `.accentColor`, `Color(.systemBackground)`)
+- [ ] Font references use `Font.system(.body)` etc.
+- [ ] No hardcoded hex via `Color(red:green:blue:)` or `Color("named-token")`
+
+### Assets
+
+- [ ] Every asset id referenced by `composition.yaml` resolves to an entry in `assets.yaml`
+- [ ] Every referenced raster / vector entry has a corresponding `<asset-id>.imageset/` under `iOS/<App>/Resources/Assets.xcassets/`
+- [ ] No `path: ../../../design-system/assets` reference in `project.yml`
+- [ ] `kind: symbol` entries are rendered via `Image(systemName: "<sf-symbol>")` at the call site (no catalog entry)
+
+### Components
+
+- [ ] Every `component: <slug>` directive in `composition.yaml` has a corresponding `Components/<PascalCaseSlug>.swift` file
+- [ ] Every call site of the slug uses the named `View` (e.g. `TaskRow(...)`), not an inlined group body
+- [ ] Slugs that no longer appear in `composition.yaml` have their `Components/<PascalCaseSlug>.swift` files deleted
 
 ### Hot Reloading
 
