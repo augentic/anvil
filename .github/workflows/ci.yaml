@@ -6,6 +6,7 @@ on:
       - "plugins/**"
       - "schemas/**"
       - "scripts/**"
+      - "docs/**"
       - ".cursor/rules/**"
       - ".cursor-plugin/**"
       - ".github/workflows/ci.yaml"
