@@ -1,6 +1,6 @@
 # Emitted `specify change plan add` invocations — monolith
 
-The three commands the propose brief shells out when every slice is accepted without edit. Emit order is dependency-order + within- layer alphabetical (see [`capabilities/omnia/briefs/plan/propose.md` §Emit order](../../../../../../../../capabilities/omnia/briefs/plan/propose.md)):
+The three commands the propose brief shells out when every slice is accepted without edit. Emit order is dependency-order + within- layer alphabetical (see [`plugins/change/skills/plan/briefs/omnia/propose.md` §Emit order](../../../../briefs/omnia/propose.md)):
 
 1. `email-verification` — leaf (no `--depends-on`), description carries path hints from the capability's `sources:` list.
 2. `shared-validation` — leaf (no `--depends-on`), description carries path hints.

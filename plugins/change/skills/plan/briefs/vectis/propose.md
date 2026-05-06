@@ -33,7 +33,7 @@ Vectis is a Crux stack: one Rust shared core crate with an `App` trait that is c
 
 Project assignment is handled by the plan skill's assignment step (RFC-3b §*Assignment algorithm*), not by the propose brief. The propose brief creates entries without `--project`. `workspace.md` is operator-facing context: which peers were synced, where their `.specify/` trees live under `.specify/workspace/<name>/`, and whether their checkouts are clean. **Authoring rule:** every plan entry MUST still list only `sources:` keys that exist in the change plan's top-level `sources:` map (the single-writer CLI enforces this today).
 
-When the assignment step (3(d)) routes an entry to a project that does not yet exist in `registry.yaml`, the plan skill — not this brief — runs the **registry-proposal sub-step** (RFC-9 §2B; see `plugins/spec/skills/plan/SKILL.md` → §"Step 3(d).1 — Registry proposal sub-step"). The sub-step shells out to `specify registry add`, then `specify workspace sync`, then `specify change plan amend --project <name>` for the entry. This brief never proposes registry entries directly — its single-writer responsibility is `specify change plan add` for each accepted slice.
+When the assignment step (3(d)) routes an entry to a project that does not yet exist in `registry.yaml`, the plan skill — not this brief — runs the **registry-proposal sub-step** (RFC-9 §2B; see `plugins/change/skills/plan/SKILL.md` → §"Step 3(d).1 — Registry proposal sub-step"). The sub-step shells out to `specify registry add`, then `specify workspace sync`, then `specify change plan amend --project <name>` for the entry. This brief never proposes registry entries directly — its single-writer responsibility is `specify change plan add` for each accepted slice.
 
 ### Resulting draft order
 
@@ -126,8 +126,9 @@ Skip the `specify change plan create` step (the caller, typically the `/change:p
 ## Notes
 
 - Heuristics applied (Vectis, from
-  `capabilities/vectis/briefs/plan/propose.md`): shared-core first
-  (slices 1–2), design-system next (slice 3), per-shell last
+  `plugins/change/skills/plan/briefs/vectis/propose.md`):
+  shared-core first (slices 1–2), design-system next (slice 3),
+  per-shell last
   (slices 4–5). Each shell slice depends on the corresponding
   `-core` entry plus `design-tokens`.
 - Slice 5's `description` was edited during review to clarify

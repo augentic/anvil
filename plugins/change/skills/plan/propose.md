@@ -1,6 +1,6 @@
 # Propose (step 3c)
 
-Step 3(c) invokes the propose brief declared in `pipeline.plan` (for Omnia, `capabilities/omnia/briefs/plan/propose.md`; for Vectis, `capabilities/vectis/briefs/plan/propose.md`; other capabilities ship their own). Propose reads `discovery.md`, applies the capability's slice heuristics to decompose the inventory into draft slices with `depends-on` edges, and iterates with the human on each slice (accept / edit / reject / abort). For every accepted slice, the skill shells out to:
+Step 3(c) invokes the propose brief bundled with this skill at `briefs/<capability>/propose.md` (for Omnia, [`briefs/omnia/propose.md`](briefs/omnia/propose.md); for Vectis, [`briefs/vectis/propose.md`](briefs/vectis/propose.md); other capabilities ship their own variant alongside). RFC-13 §3.11 moved planning briefs out of the capability manifest (`pipeline.plan` is now rejected by `capabilities/capability.schema.json`) and into this skill: planning is orchestration, not capability-owned slice work. Propose reads `discovery.md`, applies the capability's slice heuristics to decompose the inventory into draft slices with `depends-on` edges, and iterates with the human on each slice (accept / edit / reject / abort). For every accepted slice, the skill shells out to:
 
 ```text
 specify change plan add <name> \

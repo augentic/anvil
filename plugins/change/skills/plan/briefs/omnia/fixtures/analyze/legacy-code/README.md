@@ -1,6 +1,6 @@
 # `plan/analyze/legacy-code/` fixture
 
-Worked example for the legacy-code branch of [Omnia `plan/analyze.md`](../../../../plan/analyze.md).
+Worked example for the legacy-code branch of [Omnia `analyze.md`](../../../analyze.md).
 
 ## Contents
 
@@ -21,12 +21,12 @@ The brief walks `./inputs/monolith/`, clusters its source tree into four capabil
 
 ## What this fixture pins
 
-- On-disk shape of capability summaries matches the [`analyze/SKILL.md` §Output contract](../../../../../../../plugins/spec/skills/analyze/SKILL.md): `### <name>` heading plus fenced YAML block, fixed field order (`summary`, `sources`, `depends-on`, `hints`, `confidence`).
+- On-disk shape of capability summaries matches the [`analyze/SKILL.md` §Output contract](../../../../../../../../spec/skills/analyze/SKILL.md): `### <name>` heading plus fenced YAML block, fixed field order (`summary`, `sources`, `depends-on`, `hints`, `confidence`).
 - Capabilities sort alphabetically by name. `sources`, `depends-on`, `hints.entry_points`, `hints.external_deps` each sort alphabetically within their block.
-- The `user-registration` entry reproduces the canonical sample from [`rfc-3a-monoliths.md` §*Plan-time analysis, define-time extraction*](../../../../../../../rfcs/archive/rfc-3a-monoliths.md) in the on-disk shape — same summary, same source set, same `depends-on`, same hints, same `confidence: high`. (The RFC snippet is in `capabilities: - name: …` YAML-list form; the fixture renders it as `### user-registration` + fenced YAML per the SKILL's output contract, with `sources` in canonical alphabetical order.)
+- The `user-registration` entry reproduces the canonical sample from [`rfc-3a-monoliths.md` §*Plan-time analysis, define-time extraction*](../../../../../../../../../rfcs/archive/rfc-3a-monoliths.md) in the on-disk shape — same summary, same source set, same `depends-on`, same hints, same `confidence: high`. (The RFC snippet is in `capabilities: - name: …` YAML-list form; the fixture renders it as `### user-registration` + fenced YAML per the SKILL's output contract, with `sources` in canonical alphabetical order.)
 - `<!-- source-key: monolith -->` marker precedes every `### <name>` heading — this invocation passes `--source-key monolith` so the skill tags each capability.
 - The `shared-validation` block omits the `hints:` map entirely (no entry points, no external deps) — a legal shape per the output contract.
-- `metadata.json` matches the v1 shape pinned by [`analyze/SKILL.md` §Structural metadata](../../../../../../../plugins/spec/skills/analyze/SKILL.md): six required fields in fixed order, `top_level_modules` alphabetically sorted, no timestamps.
+- `metadata.json` matches the v1 shape pinned by [`analyze/SKILL.md` §Structural metadata](../../../../../../../../spec/skills/analyze/SKILL.md): six required fields in fixed order, `top_level_modules` alphabetically sorted, no timestamps.
 - No `## Constraints` or `## Open questions` appendix blocks — the legacy-code branch does not emit them (documentation-only, see §*Documentation branch* of the brief).
 
 ## Not covered here

@@ -1,6 +1,6 @@
 [dry-run] /change:plan — traffic-modernisation
 
-Initiative: traffic-modernisation Pipeline: pipeline.plan (discovery, propose) Inputs (from change.md:inputs, no CLI flags supplied):
+Initiative: traffic-modernisation Pipeline: change-plan briefs (discovery, propose) Inputs (from change.md:inputs, no CLI flags supplied):
   - ./inputs/legacy-traffic/ (legacy-code)
   - ./inputs/ops-runbook.pdf (documentation)
 

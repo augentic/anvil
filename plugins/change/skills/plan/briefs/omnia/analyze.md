@@ -6,9 +6,9 @@ generates: .specify/plans/<name>/discovery.md
 
 # Omnia per-kind prompts for `/spec:analyze`
 
-This brief carries Omnia's clustering / extraction prompts for the [`/spec:analyze`](../../../../plugins/spec/skills/analyze/SKILL.md) skill. The skill resolves this file, dispatches on `$KIND`, and executes exactly one of the branches below.
+This brief carries Omnia's clustering / extraction prompts for the [`/spec:analyze`](../../../../../spec/skills/analyze/SKILL.md) skill. The skill resolves this file, dispatches on `$KIND`, and executes exactly one of the branches below.
 
-Both branches emit the same on-disk shape — one `### <name>` heading per capability followed by a fenced YAML block. The normative capability-summary contract lives in [`analyze/SKILL.md` §Output contract](../../../../plugins/spec/skills/analyze/SKILL.md). Do not invent new fields, drop required fields, or deviate from the fixed field order.
+Both branches emit the same on-disk shape — one `### <name>` heading per capability followed by a fenced YAML block. The normative capability-summary contract lives in [`analyze/SKILL.md` §Output contract](../../../../../spec/skills/analyze/SKILL.md). Do not invent new fields, drop required fields, or deviate from the fixed field order.
 
 **Fixed field order (hard contract):** inside each YAML block, fields MUST appear in the order `summary`, `sources`, `depends-on`, `hints`, `confidence`. Capabilities MUST be sorted alphabetically by name. Within each capability, `sources`, `depends-on`, `hints.entry_points`, and `hints.external_deps` MUST each be sorted alphabetically.
 
@@ -107,7 +107,7 @@ Rules:
 
 ### 5. Idempotency
 
-Follow the rules pinned in [`analyze/SKILL.md` §Idempotency](../../../../plugins/spec/skills/analyze/SKILL.md):
+Follow the rules pinned in [`analyze/SKILL.md` §Idempotency](../../../../../spec/skills/analyze/SKILL.md):
 
 - Capabilities sorted alphabetically by name.
 - Fixed field order inside each YAML block (§Step 3 above).
@@ -131,7 +131,7 @@ When `$SOURCE_KEY` is supplied, the skill (not this brief) prepends the `<!-- so
 
 ### Worked example
 
-Fixture tree: [`../fixtures/plan/analyze/documentation/`](../fixtures/plan/analyze/documentation/).
+Fixture tree: [`./fixtures/analyze/documentation/`](./fixtures/analyze/documentation/).
 
 Invocation (run from the fixture directory):
 
@@ -139,9 +139,9 @@ Invocation (run from the fixture directory):
 /spec:analyze --kind documentation ./inputs/ ./expected/
 ```
 
-Input: a single runbook under [`inputs/ops-runbook.md`](../fixtures/plan/analyze/documentation/inputs/ops-runbook.md) describing two operational procedures plus one deferred decision.
+Input: a single runbook under [`inputs/ops-runbook.md`](./fixtures/analyze/documentation/inputs/ops-runbook.md) describing two operational procedures plus one deferred decision.
 
-Expected output: two capability summaries (alphabetical: `drain-backpressure-queue`, `rotate-upstream-ingest-key`), each with `confidence: high`, plus a `## Constraints` block and a `## Open questions` block. See [`expected/discovery.md`](../fixtures/plan/analyze/documentation/expected/discovery.md) for the byte-stable target.
+Expected output: two capability summaries (alphabetical: `drain-backpressure-queue`, `rotate-upstream-ingest-key`), each with `confidence: high`, plus a `## Constraints` block and a `## Open questions` block. See [`expected/discovery.md`](./fixtures/analyze/documentation/expected/discovery.md) for the byte-stable target.
 
 ---
 
@@ -175,12 +175,12 @@ Capability names are kebab-case, 2–4 tokens, noun-phrases describing the behav
 
 ### 3. Per-capability output
 
-Emit one capability summary per inferred capability, in the on-disk shape pinned by [`analyze/SKILL.md` §Output contract](../../../../plugins/spec/skills/analyze/SKILL.md) — `### <name>` heading followed by a fenced YAML block.
+Emit one capability summary per inferred capability, in the on-disk shape pinned by [`analyze/SKILL.md` §Output contract](../../../../../spec/skills/analyze/SKILL.md) — `### <name>` heading followed by a fenced YAML block.
 
 Fields, in strict order:
 
 - **`summary`** — single-sentence imperative ("Create new user accounts with email verification."). Derived from the capability's dominant docstring, README entry, or endpoint-cluster description.
-- **`sources`** — **file-hint list**: source files this capability substantively inhabits, relative to `$INPUT_PATH`, alphabetically sorted. This list becomes `scope.<key>.include` downstream (see [`rfc-3a-monoliths.md` §*Scoped extraction on monoliths*](../../../../rfcs/archive/rfc-3a-monoliths.md)). Include every file that substantively implements the capability; exclude pure test files and imports-only glue.
+- **`sources`** — **file-hint list**: source files this capability substantively inhabits, relative to `$INPUT_PATH`, alphabetically sorted. This list becomes `scope.<key>.include` downstream (see [`rfc-3a-monoliths.md` §*Scoped extraction on monoliths*](../../../../../../rfcs/archive/rfc-3a-monoliths.md)). Include every file that substantively implements the capability; exclude pure test files and imports-only glue.
 - **`depends-on`** — names of OTHER capabilities this one imports or calls. Alphabetically sorted. Empty list allowed.
 - **`hints.entry_points`** — HTTP routes, CLI commands, message-broker topics, scheduled triggers. Alphabetically sorted. Either omit the key entirely or emit a non-empty list.
 - **`hints.external_deps`** — external systems (databases, queues, identity providers, third-party APIs) inferred from imports and configuration. Kebab-case names (`postgres`, `sendgrid`, `azure-ad`). Alphabetically sorted. Either omit the key entirely or emit a non-empty list.
@@ -196,7 +196,7 @@ Do NOT emit `## Constraints` or `## Open questions` appendix blocks from this br
 
 ### 4. Structural metadata (`metadata.json`)
 
-In addition to capability summaries, write `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json` with the shape pinned in [`analyze/SKILL.md` §Structural metadata](../../../../plugins/spec/skills/analyze/SKILL.md). Omnia conventions for the numeric fields:
+In addition to capability summaries, write `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json` with the shape pinned in [`analyze/SKILL.md` §Structural metadata](../../../../../spec/skills/analyze/SKILL.md). Omnia conventions for the numeric fields:
 
 - **`language`** — detected primary source language, kebab-case (`typescript`, `javascript`, `rust`, `go`, `python`, `java`, `kotlin`, `csharp`). Prefer the language with the largest share of non-generated LOC.
 - **`loc`** — total non-blank non-comment source lines. Exclude test files, vendored dependency directories (`node_modules`, `vendor`, `target`, `.venv`), and generated code (`*.gen.ts`, `*_pb.go`, etc.).
@@ -208,7 +208,7 @@ In addition to capability summaries, write `<plan-dir>/analyze/<$SOURCE_KEY>/met
   - Java / Kotlin / C#: top-level types (classes + interfaces) under the primary source tree.
 - **`top_level_modules`** — immediate children of the source root that are directories, alphabetically sorted, relative paths (`src/auth`, `src/ingest`). Flat-layout projects with code at the root produce an empty array.
 
-The documentation branch MUST NOT write this file — see [`analyze/SKILL.md` §*Error handling*](../../../../plugins/spec/skills/analyze/SKILL.md).
+The documentation branch MUST NOT write this file — see [`analyze/SKILL.md` §*Error handling*](../../../../../spec/skills/analyze/SKILL.md).
 
 ### 5. Idempotency
 
@@ -228,7 +228,7 @@ Reruns on unchanged inputs produce byte-identical `discovery.md` and `metadata.j
 
 ### Worked example
 
-Fixture tree: [`../fixtures/plan/analyze/legacy-code/`](../fixtures/plan/analyze/legacy-code/).
+Fixture tree: [`./fixtures/analyze/legacy-code/`](./fixtures/analyze/legacy-code/).
 
 Invocation (run from the fixture directory):
 
@@ -236,6 +236,6 @@ Invocation (run from the fixture directory):
 /spec:analyze --kind legacy-code --source-key monolith ./inputs/monolith/ ./expected/plans/legacy-code/
 ```
 
-Input: a small TypeScript monolith under [`inputs/monolith/`](../fixtures/plan/analyze/legacy-code/inputs/monolith/) with four inferable capabilities spanning `src/users`, `src/auth`, `src/common`, and `src/billing`.
+Input: a small TypeScript monolith under [`inputs/monolith/`](./fixtures/analyze/legacy-code/inputs/monolith/) with four inferable capabilities spanning `src/users`, `src/auth`, `src/common`, and `src/billing`.
 
-Expected output: four capability summaries (alphabetical: `billing-subscription`, `email-verification`, `shared-validation`, `user-registration`) plus a structural-metadata sidecar. The `user-registration` block reproduces the canonical sample from [`rfc-3a-monoliths.md` §*Plan-time analysis, define-time extraction*](../../../../rfcs/archive/rfc-3a-monoliths.md) in the on-disk shape. See [`expected/discovery.md`](../fixtures/plan/analyze/legacy-code/expected/discovery.md) and [`expected/plans/legacy-code/analyze/monolith/metadata.json`](../fixtures/plan/analyze/legacy-code/expected/plans/legacy-code/analyze/monolith/metadata.json) for the byte-stable targets.
+Expected output: four capability summaries (alphabetical: `billing-subscription`, `email-verification`, `shared-validation`, `user-registration`) plus a structural-metadata sidecar. The `user-registration` block reproduces the canonical sample from [`rfc-3a-monoliths.md` §*Plan-time analysis, define-time extraction*](../../../../../../rfcs/archive/rfc-3a-monoliths.md) in the on-disk shape. See [`expected/discovery.md`](./fixtures/analyze/legacy-code/expected/discovery.md) and [`expected/plans/legacy-code/analyze/monolith/metadata.json`](./fixtures/analyze/legacy-code/expected/plans/legacy-code/analyze/monolith/metadata.json) for the byte-stable targets.

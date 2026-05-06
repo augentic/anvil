@@ -39,8 +39,8 @@ The on-disk contracts the authoring skill depends on are:
 | File / directory | Owner | Role |
 |---|---|---|
 | `plan.yaml` | library (`Plan::{create, amend, transition, archive}`) | Ordered change list with per-entry status. `/change:plan` writes only via `specify change plan create` (step 2) and `specify change plan add` (step 3c). |
-| `.specify/plans/<name>/` | capability (planning briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify change plan archive` alongside the plan itself. |
-| `capability.yaml:pipeline.plan` | capability (`Phase::Plan`) | Declares the ordered list of authoring briefs for the project's capability. Resolved via `specify capability pipeline --phase plan`. The `pipeline.plan` block is transitionally permitted; RFC-13 §3.11 drops it from the omnia capability manifest after this surface stabilises. |
+| `.specify/plans/<name>/` | skill (planning briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify change plan archive` alongside the plan itself. |
+| `briefs/<capability>/{discovery,propose}.md` | skill (this directory) | Per-capability planning briefs the skill renders for steps 3(a) and 3(c). Bundled here under `briefs/omnia/` and `briefs/vectis/`; further capabilities ship their planning brief variant alongside. RFC-13 §3.11 moved these briefs out of `capability.yaml:pipeline.plan` (now rejected by the schema) — planning is orchestration, not capability-owned slice work. |
 
 ## Invocation
 
@@ -134,19 +134,26 @@ Follow these steps in order on every invocation. Each step is normative; every s
 
    Skipped entirely when --extend is set.
 
-3. Run the plan brief pipeline from capability.yaml.
+3. Run the planning brief pipeline.
 
-   Resolve the ordered list of briefs via:
-     specify capability pipeline --phase plan \
-         --slice .specify/plans/<name> --format json
+   The briefs are bundled with this skill under
+   `briefs/<capability>/`. Resolve the active capability via:
+     specify capability resolve --format json
 
-   Then run each brief in order:
+   Then load `briefs/<capability>/discovery.md` and
+   `briefs/<capability>/propose.md` from this skill directory and
+   run each in order:
      a. discovery   — see discovery.md (greenfield registry bootstrap also).
      b. sync-peers  — see sync-peers.md (multi-repo only).
      c. propose     — see propose.md.
      d. assignment  — see assignment.md (multi-repo only; includes
                       the registry-proposal sub-step for unresolved
                       project names).
+
+   RFC-13 §3.11 moved these briefs out of `capability.yaml:pipeline.plan`
+   (now actively rejected by the manifest schema) — planning is
+   orchestration, not capability-owned slice work, so the briefs ride
+   with this skill rather than the capability manifest.
 
 4. Final validation gate.
 
@@ -241,7 +248,7 @@ Under `--orchestrate --dry-run`, the umbrella is observation-only end-to-end: th
 - **Execute the plan.** Never. Execution is `/change:execute`'s concern (Layer 2). `/change:plan` exits with a hand-off summary that points the operator at `/change:execute --loop`.
 - **Modify existing plan entries.** Never. `--extend` is append-only; pre-existing entries are left untouched. Editing a pending entry mid-authoring is done via `specify change plan amend` by the human, not by this skill.
 - **Skip `specify change plan validate`.** Never. Step 4 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero.
-- **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/change:execute`.** Never. `/change:plan` only invokes the briefs declared in `capability.yaml`'s `pipeline.plan`, plus the `specify change plan` CLI for scaffolding, entry creation, and validation.
+- **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/change:execute`.** Never. `/change:plan` only invokes the planning briefs bundled with this skill under `briefs/<capability>/`, plus the `specify change plan` CLI for scaffolding, entry creation, and validation.
 - **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/change:execute`; authoring runs outside that lock.
 - **Write `plan.yaml` directly.** Never. Every write goes through `specify change plan create` (step 2, skipped under `--extend`), `specify change plan add` (step 3c, one call per accepted slice), or `specify change plan amend` (step 3d, `--project` assignment on multi-repo plans).
 - **Clone git URLs from this skill.** Never for **discovery** inputs: `--source` git URLs are passed through to `/spec:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync` (Layer 1 CLI), invoked only in the sync-peers step when `len(registry.projects) > 1`.
@@ -264,4 +271,4 @@ No other on-disk state is written by `/change:plan` itself.
 - Validate `<slice-name>` before any filesystem read or CLI shell-out. A bad name should never leave a half-written plan behind.
 - For `--dry-run` specifically: the skill MUST NOT shell out to `specify change plan create`, `specify change plan add`, `specify change plan amend`, or `specify change plan transition`; MUST NOT create `.specify/plans/<name>/`; MUST NOT write `discovery.md` or any other file under `.specify/`. The discovery brief's input-reading side still runs so the stdout inventory preview is real.
 - For `--extend` specifically: step 2 is skipped in full; step 3(c) only appends entries via `specify change plan add` — it never calls `specify change plan transition` on existing entries. The only `specify change plan amend` call is step 3(d) Assignment (`--project`), which tags newly created entries, not pre-existing ones. Draft slices whose names collide with existing plan entries are skipped with decision `skip-existing` in `proposal.md`.
-- Treat an unexpected `specify capability pipeline --phase plan` response shape (missing keys, unknown brief IDs, empty pipeline) as a hard failure: print the raw JSON and exit non-zero. Do not speculate about brief ordering.
+- Treat a missing `briefs/<capability>/discovery.md` or `briefs/<capability>/propose.md` for the active capability as a hard failure: print the resolved capability name and the expected brief paths, then exit non-zero. Do not speculate about brief ordering or fall back to a different capability's briefs.

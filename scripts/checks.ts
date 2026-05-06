@@ -116,7 +116,6 @@ interface CapabilityYaml {
   version?: number;
   description?: string;
   pipeline: {
-    plan?: PipelineEntry[];
     define: PipelineEntry[];
     build: PipelineEntry[];
     merge: PipelineEntry[];
@@ -185,11 +184,10 @@ async function checkCapabilityIntegrity(): Promise<void> {
     const pipeline = manifest.pipeline;
     if (!pipeline) continue;
 
-    // Include `plan` while it remains transitionally permitted by
-    // capability.schema.json (see RFC-13 §Phase 1.5). Phase 3.11 drops
-    // the property and this entry collapses back to the slice phases.
+    // Post-RFC-13 §3.11 the manifest carries only the slice phases
+    // (define, build, merge); planning is owned by the change-planning
+    // skill and `pipeline.plan` is rejected by `capability.schema.json`.
     const allEntries: PipelineEntry[] = [
-      ...(pipeline.plan ?? []),
       ...(pipeline.define ?? []),
       ...(pipeline.build ?? []),
       ...(pipeline.merge ?? []),

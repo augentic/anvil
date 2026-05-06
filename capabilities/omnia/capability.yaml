@@ -4,11 +4,6 @@ version: 1
 description: Omnia Rust WASM workflow
 
 pipeline:
-  plan:
-    - id: discovery
-      brief: briefs/plan/discovery.md
-    - id: propose
-      brief: briefs/plan/propose.md
   define:
     - id: proposal
       brief: briefs/proposal.md

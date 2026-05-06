@@ -119,7 +119,7 @@ In addition to appending capability summaries to `$DISCOVERY`, the code branch (
 | `module_count` | integer | Total module count. Capability-owned definition (TS: files; Java: classes; Python: modules; …). |
 | `top_level_modules` | array[string] | Immediate children of the source root, alphabetically sorted, relative path strings. May be empty. |
 
-All fields are required. The detection algorithm that produces each field is owned by the capability-specific code branch prompt (`capabilities/<capability>/briefs/plan/analyze.md`); this SKILL only pins the field names, types, and on-disk shape.
+All fields are required. The detection algorithm that produces each field is owned by the capability-specific code branch prompt (`plugins/change/skills/plan/briefs/<capability>/analyze.md`); this SKILL only pins the field names, types, and on-disk shape.
 
 **Idempotency.** Same rules as §*Output contract*: no timestamps, no host state, byte-stable field order matching the shape above, and alphabetically-sorted `top_level_modules`. Re-running analyze on unchanged inputs emits byte-identical metadata. This lets `specify change plan validate` diff the file across runs without drift.
 
@@ -137,19 +137,19 @@ All fields are required. The detection algorithm that produces each field is own
 
 A byte-stable output lets the propose brief cache its slicing decisions and surfaces regressions via `git diff`.
 
-## Per-kind prompts (capability-owned)
+## Per-kind prompts (planning-skill-owned)
 
-The detailed clustering / extraction prompt for each `--kind` value lives under `capabilities/<capability>/briefs/plan/analyze.md`:
+The detailed clustering / extraction prompt for each `--kind` value lives under `plugins/change/skills/plan/briefs/<capability>/analyze.md` (RFC-13 §3.11 moved planning briefs out of the capability manifest into the change-planning skill):
 
-- `capabilities/omnia/briefs/plan/analyze.md` — Omnia's per-kind prompt (documentation branch and code branch).
-- Other capabilities ship their own.
+- [`plugins/change/skills/plan/briefs/omnia/analyze.md`](../../../change/skills/plan/briefs/omnia/analyze.md) — Omnia's per-kind prompt (documentation branch and code branch).
+- Other capabilities ship their own variant alongside under `plugins/change/skills/plan/briefs/<capability>/`.
 
 `/spec:analyze` resolves the active capability via `specify capability resolve` and invokes the relevant brief internally. The skill does **not** embed clustering heuristics; those are capability-specific judgement calls (import-graph vs docstring vs endpoint-name weighting, confidence thresholds, etc.).
 
 ## Process
 
 1. **Validate arguments.** Reject if `$KIND` is not in the closed enum, if `$INPUT_PATH` does not exist, or if `$OUTPUT_DIR` is not writable. Each failure is a hard exit with a clear diagnostic; no partial write to `$DISCOVERY` ever ships.
-2. **Resolve capability and per-kind brief path.** Run `specify capability resolve` and load `capabilities/<capability>/briefs/plan/analyze.md`.
+2. **Resolve capability and per-kind brief path.** Run `specify capability resolve` and load `plugins/change/skills/plan/briefs/<capability>/analyze.md`.
 3. **Invoke the brief against `$KIND`.** The brief owns clustering (for `legacy-code`) or extraction (for `documentation`) and emits capability summaries in the shape pinned above.
 4. **Write outputs.**
    - **4a.** Write / append to `$DISCOVERY` with the idempotent ordering rules (both branches), optionally tagging each emitted capability with `$SOURCE_KEY`. Report the list of capability names written on stdout for the discovery brief to aggregate.

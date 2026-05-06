@@ -1,6 +1,6 @@
 # Monolith discovery fixture
 
-Pins the `.specify/plans/<name>/discovery.md` shape for a small, purpose-built three-capability TypeScript monolith passed through [`/spec:analyze --kind legacy-code`](../../../../../../spec/skills/analyze/SKILL.md) via [`capabilities/omnia/briefs/plan/discovery.md`](../../../../../../../capabilities/omnia/briefs/plan/discovery.md). Sibling of [`mixed-inputs/`](../mixed-inputs/), which pins the combined documentation + legacy-code shape.
+Pins the `.specify/plans/<name>/discovery.md` shape for a small, purpose-built three-capability TypeScript monolith passed through [`/spec:analyze --kind legacy-code`](../../../../../../spec/skills/analyze/SKILL.md) via [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md). Sibling of [`mixed-inputs/`](../mixed-inputs/), which pins the combined documentation + legacy-code shape.
 
 This fixture is the acceptance target for:
 
@@ -22,15 +22,15 @@ Three capabilities, alphabetical order:
 
 1. **`email-verification`** (`high`) — one file (`src/auth/verify.ts`), two HTTP entry points, `postgres` + `sendgrid` external deps.
 2. **`shared-validation`** (`medium`) — one file (`src/common/validation.ts`), no entry points, no external deps; intentionally omits the `hints:` block (a legal shape per the output contract).
-3. **`user-registration`** (`high`) — three files spanning `src/users/` and `src/auth/`, depends on `email-verification` and `shared-validation`. **Byte-identical** to the canonical sample entry pinned in [`rfc-3a-monoliths.md` §*Plan-time analysis, define-time extraction*](../../../../../../../rfcs/archive/rfc-3a-monoliths.md) and the Omnia analyze-brief fixture at [`capabilities/omnia/briefs/fixtures/plan/analyze/legacy-code/expected/discovery.md`](../../../../../../../capabilities/omnia/briefs/fixtures/plan/analyze/legacy-code/expected/discovery.md).
+3. **`user-registration`** (`high`) — three files spanning `src/users/` and `src/auth/`, depends on `email-verification` and `shared-validation`. **Byte-identical** to the canonical sample entry pinned in [`rfc-3a-monoliths.md` §*Plan-time analysis, define-time extraction*](../../../../../../../rfcs/archive/rfc-3a-monoliths.md) and the Omnia analyze-brief fixture at [`plugins/change/skills/plan/briefs/omnia/fixtures/analyze/legacy-code/expected/discovery.md`](../../../briefs/omnia/fixtures/analyze/legacy-code/expected/discovery.md).
 
 ## Relationship to the Omnia analyze fixture
 
-The Omnia fixture at [`capabilities/omnia/briefs/fixtures/plan/analyze/legacy-code/`](../../../../../../../capabilities/omnia/briefs/fixtures/plan/analyze/legacy-code/) pins the **brief-level** output of `/spec:analyze --kind legacy-code` on a four-capability tree (adds `billing-subscription`). This fixture pins the **plan-level** combined `discovery.md` produced after `/change:plan`'s discovery brief wraps the analyze output in `# Discovery — <name>` + `## Capability inventory`. Different layers, different scopes, different owners — the two fixtures do not share source trees or expected outputs.
+The Omnia fixture at [`plugins/change/skills/plan/briefs/omnia/fixtures/analyze/legacy-code/`](../../../briefs/omnia/fixtures/analyze/legacy-code/) pins the **brief-level** output of `/spec:analyze --kind legacy-code` on a four-capability tree (adds `billing-subscription`). This fixture pins the **plan-level** combined `discovery.md` produced after `/change:plan`'s discovery brief wraps the analyze output in `# Discovery — <name>` + `## Capability inventory`. Different layers, different scopes, different owners — the two fixtures do not share source trees or expected outputs.
 
 ## What this fixture pins
 
-- `# Discovery — traffic` header + `## Capability inventory` wrapper emitted by [`capabilities/omnia/briefs/plan/discovery.md`](../../../../../../../capabilities/omnia/briefs/plan/discovery.md) before dispatching to `/spec:analyze`.
+- `# Discovery — traffic` header + `## Capability inventory` wrapper emitted by [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md) before dispatching to `/spec:analyze`.
 - Three `### <name>` + fenced YAML blocks, alphabetically sorted by name, all prefixed with `<!-- source-key: monolith -->` (emitted by the skill because `--source monolith=…` supplies the key).
 - Fixed YAML field order (`summary`, `sources`, `depends-on`, `hints`, `confidence`) per [`analyze/SKILL.md` §Output contract](../../../../../../spec/skills/analyze/SKILL.md).
 - Alphabetic ordering within `sources`, `depends-on`, `hints.entry_points`, `hints.external_deps`.

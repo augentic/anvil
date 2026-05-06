@@ -1,6 +1,6 @@
 # `plan/analyze/documentation/` fixture
 
-Worked example for the documentation branch of [Omnia `plan/analyze.md`](../../../../plan/analyze.md).
+Worked example for the documentation branch of [Omnia `analyze.md`](../../../analyze.md).
 
 ## Contents
 

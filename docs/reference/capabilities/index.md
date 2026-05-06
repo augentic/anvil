@@ -1,6 +1,6 @@
 # Capabilities
 
-> Status: Draft (Phase 1.5 of [RFC-13](../../../rfcs/rfc-13-extensibility.md) landed). The post-RFC manifest shape and dependency invariants are pinned and the first-party capabilities (`omnia`, `contracts`, `vectis`) now live at [`capabilities/<name>/capability.yaml`](../../../capabilities/). The `pipeline.plan` block on the omnia and vectis manifests is permitted **transitionally** by [`capability.schema.json`](../../../capabilities/capability.schema.json); it migrates to the slice-component planning skill in Phase 3.11 and is then actively rejected by the schema.
+> Status: Draft (Phase 3.11 of [RFC-13](../../../rfcs/rfc-13-extensibility.md) landed). The post-RFC manifest shape and dependency invariants are pinned and the first-party capabilities (`omnia`, `contracts`, `vectis`) now live at [`capabilities/<name>/capability.yaml`](../../../capabilities/). [`capability.schema.json`](../../../capabilities/capability.schema.json) actively rejects `pipeline.plan` — planning briefs live with the change-planning skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../../plugins/change/skills/plan/briefs/).
 
 ## What is a capability?
 
@@ -57,13 +57,11 @@ The post-RFC manifest deliberately drops the legacy `domain` and `extends` field
 
 `pipeline:` declares which briefs the core renders for each fixed slice phase. The set of phases is frozen by [RFC-13](../../../rfcs/rfc-13-extensibility.md#design): exactly **`define`**, **`build`**, and **`merge`**. Variation that capabilities legitimately want lives in the briefs they enumerate per phase and in skill-owned imperative behaviour — never in the phase list itself.
 
-`pipeline.plan` is intentionally **absent** from the post-RFC manifest. Planning is orchestration, not capability-owned slice work, and lives on the `specify change` platform component:
+`pipeline.plan` is intentionally **absent** from the post-RFC manifest — and actively rejected by [`capability.schema.json`](../../../capabilities/capability.schema.json) as of RFC-13 §3.11. Planning is orchestration, not capability-owned slice work, and lives on the `specify change` platform component:
 
 - the slice brief (`change.md`) records operator intent,
 - the slice plan (`plan.yaml`) sequences slices across one or more projects,
 - planning briefs and the `/change:plan` (later: `/change:plan`) authoring loop sit on the slice surface rather than inside any capability's manifest.
-
-> **Transitional allowance (RFC-13 §Phase 1.5 → §Phase 3.11).** The first-party omnia and vectis manifests still ship a `pipeline.plan` block today. To keep them loadable, [`capability.schema.json`](../../../capabilities/capability.schema.json) permits (but does not require) `pipeline.plan` for the duration of Phase 1.5. The block is moved out — and the schema is tightened to actively reject it — in Phase 3.11. Capability authors should not introduce new `pipeline.plan` entries.
 
 A slice flowing through `define → build → merge` therefore reads exactly one capability's pipeline. Cross-capability outcomes are coordinated by change plan entries, not by fusing capabilities into a larger hidden pipeline.
 

@@ -32,6 +32,6 @@ Trigger: `alpha-gateway-extract` was unresolved during step 3(d) — no existing
 
 ## Notes
 
-- Heuristics applied (Omnia, from `capabilities/omnia/briefs/plan/propose.md`): one slice per discovered capability; emit order follows `depends-on`.
+- Heuristics applied (Omnia, from `plugins/change/skills/plan/briefs/omnia/propose.md`): one slice per discovered capability; emit order follows `depends-on`.
 - Slice 3 was originally surfaced with `confidence: medium` because no existing baseline spec covered the gateway layer; the operator confirmed the carve-out and approved the new registry entry.
 - `specify change plan validate` — no errors.

@@ -18,11 +18,11 @@ At least one of `--from`, `--against`, or `--source` must be supplied.
 
 ## Input dispatch (per-kind)
 
-Every input reaching this brief is pre-classified by kind (see [`../../../../plugins/change/skills/plan/SKILL.md` §*Kind defaults for CLI flags*](../../../../plugins/change/skills/plan/SKILL.md)). Dispatch per kind — one [`/spec:analyze`](../../../../plugins/spec/skills/analyze/SKILL.md) invocation per input, processed in CLI declaration order (`--from` entries before `--source` entries before `--against`; within each flag, left-to-right), and `change.md:inputs[]` entries interleaved in file order after the CLI inputs of matching kind.
+Every input reaching this brief is pre-classified by kind (see [`../../SKILL.md` §*Kind defaults for CLI flags*](../../SKILL.md)). Dispatch per kind — one [`/spec:analyze`](../../../../../spec/skills/analyze/SKILL.md) invocation per input, processed in CLI declaration order (`--from` entries before `--source` entries before `--against`; within each flag, left-to-right), and `change.md:inputs[]` entries interleaved in file order after the CLI inputs of matching kind.
 
 ### `kind: documentation`
 
-For each documentation input, invoke [`/spec:analyze`](../../../../plugins/spec/skills/analyze/SKILL.md):
+For each documentation input, invoke [`/spec:analyze`](../../../../../spec/skills/analyze/SKILL.md):
 
 ```text
 /spec:analyze <input-path> <plan-dir> --kind documentation --source-key <k>
@@ -35,11 +35,11 @@ where `<plan-dir>` is `.specify/plans/<initiative-name>/` — the same directory
 - `--against <p>:documentation` → `--source-key against`.
 - `change.md:inputs[]` with `kind: documentation` → `--source-key <basename(path) without extension, kebab-cased>` (v1 brief schema has no `key:` field on `inputs[]`; adding one requires an RFC update per the closed-enum posture).
 
-`/spec:analyze` appends capability summaries to `<plan-dir>/discovery.md` in the shape pinned at [`analyze/SKILL.md` §Output contract](../../../../plugins/spec/skills/analyze/SKILL.md), plus the documentation-branch `## Constraints (from documentation)` and `## Open questions (from documentation)` appendix blocks pinned in [`analyze.md` §Documentation branch](./analyze.md).
+`/spec:analyze` appends capability summaries to `<plan-dir>/discovery.md` in the shape pinned at [`analyze/SKILL.md` §Output contract](../../../../../spec/skills/analyze/SKILL.md), plus the documentation-branch `## Constraints (from documentation)` and `## Open questions (from documentation)` appendix blocks pinned in [`analyze.md` §Documentation branch](./analyze.md).
 
 ### `kind: legacy-code`
 
-For each legacy-code input, invoke [`/spec:analyze`](../../../../plugins/spec/skills/analyze/SKILL.md):
+For each legacy-code input, invoke [`/spec:analyze`](../../../../../spec/skills/analyze/SKILL.md):
 
 ```text
 /spec:analyze <input-path> <plan-dir> --kind legacy-code --source-key <k>
@@ -52,13 +52,13 @@ where `<plan-dir>` is `.specify/plans/<initiative-name>/` and `<k>` is the sourc
 - `--against <p>` (default kind `legacy-code`) → `--source-key against`.
 - `change.md:inputs[]` with `kind: legacy-code` → `--source-key <basename(path) kebab-cased>`.
 
-For a git-URL `--source`, materialise the URL into `legacy/<key>/` with the inlined guarded `git clone` snippet (see [`../../../../plugins/spec/skills/analyze/SKILL.md` §*Cloning a source tree*](../../../../plugins/spec/skills/analyze/SKILL.md)) and pass that local path to `/spec:analyze`.
+For a git-URL `--source`, materialise the URL into `legacy/<key>/` with the inlined guarded `git clone` snippet (see [`../../../../../spec/skills/analyze/SKILL.md` §*Cloning a source tree*](../../../../../spec/skills/analyze/SKILL.md)) and pass that local path to `/spec:analyze`.
 
-`/spec:analyze` appends capability summaries to `<plan-dir>/discovery.md` and writes structural metadata to `<plan-dir>/analyze/<k>/metadata.json` (see [`analyze/SKILL.md` §Structural metadata](../../../../plugins/spec/skills/analyze/SKILL.md) and [`analyze.md` §Legacy-code branch](./analyze.md)). This brief does NOT post-process either artifact.
+`/spec:analyze` appends capability summaries to `<plan-dir>/discovery.md` and writes structural metadata to `<plan-dir>/analyze/<k>/metadata.json` (see [`analyze/SKILL.md` §Structural metadata](../../../../../spec/skills/analyze/SKILL.md) and [`analyze.md` §Legacy-code branch](./analyze.md)). This brief does NOT post-process either artifact.
 
 ## Merge rule
 
-`/spec:analyze` owns append semantics for capability summaries: dedup-by-name, alphabetic sort, byte-stable output. This brief invokes analyze once per input in CLI declaration order; the final `discovery.md` inherits analyze's idempotency contract. Both documentation and legacy-code inputs share the single capability- summary shape defined in [`analyze/SKILL.md` §Output contract](../../../../plugins/spec/skills/analyze/SKILL.md).
+`/spec:analyze` owns append semantics for capability summaries: dedup-by-name, alphabetic sort, byte-stable output. This brief invokes analyze once per input in CLI declaration order; the final `discovery.md` inherits analyze's idempotency contract. Both documentation and legacy-code inputs share the single capability- summary shape defined in [`analyze/SKILL.md` §Output contract](../../../../../spec/skills/analyze/SKILL.md).
 
 Documentation-kind inputs additionally contribute `## Constraints (from documentation)` and `## Open questions (from documentation)` appendix blocks at the end of `discovery.md` (see [`analyze.md` §Documentation branch](./analyze.md) for their shape). Legacy-code inputs emit only capability summaries.
 
@@ -101,7 +101,7 @@ confidence: <high | medium | low>
 Section rules:
 
 - The `# Discovery — <initiative-name>` header and the `## Capability inventory` wrapper are written by this brief (the first thing discovery writes before invoking `/spec:analyze`). `/spec:analyze` appends its `### <name>` blocks — each preceded by a `<!-- source-key: <k> -->` marker — under the wrapper.
-- Every capability block is emitted by `/spec:analyze` regardless of kind; both branches share the single YAML shape pinned in [`analyze/SKILL.md` §Output contract](../../../../plugins/spec/skills/analyze/SKILL.md).
+- Every capability block is emitted by `/spec:analyze` regardless of kind; both branches share the single YAML shape pinned in [`analyze/SKILL.md` §Output contract](../../../../../spec/skills/analyze/SKILL.md).
 - The `## Constraints (from documentation)` and `## Open questions (from documentation)` blocks are documentation-branch-only. Omit either heading when empty; never emit an empty section. If no documentation inputs were supplied, both headings are absent.
 - A run with only legacy-code inputs produces `## Capability inventory` followed by nothing else. A run with only documentation inputs produces `## Capability inventory` followed by the two appendix blocks (when non-empty).
 
@@ -115,8 +115,8 @@ Running discovery twice on the same inputs MUST produce the same `discovery.md`.
 - No timestamps, run IDs, working-directory paths, or absolute paths anywhere in the file.
 - Re-runs on unchanged sources yield byte-equivalent output; any new detail replaces the prior entry wholesale rather than appending a parallel record.
 
-See [`analyze/SKILL.md` §Idempotency](../../../../plugins/spec/skills/analyze/SKILL.md) for the authoritative contract.
+See [`analyze/SKILL.md` §Idempotency](../../../../../spec/skills/analyze/SKILL.md) for the authoritative contract.
 
 ## Example fragment
 
-See [`../../../../plugins/change/skills/plan/fixtures/discovery/monolith/expected/discovery.md`](../../../../plugins/change/skills/plan/fixtures/discovery/monolith/expected/discovery.md) for a single-`--source` legacy-code invocation that produces three capability summaries (no documentation appendix), and [`../../../../plugins/change/skills/plan/fixtures/discovery/mixed-inputs/expected/discovery.md`](../../../../plugins/change/skills/plan/fixtures/discovery/mixed-inputs/expected/discovery.md) for a mixed documentation + legacy-code invocation that produces four capability summaries plus the documentation appendix blocks.
+See [`../../fixtures/discovery/monolith/expected/discovery.md`](../../fixtures/discovery/monolith/expected/discovery.md) for a single-`--source` legacy-code invocation that produces three capability summaries (no documentation appendix), and [`../../fixtures/discovery/mixed-inputs/expected/discovery.md`](../../fixtures/discovery/mixed-inputs/expected/discovery.md) for a mixed documentation + legacy-code invocation that produces four capability summaries plus the documentation appendix blocks.

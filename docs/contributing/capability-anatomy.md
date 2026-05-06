@@ -84,7 +84,7 @@ The `pipeline` object has three required phases -- `define`, `build`, and `merge
 | `build` | `/spec:build` (implementation) | 1 |
 | `merge` | `/spec:merge` (baseline merge) | 1 |
 
-> **Transitional `pipeline.plan`.** [RFC-13 §Phase 1.5](../../rfcs/rfc-13-extensibility.md#phase-15) leaves the omnia and vectis manifests carrying a `pipeline.plan` block until Phase 3.11 moves planning briefs to the `specify change` platform component. The repo schema permits the field for this transitional window; the CLI schema actively rejects it. Capability authors should not introduce new `pipeline.plan` entries.
+> **No `pipeline.plan`.** Planning is orchestration, not capability-owned slice work; both `capabilities/capability.schema.json` (this repo) and `schemas/capability.schema.json` (CLI) reject `pipeline.plan` outright. Planning briefs live with the change-planning skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../plugins/change/skills/plan/briefs/) — see [RFC-13 §3.11](../../rfcs/rfc-13-plan.md) for the migration that landed this rejection.
 
 Each phase contains an ordered array of **pipeline entries**:
 

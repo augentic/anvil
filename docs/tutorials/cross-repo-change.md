@@ -212,7 +212,7 @@ Run the planning skill:
 /change:plan oauth-login --from ./docs/oauth-login.md
 ```
 
-`/change:plan` runs the four-phase `pipeline.plan`:
+`/change:plan` runs the four-phase planning pipeline (the briefs live alongside the skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../plugins/change/skills/plan/briefs/) — RFC-13 §3.11 moved them out of the capability manifest):
 
 | Phase | What happens | On-disk artefact |
 |---|---|---|
