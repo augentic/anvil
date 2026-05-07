@@ -49,7 +49,7 @@ Resolution options:
 Point them to:
 
 1. [Quick Start](../tutorials/quick-start.md) -- hands-on in 5 minutes.
-2. [Your First Change](../tutorials/first-change.md) -- the full tutorial with explanations.
+2. [Your First Slice](../tutorials/first-change.md) -- the full tutorial with explanations.
 3. The baseline at `.specify/specs/` -- read the existing specs to understand what the system does.
 
 ## See also

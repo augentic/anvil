@@ -56,7 +56,7 @@ You interact with Specify through **skills** -- commands prefixed with `/spec:` 
 | `/spec:analyze` | 3 | Plan-time capability inference (used internally by `/change:plan`) |
 | `/change:plan` | 3 | Author a multi-slice change plan |
 | `/change:execute` | 3 | Drive a plan through the define-build-merge loop |
-| `/change:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> optional merge -> finalize (was `/spec:initiative`) |
+| `/change:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> operator PR merge -> finalize |
 
 Skills are grouped by layer. Layer 2 owns single-slice work; Layer 3 coordinates multi-slice changes; Layer 4 strings the cross-repo loop into one operator action. See [The Layered Stack](../explanation/three-layer-stack.md) for when to climb between layers.
 

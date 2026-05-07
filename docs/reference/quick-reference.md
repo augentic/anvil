@@ -2,7 +2,7 @@
 
 ## The two loops
 
-### Single change
+### Single Slice
 
 ```text
 /spec:init                     # one-time setup
@@ -31,7 +31,7 @@ specify registry add <project> --url ... --schema ...      # `--schema` flag is 
 | Skill | Layer | Purpose |
 |-------|-------|---------|
 | `/spec:init` | 2 | One-time project setup (`--hub` for a platform hub) |
-| `/spec:define` | 2 | Generate artifacts for a new change |
+| `/spec:define` | 2 | Generate artifacts for a new slice |
 | `/spec:build` | 2 | Implement tasks |
 | `/spec:merge` | 2 | Merge completed slice into baseline |
 | `/spec:drop` | 2 | Discard a slice |
@@ -39,7 +39,7 @@ specify registry add <project> --url ... --schema ...      # `--schema` flag is 
 | `/spec:analyze` | 3 | Plan-time capability inference (invoked by `/change:plan`) |
 | `/change:plan` | 3 | Author a multi-slice plan |
 | `/change:execute` | 3 | Automate the plan loop |
-| `/change:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> operator PR merge -> finalize (was `/spec:initiative`) |
+| `/change:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> operator PR merge -> finalize |
 | `/contract:openapi` | -- | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
 | `/contract:asyncapi` | -- | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
 | `/contract:json-schema` | -- | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |
@@ -76,7 +76,7 @@ specify slice status <name>              # single-slice view
 specify init <capability>                 # regular single-project scaffold (positional capability identifier or URL)
 specify init --hub                        # registry-only platform hub (RFC-9 1D)
 
-# Change management
+# Slice management
 specify slice list
 specify slice transition <name> <target>
 
@@ -109,7 +109,7 @@ specify change finalize --clean      # also remove clean .specify/workspace/<pee
 specify change plan add <name> --project <project>
 specify change plan amend <name> --project <project>
 
-# Per-change inspection
+# Per-slice inspection
 specify slice validate <name>
 specify slice task progress <name>
 specify slice merge preview <name>
@@ -136,11 +136,11 @@ specify slice merge conflict-check <name>
     ├── project.yaml      # project config
     ├── plan.lock         # advisory lock for /change:execute
     ├── .cache/           # cached capability manifest + briefs
-    ├── changes/          # active slices (contracts/, composition.yaml for Vectis)
+    ├── slices/           # active slices (contracts/, composition.yaml for Vectis)
     ├── specs/            # merged baseline (incl. composition.yaml for Vectis)
-    ├── plans/            # initiative working dirs (discovery, proposal)
+    ├── plans/            # change-plan working dirs (discovery, proposal)
     ├── workspace/        # registry workspace slots (multi-repo only)
-    └── archive/          # finalized changes and plans
+    └── archive/          # finalized slices and plans
 ```
 
 The `0.2.0` v2 layout split operator-facing platform artifacts (root) from framework-managed state (`.specify/`); v1-layout projects upgrade with [`specify migrate v2-layout`](cli/migrate.md).

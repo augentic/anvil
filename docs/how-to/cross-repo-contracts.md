@@ -77,14 +77,14 @@ After a producer change merges, `/change:execute` runs a cross-project compatibi
 **Triage:**
 
 - If the consumer project is intentionally lagging (e.g. mobile shipping a release behind the backend), accept the drift. The warning is in the journal for audit.
-- If the consumer needs to be updated to match, spawn a follow-up consumer change in the same plan or in a follow-up initiative. Use `specify change plan add <name> --project <consumer> --depends-on <producer-change>` to wire it up.
+- If the consumer needs to be updated to match, spawn a follow-up consumer slice in the same plan or in a follow-up change. Use `specify change plan add <name> --project <consumer> --depends-on <producer-slice>` to wire it up.
 - See [Resolve cross-project contract warnings](resolve-cross-project-contract-warnings.md) for the full triage checklist.
 
 **What the check does not do:** it never halts the loop, never modifies the consumer's specs, never auto-creates a follow-up change. The framework reports drift; the operator decides what to do about it.
 
 ## See also
 
-- [Cross-Repo Initiatives](../tutorials/cross-repo-change.md) -- tutorial on multi-repo planning
+- [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- tutorial on multi-repo planning
 - [Resolve cross-project contract warnings](resolve-cross-project-contract-warnings.md) -- triage how-to for the post-merge check
 - [Cross-project contract warnings on the merge transcript](../appendices/troubleshooting.md#cross-project-contract-warnings-on-the-merge-transcript) -- troubleshooting entry
 - [Contract plugin](../reference/plugins/contract.md) -- plugin reference

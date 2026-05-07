@@ -1,21 +1,21 @@
-# A Multi-Change Initiative
+# A Multi-Slice Change
 
-When a body of work spans multiple related changes -- a migration, a new feature set, or a modernisation effort -- you need a plan. This tutorial walks you through authoring a plan and executing it within a single repository.
+When a body of work spans multiple related slices -- a migration, a new feature set, or a modernisation effort -- you need a plan. This tutorial walks you through authoring a plan and executing it within a single repository.
 
 **Prerequisites:** Familiarity with the [define-build-merge loop](first-change.md). A project with `/spec:init` already run.
 
-> **Choosing your topology.** This tutorial is for **single-repo** work -- one project under `/spec:init` with phase pipelines enabled, no platform hub. If your initiative spans two or more repos (e.g. backend + mobile), you want the platform-hub topology instead -- see [Cross-Repo Initiatives](cross-repo-change.md). The platform-as-project shape (single-repo with `url: .` in `registry.yaml`) is also valid; see [Platform repo topologies](../explanation/platform-repo.md) for the comparison.
+> **Choosing your topology.** This tutorial is for **single-repo** work -- one project under `/spec:init` with phase pipelines enabled, no platform hub. If your change spans two or more repos (e.g. backend + mobile), use the platform-hub topology instead -- see [Cross-Repo Changes](cross-repo-change.md). The platform-as-project shape (single-repo with `url: .` in `registry.yaml`) is also valid; see [Platform repo topologies](../explanation/platform-repo.md) for the comparison.
 
 ## When you need a plan
 
 A plan is useful when:
 
-- You have three or more related changes.
-- Changes have dependencies (one must finish before another can start).
-- You want to track progress across the entire initiative.
-- You want to automate the change-by-change execution loop.
+- You have three or more related slices.
+- Slices have dependencies (one must finish before another can start).
+- You want to track progress across the entire change.
+- You want to automate the slice-by-slice execution loop.
 
-For one or two independent changes, the manual define-build-merge loop is simpler.
+For one or two independent slices, the manual define-build-merge loop is simpler.
 
 ## 1. Author the plan
 
@@ -62,7 +62,7 @@ You can review the discovery output at `.specify/plans/migrate-auth/discovery.md
 
 ### Propose
 
-The skill proposes changes ("slices") based on the discovered capabilities. For each proposed slice, you can:
+The skill proposes slices based on the discovered capabilities. For each proposed slice, you can:
 
 - **Accept** -- add it to the plan as-is.
 - **Edit** -- modify the description, dependencies, or scope.
@@ -74,7 +74,7 @@ This is an interactive loop. The agent presents each slice and waits for your de
 
 After all slices are accepted or rejected, the skill runs `specify change plan validate` to check:
 
-- No duplicate change names.
+- No duplicate slice names.
 - No dependency cycles.
 - All `depends-on` references point to existing entries.
 
@@ -119,11 +119,11 @@ Dry run:
 
 </details>
 
-This reports the next eligible change and current progress without modifying anything.
+This reports the next eligible slice and current progress without modifying anything.
 
-## 4. Run one change
+## 4. Run one slice
 
-To execute a single change and stop:
+To execute a single slice and stop:
 
 ```text
 /change:execute
@@ -149,7 +149,7 @@ After this, `specify change plan status` shows:
 
 ## 5. Run until completion
 
-To let Specify work through the remaining changes:
+To let Specify work through the remaining slices:
 
 ```text
 /change:execute --loop
@@ -163,9 +163,9 @@ Loop mode repeats the pick-define-build-merge cycle until:
 
 ## 6. Handle failures
 
-If a change fails during execution:
+If a slice fails during execution:
 
-1. `/change:execute` invokes `/spec:drop` to discard the failed change.
+1. `/change:execute` invokes `/spec:drop` to discard the failed slice.
 2. The plan entry transitions to `failed` with a reason.
 3. In loop mode, the driver continues to the next eligible entry.
 
@@ -177,7 +177,7 @@ If all remaining entries depend on the failed one, execution reports `stuck`. Yo
 
 ## 7. Drop down a layer
 
-You can always fall back to manual control. If `/change:execute` is stuck or you want to handle a specific change yourself:
+You can always fall back to manual control. If `/change:execute` is stuck or you want to handle a specific slice yourself:
 
 ```text
 # Manually transition a plan entry
@@ -196,13 +196,13 @@ The plan is just a data file that tracks status. The Layer 1 CLI commands give y
 
 ## What you learned
 
-- `/change:plan` discovers capabilities and proposes changes with an interactive accept/edit/reject loop.
-- The plan tracks changes, dependencies, and status in `plan.yaml`.
-- `/change:execute` automates the define-build-merge loop per change.
-- `--dry-run` previews, bare invocation runs one change, `--loop` runs until done.
+- `/change:plan` discovers capabilities and proposes slices with an interactive accept/edit/reject loop.
+- The plan tracks slices, dependencies, and status in `plan.yaml`.
+- `/change:execute` automates the define-build-merge loop per slice.
+- `--dry-run` previews, bare invocation runs one slice, `--loop` runs until done.
 - Failures transition plan entries to `failed`. You can reset, skip, or restructure.
 - Layer 1 CLI commands are always available as manual fallback.
 
 ## Next
 
-[Cross-Repo Initiatives](cross-repo-change.md) -- coordinate changes across multiple repositories.
+[Cross-Repo Changes](cross-repo-change.md) -- coordinate slices across multiple repositories.

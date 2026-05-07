@@ -12,7 +12,7 @@ It exercises Steps 1-7 of the RFC-9 §1C critical path:
 6. `/change:execute --loop` with CWD routing across two workspace clones
 7. `specify workspace push` to publish branches and PRs
 
-The remaining steps -- merging the PRs and archiving the plan -- live in the follow-on tutorial [Landing a Change](landing-a-change.md). Between them, the two tutorials walk the full Steps 1-9 RFC-9 §1C path. The `/change:plan --orchestrate` umbrella variants (formerly the `/spec:initiative` skill) and the three change shapes (migrate-legacy / new-feature / update-existing) also live there.
+The remaining steps -- merging the PRs and archiving the plan -- live in the follow-on tutorial [Landing a Change](landing-a-change.md). Between them, the two tutorials walk the full Steps 1-9 RFC-9 §1C path. The `/change:plan --orchestrate` umbrella variants and the three change shapes (migrate-legacy / new-feature / update-existing) also live there.
 
 > **Choosing your topology.** This tutorial uses the platform-hub topology because the feature spans two registered projects -- the hub holds platform state and the code lives in registered repos. If your work is single-repo, the platform-as-project shape (initiating repo with `url: .` in the registry) is simpler; see [Platform repo topologies](../explanation/platform-repo.md) for the comparison and [A Multi-Slice Change](single-repo-change.md) for the single-repo flow.
 
@@ -24,7 +24,7 @@ Every command below should run cleanly against the current `specify` CLI on a fr
 - [`gh`](https://cli.github.com/) installed and authenticated against your GitHub org (`gh auth status`).
 - A GitHub namespace you can create repos in. The walkthrough uses `org/` — substitute your real org or user.
 - Two empty GitHub repos pre-created at `git@github.com:org/shop-backend.git` and `git@github.com:org/shop-mobile.git`. (Or skip pre-creation and let `specify workspace push` greenfield-bootstrap them in Step 7.)
-- Familiarity with the [single-repo initiative tutorial](single-repo-change.md) — `/change:plan`, `/change:execute`, and the plan lifecycle.
+- Familiarity with the [single-repo change tutorial](single-repo-change.md) — `/change:plan`, `/change:execute`, and the plan lifecycle.
 
 ## What you will build
 
@@ -275,7 +275,7 @@ shop-mobile      git-clone     <40-char sha>     dirty: no     specify-tree: pro
 
 </details>
 
-`specify workspace sync` is idempotent — re-run it between initiatives to refresh clones. Greenfield projects (remote does not yet exist) are bootstrapped in place via `git init` + `specify init`.
+`specify workspace sync` is idempotent — re-run it between changes to refresh clones. Greenfield projects (remote does not yet exist) are bootstrapped in place via `git init` + `specify init`.
 
 > **Tier-2 only.** `.specify/workspace/<peer>/` clones are durable; they outlive any single change. The legacy-source clones under `.specify/plans/<change>/analyze/<key>/` (tier-1) are a separate concern — read-only and ephemeral. See [Workspace tiers](../explanation/workspace-tiers.md) for the full contrast.
 
@@ -490,7 +490,7 @@ The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three 
 
 ## What you learned
 
-- The platform-hub topology (`specify init --hub`) is the canonical starting shape for multi-repo initiatives. The hub holds platform state and never carries code.
+- The platform-hub topology (`specify init --hub`) is the canonical starting shape for multi-repo changes. The hub holds platform state and never carries code.
 - `specify registry add` registers code projects with kebab-case names, capability identifiers, and domain descriptions. Descriptions drive automated assignment in `/change:plan`.
 - `specify change create` scaffolds the operator brief; the `inputs:` frontmatter feeds the discovery brief.
 - `/change:plan` runs discovery -> sync-peers -> propose -> assignment, and finishes with `specify change plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
@@ -507,7 +507,7 @@ The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three 
 - [`specify init`](../reference/cli/init.md) -- the `--hub` flag.
 - [`specify registry`](../reference/cli/registry.md) -- `add` / `remove` / `show` / `validate`.
 - [`specify workspace`](../reference/cli/workspace.md) -- `sync` / `status` / `push`.
-- [`specify plan`](../reference/cli/plan.md) -- `create` / `add` / `amend` / `next` / `doctor` / `archive` / `lock`.
+- [`specify change plan`](../reference/cli/plan.md) -- `create` / `add` / `amend` / `next` / `doctor` / `archive` / `lock`.
 - [Migrating to CLI v1](../explanation/migrating-cli-v1.md) -- rename map covering the v1.x `init`->`create` and `create`->`add` renames.
 
 ## Next

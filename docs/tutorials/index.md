@@ -8,7 +8,8 @@ The tutorials progress from single-slice basics through multi-repo platform chan
 
 | # | Tutorial | What you learn | Prerequisites |
 |---|---------|---------------|---------------|
-| 1 | [Your First Change](first-change.md) | The define-build-merge loop, artifacts, baseline | [Prerequisites](../orientation/prerequisites.md) installed |
+| 0 | [Quick Start (5 Minutes)](quick-start.md) | The shortest path through init, define, build, and merge | [Prerequisites](../orientation/prerequisites.md) installed |
+| 1 | [Your First Slice](first-change.md) | The define-build-merge loop, artifacts, baseline | [Prerequisites](../orientation/prerequisites.md) installed |
 | 2 | [Iterating on a Baseline](iterating-on-baseline.md) | Delta specs, baseline accumulation, merge keys | Tutorial 1 |
 | 3 | [Brownfield Onboarding](brownfield-onboarding.md) | Extracting specs from existing code | [Prerequisites](../orientation/prerequisites.md) installed |
 | 4 | [A Multi-Slice Change](single-repo-change.md) | Plans, execute, dependency tracking | Tutorials 1-2 |
@@ -18,7 +19,7 @@ The tutorials progress from single-slice basics through multi-repo platform chan
 
 ## Where to start
 
-- **New to Specify?** Start with [Tutorial 1](first-change.md).
+- **New to Specify?** Run the [Quick Start](quick-start.md) if you want the fastest path, then read [Tutorial 1](first-change.md).
 - **Have an existing codebase?** Start with [Tutorial 3](brownfield-onboarding.md), then return to Tutorial 1.
 - **Planning a large change?** Read Tutorials 1-2 first, then skip to [Tutorial 4](single-repo-change.md).
 - **Working across multiple repos?** Read through to [Tutorial 5A](cross-repo-change.md), then continue to [Tutorial 5B](landing-a-change.md) for the landing half of the loop.

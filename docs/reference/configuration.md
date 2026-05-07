@@ -52,7 +52,7 @@ A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `
 | `capability` | -- | **Omitted.** A hub has no capability — its absence is what tells the CLI to skip capability resolution and the per-project phase pipelines. |
 | `rules` | -- | Omitted -- a hub has no phase pipelines to scaffold. |
 
-**When to use the hub shape:** multi-repo platforms, greenfield initiatives where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous. See [Platform repo topologies](../explanation/platform-repo.md) for the full contract and the hub vs platform-as-project comparison.
+**When to use the hub shape:** multi-repo platforms, greenfield changes where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous. See [Platform repo topologies](../explanation/platform-repo.md) for the full contract and the hub vs platform-as-project comparison.
 
 ## plan.yaml
 
@@ -60,7 +60,7 @@ A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `
 **Created by:** `/change:plan` (via `specify change plan create` + `specify change plan add`)
 **Modified by:** `specify change plan amend`, `specify change plan transition`
 
-The initiative's table of contents -- an ordered, dependency-aware list of changes.
+The change's table of contents -- an ordered, dependency-aware list of slices.
 
 ```yaml
 name: platform-v2
@@ -103,14 +103,14 @@ changes:
 
 | Field (top-level) | Required | Description |
 |-------------------|----------|-------------|
-| `name` | Yes | Initiative name (kebab-case) |
+| `name` | Yes | Change name (kebab-case) |
 | `sources` | No | Named source paths (key=path) for legacy code or documentation |
 
 | Field (per entry) | Required | Description |
 |-------------------|----------|-------------|
-| `name` | Yes | Change name (kebab-case, unique within the plan) |
+| `name` | Yes | Slice name (kebab-case, unique within the plan) |
 | `description` | Yes | What this slice does |
-| `depends-on` | No | List of change names that must be `done` first |
+| `depends-on` | No | List of slice names that must be `done` first |
 | `sources` | No | List of source keys from the top-level `sources` |
 | `status` | Yes | Current state: `pending`, `in-progress`, `done`, `failed`, `blocked`, `skipped` |
 | `schema` | No | Plan-entry schema identifier for project-less entries (e.g. `contracts@v1`). Required when `project` is absent. The `schema:` key on a `plan.yaml` entry is intentionally kept as-is by [RFC-13](../../rfcs/archive/rfc-13-extensibility.md) — it identifies the artefact-path identifier the entry targets, not the capability that owns the work; revisited as part of the slice → slice rename in a later phase. |
@@ -124,7 +124,7 @@ changes:
 **Created by:** Operator (directly)
 **Validated by:** `specify registry validate`
 
-Platform catalogue for multi-repo initiatives. Optional -- not needed for single-repo projects.
+Platform catalogue for multi-repo changes. Optional -- not needed for single-repo projects.
 
 ```yaml
 version: 1
@@ -184,7 +184,7 @@ subsystems. Notifications can follow in a later cycle.
 
 | Frontmatter field | Required | Description |
 |-------------------|----------|-------------|
-| `name` | Yes | Initiative name (kebab-case) |
+| `name` | Yes | Change name (kebab-case) |
 | `inputs[].path` | Yes | Filesystem path to the input |
 | `inputs[].kind` | Yes | `legacy-code` or `documentation` |
 
@@ -196,7 +196,7 @@ The prose body describes the operator's intent. It is read by `/change:plan` dur
 **Created by:** `specify slice create`
 **Modified by:** `specify slice transition`, `specify slice outcome set`
 
-Per-change lifecycle metadata. **Never hand-edit this file.**
+Per-slice lifecycle metadata. **Never hand-edit this file.**
 
 ```yaml
 status: building

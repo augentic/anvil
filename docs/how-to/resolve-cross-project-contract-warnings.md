@@ -6,7 +6,7 @@ This how-to covers where the warnings appear, how to read them, and the four can
 
 ## Prerequisites
 
-- A multi-project initiative where at least one registry entry declares `contracts.produces` and another declares `contracts.consumes` against the same path.
+- A multi-project change where at least one registry entry declares `contracts.produces` and another declares `contracts.consumes` against the same path.
 - A producer change that has been merged via `/change:execute` (manually or via `--loop`).
 
 For background on the check itself, see [Cross-project contract validation](cross-repo-contracts.md#cross-project-contract-validation-rfc-9-section-3b).
@@ -40,7 +40,7 @@ Four canonical paths:
 
 ### Path A: spawn a follow-up consumer change in the current plan
 
-The consumer project needs to be updated to match the producer's new shape, and the work fits inside the current initiative. Add a new entry to `plan.yaml` that depends on the producer change:
+The consumer project needs to be updated to match the producer's new shape, and the work fits inside the current change. Add a new entry to `plan.yaml` that depends on the producer slice:
 
 ```bash
 specify change plan add update-<consumer>-for-<producer-change> \
@@ -52,12 +52,12 @@ specify change plan add update-<consumer>-for-<producer-change> \
 
 Then re-run `/change:execute --loop`. The new entry picks up on the next cycle once its dependency is `done`.
 
-### Path B: spawn a follow-up consumer change in a new initiative
+### Path B: spawn a follow-up consumer change
 
-The producer change is shipping now and the consumer update is a separate beat (different release, different team, different review cycle). Land the current initiative as-is, then start a fresh initiative against the same hub:
+The producer change is shipping now and the consumer update is a separate beat (different release, different team, different review cycle). Land the current change as-is, then start a fresh change against the same hub:
 
 ```bash
-# After landing the current initiative (specify change finalize)
+# After landing the current change (specify change finalize)
 specify change create adopt-<contract-path>-changes
 # Edit change.md to point at the consumer projects
 /change:plan adopt-<contract-path>-changes --against ./

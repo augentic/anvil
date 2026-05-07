@@ -125,6 +125,6 @@ The old `specify workspace merge` automation is now a one-release deprecation sh
 ## See also
 
 - [specify slice](slice.md) -- the per-slice CLI verbs that change-orchestration drives through the slice loop.
-- [specify registry](registry.md) -- platform registry (top-level since the CLI cleanup; previously `specify initiative registry`).
-- [specify workspace](workspace.md) -- workspace sync, status, push, and the deprecated merge shim (moved from `specify initiative workspace` in RFC-3b).
+- [specify registry](registry.md) -- platform registry.
+- [specify workspace](workspace.md) -- workspace sync, status, push, and the deprecated merge shim.
 - [Migrating CLI v1](../../explanation/migrating-cli-v1.md) -- rename map for the cleanup.

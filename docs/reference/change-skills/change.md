@@ -1,6 +1,4 @@
-# /change:plan --orchestrate (formerly /spec:initiative)
-
-> **Renamed.** The Layer 4 umbrella was originally a separate `/spec:initiative` skill. It has been folded into `/change:plan` as a flag-gated `--orchestrate` mode in a progressive-disclosure pass; the seven-step sequence and every halt / re-entry semantic is unchanged. Replace `/spec:initiative create <name>` with `/change:plan --orchestrate <name>` everywhere; the skill body now lives at [`plugins/spec/skills/plan/orchestration.md`](../../../plugins/change/skills/plan/orchestration.md) (with [shapes](../../../plugins/change/skills/plan/shapes.md) and [re-entry](../../../plugins/change/skills/plan/re-entry.md) details in adjacent siblings). The CLI verbs (`specify change create`, `specify change finalize`) are unchanged.
+# /change:plan --orchestrate
 
 Drive a cross-repo Specify change from a single operator action: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute --loop` -> `specify workspace push`, then resume to `specify change finalize` after the operator merges PRs through the forge UI or `gh pr merge`.
 
@@ -17,7 +15,7 @@ Drive a cross-repo Specify change from a single operator action: brief -> regist
     [--dry-run]
 ```
 
-Re-running `--orchestrate` against an existing initiative is the canonical resume path -- see [Re-entry / idempotency](#re-entry--idempotency).
+Re-running `--orchestrate` against an existing change is the canonical resume path -- see [Re-entry / idempotency](#re-entry--idempotency).
 
 ## Arguments
 
@@ -87,7 +85,7 @@ The umbrella stops on:
 
 ## Re-entry / idempotency
 
-Running `/change:plan --orchestrate <name>` against a populated initiative is the canonical resume path. The mode walks the on-disk state (`change.md` present? `plan.yaml` present and terminal? PRs merged on remote?) and resumes at the first incomplete step:
+Running `/change:plan --orchestrate <name>` against a populated change is the canonical resume path. The mode walks the on-disk state (`change.md` present? `plan.yaml` present and terminal? PRs merged on remote?) and resumes at the first incomplete step:
 
 | State on entry | Resumes at |
 |----------------|------------|
@@ -113,7 +111,7 @@ Each shape uses the same seven-step sequence. Only the inputs to step 3 (Plan) d
 
 ## Lifecycle transitions
 
-The umbrella is a composition of existing skills and CLI verbs. It does not introduce new lifecycle states. Plan-entry transitions are written by `/change:execute` via `specify change plan transition`; change lifecycle transitions are written by the phase skills via `specify slice transition`.
+The umbrella is a composition of existing skills and CLI verbs. It does not introduce new lifecycle states. Plan-entry transitions are written by `/change:execute` via `specify change plan transition`; slice lifecycle transitions are written by the phase skills via `specify slice transition`.
 
 ## Error modes
 

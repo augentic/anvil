@@ -34,7 +34,7 @@ specify capability pipeline <phase> [--change <slice-dir>] [--format json]
 
 | Phase | Description |
 |-------|-------------|
-| `plan` | Briefs that drive initiative planning (discovery, propose, assignment) |
+| `plan` | Briefs that drive change planning (discovery, propose, assignment) |
 | `define` | Briefs that generate artifacts (proposal, specs, composition*, design, tasks) |
 | `build` | Briefs that drive implementation |
 | `merge` | Briefs that drive spec merging |

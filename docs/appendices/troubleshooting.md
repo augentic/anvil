@@ -6,7 +6,7 @@ Common failure modes and their resolutions.
 
 ### `legacy-layout` error from every CLI verb
 
-**Symptom:** Any project-aware verb (`specify status`, `specify plan ...`, `specify registry ...`, etc.) exits 1 with `error: legacy v1 layout detected; run \`specify migrate v2-layout\` to upgrade ([".specify/registry.yaml", ...])`. JSON callers see `error: "legacy-layout"`.
+**Symptom:** Any project-aware verb (`specify status`, `specify change plan ...`, `specify registry ...`, etc.) exits 1 with `error: legacy v1 layout detected; run \`specify migrate v2-layout\` to upgrade ([".specify/registry.yaml", ...])`. JSON callers see `error: "legacy-layout"`.
 
 **Cause:** The CLI was upgraded past `0.2.0` (which moved operator-facing platform artifacts to the repo root) but the project still has v1-layout files under `.specify/`.
 
@@ -14,6 +14,8 @@ Common failure modes and their resolutions.
 
 ```bash
 specify migrate v2-layout
+specify migrate slice-layout
+specify migrate change-noun
 ```
 
 The mover is idempotent and refuses to clobber existing destinations. See [Migrating to the v2 layout](../how-to/migrate-to-v2-layout.md) for the full walkthrough, including multi-repo platforms and collision recovery.

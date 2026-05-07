@@ -1,6 +1,8 @@
 # Land a Change
 
-Once `/change:execute --loop` has driven every change to `done` and `specify workspace push` has shipped the local commits as PRs, the remaining work is **landing** -- merging the PRs through the forge and archiving the plan. This how-to covers the operator-owned merge step and the four guards that `specify change finalize` runs before it touches anything.
+Once `/change:execute --loop` has driven every plan entry to `done` and `specify workspace push` has shipped the local commits as PRs, the remaining work is **landing** -- merging the PRs through the forge and archiving the plan. This how-to covers the operator-owned merge step and the four guards that `specify change finalize` runs before it touches anything.
+
+This is the checklist version. For the full scenario with example project names, expected outputs, and the `/change:plan --orchestrate` variants, read the [Landing a Change tutorial](../tutorials/landing-a-change.md).
 
 ## Prerequisites
 
@@ -33,7 +35,7 @@ The verb runs four guards in order. **All-or-nothing:** any guard failure refuse
 |-------|--------------|----------|
 | Plan-presence (`plan.yaml` exists) | `plan-not-found` | The change is already finalized -- no action needed. |
 | Plan terminal-state (every entry `done`/`failed`/`skipped`) | `non-terminal-entries-present` | Drive the offending entry to terminal via `/change:execute` or `specify change plan transition`. |
-| Per-project PR-state (every `specify/<name>` PR is `MERGED`) | `unmerged` / `closed` / `branch-pattern-mismatch` / `failed` | Merge the outstanding PR through the forge UI or `gh pr merge`; see [Initiative landing issues](../appendices/troubleshooting.md#initiative-landing-issues) for `branch-pattern-mismatch`. |
+| Per-project PR-state (every `specify/<name>` PR is `MERGED`) | `unmerged` / `closed` / `branch-pattern-mismatch` / `failed` | Merge the outstanding PR through the forge UI or `gh pr merge`; see [change landing issues](../appendices/troubleshooting.md#change-landing-issues) for `branch-pattern-mismatch`. |
 | Workspace-cleanliness (`git status --porcelain` empty per clone) | `dirty` | Commit or stash uncommitted work in `.specify/workspace/<peer>/`. |
 
 When every guard passes, the verb runs `Plan::archive` programmatically. `plan.yaml`, `change.md`, and `.specify/plans/<name>/` move atomically into `.specify/archive/plans/<YYYYMMDD>-<name>/`. The archive write is preflighted (both destinations) so a collision returns an error before any file is touched.
@@ -42,7 +44,7 @@ When every guard passes, the verb runs `Plan::archive` programmatically. `plan.y
 
 ## `--clean`: prune workspace clones
 
-By default, finalize leaves `.specify/workspace/<peer>/` clones on disk. They are cheap to refresh via `specify workspace sync` for the next initiative. To prune them at the same time:
+By default, finalize leaves `.specify/workspace/<peer>/` clones on disk. They are cheap to refresh via `specify workspace sync` for the next change. To prune them at the same time:
 
 ```bash
 specify change finalize --clean
@@ -78,5 +80,5 @@ Refer to [`specify change finalize` -- output](../reference/cli/change.md#specif
 - [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- end-to-end walkthrough that exercises this landing flow.
 - [`specify workspace`](../reference/cli/workspace.md) -- CLI reference for `sync`, `status`, and `push`.
 - [`specify change`](../reference/cli/change.md) -- CLI reference for `finalize`.
-- [`/change:plan --orchestrate`](../reference/change-skills/change.md) -- the Layer 4 umbrella mode (formerly `/spec:initiative`) that automates through PR creation, then finalizes after operator merge.
-- [Initiative landing issues](../appendices/troubleshooting.md#initiative-landing-issues) -- `branch-pattern-mismatch`, `plan-not-found`, dirty clones.
+- [`/change:plan --orchestrate`](../reference/change-skills/change.md) -- the Layer 4 umbrella mode that automates through PR creation, then finalizes after operator merge.
+- [Change landing issues](../appendices/troubleshooting.md#change-landing-issues) -- `branch-pattern-mismatch`, `plan-not-found`, dirty clones.

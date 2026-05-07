@@ -116,4 +116,4 @@ The framework reports drift; the operator decides what to do about it. Same post
 - [`specify registry`](../reference/cli/registry.md) -- CLI reference for `add` and `remove`.
 - [Manage registry projects](manage-registry-projects.md) -- the broader add/remove how-to.
 - [`/change:execute`](../reference/change-skills/execute.md) -- the executor that surfaces the halt.
-- [`/change:plan --orchestrate`](../reference/change-skills/change.md) -- the umbrella mode (formerly `/spec:initiative`), which composes against this same recovery sequence.
+- [`/change:plan --orchestrate`](../reference/change-skills/change.md) -- the umbrella mode, which composes against this same recovery sequence.

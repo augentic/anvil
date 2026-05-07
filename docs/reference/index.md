@@ -13,7 +13,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 ### Skills
 
 - [Slice Skills (Layer 2)](slice-skills/index.md) -- the define-build-merge loop and supporting skills (init, drop, extract).
-- [Change Skills (Layers 3 & 4)](change-skills/index.md) -- `/change:plan`, `/change:execute`, and `/spec:analyze` for multi-slice changes (Layer 3); the `/change:plan --orchestrate` umbrella mode (formerly `/spec:initiative`, then `/change:plan --orchestrate` until RFC-13 §Migration) for cross-repo changes end-to-end (Layer 4).
+- [Change Skills (Layers 3 & 4)](change-skills/index.md) -- `/change:plan`, `/change:execute`, and `/spec:analyze` for multi-slice changes (Layer 3); `/change:plan --orchestrate` for cross-repo changes end-to-end (Layer 4).
 
 ### CLI
 

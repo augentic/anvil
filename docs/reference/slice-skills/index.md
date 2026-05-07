@@ -1,6 +1,6 @@
 # Change Skills (Layer 2)
 
-Layer 2 skills operate on a single change inside `.specify/slices/<name>/`. They form the core define-build-merge loop and provide supporting capabilities for extracting artifacts from existing source.
+Layer 2 skills operate on a single slice inside `.specify/slices/<name>/`. They form the core define-build-merge loop and provide supporting capabilities for extracting artifacts from existing source.
 
 ## The define-build-merge loop
 

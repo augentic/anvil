@@ -1,6 +1,6 @@
 # How-To Guides
 
-Task-oriented recipes for common Specify operations. Each guide assumes you have completed at least the [Quick Start](../tutorials/quick-start.md) or [Your First Change](../tutorials/first-change.md) tutorial.
+Task-oriented recipes for common Specify operations. Each guide assumes you have completed at least the [Quick Start](../tutorials/quick-start.md) or [Your First Slice](../tutorials/first-change.md) tutorial.
 
 ## I want to...
 

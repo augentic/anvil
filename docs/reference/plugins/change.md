@@ -23,11 +23,11 @@ These skills used to live on the `spec` plugin as `/change:plan` and `/change:ex
 
 ## CLI counterpart
 
-The matching CLI surface lives under [`specify change`](../cli/change.md). The umbrella verbs (`create`, `show`, `finalize`, `archive`) and the nested plan family (`specify change plan {add, amend, next, status, doctor, lock, transition, validate, archive}`) replace the v1.x `specify change *` and `specify plan *` groups, which were retired in RFC-13 §3.5.
+The matching CLI surface lives under [`specify change`](../cli/change.md). The umbrella verbs (`create`, `show`, `finalize`) and the nested plan family (`specify change plan {add, amend, next, status, doctor, lock, transition, validate, archive}`) replace the v1.x `specify change *` and `specify plan *` groups, which were retired in RFC-13 §3.5.
 
 ## See also
 
-- [Initiative Skills overview](../change-skills/index.md) — layered stack and the change-vs-spec split.
+- [Change Skills overview](../change-skills/index.md) — layered stack and the change-vs-slice split.
 - [`/change:plan`](../change-skills/plan.md) — authoring skill reference.
 - [`/change:execute`](../change-skills/execute.md) — driver skill reference.
 - [`/change:plan --orchestrate`](../change-skills/change.md) — Layer 4 umbrella mode reference.

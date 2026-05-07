@@ -106,6 +106,6 @@ Every skill is built on CLI commands. If a skill does something you don't unders
 ## See also
 
 - [The Layered Stack](../explanation/three-layer-stack.md) -- architectural explanation
-- [/change:plan --orchestrate](../../plugins/change/skills/plan/orchestration.md) -- the Layer 4 umbrella mode (formerly the `/spec:initiative` skill)
+- [/change:plan --orchestrate](../../plugins/change/skills/plan/orchestration.md) -- the Layer 4 umbrella mode
 - [CLI Reference](../reference/cli/index.md) -- all CLI commands
 - [Recover from a Failed Change](recover-failed-change.md) -- focused recovery guide

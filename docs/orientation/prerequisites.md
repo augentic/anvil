@@ -14,7 +14,7 @@ Install the Augentic plugins from the Cursor marketplace:
 4. Install the plugin marketplace.
 5. Restart Cursor.
 
-This installs all six plugins (Specify, Omnia, Vectis, Contracts, RT, Client) and their skills.
+This installs all seven plugins (Specify, Change, Omnia, Vectis, Contract, RT, Client) and their skills.
 
 ## The `specify` CLI
 
@@ -48,16 +48,16 @@ Verify the installation:
 specify --version
 ```
 
-## Schema-specific prerequisites
+## Capability-specific prerequisites
 
-Depending on which schema you use, you may need additional tooling.
+Depending on which capability you use, you may need additional tooling.
 
-### Omnia schema
+### Omnia capability
 
 - [Rust toolchain](https://rust-lang.org/tools/install/)
 - `wasm32-wasip2` target: `rustup target add wasm32-wasip2`
 
-### Vectis schema
+### Vectis capability
 
 - [Rust toolchain](https://rust-lang.org/tools/install/)
 - [Rust Analyzer](https://open-vsx.org/extension/rust-lang/rust-analyzer) Cursor extension
@@ -85,6 +85,6 @@ Run through this checklist to confirm everything is ready:
 
 1. **CLI installed:** `specify --version` prints a version number.
 2. **Cursor plugins:** Open Cursor Settings > Plugins and confirm the Augentic plugins are listed.
-3. **Schema tooling:** If using Omnia, run `rustup target list --installed` and confirm `wasm32-wasip2` appears. If using Vectis, confirm `rustc --version` succeeds.
+3. **Capability tooling:** If using Omnia, run `rustup target list --installed` and confirm `wasm32-wasip2` appears. If using Vectis, confirm `rustc --version` succeeds.
 
 If all three checks pass, proceed to the [Quick Start](../tutorials/quick-start.md).

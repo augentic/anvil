@@ -58,7 +58,7 @@ The `contracts` capability and the implementation capabilities serve complementa
 | Build phase | Author/import + validation | Code generation |
 | Typical delta | Full contract set (new API), import normalisation, or contract modification | Spec/design/code changes with no contract artifact delta |
 
-> The plan-entry key on the table above is still spelled `schema:` because the `plan.yaml` per-entry field name is intentionally kept distinct from the capability rename — it identifies the artefact-path identifier the entry targets, not the capability that owns the work. RFC-13 leaves that key unchanged in Phase 1; the slice → slice / initiative → change rename in Phase 3 will revisit `plan.yaml` field names as a separate cut-over.
+> The plan-entry key on the table above is still spelled `schema:` because the `plan.yaml` per-entry field name is intentionally kept distinct from the capability rename — it identifies the artefact-path identifier the entry targets, not the capability that owns the work. RFC-13 leaves that key unchanged; any future plan-field rename is a separate cut-over.
 
 ## Domain context
 

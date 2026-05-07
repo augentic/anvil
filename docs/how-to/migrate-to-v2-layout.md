@@ -5,11 +5,11 @@ The v2 layout (specify-cli `0.2.0`) moves the four operator-facing platform arti
 | Artifact | v1 path | v2 path |
 |---|---|---|
 | Platform catalogue | `.specify/registry.yaml` | `registry.yaml` |
-| Initiative plan | `.specify/plan.yaml` | `plan.yaml` |
-| Operator brief | `.specify/change.md` | `change.md` |
+| Change plan | `.specify/plan.yaml` | `plan.yaml` |
+| Operator brief | `.specify/initiative.md` | `initiative.md`, then `change.md` after `specify migrate change-noun` |
 | API contracts | `.specify/contracts/` | `contracts/` |
 
-`.specify/` continues to hold framework-managed state — `project.yaml`, `changes/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`. The boundary is "operator artifacts at root, framework state under `.specify/`". See [Decision Log](../explanation/decision-log.md) for the rationale.
+`.specify/` continues to hold framework-managed state — `project.yaml`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`. The boundary is "operator artifacts at root, framework state under `.specify/`". See [Decision Log](../explanation/decision-log.md) for the rationale.
 
 ## When you'll see this
 
@@ -25,11 +25,18 @@ JSON callers see `error: "legacy-layout"` and exit code `1`.
 
 ## The migration
 
-Stop. The migration is a single command:
+Start with the layout migration:
 
 ```bash
 cd <your-project>
 specify migrate v2-layout
+```
+
+Then apply the RFC-13 noun migrations if the project predates the slice/change cutover:
+
+```bash
+specify migrate slice-layout
+specify migrate change-noun
 ```
 
 The verb is **idempotent**, **atomic per file**, and **refuses to clobber** an existing destination. Re-running on an already-migrated project exits 0 with `nothing to migrate`.
@@ -50,7 +57,7 @@ The JSON envelope enumerates every checked path with `moved` / `would-move` / `a
 
 ## After the move
 
-1. **Commit the migration.** The mover uses `fs::rename`; the result is staged exactly as if you had run `git mv` four times. Inspect with `git status` and commit:
+1. **Commit the migration.** The movers use `fs::rename`; the result is staged exactly as if you had run `git mv`. Inspect with `git status` and commit:
 
    ```bash
    git add -A
@@ -59,7 +66,7 @@ The JSON envelope enumerates every checked path with `moved` / `would-move` / `a
 
 2. **Run any project-aware verb to confirm.** A subsequent `specify status` (or any other CLI verb) should now succeed.
 
-3. **Update CI / scripts.** Any scaffolded automation that hard-codes `.specify/registry.yaml`, `.specify/plan.yaml`, etc. needs to be updated in lockstep — the CLI no longer reads those paths.
+3. **Update CI / scripts.** Any scaffolded automation that hard-codes `.specify/registry.yaml`, `.specify/plan.yaml`, `.specify/changes/`, or `initiative.md` needs to be updated in lockstep — the CLI no longer reads those current-state paths.
 
 ## Multi-repo platforms
 
@@ -72,13 +79,13 @@ A platform-hub repo with `.specify/workspace/<name>/` clones needs each clone mi
    specify migrate v2-layout
    ```
 
-   The hub's own `registry.yaml`, `plan.yaml`, and `change.md` move to the hub's repo root. The migrate verb **refuses to touch peer clones** under `.specify/workspace/<name>/`.
+   The hub's own `registry.yaml`, `plan.yaml`, and operator brief move to the hub's repo root. The migrate verb **refuses to touch peer clones** under `.specify/workspace/<name>/`.
 
 2. Migrate each peer clone:
 
    ```bash
    for clone in .specify/workspace/*/; do
-     ( cd "$clone" && specify migrate v2-layout )
+     ( cd "$clone" && specify migrate v2-layout && specify migrate slice-layout && specify migrate change-noun )
    done
    ```
 
@@ -117,6 +124,7 @@ The v1 layout is **read-only** to the CLI starting at `0.2.0`. To roll back:
   mkdir -p .specify
   mv registry.yaml plan.yaml change.md .specify/
   mv contracts .specify/
+  mv .specify/slices .specify/changes
   ```
 
 - Commit the reversal.

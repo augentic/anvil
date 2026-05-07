@@ -32,7 +32,7 @@ contracts/                                  # Baseline API contracts
 │           ├── tasks.md
 │           ├── build.md
 │           └── merge.md
-├── changes/                                # Active slices (one directory per change)
+├── slices/                                 # Active slices (one directory per slice)
 │   └── <slice-name>/
 │       ├── .metadata.yaml                 # Lifecycle state (managed by CLI)
 │       ├── proposal.md                    # Why this slice exists
@@ -42,7 +42,7 @@ contracts/                                  # Baseline API contracts
 │       ├── specs/                         # Behavioral specs (one per capability)
 │       │   └── <capability>/
 │       │       └── spec.md
-│       └── contracts/                     # Per-change contract delta (when API interactions exist)
+│       └── contracts/                     # Per-slice contract delta (when API interactions exist)
 │           ├── schemas/
 │           ├── http/
 │           └── messages/
@@ -66,7 +66,7 @@ contracts/                                  # Baseline API contracts
 │   └── <project-name>/
 │       └── ...                            # Peer repo clone or symlink, writable during execution
 │
-└── archive/                               # Finalized changes and plans
+└── archive/                               # Finalized slices and plans
     ├── YYYY-MM-DD-<slice-name>/          # Merged or dropped slices
     │   ├── .metadata.yaml
     │   ├── proposal.md
@@ -82,9 +82,9 @@ contracts/                                  # Baseline API contracts
 
 ## Key directories
 
-### `changes/`
+### `slices/`
 
-Each active slice gets its own directory under `changes/`. The directory name is kebab-case and validated by the CLI when you run `specify slice create`.
+Each active slice gets its own directory under `slices/`. The directory name is kebab-case and validated by the CLI when you run `specify slice create`.
 
 A slice directory contains the core artifacts plus `.metadata.yaml` for lifecycle state. The `specs/` subdirectory holds one spec file per capability. Vectis changes also include `composition.yaml` for screen layout.
 

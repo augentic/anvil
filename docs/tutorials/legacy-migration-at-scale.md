@@ -1,8 +1,8 @@
 # Legacy Migration at Scale
 
-Migrating a large legacy codebase is one of the most demanding uses of Specify. This tutorial shows how to decompose a monolith into a multi-repo, multi-slice initiative using the analyze/extract split -- the strategy that makes this tractable.
+Migrating a large legacy codebase is one of the most demanding uses of Specify. This tutorial shows how to decompose a monolith into a multi-repo, multi-slice change using the analyze/extract split -- the strategy that makes this tractable.
 
-**Prerequisites:** Familiarity with [multi-slice initiatives](single-repo-change.md) and [cross-repo planning](cross-repo-change.md).
+**Prerequisites:** Familiarity with [multi-slice changes](single-repo-change.md) and [cross-repo planning](cross-repo-change.md).
 
 ## The scaling challenge
 

@@ -117,7 +117,7 @@ See [Vectis WASI tools](../reference/cli/vectis.md) for the operator-facing surf
 
 ## v2 layout — platform artifacts at the repo root (specify-cli `0.2.0`)
 
-The on-disk layout split along a clear boundary: **operator-facing platform artifacts** (`registry.yaml`, `plan.yaml`, `initiative.md`, `contracts/`) live at the repo root; **framework-managed state** (`project.yaml`, `changes/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`. The boundary makes the responsibilities explicit — operators own everything at the root; Specify owns `.specify/`.
+The on-disk layout split along a clear boundary: **operator-facing platform artifacts** (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at the repo root; **framework-managed state** (`project.yaml`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`. The boundary makes the responsibilities explicit — operators own everything at the root; Specify owns `.specify/`.
 
 This is a **hard cutover**. The CLI no longer reads the v1 layout. Any project-aware verb on a v1-layout project errors with the stable `legacy-layout` code (exit 1) and points the operator at:
 
@@ -132,8 +132,8 @@ Per-artifact migration map:
 | Artifact | v1 path | v2 path |
 |---|---|---|
 | Platform catalogue | `.specify/registry.yaml` | `registry.yaml` |
-| Initiative plan | `.specify/plan.yaml` | `plan.yaml` |
-| Operator brief | `.specify/initiative.md` | `initiative.md` |
+| Change plan | `.specify/plan.yaml` | `plan.yaml` |
+| Operator brief | `.specify/initiative.md` | `change.md` after `specify migrate change-noun` |
 | API contracts | `.specify/contracts/` | `contracts/` |
 
 `project.yaml` stays under `.specify/`. The `contracts@v1` schema id, the `contracts` brief, the merge semantics, the produces/consumes registry roles, and the workspace flow are all unchanged — only the file locations moved. The decision-log entry "Platform artifacts at the repo root, framework state under `.specify/`" carries the design rationale.
@@ -186,13 +186,13 @@ For the full rationale and migration plan, see [rfcs/archive/rfc-10-skills.md](h
 
 ## Hub topology
 
-A **registry-only platform hub** (RFC-9 ?1D) is now the canonical starting shape for a multi-repo initiative. The hub holds platform state -- `registry.yaml`, `initiative.md`, `plan.yaml`, `workspace/` -- and is never itself a code project.
+A **registry-only platform hub** (RFC-9 ?1D) is now the canonical starting shape for a multi-repo change. The hub holds platform state -- `registry.yaml`, `change.md`, `plan.yaml`, `workspace/` -- and is never itself a code project.
 
 ```bash
 specify init --hub --name shop-platform
 ```
 
-The flag scaffolds a sentinel `project.yaml { hub: true, ... }` (the `capability:` field is omitted on hubs) that disables phase pipelines on the hub itself, plus an empty `registry.yaml` and an `initiative.md` template. `Registry::validate_shape` extends with a `hub-only` mode that rejects any registry entry whose `url` is `.`.
+The flag scaffolds a sentinel `project.yaml { hub: true, ... }` (the `capability:` field is omitted on hubs) that disables phase pipelines on the hub itself, plus an empty `registry.yaml`. `change.md` and `plan.yaml` are created later by `specify change create` and `specify change plan create`. `Registry::validate_shape` extends with a `hub-only` mode that rejects any registry entry whose `url` is `.`.
 
 The platform-as-project shape (initiating repo with `url: .`) is still permitted for single-repo and small-team cases.
 
@@ -207,7 +207,7 @@ Specify now distinguishes two kinds of clones with very different lifecycles:
 - **Tier 1 (legacy-source clone)**: ephemeral, read-only, lives at `.specify/plans/<name>/analyze/<key>/`. Materialised by `/spec:analyze`; swept by `specify change plan archive`.
 - **Tier 2 (registered project clone)**: durable, read-write, lives at `.specify/workspace/<name>/`. Materialised by `specify workspace sync`; pushed by `specify workspace push`.
 
-The distinction was always implicit; RFC-9 ?1E codifies it so operators stop losing tier-1 writes or expecting tier-2 clones to disappear after an initiative.
+The distinction was always implicit; RFC-9 ?1E codifies it so operators stop losing tier-1 writes or expecting tier-2 clones to disappear after a change.
 
 - Explanation: [Workspace Tiers](workspace-tiers.md)
 

@@ -2,7 +2,7 @@
 
 Manage the platform registry at `registry.yaml` -- the catalogue of repositories that make up a multi-repo platform. Optional for single-repo projects.
 
-The registry was promoted from `specify change registry ...` to a top-level noun group in the CLI cleanup: `registry.yaml` is platform-scoped (it spans every initiative the platform runs), not initiative-scoped, so the verb shape now reflects that.
+The registry was promoted from `specify change registry ...` to a top-level noun group in the CLI cleanup: `registry.yaml` is platform-scoped (it spans every change the platform runs), not change-scoped, so the verb shape now reflects that.
 
 ## Verb cheat-sheet
 

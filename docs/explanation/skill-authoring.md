@@ -92,7 +92,7 @@ Examples after RFC-10:
 | `/spec:init` | `[schema-url]` |
 | `/spec:define` | `[description]` |
 | `/spec:build` | `[change-name]` |
-| `/change:plan` | `<initiative-name>` |
+| `/change:plan` | `<change-name>` |
 | `/spec:extract` | `<source-path> <slice-dir>` |
 | `/omnia:crate-writer` | `[crate-name]` |
 | `/contract:openapi` | `[slice-dir]` |

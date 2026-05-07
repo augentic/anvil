@@ -1,6 +1,6 @@
 # Manage Registry Projects
 
-`registry.yaml` is the platform catalogue declaring which repos are in scope for cross-repo initiatives. Projects are added and removed via `specify registry add` and `specify registry remove` (RFC-9 Section 2A) -- never by hand-editing `registry.yaml` and hoping validation passes.
+`registry.yaml` is the platform catalogue declaring which repos are in scope for cross-repo changes. Projects are added and removed via `specify registry add` and `specify registry remove` (RFC-9 Section 2A) -- never by hand-editing `registry.yaml` and hoping validation passes.
 
 This how-to covers the day-to-day flow: registering a new project, removing one, handling the `description-missing-multi-repo` invariant, and rewiring plan entries after a removal.
 
@@ -74,7 +74,7 @@ specify registry add new-project --url ... --schema ... --description "..."
 specify workspace sync
 ```
 
-For ongoing initiatives where a plan entry was already authored against the now-removed project, the validator will block `/change:execute` until you run `specify change plan amend <entry> --project <other>` (or `specify change plan transition <entry> skipped`).
+For ongoing changes where a plan entry was already authored against the now-removed project, the validator will block `/change:execute` until you run `specify change plan amend <entry> --project <other>` (or `specify change plan transition <entry> skipped`).
 
 ## Validation ordering invariant
 
@@ -92,6 +92,6 @@ specify change plan add ... --project <name>   # OR specify change plan amend ..
 
 - [`specify registry`](../reference/cli/registry.md) -- full CLI reference for `add` / `remove` / `show` / `validate`.
 - [Bootstrap a platform hub](bootstrap-a-platform-hub.md) -- the first time you populate a registry.
-- [Cross-Repo Initiatives](../tutorials/cross-repo-change.md) -- how registry descriptions feed into `/change:plan`'s assignment.
+- [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- how registry descriptions feed into `/change:plan`'s assignment.
 - [Recover from registry-amendment-required](recover-from-registry-amendment.md) -- handling the case where `/change:execute` halts and proposes a new project.
 - [`description-missing-multi-repo`](../appendices/troubleshooting.md#description-missing-multi-repo) -- troubleshooting entry.

@@ -120,5 +120,5 @@ Creates plan entries in `pending` state via `specify change plan add`.
 - [/change:execute](execute.md) -- drive the authored plan
 - [/spec:analyze](analyze.md) -- the discovery skill invoked during planning
 - [Configuration Files](../configuration.md) -- `plan.yaml` and `registry.yaml` format
-- [Tutorial: Multi-Change Initiative](../../tutorials/single-repo-change.md) -- walkthrough
-- [Tutorial: Cross-Repo Initiatives](../../tutorials/cross-repo-change.md) -- multi-repo walkthrough
+- [Tutorial: A Multi-Slice Change](../../tutorials/single-repo-change.md) -- walkthrough
+- [Tutorial: Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- multi-repo walkthrough

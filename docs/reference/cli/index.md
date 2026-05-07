@@ -4,19 +4,13 @@ The `specify` CLI is the Layer 1 foundation that every skill builds on. It owns 
 
 ## Installation
 
-When setting up a project through the Specify plugin, `/spec:init` can bootstrap a missing CLI after confirmation with:
+When setting up a project through the Specify plugin, `/spec:init` can bootstrap a missing CLI after confirmation. For manual setup:
 
 ```bash
-cargo install --git https://github.com/augentic/specify-cli
+brew install augentic/tap/specify
 ```
 
-Manual install paths remain available:
-
-```bash
-brew install augentic/tap/specify           # macOS + Linux (primary)
-cargo install specify                       # any platform with Rust toolchain
-curl -sSfL https://specify.sh/install.sh | sh   # pre-built binary
-```
+See [Prerequisites](../../orientation/prerequisites.md) for all install paths and capability-specific tooling.
 
 ## Conventions
 

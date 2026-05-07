@@ -2,13 +2,13 @@
 
 Specify is organised in four layers. Each layer is independently useful, and each builds on the one below it.
 
-> **Naming note.** The pre-RFC-9 stack was a "three-layer stack" topped by `/change:plan` and `/change:execute`. RFC-9 §2C added the umbrella verb at Layer 4 (Initiative Orchestration), promoting plan-and-drive to its own dedicated layer. The umbrella was originally a separate `/spec:initiative` skill; it now lives as the `--orchestrate` mode of `/change:plan`. The filename of this page (`three-layer-stack.md`) is preserved so existing cross-references keep resolving — see the [decision log entry](decision-log.md#independently-useful-layers) for the rationale.
+> **Naming note.** The pre-RFC-9 stack was a "three-layer stack" topped by `/change:plan` and `/change:execute`. RFC-9 §2C added the umbrella verb at Layer 4, promoting plan-and-drive to its own dedicated layer. The filename of this page (`three-layer-stack.md`) is preserved so existing cross-references keep resolving — see the [decision log entry](decision-log.md#independently-useful-layers) for the rationale.
 
 ```d2
 direction: down
 
-Layer4: "Layer 4 — Initiative Orchestration" {
-  initiative: "/change:plan --orchestrate"
+Layer4: "Layer 4 — Change Orchestration" {
+  orchestrate: "/change:plan --orchestrate"
 }
 
 Layer3: "Layer 3 — Plan & Drive" {
@@ -18,7 +18,7 @@ Layer3: "Layer 3 — Plan & Drive" {
   plan -> execute
 }
 
-Layer2: "Layer 2 — Change Lifecycle" {
+Layer2: "Layer 2 — Slice Lifecycle" {
   define: "/spec:define"
   build: "/spec:build"
   mergeSkill: "/spec:merge"
@@ -27,9 +27,9 @@ Layer2: "Layer 2 — Change Lifecycle" {
 }
 
 Layer1: "Layer 1 — CLI Primitives" {
+  sliceCli: "specify slice"
+  planCli: "specify change plan"
   changeCli: "specify change"
-  planCli: "specify plan"
-  initCli: "specify change"
   registryCli: "specify registry"
   workspaceCli: "specify workspace"
   capabilityCli: "specify capability"
@@ -43,7 +43,7 @@ Layer2 -> Layer1
 
 ## Layer 1: CLI primitives
 
-The `specify` CLI is the foundation. It owns every deterministic operation: creating and transitioning changes, validating artifacts, parsing tasks, merging specs, managing plans. Skills never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into the archive. All writes flow through the CLI.
+The `specify` CLI is the foundation. It owns every deterministic operation: creating and transitioning slices, validating artifacts, parsing tasks, merging specs, managing plans. Skills never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into the archive. All writes flow through the CLI.
 
 The primary command families are:
 
@@ -105,7 +105,7 @@ The plan is the slice's table of contents. `/change:plan` produces it by analysi
 
 ## Layer 4: Change orchestration
 
-Layer 4 is a flag-gated mode of `/change:plan` — `/change:plan --orchestrate` (RFC-9 §2C, formerly the dedicated `/spec:initiative` skill) — that strings the entire platform-first loop into one operator action. It is **composition only**: every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the orchestration mode adds no new logic.
+Layer 4 is a flag-gated mode of `/change:plan` — `/change:plan --orchestrate` — that strings the entire platform-first loop into one operator action. It is **composition only**: every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the orchestration mode adds no new logic.
 
 | Skill | Role |
 |-------|------|
@@ -117,7 +117,7 @@ Layer 4 is a flag-gated mode of `/change:plan` — `/change:plan --orchestrate` 
 
 The orchestration mode honours all the halts the underlying skills surface (self-heal, stuck, `registry-amendment-required`) and is **idempotent on re-entry** — running it again after a halt resumes from the appropriate step.
 
-**Who uses it:** Operators driving a cross-repo initiative end-to-end without leaving the platform hub. Power users still call `/change:plan` (default mode) and `/change:execute` directly when they want partial reruns or CI-pipeline composability.
+**Who uses it:** Operators driving a cross-repo change end-to-end without leaving the platform hub. Power users still call `/change:plan` (default mode) and `/change:execute` directly when they want partial reruns or CI-pipeline composability.
 
 ## The layers compose
 

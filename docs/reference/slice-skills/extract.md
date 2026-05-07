@@ -21,7 +21,7 @@ Extract Specify artifacts from existing source code.
 ## When to use
 
 - You have an existing codebase and want to produce reconstruction-grade specs and design from it.
-- During `/spec:define` for migration initiatives when the plan entry has `sources`.
+- During `/spec:define` for migration changes when the plan entry has `sources`.
 - Standalone after `/spec:init` for brownfield onboarding.
 
 ## Artifacts produced

@@ -1,11 +1,13 @@
 # specify migrate
 
-One-shot layout migrations. Today the verb exposes a single subcommand, `v2-layout`, that moves the operator-facing platform artifacts from the legacy v1 location under `.specify/` to the repo root.
+One-shot migrations for projects crossing Specify layout and naming cutovers.
 
 ## Synopsis
 
 ```bash
 specify migrate v2-layout [--dry-run] [--format json]
+specify migrate slice-layout [--dry-run] [--format json]
+specify migrate change-noun [--dry-run] [--format json]
 ```
 
 ## Description
@@ -13,16 +15,24 @@ specify migrate v2-layout [--dry-run] [--format json]
 The v2 layout (specify-cli `0.2.0`) split Specify's on-disk shape along a clear boundary:
 
 - **Operator artifacts** (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at the repo root.
-- **Framework state** (`project.yaml`, `changes/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`.
+- **Framework state** (`project.yaml`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`.
 
-`specify migrate v2-layout` walks the four legacy paths under `.specify/` and renames each one in place to its v2 destination at the repo root. It is the canonical recovery action when any other CLI verb refuses with `Error::LegacyLayout` (stable code `legacy-layout`, exit 1).
+`specify migrate v2-layout` walks the legacy platform artifact paths under `.specify/` and renames each one in place to its v2 destination at the repo root. It is the canonical recovery action when any other CLI verb refuses with `Error::LegacyLayout` (stable code `legacy-layout`, exit 1).
+
+RFC-13 added two follow-on noun migrations:
+
+- `specify migrate slice-layout` renames `.specify/changes/` to `.specify/slices/` and rewrites vendored skill references from `$CHANGE_DIR` to `$SLICE_DIR`.
+- `specify migrate change-noun` renames root `initiative.md` to `change.md`.
+
+Run the migrations in that order when upgrading an old project: `v2-layout`, then `slice-layout`, then `change-noun`.
 
 Behaviour:
 
-- **Idempotent.** Re-running on an already-migrated project exits 0 with `nothing to migrate`.
-- **Refuses to clobber.** If both the legacy and the v2 path exist (e.g. the operator hand-created a root `registry.yaml` before running the migrate), the verb errors with the colliding path and leaves both copies on disk so the operator can resolve manually.
-- **Refuses inside a workspace clone.** The verb does not touch peer clones under `.specify/workspace/<name>/`. Migrate the hub repo first, then iterate clones explicitly (the hub's `specify workspace sync` will refresh them once they're upgraded).
-- **Atomic per file.** Each `fs::rename` is independent — a partial failure leaves the project in a mixed state, with an actionable JSON output enumerating what moved and what didn't.
+- **Idempotent.** Re-running on an already-migrated project exits 0 with `nothing to migrate` or the command-specific no-op message.
+- **Refuses to clobber.** If both the legacy and current path exist, the verb errors with the colliding path and leaves both copies on disk so the operator can resolve manually.
+- **Refuses unsafe active work.** `slice-layout` refuses when any legacy slice under `.specify/changes/` carries a non-terminal lifecycle status.
+- **Refuses inside a workspace clone.** `v2-layout` does not touch peer clones under `.specify/workspace/<name>/`. Migrate the hub repo first, then iterate clones explicitly.
+- **Atomic per move.** Each rename is independent. A partial failure leaves the project in a mixed state, with actionable output enumerating what moved and what did not.
 
 ## Options
 
@@ -33,7 +43,7 @@ Behaviour:
 
 ## JSON output
 
-When `--format json` is provided, returns:
+For `v2-layout`, `--format json` returns:
 
 - `moves` — array of `{ from, to, status }` rows, one per legacy path checked. `status` is one of:
   - `moved` — source moved to destination.
@@ -44,7 +54,7 @@ When `--format json` is provided, returns:
 - `any-collisions` — `true` when at least one destination collision blocked a move.
 - `dry-run` — present and `true` only when `--dry-run` was passed.
 
-Exit code: `0` when every present source moved (or there was nothing to migrate), `1` when at least one collision blocked a move.
+`slice-layout` and `change-noun` return command-specific JSON rows that report the attempted source, destination, status, and dry-run flag. Exit code is `0` when the migration completed or had nothing to do, and `1` when a collision or unsafe active slice blocked the migration.
 
 ## Worked example
 
@@ -57,12 +67,27 @@ my-project/
     ├── project.yaml
     ├── registry.yaml
     ├── plan.yaml
-    ├── change.md
+    ├── initiative.md
     └── contracts/
         └── http/user-api.yaml
 ```
 
-After `specify migrate v2-layout`:
+After `specify migrate v2-layout`, the operator artifacts are at the root, but legacy RFC-13 names may still be present:
+
+```text
+my-project/
+├── src/
+├── registry.yaml
+├── plan.yaml
+├── initiative.md
+├── contracts/
+│   └── http/user-api.yaml
+└── .specify/
+    ├── project.yaml
+    └── changes/
+```
+
+After the follow-on migrations:
 
 ```text
 my-project/
@@ -73,10 +98,11 @@ my-project/
 ├── contracts/
 │   └── http/user-api.yaml
 └── .specify/
-    └── project.yaml
+    ├── project.yaml
+    └── slices/
 ```
 
-`project.yaml` stays under `.specify/` (it is framework configuration, not operator content). The `changes/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and `plan.lock` paths under `.specify/` are likewise untouched.
+`project.yaml` stays under `.specify/` (it is framework configuration, not operator content). The `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and `plan.lock` paths under `.specify/` are likewise untouched.
 
 ## See also
 
