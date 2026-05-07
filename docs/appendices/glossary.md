@@ -30,7 +30,7 @@ An ordered sequence of briefs declared by a capability for a given phase. The Om
 ## C
 
 **Capability** (extension primitive)
-A versioned Specify extension that tells the core how to generate artifacts and build code for a specific outcome domain. Selected at `/spec:init <capability>` time. Each first-party capability lives at `capabilities/<name>/capability.yaml` and contributes brief pipelines for the fixed `define → build → merge` slice loop. Renamed from "schema" by [RFC-13](../../rfcs/rfc-13-extensibility.md). See also: the unit-of-behaviour reading below.
+A versioned Specify extension that tells the core how to generate artifacts and build code for a specific outcome domain. Selected at `/spec:init <capability>` time. Each first-party capability lives at `capabilities/<name>/capability.yaml` and contributes brief pipelines for the fixed `define → build → merge` slice loop. Renamed from "schema" by [RFC-13](../../rfcs/archive/rfc-13-extensibility.md). See also: the unit-of-behaviour reading below.
 
 **Capability** (unit of behaviour)
 A discrete unit of system behavior that gets its own spec file. In the Omnia capability, capabilities (in this sense) typically correspond to crates. In the Vectis capability, they correspond to features. The same word is overloaded inside the spec / baseline directory layout (`specs/<capability>/spec.md`); context disambiguates.
@@ -80,7 +80,7 @@ The `specify workspace sync` fallback for registry projects whose remote repos d
 ## H
 
 **Hub** (also: **Platform hub**)
-A registry-only platform repo. Identified by `project.yaml: hub: true` (with the `capability:` field omitted) (RFC-9 Section 1D, refined by [RFC-13 §Migration "Hub project shape"](../../rfcs/rfc-13-extensibility.md#migration)). Holds platform state -- `registry.yaml`, `initiative.md`, `plan.yaml`, `workspace/` -- but is never itself a code project. Code projects live in their own repos and are materialised under `.specify/workspace/<name>/` by `specify workspace sync`. Scaffolded via `specify init --hub`. Contrast with the [platform-as-project](#p) shape where the initiating repo is both the platform repo and a code project (`url: .` in `registry.yaml`). See [Platform repo topologies](../explanation/platform-repo.md).
+A registry-only platform repo. Identified by `project.yaml: hub: true` (with the `capability:` field omitted) (RFC-9 Section 1D, refined by [RFC-13 §Migration "Hub project shape"](../../rfcs/archive/rfc-13-extensibility.md#migration)). Holds platform state -- `registry.yaml`, `initiative.md`, `plan.yaml`, `workspace/` -- but is never itself a code project. Code projects live in their own repos and are materialised under `.specify/workspace/<name>/` by `specify workspace sync`. Scaffolded via `specify init --hub`. Contrast with the [platform-as-project](#p) shape where the initiating repo is both the platform repo and a code project (`url: .` in `registry.yaml`). See [Platform repo topologies](../explanation/platform-repo.md).
 
 ## I
 

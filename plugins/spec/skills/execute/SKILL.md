@@ -7,7 +7,7 @@ description: "Deprecated alias. /spec:execute moved to /change:execute in RFC-13
 
 `/spec:execute` is no longer the canonical entry point for plan execution. RFC-13 §3.9 moved the skill from the `spec` plugin to the new `change` plugin so that umbrella orchestration (the change surface) and per-loop phases (the spec surface) are owned separately.
 
-**Use [`/change:execute`](../../../change/skills/execute/SKILL.md) instead.** This shim exists for one release cycle to ease the transition; it will be removed before the post-RFC-13 release per [RFC-13 §Migration](../../../../rfcs/rfc-13-extensibility.md#migration).
+**Use [`/change:execute`](../../../change/skills/execute/SKILL.md) instead.** This shim exists for one release cycle to ease the transition; it will be removed before the post-RFC-13 release per [RFC-13 §Migration](../../../../rfcs/archive/rfc-13-extensibility.md#migration).
 
 ## What to do when this skill is invoked
 
@@ -33,4 +33,4 @@ The deprecation shim is removed **before the post-RFC-13 release** per the §Mig
 
 - [`/change:execute`](../../../change/skills/execute/SKILL.md) — canonical driver skill on the change surface.
 - [`/change:plan`](../../../change/skills/plan/SKILL.md) — Layer 3 authoring skill that produces the plan this driver consumes.
-- [RFC-13 §Migration](../../../../rfcs/rfc-13-extensibility.md#migration) — the cut-over plan and timeline.
+- [RFC-13 §Migration](../../../../rfcs/archive/rfc-13-extensibility.md#migration) — the cut-over plan and timeline.

@@ -25,7 +25,7 @@ I'll ensure the `specify` CLI is available, decide whether this is a regular sin
 - `specify init` (no positional, no `--hub`) → exits with `init-requires-capability-or-hub`.
 - `specify init <capability> --hub` (both supplied) → exits with `init-requires-capability-or-hub`.
 
-A regular project must declare a capability; a hub must declare `--hub` and never carries a `capability:`. See [RFC-13 §Migration "Hub project shape"](../../../../rfcs/rfc-13-extensibility.md#migration) for the post-cut-over shape.
+A regular project must declare a capability; a hub must declare `--hub` and never carries a `capability:`. See [RFC-13 §Migration "Hub project shape"](../../../../rfcs/archive/rfc-13-extensibility.md#migration) for the post-cut-over shape.
 
 **Steps**
 

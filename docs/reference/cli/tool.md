@@ -126,8 +126,7 @@ The cache root is selected in this order:
 
 1. `SPECIFY_TOOLS_CACHE`
 2. `$XDG_CACHE_HOME/specify/tools`
-3. the platform cache directory from `dirs::cache_dir()` plus `specify/tools`
-4. `$HOME/.cache/specify/tools` as a POSIX fallback
+3. `$HOME/.cache/specify/tools`
 
 Inside the root, cache entries are segmented by declaration scope:
 

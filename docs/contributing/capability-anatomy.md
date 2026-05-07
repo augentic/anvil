@@ -98,7 +98,7 @@ Use absolute local paths or `file://` URIs for vendored and first-party developm
 
 Capability-scope tools may use `$CAPABILITY_DIR` in permission paths to read capability-owned templates or resources. Project-scope declarations in `.specify/project.yaml` may not use `$CAPABILITY_DIR`.
 
-See [specify tool](../reference/cli/tool.md), [Tool Declarations](../explanation/tool-declarations.md), and [RFC-15](../../rfcs/rfc-15-wasm-plugins.md) for the command surface, declaration precedence, cache layout, and security model.
+See [specify tool](../reference/cli/tool.md), [Tool Declarations](../explanation/tool-declarations.md), and [RFC-15](../../rfcs/archive/rfc-15-wasm-plugins.md) for the command surface, declaration precedence, cache layout, and security model.
 
 ### Pipeline structure
 
@@ -110,7 +110,7 @@ The `pipeline` object has three required phases -- `define`, `build`, and `merge
 | `build` | `/spec:build` (implementation) | 1 |
 | `merge` | `/spec:merge` (baseline merge) | 1 |
 
-> **No `pipeline.plan`.** Planning is orchestration, not capability-owned slice work; both `capabilities/capability.schema.json` (this repo) and `schemas/capability.schema.json` (CLI) reject `pipeline.plan` outright. Planning briefs live with the change-planning skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../plugins/change/skills/plan/briefs/) — see [RFC-13 §3.11](../../rfcs/rfc-13-plan.md) for the migration that landed this rejection.
+> **No `pipeline.plan`.** Planning is orchestration, not capability-owned slice work; both `capabilities/capability.schema.json` (this repo) and `schemas/capability.schema.json` (CLI) reject `pipeline.plan` outright. Planning briefs live with the change-planning skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../plugins/change/skills/plan/briefs/) — see [RFC-13 §3.11](../../rfcs/archive/rfc-13-extensibility.md) for the migration that landed this rejection.
 
 Each phase contains an ordered array of **pipeline entries**:
 

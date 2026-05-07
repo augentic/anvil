@@ -1,10 +1,10 @@
 # RFC-14: Workspaces — multiple domain capabilities per repository
 
-> Status: Draft · Depends: [RFC-13](rfc-13-extensibility.md), [RFC-1](archive/rfc-1-cli.md), [RFC-9](archive/rfc-9-platform.md)
+> Status: Draft · Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-1](archive/rfc-1-cli.md), [RFC-9](archive/rfc-9-platform.md)
 
 ## Abstract
 
-[RFC-13](rfc-13-extensibility.md) reframes the runtime so that **capabilities are the only extension point**, and lands one domain capability (`omnia` / `contracts` / `vectis` / …) plus the first-party platform components (registry and change — reframed as platform components by RFC-13) per project. RFC-14 is the follow-up that lets a single repository carry **more than one domain capability** — for example, a service repo that maintains both Rust+WASM code (`omnia@v1`) and the API contracts that surround it (`contracts@v1`), or a platform repo that hosts code, infrastructure, and design tokens side by side.
+[RFC-13](archive/rfc-13-extensibility.md) reframes the runtime so that **capabilities are the only extension point**, and lands one domain capability (`omnia` / `contracts` / `vectis` / …) plus the first-party platform components (registry and change — reframed as platform components by RFC-13) per project. RFC-14 is the follow-up that lets a single repository carry **more than one domain capability** — for example, a service repo that maintains both Rust+WASM code (`omnia@v1`) and the API contracts that surround it (`contracts@v1`), or a platform repo that hosts code, infrastructure, and design tokens side by side.
 
 The shape borrowed from Cargo is that of `Cargo.toml`: one file format that collapses to a single package, a workspace of members, or both at once. RFC-14 maps the same model onto `.specify/project.yaml` — `package:` declares an optional root domain capability, `workspace:` declares an optional list of nested **member scopes**, and at least one of the two must be present. Every artifact, change, brief substitution, and capability skill action gains a **scope coordinate**; everything else from RFC-13's manifest protocol is preserved unchanged.
 
@@ -333,7 +333,7 @@ The `hub: true` flag is **deprecated, not removed** in the same release that lan
 
 ## References
 
-- [RFC-13: Immutable core + capability extensions](rfc-13-extensibility.md) — owns the capability protocol that RFC-14 layers scope-resolution on top of. The §Cross-capability coexistence rules are the direct ancestors of RFC-14's scope-aware uniqueness rules; §Open Questions #2 and #13 are the points this RFC resolves.
+- [RFC-13: Immutable core + capability extensions](archive/rfc-13-extensibility.md) — owns the capability protocol that RFC-14 layers scope-resolution on top of. The §Cross-capability coexistence rules are the direct ancestors of RFC-14's scope-aware uniqueness rules; §Open Questions #2 and #13 are the points this RFC resolves.
 - [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — owns `crates/specify-platform/`, where `ProjectConfig` parses today's `project.yaml`. Phase 1 of this RFC widens that parser.
 - [RFC-2: Execution](archive/rfc-2-execution.md) — owns the `plan@v1` component and `/change:execute --loop`. RFC-14's "cross-scope changes route through the plan loop" stance leans on RFC-2's existing dependency-ordering primitives.
 - [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — plan authoring; the per-entry `scope:` field is a minor extension to RFC-3a's plan-entry shape.

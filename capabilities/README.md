@@ -24,7 +24,7 @@ Imperative behaviour (validation, generation, review, adoption, cleanup) lives i
 
 1. [`docs/reference/capabilities/index.md`](../docs/reference/capabilities/index.md) — manifest protocol, dependency direction (core ← change ← registry), and validation entry point.
 2. [`capability.schema.json`](capability.schema.json) — the wire-level schema each manifest must validate against.
-3. [`rfcs/rfc-13-extensibility.md`](../rfcs/rfc-13-extensibility.md) — the design rationale.
+3. [`rfcs/archive/rfc-13-extensibility.md`](../rfcs/archive/rfc-13-extensibility.md) — the design rationale.
 
 ## Validation
 

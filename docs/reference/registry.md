@@ -1,10 +1,10 @@
 # Registry
 
-> Status: Draft (Phase 2.10 of [RFC-13](../../rfcs/rfc-13-extensibility.md) landed). The registry is a first-party Specify component, not a capability — it owns project topology and the local materialised view that change orchestration runs against.
+> Status: Draft (Phase 2.10 of [RFC-13](../../rfcs/archive/rfc-13-extensibility.md) landed). The registry is a first-party Specify component, not a capability — it owns project topology and the local materialised view that change orchestration runs against.
 
 ## What is the registry?
 
-The registry is the first-party Specify component that owns *project topology* — the declared list of projects, their repository locations, human descriptions, and default capability — **and** the local *materialised view* of those projects under `.specify/workspace/`. It is not a capability: it has commands, libraries, and files, but it does not participate in the capability manifest protocol and is not activated through `capability.yaml`. See [RFC-13 §"Platform components are not capabilities"](../../rfcs/rfc-13-extensibility.md#platform-components-are-not-capabilities) and [RFC-13 §"Registry-materialised execution"](../../rfcs/rfc-13-extensibility.md#registry-materialised-execution).
+The registry is the first-party Specify component that owns *project topology* — the declared list of projects, their repository locations, human descriptions, and default capability — **and** the local *materialised view* of those projects under `.specify/workspace/`. It is not a capability: it has commands, libraries, and files, but it does not participate in the capability manifest protocol and is not activated through `capability.yaml`. See [RFC-13 §"Platform components are not capabilities"](../../rfcs/archive/rfc-13-extensibility.md#platform-components-are-not-capabilities) and [RFC-13 §"Registry-materialised execution"](../../rfcs/archive/rfc-13-extensibility.md#registry-materialised-execution).
 
 Capabilities own outcome artefacts and their mechanics; the registry coordinates *where* — which project a slice runs against and how that project's working tree is materialised. The slice component (see [`change-component.md`](change-component.md)) coordinates *when* — sequencing slices across one or more registry projects.
 
@@ -73,7 +73,7 @@ None of these verbs go through `define → build → merge`. The registry is sub
 | `specify workspace push`   | Push each clone's `specify/<slice-name>` branch to its remote and open a PR. Branch name resolves from `plan.yaml`.                                                                 |
 | `specify workspace merge`  | Squash-merge open PRs once their CI is green ([RFC-9 §4A](../../rfcs/archive/rfc-9-platform.md)). Refuses on `branch-pattern-mismatch`; never `--admin`/`--auto`.                    |
 
-The registry-materialisation resolver — the registry service that maps a registry-declared project to its materialised project root — is what change execution consumes when running the slice loop against a peer project (see [RFC-13 §"Registry-materialised execution"](../../rfcs/rfc-13-extensibility.md#registry-materialised-execution)). Capability skills run relative to *the clone's project root*; the core receives only the project root it should run against.
+The registry-materialisation resolver — the registry service that maps a registry-declared project to its materialised project root — is what change execution consumes when running the slice loop against a peer project (see [RFC-13 §"Registry-materialised execution"](../../rfcs/archive/rfc-13-extensibility.md#registry-materialised-execution)). Capability skills run relative to *the clone's project root*; the core receives only the project root it should run against.
 
 ## Dependency direction
 
@@ -84,13 +84,13 @@ specify-change → specify-registry → specify-capability
                                  → specify-core
 ```
 
-The invariant: **`specify-core` does not depend on `specify-registry`**, and `specify-registry` does not depend on `specify-change`. The slice component MAY depend on the registry because orchestration composes registry materialisation; the reverse is forbidden. RFC-13 invariant #4 spells this out and [RFC-5](../../rfcs/rfc-5-lint.md) is the home for the lint that enforces it. See [RFC-13 §Migration](../../rfcs/rfc-13-extensibility.md#migration).
+The invariant: **`specify-core` does not depend on `specify-registry`**, and `specify-registry` does not depend on `specify-change`. The slice component MAY depend on the registry because orchestration composes registry materialisation; the reverse is forbidden. RFC-13 invariant #4 spells this out and [RFC-5](../../rfcs/rfc-5-lint.md) is the home for the lint that enforces it. See [RFC-13 §Migration](../../rfcs/archive/rfc-13-extensibility.md#migration).
 
 > **Crate naming on the rfc-13 branch.** The umbrella crate is currently named `specify-initiative` on disk; Phase 3.4 of the RFC-13 plan renames it to `specify-change`. This page describes the post-Phase-3 surface so it stays accurate after the rename — read every reference to `specify-change` (the umbrella) as `specify-initiative` while you are working on the rfc-13 branch.
 
 ## What the registry must NOT own
 
-The registry is topology plus local materialisation. It is **not** a place to park orchestration, validation findings, or PR metadata. Mirror of the [RFC-13 §"Platform components are not capabilities"](../../rfcs/rfc-13-extensibility.md#platform-components-are-not-capabilities) table:
+The registry is topology plus local materialisation. It is **not** a place to park orchestration, validation findings, or PR metadata. Mirror of the [RFC-13 §"Platform components are not capabilities"](../../rfcs/archive/rfc-13-extensibility.md#platform-components-are-not-capabilities) table:
 
 - Change or plan status — owned by `specify change` (`change.md`, `plan.yaml`, `.specify/slices/<name>/.metadata.yaml`).
 - Contract relationships beyond the per-project role declarations — owned by the `contracts@v1` capability.
@@ -105,4 +105,4 @@ The registry is topology plus local materialisation. It is **not** a place to pa
 - [Change Component](change-component.md) — operator brief, plan, execution state, finalization, and archive.
 - [Platform Repo Topologies](../explanation/platform-repo.md) — the registry-only hub vs platform-as-project shapes.
 - [`specify registry`](cli/registry.md) and [`specify workspace`](cli/workspace.md) — current CLI command reference.
-- [RFC-13: Extensibility](../../rfcs/rfc-13-extensibility.md) — capability protocol, platform components, and migration plan.
+- [RFC-13: Extensibility](../../rfcs/archive/rfc-13-extensibility.md) — capability protocol, platform components, and migration plan.

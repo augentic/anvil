@@ -53,7 +53,7 @@ platform-repo/
 
 A single marker identifies a hub:
 
-- `project.yaml:hub: true` -- the hub sentinel. Its presence (paired with the **absence** of `capability:`) is what disables capability resolution and the per-project phase pipelines (define / build / merge), so the hub never runs `/spec:define` or `/spec:build` against its own working tree. The same flag flips `Registry::validate_shape` into hub-only mode, which rejects any registry entry whose `url` is `.`. See [RFC-13 §Migration "Hub project shape"](../../rfcs/rfc-13-extensibility.md#migration) — the legacy `schema: hub` sentinel is removed in the same release that lands the capability rename, so post-cut-over hubs carry only `hub: true`.
+- `project.yaml:hub: true` -- the hub sentinel. Its presence (paired with the **absence** of `capability:`) is what disables capability resolution and the per-project phase pipelines (define / build / merge), so the hub never runs `/spec:define` or `/spec:build` against its own working tree. The same flag flips `Registry::validate_shape` into hub-only mode, which rejects any registry entry whose `url` is `.`. See [RFC-13 §Migration "Hub project shape"](../../rfcs/archive/rfc-13-extensibility.md#migration) — the legacy `schema: hub` sentinel is removed in the same release that lands the capability rename, so post-cut-over hubs carry only `hub: true`.
 
 The hub never appears in its own `registry.yaml`. Code projects always live in their own repos -- they are referenced by the registry's `projects[]` list and materialised under `.specify/workspace/<name>/` by `specify workspace sync`.
 

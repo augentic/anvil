@@ -8,7 +8,7 @@ argument-hint: "<change-name>"
 
 `/spec:plan` is no longer the canonical entry point for plan authoring. RFC-13 §3.9 moved the skill from the `spec` plugin to the new `change` plugin so that umbrella orchestration (the change surface) and per-loop phases (the spec surface) are owned separately.
 
-**Use [`/change:plan`](../../../change/skills/plan/SKILL.md) instead.** This shim exists for one release cycle to ease the transition; it will be removed before the post-RFC-13 release per [RFC-13 §Migration](../../../../rfcs/rfc-13-extensibility.md#migration).
+**Use [`/change:plan`](../../../change/skills/plan/SKILL.md) instead.** This shim exists for one release cycle to ease the transition; it will be removed before the post-RFC-13 release per [RFC-13 §Migration](../../../../rfcs/archive/rfc-13-extensibility.md#migration).
 
 ## What to do when this skill is invoked
 
@@ -34,4 +34,4 @@ The deprecation shim is removed **before the post-RFC-13 release** per the §Mig
 
 - [`/change:plan`](../../../change/skills/plan/SKILL.md) — canonical authoring skill on the change surface.
 - [`/change:execute`](../../../change/skills/execute/SKILL.md) — Layer 2 driver that consumes the authored plan.
-- [RFC-13 §Migration](../../../../rfcs/rfc-13-extensibility.md#migration) — the cut-over plan and timeline.
+- [RFC-13 §Migration](../../../../rfcs/archive/rfc-13-extensibility.md#migration) — the cut-over plan and timeline.

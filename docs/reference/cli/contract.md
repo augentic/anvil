@@ -77,4 +77,4 @@ The current development declaration uses a `file://` source pointing at the chec
 - [Contract plugin](../plugins/contract.md) — the per-slice `/contract:openapi`, `/contract:asyncapi`, and `/contract:json-schema` skills that produce the artefacts this tool inspects.
 - [Configuration Files → contracts/](../configuration.md) — the baseline directory layout.
 - [`capabilities/contracts/briefs/merge.md`](../../../capabilities/contracts/briefs/merge.md) — merge brief that owns the post-merge invocation and the §Merge and adoption contract three-branch outcome wiring.
-- [RFC-15 WASI Capability Tools](../../../rfcs/rfc-15-wasm-plugins.md) — declared WASI helper model.
+- [RFC-15 WASI Capability Tools](../../../rfcs/archive/rfc-15-wasm-plugins.md) — declared WASI helper model.

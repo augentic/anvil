@@ -2,7 +2,7 @@
 
 Initiative-scoped skills coordinate multi-slice changes through `plan.yaml`. They sit above the [change lifecycle skills](../slice-skills/index.md) and invoke them per-slice. The Layer 3 skills live on the `change` plugin (`/change:plan`, `/change:execute`) and the `spec` plugin (`/spec:analyze`); the Layer 4 umbrella mode (`/change:plan --orchestrate`, RFC-9 §2C, formerly the `/spec:initiative` skill) composes plan + execute + push + merge + finalize into a single operator action — see the [layered stack](../../explanation/three-layer-stack.md) for the relationship.
 
-> **Renamed in RFC-13 §3.9.** `/change:plan` and `/change:execute` moved to the new `change` plugin as `/change:plan` and `/change:execute`. The old slash-commands survive as deprecation shims that delegate to the canonical skills and are removed before the post-RFC-13 release; see [RFC-13 §Migration](../../../rfcs/rfc-13-extensibility.md#migration).
+> **Renamed in RFC-13 §3.9.** `/change:plan` and `/change:execute` moved to the new `change` plugin as `/change:plan` and `/change:execute`. The old slash-commands survive as deprecation shims that delegate to the canonical skills and are removed before the post-RFC-13 release; see [RFC-13 §Migration](../../../rfcs/archive/rfc-13-extensibility.md#migration).
 
 ## The plan-execute flow
 

@@ -60,7 +60,7 @@ Each slice directory contains a `.metadata.yaml` file managed exclusively by the
 - **`status`** -- the current lifecycle state.
 - **`created_at`** / **`updated_at`** -- ISO 8601 timestamps.
 - **`outcome`** -- phase outcome (`success`, `failure`, `deferred`) written by `specify slice outcome set`. Used by `/change:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`.
-- **`schema`** -- the capability identifier used for this slice. (The YAML key is still spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/rfc-13-extensibility.md).)
+- **`schema`** -- the capability identifier used for this slice. (The YAML key is still spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/archive/rfc-13-extensibility.md).)
 - **`touched_specs`** -- the list of spec files this slice affects.
 
 Never hand-edit `.metadata.yaml`. All writes flow through the CLI.

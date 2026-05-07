@@ -1,10 +1,10 @@
 # RFC-15 WASI Capability Tools
 
-> Status: Implemented - Depends: [RFC-13](archive/rfc-13-extensibility.md) - Resolves: [RFC-13 Open Questions #4](archive/rfc-13-extensibility.md#open-questions)
+> Status: Implemented - Depends: [RFC-13](rfc-13-extensibility.md) - Resolves: [RFC-13 Open Questions #4](rfc-13-extensibility.md#open-questions)
 
 ## Abstract
 
-[RFC-13](archive/rfc-13-extensibility.md) keeps non-core deterministic behavior out of the `specify` binary. Specify skills need deterministic code for tasks such as contract validation and bounded Vectis verification helpers.
+[RFC-13](rfc-13-extensibility.md) keeps non-core deterministic behavior out of the `specify` binary. Specify skills need deterministic code for tasks such as contract validation and bounded Vectis verification helpers.
 
 This RFC provides a framework for extending Specify with deterministic helper code in a standard manner. Capabilities declare WASI command modules in `capability.yaml`; `specify` resolves, caches, and runs them through an embedded Wasmtime host.
 
@@ -226,8 +226,8 @@ If accepted, RFC-13 should be amended to say open-ended capability plugins remai
 
 ## References
 
-- [RFC-13: Immutable core + capability extensions](archive/rfc-13-extensibility.md) - owns the capability protocol and the open distribution question.
-- [RFC-12: Refine RFC-8](archive/rfc-12-refine-rfc-8.md) - owns the contract validation behavior that moves to a helper.
-- [RFC-1: `specify` CLI](archive/rfc-1-cli.md) - owns the CLI and capability resolver.
-- [RFC-5: Framework Linter](rfc-5-lint.md) - home for the follow-up lints.
+- [RFC-13: Immutable core + capability extensions](rfc-13-extensibility.md) - owns the capability protocol and the open distribution question.
+- [RFC-12: Refine RFC-8](rfc-12-refine-rfc-8.md) - owns the contract validation behavior that moves to a helper.
+- [RFC-1: `specify` CLI](rfc-1-cli.md) - owns the CLI and capability resolver.
+- [RFC-5: Framework Linter](../rfc-5-lint.md) - home for the follow-up lints.
 

@@ -1,6 +1,6 @@
 # RFC-13: Extensibility
 
-> Status: Implemented · Depends: [RFC-1](archive/rfc-1-cli.md), [RFC-8](archive/rfc-8-api-contracts.md), [RFC-9](archive/rfc-9-platform.md), [RFC-12](archive/rfc-12-refine-rfc-8.md) · Enables: [RFC-14](rfc-14-workspaces.md)
+> Status: Implemented · Depends: [RFC-1](rfc-1-cli.md), [RFC-8](rfc-8-api-contracts.md), [RFC-9](rfc-9-platform.md), [RFC-12](rfc-12-refine-rfc-8.md) · Enables: [RFC-14](../rfc-14-registry.md)
 
 ## Abstract
 
@@ -173,7 +173,7 @@ Capability merge skills own domain adoption. The merge brief validates the capab
 
 Within a project or scope, capability coexistence is governed by one active domain capability. Only the active domain capability owns the slice's mutable artefacts.
 
-A repository activates exactly one **domain** capability under this RFC. Multi-domain repositories are covered by [RFC-14](rfc-14-workspaces.md), which adds a Cargo-style `package:` / `workspace:` shape.
+A repository activates exactly one **domain** capability under this RFC. Multi-domain repositories are covered by [RFC-14](../rfc-14-registry.md), which adds a Cargo-style `package:` / `workspace:` shape.
 
 #### Cross-capability coordination
 
@@ -235,7 +235,7 @@ When change execution materialises registry-declared projects, capability skills
 - **Cloud execution semantics.** Orthogonal; capability skills should run through whatever tool execution model the host provides.
 - **Back-compat for capabilities without the new surface.** See §Migration — current usage footprint lets us cut over without a fallback path.
 - **Third-party replacements for foundation components.** Registry and the change component are first-party Specify components in this RFC. Swapping them or making them externally pluggable is a follow-up RFC.
-- **Multiple domain capabilities per repository.** Covered by [RFC-14](rfc-14-workspaces.md), strictly additive on top of this RFC's capability manifest protocol.
+- **Multiple domain capabilities per repository.** Covered by [RFC-14](../rfc-14-registry.md), strictly additive on top of this RFC's capability manifest protocol.
 - **Cross-capability slices in a single transaction.** Multi-capability outcomes are coordinated by change plan entries, not by one slice that writes multiple capabilities' baselines. RFC-14 applies the same rule to scopes: cross-scope work is a change plan with multiple entries, not a multi-scope slice.
 
 ## Glossary
@@ -388,17 +388,17 @@ Linter rules in `specify-check` (RFC-5) enforce, additionally:
 2. `**specify migrate slice-layout` and in-progress per-loop units.** The migration refuses to run when a per-loop unit is mid-phase (operator must finish or drop it first). A future release may extend it to migrate in-progress work by rewriting `.metadata.yaml` and re-stamping journal entries. Provisional: require operators to finish or drop in-progress work first — the canonical loop is short enough that this is rarely costly.
 3. **Hub project discriminator.** This RFC pins `hub: true` (with `capability:` omitted) as the post-RFC hub sentinel. An alternative `kind: { package, hub }` discriminator would be more symmetric with RFC-14's `package: / workspace:` shape. Defer to RFC-14: if RFC-14 lands the workspace shape it can revisit the hub spelling under the same discriminator.
 4. **First-party capability binary distribution.** Phase 4 moves contracts SemVer + `info.x-specify-id` validation into capability skills, but does not pin whether the validator ships as a Rust binary, a TypeScript checker, or a shell script. Provisional: capability authors choose; this RFC only requires that the validator is invokable from the merge brief and reports through the §Merge and adoption contract protocol.
-   Disposition: resolved by [RFC-15](../rfc-15-wasm-plugins.md), which standardizes declared WASI tools run through `specify tool`.
+   Disposition: resolved by [RFC-15](rfc-15-wasm-plugins.md), which standardizes declared WASI tools run through `specify tool`.
 
 ## References
 
-- [RFC-1: `specify` CLI](archive/rfc-1-cli.md) — owns the crates the reframe touches (`specify-schema`, `specify-merge`, `specify-validate`, and `specify change`; the slice loop crate is renamed to `specify-slice` in this RFC) and the `src/cli.rs` dispatcher.
-- [RFC-8: API contracts](archive/rfc-8-api-contracts.md) — `contracts@v1` capability; contract validation and adoption behavior move into capability skills.
-- [RFC-2: Execution](archive/rfc-2-execution.md) — `/spec:execute --loop`; informs the `specify change` extraction, but this RFC does not change the lifecycle model.
-- [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — plan authoring pipeline; informs change plan authoring.
-- [RFC-3b: Platform](archive/rfc-3b-platform.md) — registry routing and materialised project clones.
-- [RFC-9: Platform](archive/rfc-9-platform.md) — moved registry, plan, initiative, and contracts to repo root; informs change-driven orchestration.
-- [RFC-12: Refine RFC-8](archive/rfc-12-refine-rfc-8.md) — SemVer + `info.x-specify-id` rules become contracts capability validation behavior.
-- [RFC-5: Framework Linter](rfc-5-lint.md) — home of the lints enforcing the reframe's invariants, including the hard-coded-name lint design.
-- [Roadmap](roadmap.md) — §5 / §6 / §7 are consumers of a stable core surface.
+- [RFC-1: `specify` CLI](rfc-1-cli.md) — owns the crates the reframe touches (`specify-schema`, `specify-merge`, `specify-validate`, and `specify change`; the slice loop crate is renamed to `specify-slice` in this RFC) and the `src/cli.rs` dispatcher.
+- [RFC-8: API contracts](rfc-8-api-contracts.md) — `contracts@v1` capability; contract validation and adoption behavior move into capability skills.
+- [RFC-2: Execution](rfc-2-execution.md) — `/spec:execute --loop`; informs the `specify change` extraction, but this RFC does not change the lifecycle model.
+- [RFC-3a: Monoliths](rfc-3a-monoliths.md) — plan authoring pipeline; informs change plan authoring.
+- [RFC-3b: Platform](rfc-3b-platform.md) — registry routing and materialised project clones.
+- [RFC-9: Platform](rfc-9-platform.md) — moved registry, plan, initiative, and contracts to repo root; informs change-driven orchestration.
+- [RFC-12: Refine RFC-8](rfc-12-refine-rfc-8.md) — SemVer + `info.x-specify-id` rules become contracts capability validation behavior.
+- [RFC-5: Framework Linter](../rfc-5-lint.md) — home of the lints enforcing the reframe's invariants, including the hard-coded-name lint design.
+- [Roadmap](../roadmap.md) — §5 / §6 / §7 are consumers of a stable core surface.
 

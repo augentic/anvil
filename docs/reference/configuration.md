@@ -113,7 +113,7 @@ changes:
 | `depends-on` | No | List of change names that must be `done` first |
 | `sources` | No | List of source keys from the top-level `sources` |
 | `status` | Yes | Current state: `pending`, `in-progress`, `done`, `failed`, `blocked`, `skipped` |
-| `schema` | No | Plan-entry schema identifier for project-less entries (e.g. `contracts@v1`). Required when `project` is absent. The `schema:` key on a `plan.yaml` entry is intentionally kept as-is by [RFC-13](../../rfcs/rfc-13-extensibility.md) — it identifies the artefact-path identifier the entry targets, not the capability that owns the work; revisited as part of the slice → slice rename in a later phase. |
+| `schema` | No | Plan-entry schema identifier for project-less entries (e.g. `contracts@v1`). Required when `project` is absent. The `schema:` key on a `plan.yaml` entry is intentionally kept as-is by [RFC-13](../../rfcs/archive/rfc-13-extensibility.md) — it identifies the artefact-path identifier the entry targets, not the capability that owns the work; revisited as part of the slice → slice rename in a later phase. |
 | `context` | No | List of baseline paths (relative to `.specify/`) relevant to this slice. Used by briefs as a focus hint when scanning baseline directories. |
 | `status-reason` | No | Explanation for non-happy-path status |
 | `project` | No | Registry project name (multi-repo only, see RFC-3b). Each entry must have at least one of `project` or `schema`. |
@@ -156,7 +156,7 @@ projects:
 | `version` | Yes | Schema version (currently `1`) |
 | `projects[].name` | Yes | Project identifier (kebab-case) |
 | `projects[].url` | Yes | Clone URL or relative path. For local paths, `workspace push` reads `git remote get-url origin` to discover the push target. |
-| `projects[].schema` | Yes | Capability identifier or URL for this project. (The YAML key remains spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/rfc-13-extensibility.md).) |
+| `projects[].schema` | Yes | Capability identifier or URL for this project. (The YAML key remains spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/archive/rfc-13-extensibility.md).) |
 | `projects[].description` | Conditional | Required when multiple projects exist. Describes the project's business domain. |
 
 ## change.md
@@ -213,6 +213,6 @@ outcome: null
 | `status` | Current lifecycle state |
 | `created_at` | ISO 8601 creation timestamp |
 | `updated_at` | ISO 8601 last-transition timestamp |
-| `schema` | Capability identifier or URL used for this slice. (The YAML key remains spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/rfc-13-extensibility.md).) |
+| `schema` | Capability identifier or URL used for this slice. (The YAML key remains spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/archive/rfc-13-extensibility.md).) |
 | `touched_specs` | Spec files this slice affects |
 | `outcome` | Phase outcome: `success`, `failure`, `deferred`, or `null` |

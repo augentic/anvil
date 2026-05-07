@@ -24,4 +24,4 @@ Per-slice workflow orchestration for spec-driven development: define changes, bu
 ## See also
 
 - [`change` plugin](../change/README.md) — canonical home of `/change:plan` and `/change:execute` after RFC-13 §3.9.
-- [RFC-13 §Migration](../../rfcs/rfc-13-extensibility.md#migration) — the cut-over plan and timeline for the deprecation shims.
+- [RFC-13 §Migration](../../rfcs/archive/rfc-13-extensibility.md#migration) — the cut-over plan and timeline for the deprecation shims.
