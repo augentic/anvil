@@ -85,20 +85,39 @@ colors:
     light: "#DBEAFE"
     dark:  "#1E3A5F"
 
+# ── Typefaces ─────────────────────────────────────────────
+# Named font families referenced by typography entries via the optional
+# typeface field. Shell writers that prefer the platform default font
+# (e.g. San Francisco on iOS, Roboto on Android) may ignore this section.
+typefaces:
+  sans:
+    family: "Inter"
+    fallback: "system-ui, sans-serif"
+    source: google-fonts
+  mono:
+    family: "JetBrains Mono"
+    fallback: "ui-monospace, monospace"
+    source: google-fonts
+
 # ── Typography ─────────────────────────────────────────────
 # size in pt, lineHeight in pt, letterSpacing in pt
+# The optional typeface field references a key from the typefaces section.
+# When omitted, shell writers use the platform default font.
 typography:
   display-large:
+    typeface: sans
     size: 57
     weight: bold
     lineHeight: 64
     letterSpacing: -0.25
   display-medium:
+    typeface: sans
     size: 45
     weight: bold
     lineHeight: 52
     letterSpacing: 0
   display-small:
+    typeface: sans
     size: 36
     weight: bold
     lineHeight: 44
@@ -181,6 +200,7 @@ typography:
     letterSpacing: 1.5
 
   code-inline:
+    typeface: mono
     size: 14
     weight: 400
     lineHeight: 20
