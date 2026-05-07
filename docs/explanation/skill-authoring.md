@@ -40,7 +40,7 @@ Anthropic's published rule is that descriptions must answer two questions:
 1. *What* does this skill do?
 2. *When* should an agent reach for it?
 
-Stage 1 selection is exactly the moment the second question gets asked. A description that names only the deliverable (`"Generate a Statement of Work from Specify artifacts"`) does not tell Claude when to fire that skill versus a sibling. A description that includes the trigger (`"… Use when a delivery lead asks for a SoW from completed Specify artifacts, when exporting client deliverables from a change directory, or when the user mentions 'sow-writer'."`) gives Claude an actionable test it can run against the operator's request.
+Stage 1 selection is exactly the moment the second question gets asked. A description that names only the deliverable (`"Generate a Statement of Work from Specify artifacts"`) does not tell Claude when to fire that skill versus a sibling. A description that includes the trigger (`"… Use when a delivery lead asks for a SoW from completed Specify artifacts, when exporting client deliverables from a slice directory, or when the user mentions 'sow-writer'."`) gives Claude an actionable test it can run against the operator's request.
 
 Two cleanup rules apply globally:
 
@@ -92,11 +92,11 @@ Examples after RFC-10:
 | `/spec:init` | `[schema-url]` |
 | `/spec:define` | `[description]` |
 | `/spec:build` | `[change-name]` |
-| `/spec:plan` | `<initiative-name>` |
-| `/spec:extract` | `<source-path> <change-dir>` |
+| `/change:plan` | `<initiative-name>` |
+| `/spec:extract` | `<source-path> <slice-dir>` |
 | `/omnia:crate-writer` | `[crate-name]` |
-| `/contract:openapi` | `[change-dir]` |
-| `/spec:execute` | (omitted — flag-only invocation) |
+| `/contract:openapi` | `[slice-dir]` |
+| `/change:execute` | (omitted — flag-only invocation) |
 
 The complete set of flags and secondary positionals each skill accepts moves into a body section called "Invocation". The pattern follows `spec/execute` — block-text examples that include the flag form alongside a one-line note about what each form does.
 
@@ -151,7 +151,7 @@ The default direction is "factor sooner rather than later". A 480-line SKILL.md 
 
 ## Worked example: the phase-outcome contract
 
-The four phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`) used to carry near-identical sections titled "Phase outcome contract", "Journal entries during the run", and "Mutating the plan mid-run". The wording was intentionally normative — but the duplication was a drift hazard the next time `/spec:execute` evolved the contract.
+The four phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`) used to carry near-identical sections titled "Phase outcome contract", "Journal entries during the run", and "Mutating the plan mid-run". The wording was intentionally normative — but the duplication was a drift hazard the next time `/change:execute` evolved the contract.
 
 After RFC-10 Chunk 14, the parameterised contract lives once at [`plugins/spec/references/phase-outcome-contract.md`](../../plugins/spec/references/phase-outcome-contract.md). Each phase skill replaces its previous ~80-line section with a 4-line shim that names the shared reference and lists the phase's outcome-specific deltas (the success / failure / deferred semantics that vary by phase).
 

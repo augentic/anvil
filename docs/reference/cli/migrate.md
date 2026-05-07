@@ -12,7 +12,7 @@ specify migrate v2-layout [--dry-run] [--format json]
 
 The v2 layout (specify-cli `0.2.0`) split Specify's on-disk shape along a clear boundary:
 
-- **Operator artifacts** (`registry.yaml`, `plan.yaml`, `initiative.md`, `contracts/`) live at the repo root.
+- **Operator artifacts** (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at the repo root.
 - **Framework state** (`project.yaml`, `changes/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`.
 
 `specify migrate v2-layout` walks the four legacy paths under `.specify/` and renames each one in place to its v2 destination at the repo root. It is the canonical recovery action when any other CLI verb refuses with `Error::LegacyLayout` (stable code `legacy-layout`, exit 1).
@@ -57,7 +57,7 @@ my-project/
     ├── project.yaml
     ├── registry.yaml
     ├── plan.yaml
-    ├── initiative.md
+    ├── change.md
     └── contracts/
         └── http/user-api.yaml
 ```
@@ -69,7 +69,7 @@ my-project/
 ├── src/
 ├── registry.yaml
 ├── plan.yaml
-├── initiative.md
+├── change.md
 ├── contracts/
 │   └── http/user-api.yaml
 └── .specify/

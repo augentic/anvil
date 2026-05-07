@@ -1,15 +1,15 @@
 ---
 name: client-sow-writer
-description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a delivery lead asks for a SoW from completed Specify artifacts, when exporting client deliverables from a change directory, or when the user mentions `sow-writer`.
-argument-hint: "<change-dir>"
+description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a delivery lead asks for a SoW from completed Specify artifacts, when exporting client deliverables from a slice directory, or when the user mentions `sow-writer`.
+argument-hint: "<slice-dir>"
 ---
 
 # SoW Generator Skill
 
 ## Critical Path (Quick Reference)
 
-1. Read Specify artifacts at `$CHANGE_DIR` (specs + `design.md`); validate required Context + Business Logic sections; determine `code-analysis` (migration) vs `requirements` (greenfield) origin.
-2. Extract project metadata (name, purpose, source reference) and derive `$OUTPUT_PATH` from `$CHANGE_DIR` unless one was supplied.
+1. Read Specify artifacts at `$SLICE_DIR` (specs + `design.md`); validate required Context + Business Logic sections; determine `code-analysis` (migration) vs `requirements` (greenfield) origin.
+2. Extract project metadata (name, purpose, source reference) and derive `$OUTPUT_PATH` from `$SLICE_DIR` unless one was supplied.
 3. Compose the SoW shell — cover page, Background framed by origin, Objectives prose paragraph, Reference Agreement clause.
 4. Generate Services — Scope statement + In-Scope bullets, Design Inputs table, Deliverables table with placeholder costs (always include an Automated Test Suite line item) and lettered Exclusions.
 5. Generate Fees + Payment Schedule with placeholder amounts and the Other Issues block (Dependencies, Assumptions, Change Requests, Warranty).
@@ -33,7 +33,7 @@ See [`template.md`](template.md) for the full voice-and-tone rules and per-secti
 ## Derived Arguments
 
 ```text
-$CHANGE_DIR  = $ARGUMENTS[0]                           # Path to Specify change directory
+$SLICE_DIR  = $ARGUMENTS[0]                           # Path to Specify slice directory
 $OUTPUT_PATH = $ARGUMENTS[1] OR derive_from_change_dir # Output SoW path
 $CLIENT_NAME  = $ARGUMENTS[2] OR "unknown — to be confirmed" # Client organisation name
 $COMPANY_NAME = $ARGUMENTS[3] OR "Propellerhead"             # Company name (default: Propellerhead)
@@ -44,8 +44,8 @@ Path derivation:
 
 ```text
 IF $OUTPUT_PATH not provided:
-  $OUTPUT_DIR  = dirname($CHANGE_DIR)/../
-  $CRATE_NAME  = basename($CHANGE_DIR)
+  $OUTPUT_DIR  = dirname($SLICE_DIR)/../
+  $CRATE_NAME  = basename($SLICE_DIR)
   $OUTPUT_PATH = $OUTPUT_DIR/SOW-$CRATE_NAME.md
 
 # Extracted from artifacts at runtime (Step 2):
@@ -57,7 +57,7 @@ $SOURCE_REFERENCE = design.md header → Source field (if present)
 
 ### Step 1: Read and Validate Artifacts
 
-Read the Specify artifacts from `$CHANGE_DIR` (specs/ and design.md) and validate that they contain the minimum sections required for SoW generation:
+Read the Specify artifacts from `$SLICE_DIR` (specs/ and design.md) and validate that they contain the minimum sections required for SoW generation:
 
 **Required sections**:
 
@@ -425,7 +425,7 @@ PDF generated: $OUTPUT_DIR/$BASENAME.pdf
 
 | Issue | Cause | Resolution |
 | ----- | ----- | ---------- |
-| Artifacts not found | Invalid `$CHANGE_DIR` | Verify path and re-run |
+| Artifacts not found | Invalid `$SLICE_DIR` | Verify path and re-run |
 | Missing Context section | Artifacts are incomplete or malformed | Run the appropriate analyzer skill first |
 | No Business Logic or Requirements | Artifacts lack actionable content | Re-run the appropriate analyzer skill to enrich artifacts before generating SoW |
 | Artifacts have many `[unknown]` tokens | Analysis was incomplete | Note unknowns as assumptions in the SoW; flag for Client Strategist review |

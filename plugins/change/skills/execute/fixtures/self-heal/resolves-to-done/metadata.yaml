@@ -1,0 +1,26 @@
+# Snapshot of .specify/slices/email-verification/.metadata.yaml as
+# self-heal reads it on startup. The prior /change:execute run completed
+# /spec:merge (which stamped outcome: merge success and flipped
+# LifecycleStatus to merged) but crashed before running the terminal
+# `specify change plan transition email-verification done` in step 10 of the
+# supervised run. Self-heal resolves the discrepancy: plan says
+# in-progress, on-disk says done.
+#
+# This file is illustrative — the real on-disk form is whatever
+# `specify slice outcome set email-verification merge success
+#   --summary "..."` writes, shaped per
+# crates/change/src/lib.rs::ChangeMetadata in augentic/specify-cli.
+
+name: email-verification
+status: merged
+schema: omnia
+created-at: 2026-04-19T09:12:00Z
+defined-at: 2026-04-19T09:17:31Z
+build-started-at: 2026-04-19T09:18:02Z
+completed-at: 2026-04-19T09:27:44Z
+merged-at: 2026-04-19T09:31:09Z
+outcome:
+  phase: merge
+  outcome: success
+  at: 2026-04-19T09:31:09Z
+  summary: "5/5 tasks; baseline updated at .specify/specs/email-verification/spec.md."

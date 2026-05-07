@@ -19,7 +19,7 @@ Task-oriented recipes for common Specify operations. Each guide assumes you have
 |------|-------|
 | Bootstrap a registry-only platform hub | [Bootstrap a Platform Hub](bootstrap-a-platform-hub.md) |
 | Add or remove a project from the registry | [Manage Registry Projects](manage-registry-projects.md) |
-| Land an initiative end-to-end (autonomous or supervised) | [Land an Initiative](land-an-initiative.md) |
+| Land a change end-to-end (autonomous or supervised) | [Land a Change](land-a-change.md) |
 | Define API contracts that span multiple repositories | [Work with Contracts Across Repos](cross-repo-contracts.md) |
 | Triage cross-project contract warnings on the merge transcript | [Resolve Cross-Project Contract Warnings](resolve-cross-project-contract-warnings.md) |
-| Recover when `/spec:execute` halts on `registry-amendment-required` | [Recover from `registry-amendment-required`](recover-from-registry-amendment.md) |
+| Recover when `/change:execute` halts on `registry-amendment-required` | [Recover from `registry-amendment-required`](recover-from-registry-amendment.md) |

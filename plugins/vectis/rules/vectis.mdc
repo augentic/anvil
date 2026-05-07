@@ -62,8 +62,8 @@ Token changes in `tokens.yaml` are picked up by each shell writer, which emits s
 ### iOS Shell Build Fails
 
 - Does the core exist with `shared/src/app.rs`?
-- Run `specify vectis verify --dir $PROJECT_DIR` -- this checks version consistency, cargo-swift compatibility, and the build pipeline end-to-end.
-- If verify passes but the iOS app panics with "UniFFI contract version mismatch", the installed cargo-swift version is incompatible with the pinned UniFFI contract. Run `specify vectis update-versions --dry-run` to see expected tool versions and reinstall a compatible cargo-swift release with `cargo install cargo-swift@{version}`.
+- Run the explicit iOS host checks from the shell directory: `make typegen`, `make package`, and `make xcode`.
+- If those pass but the iOS app panics with "UniFFI contract version mismatch", the installed cargo-swift version is incompatible with the active Vectis version pins. Reinstall a compatible cargo-swift release and rerun the host checks.
 
 ### Android Shell Build Fails
 

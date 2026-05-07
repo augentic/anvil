@@ -12,19 +12,19 @@ Every layout inferer accepts the following arguments. Source-specific arguments 
 
 | Argument | How it is used | Default | Precedence |
 |---|---|---|---|
-| `--output <path>` | Names the exact file the inferer should write. | Active change directory's `layout.yaml` (`.specify/changes/<name>/layout.yaml`); falls back to `design-system/layout.yaml` when no change is active. | Explicit `--output` wins over every project-side default. |
+| `--output <path>` | Names the exact file the inferer should write. | Active slice directory's `layout.yaml` (`.specify/slices/<name>/layout.yaml`); falls back to `design-system/layout.yaml` when no slice is active. | Explicit `--output` wins over every project-side default. |
 | `--baseline <path>` | Existing `layout.yaml` (or wired `composition.yaml`) the inferer should refine rather than overwrite. | Existing output-path content; then `design-system/layout.yaml`; then `.specify/specs/composition.yaml`. | Explicit `--baseline` wins over discovered local or baseline files. |
 | `--screen <slug>=<hint>` | Repeatable screen-boundary hint. The hint is source-specific (frame ID, screenshot group name, source-code view entrypoint). | None — inferers derive screen candidates from their source material. | Hints constrain or name inferred candidates; they MUST NOT force schema-invalid output. |
 
 Argument placeholders:
 
-- `<path>` — local file or directory path, relative or absolute (e.g. `screenshots/login.png`, `.specify/changes/onboarding/layout.yaml`).
+- `<path>` — local file or directory path, relative or absolute (e.g. `screenshots/login.png`, `.specify/slices/onboarding/layout.yaml`).
 - `<slug>` — stable kebab-case identifier for a logical screen (e.g. `login`, `task-list`, `settings-detail`).
 - `<hint>` — source-specific evidence that helps name or bound a screen.
 
 Arguments deliberately excluded from the common surface:
 
-- `--change-dir <path>` — redundant with default active-change discovery plus `--output` for explicit routing. When active-change detection is ambiguous, operators pass `--output .specify/changes/<name>/layout.yaml`.
+- `--slice-dir <path>` — redundant with default active-slice discovery plus `--output` for explicit routing. When active-slice detection is ambiguous, operators pass `--output .specify/slices/<name>/layout.yaml`.
 - `--tokens <path>` / `--assets <path>` — inferers SHOULD auto-discover `design-system/tokens.yaml` and `design-system/assets.yaml` for reference checks. Non-standard locations wait for demonstrated demand or live in source-specific arguments on individual skills.
 
 ## Operator ergonomics
@@ -36,7 +36,7 @@ Arguments deliberately excluded from the common surface:
 
 ## Output rules
 
-- Inferers MUST emit `layout.yaml` documents using the **unwired subset** of [`schemas/vectis/composition.schema.json`](../../../schemas/vectis/composition.schema.json). Allowed structure is a full `screens` document with screen names, regions, groups, the item vocabulary, token references, asset references, the optional `component: <slug>` directive on groups (see [Component directive emission](#component-directive-emission)), states, overlays without `trigger`, and `platforms.*` overrides.
+- Inferers MUST emit `layout.yaml` documents using the **unwired subset** of [`capabilities/vectis/composition.schema.json`](../../../capabilities/vectis/composition.schema.json). Allowed structure is a full `screens` document with screen names, regions, groups, the item vocabulary, token references, asset references, the optional `component: <slug>` directive on groups (see [Component directive emission](#component-directive-emission)), states, overlays without `trigger`, and `platforms.*` overrides.
 - A layout document MUST NOT use the change-local `delta` shape. `delta` is reserved for the wired `composition.yaml` lifecycle artifact.
 - The unwired subset forbids define-owned wiring. Inferers MUST NOT emit any of:
   - `maps_to`
@@ -71,7 +71,7 @@ Emission policy:
 - Otherwise the inferer MUST flatten the group and emit a `# candidate component: <slug>` comment adjacent to each occurrence so the operator can promote it explicitly in a later edit. Single-occurrence candidates always remain comments, never directives.
 - Slugs MUST match `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` (kebab-case). The reserved region names — `header`, `body`, `footer`, `fab` — MUST NOT be used as slugs (the schema enforces this; inferers MUST avoid producing them in the first place).
 
-Structural identity (cross-instance rule, validated by `specify vectis validate layout`):
+Structural identity (cross-instance rule, validated by `specify tool run vectis-validate -- layout`):
 
 - Two groups carrying the same `component:` slug MUST share the same skeleton: same ordered nested item kinds and the same nested-group shape across the document.
 - Instances MAY differ in `bind`, `event`, `error`, `asset`, token references, the *condition expressions* on `*-when` keys, and free text content. Skeleton divergence is an error; wiring divergence is the expected use of the directive.
@@ -83,7 +83,7 @@ When the inferer is uncertain whether observed similarity meets the structural-i
 
 ## Verification
 
-Every inferer MUST invoke the deterministic CLI validators **before reporting success**, then translate any reported errors into terminal output the operator can act on. The validators live in the [`specify` CLI](../../../rfcs/archive/rfc-11-ui-spec.md), read their input from disk, and are the only authoritative source of pass/fail.
+Every inferer MUST invoke the deterministic validators **before reporting success**, then translate any reported errors into terminal output the operator can act on. The validators live in the declared `vectis-validate` WASI tool, run through `specify tool run`, read their input from disk, and are the only authoritative source of pass/fail.
 
 Because the validator reads a file path, "errors block writes" is enforced through a **stage-then-validate-then-rename** sequence rather than a literal pre-write check. Validating before any write would either error on a missing file (greenfield) or re-check the previous run's content (refine):
 
@@ -91,31 +91,31 @@ Because the validator reads a file path, "errors block writes" is enforced throu
 2. Run the validator against the staging path explicitly:
 
     ```bash
-    specify vectis validate layout <output-path>.tmp
+    specify tool run vectis-validate -- layout <output-path>.tmp
     ```
 
 3. On a clean or warnings-only result, atomically rename the staging file onto `<output-path>` (`rename(2)` / `mv <output-path>.tmp <output-path>`).
 4. On errors, delete the staging file, surface the validator report verbatim, and exit non-zero. Any prior `<output-path>` is preserved untouched.
 
-This validates YAML syntax, the composition schema, the unwired-subset rules above, and the §G structural-identity rule for any `component:` directives present. Pass the staging path explicitly so a failed run cannot validate stale or default-resolved content; the optional default-path resolution (`artifacts.layout.paths.change_local` then `artifacts.layout.paths.project` from the [`artifacts:` block](../../../schemas/vectis/schema.yaml)) exists for ad-hoc operator invocations, not for the inferer's own gate. Errors block the rename; warnings surface in the terminal summary but do not block.
+This validates YAML syntax, the composition schema, the unwired-subset rules above, and the §G structural-identity rule for any `component:` directives present. Pass the staging path explicitly so a failed run cannot validate stale or default-resolved content; the optional default-path resolution (slice-local `layout.yaml` then `design-system/layout.yaml`) exists for ad-hoc operator invocations, not for the inferer's own gate. Errors block the rename; warnings surface in the terminal summary but do not block.
 
 Cross-artifact reference checks (when the sibling input artifacts exist):
 
 ```bash
-specify vectis validate composition <output-path>.tmp
+specify tool run vectis-validate -- composition <output-path>.tmp
 ```
 
-Inferers SHOULD run `composition` mode against the **same staging path** before the atomic rename — never against a default-resolved path or the prior `<output-path>` — so token / asset references in the new content are checked, not last run's. `composition` mode auto-invokes `tokens` and `assets` modes when sibling `tokens.yaml` / `assets.yaml` files exist (whether change-local or via `artifacts.tokens.paths` / `artifacts.assets.paths`); their reports surface in the same envelope. Errors fold into the same rename-blocking gate as `validate layout`; warnings forward into the terminal summary.
+Inferers SHOULD run `composition` mode against the **same staging path** before the atomic rename — never against a default-resolved path or the prior `<output-path>` — so token / asset references in the new content are checked, not last run's. `composition` mode auto-invokes `tokens` and `assets` modes when sibling `tokens.yaml` / `assets.yaml` files exist (whether slice-local or project-level); their reports surface in the same envelope. Errors fold into the same rename-blocking gate as `validate layout`; warnings forward into the terminal summary.
 
 The full per-mode surface every inferer can call:
 
 | Verb | Validates |
 |---|---|
-| `specify vectis validate layout [path]` | `layout.yaml` against the unwired subset (composition schema + structural identity + no define-owned wiring keys + no `delta`). |
-| `specify vectis validate composition [path]` | Wired or unwired composition; auto-invokes `tokens` and `assets` when siblings exist. |
-| `specify vectis validate tokens [path]` | `tokens.yaml` against the published [token schema](../../../schemas/vectis/tokens.schema.json). |
-| `specify vectis validate assets [path]` | `assets.yaml` against the published [asset schema](../../../schemas/vectis/assets.schema.json), plus referenced-file existence under `design-system/assets/**`. |
-| `specify vectis validate all` | Runs all four against the active change and baseline. Convenience verb. |
+| `specify tool run vectis-validate -- layout [path]` | `layout.yaml` against the unwired subset (composition schema + structural identity + no define-owned wiring keys + no `delta`). |
+| `specify tool run vectis-validate -- composition [path]` | Wired or unwired composition; auto-invokes `tokens` and `assets` when siblings exist. |
+| `specify tool run vectis-validate -- tokens [path]` | `tokens.yaml` against the published [token schema](../../../capabilities/vectis/tokens.schema.json). |
+| `specify tool run vectis-validate -- assets [path]` | `assets.yaml` against the published [asset schema](../../../capabilities/vectis/assets.schema.json), plus referenced-file existence under `design-system/assets/**`. |
+| `specify tool run vectis-validate -- all` | Runs all four against the active slice and baseline. Convenience mode. |
 
 Exit semantics for every mode:
 
@@ -142,6 +142,5 @@ Source-specific skills MAY add additional sections (e.g. the image inferer repor
 ## See also
 
 - [RFC-11: UI Specification Workflow](../../../rfcs/archive/rfc-11-ui-spec.md) — normative source for §A (this contract), §G (component directive), §H (CLI validation modes).
-- [`schemas/vectis/composition.schema.json`](../../../schemas/vectis/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against.
-- [`schemas/vectis/tokens.schema.json`](../../../schemas/vectis/tokens.schema.json) and [`schemas/vectis/assets.schema.json`](../../../schemas/vectis/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume.
-- [`schemas/vectis/schema.yaml`](../../../schemas/vectis/schema.yaml) — the `artifacts:` block the CLI consults for default-path resolution.
+- [`capabilities/vectis/composition.schema.json`](../../../capabilities/vectis/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against.
+- [`capabilities/vectis/tokens.schema.json`](../../../capabilities/vectis/tokens.schema.json) and [`capabilities/vectis/assets.schema.json`](../../../capabilities/vectis/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume.

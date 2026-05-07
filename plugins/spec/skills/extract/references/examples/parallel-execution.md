@@ -7,11 +7,11 @@ Service with concurrent operations, authentication, error recovery, and message 
 ## Input Parameters
 
 ```bash
-extract ./services/event-processor $CHANGE_DIR
+extract ./services/event-processor $SLICE_DIR
 ```
 
 - **TypeScript Source**: `./services/event-processor`
-- **Specify Output**: `$CHANGE_DIR` (specs/ + design.md)
+- **Specify Output**: `$SLICE_DIR` (specs/ + design.md)
 
 ## TypeScript Source Code
 

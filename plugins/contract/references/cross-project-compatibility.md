@@ -6,9 +6,9 @@ For the report's structural shape and exit semantics, see [`report-shape`](repor
 
 ## When the mode runs
 
-The `/spec:execute` driver invokes `cross-project` mode after every successful `specify change merge run` of a contract change. For each contract listed in the producer project's `registry.yaml:contracts.produces`, the driver iterates over each consumer (every other project in the registry) and invokes the appropriate format-skill verifier once per `(producer-contract, consumer-workspace)` pair.
+The `/change:execute` driver invokes `cross-project` mode after every successful `specify slice merge run` of a contract change. For each contract listed in the producer project's `registry.yaml:contracts.produces`, the driver iterates over each consumer (every other project in the registry) and invokes the appropriate format-skill verifier once per `(producer-contract, consumer-workspace)` pair.
 
-The mode is **non-fatal**: cross-project warnings never stop the execute loop. The driver records each warning to the merging change's `journal.yaml` (via `specify change journal append`) and renders a warning block in the merge transcript so the operator can triage. Findings are surfaced as `cross-project-warning:` entries in the journal.
+The mode is **non-fatal**: cross-project warnings never stop the execute loop. The driver records each warning to the merging change's `journal.yaml` (via `specify slice journal append`) and renders a warning block in the merge transcript so the operator can triage. Findings are surfaced as `cross-project-warning:` entries in the journal.
 
 ## Producer / consumer terminology
 
@@ -80,7 +80,7 @@ The verifier does not emit findings for these; they are filtered out at the diff
 
 ## Workspace consumer detection
 
-The `/spec:execute` driver detects which consumers to check by walking the registry. The verifier itself does not inspect `registry.yaml` — it receives the list of `(producer-contract, consumer-workspace)` pairs from the driver.
+The `/change:execute` driver detects which consumers to check by walking the registry. The verifier itself does not inspect `registry.yaml` — it receives the list of `(producer-contract, consumer-workspace)` pairs from the driver.
 
 A project counts as a consumer of a producer's contract when:
 

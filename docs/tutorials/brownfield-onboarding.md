@@ -9,7 +9,7 @@ If you have an existing codebase, you do not need to start from scratch. Specify
 Start by initialising Specify in your existing project:
 
 ```text
-/spec:init https://github.com/augentic/specify/schemas/omnia
+/spec:init https://github.com/augentic/specify/capabilities/omnia
 ```
 
 When init detects existing source code, it will offer to create an `initial-baseline` change for extraction. Accept the offer, or proceed manually with the steps below.
@@ -19,7 +19,7 @@ When init detects existing source code, it will offer to create an `initial-base
 Run extract against your codebase:
 
 ```text
-/spec:extract . .specify/changes/initial-baseline/
+/spec:extract . .specify/slices/initial-baseline/
 ```
 
 <details>
@@ -54,13 +54,13 @@ For large codebases, you can narrow the scope:
 
 ```text
 # Extract only the auth module
-/spec:extract . .specify/changes/initial-baseline/ --include "src/auth/**"
+/spec:extract . .specify/slices/initial-baseline/ --include "src/auth/**"
 
 # Exclude test files
-/spec:extract . .specify/changes/initial-baseline/ --exclude "**/*test*"
+/spec:extract . .specify/slices/initial-baseline/ --exclude "**/*test*"
 
 # Use a manifest of specific files
-/spec:extract . .specify/changes/initial-baseline/ --manifest ./files-to-extract.txt
+/spec:extract . .specify/slices/initial-baseline/ --manifest ./files-to-extract.txt
 ```
 
 ## 3. Review the extracted artifacts
@@ -95,7 +95,7 @@ Your baseline now reflects the existing system:
 
 ## 5. Start making changes
 
-With a populated baseline, new changes benefit from context. When you define a change that modifies an existing capability, Specify reads the baseline spec and produces a delta:
+With a populated baseline, new changes benefit from context. When you define a slice that modifies an existing capability, Specify reads the baseline spec and produces a delta:
 
 ```text
 /spec:define "Add two-factor authentication to the auth service"
@@ -107,7 +107,7 @@ The agent knows the current auth requirements from the baseline. The generated d
 
 ```text
 /spec:init                                         # one-time setup
-/spec:extract . .specify/changes/initial-baseline/  # extract from source
+/spec:extract . .specify/slices/initial-baseline/  # extract from source
 /spec:merge initial-baseline                        # establish baseline
     ... (normal define-build-merge from here)
 ```
@@ -122,4 +122,4 @@ The agent knows the current auth requirements from the baseline. The generated d
 
 ## Next
 
-[A Multi-Change Initiative](single-repo-initiative.md) -- coordinate multiple related changes with a plan.
+[A Multi-Change Initiative](single-repo-change.md) -- coordinate multiple related changes with a plan.

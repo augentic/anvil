@@ -1,0 +1,20 @@
+# Snapshot of .specify/slices/user-registration/.metadata.yaml taken
+# immediately after /spec:define returns and stamps outcome: success
+# via `specify slice outcome set user-registration define success
+# --summary "..."`. /change:execute reads `.outcome.outcome` (== success)
+# and proceeds to step 7 (invoke /spec:build).
+#
+# Load-bearing fields for the driver:
+#   - .outcome.outcome  -> classification (success | failure | deferred)
+#   - .outcome.summary  -> copied into status-reason on non-success paths
+
+name: user-registration
+status: defined
+created-at: 2026-04-19T10:00:00Z
+updated-at: 2026-04-19T10:04:12Z
+schema: omnia
+outcome:
+  phase: define
+  outcome: success
+  at: 2026-04-19T10:04:12Z
+  summary: "4/4 define briefs converged; proposal, specs, design, tasks generated."

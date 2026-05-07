@@ -1,13 +1,13 @@
 # Recover from a Failed Change
 
-A change can fail during any phase -- define, build, or merge. The recovery path depends on whether you are running manually or through `/spec:execute`.
+A change can fail during any phase -- define, build, or merge. The recovery path depends on whether you are running manually or through `/change:execute`.
 
 ## Diagnose the state
 
-Check what state the change is in:
+Check what state the slice is in:
 
 ```bash
-specify change status <name>
+specify slice status <name>
 ```
 
 | State | What happened | Next step |
@@ -45,9 +45,9 @@ You can edit artifact files directly (e.g. fix a design issue in `design.md`) an
 /spec:build              # reads the updated artifacts
 ```
 
-## Recovery during `/spec:execute`
+## Recovery during `/change:execute`
 
-When `/spec:execute` encounters a failure:
+When `/change:execute` encounters a failure:
 
 1. It drops the failed change automatically.
 2. The plan entry transitions to `failed`.
@@ -56,23 +56,23 @@ When `/spec:execute` encounters a failure:
 To retry the failed entry:
 
 ```bash
-specify plan transition <name> pending
+specify change plan transition <name> pending
 ```
 
-Then re-run `/spec:execute`. The driver will pick up the reset entry.
+Then re-run `/change:execute`. The driver will pick up the reset entry.
 
 If the failure was caused by a dependency, you can also skip the entry:
 
 ```bash
-specify plan transition <name> skipped
+specify change plan transition <name> skipped
 ```
 
 ## Self-heal on restart
 
-If `/spec:execute` was interrupted (crash, Ctrl+C), the next invocation performs self-heal automatically -- it detects the stale `in-progress` entry, inspects the change state, and transitions the plan entry to `done`, `failed`, or `blocked` as appropriate.
+If `/change:execute` was interrupted (crash, Ctrl+C), the next invocation performs self-heal automatically -- it detects the stale `in-progress` entry, inspects the slice state, and transitions the plan entry to `done`, `failed`, or `blocked` as appropriate.
 
 ## See also
 
 - [Troubleshooting](../appendices/troubleshooting.md) -- symptom/cause/fix index for common errors
-- [/spec:drop](../reference/change-skills/drop.md) -- reference for discarding changes
-- [/spec:execute](../reference/initiative-skills/execute.md) -- self-heal and failure handling details
+- [/spec:drop](../reference/slice-skills/drop.md) -- reference for discarding changes
+- [/change:execute](../reference/change-skills/execute.md) -- self-heal and failure handling details

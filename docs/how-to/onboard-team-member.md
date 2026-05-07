@@ -17,14 +17,14 @@ The `.specify/` directory is committed to the repository. When they clone or pul
 - **`specs/`** -- the accumulated baseline specifications.
 - **`contracts/`** -- baseline API contracts (if any).
 
-They can immediately run `specify status` to see active changes and the project dashboard.
+They can immediately run `specify status` to see active slices and the project dashboard.
 
 ## Working in parallel
 
-Two developers can work on different changes simultaneously. Each change lives in its own directory under `.specify/changes/`:
+Two developers can work on different changes simultaneously. Each change lives in its own directory under `.specify/slices/`:
 
 ```text
-.specify/changes/
+.specify/slices/
 ├── add-notifications/    # Developer A
 └── improve-auth/         # Developer B
 ```
@@ -36,7 +36,7 @@ Use **git branches** -- each developer creates a branch for their change. The ba
 If two changes modify the same capability, the second to merge may encounter a conflict:
 
 1. Developer A merges `add-notifications` -- baseline updated.
-2. Developer B tries to merge `improve-auth` -- `specify change merge conflict-check` detects the baseline changed since define.
+2. Developer B tries to merge `improve-auth` -- `specify slice merge conflict-check` detects the baseline changed since define.
 
 Resolution options:
 

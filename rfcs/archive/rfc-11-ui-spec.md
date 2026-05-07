@@ -37,7 +37,7 @@ Everything to the left of `/spec:define` is *UI input material*. Everything from
 - **Tokens.** `vectis:design-system-writer` (removed by this RFC; previously at `plugins/vectis/skills/design-system-writer/SKILL.md`) regenerated iOS Swift Package + Android Compose library from a hand-authored `design-system/tokens.yaml`. There was no JSON Schema for `tokens.yaml`; value shapes (colour / font / scalar) were inferred from the first entry per category.
 - **Assets.** No artifact and no skill. Image files end up in shell-specific asset catalogues (`Assets.xcassets`, `res/drawable*/`) by hand or by ad-hoc shell-writer copy steps. The layout/composition vocabulary references icons and images by bare name with no central index.
 - **Requirements.** Travel today as the user prompt + the existing vectis specs/proposal briefs. The diagram treats `requirements` as a first-class input to `/spec:define`, peer to `layout.yaml` — making it explicit that layout is *presentation intent* and requirements are *behavioural intent* and they meet at define time.
-- **Define / build.** The vectis define pipeline already includes a [composition brief](../../schemas/vectis/briefs/composition.md) that reads existing layout input when present and otherwise infers one. The build brief hands `composition.yaml`, `app.rs`, `tokens.yaml`, and the spec shell sections to each shell writer. There is no asset hand-off yet.
+- **Define / build.** The vectis define pipeline already includes a [composition brief](../../capabilities/vectis/briefs/composition.md) that reads existing layout input when present and otherwise infers one. The build brief hands `composition.yaml`, `app.rs`, `tokens.yaml`, and the spec shell sections to each shell writer. There is no asset hand-off yet.
 
 ### What is missing
 
@@ -47,7 +47,7 @@ Everything to the left of `/spec:define` is *UI input material*. Everything from
 - **No published tokens schema.** Adding a category (motion, elevation, iconography) requires coordinated edits across writer + per-platform templates with no validator.
 - **No formal define contract.** What `/spec:define` requires from `layout.yaml` vs. produces in wired `composition.yaml` is RFC-7 prose; it has never been pinned as an interface that the image inferer can target now and future inferers can target later.
 - **No build hand-off for assets / tokens beyond ad-hoc.** The shell writers need to know which images and tokens this build expects, but they receive that knowledge by inference rather than as a manifest.
-- **`design-system` is wired as a peer "platform" of `ios` and `android`.** The proposal brief lists it alongside the runtime platforms ([`schemas/vectis/briefs/proposal.md`](../../schemas/vectis/briefs/proposal.md)), the build brief runs it as the first phase ([`schemas/vectis/briefs/build.md`](../../schemas/vectis/briefs/build.md)), the plan-time discovery and propose briefs treat it as a tier ([`schemas/vectis/briefs/plan/discovery.md`](../../schemas/vectis/briefs/plan/discovery.md), [`propose.md`](../../schemas/vectis/briefs/plan/propose.md)), and `vectis:design-system-writer` ships a Swift Package and a Compose library into `design-system/ios/` and `design-system/android/` that the iOS and Android shells consume as external dependencies. This is an anomaly: nothing is *deployed* to "design-system" — the artifact is a build-time prerequisite for the real runtime targets. Conflating the input surface (the operator-maintained `layout.yaml`, `tokens.yaml`, `assets.yaml`) with the per-platform emit (Swift / Kotlin token files) creates redundant lifecycle scaffolding (its own platforms entry, its own build phase, its own writer skill, its own task ordering) and an unnatural shared-library boundary that each shell would otherwise own internally.
+- **`design-system` is wired as a peer "platform" of `ios` and `android`.** The proposal brief lists it alongside the runtime platforms ([`schemas/vectis/briefs/proposal.md`](../../capabilities/vectis/briefs/proposal.md)), the build brief runs it as the first phase ([`schemas/vectis/briefs/build.md`](../../capabilities/vectis/briefs/build.md)), the plan-time discovery and propose briefs treat it as a tier ([`schemas/vectis/briefs/plan/discovery.md`](../../plugins/change/skills/plan/briefs/vectis/discovery.md), [`propose.md`](../../plugins/change/skills/plan/briefs/vectis/propose.md)), and `vectis:design-system-writer` ships a Swift Package and a Compose library into `design-system/ios/` and `design-system/android/` that the iOS and Android shells consume as external dependencies. This is an anomaly: nothing is *deployed* to "design-system" — the artifact is a build-time prerequisite for the real runtime targets. Conflating the input surface (the operator-maintained `layout.yaml`, `tokens.yaml`, `assets.yaml`) with the per-platform emit (Swift / Kotlin token files) creates redundant lifecycle scaffolding (its own platforms entry, its own build phase, its own writer skill, its own task ordering) and an unnatural shared-library boundary that each shell would otherwise own internally.
 
 ### Non-goals
 
@@ -355,7 +355,7 @@ Planned schema-level artifact contract:
 - Asset files are part of the artifact contract, not opaque side effects. `design-system/assets/**` is validated for referenced-file existence before shell generation and is merged with the same review surface as `assets.yaml`.
 - The schema contract is descriptive metadata. Deterministic correctness still lives in the CLI validation modes, so agents do not infer artifact rules solely from prose. v1 ships exactly **one** automated consumer: the `composition.md` brief reads `artifacts.layout.paths` to discover where `layout.yaml` lives, replacing today's hard-coded `design-system/layout.yaml` reference. Every other field on every other entry is documentation for v1 — briefs, skills, and operators MAY consult the block, but no other automated reader exists. Promoting additional consumers (e.g. build/merge using `consumed_by` for orchestration) is a follow-on RFC.
 
-Worked v1 shape (proposed addition to [`schemas/vectis/schema.yaml`](../../schemas/vectis/schema.yaml)):
+Worked v1 shape (proposed addition to [`schemas/vectis/schema.yaml`](../../capabilities/vectis/capability.yaml)):
 
 ```yaml
 artifacts:
@@ -429,7 +429,7 @@ Field semantics (v1):
 - `produced_by` / `consumed_by` — phase identifiers from `pipeline:` (`define`, `build`, `merge`). Documentation in v1.
 - `merge_strategy: input-delta` — marker for "merge carries change-local copies into the project location." Documentation in v1.
 
-Companion patch to [`.cursor/schemas/specify-schema.schema.json`](../../.cursor/schemas/specify-schema.schema.json):
+Companion patch to [`.cursor/schemas/specify-schema.schema.json`](../../capabilities/capability.schema.json):
 
 ```json
 {
@@ -456,7 +456,7 @@ Outputs:
 
 - The existing vectis define artifacts: `proposal.md`, `specs/**/*.md`, `design.md`, `tasks.md`, `contracts.md` when the schema pipeline includes contracts, and a wired `composition.yaml`.
 - `composition.yaml` is the concrete output of consuming `layout.yaml`; there is no generated `composition.md` artifact. The `composition.md` file in the repository is the define brief that performs this transformation.
-- `design.md` is influenced by layout through `composition.yaml`: screen names, ViewModel variants, per-page view structs, Route needs, `bind` field completeness, token usage, asset usage, and platform-specific shell notes. `design.md` should not duplicate the raw layout tree or token/asset manifests. The chunk-2 brief edit (§K Sequencing) updates [`schemas/vectis/briefs/design.md`](../../schemas/vectis/briefs/design.md) to replace any "raw layout tree" guidance with "read `composition.yaml` for screen / ViewModel / binding / token / asset implications" — `design.md` becomes a *reader* of `composition.yaml`, not a parallel surface for the same information.
+- `design.md` is influenced by layout through `composition.yaml`: screen names, ViewModel variants, per-page view structs, Route needs, `bind` field completeness, token usage, asset usage, and platform-specific shell notes. `design.md` should not duplicate the raw layout tree or token/asset manifests. The chunk-2 brief edit (§K Sequencing) updates [`schemas/vectis/briefs/design.md`](../../capabilities/vectis/briefs/design.md) to replace any "raw layout tree" guidance with "read `composition.yaml` for screen / ViewModel / binding / token / asset implications" — `design.md` becomes a *reader* of `composition.yaml`, not a parallel surface for the same information.
 - Change-local `tokens.yaml`, `assets.yaml`, and asset files remain inputs rather than generated code, but they are still part of the define output set for lifecycle purposes when a change updates them: tasks and build must see them, and merge must carry accepted deltas into `design-system/`.
 - No `theme.md` or token summary artifact in v1. Token and asset usage is visible through `composition.yaml`, `tokens.yaml`, and `assets.yaml`; adding a generated summary would create another source of drift.
 
@@ -585,21 +585,21 @@ The v1 work breaks into three independently-mergeable chunks. They are listed in
 
 1. **Schema + CLI foundation.** Land the artefact contract and the CLI surface every later chunk depends on:
    - Publish `schemas/vectis/tokens.schema.json` (Appendix A) and `schemas/vectis/assets.schema.json` (Appendix B).
-   - Apply the additive patches to [`schemas/vectis/composition.schema.json`](../../schemas/vectis/composition.schema.json) per Appendix F (provenance kinds + optional `component` key; document `version` stays at `1`).
-   - Add the `artifacts:` block to [`schemas/vectis/schema.yaml`](../../schemas/vectis/schema.yaml) and the companion patch to [`.cursor/schemas/specify-schema.schema.json`](../../.cursor/schemas/specify-schema.schema.json) per §H.
+   - Apply the additive patches to [`schemas/vectis/composition.schema.json`](../../capabilities/vectis/composition.schema.json) per Appendix F (provenance kinds + optional `component` key; document `version` stays at `1`).
+   - Add the `artifacts:` block to [`schemas/vectis/schema.yaml`](../../capabilities/vectis/capability.yaml) and the companion patch to [`.cursor/schemas/specify-schema.schema.json`](../../capabilities/capability.schema.json) per §H.
    - Add the four `specify vectis validate <mode>` verbs (plus the `all` convenience verb) per §H.
    - No skill, brief, or shell-writer edits in this chunk.
 
 2. **Layout pipeline.** Activate the new validation modes against the existing brief surface:
    - Author `plugins/vectis/references/layout-inferer-contract.md` from §A + §G + the §H validation-mode prose.
    - Add the `vectis-image-layout-inferer` skill (§C, §J).
-   - Wire the existing [`schemas/vectis/briefs/composition.md`](../../schemas/vectis/briefs/composition.md) brief to consume `layout.yaml` (resolved via `artifacts.layout.paths`) and to call `specify vectis validate layout` before consuming. The composition brief becomes the v1 reader of the `artifacts:` block.
+   - Wire the existing [`schemas/vectis/briefs/composition.md`](../../capabilities/vectis/briefs/composition.md) brief to consume `layout.yaml` (resolved via `artifacts.layout.paths`) and to call `specify vectis validate layout` before consuming. The composition brief becomes the v1 reader of the `artifacts:` block.
    - Land the `component: <slug>` directive end-to-end: schema is already patched in chunk 1, the image inferer emits it conservatively (§J), and the build-time CLI checks light up automatically.
 
 3. **Design-system dissolution.** Move emit responsibility into the shell writers and retire the peer platform:
    - **Step 3a (firm prerequisite).** Move Swift token templates from `plugins/vectis/skills/design-system-writer/references/` into [`plugins/vectis/skills/ios-writer/references/`](../../plugins/vectis/skills/ios-writer/references/) and Kotlin token templates into [`plugins/vectis/skills/android-writer/references/`](../../plugins/vectis/skills/android-writer/references/). Update ios-writer and android-writer to emit theme code inside each shell tree.
    - **Step 3b.** Convert `vectis:design-system-writer` to a deprecated no-op alias (§J).
-   - **Step 3c.** Rewrite the affected briefs in lockstep: [`proposal.md`](../../schemas/vectis/briefs/proposal.md) (drop `design-system` from `Platforms`), [`specs.md`](../../schemas/vectis/briefs/specs.md) (retire `## Design System Requirements`), [`build.md`](../../schemas/vectis/briefs/build.md) (core -> shells, no design-system phase), [`tasks.md`](../../schemas/vectis/briefs/tasks.md) (drop the writer from the skill table), [`composition.md`](../../schemas/vectis/briefs/composition.md) (token-availability trigger keys off file existence, not the `design-system` platform), [`plan/discovery.md`](../../schemas/vectis/briefs/plan/discovery.md) and [`plan/propose.md`](../../schemas/vectis/briefs/plan/propose.md) (drop the design-system tier).
+   - **Step 3c.** Rewrite the affected briefs in lockstep: [`proposal.md`](../../capabilities/vectis/briefs/proposal.md) (drop `design-system` from `Platforms`), [`specs.md`](../../capabilities/vectis/briefs/specs.md) (retire `## Design System Requirements`), [`build.md`](../../capabilities/vectis/briefs/build.md) (core -> shells, no design-system phase), [`tasks.md`](../../capabilities/vectis/briefs/tasks.md) (drop the writer from the skill table), [`composition.md`](../../capabilities/vectis/briefs/composition.md) (token-availability trigger keys off file existence, not the `design-system` platform), [`plan/discovery.md`](../../plugins/change/skills/plan/briefs/vectis/discovery.md) and [`plan/propose.md`](../../plugins/change/skills/plan/briefs/vectis/propose.md) (drop the design-system tier).
 
 **Ordering constraint (firm).** Step 3a MUST land before step 3b. If `vectis:design-system-writer` becomes a no-op alias before the shell writers own token-emit, downstream regenerations between those two changes lose theming entirely. The chunk-3 PR(s) MUST sequence template migration first, alias conversion second, and brief rewrites last (or alongside 3b, since the briefs do not affect generated code on their own).
 
@@ -1366,7 +1366,7 @@ assets:
 
 ### Appendix F. Composition schema additive diff
 
-This appendix consolidates the additive changes RFC-11 v1 makes to [`schemas/vectis/composition.schema.json`](../../schemas/vectis/composition.schema.json). All three edits are backwards-compatible; the document-level `version` constant stays at `1`. Existing baseline / change-local `composition.yaml` files remain valid under the patched schema with no migration. A version bump is reserved for the next breaking change (the `components.yaml` artifact when it lands per §G triggers).
+This appendix consolidates the additive changes RFC-11 v1 makes to [`schemas/vectis/composition.schema.json`](../../capabilities/vectis/composition.schema.json). All three edits are backwards-compatible; the document-level `version` constant stays at `1`. Existing baseline / change-local `composition.yaml` files remain valid under the patched schema with no migration. A version bump is reserved for the next breaking change (the `components.yaml` artifact when it lands per §G triggers).
 
 #### F.1 Provenance kinds — extend `provenanceSource.kind`
 
@@ -1409,15 +1409,15 @@ The unwired-subset rules from §A (no `delta`, no `maps_to` / `bind` / `event` /
 ## References
 
 - [RFC-7: View Layout Artifact for UI Generation](rfc-7-ui.md) — the composition artifact and skeleton/wired duality this RFC operationalises
-- [`schemas/vectis/schema.yaml`](../../schemas/vectis/schema.yaml) — the Vectis schema definition that this RFC says should gain an artifact contract for layout, tokens, assets, define outputs, build inputs, and merge-managed UI input deltas
-- [`.cursor/schemas/specify-schema.schema.json`](../../.cursor/schemas/specify-schema.schema.json) — the schema validator that will need to permit schema-level artifact contracts when this RFC is implemented
-- [`schemas/vectis/composition.schema.json`](../../schemas/vectis/composition.schema.json) — the schema that both `layout.yaml` input and wired `composition.yaml` output validate against
-- [`schemas/vectis/briefs/composition.md`](../../schemas/vectis/briefs/composition.md) — the existing composition brief that consumes `layout.yaml` at define time and emits wired `composition.yaml`
-- [`schemas/vectis/briefs/build.md`](../../schemas/vectis/briefs/build.md) — the build brief whose hand-off list grows with `assets.yaml` + image files, and whose phase ordering simplifies once design-system retires (§I, §L)
-- [`schemas/vectis/briefs/proposal.md`](../../schemas/vectis/briefs/proposal.md) — the proposal brief whose `Platforms` vocabulary loses `design-system` (§L)
-- [`schemas/vectis/briefs/specs.md`](../../schemas/vectis/briefs/specs.md) — the specs brief whose `## Design System Requirements` section reframes once the peer platform retires (§L)
-- [`schemas/vectis/briefs/tasks.md`](../../schemas/vectis/briefs/tasks.md) — the tasks brief whose phase ordering and skill table shed the design-system tier (§L)
-- [`schemas/vectis/briefs/plan/discovery.md`](../../schemas/vectis/briefs/plan/discovery.md) and [`plan/propose.md`](../../schemas/vectis/briefs/plan/propose.md) — the plan briefs whose tier model loses the design-system rung (§L)
+- [`schemas/vectis/schema.yaml`](../../capabilities/vectis/capability.yaml) — the Vectis schema definition that this RFC says should gain an artifact contract for layout, tokens, assets, define outputs, build inputs, and merge-managed UI input deltas
+- [`.cursor/schemas/specify-schema.schema.json`](../../capabilities/capability.schema.json) — the schema validator that will need to permit schema-level artifact contracts when this RFC is implemented
+- [`schemas/vectis/composition.schema.json`](../../capabilities/vectis/composition.schema.json) — the schema that both `layout.yaml` input and wired `composition.yaml` output validate against
+- [`schemas/vectis/briefs/composition.md`](../../capabilities/vectis/briefs/composition.md) — the existing composition brief that consumes `layout.yaml` at define time and emits wired `composition.yaml`
+- [`schemas/vectis/briefs/build.md`](../../capabilities/vectis/briefs/build.md) — the build brief whose hand-off list grows with `assets.yaml` + image files, and whose phase ordering simplifies once design-system retires (§I, §L)
+- [`schemas/vectis/briefs/proposal.md`](../../capabilities/vectis/briefs/proposal.md) — the proposal brief whose `Platforms` vocabulary loses `design-system` (§L)
+- [`schemas/vectis/briefs/specs.md`](../../capabilities/vectis/briefs/specs.md) — the specs brief whose `## Design System Requirements` section reframes once the peer platform retires (§L)
+- [`schemas/vectis/briefs/tasks.md`](../../capabilities/vectis/briefs/tasks.md) — the tasks brief whose phase ordering and skill table shed the design-system tier (§L)
+- [`schemas/vectis/briefs/plan/discovery.md`](../../plugins/change/skills/plan/briefs/vectis/discovery.md) and [`plan/propose.md`](../../plugins/change/skills/plan/briefs/vectis/propose.md) — the plan briefs whose tier model loses the design-system rung (§L)
 - `plugins/vectis/skills/design-system-writer/SKILL.md` (removed by this RFC) — the emit-only design-system skill that this RFC dissolves (§F, §L); its references migrated into the shell writers
 - [`plugins/vectis/skills/ios-writer/references/design-system-integration.md`](../../plugins/vectis/skills/ios-writer/references/design-system-integration.md) — current iOS consumer-side rules (token usage, fallback policy)
 - [`plugins/vectis/skills/android-writer/references/design-system-integration.md`](../../plugins/vectis/skills/android-writer/references/design-system-integration.md) — current Android consumer-side rules and Material 3 fallback policy

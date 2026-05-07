@@ -1,12 +1,12 @@
 # AsyncAPI — Importer
 
-> **When to read this.** Read this when an operator supplies an external AsyncAPI document and the contracts schema build brief needs the file normalised onto Specify conventions under a change's `contracts/messages/` directory. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)).
+> **When to read this.** Read this when an operator supplies an external AsyncAPI document and the contracts capability build brief needs the file normalised onto Specify conventions under a slice's `contracts/messages/` directory. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)).
 
 ## Inputs
 
 ```text
-$CHANGE_DIR     = .specify/changes/<change-name>
-$CONTRACTS_DIR  = $CHANGE_DIR/contracts
+$SLICE_DIR     = .specify/slices/<slice-name>
+$CONTRACTS_DIR  = $SLICE_DIR/contracts
 $BASELINE_DIR   = contracts
 ```
 
@@ -240,7 +240,7 @@ Disambiguation: when two extracted schemas would produce the same filename, appe
 
 Before writing each extracted schema, compare it to any existing file with the same name in `$BASELINE_DIR/schemas/`:
 
-- **Structurally equivalent** (same `properties`, `required`, types) — drop the extracted file and replace inline references with `$ref` to the baseline file. No new schema file in the change.
+- **Structurally equivalent** (same `properties`, `required`, types) — drop the extracted file and replace inline references with `$ref` to the baseline file. No new schema file in the slice.
 - **Differs structurally** — disambiguate by prefixing with the event domain (`order-placed-billing.yaml`) and write the new file.
 
 #### Replacement
@@ -280,7 +280,7 @@ For the AsyncAPI document itself, verify that `info.title`, `info.version`, and 
 
 **RFC-12 normalisation rules for top-level AsyncAPI documents:**
 
-- **`info.version` MUST be SemVer.** When the imported value does not parse as SemVer (e.g. `2024-01-15`, `v2`, `"1"`), do **not** auto-rewrite. Surface a `[manual review required]` entry in the import report naming the file and the offending value, and let the operator decide on the canonical SemVer string. The verifier sibling and `specify contract validate` will block on the unaltered value until the operator resolves it.
+- **`info.version` MUST be SemVer.** When the imported value does not parse as SemVer (e.g. `2024-01-15`, `v2`, `"1"`), do **not** auto-rewrite. Surface a `[manual review required]` entry in the import report naming the file and the offending value, and let the operator decide on the canonical SemVer string. The single-mode verifier (Check 4) and the merge-time `specify tool run contract` gate (RFC-13 §"Merge and adoption contract") will block on the unaltered value until the operator resolves it.
 - **Preserve `info.x-specify-id` verbatim.** When the source carries `info.x-specify-id`, copy it through unchanged — even when the value violates the kebab-case format (the verifier flags the format issue with the file path, which is enough for the operator to fix). Never invent or auto-derive an id during import; new ids are an authoring decision.
 
 For each message in `components/messages`, verify `name` and `contentType`. If `contentType` is absent, default to `application/json` and surface in the import report.
@@ -300,7 +300,7 @@ Remove the original file when the canonical location differs from where the oper
 
 #### Validate
 
-Run [`verifier.md`](./verifier.md) in `single` mode against `$CHANGE_DIR` to confirm `$ref` resolution, message and schema metadata completeness, and binding coverage. If the verifier reports issues, re-enter Steps 3–4 for targeted repair before producing the report.
+Run [`verifier.md`](./verifier.md) in `single` mode against `$SLICE_DIR` to confirm `$ref` resolution, message and schema metadata completeness, and binding coverage. If the verifier reports issues, re-enter Steps 3–4 for targeted repair before producing the report.
 
 #### Report
 

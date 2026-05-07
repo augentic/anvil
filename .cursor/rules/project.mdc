@@ -7,9 +7,18 @@ alwaysApply: true
 
 This repository provides specialist skills and references for Specify-driven development on Augentic's Omnia runtime and Crux cross-platform framework.
 
+## Vocabulary
+
+Two lifecycle nouns recur throughout this codebase. RFC-13 §Migration locked their meaning:
+
+- **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
+- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, and the `specify change *` CLI verbs (which include the `specify change plan *` subresource).
+
+Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "initiative". Both were renamed in Phase 3 of the RFC; "the change loop" no longer exists as a phrase — it is the *slice loop*.
+
 ## Operating Model
 
-The intended workflow is human-driven Specify. Single-change loop:
+The intended workflow is human-driven Specify. Single-slice loop:
 
 ```bash
 /spec:init      # once per project (use --hub for a registry-only platform hub)
@@ -19,17 +28,17 @@ The intended workflow is human-driven Specify. Single-change loop:
 /spec:drop
 ```
 
-Multi-change initiative (Layer 3):
+Multi-slice change (Layer 3):
 
 ```bash
-/spec:plan <name> --source legacy=./path
-/spec:execute --loop
+/change:plan <name> --source legacy=./path
+/change:execute --loop
 ```
 
-Cross-repo initiative end-to-end (Layer 4 umbrella, RFC-9 §2C):
+Cross-repo change end-to-end (Layer 4 umbrella, RFC-9 §2C):
 
 ```bash
-/spec:plan --orchestrate <name> [--shape migrate-legacy|new-feature|update-existing] [--auto-merge]
+/change:plan --orchestrate <name> [--shape migrate-legacy|new-feature|update-existing] [--auto-merge]
 ```
 
 Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
@@ -55,7 +64,7 @@ When conflicts arise, follow this strict precedence order:
 
 Specify artifacts have separate responsibilities:
 
-- **`proposal.md`**: why the change exists and what is in scope
+- **`proposal.md`**: why the slice exists and what is in scope
 - **`spec.md`**: behavioral requirements, scenarios, error conditions, optional metrics
 - **`composition.yaml`**: spatial layout of screens — regions, groups, item bindings, and event wiring (Vectis only)
 - **`design.md`**: domain model, APIs, integrations, configuration, technical logic
@@ -70,15 +79,20 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Specify Plugin (`plugins/spec/`)
 
-- `init` - initialize Specify in a project from `--schema-uri` (one-time setup; supports `--hub` for a registry-only platform hub, RFC-9 §1D)
-- `define` - create a change and generate all artifacts in one step
-- `build` - validate artifacts and implement tasks from a Specify change
-- `merge` - finalize and merge a completed change
-- `drop` - discard a change without merging specs into baseline
+- `init` - initialize Specify in a project from a positional `<capability>` (one-time setup; mutually exclusive with `--hub`, which scaffolds a registry-only platform hub per RFC-9 §1D and writes only `hub: true` to `project.yaml`)
+- `define` - create a slice and generate all artifacts in one step
+- `build` - validate artifacts and implement tasks from a Specify slice
+- `merge` - finalize and merge a completed slice
+- `drop` - discard a slice without merging specs into baseline
 - `extract` - extract Specify artifacts from existing source code
 - `analyze` - plan-time capability inference; emits capability summaries
-- `plan` - author `plan.yaml` via the plan pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C
-- `execute` - drive an initiative's plan through define, build, merge
+- `plan` - **deprecated alias** that delegates to `/change:plan` (RFC-13 §3.9). Removed before the post-RFC release.
+- `execute` - **deprecated alias** that delegates to `/change:execute` (RFC-13 §3.9). Removed before the post-RFC release.
+
+### Change Plugin (`plugins/change/`)
+
+- `plan` - author `plan.yaml` via the planning brief pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C. Was `/change:plan` until RFC-13 §3.9.
+- `execute` - drive a change's plan through define, build, merge per slice. Was `/change:execute` until RFC-13 §3.9.
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -114,7 +128,7 @@ Format-first specialist skills; each carries author / import / verify intents in
 - `asyncapi` - author, import, or verify evented / pub-sub / streaming contracts (AsyncAPI 3.0)
 - `json-schema` - author, import, or verify reusable payload schemas (JSON Schema)
 
-The persisted artifact surface is unchanged: the `contracts` brief id, the `contracts@v1` schema, the `contracts/` baseline directory, and every contract artifact path keep their original names. The Cursor plugin / slash-command surface lives under `/contract:*`. The matching read-only CLI surface is `specify contract { list, validate }` (RFC-12 §"CLI surface").
+The persisted artifact surface is unchanged: the `contracts` brief id, the `contracts@v1` capability, the `contracts/` baseline directory, and every contract artifact path keep their original names. The Cursor plugin / slash-command surface lives under `/contract:*`. The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` (RFC-13 §"Merge and adoption contract" + RFC-15). It walks a baseline `contracts/` directory and enforces the RFC-12 §Validation rules (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness). The pre-RFC-13 in-binary `specify contract { list, validate }` family was retired in chunk 2.7; the contracts capability merge brief now shells out through `specify tool run` as the post-merge baseline gate.
 
 ### Client Plugin (`plugins/client/`)
 
@@ -131,7 +145,7 @@ See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
   ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, execute)
-  │   └── references/     # Artifact templates and schema resolution
+  │   └── references/     # Artifact templates and capability resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
   ├── vectis/             # Vectis Crux development plugin
@@ -139,7 +153,7 @@ See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for
   ├── contracts/          # API contract generation and validation plugin
   ├── rt/                 # RT migration plugin
   └── client/             # Client-facing deliverables (SoW, proposals, pricing)
-/schemas/                 # Schema definitions (omnia, vectis, contracts)
+/capabilities/            # Capability manifests (omnia, vectis, contracts) — each ships `capability.yaml`
 /scripts/                 # Validation and plugin management
 ```
 
@@ -181,7 +195,7 @@ In downstream consumer projects:
 
 In this repository:
 
-- **Working artifacts**: `$PROJECT_DIR/.specify/changes/<change-name>/`
+- **Working artifacts**: `$PROJECT_DIR/.specify/slices/<slice-name>/`
 - **Baseline specs**: `$PROJECT_DIR/.specify/specs/`
 
 ## Troubleshooting
@@ -236,9 +250,9 @@ Forbidden (validated by `make checks` via `.cursor/schemas/skill.schema.json`):
 ### `argument-hint`
 
 - Single short hint that names the **primary positional** argument as Cursor placeholder text (the grey hint shown after `/plugin:skill `).
-- Required positional → angle brackets: `<change-dir>`. Optional positional → square brackets: `[crate-name]`.
+- Required positional → angle brackets: `<slice-dir>`. Optional positional → square brackets: `[crate-name]`.
 - No flag names (`--dry-run`, `--source`), no `?` optional-suffix marker, no `|` alternative-value pipes. Flags and secondary positionals are documented in the body's "Invocation" section.
-- Skills that only take flags omit the field entirely (e.g. `/spec:execute`).
+- Skills that only take flags omit the field entirely (e.g. `/change:execute`).
 
 ### Critical Path (Quick Reference)
 

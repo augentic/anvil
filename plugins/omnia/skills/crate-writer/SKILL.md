@@ -28,7 +28,7 @@ This skill accepts Specify artifacts from any producer:
 | Trigger                          | Mode       | Behaviour                                                                                                |
 | -------------------------------- | ---------- | -------------------------------------------------------------------------------------------------------- |
 | `$CRATE_PATH/Cargo.toml` missing | **Create** | Greenfield: full crate generation from scratch using the artifacts and references.                      |
-| `$CRATE_PATH/Cargo.toml` exists  | **Update** | Incremental: inventory the crate, classify the change set, apply edits in fixed order, preserve unchanged code. |
+| `$CRATE_PATH/Cargo.toml` exists  | **Update** | Incremental: inventory the crate, classify the slice set, apply edits in fixed order, preserve unchanged code. |
 
 The binding constraints (Hard Rules and the Authority Hierarchy) that govern every generation pass live in [rules.md](./rules.md). Read it before writing or modifying any code.
 
@@ -38,9 +38,9 @@ The binding constraints (Hard Rules and the Authority Hierarchy) that govern eve
 $CRATE_NAME     = $ARGUMENTS[0]
 
 # Path derivation
-$CHANGE_DIR     = .specify/changes/$CRATE_NAME
-$SPECS_DIR      = $CHANGE_DIR/specs
-$DESIGN_PATH    = $CHANGE_DIR/design.md
+$SLICE_DIR     = .specify/slices/$CRATE_NAME
+$SPECS_DIR      = $SLICE_DIR/specs
+$DESIGN_PATH    = $SLICE_DIR/design.md
 $CRATE_PATH     = crates/$CRATE_NAME
 ```
 
@@ -212,7 +212,7 @@ Before starting code generation, verify artifact completeness per [checklists.md
 
 ### Generation Process
 
-1. Read Specify artifacts from `$CHANGE_DIR`:
+1. Read Specify artifacts from `$SLICE_DIR`:
    - Read the spec file from `$SPECS_DIR/$CRATE_NAME/spec.md` (single consolidated file with flat `### Requirement:` / `#### Scenario:` blocks)
    - Read design.md from `$DESIGN_PATH`
 2. **Derive Omnia capabilities from artifacts:**
@@ -325,7 +325,7 @@ The inventory is an in-memory working model, not a persisted artifact. For each 
 
 #### Step 2: Derive Change Set
 
-Read the updated artifacts from `$CHANGE_DIR` (specs and design.md) and compare them against the inventory:
+Read the updated artifacts from `$SLICE_DIR` (specs and design.md) and compare them against the inventory:
 
 | Artifacts vs Inventory                                                             | Classification  |
 | ---------------------------------------------------------------------------------- | --------------- |
@@ -343,7 +343,7 @@ See [change-classification.md](references/change-classification.md) for detailed
 
 #### Step 2a: Cross-Cutting Analysis (changed handlers only)
 
-For every handler that is classified as **Additive** or **Modifying** in the change set, build the same three matrices as Create mode step 7. Also include any unchanged handler whose cross-cutting behavior depends on a modified entity or handler (e.g., an unchanged handler that reads or mutates an entity whose schema changed).
+For every handler that is classified as **Additive** or **Modifying** in the slice set, build the same three matrices as Create mode step 7. Also include any unchanged handler whose cross-cutting behavior depends on a modified entity or handler (e.g., an unchanged handler that reads or mutates an entity whose schema changed).
 
 - **Side-Effect Matrix** -- list cross-entity reads and mutations for each changed handler
 - **Outbound Message Matrix** -- list payload transformations for each changed handler's outbound messages
@@ -353,7 +353,7 @@ See step 7 in the Create mode Generation Process for the full matrix definitions
 
 #### Step 3: Generate Update Plan
 
-For each change, determine the specific edit operations. The plan is a structured list:
+For each slice, determine the specific edit operations. The plan is a structured list:
 
 ```text
 STRUCTURAL (apply first):
@@ -425,7 +425,7 @@ Run `cargo check` as a quick sanity check after applying all changes.
 
 #### Step 7: Traceability Verification (changed handlers only)
 
-For every handler classified as **Additive** or **Modifying** in the change set, verify that the updated code satisfies the spec and cross-cutting matrices from Step 2a:
+For every handler classified as **Additive** or **Modifying** in the slice set, verify that the updated code satisfies the spec and cross-cutting matrices from Step 2a:
 
 - For each spec requirement and scenario that maps to a changed handler, verify a corresponding code path exists
 - For each row in the Side-Effect Matrix (Step 2a), verify cross-entity mutations are implemented

@@ -16,7 +16,7 @@ Each skill's `SKILL.md` dispatches to format-specific `author.md`, `importer.md`
 
 ### Mixed-format ordering
 
-When a change touches more than one format (HTTP + events + shared schemas), the contracts schema build brief invokes the skills in fixed order:
+When a change touches more than one format (HTTP + events + shared schemas), the contracts capability build brief invokes the skills in fixed order:
 
 1. `/contract:json-schema` first — the schema vocabulary is shared and must stabilise before any binding references it.
 2. `/contract:openapi` — HTTP operations bind to the schemas above via `$ref: "../schemas/<type>.yaml"`.
@@ -26,9 +26,9 @@ Running OpenAPI or AsyncAPI ahead of json-schema produces dangling `$ref`s and f
 
 ### Cross-project compatibility check (RFC-9 §3B)
 
-Each format skill's `verifier.md` accepts a `--mode cross-project` flag. The `/spec:execute` driver invokes the appropriate verifier after every successful merge of a contract listed in the producer project's `registry.yaml:contracts.produces`. The verifier compares the merged contract against each consumer's tier-2 workspace clone (`.specify/workspace/<consumer>/contracts/...`) and emits a structured YAML report of breaking changes (removed fields, newly-required fields, narrowed types, removed endpoints / channels). Findings are non-fatal — the execute driver records them as `cross-project-warning:` entries in the merged change's `journal.yaml` and renders a warning block in the merge transcript, but never halts the loop.
+Each format skill's `verifier.md` accepts a `--mode cross-project` flag. The `/change:execute` driver invokes the appropriate verifier after every successful merge of a contract listed in the producer project's `registry.yaml:contracts.produces`. The verifier compares the merged contract against each consumer's tier-2 workspace clone (`.specify/workspace/<consumer>/contracts/...`) and emits a structured YAML report of breaking changes (removed fields, newly-required fields, narrowed types, removed endpoints / channels). Findings are non-fatal — the execute driver records them as `cross-project-warning:` entries in the merged slice's `journal.yaml` and renders a warning block in the merge transcript, but never halts the loop.
 
-See each format skill's `verifier.md` (§Cross-project mode) and [`/spec:execute` → §Cross-project contract check](../spec/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b) for the post-merge invocation contract. The shared `change-kind` vocabulary lives at [`references/cross-project-compatibility.md`](references/cross-project-compatibility.md).
+See each format skill's `verifier.md` (§Cross-project mode) and [`/change:execute` → §Cross-project contract check](../change/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b) for the post-merge invocation contract. The shared `change-kind` vocabulary lives at [`references/cross-project-compatibility.md`](references/cross-project-compatibility.md).
 
 ## References
 

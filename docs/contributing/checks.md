@@ -1,6 +1,6 @@
 # Consistency Checks
 
-The `specify` repo includes an automated consistency checker at `scripts/checks.ts` that validates documentation, skills, schemas, and the marketplace manifest. Run it before every pull request.
+The `specify` repo includes an automated consistency checker at `scripts/checks.ts` that validates documentation, skills, capability manifests, and the marketplace manifest. Run it before every pull request.
 
 ## Running checks
 
@@ -28,15 +28,15 @@ Every relative link in every `.md` file must resolve to an existing file. Extern
 
 No markdown file may reference a stale checklist count from an earlier version of the documentation. The specific patterns are defined in `scripts/checks.ts`.
 
-### 3. Schema YAML validation
+### 3. Capability manifest YAML validation
 
-Every `schemas/**/schema.yaml` file (at most two directory levels deep) must validate against `.cursor/schemas/specify-schema.schema.json` using JSON Schema 2020-12.
+Every `capabilities/<name>/capability.yaml` file (at most two directory levels deep) must validate against `capabilities/capability.schema.json` using JSON Schema 2020-12.
 
 **Common fix:** check that all required fields (`name`, `version`, `description`, `pipeline`) are present and correctly typed.
 
-### 4. Schema referential integrity
+### 4. Capability referential integrity
 
-For each `schema.yaml`, the check validates:
+For each `capability.yaml`, the check validates:
 
 - **Brief files exist** -- every pipeline entry's `brief` path resolves to a file
 - **Frontmatter present** -- each brief file has valid YAML frontmatter between `---` markers
@@ -44,7 +44,7 @@ For each `schema.yaml`, the check validates:
 - **Needs resolution** -- every `needs` reference in a brief points to a declared pipeline `id`
 - **No cycles** -- the `needs` dependency graph is acyclic (verified by Kahn's topological sort)
 
-**Common fix:** ensure the brief's frontmatter `id` matches the pipeline entry, and that `needs` references use exact `id` values from the same schema.
+**Common fix:** ensure the brief's frontmatter `id` matches the pipeline entry, and that `needs` references use exact `id` values from the same capability.
 
 ### 5. Symlink integrity
 
@@ -88,10 +88,10 @@ Cross-checks `plugins/` against `.cursor-plugin/marketplace.json`:
 
 ### 12. Instruction file preambles
 
-Files matching `schemas/**/instructions/<name>.md` must contain an output location preamble:
+Files matching `capabilities/**/instructions/<name>.md` must contain an output location preamble:
 
 ```markdown
-> **Output location**: `.specify/changes/...`
+> **Output location**: `.specify/slices/...`
 ```
 
 This prevents cross-plugin path contamination by making every instruction file declare where its output goes.

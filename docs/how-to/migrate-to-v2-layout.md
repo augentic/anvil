@@ -6,7 +6,7 @@ The v2 layout (specify-cli `0.2.0`) moves the four operator-facing platform arti
 |---|---|---|
 | Platform catalogue | `.specify/registry.yaml` | `registry.yaml` |
 | Initiative plan | `.specify/plan.yaml` | `plan.yaml` |
-| Operator brief | `.specify/initiative.md` | `initiative.md` |
+| Operator brief | `.specify/change.md` | `change.md` |
 | API contracts | `.specify/contracts/` | `contracts/` |
 
 `.specify/` continues to hold framework-managed state — `project.yaml`, `changes/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`. The boundary is "operator artifacts at root, framework state under `.specify/`". See [Decision Log](../explanation/decision-log.md) for the rationale.
@@ -72,7 +72,7 @@ A platform-hub repo with `.specify/workspace/<name>/` clones needs each clone mi
    specify migrate v2-layout
    ```
 
-   The hub's own `registry.yaml`, `plan.yaml`, and `initiative.md` move to the hub's repo root. The migrate verb **refuses to touch peer clones** under `.specify/workspace/<name>/`.
+   The hub's own `registry.yaml`, `plan.yaml`, and `change.md` move to the hub's repo root. The migrate verb **refuses to touch peer clones** under `.specify/workspace/<name>/`.
 
 2. Migrate each peer clone:
 
@@ -82,7 +82,7 @@ A platform-hub repo with `.specify/workspace/<name>/` clones needs each clone mi
    done
    ```
 
-3. Each peer clone now has its own root-level `registry.yaml` (typically empty for non-hub projects), `plan.yaml`, `initiative.md`, and `contracts/` — wherever those existed under the clone's old `.specify/`.
+3. Each peer clone now has its own root-level `registry.yaml` (typically empty for non-hub projects), `plan.yaml`, `change.md`, and `contracts/` — wherever those existed under the clone's old `.specify/`.
 
 4. Push the migrations using the operator's normal per-clone publishing path (`specify workspace push` once everything's committed inside each clone).
 
@@ -115,7 +115,7 @@ The v1 layout is **read-only** to the CLI starting at `0.2.0`. To roll back:
 
   ```bash
   mkdir -p .specify
-  mv registry.yaml plan.yaml initiative.md .specify/
+  mv registry.yaml plan.yaml change.md .specify/
   mv contracts .specify/
   ```
 

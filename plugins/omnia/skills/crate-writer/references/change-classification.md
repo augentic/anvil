@@ -1,4 +1,4 @@
-# Change Classification
+# Slice Classification
 
 Rules for classifying differences between new artifacts and an existing crate into the four update categories: structural, subtractive, modifying, and additive.
 
@@ -84,10 +84,10 @@ An item is **structural** when its identity, location, or organizational role ha
 
 ### Modifying vs Structural
 
-When a change could be classified as either modifying or structural, apply this rule:
+When a slice could be classified as either modifying or structural, apply this rule:
 
 ```text
-Does the change require updating references in OTHER files?
+Does the slice require updating references in OTHER files?
 ├─ YES (type name changed, module moved) → STRUCTURAL
 └─ NO (change is contained within the item's own definition)
    ├─ Adding/removing a field → MODIFYING
@@ -148,7 +148,7 @@ Do the new artifacts contain a type/handler with:
 
 ## Too Complex for Automation
 
-Flag a change as **too complex** and recommend greenfield regeneration when:
+Flag a slice as **too complex** and recommend greenfield regeneration when:
 
 | Condition | Recommendation |
 | --- | --- |

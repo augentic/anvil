@@ -1,6 +1,6 @@
 # Configuration Files
 
-Specify uses several YAML and Markdown files for configuration. All are managed through the CLI or skills -- direct editing is supported for `project.yaml`, `registry.yaml`, and `initiative.md`, but `.metadata.yaml` and `plan.yaml` should only be written by the CLI.
+Specify uses several YAML and Markdown files for configuration. All are managed through the CLI or skills -- direct editing is supported for `project.yaml`, `registry.yaml`, and `change.md`, but `.metadata.yaml` and `plan.yaml` should only be written by the CLI.
 
 ## project.yaml
 
@@ -14,7 +14,7 @@ Project-level configuration that persists across changes. Two shapes -- the regu
 
 ```yaml
 name: my-project
-schema: https://github.com/augentic/specify/schemas/omnia
+capability: https://github.com/augentic/specify/capabilities/omnia
 specify_version: "0.1.0"
 domain: |
   Brief description of the project's domain, purpose, and
@@ -30,27 +30,26 @@ rules:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | Yes | Project name (set by `specify init --name`) |
-| `schema` | Yes | Schema URL (with optional `@ref` suffix) |
+| `capability` | Yes (regular projects) | Capability identifier or URL (with optional `@ref` suffix). Accepts a bare name, an `https://…` URL, or a `file:///…` URI. Omitted on hubs. |
 | `specify_version` | Yes | Minimum CLI version required (set by `specify init`, updated by `--upgrade`) |
 | `domain` | No | Free-form domain description available to briefs |
-| `rules` | No | Per-brief rule overrides keyed by brief ID (e.g. `proposal`, `specs`, `composition`, `design`, `tasks`). Empty values mean no rules apply. Scaffolded by `specify init` with one entry per `pipeline.define` brief. The Vectis schema includes a `composition` entry for the screen layout brief. |
+| `rules` | No | Per-brief rule overrides keyed by brief ID (e.g. `proposal`, `specs`, `composition`, `design`, `tasks`). Empty values mean no rules apply. Scaffolded by `specify init` with one entry per `pipeline.define` brief. The Vectis capability includes a `composition` entry for the screen layout brief. |
 | `hub` | No | Absent or `false` for a regular project (the platform-as-project shape uses `url: .` in `registry.yaml` instead). |
 
 ### Hub shape
 
 ```yaml
 name: shop-platform
-schema: hub
 hub: true
 specify_version: "0.24.2"
 ```
 
-A hub is a registry-only platform repo: it holds `registry.yaml`, `initiative.md`, `plan.yaml`, and `workspace/` but is never itself a code project. The two markers above identify a hub:
+A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `plan.yaml`, and `workspace/` but is never itself a code project. The single marker above identifies a hub:
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `schema` | Yes | The literal string `hub` (the schema-resolution sentinel that disables phase pipelines on the hub itself). |
-| `hub` | Yes | `true`. Triggers `Registry::validate_shape` to reject `url: .` entries with `hub-cannot-be-project`. |
+| `hub` | Yes | `true`. The presence of this flag (paired with the **absence** of `capability:`) is the post-RFC-13 hub sentinel — it disables capability resolution on the hub and triggers `Registry::validate_shape` to reject `url: .` entries with `hub-cannot-be-project`. |
+| `capability` | -- | **Omitted.** A hub has no capability — its absence is what tells the CLI to skip capability resolution and the per-project phase pipelines. |
 | `rules` | -- | Omitted -- a hub has no phase pipelines to scaffold. |
 
 **When to use the hub shape:** multi-repo platforms, greenfield initiatives where the topology is itself a design decision, and any setup where the operator wants the platform repo's identity to be unambiguous. See [Platform repo topologies](../explanation/platform-repo.md) for the full contract and the hub vs platform-as-project comparison.
@@ -58,8 +57,8 @@ A hub is a registry-only platform repo: it holds `registry.yaml`, `initiative.md
 ## plan.yaml
 
 **Location:** `plan.yaml`
-**Created by:** `/spec:plan` (via `specify plan create` + `specify plan add`)
-**Modified by:** `specify plan amend`, `specify plan transition`
+**Created by:** `/change:plan` (via `specify change plan create` + `specify change plan add`)
+**Modified by:** `specify change plan amend`, `specify change plan transition`
 
 The initiative's table of contents -- an ordered, dependency-aware list of changes.
 
@@ -110,12 +109,12 @@ changes:
 | Field (per entry) | Required | Description |
 |-------------------|----------|-------------|
 | `name` | Yes | Change name (kebab-case, unique within the plan) |
-| `description` | Yes | What this change does |
+| `description` | Yes | What this slice does |
 | `depends-on` | No | List of change names that must be `done` first |
 | `sources` | No | List of source keys from the top-level `sources` |
 | `status` | Yes | Current state: `pending`, `in-progress`, `done`, `failed`, `blocked`, `skipped` |
-| `schema` | No | Schema identifier for project-less entries (e.g. `contracts@v1`). Required when `project` is absent. |
-| `context` | No | List of baseline paths (relative to `.specify/`) relevant to this change. Used by briefs as a focus hint when scanning baseline directories. |
+| `schema` | No | Plan-entry schema identifier for project-less entries (e.g. `contracts@v1`). Required when `project` is absent. The `schema:` key on a `plan.yaml` entry is intentionally kept as-is by [RFC-13](../../rfcs/archive/rfc-13-extensibility.md) — it identifies the artefact-path identifier the entry targets, not the capability that owns the work; revisited as part of the slice → slice rename in a later phase. |
+| `context` | No | List of baseline paths (relative to `.specify/`) relevant to this slice. Used by briefs as a focus hint when scanning baseline directories. |
 | `status-reason` | No | Explanation for non-happy-path status |
 | `project` | No | Registry project name (multi-repo only, see RFC-3b). Each entry must have at least one of `project` or `schema`. |
 
@@ -157,16 +156,16 @@ projects:
 | `version` | Yes | Schema version (currently `1`) |
 | `projects[].name` | Yes | Project identifier (kebab-case) |
 | `projects[].url` | Yes | Clone URL or relative path. For local paths, `workspace push` reads `git remote get-url origin` to discover the push target. |
-| `projects[].schema` | Yes | Schema URL for this project |
+| `projects[].schema` | Yes | Capability identifier or URL for this project. (The YAML key remains spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/archive/rfc-13-extensibility.md).) |
 | `projects[].description` | Conditional | Required when multiple projects exist. Describes the project's business domain. |
 
-## initiative.md
+## change.md
 
-**Location:** `initiative.md`
-**Created by:** `specify initiative create`
+**Location:** `change.md`
+**Created by:** `specify slice create`
 **Edited by:** Operator (directly)
 
-Operator-authored brief for an initiative. Contains YAML frontmatter for structured inputs and a prose body for intent.
+Operator-authored brief for a slice. Contains YAML frontmatter for structured inputs and a prose body for intent.
 
 ```markdown
 ---
@@ -189,13 +188,13 @@ subsystems. Notifications can follow in a later cycle.
 | `inputs[].path` | Yes | Filesystem path to the input |
 | `inputs[].kind` | Yes | `legacy-code` or `documentation` |
 
-The prose body describes the operator's intent. It is read by `/spec:plan` during the propose phase.
+The prose body describes the operator's intent. It is read by `/change:plan` during the propose phase.
 
 ## .metadata.yaml
 
-**Location:** `.specify/changes/<name>/.metadata.yaml`
-**Created by:** `specify change create`
-**Modified by:** `specify change transition`, `specify change outcome set`
+**Location:** `.specify/slices/<name>/.metadata.yaml`
+**Created by:** `specify slice create`
+**Modified by:** `specify slice transition`, `specify slice outcome set`
 
 Per-change lifecycle metadata. **Never hand-edit this file.**
 
@@ -203,7 +202,7 @@ Per-change lifecycle metadata. **Never hand-edit this file.**
 status: building
 created_at: "2026-04-24T10:30:00Z"
 updated_at: "2026-04-24T11:15:00Z"
-schema: https://github.com/augentic/specify/schemas/omnia
+schema: https://github.com/augentic/specify/capabilities/omnia
 touched_specs:
   - specs/greeting/spec.md
 outcome: null
@@ -214,6 +213,6 @@ outcome: null
 | `status` | Current lifecycle state |
 | `created_at` | ISO 8601 creation timestamp |
 | `updated_at` | ISO 8601 last-transition timestamp |
-| `schema` | Schema URL used for this change |
-| `touched_specs` | Spec files this change affects |
+| `schema` | Capability identifier or URL used for this slice. (The YAML key remains spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/archive/rfc-13-extensibility.md).) |
+| `touched_specs` | Spec files this slice affects |
 | `outcome` | Phase outcome: `success`, `failure`, `deferred`, or `null` |

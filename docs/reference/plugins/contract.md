@@ -16,13 +16,13 @@ Each skill carries three intents internally and dispatches via its own intent ta
 
 | Intent | Trigger | Sibling file |
 |--------|---------|--------------|
-| Author or extend | contracts schema build brief during `/spec:build`; operator extending the baseline for new interactions | `author.md` |
-| Import or normalise | operator drops an external document into a change's `contracts/` directory | `importer.md` |
-| Verify or run cross-project consumer check | contracts schema build brief in `/spec:build` (verify-repair loop); post-merge cross-project compatibility check (RFC-9 §3B) | `verifier.md` |
+| Author or extend | contracts capability build brief during `/spec:build`; operator extending the baseline for new interactions | `author.md` |
+| Import or normalise | operator drops an external document into a slice's `contracts/` directory | `importer.md` |
+| Verify (single mode) or run the post-merge baseline gate (cross-project mode) | contracts capability build brief in `/spec:build` (verify-repair loop); contracts capability merge brief post-merge (RFC-13 §"Merge and adoption contract"); `/change:execute` post-merge fan-out (RFC-9 §3B) | `verifier.md` |
 
 ### Author intent
 
-Reads baseline contracts at `contracts/` and the change's specs, validates alignment, and produces the minimal delta for interactions the specs require that the baseline does not already cover. The algorithm is the same regardless of baseline state -- the three authorship patterns (contract-first, spec-first, contract-given) differ in outcome, not in code path.
+Reads baseline contracts at `contracts/` and the slice's specs, validates alignment, and produces the minimal delta for interactions the specs require that the baseline does not already cover. The algorithm is the same regardless of baseline state -- the three authorship patterns (contract-first, spec-first, contract-given) differ in outcome, not in code path.
 
 The author intent produces an **alignment report** summarising:
 
@@ -30,7 +30,7 @@ The author intent produces an **alignment report** summarising:
 - **New (delta produced)** -- interactions the specs require that the baseline does not cover.
 - **Normalisation** -- baseline files that received missing metadata (`$id`, `description`).
 
-A clean report with zero delta is the expected outcome for implementation changes in a contract-first workflow.
+A clean report with zero delta is the expected outcome for implementation slices in a contract-first workflow.
 
 ### Verifier intent
 
@@ -42,7 +42,7 @@ Read-only validation of contract artifacts after the author intent completes. Ch
 
 The verifier intent does not modify files -- it reports issues for the brief's verify-repair loop to act on.
 
-It also exposes a `--mode cross-project` flag that compares a producer's merged contract against each consumer's tier-2 workspace clone. The mode is a verifier sub-mode, not a separate skill: the algorithms and output shapes are unchanged from the previous standalone surface.
+It also exposes a `--mode cross-project` flag that runs the post-merge baseline gate. The mode is a thin delegate over `specify tool run contract` (RFC-13 §4.2a, RFC-15) — it shells out through `specify`, surfaces the validator JSON envelope, and propagates its exit code (`0` clean / `1` findings / `2` tool or invocation error). The contracts capability merge brief invokes this mode after `specify slice merge run` succeeds, mapping non-zero exits to the `failure` outcome per RFC-13 §"Merge and adoption contract".
 
 ### Importer intent (Layer 2)
 
@@ -53,7 +53,7 @@ Automates the manual import workflow for external contracts:
 3. **Schema decomposition** -- extracts inline schema definitions into separate files under `contracts/schemas/`.
 4. **Metadata injection** -- adds `$id`, `$schema`, `title`, `description` where missing.
 
-In Layer 1, operators perform these steps manually by placing conformant files into the change's `contracts/` directory.
+In Layer 1, operators perform these steps manually by placing conformant files into the slice's `contracts/` directory.
 
 ## References
 
@@ -61,7 +61,7 @@ Format-neutral material is shared across the three skills under `plugins/contrac
 
 | Reference | Content |
 |-----------|---------|
-| Baseline vs delta | What lives in `contracts/` versus a change's `contracts/`, and how merges promote |
+| Baseline vs delta | What lives in `contracts/` versus a slice's `contracts/`, and how merges promote |
 | Cross-project compatibility | Producer / consumer roles, compatibility rules, finding categories |
 | Import upgrade policy | Swagger 2.0 → OpenAPI 3.1, AsyncAPI 2.x → 3.0, schema metadata defaults |
 | Report shape | Alignment report and verifier output schemas |
@@ -70,14 +70,14 @@ Format-specific patterns and examples (OpenAPI conventions, AsyncAPI conventions
 
 ## How the plugin is invoked
 
-The Contract plugin is schema-independent. It is invoked from the `contracts` brief in the define pipeline, which is present in:
+The Contract plugin is capability-independent. It is invoked from the `contracts` brief in the define pipeline, which is present in:
 
-- The **Contracts schema** -- for dedicated contract changes (authoring and import).
-- The **Omnia schema** -- for alignment validation during implementation changes.
-- The **Vectis schema** -- for alignment validation during implementation changes.
+- The **Contracts capability** -- for dedicated contract slices (authoring and import).
+- The **Omnia capability** -- for alignment validation during implementation slices.
+- The **Vectis capability** -- for alignment validation during implementation slices.
 
 The brief picks the format-appropriate skill (OpenAPI for HTTP / resource APIs, AsyncAPI for evented / pub-sub / streaming, JSON Schema for shared payload schemas) and dispatches to its author intent (alignment validation and delta production), then to its verifier intent (post-generation consistency checks), with a verify-repair loop of up to 2 iterations.
 
 ## CLI counterpart
 
-The matching read-only CLI surface lives under [`specify contract`](../cli/contract.md): `specify contract list` projects every top-level contract under `contracts/`, and `specify contract validate` runs the RFC-12 §Validation checks (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness).
+The matching CLI surface is the declared [`contract` WASI tool](../cli/contract.md), run as `specify tool run contract -- <BASELINE_DIR> --format json`. It walks a baseline `contracts/` directory and runs the RFC-12 §Validation checks (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness). The contracts capability merge brief shells out to it as the post-merge baseline gate (see [`capabilities/contracts/briefs/merge.md`](../../../capabilities/contracts/briefs/merge.md)). The pre-RFC-13 in-binary `specify contract` family was retired in chunk 2.7 of the RFC-13 landing; the WASI tool is the capability-owned replacement, with a byte-compatible JSON envelope for normal validator runs.

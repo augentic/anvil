@@ -6,7 +6,7 @@ Materialise, inspect, and push workspace peer clones for multi-repo initiatives.
 
 | Verb | When to use |
 |------|-------------|
-| [`sync`](#specify-workspace-sync) | Clone or refresh every registry project into `.specify/workspace/<project>/`. Runs automatically during `/spec:plan`'s sync-peers phase; re-run by hand to refresh between initiatives. |
+| [`sync`](#specify-workspace-sync) | Clone or refresh every registry project into `.specify/workspace/<project>/`. Runs automatically during `/change:plan`'s sync-peers phase; re-run by hand to refresh between initiatives. |
 | [`status`](#specify-workspace-status) | Per-project materialisation report (slot path, type, HEAD sha, dirty flag, `.specify/` tree summary). |
 | [`push`](#specify-workspace-push) | Ship local commits in each clone to its remote on `specify/<initiative-name>` and create a PR. |
 | [`merge`](#specify-workspace-merge) | Squash-merge the open PRs once their CI is green (RFC-9 §4A). Refuses on `branch-pattern-mismatch`, never `--admin`/`--auto`. |
@@ -25,7 +25,7 @@ For each registry project:
 
 - **Remote URL** (`git@`, `ssh://`, `https://`, `http://`) -- shallow-clones the repo into the workspace slot.
 - **Local path** (`.`, `../foo`, `/absolute/path`) -- symlinks the resolved path into the workspace slot.
-- **Greenfield** (remote URL, repo does not yet exist) -- creates the workspace slot, runs `git init`, sets the remote, and bootstraps `.specify/project.yaml` via `specify init --schema-uri <uri>`. URL-shaped registry schemas are passed through directly; bare schema identifiers are resolved from the initiating repo's `.specify/.cache/` as local file URIs.
+- **Greenfield** (remote URL, repo does not yet exist) -- creates the workspace slot, runs `git init`, sets the remote, and bootstraps `.specify/project.yaml` via `specify init <capability>`. URL-shaped capability identifiers are passed through directly; bare capability identifiers are resolved from the initiating repo's `.specify/.cache/` as local file URIs.
 
 A partially bootstrapped slot (`.git/` present but `.specify/project.yaml` absent) is detected on re-run: `specify init` is re-attempted without re-running `git init` or `git remote add`.
 
@@ -194,6 +194,6 @@ Exit code is `0` only when every project lands on `merged`, `would-merge`, or `n
 
 ## See also
 
-- [Cross-Repo Initiatives](../../tutorials/cross-repo-initiative.md) -- tutorial for multi-repo workflows
+- [Cross-Repo Initiatives](../../tutorials/cross-repo-change.md) -- tutorial for multi-repo workflows
 - [Configuration Files](../configuration.md) -- registry.yaml and plan.yaml format
-- [/spec:execute](../initiative-skills/execute.md) -- skill that drives workspace execution
+- [/change:execute](../change-skills/execute.md) -- skill that drives workspace execution

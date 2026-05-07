@@ -1,0 +1,26 @@
+# Capability-scope tool declarations for the Vectis capability.
+# Schema: ../../../specify-cli/schemas/tool.schema.json
+#
+# RFC-16 release artifacts are not public yet. These portable release-URL
+# placeholders keep `specify tool list` valid; replace the placeholder versions
+# with the final release version and add SHA-256 pins before publishing.
+tools:
+  - name: vectis-validate
+    version: 0.0.0-rfc16-placeholder
+    source: "https://github.com/augentic/specify-cli/releases/download/v0.0.0-rfc16-placeholder/vectis-validate.wasm"
+    # sha256: "<final release SHA-256>"
+    permissions:
+      read:
+        - "$PROJECT_DIR/.specify"
+        - "$PROJECT_DIR/design-system"
+      write: []
+  - name: vectis-scaffold
+    version: 0.0.0-rfc16-placeholder
+    source: "https://github.com/augentic/specify-cli/releases/download/v0.0.0-rfc16-placeholder/vectis-scaffold.wasm"
+    # sha256: "<final release SHA-256>"
+    permissions:
+      read:
+        - "$PROJECT_DIR"
+        - "$CAPABILITY_DIR"
+      write:
+        - "$PROJECT_DIR"

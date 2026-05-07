@@ -6,7 +6,7 @@ A new GTFS generation component is being built from requirements. Specify artifa
 
 ## Input
 
-**Specify artifacts**: `./.specify/changes/gtfs_generator/` **Client**: Auckland Transport **Origin**: requirements
+**Specify artifacts**: `./.specify/slices/gtfs_generator/` **Client**: Auckland Transport **Origin**: requirements
 
 **Key artifact content** (summarised):
 
@@ -22,7 +22,7 @@ A new GTFS generation component is being built from requirements. Specify artifa
 ## Command
 
 ```prompt
-/sow-writer ./.specify/changes/gtfs_generator ./SOW-gtfs-generator.md "Auckland Transport"
+/sow-writer ./.specify/slices/gtfs_generator ./SOW-gtfs-generator.md "Auckland Transport"
 ```
 
 ## Output
@@ -208,7 +208,7 @@ F. **Auckland Transport Product Owner**
 A. **Feed Generation Schedule**
    Feed generation will be triggered on demand via the API. If Auckland
    Transport requires scheduled generation (e.g., daily at a fixed time),
-   we will raise a change request to add scheduling configuration.
+   we will raise a slice request to add scheduling configuration.
 
 B. **CDN Cache Invalidation**
    The CDN will handle cache invalidation automatically when new feeds are
@@ -218,7 +218,7 @@ B. **CDN Cache Invalidation**
 C. **Historical Feed Retention**
    Historical feeds will not be retained beyond the current active feed. If
    Auckland Transport requires a feed history or versioning mechanism, we
-   will raise a change request.
+   will raise a slice request.
 
 D. **Deployment to Production**
    Deployment to production will follow the existing CI/CD pipeline and

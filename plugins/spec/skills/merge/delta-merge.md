@@ -1,10 +1,10 @@
 # Delta Merge
 
-This document describes the merge algorithm used when archiving a change to merge delta specs into the baseline, along with a worked example.
+This document describes the merge algorithm used when archiving a slice to merge delta specs into the baseline, along with a worked example.
 
 ## Merge Algorithm
 
-The `specify` CLI implements this algorithm — `specify change merge run` for the commit path, `specify change merge preview` for the dry-run variant, and `specify change validate` for the baseline coherence check. The description is kept here as a reference for authors who want to understand what the CLI is doing under the hood.
+The `specify` CLI implements this algorithm — `specify slice merge run` for the commit path, `specify slice merge preview` for the dry-run variant, and `specify slice validate` for the baseline coherence check. The description is kept here as a reference for authors who want to understand what the CLI is doing under the hood.
 
 **What is a requirement block?** A requirement block starts at a `### Requirement:` heading, includes the immediately following `ID:` line, and continues until the next requirement heading or the next `##` header or end of file. This includes the description text, all scenario sub-sections, and any other content within the block.
 
@@ -46,7 +46,7 @@ The system SHALL expire sessions after 30 minutes of inactivity.
 - **THEN** session is invalidated
 ```
 
-And this delta spec at `.specify/changes/add-oauth/specs/user-auth/spec.md`:
+And this delta spec at `.specify/slices/add-oauth/specs/user-auth/spec.md`:
 
 ```markdown
 ## ADDED Requirements

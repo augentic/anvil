@@ -100,13 +100,13 @@ Reason: <why this requirement is being removed>
 ID: REQ-004
 ````
 
-The four operation sections are `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, and `## RENAMED Requirements`. All are optional -- include only the sections relevant to the change.
+The four operation sections are `## ADDED Requirements`, `## MODIFIED Requirements`, `## REMOVED Requirements`, and `## RENAMED Requirements`. All are optional -- include only the sections relevant to the slice.
 
 The stable `ID: REQ-XXX` line is the merge key, not the requirement title. Requirement titles may change across deltas; IDs must not.
 
 ## Design document (technical "how")
 
-`design.md` carries the technical shape needed to implement the change.
+`design.md` carries the technical shape needed to implement the slice.
 
 ### Format
 
@@ -193,7 +193,7 @@ When design sections reference behavior from specs, cite the stable requirement 
 
 ## Proposal document
 
-`proposal.md` captures why the change exists and what is in scope. The schema's brief file provides the full output template.
+`proposal.md` captures why the slice exists and what is in scope. The schema's brief file provides the full output template.
 
 The **Crates** (or **Capabilities**) section creates the contract between proposal and specs phases -- each capability listed will need a corresponding spec file at `specs/<name>/spec.md`.
 
@@ -232,18 +232,18 @@ Tasks may include a skill directive as an HTML comment. The build phase parses t
 - [ ] 2.3 Manual integration step
 ```
 
-Tasks without a skill tag are implemented via the schema's default build instruction.
+Tasks without a skill tag are implemented via the capability's default build instruction.
 
 ## Composition document (Vectis only)
 
-`composition.yaml` describes the spatial layout of each screen, enriched with the wiring (`bind`, `event`, `maps_to`, overlay `trigger`, navigation, `*-when`) that connects layout to ViewModels and specs. It is a schema-validated YAML document produced by the Vectis schema's define pipeline between the specs and design stages. The JSON Schema lives at `schemas/vectis/composition.schema.json`. (See [Decision Log: Composition as a separate artifact](../explanation/decision-log.md#composition-as-a-separate-artifact-not-embedded-in-specs-or-design) for the rationale.)
+`composition.yaml` describes the spatial layout of each screen, enriched with the wiring (`bind`, `event`, `maps_to`, overlay `trigger`, navigation, `*-when`) that connects layout to ViewModels and specs. It is a schema-validated YAML document produced by the Vectis capability's define pipeline between the specs and design stages. The JSON Schema lives at `capabilities/vectis/composition.schema.json`. (See [Decision Log: Composition as a separate artifact](../explanation/decision-log.md#composition-as-a-separate-artifact-not-embedded-in-specs-or-design) for the rationale.)
 
 ### Layout vs composition
 
 RFC-11 split the pre-define and post-define surfaces into two sibling artifacts; both share the same JSON Schema:
 
-- **`layout.yaml` (unwired layout input)** — regions, group hierarchy, gap / padding / align / size, token references, asset references, and the optional cross-shell `component: <slug>` directive, *without* the wiring keys above. Produced by layout inferers ([`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers per RFC-11 §B/D) or hand-authored. Validated by `specify vectis validate layout`, which enforces the unwired-subset rule and the RFC-11 §G structural-identity rule.
-- **`composition.yaml` (wired lifecycle artifact)** — the same regions enriched with the wiring keys above. Produced by the define pipeline (the composition brief reads `layout.yaml` when present) and consumed by shell writers. Validated by `specify vectis validate composition`, which auto-invokes `tokens` / `assets` modes when sibling manifests exist.
+- **`layout.yaml` (unwired layout input)** — regions, group hierarchy, gap / padding / align / size, token references, asset references, and the optional cross-shell `component: <slug>` directive, *without* the wiring keys above. Produced by layout inferers ([`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers per RFC-11 §B/D) or hand-authored. Validated by `specify tool run vectis-validate -- layout`, which enforces the unwired-subset rule and the RFC-11 §G structural-identity rule.
+- **`composition.yaml` (wired lifecycle artifact)** — the same regions enriched with the wiring keys above. Produced by the define pipeline (the composition brief reads `layout.yaml` when present) and consumed by shell writers. Validated by `specify tool run vectis-validate -- composition`, which auto-invokes `tokens` / `assets` modes when sibling manifests exist.
 
 (RFC-7 expressed this distinction as "skeleton mode" vs "wired mode" of a single `composition.yaml`; RFC-11 made the boundary explicit by separating the filenames.)
 
@@ -324,7 +324,7 @@ delta:
 
 ### Key rules
 
-- A document has either `screens` (baseline) or `delta` (per-change), never both.
+- A document has either `screens` (baseline) or `delta` (per-slice), never both.
 - Screen slugs are kebab-case (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`).
 - Every field in a per-page view struct should appear as a `bind` value (composition.yaml only).
 - Every shell-facing Event should have an `event` wiring (composition.yaml only).
@@ -397,9 +397,9 @@ Contracts capture *interface shape* -- endpoint paths, methods, payload schemas,
 
 ### Delta semantics
 
-Contract files use **opaque replacement** semantics during merge -- unlike spec files which use the ADDED/MODIFIED/REMOVED delta format, contract files are replaced wholesale. When a change modifies an existing binding (e.g. adding new endpoints to `user-api.yaml`), the delta file must include both existing and new paths -- the merge replaces the baseline file entirely.
+Contract files use **opaque replacement** semantics during merge -- unlike spec files which use the ADDED/MODIFIED/REMOVED delta format, contract files are replaced wholesale. When a slice modifies an existing binding (e.g. adding new endpoints to `user-api.yaml`), the delta file must include both existing and new paths -- the merge replaces the baseline file entirely.
 
-Contract deletion is rare and handled as a manual baseline edit. The change-level directory can express additions and replacements but not deletions.
+Contract deletion is rare and handled as a manual baseline edit. The slice-level directory can express additions and replacements but not deletions.
 
 ## Validation checklists
 
@@ -424,7 +424,7 @@ Contract deletion is rare and handled as a manual baseline edit. The change-leve
 
 ### Composition (Vectis only)
 
-- `composition.yaml` conforms to the JSON Schema at `schemas/vectis/composition.schema.json`
+- `composition.yaml` conforms to the JSON Schema at `capabilities/vectis/composition.schema.json`
 - Screen slugs are kebab-case
 - Every per-page view struct field has a `bind` on some item (composition.yaml only)
 - Every shell-facing Event has an `event` wiring (composition.yaml only)

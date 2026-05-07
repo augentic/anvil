@@ -8,7 +8,7 @@ import { relative, join, dirname, resolve, fromFileUrl } from "jsr:@std/path@1";
 import Ajv2020 from "npm:ajv@8/dist/2020.js";
 
 const REPO_ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
-const SCHEMA_DIR = join(REPO_ROOT, "schemas");
+const CAPABILITIES_DIR = join(REPO_ROOT, "capabilities");
 const CURSOR_SCHEMA_DIR = join(REPO_ROOT, ".cursor", "schemas");
 const RED = "\x1b[0;31m";
 const NC = "\x1b[0m";
@@ -41,7 +41,6 @@ async function checkMarkdownLinks(): Promise<void> {
   const SKIP_DIRS = [/node_modules/, /\.git/, /temp/];
   const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
   const FENCE_RE = /```[\s\S]*?```/g;
-  const COMMENT_RE = /<!--[\s\S]*?-->/g;
 
   for await (const entry of walk(REPO_ROOT, {
     exts: [".md"],
@@ -59,7 +58,7 @@ async function checkMarkdownLinks(): Promise<void> {
       continue;
     }
 
-    const stripped = content.replace(FENCE_RE, "").replace(COMMENT_RE, "");
+    const stripped = stripHtmlComments(content.replace(FENCE_RE, ""));
 
     for (const m of stripped.matchAll(LINK_RE)) {
       const target = m[1];
@@ -75,6 +74,26 @@ async function checkMarkdownLinks(): Promise<void> {
       }
     }
   }
+}
+
+function stripHtmlComments(content: string): string {
+  let stripped = "";
+  let cursor = 0;
+
+  while (cursor < content.length) {
+    const start = content.indexOf("<!--", cursor);
+    if (start === -1) {
+      stripped += content.slice(cursor);
+      break;
+    }
+
+    stripped += content.slice(cursor, start);
+    const end = content.indexOf("-->", start + "<!--".length);
+    if (end === -1) break;
+    cursor = end + "-->".length;
+  }
+
+  return stripped;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -103,7 +122,7 @@ async function checkStaleClaims(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 3. Schema YAML files validate against JSON Schema
+// 3. Capability manifests validate against capability.schema.json
 // ──────────────────────────────────────────────────────────────
 
 interface PipelineEntry {
@@ -111,11 +130,10 @@ interface PipelineEntry {
   brief: string;
 }
 
-interface SchemaYaml {
+interface CapabilityYaml {
   name: string;
   version?: number;
   description?: string;
-  domain?: string;
   pipeline: {
     define: PipelineEntry[];
     build: PipelineEntry[];
@@ -123,32 +141,32 @@ interface SchemaYaml {
   };
 }
 
-async function validateSchemaYaml(): Promise<void> {
+async function validateCapabilityYaml(): Promise<void> {
   const ajv = new Ajv2020({ allErrors: true });
 
-  const schemaSchema = JSON.parse(
-    await Deno.readTextFile(join(CURSOR_SCHEMA_DIR, "specify-schema.schema.json")),
+  const capabilitySchema = JSON.parse(
+    await Deno.readTextFile(join(CAPABILITIES_DIR, "capability.schema.json")),
   );
 
-  const validateSchema = ajv.compile(schemaSchema);
+  const validate = ajv.compile(capabilitySchema);
 
-  for await (const entry of walk(SCHEMA_DIR, {
+  for await (const entry of walk(CAPABILITIES_DIR, {
     maxDepth: 2,
     includeDirs: false,
-    match: [/schema\.yaml$/],
+    match: [/capability\.yaml$/],
   })) {
     const rel = relative(REPO_ROOT, entry.path);
     const data = parseYaml(await Deno.readTextFile(entry.path));
-    if (!validateSchema(data)) {
-      for (const err of validateSchema.errors ?? []) {
-        fail(`Schema validation failed: ${rel} — ${err.instancePath} ${err.message}`);
+    if (!validate(data)) {
+      for (const err of validate.errors ?? []) {
+        fail(`Capability validation failed: ${rel} — ${err.instancePath} ${err.message}`);
       }
     }
   }
 }
 
 // ──────────────────────────────────────────────────────────────
-// 4. Schema referential integrity
+// 4. Capability manifest referential integrity
 //    (pipeline brief paths, frontmatter needs references, id uniqueness)
 // ──────────────────────────────────────────────────────────────
 
@@ -170,21 +188,24 @@ async function parseBriefFrontmatter(
   }
 }
 
-async function checkSchemaIntegrity(): Promise<void> {
-  for await (const entry of walk(SCHEMA_DIR, {
+async function checkCapabilityIntegrity(): Promise<void> {
+  for await (const entry of walk(CAPABILITIES_DIR, {
     maxDepth: 2,
     includeDirs: false,
-    match: [/schema\.yaml$/],
+    match: [/capability\.yaml$/],
   })) {
     const dirPath = dirname(entry.path);
     const name = dirPath.split("/").pop()!;
-    const schema = parseYaml(
+    const manifest = parseYaml(
       await Deno.readTextFile(entry.path),
-    ) as SchemaYaml;
+    ) as CapabilityYaml;
 
-    const pipeline = schema.pipeline;
+    const pipeline = manifest.pipeline;
     if (!pipeline) continue;
 
+    // Post-RFC-13 §3.11 the manifest carries only the slice phases
+    // (define, build, merge); planning is owned by the change-planning
+    // skill and `pipeline.plan` is rejected by `capability.schema.json`.
     const allEntries: PipelineEntry[] = [
       ...(pipeline.define ?? []),
       ...(pipeline.build ?? []),
@@ -195,7 +216,7 @@ async function checkSchemaIntegrity(): Promise<void> {
     for (const pe of allEntries) {
       if (ids.has(pe.id)) {
         fail(
-          `Schema integrity: ${name}/schema.yaml: duplicate pipeline entry id '${pe.id}'`,
+          `Capability integrity: ${name}/capability.yaml: duplicate pipeline entry id '${pe.id}'`,
         );
       }
       ids.add(pe.id);
@@ -206,7 +227,7 @@ async function checkSchemaIntegrity(): Promise<void> {
         await Deno.stat(join(dirPath, pe.brief));
       } catch {
         fail(
-          `Schema integrity: ${name}/schema.yaml: brief not found for '${pe.id}': ${pe.brief}`,
+          `Capability integrity: ${name}/capability.yaml: brief not found for '${pe.id}': ${pe.brief}`,
         );
         continue;
       }
@@ -214,14 +235,14 @@ async function checkSchemaIntegrity(): Promise<void> {
       const fm = await parseBriefFrontmatter(join(dirPath, pe.brief));
       if (!fm) {
         fail(
-          `Schema integrity: ${name}/schema.yaml: brief '${pe.id}' has no valid frontmatter: ${pe.brief}`,
+          `Capability integrity: ${name}/capability.yaml: brief '${pe.id}' has no valid frontmatter: ${pe.brief}`,
         );
         continue;
       }
 
       if (fm.id !== pe.id) {
         fail(
-          `Schema integrity: ${name}/schema.yaml: pipeline id '${pe.id}' does not match brief frontmatter id '${fm.id}'`,
+          `Capability integrity: ${name}/capability.yaml: pipeline id '${pe.id}' does not match brief frontmatter id '${fm.id}'`,
         );
       }
 
@@ -230,7 +251,7 @@ async function checkSchemaIntegrity(): Promise<void> {
         for (const dep of needs) {
           if (!ids.has(dep)) {
             fail(
-              `Schema integrity: ${name}/schema.yaml: brief '${pe.id}' needs undeclared '${dep}'`,
+              `Capability integrity: ${name}/capability.yaml: brief '${pe.id}' needs undeclared '${dep}'`,
             );
           }
         }
@@ -266,7 +287,9 @@ async function checkSchemaIntegrity(): Promise<void> {
       }
     }
     if (visited < ids.size) {
-      fail(`Schema integrity: ${name}/schema.yaml: cycle in brief needs graph`);
+      fail(
+        `Capability integrity: ${name}/capability.yaml: cycle in brief needs graph`,
+      );
     }
   }
 }
@@ -581,7 +604,7 @@ async function checkRetiredSlashCommands(): Promise<void> {
   const SCAN_ROOTS = [
     join(REPO_ROOT, "plugins"),
     join(REPO_ROOT, "docs"),
-    join(REPO_ROOT, "schemas"),
+    join(REPO_ROOT, "capabilities"),
     join(REPO_ROOT, ".cursor"),
   ];
 
@@ -890,7 +913,8 @@ async function checkRetiredCliVerbs(): Promise<void> {
   const ALLOWLIST = new Set<string>([
     "docs/explanation/migrating-cli-v1.md",
     "docs/reference/cli/change.md",
-    "docs/reference/cli/initiative.md",
+    "docs/reference/cli/slice.md",
+    "docs/reference/cli/plan.md",
     "docs/reference/cli/registry.md",
     "docs/reference/cli/status.md",
   ]);
@@ -898,25 +922,26 @@ async function checkRetiredCliVerbs(): Promise<void> {
   const PATTERNS: DenyPattern[] = [
     {
       pattern: /\bspecify validate /,
-      hint: "use `specify change validate <name>`",
+      hint: "use `specify slice validate <name>`",
     },
     {
       pattern: /\bspecify merge /,
-      hint: "use `specify change merge run <name>`",
+      hint: "use `specify slice merge run <name>`",
     },
     {
       pattern: /\bspecify spec /,
       hint:
-        "use `specify change merge {preview, conflict-check}` (the `spec` group is retired)",
+        "use `specify slice merge {preview, conflict-check}` (the `spec` group is retired)",
     },
     {
       pattern: /\bspecify task /,
       hint:
-        "use `specify change task {progress, mark}` (the `task` group is retired)",
+        "use `specify slice task {progress, mark}` (the `task` group is retired)",
     },
     {
       pattern: /\bspecify initiative brief\b/,
-      hint: "use `specify initiative {init, show}`",
+      hint:
+        "use `specify change {create, show}` (the `initiative` family was renamed to `change` by RFC-13 §3.5)",
     },
     {
       pattern: /\bspecify initiative registry\b/,
@@ -924,24 +949,33 @@ async function checkRetiredCliVerbs(): Promise<void> {
     },
     {
       pattern: /\bspecify change phase-outcome\b/,
-      hint: "use `specify change outcome set ...`",
+      hint:
+        "use `specify slice outcome set ...` (per-loop verbs moved from `change` to `slice` by RFC-13 §3.2)",
     },
     {
       pattern: /\bspecify change journal-append\b/,
-      hint: "use `specify change journal append ...`",
+      hint:
+        "use `specify slice journal append ...` (per-loop verbs moved from `change` to `slice` by RFC-13 §3.2)",
     },
     {
-      // The bare `specify change outcome <name>` form (no `set`/`show` after
+      // The bare `specify slice outcome <name>` form (no `set`/`show` after
       // `outcome`) is ambiguous after the cleanup. Reads must use `outcome
       // show`; writes must use `outcome set`.
-      pattern: /\bspecify change outcome (?!set\b|show\b)/,
+      pattern: /\bspecify slice outcome (?!set\b|show\b)/,
       hint:
-        "use `specify change outcome show <name>` to read or `specify change outcome set <name> <phase> <outcome> ...` to write",
+        "use `specify slice outcome show <name>` to read or `specify slice outcome set <name> <phase> <outcome> ...` to write",
+    },
+    {
+      // Likewise for the bare `specify slice journal <name>` form.
+      pattern: /\bspecify slice journal (?!append\b|show\b)/,
+      hint:
+        "use `specify slice journal show <name>` to read or `specify slice journal append <name> <phase> <kind> ...` to write",
     },
   ];
 
   const SCAN_ROOTS = [
     join(REPO_ROOT, "plugins", "spec", "skills"),
+    join(REPO_ROOT, "plugins", "change", "skills"),
     join(REPO_ROOT, "docs"),
   ];
 
@@ -983,9 +1017,13 @@ async function checkRetiredCliVerbs(): Promise<void> {
 // ──────────────────────────────────────────────────────────────
 
 async function checkInstructionPreambles(): Promise<void> {
-  const OUTPUT_LOCATION_RE = /^> \*\*Output location\*\*: `\.specify\/changes\//m;
+  // Per-Phase-3 the slice working dir moved from `.specify/changes/` to
+  // `.specify/slices/`. Both paths are accepted here for the duration of
+  // the cut-over so vendored capability instruction files that still
+  // reference the historical path do not silently fail this check.
+  const OUTPUT_LOCATION_RE = /^> \*\*Output location\*\*: `\.specify\/(changes|slices)\//m;
 
-  for await (const entry of walk(SCHEMA_DIR, {
+  for await (const entry of walk(CAPABILITIES_DIR, {
     maxDepth: 3,
     includeDirs: false,
     match: [/instructions\/[a-z]+\.md$/],
@@ -1018,7 +1056,14 @@ async function checkRetiredAffectsField(): Promise<void> {
   const FIXTURE_NAME_RE = /\.ya?ml(\.[a-z-]+)?$/;
   const AFFECTS_RE = /^\s*affects:/;
 
+  // RFC-13 §3.9 moved the plan/execute fixtures from `plugins/spec/skills/`
+  // to `plugins/change/skills/`. Both locations are scanned here so the
+  // retired-affects check tolerates partial-rollback states (e.g. a
+  // checkout pre-3.9 still has the spec-plugin paths) without losing
+  // coverage on the post-3.9 layout.
   const FIXTURE_ROOTS = [
+    join(REPO_ROOT, "plugins", "change", "skills", "execute", "fixtures"),
+    join(REPO_ROOT, "plugins", "change", "skills", "plan", "fixtures"),
     join(REPO_ROOT, "plugins", "spec", "skills", "execute", "fixtures"),
     join(REPO_ROOT, "plugins", "spec", "skills", "plan", "fixtures"),
   ];
@@ -1078,7 +1123,11 @@ async function checkV1LayoutPaths(): Promise<void> {
   const FORBIDDEN_PATTERNS: RegExp[] = [
     /\.specify\/registry\.yaml/,
     /\.specify\/plan\.yaml/,
+    // The umbrella brief was renamed initiative.md → change.md by RFC-13 §3.5
+    // (Phase 3.7 ships `specify migrate change-noun`). Either spelling under
+    // `.specify/` is wrong post-v2-layout — the brief lives at the repo root.
     /\.specify\/initiative\.md/,
+    /\.specify\/change\.md/,
     /\.specify\/contracts\b/,
   ];
 
@@ -1099,7 +1148,7 @@ async function checkV1LayoutPaths(): Promise<void> {
   const SCAN_ROOTS = [
     join(REPO_ROOT, "plugins"),
     join(REPO_ROOT, "docs"),
-    join(REPO_ROOT, "schemas"),
+    join(REPO_ROOT, "capabilities"),
   ];
   const SCAN_FILES = [
     join(REPO_ROOT, "README.md"),
@@ -1171,8 +1220,8 @@ await Promise.all([
   checkSymlinks(),
 ]);
 await Promise.all([
-  validateSchemaYaml(),
-  checkSchemaIntegrity(),
+  validateCapabilityYaml(),
+  checkCapabilityIntegrity(),
   checkInstructionPreambles(),
   checkRetiredCliVerbs(),
   checkRetiredAffectsField(),

@@ -33,7 +33,12 @@
     {
       "name": "spec",
       "source": "spec",
-      "description": "Skills for Specify workflow orchestration: init, define, build, merge, drop, extract, analyze, plan, execute, and initiative."
+      "description": "Skills for the Specify per-slice loop: init, define, build, merge, drop, extract, and analyze. Plan authoring and execution moved to the `change` plugin in RFC-13 §3.9; the `spec` plan and execute skills survive only as deprecation shims that delegate to /change:plan and /change:execute."
+    },
+    {
+      "name": "change",
+      "source": "change",
+      "description": "Skills for Specify change orchestration: /change:plan authors plan.yaml via the planning brief pipeline (and drives the cross-repo umbrella under --orchestrate), and /change:execute drives the authored plan through the per-slice define-build-merge phases."
     },
     {
       "name": "contract",

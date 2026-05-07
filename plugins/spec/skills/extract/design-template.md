@@ -1,6 +1,6 @@
 # Writing artifacts (Step 7)
 
-Step 7 writes the spec and design.md artifacts to `$CHANGE_DIR` using the format specified in [specify.md](references/specify.md). The artifact format follows the `augentic` schema from [augentic/lifecycle](https://github.com/augentic/lifecycle).
+Step 7 writes the spec and design.md artifacts to `$SLICE_DIR` using the format specified in [specify.md](references/specify.md). The artifact format follows the `augentic` schema from [augentic/lifecycle](https://github.com/augentic/lifecycle).
 
 ## THINK: synthesize before writing
 
@@ -39,7 +39,7 @@ Before writing the artifacts, synthesize your findings:
 
 ## 7a — Create directory structure
 
-Create `$CHANGE_DIR/` and `$SPECS_DIR/` directories.
+Create `$SLICE_DIR/` and `$SPECS_DIR/` directories.
 
 ## 7b — Write design.md
 
@@ -92,4 +92,4 @@ Note: Steps are numbered 1–7. Ensure all steps are completed before writing th
 
 ### Output
 
-Write completed Specify artifacts to `$CHANGE_DIR`. The artifacts are a language-agnostic intermediate format that can be used for code generation in any target language.
+Write completed Specify artifacts to `$SLICE_DIR`. The artifacts are a language-agnostic intermediate format that can be used for code generation in any target language.

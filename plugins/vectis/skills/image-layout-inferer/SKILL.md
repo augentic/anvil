@@ -1,12 +1,12 @@
 ---
 name: vectis-image-layout-inferer
-description: Reconstructs `layout.yaml` from one or more screenshot images using a staged vision-assisted pipeline (triage, chrome cropping, region / container / leaf inference, conservative `component:` emission, gap reporting), validates the output via `specify vectis validate layout`, and folds cross-artifact reference checks against sibling `tokens.yaml` / `assets.yaml` when present. Use when an operator supplies PNG or JPEG screenshots and wants a schema-valid, unwired layout document `/spec:define` can later wire into `composition.yaml`, when refining an existing `layout.yaml` from new screenshot evidence, or when the user mentions image-layout-inferer.
+description: Reconstructs `layout.yaml` from one or more screenshot images using a staged vision-assisted pipeline (triage, chrome cropping, region / container / leaf inference, conservative `component:` emission, gap reporting), validates the output via `specify tool run vectis-validate -- layout`, and folds cross-artifact reference checks against sibling `tokens.yaml` / `assets.yaml` when present. Use when an operator supplies PNG or JPEG screenshots and wants a schema-valid, unwired layout document `/spec:define` can later wire into `composition.yaml`, when refining an existing `layout.yaml` from new screenshot evidence, or when the user mentions image-layout-inferer.
 argument-hint: "<image-paths>"
 ---
 
 # Vectis Image Layout Inferer
 
-Convert screenshots of an application into a schema-valid `layout.yaml` document using the unwired subset of [`schemas/vectis/composition.schema.json`](../../../../schemas/vectis/composition.schema.json). The output is the input `/spec:define` consumes when generating wired `composition.yaml`.
+Convert screenshots of an application into a schema-valid `layout.yaml` document using the unwired subset of [`capabilities/vectis/composition.schema.json`](../../../../capabilities/vectis/composition.schema.json). The output is the input `/spec:define` consumes when generating wired `composition.yaml`.
 
 This skill is a layout recovery tool, not a visual design extraction tool. It does not invent token names from pixels, does not crop production assets out of screenshots, and does not produce define-owned wiring (`maps_to`, `bind`, `event`, `error`, overlay `trigger`, navigation events, `*-when` keys). Those keys are reserved for `/spec:define`.
 
@@ -19,7 +19,7 @@ The producer surface every layout inferer shares (arguments, output rules, idemp
 3. **Stage the recovery.** Walk top-down: regions (header / body / footer / fab / overlays / state replacements) → containers (rows, columns, lists, grids, cards, padding, gap, alignment, sizing, surface decoration) → leaves (text, controls, images, icons, fields).
 4. **Detect candidate components conservatively.** Compare groups across screens for structural identity (§G); emit `component: <slug>` only when the operator confirms it or the same skeleton appears in **≥2 screens of the same run**, otherwise leave a `# candidate component: <slug>` comment. See [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md#component-directive-emission).
 5. **Reference siblings, never invent.** Use `tokens.yaml` / `assets.yaml` names only when they already resolve; otherwise emit raw values plus `# TODO` comments and a gap entry.
-6. **Stage, validate, then rename.** Write the inferred YAML to `<output-path>.tmp`, run `specify vectis validate layout <output-path>.tmp` (and `specify vectis validate composition <output-path>.tmp` when sibling token / asset manifests exist), and only on a clean / warnings-only result atomically rename onto `<output-path>`. Errors delete the staging file and exit non-zero; the previous `<output-path>` is preserved untouched.
+6. **Stage, validate, then rename.** Write the inferred YAML to `<output-path>.tmp`, run `specify tool run vectis-validate -- layout <output-path>.tmp` (and `specify tool run vectis-validate -- composition <output-path>.tmp` when sibling token / asset manifests exist), and only on a clean / warnings-only result atomically rename onto `<output-path>`. Errors delete the staging file and exit non-zero; the previous `<output-path>` is preserved untouched.
 7. **Print the terminal summary** named in the contract: screens added, screens refined, warnings, unresolved gaps, source provenance entries appended, candidate components, exact output path.
 
 ## Authority Hierarchy
@@ -28,7 +28,7 @@ When conflicts arise, follow this strict precedence:
 
 1. **This SKILL.md** — image-specific pipeline rules and prerequisite checks.
 2. **[`references/layout-inferer-contract.md`](references/layout-inferer-contract.md)** — the producer-side contract every inferer shares (arguments, output, idempotence, component directive, verification, terminal summary).
-3. **[`schemas/vectis/composition.schema.json`](../../../../schemas/vectis/composition.schema.json)** — the YAML the skill emits MUST validate against the unwired subset.
+3. **[`capabilities/vectis/composition.schema.json`](../../../../capabilities/vectis/composition.schema.json)** — the YAML the skill emits MUST validate against the unwired subset.
 4. **Existing `layout.yaml` content** — preserve operator edits and previously emitted comments; refine, never overwrite.
 5. **Source images** — reference for visible content only.
 6. **Inferred suggestions** — emit as `# TODO` / `# candidate component` comments rather than committed YAML when in doubt.
@@ -43,7 +43,7 @@ The contract pins three common arguments (`--output`, `--baseline`, `--screen`).
 | `--platform <ios\|android\|web>` | No | When supplied, helps the skill ignore system chrome and recognise platform conventions during triage and chrome cropping. |
 | `--group <screen-slug>:<path>,<path>...` | No | Repeatable. Identifies images that represent the same screen (e.g. populated, empty, error states) so triage groups them deterministically rather than relying on visual similarity. |
 | `--state <screen-slug>:<state-name>=<path>` | No | Repeatable. Explicit state mapping (`loading`, `empty`, `populated`, `error`) for a named screen. Wins over `--group` triage when both target the same image. |
-| `--output <path>` | No | Inherited from the contract. Defaults to the active change directory's `layout.yaml`, then `design-system/layout.yaml`. |
+| `--output <path>` | No | Inherited from the contract. Defaults to the active slice directory's `layout.yaml`, then `design-system/layout.yaml`. |
 | `--baseline <path>` | No | Inherited from the contract. Defaults to the existing output, then `design-system/layout.yaml`, then `.specify/specs/composition.yaml`. |
 | `--screen <slug>=<hint>` | No | Inherited from the contract. The image inferer treats `<hint>` as a free-form note for screen-boundary disambiguation. |
 
@@ -192,12 +192,12 @@ Detection rule: if `--baseline` is supplied OR a file exists at the resolved `--
 Verification is the contract's deterministic gate; full surface — including the stage-then-validate-then-rename rationale — lives in [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md#verification). The validator reads its input from disk, so the image inferer MUST:
 
 1. Write the inferred YAML to a sibling staging path (`<output-path>.tmp`) instead of writing `<output-path>` directly. Refine runs MUST stage even when an existing `<output-path>` already validates clean, otherwise the validator inspects the prior content rather than the new content.
-2. Run `specify vectis validate layout <output-path>.tmp` against the staging path explicitly (do not rely on default-path resolution here). Errors MUST block the rename; warnings MUST be forwarded into the terminal summary but do not block.
-3. Run `specify vectis validate composition <output-path>.tmp` against the same staging path whenever a sibling `tokens.yaml` or `assets.yaml` exists at the canonical paths from `schemas/vectis/schema.yaml`'s `artifacts:` block. The CLI auto-invokes the `tokens` and `assets` modes when those siblings exist; reports surface in the same envelope and fold into the same rename-blocking gate.
+2. Run `specify tool run vectis-validate -- layout <output-path>.tmp` against the staging path explicitly (do not rely on default-path resolution here). Errors MUST block the rename; warnings MUST be forwarded into the terminal summary but do not block.
+3. Run `specify tool run vectis-validate -- composition <output-path>.tmp` against the same staging path whenever a sibling `tokens.yaml` or `assets.yaml` exists at the canonical slice-local or project-level paths. The CLI auto-invokes the `tokens` and `assets` modes when those siblings exist; reports surface in the same envelope and fold into the same rename-blocking gate.
 4. On a clean or warnings-only result, atomically rename `<output-path>.tmp` onto `<output-path>`. On errors, delete the staging file and exit non-zero — the previous `<output-path>` (if any) is left untouched.
 5. Surface the validator output verbatim into the terminal summary (the operator should never have to re-run validation by hand to see what failed).
 
-The skill MUST NOT roll its own schema, structural-identity, or cross-artifact reference validation. Every check the contract requires has an authoritative `specify vectis validate <mode>` verb; reimplementing them in skill prose causes drift.
+The skill MUST NOT roll its own schema, structural-identity, or cross-artifact reference validation. Every check the contract requires has an authoritative `specify tool run vectis-validate -- <mode>` command; reimplementing them in skill prose causes drift.
 
 Exit semantics:
 
@@ -211,7 +211,7 @@ Every run MUST conclude with the seven-item summary named in the contract ([`ref
 
 1. Screens added.
 2. Screens refined.
-3. Warnings (including stale-source and stale-directive warnings, plus warnings forwarded from `specify vectis validate layout` / `composition`).
+3. Warnings (including stale-source and stale-directive warnings, plus warnings forwarded from `specify tool run vectis-validate -- layout` / `composition`).
 4. Unresolved gaps (every `# TODO` and `# candidate component` comment emitted in this run, plus unresolved token / asset references).
 5. Source provenance entries appended (one line per `provenance.sources[]` entry written — `kind: screenshots` for an image run, with the input image count).
 6. Candidate components — both directives emitted (`component: <slug>` written into the YAML) and `# candidate component: <slug>` comments left for operator review.
@@ -237,7 +237,7 @@ When adding a fixture, follow the existing convention:
 
 - Use a synthetic graphic (no real product screenshots, no third-party imagery).
 - Cover at least one new pipeline branch (e.g. a new region kind, a new state replacement, a new candidate-component skeleton).
-- The expected YAML MUST validate cleanly under `specify vectis validate layout fixtures/<name>/expected.layout.yaml`.
+- The expected YAML MUST validate cleanly under `specify tool run vectis-validate -- layout fixtures/<name>/expected.layout.yaml`.
 
 ## Operator ergonomics
 
@@ -249,6 +249,5 @@ When adding a fixture, follow the existing convention:
 
 - [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md) — the producer-side contract every layout inferer follows (arguments, output rules, idempotence rules, component-directive emission policy, verification, terminal summary).
 - [RFC-11: UI Specification Workflow](../../../../rfcs/archive/rfc-11-ui-spec.md) — normative source for §A (shared contract), §C (image inferer specifics), §G (component primitives), §J (skill naming + plugin layout).
-- [`schemas/vectis/composition.schema.json`](../../../../schemas/vectis/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against.
-- [`schemas/vectis/tokens.schema.json`](../../../../schemas/vectis/tokens.schema.json) and [`schemas/vectis/assets.schema.json`](../../../../schemas/vectis/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume when their files exist.
-- [`schemas/vectis/schema.yaml`](../../../../schemas/vectis/schema.yaml) — the `artifacts:` block the CLI consults for default-path resolution.
+- [`capabilities/vectis/composition.schema.json`](../../../../capabilities/vectis/composition.schema.json) — the schema both `layout.yaml` (unwired) and `composition.yaml` (wired) validate against.
+- [`capabilities/vectis/tokens.schema.json`](../../../../capabilities/vectis/tokens.schema.json) and [`capabilities/vectis/assets.schema.json`](../../../../capabilities/vectis/assets.schema.json) — the sibling input schemas the cross-artifact reference checks consume when their files exist.

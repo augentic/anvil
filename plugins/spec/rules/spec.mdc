@@ -7,23 +7,23 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: define a change, build (validate and implement) a change, merge a completed change, drop a discarded change, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Client) build on.
+This plugin provides the core Specify workflow skills: define a slice, build (validate and implement) a slice, merge a completed slice, drop a discarded change, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Client) build on.
 
 **Purpose**: Drive the define -> build -> merge workflow, with drop for cleanup.
 
-## Schema Structure
+## Capability Structure
 
-Schemas define the artifact graph, briefs, and heading conventions. Each schema directory contains:
+Capabilities define the artifact graph, briefs, and heading conventions. Each capability directory contains:
 
 ```text
-schemas/<name>/
-├── schema.yaml
+capabilities/<name>/
+├── capability.yaml
 └── briefs/
 ```
 
-`schema.yaml` defines the pipeline phases — detailed guidance lives in brief files with YAML frontmatter. Schemas can extend other schemas via the `extends` field.
+`capability.yaml` defines the pipeline phases — detailed guidance lives in brief files with YAML frontmatter.
 
-## Change Lifecycle
+## Slice Lifecycle
 
 Changes track their status in `.metadata.yaml`:
 
@@ -53,10 +53,10 @@ defining -> defined -> building -> complete -> merged
 ```
 
 - **init**: One-time project setup -- creates `.specify/` directory structure and `project.yaml`
-- **define**: Create a change directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:define <name> <blueprint-id>`.
-- **build**: Validate artifacts against `schema.yaml` rules and cross-blueprint consistency, then implement tasks from the change, marking them complete as you go
-- **merge**: Preview merge operations, finalize a completed change, merge delta specs into baseline
-- **drop**: Discard an active change, set `status: dropped`, and move it to archive without merging specs
+- **define**: Create a slice directory and generate artifacts in dependency order. Supports regenerating a single artifact with `/spec:define <name> <blueprint-id>`.
+- **build**: Validate artifacts against `capability.yaml` rules and cross-blueprint consistency, then implement tasks from the slice, marking them complete as you go
+- **merge**: Preview merge operations, finalize a completed slice, merge delta specs into baseline
+- **drop**: Discard an active slice, set `status: dropped`, and move it to archive without merging specs
 - **extract**: Extract Specify artifacts (specs + design.md) from existing source code
 
 ## Troubleshooting
@@ -68,12 +68,12 @@ defining -> defined -> building -> complete -> merged
 
 ### Change Not Found
 
-- Run `specify status` to see active changes
-- Check the change name matches (kebab-case)
+- Run `specify status` to see active slices
+- Check the slice name matches (kebab-case)
 
 ### Artifacts Incomplete
 
-- Run `specify change status <name>` to check artifact status
+- Run `specify slice status <name>` to check artifact status
 - Use `/spec:define <name> <blueprint-id>` to regenerate a single artifact
 - Use `/spec:define` to create a new change with all artifacts
 
@@ -84,7 +84,7 @@ defining -> defined -> building -> complete -> merged
 - [Define SKILL.md](skills/define/SKILL.md) - Create changes with artifacts
 - [Build SKILL.md](skills/build/SKILL.md) - Validate artifacts and implement change tasks
 - [Merge SKILL.md](skills/merge/SKILL.md) - Finalize completed changes
-- [Drop SKILL.md](skills/drop/SKILL.md) - Discard a change without merging specs
+- [Drop SKILL.md](skills/drop/SKILL.md) - Discard a slice without merging specs
 - [Extract SKILL.md](skills/extract/SKILL.md) - Extract artifacts from existing source code
 - [Specify Artifact Specification](../references/specify.md) - Artifact format details
 

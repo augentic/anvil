@@ -1,12 +1,12 @@
 # JSON Schema — Importer
 
-> **When to read this.** Read this when an operator supplies external JSON Schema files and the contracts schema build brief needs them normalised onto Specify conventions under a change's `contracts/schemas/` directory. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)). When the supplied file is an OpenAPI or AsyncAPI bundle (with inline schemas), this importer routes the file out — only standalone schema documents stay here.
+> **When to read this.** Read this when an operator supplies external JSON Schema files and the contracts capability build brief needs them normalised onto Specify conventions under a slice's `contracts/schemas/` directory. Skip this file when authoring from a spec (use [`author.md`](./author.md)) or when verifying an existing artefact (use [`verifier.md`](./verifier.md)). When the supplied file is an OpenAPI or AsyncAPI bundle (with inline schemas), this importer routes the file out — only standalone schema documents stay here.
 
 ## Inputs
 
 ```text
-$CHANGE_DIR     = .specify/changes/<change-name>
-$CONTRACTS_DIR  = $CHANGE_DIR/contracts
+$SLICE_DIR     = .specify/slices/<slice-name>
+$CONTRACTS_DIR  = $SLICE_DIR/contracts
 $SCHEMAS_DIR    = $CONTRACTS_DIR/schemas
 $BASELINE_DIR   = contracts
 ```
@@ -166,7 +166,7 @@ Move each schema file to `$SCHEMAS_DIR/`. Remove the original file when the oper
 
 #### Validate
 
-Run [`verifier.md`](./verifier.md) in `single` mode against `$CHANGE_DIR` to confirm `$ref` resolution, metadata completeness, duplicate-`$id` checks, and cross-format compatibility. If the verifier reports issues, re-enter Steps 2–4 for targeted repair before producing the report.
+Run [`verifier.md`](./verifier.md) in `single` mode against `$SLICE_DIR` to confirm `$ref` resolution, metadata completeness, duplicate-`$id` checks, and cross-format compatibility. If the verifier reports issues, re-enter Steps 2–4 for targeted repair before producing the report.
 
 #### Report
 

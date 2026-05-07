@@ -72,11 +72,11 @@ Some inputs cannot be normalised by any importer running in isolation. The impor
 
 | Trigger | Example | Importer action |
 |---|---|---|
-| External `$ref` to a URL or absolute path outside the change directory | `$ref: "https://example.com/schemas/user"` | Cannot auto-resolve. Flag in report. The operator must inline-import the external schema as a separate file or accept the dangling reference. |
+| External `$ref` to a URL or absolute path outside the slice directory | `$ref: "https://example.com/schemas/user"` | Cannot auto-resolve. Flag in report. The operator must inline-import the external schema as a separate file or accept the dangling reference. |
 | `$id` collision with a baseline schema where shapes differ | Imported `user.yaml` has `$id: "urn:specify:schemas/user"` matching the baseline `user.yaml`, but the property sets diverge | Stop and emit `[import — $id collision; resolve manually]`. The `$id` stability rule forbids automatic reassignment. |
 | File with multiple YAML documents (`---` separators) | A single `.yaml` carrying two unrelated OpenAPI specs | Process the first document; flag the rest in the report. Do not silently merge. |
 | File whose top-level format cannot be classified | Custom IDL, malformed YAML, BOM corruption | Skip; flag for manual review. Do not attempt to guess the format. |
-| Multi-file bundle distributed across nested directories | An OpenAPI document with `$ref` chains spanning a vendor bundle | Process the entry-point file; chase `$ref`s only to siblings the operator placed in the change directory. Flag every unresolved external `$ref`. |
+| Multi-file bundle distributed across nested directories | An OpenAPI document with `$ref` chains spanning a vendor bundle | Process the entry-point file; chase `$ref`s only to siblings the operator placed in the slice directory. Flag every unresolved external `$ref`. |
 | Construct that implies behaviour beyond wire shape (e.g. `x-rate-limit` extensions, custom auth flows) | Vendor extensions that look semantically meaningful | Preserve verbatim; flag as "preserved but not validated" in the report. The operator decides whether to lift the construct into `design.md`. |
 | Conflict between source-declared `$id` / `title` and the filename Specify would assign | Source `title: "User Profile"`, source filename `acct.yaml` | Prefer `title` (and rewrite the filename); flag as a normalisation entry. When neither resolves cleanly, request operator input. |
 
@@ -92,10 +92,10 @@ Every output file must carry the Specify-required metadata fields, regardless of
 | `$id` (schemas) | URN form `urn:specify:schemas/<filename-without-extension>`. | Generate from filename. **Never reassign** an `$id` that matches an existing baseline schema (see [`baseline-vs-delta`](baseline-vs-delta.md) — the `$id` stability rule). |
 | `title` (schemas) | PascalCase type name from filename. | Derive from filename. Do not overwrite existing `title` values. |
 | `description` (schemas, `info.description` on OpenAPI / AsyncAPI) | Non-empty string. | If absent, set to `"[imported — description pending review]"` and surface in the import report so the operator replaces it before merge. |
-| `info.title` / `info.version` (OpenAPI / AsyncAPI) | Required by the format spec. `info.version` MUST parse as SemVer per [semver.org](https://semver.org) (RFC-12). | Preserve from source verbatim; surface in the report if absent. **Do not auto-rewrite a non-SemVer `info.version`** (e.g. `2024-01-15`) — emit a `[manual review required]` entry naming the file and the offending value. The verifier and `specify contract validate` will block on the unaltered value until the operator resolves it. |
+| `info.title` / `info.version` (OpenAPI / AsyncAPI) | Required by the format spec. `info.version` MUST parse as SemVer per [semver.org](https://semver.org) (RFC-12). | Preserve from source verbatim; surface in the report if absent. **Do not auto-rewrite a non-SemVer `info.version`** (e.g. `2024-01-15`) — emit a `[manual review required]` entry naming the file and the offending value. The single-mode verifier (Check 4) and the merge-time `specify tool run contract` gate will block on the unaltered value until the operator resolves it. |
 | `info.x-specify-id` (OpenAPI / AsyncAPI) | Optional rename-stable id (RFC-12). When present, kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract under root `contracts/`. | Preserve from source verbatim — even when malformed (the verifier flags the format issue with the file path, which is enough for the operator to fix). **Never invent or auto-derive an id during import** — new ids are an authoring decision. |
 
-The `[imported — description pending review]` placeholder is reserved for the importer path. It appears in the verifier's output as a `WARN` to ensure the gap reaches a human before the change merges.
+The `[imported — description pending review]` placeholder is reserved for the importer path. It appears in the verifier's output as a `WARN` to ensure the gap reaches a human before the slice merges.
 
 ## General upgrade principles
 

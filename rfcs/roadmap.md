@@ -14,7 +14,7 @@ This roadmap captures the next strategic corrections and extensions. The goal is
 AI engineering at scale needs three connected layers:
 
 1. **Platform layer.** Authenticated access to models, tools, sandboxes, logs, and long-running execution.
-2. **Knowledge layer.** Explicit context about repositories, owners, dependencies, standards, schemas, and current plans.
+2. **Knowledge layer.** Explicit context about repositories, owners, dependencies, standards, capabilities, and current plans.
 3. **Enforcement layer.** Continuous review, compatibility checks, standards checks, and stale-context detection.
 
 Specify should own the spec-driven workflow semantics across those layers:
@@ -23,7 +23,7 @@ Specify should own the spec-driven workflow semantics across those layers:
 - artifacts become executable plans;
 - plans route work to repositories;
 - repositories are changed through controlled phases;
-- changes are reviewed against schemas, contracts, and standards;
+- changes are reviewed against capabilities, contracts, and standards;
 - outcomes are recorded for recovery and audit.
 
 ## Directional Principles
@@ -54,13 +54,13 @@ Specify should make a clear distinction between:
 
 - **Workflow skills**: phase orchestration and specialist generation behavior.
 - **Standards**: durable engineering rules with stable identifiers.
-- **Artifacts**: change-local and baseline material produced by the workflow.
+- **Artifacts**: slice-local and baseline material produced by the workflow.
 
 This avoids overloading `SKILL.md` with general policy, and gives reviewers and generators a shared rule vocabulary.
 
 ### Optimize For Background Execution Later
 
-The local `/spec:execute --loop` path should remain first-class, but the primitives should be portable to cloud execution: plan locks, journals, phase outcomes, workspace state, review results, and recovery records should all be serializable and durable.
+The local `/change:execute --loop` path should remain first-class, but the primitives should be portable to cloud execution: plan locks, journals, phase outcomes, workspace state, review results, and recovery records should all be serializable and durable.
 
 The long-term shape is:
 
@@ -77,17 +77,22 @@ The same CLI and artifacts should support both.
 
 **Goal:** Make agent behavior easier to select, cheaper to load, and less dependent on inference.
 
-Current RFC-10 work should remain the immediate priority:
+The skill-hygiene foundation has now landed across RFCs 10, 13, 15, and 16:
 
-- finish skill frontmatter cleanup;
-- keep skill names globally discoverable;
-- keep skill bodies under the progressive-disclosure ceiling;
+- RFC-10 normalised plugin namespaces and capped skill bodies at the progressive-disclosure ceiling;
+- RFC-13 renamed "schema" to "capability", split per-loop *slices* from umbrella *changes*, moved `/spec:plan` and `/spec:execute` to the `change` plugin, and reframed the registry and change orchestration as platform components rather than capabilities;
+- RFC-15 introduced declared WASI capability tools (`specify tool`, `tools.yaml` sidecars) so deterministic helpers run with explicit permissions and SHA-256 pins instead of as bundled native code;
+- RFC-16 retired the `specify-vectis` host binary in favour of the declared `vectis-validate` and `vectis-scaffold` WASI components, leaving operators with one installed binary.
+
+Open hygiene items still owned by this strand:
+
 - factor duplicated phase outcome, journal, and plan-mutation instructions into shared references;
-- preserve stable Specify artifact identifiers while improving skill discoverability.
+- preserve stable Specify artifact identifiers while improving skill discoverability;
+- continue compressing always-loaded surface area as more first-party helpers move to declared tools.
 
 Next, add a first-class repository context output:
 
-- generate concise `AGENTS.md` files from Specify project metadata, schema references, repo inspection, and registry data;
+- generate concise `AGENTS.md` files from Specify project metadata, capability references, repo inspection, and registry data;
 - include runtime, test command, lint command, navigation hints, conventions, boundaries, and dependencies;
 - keep the file short enough to sit directly in agent context;
 - add checks that warn when repo structure changes imply `AGENTS.md` should be refreshed.
@@ -144,11 +149,11 @@ Each rule should have:
 - a concise trigger;
 - normative guidance;
 - examples or references where useful;
-- applicability metadata for schemas, plugins, or languages.
+- applicability metadata for capabilities, plugins, or languages.
 
 Skills should be able to cite codex rules while generating artifacts. Reviewers should cite the same rule ids when reporting violations.
 
-This should complement, not replace, artifact schemas. Schemas define structure. Codex rules define durable engineering policy.
+This should complement, not replace, artifact schemas. Artifact schemas define structure. Codex rules define durable engineering policy.
 
 ### 4. CI-Native Specify Review
 
@@ -158,7 +163,7 @@ Add a review mode that can run locally or in CI:
 
 ```bash
 specify review
-specify review --change <name>
+specify review --slice <name>
 specify review --format json
 ```
 
@@ -191,11 +196,11 @@ Expose a thin MCP server over CLI-backed operations:
 - `specify_status`;
 - `specify_registry_show`;
 - `specify_workspace_status`;
-- `specify_plan_status`;
-- `specify_plan_next`;
-- `specify_plan_doctor`;
-- `specify_change_validate`;
-- `specify_change_outcome_show`.
+- `specify_change_plan_status`;
+- `specify_change_plan_next`;
+- `specify_change_plan_doctor`;
+- `specify_slice_validate`;
+- `specify_slice_outcome_show`.
 
 The MCP server should be mostly read-oriented at first. Mutating tools can come later, but only as wrappers around existing CLI verbs with the same validation and failure semantics.
 
@@ -208,8 +213,8 @@ Non-goal: placing independent plan, registry, or lifecycle logic in the MCP serv
 Add structured event emission for major workflow operations:
 
 - command name and version;
-- project and schema;
-- change or plan entry;
+- project and capability;
+- slice or plan entry;
 - phase start and finish;
 - validation result;
 - skill invoked;
@@ -243,7 +248,7 @@ Requirements:
 - explicit human approval gates;
 - controlled push and PR/MR creation;
 - deterministic recovery after interruption;
-- parity with local `/spec:execute --loop`.
+- parity with local `/change:execute --loop`.
 
 Candidate surface:
 
@@ -257,13 +262,20 @@ This should remain a long-term track. Local execution is the proving ground.
 
 ## Phasing
 
+### Landed
+
+- RFC-10: plugin namespace renormalisation and skill-body ceiling.
+- RFC-13: capability rename, slice/change vocabulary, platform-component split, `change` plugin.
+- RFC-15: declared WASI capability tools and the `specify tool` runner; contract validator as the first declared tool.
+- RFC-16: Vectis WASI tools (`vectis-validate`, `vectis-scaffold`) and `specify-vectis` retirement.
+
 ### Near Term
 
-- Complete RFC-10.
 - Add concise `AGENTS.md` generation and checking.
 - Define the codex rule format.
 - Keep the Backstage/catalog decision to adapter design, not core registry replacement.
 - Add initial structured review output for Specify artifacts.
+- Migrate any remaining first-party host helpers to declared WASI tools where the cost/benefit is favourable (the `skill.invokes-host-binary-with-declared-tool-equivalent` lint reserved by RFC-15 enforces this once the linter has enough context).
 
 ### Mid Term
 
@@ -275,7 +287,7 @@ This should remain a long-term track. Local execution is the proving ground.
 
 ### Long Term
 
-- Add cloud-hosted `/spec:execute --loop` equivalents.
+- Add cloud-hosted `/change:execute --loop` equivalents.
 - Support durable background agents with sandboxed workspace clones.
 - Add first-class PR/MR creation and review loops.
 - Support catalog-backed initiatives across many repositories.

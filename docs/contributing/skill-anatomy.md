@@ -26,7 +26,7 @@ Every `SKILL.md` begins with YAML frontmatter validated against `.cursor/schemas
 ```yaml
 ---
 name: specify-define
-description: Defines a new Specify change and generates every artifact (proposal, spec, design, tasks, optional contracts and composition) in one step. Use when an operator describes a change in chat, when a plan entry transitions in-progress, or when the user explicitly asks for /spec:define.
+description: Defines a new Specify change and generates every artifact (proposal, spec, design, tasks, optional contracts and composition) in one step. Use when an operator describes a slice in chat, when a plan entry transitions in-progress, or when the user explicitly asks for /spec:define.
 argument-hint: "[description]"
 ---
 ```
@@ -55,7 +55,7 @@ No other top-level keys are permitted. RFC-10 (§D) removed `license`, `compatib
 
 The `argument-hint` field is single-line Cursor placeholder text — the operator sees it after typing `/plugin:skill ` in chat. Use `<required>` for required positionals and `[optional]` for optional positionals; never list flags in the hint.
 
-The reference docs under `docs/reference/change-skills/` and `docs/reference/initiative-skills/` use a **narrative** synopsis convention that documents flags as well:
+The reference docs under `docs/reference/slice-skills/` and `docs/reference/change-skills/` use a **narrative** synopsis convention that documents flags as well:
 
 ```text
 /spec:define [description] [--source <key>=<path-or-url>...]
@@ -83,7 +83,7 @@ The body after the frontmatter varies by skill type, but the following patterns 
 **Workflow skills** (e.g. `/spec:define`, `/spec:build`, `/spec:merge`) typically include:
 
 - **Context** -- when the skill runs, what state it expects, how it fits into the workflow
-- **Driver-supplied arguments** -- arguments passed by `/spec:execute` in plan-driven mode
+- **Driver-supplied arguments** -- arguments passed by `/change:execute` in plan-driven mode
 - **Phase outcome contract** -- how the skill reports success or failure back to the execute driver
 - **Steps** -- numbered procedure the agent follows, interleaving CLI commands with agent reasoning
 - **Guardrails** -- hard constraints on what the skill may and may not do
@@ -109,12 +109,12 @@ Skills delegate every deterministic operation to the `specify` CLI and consume i
 Agent (skill)                          CLI (specify binary)
 ─────────────                          ────────────────────
 Elicit intent from user          →
-                                       specify change create <name>
+                                       specify slice create <name>
                                   ←    { "status": "created", ... }
 Read brief, write artifact       →
-                                       specify change validate <name>
+                                       specify slice validate <name>
                                   ←    { "passed": true, ... }
-                                       specify change transition <name> defined
+                                       specify slice transition <name> defined
                                   ←    { "status": "defined", ... }
 ```
 
@@ -122,7 +122,7 @@ The litmus test: "Would this operation need to understand `.specify/` directory 
 
 ## How skills delegate to other skills
 
-Skills can invoke other skills using `<!-- skill: plugin:skill-name -->` directives in their body. For example, `/spec:build` delegates implementation to specialist skills declared by the active schema:
+Skills can invoke other skills using `<!-- skill: plugin:skill-name -->` directives in their body. For example, `/spec:build` delegates implementation to specialist skills declared by the active capability:
 
 ```markdown
 <!-- skill: omnia:crate-writer -->

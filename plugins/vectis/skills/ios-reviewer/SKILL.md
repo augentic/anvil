@@ -37,7 +37,7 @@ If `reference-dir` is provided, also read the corresponding files from the refer
 
 Also read the wired UI input set (RFC-11 §H + §I) to compare generated code against the validated artifacts:
 
-- `composition.yaml` -- canonical layout (change-local `.specify/changes/<name>/composition.yaml` then baseline `.specify/specs/composition.yaml`); the source of truth for component-directive (`component: <slug>`) detection and recurring-group identification
+- `composition.yaml` -- canonical layout (slice-local `.specify/slices/<name>/composition.yaml` then baseline `.specify/specs/composition.yaml`); the source of truth for component-directive (`component: <slug>`) detection and recurring-group identification
 - `tokens.yaml` -- expected design tokens (change-local then `design-system/tokens.yaml`); the source of truth for token-usage checks
 - `assets.yaml` -- expected asset catalog (change-local then `design-system/assets.yaml`); the source of truth for asset-reference checks
 
@@ -371,7 +371,7 @@ single Specify change. Do **not** call `/spec:define`.
 If design-level findings exist, delegate to `/spec:define` to create a
 single Specify change that tracks all of them:
 
-1. **Derive a change name** from the app name and append the current date-time for traceability:
+1. **Derive a slice name** from the app name and append the current date-time for traceability:
 
    ```
    review-{app-name}-ios-{YYYY-MM-DDTHH-MM}
@@ -384,11 +384,11 @@ single Specify change that tracks all of them:
    date -u +"%Y-%m-%dT%H-%M"
    ```
 
-2. **Delegate to `/spec:define`** with the derived change name and a description synthesized from the accumulated design-level findings. Provide the following guidance for artifact generation:
+2. **Delegate to `/spec:define`** with the derived slice name and a description synthesized from the accumulated design-level findings. Provide the following guidance for artifact generation:
 
 3. **Content guidelines for each artifact**:
 
-   - **proposal.md**: The "Why" section summarizes the accumulated review findings by severity and risk, distinguishing spec-change findings (requirements gaps) from code-fix findings (implementation bugs). The "What Changes" section lists each design-level finding as a bullet, prefixed with `[spec]` or `[code]` to indicate its classification. Note which mechanical fixes were already applied across all iterations and how many review cycles ran. The "Impact" section identifies affected files, core contract changes, and migration concerns.
+   - **proposal.md**: The "Why" section summarizes the accumulated review findings by severity and risk, distinguishing spec-change findings (requirements gaps) from code-fix findings (implementation bugs). The "What Changes" section lists each design-level finding as a bullet, prefixed with `[spec]` or `[code]` to indicate its classification. Note which mechanical fixes were already applied across all iterations and how many review cycles ran. The "Impact" section identifies affected files, core contract slices, and migration concerns.
 
    - **design.md**: Each design-level finding becomes a Decision section with rationale and alternatives considered. Group related findings (e.g., all effect-handler-related changes under one decision). Reference the specific check IDs (IOS-xxx, SWF-xxx, UNI-xxx) that motivated each decision. For spec-change findings, explain why the current spec is insufficient and what the proposed requirement should be.
 
@@ -396,7 +396,7 @@ single Specify change that tracks all of them:
 
    - **tasks.md**: Order tasks by dependency -- spec updates first (so requirements are clear before implementation), then missing screen views, then missing effect handlers, then navigation fixes, then design system corrections, then verification. Each task references the finding ID it addresses. Include a final verification section that re-runs the ios-reviewer skill to confirm all Critical findings are resolved.
 
-4. **Show final status** by running `specify change status <name>` and summarize: change name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
+4. **Show final status** by running `specify slice status <name>` and summarize: slice name, location, artifacts created, and prompt the user with "Run `/spec:build` or ask me to implement to start working on the tasks."
 
 ## Severity Definitions
 

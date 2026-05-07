@@ -1,6 +1,6 @@
 # Artifacts
 
-Every Specify change produces a set of interdependent artifacts. Together they form the contract between human intent and agent execution.
+Every Specify slice produces a set of interdependent artifacts. Together they form the contract between human intent and agent execution.
 
 ## Artifact dependency chain
 
@@ -30,10 +30,10 @@ All schemas produce these four artifacts:
 
 | Artifact | Question it answers | Location |
 |----------|-------------------|----------|
-| `proposal.md` | *Why* does this change exist? What is in scope? | `.specify/changes/<name>/proposal.md` |
-| `spec.md` | *What* must the system do? (behavioral requirements) | `.specify/changes/<name>/specs/<capability>/spec.md` |
-| `design.md` | *How* will the behavior be implemented? | `.specify/changes/<name>/design.md` |
-| `tasks.md` | In what *sequence* should it be built? | `.specify/changes/<name>/tasks.md` |
+| `proposal.md` | *Why* does this slice exist? What is in scope? | `.specify/slices/<name>/proposal.md` |
+| `spec.md` | *What* must the system do? (behavioral requirements) | `.specify/slices/<name>/specs/<capability>/spec.md` |
+| `design.md` | *How* will the behavior be implemented? | `.specify/slices/<name>/design.md` |
+| `tasks.md` | In what *sequence* should it be built? | `.specify/slices/<name>/tasks.md` |
 
 ## Schema-specific artifacts
 
@@ -41,7 +41,7 @@ Some schemas add artifacts to the define pipeline. The Vectis schema adds:
 
 | Artifact | Question it answers | Location |
 |----------|-------------------|----------|
-| `composition.yaml` | *Where* does each element appear on screen? | `.specify/changes/<name>/composition.yaml` |
+| `composition.yaml` | *Where* does each element appear on screen? | `.specify/slices/<name>/composition.yaml` |
 
 The composition artifact describes the spatial layout of each screen -- regions (`header`, `body`, `footer`, `fab`), container structure (`group` nodes with flexbox-like properties), item placement, data bindings, and event wiring. It sits between specs and design in the define pipeline: specs define behavior, composition defines visual arrangement, design defines the type system. Shell writers (`ios-writer`, `android-writer`) consume composition for deterministic layout rather than inferring structure from the ViewModel.
 
@@ -60,17 +60,17 @@ Contracts complement specs: specs describe *what* the system does; contracts des
 Contract artifacts live in two locations:
 
 - **Baseline:** `contracts/` at the repo root -- the current platform contract vocabulary, co-located with `registry.yaml` and `plan.yaml`.
-- **Per-change delta:** `.specify/changes/<name>/contracts/` -- proposed additions or replacements for this change only.
+- **Per-slice delta:** `.specify/slices/<name>/contracts/` -- proposed additions or replacements for this slice only.
 
 Contracts are a platform concern -- they describe interfaces *between* components, not internals of any one project. Both producer and consumer reference the same central contracts.
 
 The composition surface ships as two sibling artifacts (RFC-11), both validated against the same JSON Schema:
-- **`layout.yaml` (unwired layout input)** -- regions and layout structure with token / asset references but no data bindings. Produced by layout inferers (the screenshot-fronted [`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers per RFC-11) or hand-authored before the define pipeline runs. Validated by `specify vectis validate layout`.
-- **`composition.yaml` (wired lifecycle artifact)** -- the same regions enriched with `bind`, `event`, `maps_to`, overlay `trigger`, navigation, and `*-when` keys. Produced by the define pipeline and consumed by shell writers. Validated by `specify vectis validate composition` (which auto-invokes `tokens` / `assets` modes when sibling manifests exist).
+- **`layout.yaml` (unwired layout input)** -- regions and layout structure with token / asset references but no data bindings. Produced by layout inferers (the screenshot-fronted [`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers per RFC-11) or hand-authored before the define pipeline runs. Validated by `specify tool run vectis-validate -- layout`.
+- **`composition.yaml` (wired lifecycle artifact)** -- the same regions enriched with `bind`, `event`, `maps_to`, overlay `trigger`, navigation, and `*-when` keys. Produced by the define pipeline and consumed by shell writers. Validated by `specify tool run vectis-validate -- composition` (which auto-invokes `tokens` / `assets` modes when sibling manifests exist).
 
 ### Proposal
 
-The proposal captures motivation and scope. It names the capabilities (crates, features) that the change will affect. Each capability listed in the proposal will need a corresponding spec file.
+The proposal captures motivation and scope. It names the capabilities (crates, features) that the slice will affect. Each capability listed in the proposal will need a corresponding spec file.
 
 Proposals are concise -- one to two pages. They focus on the "why" and the "what", not the "how".
 
@@ -117,10 +117,10 @@ Tasks describe sequencing and checkpoints. They do not introduce new requirement
 
 Artifacts move through three locations:
 
-1. **Working change** -- `.specify/changes/<name>/` holds the active change and its artifacts.
+1. **Working slice** -- `.specify/slices/<name>/` holds the active slice and its artifacts.
 2. **Baseline** -- `.specify/specs/` holds the merged specs that represent the current known state of the system.
-3. **Archive** -- `.specify/archive/YYYY-MM-DD-<name>/` holds finalized changes (both merged and dropped) for audit.
+3. **Archive** -- `.specify/archive/YYYY-MM-DD-<name>/` holds finalized slices (both merged and dropped) for audit.
 
-When you run `/spec:merge`, the change's spec deltas are applied to the baseline. For Vectis changes, composition deltas are also merged into the baseline `composition.yaml` alongside spec files. When the change includes contract artifacts, they are copied into the root-level `contracts/` directory using opaque file replacement -- each file is replaced wholesale rather than delta-merged. The baseline grows over time, giving future changes a foundation to build on.
+When you run `/spec:merge`, the slice's spec deltas are applied to the baseline. For Vectis slices, composition deltas are also merged into the baseline `composition.yaml` alongside spec files. When the slice includes contract artifacts, they are copied into the root-level `contracts/` directory using opaque file replacement -- each file is replaced wholesale rather than delta-merged. The baseline grows over time, giving future slices a foundation to build on.
 
 For full format details, see the [Artifact Format](../reference/artifact-format.md) reference.

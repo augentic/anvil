@@ -6,7 +6,7 @@ A TypeScript notification processing service is being migrated to Rust WASM. The
 
 ## Input
 
-**Specify artifacts**: `./.specify/changes/notification_hub/` **Client**: Auckland Transport **Origin**: code-analysis (TypeScript source)
+**Specify artifacts**: `./.specify/slices/notification_hub/` **Client**: Auckland Transport **Origin**: code-analysis (TypeScript source)
 
 **Key artifact content** (summarised):
 
@@ -21,7 +21,7 @@ A TypeScript notification processing service is being migrated to Rust WASM. The
 ## Command
 
 ```prompt
-/sow-writer ./.specify/changes/notification_hub ./SOW-notification-hub.md "Auckland Transport"
+/sow-writer ./.specify/slices/notification_hub ./SOW-notification-hub.md "Auckland Transport"
 ```
 
 ## Output
@@ -189,11 +189,11 @@ E. **Auckland Transport Product Owner**
 A. **Route API Retry Policy**
    The Route API integration will use a standard retry policy with
    exponential backoff (3 retries, 1s/2s/4s delays). If Auckland Transport
-   requires a different retry strategy, we will raise a change request.
+   requires a different retry strategy, we will raise a slice request.
 
 B. **Notification TTL**
    Notifications will not have a time-to-live (TTL) constraint. If a TTL is
-   required, we will raise a change request to add expiry handling.
+   required, we will raise a slice request to add expiry handling.
 
 C. **Deployment to Production**
    Deployment to production will follow the existing CI/CD pipeline and

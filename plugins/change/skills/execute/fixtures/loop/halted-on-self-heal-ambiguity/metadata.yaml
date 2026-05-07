@@ -1,0 +1,24 @@
+# Snapshot of .specify/slices/shopping-cart/.metadata.yaml that the
+# --loop invocation's self-heal pass reads on startup. Identical in
+# shape to fixtures/self-heal/ambiguous-halt/metadata.yaml: the file
+# is internally contradictory (status == defining but outcome.phase
+# == merge with outcome: success). No legitimate lifecycle transition
+# produces this combination.
+#
+# In the --loop context this matters because self-heal runs BEFORE
+# the outer iteration loop begins (step 3 of the --loop algorithm).
+# A halt here means the loop never reaches its first iteration; the
+# Completion classification is `halted`, and no other entry in the
+# plan is touched even though checkout-api is structurally eligible
+# (well, it would be once shopping-cart completed — but self-heal
+# stops before checkout-api is even considered).
+
+name: shopping-cart
+status: defining
+schema: omnia
+created-at: 2026-04-19T13:00:00Z
+outcome:
+  phase: merge
+  outcome: success
+  at: 2026-04-19T13:00:04Z
+  summary: "Baseline updated: .specify/specs/shopping-cart/spec.md."

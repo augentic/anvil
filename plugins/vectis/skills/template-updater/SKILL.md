@@ -1,36 +1,45 @@
 ---
 name: vectis-template-updater
-description: Fix Vectis CLI templates and version pins when upstream crate or tooling bumps break a freshly scaffolded project. Use when `specify vectis update-versions --verify` reports a failing cap-matrix combo, when a Crux/uniffi/Gradle release has introduced template drift, or when the user mentions template-updater.
+description: Fix Vectis scaffold templates and version pins when upstream crate or tooling bumps break a fresh render. Use when Crux, uniffi, Gradle, Xcode, or Android SDK drift breaks the Vectis cap matrix, or when the user mentions template-updater.
 argument-hint: "[cli-repo-dir]"
 ---
 
 # Vectis Template Updater
 
-Close the loop on version bumps. When `specify vectis update-versions` proposes new crate pins but the scratch scaffold produced from those pins no longer compiles (or `cargo clippy --all-targets -- -D warnings`, `cargo deny check`, `cargo vet`, `codegen swift`, `codegen kotlin`, iOS `xcodebuild`, or Android `assembleDebug` fails), this skill diagnoses the breakage, edits the right template files + template modules, and proves the fix by re-running the full cap matrix.
+Close the loop on version bumps. This skill owns the host workflow that used to be hidden behind the old bundled version verifier: inspect live registry data, draft a complete `versions.toml`, render scratch scaffolds with `specify tool run vectis-scaffold`, run the host build matrix, diagnose drift, edit templates or embedded defaults, and prove the fix.
 
-The deterministic machinery (scaffold, verify, registry queries, atomic writes) lives in the `specify vectis` subtree itself (now a library crate inside [`augentic/specify-cli`](https://github.com/augentic/specify-cli)). What remains is judgement work: reading compiler errors, mapping them to the upstream changelog, deciding whether the fix is a template edit, a conditional in `<specify-cli>/crates/vectis/src/templates/`, an `embedded/versions.toml` pin tweak, or a parser update.
+`vectis-scaffold` is render-only. It may write the core, iOS, or Android template output using embedded defaults or an explicit complete `--version-file`, but it must not query registries, discover SDKs, build Cargo projects, bootstrap Gradle, run Xcode, or validate a cap matrix. Those steps are host-side judgement and command execution owned by this skill.
 
-This skill is invoked after `specify vectis update-versions` proposes or writes new pins. It never runs the version query itself -- that is the CLI's job.
+Version pins remain skill-readable data until another RFC creates a dedicated version tool. The canonical inputs today are the embedded defaults in `<specify-cli>/crates/vectis-scaffold/embedded/versions.toml` plus an optional complete TOML override passed to `vectis-scaffold --version-file`.
+
+## Critical Path (Quick Reference)
+
+1. Copy the embedded `versions.toml` to a scratch proposal file, query live registries from the host, and edit the proposal by hand.
+2. Consult [`references/known-drift.md`](references/known-drift.md) before diagnosing a failure.
+3. For each cap combo, create an empty scratch Specify project, render core and requested shells with `specify tool run vectis-scaffold -- ... --version-file <proposal>`, then run explicit host build commands.
+4. Map each reproduced failure to the narrowest template, template registry, capability map, deny-list, or embedded pin edit.
+5. Re-run the failing combo immediately after each edit, then run the full cap matrix.
+6. Report the proposed pins, failures, diagnoses, edits, verification commands, and unresolved known drift.
 
 ## Arguments
 
 | Argument | Required | Description |
 |---|---|---|
-| `repo-dir` | No | Path to the `specify-cli` checkout where the vectis library + templates live. Defaults to the current working directory. |
-| `version-file` | No | Path to the `versions.toml` carrying the proposed pins. Defaults to `{repo-dir}/crates/vectis/embedded/versions.toml` (the embedded defaults). |
-| `caps-matrix` | No | Comma-separated list of `--caps` strings to validate, joined with `\|`. Defaults to the same four combos `specify vectis update-versions --verify` uses: `""`, `"http"`, `"http,kv"`, `"http,kv,time,platform,sse"`. |
-| `shells` | No | Shells to scaffold per combo during validation. Defaults to `""` (core-only, mirroring `specify vectis update-versions --verify`). Use `"ios,android"` when a shell-specific breakage is suspected. |
+| `repo-dir` | No | Path to the `specify-cli` checkout where the Vectis templates and embedded defaults live. Defaults to the current working directory. |
+| `version-file` | No | Path to a complete proposed `versions.toml`. Defaults to a scratch copy of `{repo-dir}/crates/vectis-scaffold/embedded/versions.toml`; write proposals there before changing embedded defaults. |
+| `caps-matrix` | No | Comma-separated list of `--caps` strings to validate, joined with `\|`. Defaults to `""`, `"http"`, `"http,kv"`, `"http,kv,time,platform,sse"`. |
+| `shells` | No | Shells to scaffold per combo during validation. Defaults to `""` (core-only). Use `"ios,android"` when a shell-specific breakage is suspected. |
 | `scratch-dir` | No | Directory for scratch scaffolds. Defaults to `$HOME/.cache/vectis/template-updater-<pid>/`. |
 
 ## Inputs the skill relies on
 
-All paths below are rooted at the `specify-cli` checkout (`{repo-dir}`); the vectis library and its templates moved into that repo when the standalone `vectis` binary was folded into `specify` as the `specify vectis ...` subcommand tree.
+All paths below are rooted at the `specify-cli` checkout (`{repo-dir}`); the Vectis templates and render-only WASI crates live in that repo.
 
-- **Current embedded pins** at `{repo-dir}/crates/vectis/embedded/versions.toml`.
+- **Current embedded pins** at `{repo-dir}/crates/vectis-scaffold/embedded/versions.toml`.
 - **Template files** at `{repo-dir}/templates/vectis/{core,ios,android}/`, with target-path mapping in each folder's `MANIFEST.md`.
-- **Template engine + registries** at `{repo-dir}/crates/vectis/src/templates/{mod.rs,core.rs,ios.rs,android.rs}` (placeholder chain, cap-conditional logic, per-file target paths).
-- **Add-shell parser** at `{repo-dir}/crates/vectis/src/add_shell/parser.rs` -- the only place where capability crate names (`crux_http`, `crux_http::sse`, `crux_kv`, `crux_time`, `crux_platform`) are hard-coded outside the templates. When a Crux bump renames a capability crate, this file must be edited in lockstep with the `app.rs` template.
-- **Verify pipeline** at `{repo-dir}/crates/vectis/src/verify/{core,ios,android}.rs` -- the ordered build/check steps per assembly. The JSON emitted by `specify vectis verify` lists each step by name; failures include the first N lines of combined stdout/stderr and are the primary signal this skill works from.
+- **Template engine + registries** at `{repo-dir}/crates/vectis-scaffold/src/templates/{mod.rs,core.rs,ios.rs,android.rs}` (placeholder chain, cap-conditional logic, per-file target paths).
+- **Capability map** at `{repo-dir}/crates/vectis-scaffold/src/templates/mod.rs` -- the active list of `--caps` tags and CAP-marker names. When a Crux bump renames or adds a capability, edit this module in lockstep with the `app.rs` template.
+- **Host verify recipe** in this skill -- the ordered Cargo, codegen, deny/vet, Gradle, and Xcode commands that replaced the old bundled verify path. Failures from these commands are the primary signal this skill works from.
 - **Known drift backlog** at [`references/known-drift.md`](references/known-drift.md) -- the running list of deferred items from chunk 11/12 verification. Start here before diagnosing a new bump; the odds are non-trivial that the failure is one of these.
 
 ## Prerequisites
@@ -38,34 +47,74 @@ All paths below are rooted at the `specify-cli` checkout (`{repo-dir}`); the vec
 Before starting, make sure:
 
 1. The `specify-cli` working tree is clean. `git status` shows no unstaged changes. This skill makes small, verifiable edits; mixing them with unrelated WIP will cause the validation matrix to attribute unrelated failures to the bump.
-2. A debug `specify` binary is available. From `{repo-dir}` run `cargo build -p specify` (the binary at `{repo-dir}/target/debug/specify` ships the `specify vectis ...` subcommand tree). All bash blocks below assume `{repo-dir}/target/debug/specify` is the binary under test; substitute an installed `specify` (e.g. via `cargo install --path . --bin specify` or `brew install augentic/specify`) when iterating against a released build.
-3. Platform prerequisites for each shell being validated (`xcodegen`, `cargo-swift ≥ 0.10`, `$ANDROID_HOME` with NDK, Gradle 8.x on `PATH`). Re-run `specify vectis verify` on a known-good scaffold if unsure -- the skill's first action must not be to paper over a missing prereq.
+2. `specify` is on `PATH` and supports `specify tool run`. The scratch projects must resolve the Vectis capability declaration that exposes `vectis-scaffold`.
+3. If local WASI artifacts are under test, build or fetch them before the matrix run and point the scratch project's tool declaration at those component bytes. Do not execute a cached component directly; always run it through `specify tool run vectis-scaffold`.
+4. Platform prerequisites for each shell being validated are present (`xcodegen`, `cargo-swift`, `$ANDROID_HOME` with NDK, Gradle/Xcode as required). Confirm missing SDKs before editing templates; the skill's first action must not be to paper over a missing prereq.
 
 ---
 
 ## Process
 
-The skill runs a five-step flow (Detect → Diagnose → Update → Validate → Report). Steps D1--D5 below correspond one-to-one. Each edit the skill makes to the repo is scoped to `{repo-dir}/templates/vectis/**`, `{repo-dir}/crates/vectis/src/templates/**`, `{repo-dir}/crates/vectis/src/add_shell/parser.rs`, `{repo-dir}/crates/vectis/embedded/versions.toml`, and (when a new upstream advisory appears) `{repo-dir}/templates/vectis/core/deny.toml`. All other paths are off-limits -- nothing under `{repo-dir}/crates/vectis/src/{init,verify,update_versions,prerequisites}.rs` or `{repo-dir}/src/main.rs` should be touched by this skill (those are the CLI's orchestration, not its templates).
+The skill runs a five-step flow (Detect → Diagnose → Update → Validate → Report). Steps D1--D5 below correspond one-to-one. Each edit the skill makes to the repo is scoped to `{repo-dir}/templates/vectis/**`, `{repo-dir}/crates/vectis-scaffold/src/templates/**`, `{repo-dir}/crates/vectis-scaffold/embedded/versions.toml`, and (when a new upstream advisory appears) `{repo-dir}/templates/vectis/core/deny.toml`. All other paths are off-limits -- especially host orchestration, `vectis-scaffold` command behavior, and `specify` CLI entrypoints.
 
 ### D1. Detect breakage
 
-1. Record the baseline. Capture the output of `{repo-dir}/target/debug/specify --format json vectis update-versions --dry-run --verify --version-file {version-file}` to `{scratch-dir}/baseline.json`. The `verification.combos[]` array tells you which combos fail and on which step.
-2. For each failing combo, re-scaffold deterministically so the diagnosis phase has a reproducible scratch project:
+1. Prepare a proposed pin file. If the operator did not supply `version-file`, copy `{repo-dir}/crates/vectis-scaffold/embedded/versions.toml` to `{scratch-dir}/proposed-versions.toml`.
+2. Query the live registries from the host and edit the proposed pin file directly:
+
+   ```bash
+   # Examples only; use the registry source that owns each coordinate.
+   cargo search crux_core --limit 5
+   cargo search uniffi --limit 5
+   curl -fsSL "https://dl.google.com/dl/android/maven2/com/android/tools/build/gradle/maven-metadata.xml" \
+     > "{scratch-dir}/agp-maven-metadata.xml"
+   curl -fsSL "https://services.gradle.org/versions/all" \
+     > "{scratch-dir}/gradle-versions.json"
+   ```
+
+   Record old → proposed values in `{scratch-dir}/pin-diff.md`. Registry queries are not WASI tools and are not performed by `vectis-scaffold`.
+3. For each cap combo, scaffold deterministically so the diagnosis phase has a reproducible scratch project. Create an empty Specify project for each combo so `specify tool run` can resolve the Vectis tool declaration:
 
    ```bash
    dir={scratch-dir}/combo-<N>
    rm -rf "$dir"
-   {repo-dir}/target/debug/specify --format json vectis init ScratchApp \
-     --dir "$dir" \
+   mkdir -p "$dir"
+   cd "$dir"
+   specify init https://github.com/augentic/specify/capabilities/vectis
+
+   specify tool run vectis-scaffold -- core ScratchApp \
      --caps "<caps-combo>" \
-     --shells "<shells>" \
-     --version-file {version-file}
-   {repo-dir}/target/debug/specify --format json vectis verify --dir "$dir" \
-     > "$dir/verify.json" 2>&1 || true
+     --version-file "{version-file}" \
+     > "$dir/scaffold-core.json"
+
+   # Optional shell renders when the invocation requested shells.
+   specify tool run vectis-scaffold -- ios ScratchApp \
+     --caps "<caps-combo>" \
+     --version-file "{version-file}" \
+     > "$dir/scaffold-ios.json"
+   specify tool run vectis-scaffold -- android ScratchApp \
+     --caps "<caps-combo>" \
+     --android-package com.vectis.scratchapp \
+     --version-file "{version-file}" \
+     > "$dir/scaffold-android.json"
    ```
 
-   Only re-run the combos that failed in step 1; passing combos are a regression gate that runs unchanged at D4.
-3. Parse each `verify.json`. The first `assemblies.*.steps[]` entry with `passed: false` is the root failure for that combo. Record the assembly, step name, and error snippet.
+   Omit the shell render blocks unless `shells` includes that target.
+4. Run the host verify recipe in the scratch project and record logs by combo and step:
+
+   ```bash
+   cd "$dir"
+   cargo check --workspace > "$dir/cargo-check.log" 2>&1
+   cargo test --workspace > "$dir/cargo-test.log" 2>&1
+   cargo clippy --all-targets -- -D warnings > "$dir/cargo-clippy.log" 2>&1
+   cargo deny check > "$dir/cargo-deny.log" 2>&1
+   cargo vet > "$dir/cargo-vet.log" 2>&1
+   cargo run -p shared --bin codegen -- kotlin > "$dir/codegen-kotlin.log" 2>&1
+   cargo run -p shared --bin codegen -- swift > "$dir/codegen-swift.log" 2>&1
+   ```
+
+   When shells are rendered, add the platform steps the templates expose (`make xcode` / `xcodebuild` for iOS and Gradle wrapper bootstrap / `assembleDebug` for Android). These commands are intentionally host workflow steps, not `vectis-scaffold` behavior.
+5. Record the first failing command per combo in `{scratch-dir}/failures.md` with the cap string, assembly, command, exit code, and first actionable error line.
 
 ### D2. Diagnose the failure
 
@@ -78,7 +127,7 @@ For each distinct error the skill collected in D1, pick one of these paths and c
 
 | Symptom | Likely fix site |
 |---|---|
-| `unresolved import crux_*` or renamed `Effect::*` / `Event::*` variant | `<specify-cli>/templates/vectis/core/app.rs` (type aliases, match arms); `<specify-cli>/templates/vectis/core/ffi.rs` if the public FFI type renamed; `<specify-cli>/crates/vectis/src/add_shell/parser.rs` (`classify_cap_path`) if a capability crate renamed |
+| `unresolved import crux_*` or renamed `Effect::*` / `Event::*` variant | `<specify-cli>/templates/vectis/core/app.rs` (type aliases, match arms); `<specify-cli>/templates/vectis/core/ffi.rs` if the public FFI type renamed; `<specify-cli>/crates/vectis-scaffold/src/templates/mod.rs` if a capability tag or CAP marker changed |
 | `cannot find type RustBuffer in scope` in generated Swift / `import sharedFFI` failing | `<specify-cli>/templates/vectis/core/codegen.rs` (when the bindgen call signature changes) or the per-developer `cargo-swift` install (per-machine prereq, not a template pin) |
 | Kotlin `codegen kotlin` fails with `unresolved module path shared::ffi` | [`references/known-drift.md`](references/known-drift.md) §1 (`uniffi` / `crux_core::cli::bindgen` coupling) -- structural rewrite |
 | `cargo deny check` `unmaintained`/`vulnerable` for a Crux transitive dep | `<specify-cli>/templates/vectis/core/deny.toml` `[advisories] ignore`; include a one-line rationale comment pointing at the transitive chain |
@@ -93,61 +142,72 @@ For each distinct error the skill collected in D1, pick one of these paths and c
 
 Apply the fix, making each edit as narrow as possible.
 
-- Edit the **template file** when the change is visible in a scaffolded project (a renamed `use`, a new `#[allow(...)]`, a changed build flag, a new advisory in `deny.toml`). Every template file is `include_str!`-ed verbatim by `<specify-cli>/crates/vectis/src/templates/{core,ios,android}.rs`, so editing the file is sufficient -- do not touch the module unless the set of files shipped, their predicates, or their target paths has changed.
-- Edit the **template module** (`<specify-cli>/crates/vectis/src/templates/core.rs` etc.) only when: a new file is shipped / removed; an existing file's target path changes; a file's `IncludeWhen::{Always, AnyOf(&[Capability])}` predicate changes; or a new placeholder is introduced and must be substituted. Respect the superstring-first substitution order (`__APP_NAME_LOWER__` before `__APP_NAME__`, `__ANDROID_PACKAGE_PATH__` before `__APP_NAME_LOWER__` in path segments). Any new template file must also be listed in the corresponding `<specify-cli>/templates/vectis/{core,ios,android}/MANIFEST.md`; the parity test `templates::core::tests::registry_matches_rfc_core_file_count` (and its iOS/Android siblings) enforces this.
-- Edit `<specify-cli>/crates/vectis/src/add_shell/parser.rs` when a capability crate is renamed upstream. The parser keys off the **RHS crate root**, not the alias name in the user's `app.rs`. Nested matches (e.g. `crux_http::sse::Sse`) must be tried **before** the bare-crate match, otherwise a capability's successor will be mis-tagged as the parent crate.
-- Edit `<specify-cli>/crates/vectis/embedded/versions.toml` when the fix is a pin bump. Preserve the multi-line rationale comments already in that file -- they capture the uniffi/cargo-swift + AGP/Gradle pairing rules and should only be edited when the rule itself changes, not when an ordinary pin moves.
-- **Do not** edit anything under `<specify-cli>/crates/vectis/src/{init,verify,update_versions,prerequisites}.rs` or `<specify-cli>/src/main.rs` from this skill. If the fix requires orchestration changes, stop and flag it -- that is a separate CLI change, not a template update.
+- Edit the **template file** when the slice is visible in a scaffolded project (a renamed `use`, a new `#[allow(...)]`, a changed build flag, a new advisory in `deny.toml`). Every template file is `include_str!`-ed verbatim by `<specify-cli>/crates/vectis-scaffold/src/templates/{core,ios,android}.rs`, so editing the file is sufficient -- do not touch the module unless the set of files shipped, their predicates, or their target paths has changed.
+- Edit the **template module** (`<specify-cli>/crates/vectis-scaffold/src/templates/core.rs` etc.) only when: a new file is shipped / removed; an existing file's target path changes; a file's `IncludeWhen::{Always, AnyOf(&[Capability])}` predicate changes; a capability tag / CAP marker changes in `templates/mod.rs`; or a new placeholder is introduced and must be substituted. Respect the superstring-first substitution order (`__APP_NAME_LOWER__` before `__APP_NAME__`, `__ANDROID_PACKAGE_PATH__` before `__APP_NAME_LOWER__` in path segments). Any new template file must also be listed in the corresponding `<specify-cli>/templates/vectis/{core,ios,android}/MANIFEST.md`; the parity test `templates::core::tests::registry_matches_rfc_core_file_count` (and its iOS/Android siblings) enforces this.
+- Edit `<specify-cli>/crates/vectis-scaffold/embedded/versions.toml` when the accepted fix is a default pin bump. Preserve the multi-line rationale comments already in that file -- they capture the uniffi/cargo-swift + AGP/Gradle pairing rules and should only be edited when the rule itself changes, not when an ordinary pin moves. The scratch proposal remains a complete `--version-file` input until the fix is proven.
+- **Do not** edit host orchestration or WASI command behavior from this skill (`<specify-cli>/crates/vectis-scaffold/src/lib.rs`, `<specify-cli>/src/main.rs`, or any future helper that tries to rebuild registry query / verify orchestration). If the fix requires a new command surface, stop and flag it -- that is a separate CLI or WASI-tool change, not a template update.
 
 After each atomic edit:
 
-1. Re-run the single combo that reproduced the failure (all paths rooted at `{repo-dir}`, the `specify-cli` checkout):
+1. Re-run the single combo that reproduced the failure:
 
    ```bash
-   cargo build -p specify   # only if you touched anything under crates/vectis/ or src/
    rm -rf "{scratch-dir}/combo-<N>"
-   {repo-dir}/target/debug/specify --format json vectis init ScratchApp \
-     --dir "{scratch-dir}/combo-<N>" \
-     --caps "<caps>" --shells "<shells>" --version-file {version-file}
-   {repo-dir}/target/debug/specify --format json vectis verify \
-     --dir "{scratch-dir}/combo-<N>"
+   # Repeat D1's scratch project bootstrap and `specify tool run vectis-scaffold`
+   # render for this combo, then rerun the exact host command that failed.
    ```
 2. If the step that was failing now passes, move on. If a *later* step now fails, keep the edit and continue diagnosing -- do not revert unless the later failure is clearly caused by your change (not merely unmasked by it).
-3. If the fix required an `embedded/versions.toml` bump, also run `cargo test -p specify-vectis` from `{repo-dir}` -- the embedded-defaults unit tests pin a snapshot of the versions file that will need updating in the same commit.
+3. If the fix required an `embedded/versions.toml` bump, also run the `vectis-scaffold` unit tests from `{repo-dir}` -- the embedded-defaults tests parse the versions file and must pass with the new defaults.
 
 ### D4. Validate the full cap matrix
 
 Once every failing combo passes individually, run the whole matrix to catch unintended regressions (from `{repo-dir}`):
 
 ```bash
-{repo-dir}/target/debug/specify --format json vectis update-versions \
-  --dry-run --verify --version-file {version-file}
+# Pseudocode: run the same explicit render + host verify flow for every combo.
+for caps in "" "http" "http,kv" "http,kv,time,platform,sse"; do
+  dir="{scratch-dir}/matrix-${caps//,/}-core"
+  rm -rf "$dir"
+  mkdir -p "$dir"
+  cd "$dir"
+  specify init https://github.com/augentic/specify/capabilities/vectis
+  specify tool run vectis-scaffold -- core ScratchApp \
+    --caps "$caps" \
+    --version-file "{version-file}"
+  cargo check --workspace
+  cargo test --workspace
+  cargo clippy --all-targets -- -D warnings
+  cargo deny check
+  cargo vet
+  cargo run -p shared --bin codegen -- kotlin
+  cargo run -p shared --bin codegen -- swift
+done
 ```
 
-The output must show `verification.passed: true` and every entry in `verification.combos[].passed` must be `true`. If a previously-passing combo now fails, the fix in D3 was too broad -- narrow it (prefer scoped `#[allow]`, an additional cap-conditional branch, or a predicate refinement over a template-wide change).
+Every combo must pass. If a previously-passing combo now fails, the fix in D3 was too broad -- narrow it (prefer scoped `#[allow]`, an additional cap-conditional branch, or a predicate refinement over a template-wide change).
 
-If `shells` was set to `"ios,android"` in the arguments, also run the shell matrix combo-by-combo for the caps that include those shells -- `specify vectis update-versions --verify` is core-only by design; shell regressions surface at this step only.
+If `shells` was set to `"ios,android"` in the arguments, also run the shell matrix combo-by-combo for the caps that include those shells. Render each shell with `specify tool run vectis-scaffold -- ios ...` or `-- android ...`, then run the host platform commands. Shell regressions surface here because scaffold remains render-only.
 
 Finally, re-run the `specify-cli` repo's own gates from `{repo-dir}`:
 
 ```bash
-cargo build -p specify
-cargo clippy -p specify -p specify-vectis --all-targets -- -D warnings
-cargo test -p specify-vectis
+cargo build -p vectis-scaffold --target wasm32-wasip2
+cargo clippy -p specify -p vectis-scaffold --all-targets -- -D warnings
+cargo test -p vectis-scaffold
 cargo test --workspace
 ```
 
-All four must be green before the fix is considered valid. (`{repo-dir}` is the `specify-cli` checkout; the integration tests in `tests/vectis.rs` exercise the same `specify vectis init / verify / update-versions` paths this skill drives, so regressions there usually flag the same drift.)
+All four must be green before the fix is considered valid. (`{repo-dir}` is the `specify-cli` checkout; the integration tests around `specify tool run vectis-scaffold` should exercise the same render-only path this skill drives.)
 
 ### D5. Report
 
 Produce a structured report in Markdown with these sections. The orchestrator (`/vectis:template-updater`) copies this verbatim into the commit message or PR body.
 
-1. **Trigger** -- what bump prompted the run, with the specific pin diffs from `specify vectis update-versions --dry-run`.
+1. **Trigger** -- what bump prompted the run, with the specific pin diffs from `{scratch-dir}/pin-diff.md`.
 2. **Failures reproduced** -- one bullet per combo × step that failed, with the first line of the compiler/linker/cargo error.
 3. **Diagnoses** -- one paragraph per distinct root cause, citing the upstream changelog entry or RUSTSEC advisory that motivates the fix.
 4. **Changes** -- file-by-file list of edits with a one-line rationale per file. Cite the edit using the path relative to the `specify-cli` checkout; do not paste large diffs (the commit itself carries that).
-5. **Verification** -- confirmation that each failing combo now passes, the full matrix is green, and `cargo test --workspace` + `cargo test -p specify-vectis` both passed. Include the final `specify vectis update-versions --dry-run --verify` JSON's `verification.passed` line.
+5. **Verification** -- confirmation that each failing combo now passes, the full matrix is green, and `cargo test --workspace` + `cargo test -p vectis-scaffold` both passed. Include the exact `specify tool run vectis-scaffold` and host build commands that made up the matrix.
 6. **Known drift still unresolved** -- anything listed in [`references/known-drift.md`](references/known-drift.md) that the current bump did not exercise and therefore was not fixed. Do not invent new items; promote a known item out of the backlog only when a reproduced failure in this run proves it is fixed.
 
 ---
@@ -156,16 +216,11 @@ Produce a structured report in Markdown with these sections. The orchestrator (`
 
 This example walks the five-step flow for a hypothetical, mechanical rename.
 
-**D1. Detect.** `specify vectis update-versions --dry-run` proposes `crux_core: 0.17.0 → 0.18.0`. `specify vectis update-versions --dry-run --verify --version-file /tmp/proposed.toml` reports:
+**D1. Detect.** Host registry inspection proposes `crux_core: 0.17.0 → 0.18.0` in `/tmp/proposed-versions.toml`. The full cap matrix renders via `specify tool run vectis-scaffold -- core ScratchApp --caps <combo> --version-file /tmp/proposed-versions.toml`; every combo then fails the explicit host `cargo check --workspace` step with:
 
-```json
-{ "verification": { "passed": false, "combos": [
-  { "caps": "", "passed": false, "verify": { "assemblies": { "core": {
-    "passed": false,
-    "steps": [{"name": "cargo check", "passed": false,
-      "error": "error[E0432]: unresolved import `crux_core::render::Render`\n  ..."}]
-  }}}}
-] } }
+```text
+error[E0432]: unresolved import `crux_core::render::Render`
+  ...
 ```
 
 All four combos fail on the same `cargo check` step; only render-only is needed to diagnose.
@@ -174,13 +229,13 @@ All four combos fail on the same `cargo check` step; only render-only is needed 
 
 **D3. Update.** Edits (each atomic, each verified before the next):
 
-- `<specify-cli>/templates/vectis/core/app.rs`: `use crux_core::render::Render` → `use crux_core::render::View`; `Render` type alias (if present) → `View`; `Effect::Render(_)` cap-marker arm → `Effect::View(_)`. Run `specify vectis init ScratchApp --dir /tmp/combo-0 --caps "" --version-file /tmp/proposed.toml && specify vectis verify --dir /tmp/combo-0` -- `cargo check` now passes; `codegen swift` now fails because `Core.swift`'s `.render` arm is stale.
-- `<specify-cli>/templates/vectis/ios/Core.swift`: `case .render:` → `case .view:`. Re-run verify -- iOS passes.
-- `<specify-cli>/templates/vectis/android/Core.kt`: `is Effect.Render ->` → `is Effect.View ->`. Re-run verify -- Android passes.
+- `<specify-cli>/templates/vectis/core/app.rs`: `use crux_core::render::Render` → `use crux_core::render::View`; `Render` type alias (if present) → `View`; `Effect::Render(_)` cap-marker arm → `Effect::View(_)`. Re-render the failing combo with `specify tool run vectis-scaffold -- core ScratchApp --caps "" --version-file /tmp/proposed-versions.toml` and rerun `cargo check --workspace`; it now passes, while `cargo run -p shared --bin codegen -- swift` exposes stale Swift effect names.
+- `<specify-cli>/templates/vectis/ios/Core.swift`: `case .render:` → `case .view:`. Re-render iOS and run the iOS host build command; it passes.
+- `<specify-cli>/templates/vectis/android/Core.kt`: `is Effect.Render ->` → `is Effect.View ->`. Re-render Android and run the Android host build command; it passes.
 
-No template-module edit (no new files, no new placeholders, no predicate change). No parser edit (`classify_cap_path` matches `crux_core::render` as a whole-crate-level concern which survives the in-crate rename). No `embedded/versions.toml` edit other than the new `crux_core` pin itself (which `specify vectis update-versions` writes, not this skill).
+No template-module edit (no new files, no new placeholders, no predicate change). No parser edit (`classify_cap_path` matches `crux_core::render` as a whole-crate-level concern which survives the in-crate rename). The proposal file carries the new `crux_core` value until the full matrix proves it should become the embedded default.
 
-**D4. Validate.** `specify vectis update-versions --dry-run --verify --version-file /tmp/proposed.toml` now reports `verification.passed: true` with all four combos green. `cargo test -p specify-vectis` passes (the embedded-defaults snapshot was not touched -- this was a pin the CLI *proposes*, not one it *embeds*, until the user actually runs `specify vectis update-versions` without `--dry-run`). `cargo test --workspace` passes.
+**D4. Validate.** All four core combos render through `specify tool run vectis-scaffold -- core ... --version-file /tmp/proposed-versions.toml` and pass the host Cargo/codegen/deny/vet commands. The shell matrix passes for iOS and Android when requested. `cargo test -p vectis-scaffold` and `cargo test --workspace` pass before promoting the proposed `crux_core` pin into the embedded defaults.
 
 **D5. Report.** One paragraph summarising the rename, a three-bullet list of template edits, and the confirmation that all combos pass. The commit message subject is `templates: crux_core 0.18.0 rename Render → View`.
 
@@ -188,7 +243,7 @@ No template-module edit (no new files, no new placeholders, no predicate change)
 
 ## Anti-patterns (do not do these)
 
-- **Editing verify or init orchestration.** If a cap's pipeline "should" pick up a new step, the edit belongs in `<specify-cli>/crates/vectis/src/verify/*.rs`. That is a separate CLI change; this skill must stop and flag it rather than silently expand scope.
+- **Expanding `vectis-scaffold` beyond render-only.** If a cap's pipeline "should" pick up a new registry query, SDK check, or build step, keep it in the host workflow or flag a separate RFC. Do not hide host behavior behind `specify tool run`.
 - **Silencing a new advisory without understanding it.** `RUSTSEC-*` IDs added to `<specify-cli>/templates/vectis/core/deny.toml`'s `[advisories] ignore` list must have (a) a rationale comment naming the transitive chain that forces the advisory, and (b) no known safe upgrade path. A one-line `# upstream unmaintained` with no chain is not acceptable.
 - **Speculative rewrites.** Do not edit a template file that is not covered by at least one reproduced failure. Templates that look "stylistically outdated" are out of scope for this skill -- they belong in a separate refactor.
 - **Changing the placeholder order.** `templates::mod.rs::substitute_placeholders` substitutes superstrings first (`__APP_NAME_LOWER__` before `__APP_NAME__`; `__ANDROID_PACKAGE_PATH__` before `__APP_NAME_LOWER__`). Adding a new placeholder always means slotting it into this chain in superstring-first order -- never appending.
@@ -199,10 +254,9 @@ No template-module edit (no new files, no new placeholders, no predicate change)
 | File | Purpose |
 |---|---|
 | [`references/known-drift.md`](references/known-drift.md) | The running backlog of deferred fix items from chunks 11/12. Always consult before diagnosing. |
-| `<specify-cli>/crates/vectis/embedded/versions.toml` | Embedded default pins plus the multi-line rationale comments explaining the uniffi/cargo-swift and AGP/Gradle pairing rules. |
+| `<specify-cli>/crates/vectis-scaffold/embedded/versions.toml` | Embedded default pins plus the multi-line rationale comments explaining the uniffi/cargo-swift and AGP/Gradle pairing rules. |
 | `<specify-cli>/templates/vectis/{core,ios,android}/MANIFEST.md` | Source→target path mapping per template. The registry tests pin file counts; update the manifest when you add or remove a template file. |
-| `<specify-cli>/crates/vectis/src/templates/{mod.rs,core.rs,ios.rs,android.rs}` | Template engine (placeholder substitution, cap-conditional markers, path substitution for `__APP_NAME__` / `__APP_NAME_LOWER__` / `__ANDROID_PACKAGE_PATH__`) and per-assembly file registries. |
-| `<specify-cli>/crates/vectis/src/add_shell/parser.rs` | AST classifier for capability crates. Must be updated in lockstep with any Crux capability-crate rename. |
-| `<specify-cli>/crates/vectis/src/verify/{core,ios,android}.rs` | The ordered build/check steps this skill's Detect phase interprets. Do not edit from this skill. |
-| `<specify-cli>/tests/vectis.rs` | End-to-end integration tests for the `specify vectis init / verify / update-versions` paths -- the runnable reference for how this skill invokes the binary (success JSON shape, `invalid-project` and `missing-prerequisites` error envelopes, `PATH=""` trick for forcing missing-prerequisites). |
-| `rfcs/rfc-6-vectis-bootstrap.md` § Template Maintenance | Historical design narrative for this skill (now superseded by the `specify vectis` subcommand tree in `augentic/specify-cli`). |
+| `<specify-cli>/crates/vectis-scaffold/src/templates/{mod.rs,core.rs,ios.rs,android.rs}` | Template engine (placeholder substitution, cap-conditional markers, capability tags, path substitution for `__APP_NAME__` / `__APP_NAME_LOWER__` / `__ANDROID_PACKAGE_PATH__`) and per-assembly file registries. |
+| `<specify-cli>/crates/vectis-scaffold/src/lib.rs` | Render-only command contract, app-name validation, collision refusal, and `--version-file` parsing. Do not expand host behavior here from this skill. |
+| `<specify-cli>/tests/vectis_tool.rs` | Integration tests for `specify tool run vectis-scaffold` through the declared WASI tool path. |
+| `rfcs/rfc-16-wasi-vectis.md` § Tool Scope | Current design narrative for keeping scaffold render-only and moving registry / matrix behavior into host-owned skill workflows. |

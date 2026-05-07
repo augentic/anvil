@@ -1,0 +1,53 @@
+# Final state of .specify/slices/update-user-api-v2/journal.yaml
+# (or its archived equivalent under .specify/archive/...) after the
+# post-merge cross-project check has run.
+#
+# Both entries were appended by /change:execute via:
+#
+#   specify slice journal append update-user-api-v2 merge failure \
+#       --summary "cross-project-warning: <change-kind> in mobile for contracts/http/user-api.yaml" \
+#       --context "<the structured payload below>"
+#
+# Per the journal contract (specify-cli/crates/change/src/journal.rs),
+# `type: failure` is reused — no new EntryKind variant is introduced.
+# The `cross-project-warning:` summary prefix is the canonical signal
+# that distinguishes §3B findings from in-loop phase failures, so
+# readers can grep on the prefix to filter.
+#
+# The merge phase itself wrote no entries (it succeeded cleanly), so
+# both entries below are driver-authored, post-success. The change
+# stays in `done` state — see `plan.yaml.after`.
+
+entries:
+  - timestamp: 2026-04-28T14:30:05Z
+    step: merge
+    type: failure
+    summary: "cross-project-warning: removed-field in mobile for contracts/http/user-api.yaml"
+    context: |
+      contract: contracts/http/user-api.yaml
+      consumer: mobile
+      workspace: .specify/workspace/mobile/
+      change-kind: removed-field
+      locator: paths./users/{id}.get.responses.200.content.application/json.schema.properties.email
+      severity: warning
+      details: |
+        The producer's update removes the `email` field from the
+        GET /users/{id} response body. The consumer's last-known view
+        defines this field; consumer code that reads it will receive
+        `undefined` after the next workspace sync.
+
+  - timestamp: 2026-04-28T14:30:05Z
+    step: merge
+    type: failure
+    summary: "cross-project-warning: required-field-added in mobile for contracts/http/user-api.yaml"
+    context: |
+      contract: contracts/http/user-api.yaml
+      consumer: mobile
+      workspace: .specify/workspace/mobile/
+      change-kind: required-field-added
+      locator: paths./users.post.requestBody.content.application/json.schema.required
+      severity: warning
+      details: |
+        Producer adds `phone-number` to the required field list of
+        POST /users. Consumer requests built from the prior shape will
+        be rejected with HTTP 400.

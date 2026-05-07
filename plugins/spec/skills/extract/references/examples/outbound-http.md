@@ -7,11 +7,11 @@ Analyze a simple TypeScript service that receives messages and makes HTTP calls 
 ## Input Parameters
 
 ```bash
-extract ./src/handler.ts $CHANGE_DIR
+extract ./src/handler.ts $SLICE_DIR
 ```
 
 - **TypeScript Source**: `./src/handler.ts`
-- **Specify Output**: `$CHANGE_DIR` (specs/ + design.md)
+- **Specify Output**: `$SLICE_DIR` (specs/ + design.md)
 
 ## TypeScript Source Code
 

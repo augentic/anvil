@@ -81,16 +81,16 @@ When finished, revert to published plugins:
 make use-team-plugins   # clear cache; Cursor refetches from server on restart
 ```
 
-### Testing schema changes
+### Testing capability changes
 
-Schemas are read from the filesystem at `/spec:init` time, not from the plugin cache. To iterate on schemas in a target project, symlink them:
+Capabilities are read from the filesystem at `/spec:init` time, not from the plugin cache. To iterate on capabilities in a target project, symlink them:
 
 ```bash
 SPECIFY_REPO="path/to/augentic/specify"
-ln -sf "$SPECIFY_REPO/schemas" schemas
+ln -sf "$SPECIFY_REPO/capabilities" capabilities
 ```
 
-Schema edits take effect immediately -- no cache clear or restart needed.
+Capability edits take effect immediately -- no cache clear or restart needed.
 
 ## Shared references
 
