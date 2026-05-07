@@ -388,6 +388,7 @@ Linter rules in `specify-check` (RFC-5) enforce, additionally:
 2. `**specify migrate slice-layout` and in-progress per-loop units.** The migration refuses to run when a per-loop unit is mid-phase (operator must finish or drop it first). A future release may extend it to migrate in-progress work by rewriting `.metadata.yaml` and re-stamping journal entries. Provisional: require operators to finish or drop in-progress work first — the canonical loop is short enough that this is rarely costly.
 3. **Hub project discriminator.** This RFC pins `hub: true` (with `capability:` omitted) as the post-RFC hub sentinel. An alternative `kind: { package, hub }` discriminator would be more symmetric with RFC-14's `package: / workspace:` shape. Defer to RFC-14: if RFC-14 lands the workspace shape it can revisit the hub spelling under the same discriminator.
 4. **First-party capability binary distribution.** Phase 4 moves contracts SemVer + `info.x-specify-id` validation into capability skills, but does not pin whether the validator ships as a Rust binary, a TypeScript checker, or a shell script. Provisional: capability authors choose; this RFC only requires that the validator is invokable from the merge brief and reports through the §Merge and adoption contract protocol.
+   Disposition: resolved by [RFC-15](../rfc-15-wasm-plugins.md), which standardizes declared WASI tools run through `specify tool`.
 
 ## References
 

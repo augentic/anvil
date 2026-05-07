@@ -11,6 +11,7 @@ capabilities/
 ├── capability.schema.json       # JSON Schema for capability.yaml
 ├── omnia/
 │   ├── capability.yaml          # Pipeline declarations
+│   ├── tools.yaml               # Optional WASI tool sidecar
 │   └── briefs/
 │       ├── proposal.md
 │       ├── specs.md
@@ -20,6 +21,7 @@ capabilities/
 │       └── merge.md
 ├── vectis/
 │   ├── capability.yaml
+│   ├── tools.yaml               # Optional WASI tool sidecar
 │   └── briefs/
 │       ├── proposal.md
 │       ├── specs.md
@@ -30,6 +32,7 @@ capabilities/
 │       └── merge.md
 └── contracts/
     ├── capability.yaml
+    ├── tools.yaml               # Optional WASI tool sidecar
     └── briefs/...
 ```
 
@@ -73,6 +76,29 @@ pipeline:
 | `pipeline` | object | yes | Pipeline phases with ordered brief references. |
 
 The post-RFC manifest deliberately drops the legacy `domain` and `extends` fields. Tech-stack guidance, architectural notes, and testing context belong in capability references and skills, not in always-loaded manifest metadata.
+
+### Optional tool sidecar
+
+Capabilities may ship a `tools.yaml` sidecar next to `capability.yaml` to declare WASI helper tools for `specify tool`. The `capability.yaml` schema remains closed and unchanged; do not add a `tools:` field to it.
+
+```yaml
+# capabilities/contracts/tools.yaml
+tools:
+  - name: contract
+    version: 1.0.0
+    source: "https://github.com/augentic/specify-tools/releases/download/1.0.0/contract.wasm"
+    sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    permissions:
+      read:
+        - "$PROJECT_DIR/contracts"
+      write: []
+```
+
+Use absolute local paths or `file://` URIs for vendored and first-party development artifacts. Use `https://` for third-party or released artifacts. Released tool declarations should include `sha256`; first-party release declarations require it so cache fills verify the exact component bytes.
+
+Capability-scope tools may use `$CAPABILITY_DIR` in permission paths to read capability-owned templates or resources. Project-scope declarations in `.specify/project.yaml` may not use `$CAPABILITY_DIR`.
+
+See [specify tool](../reference/cli/tool.md), [Tool Declarations](../explanation/tool-declarations.md), and [RFC-15](../../rfcs/rfc-15-wasm-plugins.md) for the command surface, declaration precedence, cache layout, and security model.
 
 ### Pipeline structure
 

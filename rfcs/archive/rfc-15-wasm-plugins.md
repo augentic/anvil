@@ -1,6 +1,6 @@
 # RFC-15 WASI Capability Tools
 
-> Status: Draft - Depends: [RFC-13](archive/rfc-13-extensibility.md) - Resolves: [RFC-13 Open Questions #4](archive/rfc-13-extensibility.md#open-questions)
+> Status: Implemented - Depends: [RFC-13](archive/rfc-13-extensibility.md) - Resolves: [RFC-13 Open Questions #4](archive/rfc-13-extensibility.md#open-questions)
 
 ## Abstract
 

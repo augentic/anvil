@@ -1,0 +1,11 @@
+# Capability-scope tool declarations for the contracts capability.
+# Schema: ../../../specify-cli/schemas/tool.schema.json
+tools:
+  - name: contract
+    version: 0.2.0
+    source: "file:///Users/andrewweston/github.com/augentic/specify-cli/crates/contract-validate/dist/contract-0.2.0.wasm"
+    sha256: "6f32f636b7e1872f23a76b8adcccb8855a882bf83691151f7392a16df294a805"
+    permissions:
+      read:
+        - "$PROJECT_DIR/contracts"
+      write: []

@@ -49,8 +49,8 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | [specify change](change.md) | Manage the operator-authored change brief and finalize landed changes | Layers 3–4 closure |
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
 | [specify capability](capability.md) | Capability resolution and brief pipeline queries | Capability infrastructure |
+| [specify tool](tool.md) | Resolve, cache, and run declared WASI helper tools | Deterministic extension runner |
 | [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |
-| [specify-contract-validate](contract.md) | Standalone validator that walks a baseline `contracts/` directory and enforces the RFC-12 §Validation rules | Capability-owned merge gate |
 | [specify init](init.md) | Project scaffold | One-time setup |
 | [specify migrate](migrate.md) | One-shot layout migrations (currently `v2-layout`) | Upgrade path |
 | [specify-vectis](vectis.md) | Standalone binary for Crux project scaffolding, verification, and version management (RFC-13 §4.3a) | Capability-owned merge gate + Vectis tooling |

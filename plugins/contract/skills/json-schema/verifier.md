@@ -11,13 +11,13 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 | Mode | Caller | Trigger | Scope | Output |
 |---|---|---|---|---|
 | `single` (default) | contracts capability build brief in `/spec:build` | Post-author or post-import | One slice's `contracts/schemas/` inside one project, plus the slice's and baseline's HTTP / messaging consumers | Markdown report for the verify-repair loop |
-| `cross-project` | contracts capability merge brief; `/change:execute` post-merge step | Producer-side merge of a contract change touching schemas | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation | JSON envelope produced by `specify-contract-validate` |
+| `cross-project` | contracts capability merge brief; `/change:execute` post-merge step | Producer-side merge of a contract change touching schemas | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation | JSON envelope produced by `specify tool run contract` |
 
-`single` mode feeds the brief's verify-repair loop and is the natural exit point for both author and importer runs. `cross-project` mode is a thin delegate over the standalone `specify-contract-validate` binary (RFC-13 §4.2a) — the verifier shells out to the binary and surfaces its findings; it does not implement its own cross-baseline check. Both modes share the read-only contract.
+`single` mode feeds the brief's verify-repair loop and is the natural exit point for both author and importer runs. `cross-project` mode is a thin delegate over the declared `contract` WASI tool (RFC-13 §4.2a, RFC-15) — the verifier shells out through `specify tool run contract` and surfaces its findings; it does not implement its own cross-baseline check. Both modes share the read-only contract.
 
-`--mode` was previously exposed as a top-level flag on the standalone validator skill in the (now retired) `contracts` plugin (RFC-10 §C.3). It is now an internal flag of the format-specific verifier. `cross-project` was further re-homed in RFC-13 §"Merge and adoption contract": the consumer-compatibility heuristic that lived in this file pre-RFC-13 has been retired in favour of the deterministic baseline check that `specify-contract-validate` runs on the merged `contracts/` directory. Single-mode behaviour is unchanged.
+`--mode` was previously exposed as a top-level flag on the standalone validator skill in the (now retired) `contracts` plugin (RFC-10 §C.3). It is now an internal flag of the format-specific verifier. `cross-project` was further re-homed in RFC-13 §"Merge and adoption contract": the consumer-compatibility heuristic that lived in this file pre-RFC-13 has been retired in favour of the deterministic baseline check that the declared `contract` tool runs on the merged `contracts/` directory. Single-mode behaviour is unchanged.
 
-Note: `specify-contract-validate` walks **top-level OpenAPI 3.1 / AsyncAPI 3.0 documents only** (root key `openapi:` or `asyncapi:`). Standalone JSON Schema files under `contracts/schemas/` are payload vocabulary, not top-level contracts, and are skipped by the binary's filter (RFC-12 §"Top-level contracts"). The `cross-project` invocation is therefore identical across all three format verifiers — the binary handles format selection internally.
+Note: `specify tool run contract` walks **top-level OpenAPI 3.1 / AsyncAPI 3.0 documents only** (root key `openapi:` or `asyncapi:`). Standalone JSON Schema files under `contracts/schemas/` are payload vocabulary, not top-level contracts, and are skipped by the validator filter (RFC-12 §"Top-level contracts"). The `cross-project` invocation is therefore identical across all three format verifiers — the tool handles format selection internally.
 
 ## Inputs
 
@@ -42,7 +42,7 @@ Caller passes the merged baseline directory:
 $BASELINE_CONTRACTS = $PROJECT_ROOT/contracts   # the merged baseline, post-`specify slice merge run`
 ```
 
-The verifier shells out to `specify-contract-validate` (RFC-13 §4.2a), which walks every top-level OpenAPI 3.1 / AsyncAPI 3.0 document under `$BASELINE_CONTRACTS` and enforces the RFC-12 §Validation rules. Standalone schemas under `$BASELINE_CONTRACTS/schemas/` are not validated by the binary — they are payload vocabulary, not top-level contracts (RFC-12 §"Top-level contracts" + §Non-goals). Schema-side issues are caught earlier, in `single` mode, during the build verify-repair loop.
+The verifier shells out to `specify tool run contract -- "$BASELINE_CONTRACTS" --format json` (RFC-13 §4.2a, RFC-15), which walks every top-level OpenAPI 3.1 / AsyncAPI 3.0 document under `$BASELINE_CONTRACTS` and enforces the RFC-12 §Validation rules. Standalone schemas under `$BASELINE_CONTRACTS/schemas/` are not validated by the tool — they are payload vocabulary, not top-level contracts (RFC-12 §"Top-level contracts" + §Non-goals). Schema-side issues are caught earlier, in `single` mode, during the build verify-repair loop.
 
 ## Prerequisites
 
@@ -55,8 +55,9 @@ If `$CHANGE_SCHEMAS` does not exist or contains no files, report all checks as p
 
 ### `cross-project` mode
 
-- `specify-contract-validate` is on `$PATH` (chunk 4.2a ships it alongside `specify`).
-- `$BASELINE_CONTRACTS` (`$PROJECT_ROOT/contracts`) is the directory the binary will walk. The binary itself handles the "directory is absent" case by exiting `2` with a stderr diagnostic; callers MUST NOT pre-stat the path.
+- `specify` is on `$PATH` and supports `specify tool run`.
+- The current project resolves the contracts capability sidecar that declares the `contract` tool.
+- `$BASELINE_CONTRACTS` (`$PROJECT_ROOT/contracts`) is the directory the tool will walk. The declared read permission points at `$PROJECT_DIR/contracts`; if that directory is absent, `specify tool run` exits `2`. Callers MUST NOT pre-stat the path.
 
 ## Single-mode checks
 
@@ -223,7 +224,7 @@ All checks passed (19 $ref pointers, 7 schemas, 0 $id collisions, 0 backwards-in
 
 `cross-project` mode runs **after** a producer's contract change merges. The contracts capability merge brief invokes it as the post-merge baseline gate (RFC-13 §"Merge and adoption contract"); `/change:execute` re-uses the same gate per project after a producer-side merge (RFC-9 §3B).
 
-The mode is a thin delegate over `specify-contract-validate` (RFC-13 §4.2a). The verifier sibling does not implement an independent cross-project algorithm — it shells out to the binary, exits with the binary's exit code, and lets the caller (the merge brief, or `/change:execute`) consume the JSON envelope. The deterministic checks the binary enforces are the RFC-12 §Validation rules over the merged baseline's top-level OpenAPI / AsyncAPI documents:
+The mode is a thin delegate over `specify tool run contract` (RFC-13 §4.2a, RFC-15). The verifier sibling does not implement an independent cross-project algorithm — it shells out to the declared WASI tool, exits with the tool's exit code, and lets the caller (the merge brief, or `/change:execute`) consume the JSON envelope. The deterministic checks the tool enforces are the RFC-12 §Validation rules over the merged baseline's top-level OpenAPI / AsyncAPI documents:
 
 - `contract.version-is-semver` — every top-level document's `info.version` parses as SemVer (per [semver.org](https://semver.org), prerelease labels included).
 - `contract.id-format` — when `info.x-specify-id` is present, the value matches `^[a-z][a-z0-9-]*$` and is ≤ 64 characters.
@@ -234,11 +235,11 @@ Standalone JSON Schemas under `$BASELINE_CONTRACTS/schemas/` are payload vocabul
 ### Invocation
 
 ```bash
-specify-contract-validate "$PROJECT_ROOT/contracts" --format json > /tmp/contract-findings.json
+specify tool run contract -- "$PROJECT_ROOT/contracts" --format json > /tmp/contract-findings.json
 case $? in
   0) ;;  # clean — no findings, baseline is well-formed
   1) ;;  # findings present — caller MUST treat as `failure`
-  2) ;;  # validator could not run — caller MUST treat as `failure` and journal stderr
+  2) ;;  # tool/validator could not run — caller MUST treat as `failure` and journal diagnostics
 esac
 ```
 
@@ -246,7 +247,7 @@ esac
 
 ### JSON envelope
 
-The standalone binary writes a single JSON object to stdout in `--format json`. The shape is byte-for-byte identical to the envelope the retired in-binary contract validator emitted before chunk 2.7 (preserved by chunk 4.2a):
+The declared tool writes a single JSON object to stdout in `--format json` when the validator runs. The shape is byte-for-byte identical to the envelope the retired in-binary contract validator emitted before chunk 2.7:
 
 ```json
 {
@@ -264,7 +265,7 @@ The standalone binary writes a single JSON object to stdout in `--format json`. 
 Field semantics:
 
 - `schema-version` — currently `2`; bumps follow RFC-12. Callers MUST validate this before parsing the rest of the envelope.
-- `contracts-dir` — the absolute path the binary walked, echoing the positional argument.
+- `contracts-dir` — the absolute path the tool walked, echoing the positional argument.
 - `ok` — `true` iff `findings` is empty.
 - `findings[].path` — repo-relative when the parent of `<baseline-dir>` matches the path's prefix, otherwise absolute. Suitable for verbatim rendering in operator-facing reports.
 - `findings[].rule-id` — one of `contract.version-is-semver`, `contract.id-format`, `contract.id-unique`.
@@ -279,13 +280,13 @@ Callers that need to journal individual findings (the merge brief on a `failure`
 |---|---|---|
 | `0` | Clean — no findings. | Proceed to the next merge-brief step (e.g. `specify slice merge run`). |
 | `1` | One or more findings. | Record `failure`; halt the merge brief. The slice's deltas remain unmerged. |
-| `2` | Validator could not run (path missing, not a directory, internal error). | Record `failure`; journal the stderr line. The slice's deltas remain unmerged. |
+| `2` | The tool could not run (resolver, permission, runtime, path missing, not a directory, internal error). | Record `failure`; journal the stderr line or JSON error message. The slice's deltas remain unmerged. |
 
-The mode is **deterministic**: the binary is a thin shell over `specify_validate::validate_baseline_contracts` (in the `specify-cli` workspace). Repeated invocations against the same baseline produce identical findings.
+The mode is **deterministic**: the WASI tool is a thin shell over `specify_validate::validate_baseline_contracts` (in the `specify-cli` workspace). Repeated invocations against the same baseline produce identical findings.
 
-### Why a binary delegate?
+### Why a WASI tool delegate?
 
-Per RFC-13 §"Merge and adoption contract" and §Open Question 4, the contracts capability owns merge gating; the core no longer ships an in-binary contract validator (chunk 2.7 deleted that command surface). The standalone `specify-contract-validate` binary (chunk 4.2a) is the replacement: a deterministic, capability-owned gate the merge brief can shell out to without crossing the core boundary or re-introducing concern-specific behavior into core crates.
+Per RFC-13 §"Merge and adoption contract" and §Open Question 4, the contracts capability owns merge gating; the core no longer ships an in-binary contract validator (chunk 2.7 deleted that command surface). The declared `contract` WASI tool is the replacement: a deterministic, capability-owned gate the merge brief can run through `specify` without crossing the core boundary or re-introducing concern-specific behavior into core crates.
 
 The pre-RFC-13 consumer-compatibility heuristic that the verifier markdowns described — comparing a producer schema against each consumer's tier-2 workspace clone, classifying breaking changes into a `change-kind` vocabulary — has been retired in this chunk. Schema-side breakage that the consumer-compat heuristic used to surface is caught earlier, in `single`-mode Check 4 (cross-format consumer compatibility), before the merge phase. The deterministic binary is the canonical post-merge gate; richer consumer-side analysis is a follow-up that future RFCs can re-introduce on top of the merge brief if operator demand warrants it (RFC-13 §Open Question 1).
 
@@ -308,14 +309,14 @@ The pre-RFC-13 consumer-compatibility heuristic that the verifier markdowns desc
 
 | Scenario | Behavior |
 |---|---|
-| `$BASELINE_CONTRACTS` is absent | Binary exits `2` with `error: baseline directory does not exist`. Caller records `failure`. |
-| `$BASELINE_CONTRACTS` is empty (no top-level contracts) | Binary exits `0` with `findings: []`. Treated as clean. |
+| `$BASELINE_CONTRACTS` is absent | `specify tool run` exits `2` because the declared read preopen is missing or because the validator reports the missing directory. Caller records `failure`. |
+| `$BASELINE_CONTRACTS` is empty (no top-level contracts) | Tool exits `0` with `findings: []`. Treated as clean. |
 | Top-level contract has non-SemVer `info.version` | Finding `contract.version-is-semver`; exit `1`. Caller records `failure`. |
 | Top-level contract has malformed `info.x-specify-id` | Finding `contract.id-format`; exit `1`. |
 | Two top-level contracts share the same `info.x-specify-id` | Finding `contract.id-unique` against each colliding path; exit `1`. |
 | Standalone JSON Schema under `$BASELINE_CONTRACTS/schemas/` has missing metadata | **Not** a `cross-project` concern — schema-only files are skipped by the binary's `openapi:` / `asyncapi:` filter. Schema-side issues are caught in `single` mode (Checks 1–4). |
-| YAML file under `$BASELINE_CONTRACTS` is malformed | Skipped by the binary (the format-verifier owns YAML diagnostics in `single` mode); does not surface as a cross-project finding. |
-| `specify-contract-validate` is not on `$PATH` | The shell-out fails with `command not found`; caller records `failure` with the resolve diagnostic on `--context`. |
+| YAML file under `$BASELINE_CONTRACTS` is malformed | Skipped by the validator (the format-verifier owns YAML diagnostics in `single` mode); does not surface as a cross-project finding. |
+| `specify` is not on `$PATH` | The shell-out fails with `command not found`; caller records `failure` with the resolve diagnostic on `--context`. |
 
 ## Guardrails
 
@@ -324,7 +325,7 @@ The pre-RFC-13 consumer-compatibility heuristic that the verifier markdowns desc
 - Use `WARN` rather than `FAIL` (in `single` mode) when classification is ambiguous, e.g. when a schema is referenced by no bindings but might be shared vocabulary the spec brief just hasn't bound yet.
 - Do not attempt to fix issues — report them. Repair belongs to the author or importer sibling.
 - **`cross-project` mode is fatal.** Treat exit codes `1` (findings) and `2` (invocation error) as `failure` per RFC-13 §"Merge and adoption contract". The merge brief MUST halt; the slice's deltas remain unmerged until the operator resolves the finding.
-- Do not re-implement the binary's checks. The verifier sibling's `cross-project` mode is a delegate; the canonical algorithm lives in `crates/validate/src/contracts.rs` of the `specify-cli` workspace.
+- Do not re-implement the tool's checks. The verifier sibling's `cross-project` mode is a delegate; the canonical algorithm lives in `crates/validate/src/contracts.rs` of the `specify-cli` workspace.
 
 ## Verification checklist
 
@@ -343,10 +344,10 @@ Before completing the run:
 
 Before completing the run:
 
-- [ ] `specify-contract-validate "$PROJECT_ROOT/contracts" --format json` invoked exactly once.
+- [ ] `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` invoked exactly once.
 - [ ] Stdout (the JSON envelope) captured for the caller (typically the merge brief's `--context`).
-- [ ] Exit code propagated verbatim to the caller (`0` clean / `1` findings / `2` invocation error).
-- [ ] No findings re-classified, suppressed, or downgraded — the binary's output is authoritative.
+- [ ] Exit code propagated verbatim to the caller (`0` clean / `1` findings / `2` tool or validator error).
+- [ ] No findings re-classified, suppressed, or downgraded — the tool's output is authoritative.
 - [ ] No files created or modified.
 
 ## See also
@@ -355,6 +356,6 @@ Before completing the run:
 - [`../../references/artifact-structure.md`](../../references/artifact-structure.md) — directory layout for the slice-local delta and the baseline.
 - [`../../references/report-shape.md`](../../references/report-shape.md) — single-mode markdown report shape this verifier emits.
 - [`../../references/cross-project-compatibility.md`](../../references/cross-project-compatibility.md) — `change-kind` enumeration used by Check 4 (single-mode cross-format consumer compatibility).
-- [`../../../../capabilities/contracts/briefs/merge.md`](../../../../capabilities/contracts/briefs/merge.md) — merge brief that owns the post-merge `specify-contract-validate` invocation and the §Merge and adoption contract three-branch outcome wiring.
+- [`../../../../capabilities/contracts/briefs/merge.md`](../../../../capabilities/contracts/briefs/merge.md) — merge brief that owns the post-merge `specify tool run contract` invocation and the §Merge and adoption contract three-branch outcome wiring.
 - [`author.md`](./author.md) — sibling for spec-driven authoring.
 - [`importer.md`](./importer.md) — sibling for normalising external documents.

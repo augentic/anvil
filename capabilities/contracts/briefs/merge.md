@@ -6,22 +6,22 @@ needs: [build]
 
 Before merging, confirm all task checkboxes in `tasks.md` are complete and the slice status is `complete`. Delta-spec merging, baseline coherence validation, the lifecycle transition, and the archive move are delegated to the `specify` CLI: `specify slice merge preview`, `specify slice merge conflict-check`, `specify slice merge run`, and `specify slice validate`.
 
-Follow the [`specify-merge`](../../../plugins/spec/skills/merge/SKILL.md) skill for the driver-side flow — slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The contracts capability adds **one capability-specific gate** on top of that flow: the post-merge baseline check via the standalone `specify-contract-validate` binary (RFC-13 §"Merge and adoption contract"). Every other artefact under `specs/` and `contracts/` is promoted by the standard delta merge.
+Follow the [`specify-merge`](../../../plugins/spec/skills/merge/SKILL.md) skill for the driver-side flow — slice selection, prerequisite checks, the AskQuestion confirmation around the merge preview, baseline-drift handling, and result rendering. The contracts capability adds **one capability-specific gate** on top of that flow: the post-merge baseline check via the declared `contract` WASI tool (RFC-13 §"Merge and adoption contract", RFC-15). Every other artefact under `specs/` and `contracts/` is promoted by the standard delta merge.
 
 ## Capability-specific adoption gate
 
-After `specify slice merge run` exits zero (i.e. the slice's `contracts/` deltas have been promoted into root `contracts/` and the lifecycle has transitioned to `merged`), shell out to `specify-contract-validate` against the now-updated baseline:
+After `specify slice merge run` exits zero (i.e. the slice's `contracts/` deltas have been promoted into root `contracts/` and the lifecycle has transitioned to `merged`), run the declared tool against the now-updated baseline:
 
 ```bash
-specify-contract-validate "$PROJECT_ROOT/contracts" --format json > /tmp/contract-findings.json
+specify tool run contract -- "$PROJECT_ROOT/contracts" --format json > /tmp/contract-findings.json
 case $? in
   0) ;;  # clean — baseline is well-formed; nothing further to do
   1) ;;  # findings present — record `failure` (see §failure below)
-  2) ;;  # validator could not run — record `failure` (see §failure below)
+  2) ;;  # tool/validator could not run — record `failure` (see §failure below)
 esac
 ```
 
-The binary enforces the RFC-12 §Validation rules across every top-level OpenAPI 3.1 / AsyncAPI 3.0 document under the supplied directory:
+The tool enforces the RFC-12 §Validation rules across every top-level OpenAPI 3.1 / AsyncAPI 3.0 document under the supplied directory:
 
 - `contract.version-is-semver` — `info.version` parses as SemVer per [semver.org](https://semver.org).
 - `contract.id-format` — when `info.x-specify-id` is present, the value matches `^[a-z][a-z0-9-]*$` and is ≤ 64 characters.
@@ -41,9 +41,9 @@ The JSON envelope is the canonical shape callers parse. Field reference (matches
 }
 ```
 
-When the slice does not touch `contracts/` at all (e.g. a planning-metadata-only contracts slice), still run the validator after merge — the baseline as a whole must remain well-formed, and the binary is cheap on a clean baseline. When `contracts/` is absent entirely, the binary exits `2`; treat that as `failure` per the §failure branch below (the merge brief should not be running for a contracts slice that has no baseline to validate).
+When the slice does not touch `contracts/` at all (e.g. a planning-metadata-only contracts slice), still run the validator after merge — the baseline as a whole must remain well-formed, and the tool is cheap on a clean baseline. When `contracts/` is absent entirely, `specify tool run` exits `2` before or during validator invocation; treat that as `failure` per the §failure branch below (the merge brief should not be running for a contracts slice that has no baseline to validate).
 
-The binary is a deterministic, capability-owned gate; it does not parse the slice's deltas in isolation. If the operator needs to inspect the slice's contributions before merge, run the format-verifier `single` mode through `/spec:build` — the merge brief intentionally validates the merged baseline, not the staged delta, because cross-repo id uniqueness only resolves once the deltas are promoted.
+The WASI tool is a deterministic, capability-owned gate; it does not parse the slice's deltas in isolation. If the operator needs to inspect the slice's contributions before merge, run the format-verifier `single` mode through `/spec:build` — the merge brief intentionally validates the merged baseline, not the staged delta, because cross-repo id uniqueness only resolves once the deltas are promoted.
 
 ### Consumer-project pin updates
 
@@ -62,7 +62,7 @@ The shared phase contract (outcome values, journal kinds, the verbatim-`summary`
 
 ### success — merge applied, validator clean, slice archived
 
-`specify slice merge run` exited zero AND `specify-contract-validate` exited `0`. The CLI atomically stamps `PhaseOutcome { phase: merge, outcome: success }` into `.metadata.yaml`, transitions the lifecycle to `merged`, and moves the slice directory into `.specify/archive/YYYY-MM-DD-<slice>/`.
+`specify slice merge run` exited zero AND `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` exited `0`. The CLI atomically stamps `PhaseOutcome { phase: merge, outcome: success }` into `.metadata.yaml`, transitions the lifecycle to `merged`, and moves the slice directory into `.specify/archive/YYYY-MM-DD-<slice>/`.
 
 The brief MUST NOT call `specify slice outcome set` on this path — the slice directory no longer exists under `.specify/slices/<slice>/` after archiving, so the call would fail with `not found`. The archived `.metadata.yaml` carries the success outcome; `/change:execute` reads it via `specify slice outcome show <slice>`, which falls back to the archive when the active directory is absent. See [`phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md) §"Merge success path is CLI-stamped".
 
@@ -73,7 +73,7 @@ The brief MUST NOT call `specify slice outcome set` on this path — the slice d
 This branch covers two distinct failure modes:
 
 1. **`specify slice merge run` exited non-zero** (a delta could not be applied, baseline coherence failed inside the merge call, the lifecycle gate refused the call). The filesystem is unchanged: no baseline was written and the slice directory was not moved. Same shape as the omnia merge brief's `failure` branch.
-2. **`specify-contract-validate` returned exit code `1` or `2` after a successful `specify slice merge run`.** The deltas have already landed in the baseline (the CLI stamped `success` atomically), but the merged baseline is now invalid under the RFC-12 rules. **The brief MUST NOT attempt to roll back the merge** — `specify slice merge run` is not transactional with the validator. Instead, journal the validator's findings on the now-archived slice and surface the failure to the operator; the operator opens a follow-up slice (or `/spec:drop --reason …` and re-defines) to repair the baseline.
+2. **`specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` returned exit code `1` or `2` after a successful `specify slice merge run`.** The deltas have already landed in the baseline (the CLI stamped `success` atomically), but the merged baseline is now invalid under the RFC-12 rules or the declared tool could not run. **The brief MUST NOT attempt to roll back the merge** — `specify slice merge run` is not transactional with the validator. Instead, journal the validator's findings or tool diagnostic on the now-archived slice and surface the failure to the operator; the operator opens a follow-up slice (or `/spec:drop --reason …` and re-defines) to repair the baseline.
 
 In both modes, record the failure on the slice — first journal the diagnostic, then stamp the outcome (when the slice is still under `.specify/slices/`):
 
@@ -102,7 +102,7 @@ specify slice journal append <slice> merge failure \
 
 For mode 1, `/change:execute` reads the `failure` outcome and translates it into a plan-entry transition to `failed`, surfaces the journal entries to the operator, and stops the loop. For mode 2, `/change:execute` reads the CLI-stamped `success` outcome and proceeds with the next plan entry; the operator separately triages the journal `failure` entry on the archived slice and queues a repair slice when ready. In neither mode does the brief retry the merge automatically — the failing delta or invalid baseline state needs human attention before a repeat attempt is safe.
 
-`--summary` writing rules for validator findings: the load-bearing string is `"<findings[0].rule-id>: <one-line summary of findings[0].detail>"`. Keep it short enough to fit a CLI argument without truncation; route the full JSON envelope through `--context` instead. When the validator returns exit `2` (invocation error), use `"specify-contract-validate could not run: <stderr first line>"` and put the full stderr on `--context`.
+`--summary` writing rules for validator findings: the load-bearing string is `"<findings[0].rule-id>: <one-line summary of findings[0].detail>"`. Keep it short enough to fit a CLI argument without truncation; route the full JSON envelope through `--context` instead. When `specify tool run contract` returns exit `2` (resolver, permission, runtime, or invocation error), use `"contract tool could not run: <stderr first line or JSON error message>"` and put the full stderr/stdout diagnostic on `--context`.
 
 ### deferred — human judgement required
 
