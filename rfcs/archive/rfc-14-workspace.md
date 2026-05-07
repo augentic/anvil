@@ -1,6 +1,6 @@
 # RFC-14: Registry Workspace
 
-> Status: Accepted · Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-1](archive/rfc-1-cli.md), [RFC-9](archive/rfc-9-platform.md)
+> Status: Implemented · Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-1](archive/rfc-1-cli.md), [RFC-9](archive/rfc-9-platform.md)
 
 ## Abstract
 
