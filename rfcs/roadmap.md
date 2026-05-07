@@ -9,6 +9,8 @@ Specify is moving toward a highly opinionated, spec-driven workflow framework fo
 
 This roadmap captures the next strategic corrections and extensions. The goal is not to turn Specify into a general developer portal, AI gateway, or CI system. The goal is to make Specify the workflow control plane that can use those systems while preserving local, reviewable, deterministic execution.
 
+Recent multi-repo review confirms that the core local substrate is now credible: slice and change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills are in place. The next phase should make that substrate enforceable, observable, provable end-to-end, and portable across teams, forges, agents, and catalogs.
+
 ## Product Thesis
 
 AI engineering at scale needs three connected layers:
@@ -70,6 +72,14 @@ cloud background execute loop
 ```
 
 The same CLI and artifacts should support both.
+
+### Prove The Whole Multi-Repo Loop
+
+The framework should be judged by realistic end-to-end runs, not just individual command correctness. Acceptance coverage should exercise plan authoring, per-project execution, branch preparation, residue and baseline commits, workspace push, PR/MR handoff, finalize, recovery, and failure paths across more than one repository.
+
+### Abstract External Systems At The Boundary
+
+Specify should integrate with forges, catalogs, agents, and hosted runners through narrow adapters. GitHub, Backstage, Cursor, and local execution are good first adapters, but the durable product contract should be forge-neutral, catalog-neutral, and agent-neutral.
 
 ## Roadmap
 
@@ -187,7 +197,49 @@ Review output should be structured by severity:
 
 Findings should include file references, rule ids where applicable, and clear remediation guidance. The same output shape should support terminal display, CI annotations, and pull request comments.
 
-### 5. Specify MCP Surface
+### 5. Cross-Repo Compatibility Gates
+
+**Goal:** Move from cross-project warnings to change-level coherence.
+
+The current contract-warning loop is useful discovery, but multi-repo execution needs a stronger compatibility model before a change can be called complete. Producer changes should be classified by impact, connected to affected consumers, and reflected in the plan before finalization.
+
+Add deterministic compatibility outputs that can answer:
+
+- which contracts, schemas, events, APIs, or shared capabilities changed;
+- whether each change is additive, breaking, ambiguous, or unverifiable;
+- which registered consumers are affected;
+- whether consumer update plan entries already exist;
+- whether a producer slice can be marked done without follow-up work;
+- what SemVer or release impact is implied where versioned artifacts exist.
+
+Candidate surfaces:
+
+```bash
+specify compatibility check
+specify compatibility report --change <name>
+specify change plan impact --change <name>
+```
+
+The initial scope can remain contract-first, but the model should be dependency-aware rather than tied permanently to one artifact format.
+
+### 6. End-To-End Acceptance Suite
+
+**Goal:** Prove the framework across realistic multi-slice, multi-repo flows.
+
+Add an automated or semi-automated suite that exercises the full control plane with local fixture repositories and fake or recorded forge behavior:
+
+- plan generation from a change brief and source material;
+- registry routing across multiple projects;
+- execution through several dependent slices;
+- branch preparation and workspace sync;
+- residue and baseline commit behavior;
+- push and PR/MR handoff;
+- finalize after external merge;
+- recovery after interruption, blocked entries, stale clones, and failed validation.
+
+This suite should become the product proof path for the framework. Unit and integration tests can validate individual verbs, but the acceptance suite should validate that the whole multi-repo story still works.
+
+### 7. Specify MCP Surface
 
 **Goal:** Make Specify available to agents through tools without duplicating business logic.
 
@@ -206,7 +258,7 @@ The MCP server should be mostly read-oriented at first. Mutating tools can come 
 
 Non-goal: placing independent plan, registry, or lifecycle logic in the MCP server.
 
-### 6. Observability For Agentic Work
+### 8. Observability For Agentic Work
 
 **Goal:** Make workflow performance, failure modes, and model/tool usage measurable.
 
@@ -233,7 +285,32 @@ specify events tail
 specify events export
 ```
 
-### 7. Cloud-Hosted Execution
+Structured events should include a run identity so local, CI, and hosted execution can be compared. They should also make orchestration progress visible: the current step, last completed step, pending human action, owning operator or agent, and the next valid resume point.
+
+### 9. Forge And Landing Abstraction
+
+**Goal:** Make branch transport, PR/MR creation, and finalize work beyond GitHub CLI.
+
+The first implementation can continue to use GitHub and `gh`, but the framework should expose a forge boundary before enterprise adoption depends on it. Specify needs a small adapter contract for:
+
+- remote repository discovery and authentication checks;
+- branch existence and push permissions;
+- PR/MR create-or-update;
+- CI and mergeability status;
+- merged-state verification during finalize;
+- provider-specific links and annotations.
+
+Candidate surfaces:
+
+```bash
+specify forge doctor
+specify workspace push --forge github
+specify change finalize --forge github
+```
+
+Non-goal: Specify should not merge PRs or replace forge policy. It should prepare, publish, observe, and verify the handoff.
+
+### 10. Cloud-Hosted Execution
 
 **Goal:** Allow durable background execution of Specify plans while preserving the local workflow contract.
 
@@ -260,6 +337,21 @@ specify execute resume <run-id>
 
 This should remain a long-term track. Local execution is the proving ground.
 
+### 11. Capability Ecosystem Operating Model
+
+**Goal:** Make capabilities feel like a dependable ecosystem rather than bespoke first-party packages.
+
+The capability and declared-tool protocol is a strong base. The next layer is the operating model around it:
+
+- capability publishing and discovery conventions;
+- compatibility testing for capability versions and declared tools;
+- migration guidance when capability briefs or artifacts evolve;
+- quality gates for first-party and third-party capabilities;
+- examples beyond Omnia, Vectis, and contracts;
+- clear ownership of codex rules, artifact templates, and tool manifests.
+
+This should avoid a heavy marketplace requirement. The near-term need is a reviewable way to know whether a capability is installable, compatible, and safe to use in a multi-repo plan.
+
 ## Phasing
 
 ### Landed
@@ -273,24 +365,30 @@ This should remain a long-term track. Local execution is the proving ground.
 
 - Add concise `AGENTS.md` generation and checking.
 - Define the codex rule format.
+- Define the first structured `specify review` finding schema, including severity, rule id, evidence, remediation, and machine-readable output.
+- Promote cross-project contract warnings into a classified compatibility report.
+- Create the first multi-repo acceptance fixture that runs through plan, execute, push handoff, and finalize without live forge dependencies.
 - Keep the Backstage/catalog decision to adapter design, not core registry replacement.
-- Add initial structured review output for Specify artifacts.
 - Migrate any remaining first-party host helpers to declared WASI tools where the cost/benefit is favourable (the `skill.invokes-host-binary-with-declared-tool-equivalent` lint reserved by RFC-15 enforces this once the linter has enough context).
 
 ### Mid Term
 
 - Add `specify registry import` with a Backstage adapter.
 - Add CI-native `specify review`.
+- Add dependency-aware compatibility gates that can require consumer follow-up plan entries for breaking producer changes.
+- Expand the multi-repo acceptance suite to cover blocked, failed, interrupted, and stale-workspace recovery paths.
 - Add a read-oriented Specify MCP server.
 - Add local structured workflow events.
-- Expand cross-repo contract and dependency checks using registry/catalog projections.
+- Add a first forge abstraction behind workspace push and change finalize.
+- Add structured orchestration status for `/change:plan --orchestrate` re-entry and pause points.
 
 ### Long Term
 
 - Add cloud-hosted `/change:execute --loop` equivalents.
 - Support durable background agents with sandboxed workspace clones.
-- Add first-class PR/MR creation and review loops.
+- Support PR/MR creation and review loops across GitHub, GitLab, Bitbucket, and self-hosted forges through adapters.
 - Support catalog-backed initiatives across many repositories.
+- Add capability publishing, compatibility testing, and migration guidance.
 - Build toward a full spec-driven engineering control plane: define, plan, execute, review, enforce, observe.
 
 ## Non-Goals
@@ -301,6 +399,8 @@ This should remain a long-term track. Local execution is the proving ground.
 - Do not require hosted infrastructure for the core workflow.
 - Do not make `AGENTS.md` a dumping ground for long-form documentation.
 - Do not blur stable artifact schemas with mutable engineering standards.
+- Do not hard-code the long-term landing model to one forge.
+- Do not treat cross-repo compatibility warnings as sufficient enforcement for breaking changes.
 
 ## Open Questions
 
@@ -308,5 +408,10 @@ This should remain a long-term track. Local execution is the proving ground.
 - Should codex rules live inside `.specify/`, at the repository root, or in a shared catalog?
 - Which parts of `specify review` should be deterministic CLI checks versus model-assisted analysis?
 - What is the minimum registry projection needed from Backstage for useful multi-repo planning?
+- What is the minimum compatibility classifier needed before producer changes can gate on consumer impact?
+- Which multi-repo acceptance fixtures best represent the product proof path?
+- What is the smallest forge adapter contract that supports push, PR/MR handoff, CI state, and finalize?
+- How should orchestration ownership and handoff work when more than one operator or agent can touch the same change?
+- What compatibility guarantees should capability authors provide across capability and declared-tool versions?
 - How much telemetry should be emitted by default, and what should require explicit opt-in?
 - What approval model is required before cloud-hosted execution can push or open pull requests?
