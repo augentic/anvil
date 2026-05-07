@@ -26,7 +26,7 @@ Drive a change through its plan, automating define-build-merge.
 
 ## Artifacts produced
 
-None of its own. Invokes `/spec:define`, `/spec:build`, `/spec:merge` (and `/spec:drop` on failure) for each slice. Writes plan entry transitions via `specify change plan transition`. Manages `.specify/plan.lock` for concurrency safety.
+For routed workspace entries, prepares the selected workspace branch before phase writes and may create a non-baseline residue commit after merge. It invokes `/spec:define`, `/spec:build`, `/spec:merge` (and `/spec:drop` on failure) for each slice. Writes plan entry transitions via `specify change plan transition`. Manages `.specify/plan.lock` for concurrency safety.
 
 ## Behavior
 
@@ -36,18 +36,19 @@ None of its own. Invokes `/spec:define`, `/spec:build`, `/spec:merge` (and `/spe
 2. **Lock.** Acquires `.specify/plan.lock` via `specify change plan lock acquire`.
 3. **Self-heal.** Checks for stale `in-progress` entries from a prior crashed run and resolves them. For entries with `project`, metadata is read under the target project's workspace clone, not the initiating repo.
 4. **Pick next.** `specify change plan next --format json` returns the first `pending` entry whose `depends-on` are all `done`. The JSON response includes `project`, `description`, and `sources` for the entry.
-5. **Transition.** Moves the entry to `in-progress` via `specify change plan transition`.
-6. **CWD routing (multi-repo only).** If `project` is non-null: resolve the target directory from `registry.yaml`, check workspace freshness via `specify workspace status` (halt if `missing`), save CWD, resolve source paths to absolute paths, and `chdir` into the target project root. Emits `Routing: <name> → <project> (<path>)`.
+5. **Workspace preparation (multi-repo only).** If `project` is non-null: resolve the selected project through `registry.yaml`, materialise only that slot when missing, and run `specify workspace prepare-branch <project> --change <change-name>` before any phase writes.
+6. **Transition and CWD routing.** Moves the entry to `in-progress` via `specify change plan transition`, saves CWD, resolves source paths to absolute paths, and `chdir`s into the prepared target project root. Emits `Routing: <name> → <project> (<path>)`.
 7. **Define.** Invokes `/spec:define` with the entry's description and resolved sources.
 8. **Build.** Invokes `/spec:build`.
-9. **Merge.** Invokes `/spec:merge`. In workspace clones, the CLI auto-commits `.specify/` subtrees with message `specify: merge <slice-name>`.
-10. **CWD restore (multi-repo only).** Restores CWD to the initiating repo root.
-11. **Read outcome.** Reads the phase outcome from `.metadata.yaml`.
-12. **Transition plan entry:**
+9. **Merge.** Invokes `/spec:merge`. In workspace clones, the CLI auto-commits only `.specify/specs/` and `.specify/archive/` with message `specify: merge <slice-name>`.
+10. **Residue guard (multi-repo merge success only).** Verifies the baseline commit boundary is clean and commits remaining non-baseline residue as `specify: residue <slice-name>` before `done`.
+11. **CWD restore (multi-repo only).** Restores CWD to the initiating repo root.
+12. **Read outcome.** Reads the phase outcome from `.metadata.yaml`.
+13. **Transition plan entry:**
     - `success` --> `done`
     - `failure` --> `failed` (invokes `/spec:drop` first)
     - `deferred` --> `blocked`
-13. **Release lock.**
+14. **Release lock.**
 
 ### Loop mode
 

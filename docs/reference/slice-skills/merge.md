@@ -23,9 +23,9 @@ Merge a completed slice into the baseline.
 | Artifact | Location | Content |
 |----------|----------|---------|
 | Merged baseline specs | `.specify/specs/<capability>/spec.md` | Updated or new baseline spec files |
-| Merged baseline contracts | `contracts/` | Updated or new baseline contract files |
+| Capability output files | Capability-owned paths such as `contracts/` or generated source trees | Updated project outputs produced by the slice |
 | Merged baseline composition (Vectis) | `.specify/specs/composition.yaml` | Updated baseline screen layouts |
-| Archived change | `.specify/archive/YYYY-MM-DD-<name>/` | The full slice directory, preserved for audit |
+| Archived slice | `.specify/archive/YYYY-MM-DD-<name>/` | The full slice directory, preserved for audit |
 
 ## Behavior
 
@@ -40,7 +40,7 @@ Merge a completed slice into the baseline.
    - Validates coherence of the merged baseline.
    - Transitions the slice to `merged`.
    - Moves the slice directory to the archive.
-   - **Workspace clone auto-commit (RFC-3b).** When the merge runs inside a workspace clone (CWD under `.specify/workspace/*/` with `project.yaml`), `specify slice merge run` auto-commits the merged baseline and archive with message `"specify: merge <slice-name>"`. The commit stages only `.specify/` subtrees. If the commit fails, the spec-merge still succeeds -- the commit failure is a warning. The operator publishes changes via `specify workspace push`.
+   - **Workspace clone auto-commit.** When the merge runs inside a workspace clone (CWD under `.specify/workspace/*/` with `.specify/project.yaml`), `specify slice merge run` auto-commits only `.specify/specs/` and `.specify/archive/` with message `specify: merge <slice-name>`. Project-output residue outside those two trees is left uncommitted for `/change:execute`, which commits it as `specify: residue <slice-name>` before marking a routed plan entry `done`. If the merge commit fails, the spec merge still succeeds -- the commit failure is a warning. The operator publishes prepared branches via `specify workspace push`.
 6. Writes phase outcome. On the success path, `specify slice merge run` stamps the outcome automatically -- the skill does not call `outcome set` separately. On failure or deferred paths, the skill writes the outcome via `specify slice outcome set`.
 
 ## Lifecycle transitions

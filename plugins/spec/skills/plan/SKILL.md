@@ -20,7 +20,7 @@ argument-hint: "<change-name>"
 
 2. Then read `../../../change/skills/plan/SKILL.md` and follow it verbatim. Every flag, every step of the Critical Path, every brief invocation, and every `specify change plan *` shell-out is the canonical skill's responsibility — this shim adds no behaviour of its own beyond the warning above.
 
-3. The argument shape is unchanged (`<change-name>` plus the same `--from`, `--against`, `--source`, `--focus`, `--extend`, `--dry-run`, `--orchestrate`, `--shape`, `--auto-merge` flag set). Pass through whatever the operator supplied.
+3. The argument shape is unchanged (`<change-name>` plus the same `--from`, `--against`, `--source`, `--focus`, `--extend`, `--dry-run`, `--orchestrate`, and `--shape` flag set; the retired `--auto-merge` flag is passed through only so the canonical skill can reject it with the RFC-14 diagnostic). Pass through whatever the operator supplied.
 
 ## Why this shim exists
 

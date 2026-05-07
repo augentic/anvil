@@ -2,7 +2,7 @@
 
 > **Renamed.** The Layer 4 umbrella was originally a separate `/spec:initiative` skill. It has been folded into `/change:plan` as a flag-gated `--orchestrate` mode in a progressive-disclosure pass; the seven-step sequence and every halt / re-entry semantic is unchanged. Replace `/spec:initiative create <name>` with `/change:plan --orchestrate <name>` everywhere; the skill body now lives at [`plugins/spec/skills/plan/orchestration.md`](../../../plugins/change/skills/plan/orchestration.md) (with [shapes](../../../plugins/change/skills/plan/shapes.md) and [re-entry](../../../plugins/change/skills/plan/re-entry.md) details in adjacent siblings). The CLI verbs (`specify change create`, `specify change finalize`) are unchanged.
 
-Drive a cross-repo Specify initiative end-to-end from a single operator action: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute --loop` -> `specify workspace push` -> optional `specify workspace merge` -> `specify change finalize`.
+Drive a cross-repo Specify change from a single operator action: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute --loop` -> `specify workspace push`, then resume to `specify change finalize` after the operator merges PRs through the forge UI or `gh pr merge`.
 
 `/change:plan --orchestrate` is the Layer 4 umbrella mode (RFC-9 Section 2C). It is **composition only** -- every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the orchestration mode adds no new logic, owns no new on-disk state, and never invents a CLI verb.
 
@@ -14,7 +14,6 @@ Drive a cross-repo Specify initiative end-to-end from a single operator action: 
     [--from <path>[:<kind>]...] \
     [--against <path>[:<kind>]] \
     [--source <key>=<path-or-url>[:<kind>]...] \
-    [--auto-merge] \
     [--dry-run]
 ```
 
@@ -29,12 +28,13 @@ Re-running `--orchestrate` against an existing initiative is the canonical resum
 | `--from <path>` | No | Documentation input forwarded to `/change:plan`. Repeatable. Default kind is `documentation`; override per-input via `:<kind>` suffix. |
 | `--against <path>` | No | Refactor-target codebase forwarded to `/change:plan`. Single-valued. Default kind is `legacy-code`. |
 | `--source <key>=<path-or-url>` | No | Named legacy source forwarded to `/change:plan` and threaded through `/change:execute` per-slice. Repeatable. Default kind is `legacy-code`. Git URLs flow into `/spec:analyze` clones (tier-1 workspace); local paths are passed through verbatim. |
-| `--auto-merge` | No | When set, step 6 invokes `specify workspace merge` (RFC-9 Section 4A) on every open PR with green CI. Without it, step 6 lists the open PRs and stops. |
-| `--dry-run` | No | Observation-only end-to-end. Runs read-side checks for steps 1-3 and invokes `/change:plan --dry-run`; never invokes `/change:execute`, `specify workspace {push, merge}`, or `specify change finalize`. |
+| `--dry-run` | No | Observation-only end-to-end. Runs read-side checks for steps 1-3 and invokes `/change:plan --dry-run`; never invokes `/change:execute`, `specify workspace push`, or `specify change finalize`. |
+
+`--auto-merge` is retired. Supplying it is a hard error explaining that Specify never calls `specify workspace merge` or `gh pr merge`; operators merge PRs themselves, then re-run the umbrella to finalize.
 
 ## When to use
 
-- You are driving a cross-repo initiative from a platform hub and want a single command to take it from "I have an idea" to "every PR is merged."
+- You are driving a cross-repo change from a platform hub and want a single command to take it from "I have an idea" to "PRs are open", then finalize after operator merge.
 - You want the framework to honour every halt the underlying skills surface (self-heal, `stuck`, `registry-amendment-required`) and resume idempotently when you re-invoke it.
 - You want shape-aware input handling (`migrate-legacy`, `new-feature`, `update-existing`) without remembering which sub-verb each shape needs.
 
@@ -51,7 +51,7 @@ The umbrella drives the canonical platform-first loop:
 | 3. Plan | `/change:plan <name> [--from ...] [--against ...] [--source ...]` | Operator `abort` in propose loop, `specify change plan validate` failure |
 | 4. Execute | `/change:execute --loop` | `stuck`, `halted`, `driver-interrupted`, `registry-amendment-required` |
 | 5. Push | `specify workspace push` | Per-project `failed` status (auth, missing remote) |
-| 6. Land | `specify workspace merge` (with `--auto-merge`) or list open PRs and stop | `pending-checks`, `failed-checks`, `closed`, `branch-pattern-mismatch` |
+| 6. Land | Operator merges PRs through forge UI or `gh pr merge`; umbrella lists PRs and stops until this is done | Unmerged PRs |
 | 7. Finalize | `specify change finalize` | Non-terminal plan entry, unmerged PR, dirty workspace clone |
 
 Every state mutation is a shell-out -- the umbrella never writes any of these files itself. Manual-fallback equivalents for each step are documented in the SKILL body so an operator can drop down a layer at any point. See [Drop down a layer](../../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the canonical sequence.
@@ -83,7 +83,7 @@ The umbrella stops on:
 
 - Any failure during pre-flight (missing `.specify/`, missing `specify` binary, unknown sub-verb, invalid `<name>`, shape conflict).
 - Step-1-7 failures (table above) -- the offending diagnostic surfaces verbatim, and the operator runs the manual-fallback sequence for that step before re-running the umbrella.
-- Without `--auto-merge`, step 6 always halts after listing open PRs -- the operator merges by hand or via `specify workspace merge` and re-runs.
+- Step 6 always halts after listing open PRs. The operator merges them through the forge UI or `gh pr merge`, then re-runs the umbrella.
 
 ## Re-entry / idempotency
 
@@ -95,13 +95,13 @@ Running `/change:plan --orchestrate <name>` against a populated initiative is th
 | Brief present, plan absent | Step 3 |
 | Plan present, entries non-terminal | Step 4 |
 | Plan terminal, PRs unpushed | Step 5 |
-| Plan terminal, PRs open | Step 6 (lists PRs unless `--auto-merge`) |
+| Plan terminal, PRs open | Step 6 (lists PRs and stops for operator merge) |
 | Plan terminal, PRs merged, plan still on disk | Step 7 |
 | Plan archived (`plan-not-found` from `finalize`) | Reports already-closed and exits |
 
 This is what makes the umbrella safe to re-invoke after any halt.
 
-## Three initiative shapes
+## Three change shapes
 
 Each shape uses the same seven-step sequence. Only the inputs to step 3 (Plan) differ.
 
@@ -129,11 +129,10 @@ The umbrella is a composition of existing skills and CLI verbs. It does not intr
 ## Examples
 
 ```text
-# migrate-legacy: full autonomy
+# migrate-legacy: drive through PR creation
 /change:plan --orchestrate migrate-foo \
     --shape migrate-legacy \
-    --source monolith=git@github.com:org/legacy-foo.git \
-    --auto-merge
+    --source monolith=git@github.com:org/legacy-foo.git
 
 # new-feature: supervised land (operator merges PRs by hand)
 /change:plan --orchestrate dark-mode \
@@ -142,8 +141,7 @@ The umbrella is a composition of existing skills and CLI verbs. It does not intr
 
 # update-existing: baseline-driven polish
 /change:plan --orchestrate polish-pass \
-    --shape update-existing \
-    --auto-merge
+    --shape update-existing
 
 # Dry-run: read-side checks + plan preview, no writes
 /change:plan --orchestrate migrate-foo \
@@ -157,8 +155,8 @@ The umbrella is a composition of existing skills and CLI verbs. It does not intr
 - [/change:plan](plan.md) -- the Layer 3 plan-authoring skill the umbrella invokes at step 3.
 - [/change:execute](execute.md) -- the Layer 2 driver the umbrella invokes at step 4.
 - [specify change](../cli/change.md) -- the `create` / `show` / `finalize` CLI verbs.
-- [specify workspace](../cli/workspace.md) -- `push` and `merge` (steps 5 and 6).
-- [Cross-Repo Initiatives](../../tutorials/cross-repo-change.md) -- end-to-end worked example.
+- [specify workspace](../cli/workspace.md) -- workspace `push` (step 5).
+- [Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- end-to-end worked example.
 - [Land a change](../../how-to/land-a-change.md) -- autonomous vs supervised landing.
 - [Recover from `registry-amendment-required`](../../how-to/recover-from-registry-amendment.md) -- the canonical recovery sequence.
 - [Drop down a layer](../../how-to/drop-down-a-layer.md) -- manual-fallback for every umbrella step.

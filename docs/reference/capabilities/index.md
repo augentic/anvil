@@ -96,6 +96,6 @@ The wire-level schema is [`capabilities/capability.schema.json`](../../../capabi
 ## See also
 
 - [RFC-13: Extensibility](../../../rfcs/archive/rfc-13-extensibility.md) — capability protocol, platform components, and migration plan.
-- [RFC-14: Workspaces](../../../rfcs/rfc-14-registry.md) — multi-domain repositories layered on top of the capability manifest protocol.
+- [RFC-14: Workspaces](../../../rfcs/rfc-14-workspace.md) — multi-domain repositories layered on top of the capability manifest protocol.
 - [Registry](../registry.md) — registry topology and workspace materialisation.
 - [Change Component](../change-component.md) — change brief, plan, execution, and finalization.

@@ -30,8 +30,7 @@ A shape conflict is a hard exit before step 1 of the orchestration sequence; the
 ```text
 /change:plan --orchestrate migrate-foo \
     --shape migrate-legacy \
-    --source monolith=git@github.com:org/legacy-foo.git \
-    --auto-merge
+    --source monolith=git@github.com:org/legacy-foo.git
 ```
 
 Pre-flight asserts at least one `--source` (closed-enum kind defaults to `legacy-code`). Step 3 forwards `--source` to `/change:plan` (default mode), which clones the source into `.specify/plans/<name>/analyze/<key>/` (tier-1 workspace) for shallow inventory; deep `/spec:extract` runs at define time per slice. When the registry is empty, the discovery brief proposes a multi-project topology and the operator approves entries via the 2B greenfield path. Targets are existing or newly-minted registered projects.

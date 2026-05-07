@@ -34,6 +34,8 @@ specify slice outcome set <name> <phase> <outcome> --summary "..." [--context ".
 
 `specify slice merge run` is the unique exception: on success it stamps `PhaseOutcome { phase: merge, outcome: success }` into `.metadata.yaml` atomically with the `Merged` lifecycle transition, **before** the archive move. Skills MUST NOT call `outcome set` on this path — the slice directory no longer exists under `.specify/slices/` after archiving, so the call would fail with `not found`. The archived `.metadata.yaml` carries the outcome; `/change:execute` reads it via `specify slice outcome show <name>`, which falls back to the archive when the active directory is absent.
 
+In a materialised RFC-14 workspace slot, the merge CLI owns only the baseline commit boundary: `.specify/specs/` and `.specify/archive/` are committed as `specify: merge <slice-name>`. Non-baseline project residue is intentionally left for `/change:execute`, which must verify the baseline paths are clean and then either commit residue as `specify: residue <slice-name>` or halt before marking the plan entry `done`.
+
 ### Driver fallback on missing or malformed outcome
 
 If `.metadata.yaml:outcome` is missing or malformed when `/change:execute` reads it on phase return, the driver treats the phase as `deferred` and stops for triage. **Do not** skip the recording call as a "soft success" — silence is treated as deferral, not as completion.

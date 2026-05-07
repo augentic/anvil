@@ -7,7 +7,7 @@ downstream consumer.
 
 ## Scenario
 
-A two-project initiative on the `platform-v2` plan:
+A two-project change on the `platform-v2` plan:
 
 - **`backend`** (producer) — owns `contracts/http/user-api.yaml`.
 - **`mobile`** (consumer) — calls `GET /users/{id}` and `POST /users`.
@@ -28,25 +28,29 @@ the contract, and is what the cross-project check compares against.
 
 When `specify slice merge run` returns success, `/change:execute`:
 
-1. Transitions the plan entry to `done` (step 10 in the per-slice
+1. Verifies `.specify/specs/` and `.specify/archive/` are clean after
+   the merge-baseline commit.
+2. Commits the produced contract as non-baseline residue with
+   `specify: residue update-user-api-v2`.
+3. Transitions the plan entry to `done` (step 10 in the per-slice
    algorithm).
-2. Reads `registry.yaml` and observes that `backend.contracts.produces`
+4. Reads `registry.yaml` and observes that `backend.contracts.produces`
    includes `http/user-api.yaml` (so the post-merge check is
    in-scope).
-3. Walks the registry to find consumers — `mobile.contracts.consumes`
+5. Walks the registry to find consumers — `mobile.contracts.consumes`
    matches.
-4. Invokes `/contract:openapi` (verifier intent, `--mode cross-project`)
-   with the producer's just-merged contract path and the consumer's
-   workspace clone path. (HTTP / resource APIs route to OpenAPI; an
-   AsyncAPI contract would route to `/contract:asyncapi`, and a
-   shared payload schema to `/contract:json-schema`.)
-5. Receives a YAML report with two findings.
-6. Records each finding as a `cross-project-warning:` `failure`-kind
+6. Invokes `/contract:openapi` (verifier intent, `--mode cross-project`)
+   with the producer contract path in `.specify/workspace/backend/`
+   and the consumer's workspace clone path. (HTTP / resource APIs route
+   to OpenAPI; an AsyncAPI contract would route to `/contract:asyncapi`,
+   and a shared payload schema to `/contract:json-schema`.)
+7. Receives a YAML report with two findings.
+8. Records each finding as a `cross-project-warning:` `failure`-kind
    entry on the merged slice's `journal.yaml` via
    `specify slice journal append`.
-7. Renders the `⚠ Cross-project contract warnings` block in the merge
+9. Renders the `⚠ Cross-project contract warnings` block in the merge
    transcript.
-8. Continues the loop (the warnings are non-fatal).
+10. Continues the loop (the warnings are non-fatal).
 
 ## Layout
 

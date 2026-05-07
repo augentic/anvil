@@ -2,7 +2,7 @@
 #
 #   /contract:openapi \
 #       --mode cross-project \
-#       --producer-contract contracts/http/user-api.yaml \
+#       --producer-contract .specify/workspace/backend/contracts/http/user-api.yaml \
 #       --consumer-workspace .specify/workspace/mobile/
 #
 # (HTTP / resource APIs route to /contract:openapi; an AsyncAPI contract

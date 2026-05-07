@@ -1013,7 +1013,120 @@ async function checkRetiredCliVerbs(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 12. Instruction files contain output location preamble
+// 12. RFC-14 workspace landing automation stays retired
+// ──────────────────────────────────────────────────────────────
+
+async function checkRfc14WorkspaceLanding(): Promise<void> {
+  const SCAN_ROOTS = [
+    join(REPO_ROOT, "plugins"),
+    join(REPO_ROOT, "docs"),
+    join(REPO_ROOT, "capabilities"),
+    join(REPO_ROOT, ".cursor"),
+  ];
+  const SCAN_FILES = [
+    join(REPO_ROOT, "AGENTS.md"),
+    join(REPO_ROOT, "README.md"),
+  ];
+
+  const ALLOWED_PREFIXES = [
+    "rfcs/",
+  ];
+  const ALLOWED_FILES = new Set([
+    // These pages intentionally document the one-release non-zero shim and
+    // migration story, including command synopsis lines with no prose context.
+    "docs/reference/cli/workspace.md",
+    "docs/explanation/whats-new.md",
+    "docs/explanation/migrating-cli-v1.md",
+  ]);
+
+  const ALLOWED_WORKSPACE_MERGE_CONTEXT =
+    /\b(retir(?:ed|es|ing)|deprecat(?:ed|ion)|shim|non-zero|no longer|removed|must not|never|does not|do not|outside orchestration|operator-owned|operator merge|migration|pre-RFC-14|old `specify workspace merge`|compatibility)\b/i;
+  const ALLOWED_AUTO_MERGE_CONTEXT =
+    /\b(retir(?:ed|es|ing)|hard error|reject|rejected|pre-flight|without|not set|must not|never|does not|do not|migration|post-RFC|compatibility)\b/i;
+  const ALLOWED_GH_MERGE_CONTEXT =
+    /\b(operator|forge UI|hand-run|explicit|outside orchestration|never|must not|does not|do not|not call|retir(?:ed|es|ing)|shim|manual)\b/i;
+
+  const targets: string[] = [];
+  for (const root of SCAN_ROOTS) {
+    let exists = true;
+    try {
+      await Deno.stat(root);
+    } catch {
+      exists = false;
+    }
+    if (!exists) continue;
+    for await (const entry of walk(root, {
+      includeDirs: false,
+      exts: [".md", ".mdx", ".mdc"],
+    })) {
+      if (await isUnderSymlink(entry.path)) continue;
+      targets.push(entry.path);
+    }
+  }
+  for (const path of SCAN_FILES) {
+    try {
+      await Deno.stat(path);
+      targets.push(path);
+    } catch {
+      // File doesn't exist — skip.
+    }
+  }
+
+  for (const path of targets) {
+    const rel = relative(REPO_ROOT, path);
+    if (ALLOWED_PREFIXES.some((prefix) => rel.startsWith(prefix))) continue;
+    if (ALLOWED_FILES.has(rel)) continue;
+
+    let content: string;
+    try {
+      content = await Deno.readTextFile(path);
+    } catch {
+      continue;
+    }
+
+    const lines = content.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      if (
+        /\bworkspace merge\b/.test(line) &&
+        !ALLOWED_WORKSPACE_MERGE_CONTEXT.test(line)
+      ) {
+        fail(
+          `RFC-14 workspace merge automation in ${rel}:${i + 1} -- ${
+            line.trim()
+          } -- describe it only as a retired/non-zero shim or migration note`,
+        );
+      }
+
+      if (
+        /--auto-merge\b/.test(line) &&
+        !ALLOWED_AUTO_MERGE_CONTEXT.test(line)
+      ) {
+        fail(
+          `RFC-14 retired --auto-merge mention in ${rel}:${i + 1} -- ${
+            line.trim()
+          } -- the flag must be described as retired/rejected, not active`,
+        );
+      }
+
+      if (
+        /\bgh pr merge\b/.test(line) &&
+        /\b(?:umbrella|orchestration|skill|Specify|specify)\b/.test(line) &&
+        !ALLOWED_GH_MERGE_CONTEXT.test(line)
+      ) {
+        fail(
+          `RFC-14 automated gh merge instruction in ${rel}:${i + 1} -- ${
+            line.trim()
+          } -- Specify may only point operators at gh pr merge; it must not invoke it`,
+        );
+      }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 13. Instruction files contain output location preamble
 // ──────────────────────────────────────────────────────────────
 
 async function checkInstructionPreambles(): Promise<void> {
@@ -1224,6 +1337,7 @@ await Promise.all([
   checkCapabilityIntegrity(),
   checkInstructionPreambles(),
   checkRetiredCliVerbs(),
+  checkRfc14WorkspaceLanding(),
   checkRetiredAffectsField(),
   checkV1LayoutPaths(),
 ]);

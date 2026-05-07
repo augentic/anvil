@@ -12,7 +12,7 @@ specify registry validate                  # Step 2 — registry
 /change:plan <name> --from <docs>            # Step 3 — plan
 /change:execute --loop                       # Step 4 — execute
 specify workspace push                     # Step 5 — push
-specify workspace merge                    # Step 6 — land (or merge by hand on the forge)
+gh pr merge <pr> --squash                  # Step 6 — land each PR (or use the forge UI)
 specify change finalize                # Step 7 — finalize
 ```
 

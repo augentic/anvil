@@ -4,7 +4,7 @@ The `specify` CLI was reshaped in the v1 release so per-slice operations live un
 
 The behavioural surface did not change -- every renamed command does exactly the same thing it did before. The reshape is a routing change, not a semantic one.
 
-> **For the additive surface** -- new verbs (`specify registry add`, `specify workspace merge`, `specify change plan doctor`, `specify change finalize`), new flags (`specify init --hub`), the `/change:plan --orchestrate` Layer 4 umbrella mode (formerly the `/spec:initiative` skill), and contracts -- see [What's New Since v0.23](whats-new.md). The two pages compose: this one is **what was renamed**, the other is **what was added**.
+> **For the additive and breaking behavior surface** -- new verbs (`specify registry add`, `specify change plan doctor`, `specify change finalize`), the retired `specify workspace merge` automation, new flags (`specify init --hub`), the `/change:plan --orchestrate` Layer 4 umbrella mode (formerly the `/spec:initiative` skill), workspace branch ownership, and contracts -- see [What's New Since v0.23](whats-new.md). The two pages compose: this one is **what was renamed**, the other is **what changed or was added**.
 
 ## Rename map
 
@@ -78,6 +78,13 @@ After running the bulk pass:
 - Skim any remaining `specify slice outcome <name>` calls (with no `set`/`show` after `outcome`). Reads become `specify slice outcome show <name>`. Writes become `specify slice outcome set <name> <phase> <outcome> ...`. The presence of trailing positional `<phase> <outcome>` arguments distinguishes them.
 - Replace any bare `specify status <name>` with `specify slice status <name>`. The bare `specify status` (no positional argument) is now the project dashboard -- a different command shape.
 
+## RFC-14 workspace behavior changes
+
+RFC-14 changes two workspace behaviors that older scripts may have relied on:
+
+- `specify workspace push` no longer creates `specify/<change-name>` from whatever branch the workspace clone currently has checked out. It is transport-only: the clone must already be on `specify/<change-name>`, normally because `/change:execute` prepared the branch before running the slice. If the clone is on `main`, `master`, `origin/HEAD`, a detached HEAD, or any other branch, push reports `no-branch` and leaves the remote untouched. Recovery is to run `/change:execute` for the routed entry or manually check out the expected `specify/<change-name>` branch before retrying push.
+- `specify workspace merge` is no longer an active PR-merge automation path. During the transition it may exist only as a one-release non-zero shim that points operators to the forge UI or `gh pr merge`, followed by `specify change finalize`.
+
 ## What did not change
 
 These surfaces are untouched. Scripts that use them keep working.
@@ -85,7 +92,7 @@ These surfaces are untouched. Scripts that use them keep working.
 - `specify init ...` -- project scaffold (extended with `--hub` in RFC-9 §1D, additive only; positional argument shape was renamed to `<capability>` by RFC-13 §Migration).
 - `specify capability {resolve, check, pipeline}` -- capability and brief pipeline queries (renamed from `specify schema {resolve, check, pipeline}` by RFC-13 §Migration).
 - `specify change plan {create, validate, doctor, next, status, add, amend, transition, archive, lock {acquire, release, status}}` -- change plan CRUD and lifecycle (folded under `specify change` by RFC-13 §3.5). The v1.x rename rows above renamed `init` -> `create` (file scaffold) and the entry-append `create` -> `add`; `doctor` is a strict superset of `validate` added by RFC-9 §4B.
-- `specify workspace {sync, status, push, merge}` -- multi-repo workspace clones; `merge` was added by RFC-9 §4A.
+- `specify workspace {sync, status, push}` -- multi-repo workspace clones. `push` publishes already-prepared `specify/<change-name>` branches and opens PRs; it does not create branches on the fly, commit, push default branches, or merge PRs. `merge` was added by RFC-9 §4A and retired by RFC-14 (shim only during the migration window).
 - `specify change {create, show, finalize}` -- operator brief at `change.md`; `finalize` was added by RFC-9 §4C, and `init` was renamed to `create` in v1.x. The umbrella verbs were renamed from `specify initiative *` to `specify change *` by RFC-13 §3.5.
 - `specify registry {add, remove, show, validate}` -- platform registry at `registry.yaml`; `add` and `remove` were added by RFC-9 §2A.
 - `specify slice {create, list, status, transition, touched-specs, overlap, archive, drop}` -- the per-slice CRUD verbs (renamed from the v1.x `specify change *` group by RFC-13 §3.2). The rename added new verbs alongside; it did not displace these.

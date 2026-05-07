@@ -1,16 +1,16 @@
-# Transcript — `/change:plan --orchestrate polish-pass --shape update-existing --auto-merge`
+# Transcript — `/change:plan --orchestrate polish-pass --shape update-existing`
 
-This transcript pins the dialogue and shell-outs the umbrella runs against a populated multi-project hub when sources are unused. The discovery brief falls back to baseline accumulation in `.specify/workspace/<peer>/specs/` to surface polish opportunities; the operator approves two slices and the umbrella runs all seven steps in one pass. Every shell-out uses post-1F+1G v1 verbs.
+This transcript pins the dialogue and shell-outs the umbrella runs against a populated multi-project hub when sources are unused. The discovery brief falls back to baseline accumulation in `.specify/workspace/<peer>/specs/` to surface polish opportunities; the operator approves two slices, the umbrella pushes PRs, stops for operator merge, and finalizes on re-entry. Every shell-out uses post-1F+1G v1 verbs.
 
 ```text
-$ /change:plan --orchestrate polish-pass --shape update-existing --auto-merge
+$ /change:plan --orchestrate polish-pass --shape update-existing
 
 Pre-flight
   shape:        update-existing
   hub:          shop-platform/.specify/project.yaml (hub: true; capability omitted)
   specify:      0.x.y on PATH
-  gh:           v2.x.y on PATH
-  initiative:   polish-pass (kebab-case ok)
+  gh:           v2.x.y on PATH (read-only PR observation)
+  change:       polish-pass (kebab-case ok)
 
   Shape `update-existing` forbids --from, --against, and --source.
   None supplied. Continuing.
@@ -115,7 +115,7 @@ Multi-project registry; descriptions complete. Continuing.
 
   ## /change:execute — polish-pass
 
-  ### Initiative: polish-pass
+  ### Change: polish-pass
   Progress: done 0, in-progress 0, pending 2, blocked 0, failed 0, skipped 0 (total 2)
 
   ---
@@ -170,29 +170,100 @@ Multi-project registry; descriptions complete. Continuing.
 
 ---
 
-## Step 6 — Land (--auto-merge)
+## Step 6 — PR handoff
 
-  $ specify workspace merge
-  specify: workspace merge — polish-pass (specify/polish-pass)
+Open PRs on `specify/polish-pass`:
 
-    omnia-backend   merged                    PR #62   https://github.com/org/omnia-backend/pull/62
-    vectis-mobile   merged                    PR #34   https://github.com/org/vectis-mobile/pull/34
+  omnia-backend   specify/polish-pass    PR #62    https://github.com/org/omnia-backend/pull/62
+  vectis-mobile   specify/polish-pass    PR #34    https://github.com/org/vectis-mobile/pull/34
 
-  2 merged, 0 would-merge, 0 pending-checks, 0 failed-checks, 0 closed, 0 no-branch, 0 branch-pattern-mismatch, 0 failed.
+Merge these PRs through the forge UI or an explicit hand-run `gh pr merge`,
+then re-run /change:plan --orchestrate polish-pass to finalize.
+
+---
+
+## /change:plan --orchestrate — polish-pass — paused
+
+  Brief:    change.md
+  Plan:     plan.yaml (2 changes, all `done`)
+  PRs:      omnia-backend#62 (open), vectis-mobile#34 (open)
+
+  Next action: merge PRs, then re-run /change:plan --orchestrate
+  polish-pass --shape update-existing.
+```
+
+## Operator merges PRs
+
+The operator merges both PRs on github.com (squash, conventional commit titles) or with explicit `gh pr merge` commands they run themselves. The umbrella only observes this state on the next run.
+
+## Run 2 — re-entry, runs step 7 only
+
+```text
+$ /change:plan --orchestrate polish-pass --shape update-existing
+
+Pre-flight
+  shape:        update-existing
+  hub:          shop-platform/.specify/project.yaml (hub: true; capability omitted)
+  specify:      0.x.y on PATH
+  gh:           v2.x.y on PATH (read-only PR observation)
+  change:       polish-pass (kebab-case ok)
+
+  Shape `update-existing` forbids --from, --against, and --source.
+  None supplied. Continuing.
+
+---
+
+## Step 1 — Brief
+
+change.md is present. Skipping.
+
+## Step 2 — Registry
+
+  $ specify registry validate
+  ok: 2 projects valid (no changes)
+
+## Step 3 — Plan
+
+plan.yaml is present and every entry is in a terminal state
+(done × 2). Skipping /change:plan.
+
+## Step 4 — Execute
+
+Plan is fully terminal. Skipping /change:execute.
+
+## Step 5 — Push
+
+  $ specify workspace push
+  specify: workspace push — polish-pass
+
+    omnia-backend   up-to-date
+    vectis-mobile   up-to-date
+
+  0 pushed, 0 created, 2 up-to-date. 0 failed.
+
+## Step 6 — PR handoff
+
+Querying PRs on `specify/polish-pass`:
+
+  $ gh pr list --head specify/polish-pass --state all --json number,state,merged,headRefName
+  omnia-backend   PR #62    state=MERGED, merged=true
+  vectis-mobile   PR #34    state=MERGED, merged=true
+
+Every PR is `MERGED` on remote. Continuing to step 7.
 
 ---
 
 ## Step 7 — Finalize
 
   $ specify change finalize
-  specify: initiative finalize — polish-pass (specify/polish-pass)
+  specify: change finalize — polish-pass (specify/polish-pass)
 
     omnia-backend         merged                   PR #62   https://github.com/org/omnia-backend/pull/62
     vectis-mobile         merged                   PR #34   https://github.com/org/vectis-mobile/pull/34
 
   2 merged, 0 unmerged, 0 closed, 0 no-branch, 0 branch-pattern-mismatch, 0 dirty, 0 failed.
 
-  Initiative `polish-pass` finalized.
+  Change `polish-pass` finalized.
     archived plan: /…/shop-platform/.specify/archive/plans/polish-pass-20260428.yaml
     archived dir:  /…/shop-platform/.specify/archive/plans/polish-pass-20260428
 
@@ -211,9 +282,10 @@ Multi-project registry; descriptions complete. Continuing.
 
 ## Invariants pinned by this transcript
 
-- **Verb hygiene.** Every shell-out is a post-Phase-3 verb: `specify change {create, finalize}`, `specify change plan {create, add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push, merge}`. No retired verbs.
+- **Verb hygiene.** Every shell-out is a post-Phase-3 verb: `specify change {create, finalize}`, `specify change plan {create, add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`. No retired verbs.
 - **No `--from` / `--source` / `--against`.** Pre-flight enforces this; the dispatch is unambiguous when shape is `update-existing`.
 - **`inputs:` is empty in the brief.** Discovery falls back to baseline accumulation; the `.specify/workspace/<peer>/specs/` trees are the only signal.
 - **No registry mutation.** `registry.yaml` is byte-identical between input and output. The 2B registry-proposal sub-step does not fire.
 - **No contract change.** The polish pass does not cross the API boundary, so propose surfaces only two slices — one per project. The two implementation entries each carry `project:` written by the assignment step.
+- **PR merge is outside orchestration.** The transcript shows the umbrella stopping with open PRs in run 1, then observing both PRs as `MERGED` in run 2. It never calls `specify workspace merge` or `gh pr merge`.
 - **Idempotent re-entry.** Re-running the umbrella with the same flags after a successful finalize exits zero with `plan-not-found`.

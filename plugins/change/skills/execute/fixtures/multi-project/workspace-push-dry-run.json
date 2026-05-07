@@ -1,7 +1,8 @@
 {
   "dry_run": true,
+  "action": "would-publish-prepared-branches-and-open-prs",
   "projects": [
-    { "name": "traffic", "status": "pushed", "branch": "specify/platform-v2" },
-    { "name": "command-centre", "status": "up-to-date" }
+    { "name": "traffic", "status": "pushed", "branch": "specify/platform-v2", "would_merge": false },
+    { "name": "command-centre", "status": "up-to-date", "branch": "specify/platform-v2", "would_merge": false }
   ]
 }

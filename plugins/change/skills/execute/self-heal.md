@@ -1,6 +1,6 @@
 # Self-heal on startup
 
-Self-heal is the driver's reconciliation pass. It runs **once per `/change:execute` invocation**, under the driver lock, immediately after the lock is acquired and before `specify change plan next`. Its job is to make the plan agree with what actually finished on disk before the previous driver crashed — not to do any new work.
+Self-heal is the driver's reconciliation pass. It runs **once per `/change:execute` invocation**, under the driver lock, immediately after the lock is acquired and before `specify change plan next`. Its job is to make the plan agree with what actually finished on disk before the previous driver crashed. It does not invent new phase work; the only Git write it may perform is the same post-merge residue commit the live algorithm would have performed before `done`.
 
 Two invariants frame the whole step. First, `.metadata.yaml:outcome` is the single authoritative signal: the driver never consults `journal.yaml`, tempfiles, or stderr transcripts to decide what happened. Second, nothing in self-heal speculates. Every ambiguity (missing outcome with no slice dir, outcome field that contradicts `LifecycleStatus`, two archives with equal timestamps, …) halts the driver with a non-zero exit so a human can triage. A speculative transition could silently mark a failed change as `done` and that failure mode is strictly worse than "one extra triage per N runs".
 
@@ -14,15 +14,16 @@ For every plan entry `E` whose `status` is `in-progress`, in the order they appe
    - If nothing is found anywhere, the plan entry is `in-progress` but no slice has ever been created — typically because the prior driver crashed between `specify change plan transition pending → in-progress` (step 5) and `/spec:define` (step 6). Treat this as mid-slice resume with `LifecycleStatus = None` — jump to step 3 below.
 
 **Multi-repo self-heal.** For each `in-progress` entry `E` in `plan.yaml`, self-heal reads `E.project` from the plan entry. If non-null:
-1. Resolve the target project directory from `registry.yaml` (same resolution as step 5a of the per-slice algorithm).
-2. Check workspace freshness for that slot. If `missing`, halt — same semantics as the main loop.
-3. Look for `.specify/slices/<E.name>/.metadata.yaml` under the resolved project root instead of the initiating repo root. The classification logic (step 2 of self-heal) and recovery journal append (step 4) are unchanged.
-4. Restore CWD to the initiating repo root after each entry's reconciliation.
+1. Resolve the target project through `registry.yaml` (same selector preflight as step 5a of the per-slice algorithm).
+2. Check workspace state for that slot. If `missing`, run selected materialisation for only that project (`specify workspace sync <project>`) and re-check. Mismatched materialisation halts.
+3. Run `specify workspace prepare-branch <project> --change <change-name> [--source ...] [--output ...] --format json` before resuming any phase. If it returns `origin-head-unresolved`, `dirty-unrelated-tracked`, `dirty-branch-mismatch`, or another diagnostic, append a `failure` journal entry when the slice journal exists (`branch-preparation-failed: <diagnostic-key>`) and halt without new phase writes.
+4. Look for `.specify/slices/<E.name>/.metadata.yaml` under the resolved project root instead of the initiating repo root. The classification logic (step 2 of self-heal) and recovery journal append (step 4) are otherwise unchanged.
+5. Restore CWD to the initiating repo root after each entry's reconciliation.
 
 For entries without a `project` field, self-heal follows the standard single-repo path.
 
 2. **Read `.metadata.yaml.outcome` and act on it.**
-   - `outcome.outcome == success` and `outcome.phase == merge` → the merge finished but the driver crashed before the terminal plan transition. Run:
+   - `outcome.outcome == success` and `outcome.phase == merge` → the merge finished but the driver crashed before the terminal plan transition. For a routed workspace entry, first run the post-merge residue guard from multi-repo.md in the project slot: dirty `.specify/specs/` or `.specify/archive/` halts with `baseline-residue-after-merge`; dirty non-baseline residue is committed as `specify: residue <name>`; a failed residue commit halts with `residue-commit-failed`. Only after that guard passes, run:
      ```bash
      specify change plan transition <name> done
      ``` No `status-reason` on success.
@@ -54,6 +55,7 @@ For entries without a `project` field, self-heal follows the standard single-rep
        --context "before=<plan-status>/<lifecycle-status>, after=<resolved-status-or-phase>"
    ``` where `<phase>` is the phase the recovery relates to (the `outcome.phase` for terminal cases; the phase about to run for mid-slice resume). Example `<action>` strings:
    - `"applied terminal transition done after finding success outcome on merge"`
+   - `"committed post-merge residue before terminal transition done"`
    - `"applied terminal transition failed after finding failure outcome on build"`
    - `"applied terminal transition blocked after finding deferred outcome on define"`
    - `"resumed mid-slice build phase (LifecycleStatus=defined)"`
@@ -67,6 +69,9 @@ Every self-heal action emits exactly one line to stdout:
 ```text
 Self-heal: no in-progress entries found.
 Self-heal: <name> → done (merge success from prior run)
+Self-heal: <name> — committed residue before done (specify: residue <name>)
+Self-heal halted: <name> branch preparation failed (<diagnostic-key>). Manual triage required.
+Self-heal halted: <name> post-merge residue guard failed (<diagnostic-key>). Manual triage required.
 Self-heal: <name> → failed (build failure: "<outcome.summary verbatim>")
 Self-heal: <name> → blocked (define deferred: "<outcome.summary verbatim>")
 Self-heal: <name> — resuming <phase> (LifecycleStatus=<lifecycle>)
@@ -82,6 +87,7 @@ Under `--dry-run`, self-heal runs the same classification scan but performs **no
 ```text
 Self-heal (dry-run): no in-progress entries found.
 Self-heal (dry-run): <name> → done (if executed) — merge success from prior run
+Self-heal (dry-run): <name> — would check branch and post-merge residue before done
 Self-heal (dry-run): <name> → failed (if executed) — build failure: "<outcome.summary verbatim>"
 Self-heal (dry-run): <name> → blocked (if executed) — define deferred: "<outcome.summary verbatim>"
 Self-heal (dry-run): <name> — would resume <phase> (LifecycleStatus=<lifecycle>)

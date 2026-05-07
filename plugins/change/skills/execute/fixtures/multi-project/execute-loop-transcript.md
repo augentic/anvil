@@ -1,6 +1,6 @@
 ## /change:execute — platform-v2
 
-### Initiative: platform-v2
+### Change: platform-v2
 Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (total 3)
 
 ---
@@ -8,12 +8,16 @@ Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (tota
 Self-heal: no in-progress entries found.
 
 # specify change plan next --format json → { "next": "ingest-pipeline", "project": "traffic", "description": "Extract the Kafka ingestion pipeline into a standalone capability.", "sources": ["monolith"] }
-# specify change plan transition ingest-pipeline in-progress
-# specify workspace status traffic → materialised
+# registry selector: traffic → git@github.com:org/traffic.git
+# specify workspace status traffic --format json → git-clone, branch=main, dirty=false
+# specify workspace prepare-branch traffic --change platform-v2 --source /path/to/legacy-codebase --format json
+#   → prepared=true branch=specify/platform-v2 local-branch=created remote-branch=absent
 # CWD saved: /path/to/initiating-repo
 # Source resolution: monolith → /path/to/legacy-codebase (absolute)
+# specify change plan transition ingest-pipeline in-progress
 
 Routing: ingest-pipeline → traffic (.specify/workspace/traffic/)
+Workspace: traffic prepared on specify/platform-v2
 
 ### Processing: ingest-pipeline (sources: [monolith])
 
@@ -28,8 +32,9 @@ Step 2/3: build
 
 Step 3/3: merge
   specify: merge ingest-pipeline
-  Auto-commit: git add .specify/specs/ .specify/archive/ && git commit -m "specify: merge ingest-pipeline"
+  Baseline committed: git add .specify/specs/ .specify/archive/ && git commit -m "specify: merge ingest-pipeline"
   Baseline updated: .specify/specs/ingest-pipeline/spec.md ✓
+  Residue committed: git add --all -- . ':!.specify/specs/**' ':!.specify/archive/**' && git commit -m "specify: residue ingest-pipeline"
 
 # CWD restored: /path/to/initiating-repo
 # specify change plan transition ingest-pipeline done
@@ -38,11 +43,17 @@ Step 3/3: merge
 ---
 
 # specify change plan next --format json → { "next": "operator-dashboard", "project": "command-centre", "description": "Build the operator alerting dashboard.", "sources": null }
-# specify change plan transition operator-dashboard in-progress
-# specify workspace status command-centre → materialised
+# registry selector: command-centre → git@github.com:org/command-centre.git
+# specify workspace status command-centre --format json → missing
+# specify workspace sync command-centre
+# specify workspace status command-centre --format json → git-clone, branch=main, dirty=false
+# specify workspace prepare-branch command-centre --change platform-v2 --format json
+#   → prepared=true branch=specify/platform-v2 local-branch=created remote-branch=absent
 # CWD saved: /path/to/initiating-repo
+# specify change plan transition operator-dashboard in-progress
 
 Routing: operator-dashboard → command-centre (.specify/workspace/command-centre/)
+Workspace: command-centre prepared on specify/platform-v2
 
 ### Processing: operator-dashboard (greenfield)
 
@@ -50,7 +61,7 @@ Step 1/3: define
   Artifacts: proposal.md, specs, design.md, tasks.md ✓
 
 Step 2/3: build
-  ✗ Build failed — change dropped, plan entry transitioned to failed
+  ✗ Build failed — slice dropped, plan entry transitioned to failed
 
   Summary: Missing API contract from traffic service.
   Journal: .specify/slices/operator-dashboard/journal.yaml
@@ -76,4 +87,4 @@ Failed:
 Pending (dependencies not satisfied):
   - traffic-api (waits on: operator-dashboard)
 
-Next action: Resolve blocked/failed entries (specify change plan amend + specify change plan transition <name> blocked → pending / failed → pending) or accept the partial initiative and run specify change plan archive --force.
+Next action: Resolve blocked/failed entries (specify change plan amend + specify change plan transition <name> blocked → pending / failed → pending) or accept the partial change and run specify change plan archive --force.

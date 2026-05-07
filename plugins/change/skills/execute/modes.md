@@ -47,8 +47,8 @@ Mode invariants:
 - **Self-heal runs once.** The step-3 pass happens before the first iteration. Subsequent iterations do not re-run self-heal.
 - **`failure` does NOT stop the loop.** An individual slice that returns `outcome: failure` is transitioned to `failed` inside steps 11a–c; the driver then continues to the next `specify change plan next` call. `specify change plan next` naturally skips `failed` entries, so the loop advances without extra branching.
 - **`deferred` does NOT stop the loop.** Same shape with `blocked` instead of `failed`.
-- **Loop stops only when `specify change plan next` reports no eligible slice.** Terminal classifications are `all-done` (every entry in `{done, skipped}`) or `stuck` (pending / blocked / failed entries remain but no pending entry has its `depends-on` satisfied).
-- **`halted` is reserved for self-heal halts.** Mid-loop failures / deferrals do NOT reach `halted`.
+- **Loop stops when `specify change plan next` reports no eligible slice or a non-phase guard halts.** Terminal classifications are `all-done` (every entry in `{done, skipped}`), `stuck` (pending / blocked / failed entries remain but no pending entry has its `depends-on` satisfied), or `halted` (self-heal ambiguity, branch-preparation refusal, baseline residue after merge, or residue commit failure).
+- **Phase failures / deferrals do not halt.** Mid-loop `failure` and `deferred` outcomes reach terminal plan statuses (`failed` / `blocked`) and the loop continues. `halted` is reserved for conditions where the driver cannot safely write a terminal status.
 - **No phase-level parallelism.** At most one slice is `in-progress` at a time; the loop does not fan out concurrent phase invocations.
 
 ### SIGINT / SIGTERM handling

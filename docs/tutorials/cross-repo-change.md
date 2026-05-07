@@ -1,4 +1,4 @@
-# Cross-Repo Initiatives
+# Cross-Repo Changes
 
 Drive a feature spanning a backend and a mobile app from a single platform hub. This tutorial walks the **bootstrap-to-PRs** half of an end-to-end platform-first loop: bootstrap a hub, register two code projects, plan a feature that crosses both, execute the plan across workspace clones, and ship the result as PRs.
 
@@ -12,9 +12,9 @@ It exercises Steps 1-7 of the RFC-9 §1C critical path:
 6. `/change:execute --loop` with CWD routing across two workspace clones
 7. `specify workspace push` to publish branches and PRs
 
-The remaining steps -- merging the PRs and archiving the plan -- live in the follow-on tutorial [Landing a Change](landing-a-change.md). Between them, the two tutorials walk the full Steps 1-9 RFC-9 §1C path. The `/change:plan --orchestrate` umbrella variants (formerly the `/spec:initiative` skill) and the three initiative shapes (migrate-legacy / new-feature / update-existing) also live there.
+The remaining steps -- merging the PRs and archiving the plan -- live in the follow-on tutorial [Landing a Change](landing-a-change.md). Between them, the two tutorials walk the full Steps 1-9 RFC-9 §1C path. The `/change:plan --orchestrate` umbrella variants (formerly the `/spec:initiative` skill) and the three change shapes (migrate-legacy / new-feature / update-existing) also live there.
 
-> **Choosing your topology.** This tutorial uses the platform-hub topology because the feature spans two registered projects -- the hub holds platform state and the code lives in registered repos. If your work is single-repo, the platform-as-project shape (initiating repo with `url: .` in the registry) is simpler; see [Platform repo topologies](../explanation/platform-repo.md) for the comparison and [A Multi-Change Initiative](single-repo-change.md) for the single-repo flow.
+> **Choosing your topology.** This tutorial uses the platform-hub topology because the feature spans two registered projects -- the hub holds platform state and the code lives in registered repos. If your work is single-repo, the platform-as-project shape (initiating repo with `url: .` in the registry) is simpler; see [Platform repo topologies](../explanation/platform-repo.md) for the comparison and [A Multi-Slice Change](single-repo-change.md) for the single-repo flow.
 
 Every command below should run cleanly against the current `specify` CLI on a freshly-cloned hub. If a step fails, the gap is in the implementation, not the design — file an issue with the failing transcript.
 
@@ -28,7 +28,7 @@ Every command below should run cleanly against the current `specify` CLI on a fr
 
 ## What you will build
 
-A platform hub `shop-platform/` that drives the `oauth-login` initiative across two registered projects:
+A platform hub `shop-platform/` that drives the `oauth-login` change across two registered projects:
 
 | Project | Schema | Domain |
 |---|---|---|
@@ -64,7 +64,7 @@ shop-platform/                              # the hub repo (this tutorial's work
 └── .specify/
     ├── project.yaml                        # { hub: true, name: shop-platform } (capability: omitted)
     ├── plans/oauth-login/                  # discovery, workspace, proposal markdown
-    ├── archive/                            # finalised initiatives (after Step 9)
+    ├── archive/                            # finalised changes (after Step 9)
     └── workspace/
         ├── shop-backend/                   # tier-2 clone of git@github.com:org/shop-backend.git
         └── shop-mobile/                    # tier-2 clone of git@github.com:org/shop-mobile.git
@@ -202,7 +202,7 @@ so the contract change must land before either implementation.
 
 Then author `./docs/oauth-login.md` with the prose feature description — one paragraph per requirement is plenty. The discovery brief reads it as `kind: documentation` and folds the capabilities into the inventory.
 
-> **Initiative shape.** This walkthrough is the **new-feature** shape (sources are documentation only). The other two shapes — `migrate-legacy` (`--source <key>=<git-url>`) and `update-existing` (no flags) — flow through the same Steps 4–9 with different inputs. See [Initiative shapes](#initiative-shapes) at the bottom of this page.
+> **Change shape.** This walkthrough is the **new-feature** shape (sources are documentation only). The other two shapes — `migrate-legacy` (`--source <key>=<git-url>`) and `update-existing` (no flags) — flow through the same Steps 4–9 with different inputs. See [Change shapes](#change-shapes) at the bottom of this page.
 
 ## 4. Plan the change
 
@@ -277,7 +277,7 @@ shop-mobile      git-clone     <40-char sha>     dirty: no     specify-tree: pro
 
 `specify workspace sync` is idempotent — re-run it between initiatives to refresh clones. Greenfield projects (remote does not yet exist) are bootstrapped in place via `git init` + `specify init`.
 
-> **Tier-2 only.** `.specify/workspace/<peer>/` clones are durable; they outlive any single change. The legacy-source clones under `.specify/plans/<initiative>/analyze/<key>/` (tier-1) are a separate concern — read-only and ephemeral. See [Workspace tiers](../explanation/workspace-tiers.md) for the full contrast.
+> **Tier-2 only.** `.specify/workspace/<peer>/` clones are durable; they outlive any single change. The legacy-source clones under `.specify/plans/<change>/analyze/<key>/` (tier-1) are a separate concern — read-only and ephemeral. See [Workspace tiers](../explanation/workspace-tiers.md) for the full contrast.
 
 ## 6. Execute the plan
 
@@ -290,12 +290,12 @@ Drive every change in dependency order:
 The driver:
 
 1. Acquires the plan lock at `.specify/plan.lock` (one driver at a time).
-2. Picks the next eligible change via `specify change plan next --format json`.
-3. For multi-repo entries, resolves the `project` field against `registry.yaml` and `chdir`s into `.specify/workspace/<project>/`. The contract change has no `project` and runs against the hub itself.
-4. Runs `/spec:define` → `/spec:build` → `/spec:merge` for the change.
-5. Reads the phase outcome (`success`/`failure`/`deferred`) and transitions the plan entry to `done`/`failed`/`blocked`.
-6. Restores CWD to the hub root.
-7. After a successful merge, runs the [cross-project contract check](../../plugins/change/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b) (RFC-9 §3B): walks the producer's `contracts.produces` list, finds consumer projects via `contracts.consumes`, and runs the format-appropriate `/contract:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone — `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas. Findings are recorded as `cross-project-warning:` entries on the merged change's `journal.yaml` and rendered in the merge transcript. **Warnings never halt the loop.**
+2. Picks the next eligible slice via `specify change plan next --format json`.
+3. For multi-repo entries, resolves the `project` field against `registry.yaml`, materialises only the selected workspace slot if it is missing, and prepares `specify/oauth-login` before any phase writes. The contract slice has no `project` and runs against the hub itself.
+4. Runs `/spec:define` -> `/spec:build` -> `/spec:merge` for the slice.
+5. After a routed merge succeeds, verifies the `/spec:merge` baseline commit boundary (`.specify/specs/` plus `.specify/archive/`) and commits non-baseline residue as `specify: residue <slice-name>`.
+6. Restores CWD to the hub root and transitions the plan entry to `done`/`failed`/`blocked`.
+7. After a successful routed merge, runs the [cross-project contract check](../../plugins/change/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b) (RFC-9 §3B): walks the producer's `contracts.produces` list, finds consumer projects via `contracts.consumes`, and runs the format-appropriate `/contract:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone — `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas. Findings are recorded as `cross-project-warning:` entries on the merged slice's `journal.yaml` and rendered in the merge transcript. **Warnings never halt the loop.**
 8. Repeats from step 2 until `specify change plan next` reports `all-done` or `stuck`.
 
 <details>
@@ -304,7 +304,7 @@ The driver:
 ```text
 ## /change:execute — oauth-login
 
-### Initiative: oauth-login
+### Change: oauth-login
 Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (total 3)
 
 ---
@@ -327,11 +327,15 @@ Step 3/3: merge
 ---
 
 # specify change plan next --format json → { "next": "add-oauth-tokens", "project": "shop-backend", ... }
-# specify change plan transition add-oauth-tokens in-progress
-# specify workspace status shop-backend → materialised
+# registry selector: shop-backend → git@github.com:org/shop-backend.git
+# specify workspace status shop-backend --format json → git-clone, branch=main, dirty=false
+# specify workspace prepare-branch shop-backend --change oauth-login --format json
+#   → prepared=true branch=specify/oauth-login local-branch=created remote-branch=absent
 # CWD saved: /…/shop-platform
+# specify change plan transition add-oauth-tokens in-progress
 
 Routing: add-oauth-tokens → shop-backend (.specify/workspace/shop-backend/)
+Workspace: shop-backend prepared on specify/oauth-login
 
 ### Processing: add-oauth-tokens (greenfield)
 
@@ -340,9 +344,10 @@ Step 2/3: build
   Tasks: 5/5 complete ✓
 Step 3/3: merge
   specify: merge add-oauth-tokens
-  Auto-commit: git add .specify/specs/ contracts/ .specify/archive/ \
+  Baseline committed: git add .specify/specs/ .specify/archive/ \
       && git commit -m "specify: merge add-oauth-tokens"
   Baseline updated: .specify/specs/oauth-tokens/spec.md ✓
+  Residue committed: specify: residue add-oauth-tokens
 
 # CWD restored: /…/shop-platform
 # specify change plan transition add-oauth-tokens done
@@ -370,18 +375,18 @@ Progress: done 3, in-progress 0, pending 0, blocked 0, failed 0, skipped 0 (tota
 
 Completion: all-done
 
-Next action: Initiative complete — no further action needed.
+Next action: Change complete. Run specify workspace push to publish prepared specify/oauth-login branches and create or update PRs. Merge those PRs through the forge UI or gh pr merge, then close out via specify change finalize.
 ```
 
 </details>
 
-Each implementation change auto-commits inside its workspace clone (`git add .specify/specs/ … && git commit -m "specify: merge <name>"`). This is what `specify workspace push` ships in Step 7.
+Each implementation slice leaves two local commits in its workspace clone: `/spec:merge` commits only `.specify/specs/` and `.specify/archive/` as `specify: merge <slice-name>`, then `/change:execute` commits project-output residue as `specify: residue <slice-name>`. This is what `specify workspace push` ships in Step 7.
 
 > **Failure handling.** If a change fails mid-loop, `/change:execute` invokes `/spec:drop`, transitions the entry to `failed` (verbatim `outcome.summary` as `--reason`), and continues. Subsequent changes that depend on the failed one stay `pending` until you `specify change plan transition <pred> pending` to retry, or `specify change plan transition <entry> skipped --reason …` to drop the dependency leaf. See `/change:execute`'s [§Output format → Failure transcript](../../plugins/change/skills/execute/SKILL.md) for the recovery prompt.
 
 ## 7. Push branches and PRs
 
-After execution, each workspace clone has local commits ahead of `main`. Publish them:
+After execution, each workspace clone is already on `specify/oauth-login` with local commits ahead of the remote branch. Publish them:
 
 ```bash
 specify workspace push
@@ -389,10 +394,12 @@ specify workspace push
 
 Per project, the verb:
 
-1. Creates or updates the `specify/oauth-login` branch from the clone's HEAD.
+1. Verifies the clone is clean and already checked out to `specify/oauth-login`; any other checkout is reported as `no-branch`.
 2. Runs `git push --force-with-lease -u origin specify/oauth-login`.
 3. For greenfield remotes, creates the repo via `gh repo create`.
-4. Runs `gh pr create` if no PR exists for the branch.
+4. Creates or updates a PR for the branch via `gh pr create` when needed.
+
+`workspace push` is transport-only: it does not create the change branch on the fly, does not create commits, does not push default branches, and never merges PRs.
 
 <details>
 <summary>Expected output</summary>
@@ -428,9 +435,9 @@ For greenfield projects (remote did not exist before this run), the per-project 
 
 Two PRs are now open against `org/shop-backend` and `org/shop-mobile`, both on the `specify/oauth-login` branch. The `oauth-login` plan still lives at `plan.yaml` with every entry `done`. The hub is in the canonical "ready to land" state.
 
-[**Continue to Landing a Change**](landing-a-change.md) for Steps 8 (squash-merge with `specify workspace merge`) and 9 (archive with `specify change finalize`), the `/change:plan --orchestrate` umbrella variants, and the three initiative shapes (migrate-legacy / new-feature / update-existing).
+[**Continue to Landing a Change**](landing-a-change.md) for Steps 8 (operator PR merge through the forge UI or `gh pr merge`) and 9 (archive with `specify change finalize`), the `/change:plan --orchestrate` umbrella variants, and the three change shapes (migrate-legacy / new-feature / update-existing).
 
-If you stop here, the platform-first work is shipped but unmerged. The PRs sit on the forge until reviewed; nothing is blocking. You can resume landing at any time -- the umbrella is idempotent on re-entry, and the manual flow is just `specify workspace merge` then `specify change finalize`.
+If you stop here, the platform-first work is shipped but unmerged. The PRs sit on the forge until reviewed; nothing is blocking. You can resume landing at any time -- the umbrella is idempotent on re-entry, and the manual flow is to merge the PRs through the forge UI or `gh pr merge`, then run `specify change finalize`.
 
 ## Troubleshooting
 
@@ -477,9 +484,9 @@ A reviewer (or an operator stepping through this tutorial as an integration test
 
 Any deviation is a blocker. File the failing transcript against this tutorial; per RFC-9 §1C the gap is in the implementation, not the design. The Steps 8-9 verification (PR `MERGED` on remote, plan archived, re-run `plan-not-found`) lives in [Landing a Change](landing-a-change.md#verification).
 
-## Initiative shapes (preview)
+## Change shapes (preview)
 
-The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three initiative shapes -- `migrate-legacy`, `new-feature`, `update-existing` -- through a single uniform sequence. The walkthrough at the top of this page is the **new-feature** shape (sources are documentation only); the other two arrive in [Landing a Change](landing-a-change.md#initiative-shapes), which also covers the `/change:plan --orchestrate` umbrella that drives each shape as a single operator action.
+The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three change shapes -- `migrate-legacy`, `new-feature`, `update-existing` -- through a single uniform sequence. The walkthrough at the top of this page is the **new-feature** shape (sources are documentation only); the other two arrive in [Landing a Change](landing-a-change.md#change-shapes), which also covers the `/change:plan --orchestrate` umbrella that drives each shape as a single operator action.
 
 ## What you learned
 
@@ -488,7 +495,7 @@ The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three 
 - `specify change create` scaffolds the operator brief; the `inputs:` frontmatter feeds the discovery brief.
 - `/change:plan` runs discovery -> sync-peers -> propose -> assignment, and finishes with `specify change plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
 - `/change:execute --loop` `chdir`s into each workspace clone, runs define-build-merge, transitions the plan entry, and routes back. Multi-repo CWD routing is invisible to the phase skills.
-- `specify workspace push` ships local commits as PRs on `specify/<initiative-name>` branches.
+- `specify workspace push` ships prepared `specify/<change-name>` branches as PRs without creating branches, committing residue, pushing default branches, or merging PRs.
 
 ## Cross-links
 
@@ -499,7 +506,7 @@ The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three 
 - [`/change:execute`](../reference/change-skills/execute.md) -- Layer 2 plan driver, including the cross-project contract check (RFC-9 §3B).
 - [`specify init`](../reference/cli/init.md) -- the `--hub` flag.
 - [`specify registry`](../reference/cli/registry.md) -- `add` / `remove` / `show` / `validate`.
-- [`specify workspace`](../reference/cli/workspace.md) -- `sync` / `status` / `push` / `merge`.
+- [`specify workspace`](../reference/cli/workspace.md) -- `sync` / `status` / `push`.
 - [`specify plan`](../reference/cli/plan.md) -- `create` / `add` / `amend` / `next` / `doctor` / `archive` / `lock`.
 - [Migrating to CLI v1](../explanation/migrating-cli-v1.md) -- rename map covering the v1.x `init`->`create` and `create`->`add` renames.
 

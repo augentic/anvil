@@ -1,6 +1,8 @@
 # RFC-10: Skill Improvements
 
 > Status: Implemented
+>
+> **RFC-14 supersession note**: this archive includes historical skill argument examples that mention `auto-merge`. Current `/change:plan --orchestrate` treats `--auto-merge` as a retired flag and exits non-zero before side effects; Specify never calls `specify workspace merge` or `gh pr merge`.
 
 ## Abstract
 

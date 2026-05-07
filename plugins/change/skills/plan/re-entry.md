@@ -10,7 +10,7 @@ Running `/change:plan --orchestrate <name>` a second time after a halt is the ca
 | brief present, `plan.yaml` absent | step 3 (with `/change:plan` default mode running fresh) |
 | `plan.yaml` present, any entry not in `{done, failed, skipped}` | step 4 (`/change:execute --loop` resumes — self-heal reclaims any `in-progress` left by a prior crash) |
 | every plan entry terminal, no PRs pushed yet (no `specify/<name>` branch on any remote) | step 5 |
-| PRs pushed, not all `MERGED` | step 6 (with `--auto-merge`) or list-and-stop (without) |
+| PRs pushed, not all `MERGED` | step 6 lists PRs and stops for operator merge |
 | every PR `MERGED`, plan still on disk | step 7 |
 | plan archived (`plan-not-found`) | report "change already finalized" and exit 0 |
 
@@ -21,7 +21,7 @@ The orchestration mode never re-creates a brief, re-runs discovery, or re-pushes
 - `specify change create` refuses on populated brief;
 - `specify change plan create` refuses on populated plan;
 - `specify workspace push` reports `up-to-date` for clones it already pushed;
-- `specify workspace merge` reports `merged` for already-landed PRs;
+- step 6 reads remote PR state and reports already-merged PRs without invoking merge automation;
 - `specify change finalize` refuses on `plan-not-found`.
 
 ## Step 3 re-entry against a populated plan

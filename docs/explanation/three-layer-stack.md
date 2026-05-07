@@ -51,7 +51,7 @@ The primary command families are:
 - **`specify change plan ...`** -- scaffold, populate, validate, transition, and archive a slice plan.
 - **`specify change ...`** -- manage the operator-authored change brief at `change.md` and finalize a slice once every PR has merged (`change {create, show, finalize}`).
 - **`specify registry ...`** -- manage the platform registry at `registry.yaml` (multi-repo changes) — `registry {add, remove, show, validate}`.
-- **`specify workspace ...`** -- materialise, inspect, push, and merge workspace clones for multi-repo changes. Workspace clones are durable and read-write; the separate read-only legacy-source clones used by `/spec:analyze` live elsewhere -- see [Workspace Tiers](workspace-tiers.md) for the distinction.
+- **`specify workspace ...`** -- materialise, inspect, and push workspace clones for multi-repo changes. Workspace clones are durable and read-write; the separate read-only legacy-source clones used by `/spec:analyze` live elsewhere -- see [Workspace Tiers](workspace-tiers.md) for the distinction.
 - **`specify status`** -- project dashboard summarising registry, plan, and active slices.
 
 **Who uses it:** Power users who want fine-grained control, CI pipelines, and anyone debugging the state of `.specify/`. Layer 1 is always available as a manual fallback beneath the higher layers.
@@ -101,7 +101,7 @@ The plan is the slice's table of contents. `/change:plan` produces it by analysi
 
 **Who uses it:** Change leads coordinating multi-slice programs -- greenfield builds, legacy migrations, platform modernisations -- when they want fine-grained control over the plan/execute loop or only need a subset of the platform-first flow.
 
-**Climb to Layer 4 when:** the slice spans multiple registered projects (i.e. `registry.yaml` declares more than one project) and you want the cross-repo loop -- brief, registry validate, plan, execute, push, optional merge, finalize -- driven as a single operator action. Single-project changes stay at Layer 3 because there is no cross-repo work for the umbrella to compose. Power users running CI pipelines or partial reruns also stay at Layer 3 because the umbrella's value is single-command convenience, not a new capability.
+**Climb to Layer 4 when:** the slice spans multiple registered projects (i.e. `registry.yaml` declares more than one project) and you want the automated half of the cross-repo loop -- brief, registry validate, plan, execute, push, then finalize after operator PR merge -- driven as a single operator action. Single-project changes stay at Layer 3 because there is no cross-repo work for the umbrella to compose. Power users running CI pipelines or partial reruns also stay at Layer 3 because the umbrella's value is single-command convenience, not a new capability.
 
 ## Layer 4: Change orchestration
 
@@ -109,10 +109,10 @@ Layer 4 is a flag-gated mode of `/change:plan` — `/change:plan --orchestrate` 
 
 | Skill | Role |
 |-------|------|
-| `/change:plan --orchestrate` | Brief → registry validate → `/change:plan` (default mode) → `/change:execute --loop` → `specify workspace push` → optional `specify workspace merge` → `specify change finalize` |
+| `/change:plan --orchestrate` | Brief → registry validate → `/change:plan` (default mode) → `/change:execute --loop` → `specify workspace push` → operator PR merge through forge UI / `gh pr merge` → `specify change finalize` |
 
 ```text
-/change:plan --orchestrate <name> [--shape ...] [--from ...] [--source ...] [--auto-merge]
+/change:plan --orchestrate <name> [--shape ...] [--from ...] [--source ...]
 ```
 
 The orchestration mode honours all the halts the underlying skills surface (self-heal, stuck, `registry-amendment-required`) and is **idempotent on re-entry** — running it again after a halt resumes from the appropriate step.
@@ -125,7 +125,7 @@ A key design principle: higher layers invoke lower layers, but lower layers are 
 
 This means you can always drop down a layer:
 
-- If `/change:plan --orchestrate` halts on a step, you can pick up by hand at the next CLI verb (`specify workspace push`, `specify workspace merge`, `specify change finalize`).
+- If `/change:plan --orchestrate` halts on a step, you can pick up by hand at the next action (`specify workspace push`, operator PR merge, `specify change finalize`).
 - If `/change:execute` fails on a slice, you can finish it manually with `/spec:build` and `/spec:merge`.
 - If `/change:plan` produces a plan you want to adjust, you can edit it with `specify change plan amend` and drive it yourself with `specify change plan next`.
 - If a skill does something unexpected, you can inspect the underlying state with `specify slice status` or `specify change plan status`.

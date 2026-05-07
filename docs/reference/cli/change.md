@@ -34,7 +34,7 @@ specify change show [--format json]
 
 ### specify change finalize
 
-Close out a change once every plan entry is in a terminal state and every per-project PR has merged on its remote (RFC-9 §4C). This is the **canonical closure verb** for the platform-first loop — it replaces the manual `specify change plan archive` step with a defence-in-depth confirmation that the whole change has landed.
+Close out a change once every plan entry is in a terminal state and every per-project PR has already been merged by the operator on its remote (RFC-9 §4C / RFC-14). This is the **canonical closure verb** for the platform-first loop: it verifies landing state, archives coordinator artifacts, and optionally removes clean workspace clones. It never merges, force-merges, approves, or otherwise mutates a pull request.
 
 ```bash
 specify change finalize [--clean] [--dry-run]
@@ -44,13 +44,13 @@ The verb runs four guards in order. **All-or-nothing:** any guard failure refuse
 
 1. **Plan-presence guard.** `plan.yaml` must exist. Absent file refuses with `plan-not-found` — the canonical "change is already finalized" signal (the previous run swept the plan into `.specify/archive/plans/`).
 2. **Plan terminal-state guard.** Every entry must be in `done`, `failed`, or `skipped` (the in-`Plan` mapping for `dropped`). Anything `pending`, `in-progress`, or `blocked` refuses with `non-terminal-entries-present`; the diagnostic names the offending entries and points the operator at `specify change plan status`.
-3. **Per-project PR-state guard.** For each registry project, `gh pr view --json state,merged,headRefName,number,url` is run against the workspace clone. Status mapping:
+3. **Per-project PR-state guard.** For each registry project, `gh pr view --json state,merged,headRefName,number,url` is run against the workspace clone. The PR, when present, must use the exact branch `specify/<change-name>`. Status mapping:
 
    | Status | Meaning | Passes? |
    |---|---|---|
    | `merged` | PR is `MERGED` on remote | yes |
    | `no-branch` | No PR on `specify/<change-name>` for this project | yes |
-   | `unmerged` | PR is `OPEN` (not yet merged) | no |
+   | `unmerged` | PR is `OPEN` and must be operator-merged through the forge UI, `gh pr merge`, or the project's normal merge queue before finalize | no |
    | `closed` | PR was `CLOSED` without merging | no |
    | `branch-pattern-mismatch` | A PR exists but its `headRefName` is not `specify/<change-name>` | no |
    | `failed` | `gh` shell-out failed (network, missing binary, parse error) | no |
@@ -61,7 +61,7 @@ When every guard passes, the verb runs `Plan::archive` programmatically: `plan.y
 
 #### `--clean`
 
-Removes `.specify/workspace/<peer>/` clones after the archive completes. Symlink-mode projects (`url: .` or relative paths) are skipped — they point at source trees the operator owns separately. Without `--clean`, the clones stay on disk; they are cheap to refresh via `specify workspace sync` for the next change.
+Removes clean `.specify/workspace/<peer>/` clones after the archive completes. Symlink-mode projects (`url: .` or relative paths) are skipped — they point at source trees the operator owns separately. Dirty clones refuse finalize before any archive or cleanup happens. Without `--clean`, the clones stay on disk; they are cheap to refresh via `specify workspace sync` for the next change.
 
 #### `--dry-run`
 
@@ -112,20 +112,19 @@ Text mode prints the per-project status rows followed by a summary line and a fi
 
 Failure JSON keeps `finalized: false` and reports the blocking statuses in the per-project rows. Refused runs (plan absent, non-terminal entries, any per-project refusal) exit `1`; success exits `0`.
 
-#### Composition with `specify workspace merge`
+#### Composition with operator merge
 
-Two valid operator paths:
+`specify workspace push` stops at branch publication and PR creation/update. The operator lands each PR through the forge UI, `gh pr merge`, or the repository's normal merge queue. `specify change finalize` is the read-only confirmation and cleanup gate after those PRs have landed.
 
-- **Autonomous:** `specify workspace merge` (RFC-9 §4A) merges every PR with green CI; `specify change finalize` confirms the merges and archives. The 2C umbrella skill drives this path end-to-end.
-- **Supervised:** the operator merges PRs by hand on the forge; `specify change finalize` confirms and archives.
+The old `specify workspace merge` automation is now a one-release deprecation shim: it exits non-zero, performs no PR lookup or merge, and points operators at forge-side merge followed by `specify change finalize`.
 
 #### Idempotency
 
-`finalize` is idempotent across the canonical recovery path. If the first run refuses on an unmerged PR, the operator merges it manually (or via `workspace merge`) and re-runs `finalize` — the archive completes. After successful finalize, re-running returns `plan-not-found`, which is the explicit "already finalized" signal.
+`finalize` is idempotent across the canonical recovery path. If the first run refuses on an unmerged PR, the operator merges it outside Specify and re-runs `finalize` — the archive completes. After successful finalize, re-running returns `plan-not-found`, which is the explicit "already finalized" signal.
 
 ## See also
 
 - [specify slice](slice.md) -- the per-slice CLI verbs that change-orchestration drives through the slice loop.
 - [specify registry](registry.md) -- platform registry (top-level since the CLI cleanup; previously `specify initiative registry`).
-- [specify workspace](workspace.md) -- workspace sync, status, push, and merge (moved from `specify initiative workspace` in RFC-3b).
+- [specify workspace](workspace.md) -- workspace sync, status, push, and the deprecated merge shim (moved from `specify initiative workspace` in RFC-3b).
 - [Migrating CLI v1](../../explanation/migrating-cli-v1.md) -- rename map for the cleanup.

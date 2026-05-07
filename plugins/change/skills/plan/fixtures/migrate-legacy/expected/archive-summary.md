@@ -24,8 +24,7 @@ shop-platform/
 `/change:plan --orchestrate migrate-foo …` reports `plan-not-found` (the
 explicit "already finalized" signal) and exits zero.
 
-If the operator had passed `--auto-merge --clean`-equivalent (i.e. run
-`specify change finalize --clean` by hand), the workspace clones
-under `.specify/workspace/` would be removed too. This fixture pins the
-default `--auto-merge` path, which leaves them on disk for the next
-initiative.
+If the operator runs `specify change finalize --clean` by hand, the
+workspace clones under `.specify/workspace/` are removed too. This
+fixture pins the default finalize path, which leaves them on disk for
+the next change.

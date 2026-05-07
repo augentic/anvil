@@ -10,13 +10,13 @@ argument-hint: "<change-name>"
 2. **Scaffold the plan** — `specify change plan create <change-name> [--source <key>=<path-or-url> ...]`. Skipped under `--extend`.
 3. **Run the plan brief pipeline** from `capability.yaml`:
    - **(a) Discovery** — invoke the discovery brief via `/spec:analyze`; writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** (RFC-9 §2B) before step 3(b) when no `registry.yaml` exists yet. See [discovery.md](discovery.md).
-   - **(b) Sync peers** (multi-repo only) — `specify workspace sync` + author `workspace.md`. See [sync-peers.md](sync-peers.md).
+   - **(b) Sync peers** (multi-repo only) — discovery-time `specify workspace sync` (may sync all peers) + author `workspace.md`. Execution-time sync is separate and prepares only the selected entry's project unless the operator asks for more. See [sync-peers.md](sync-peers.md).
    - **(c) Propose** — run the propose brief; iterate accept/edit/reject/abort per slice; `specify change plan add` for each accepted slice. See [propose.md](propose.md).
    - **(d) Assignment** (multi-repo only) — infer `project` per entry; `specify change plan amend --project <project>`. When an unresolved row names a project that does not exist in `registry.yaml`, run the **registry-proposal sub-step** (RFC-9 §2B) — `specify registry add` + `specify workspace sync` — before continuing. See [assignment.md](assignment.md).
 4. **Validate** — `specify change plan validate`. Non-zero exit on any `Error`-level finding. Never skip this step.
 5. **Exit with hand-off summary** — point the operator at `specify change plan status` and `/change:execute --loop`.
 
-**Orchestration mode (`--orchestrate`).** When `--orchestrate` is set, after step 5 above the skill continues into the seven-step cross-repo umbrella sequence (brief → registry → plan → execute → push → optional merge → finalize). The plan-authoring half of orchestration delegates to the same default mode documented above. See [orchestration.md](orchestration.md) for the full sequence, [shapes.md](shapes.md) for shape inference / validation, and [re-entry.md](re-entry.md) for the idempotent re-entry algorithm.
+**Orchestration mode (`--orchestrate`).** When `--orchestrate` is set, after step 5 above the skill continues into the cross-repo umbrella sequence (brief → registry → plan → execute → push/PR handoff → finalize after operator merge). The plan-authoring half of orchestration delegates to the same default mode documented above. See [orchestration.md](orchestration.md) for the full sequence, [shapes.md](shapes.md) for shape inference / validation, and [re-entry.md](re-entry.md) for the idempotent re-entry algorithm.
 
 # Plan skill
 
@@ -53,8 +53,7 @@ The on-disk contracts the authoring skill depends on are:
     [--extend] \
     [--dry-run] \
     [--orchestrate] \
-    [--shape migrate-legacy|new-feature|update-existing] \
-    [--auto-merge]
+    [--shape migrate-legacy|new-feature|update-existing]
 ```
 
 Flags:
@@ -66,9 +65,9 @@ Flags:
 - **`--focus <area>`** — optional scoping hint for the propose brief (L3.G). Free-form string; the propose brief decides how to interpret it.
 - **`--extend`** — add to an existing `plan.yaml` instead of refusing. See §Modes → `--extend` for the full contract.
 - **`--dry-run`** — emit the readiness report and the proposed plan to stdout; write nothing. See §Modes → `--dry-run`.
-- **`--orchestrate`** — enable orchestration mode: run the seven-step cross-repo umbrella (RFC-9 §2C) after the authoring loop. See [orchestration.md](orchestration.md). Required when `--shape` or `--auto-merge` is supplied.
+- **`--orchestrate`** — enable orchestration mode: run the cross-repo umbrella (RFC-9 §2C) after the authoring loop. The umbrella pushes per-project PRs, stops for operator merge when PRs are still open, and later finalizes after `specify change finalize` verifies every PR is merged. See [orchestration.md](orchestration.md). Required when `--shape` is supplied.
 - **`--shape migrate-legacy|new-feature|update-existing`** — explicit shape override under `--orchestrate`. Inferred from the supplied input flags when omitted. Rejected with a hard diagnostic when `--orchestrate` is absent. See [shapes.md](shapes.md).
-- **`--auto-merge`** — under `--orchestrate`, run `specify workspace merge` against open per-project PRs at step 6 of the umbrella. Without it, step 6 lists open PRs and stops. Rejected with a hard diagnostic when `--orchestrate` is absent. See [orchestration.md](orchestration.md) §"`--auto-merge` semantics".
+- **`--auto-merge`** — retired. Treat this flag as an error that explains `/change:plan --orchestrate` never calls `specify workspace merge` or `gh pr merge`. Operators merge the PRs opened by `specify workspace push` through the forge UI or an explicit hand-run `gh pr merge`, then re-run the umbrella to finalize.
 
 At least one of `--from`, `--against`, `--source`, or a populated change-brief `inputs` list must be supplied. A bare `/change:plan <name>` with no CLI inputs **and** no change brief (or a brief with empty `inputs`) is a hard exit — the skill cannot decide the change's shape without at least one input.
 
@@ -239,19 +238,20 @@ The full output shape (banner / sources block / pipeline line / capability inven
 
 ### `--orchestrate`
 
-Run the seven-step cross-repo umbrella sequence after the authoring loop completes. The orchestration mode is composition only — every step shells out to a verb that already exists in the v1 surface. See [orchestration.md](orchestration.md) for the full sequence, halts table, manual fallbacks, and verb hygiene; [shapes.md](shapes.md) for shape inference and validation; [re-entry.md](re-entry.md) for the idempotent resume algorithm.
+Run the cross-repo umbrella sequence after the authoring loop completes. The orchestration mode is composition only — every step shells out to a verb that already exists in the v1 surface. It does not own the human PR merge; it only opens/updates PRs via `specify workspace push`, observes whether they have been merged, and invokes `specify change finalize` once the remote PR state is ready. See [orchestration.md](orchestration.md) for the full sequence, halts table, manual fallbacks, and verb hygiene; [shapes.md](shapes.md) for shape inference and validation; [re-entry.md](re-entry.md) for the idempotent resume algorithm.
 
-Under `--orchestrate --dry-run`, the umbrella is observation-only end-to-end: the authoring loop runs in dry-run (per the §`--dry-run` section above), and steps 4–7 of the umbrella emit "would invoke" preview lines without invoking any phase skill, push, merge, or finalize. See [orchestration.md](orchestration.md) §"`--dry-run` semantics".
+Under `--orchestrate --dry-run`, the umbrella is observation-only end-to-end: the authoring loop runs in dry-run (per the §`--dry-run` section above), and the execution, push, PR-observation, and finalize portions emit "would invoke" preview lines without invoking any phase skill, push, forge merge, or finalize. See [orchestration.md](orchestration.md) §"`--dry-run` semantics".
 
 ## Non-goals
 
-- **Execute the plan.** Never. Execution is `/change:execute`'s concern (Layer 2). `/change:plan` exits with a hand-off summary that points the operator at `/change:execute --loop`.
+- **Execute the plan in default mode.** Never. Execution is `/change:execute`'s concern (Layer 2). `/change:plan` exits with a hand-off summary that points the operator at `/change:execute --loop`; `--orchestrate` composes that separate skill after authoring.
 - **Modify existing plan entries.** Never. `--extend` is append-only; pre-existing entries are left untouched. Editing a pending entry mid-authoring is done via `specify change plan amend` by the human, not by this skill.
 - **Skip `specify change plan validate`.** Never. Step 4 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero.
 - **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/change:execute`.** Never. `/change:plan` only invokes the planning briefs bundled with this skill under `briefs/<capability>/`, plus the `specify change plan` CLI for scaffolding, entry creation, and validation.
 - **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/change:execute`; authoring runs outside that lock.
 - **Write `plan.yaml` directly.** Never. Every write goes through `specify change plan create` (step 2, skipped under `--extend`), `specify change plan add` (step 3c, one call per accepted slice), or `specify change plan amend` (step 3d, `--project` assignment on multi-repo plans).
 - **Clone git URLs from this skill.** Never for **discovery** inputs: `--source` git URLs are passed through to `/spec:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync` (Layer 1 CLI), invoked only in the sync-peers step when `len(registry.projects) > 1`.
+- **Merge PRs.** Never. `specify workspace push` opens or updates PRs; the operator merges them through the forge UI or a hand-run `gh pr merge`; `specify change finalize` only verifies that remote state.
 - **Author propose brief bodies.** Never. The propose brief body is owned by the capability; the skill only drives the accept / edit / reject loop against whatever the brief emits.
 - **Auto-repair a failing `specify change plan validate`.** Never. Step 4's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify change plan amend` / `specify change plan transition skipped` fix, never an in-skill edit.
 

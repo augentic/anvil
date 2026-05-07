@@ -1,6 +1,6 @@
 # Transcript — `/change:plan --orchestrate dark-mode --shape new-feature --from ./docs/dark-mode-spec.md`
 
-This transcript pins the dialogue and shell-outs across **two runs** of the umbrella: the first run drives steps 1–6 and halts at step 6 (no `--auto-merge`), the second run resumes at step 7 once the operator has merged both PRs by hand. Every shell-out uses post-1F+1G v1 verbs.
+This transcript pins the dialogue and shell-outs across **two runs** of the umbrella: the first run drives steps 1–6 and halts at PR handoff, the second run resumes at step 7 once the operator has merged both PRs by hand. Every shell-out uses post-1F+1G v1 verbs.
 
 ## Run 1 — drive through to step 6, halt at step 6
 
@@ -13,8 +13,8 @@ Pre-flight
   shape:        new-feature
   hub:          shop-platform/.specify/project.yaml (hub: true; capability omitted)
   specify:      0.x.y on PATH
-  gh:           v2.x.y on PATH (advisory only — not required without --auto-merge)
-  initiative:   dark-mode (kebab-case ok)
+  gh:           v2.x.y on PATH (read-only PR observation)
+  change:       dark-mode (kebab-case ok)
 
 ---
 
@@ -121,7 +121,7 @@ Multi-project registry; descriptions complete. Continuing.
 
   ## /change:execute — dark-mode
 
-  ### Initiative: dark-mode
+  ### Change: dark-mode
   Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (total 3)
 
   ---
@@ -188,16 +188,15 @@ Multi-project registry; descriptions complete. Continuing.
 
 ---
 
-## Step 6 — Land (--auto-merge not set)
+## Step 6 — PR handoff
 
 Open PRs on `specify/dark-mode`:
 
   omnia-backend   specify/dark-mode    PR #57    https://github.com/org/omnia-backend/pull/57
   vectis-mobile   specify/dark-mode    PR #29    https://github.com/org/vectis-mobile/pull/29
 
---auto-merge not set; merge by hand on the forge (or run
-`specify workspace merge`) and re-run /change:plan --orchestrate dark-mode
-to finalize.
+Merge these PRs through the forge UI or an explicit hand-run `gh pr merge`,
+then re-run /change:plan --orchestrate dark-mode to finalize.
 
 ---
 
@@ -207,9 +206,9 @@ to finalize.
   Plan:     plan.yaml (3 changes, all `done`)
   PRs:      omnia-backend#57 (open), vectis-mobile#29 (open)
 
-  Next action: merge PRs (forge UI or `specify workspace merge`),
-  then re-run /change:plan --orchestrate dark-mode --shape new-feature
-  --from ./docs/dark-mode-spec.md to finalize.
+  Next action: merge PRs, then re-run /change:plan --orchestrate
+  dark-mode --shape new-feature --from ./docs/dark-mode-spec.md
+  to finalize.
 ```
 
 ## Operator merges PRs by hand
@@ -228,7 +227,7 @@ Pre-flight
   hub:          shop-platform/.specify/project.yaml (hub: true; capability omitted)
   specify:      0.x.y on PATH
   gh:           v2.x.y on PATH
-  initiative:   dark-mode (kebab-case ok)
+  change:       dark-mode (kebab-case ok)
 
 ---
 
@@ -260,7 +259,7 @@ Plan is fully terminal. Skipping /change:execute.
 
   0 pushed, 0 created, 2 up-to-date. 0 failed.
 
-## Step 6 — Land (--auto-merge not set)
+## Step 6 — PR handoff
 
 Querying open PRs on `specify/dark-mode`:
 
@@ -275,14 +274,14 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 ## Step 7 — Finalize
 
   $ specify change finalize
-  specify: initiative finalize — dark-mode (specify/dark-mode)
+  specify: change finalize — dark-mode (specify/dark-mode)
 
     omnia-backend         merged                   PR #57   https://github.com/org/omnia-backend/pull/57
     vectis-mobile         merged                   PR #29   https://github.com/org/vectis-mobile/pull/29
 
   2 merged, 0 unmerged, 0 closed, 0 no-branch, 0 branch-pattern-mismatch, 0 dirty, 0 failed.
 
-  Initiative `dark-mode` finalized.
+  Change `dark-mode` finalized.
     archived plan: /…/shop-platform/.specify/archive/plans/dark-mode-20260428.yaml
     archived dir:  /…/shop-platform/.specify/archive/plans/dark-mode-20260428
 
@@ -303,6 +302,6 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 - **Verb hygiene.** Every shell-out is a post-Phase-3 verb: `specify change {create, finalize}`, `specify change plan {create, add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`. No retired verbs.
 - **No registry mutation under `new-feature`.** `registry.yaml` is byte-identical between run-1 input and run-2 output. The 2B registry-proposal sub-step does not fire because every assignment routes to an existing project.
-- **Step 6 stops without `--auto-merge`.** The umbrella never invokes `gh pr merge` or `specify workspace merge` in run 1. It surfaces the open-PR list and exits zero. The operator's manual merges happen off-fixture.
+- **Step 6 stops for operator merge.** The umbrella never invokes `gh pr merge` or `specify workspace merge` in run 1. It surfaces the open-PR list and exits zero. The operator's manual merges happen off-fixture.
 - **Re-entry is idempotent.** Run 2 traverses every step but does **work** only at step 7. Each earlier step short-circuits because its on-disk state is already terminal: brief present, registry unchanged, plan terminal, workspace clones up-to-date, every PR `MERGED` on remote.
 - **Cross-project contract change has no `project`.** `dark-mode-contract` runs against the hub itself; the per-project routing applies only to `dark-mode-backend` and `dark-mode-mobile`.

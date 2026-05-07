@@ -2,9 +2,11 @@
 
 When **`registry.yaml`** exists and declares **more than one** project (`projects.length > 1` in the JSON from `specify registry show --format json`), `/change:plan` enters the **sync-peers** phase between discovery and propose. Single-repo changes (absent registry or `projects.length ≤ 1`) skip this step entirely.
 
+This is a discovery-time inventory step. It may sync every registered peer so the propose and assignment steps can see the platform context, baseline specs, and project descriptions. It is separate from execution-time materialisation: `/change:execute` prepares only the selected plan entry's `project` slot on the exact `specify/<change-name>` branch before mutation, unless the operator explicitly runs a broader `specify workspace sync` outside the executor.
+
 ## Normative sequence
 
-1. Shell out to **`specify workspace sync`** from the project root. This materialises `.specify/workspace/<project-name>/` (symlink for local / relative `url:` values; shallow `git clone` / `git fetch` for remotes — see the CLI). Treat a non-zero exit as a hard failure for `/change:plan`.
+1. Shell out to **`specify workspace sync`** from the project root with no selector unless the operator explicitly requested a narrower discovery inventory. This materialises `.specify/workspace/<project-name>/` for the selected discovery set (symlink for local / relative `url:` values; shallow `git clone` / `git fetch` for remotes — see the CLI). Treat a non-zero exit as a hard failure for `/change:plan`.
 2. Walk each materialised peer root read-only and author **`.specify/plans/<slice-name>/workspace.md`** — the peer inventory the propose brief consumes alongside `discovery.md`.
 
 ## `workspace.md` shape (pin for idempotency)

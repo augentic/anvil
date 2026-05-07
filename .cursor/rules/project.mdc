@@ -38,7 +38,7 @@ Multi-slice change (Layer 3):
 Cross-repo change end-to-end (Layer 4 umbrella, RFC-9 §2C):
 
 ```bash
-/change:plan --orchestrate <name> [--shape migrate-legacy|new-feature|update-existing] [--auto-merge]
+/change:plan --orchestrate <name> [--shape migrate-legacy|new-feature|update-existing]
 ```
 
 Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
