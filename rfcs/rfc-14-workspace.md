@@ -1,4 +1,4 @@
-# RFC-14: Registry - multiple domain capabilities per repository
+# RFC-14: Registry workspace
 
 > Status: Draft · Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-1](archive/rfc-1-cli.md), [RFC-9](archive/rfc-9-platform.md)
 
@@ -6,15 +6,17 @@
 
 RFC-14 lets one repository activate more than one domain capability. A repo can, for example, use `omnia@v1` at the root for Rust+WASM implementation work and `contracts@v1` under `contracts/` for independent API contract work.
 
+RFC-14 also makes that shape work for registry-managed remote repositories. `registry.yaml` continues to declare which repos participate in a change; `specify workspace sync` materialises those repos under `.specify/workspace/<project>/`; RFC-14 then resolves a scope inside the selected materialised project. The slice loop modifies the materialised checkout, and the existing `specify workspace push` / `specify workspace merge` flow pushes those changes back to the remote origin.
+
 The implementation adds **scopes** on top of RFC-13's capability protocol:
 
 - `.specify/project.yaml` gains optional `package:` and `workspace:` blocks.
 - `package:` declares the optional root scope.
 - `workspace.members[]` declares member scopes by relative path and capability URL.
-- Platform components (`registry`, `change`) stay workspace-root concerns.
+- Platform components (`registry`, `change`) stay coordinator-root concerns.
 - Artifacts, slices, brief substitutions, and capability skill invocations resolve through a scope coordinate.
 
-RFC-14 changes path resolution and change scoping only. Capability manifests, artifact lifecycles, and the RFC-13 extension protocol are unchanged.
+RFC-14 changes path resolution and change scoping only. Registry topology, remote materialisation, push/PR mechanics, capability manifests, artifact lifecycles, and the RFC-13 extension protocol are unchanged.
 
 ## Motivation
 
@@ -24,19 +26,20 @@ RFC-13 allows one domain capability plus first-party platform components per pro
 - A platform repo may own infrastructure, design tokens, and generated clients. Today each concern usually becomes a separate repo and registry entry.
 - A monorepo may need the same capability in many subdirectories, such as `omnia@v1` per service.
 
-RFC-14 makes the filesystem carry these boundaries. Each scope activates one domain capability; the repository remains the workspace that coordinates registry, change plans, locks, and archives.
+RFC-14 makes the filesystem carry these boundaries. Each scope activates one domain capability; the coordinator root remains the workspace that coordinates registry, change plans, locks, and archives.
 
 ## Design
 
 ### Core Model
 
-A workspace contains zero or more scopes. Each scope activates exactly one domain capability.
+A project workspace contains zero or more scopes. Each scope activates exactly one domain capability.
 
-- **Workspace root**: owns `.specify/project.yaml`, platform components, `registry.yaml`, `change.md`, `plan.yaml`, `.specify/plan.lock`, `.specify/archive/`, and `.specify/.cache/`.
-- **Root scope** (`""`): active when `package:` is declared. Its domain artifacts resolve from the repository root.
-- **Member scope** (`<path>`): active for each `workspace.members[]` entry. Its domain artifacts resolve under `<workspace-root>/<path>/`.
+- **Coordinator root**: owns platform components: `registry.yaml`, `change.md`, `plan.yaml`, `.specify/plan.lock`, `.specify/archive/` for change/plan records, and `.specify/workspace/`.
+- **Project workspace root**: owns `.specify/project.yaml` for the repo currently being operated on. In single-repo mode this is the coordinator root. In registry mode this may be a materialised peer at `.specify/workspace/<project>/`.
+- **Root scope** (`""`): active when `package:` is declared. Its domain artifacts resolve from the project workspace root.
+- **Member scope** (`<path>`): active for each `workspace.members[]` entry. Its domain artifacts resolve under `<project-workspace-root>/<path>/`.
 
-The workspace root is not itself a scope unless `package:` is declared.
+The project workspace root is not itself a scope unless `package:` is declared.
 
 ### `project.yaml`
 
@@ -70,11 +73,13 @@ extensions:
 
 Legal modes:
 
-| Mode | Shape | Notes |
-| ---- | ----- | ----- |
-| Package only | `package:` | Current single-capability project, also read from legacy flat `capability:` during migration. |
-| Workspace only | `workspace:` | Registry-only/platform hub or multi-member repo with no root domain capability. |
-| Package + workspace | both | Root domain plus member scopes. |
+
+| Mode                | Shape        | Notes                                                                                         |
+| ------------------- | ------------ | --------------------------------------------------------------------------------------------- |
+| Package only        | `package:`   | Current single-capability project, also read from legacy flat `capability:` during migration. |
+| Workspace only      | `workspace:` | Registry-only/platform hub or multi-member repo with no root domain capability.               |
+| Package + workspace | both         | Root domain plus member scopes.                                                               |
+
 
 ### `scope.yaml`
 
@@ -89,20 +94,48 @@ extensions:
     format-policy: strict-semver
 ```
 
-`scope.yaml` never declares the capability URL. Capability activation is always listed in root `project.yaml` so the active scope set is discoverable from one file. Member config merges as `workspace extensions.<capability>` plus `scope.yaml`, with scope-local values overriding for that scope only.
+`scope.yaml` never declares the capability URL. Capability activation is always listed in the project workspace root's `project.yaml` so the active scope set is discoverable from one file. Member config merges as `workspace extensions.<capability>` plus `scope.yaml`, with scope-local values overriding for that scope only.
+
+### Registry Materialisation
+
+RFC-14 composes with the registry workspace from RFC-9/RFC-13 instead of replacing it.
+
+Remote repositories are still declared only in `registry.yaml`:
+
+```yaml
+version: 1
+projects:
+  - name: orders
+    url: git@github.com:org/orders.git
+    schema: omnia@v1
+    description: Customer orders service.
+```
+
+`workspace.members[]` never carries a `url:` and never identifies a remote repository. It identifies scopes inside a project workspace root after that project has been resolved.
+
+When a change plan entry targets a registry project, `/change:execute` resolves in two steps:
+
+1. **Project resolution.** The registry materialiser resolves `project: <name>` to a local project workspace root. Remote URLs are shallow-cloned or fetched under `<coordinator-root>/.specify/workspace/<name>/`; local paths are symlinked. These materialised slots are derived state and may be refreshed or removed between changes.
+2. **Scope resolution.** RFC-14 resolves the plan entry's `scope: <path>` inside that materialised project workspace root. Capability skills then run with `$PROJECT_DIR` bound to the project workspace root and `$SCOPE_DIR` bound to the selected scope.
+
+The slice loop may modify files inside the materialised project checkout, including scoped baselines, implementation code, and slice metadata. After execution, `specify workspace push` remains responsible for creating or updating the `specify/<change-name>` branch, pushing it to the project's remote origin, and opening or updating the PR. `specify workspace merge` remains responsible for merging those PRs once CI passes.
+
+This means a remote repository is temporarily cloned into the coordinator's derived workspace, mutated locally by the ordinary slice loop, then pushed back through the existing registry workspace verbs. RFC-14 only adds the extra coordinate needed to choose which capability scope inside that repo receives the work.
 
 ### Path Resolution
 
 RFC-13 brief substitutions stay the public interface. RFC-14 changes their resolver:
 
-| Substitution | Resolution |
-| ------------ | ---------- |
-| `$PROJECT_DIR` | Workspace root. |
-| `$SCOPE_DIR` | `$PROJECT_DIR/<scope>`; root scope resolves to `$PROJECT_DIR`. |
-| `$ARTIFACT_DELTA[<id>]` | `$SCOPE_DIR/.specify/slices/<name>/<delta-path>` |
-| `$ARTIFACT_BASELINE[<id>]` | `$SCOPE_DIR/<baseline-path>` |
 
-For the root scope, resolved paths are byte-identical to today's single-capability behavior. Existing briefs that use `$ARTIFACT_*` substitutions continue to work.
+| Substitution               | Resolution                                                     |
+| -------------------------- | -------------------------------------------------------------- |
+| `$PROJECT_DIR`             | Project workspace root.                                        |
+| `$SCOPE_DIR`               | `$PROJECT_DIR/<scope>`; root scope resolves to `$PROJECT_DIR`. |
+| `$ARTIFACT_DELTA[<id>]`    | `$SCOPE_DIR/.specify/slices/<name>/<delta-path>`               |
+| `$ARTIFACT_BASELINE[<id>]` | `$SCOPE_DIR/<baseline-path>`                                   |
+
+
+For the root scope in single-repo mode, resolved paths are byte-identical to today's single-capability behavior. For a registry project, the same substitutions resolve inside the materialised project checkout. Existing briefs that use `$ARTIFACT_*` substitutions continue to work.
 
 Implementation note: `ProjectConfig::baseline_path(&capability, artifact_id)` becomes `baseline_path(&scope, &capability, artifact_id)`. Delta resolution follows the same signature pattern. `Scope` is a newtype around the empty root path or a normalized member path.
 
@@ -129,7 +162,7 @@ When a consuming capability needs an artifact from another scope, it uses:
 $ARTIFACT_BASELINE[<artifact-id>]@<scope>
 ```
 
-The `@<scope>` qualifier is optional when exactly one active scope provides the consumed capability and required when multiple scopes provide it. Platform components are always reachable without a scope qualifier because they live at the workspace root.
+The `@<scope>` qualifier is optional when exactly one active scope provides the consumed capability and required when multiple scopes provide it. Platform components are always reachable without a scope qualifier because they live at the coordinator root.
 
 ### Slices
 
@@ -140,14 +173,14 @@ A slice belongs to exactly one scope.
 cd contracts/
 specify slice create add-orders-api
 
-# Explicit from workspace root
+# Explicit from project workspace root
 specify slice create add-orders-api --scope contracts/
 
 # Root scope, when package: is declared
 specify slice create my-feature
 ```
 
-Scope inference walks upward from cwd until it finds a workspace root `.specify/project.yaml` or a member `.specify/scope.yaml`. From a workspace-only root, `--scope <path>` is required because there is no root scope.
+Scope inference walks upward from cwd until it finds a project workspace root `.specify/project.yaml` or a member `.specify/scope.yaml`. From a workspace-only project root, `--scope <path>` is required because there is no root scope.
 
 Slice metadata records:
 
@@ -158,22 +191,30 @@ scope: contracts/
 The slice directory lives at:
 
 ```text
-<workspace-root>/<scope>/.specify/slices/<name>/
+<project-workspace-root>/<scope>/.specify/slices/<name>/
+```
+
+Archived or dropped slices move to the matching scoped archive:
+
+```text
+<project-workspace-root>/<scope>/.specify/archive/<archive-name>/
 ```
 
 Cross-scope slices are forbidden. A slice may write only to baselines in its declared scope; attempted writes outside that scope fail with `cross-scope-write-forbidden`. Coordinated multi-scope work uses a change plan with one entry per scope and ordinary `needs:` dependencies.
 
 ### Change Plans
 
-Plan and change artifacts stay workspace-level:
+Plan and change artifacts stay coordinator-level:
 
-| Artifact | Path |
-| -------- | ---- |
-| Change brief | `<workspace-root>/change.md` |
-| Plan | `<workspace-root>/plan.yaml` |
-| Plan lock | `<workspace-root>/.specify/plan.lock` |
-| Registry | `<workspace-root>/registry.yaml` |
-| Slice archive | `<workspace-root>/.specify/archive/` |
+
+| Artifact            | Path                                      |
+| ------------------- | ----------------------------------------- |
+| Change brief        | `<coordinator-root>/change.md`            |
+| Plan                | `<coordinator-root>/plan.yaml`            |
+| Plan lock           | `<coordinator-root>/.specify/plan.lock`   |
+| Registry            | `<coordinator-root>/registry.yaml`        |
+| Change/plan archive | `<coordinator-root>/.specify/archive/`    |
+
 
 Plan entries gain an optional `scope: <path>` field. It is required when the target repository has more than one possible scope and the entry is otherwise ambiguous. Absent scope means the root scope or the only active scope.
 
@@ -215,7 +256,7 @@ Capability skill context MUST include the resolved scope path when invoked from 
 1. Add `--scope <path>` to `specify slice create`.
 2. Infer scope from cwd when possible.
 3. Record `scope:` in `.metadata.yaml`.
-4. Store slice directories under `<workspace-root>/<scope>/.specify/slices/<name>/`.
+4. Store slice directories under `<project-workspace-root>/<scope>/.specify/slices/<name>/` and slice archives under `<project-workspace-root>/<scope>/.specify/archive/`.
 5. Make `slice list`, `status`, `validate`, `adopt`, and `drop` scope-aware.
 6. Reject cross-scope writes with `cross-scope-write-forbidden`.
 
@@ -236,7 +277,7 @@ Capability skill context MUST include the resolved scope path when invoked from 
 3. Refresh `plugins/spec/skills/plan/fixtures/` with package-only, workspace-only, and package-plus-workspace examples.
 4. Update `plugins/spec/skills/init/SKILL.md` and `plugins/spec/skills/plan/SKILL.md` for scope-aware flows.
 5. Document scope-aware `consumes:` in `docs/reference/capability-extensions.md`.
-6. Add glossary entries for workspace, scope, root scope, member scope, and workspace-root concern.
+6. Add glossary entries for coordinator root, project workspace root, scope, root scope, member scope, and coordinator-root concern.
 
 ## Migration
 
@@ -258,7 +299,7 @@ Acceptance criteria for every phase:
 1. **Scope qualifier syntax.** Provisional: `$ARTIFACT_BASELINE[contracts]@contracts/`.
 2. **Logical scope names.** Provisional: no separate `name:`; the normalized member path is the scope identifier.
 3. **Glob semantics.** Provisional: only single-level member globs in the first landing.
-4. **Default scope at workspace root.** Provisional: default to root when `package:` exists; require `--scope` in workspace-only roots.
+4. **Default scope at project workspace root.** Provisional: default to root when `package:` exists; require `--scope` in workspace-only roots.
 5. **Workspace-wide rules.** Provisional: rules are per-scope only (`package.rules:` or `scope.yaml:rules:`).
 6. **Shim retirement.** Provisional: flat `capability:` and `hub: true` compatibility lasts two minor releases.
 
@@ -272,3 +313,4 @@ Acceptance criteria for every phase:
 - [RFC-9: Platform](archive/rfc-9-platform.md) - registry/change root placement and `--hub`.
 - [RFC-5: Framework Linter](rfc-5-lint.md) - validation/lint home.
 - [Cargo workspaces](https://doc.rust-lang.org/cargo/reference/workspaces.html) - package/workspace/member model RFC-14 mirrors.
+
