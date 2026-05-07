@@ -1,6 +1,6 @@
 # RFC-16: Vectis WASI Tools
 
-> Status: Draft - Depends: [RFC-15](archive/rfc-15-wasm-plugins.md), [RFC-13](archive/rfc-13-extensibility.md) - Defers: [WASI process spawning](https://github.com/WebAssembly/WASI/issues/899)
+> Status: Implemented - Depends: [RFC-15](archive/rfc-15-wasm-plugins.md), [RFC-13](archive/rfc-13-extensibility.md) - Defers: [WASI process spawning](https://github.com/WebAssembly/WASI/issues/899)
 
 ## Abstract
 
