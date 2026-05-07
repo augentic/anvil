@@ -5,17 +5,17 @@ argument-hint: "<slice-dir>"
 ---
 
 # Crux Android Shell Generator
-> **`specify-vectis` is a standalone binary.** RFC-13 §4.3a ships the Vectis tooling as the `specify-vectis` executable (no longer a `specify vectis ...` subcommand tree). The six canonical verbs — `init`, `verify`, `add-shell`, `update-versions`, `versions`, `validate` — are reachable either via the binary on `$PATH` (used in the bash blocks below) or via the `specify-vectis` library API for in-process callers; flags and positional arguments are unchanged.
+> **Vectis deterministic tooling runs through declared Specify tools.** Shell scaffolding is `specify tool run vectis-scaffold -- android ...`; artifact validation is `specify tool run vectis-validate -- ...`. The scaffold is render-only: Android SDK/NDK detection, `local.properties`, Java 21 pinning, Gradle wrapper bootstrap, and Gradle builds remain host-owned steps with explicit verification evidence.
 
 ## Critical Path (Quick Reference)
 
 1. Read `{app-dir}/shared/src/app.rs` (and optional `slice-dir` shell-requirements + `composition.yaml`); extract App name, ViewModel/Effect/Event/Route variants and the capability set.
-2. Detect mode by checking `{project-dir}/app/src/main/java/*/Core.kt`: missing → run `specify-vectis add-shell android` then enter Update Mode; present → start Update Mode immediately.
+2. Detect mode by checking `{project-dir}/app/src/main/java/*/Core.kt`: missing → run `specify tool run vectis-scaffold -- android ...` plus Android host post-processing, then enter Update Mode; present → start Update Mode immediately.
 3. Build an implementation inventory of existing Kotlin code (effect handlers, ViewModel cases, screen composables, event dispatches, capability clients, DI modules).
 4. Diff Rust core types vs Kotlin inventory by category (Effect → ViewModel → view-fields → Event → Route) and emit a summary edit plan.
 5. Apply changes: expand or strip CAP blocks in `Core.kt` + `AndroidManifest.xml` + Gradle, add/remove screen composables for each ViewModel variant, update the root `when`, dispatch new Events.
 6. Update build configuration (`libs.versions.toml`, `build.gradle.kts`, manifest permissions, `network_security_config.xml`) to match the changed capability set.
-7. Run `make build` → `./gradlew :shared:cargoBuild` → `./gradlew :app:assembleDebug` (skipped when the orchestrator passes `skip_verification: true`).
+7. Run Android host checks (`local.properties` / Java 21 / NDK / wrapper), `make build`, `./gradlew :shared:cargoBuild`, and `./gradlew :app:assembleDebug` (skipped when the orchestrator passes `skip_verification: true`).
 
 Generate or update a buildable Kotlin/Jetpack Compose Android shell for an existing Crux core application. The shell renders the core's `ViewModel`, dispatches `Event` values from user interactions, and handles platform side-effects (HTTP, KV, SSE, Time, Platform) on behalf of the core.
 
@@ -23,7 +23,7 @@ The Android writer reads `tokens.yaml`, `assets.yaml`, and `composition.yaml` di
 
 When an existing Android shell is detected, the skill operates in **update mode**: it compares the current `app.rs` types against the existing Kotlin code and makes targeted edits rather than regenerating from scratch.
 
-When no Android shell exists yet, the skill runs `specify-vectis add-shell android --dir {app-dir}` (optionally with `--android-package`) to scaffold the project. The CLI owns all build infrastructure: `Android/Makefile`, the `build.gradle.kts` / `settings.gradle.kts` / `gradle.properties` triad, the `gradle/libs.versions.toml` version catalog, `app/build.gradle.kts` and `shared/build.gradle.kts`, the Gradle wrapper (`gradlew`, `gradlew.bat`, `gradle/wrapper/`), `local.properties`, `AndroidManifest.xml` (including conditional `networkSecurityConfig` when HTTP/SSE is selected), the `{AppName}Application.kt` entry point with the UniFFI library override, a render-only baseline `Core.kt` with CAP markers, `MainActivity.kt`, the `ui/screens/HomeScreen.kt` starter, and `res/xml/network_security_config.xml` when needed. The writer adds `ui/components/`, `ui/theme/`, and per-density `res/drawable*/` resources on first generation when the corresponding inputs exist. Once the scaffold exists this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
+When no Android shell exists yet, the skill runs `specify tool run vectis-scaffold -- android {AppName} [--caps {caps}] [--android-package <package>]` from the Crux project root to render the project. The scaffold tool owns render-only build and shell files: `Android/Makefile`, the `build.gradle.kts` / `settings.gradle.kts` / `gradle.properties` triad, the `gradle/libs.versions.toml` version catalog, `app/build.gradle.kts` and `shared/build.gradle.kts`, `AndroidManifest.xml` (including conditional `networkSecurityConfig` when HTTP/SSE is selected), the `{AppName}Application.kt` entry point with the UniFFI library override, a render-only baseline `Core.kt` with CAP markers, `MainActivity.kt`, the `ui/screens/HomeScreen.kt` starter, and `res/xml/network_security_config.xml` when needed. Host post-processing owns `local.properties`, Java 21 pinning, NDK checks, and Gradle wrapper bootstrap. The writer adds `ui/components/`, `ui/theme/`, and per-density `res/drawable*/` resources on first generation when the corresponding inputs exist. Once the scaffold exists and host checks pass, this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
 
 This skill targets **Kotlin 2.x**, **Jetpack Compose** with Material 3, and minimum SDK 34.
 
@@ -89,7 +89,7 @@ Also read:
 
 When `slice-dir` is provided, also read:
 - `{slice-dir}/specs/{feature-name}/spec.md` -- read the `## Android Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## Android Shell Details` section of `{slice-dir}/design.md` for platform design decisions.
-- `{slice-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- the wired composition artifact. Cross-artifact reference checks (token / asset / `bind` / `event`) are pre-enforced by `specify-vectis validate composition`; the writer consumes the validated input.
+- `{slice-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- the wired composition artifact. Cross-artifact reference checks (token / asset / `bind` / `event`) are pre-enforced by `specify tool run vectis-validate -- composition`; the writer consumes the validated input.
 
 ## Generated Type Conventions (CRITICAL)
 
@@ -199,18 +199,19 @@ class SseClient { ... }
 
 ## Mode Detection
 
-- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes `specify-vectis add-shell android` to scaffold the baseline, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
+- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes `specify tool run vectis-scaffold -- android` to render the baseline, runs Android host post-processing and checks, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- `{project-dir}/` **does** exist and contains `.kt` files. Read existing code, diff against the core, and make targeted edits (steps U1--U8 below).
 
 Detection rule: check for `{project-dir}/app/src/main/java/*/Core.kt`. If present, switch to update mode. If not, run:
 
 ```bash
-specify-vectis add-shell android --dir {app-dir} [--android-package com.example.app]
+cd {app-dir}
+specify tool run vectis-scaffold -- android {AppName} [--caps {caps}] [--android-package com.example.app]
 ```
 
-`{app-dir}` is the parent directory of `shared/`; the CLI derives the `Android/` sibling directory automatically. `--android-package` is optional and defaults to `com.vectis.<appname-lowercase>`. On non-zero exit, surface the CLI's structured error output to the user and stop -- do **not** attempt to hand-author Gradle files, the wrapper, `AndroidManifest.xml`, or any of the baseline `.kt` files.
+`{app-dir}` is the parent directory of `shared/`; `{project-dir}` is normally `{app-dir}/Android`. `--android-package` is optional and defaults to `com.vectis.<appname-lowercase>`. On scaffold failure, surface the tool's structured output and stop -- do **not** attempt to hand-author Gradle files, `AndroidManifest.xml`, or any of the baseline `.kt` files. After scaffold success, run the host post-processing and verification steps in U8; record each step as `name`, `passed`, and a failure snippet.
 
-If the command succeeds, switch to Update Mode. The scaffolded shell is a render-only baseline with CAP markers in `Core.kt`, `AndroidManifest.xml`, `libs.versions.toml`, and `app/build.gradle.kts` (one block per optional capability: `http`, `kv`, `sse`, `time`, `platform`) plus a starter `HomeScreen.kt`. Update Mode expands CAP blocks for capabilities the core uses, strips CAP blocks for capabilities it does not, and replaces the starter screen with real per-ViewModel-variant screens derived from the current `app.rs`.
+If the scaffold and host checks succeed, switch to Update Mode. The scaffolded shell is a render-only baseline with CAP markers in `Core.kt`, `AndroidManifest.xml`, `libs.versions.toml`, and `app/build.gradle.kts` (one block per optional capability: `http`, `kv`, `sse`, `time`, `platform`) plus a starter `HomeScreen.kt`. Update Mode expands CAP blocks for capabilities the core uses, strips CAP blocks for capabilities it does not, and replaces the starter screen with real per-ViewModel-variant screens derived from the current `app.rs`.
 
 ## Verification ownership
 
@@ -222,25 +223,26 @@ When invoked **standalone** (no `skip_verification` flag, or `skip_verification:
 
 ## Process: Create Mode
 
-Use this process when no Android shell exists at `{project-dir}`. The CLI owns all Android boilerplate (Gradle build files + wrapper, version catalog, `AndroidManifest.xml` with conditional `networkSecurityConfig`, render-only baseline `Core.kt` with CAP markers, `{AppName}Application.kt` with the UniFFI library override, `MainActivity.kt`, `ui/screens/HomeScreen.kt`, `res/xml/network_security_config.xml` when HTTP/SSE is selected, and `local.properties` with a best-effort Java 21 pin via `org.gradle.java.home`). This skill's only Create-Mode responsibilities are: (1) read the Crux core to derive the app name and capability set, (2) invoke the CLI, (3) switch to Update Mode.
+Use this process when no Android shell exists at `{project-dir}`. The scaffold tool owns render-only Android boilerplate (Gradle build files, version catalog, `AndroidManifest.xml` with conditional `networkSecurityConfig`, render-only baseline `Core.kt` with CAP markers, `{AppName}Application.kt` with the UniFFI library override, `MainActivity.kt`, `ui/screens/HomeScreen.kt`, and `res/xml/network_security_config.xml` when HTTP/SSE is selected). Host post-processing owns Gradle wrapper bootstrap, `local.properties`, SDK/NDK detection, and the Java 21 pin. This skill's Create-Mode responsibilities are: (1) read the Crux core to derive the app name and capability set, (2) invoke the scaffold tool, (3) run host post-processing and verification, (4) switch to Update Mode.
 
 ### 1. Read the Crux core
 
-Read `{app-dir}/shared/src/app.rs` and extract all types listed in the Input Analysis table above. In particular, derive the App struct name (used by the CLI to name the Gradle project, Application class, package folder, and Android theme) and note which capabilities the core actually uses -- this drives which CAP blocks Update Mode must expand in the scaffolded `Core.kt`, `AndroidManifest.xml`, `app/build.gradle.kts`, and `libs.versions.toml`. If `app.rs` cannot be read or parsed, report the error and stop.
+Read `{app-dir}/shared/src/app.rs` and extract all types listed in the Input Analysis table above. In particular, derive the App struct name (used by the scaffold to name the Gradle project, Application class, package folder, and Android theme) and note which capabilities the core actually uses -- this drives which CAP blocks Update Mode must expand in the scaffolded `Core.kt`, `AndroidManifest.xml`, `app/build.gradle.kts`, and `libs.versions.toml`. If `app.rs` cannot be read or parsed, report the error and stop.
 
-### 2. Invoke the CLI
+### 2. Invoke the scaffold tool
 
 Run:
 
 ```bash
-specify-vectis add-shell android --dir {app-dir} [--android-package <package>]
+cd {app-dir}
+specify tool run vectis-scaffold -- android {AppName} [--caps {caps}] [--android-package <package>]
 ```
 
-`--android-package` is optional; when omitted, the CLI uses `com.vectis.<appname-lowercase>`. The CLI generates the full Gradle project (root + `app` + `shared` modules), the Gradle wrapper artefacts via a scratch bootstrap, `local.properties` with the detected SDK path, and a render-only baseline shell in `Android/app/src/main/java/<package-path>/` with CAP markers for every optional capability. The output is structured JSON. On non-zero exit, surface the CLI's error output to the user and stop.
+`--android-package` is optional; when omitted, the scaffold uses `com.vectis.<appname-lowercase>`. The tool generates the render-only Gradle project (root + `app` + `shared` modules) and a baseline shell in `Android/app/src/main/java/<package-path>/` with CAP markers for every optional capability. The output is structured. On non-zero exit, surface the tool output to the user and stop.
 
 ### 3. Switch to Update Mode
 
-After the CLI returns green, treat the scaffolded Android shell as an existing implementation and execute **Process: Update Mode** below to:
+After the scaffold and host checks return green, treat the scaffolded Android shell as an existing implementation and execute **Process: Update Mode** below to:
 
 - Expand CAP blocks in `Core.kt` (adding real effect handlers + client classes) for capabilities the core uses, and strip CAP blocks for capabilities it does not.
 - Expand matching CAP blocks in `AndroidManifest.xml` (`INTERNET` permission, `networkSecurityConfig`), `app/build.gradle.kts` (Ktor / Koin dependencies), and `libs.versions.toml` (capability library versions) -- or strip them if the capability is absent.
@@ -248,7 +250,7 @@ After the CLI returns green, treat the scaffolded Android shell as an existing i
 - Rewrite the root composable in `MainActivity.kt` to cover every ViewModel variant.
 - Apply any `## Android Shell Requirements` from the active Specify change (when `slice-dir` is provided).
 
-Dependency version pins (Kotlin, AGP, Ktor, Koin, Compose BOM, etc.) come from the CLI's embedded `versions.toml`; use `specify-vectis update-versions` to refresh them rather than hand-editing `libs.versions.toml` / `shared/build.gradle.kts`.
+Dependency version pins (Kotlin, AGP, Ktor, Koin, Compose BOM, etc.) come from the active Vectis version pins used by `vectis-scaffold`; route pin changes through the Vectis version/template workflow rather than hand-editing `libs.versions.toml` / `shared/build.gradle.kts`.
 
 ## Process: Update Mode
 
@@ -322,7 +324,7 @@ Output the diff summary before making edits.
 When `tokens.yaml` / `assets.yaml` / `composition.yaml` change, regenerate the matching shell-local trees using the rules in [`references/design-system-integration.md`](references/design-system-integration.md) and [`references/kotlin-token-templates.md`](references/kotlin-token-templates.md):
 
 - **U6a — `ui/theme/` from `tokens.yaml`**: one Kotlin file per category (`spacing` / `cornerRadius` colocated in `Spacing.kt`) plus structural `Theme.kt` defining `VectisTheme`. Generated files carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header (except `Theme.kt`); operator-authored files (no header) are preserved on category removal. The header always uses the canonical project-level path `design-system/tokens.yaml` regardless of whether the current generation reads from a change-local file — this keeps the header stable across the change lifecycle and avoids breaking header-based detection of generated files. Absent `tokens.yaml` → emit the Material 3 fallback `Theme.kt`.
-- **U6b — `ui/components/` from `composition.yaml`**: one named `@Composable` per `group.component: <slug>` under `ui/components/<PascalCaseSlug>.kt`. Props inferred from variation; constants baked in. Structural identity is pre-enforced by `specify-vectis validate composition`. Removed slugs have their files deleted and call sites inlined.
+- **U6b — `ui/components/` from `composition.yaml`**: one named `@Composable` per `group.component: <slug>` under `ui/components/<PascalCaseSlug>.kt`. Props inferred from variation; constants baked in. Structural identity is pre-enforced by `specify tool run vectis-validate -- composition`. Removed slugs have their files deleted and call sites inlined.
 - **U6c — `res/drawable*/` from `assets.yaml`**: copy per-density `kind: raster` files into `res/drawable-<density>/<asset-id>.<ext>`, vector drawables into `res/drawable/<asset-id>.xml`; translate kebab-case ids to lowercase-with-underscores. `kind: symbol` skips the resource step (emit `Icons.Default.<glyph>` at the call site). Canonical `source:` SVG is provenance only — never copied. Missing Android exports for referenced vector entries halt generation per RFC-11 §E.
 
 ### U7. Update build configuration
@@ -334,12 +336,9 @@ When `tokens.yaml` / `assets.yaml` / `composition.yaml` change, regenerate the m
 
 ### U8. Build and verify
 
-Pre-flight checks before build (all generated by `specify-vectis add-shell android` -- this step just confirms nothing drifted):
+Host post-processing and pre-flight checks before build:
 
-1. Verify `{project-dir}/gradlew` exists.
-2. Verify `local.properties` has `sdk.dir` set.
-3. Verify `gradle.properties` has `org.gradle.java.home` pointing to Java 21.
-4. Verify Rust Android targets are installed: `rustup target list --installed | grep android`.
+Write `local.properties` from `$ANDROID_HOME` (`printf 'sdk.dir=%s\n' "$ANDROID_HOME" > local.properties`), ensure the requested NDK exists (`sdkmanager "ndk;29.0.14206865"` if absent), ensure Rust Android targets exist (`rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android` if absent), set `org.gradle.java.home` to Java 21 when missing, and bootstrap `{project-dir}/gradlew` with `gradle wrapper` when absent.
 
 Build sequence:
 
@@ -383,7 +382,7 @@ In Update Mode, minimize collateral changes — never regenerate from scratch; p
 | `references/design-system-integration.md` | Shell-local theme + asset integration: generated layout, M3 fallback, copy-on-generate, component directive contract |
 | `references/kotlin-token-templates.md` | Concrete Kotlin code templates per token category (color, typography, scalar, border, theme composable) |
 
-Gradle build files, the version catalog, the Gradle wrapper, the Makefile, `AndroidManifest.xml`, CAP-marker scaffolding for the baseline `Core.kt` / `app/build.gradle.kts` / `libs.versions.toml`, Java-21 auto-pinning, and the starter Kotlin layout are owned by the CLI's embedded templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/src/init/android.rs` and `<specify-cli>/templates/vectis/android/`). Do not hand-edit those files in Create Mode; let `specify-vectis add-shell android` write them and then modify in Update Mode.
+Gradle build files, the version catalog, the Makefile, `AndroidManifest.xml`, CAP-marker scaffolding for the baseline `Core.kt` / `app/build.gradle.kts` / `libs.versions.toml`, and the starter Kotlin layout are owned by the Vectis scaffold templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis-scaffold/` and the Vectis template sources). Do not hand-edit those files in Create Mode; let `specify tool run vectis-scaffold -- android` write them and then modify in Update Mode. Host-derived files and settings (`local.properties`, Gradle wrapper artefacts, Java 21 pinning, SDK/NDK checks) are handled by the writer/verify workflow after render.
 
 ## Examples
 
@@ -401,30 +400,30 @@ Gradle build files, the version catalog, the Gradle wrapper, the Makefile, `Andr
 | `app.rs` not found | Verify `app-dir` points to a Crux app with `shared/src/app.rs` |
 | Unknown Effect variant | Add a placeholder `is Effect.XXX -> { }` and report |
 | Gradle sync fails | Check `build.gradle.kts` syntax; verify NDK version matches installed |
-| Build fails with missing types | Run `make build` to regenerate types; verify `uniffi` is pinned to the expected version (run `specify-vectis update-versions --dry-run` to inspect). Run `specify-vectis verify` to detect mismatches |
+| Build fails with missing types | Run `make build` to regenerate types; verify `uniffi` matches the active Vectis version pins, then rerun the Android host verification steps |
 | `cargoBuild` fails with `target may not be installed` | Run `rustup target add armv7-linux-androideabi aarch64-linux-android i686-linux-android x86_64-linux-android` |
 | NDK not found | Install via `sdkmanager "ndk;29.0.14206865"` or Android Studio SDK Manager |
 | Python 3 not found | Required by rust-android-gradle; install via system package manager |
-| `./gradlew: No such file or directory` | Scaffold was missing the wrapper -- re-run `specify-vectis add-shell android` (the CLI bootstraps `gradlew` from a scratch Gradle invocation) |
-| `Minimum supported Gradle version is X.Y` | Gradle/AGP drift -- run `specify-vectis update-versions` and re-run `specify-vectis add-shell android` (the CLI pins `gradle-wrapper.properties` to match AGP from `versions.toml`) |
-| `java.lang.IllegalArgumentException: 25.0.1` (or similar Java version parse error) | Set `org.gradle.java.home` to Java 21 in `gradle.properties` (the CLI auto-pins this when Java 21 is detected; if none was detected at scaffold time, set it by hand) |
-| `resource style/Theme.{AppName} not found` | Scaffold was missing `res/values/themes.xml` -- re-run `specify-vectis add-shell android` |
+| `./gradlew: No such file or directory` | Run the host wrapper bootstrap from `{project-dir}` (`gradle wrapper`) and record the step result |
+| `Minimum supported Gradle version is X.Y` | Gradle/AGP drift -- route the pin change through the Vectis version/template workflow, rerender with `specify tool run vectis-scaffold -- android ...`, then rerun host verification |
+| `java.lang.IllegalArgumentException: 25.0.1` (or similar Java version parse error) | Set `org.gradle.java.home` to Java 21 in `gradle.properties` (derive with `/usr/libexec/java_home -v 21` on macOS when available) |
+| `resource style/Theme.{AppName} not found` | Scaffold output is missing `res/values/themes.xml` -- rerender with `specify tool run vectis-scaffold -- android ...` and stop if the file is still absent |
 | `Unresolved reference 'Event'` (or `ViewModel`, `Effect`, etc.) | Add `import com.example.app.*` imports to the affected Kotlin file |
 | `Unresolved reference 'CoreFfi'` | Add `import uniffi.shared.CoreFfi` to `Core.kt` |
 | `Unresolved reference 'Icons'` | Add `material-icons-extended` dependency to `libs.versions.toml` + `app/build.gradle.kts` |
 | `Namespace 'X' is used in multiple modules` | Use `com.vectis.{appname}.shared` namespace for the shared module |
-| `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- run `specify-vectis verify` to detect mismatches and `specify-vectis update-versions --dry-run` to see expected pins |
+| `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- rerun `make build`, `./gradlew :shared:cargoBuild`, and `./gradlew :app:assembleDebug` and inspect the active Vectis version pins |
 | `This declaration needs opt-in` (unsigned types) | Add `@OptIn(ExperimentalUnsignedTypes::class)` to the class |
 | Build fails on `:vectis-design` (`Project ':vectis-design' not found` or `Unresolved reference 'com.vectis.design'`) | Legacy migration debt — the shell now emits theme code under `app/src/main/java/com/vectis/<appname>/ui/theme/` (RFC-11 §L). Drop the `include(":vectis-design")` line from `settings.gradle.kts`, the matching `implementation(project(":vectis-design"))` from `app/build.gradle.kts`, and replace `import com.vectis.design.*` lines with `import com.vectis.<appname>.ui.theme.*`; `MaterialTheme.colorScheme.*` / `MaterialTheme.typography.*` continue to resolve via standard M3 imports, while `VectisSpacing.*` / `VectisCornerRadius.*` etc. require the explicit theme-package import because `ui.theme` is a sibling package to `ui.screens` and `ui.components` |
-| `specify-vectis validate composition` reports unresolved token / asset reference | The composition references a token or asset id missing from `tokens.yaml` / `assets.yaml`. Writer halts; operator must add the missing entry or remove the reference (RFC-11 §F, §I "Validation gate") |
+| `specify tool run vectis-validate -- composition` reports unresolved token / asset reference | The composition references a token or asset id missing from `tokens.yaml` / `assets.yaml`. Writer halts; operator must add the missing entry or remove the reference (RFC-11 §F, §I "Validation gate") |
 | Missing Android export for a `kind: vector` asset | Per RFC-11 §E, this is an error not a deferred TODO. Halt the affected screen and report the missing `sources.android` (Vector Drawable XML — SVG sources need converting first) |
 
 ### Runtime crashes
 
 | Crash | Resolution |
 |---|---|
-| `UnsatisfiedLinkError: Unable to load library 'uniffi_shared'` | The CLI-generated `{AppName}Application.kt` already calls `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` first in `onCreate()`; verify the Application class was not replaced or its body reordered |
-| `CLEARTEXT communication not permitted` | Ensure the CLI was invoked with HTTP or SSE capabilities selected so it emitted `res/xml/network_security_config.xml` and the matching `networkSecurityConfig` attribute in `AndroidManifest.xml` |
+| `UnsatisfiedLinkError: Unable to load library 'uniffi_shared'` | The scaffold-generated `{AppName}Application.kt` already calls `System.setProperty("uniffi.component.shared.libraryOverride", "shared")` first in `onCreate()`; verify the Application class was not replaced or its body reordered |
+| `CLEARTEXT communication not permitted` | Ensure the scaffold was rendered with HTTP or SSE capabilities selected so it emitted `res/xml/network_security_config.xml` and the matching `networkSecurityConfig` attribute in `AndroidManifest.xml` |
 | Unhandled exception in SSE/Time coroutine | Wrap `scope.launch` blocks for async effects in `try/catch`, rethrow `CancellationException`, and resolve the effect request with a fallback response (`SseResponse.Done`, `TimeResponse.DurationElapsed`, etc.) so the Rust core is never left awaiting an unresolved ID |
 | `IllegalStateException: Vertically scrollable component was measured with an infinity maximum height constraints` | A composable that needs bounded constraints (e.g., `SearchBar` in expanded mode, `BottomSheet` content, any `fillMaxSize()` child) is inside a `verticalScroll` container. Move the component outside the scrollable area, use `LazyColumn` with bounded items, or use `DockedSearchBar`. See `references/compose-view-patterns.md` Layout Constraint Rules. |
 

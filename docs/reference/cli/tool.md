@@ -158,7 +158,7 @@ Filesystem access is deny-by-default. A tool receives only the read and write pr
 
 The host passes only `PROJECT_DIR` and, for capability-scope tools, `CAPABILITY_DIR`. It does not inherit `PATH`, credentials, shell variables, user identity, current working directory authority, or ambient filesystem access.
 
-Write permissions must not target Specify lifecycle state such as `.specify/project.yaml`, slice metadata, archive metadata, plan locks, or archive movement directories. Lifecycle transitions remain core CLI operations.
+Write permissions must not directly target Specify lifecycle state such as `.specify/project.yaml`, slice metadata, archive metadata, plan locks, or archive movement directories. `$PROJECT_DIR` write preopens are valid for tools that must create root-level files, but declarations should still prefer narrower existing parent directories when possible. Lifecycle transitions remain core CLI operations.
 
 ## Determinism policy
 
@@ -170,4 +170,4 @@ A helper that genuinely needs host toolchains, network access, or platform SDKs 
 
 - [Tool declarations](../../explanation/tool-declarations.md) -- where tools are declared and how precedence works
 - [Anatomy of a Capability](../../contributing/capability-anatomy.md) -- optional capability `tools.yaml` sidecar
-- [RFC-15 WASI Capability Tools](../../../rfcs/rfc-15-wasm-plugins.md) -- source RFC; the implementation plan updates the manifest location to the two declaration sites documented here
+- [RFC-15 WASI Capability Tools](../../../rfcs/archive/rfc-15-wasm-plugins.md) -- source RFC; the implementation plan updates the manifest location to the two declaration sites documented here

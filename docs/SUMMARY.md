@@ -71,7 +71,7 @@
   - [specify workspace](reference/cli/workspace.md)
   - [Contract validator (WASI tool)](reference/cli/contract.md)
   - [specify init](reference/cli/init.md)
-  - [specify-vectis](reference/cli/vectis.md)
+  - [Vectis WASI tools](reference/cli/vectis.md)
 - [Plugins](reference/plugins/index.md)
   - [Omnia](reference/plugins/omnia.md)
   - [Vectis](reference/plugins/vectis.md)

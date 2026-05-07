@@ -76,7 +76,7 @@ Permission entries may use:
 
 Variables are expanded only in `permissions.read` and `permissions.write`. They are not expanded in `source`, and they are not expanded in arguments passed after `--`.
 
-Permissions are directory preopens, not globs. The host canonicalizes every path and rejects `..` segments, glob metacharacters, symlink escapes, and writes to Specify lifecycle state. A tool that writes files should ask for the narrowest existing parent directory it needs, not for `$PROJECT_DIR`.
+Permissions are directory preopens, not globs. The host canonicalizes every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. A tool that writes files should ask for the narrowest existing parent directory it needs. Use `$PROJECT_DIR` only when the tool's contract must create or update root-level files such as `Cargo.toml`.
 
 ## Cache segmentation
 
@@ -157,6 +157,22 @@ tools:
         - "$PROJECT_DIR/generated"
 ```
 
+Capability-scope tool that must create root-level project files:
+
+```yaml
+# capabilities/vectis/tools.yaml
+tools:
+  - name: vectis-scaffold
+    version: 0.0.0-rfc16-placeholder
+    source: "https://github.com/augentic/specify-cli/releases/download/v0.0.0-rfc16-placeholder/vectis-scaffold.wasm"
+    permissions:
+      read:
+        - "$PROJECT_DIR"
+        - "$CAPABILITY_DIR"
+      write:
+        - "$PROJECT_DIR"
+```
+
 Invocation:
 
 ```bash
@@ -169,7 +185,7 @@ specify tool run contract -- "$PROJECT_DIR/contracts" --format json
 
 RFC-5 owns the long-term framework linter. RFC-15 adds rule ids for this surface:
 
-- `tool.write-permission-too-broad` flags tools that ask to write the whole project.
+- `tool.write-permission-too-broad` may warn on broad writes, including `$PROJECT_DIR`, when a future framework linter has enough context to distinguish root-file scaffolding from unnecessarily broad authority.
 - `tool.lifecycle-state-write-denied` rejects writes to Specify lifecycle state.
 - `skill.invokes-host-binary-with-declared-tool-equivalent` will warn when a brief or skill shells out to a host helper after an equivalent declared tool exists.
 
@@ -179,4 +195,4 @@ The current CLI already validates tool declaration structure during `specify too
 
 - [specify tool](../reference/cli/tool.md) -- command reference
 - [Anatomy of a Capability](../contributing/capability-anatomy.md) -- capability sidecar conventions
-- [RFC-15 WASI Capability Tools](../../rfcs/rfc-15-wasm-plugins.md) -- source RFC; the implementation uses the two declaration sites documented here
+- [RFC-15 WASI Capability Tools](../../rfcs/archive/rfc-15-wasm-plugins.md) -- source RFC; the implementation uses the two declaration sites documented here

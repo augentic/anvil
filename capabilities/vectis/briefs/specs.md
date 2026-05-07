@@ -138,7 +138,7 @@ Guidance for Android shell requirements:
 - **Platform-specific rendering obligations** (e.g. "the iOS shell SHALL apply the navigation-bar tint via the iOS `Theme/Colors.swift` palette", "the Android shell SHALL surface elevation tokens through Material 3 surface containers") go in the corresponding `## iOS Shell Requirements` or `## Android Shell Requirements` section above.
 - **Cross-shell component identity** (the `component: <slug>` directive on a recurring group in `composition.yaml`) is a layout / composition concern and does not need a spec requirement unless the slug itself is part of the observable product (e.g. accessibility labels, semantic role).
 
-Do not author requirements that simply enumerate the contents of `tokens.yaml` or `assets.yaml` — the catalogs are validated by `specify-vectis validate composition` (with auto-invoked `tokens` / `assets` modes). Specs describe behavior; the manifests describe inventory.
+Do not author requirements that simply enumerate the contents of `tokens.yaml` or `assets.yaml` — the catalogs are validated by `specify tool run vectis-validate -- composition` (with auto-invoked `tokens` / `assets` modes). Specs describe behavior; the manifests describe inventory.
 
 ---
 

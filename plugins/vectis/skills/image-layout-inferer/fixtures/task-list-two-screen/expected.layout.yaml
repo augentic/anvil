@@ -16,8 +16,8 @@
 #
 # Fixtures are operator-runnable references; v1 does not enforce them in
 # `make checks` (RFC-11 §C). The expected YAML below MUST validate cleanly
-# under `specify vectis validate layout` (unwired-subset rules) and SHOULD
-# additionally validate cleanly under `specify vectis validate composition`
+# under `specify tool run vectis-validate -- layout` (unwired-subset rules) and SHOULD
+# additionally validate cleanly under `specify tool run vectis-validate -- composition`
 # against the sibling manifests (cross-artifact reference resolution). It
 # reuses the unwired subset only -- no `maps_to`, `bind`, `event`, `error`,
 # overlay `trigger`, navigation events, or `*-when` keys.

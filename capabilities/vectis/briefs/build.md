@@ -15,10 +15,10 @@ Arguments (used by all skills):
 
 ## Composition validation gate
 
-Before invoking shell writers, run the deterministic UI input validator from `specify-vectis`. The validator discovers `composition.yaml` from the active slice first, then the baseline, and auto-invokes `tokens` / `assets` modes against any sibling `tokens.yaml` / `assets.yaml` (per RFC-11 §H + §I "Validation gate"):
+Before invoking shell writers, run the deterministic UI input validator through the declared Vectis WASI tool. The validator discovers `composition.yaml` from the active slice first, then the baseline, and auto-invokes `tokens` / `assets` modes against any sibling `tokens.yaml` / `assets.yaml` (per RFC-11 §H + §I "Validation gate"):
 
 ```bash
-specify-vectis validate composition
+specify tool run vectis-validate -- composition
 ```
 
 That single call covers:
@@ -29,9 +29,9 @@ That single call covers:
 4. **Auto-invoked `tokens` mode** — when a sibling `tokens.yaml` is present, every token reference in `composition.yaml` (and in `assets.yaml` when present) resolves against it.
 5. **Auto-invoked `assets` mode** — when a sibling `assets.yaml` is present, every `image:` / `icon:` / `icon-button:` / `fab:` reference in `composition.yaml` resolves to a declared asset id, every declared asset file exists on disk, and per-platform raster densities / vector exports cover the targeted shell platforms.
 
-**Severity handling:** Errors halt shell generation for the affected screen(s). The agent reports the errors and does not proceed until they are resolved. Warnings are logged and reported but do not block generation. The same exit semantics applied by every `specify-vectis validate <mode>` invocation hold here (errors → non-zero, warnings → zero with report, clean → zero silently).
+**Severity handling:** Validation errors halt shell generation for the affected screen(s). The agent reports the errors and does not proceed until they are resolved. Warnings are logged and reported but do not block generation. The declared tool's exit semantics hold here: validation findings return non-zero with a report, warnings return zero with a report, and clean runs return zero silently. A tool invocation failure (missing sidecar, bad arguments, unreadable preopen) is a WASI tool failure; report it separately from the host prerequisite failures described in the verify sections below.
 
-When `composition.yaml` is absent (no UI input set in either the slice or the baseline), `specify-vectis validate composition` exits cleanly without performing the wired-mode checks; shell writers then fall back to inference from `app.rs` types as before. The CLI also short-circuits cleanly when no `tokens.yaml` / `assets.yaml` siblings exist — auto-invocation is gated on file presence, not on `Platforms` membership.
+When `composition.yaml` is absent (no UI input set in either the slice or the baseline), `specify tool run vectis-validate -- composition` exits cleanly without performing the wired-mode checks; shell writers then fall back to inference from `app.rs` types as before. The CLI also short-circuits cleanly when no `tokens.yaml` / `assets.yaml` siblings exist — auto-invocation is gated on file presence, not on `Platforms` membership.
 
 ### Shell writer handoff
 
@@ -50,6 +50,18 @@ Read the proposal to determine which platforms are in scope. The Vectis Platform
 1. **core** first (shells depend on the core).
 2. **ios** and **android** shells (independent of each other; can run in parallel).
 3. **web** shell (future).
+
+### Scaffold rendering boundary
+
+When create mode needs a fresh project or shell scaffold, use the declared scaffold tool as a render-only step and keep all host post-processing in the relevant writer or verify phase:
+
+```bash
+specify tool run vectis-scaffold -- core <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
+specify tool run vectis-scaffold -- ios <app-name> [--caps <csv>] [--version-file <path>]
+specify tool run vectis-scaffold -- android <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
+```
+
+The scaffold tool writes planned files under `$PROJECT_DIR` only. It does not run Cargo, SwiftPM, Xcode, Gradle, wrapper bootstrap, SDK discovery, Java-home detection, NDK detection, or `local.properties` generation. Failures from those host steps belong to the writer / verify sub-agent result, not to `vectis-scaffold`.
 
 ### Parallel shell generation
 

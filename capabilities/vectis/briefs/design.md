@@ -106,11 +106,12 @@ re-list them here, only call out platform-specific customisations on top.
 
 ## Implementation Constraints
 
-<!-- Runtime and dependency constraints. Query the CLI for current resolved pins:
+<!-- Runtime and dependency constraints. Do not query a Vectis version CLI from
+this brief. If the slice supplies an explicit scaffold version file, reference
+that path and summarize the Crux, facet, and uniffi pins it declares; otherwise
+state that the scaffold tool's embedded defaults apply until a version-update
+workflow is run by `/vectis:template-updater`.
 
-    specify-vectis update-versions --dir $PROJECT_DIR --dry-run --format json
-
-Include the resolved Crux, facet, and uniffi pins from that output.
 Standard platform constraints:
 - Swift 6, iOS 17+ deployment target
 - Kotlin 2.x, Jetpack Compose, Material 3, min SDK 34
@@ -132,13 +133,13 @@ Standard platform constraints:
 
 ## Reading the wired composition
 
-By the time this brief runs, the composition brief has already emitted `composition.yaml` for any UI-bearing slice (the define pipeline orders `composition` before `design` — see [`capability.yaml`](../capability.yaml)). Read `composition.yaml` along with sibling `tokens.yaml` and `assets.yaml` (when present in the slice or under `design-system/`) and use them as the authoritative sources for layout-derived implications. The CLI helpers `specify-vectis validate composition` (with auto-invoked `tokens` / `assets` modes) are the deterministic gate; this brief does not duplicate their checks.
+By the time this brief runs, the composition brief has already emitted `composition.yaml` for any UI-bearing slice (the define pipeline orders `composition` before `design` — see [`capability.yaml`](../capability.yaml)). Read `composition.yaml` along with sibling `tokens.yaml` and `assets.yaml` (when present in the slice or under `design-system/`) and use them as the authoritative sources for layout-derived implications. The declared tool command `specify tool run vectis-validate -- composition` (with auto-invoked `tokens` / `assets` modes) is the deterministic gate; this brief does not duplicate its checks.
 
 - **Resolution.** Look for `composition.yaml` first at `.specify/slices/<name>/composition.yaml`, then at `.specify/specs/composition.yaml`. The same lookup applies to `tokens.yaml` and `assets.yaml`: slice-local files first, then project-level `design-system/tokens.yaml` / `design-system/assets.yaml`.
 - **ViewModel adoption.** Adopt the screen names, ViewModel variant names, and field names proposed by `composition.yaml`. Adjust naming only when Rust conventions or domain model considerations require it.
 - **Field completeness.** Every `bind` value in `composition.yaml` must appear as a field in the corresponding per-page view struct. If a `bind` references a field not described in the spec, flag the mismatch.
-- **Token usage policy.** Reference token names from `tokens.yaml` (e.g. `colors.primary.dark`) only as policy notes — for example, "the iOS shell falls back to system colors when this token is absent". Do NOT enumerate the token catalog; `tokens.yaml` is the source of truth and `specify-vectis validate tokens` is its gate.
-- **Asset usage policy.** Reference assets by ID (matching `assets.yaml`) and capture only design-level usage notes — for example, "the empty-tasks hero is rendered at 2:1 aspect ratio". Do NOT enumerate the asset manifest; `assets.yaml` is the source of truth and `specify-vectis validate assets` is its gate.
+- **Token usage policy.** Reference token names from `tokens.yaml` (e.g. `colors.primary.dark`) only as policy notes — for example, "the iOS shell falls back to system colors when this token is absent". Do NOT enumerate the token catalog; `tokens.yaml` is the source of truth and `specify tool run vectis-validate -- tokens` is its gate.
+- **Asset usage policy.** Reference assets by ID (matching `assets.yaml`) and capture only design-level usage notes — for example, "the empty-tasks hero is rendered at 2:1 aspect ratio". Do NOT enumerate the asset manifest; `assets.yaml` is the source of truth and `specify tool run vectis-validate -- assets` is its gate.
 - **Gap surfacing.** Report any `bind` in composition that has no spec backing, any spec-described data element with no composition binding, and any token / asset reference that does not resolve in the matching manifest.
 
 When `composition.yaml` is absent (e.g. the change has no UI platforms in the proposal so the composition brief was skipped, or the project predates RFC-7 and has no baseline composition), infer the ViewModel shape from specs alone.

@@ -6,7 +6,7 @@ argument-hint: "<slice-dir>"
 
 # Crux iOS Shell Generator
 
-> **`specify-vectis` is a standalone binary.** RFC-13 §4.3a ships the Vectis tooling as the `specify-vectis` executable (no longer a `specify vectis ...` subcommand tree). The six canonical verbs — `init`, `verify`, `add-shell`, `update-versions`, `versions`, `validate` — are reachable either via the binary on `$PATH` (used in the bash blocks below) or via the `specify-vectis` library API for in-process callers; flags and positional arguments are unchanged.
+> **Vectis deterministic tooling runs through declared Specify tools.** Shell scaffolding is `specify tool run vectis-scaffold -- ios ...`; artifact validation is `specify tool run vectis-validate -- ...`. The scaffold is render-only: iOS type generation, packaging, Xcode generation, and build checks remain host-owned steps with explicit verification evidence.
 
 Generate or update a buildable SwiftUI iOS shell for an existing Crux core application. The shell renders the core's `ViewModel`, dispatches `Event` values from user interactions, and handles platform side-effects (HTTP, KV, SSE) on behalf of the core.
 
@@ -14,7 +14,7 @@ The iOS writer reads `tokens.yaml`, `assets.yaml`, and `composition.yaml` direct
 
 When an existing iOS shell is detected, the skill operates in **update mode**: it compares the current `app.rs` types against the existing Swift code and makes targeted edits rather than regenerating from scratch.
 
-When no iOS shell exists yet, the skill runs `specify-vectis add-shell ios --dir {app-dir}` to scaffold the project. The CLI owns `iOS/project.yml`, `iOS/Makefile`, the Inject SPM wiring, the `{AppName}App.swift` entry point, a render-only `Core.swift` with CAP markers, a baseline `ContentView.swift`, and the starter `Views/LoadingScreen.swift` / `Views/HomeScreen.swift`. The writer adds `Theme/`, `Components/`, and `Resources/Assets.xcassets/` on first generation when the corresponding inputs exist. Once the scaffold exists this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
+When no iOS shell exists yet, the skill runs `specify tool run vectis-scaffold -- ios {AppName} [--caps {caps}]` from the Crux project root to render the project. The scaffold tool owns `iOS/project.yml`, `iOS/Makefile`, the Inject SPM wiring, the `{AppName}App.swift` entry point, a render-only `Core.swift` with CAP markers, a baseline `ContentView.swift`, and the starter `Views/LoadingScreen.swift` / `Views/HomeScreen.swift`. The writer adds `Theme/`, `Components/`, and `Resources/Assets.xcassets/` on first generation when the corresponding inputs exist. Once the scaffold exists and host checks pass, this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
 
 This skill targets **Swift 6** and **SwiftUI** with iOS 17+ deployment target.
 
@@ -35,7 +35,7 @@ The following tools must be installed (see README.md for installation):
 - xcbeautify
 - swiftformat
 - XcodeGen
-- cargo-swift (must be compatible with the pinned UniFFI contract; run `specify-vectis verify` to check) -- builds the Rust static library as a Swift Package with XCFramework
+- cargo-swift (must be compatible with the pinned UniFFI contract; `make package` and `make xcode` surface mismatches) -- builds the Rust static library as a Swift Package with XCFramework
 
 ## Input Analysis
 
@@ -70,26 +70,31 @@ Also read:
 
 When `slice-dir` is provided, also read:
 - `{slice-dir}/specs/{feature-name}/spec.md` -- read the `## iOS Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## iOS Shell Details` section of `{slice-dir}/design.md` for platform design decisions.
-- `{slice-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- wired composition artifact for deterministic layout instructions. Cross-artifact reference checks (every `bind` / `event` / token / asset reference resolves) are owned by `specify-vectis validate composition`; the writer consumes the already-validated input set rather than re-validating at generation time.
+- `{slice-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- wired composition artifact for deterministic layout instructions. Cross-artifact reference checks (every `bind` / `event` / token / asset reference resolves) are owned by `specify tool run vectis-validate -- composition`; the writer consumes the already-validated input set rather than re-validating at generation time.
 
 ## Mode Detection
 
-- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes `specify-vectis add-shell ios` to scaffold the baseline, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
+- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes `specify tool run vectis-scaffold -- ios` to render the baseline, runs explicit iOS host checks, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- `{project-dir}/` **does** exist and contains `.swift` files. Read existing code, diff against the core, and make targeted edits (steps U1--U8 below).
 
 Detection rule: check for `{project-dir}/*/Core.swift`. If present, switch to update mode. If not, run:
 
 ```bash
-specify-vectis add-shell ios --dir {app-dir}
+cd {app-dir}
+specify tool run vectis-scaffold -- ios {AppName} [--caps {caps}]
+cd {project-dir}
+make typegen
+make package
+make xcode
 ```
 
-`{app-dir}` is the parent directory of `shared/`; the CLI derives the `iOS/` sibling directory automatically. On non-zero exit, surface the CLI's structured error output to the user and stop -- do **not** attempt to hand-author `project.yml`, `Makefile`, or any of the baseline `.swift` files.
+`{app-dir}` is the parent directory of `shared/`; `{project-dir}` is normally `{app-dir}/iOS`. `{AppName}` and `{caps}` are derived from the core. On scaffold failure, surface the tool's structured output and stop -- do **not** attempt to hand-author `project.yml`, `Makefile`, or any of the baseline `.swift` files. For each host command, record `name`, `passed`, and a failure snippet; stop on the first failed step.
 
-If the command succeeds, switch to Update Mode. The scaffolded shell is a render-only baseline with CAP markers in `Core.swift` (one per optional capability: `http`, `kv`, `time`, `platform`, `sse`) and starter screens for `Loading` + `Home`. Update Mode replaces CAP markers and starter screens with real effect handlers and per-ViewModel-variant screen views derived from the current `app.rs`.
+If the scaffold and host checks succeed, switch to Update Mode. The scaffolded shell is a render-only baseline with CAP markers in `Core.swift` (one per optional capability: `http`, `kv`, `time`, `platform`, `sse`) and starter screens for `Loading` + `Home`. Update Mode replaces CAP markers and starter screens with real effect handlers and per-ViewModel-variant screen views derived from the current `app.rs`.
 
 ## Verification ownership
 
-When the orchestrator passes `skip_verification: true`, the writer stops after code generation and does **not** run step U8. The orchestrator's dedicated iOS verify sub-agent handles formatting, `make build`, and `make sim-build` with its own repair loop and iteration limits.
+When the orchestrator passes `skip_verification: true`, the writer stops after code generation and does **not** run step U8. The orchestrator's dedicated iOS verify sub-agent handles formatting, `make typegen`, `make package`, and `make xcode` with its own repair loop and iteration limits.
 
 When invoked **standalone** (no `skip_verification` flag, or `skip_verification: false`), the writer runs its full process including step U8.
 
@@ -97,25 +102,30 @@ When invoked **standalone** (no `skip_verification` flag, or `skip_verification:
 
 ## Process: Create Mode
 
-Use this process when no iOS shell exists at `{project-dir}`. The CLI owns all iOS boilerplate (`project.yml`, `Makefile`, entry point, render-only baseline `Core.swift`, `ContentView.swift`, `Views/LoadingScreen.swift`, `Views/HomeScreen.swift`, and Inject/XcodeGen wiring). This skill's only Create-Mode responsibilities are: (1) read the Crux core to derive the app name and capability set, (2) invoke the CLI, (3) switch to Update Mode.
+Use this process when no iOS shell exists at `{project-dir}`. The scaffold tool owns all render-only iOS boilerplate (`project.yml`, `Makefile`, entry point, render-only baseline `Core.swift`, `ContentView.swift`, `Views/LoadingScreen.swift`, `Views/HomeScreen.swift`, and Inject/XcodeGen wiring). This skill's Create-Mode responsibilities are: (1) read the Crux core to derive the app name and capability set, (2) invoke the scaffold tool, (3) run host checks, (4) switch to Update Mode.
 
 ### 1. Read the Crux core
 
-Read `{app-dir}/shared/src/app.rs` and extract all types listed in the Input Analysis table above. In particular, derive the App struct name (used by the CLI to name the Xcode target, directory, and entry point file) and note which capabilities the core actually uses -- this drives which CAP markers Update Mode must replace in the scaffolded `Core.swift`. If `app.rs` cannot be read or parsed, report the error and stop.
+Read `{app-dir}/shared/src/app.rs` and extract all types listed in the Input Analysis table above. In particular, derive the App struct name (used by the scaffold to name the Xcode target, directory, and entry point file) and note which capabilities the core actually uses -- this drives which CAP markers Update Mode must replace in the scaffolded `Core.swift`. If `app.rs` cannot be read or parsed, report the error and stop.
 
-### 2. Invoke the CLI
+### 2. Invoke the scaffold tool and host checks
 
 Run:
 
 ```bash
-specify-vectis add-shell ios --dir {app-dir}
+cd {app-dir}
+specify tool run vectis-scaffold -- ios {AppName} [--caps {caps}]
+cd {project-dir}
+make typegen
+make package
+make xcode
 ```
 
-The CLI derives the app name from `shared/Cargo.toml` / `app.rs` and produces `iOS/project.yml`, `iOS/Makefile`, `iOS/{AppName}/{AppName}App.swift`, `iOS/{AppName}/Core.swift` (with CAP markers for every optional capability), `iOS/{AppName}/ContentView.swift`, and the starter `iOS/{AppName}/Views/{Loading,Home}Screen.swift`. The output is structured JSON. On non-zero exit, surface the CLI's error output to the user and stop.
+The writer derives the app name from `shared/Cargo.toml` / `app.rs`; the scaffold tool produces `iOS/project.yml`, `iOS/Makefile`, `iOS/{AppName}/{AppName}App.swift`, `iOS/{AppName}/Core.swift` (with CAP markers for every optional capability), `iOS/{AppName}/ContentView.swift`, and the starter `iOS/{AppName}/Views/{Loading,Home}Screen.swift`. The scaffold output is structured. On non-zero exit, surface the tool output to the user and stop. For host steps, return `name`, `passed`, and any failure snippet.
 
 ### 3. Switch to Update Mode
 
-After the CLI returns green, treat the scaffolded iOS shell as an existing implementation and execute **Process: Update Mode** below to:
+After the scaffold and host checks return green, treat the scaffolded iOS shell as an existing implementation and execute **Process: Update Mode** below to:
 
 - Strip CAP markers for capabilities the core does not use, and expand CAP blocks (with real effect handlers + helpers) for capabilities the core does use.
 - Replace the `HomeScreen` starter with real per-ViewModel-variant screen files driven by the core's `ViewModel` enum + per-page view structs.
@@ -201,7 +211,7 @@ When a category is removed from `tokens.yaml`, delete the corresponding file und
 
 ### U6b. Refresh `Components/` from `composition.yaml`
 
-For every `group` carrying `component: <slug>` (RFC-11 §G, §I), emit one named SwiftUI `View` under `iOS/<App>/Components/<PascalCaseSlug>.swift`. Props are inferred from variation observed across instances of the slug: `bind`, `event`, `error`, `asset`, token references, `*-when` keys, and free text content that differ across instances become parameters; values constant across all instances are baked into the view body. The structural-identity rule is enforced by `specify-vectis validate composition` before this skill runs, so the writer can trust every instance of the slug shares the same skeleton.
+For every `group` carrying `component: <slug>` (RFC-11 §G, §I), emit one named SwiftUI `View` under `iOS/<App>/Components/<PascalCaseSlug>.swift`. Props are inferred from variation observed across instances of the slug: `bind`, `event`, `error`, `asset`, token references, `*-when` keys, and free text content that differ across instances become parameters; values constant across all instances are baked into the view body. The structural-identity rule is enforced by `specify tool run vectis-validate -- composition` before this skill runs, so the writer can trust every instance of the slug shares the same skeleton.
 
 When a slug disappears from `composition.yaml`, delete the corresponding `Components/<PascalCaseSlug>.swift` file and rewrite each former call site to inline the group body. See [`references/design-system-integration.md`](references/design-system-integration.md) for a worked `task-row` example.
 
@@ -223,9 +233,10 @@ Missing iOS exports for `vector` entries referenced from `composition.yaml` are 
 ### U8. Format and verify
 
 1. Run `swiftformat` on modified files.
-2. Run `make build` to verify compilation (the CLI-generated `Makefile` runs the three-phase `typegen -> package -> xcode` pipeline).
-3. Run `make sim-build` to verify the project compiles for the iOS Simulator.
-4. Fix any build errors.
+2. Run `make typegen` to regenerate Swift domain types.
+3. Run `make package` to build the Rust static library and Swift package.
+4. Run `make xcode` to regenerate the Xcode project.
+5. Fix any build errors.
 
 ## Composition Mapping Priority
 
@@ -267,7 +278,7 @@ When `composition.yaml` is absent, the existing inference behavior is unchanged 
 | `references/design-system-integration.md` | Shell-local theme + asset integration: generated layout under `iOS/<App>/Theme/`, HIG fallback when `tokens.yaml` is absent, asset copy-on-generate rules, component-directive contract |
 | `references/swift-token-templates.md` | Concrete Swift code templates per token category (color, typography, scalar, border, theme bundle); shell-local emission per RFC-11 §J |
 
-XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffolding (`project.yml` packages, Inject SPM wiring, CAP markers, starter screens) are owned by the CLI's embedded templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/src/init/ios.rs` and `<specify-cli>/templates/vectis/ios/`). Do not hand-edit those files in Create Mode; let `specify-vectis add-shell ios` write them and then modify in Update Mode.
+XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffolding (`project.yml` packages, Inject SPM wiring, CAP markers, starter screens) are owned by the Vectis scaffold templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis-scaffold/` and the Vectis template sources). Do not hand-edit those files in Create Mode; let `specify tool run vectis-scaffold -- ios` write them and then modify in Update Mode.
 
 ## Examples
 
@@ -283,17 +294,18 @@ XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffold
 | `app.rs` not found | Verify `app-dir` points to a Crux app with `shared/src/app.rs` |
 | Unknown Effect variant | Add a placeholder `case` with a `fatalError("unhandled")` and report |
 | `xcodegen` fails | Check `project.yml` syntax; verify path references |
-| Build fails with missing types | Verify `uniffi` is pinned to the expected version (run `specify-vectis update-versions --dry-run` to inspect). Run `specify-vectis verify` to detect mismatches |
+| Build fails with missing types | Verify `uniffi` matches the active Vectis version pins, then rerun `make typegen`, `make package`, and `make xcode` to isolate the mismatch |
 | Build fails on `import VectisDesign` | Legacy migration debt — the shell now emits theme code under `iOS/<App>/Theme/` (RFC-11 §L). Drop the `import` line and the `package: VectisDesign` entry from `project.yml`; existing token references (`VectisColors.*`, `VectisSpacing.*`, etc.) keep working because the Theme files live in the same target |
-| `specify-vectis validate composition` reports unresolved token / asset reference | The composition is referencing a token or asset id that is not declared in `tokens.yaml` / `assets.yaml`. The writer halts; the operator must either add the missing entry or remove the reference (RFC-11 §F, §I "Validation gate") |
+| `specify tool run vectis-validate -- composition` reports unresolved token / asset reference | The composition is referencing a token or asset id that is not declared in `tokens.yaml` / `assets.yaml`. The writer halts; the operator must either add the missing entry or remove the reference (RFC-11 §F, §I "Validation gate") |
 | Missing iOS export for a `kind: vector` asset | Per RFC-11 §E, this is an error and not a deferred TODO. Halt shell generation for the affected screen and report the missing `sources.ios` field |
 
 ## Verification Checklist
 
 ### Build
 
-- [ ] `make setup` completes without errors
-- [ ] `make build` compiles the iOS app for simulator
+- [ ] `make typegen` completes without errors
+- [ ] `make package` builds the Rust static library and Swift package
+- [ ] `make xcode` regenerates the Xcode project
 - [ ] `swiftformat --lint` reports no formatting issues
 
 ### Structure
@@ -365,8 +377,8 @@ When `tokens.yaml` is **absent** (HIG fallback path):
 
 - **Core only must exist first**: This skill generates the iOS shell for an existing Crux core. Run the core-writer skill first to generate the `shared` crate.
 - **Shell is thin**: All business logic lives in the Rust core. The shell only renders views and performs platform I/O. Never add business logic to Swift code.
-- **UniFFI bridging**: The shared crate must have `crate-type = ["staticlib"]` and the `uniffi` feature gate. The ios-writer assumes this is already configured by the core-writer. The `uniffi` crate pin must be compatible with the UniFFI contract expected by `cargo-swift` and the `crux_core` bundled bindgen (strict version equality is not required; cargo-swift 0.11 can read uniffi 0.29.x metadata). Run `specify-vectis verify` to detect mismatches.
+- **UniFFI bridging**: The shared crate must have `crate-type = ["staticlib"]` and the `uniffi` feature gate. The ios-writer assumes this is already configured by the core-writer. The `uniffi` crate pin must be compatible with the UniFFI contract expected by `cargo-swift` and the `crux_core` bundled bindgen (strict version equality is not required; cargo-swift 0.11 can read uniffi 0.29.x metadata). Run `make package` and `make xcode` to detect mismatches.
 - **Generated types**: Two Swift packages are produced: `SharedTypes` (domain types via facet_typegen) and `Shared` (UniFFI bindings + XCFramework via cargo-swift).
-- **Hot reloading**: All generated shells include the [Inject](https://github.com/krzysztofzablocki/Inject) library for hot reloading during development. Inject is a no-op in Release builds (stripped by LLVM), so the boilerplate can remain permanently. Each developer must install [InjectionIII](https://github.com/nicklama/InjectionIII/releases) separately. The CLI wires Inject into `project.yml` (SPM package + Debug-only `OTHER_LDFLAGS: -Xlinker -interposable` + `EMIT_FRONTEND_COMMAND_LINES: YES`); Update Mode only has to add `@ObserveInjection`/`.enableInjection()` to new screen views.
+- **Hot reloading**: All generated shells include the [Inject](https://github.com/krzysztofzablocki/Inject) library for hot reloading during development. Inject is a no-op in Release builds (stripped by LLVM), so the boilerplate can remain permanently. Each developer must install [InjectionIII](https://github.com/nicklama/InjectionIII/releases) separately. The scaffold wires Inject into `project.yml` (SPM package + Debug-only `OTHER_LDFLAGS: -Xlinker -interposable` + `EMIT_FRONTEND_COMMAND_LINES: YES`); Update Mode only has to add `@ObserveInjection`/`.enableInjection()` to new screen views.
 - **ScrollView interaction hazards**: Do not place `TextField` or small `Button` elements inside a `ScrollView` within a `NavigationStack`. The `UIScrollView` touch-delay mechanism (`delaysContentTouches`) suppresses taps on non-`UIButton` views. Use `.safeAreaInset(edge:)` to pin interactive controls outside the scroll content, or use `List` which handles this internally. Similarly, avoid nesting a horizontal `ScrollView` (e.g. chip row) inside a vertical `ScrollView` -- the compound gesture conflicts cause missed taps. Pin the inner scrollable with `.safeAreaInset`, or ensure all tappable elements use `Button` with `.buttonStyle(.plain)`. See `references/swiftui-view-patterns.md` for examples.
 - **Specify integration**: When `slice-dir` is provided, the skill reads the `## iOS Shell Requirements` section from the feature spec and the `## iOS Shell Details` section from design.md. The primary input remains `app.rs` from the core; the feature spec's platform section supplements with requirements that may not be expressed in the Rust types alone (e.g., navigation style, specific UX behaviors, accessibility requirements, layout constraints).

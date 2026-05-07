@@ -1,6 +1,6 @@
 # Sibling token manifest for the task-list-two-screen fixture. Present so
 # the references in `expected.layout.yaml` (gap / padding / color / size
-# tokens) resolve cleanly under `specify vectis validate composition` —
+# tokens) resolve cleanly under `specify tool run vectis-validate -- composition` —
 # the contract bars inferers from inventing token names, so the fixture
 # only emits names that this manifest defines.
 

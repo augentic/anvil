@@ -53,6 +53,6 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |
 | [specify init](init.md) | Project scaffold | One-time setup |
 | [specify migrate](migrate.md) | One-shot layout migrations (currently `v2-layout`) | Upgrade path |
-| [specify-vectis](vectis.md) | Standalone binary for Crux project scaffolding, verification, and version management (RFC-13 §4.3a) | Capability-owned merge gate + Vectis tooling |
+| [Vectis WASI tools](vectis.md) | Declared `vectis-validate` and `vectis-scaffold` tools run through `specify tool run` | Capability-owned validation + render-only scaffolding |
 
 The previous standalone families `specify validate`, `specify spec`, `specify task`, and `specify merge` were absorbed into [`specify slice`](slice.md) (`slice validate`, `slice merge {preview, conflict-check, run}`, `slice task {progress, mark}`). See [Migrating CLI v1](../../explanation/migrating-cli-v1.md) for the full rename map.

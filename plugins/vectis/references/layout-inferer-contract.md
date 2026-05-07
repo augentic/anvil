@@ -71,7 +71,7 @@ Emission policy:
 - Otherwise the inferer MUST flatten the group and emit a `# candidate component: <slug>` comment adjacent to each occurrence so the operator can promote it explicitly in a later edit. Single-occurrence candidates always remain comments, never directives.
 - Slugs MUST match `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` (kebab-case). The reserved region names — `header`, `body`, `footer`, `fab` — MUST NOT be used as slugs (the schema enforces this; inferers MUST avoid producing them in the first place).
 
-Structural identity (cross-instance rule, validated by `specify-vectis validate layout`):
+Structural identity (cross-instance rule, validated by `specify tool run vectis-validate -- layout`):
 
 - Two groups carrying the same `component:` slug MUST share the same skeleton: same ordered nested item kinds and the same nested-group shape across the document.
 - Instances MAY differ in `bind`, `event`, `error`, `asset`, token references, the *condition expressions* on `*-when` keys, and free text content. Skeleton divergence is an error; wiring divergence is the expected use of the directive.
@@ -83,7 +83,7 @@ When the inferer is uncertain whether observed similarity meets the structural-i
 
 ## Verification
 
-Every inferer MUST invoke the deterministic CLI validators **before reporting success**, then translate any reported errors into terminal output the operator can act on. The validators live in the standalone `specify-vectis` CLI, read their input from disk, and are the only authoritative source of pass/fail.
+Every inferer MUST invoke the deterministic validators **before reporting success**, then translate any reported errors into terminal output the operator can act on. The validators live in the declared `vectis-validate` WASI tool, run through `specify tool run`, read their input from disk, and are the only authoritative source of pass/fail.
 
 Because the validator reads a file path, "errors block writes" is enforced through a **stage-then-validate-then-rename** sequence rather than a literal pre-write check. Validating before any write would either error on a missing file (greenfield) or re-check the previous run's content (refine):
 
@@ -91,7 +91,7 @@ Because the validator reads a file path, "errors block writes" is enforced throu
 2. Run the validator against the staging path explicitly:
 
     ```bash
-    specify-vectis validate layout <output-path>.tmp
+    specify tool run vectis-validate -- layout <output-path>.tmp
     ```
 
 3. On a clean or warnings-only result, atomically rename the staging file onto `<output-path>` (`rename(2)` / `mv <output-path>.tmp <output-path>`).
@@ -102,7 +102,7 @@ This validates YAML syntax, the composition schema, the unwired-subset rules abo
 Cross-artifact reference checks (when the sibling input artifacts exist):
 
 ```bash
-specify-vectis validate composition <output-path>.tmp
+specify tool run vectis-validate -- composition <output-path>.tmp
 ```
 
 Inferers SHOULD run `composition` mode against the **same staging path** before the atomic rename — never against a default-resolved path or the prior `<output-path>` — so token / asset references in the new content are checked, not last run's. `composition` mode auto-invokes `tokens` and `assets` modes when sibling `tokens.yaml` / `assets.yaml` files exist (whether slice-local or project-level); their reports surface in the same envelope. Errors fold into the same rename-blocking gate as `validate layout`; warnings forward into the terminal summary.
@@ -111,11 +111,11 @@ The full per-mode surface every inferer can call:
 
 | Verb | Validates |
 |---|---|
-| `specify-vectis validate layout [path]` | `layout.yaml` against the unwired subset (composition schema + structural identity + no define-owned wiring keys + no `delta`). |
-| `specify-vectis validate composition [path]` | Wired or unwired composition; auto-invokes `tokens` and `assets` when siblings exist. |
-| `specify-vectis validate tokens [path]` | `tokens.yaml` against the published [token schema](../../../capabilities/vectis/tokens.schema.json). |
-| `specify-vectis validate assets [path]` | `assets.yaml` against the published [asset schema](../../../capabilities/vectis/assets.schema.json), plus referenced-file existence under `design-system/assets/**`. |
-| `specify-vectis validate all` | Runs all four against the active slice and baseline. Convenience verb. |
+| `specify tool run vectis-validate -- layout [path]` | `layout.yaml` against the unwired subset (composition schema + structural identity + no define-owned wiring keys + no `delta`). |
+| `specify tool run vectis-validate -- composition [path]` | Wired or unwired composition; auto-invokes `tokens` and `assets` when siblings exist. |
+| `specify tool run vectis-validate -- tokens [path]` | `tokens.yaml` against the published [token schema](../../../capabilities/vectis/tokens.schema.json). |
+| `specify tool run vectis-validate -- assets [path]` | `assets.yaml` against the published [asset schema](../../../capabilities/vectis/assets.schema.json), plus referenced-file existence under `design-system/assets/**`. |
+| `specify tool run vectis-validate -- all` | Runs all four against the active slice and baseline. Convenience mode. |
 
 Exit semantics for every mode:
 

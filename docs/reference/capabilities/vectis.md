@@ -33,9 +33,9 @@ Build order: core first, shells second. Each skill reads the single feature spec
 
 | Brief | Skills invoked |
 |-------|---------------|
-| `merge.md` | -- (drives `specify slice merge {preview, conflict-check, run}` plus the post-merge cap-matrix gate via `specify-vectis verify`, RFC-13 §"Merge and adoption contract") |
+| `merge.md` | -- (drives `specify slice merge {preview, conflict-check, run}` plus capability-owned post-merge validation through `specify tool run vectis-validate -- composition`) |
 
-The Vectis merge brief is the slice loop's first capability-owned cap-matrix gate. After `specify slice merge run` exits zero, the brief shells out to the standalone [`specify-vectis verify`](../cli/vectis.md#specify-vectis-verify) binary against the merged baseline; non-zero exit is recorded as a journal `failure` entry on the (now-archived) slice. The three terminal branches (`success`, `failure`, `deferred`) are walked in [`capabilities/vectis/briefs/merge.md`](../../../capabilities/vectis/briefs/merge.md).
+The Vectis merge brief validates the merged UI baseline with [`vectis-validate`](../cli/vectis.md#vectis-validate). Host toolchain and cap-matrix checks are not part of the WASI scaffold/validate tools; writer, reviewer, and template-updater skills own those platform workflow steps.
 
 ## Specialist skills
 
