@@ -47,12 +47,12 @@ The WASI tool is a deterministic, capability-owned gate; it does not parse the s
 
 ### Consumer-project pin updates
 
-When the slice's contributions need to flow into downstream consumer projects (per the registry's tier-2 workspace clones, RFC-9 §3B), drive the pin update **after** the validator gate clears:
+When the slice's contributions need to flow into downstream consumer projects (per the registry's tier-2 workspace clones, RFC-9 §3B), publish the prepared workspace branches **after** the validator gate clears:
 
 1. `specify workspace push` — push the workspace clones' branches that already received the merged contract deltas.
-2. `specify workspace merge` — squash-merge those PRs once CI is green.
+2. Operator PR merge — review and merge those PRs through the forge UI, `gh pr merge`, or the team's normal merge queue.
 
-Pin updates that the operator can drive end-to-end map to `success` (the merge brief returns control with the lifecycle already stamped). Pin updates that surface drift the brief cannot auto-resolve (e.g. a consumer's tier-2 workspace clone has uncommitted local edits, or a consumer project is offline) map to `deferred` — the operator must reconcile the pins by hand. See §deferred below.
+Pin updates that the operator can publish map to `success` (the merge brief returns control with the lifecycle already stamped). Pin updates that surface drift the brief cannot auto-resolve (e.g. a consumer's tier-2 workspace clone has uncommitted local edits, a consumer project is offline, or `workspace push` reports `no-branch` because the clone is not on the prepared `specify/<change-name>` branch) map to `deferred` — the operator must reconcile the pins by hand. See §deferred below.
 
 ## Outcome signalling (Merge and adoption contract)
 
@@ -116,8 +116,9 @@ A merge prerequisite is unclear and `specify slice merge run` was never invoked.
 Plus contracts-specific triggers around the consumer-project pin update step:
 
 - A consumer project's tier-2 workspace clone has uncommitted local edits that block `specify workspace push`.
-- A consumer project is offline / unreachable when the brief tries to push or merge its PR.
-- The operator wants to inspect the merged contract before propagating pins (e.g. before invoking `specify workspace merge`).
+- A consumer project is offline / unreachable when the brief tries to push its PR branch.
+- `specify workspace push` reports `no-branch` because the consumer clone is not on the prepared `specify/<change-name>` branch.
+- The operator wants to inspect the merged contract before propagating pins or merging the resulting PR.
 
 Record the deferral on the slice — first journal the question, then stamp the outcome:
 

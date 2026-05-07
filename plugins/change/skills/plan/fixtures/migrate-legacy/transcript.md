@@ -1,21 +1,20 @@
-# Transcript — `/change:plan --orchestrate migrate-foo --shape migrate-legacy --source monolith=… --auto-merge`
+# Transcript — `/change:plan --orchestrate migrate-foo --shape migrate-legacy --source monolith=…`
 
 This transcript pins the dialogue and the shell-outs the umbrella runs against an empty hub when migrating the legacy `mono-repo-foo` monolith. Every shell-out uses post-1F+1G v1 verbs verbatim — none of the retired hyphenated, nested, or `init`-named forms appears (see the v1 [migration map](../../../../../../docs/explanation/migrating-cli-v1.md)).
 
-The transcript starts at the operator's invocation; pre-flight, all seven steps, and the terminal summary follow.
+The transcript starts at the operator's invocation. Run 1 drives through PR creation and stops for operator merge; run 2 resumes after the PRs are merged and finalizes.
 
 ```text
 $ /change:plan --orchestrate migrate-foo \
     --shape migrate-legacy \
-    --source monolith=git@github.com:org/legacy-foo.git \
-    --auto-merge
+    --source monolith=git@github.com:org/legacy-foo.git
 
 Pre-flight
   shape:        migrate-legacy
   hub:          shop-platform/.specify/project.yaml (hub: true; capability omitted)
   specify:      0.x.y on PATH
-  gh:           v2.x.y on PATH
-  initiative:   migrate-foo (kebab-case ok)
+  gh:           v2.x.y on PATH (read-only PR observation)
+  change:       migrate-foo (kebab-case ok)
 
 ---
 
@@ -141,7 +140,7 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
 
   ## /change:execute — migrate-foo
 
-  ### Initiative: migrate-foo
+  ### Change: migrate-foo
   Progress: done 0, in-progress 0, pending 3, blocked 0, failed 0, skipped 0 (total 3)
 
   ---
@@ -196,9 +195,9 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
 
   Completion: all-done
 
-  Next action: Initiative complete. Land remote PRs (specify workspace
-    merge or merge them by hand on the forge), then close out via
-    specify change finalize.
+  Next action: Change complete. Push remote PRs with specify workspace
+    push, merge them through the forge UI or hand-run gh pr merge,
+    then re-run the umbrella so specify change finalize can verify.
 
 ---
 
@@ -214,29 +213,99 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
 
 ---
 
-## Step 6 — Land (--auto-merge)
+## Step 6 — PR handoff
 
-  $ specify workspace merge
-  specify: workspace merge — migrate-foo (specify/migrate-foo)
+Open PRs on `specify/migrate-foo`:
 
-    foo-backend   merged                    PR #41   https://github.com/org/foo-backend/pull/41
-    foo-mobile    merged                    PR #18   https://github.com/org/foo-mobile/pull/18
+  foo-backend   specify/migrate-foo    PR #41    https://github.com/org/foo-backend/pull/41
+  foo-mobile    specify/migrate-foo    PR #18    https://github.com/org/foo-mobile/pull/18
 
-  2 merged, 0 would-merge, 0 pending-checks, 0 failed-checks, 0 closed, 0 no-branch, 0 branch-pattern-mismatch, 0 failed.
+Merge these PRs through the forge UI or an explicit hand-run `gh pr merge`,
+then re-run /change:plan --orchestrate migrate-foo to finalize.
+
+---
+
+## /change:plan --orchestrate — migrate-foo — paused
+
+  Brief:    change.md
+  Plan:     plan.yaml (3 changes, all `done`)
+  PRs:      foo-backend#41 (open), foo-mobile#18 (open)
+
+  Next action: merge PRs, then re-run /change:plan --orchestrate
+  migrate-foo --shape migrate-legacy --source monolith=...
+```
+
+## Operator merges PRs
+
+The operator merges both PRs on github.com (squash, conventional commit titles) or with explicit `gh pr merge` commands they run themselves. The umbrella only observes this state on the next run.
+
+## Run 2 — re-entry, runs step 7 only
+
+```text
+$ /change:plan --orchestrate migrate-foo \
+    --shape migrate-legacy \
+    --source monolith=git@github.com:org/legacy-foo.git
+
+Pre-flight
+  shape:        migrate-legacy
+  hub:          shop-platform/.specify/project.yaml (hub: true; capability omitted)
+  specify:      0.x.y on PATH
+  gh:           v2.x.y on PATH (read-only PR observation)
+  change:       migrate-foo (kebab-case ok)
+
+---
+
+## Step 1 — Brief
+
+change.md is present. Skipping.
+
+## Step 2 — Registry
+
+  $ specify registry validate
+  ok: 2 projects valid (no changes)
+
+## Step 3 — Plan
+
+plan.yaml is present and every entry is in a terminal state
+(done × 3). Skipping /change:plan.
+
+## Step 4 — Execute
+
+Plan is fully terminal. Skipping /change:execute.
+
+## Step 5 — Push
+
+  $ specify workspace push
+  specify: workspace push — migrate-foo
+
+    foo-backend   up-to-date
+    foo-mobile    up-to-date
+
+  0 pushed, 0 created, 2 up-to-date. 0 failed.
+
+## Step 6 — PR handoff
+
+Querying PRs on `specify/migrate-foo`:
+
+  $ gh pr list --head specify/migrate-foo --state all --json number,state,merged,headRefName
+  foo-backend   PR #41    state=MERGED, merged=true
+  foo-mobile    PR #18    state=MERGED, merged=true
+
+Every PR is `MERGED` on remote. Continuing to step 7.
 
 ---
 
 ## Step 7 — Finalize
 
   $ specify change finalize
-  specify: initiative finalize — migrate-foo (specify/migrate-foo)
+  specify: change finalize — migrate-foo (specify/migrate-foo)
 
     foo-backend         merged                   PR #41   https://github.com/org/foo-backend/pull/41
     foo-mobile          merged                   PR #18   https://github.com/org/foo-mobile/pull/18
 
   2 merged, 0 unmerged, 0 closed, 0 no-branch, 0 branch-pattern-mismatch, 0 dirty, 0 failed.
 
-  Initiative `migrate-foo` finalized.
+  Change `migrate-foo` finalized.
     archived plan: /…/shop-platform/.specify/archive/plans/migrate-foo-20260428.yaml
     archived dir:  /…/shop-platform/.specify/archive/plans/migrate-foo-20260428
 
@@ -255,8 +324,8 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
 
 ## Invariants pinned by this transcript
 
-- **Verb hygiene.** Every shell-out is a post-Phase-3 verb: `specify change create`, `specify change plan {create, add, amend, validate}`, `specify registry {add, validate}`, `specify workspace {sync, push, merge}`, `specify slice journal append` (inside the executor's self-heal — not visible here because the run is clean), `specify change finalize`. No retired verbs appear anywhere in the trace.
+- **Verb hygiene.** Every shell-out is a post-Phase-3 verb: `specify change create`, `specify change plan {create, add, amend, validate}`, `specify registry {add, validate}`, `specify workspace {sync, push}`, `gh pr list`, `specify slice journal append` (inside the executor's self-heal — not visible here because the run is clean), `specify change finalize`. No retired verbs appear anywhere in the trace.
 - **Greenfield ordering.** `specify registry add` (×2) precedes `specify workspace sync`, which precedes any `specify change plan add` for entries routed to the new projects. This is the 2B invariant.
 - **Cross-project contract change has no `project`.** `migrate-foo-contract` runs against the hub itself (no `Routing:` diagnostic from `/change:execute`), exactly as the cross-repo tutorial pins.
-- **`--auto-merge` does not bypass safety guards.** `specify workspace merge` inherits the branch-pattern guard, the no-`--admin` rule, and the no-CI-override rule. The transcript shows both PRs landing on `merged` (CI green); a `pending-checks` or `failed-checks` finding would have halted the umbrella before step 7.
+- **PR merge is outside orchestration.** The transcript shows the umbrella stopping with open PRs in run 1, then observing both PRs as `MERGED` in run 2. It never calls `specify workspace merge` or `gh pr merge`.
 - **Idempotent re-entry.** The umbrella's terminal summary points the operator at re-running `/change:plan --orchestrate migrate-foo`, which exits zero with `plan-not-found` after the archive completes.

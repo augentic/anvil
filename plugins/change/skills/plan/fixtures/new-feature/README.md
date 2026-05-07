@@ -1,6 +1,6 @@
 # `--shape new-feature` — `dark-mode` end-to-end
 
-This fixture pins the **happy path** of `/change:plan --orchestrate` (formerly `/spec:initiative`) driving the `new-feature` shape against a populated multi-project hub. Sources arrive via `--from <docs>` only; the registry is already populated, so step 3 routes work to existing projects without any registry mutation; `--auto-merge` is **not** set, so step 6 lists open PRs and stops, and the operator re-runs the umbrella after merging by hand to land step 7.
+This fixture pins the **happy path** of `/change:plan --orchestrate` (formerly `/spec:initiative`) driving the `new-feature` shape against a populated multi-project hub. Sources arrive via `--from <docs>` only; the registry is already populated, so step 3 routes work to existing projects without any registry mutation. Step 6 lists open PRs and stops, and the operator re-runs the umbrella after merging by hand to land step 7.
 
 ## Scenario
 
@@ -19,7 +19,7 @@ The operator wants to land a `dark-mode` feature spanning both. They drop a one-
     --from ./docs/dark-mode-spec.md
 ```
 
-The umbrella runs steps 1–5 in one pass, halts at step 6 (no `--auto-merge`), and the operator re-runs after merging by hand to land step 7.
+The umbrella runs steps 1–5 in one pass, halts at step 6 for PR handoff, and the operator re-runs after merging by hand to land step 7.
 
 ### First run (steps 1–6, halts at step 6)
 
@@ -28,17 +28,17 @@ The umbrella runs steps 1–5 in one pass, halts at step 6 (no `--auto-merge`), 
 3. **Plan.** `/change:plan dark-mode --from ./docs/dark-mode-spec.md` runs discovery against the docs, syncs peers (multi-project registry), proposes three slices (one cross-project contract change for the theme-preference API plus one implementation slice per project), assigns each implementation slice to its existing project, and validates. **No registry mutation** — both projects are already registered.
 4. **Execute.** `/change:execute --loop` drives all three changes to `done`. Terminal classification: `all-done`.
 5. **Push.** `specify workspace push` creates `specify/dark-mode` on each project's remote and opens two PRs.
-6. **Land.** Without `--auto-merge`, the umbrella lists the open PRs and stops:
+6. **PR handoff.** The umbrella lists the open PRs and stops:
 
    ```text
-   Step 6 — Land (--auto-merge not set)
+   Step 6 — PR handoff
 
      foo-backend     specify/dark-mode    PR #57    https://github.com/org/omnia-backend/pull/57
      foo-mobile      specify/dark-mode    PR #29    https://github.com/org/vectis-mobile/pull/29
 
-   --auto-merge not set; merge by hand on the forge (or run
-   `specify workspace merge`) and re-run /change:plan --orchestrate
-   dark-mode to finalize.
+   Merge these PRs through the forge UI or an explicit hand-run
+   `gh pr merge`, then re-run /change:plan --orchestrate dark-mode
+   to finalize.
    ```
 
 ### Second run (re-entry, runs step 7 only)
@@ -69,12 +69,12 @@ The umbrella inspects on-disk state, sees the brief present, the plan terminal, 
 ## Key invariants
 
 - **No registry mutation under `new-feature`.** Both projects exist in the registry at start; assignment routes work to them without any `specify registry add` shell-out. The 2B registry-proposal sub-step does not fire.
-- **Step 6 stops without `--auto-merge`.** The umbrella never invokes `gh pr merge` when `--auto-merge` is unset. It surfaces the list of open PRs and exits zero — the operator merges by hand and re-runs to finalize.
+- **Step 6 stops for operator merge.** The umbrella never invokes `gh pr merge` or `specify workspace merge`. It surfaces the list of open PRs and exits zero — the operator merges by hand and re-runs to finalize.
 - **Re-entry is idempotent.** The second run skips steps 1–6 (each shell-out underneath is idempotent: `specify change create` refuses on populated brief, `/change:plan` would refuse without `--extend` but the umbrella never re-enters `/change:plan` because the plan is already terminal, `specify workspace push` reports `up-to-date`) and lands directly at step 7.
 - **Verb hygiene.** Every shell-out in [`transcript.md`](transcript.md) uses post-Phase-3 verbs (`specify change {create, finalize}`, `specify change plan {add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`, `gh pr view`).
 
 ## Counter-examples (not pinned)
 
-- The `--auto-merge` variant — see [`fixtures/migrate-legacy/`](../migrate-legacy/) for the autonomous land path.
+- Supplying retired `--auto-merge` — the skill exits non-zero before side effects.
 - A halt at step 4 with `registry-amendment-required` (operator decides one of the slices needs a new project mid-execute) — recovery is documented in the SKILL but not pinned here.
 - A `--dry-run` rendering — see [§`--dry-run` semantics](../../SKILL.md#--dry-run-semantics).

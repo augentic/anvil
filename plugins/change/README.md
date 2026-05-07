@@ -8,12 +8,12 @@ The `change` plugin owns RFC-13's umbrella orchestration noun. Per-loop phase sk
 
 | Skill | Command | Description |
 |-------|---------|-------------|
-| [plan](skills/plan/SKILL.md) | `/change:plan` | Author `plan.yaml` for a change via the planning brief pipeline (Layer 3); with `--orchestrate`, drive the cross-repo umbrella end to end (Layer 4). |
+| [plan](skills/plan/SKILL.md) | `/change:plan` | Author `plan.yaml` for a change via the planning brief pipeline (Layer 3); with `--orchestrate`, drive the cross-repo umbrella through PR creation, operator merge handoff, and finalize verification (Layer 4). |
 | [execute](skills/execute/SKILL.md) | `/change:execute` | Drive the authored plan through the per-loop phases (`/spec:define → /spec:build → /spec:merge`); supports supervised, dry-run, and `--loop` modes. |
 
 ## See also
 
 - [`specify change`](../../docs/reference/cli/change.md) — the CLI surface that owns `plan.yaml` lifecycle, lock acquisition, and umbrella finalization.
 - [`specify registry`](../../docs/reference/cli/registry.md) — the registry topology component the change skills consume but never mutate directly.
-- [`specify workspace`](../../docs/reference/cli/workspace.md) — workspace materialisation, push, and merge for multi-repo runs.
+- [`specify workspace`](../../docs/reference/cli/workspace.md) — workspace materialisation and PR push for multi-repo runs. PR merging is operator-owned; `workspace merge` is only a non-zero deprecation shim.
 - [Initiative skills overview](../../docs/reference/change-skills/index.md) — the layered stack and the change-vs-spec ownership split.

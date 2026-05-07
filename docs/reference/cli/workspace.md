@@ -1,81 +1,122 @@
 # specify workspace
 
-Materialise, inspect, and push workspace peer clones for multi-repo initiatives.
+Materialise, inspect, and publish registry-backed workspace slots for multi-repo changes.
 
 ## Verb cheat-sheet
 
 | Verb | When to use |
 |------|-------------|
-| [`sync`](#specify-workspace-sync) | Clone or refresh every registry project into `.specify/workspace/<project>/`. Runs automatically during `/change:plan`'s sync-peers phase; re-run by hand to refresh between initiatives. |
-| [`status`](#specify-workspace-status) | Per-project materialisation report (slot path, type, HEAD sha, dirty flag, `.specify/` tree summary). |
-| [`push`](#specify-workspace-push) | Ship local commits in each clone to its remote on `specify/<initiative-name>` and create a PR. |
-| [`merge`](#specify-workspace-merge) | Squash-merge the open PRs once their CI is green (RFC-9 §4A). Refuses on `branch-pattern-mismatch`, never `--admin`/`--auto`. |
+| [`sync`](#specify-workspace-sync) | Create or refresh workspace slots. With no selectors, syncs every registry project; with selectors, materialises only those slots. |
+| [`status`](#specify-workspace-status) | Inspect selected slots, including slot kind, configured target, actual origin, branch, HEAD, dirty state, change-branch match, project config, and active slices. |
+| [`push`](#specify-workspace-push) | Publish an existing exact `specify/<change-name>` branch to its remote and create or update a PR. |
+| [`merge`](#specify-workspace-merge) | Deprecated one-release shim. Exits non-zero and tells the operator to merge through the forge UI or `gh pr merge`, then run `specify change finalize`. |
+
+## Selectors
+
+`sync`, `status`, and `push` accept optional project selectors:
+
+```bash
+specify workspace sync [<project>...]
+specify workspace status [<project>...]
+specify workspace push [<project>...]
+```
+
+Selectors are registry project names. Unknown selectors fail before filesystem, Git, or forge side effects. When selectors are omitted, `sync` and `status` operate on every project declared in `registry.yaml`; `push` classifies every registry project and only performs transport work for branches that need publication.
+
+## Branch preparation
+
+Before `/change:execute` mutates a remote-backed workspace slot, the executor prepares the slot on the change branch:
+
+1. Fetch `origin`.
+2. Resolve `origin/HEAD` as the remote default branch.
+3. Create or reuse `specify/<change-name>` from `origin/HEAD`.
+4. Fast-forward from `origin/specify/<change-name>` when that branch already exists.
+5. Refuse unsafe dirty work before checkout or mutation.
+
+The hidden `workspace prepare-branch` helper owns this pre-mutation step for the executor. Humans normally use the public lifecycle commands: `/change:execute`, `specify workspace status`, `specify workspace push`, and `specify change finalize`. If the remote default cannot be resolved, branch preparation fails with `origin-head-unresolved`.
 
 ## Subcommands
 
 ### specify workspace sync
 
-Clone or refresh every project declared in `registry.yaml` into `.specify/workspace/<project>/`.
+Clone or refresh selected projects declared in `registry.yaml` into `.specify/workspace/<project>/`.
 
 ```bash
-specify workspace sync
+specify workspace sync [<project>...]
 ```
 
-For each registry project:
+For each selected registry project:
 
-- **Remote URL** (`git@`, `ssh://`, `https://`, `http://`) -- shallow-clones the repo into the workspace slot.
+- **Remote URL** (`git@`, `ssh://`, `https://`, `http://`) -- shallow-clones the repo into the workspace slot, or fetches an existing matching clone.
 - **Local path** (`.`, `../foo`, `/absolute/path`) -- symlinks the resolved path into the workspace slot.
-- **Greenfield** (remote URL, repo does not yet exist) -- creates the workspace slot, runs `git init`, sets the remote, and bootstraps `.specify/project.yaml` via `specify init <capability>`. URL-shaped capability identifiers are passed through directly; bare capability identifiers are resolved from the initiating repo's `.specify/.cache/` as local file URIs.
+- **Greenfield** (remote URL, repo does not yet exist) -- creates the local workspace slot, runs `git init`, sets `origin`, and bootstraps `.specify/project.yaml` via `specify init <capability>`. Remote repositories are not created during sync; creation happens, when supported, during `workspace push`.
 
 A partially bootstrapped slot (`.git/` present but `.specify/project.yaml` absent) is detected on re-run: `specify init` is re-attempted without re-running `git init` or `git remote add`.
 
-Non-zero exit if any project fails, with a per-project status summary.
+Selected sync materialises selected slots only. Unselected registry projects are not cloned, fetched, symlinked, or contract-refreshed. Running without selectors syncs all registry projects. Non-zero exit if any selected project fails, with a per-project status summary.
 
 ### specify workspace status
 
-Report the materialisation state of every registry project's workspace slot.
+Report the materialisation state of selected registry workspace slots.
 
 ```bash
-specify workspace status
+specify workspace status [<project>...]
 ```
 
-Per-project output includes: slot path, materialisation type (`symlink`, `git-clone`, `missing`), HEAD sha, dirty flag, and `.specify/` tree summary.
+Per-project output includes:
+
+- `slot path` under `.specify/workspace/<project>/`;
+- slot type: `git-clone`, `symlink`, `missing`, or `other`;
+- configured target kind and configured target from `registry.yaml`;
+- actual symlink target or actual Git `origin`, when present;
+- current branch;
+- `HEAD` SHA;
+- dirty flag from `git status --porcelain`;
+- exact change-branch match against `specify/<change-name>` when `plan.yaml` is present;
+- `.specify/project.yaml` presence;
+- active slices discovered under `.specify/slices/`.
+
+`status` is read-only. It is the first check when `sync`, `/change:execute`, or `push` reports a missing, dirty, or mismatched slot.
 
 ### specify workspace push
 
-Push workspace clones that have local commits back to their remote repositories.
+Publish selected workspace clones that are already on the exact change branch.
 
 ```bash
-specify workspace push [<project>...]
+specify workspace push [<project>...] [--dry-run]
 ```
 
-Omitting the project argument pushes all dirty clones. The initiative name for branch naming (`specify/<initiative-name>`) is read from `plan.yaml`.
+The change name is read from `plan.yaml`; the expected branch is exactly `specify/<change-name>`. `workspace push` is transport-only PR publication/update. It never creates the local change branch, never checks out a branch, never commits files, never pushes a default branch, and never merges a PR.
 
 **Per-project algorithm:**
 
-1. **Remote resolution.** Remote URLs are used directly. Local paths read `git remote get-url origin`; if no remote exists, the project is skipped with `local-only` status.
-2. **Branch.** Creates or updates `specify/<initiative-name>` from the clone's current HEAD.
-3. **Repo creation (greenfield).** If the remote does not exist and the URL is a GitHub URL, creates the repo via `gh repo create`.
-4. **Push.** `git push --force-with-lease -u origin specify/<initiative-name>`.
-5. **PR.** Creates a PR via `gh pr create` if none exists for the branch.
+1. **Selector preflight.** Unknown project selectors fail before any side effect.
+2. **Worktree and remote.** The slot must be a Git worktree. Missing `origin` reports `local-only`.
+3. **Branch guard.** The current branch must be exactly `specify/<change-name>`. Any other branch, including `main`, `master`, or detached `HEAD`, reports `no-branch`.
+4. **Dirty guard.** `git status --porcelain` must be empty. Dirty checkouts report `failed`.
+5. **Default-branch guard.** The expected change branch must not be the remote default branch.
+6. **Remote branch inspection.** Compare local `HEAD` with `origin/specify/<change-name>` when present.
+7. **Push.** Push `refs/heads/specify/<change-name>` to `origin` with `--force-with-lease`.
+8. **PR.** Create a PR, or update the existing PR base, targeting the remote default branch resolved from `origin/HEAD`.
 
 **Flags:**
 
 | Flag | Description |
 |------|-------------|
-| `--dry-run` | Classify each project's push status without performing any writes. No `git push`, `gh repo create`, or `gh pr create`. |
+| `--dry-run` | Classify each selected project's push status without `git push`, `gh repo create`, or `gh pr create`. |
 | `--format json` | Machine-readable JSON output. |
 
 **Output (human-readable):**
 
 ```text
-specify: workspace push — <initiative-name>
+specify: workspace push - <change-name>
 
-  traffic        pushed       specify/platform-v2  PR #42
-  command-centre up-to-date
-  mobile         created      specify/platform-v2  PR #7
+  traffic              pushed         specify/platform-v2 PR #42
+  command-centre       up-to-date     specify/platform-v2 PR #7
+  mobile               no-branch
+  local-lib            local-only
 
-1 created, 1 pushed, 1 up-to-date. 0 failed.
+0 created, 1 pushed, 1 up-to-date, 1 local-only, 1 no-branch. 0 failed.
 ```
 
 **Output (JSON, `--format json`):**
@@ -84,116 +125,47 @@ specify: workspace push — <initiative-name>
 {
   "projects": [
     { "name": "traffic", "status": "pushed", "branch": "specify/platform-v2", "pr": 42 },
-    { "name": "command-centre", "status": "up-to-date" },
-    { "name": "mobile", "status": "created", "branch": "specify/platform-v2", "pr": 7 },
+    { "name": "command-centre", "status": "up-to-date", "branch": "specify/platform-v2", "pr": 7 },
+    { "name": "mobile", "status": "no-branch" },
     { "name": "local-lib", "status": "local-only" }
   ]
 }
 ```
 
-Under `--dry-run`, the JSON output adds `"dry_run": true` at the top level and action statuses are prefixed with `would-` in human-readable output (e.g. `would-push`, `would-create`).
-
-**Status vocabulary:** `created` (remote repo created, greenfield), `pushed` (existing remote updated), `up-to-date` (no local commits ahead), `local-only` (no remote configured), `failed` (error).
-
-**Prerequisites:** `gh` (GitHub CLI) is required only when repo creation or PR creation is needed. Plain `git push` works for any forge.
-
-### specify workspace merge
-
-Squash-merge the open PRs created by `workspace push` once their CI is green (RFC-9 §4A).
-
-```bash
-specify workspace merge [<project>...]
-```
-
-Omitting the project argument considers every entry in `registry.yaml`. The initiative name (and therefore the expected PR branch `specify/<initiative-name>`) is read from `plan.yaml`.
-
-**Per-project algorithm:**
-
-1. **Branch lookup.** `gh pr list --head specify/<initiative-name> --state all --json number --limit 1` followed by `gh pr view ... --json state,merged,headRefName,number,url`. No PR on the branch ⇒ `no-branch`.
-2. **Branch-pattern guard.** Refuses to operate on any PR whose `headRefName` does not equal the resolved `specify/<initiative-name>` exactly. Surfaces the literal expected branch in the diagnostic so an operator can see the drift.
-3. **Already-landed short-circuit.** `state == MERGED` ⇒ `merged`. `state == CLOSED` (without merge) ⇒ `closed`.
-4. **Check inspection.** `gh pr checks --json bucket,name`. Any `fail`/`cancel` ⇒ `failed-checks`. Any `pending` ⇒ `pending-checks`. Otherwise (all `pass`/`skipping`, or empty list) proceed.
-5. **Merge.** `--dry-run` ⇒ `would-merge` and stop. Otherwise `gh pr merge <pr> --squash` ⇒ `merged` on success, `failed` on shell error.
-
-Best-effort across projects: a single project's failure surfaces in its row without aborting the others.
-
-**Flags:**
-
-| Flag | Description |
-|------|-------------|
-| `--dry-run` | Classify each project's mergeability without invoking `gh pr merge`. Mergeable PRs report `would-merge`. |
-| `--format json` | Machine-readable JSON output. |
-
-**Output (human-readable):**
-
-```text
-specify: workspace merge — platform-v2 (specify/platform-v2)
-
-  traffic              merged                    PR #42     https://github.com/org/traffic/pull/42
-  command-centre       pending-checks            PR #7      https://github.com/org/command-centre/pull/7
-    pending checks: e2e
-  mobile               no-branch
-    no open PR on specify/platform-v2; run `specify workspace push` first
-
-1 merged, 0 would-merge, 1 pending-checks, 0 failed-checks, 0 closed, 1 no-branch, 0 branch-pattern-mismatch, 0 failed.
-```
-
-**Output (JSON, `--format json`):**
-
-```json
-{
-  "schema-version": 2,
-  "initiative": "platform-v2",
-  "expected-branch": "specify/platform-v2",
-  "projects": [
-    {
-      "name": "traffic",
-      "status": "merged",
-      "pr-number": 42,
-      "url": "https://github.com/org/traffic/pull/42",
-      "head-ref-name": "specify/platform-v2"
-    }
-  ],
-  "summary": {
-    "merged": 1,
-    "would-merge": 0,
-    "pending-checks": 0,
-    "failed-checks": 0,
-    "closed": 0,
-    "no-branch": 0,
-    "branch-pattern-mismatch": 0,
-    "failed": 0
-  }
-}
-```
-
-Under `--dry-run`, the JSON output adds `"dry-run": true` at the top level.
+Under `--dry-run`, JSON adds `"dry-run": true` at the top level and human-readable action statuses are prefixed with `would-` for transport actions (for example, `would-pushed` and `would-created`).
 
 **Status vocabulary:**
 
 | Status | Meaning |
 |--------|---------|
-| `merged` | PR already merged, or successfully squash-merged this run. |
-| `would-merge` | Dry-run only: PR is mergeable; no merge attempt was made. |
-| `pending-checks` | At least one CI check is still running. Operator action: wait. |
-| `failed-checks` | At least one CI check failed or was cancelled. Operator action: fix CI, push, re-run. |
-| `closed` | PR was closed without merging. |
-| `no-branch` | No PR exists on `specify/<initiative-name>`. Operator action: `specify workspace push`. |
-| `branch-pattern-mismatch` | A PR exists but its `headRefName` does not equal the resolved branch. The verb refuses to operate. |
-| `failed` | Generic shell-out failure (`gh` missing, network error, merge conflict, …). See `detail`. |
+| `created` | Greenfield GitHub remote was created, then the change branch was pushed and a PR was created. |
+| `pushed` | Existing remote branch was updated and a PR was created or updated. |
+| `up-to-date` | Remote `specify/<change-name>` already matches local `HEAD`; the PR is created or updated if needed. |
+| `local-only` | No `origin` remote is configured for this slot. No push or PR is attempted. |
+| `no-branch` | The slot is not currently on exact `specify/<change-name>`, or the expected branch resolves to the remote default branch. |
+| `failed` | The slot is dirty, Git or `gh` failed, the remote default could not be resolved for PR creation, or another transport error occurred. |
 
-Exit code is `0` only when every project lands on `merged`, `would-merge`, or `no-branch`. Any of `failed`, `failed-checks`, `pending-checks`, `closed`, or `branch-pattern-mismatch` flips the exit code to `1` so CI loops and the 2C umbrella skill can branch on the result.
+**Prerequisites:** `gh` (GitHub CLI) is required for GitHub repository creation and PR creation/update. Plain Git remotes can still be pushed when PR creation is not needed.
 
-**Safety guards (non-negotiable):**
+### specify workspace merge
 
-- Branch-pattern guard refuses any PR whose `headRefName` ≠ `specify/<initiative-name>` exactly.
-- Never `--admin`; never `--auto`; never overrides failing or pending checks.
-- Failure on one project never aborts the batch — each project runs to its own classification.
+Automated workspace merge was removed by RFC-14.
 
-**Prerequisites:** `gh` (GitHub CLI) authenticated against every registry remote.
+```bash
+specify workspace merge [<project>...] [--dry-run]
+```
+
+This command remains for one release as a compatibility shim. It accepts the old project selectors and `--dry-run` flag, exits non-zero, and performs no registry read, PR lookup, check inspection, forge merge, or cleanup. Merge each PR through the forge UI or `gh pr merge`, then run:
+
+```bash
+specify change finalize
+```
+
+`specify change finalize` verifies the operator-merged PR state and archives the coordinator state; it does not merge PRs.
 
 ## See also
 
-- [Cross-Repo Initiatives](../../tutorials/cross-repo-change.md) -- tutorial for multi-repo workflows
-- [Configuration Files](../configuration.md) -- registry.yaml and plan.yaml format
+- [Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- tutorial for multi-repo workflows
+- [Configuration Files](../configuration.md) -- `registry.yaml` and `plan.yaml` format
 - [/change:execute](../change-skills/execute.md) -- skill that drives workspace execution
+- [`specify change finalize`](change.md#specify-change-finalize) -- closure after PRs are operator-merged

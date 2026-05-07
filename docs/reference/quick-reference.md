@@ -11,7 +11,7 @@
 /spec:merge                    # merge specs (+ composition) into baseline
 ```
 
-### Multi-change initiative
+### Multi-slice change
 
 ```text
 /change:plan <name> --source legacy=./path    # author plan
@@ -23,7 +23,7 @@
 ```text
 /spec:init --hub                                     # bootstrap a platform hub
 specify registry add <project> --url ... --schema ...      # `--schema` flag is the legacy spelling; renamed in a later phase
-/change:plan --orchestrate <name> [--shape ...] [--auto-merge]
+/change:plan --orchestrate <name> [--shape ...]
 ```
 
 ## All skills
@@ -39,7 +39,7 @@ specify registry add <project> --url ... --schema ...      # `--schema` flag is 
 | `/spec:analyze` | 3 | Plan-time capability inference (invoked by `/change:plan`) |
 | `/change:plan` | 3 | Author a multi-slice plan |
 | `/change:execute` | 3 | Automate the plan loop |
-| `/change:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> merge -> finalize (was `/spec:initiative`) |
+| `/change:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> operator PR merge -> finalize (was `/spec:initiative`) |
 | `/contract:openapi` | -- | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
 | `/contract:asyncapi` | -- | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
 | `/contract:json-schema` | -- | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |
@@ -88,10 +88,10 @@ specify change plan transition <name> <target>
 specify change plan lock status
 
 # Workspace (multi-repo)
-specify workspace sync
-specify workspace status
-specify workspace push
-specify workspace merge                   # squash-merge PRs once CI is green (RFC-9 4A)
+specify workspace sync [<project>...]      # omit selectors to sync all registry projects
+specify workspace status [<project>...]    # slot path/type, target, origin, branch, HEAD, dirty, slices
+specify workspace push [<project>...]      # transport existing specify/<change-name> branch, create/update PR
+specify workspace merge                    # deprecated shim: exits non-zero, use forge merge + finalize
 
 # Platform registry (multi-repo)
 specify registry show
@@ -99,11 +99,11 @@ specify registry validate
 specify registry add <name> --url <url> --schema <schema> --description "..."
 specify registry remove <name>
 
-# Initiative brief and closure
-specify slice create <name>          # scaffold change.md
+# Change brief and closure
+specify change create <name>         # scaffold change.md
 specify change show
-specify change finalize               # confirm PRs merged, archive plan (RFC-9 4C)
-specify change finalize --clean       # also prune .specify/workspace/<peer>/
+specify change finalize              # verify operator-merged PRs, archive plan (RFC-9 4C / RFC-14)
+specify change finalize --clean      # also remove clean .specify/workspace/<peer>/ clones
 
 # Plan authoring (multi-repo)
 specify change plan add <name> --project <project>
@@ -129,8 +129,8 @@ specify slice merge conflict-check <name>
 ```
 <project-root>/
 ├── registry.yaml         # platform catalogue (optional, multi-repo)
-├── plan.yaml             # initiative plan (optional)
-├── change.md         # operator brief (optional)
+├── plan.yaml             # change plan (optional)
+├── change.md             # operator brief (optional)
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
 └── .specify/
     ├── project.yaml      # project config
@@ -139,7 +139,7 @@ specify slice merge conflict-check <name>
     ├── changes/          # active slices (contracts/, composition.yaml for Vectis)
     ├── specs/            # merged baseline (incl. composition.yaml for Vectis)
     ├── plans/            # initiative working dirs (discovery, proposal)
-    ├── workspace/        # peer repo clones (multi-repo only)
+    ├── workspace/        # registry workspace slots (multi-repo only)
     └── archive/          # finalized changes and plans
 ```
 

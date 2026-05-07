@@ -64,16 +64,24 @@ None of these verbs go through `define → build → merge`. The registry is sub
 
 ## Workspace materialisation
 
-`.specify/workspace/` is **derived registry state**, not a separate component-owned topology. The registry crate owns the materialiser and the four workspace verbs:
+`.specify/workspace/` is **derived registry state**, not a separate component-owned topology. The coordinator root owns `registry.yaml`; each child path under `.specify/workspace/<project>/` is a workspace slot for one registry entry. Slots may be refreshed, inspected, published from, or removed during final cleanup without changing the registry ledger.
+
+The registry crate owns the materialiser and workspace verbs:
 
 | Verb                       | Purpose                                                                                                                                                                              |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `specify workspace sync`   | Materialise `.specify/workspace/<name>/` for every registry entry — symlink for `.`/relative URLs, shallow `git clone` for remotes. Idempotent. Updates `.gitignore`.                |
-| `specify workspace status` | Per-project materialisation report — slot type (symlink, git-clone, missing), HEAD sha, dirty flag, `.specify/` summary.                                                             |
-| `specify workspace push`   | Push each clone's `specify/<slice-name>` branch to its remote and open a PR. Branch name resolves from `plan.yaml`.                                                                 |
-| `specify workspace merge`  | Squash-merge open PRs once their CI is green ([RFC-9 §4A](../../rfcs/archive/rfc-9-platform.md)). Refuses on `branch-pattern-mismatch`; never `--admin`/`--auto`.                    |
+| `specify workspace sync [<project>...]`   | Materialise selected workspace slots. With no selectors, materialises every registry project; with selectors, materialises only those slots. Unknown selectors fail before filesystem or Git side effects. |
+| `specify workspace status [<project>...]` | Read-only per-project materialisation report: slot path/type, configured target, actual origin or symlink target, current branch, HEAD, dirty flag, exact `specify/<change-name>` branch match, `.specify/project.yaml` presence, and active slices. |
+| `specify workspace push [<project>...]`   | Transport-only publication for selected slots already on exact `specify/<change-name>`. Pushes with lease protection and creates or updates PRs; never creates local branches, commits files, pushes default branches, or merges PRs. |
+| `specify workspace merge`  | Deprecated one-release shim. Exits non-zero with guidance to merge through the forge UI or `gh pr merge`, then run `specify change finalize`; performs no PR lookup or merge. |
+
+Selection is resolved once, before side effects. This means `specify workspace sync api typo` fails without materialising `api`, and `specify workspace push web unknown` fails before any push or PR creation. A human-invoked `workspace sync` with no selectors still refreshes every registry project. `/change:execute` uses selected sync behavior to materialise only the next plan entry's target slot before execution.
+
+Before `/change:execute` mutates a remote-backed slot, it prepares the slot on the change branch (`specify/<change-name>`) from the remote default branch (`origin/HEAD`). If `origin/HEAD` cannot be resolved, the executor surfaces `origin-head-unresolved` and does not run define/build/merge. Humans generally do not invoke the hidden branch-preparation helper directly; they use `/change:execute`, inspect with `workspace status`, publish with `workspace push`, merge PRs through their forge, and close with `change finalize`.
 
 The registry-materialisation resolver — the registry service that maps a registry-declared project to its materialised project root — is what change execution consumes when running the slice loop against a peer project (see [RFC-13 §"Registry-materialised execution"](../../rfcs/archive/rfc-13-extensibility.md#registry-materialised-execution)). Capability skills run relative to *the clone's project root*; the core receives only the project root it should run against.
+
+After `workspace push` opens or updates PRs, landing is an explicit operator action outside Specify. Use the forge UI, `gh pr merge`, or the repository's normal merge queue. `specify change finalize` later verifies that every required per-project PR is merged, checks workspace cleanliness, archives the coordinator state, and optionally removes clean workspace clones with `--clean`; it never merges PRs.
 
 ## Dependency direction
 

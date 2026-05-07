@@ -24,10 +24,12 @@ Variants the skill picks based on `specify change plan next`:
 
 The canonical shape is pinned by `fixtures/dry-run/`.
 
-Under multi-repo routing, the `--dry-run` output includes a `Routing:` diagnostic line:
+Under multi-repo routing, the `--dry-run` output includes `Routing:` and branch-preparation preview lines. Missing slots are reported as selected sync for that project only:
 
 ```text
 [dry-run] Routing: <name> → <project> (<resolved-path>)
+[dry-run] Would run: specify workspace sync <project>       # only if the selected slot is missing
+[dry-run] Would prepare branch: specify/<change-name>
 ```
 
 ## Supervised / per-slice transcript
@@ -46,6 +48,8 @@ Progress: done <N>, in-progress <N>, pending <N>, blocked <N>, failed <N>, skipp
 
 ### Processing: <name> (sources: [<sources>])
 
+Workspace: <project> prepared on specify/<plan-name>        # multi-repo only
+
 Step 1/3: define
   - extract sub-step (via /spec:extract)
       Source: <path>
@@ -56,7 +60,9 @@ Step 2/3: build
   Tasks: N/M complete ✓
 
 Step 3/3: merge
+  Baseline committed: specify: merge <name> ✓              # multi-repo workspace only
   Baseline updated: .specify/specs/<name>/spec.md ✓
+  Residue committed: specify: residue <name> ✓             # only when non-baseline residue exists
   Status: done
 
 ⚠ Cross-project contract warnings           # OPTIONAL — see multi-repo.md
@@ -71,7 +77,7 @@ Step 3/3: merge
   Action needed: review the warning(s); the consumer change(s) may need a follow-up.
 ```
 
-The `(sources: [...])` suffix is rendered only when the plan entry has `sources`; greenfield entries become `### Processing: <name> (greenfield)`. The extract sub-step block inside `Step 1/3: define` is elided when the entry has no `sources`.
+The `(sources: [...])` suffix is rendered only when the plan entry has `sources`; greenfield entries become `### Processing: <name> (greenfield)`. The extract sub-step block inside `Step 1/3: define` is elided when the entry has no `sources`. The `Workspace:` line appears only for entries with `project`. The residue line is omitted when the non-baseline worktree is clean; render `Residue: clean; no commit.` in debug transcripts when showing shell-outs.
 
 The `⚠ Cross-project contract warnings` block is rendered only when (a) the merged slice touches a contract listed in the producer's `registry.yaml:contracts.produces` list AND (b) at least one consumer's verifier invocation (the format-appropriate `/contract:*` skill in its verifier intent, `--mode cross-project`) reports `summary.total-findings > 0`. See [multi-repo.md](multi-repo.md) for the full algorithm and the per-finding journal payload schema.
 
@@ -167,9 +173,9 @@ Section rules:
 
 | Classification | Condition | Next action template |
 |---|---|---|
-| `all-done` | Every entry's status is in `{done, skipped}`. | `Change complete. Land remote PRs (specify workspace merge or merge them by hand on the forge), then close out via specify change finalize — see [specify change](../../../../docs/reference/cli/change.md#specify-change-finalize) for the closure verb.` |
+| `all-done` | Every entry's status is in `{done, skipped}`. | `Change complete. Run specify workspace push to publish prepared specify/<change-name> branches and create or update PRs. Merge those PRs through the forge UI or gh pr merge, then close out via specify change finalize — see [specify change](../../../../docs/reference/cli/change.md#specify-change-finalize) for the closure verb.` |
 | `stuck` | Some entries remain in `{pending, blocked, failed}` but none are eligible (pending entries have unmet deps; no eligible sibling exists). | `Resolve blocked/failed entries (specify change plan amend + specify change plan transition <name> blocked → pending / failed → pending) or accept the partial change and run specify change plan archive --force.` |
-| `halted` | Self-heal detected an ambiguous on-disk state on startup and refused to speculate. Individual mid-loop failures or deferrals do NOT reach `halted`. | `Manually triage the halted slice: inspect .specify/slices/<name>/.metadata.yaml against plan.yaml, repair the contradiction, then re-run /change:execute --loop.` |
+| `halted` | Self-heal detected an ambiguous on-disk state, branch preparation refused to guess or overwrite work, baseline residue remained after merge, or the residue commit failed. Individual mid-loop failures or deferrals do NOT reach `halted`. | `Manually triage the halted slice: inspect the diagnostic, the project slot's git status, and .specify/slices/<name>/.metadata.yaml against plan.yaml, then re-run /change:execute --loop.` |
 | `driver-interrupted` | SIGINT or SIGTERM arrived mid-run. The current phase finished (or no phase was in flight), subsequent phases were skipped, the active plan entry is still `in-progress`, the lock was released. | `Re-run /change:execute --loop — self-heal will reclaim the interrupted slice on the next startup.` |
 
 The distinction between `stuck` and `halted` matters for operator routing: `stuck` means the plan is well-formed but needs human-level priority decisions; `halted` means the on-disk state itself is inconsistent and needs forensic triage before the loop can run safely again.

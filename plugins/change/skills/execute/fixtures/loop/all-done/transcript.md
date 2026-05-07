@@ -25,7 +25,7 @@ Self-heal: no in-progress entries found.
 
 ## /change:execute — platform-v2
 
-### Initiative: platform-v2
+### Change: platform-v2
 Progress: done 0, in-progress 1, pending 2, blocked 0, failed 0, skipped 0 (total 3)
 
 ---
@@ -58,7 +58,7 @@ Step 3/3: merge
 #   /spec:merge  email-verification  → outcome: success
 #   specify change plan transition email-verification done
 
-### Initiative: platform-v2
+### Change: platform-v2
 Progress: done 1, in-progress 1, pending 1, blocked 0, failed 0, skipped 0 (total 3)
 
 ---
@@ -88,7 +88,7 @@ Step 3/3: merge
 #   /spec:merge  notification-preferences → outcome: success
 #   specify change plan transition notification-preferences done
 
-### Initiative: platform-v2
+### Change: platform-v2
 Progress: done 2, in-progress 1, pending 0, blocked 0, failed 0, skipped 0 (total 3)
 
 ---
@@ -124,7 +124,7 @@ Progress: done 3, in-progress 0, pending 0, blocked 0, failed 0, skipped 0 (tota
 
 Completion: all-done
 
-Next action: Initiative complete — no further action needed.
+Next action: Change complete. Run specify workspace push to publish prepared specify/platform-v2 branches and create or update PRs. Merge those PRs through the forge UI or gh pr merge, then close out via specify change finalize.
 ```
 
 ## Invariants pinned

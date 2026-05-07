@@ -41,8 +41,17 @@ A schema-validated YAML document (`composition.yaml`) that describes the spatial
 **Change**
 A unit of work in Specify, stored at `.specify/changes/<name>/`. Contains the core artifacts (`proposal.md`, `spec.md`, `design.md`, `tasks.md`), optional contract artifacts (`contracts/`), any capability-specific artifacts (e.g. `composition.yaml` for Vectis), and a `.metadata.yaml` file tracking lifecycle state.
 
+**Change branch**
+The Git branch used to publish a multi-repo change from a registry workspace slot. Its exact form is `specify/<change-name>`, where `<change-name>` comes from `plan.yaml` / `change.md`. `/change:execute` prepares remote-backed slots on this branch before mutation; `specify workspace push` refuses any slot that is not already on this exact branch (`no-branch`) and never creates the branch on the fly.
+
+**Change finalize**
+The canonical closure verb for a multi-repo change. `specify change finalize` verifies that plan entries are terminal, required per-project PRs on `specify/<change-name>` are operator-merged, and workspace clones are clean; then it archives `plan.yaml`, `change.md`, and `.specify/plans/<name>/`. With `--clean`, it may remove clean workspace clones after archive succeeds. It never merges PRs.
+
 **Context (plan entry)**
 The optional `context` field on a plan entry -- a list of baseline paths (relative to `.specify/`) that are relevant to the change. Briefs use these as a focus hint when scanning baseline directories. Populated automatically by `/change:plan` (e.g. contract paths from a preceding contract change) or manually via `specify change plan add --context`.
+
+**Coordinator root**
+The repository where an operator runs a coordinated change. It owns `registry.yaml`, `plan.yaml`, `change.md`, `.specify/plans/`, and the registry workspace under `.specify/workspace/`. For a hub topology, the coordinator root may contain no product code; for platform-as-project, it is also one of the registered projects.
 
 **Contract-first**
 Authorship pattern where a dedicated contract change defines interface shapes before implementation begins. `/change:plan` inserts these automatically when it detects an API boundary between projects. The contract change uses `schema: contracts@v1` and has no `project`. Implementation changes depend on the contract change.
@@ -91,7 +100,7 @@ A multi-change program coordinated through a plan. Examples: a migration, a gree
 The optional `info.x-specify-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0 contract (RFC-12). Kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract in the repo. The id is a **rename-stable hint** that survives file moves and `info.version` bumps — once set on a contract, never change it. Path-based references in `registry.yaml` remain canonical; the id is not a substitute. Format and uniqueness are enforced by the declared `contract` WASI tool (`specify tool run contract`, the contracts capability's post-merge baseline gate, RFC-13 §"Merge and adoption contract") and by the `/contract:openapi` / `/contract:asyncapi` verifier intents only when the field is present — contracts without one remain valid indefinitely.
 
 **Initiative finalize**
-The canonical closure verb for the platform-first loop (RFC-9 Section 4C). `specify change finalize` runs four guards in order -- plan-presence, plan terminal-state, per-project PR-state (`MERGED` on remote), workspace-cleanliness -- then atomically archives `plan.yaml`, `initiative.md`, and `.specify/plans/<name>/` into `.specify/archive/plans/<YYYYMMDD>-<name>/`. Idempotent: re-running after a successful finalize returns `plan-not-found`, the explicit "already finalized" signal. Optional `--clean` flag prunes `.specify/workspace/<peer>/` clones after the archive completes.
+Legacy name for `specify change finalize`. The command verifies operator-merged PRs and archives `plan.yaml`, `change.md`, and `.specify/plans/<name>/`; it does not merge pull requests.
 
 **Initiative shapes (three)**
 The three input topologies the platform-first loop handles uniformly (RFC-9 Section Motivation): `migrate-legacy` (sources via `--source <key>=<git-url-or-path>`, targets are existing or newly-minted registered projects), `new-feature` (sources via `--from <docs>`, targets are existing registered projects with new ones spawned at assignment time via the registry-proposal sub-step), and `update-existing` (no input flags, targets are existing registered projects, baseline accumulation in workspace clones is the dominant signal). All three flow through the same seven-step `/change:plan --orchestrate` sequence (was `/spec:initiative` before the orchestration mode was folded into `/change:plan`).
@@ -108,7 +117,7 @@ The `0.2.0` v2 layout split Specify's on-disk shape along a clear line: **operat
 The diagnostic the CLI emits (stable code `legacy-layout`, exit 1) when a project-aware verb encounters a v1-layout project (operator artifacts still under `.specify/`). The remediation is always `specify migrate v2-layout`; see the [troubleshooting entry](troubleshooting.md#legacy-layout-error-from-every-cli-verb).
 
 **Layer 1 (CLI primitives)**
-The `specify` CLI commands that handle all deterministic operations: change lifecycle, plan CRUD, registry mutation, workspace sync/push/merge, schema resolution, validation. The foundation that skills build on.
+The `specify` CLI commands that handle all deterministic operations: change lifecycle, plan CRUD, registry mutation, workspace sync/status/push, change finalization, schema resolution, validation. The foundation that skills build on. The old workspace merge automation is no longer an active primitive; `specify workspace merge` is only a non-zero deprecation shim.
 
 **Layer 2 (Change lifecycle)**
 The `/spec:define`, `/spec:build`, `/spec:merge` loop and supporting skills (`/spec:init`, `/spec:drop`, `/spec:extract`). Each skill operates on a single change inside `.specify/changes/<name>/` and delegates deterministic work to the Layer 1 CLI.
@@ -117,7 +126,7 @@ The `/spec:define`, `/spec:build`, `/spec:merge` loop and supporting skills (`/s
 The skills that coordinate multi-change programs through `plan.yaml`: `/change:plan` (authors the plan via discovery, propose, and assignment), `/change:execute` (automates the define-build-merge loop per change with CWD-based routing for multi-repo plans), and `/spec:analyze` (plan-time capability inference). Includes sync-peers for multi-repo registries and project assignment (RFC-3b). Originally called "Initiative orchestration"; renamed to "Plan & Drive" by RFC-9 Section 2C when Layer 4 was promoted above it.
 
 **Layer 4 (Initiative orchestration)**
-The orchestration mode of `/change:plan` (`/change:plan --orchestrate`, RFC-9 Section 2C) that strings the platform-first loop -- brief, registry validate, plan, execute, push, optional merge, finalize -- into one operator action. Composition only: every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the umbrella adds no new logic. Honours every halt the underlying skills surface and is idempotent on re-entry. Was a dedicated `/spec:initiative` skill before being folded into `/change:plan`.
+The orchestration mode of `/change:plan` (`/change:plan --orchestrate`, RFC-9 Section 2C) that strings the platform-first loop -- brief, registry validate, plan, execute, push, operator PR merge, finalize -- into one operator action. Composition only: every Specify step shells out to a Layer 1 CLI verb or a Layer 3 skill; the operator or forge owns the PR merge decision. Honours every halt the underlying skills surface and is idempotent on re-entry. Was a dedicated `/spec:initiative` skill before being folded into `/change:plan`.
 
 **Lifecycle state**
 The current status of a change: `created`, `defining`, `defined`, `building`, `complete`, `merged`, or `dropped`. `defining` and `building` are transient states indicating a phase is in-flight. Managed by the CLI via `.metadata.yaml`.
@@ -169,6 +178,9 @@ The first artifact generated during define. Captures why the change exists, what
 **Registry amendment** (also: **`registry-amendment-required`**)
 The phase outcome variant added by RFC-9 Section 2B for cases where a phase skill discovers that a capability needs a new registry project (e.g. `/spec:extract` surfacing tangled code that should split into a new repo). The driver classifies the outcome as `blocked`, records the structured payload in the dropped change's `journal.yaml`, and surfaces the proposal to the operator. The canonical recovery sequence is `specify registry add <proposed-name> --url <proposed-url> --schema <proposed-schema> --description "<proposed-description>"` -> `specify workspace sync` -> `specify change plan amend <change> --project <proposed-name>` -> `specify change plan transition <change> pending` -> re-run `/change:execute`. The framework never auto-modifies the registry.
 
+**Registry workspace**
+The derived local view of registry projects under `.specify/workspace/`. `specify workspace sync` creates or refreshes slots from `registry.yaml`; without selectors it syncs all registry projects, and with selectors it materialises only the selected slots. The registry workspace is scratch execution state, not durable source state.
+
 **Requirement ID**
 A stable identifier (`REQ-001`, `REQ-002`, ...) assigned to each behavioral requirement in a spec. Serves as the merge key across delta specs.
 
@@ -200,13 +212,16 @@ A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 d
 ## W
 
 **Workspace**
-`.specify/workspace/<project>/` -- clones of registry projects materialised by `specify workspace sync`. Read-only during planning (sync-peers phase); writable during execution (`/change:execute` routes define-build-merge into the clone via CWD-based routing). Local commits are pushed to remotes via `specify workspace push`.
+The registry workspace under `.specify/workspace/`: a derived local view of registered projects. Each child is a workspace slot. It is read-only during planning (sync-peers phase) and writable during execution (`/change:execute` routes define-build-merge into the selected slot via CWD-based routing). Local commits are published through `specify workspace push`; PR merge remains an operator action outside Specify.
 
 **Workspace merge**
-`specify workspace merge` (RFC-9 Section 4A). Squash-merges the open PRs created by `specify workspace push` once their CI is green. Per-project, the verb checks `gh pr checks` against `specify/<initiative-name>` and runs `gh pr merge --squash` when every check is `pass` or `skipping`. Refuses any PR whose `headRefName` is not `specify/<initiative-name>` exactly (the `branch-pattern-mismatch` guard). Never `--admin`, never `--auto`. Best-effort across projects; a single project's failure surfaces in its row without aborting the others.
+Deprecated RFC-14 compatibility shim. `specify workspace merge` no longer automates PR landing: it exits non-zero, performs no PR lookup or forge merge, and points operators to merge through the forge UI or `gh pr merge`, then run `specify change finalize`.
+
+**Workspace slot**
+One project-specific child of the registry workspace, normally `.specify/workspace/<project>/`. A slot is a Git clone for remote registry URLs or a symlink for local targets. `workspace status` reports its path, materialisation type, configured target, actual origin or symlink target, branch, HEAD, dirty state, exact change-branch match, `.specify/project.yaml` presence, and active slices.
 
 **Workspace tier 1** (also: **Legacy-source clone**)
 The ephemeral, read-only clone materialised under `.specify/plans/<name>/analyze/<key>/` by `/spec:analyze` (using the inlined guarded `git clone` snippet documented at [`plugins/spec/skills/analyze/SKILL.md` §*Cloning a source tree*](../../plugins/spec/skills/analyze/SKILL.md) when the source is a git URL) so the discovery brief can read source code that is not on the operator's local disk. Belongs to a single initiative and is swept into `.specify/archive/plans/<YYYYMMDD>-<name>/` by `specify change plan archive`. Anything an operator edits inside a tier-1 clone moves into the archive when the initiative ends -- it never propagates back to the original source. See [Workspace tiers](../explanation/workspace-tiers.md).
 
 **Workspace tier 2** (also: **Registered project clone**)
-The durable, read-write clone materialised under `.specify/workspace/<name>/` by `specify workspace sync` from an entry in `registry.yaml`. Belongs to the platform, not to any one initiative; persists across initiatives. `/change:execute` `chdir`s into this clone before invoking the phase skills, so the change directory, the merged baseline, and the workspace's git history accumulate here. `specify workspace push` is the explicit release gate that publishes those local commits. See [Workspace tiers](../explanation/workspace-tiers.md).
+The durable, read-write slot materialised under `.specify/workspace/<name>/` by `specify workspace sync` from an entry in `registry.yaml`. Belongs to the platform, not to any one initiative; persists across initiatives. `/change:execute` `chdir`s into this slot before invoking the phase skills, so the change directory, the merged baseline, and the workspace's git history accumulate here. `specify workspace push` is the explicit publication gate that opens or updates PRs from `specify/<change-name>`. See [Workspace tiers](../explanation/workspace-tiers.md).

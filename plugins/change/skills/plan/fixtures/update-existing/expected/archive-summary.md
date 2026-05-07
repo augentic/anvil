@@ -20,6 +20,5 @@ shop-platform/
 ```
 
 A second run of `/change:plan --orchestrate polish-pass --shape
-update-existing --auto-merge` reports `plan-not-found` from
-`specify change finalize` and exits zero — the explicit "already
-finalized" signal.
+update-existing` reports `plan-not-found` from `specify change
+finalize` and exits zero — the explicit "already finalized" signal.

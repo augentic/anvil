@@ -1,13 +1,13 @@
 # Directory Layout
 
-Specify draws a clear boundary between **operator-facing platform artifacts** and **framework-managed workflow state**. Operator artifacts (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at your project root so they are visible as ordinary repository artifacts and review well in PRs. Framework state — caches, working changes, baseline specs, archive, workspace clones, the advisory plan lock — lives under `.specify/`.
+Specify draws a clear boundary between **operator-facing platform artifacts** and **framework-managed workflow state**. Operator artifacts (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at your project root so they are visible as ordinary repository artifacts and review well in PRs. Framework state — caches, working slices, baseline specs, archive, registry workspace slots, the advisory plan lock — lives under `.specify/`.
 
 ## Tree overview
 
 ```text
 registry.yaml                               # Platform catalogue (optional, multi-repo only)
-plan.yaml                                   # Initiative plan (optional, created by /change:plan)
-change.md                               # Operator brief (optional)
+plan.yaml                                   # Change plan (optional, created by /change:plan)
+change.md                                  # Operator brief (optional)
 
 contracts/                                  # Baseline API contracts
 ├── schemas/                                # JSON Schema payload definitions
@@ -53,7 +53,7 @@ contracts/                                  # Baseline API contracts
 │   └── <capability>/
 │       └── spec.md                        # Accumulated behavioral requirements
 │
-├── plans/                                 # Initiative working directories
+├── plans/                                 # Change-plan working directories
 │   └── <plan-name>/
 │       ├── discovery.md                   # Capability inventory from /spec:analyze
 │       ├── proposal.md                    # Slice accept/edit/reject audit trail
@@ -62,9 +62,9 @@ contracts/                                  # Baseline API contracts
 │           └── <source-key>/
 │               └── metadata.json          # Source-tree structural metadata
 │
-├── workspace/                             # Cloned peer repos (multi-repo only)
+├── workspace/                             # Registry workspace slots (multi-repo only)
 │   └── <project-name>/
-│       └── ...                            # Peer repo clone (writable during execution)
+│       └── ...                            # Peer repo clone or symlink, writable during execution
 │
 └── archive/                               # Finalized changes and plans
     ├── YYYY-MM-DD-<slice-name>/          # Merged or dropped slices
@@ -106,11 +106,13 @@ Capability manifest and brief files fetched at `/spec:init` time. These are read
 
 ### `plans/`
 
-Working directories for initiative authoring. Each plan gets a subdirectory containing the discovery output, proposal audit trail, and optional workspace inventory.
+Working directories for change-plan authoring. Each plan gets a subdirectory containing the discovery output, proposal audit trail, and optional workspace inventory.
 
 ### `workspace/`
 
-Cloned peer repositories for multi-repo initiatives. Created by `specify workspace sync`. Read-only during planning (`/change:plan`); writable during execution (`/change:execute`) -- define, build, and merge write into the clone's `.specify/` tree. Committed changes are pushed explicitly via `specify workspace push`.
+Registry workspace slots for multi-repo changes. Created or refreshed by `specify workspace sync`: remote URLs become Git clones and local paths (`.` or repo-relative URLs) become symlinks. With selectors, `workspace sync` materialises only the selected slots; with no selectors, it syncs every registry project.
+
+Slots are read-only during planning (`/change:plan`) and writable during execution (`/change:execute`). Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`; humans normally inspect that state with `specify workspace status`. Committed changes are published explicitly via `specify workspace push`, which only transports an existing exact change branch and creates or updates PRs. PR merge is operator-owned through the forge; `specify change finalize` later verifies the merge state and may remove clean clones under `--clean`.
 
 ### `archive/`
 

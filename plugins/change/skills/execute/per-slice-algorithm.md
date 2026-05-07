@@ -51,7 +51,27 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
                                         lock, exit 0. `--loop` treats
                                         this the same way.
 
-5. Transition the selected entry:
+5. Multi-repo workspace preflight and branch preparation.
+   See multi-repo.md for the full routing algorithm. In short: if the
+   `project` field from step 4 is non-null, resolve it through
+   `registry.yaml`, materialise only that selected project when its
+   slot is missing (`specify workspace sync <project>`), resolve source
+   paths relative to the coordinator root, and run:
+
+     specify workspace prepare-branch <project> \
+         --change <change-name> \
+         [--source <absolute-source-path> ...] \
+         [--output <capability-owned-output-path> ...] \
+         --format json
+
+   This step happens before any phase writes and before the plan entry
+   transitions to `in-progress`. Branch-preparation diagnostics such
+   as `origin-head-unresolved`, `dirty-unrelated-tracked`, or
+   `dirty-branch-mismatch` halt here: release the lock and exit
+   non-zero without running /spec:define. If `project` is null, skip
+   this step entirely (single-repo path).
+
+5b. Transition the selected entry:
      specify change plan transition <name> in-progress
    This is the first plan write the driver performs. It must happen
    BEFORE /spec:define creates the slice directory: between this step and step 6 the
@@ -59,14 +79,11 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
    directory, which `specify change plan validate` tolerates as a
    warning.
 
-5a. CWD routing (multi-repo only).
-   See multi-repo.md for the full routing algorithm. In short: read
-   `project` from the `specify change plan next` response (step 4), resolve
-   the target directory from `registry.yaml`, check workspace
-   freshness, save CWD, resolve every `sources` key to an absolute
-   path, `chdir` into the target project root, and emit the
-   `Routing:` diagnostic. If `project` is null, skip this step
-   entirely (single-repo path).
+5c. CWD routing (multi-repo only).
+   If step 5 prepared a project slot, `chdir` into the returned
+   `slot_path` and emit the `Routing:` diagnostic. The coordinator
+   root remains the owner of the plan lock and status transitions;
+   this CWD change brackets phase execution only.
 
 6. Resolve the plan entry's `sources` into define arguments (see
    argument-resolution.md) and invoke:
@@ -84,7 +101,10 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
    read the phase outcome per step 9.
 
 8. If build returned success: invoke /spec:merge <name>. On return,
-   read the phase outcome per step 9.
+   read the phase outcome per step 9. For routed workspace entries,
+   `specify slice merge run` commits only `.specify/specs/` and
+   `.specify/archive/` as `specify: merge <name>`; non-baseline
+   project residue is handled by step 9a.
 
 9. Read the phase outcome.
    Run:
@@ -93,8 +113,22 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
    .specify/slices/<name>/.metadata.yaml:outcome.outcome). Classify
    per the table below.
 
-9a. CWD restore (multi-repo only).
-   If the CWD routing step (5a) changed the working directory,
+9a. Post-merge residue guard and commit (multi-repo merge success only).
+   If the routed entry just returned `outcome: success` from the merge
+   phase, run the post-merge residue algorithm in multi-repo.md before
+   any terminal plan transition:
+     - dirty `.specify/specs/` or `.specify/archive/` after merge
+       success → halt with `baseline-residue-after-merge`;
+     - clean non-baseline worktree → skip the residue commit;
+     - dirty non-baseline residue → commit it as
+       `specify: residue <name>`;
+     - residue commit failure → halt with `residue-commit-failed`.
+   A halt here leaves the entry `in-progress`, releases the lock, and
+   exits non-zero. The driver never marks an entry `done` while
+   baseline residue or uncommitted non-baseline residue remains.
+
+9b. CWD restore (multi-repo only).
+   If the CWD routing step (5c) changed the working directory,
    restore CWD to the saved initiating repo root. This ensures
    `specify change plan transition` (which reads `plan.yaml` in the
    initiating repo) runs from the correct directory. In `--loop`
@@ -140,8 +174,9 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
     the trailing edge of a `try` / `finally` wrapping steps 3–12.
     Exit with code 0 for success/failure/deferred outcomes (the
     slice reached a terminal plan status as designed), non-zero for
-    step-4 in-progress stops and step-9 synthetic-deferred cases
-    where human triage is required.
+    step-4 in-progress stops, branch-preparation halts, post-merge
+    residue halts, and step-9 synthetic-deferred cases where human
+    triage is required.
 ```
 
 ## Phase outcome classifications (RFC-9 §2B)
@@ -238,7 +273,7 @@ The dry-run variant uses the same line with `(if executed)` appended (mirroring 
 
 ## Subtleties
 
-- **`/change:execute` writes only plan transitions and a narrow set of journal entries.** Every write this skill performs against `plan.yaml` goes through `specify change plan transition`. It never writes `outcome` to `.metadata.yaml` (the phase does that, via `specify slice outcome set`). The driver appends to `journal.yaml` in exactly two situations: (1) the self-heal step emits one `type: recovery` entry per reclaimed or resumed in-progress entry; (2) the post-merge cross-project contract check emits one `type: failure` entry per finding the validator reports, with the canonical `cross-project-warning:` summary prefix. The define / build / merge phases own all other `type: question` and `type: failure` entries; the driver never touches those.
+- **`/change:execute` writes only plan transitions, workspace Git state, and a narrow set of journal entries.** Every write this skill performs against `plan.yaml` goes through `specify change plan transition`. It never writes `outcome` to `.metadata.yaml` (the phase does that, via `specify slice outcome set`). For routed entries it may prepare `specify/<change-name>` before phase writes and commit non-baseline residue after merge success. The driver appends to `journal.yaml` in exactly three situations: (1) the self-heal step emits one `type: recovery` entry per reclaimed or resumed in-progress entry; (2) branch preparation fails during a resume and a slice journal already exists; (3) the post-merge cross-project contract check emits one `type: failure` entry per finding the validator reports, with the canonical `cross-project-warning:` summary prefix. The define / build / merge phases own all other `type: question` and `type: failure` entries; the driver never touches those.
 
 - **Summary is copied verbatim into `status-reason`.** The string passed to `specify change plan transition … --reason "…"` in steps 11c and 12c is byte-identical to `outcome.summary` stamped by the phase. The fixtures under `fixtures/single-slice/` pin this: every `plan.yaml.after` carries `status-reason: "<exact summary from the metadata file>"`. Do not paraphrase, truncate, or reformat.
 

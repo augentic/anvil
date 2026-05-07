@@ -6,9 +6,10 @@ On the next startup, self-heal:
 
 1. Scans `plan.yaml`, finds `email-verification` with `status: in-progress`.
 2. Reads `.specify/slices/email-verification/.metadata.yaml` (`metadata.yaml` in this fixture). Classifies `outcome.outcome == success` with `outcome.phase == merge` → terminal success path.
-3. Runs `specify change plan transition email-verification done`. No `/spec:drop` — nothing to clean up, the merge already archived the slice directory.
-4. Appends one `type: recovery` entry to `journal.yaml` (see `journal.yaml.after`) naming the reconciliation. No further phases invoked.
-5. Emits exactly one diagnostic line and falls through to step 4 of the supervised run (`specify change plan next`).
+3. If the entry is routed to a workspace project, re-runs the post-merge residue guard before `done`: `.specify/specs/` and `.specify/archive/` must be clean, and any non-baseline residue is committed as `specify: residue email-verification`.
+4. Runs `specify change plan transition email-verification done`. No `/spec:drop` — nothing to clean up, the merge already archived the slice directory.
+5. Appends one `type: recovery` entry to `journal.yaml` (see `journal.yaml.after`) naming the reconciliation. No further phases invoked.
+6. Emits exactly one diagnostic line and falls through to step 4 of the supervised run (`specify change plan next`).
 
 ```text
 Self-heal: email-verification → done (merge success from prior run)

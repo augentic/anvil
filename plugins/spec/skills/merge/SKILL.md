@@ -58,7 +58,7 @@ Optionally specify a slice name. If omitted, check if it can be inferred from co
 
    Interpret:
 
-   - **Status**: `complete` is the expected value. Warn on anything else (e.g., `building`, `defining`), and use **AskQuestion** to confirm proceeding. `change merge run` will fail later if status isn't `Complete`, so this is a courtesy early exit.
+   - **Status**: `complete` is the expected value. Warn on anything else (e.g., `building`, `defining`), and use **AskQuestion** to confirm proceeding. `specify slice merge run` will fail later if status isn't `Complete`, so this is a courtesy early exit.
    - **Validate**: if `passed` is `false`, surface the `brief-results` and `cross-checks` failures. Use **AskQuestion** to let the user proceed or abort. Failures in merge-phase needs (usually missing/incomplete artifacts) are the typical blocker.
    - **Tasks**: if `pending > 0`, warn with the count and use **AskQuestion** to confirm proceeding. If there is no tasks file, proceed without warning.
 
@@ -73,7 +73,7 @@ Optionally specify a slice name. If omitted, check if it can be inferred from co
    specify slice merge conflict-check <name> --format json
    ```
 
-   Render the preview in a human-friendly summary using the `operations[]` array from `change merge preview`. For each spec, operations are typed as `added`, `modified`, `removed`, `renamed`, or `created_baseline`:
+   Render the preview in a human-friendly summary using the `operations[]` array from `specify slice merge preview`. For each spec, operations are typed as `added`, `modified`, `removed`, `renamed`, or `created_baseline`:
 
    ```text
    ## Merge Preview: <slice-name>
@@ -87,7 +87,7 @@ Optionally specify a slice name. If omitted, check if it can be inferred from co
    - CREATING baseline with N requirements
    ```
 
-   If `change merge preview` returns an empty `specs` array, report "No delta specs to merge" and stop.
+   If `specify slice merge preview` returns an empty `specs` array, report "No delta specs to merge" and stop.
 
    If `change merge conflict-check` returns any entries under `conflicts`, surface them clearly — each entry names the capability, the slice's `defined-at`, and the baseline's `baseline-modified-at`:
 
@@ -120,7 +120,7 @@ Optionally specify a slice name. If omitted, check if it can be inferred from co
 
    On success, the outcome is already recorded — **do not call `outcome set`** (see §Phase outcome contract above).
 
-   **Workspace clone auto-commit.** When CWD is inside a workspace clone (`.specify/workspace/*/` with `.specify/project.yaml`), the CLI auto-commits `.specify/specs/` and `.specify/archive/` with message `specify: merge <slice-name>`. Commit failure is a **warning**, not an error — the spec merge still succeeds. Committed changes remain local until the operator explicitly runs `specify workspace push`.
+   **Workspace clone auto-commit.** When CWD is inside a workspace clone (`.specify/workspace/*/` with `.specify/project.yaml`), the CLI auto-commits **only** `.specify/specs/` and `.specify/archive/` with message `specify: merge <slice-name>`. Commit failure is a **warning**, not an error — the spec merge still succeeds. Any project-output residue outside those two trees is left for `/change:execute` to commit as `specify: residue <slice-name>`. Committed changes remain local until the operator explicitly runs `specify workspace push`.
 
    **If the call exits non-zero**: the filesystem is unchanged (baselines not written, slice dir not moved). Record the failure via `specify slice outcome set` (the slice directory still exists). Report the error and stop — do not retry until the user has edited the failing delta or addressed the lifecycle state.
 
@@ -133,14 +133,14 @@ Optionally specify a slice name. If omitted, check if it can be inferred from co
 ```text
 ## Merge Complete
 
-**Change:** <slice-name>
+**Slice:** <slice-name>
 **Merged to:** .specify/archive/YYYY-MM-DD-<name>/
 
 ### Specs Merged
 - <capability-1>: merged into .specify/specs/<capability-1>/spec.md
 - <capability-2>: new baseline created at .specify/specs/<capability-2>/spec.md
 
-(or "No delta specs to merge" if `change merge preview` returned an empty `specs` array)
+(or "No delta specs to merge" if `specify slice merge preview` returned an empty `specs` array)
 
 All artifacts complete. All tasks complete.
 ```

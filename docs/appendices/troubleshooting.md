@@ -113,8 +113,32 @@ If self-heal itself fails, manually resolve:
 **Cause:** A plan entry has a `project` field targeting a registry project whose workspace slot is not materialised (`.specify/workspace/<project>/` does not exist or is incomplete).
 
 **Resolution:**
-1. Run `specify workspace sync` to materialise all registry projects.
+1. Run `specify workspace sync <project>` to materialise the missing selected slot, or `specify workspace sync` to materialise all registry projects.
 2. Re-run `/change:execute`.
+
+### `origin-head-unresolved`
+
+**Symptom:** `/change:execute` refuses before define/build/merge and reports `origin-head-unresolved` for a remote-backed workspace slot.
+
+**Cause:** Branch preparation could not resolve `origin/HEAD` after fetching. Specify will not guess the default branch because `specify/<change-name>` must be prepared from the repository's remote default before any execution mutation.
+
+**Resolution:**
+1. Inspect the slot: `specify workspace status <project>`.
+2. In the workspace slot, verify the remote default branch exists on the server and that `origin` points at the registry URL.
+3. Fix the remote default branch in the forge, or repair the clone with `git remote set-head origin -a` after the remote is correct.
+4. Re-run `/change:execute`.
+
+### Dirty workspace slot before execution
+
+**Symptom:** `/change:execute` refuses during branch preparation with a dirty-work diagnostic such as `dirty-unrelated-tracked` or `dirty-branch-mismatch`.
+
+**Cause:** The target workspace slot has tracked modifications that are outside the active slice boundary, or resume-safe tracked modifications are present while the slot is not already on `specify/<change-name>`. The executor refuses to check out or mutate over unrelated work.
+
+**Resolution:**
+1. Inspect the slot: `specify workspace status <project>`.
+2. Commit, stash, or discard unrelated local work in that slot.
+3. If the work belongs to the active change, check out the exact `specify/<change-name>` branch first or let a clean `/change:execute` prepare it.
+4. Re-run `/change:execute`.
 
 ### Execution stuck
 
@@ -300,13 +324,48 @@ specify registry add <existing-name> \
 
 ## Change landing issues
 
+### `no-branch` from `workspace push`
+
+**Symptom:** `specify workspace push <project>` reports `no-branch`.
+
+**Cause:** The slot is not currently on exact `specify/<change-name>`, or the expected change branch resolves to the remote default branch. RFC-14 push is transport-only: it does not create or check out the change branch, and it never pushes `main`, `master`, or any default branch.
+
+**Resolution:**
+1. Check the branch and match state: `specify workspace status <project>`.
+2. If execution has not run for this project, run `/change:execute` so branch preparation creates or reuses `specify/<change-name>` before mutation.
+3. If you are recovering by hand, check out the exact `specify/<change-name>` branch in the slot and ensure it contains the intended commits.
+4. Re-run `specify workspace push <project>`.
+
+### Dirty slot from `workspace push` or `change finalize`
+
+**Symptom:** `specify workspace push` reports status `failed` with a dirty-checkout message, or `specify change finalize` reports status `dirty`.
+
+**Cause:** The workspace slot has uncommitted work. Push refuses dirty slots because it only transports committed state. Finalize refuses dirty slots, even without `--clean`, so no local work is lost during archive or cleanup.
+
+**Resolution:**
+1. Inspect the slot: `specify workspace status <project>`.
+2. Commit and push intended work on `specify/<change-name>`, or stash/remove unrelated local edits.
+3. Re-run `specify workspace push <project>` if the PR still needs publication.
+4. After the PR is merged, re-run `specify change finalize`.
+
+### `unmerged` from `change finalize`
+
+**Symptom:** `specify change finalize` refuses with status `unmerged` for one or more projects.
+
+**Cause:** A PR exists on `specify/<change-name>` but is still open. Finalize is read-only with respect to forges; it verifies that the operator already landed the PR and never invokes a merge API.
+
+**Resolution:**
+1. Open the PR shown in the finalize output.
+2. Merge it through the forge UI, `gh pr merge`, or the repository's normal merge queue.
+3. Re-run `specify change finalize` after the forge reports the PR as merged.
+
 ### `branch-pattern-mismatch`
 
-**Symptom:** `specify workspace merge` or `specify change finalize` refuses on a project with status `branch-pattern-mismatch`.
+**Symptom:** branch preparation or `specify change finalize` refuses on a project with status `branch-pattern-mismatch`.
 
-**Cause:** A PR exists on the workspace clone but its `headRefName` is not `specify/<change-name>` exactly. The verb refuses to operate on PRs created outside the Specify push flow -- the guard exists so the framework never accidentally squash-merges someone else's branch.
+**Cause:** The change branch or PR head is not exactly `specify/<change-name>`. The guard exists so Specify never prepares, publishes, or finalizes an unintended branch.
 
-**Resolution:** Inspect the PR by hand (`gh pr view <pr> -R <org/repo>`). If the PR is correct, rename its branch to `specify/<change-name>`; if it was created outside the Specify flow, close it and re-run `specify workspace push`. The verbs never override the guard.
+**Resolution:** Inspect the branch or PR by hand (`gh pr view <pr> -R <org/repo>`). If the PR is correct, recreate or rename it so the head branch is exactly `specify/<change-name>`. If it was created outside the Specify flow, close it, publish the exact change branch with `specify workspace push`, merge it through the forge, and re-run `specify change finalize`. The guard is never overridden.
 
 ### `plan-not-found` from `change finalize`
 

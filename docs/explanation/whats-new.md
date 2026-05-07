@@ -2,7 +2,7 @@
 
 This page captures the **additive** changes to the Specify framework since the v1 CLI cleanup landed in v0.23. The v1 cleanup was a routing-only reshape (renamed verbs, no new behaviour); the work below adds new capabilities. For pure rename mappings see [Migrating to CLI v1](migrating-cli-v1.md). The two pages compose: this one tells you **what is new**, the migration map tells you **what was renamed**.
 
-The bulk of the additions ship under [RFC-9: Platform-First Operator Experience](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md) and [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md). RFC-9 closes the operator-experience gaps in the cross-repo loop; RFC-8 introduces contracts as platform-level artifacts. The most recent additions land [RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md) (capability rename, platform-component split, change/slice vocabulary), [RFC-15](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasm-plugins.md) (declared WASI capability tools), and [RFC-16](https://github.com/augentic/specify/blob/main/rfcs/rfc-16-wasi-vectis.md) (Vectis WASI tools and `specify-vectis` retirement).
+The bulk of the additions ship under [RFC-9: Platform-First Operator Experience](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md) and [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md). RFC-9 closes the operator-experience gaps in the cross-repo loop; RFC-8 introduces contracts as platform-level artifacts. The most recent additions land [RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md) (capability rename, platform-component split, change/slice vocabulary), [RFC-14](../../rfcs/archive/rfc-14-workspace.md) (workspace branch and PR ownership), [RFC-15](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasm-plugins.md) (declared WASI capability tools), and [RFC-16](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-16-wasi-vectis.md) (Vectis WASI tools and `specify-vectis` retirement).
 
 ## RFC-13 — capability rename and platform-component split
 
@@ -36,6 +36,16 @@ The registry and the change component are first-party Specify components — the
 ### Hub project shape simplified
 
 A hub now carries `project.yaml { hub: true, … }` with the `capability:` field omitted (its absence is what disables capability resolution and the per-project phase pipelines). The legacy `schema: hub` sentinel is removed in the same release that lands the capability rename.
+
+## RFC-14 — workspace branch and PR ownership
+
+[RFC-14](../../rfcs/archive/rfc-14-workspace.md) tightens the cross-repo landing contract so Specify prepares and publishes work, but operators own the PR merge decision.
+
+- **`/change:execute` prepares workspace branches.** For each routed plan entry, the driver materialises only the selected workspace slot when needed, prepares `specify/<change-name>` before phase writes, runs define-build-merge in that slot, and commits non-baseline residue as `specify: residue <slice-name>` after `/spec:merge` succeeds.
+- **`/spec:merge` owns only the baseline commit.** In workspace clones, the merge auto-commit stages `.specify/specs/` and `.specify/archive/` only, with message `specify: merge <slice-name>`. Generated code, contracts, tests, and other project outputs are left for `/change:execute`'s residue commit.
+- **`specify workspace push` is transport-only.** It verifies each selected workspace is already on `specify/<change-name>`, pushes that branch, and creates or updates the PR. It does not create branches on the fly, does not create commits, never pushes default branches, and never merges PRs. A checkout on `main`, `master`, `origin/HEAD`, or any other branch reports `no-branch`; drive the slot through `/change:execute` or check out `specify/<change-name>` explicitly before pushing.
+- **PR merge is operator-owned.** Merge through the forge UI, `gh pr merge`, or the team's normal review queue. `specify change finalize` only verifies that each PR is already merged and that workspace clones are clean before archiving the plan.
+- **`specify workspace merge` is retired.** During the transition it may exist only as a one-release non-zero shim pointing to forge UI / `gh pr merge` plus `specify change finalize`.
 
 ## RFC-15 — declared WASI capability tools
 
@@ -77,7 +87,7 @@ RFC-15 reserves three rule ids that compose with the RFC-5 framework linter once
 
 ## RFC-16 — Vectis WASI tools and `specify-vectis` retirement
 
-[RFC-16](https://github.com/augentic/specify/blob/main/rfcs/rfc-16-wasi-vectis.md) applies the RFC-15 declared-tool model to Vectis. Operators install one binary, `specify`; the deterministic Vectis helpers ship as WASI command components declared by `capabilities/vectis/tools.yaml`.
+[RFC-16](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-16-wasi-vectis.md) applies the RFC-15 declared-tool model to Vectis. Operators install one binary, `specify`; the deterministic Vectis helpers ship as WASI command components declared by `capabilities/vectis/tools.yaml`.
 
 ### Two declared tools
 
@@ -206,14 +216,14 @@ The distinction was always implicit; RFC-9 ?1E codifies it so operators stop los
 A Layer 4 mode of `/change:plan` (RFC-9 ?2C) drives the cross-repo loop end-to-end as a single operator action:
 
 ```text
-/change:plan --orchestrate <name> [--shape ...] [--from ...] [--source ...] [--auto-merge]
+/change:plan --orchestrate <name> [--shape ...] [--from ...] [--source ...]
 ```
 
 > **Note.** This was originally a separate `/spec:initiative` skill; it was folded into `/change:plan` as a flag-gated `--orchestrate` mode in a progressive-disclosure pass. The seven-step umbrella sequence is unchanged.
 
-The mode composes: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute --loop` -> `specify workspace push` -> optional `specify workspace merge` -> `specify change finalize`. Every step is a shell-out to a Layer 1 verb or a Layer 3 skill; the orchestration mode adds no new logic. Halts (self-heal, `stuck`, `registry-amendment-required`, `pending-checks`, unmerged PRs) surface verbatim, and re-running `--orchestrate` against an in-progress initiative resumes at the first incomplete step.
+The mode composes: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute --loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`. Every automated step is a shell-out to a Layer 1 verb or a Layer 3 skill; the orchestration mode adds no new logic. Halts (self-heal, `stuck`, `registry-amendment-required`, unmerged PRs) surface verbatim, and re-running `--orchestrate` against an in-progress change resumes at the first incomplete step.
 
-Three initiative shapes flow through the same uniform sequence: `migrate-legacy` (sources via `--source`), `new-feature` (docs via `--from`), `update-existing` (no input flags).
+Three change shapes flow through the same uniform sequence: `migrate-legacy` (sources via `--source`), `new-feature` (docs via `--from`), `update-existing` (no input flags).
 
 - Reference: [`/change:plan --orchestrate`](../reference/change-skills/change.md)
 - Tutorial: [Cross-Repo Changes](../tutorials/cross-repo-change.md) -> [Landing a Change](../tutorials/landing-a-change.md)
@@ -233,17 +243,16 @@ specify registry remove <name>
 - Reference: [`specify registry`](../reference/cli/registry.md)
 - How-to: [Manage Registry Projects](../how-to/manage-registry-projects.md)
 
-## `specify workspace merge`
+## `specify workspace merge` retired
 
-The cross-repo PR-landing verb (RFC-9 ?4A):
+RFC-14 retires the cross-repo PR-landing verb:
 
 ```bash
 specify workspace merge [<project>...]
 ```
 
-Per project, checks `gh pr checks` against `specify/<initiative-name>` and runs `gh pr merge --squash` when every check is `pass` or `skipping`. Refuses any PR whose `headRefName` is not `specify/<initiative-name>` exactly (the `branch-pattern-mismatch` guard); never `--admin`, never `--auto`. Best-effort across projects.
+If present during the migration window, this command exits non-zero with guidance to merge PRs through the forge UI or an explicit `gh pr merge`, then run `specify change finalize`. It does not inspect checks, call `gh pr merge`, or merge PRs for the operator.
 
-- Reference: [`specify workspace merge`](../reference/cli/workspace.md#specify-workspace-merge)
 - How-to: [Land a Change](../how-to/land-a-change.md)
 
 ## `specify change plan doctor`
@@ -270,7 +279,7 @@ The canonical closure verb for the platform-first loop (RFC-9 ?4C):
 specify change finalize [--clean] [--dry-run]
 ```
 
-Runs four guards in order (plan-presence, plan terminal-state, per-project PR-state, workspace-cleanliness) before atomically archiving `plan.yaml`, `initiative.md`, and `.specify/plans/<name>/`. Any guard refusal leaves the on-disk state untouched. `--clean` prunes `.specify/workspace/<peer>/` after the archive completes. Idempotent: re-running after a successful finalize returns `plan-not-found` (the explicit "already finalized" signal).
+Runs four guards in order (plan-presence, plan terminal-state, per-project PR-state, workspace-cleanliness) before atomically archiving `plan.yaml`, `change.md`, and `.specify/plans/<name>/`. Any guard refusal leaves the on-disk state untouched. `--clean` prunes `.specify/workspace/<peer>/` after the archive completes. Idempotent: re-running after a successful finalize returns `plan-not-found` (the explicit "already finalized" signal).
 
 - Reference: [`specify change finalize`](../reference/cli/change.md#specify-change-finalize)
 - How-to: [Land a Change](../how-to/land-a-change.md)

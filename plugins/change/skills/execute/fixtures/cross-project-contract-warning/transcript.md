@@ -1,6 +1,6 @@
 ## /change:execute — platform-v2
 
-### Initiative: platform-v2
+### Change: platform-v2
 Progress: done 0, in-progress 1, pending 0, blocked 0, failed 0, skipped 0 (total 1)
 
 ---
@@ -8,11 +8,15 @@ Progress: done 0, in-progress 1, pending 0, blocked 0, failed 0, skipped 0 (tota
 Self-heal: no in-progress entries found.
 
 # specify change plan next --format json → { "next": "update-user-api-v2", "project": "backend", "description": "Update the user-api contract: drop `email` from the GET /users/{id} response (PII reduction) and add `phone-number` to the required field list of POST /users (mandatory verification channel).", "sources": null }
-# specify change plan transition update-user-api-v2 in-progress
-# specify workspace status backend → materialised
+# registry selector: backend → git@github.com:org/backend.git
+# specify workspace status backend --format json → git-clone, branch=main, dirty=false
+# specify workspace prepare-branch backend --change platform-v2 --format json
+#   → prepared=true branch=specify/platform-v2 local-branch=created remote-branch=absent
 # CWD saved: /path/to/initiating-repo
+# specify change plan transition update-user-api-v2 in-progress
 
 Routing: update-user-api-v2 → backend (.specify/workspace/backend/)
+Workspace: backend prepared on specify/platform-v2
 
 ### Processing: update-user-api-v2 (greenfield)
 
@@ -25,8 +29,9 @@ Step 2/3: build
 
 Step 3/3: merge
   specify: merge update-user-api-v2
-  Auto-commit: git add .specify/specs/ contracts/ .specify/archive/ && git commit -m "specify: merge update-user-api-v2"
-  Baseline updated: contracts/http/user-api.yaml ✓
+  Baseline committed: git add .specify/specs/ .specify/archive/ && git commit -m "specify: merge update-user-api-v2"
+  Project output updated: contracts/http/user-api.yaml ✓
+  Residue committed: git add --all -- . ':!.specify/specs/**' ':!.specify/archive/**' && git commit -m "specify: residue update-user-api-v2"
 
 # CWD restored: /path/to/initiating-repo
 # specify change plan transition update-user-api-v2 done
@@ -34,9 +39,9 @@ Step 3/3: merge
 
 # Post-merge §Cross-project contract check (RFC-9 §3B):
 # - Producer `backend.contracts.produces` includes `http/user-api.yaml`.
-# - Merged paths under contracts/ touched http/user-api.yaml.
+# - Project output residue under contracts/ touched http/user-api.yaml.
 # - Consumers found via registry: mobile (contracts.consumes).
-# - /contract:openapi --mode cross-project --producer-contract contracts/http/user-api.yaml --consumer-workspace .specify/workspace/mobile/
+# - /contract:openapi --mode cross-project --producer-contract .specify/workspace/backend/contracts/http/user-api.yaml --consumer-workspace .specify/workspace/mobile/
 #   (HTTP contract → OpenAPI verifier; AsyncAPI / JSON Schema contracts route to /contract:asyncapi / /contract:json-schema.)
 # - Verifier returned summary.total-findings=2.
 # - Recording each finding via:
@@ -64,4 +69,4 @@ Progress: done 1, in-progress 0, pending 0, blocked 0, failed 0, skipped 0 (tota
 
 Completion: all-done
 
-Next action: Initiative complete — no further action needed.
+Next action: Change complete. Run specify workspace push to publish prepared specify/platform-v2 branches and create or update PRs. Merge those PRs through the forge UI or gh pr merge, then close out via specify change finalize.
