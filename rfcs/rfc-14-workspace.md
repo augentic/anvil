@@ -107,7 +107,7 @@ Workspace operations may target all registry projects or a selected subset.
 Selection rules:
 
 1. Positional project names passed to `specify workspace sync`, `status`, `push`, or `merge` select exactly those projects.
-2. Unknown project names fail before any clone, fetch, push, or merge occurs.
+2. Selector resolution is a shared preflight across all workspace verbs. Unknown project names fail before any clone, fetch, status probe, push, pull-request lookup, or merge occurs.
 3. `specify workspace sync` and `status` with no positional project names operate on every project in `registry.yaml`.
 4. `/change:plan` may sync every registry project when it needs discovery context.
 5. `/change:execute` materialises only the project needed by the selected plan entry unless the operator explicitly asks for a broader sync.
@@ -123,13 +123,15 @@ For each selected registry project:
 
 1. **Remote URL.** `git@`, `ssh://`, `https://`, `http://`, `git+ssh://`, and `git+https://` URLs materialise as Git checkouts.
 2. **Local path.** `.`, repo-relative paths, and absolute paths materialise as symlinks.
-3. **Greenfield remote.** A remote URL that does not yet exist may materialise as an empty Git repository with `origin` set and `.specify/project.yaml` bootstrapped from the registry capability.
+3. **Greenfield remote.** A remote URL that cannot be cloned may materialise as a local Git repository with `origin` set and `.specify/project.yaml` bootstrapped from the registry capability. Sync may create the initial local scaffold commit required to leave the slot clean, but it MUST NOT create the remote repository or mutate the forge. Remote repository creation remains part of `workspace push`.
 
 Materialisation is idempotent:
 
 - Existing remote slots fetch updates from `origin`.
 - Existing local slots keep pointing at the same resolved target.
 - A slot for the wrong project, wrong URL, or wrong materialisation type fails with an actionable diagnostic instead of being overwritten.
+- Remote-backed slot roots must be ordinary directories; an existing symlink at a remote-backed slot path is a mismatched slot and fails.
+- Local-path slot roots must be symlinks whose canonical target matches the registry entry's resolved path.
 - `.specify/workspace/` and `.specify/.cache/` remain ignored by Git.
 
 The workspace is temporary derived state, but it is not required to be deleted after every change. Keeping slots between changes is allowed so future syncs can fetch rather than reclone. Removing `.specify/workspace/<project>/` is always a valid way to force a fresh materialisation.
@@ -148,9 +150,12 @@ Branch preparation:
 
 1. Refuses to proceed when the slot has unrelated uncommitted changes.
 2. Fetches `origin` if the slot is a remote checkout.
-3. Creates or checks out `specify/<change-name>` from the configured base branch when the branch does not yet exist locally.
-4. Reuses the local branch when resuming an in-progress change.
-5. Refuses branch names that do not match the exact `specify/<change-name>` pattern.
+3. Resolves the base branch from the remote default branch (`origin/HEAD`) after fetch. Implementations may refresh `origin/HEAD` with `git remote set-head origin --auto` or an equivalent remote-default discovery step.
+4. Creates or checks out `specify/<change-name>` from `origin/HEAD` when the branch does not yet exist locally.
+5. Reuses the local branch when resuming an in-progress change.
+6. Refuses branch names that do not match the exact `specify/<change-name>` pattern.
+
+RFC-14 does not add a registry-level base-branch field. If `origin/HEAD` cannot be resolved, branch preparation fails with an actionable diagnostic rather than guessing `main`, `master`, or any other branch name.
 
 Local-path symlink slots are handled conservatively: they may be inspected and modified only when the target repository can provide a usable `origin`. Push reports `local-only` when no remote can be resolved.
 
@@ -179,7 +184,12 @@ When `/change:execute` selects a plan entry:
 2. Ensure the corresponding workspace slot exists, materialising it if needed.
 3. Prepare the change branch for that slot.
 4. Run `/spec:define -> /spec:build -> /spec:merge` with the slot as the project root.
-5. Record phase outcomes and plan status in the existing coordinator plan flow.
+5. Commit successful slice output in the slot before marking the plan entry `done`.
+6. Record phase outcomes and plan status in the existing coordinator plan flow.
+
+Branch preparation starts from a clean checkout, so the post-merge commit owns the work produced by that slice execution. `/change:execute` stages and commits the completed slot changes with a deterministic message such as `specify: merge <slice-name>`. If the slot is clean after `/spec:merge`, no commit is created. If the commit fails, the driver surfaces an execution failure before transitioning the plan entry to `done`.
+
+`workspace push` is transport-only in RFC-14: it never creates commits implicitly and never packages arbitrary dirty work at push time.
 
 Slice artifacts, metadata, journals, and baseline writes live inside the materialised project checkout exactly as they would in a single-repo project:
 
@@ -199,11 +209,20 @@ Per project:
 
 1. Resolve the push remote. Remote registry URLs use `origin`; local-path slots read `git remote get-url origin` from the target repository.
 2. Verify the current branch is exactly `specify/<change-name>`.
-3. Refuse dirty checkouts. `workspace push` does not create commits implicitly in the RFC-14 first landing; the execution loop or operator must commit completed slice output before push.
-4. Push with `--force-with-lease` to `origin specify/<change-name>`.
-5. Create or update a pull request for that branch.
+3. Refuse dirty checkouts.
+4. Compare the local change branch with the remote branch, when one exists.
+5. Create the remote repository only when the slot is greenfield, the remote is supported for repository creation, and this is not a dry run.
+6. Push with `--force-with-lease` to `origin specify/<change-name>` when the local branch has work to publish.
+7. Create or update a pull request for that branch.
 
-Push is best-effort across projects: one project's failure does not prevent other selected projects from pushing. The final result reports `created`, `pushed`, `up-to-date`, `local-only`, or `failed` per project.
+Push is best-effort across projects: one project's failure does not prevent other selected projects from pushing. The final result reports:
+
+- `created` when a greenfield remote repository was created and the branch was pushed successfully.
+- `pushed` when the local branch was ahead of the remote branch, or the remote branch was absent, and the push succeeded.
+- `up-to-date` when the remote branch exists and its tip already equals local `HEAD`.
+- `local-only` when no push remote can be resolved.
+- `no-branch` when the expected local branch does not exist or the checkout is not currently on `specify/<change-name>`.
+- `failed` when the checkout is dirty, remote creation fails, push is rejected, PR creation fails, or another Git/forge error occurs.
 
 `--dry-run` performs all classification and remote-resolution checks without `git push`, repository creation, or pull-request creation.
 
@@ -248,11 +267,17 @@ specify change finalize --clean
 `specify workspace sync`, `/change:execute`, `workspace push`, and `workspace merge` MUST enforce:
 
 - every selected project exists in `registry.yaml`;
+- selector validation completes before any filesystem, Git, forge, or merge side effect;
 - registry project names are unique and kebab-case;
 - remote URLs are supported clone targets;
 - slot paths stay under `.specify/workspace/<project>/`;
+- remote-backed slot roots are ordinary directories, never symlinks;
+- local-path slot roots are symlinks whose canonical targets match the resolved registry path;
 - no workspace slot escapes through path traversal or an unexpected symlink;
 - dirty unrelated work blocks branch preparation;
+- branch preparation uses `origin/HEAD` as the only RFC-14 base branch source;
+- `/change:execute` commits successful slice output before marking a project entry `done`;
+- `workspace push` refuses dirty checkouts and never creates commits implicitly;
 - push and merge operate only on `specify/<change-name>`;
 - `--force-with-lease` is the only force-style push allowed;
 - merge refuses failing, pending, or missing required checks;
@@ -267,6 +292,8 @@ The workspace is derived state, but safety still matters because it contains rea
 - Force-merging PRs or bypassing CI.
 - Making `.specify/workspace/` durable source state.
 - Adding a standalone `specify workspace clean` command.
+- Adding `registry.yaml` base-branch configuration.
+- Creating remote repositories during `workspace sync`.
 
 ## Implementation Scope
 
@@ -280,26 +307,29 @@ The workspace is derived state, but safety still matters because it contains rea
 ### Phase 2 - Materialisation Hardening
 
 1. Make remote sync idempotent across clone, fetch, and greenfield bootstrap.
-2. Refuse mismatched existing slots rather than overwriting them.
-3. Harden symlink and path traversal checks under `.specify/workspace/`.
-4. Keep `.specify/workspace/` and `.specify/.cache/` ignored.
+2. Keep greenfield bootstrap local during sync; do not create remote repositories until push.
+3. Refuse mismatched existing slots rather than overwriting them.
+4. Harden symlink and path traversal checks under `.specify/workspace/`.
+5. Keep `.specify/workspace/` and `.specify/.cache/` ignored.
 
 ### Phase 3 - Execute Against Workspace Slots
 
 1. Teach `/change:execute` to resolve `entry.project` to a workspace slot.
 2. Materialise missing selected slots before slice execution.
-3. Prepare or resume `specify/<change-name>` before mutation.
+3. Prepare or resume `specify/<change-name>` from `origin/HEAD` before mutation.
 4. Refuse unrelated dirty work before mutation.
 5. Run `/spec:define`, `/spec:build`, and `/spec:merge` with the slot as project root.
-6. Preserve coordinator-level plan locking and status transitions.
+6. Commit successful slice output before transitioning the plan entry to `done`.
+7. Preserve coordinator-level plan locking and status transitions.
 
 ### Phase 4 - Push, Merge, And Cleanup
 
 1. Ensure `workspace push` uses selected projects and reports per-project outcomes.
-2. Ensure `workspace push` refuses dirty checkouts and creates or updates PRs from `specify/<change-name>`.
-3. Ensure `workspace merge` refuses branch mismatches and non-green CI.
-4. Keep cleanup on `change finalize --clean`, with dirty-clone refusal before removal.
-5. Wire `change finalize` to verify merged per-project PRs before archiving.
+2. Ensure `workspace push` refuses dirty checkouts, creates no commits, and reports `created`, `pushed`, `up-to-date`, `local-only`, `no-branch`, or `failed`.
+3. Ensure `workspace push` creates or updates PRs from `specify/<change-name>`.
+4. Ensure `workspace merge` refuses branch mismatches and non-green CI.
+5. Keep cleanup on `change finalize --clean`, with dirty-clone refusal before removal.
+6. Wire `change finalize` to verify merged per-project PRs before archiving.
 
 ### Repository Updates
 
@@ -324,16 +354,20 @@ Acceptance criteria:
 - A multi-project change can materialise only the project needed by the selected plan entry, while human-invoked `workspace sync` without selectors still syncs all registry projects.
 - `/change:execute` can run a plan entry against a remote-backed workspace slot.
 - `/change:execute` prepares `specify/<change-name>` before mutating a remote-backed slot.
+- `/change:execute` commits successful slice output before marking the plan entry `done`.
 - Completed local changes can be pushed to the corresponding remote origin on `specify/<change-name>`.
 - `workspace push` refuses dirty checkouts instead of silently omitting uncommitted work.
+- `workspace push` does not create commits and classifies `created`, `pushed`, `up-to-date`, `local-only`, `no-branch`, and `failed` deterministically.
 - `workspace merge` refuses branch mismatches and non-green CI.
 - Deleting `.specify/workspace/<project>/` and re-running sync recreates a usable slot.
 
-## Open Questions
+## Future Extensions
 
-1. **Automatic commits.** RFC-14 first landing requires `workspace push` to refuse dirty checkouts. Should a later phase let `/change:execute` commit each completed slice automatically?
-2. **Base branch selection.** Should branch preparation always use the remote default branch, or should registry entries allow an optional base branch?
-3. **Greenfield remotes.** Should greenfield repository creation stay in `workspace push`, or should sync validate remote existence earlier?
+RFC-14 resolves the first landing around strict selectors, `origin/HEAD` branch preparation, `/change:execute`-owned commits, transport-only push, and push-time greenfield repository creation. Later RFCs may add:
+
+1. **Commit customization.** Operator-configurable commit message templates or commit grouping across multiple slices.
+2. **Base branch configuration.** An optional registry field for projects that intentionally branch from something other than the remote default branch.
+3. **Selective cleanup.** A standalone `specify workspace clean [<project>...]` command with the same dirty-clone guards as `change finalize --clean`.
 
 ## References
 
