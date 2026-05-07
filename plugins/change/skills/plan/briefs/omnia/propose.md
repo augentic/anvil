@@ -15,7 +15,7 @@ Turn the capability inventory in `discovery.md` into a concrete set of plan entr
 
 ## Decomposition — 1:1 capability → slice
 
-`discovery.md` already carries capability boundaries. Propose's job is to mechanically map each capability to a plan entry. The clustering judgement is schema-owned inside `/spec:analyze`.
+`discovery.md` already carries capability boundaries. Propose's job is to mechanically map each capability to a plan entry. The clustering judgement is capability-owned inside `/spec:analyze`.
 
 ### Mapping rule
 

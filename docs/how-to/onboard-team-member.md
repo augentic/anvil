@@ -6,14 +6,14 @@ When a colleague joins a project that already uses Specify, they need the toolin
 
 1. [Cursor IDE](https://cursor.com) with the Augentic plugin marketplace.
 2. The `specify` CLI: `brew install augentic/tap/specify`
-3. Schema-specific tooling (see [Prerequisites](../orientation/prerequisites.md)).
+3. Capability-specific tooling (see [Prerequisites](../orientation/prerequisites.md)).
 
 ## What they get from the repo
 
 The `.specify/` directory is committed to the repository. When they clone or pull, they get:
 
-- **`project.yaml`** -- project configuration and schema reference.
-- **`.cache/`** -- cached schema and brief files.
+- **`project.yaml`** -- project configuration and capability reference.
+- **`.cache/`** -- cached capability and brief files.
 - **`specs/`** -- the accumulated baseline specifications.
 - **`contracts/`** -- baseline API contracts (if any).
 

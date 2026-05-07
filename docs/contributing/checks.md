@@ -62,6 +62,8 @@ Every `SKILL.md` under `plugins/` is validated against `.cursor/schemas/skill.sc
 
 The recognized tool set includes: `Read`, `Write`, `StrReplace`, `Shell`, `Grep`, `Glob`, `ReadLints`, `WebFetch`, `WebSearch`, `AskQuestion`, `Task`, `TodoWrite`, `SemanticSearch`, `EditNotebook`, `GenerateImage`.
 
+Long `SKILL.md` bodies are also checked for structure: bodies over 500 post-frontmatter lines fail, and bodies with at least 150 post-frontmatter lines must include a `## Critical Path (Quick Reference)` section with 5-7 bullets or numbered items.
+
 ### 7. Skill reference link resolution
 
 Links in `SKILL.md` bodies that point to `references/...` or `examples/...` paths are resolved relative to the skill directory. Every such link must resolve to an existing file.

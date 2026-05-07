@@ -8,14 +8,14 @@ This how-to covers the day-to-day flow: registering a new project, removing one,
 
 - A bootstrapped hub or platform-as-project repo with a populated `.specify/`. See [Bootstrap a platform hub](bootstrap-a-platform-hub.md).
 - The new project's remote URL (or local path -- see [URL classification](#url-classification) below).
-- A schema identifier for the new project (`omnia@v1`, `vectis@v1`, or any other resolvable schema).
+- A capability identifier for the new project (`omnia@v1`, `vectis@v1`, or any other resolvable capability).
 
 ## Add a project
 
 ```bash
 specify registry add <name> \
     --url <url> \
-    --schema <schema> \
+    --schema <capability> \
     --description "<one-paragraph domain description>"
 ```
 
@@ -23,7 +23,7 @@ The verb runs four checks before any write:
 
 1. **Name validation:** `<name>` must match `^[a-z][a-z0-9-]*$` (kebab-case).
 2. **URL classification:** the URL must be one of `.`, a repo-relative path (`../foo`), an absolute path (`/abs/path`), `git@host:path`, `http(s)://...`, `ssh://...`, or `git+http(s)://` / `git+ssh://`.
-3. **Schema non-empty:** the schema string must be non-empty after trim.
+3. **Capability non-empty:** the `--schema` capability value must be non-empty after trim.
 4. **Existing-name collision:** the verb refuses to add a project that already exists -- update via a hand-edit + `specify registry validate` instead, or remove and re-add.
 
 After the write, `Registry::validate_shape` runs -- including the `description-missing-multi-repo` invariant.
@@ -61,7 +61,7 @@ description-missing-multi-repo: registry.yaml: projects[<idx>] (<name>) has no `
 There is no in-band fix because `registry add` cannot retro-add a description to an existing entry without overwriting it. Two recovery paths:
 
 1. **Hand-edit `registry.yaml`** to add the missing description, then re-run `specify registry add` for the new project.
-2. **Recreate the offending entry**: `specify registry remove <existing>`, then `specify registry add <existing> --url <existing-url> --schema <existing-schema> --description "..."`. (This second path also triggers the plan-reference warning if the existing entry was already wired into a plan -- preferable to use the hand-edit unless the description rewrite is the intent.)
+2. **Recreate the offending entry**: `specify registry remove <existing>`, then `specify registry add <existing> --url <existing-url> --schema <existing-capability> --description "..."`. (This second path also triggers the plan-reference warning if the existing entry was already wired into a plan -- preferable to use the hand-edit unless the description rewrite is the intent.)
 
 The descriptions matter beyond validation: `/change:plan`'s assignment step reads them when inferring which project each plan entry targets. Sparse descriptions force unresolved (`?`) prompts during planning. Plan a paragraph per project, not a sentence.
 
@@ -70,7 +70,7 @@ The descriptions matter beyond validation: `/change:plan`'s assignment step read
 Any `add` or `remove` should be followed by `specify workspace sync` to bring the workspace clones in line with the registry. The verb is idempotent -- existing slots refresh, missing slots materialise.
 
 ```bash
-specify registry add new-project --url ... --schema ... --description "..."
+specify registry add new-project --url ... --schema <capability> --description "..."
 specify workspace sync
 ```
 

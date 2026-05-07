@@ -6,6 +6,16 @@ argument-hint: "[crate-name]"
 
 # Test Writer
 
+## Critical Path (Quick Reference)
+
+1. **Load artifacts and references** — read `spec.md`, `design.md`, `mock-provider.md`, `spec-to-test-mapping.md`, and the closest example before generating tests.
+2. **Inventory crate and tests** — inspect handlers, provider trait bounds, input/output types, existing `tests/`, fixtures, and assertion style.
+3. **Map specs to tests** — create one deterministic test per scenario, trace each to the stable `REQ-XXX` ID, and derive validation/error/happy-path coverage from specs.
+4. **Assert side effects from design** — enumerate every provider interaction in design.md and generate assertions for publishes, writes, cache changes, transactions, and rollback behavior.
+5. **Generate MockProvider and fixtures** — implement only required provider traits, load JSON fixtures from `tests/data/`, and preserve existing test style.
+6. **Handle drift without deletion** — report missing, extra, and assertion-drift cases; update tests to match changed specs while preserving manual tests unless clearly obsolete.
+7. **Leave execution to orchestration** — verify structural checklist here; compilation and test execution happen in the build verify-repair loop.
+
 Generate or update test suites for Omnia Rust WASM crates from Specify artifacts (specs + design.md) and existing crate code. Tests use `MockProvider` implementations and the `Client` typestate builder to invoke handlers.
 
 **Relationship to other skills**:

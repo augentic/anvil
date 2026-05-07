@@ -12,6 +12,9 @@ const CAPABILITIES_DIR = join(REPO_ROOT, "capabilities");
 const CURSOR_SCHEMA_DIR = join(REPO_ROOT, ".cursor", "schemas");
 const RED = "\x1b[0;31m";
 const NC = "\x1b[0m";
+const SKILL_MAX_BODY_LINES = 500;
+const SKILL_CRITICAL_PATH_MIN_BODY_LINES = 150;
+const SKILL_CRITICAL_PATH_HEADING = "## Critical Path (Quick Reference)";
 
 let errors = 0;
 
@@ -94,6 +97,18 @@ function stripHtmlComments(content: string): string {
   }
 
   return stripped;
+}
+
+function skillBodyLines(content: string): string[] | null {
+  const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!fmMatch) return null;
+
+  const lines = content.slice(fmMatch[0].length).split("\n");
+  // Drop leading separator newline and trailing terminating newline so the
+  // count matches what an editor displays after the closing `---`.
+  if (lines.length > 0 && lines[0] === "") lines.shift();
+  if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+  return lines;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -436,7 +451,6 @@ async function validateSkillFrontmatter(): Promise<void> {
 
 async function checkSkillBodyLineCount(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-  const MAX_BODY_LINES = 500;
 
   for await (const entry of walk(PLUGINS_DIR, {
     match: [/SKILL\.md$/],
@@ -446,27 +460,76 @@ async function checkSkillBodyLineCount(): Promise<void> {
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
 
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!fmMatch) continue;
-
-    const body = content.slice(fmMatch[0].length);
-    const lines = body.split("\n");
-    // Drop leading separator newline and trailing terminating newline so the
-    // count matches what an editor displays after the closing `---`.
-    if (lines.length > 0 && lines[0] === "") lines.shift();
-    if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+    const lines = skillBodyLines(content);
+    if (!lines) continue;
     const lineCount = lines.length;
 
-    if (lineCount > MAX_BODY_LINES) {
+    if (lineCount > SKILL_MAX_BODY_LINES) {
       fail(
-        `Skill body too long: ${rel} — ${lineCount} body lines (limit ${MAX_BODY_LINES})`,
+        `Skill body too long: ${rel} — ${lineCount} body lines (limit ${SKILL_MAX_BODY_LINES})`,
       );
     }
   }
 }
 
 // ──────────────────────────────────────────────────────────────
-// 6c. SKILL.md description length ceiling (RFC-10 §D)
+// 6c. Long SKILL.md bodies must include a Critical Path block
+// ──────────────────────────────────────────────────────────────
+
+async function checkSkillCriticalPath(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+  const LIST_ITEM_RE = /^(?:\d+\.|-)\s+\S/;
+
+  for await (const entry of walk(PLUGINS_DIR, {
+    match: [/SKILL\.md$/],
+    includeDirs: false,
+  })) {
+    if (await isUnderSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+
+    const lines = skillBodyLines(content);
+    if (!lines || lines.length < SKILL_CRITICAL_PATH_MIN_BODY_LINES) continue;
+
+    const headingIndex = lines.findIndex((line) =>
+      line.trim() === SKILL_CRITICAL_PATH_HEADING
+    );
+    if (headingIndex < 0) {
+      fail(
+        `Missing Critical Path: ${rel} — ${lines.length} body lines requires '${SKILL_CRITICAL_PATH_HEADING}'`,
+      );
+      continue;
+    }
+
+    const nextH2Offset = lines.slice(headingIndex + 1).findIndex((line) =>
+      line.startsWith("## ")
+    );
+    const sectionLines = nextH2Offset >= 0
+      ? lines.slice(headingIndex + 1, headingIndex + 1 + nextH2Offset)
+      : lines.slice(headingIndex + 1);
+    let itemCount = 0;
+    let inCriticalPathList = false;
+    for (const line of sectionLines) {
+      if (line.trim() === "") {
+        if (inCriticalPathList) break;
+        continue;
+      }
+      if (LIST_ITEM_RE.test(line)) {
+        inCriticalPathList = true;
+        itemCount++;
+      }
+    }
+
+    if (itemCount < 5 || itemCount > 7) {
+      fail(
+        `Invalid Critical Path: ${rel} — expected 5-7 bullets or numbered items, found ${itemCount}`,
+      );
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 6d. SKILL.md description length ceiling (RFC-10 §D)
 // ──────────────────────────────────────────────────────────────
 
 async function checkSkillDescriptionLength(): Promise<void> {
@@ -503,7 +566,7 @@ async function checkSkillDescriptionLength(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 6d. SKILL.md argument-hint shape (RFC-10 §A.3, §D)
+// 6e. SKILL.md argument-hint shape (RFC-10 §A.3, §D)
 // ──────────────────────────────────────────────────────────────
 
 async function checkSkillArgumentHint(): Promise<void> {
@@ -550,7 +613,7 @@ async function checkSkillArgumentHint(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 6e. SKILL.md frontmatter must not declare `license` (RFC-10 §A.4, §D)
+// 6f. SKILL.md frontmatter must not declare `license` (RFC-10 §A.4, §D)
 // ──────────────────────────────────────────────────────────────
 
 async function checkSkillNoLicense(): Promise<void> {
@@ -583,7 +646,7 @@ async function checkSkillNoLicense(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 6f. Retired slash commands must not appear in active prose (RFC-10 §D)
+// 6g. Retired slash commands must not appear in active prose (RFC-10 §D)
 // ──────────────────────────────────────────────────────────────
 
 async function checkRetiredSlashCommands(): Promise<void> {
@@ -883,16 +946,40 @@ async function checkPluginConsistency(): Promise<void> {
   }
 
   for (const p of manifest.plugins) {
-    const skillsDir = join(PLUGINS_DIR, p.source, "skills");
+    const pluginDir = join(PLUGINS_DIR, p.source);
+    const skillsDir = join(pluginDir, "skills");
+    let hasSkillsDir = false;
     try {
       const stat = await Deno.stat(skillsDir);
       if (!stat.isDirectory) {
         fail(`Plugin '${p.name}' has no skills/ directory`);
+      } else {
+        hasSkillsDir = true;
       }
     } catch {
       fail(
         `Plugin '${p.name}' declared in marketplace.json but skills/ not found`,
       );
+    }
+
+    if (hasSkillsDir) {
+      const pluginManifestPath = join(
+        pluginDir,
+        ".cursor-plugin",
+        "plugin.json",
+      );
+      try {
+        const stat = await Deno.stat(pluginManifestPath);
+        if (!stat.isFile) {
+          fail(
+            `Plugin '${p.name}' has skills/ but .cursor-plugin/plugin.json is not a file`,
+          );
+        }
+      } catch {
+        fail(
+          `Plugin '${p.name}' has skills/ but .cursor-plugin/plugin.json not found`,
+        );
+      }
     }
   }
 }
@@ -1344,6 +1431,7 @@ await Promise.all([
 await Promise.all([
   validateSkillFrontmatter(),
   checkSkillBodyLineCount(),
+  checkSkillCriticalPath(),
   checkSkillDescriptionLength(),
   checkSkillArgumentHint(),
   checkSkillNoLicense(),

@@ -64,7 +64,7 @@ Slice defined (4 tasks).
 
 </details>
 
-Specify generates four artifacts (five for the Vectis schema, which adds `composition.yaml` for screen layout):
+Specify generates four artifacts (five for the Vectis capability, which adds `composition.yaml` for screen layout):
 
 1. **`proposal.md`** -- captures the motivation and scope. It names the capabilities that will be affected.
 2. **`specs/greeting/spec.md`** -- behavioral requirements with scenarios:

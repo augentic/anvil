@@ -6,9 +6,19 @@ argument-hint: "[slice-name]"
 
 # Merge
 
+## Critical Path (Quick Reference)
+
+1. **Select and confirm the slice** — infer or ask for the slice, then confirm before any merge operation.
+2. **Check prerequisites via CLI** — run status, validate, and task progress; warn on non-`complete`, validation failures, or pending tasks before proceeding.
+3. **Preview and conflict-check** — run `specify slice merge preview` and `specify slice merge conflict-check`, render operations, and surface baseline drift clearly.
+4. **Get explicit confirmation** — let the user proceed, inspect full content, or cancel; record `deferred` if merge is not invoked.
+5. **Apply through `merge run` only** — run `specify slice merge run <name> --format json`; never hand-merge specs, edit metadata, or move archives manually.
+6. **Handle outcomes correctly** — on success, trust the CLI-stamped merge outcome; on non-zero exit, record merge `failure` via the shared [phase outcome contract](../../references/phase-outcome-contract.md).
+7. **Summarize the archive** — report merged specs, created baselines, archive path, and any workspace auto-commit warning or residue note.
+
 Merge a completed slice.
 
-Deterministic bookkeeping — change selection, prerequisite validation, merge operation computation, baseline conflict detection, the per-capability merge itself, baseline coherence validation, status transitions, and the archive move — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the merge preview, coordinating the `AskQuestion` confirmation flow, and summarising results.
+Deterministic bookkeeping — slice selection, prerequisite validation, merge operation computation, baseline conflict detection, the per-capability merge itself, baseline coherence validation, status transitions, and the archive move — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the merge preview, coordinating the `AskQuestion` confirmation flow, and summarising results.
 
 When working plan-driven (a `plan.yaml` exists), after `specify slice merge run` returns successfully the plan entry should be transitioned to `done`:
 
@@ -33,7 +43,7 @@ This phase's outcome-specific deltas:
 
 ## Input
 
-Optionally specify a slice name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+Optionally specify a slice name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available slices.
 
 ## Steps
 

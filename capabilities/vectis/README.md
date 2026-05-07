@@ -1,4 +1,4 @@
-# Vectis Schema
+# Vectis Capability
 
 - **URL**: `https://github.com/augentic/specify/capabilities/vectis`
 - **Purpose**: Cross-platform Crux application development
@@ -22,7 +22,7 @@
 
 ## Blueprints
 
-The schema declares five blueprints in dependency order:
+The capability declares five blueprints in dependency order:
 
 1. **proposal** — initial proposal document (`proposal.md`)
 2. **specs** — detailed specifications (`specs/**/*.md`), requires proposal
@@ -53,6 +53,6 @@ The proposal declares which platforms a change targets. Platforms determine whic
 | `android` | Kotlin/Jetpack Compose Android shell | `vectis:android-writer` |
 | `web` | Web shell (future) | — |
 
-## Schema Framework
+## Capability Framework
 
-For general schema concepts — directory structure, field reference for `schema.yaml`, schema resolution, composition, caching, and rules override — see the [Schemas README](../README.md).
+For general capability concepts — directory structure, field reference for `capability.yaml`, capability resolution, composition, caching, and rules override — see the [Capabilities README](../README.md).

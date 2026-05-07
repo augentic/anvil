@@ -6,6 +6,16 @@ argument-hint: "<slice-dir>"
 
 # Crux iOS Shell Generator
 
+## Critical Path (Quick Reference)
+
+1. **Read the input contract** — inspect `app.rs`, `lib.rs`, `Cargo.toml`, `tokens.yaml`, `assets.yaml`, `composition.yaml`, and any iOS-specific spec/design sections.
+2. **Detect mode** — if no shell exists, run `specify tool run vectis-scaffold -- ios ...` plus host checks; otherwise inventory existing Swift code for update mode.
+3. **Diff core and UI artifacts** — classify effects, ViewModel variants, page fields, events, routes, token categories, assets, components, and legacy `VectisDesign` references.
+4. **Apply core/view updates** — edit `Core.swift`, `ContentView.swift`, screen views, navigation, Inject boilerplate, and build config with targeted changes only.
+5. **Refresh generated UI surfaces** — regenerate shell-local `Theme/`, `Components/`, and `Resources/Assets.xcassets/` from validated artifacts while preserving operator-owned files.
+6. **Verify or delegate verification** — run `swiftformat`, `make typegen`, `make package`, and `make xcode` unless the orchestrator passed `skip_verification: true`.
+7. **Enforce shell boundaries** — keep business logic in the Rust core, remove legacy design-system imports, and avoid known SwiftUI interaction hazards.
+
 > **Vectis deterministic tooling runs through declared Specify tools.** Shell scaffolding is `specify tool run vectis-scaffold -- ios ...`; artifact validation is `specify tool run vectis-validate -- ...`. The scaffold is render-only: iOS type generation, packaging, Xcode generation, and build checks remain host-owned steps with explicit verification evidence.
 
 Generate or update a buildable SwiftUI iOS shell for an existing Crux core application. The shell renders the core's `ViewModel`, dispatches `Event` values from user interactions, and handles platform side-effects (HTTP, KV, SSE) on behalf of the core.

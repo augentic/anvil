@@ -10,6 +10,8 @@ Plugins are installed from the Cursor marketplace (Settings > Plugins > search f
 - **Rules** -- `.mdc` files that provide context to the agent.
 - **References** -- markdown documents that skills read for domain knowledge.
 
+This is the repository's source profile: Cursor plugin manifests, slash-command routing, Cursor tool names, and `<!-- skill: plugin:skill -->` delegation directives are expected. The skills follow Anthropic Agent Skills authoring guidance where it fits, but they are not a drop-in Claude Code or upstream Agent Skills export. A future export/profile should translate Cursor-only conventions and add target-specific metadata such as `disable-model-invocation`, `user-invocable`, or `context` outside the source `SKILL.md` files.
+
 ## Workspace rules
 
 Installing plugins from the marketplace gives you each plugin's rules and skills. For cross-plugin coordination, copy the workspace rule from the Specify repository (`.cursor/rules/project.mdc`) into your project's `.cursor/rules/` directory.

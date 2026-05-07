@@ -29,6 +29,6 @@ The schema declares four blueprints in dependency order:
 
 Build requires tasks to be complete and is tracked via `tasks.md`.
 
-## Schema Framework
+## Capability Framework
 
-For general schema concepts — directory structure, field reference for `schema.yaml`, schema resolution, composition, caching, and rules override — see the [Schemas README](../README.md).
+For general capability concepts — directory structure, field reference for `capability.yaml`, capability resolution, composition, caching, and rules override — see the [Capabilities README](../README.md).

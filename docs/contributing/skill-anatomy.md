@@ -1,6 +1,6 @@
 # Anatomy of a Skill
 
-A skill is a markdown file (`SKILL.md`) that instructs a Cursor agent how to perform a specific task. Skills are the primary unit of behavior in Specify -- every `/spec:*`, `/omnia:*`, `/vectis:*`, `/contract:*`, `/rt:*`, and `/client:*` command maps to one skill.
+A skill is a markdown file (`SKILL.md`) that instructs a Cursor agent how to perform a specific task. Skills are the primary unit of behavior in Specify -- every `/spec:*`, `/change:*`, `/omnia:*`, `/vectis:*`, `/contract:*`, `/rt:*`, and `/client:*` command maps to one skill.
 
 ## Directory structure
 
@@ -26,7 +26,7 @@ Every `SKILL.md` begins with YAML frontmatter validated against `.cursor/schemas
 ```yaml
 ---
 name: specify-define
-description: Defines a new Specify change and generates every artifact (proposal, spec, design, tasks, optional contracts and composition) in one step. Use when an operator describes a slice in chat, when a plan entry transitions in-progress, or when the user explicitly asks for /spec:define.
+description: Defines a new Specify slice and generates every artifact (proposal, spec, design, tasks, optional contracts and composition) in one step. Use when an operator describes a slice in chat, when a plan entry transitions in-progress, or when the user explicitly asks for /spec:define.
 argument-hint: "[description]"
 ---
 ```
@@ -40,7 +40,7 @@ Frontmatter fields appear in this canonical order:
 3. `argument-hint` (optional)
 4. `allowed-tools` (optional; rare)
 
-No other top-level keys are permitted. RFC-10 (§D) removed `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, and `paths` from the accepted shape; `make checks` now rejects any of those keys.
+No other top-level keys are permitted. RFC-10 (§D) removed `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, and `paths` from the accepted shape; host-specific fields such as `context` are likewise rejected by the closed schema. `make checks` rejects any extra top-level key.
 
 ### Frontmatter fields
 
@@ -63,6 +63,18 @@ The reference docs under `docs/reference/slice-skills/` and `docs/reference/chan
 
 This is documentation-only. Contributors copying a synopsis line from a reference doc into a SKILL.md frontmatter must reduce it to a single placeholder for the primary positional argument; flag and secondary-positional documentation goes into the body's "Invocation" section.
 
+### Cursor plugin posture
+
+This repository is **Cursor-plugin-first**. Source `SKILL.md` files are authored for the Cursor plugin marketplace and the `/plugin:skill` slash-command surface, then kept close to Anthropic Agent Skills conventions where that does not weaken the Cursor workflow.
+
+The following conventions are Cursor-specific and should not be treated as portable upstream Agent Skills syntax:
+
+- Plugin manifests under `.cursor-plugin/` and per-plugin `plugin.json` files.
+- Slash commands such as `/spec:define` and `/omnia:crate-writer`, which route by plugin directory plus skill directory.
+- `argument-hint`, which is Cursor placeholder text for a slash command, not a general usage synopsis.
+- `<!-- skill: plugin:skill-name -->` directives, which tell the Cursor agent to load another repository skill at that point in the procedure.
+- Cursor tool names in `allowed-tools`, especially the Cursor-only tools listed below.
+
 ### Cursor-specific tool names
 
 The `KNOWN_TOOLS` set enforced by [scripts/checks.ts](../../scripts/checks.ts) is the Cursor toolset:
@@ -75,6 +87,19 @@ AskQuestion Task TodoWrite SemanticSearch EditNotebook GenerateImage
 `mcp__*` prefixed tools are also accepted (MCP server tools).
 
 Several of these are Cursor-only and do not exist in Claude Code: `StrReplace`, `ReadLints`, `SemanticSearch`, `AskQuestion`, `EditNotebook`, `GenerateImage`. Skills that reference them won't run cleanly on Claude Code or other Agent Skills consumers without substitutions.
+
+### Claude Code / Agent Skills export
+
+Do not add Claude Code-only frontmatter to source skills unless the repository policy changes. Claude Code and Agent Skills consumers may support optional fields such as `disable-model-invocation`, `user-invocable`, `context`, `paths`, or appended trigger metadata, but this repository keeps source frontmatter small and validates it with `additionalProperties: false`.
+
+A future Claude Code or Agent Skills export should be a separate profile or generated artifact. That export would need to:
+
+- Map or remove Cursor-only metadata such as `argument-hint`.
+- Replace Cursor-only tools with host-supported equivalents.
+- Translate `<!-- skill: plugin:skill-name -->` delegation into that host's composition mechanism, or inline explicit instructions for loading the referenced skill.
+- Decide per exported skill whether Claude Code fields such as `disable-model-invocation`, `user-invocable`, or `context` are appropriate.
+
+Side-effect workflow skills currently omit `disable-model-invocation` intentionally. In Cursor, `/spec:*` and `/change:*` skills are user-invoked or pipeline-invoked orchestrators whose bodies and CLI calls gate mutations at runtime. Hiding them from model invocation in the source profile would make direct operator requests and plan-driven delegation less reliable. If a Claude Code export needs stricter user-only activation for mutating workflows, add that field in the export profile rather than in the Cursor source skill.
 
 ### Body sections
 
@@ -151,9 +176,10 @@ The Cursor agent reads these directives and loads the referenced skill when it r
    - Frontmatter validates against `.cursor/schemas/skill.schema.json`
    - `name` is globally unique, plugin-qualified, and matches `^[a-z][a-z0-9-]*$`
    - SKILL.md body (post-frontmatter) is ≤500 lines
+   - SKILL.md bodies with ≥150 post-frontmatter lines include `## Critical Path (Quick Reference)` with 5-7 bullets or numbered items
    - `description` is ≤1024 characters
    - `argument-hint` does not contain `?`, `--`, or `|`
-   - No retired top-level keys (`license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `paths`)
+   - No retired or host-specific top-level keys (`license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `context`, `paths`)
    - Any `allowed-tools` entries are recognized
    - All `references/` and `examples/` links resolve
    - All `$VARIABLE` definitions are used and all uses are defined

@@ -45,7 +45,7 @@ The umbrella drives the canonical platform-first loop:
 | Step | Invocation | Halts on |
 |------|------------|----------|
 | 1. Brief | `specify change create <name>` (when `change.md` is absent) | Kebab-case violation, partial scaffold |
-| 2. Registry | `specify registry validate` | `description-missing-multi-repo`, `hub-cannot-be-project`, kebab-case / URL / schema violations |
+| 2. Registry | `specify registry validate` | `description-missing-multi-repo`, `hub-cannot-be-project`, kebab-case / URL / capability identifier violations |
 | 3. Plan | `/change:plan <name> [--from ...] [--against ...] [--source ...]` | Operator `abort` in propose loop, `specify change plan validate` failure |
 | 4. Execute | `/change:execute --loop` | `stuck`, `halted`, `driver-interrupted`, `registry-amendment-required` |
 | 5. Push | `specify workspace push` | Per-project `failed` status (auth, missing remote) |

@@ -6,6 +6,16 @@ argument-hint: "[feature-name]"
 
 # Crux Test Writer
 
+## Critical Path (Quick Reference)
+
+1. **Resolve mode and inputs** — derive `$FEATURE_NAME`, `$SPEC_PATH`, `$DESIGN_PATH`, `$APP_RS`, then choose create, update, or repair mode from traceability comments or caller input.
+2. **Read references and artifacts** — load spec-to-test mapping, Crux testing patterns, the feature spec, design.md, and `app.rs` before writing tests.
+3. **Map scenarios deterministically** — generate one synchronous test per scenario with stable `REQ-XXX` traceability, effect-chain assertions, validation coverage, and page-transition checks.
+4. **Create or update the test module** — write tests inside `#[cfg(test)] mod tests`, preserve existing helpers/style, add new scenarios, update changed assertions, and mark stale tests instead of deleting them.
+5. **Enforce coverage structure** — require scenario coverage, shell-facing Event coverage, page transitions, validation rules, capability happy/error paths, and factory helpers for repeated setup.
+6. **Repair with minimum edits** — in repair mode, run `cargo test`, read fresh errors and Crux API references, fix only test syntax/setup needed to preserve intent, then verify once.
+7. **Report verification ownership** — do not run `cargo test` in create/update mode; return structural checklist status for the outer verify-repair loop.
+
 Generate or update tests for a Crux shared crate from Specify artifacts (specs + design.md) and existing crate code. Tests use Crux's synchronous testing model: call `update()` directly, inspect `Command` effects, resolve effects with simulated responses, and assert on model and view model state.
 
 **Relationship to other skills**:

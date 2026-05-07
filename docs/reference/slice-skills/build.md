@@ -48,7 +48,7 @@ Changes using the `contracts` capability have a different build behavior. The bu
 | Error | Cause | Resolution |
 |-------|-------|------------|
 | Change not defined | Artifacts are incomplete | Run `/spec:define` first |
-| Validation failure | Artifact does not conform to schema rules | Fix the artifact and retry |
+| Validation failure | Artifact does not conform to validation rules | Fix the artifact and retry |
 | Specialist skill failure | A delegated skill encounters an error | Check the skill's output, fix, and re-run `/spec:build` |
 | Build failure | Generated code does not compile or pass tests | The agent iterates on fixes within the build phase |
 

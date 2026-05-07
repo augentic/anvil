@@ -47,7 +47,7 @@ contracts/
 
 ## Alignment validation
 
-When you define an implementation change (Omnia or Vectis schema), the define pipeline includes a **contracts alignment** stage. This compares your specs against baseline contracts and reports:
+When you define an implementation change (Omnia or Vectis capability), the define pipeline includes a **contracts alignment** stage. This compares your specs against baseline contracts and reports:
 
 - **Coverage:** Interactions already defined in contracts.
 - **Alignment warnings:** Spec-vs-contract mismatches.

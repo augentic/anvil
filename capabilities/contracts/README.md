@@ -57,10 +57,10 @@ Use the `contracts` schema when:
 - Modifying existing platform contracts independently of implementation changes
 - Reverse-engineering contracts from an existing implementation whose API surface has been identified by `/spec:analyze` (extract-from-source pattern)
 
-Use Omnia or Vectis schemas when:
+Use Omnia or Vectis capabilities when:
 - Implementing code that conforms to existing contracts
-- The `contracts` brief in those schemas validates alignment automatically
+- The `contracts` brief in those capabilities validates alignment automatically
 
-## Schema Framework
+## Capability Framework
 
-For general schema concepts — directory structure, field reference for `schema.yaml`, schema resolution, composition, caching, and rules override — see the [Schemas README](../README.md).
+For general capability concepts — directory structure, field reference for `capability.yaml`, capability resolution, composition, caching, and rules override — see the [Capabilities README](../README.md).

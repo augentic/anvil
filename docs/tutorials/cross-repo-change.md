@@ -115,7 +115,7 @@ shop-platform/
 
 ## 2. Register the two projects
 
-Add the backend (Omnia schema):
+Add the backend (Omnia capability):
 
 ```bash
 specify registry add shop-backend \
@@ -124,7 +124,7 @@ specify registry add shop-backend \
     --description "User registration, account management, and the authoritative implementation of the shop's HTTP API. Owns persistence, OAuth provider integration, token storage, and order processing."
 ```
 
-Add the mobile app (Vectis schema):
+Add the mobile app (Vectis capability):
 
 ```bash
 specify registry add shop-mobile \

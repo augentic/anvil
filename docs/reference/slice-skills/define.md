@@ -50,9 +50,9 @@ Create a new slice and generate all artifacts in one step.
 | Error | Cause | Resolution |
 |-------|-------|------------|
 | Name collision | A change with this name already exists | Choose a different name or use `--if-exists` |
-| Schema not cached | `/spec:init` not run | Run `/spec:init` first |
+| Capability not cached | `/spec:init` not run | Run `/spec:init` first |
 | Source resolution failure | `--source` path does not exist | Check the path |
-| Brief pipeline error | Schema brief has unresolvable dependency | Check schema configuration |
+| Brief pipeline error | Capability brief has unresolvable dependency | Check capability configuration |
 
 ## Examples
 

@@ -5,6 +5,16 @@ description: Generate a Rust project that exposes HTTP endpoints, subscribes to 
 
 # Guest Generator Skill
 
+## Critical Path (Quick Reference)
+
+1. **Read references first** — load handler, provider/runtime, project, and configuration references; they are specifications, not examples.
+2. **Keep the guest thin** — route HTTP, messaging, WebSocket, config, and provider setup through the WASI boundary; keep all business logic in domain crates.
+3. **Generate project structure** — create the root Cargo workspace, `.cargo/`, tooling configs, `src/lib.rs`, examples, CI workflows, and supply-chain files from the documented layout.
+4. **Wire runtime surfaces** — implement Axum routes, topic dispatch, WebSocket exports, provider traits, owner-bearing handler calls, and config validation.
+5. **Add local runtime and environment** — generate `examples/<guest>.rs` with `omnia::runtime!` and an `.env.example` covering every required config key.
+6. **Generate workflow and compliance files** — add standard GitHub workflows, deny/vet files, and run the cargo-vet regeneration commands once lockfiles exist.
+7. **Verify WASM constraints** — run the build/check loop, fix missing routes or provider impls, and enforce no `std::env`, `std::fs`, `std::net`, or business logic in guest code.
+
 ## Overview
 
 Generate a complete WASM guest project that wraps one or more domain crates containing business logic. The guest provides the wiring layer that:

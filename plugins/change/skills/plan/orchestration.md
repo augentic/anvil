@@ -68,13 +68,13 @@ Three branches based on the resolved registry:
 2. **Multi-project registry.** `specify registry validate` enforces the `description-missing-multi-repo` invariant (RFC-3b §Validation; per RFC-9 §2A). Refusal exits the umbrella non-zero pointing the operator at `specify registry add <name> --description "..."` for each entry missing a description.
 3. **Single-project registry or `--shape update-existing` with a populated registry.** Pass-through — the validate output is reported and the umbrella continues.
 
-**Halts.** Operator-actionable validation failures (missing description, kebab-case violation, invalid URL, schema typo) halt the umbrella with the validator's diagnostic verbatim.
+**Halts.** Operator-actionable validation failures (missing description, kebab-case violation, invalid URL, capability identifier typo) halt the umbrella with the validator's diagnostic verbatim.
 
 **Manual fallback.**
 
 ```bash
 specify registry validate
-specify registry add <name> --url <url> --schema <schema> --description "..."
+specify registry add <name> --url <url> --schema <capability> --description "..."
 specify registry remove <name>     # if needed
 specify workspace sync             # after any add/remove
 ```
@@ -118,7 +118,7 @@ specify change plan create <name> [--source ...]
 # discovery / sync-peers / propose / assignment cycles run by hand or via /change:plan default
 specify change plan add <slice-name> ...
 specify change plan amend <slice-name> --project <project>
-specify registry add <project> --url ... --schema ... --description "..."
+specify registry add <project> --url ... --schema <capability> --description "..."
 specify workspace sync
 specify change plan validate
 ```

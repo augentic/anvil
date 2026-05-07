@@ -4,12 +4,22 @@ description: |
   Plan-time capability inference for both legacy code and documentation
   inputs. Emits capability summaries into discovery.md — not full specs.
   Branches internally on --kind; per-kind clustering / extraction prompts
-  are schema-owned. Use when the plan-time discovery brief needs a
+  are capability-owned. Use when the plan-time discovery brief needs a
   capability-level inventory of a source before propose slices it.
 argument-hint: "<input-path> <output-dir>"
 ---
 
 # Analyze Skill
+
+## Critical Path (Quick Reference)
+
+1. **Validate invocation** — require a local `$INPUT_PATH`, writable `$OUTPUT_DIR`, and `--kind` exactly `legacy-code` or `documentation`; fail before partial writes.
+2. **Materialize remotes outside analyze** — if the source is remote, use the guarded clone snippet first and pass the resulting local path as `$INPUT_PATH`.
+3. **Resolve capability prompt** — run capability resolution and load `plugins/change/skills/plan/briefs/<capability>/analyze.md`; never embed clustering heuristics in this SKILL.
+4. **Emit capability summaries only** — append one sorted capability block per inferred capability to `$DISCOVERY`; never produce full `specs/` or `design.md`.
+5. **Tag and deduplicate** — carry `$SOURCE_KEY` markers when supplied, overwrite same-name capabilities from this run, and preserve unrelated prior discovery blocks.
+6. **Write structural metadata for code only** — for `legacy-code`, write byte-stable `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json`; for `documentation`, leave that slot absent.
+7. **Preserve idempotency** — keep field order fixed, sort lists, reject malformed brief output, and prevent timestamps, absolute paths, or host state from leaking into outputs.
 
 `/spec:analyze` is the sole plan-time discovery skill. It reads one input — a legacy code tree or a documentation bundle — and appends **capability summaries** to `$DISCOVERY`. It does **not** produce full `specs/` + `design.md`; deep per-slice extraction remains [`../extract/SKILL.md`](../extract/SKILL.md)'s job at define time.
 
@@ -45,7 +55,7 @@ Pass the resulting `$DEST` as `$INPUT_PATH` on the next `/spec:analyze` invocati
 
 | kind            | Branch                                                                |
 | --------------- | --------------------------------------------------------------------- |
-| `legacy-code`   | Cluster code into capability summaries (schema-owned algorithm).      |
+| `legacy-code`   | Cluster code into capability summaries (capability-owned algorithm).  |
 | `documentation` | Extract capability summaries from prose / PDFs / runbooks / API docs. |
 
 Any other value is a hard error; the skill exits non-zero before writing anything to `$DISCOVERY`. See [`../../../change/skills/plan/SKILL.md` §*Input kinds*](../../../change/skills/plan/SKILL.md) for the normative enum definition — `/spec:analyze` is the enforcement site for unknown-kind errors, but the vocabulary itself is pinned by the plan skill. Do not extend it.

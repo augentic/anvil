@@ -147,7 +147,7 @@ Per-artifact migration map:
 - **`contracts.imports` removed from the registry.** The role set on each `registry.yaml` project entry collapses to two: `produces` and `consumes`. Contracts that no project produces are, by definition, externally authored — no separate field is needed to flag them. `specify registry validate` rejects the unknown `imports` key after upgrade, so any surviving usage surfaces immediately.
 - **In-binary `specify contract` verbs retired in RFC-13 chunk 2.7.** RFC-12 originally landed `specify contract { list, validate }` as in-binary CLI verbs; RFC-13 retired the family when contracts became a first-party capability owning its own validation behavior. The validation rules survived intact: the contracts capability now declares a [`contract` WASI tool](../reference/cli/contract.md) run through `specify tool run contract -- <BASELINE_DIR> --format json`, and the contracts capability merge brief ([`capabilities/contracts/briefs/merge.md`](../../capabilities/contracts/briefs/merge.md)) is where the post-merge gate runs. There is no replacement for `contract list`; consult the merged `contracts/` directory directly when projecting top-level contracts.
 
-## Vectis schema v3 — design-system-writer removed (RFC-11)
+## Vectis capability v3 — design-system-writer removed (RFC-11)
 
 [RFC-11](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-11-ui-spec.md) dissolves the standalone `vectis:design-system-writer` skill and the `design-system` platform enum value. Each shell writer (`ios-writer`, `android-writer`) now reads `tokens.yaml` and `assets.yaml` directly and emits shell-local theme + asset code under its own tree (`iOS/<App>/Theme/` for iOS, `Android/.../ui/theme/` for Android). The Vectis capability bumps from `2` to `3` (the manifest moved from `schemas/vectis/schema.yaml` to `capabilities/vectis/capability.yaml` as part of RFC-13 — see §RFC-13 below) and the `plugins/vectis/skills/design-system-writer/` directory is deleted. Projects that reference `design-system` in their Platforms list or import `VectisDesign` / `:vectis-design` should migrate to the shell-local theming model.
 
@@ -234,7 +234,7 @@ Three change shapes flow through the same uniform sequence: `migrate-legacy` (so
 Registry mutation is now a CLI verb instead of a hand-edit (RFC-9 ?2A):
 
 ```bash
-specify registry add <name> --url <url> --schema <schema> --description "..."
+specify registry add <name> --url <url> --schema <capability> --description "..."
 specify registry remove <name>
 ```
 

@@ -1,6 +1,6 @@
 ---
 name: specify-plan
-description: "Deprecated alias. /spec:plan moved to /change:plan in RFC-13 §3.9. This shim delegates to the canonical change-plan skill, prints a one-line deprecation warning, and is removed before the post-RFC release. Use only if invoking the historical command path; new work should call /change:plan directly."
+description: "Deprecated alias for `/change:plan`. Use only when an operator invokes `/spec:plan`; it prints one deprecation warning and delegates to the canonical change planning skill. New work should call `/change:plan` directly."
 argument-hint: "<change-name>"
 ---
 

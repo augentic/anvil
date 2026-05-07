@@ -1,6 +1,6 @@
 ---
 name: specify-execute
-description: "Deprecated alias. /spec:execute moved to /change:execute in RFC-13 §3.9. This shim delegates to the canonical change-execute driver, prints a one-line deprecation warning, and is removed before the post-RFC release. Use only if invoking the historical command path; new work should call /change:execute directly."
+description: "Deprecated alias for `/change:execute`. Use only when an operator invokes `/spec:execute`; it prints one deprecation warning and delegates to the canonical change execution driver. New work should call `/change:execute` directly."
 ---
 
 # /spec:execute (DEPRECATED — use /change:execute)
