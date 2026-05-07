@@ -9,7 +9,7 @@ If you have an existing codebase, you do not need to start from scratch. Specify
 Start by initialising Specify in your existing project:
 
 ```text
-/spec:init https://github.com/augentic/specify/schemas/omnia
+/spec:init https://github.com/augentic/specify/capabilities/omnia
 ```
 
 When init detects existing source code, it will offer to create an `initial-baseline` change for extraction. Accept the offer, or proceed manually with the steps below.

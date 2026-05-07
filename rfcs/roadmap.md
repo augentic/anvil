@@ -77,13 +77,18 @@ The same CLI and artifacts should support both.
 
 **Goal:** Make agent behavior easier to select, cheaper to load, and less dependent on inference.
 
-Current RFC-10 work should remain the immediate priority:
+The skill-hygiene foundation has now landed across RFCs 10, 13, 15, and 16:
 
-- finish skill frontmatter cleanup;
-- keep skill names globally discoverable;
-- keep skill bodies under the progressive-disclosure ceiling;
+- RFC-10 normalised plugin namespaces and capped skill bodies at the progressive-disclosure ceiling;
+- RFC-13 renamed "schema" to "capability", split per-loop *slices* from umbrella *changes*, moved `/spec:plan` and `/spec:execute` to the `change` plugin, and reframed the registry and change orchestration as platform components rather than capabilities;
+- RFC-15 introduced declared WASI capability tools (`specify tool`, `tools.yaml` sidecars) so deterministic helpers run with explicit permissions and SHA-256 pins instead of as bundled native code;
+- RFC-16 retired the `specify-vectis` host binary in favour of the declared `vectis-validate` and `vectis-scaffold` WASI components, leaving operators with one installed binary.
+
+Open hygiene items still owned by this strand:
+
 - factor duplicated phase outcome, journal, and plan-mutation instructions into shared references;
-- preserve stable Specify artifact identifiers while improving skill discoverability.
+- preserve stable Specify artifact identifiers while improving skill discoverability;
+- continue compressing always-loaded surface area as more first-party helpers move to declared tools.
 
 Next, add a first-class repository context output:
 
@@ -257,13 +262,20 @@ This should remain a long-term track. Local execution is the proving ground.
 
 ## Phasing
 
+### Landed
+
+- RFC-10: plugin namespace renormalisation and skill-body ceiling.
+- RFC-13: capability rename, slice/change vocabulary, platform-component split, `change` plugin.
+- RFC-15: declared WASI capability tools and the `specify tool` runner; contract validator as the first declared tool.
+- RFC-16: Vectis WASI tools (`vectis-validate`, `vectis-scaffold`) and `specify-vectis` retirement.
+
 ### Near Term
 
-- Complete RFC-10.
 - Add concise `AGENTS.md` generation and checking.
 - Define the codex rule format.
 - Keep the Backstage/catalog decision to adapter design, not core registry replacement.
 - Add initial structured review output for Specify artifacts.
+- Migrate any remaining first-party host helpers to declared WASI tools where the cost/benefit is favourable (the `skill.invokes-host-binary-with-declared-tool-equivalent` lint reserved by RFC-15 enforces this once the linter has enough context).
 
 ### Mid Term
 

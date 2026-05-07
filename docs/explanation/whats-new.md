@@ -2,7 +2,108 @@
 
 This page captures the **additive** changes to the Specify framework since the v1 CLI cleanup landed in v0.23. The v1 cleanup was a routing-only reshape (renamed verbs, no new behaviour); the work below adds new capabilities. For pure rename mappings see [Migrating to CLI v1](migrating-cli-v1.md). The two pages compose: this one tells you **what is new**, the migration map tells you **what was renamed**.
 
-The bulk of the additions ship under [RFC-9: Platform-First Operator Experience](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md) and [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md). RFC-9 closes the operator-experience gaps in the cross-repo loop; RFC-8 introduces contracts as platform-level artifacts.
+The bulk of the additions ship under [RFC-9: Platform-First Operator Experience](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md) and [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md). RFC-9 closes the operator-experience gaps in the cross-repo loop; RFC-8 introduces contracts as platform-level artifacts. The most recent additions land [RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md) (capability rename, platform-component split, change/slice vocabulary), [RFC-15](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasm-plugins.md) (declared WASI capability tools), and [RFC-16](https://github.com/augentic/specify/blob/main/rfcs/rfc-16-wasi-vectis.md) (Vectis WASI tools and `specify-vectis` retirement).
+
+## RFC-13 — capability rename and platform-component split
+
+[RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md) reframes Specify's extensibility model. The "schema" noun is renamed to **capability** throughout the framework, the `change` / `initiative` lifecycle nouns are renormalised, and the registry and change orchestration become first-party **platform components** rather than capabilities.
+
+### Capability vocabulary
+
+- **`schemas/` → `capabilities/`.** First-party capabilities now live at `capabilities/<name>/capability.yaml` with an explicit JSON Schema at `capabilities/capability.schema.json`. The legacy `schemas/<name>/schema.yaml` layout is gone.
+- **`specify schema {resolve, check, pipeline}` → `specify capability {resolve, check, pipeline}`.** The CLI surface follows the noun rename.
+- **`/spec:init <capability>`.** The init positional is now a capability identifier (a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI), with optional `@ref` suffixes for git pinning. The `--schema-uri` flag is gone; `specify init` invoked with neither a capability positional nor `--hub` errors with `init-requires-capability-or-hub`.
+- **`capability.yaml` is closed and minimal.** The post-RFC manifest drops the legacy `domain` and `extends` fields. Tech-stack guidance, architectural notes, and testing context belong in capability references and skills, not in always-loaded manifest metadata.
+- **`pipeline.plan` is rejected.** Both `capabilities/capability.schema.json` (this repo) and `schemas/capability.schema.json` (CLI) reject `pipeline.plan` outright; planning is platform-component orchestration, not capability-owned per-slice work. Planning briefs live with the change-planning skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../plugins/change/skills/plan/briefs/).
+
+### Lifecycle vocabulary: slice ↔ change
+
+The two lifecycle nouns are now stable:
+
+- **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step; lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
+- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, and the `specify change *` CLI verbs (which include the `specify change plan *` subresource).
+
+Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "initiative". Both were renamed in Phase 3 of the RFC; "the change loop" no longer exists as a phrase — call it the *slice loop*. Per-loop directories migrate via `specify migrate slice-layout`; the operator brief renames via `specify migrate change-noun`.
+
+### `/change:plan` and `/change:execute` move to the `change` plugin
+
+`/spec:plan` and `/spec:execute` moved to the new `change` plugin as `/change:plan` and `/change:execute`. The historical commands survive as thin deprecation shims that delegate to the canonical skills and are removed before the post-RFC-13 release. See [Change skills](../reference/change-skills/index.md).
+
+### Platform components are not capabilities
+
+The registry and the change component are first-party Specify components — they have commands, libraries, and files, but they do not appear in any `capability.yaml`, do not participate in the manifest protocol, and are never activated through a capability-name switch. The dependency invariant is hard-coded: **`specify-core` does not depend on `specify-registry` or `specify-change`, and `specify-registry` does not depend on `specify-change`.** Platform components compose downward; they never re-enter the core. See [Registry reference](../reference/registry.md), [Change component reference](../reference/change-component.md), and [Capabilities and Plugins](capabilities-and-plugins.md).
+
+### Hub project shape simplified
+
+A hub now carries `project.yaml { hub: true, … }` with the `capability:` field omitted (its absence is what disables capability resolution and the per-project phase pipelines). The legacy `schema: hub` sentinel is removed in the same release that lands the capability rename.
+
+## RFC-15 — declared WASI capability tools
+
+[RFC-15](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasm-plugins.md) introduces a deterministic helper-tool model. Capability authors and project authors declare WASI command components, and the `specify` host resolves, caches, permissions, and runs them through a single CLI surface — `specify tool`.
+
+### Two declaration sites
+
+- **Project scope** — `.specify/project.yaml` carries an optional `tools:` array. Use it for repo-private helpers, local development overrides, or hub projects that have no capability.
+- **Capability scope** — capabilities ship a `tools.yaml` sidecar next to `capability.yaml`. The `capability.yaml` schema remains closed (no `tools:` field on the manifest itself). Use capability scope when the helper is part of the capability's promised behavior — e.g. a merge validator or deterministic artifact checker.
+
+Project scope wins on collision, so an operator can redirect a capability-shipped tool to a local build or pinned mirror without editing the capability. Within a single declaration site, tool names must be unique. The cache is segmented by declaration scope (`project--<name>/<tool>/<version>/` vs `capability--<name>/<tool>/<version>/`) so ownership stays explicit.
+
+### Permission model
+
+Permissions are directory preopens, not globs. The host canonicalises every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. Permission entries may use `$PROJECT_DIR` in either scope and `$CAPABILITY_DIR` only in capability-scope declarations. Released first-party tool declarations require `sha256` so cache fills verify the exact component bytes.
+
+### CLI surface
+
+```bash
+specify tool list
+specify tool fetch <name>
+specify tool show <name>
+specify tool run <name> -- <args...>
+```
+
+See [`specify tool`](../reference/cli/tool.md) for the full surface and [Tool Declarations](tool-declarations.md) for the declaration-site, precedence, cache, permission, and lint model.
+
+### Contract validator becomes the first declared tool
+
+The pre-RFC-13 in-binary `specify contract { list, validate }` family was retired in chunk 2.7 when contracts became a first-party capability owning its own validation behavior. The contracts capability now ships `capabilities/contracts/tools.yaml` declaring a `contract` WASI tool; the merge brief at [`capabilities/contracts/briefs/merge.md`](../../capabilities/contracts/briefs/merge.md) shells out through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` as the post-merge baseline gate. The validation rules (SemVer `info.version`, `info.x-specify-id` format, cross-repo id-uniqueness) survived intact; the JSON envelope remains byte-compatible with the retired in-binary validator. See [`specify tool run contract`](../reference/cli/contract.md).
+
+### Future lints
+
+RFC-15 reserves three rule ids that compose with the RFC-5 framework linter once the broader linter has enough context:
+
+- `tool.write-permission-too-broad` — warn on broad writes (including `$PROJECT_DIR`) where root-file scaffolding is not justified.
+- `tool.lifecycle-state-write-denied` — reject writes to Specify lifecycle state.
+- `skill.invokes-host-binary-with-declared-tool-equivalent` — warn when a brief or skill shells out to a host helper after an equivalent declared tool exists.
+
+## RFC-16 — Vectis WASI tools and `specify-vectis` retirement
+
+[RFC-16](https://github.com/augentic/specify/blob/main/rfcs/rfc-16-wasi-vectis.md) applies the RFC-15 declared-tool model to Vectis. Operators install one binary, `specify`; the deterministic Vectis helpers ship as WASI command components declared by `capabilities/vectis/tools.yaml`.
+
+### Two declared tools
+
+- **`vectis-validate`** — read-only validation for Vectis UI input artifacts (`tokens`, `assets`, `layout`, `composition`, `all`). Replaces `specify-vectis validate <mode> [path]`.
+- **`vectis-scaffold`** — render-only scaffolding for the Vectis core, iOS, and Android shells. Writes template output under `PROJECT_DIR` using the permissions declared by `capabilities/vectis/tools.yaml`. Replaces `specify-vectis init` and `specify-vectis add-shell`.
+
+Frozen v1 tool arguments:
+
+```bash
+specify tool run vectis-validate -- <mode> [path]
+specify tool run vectis-scaffold -- core <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
+specify tool run vectis-scaffold -- ios <app-name> [--caps <csv>] [--version-file <path>]
+specify tool run vectis-scaffold -- android <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
+```
+
+`vectis-scaffold` is render-only. It does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis writer, reviewer, and template-updater skills.
+
+### Host post-processing is skill-owned
+
+The previous `specify-vectis` binary mixed pure rendering with host-toolchain work. RFC-16 splits them: WASI tools handle the deterministic, file-IO-only work; host commands (Cargo, Gradle wrapper bootstrap, `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) live in Vectis skills as ordinary shell commands the agent runs and journals.
+
+### `specify-vectis` retired
+
+The standalone `specify-vectis` binary is retired in `specify-cli`. The repo evidence supported deletion rather than a deprecation wrapper: `crates/vectis/Cargo.toml` set `publish = false`, release archives only ever packaged the `specify` binary, and `release.md` never listed `specify-vectis` in the public crates.io publish order. Operators no longer need a second binary for Vectis. Historical RFCs may still mention `specify-vectis verify`, `update-versions`, and `versions`; in v1 those concerns live in skill-owned host workflows and the [template-updater skill](../../plugins/vectis/skills/template-updater/SKILL.md), not in a WASI wrapper.
+
+See [Vectis WASI tools](../reference/cli/vectis.md) for the operator-facing surface and migration map.
 
 ## v2 layout — platform artifacts at the repo root (specify-cli `0.2.0`)
 
@@ -38,7 +139,7 @@ Per-artifact migration map:
 
 ## Vectis schema v3 — design-system-writer removed (RFC-11)
 
-[RFC-11](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-11-ui-spec.md) dissolves the standalone `vectis:design-system-writer` skill and the `design-system` platform enum value. Each shell writer (`ios-writer`, `android-writer`) now reads `tokens.yaml` and `assets.yaml` directly and emits shell-local theme + asset code under its own tree (`iOS/<App>/Theme/` for iOS, `Android/.../ui/theme/` for Android). The `schemas/vectis/schema.yaml` version bumps from `2` to `3` and the `plugins/vectis/skills/design-system-writer/` directory is deleted. Projects that reference `design-system` in their Platforms list or import `VectisDesign` / `:vectis-design` should migrate to the shell-local theming model.
+[RFC-11](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-11-ui-spec.md) dissolves the standalone `vectis:design-system-writer` skill and the `design-system` platform enum value. Each shell writer (`ios-writer`, `android-writer`) now reads `tokens.yaml` and `assets.yaml` directly and emits shell-local theme + asset code under its own tree (`iOS/<App>/Theme/` for iOS, `Android/.../ui/theme/` for Android). The Vectis capability bumps from `2` to `3` (the manifest moved from `schemas/vectis/schema.yaml` to `capabilities/vectis/capability.yaml` as part of RFC-13 — see §RFC-13 below) and the `plugins/vectis/skills/design-system-writer/` directory is deleted. Projects that reference `design-system` in their Platforms list or import `VectisDesign` / `:vectis-design` should migrate to the shell-local theming model.
 
 ## RFC-10 plugin namespace renormalisation (v0.25.0)
 

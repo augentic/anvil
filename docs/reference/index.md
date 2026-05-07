@@ -12,12 +12,12 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Skills
 
-- [Change Skills (Layer 2)](change-skills/index.md) -- the define-build-merge loop and supporting skills (init, drop, status, verify, explore, extract).
-- [Initiative Skills (Layers 3 & 4)](change-skills/index.md) -- `/change:plan`, `/change:execute`, and `/spec:analyze` for multi-slice changes (Layer 3); the `/change:plan --orchestrate` umbrella mode (formerly `/spec:initiative`, then `/change:plan --orchestrate` until RFC-13 §3.9) for cross-repo changes end-to-end (Layer 4).
+- [Slice Skills (Layer 2)](slice-skills/index.md) -- the define-build-merge loop and supporting skills (init, drop, extract).
+- [Change Skills (Layers 3 & 4)](change-skills/index.md) -- `/change:plan`, `/change:execute`, and `/spec:analyze` for multi-slice changes (Layer 3); the `/change:plan --orchestrate` umbrella mode (formerly `/spec:initiative`, then `/change:plan --orchestrate` until RFC-13 §Migration) for cross-repo changes end-to-end (Layer 4).
 
 ### CLI
 
-- [CLI Reference](cli/index.md) -- all `specify` subcommands grouped by family (status, slice, change, registry, workspace, capability, tool, init, vectis).
+- [CLI Reference](cli/index.md) -- all `specify` subcommands grouped by family (status, slice, change, registry, workspace, capability, tool, init, plus the Vectis WASI tools run through `specify tool`).
 
 ### Plugins
 
@@ -35,7 +35,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 | I want to... | Go to... |
 |-------------|---------|
-| Understand how a skill works | [Change Skills](change-skills/index.md) or [Initiative Skills](change-skills/index.md) |
+| Understand how a skill works | [Slice Skills](slice-skills/index.md) or [Change Skills](change-skills/index.md) |
 | Look up a CLI command | [CLI Reference](cli/index.md) |
 | Check artifact format | [Artifact Format](artifact-format.md) |
 | Understand lifecycle states | [Lifecycle](lifecycle.md) |

@@ -88,8 +88,23 @@ These surfaces are untouched. Scripts that use them keep working.
 - `specify workspace {sync, status, push, merge}` -- multi-repo workspace clones; `merge` was added by RFC-9 §4A.
 - `specify change {create, show, finalize}` -- operator brief at `change.md`; `finalize` was added by RFC-9 §4C, and `init` was renamed to `create` in v1.x. The umbrella verbs were renamed from `specify initiative *` to `specify change *` by RFC-13 §3.5.
 - `specify registry {add, remove, show, validate}` -- platform registry at `registry.yaml`; `add` and `remove` were added by RFC-9 §2A.
-- `specify vectis {init, verify, add-shell, update-versions}` -- historical Vectis project tooling. RFC-13 §4.3a briefly re-extracted these as a private `specify-vectis` binary; RFC-16 supersedes that surface with declared tools: `specify tool run vectis-validate -- <mode> [path]` for validation and `specify tool run vectis-scaffold -- core|ios|android ...` for render-only scaffolding. Host verification and version repair now live in Vectis skills.
 - `specify slice {create, list, status, transition, touched-specs, overlap, archive, drop}` -- the per-slice CRUD verbs (renamed from the v1.x `specify change *` group by RFC-13 §3.2). The rename added new verbs alongside; it did not displace these.
+
+## Vectis: from `specify vectis` to declared WASI tools (RFC-16)
+
+The `specify vectis {init, verify, add-shell, update-versions}` family no longer exists. RFC-13 §4.3a briefly re-extracted it as a private `specify-vectis` binary; RFC-16 retires that binary entirely. Operators now install one binary, `specify`, and Vectis ships its deterministic helpers as declared WASI command components in `capabilities/vectis/tools.yaml`.
+
+Migration map:
+
+| Retired surface | Current surface |
+|---|---|
+| `specify vectis init <app-name>` / `specify-vectis init <app-name>` | `specify tool run vectis-scaffold -- core <app-name>` plus optional `ios` / `android` render steps and skill-owned host workflow |
+| `specify vectis add-shell ios` / `specify-vectis add-shell ios` | `specify tool run vectis-scaffold -- ios <app-name>` plus iOS writer post-processing |
+| `specify vectis add-shell android` / `specify-vectis add-shell android` | `specify tool run vectis-scaffold -- android <app-name> [--android-package <package>]` plus Android writer post-processing |
+| `specify-vectis validate <mode> [path]` | `specify tool run vectis-validate -- <mode> [path]` |
+| `specify-vectis verify`, `update-versions`, `versions` | No direct WASI wrapper in v1; skill-owned host workflow and template-updater guidance own these concerns. |
+
+`vectis-scaffold` is render-only — it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the [Vectis writer, reviewer, and template-updater skills](../reference/plugins/vectis.md). See [Vectis WASI tools](../reference/cli/vectis.md) for the full operator-facing surface and [What's New §RFC-16](whats-new.md#rfc-16-vectis-wasi-tools-and-specify-vectis-retirement) for the design context.
 
 ## See also
 

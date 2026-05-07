@@ -202,7 +202,7 @@ Per-change lifecycle metadata. **Never hand-edit this file.**
 status: building
 created_at: "2026-04-24T10:30:00Z"
 updated_at: "2026-04-24T11:15:00Z"
-schema: https://github.com/augentic/specify/schemas/omnia
+schema: https://github.com/augentic/specify/capabilities/omnia
 touched_specs:
   - specs/greeting/spec.md
 outcome: null

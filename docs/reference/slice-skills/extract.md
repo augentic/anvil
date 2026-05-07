@@ -71,7 +71,7 @@ None directly. Extract is typically invoked as part of `/spec:define`, which han
 **Brownfield onboarding flow:**
 
 ```text
-/spec:init https://github.com/augentic/specify/schemas/omnia
+/spec:init https://github.com/augentic/specify/capabilities/omnia
 /spec:extract . .specify/slices/initial-baseline/
 /spec:merge initial-baseline
 ```

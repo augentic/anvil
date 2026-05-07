@@ -110,7 +110,7 @@ The `pipeline` object has three required phases -- `define`, `build`, and `merge
 | `build` | `/spec:build` (implementation) | 1 |
 | `merge` | `/spec:merge` (baseline merge) | 1 |
 
-> **No `pipeline.plan`.** Planning is orchestration, not capability-owned slice work; both `capabilities/capability.schema.json` (this repo) and `schemas/capability.schema.json` (CLI) reject `pipeline.plan` outright. Planning briefs live with the change-planning skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../plugins/change/skills/plan/briefs/) — see [RFC-13 §3.11](../../rfcs/archive/rfc-13-extensibility.md) for the migration that landed this rejection.
+> **No `pipeline.plan`.** Planning is orchestration, not capability-owned slice work; both `capabilities/capability.schema.json` (this repo) and `schemas/capability.schema.json` (CLI) reject `pipeline.plan` outright. Planning briefs live with the change-planning skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../plugins/change/skills/plan/briefs/) — see [RFC-13 §"Platform components are not capabilities"](../../rfcs/archive/rfc-13-extensibility.md#platform-components-are-not-capabilities) for the boundary that lands this rejection.
 
 Each phase contains an ordered array of **pipeline entries**:
 

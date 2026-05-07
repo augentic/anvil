@@ -29,7 +29,7 @@ The contract change defines the interface (JSON Schema payloads, OpenAPI binding
 If you are not using `/change:plan`, you can create contract changes manually:
 
 ```text
-/spec:init https://github.com/augentic/specify/schemas/contracts
+/spec:init https://github.com/augentic/specify/capabilities/contracts
 
 /spec:define "Define the user registration API contract"
 /spec:build
