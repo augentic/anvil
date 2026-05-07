@@ -1,10 +1,14 @@
 # Capability-scope tool declarations for the contracts capability.
 # Schema: ../../../specify-cli/schemas/tool.schema.json
+#
+# RFC-16 release artifacts are not public yet. These portable release-URL
+# placeholders keep `specify tool list` valid; replace the placeholder versions
+# with the final release version and add SHA-256 pins before publishing.
 tools:
   - name: contract
-    version: 0.2.0
-    source: "file:///Users/andrewweston/github.com/augentic/specify-cli/crates/contract-validate/dist/contract-0.2.0.wasm"
-    sha256: "6f32f636b7e1872f23a76b8adcccb8855a882bf83691151f7392a16df294a805"
+    version: 0.0.0-rfc16-placeholder
+    source: "https://github.com/augentic/specify-cli/releases/download/v0.0.0-rfc16-placeholder/contract.wasm"
+    # sha256: "<final release SHA-256>"
     permissions:
       read:
         - "$PROJECT_DIR/contracts"

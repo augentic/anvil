@@ -6,7 +6,7 @@ tracks: tasks
 ---
 
 Arguments (used by all skills):
-- CHANGE_ID: the name of this change (from specify status)
+- SLICE_ID: the name of this slice (from specify status)
 - FEATURE_NAME: the spec folder name (specs/<feature>/spec.md)
 - PROJECT_DIR: the target project directory
 - IOS_SHELL_DIR: the root directory of the iOS shell project (e.g. `$PROJECT_DIR/iOS`)
@@ -164,7 +164,7 @@ For each skill invocation:
 
 1. **Spawn** a sub-agent with a prompt containing:
    - The skill name to invoke (e.g., `/vectis:core-writer`)
-   - The standard arguments (CHANGE_ID, FEATURE_NAME, PROJECT_DIR, etc.)
+   - The standard arguments (SLICE_ID, FEATURE_NAME, PROJECT_DIR, etc.)
    - The mode (create or update) already determined by the orchestrator
    - Any phase-specific context (e.g., error output for repair, baseline test log for update-mode verification)
 
@@ -186,7 +186,7 @@ Each sub-agent receives and returns structured information:
 | Field | Description |
 | --- | --- |
 | `skill` | Skill name (e.g., `vectis:core-writer`) |
-| `arguments` | Standard arguments: CHANGE_ID, FEATURE_NAME, PROJECT_DIR, shell dirs, APP_NAME |
+| `arguments` | Standard arguments: SLICE_ID, FEATURE_NAME, PROJECT_DIR, shell dirs, APP_NAME |
 | `mode` | `create`, `update`, or `repair` (determined by orchestrator before spawning) |
 | `skip_verification` | If `true`, the skill skips its internal build-verification step (ios-writer step 11 / U8, android-writer step 15 / U8). The orchestrator sets this for shell writers and runs verification in a dedicated sub-agent afterward. Defaults to `false` for standalone invocations. |
 | `artifact_paths` | Paths to spec, design, and proposal files |
@@ -258,7 +258,7 @@ Spawn a sub-agent to run the skill. The reviewer internally creates its own agen
 Before spawning any sub-agents, record the current test state:
 
 ```bash
-cd $PROJECT_DIR && cargo test 2>&1 | tee /tmp/${CHANGE_ID}-${FEATURE_NAME}-baseline.txt
+cd $PROJECT_DIR && cargo test 2>&1 | tee /tmp/${SLICE_ID}-${FEATURE_NAME}-baseline.txt
 ```
 
 Record which tests pass and which fail. This baseline is passed to the verify-repair sub-agent in Phase 3 for regression detection.

@@ -16,7 +16,7 @@ Build writes only change-local contract deltas:
 Build must not edit root `contracts/` directly. Baseline updates happen only during merge.
 
 Arguments:
-- CHANGE_ID: the name of this change (from specify status)
+- SLICE_ID: the name of this slice (from specify status)
 
 ## Inputs
 
