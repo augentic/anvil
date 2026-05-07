@@ -1,7 +1,7 @@
 {
   "name": "client",
   "displayName": "Client",
-  "description": "Skills to generate client-facing deliverables \u2014 Statements of Work, proposals, pricing summaries, and similar artefacts \u2014 from Specify artifacts.",
+  "description": "Skills to generate client-facing deliverables — Statements of Work, proposals, pricing summaries, and similar artefacts — from Specify artifacts.",
   "version": "0.26.0",
   "author": {
     "name": "Augentic",
