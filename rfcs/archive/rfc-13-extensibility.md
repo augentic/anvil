@@ -1,6 +1,6 @@
 # RFC-13: Extensibility
 
-> Status: Implemented · Depends: [RFC-1](rfc-1-cli.md), [RFC-8](rfc-8-api-contracts.md), [RFC-9](rfc-9-platform.md), [RFC-12](rfc-12-refine-rfc-8.md) · Enables: [RFC-14](../rfc-14-workspace.md)
+> Status: Implemented · Depends: [RFC-1](rfc-1-cli.md), [RFC-8](rfc-8-api-contracts.md), [RFC-9](rfc-9-platform.md), [RFC-12](rfc-12-refine-rfc-8.md) · Enables: [RFC-14](rfc-14-workspace.md)
 
 ## Abstract
 
@@ -173,7 +173,7 @@ Capability merge skills own domain adoption. The merge brief validates the capab
 
 Within a project or scope, capability coexistence is governed by one active domain capability. Only the active domain capability owns the slice's mutable artefacts.
 
-A repository activates exactly one **domain** capability under this RFC. Multi-domain repositories are covered by [RFC-14](../rfc-14-workspace.md), which adds a Cargo-style `package:` / `workspace:` shape.
+A repository activates exactly one **domain** capability under this RFC. Multi-domain repositories are covered by [RFC-14](rfc-14-workspace.md), which adds a Cargo-style `package:` / `workspace:` shape.
 
 #### Cross-capability coordination
 
@@ -235,7 +235,7 @@ When change execution materialises registry-declared projects, capability skills
 - **Cloud execution semantics.** Orthogonal; capability skills should run through whatever tool execution model the host provides.
 - **Back-compat for capabilities without the new surface.** See §Migration — current usage footprint lets us cut over without a fallback path.
 - **Third-party replacements for foundation components.** Registry and the change component are first-party Specify components in this RFC. Swapping them or making them externally pluggable is a follow-up RFC.
-- **Multiple domain capabilities per repository.** Covered by [RFC-14](../rfc-14-workspace.md), strictly additive on top of this RFC's capability manifest protocol.
+- **Multiple domain capabilities per repository.** Covered by [RFC-14](rfc-14-workspace.md), strictly additive on top of this RFC's capability manifest protocol.
 - **Cross-capability slices in a single transaction.** Multi-capability outcomes are coordinated by change plan entries, not by one slice that writes multiple capabilities' baselines. RFC-14 applies the same rule to scopes: cross-scope work is a change plan with multiple entries, not a multi-scope slice.
 
 ## Glossary

@@ -1,6 +1,6 @@
 # RFC-14: Registry Workspace
 
-> Status: Implemented · Depends: [RFC-13](archive/rfc-13-extensibility.md), [RFC-1](archive/rfc-1-cli.md), [RFC-9](archive/rfc-9-platform.md)
+> Status: Implemented · Depends: [RFC-13](rfc-13-extensibility.md), [RFC-1](rfc-1-cli.md), [RFC-9](rfc-9-platform.md)
 
 ## Abstract
 
@@ -402,10 +402,10 @@ RFC-14 resolves the first landing around strict selectors, `origin/HEAD` branch 
 
 ## References
 
-- [RFC-13: Immutable core + capability extensions](archive/rfc-13-extensibility.md) - capability protocol, platform components, and registry-materialised execution.
-- [RFC-1: `specify` CLI](archive/rfc-1-cli.md) - CLI conventions and project config.
-- [RFC-2: Execution](archive/rfc-2-execution.md) - plan loop and dependency ordering.
-- [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) - plan entry shape.
-- [RFC-3b: Platform](archive/rfc-3b-platform.md) - cross-repo routing.
-- [RFC-9: Platform](archive/rfc-9-platform.md) - registry/change root placement and workspace push (the PR merge automation introduced in RFC-9 §4A is removed by RFC-14).
+- [RFC-13: Immutable core + capability extensions](rfc-13-extensibility.md) - capability protocol, platform components, and registry-materialised execution.
+- [RFC-1: `specify` CLI](rfc-1-cli.md) - CLI conventions and project config.
+- [RFC-2: Execution](rfc-2-execution.md) - plan loop and dependency ordering.
+- [RFC-3a: Monoliths](rfc-3a-monoliths.md) - plan entry shape.
+- [RFC-3b: Platform](rfc-3b-platform.md) - cross-repo routing.
+- [RFC-9: Platform](rfc-9-platform.md) - registry/change root placement and workspace push (the PR merge automation introduced in RFC-9 §4A is removed by RFC-14).
 

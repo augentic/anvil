@@ -2,7 +2,7 @@
 
 This page captures the **additive** changes to the Specify framework since the v1 CLI cleanup landed in v0.23. The v1 cleanup was a routing-only reshape (renamed verbs, no new behaviour); the work below adds new capabilities. For pure rename mappings see [Migrating to CLI v1](migrating-cli-v1.md). The two pages compose: this one tells you **what is new**, the migration map tells you **what was renamed**.
 
-The bulk of the additions ship under [RFC-9: Platform-First Operator Experience](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md) and [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md). RFC-9 closes the operator-experience gaps in the cross-repo loop; RFC-8 introduces contracts as platform-level artifacts. The most recent additions land [RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md) (capability rename, platform-component split, change/slice vocabulary), [RFC-14](../../rfcs/rfc-14-workspace.md) (workspace branch and PR ownership), [RFC-15](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasm-plugins.md) (declared WASI capability tools), and [RFC-16](https://github.com/augentic/specify/blob/main/rfcs/rfc-16-wasi-vectis.md) (Vectis WASI tools and `specify-vectis` retirement).
+The bulk of the additions ship under [RFC-9: Platform-First Operator Experience](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md) and [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md). RFC-9 closes the operator-experience gaps in the cross-repo loop; RFC-8 introduces contracts as platform-level artifacts. The most recent additions land [RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md) (capability rename, platform-component split, change/slice vocabulary), [RFC-14](../../rfcs/archive/rfc-14-workspace.md) (workspace branch and PR ownership), [RFC-15](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasm-plugins.md) (declared WASI capability tools), and [RFC-16](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-16-wasi-vectis.md) (Vectis WASI tools and `specify-vectis` retirement).
 
 ## RFC-13 — capability rename and platform-component split
 
@@ -39,7 +39,7 @@ A hub now carries `project.yaml { hub: true, … }` with the `capability:` field
 
 ## RFC-14 — workspace branch and PR ownership
 
-[RFC-14](../../rfcs/rfc-14-workspace.md) tightens the cross-repo landing contract so Specify prepares and publishes work, but operators own the PR merge decision.
+[RFC-14](../../rfcs/archive/rfc-14-workspace.md) tightens the cross-repo landing contract so Specify prepares and publishes work, but operators own the PR merge decision.
 
 - **`/change:execute` prepares workspace branches.** For each routed plan entry, the driver materialises only the selected workspace slot when needed, prepares `specify/<change-name>` before phase writes, runs define-build-merge in that slot, and commits non-baseline residue as `specify: residue <slice-name>` after `/spec:merge` succeeds.
 - **`/spec:merge` owns only the baseline commit.** In workspace clones, the merge auto-commit stages `.specify/specs/` and `.specify/archive/` only, with message `specify: merge <slice-name>`. Generated code, contracts, tests, and other project outputs are left for `/change:execute`'s residue commit.
@@ -87,7 +87,7 @@ RFC-15 reserves three rule ids that compose with the RFC-5 framework linter once
 
 ## RFC-16 — Vectis WASI tools and `specify-vectis` retirement
 
-[RFC-16](https://github.com/augentic/specify/blob/main/rfcs/rfc-16-wasi-vectis.md) applies the RFC-15 declared-tool model to Vectis. Operators install one binary, `specify`; the deterministic Vectis helpers ship as WASI command components declared by `capabilities/vectis/tools.yaml`.
+[RFC-16](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-16-wasi-vectis.md) applies the RFC-15 declared-tool model to Vectis. Operators install one binary, `specify`; the deterministic Vectis helpers ship as WASI command components declared by `capabilities/vectis/tools.yaml`.
 
 ### Two declared tools
 
