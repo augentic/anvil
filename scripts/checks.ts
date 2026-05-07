@@ -41,7 +41,6 @@ async function checkMarkdownLinks(): Promise<void> {
   const SKIP_DIRS = [/node_modules/, /\.git/, /temp/];
   const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
   const FENCE_RE = /```[\s\S]*?```/g;
-  const COMMENT_RE = /<!--[\s\S]*?-->/g;
 
   for await (const entry of walk(REPO_ROOT, {
     exts: [".md"],
@@ -59,7 +58,7 @@ async function checkMarkdownLinks(): Promise<void> {
       continue;
     }
 
-    const stripped = content.replace(FENCE_RE, "").replace(COMMENT_RE, "");
+    const stripped = stripHtmlComments(content.replace(FENCE_RE, ""));
 
     for (const m of stripped.matchAll(LINK_RE)) {
       const target = m[1];
@@ -75,6 +74,26 @@ async function checkMarkdownLinks(): Promise<void> {
       }
     }
   }
+}
+
+function stripHtmlComments(content: string): string {
+  let stripped = "";
+  let cursor = 0;
+
+  while (cursor < content.length) {
+    const start = content.indexOf("<!--", cursor);
+    if (start === -1) {
+      stripped += content.slice(cursor);
+      break;
+    }
+
+    stripped += content.slice(cursor, start);
+    const end = content.indexOf("-->", start + "<!--".length);
+    if (end === -1) break;
+    cursor = end + "-->".length;
+  }
+
+  return stripped;
 }
 
 // ──────────────────────────────────────────────────────────────
