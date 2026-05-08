@@ -35,13 +35,6 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 
 ### Near Term
 
-#### RM-01: Multi-repo acceptance fixture
-
-**Goal:** Prove a realistic multi-slice, multi-repo flow.
-**Covers:** plan generation, registry routing, dependent slice execution, branch preparation, workspace sync, residue and baseline commit behavior, push and PR/MR handoff, and finalize after external merge.
-**Output:** an automated or semi-automated suite against local fixture repositories with fake or recorded forge behavior. Recovery paths land in *Multi-repo acceptance suite expansion*.
-**Executable proof:** `specify-cli` repo's `tests/cross_repo.rs`.
-
 #### RM-02: `AGENTS.md` generation under proposed `specify context`
 
 **Goal:** Generate concise, deterministic, refreshable repository context.
@@ -232,6 +225,17 @@ specify execute resume <run-id>
 **Includes:** publishing and discovery conventions, version compatibility tests, declared-tool compatibility, migration guidance, quality gates, examples beyond Omnia/Vectis/contracts, and ownership for codex rules, artifact templates, and tool manifests.
 
 #### RM-23: Hosted observability dashboards
+
+---
+
+### Completed
+
+~~**RM-01:** Multi-repo acceptance fixture~~
+
+~~**Goal:** Prove a realistic multi-slice, multi-repo flow.~~
+~~**Covers:** plan generation, registry routing, dependent slice execution, branch preparation, workspace sync, residue and baseline commit behavior, push and PR/MR handoff, and finalize after external merge.~~
+~~**Output:** an automated or semi-automated suite against local fixture repositories with fake or recorded forge behavior. Recovery paths land in *Multi-repo acceptance suite expansion*.~~ 
+~~**Executable proof:** `specify-cli` repo's `tests/cross_repo.rs`.~~
 
 ---
 
