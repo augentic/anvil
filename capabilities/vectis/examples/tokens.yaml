@@ -90,7 +90,7 @@ colors:
 # typeface field. Shell writers that prefer the platform default font
 # (e.g. San Francisco on iOS, Roboto on Android) may ignore this section.
 typefaces:
-  sans:
+  default:
     family: "Inter"
     fallback: "system-ui, sans-serif"
     source: google-fonts
@@ -105,95 +105,109 @@ typefaces:
 # When omitted, shell writers use the platform default font.
 typography:
   display-large:
-    typeface: sans
+    typeface: default
     size: 57
     weight: bold
     lineHeight: 64
     letterSpacing: -0.25
   display-medium:
-    typeface: sans
+    typeface: default
     size: 45
     weight: bold
     lineHeight: 52
     letterSpacing: 0
   display-small:
-    typeface: sans
+    typeface: default
     size: 36
     weight: bold
     lineHeight: 44
     letterSpacing: 0
 
   headline-large:
+    typeface: default
     size: 32
     weight: semibold
     lineHeight: 40
     letterSpacing: 0
   headline-medium:
+    typeface: default
     size: 28
     weight: semibold
     lineHeight: 36
     letterSpacing: 0
   headline-small:
+    typeface: default
     size: 24
     weight: semibold
     lineHeight: 32
     letterSpacing: 0
 
   title-large:
+    typeface: default
     size: 22
     weight: medium
     lineHeight: 28
     letterSpacing: 0
   title-medium:
+    typeface: default
     size: 16
     weight: medium
     lineHeight: 24
     letterSpacing: 0.15
   title-small:
+    typeface: default
     size: 14
     weight: medium
     lineHeight: 20
     letterSpacing: 0.1
 
   body-large:
+    typeface: default
     size: 16
     weight: regular
     lineHeight: 24
     letterSpacing: 0.5
   body-medium:
+    typeface: default
     size: 14
     weight: regular
     lineHeight: 20
     letterSpacing: 0.25
   body-small:
+    typeface: default
     size: 12
     weight: regular
     lineHeight: 16
     letterSpacing: 0.4
 
   label-large:
+    typeface: default
     size: 14
     weight: medium
     lineHeight: 20
     letterSpacing: 0.1
   label-medium:
+    typeface: default
     size: 12
     weight: medium
     lineHeight: 16
     letterSpacing: 0.5
   label-small:
+    typeface: default
     size: 11
     weight: medium
     lineHeight: 16
     letterSpacing: 0.5
 
   caption:
+    typeface: default
     size: 10
     weight: regular
     lineHeight: 14
     letterSpacing: 0.4
 
   overline:
+    typeface: default
     size: 10
     weight: semibold
     lineHeight: 14
@@ -240,7 +254,7 @@ elevation:
   overlay: 4
 
 # ── Borders ────────────────────────────────────────────────
-# width in pt; color references a token name from the colors section.
+# width in pt; color references a colors token; radius references a cornerRadius token.
 border:
   thin:
     width: 1
@@ -248,27 +262,27 @@ border:
   medium:
     width: 1.5
     color: border-default
-    radius: 8
+    radius: md
   thick:
     width: 2
     color: border-strong
-    radius: 12
+    radius: lg
   focus-ring:
     width: 2
     color: border-focus
-    radius: 8
+    radius: md
   card:
     width: 1
     color: border-default
-    radius: 12
+    radius: lg
   input:
     width: 1
     color: border-default
-    radius: 8
+    radius: md
   input-error:
     width: 2
     color: semantic-error
-    radius: 8
+    radius: md
 
 # ── Opacity ────────────────────────────────────────────────
 # 0.0 = fully transparent, 1.0 = fully opaque.

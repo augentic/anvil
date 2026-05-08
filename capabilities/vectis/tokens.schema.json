@@ -52,7 +52,7 @@
     },
     "tokenRef": {
       "type": "string",
-      "description": "Reference to a token name defined elsewhere in this document (typically a colors entry for border.color)."
+      "description": "Reference to a token name defined elsewhere in this document (e.g. a colors entry for border.color, or a cornerRadius entry for border.radius)."
     },
     "hexColor": {
       "type": "string",
@@ -177,7 +177,7 @@
       "properties": {
         "width": { "type": "number", "minimum": 0 },
         "color": { "$ref": "#/$defs/tokenRef" },
-        "radius": { "type": "number", "minimum": 0 }
+        "radius": { "$ref": "#/$defs/tokenRef" }
       }
     }
   }
