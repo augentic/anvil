@@ -21,6 +21,8 @@ Open your project in Cursor and type the following in the agent chat:
 Specify Initialized
   Capability: omnia@latest
   Project config: .specify/project.yaml
+  Agent context: AGENTS.md
+  Context lock: .specify/context.lock
   Cache: .specify/.cache/omnia/
 ```
 
@@ -29,8 +31,10 @@ Specify Initialized
 Specify creates the `.specify/` directory:
 
 ```
+AGENTS.md                  # generated agent context
 .specify/
 ├── project.yaml           # project configuration
+├── context.lock           # context freshness fingerprint
 ├── .cache/omnia/           # cached capability and briefs
 ├── slices/                # will hold active slices
 ├── specs/                 # will hold merged baseline specs

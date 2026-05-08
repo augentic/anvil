@@ -67,6 +67,7 @@
   - [specify change](reference/cli/change.md)
   - [specify registry](reference/cli/registry.md)
   - [specify capability](reference/cli/capability.md)
+  - [specify context](reference/cli/context.md)
   - [specify tool](reference/cli/tool.md)
   - [specify workspace](reference/cli/workspace.md)
   - [Contract validator (WASI tool)](reference/cli/contract.md)

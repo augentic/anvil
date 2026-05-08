@@ -75,6 +75,9 @@ specify slice status <name>              # single-slice view
 # Project setup
 specify init <capability>                 # regular single-project scaffold (positional capability identifier or URL)
 specify init --hub                        # registry-only platform hub (RFC-9 1D)
+specify context generate                  # write or refresh generated AGENTS.md guidance
+specify context generate --check          # CI dry-run; exit 1 when context would change
+specify context check                     # report stale AGENTS.md/context.lock state
 
 # Slice management
 specify slice list
@@ -128,12 +131,14 @@ specify slice merge conflict-check <name>
 
 ```
 <project-root>/
+├── AGENTS.md             # generated agent guidance with operator-editable prose outside fences
 ├── registry.yaml         # platform catalogue (optional, multi-repo)
 ├── plan.yaml             # change plan (optional)
 ├── change.md             # operator brief (optional)
 ├── contracts/            # baseline API contracts (schemas/, http/, messages/)
 └── .specify/
     ├── project.yaml      # project config
+    ├── context.lock      # fingerprint for specify context check
     ├── plan.lock         # advisory lock for /change:execute
     ├── .cache/           # cached capability manifest + briefs
     ├── slices/           # active slices (contracts/, composition.yaml for Vectis)

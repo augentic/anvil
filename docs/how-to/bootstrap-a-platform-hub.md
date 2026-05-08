@@ -46,10 +46,12 @@ The hub now contains:
 
 ```text
 shop-platform/
+├── AGENTS.md         # generated hub context
 ├── registry.yaml     # version: 1, projects: []
 ├── .gitignore        # upserts .specify/.cache/ and .specify/workspace/
 └── .specify/
-    └── project.yaml  # hub: true (capability: omitted)
+    ├── project.yaml  # hub: true (capability: omitted)
+    └── context.lock  # context freshness fingerprint
 ```
 
 `specify init --hub` does not create `change.md` or `plan.yaml`; `specify change create` and `specify change plan create` mint those operator artifacts when a specific change begins. It refuses to run when `.specify/` already exists -- the guard prevents accidentally clobbering an existing single-project setup. Remove `.specify/` first if you genuinely want to convert.
@@ -90,7 +92,7 @@ specify registry show
 ## 5. Commit the platform state
 
 ```bash
-git add .specify/ registry.yaml .gitignore
+git add AGENTS.md .specify/ registry.yaml .gitignore
 git commit -m "Bootstrap shop-platform hub with two registered projects"
 ```
 
@@ -101,7 +103,8 @@ The hub is now ready to drive a change. The recommended next step is the cross-r
 | Check | Command | Expect |
 |-------|---------|--------|
 | Hub markers in place | `cat .specify/project.yaml` | A line containing `hub: true` and **no** `capability:` line. |
-| Phase pipelines disabled | `ls .specify/` | `project.yaml` only. **No** `slices/`, `specs/`, or `.cache/`. |
+| Phase pipelines disabled | `ls .specify/` | `project.yaml` and `context.lock` only. **No** `slices/`, `specs/`, or `.cache/`. |
+| Context generated | `test -f AGENTS.md && specify context check` | Exit 0. |
 | Registry validates | `specify registry validate` | Exit 0, no diagnostics. |
 | Both projects listed | `specify registry show` | `version: 1` and two `projects[]` entries with descriptions. |
 

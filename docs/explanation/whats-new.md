@@ -117,7 +117,7 @@ See [Vectis WASI tools](../reference/cli/vectis.md) for the operator-facing surf
 
 ## v2 layout — platform artifacts at the repo root (specify-cli `0.2.0`)
 
-The on-disk layout split along a clear boundary: **operator-facing platform artifacts** (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at the repo root; **framework-managed state** (`project.yaml`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`. The boundary makes the responsibilities explicit — operators own everything at the root; Specify owns `.specify/`.
+The on-disk layout split along a clear boundary: **operator-facing platform artifacts** (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at the repo root; generated `AGENTS.md` guidance also lives at the root with Specify owning only its fenced block; **framework-managed state** (`project.yaml`, `context.lock`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`. The boundary makes the responsibilities explicit — operators own root artifacts and prose outside generated fences; Specify owns `.specify/`.
 
 This is a **hard cutover**. The CLI no longer reads the v1 layout. Any project-aware verb on a v1-layout project errors with the stable `legacy-layout` code (exit 1) and points the operator at:
 

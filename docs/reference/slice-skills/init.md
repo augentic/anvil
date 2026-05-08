@@ -28,14 +28,17 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 |----------|----------|---------|
 | Project config | `.specify/project.yaml` | Capability identifier, domain description, project rules (regular); just `hub: true` (hub) |
 | Capability cache | `.specify/.cache/<capability>/` | Cached capability manifest and brief files (regular only) |
-| Directory structure | `.specify/{changes,specs,archive}/` | Empty scaffold (regular only) |
+| Directory structure | `.specify/{slices,specs,archive}/` | Empty scaffold (regular only) |
+| Agent context | `AGENTS.md` | Generated repository guidance when root `AGENTS.md` is absent |
+| Context lock | `.specify/context.lock` | Fingerprint sidecar for `specify context check` |
 
 ## Behavior
 
 1. Checks whether `.specify/` already exists. If so, warns and offers to reconfigure.
 2. Runs `specify init <capability>` (regular) or `specify init --hub` (hub); the CLI resolves the capability and caches its brief files into `.specify/.cache/` (regular mode only).
-3. The CLI scaffolds the directory structure and writes `project.yaml`.
-4. Detects existing source code in the project. If found, offers to create an `initial-baseline` change for `/spec:extract`.
+3. The CLI scaffolds the directory structure, writes `project.yaml`, and generates `AGENTS.md` plus `.specify/context.lock` when root `AGENTS.md` is absent.
+4. Existing root `AGENTS.md` files are preserved byte-for-byte; init reports the skip instead of overwriting them.
+5. Detects existing source code in the project. If found, offers to create an `initial-baseline` change for `/spec:extract`.
 
 ## Lifecycle transitions
 
