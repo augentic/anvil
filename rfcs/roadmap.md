@@ -31,6 +31,8 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 
 Items are ordered by intended sequencing and identified as `RM-NN`. Earlier items unblock later ones unless noted otherwise. Command examples in this roadmap are target surfaces unless the item explicitly says the command is already implemented.
 
+---
+
 ### Near Term
 
 #### RM-01: Multi-repo acceptance fixture
@@ -115,6 +117,8 @@ specify compatibility report --change <name>
 **Goal:** Move remaining first-party host helpers behind `specify tool run` where the cost/benefit is favorable.
 **Depends on:** the `specify check` port, which can enforce `skill.invokes-host-binary-with-declared-tool-equivalent`.
 
+---
+
 ### Mid Term
 
 #### RM-11: CI-native `specify review`
@@ -197,6 +201,8 @@ specify change finalize --forge github
 **Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
 **Consumes:** *Local structured workflow events*.
 
+---
+
 ### Long Term
 
 #### RM-19: Cloud-hosted execute loop
@@ -225,6 +231,8 @@ specify execute resume <run-id>
 **Includes:** publishing and discovery conventions, version compatibility tests, declared-tool compatibility, migration guidance, quality gates, examples beyond Omnia/Vectis/contracts, and ownership for codex rules, artifact templates, and tool manifests.
 
 #### RM-23: Hosted observability dashboards
+
+---
 
 **Goal:** Build hosted dashboards on top of local structured workflow events without making local workflows depend on hosted infrastructure.
 
