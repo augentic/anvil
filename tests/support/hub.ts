@@ -22,7 +22,7 @@
 //      description from the project descriptor).
 //   7. Return everything later helpers / assertions need.
 //
-// Assertions are layered on top by `tests/rm01_cross_repo_test.ts`.
+// Assertions are layered on top by `tests/cross_repo.ts`.
 // `setupHub` itself is intentionally side-effect-only on disk + CLI; it
 // does NOT decide pass/fail.
 

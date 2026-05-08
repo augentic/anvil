@@ -1,7 +1,7 @@
 # RM-01 Fixtures
 
 This directory holds the small, checked-in inputs used by
-`tests/rm01_cross_repo_test.ts`.
+`tests/cross_repo.ts`.
 
 ```text
 tests/fixtures/

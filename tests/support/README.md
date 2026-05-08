@@ -1,7 +1,7 @@
 # RM-01 Test Support
 
 This directory contains helper modules used by
-[`../rm01_cross_repo_test.ts`](../rm01_cross_repo_test.ts). It is deliberately
+[`../cross_repo.ts`](../cross_repo.ts). It is deliberately
 small support code, not a pluggable framework.
 
 The helpers provide:

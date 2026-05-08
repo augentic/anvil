@@ -8,7 +8,7 @@ checks:
 test:
 	@$(DENO) test \
 		--allow-read --allow-write --allow-env --allow-run --allow-net=none \
-		tests/rm01_cross_repo_test.ts
+		tests/cross_repo.ts
 
 .PHONY: use-local-plugins
 use-local-plugins:

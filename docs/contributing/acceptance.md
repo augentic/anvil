@@ -1,7 +1,7 @@
 # Running Acceptance
 
 The acceptance surface is intentionally small. RM-01 is covered by one direct
-Deno test at [`tests/rm01_cross_repo_test.ts`](../../tests/rm01_cross_repo_test.ts).
+Deno test at [`tests/cross_repo.ts`](../../tests/cross_repo.ts).
 It uses local fixture repositories and fake `gh`/SSH helpers, then drives the
 real `specify` CLI through the cross-repo happy path.
 

@@ -5,7 +5,7 @@ repo itself.
 
 ## RM-01 Cross-Repo Test
 
-[`rm01_cross_repo_test.ts`](rm01_cross_repo_test.ts) is the direct acceptance
+[`cross_repo.ts`](cross_repo.ts) is the direct acceptance
 proof for the roadmap's RM-01 item. It creates a fresh temp hub, two local
 fixture projects, local bare remotes, and fake `gh`/SSH, then drives the real
 `specify` binary through:
