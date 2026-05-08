@@ -1,52 +1,37 @@
 # Running Acceptance
 
-The acceptance surface is intentionally small. RM-01 is covered by one direct
-Deno test at [`tests/cross_repo.ts`](../../tests/cross_repo.ts).
-It uses local fixture repositories and fake `gh`/SSH helpers, then drives the
-real `specify` CLI through the cross-repo happy path.
+The acceptance surface is intentionally manual at this stage. RM-01 is covered
+by the scenario pack at [`tests/rm-01/`](../../tests/rm-01/), which gives
+operators a repeatable script for the cross-repo happy path without adding an
+automated harness.
 
 ## Targets
 
-- `make checks` runs static repository checks.
-- `make test` runs the RM-01 test.
+- `make checks` runs static repository checks, including scenario frontmatter
+  validation.
+- RM-01 is run manually from [`tests/rm-01/scenario.md`](../../tests/rm-01/scenario.md).
 
 ## What RM-01 Proves
 
-The test creates a fresh temp workspace with:
+The manual scenario asks an operator to create a fresh temporary workspace with:
 
 - a registry-only `shop-platform` hub,
-- `shop-backend` and `shop-mobile` fixture repos backed by local bare remotes,
-- fake `gh` and fake SSH,
-- the OAuth login fixture brief.
+- `shop-backend` and `shop-mobile` projects,
+- an OAuth login fixture brief.
 
-It then asserts the durable RM-01 behavior directly: registry setup, workspace
-sync, a three-entry contract-first plan, routed execution on `specify/oauth-login`
-branches, baseline/residue commit split, workspace push, fake external merge,
-`change finalize`, archived plan state, and `plan-not-found` on a second finalize.
+It then checks the durable RM-01 behavior directly: registry setup, a
+three-entry contract-first plan, routed execution on `specify/oauth-login`
+branches, workspace push, external operator merge, `change finalize`, archived
+plan state, and `plan-not-found` on a second finalize.
 
-The test deliberately does not keep a backend registry, recorded trace layer, or
-separate per-stage smoke targets. Rust CLI mechanics remain owned by
-`specify-cli/tests/cross_repo.rs`; this repo keeps only the smallest cross-repo
-workflow proof needed for RM-01.
+This repository does not add a Deno/Rust runner, fake forge, transcript replay,
+CI acceptance target, or golden output comparison for RM-01 yet. The goal is to
+run the manual script a few times, learn which checks are stable, and automate
+only after the simple testing shape is clear.
 
-## Setting `SPECIFY_BIN`
+## Evidence
 
-`make test` resolves `specify` in this order:
-
-1. `$SPECIFY_BIN`
-2. `specify` on `PATH`
-
-If neither is available, or the binary predates the RM-01 surface, the Deno test
-prints a skip message and exits cleanly.
-
-```bash
-# In the specify-cli checkout:
-cargo build --release
-
-# In this repo:
-export SPECIFY_BIN=/absolute/path/to/specify-cli/target/release/specify
-make test
-```
-
-Set `SPECIFY_ACCEPTANCE_PRESERVE=1` to keep the temp fixture directory after a
-passing run. Failed runs are preserved automatically and print their location.
+Each manual run should fill out
+[`tests/rm-01/run-summary-template.md`](../../tests/rm-01/run-summary-template.md).
+On failure, preserve the hub state, `plan.yaml`, `registry.yaml`, workspace
+status, push/finalize output, and branch or PR/MR identifiers.

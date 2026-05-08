@@ -102,12 +102,13 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 Acceptance scenario files are validated against `.cursor/schemas/scenario.schema.json` (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
-1. `tests/suites/<suite>/scenario.md` — shared outside-in suites, when present.
-2. `capabilities/<capability>/tests/<scenario>.md` — flat owner-local capability scenarios.
-3. `capabilities/<capability>/tests/<scenario>/scenario.md` — directory-form owner-local capability scenarios.
-4. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
+1. `tests/<suite>/scenario.md` — shared outside-in suites.
+2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
+3. `capabilities/<capability>/tests/<scenario>.md` — flat owner-local capability scenarios.
+4. `capabilities/<capability>/tests/<scenario>/scenario.md` — directory-form owner-local capability scenarios.
+5. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. The first opted-in scenario pack is the contracts test suite under [`capabilities/contracts/tests/`](../../capabilities/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. The first shared suite is the RM-01 manual acceptance scenario under [`tests/rm-01/`](../../tests/rm-01/), and the first owner-local capability pack is the contracts test suite under [`capabilities/contracts/tests/`](../../capabilities/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 

@@ -1563,7 +1563,7 @@ async function checkV1LayoutPaths(): Promise<void> {
 // ──────────────────────────────────────────────────────────────
 // 14. Acceptance scenario frontmatter validation (C03)
 //
-// Discovers opted-in scenario files under the four accepted roots, validates frontmatter
+// Discovers opted-in scenario files under the accepted roots, validates frontmatter
 // against `.cursor/schemas/scenario.schema.json`, and runs cross-file
 // invariants (id uniqueness, body-id consistency, stages prefix,
 // expected-artifact path safety, capability-boundary requirements).
@@ -1586,7 +1586,29 @@ const SCENARIO_ID_BODY_RE = /^Scenario ID:\s*`?([a-z][a-z0-9-]*)`?\s*$/m;
 async function discoverScenarioCandidates(): Promise<string[]> {
   const candidates: string[] = [];
 
-  // Discovery root 1: tests/suites/<suite>/scenario.md
+  // Discovery root 1: tests/<suite>/scenario.md
+  const testsDir = join(REPO_ROOT, "tests");
+  try {
+    const stat = await Deno.stat(testsDir);
+    if (stat.isDirectory) {
+      for await (
+        const entry of walk(testsDir, {
+          maxDepth: 2,
+          includeDirs: false,
+          match: [/scenario\.md$/],
+        })
+      ) {
+        const rel = relative(testsDir, entry.path).split("/");
+        if (rel.length === 2 && rel[1] === "scenario.md") {
+          candidates.push(entry.path);
+        }
+      }
+    }
+  } catch {
+    // Optional root.
+  }
+
+  // Discovery root 2: tests/suites/<suite>/scenario.md
   const suitesDir = join(REPO_ROOT, "tests", "suites");
   try {
     const stat = await Deno.stat(suitesDir);
@@ -1608,7 +1630,7 @@ async function discoverScenarioCandidates(): Promise<string[]> {
     // Optional root.
   }
 
-  // Discovery roots 2 & 3: capabilities/<cap>/tests/<scenario>.md
+  // Discovery roots 3 & 4: capabilities/<cap>/tests/<scenario>.md
   // and capabilities/<cap>/tests/<scenario>/scenario.md
   try {
     const stat = await Deno.stat(CAPABILITIES_DIR);
@@ -1638,7 +1660,7 @@ async function discoverScenarioCandidates(): Promise<string[]> {
     // No capabilities/.
   }
 
-  // Discovery root 4: plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md
+  // Discovery root 5: plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md
   const pluginsDir = join(REPO_ROOT, "plugins");
   try {
     const stat = await Deno.stat(pluginsDir);
