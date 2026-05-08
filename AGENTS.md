@@ -76,9 +76,16 @@ The phase skills themselves stay unaware of the plan — they operate slice-by-s
 
 All commands are run from the repository root:
 
-- **`make checks`** -- runs `scripts/checks.ts` via Deno for documentation and workflow consistency checks
-- **`make use-local-plugins`** -- use local plugins from the working tree for development/testing
-- **`make use-team-plugins`** -- use Augentic marketplace plugins (reload Cursor after either)
+- **`make checks`** -- runs `scripts/checks.ts` via Deno for documentation and workflow consistency checks (Tier 0; required on every PR; stays under 2s).
+- **`make acceptance-smoke`** / **`make acceptance-stub-smoke`** -- narrow Tier 1 scenario smokes against a real `specify` binary; skip gracefully when none is on `PATH` and `SPECIFY_BIN` is unset.
+- **`make acceptance-cross-repo`** -- aggregator (C16). Runs all nine cross-repo smokes serially (`setup`, `plan`, `execute`, `finalize`, `define`, `contracts/omnia/vectis-build`, `recorded`) and prints a single PASS/SKIP/FAIL summary. The `define` smoke skips unless `OPERATOR_RESULTS=/path/to/results.json` is set.
+- **`make acceptance-cross-repo-deterministic`** -- same aggregator minus the operator-driven `define` smoke. Use this for unattended CI.
+- **`make acceptance-all`** -- pre-release sweep: `acceptance-smoke` + `acceptance-stub-smoke` + `acceptance-cross-repo`.
+- **`make acceptance-tiers`** -- prints the recommended `make` targets for the current `git diff` (Tier 0 / 1 / 2 / 3 selection driven by `scripts/acceptance-tier.ts`). Pass `TIER_ARGS='--explain'` for per-file rationale; `TIER_ARGS='--files "<a> <b>"'` for ad-hoc input. Does NOT execute the targets.
+- **`make use-local-plugins`** -- use local plugins from the working tree for development/testing.
+- **`make use-team-plugins`** -- use Augentic marketplace plugins (reload Cursor after either).
+
+Cross-repo aggregators require a built `specify` binary. Set `SPECIFY_BIN=/absolute/path/to/specify-cli/target/release/specify` (the system PATH `specify` is typically the older v0.1.0 install and the smokes will skip against it). Full operator guide: [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
 
 ### Skill authoring
 

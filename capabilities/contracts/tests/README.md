@@ -1,54 +1,154 @@
 # Contract Test Scenarios
 
-These documents are manual regression scenarios for `contracts@v1` interface
-generation. They exercise the dedicated contract-change flow:
+These documents are owner-local acceptance scenarios for `contracts@v1`
+interface generation. They exercise the dedicated contract slice loop:
 
 1. `/spec:define` creates `proposal.md`, `specs/**/*.md`, and `tasks.md`.
 2. `/spec:build` authors, imports, repairs, and verifies change-local
    `contracts/**/*.yaml` deltas.
 3. `/spec:merge` promotes those deltas into the root `contracts/` baseline.
 
-Implementation schemas such as Omnia and Vectis consume baseline contracts as
-context. They do not generate new or changed interface shapes inline.
+Implementation capabilities such as Omnia and Vectis consume baseline contracts
+as context. They do not generate new or changed interface shapes inline.
 
-## Scenarios
+## Relationship To The Acceptance Framework
 
-- [`describe.md`](describe.md) — generate JSON Schema and OpenAPI artifacts from
-  a prose description passed to `/spec:define`.
-- [`design.md`](design.md) — generate contract artifacts from a prose design
-  document named as source material.
-- [`update.md`](update.md) — boundary test showing that implementation
-  `design.md` updates are not a contract generation source.
-- [`import.md`](import.md) — import and normalize an existing OpenAPI document.
-- [`source.md`](source.md) — reverse-engineer JSON Schema and OpenAPI artifacts
-  from a legacy TypeScript codebase whose API surface a prior `/spec:analyze`
-  run has identified.
+These scenarios are **Layer 2** scenario packs in the repo's
+[acceptance framework](../../../acceptance/README.md). They live next to the
+`contracts` capability because the behavior under test is one capability's
+slice loop in isolation; the
+[Owner-local vs shared](../../../acceptance/README.md#owner-local-scenarios-vs-shared-acceptance)
+boundary rule keeps them owner-local. They follow the
+[Scenario Pack Shape](../../../acceptance/README.md#scenario-pack-shape) and are
+discoverable via the flat owner-local form (rule 2) in
+[Scenario Discovery](../../../acceptance/README.md#scenario-discovery): a flat
+`<scenario>.md` file inside this `tests/` directory is a scenario file.
+
+The current backend for every scenario in this directory is **manual** — a
+human or agent follows the prose, runs the prompts, and fills out a
+[run summary](run-summary-template.md). When the future runner skeleton lands,
+it will discover these scenarios by their frontmatter without re-parsing the
+prose, and produce the same evidence shape.
+
+## Scenario Index
+
+| Scenario file                              | Scenario ID                  | Kind                  | Authorship mode          | Backend  |
+| ------------------------------------------ | ---------------------------- | --------------------- | ------------------------ | -------- |
+| [`describe.md`](describe.md)               | `contracts-describe`         | `capability`          | Generate from prose      | `manual` |
+| [`describe-stub.md`](describe-stub.md)     | `contracts-describe-stub`    | `capability`          | Generate from prose      | `stub`   |
+| [`design.md`](design.md)                   | `contracts-design`           | `capability`          | Generate from prose      | `manual` |
+| [`update.md`](update.md)                   | `contracts-update-boundary`  | `capability-boundary` | Generate from prose      | `manual` |
+| [`import.md`](import.md)                   | `contracts-import`           | `capability`          | Import existing contracts | `manual` |
+| [`source.md`](source.md)                   | `contracts-source`           | `capability`          | Extract from source code  | `manual` |
+
+`describe-stub.md` is the deterministic-stub twin of `describe.md` introduced
+by [C08 Deterministic Stub Backend](../../../rfcs/rm-01-acceptance-framework-implementation-plan.md#c08-deterministic-stub-backend).
+The prompt and expected artifacts are identical; only the runner backend
+differs. `make acceptance-stub-smoke` drives this scenario.
+
+Scenario IDs are kebab-case, prefixed with the capability name, and globally
+unique within the opted-in scenario set in this repo. `update.md` is marked
+`capability-boundary` because the scenario asserts the *absence* of contract
+output during the first define run; the regression path that produces real
+contract artifacts is then exercised as a separate sequence within the same
+file. See [Scenario Pack Shape](#scenario-pack-shape) for the canonical
+sections every scenario file uses.
+
+## Scenario Pack Shape
+
+Every scenario file in this directory uses the canonical sections from
+[`acceptance/README.md` §Scenario Pack Shape](../../../acceptance/README.md#scenario-pack-shape):
+
+1. **YAML frontmatter** — machine-readable routing (id, owner, kind, capability,
+   backend, entrypoint, stages, isolation, optional assertions and
+   expected-artifacts hints).
+2. **Heading + `Scenario ID:` line** — the id restated as a visible field so
+   it survives any environment that suppresses frontmatter rendering.
+3. **Intent** — what behavior the scenario proves.
+4. **Workspace** — capability, project shape, isolation rules, and any
+   precondition the runner or operator must satisfy before invocation.
+5. **Inputs** — files or source trees the runner/operator must create before
+   invocation. The actual file bodies live here as fenced blocks; the prompts
+   reference them by path.
+6. **Invocation** — the slash-command prompt(s) to run, copied verbatim. These
+   prompts are the human operator contract: they must remain executable as-is.
+7. **Expected Artifacts** — the change-local contract files produced during
+   `/spec:build` (and, after merge, the same paths in the baseline `contracts/`
+   tree). For boundary scenarios this section may describe the artifacts of a
+   regression path rather than the negative path.
+8. **Assertions** — structural checks that define pass/fail. These reference
+   reusable assertion ids the future runner can dispatch (`files-exist`,
+   `contract-validator-clean`, etc.).
+9. **Negative Expectations** — boundary behavior that must not occur. For
+   `update.md` this section is load-bearing: it is the primary oracle.
+10. **Cleanup** — whether to drop, archive, or preserve slice and baseline
+    state before moving to the next scenario.
+
+The frontmatter is the source of truth for routing fields a runner consumes.
+The body remains canonical for human-readable prose.
+
+### Frontmatter fields used here
+
+```yaml
+---
+id: contracts-describe                # required, kebab-case, globally unique
+owner: contracts                      # required
+kind: capability                      # required: capability | capability-boundary
+capability: contracts@v1              # required for capability and capability-boundary
+backend: manual                       # required: manual | stub | agent | recorded
+entrypoint: /spec:define              # required: slash-command, /<plugin>:<skill>
+stages: [define, build, merge]        # required: subset of define | build | merge | drop
+isolation: fresh-project              # required: fresh-project | shared-baseline | shared-slice
+authorship-mode: prose                # optional capability-specific hint
+assertions:                           # optional, named assertion ids
+  - files-exist
+  - contract-validator-clean
+expected-artifacts:                   # optional, mirrors the body section
+  - contracts/...
+negative-expectations:                # optional, free-form forbidden-condition ids
+  - implementation-design-emits-contract-yaml
+---
+```
+
+The fields are intentionally compatible with the optional frontmatter shape in
+[`acceptance/README.md` §Scenario Pack Shape](../../../acceptance/README.md#scenario-pack-shape).
+Static validation will land later in the implementation plan; until then the
+shape is enforced by convention.
 
 ## Manual Test Flow
 
 Run each scenario from a project initialized with the `contracts@v1` schema, or
-from a test workspace where `/spec:init` has already selected that schema.
+from a test workspace where `/spec:init` has already selected that schema. The
+boundary scenario [`update.md`](update.md) is the one exception — its initial
+prompt runs in an implementation-schema project (Omnia or Vectis) and its
+regression path runs in a `contracts@v1` project; the file documents both.
 
 For each scenario:
 
 1. Open the scenario file.
-2. Create any source file described by the scenario, such as
-   `docs/returns-api-design.md` or `vendor/ticket-api.openapi.yaml`.
-3. Run the scenario's `/spec:define ...` prompt.
+2. Create any source file described in the scenario's **Inputs** section, such
+   as `docs/returns-api-design.md` or `vendor/ticket-api.openapi.yaml`.
+3. Run the scenario's `/spec:define ...` prompt from **Invocation**.
 4. Review the generated `proposal.md`, `specs/**/*.md`, and `tasks.md`.
 5. Run `/spec:build <change-name>`.
-6. Verify the expected `contracts/http/*.yaml`, `contracts/messages/*.yaml`, or
-   `contracts/schemas/*.yaml` files were produced in the change.
+6. Verify the **Expected Artifacts** under `contracts/http/*.yaml`,
+   `contracts/messages/*.yaml`, or `contracts/schemas/*.yaml` exist in the
+   slice working tree.
 7. Review verifier output for unresolved `$ref` failures, missing schema
-   metadata, binding coverage failures, or manual-review warnings.
-8. Optionally run `/spec:merge <change-name>` to promote the change-local
+   metadata, binding coverage failures, or manual-review warnings; record
+   findings against the scenario's **Assertions** list.
+8. Optionally run `/spec:merge <slice-name>` to promote the change-local
    contract deltas into the root `contracts/` baseline.
-9. Drop or archive the change before moving to the next scenario if you want each
-   run to start from an empty baseline.
+9. Drop or archive the slice before moving to the next scenario per the
+   scenario's **Cleanup** rule.
+10. Fill out the [run summary template](run-summary-template.md) for the
+    scenario and keep it with the run evidence (or paste it into the
+    operator's notes for a fully manual run).
 
 The `update.md` scenario is expected to demonstrate a boundary. It should not
-make an implementation `design.md` update act as the contract source; the correct
-path is a separate `contracts@v1` change.
+make an implementation `design.md` update act as the contract source; the
+correct path is a separate `contracts@v1` change. Its **Negative Expectations**
+section is the primary oracle for that scenario.
 
 ## Run-All Prompt
 
@@ -83,3 +183,12 @@ requires the previous baseline. At the end, report:
 - verifier warnings or failures
 - any cleanup performed
 ```
+
+## Run Summary Template
+
+Every run — manual or automated — should produce a summary using the shape in
+[`run-summary-template.md`](run-summary-template.md). The template mirrors the
+runner's future `summary.md` shape (see
+[`acceptance/runner/README.md` §Run Directories And Evidence](../../../acceptance/runner/README.md#run-directories-and-evidence))
+so a human-driven run today produces output the runner can replicate
+mechanically tomorrow.

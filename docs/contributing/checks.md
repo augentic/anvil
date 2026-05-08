@@ -98,6 +98,80 @@ Files matching `capabilities/**/instructions/<name>.md` must contain an output l
 
 This prevents cross-plugin path contamination by making every instruction file declare where its output goes.
 
+### 14. Acceptance scenario frontmatter
+
+Acceptance scenario files are validated against `.cursor/schemas/scenario.schema.json` (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows the four-location convention from [`acceptance/README.md` §Scenario Discovery](../../acceptance/README.md#scenario-discovery):
+
+1. `acceptance/suites/<suite>/scenario.md` — shared outside-in suites.
+2. `capabilities/<capability>/tests/<scenario>.md` — flat owner-local capability scenarios.
+3. `capabilities/<capability>/tests/<scenario>/scenario.md` — directory-form owner-local capability scenarios.
+4. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
+
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. The first opted-in scenario pack is the contracts test suite under [`capabilities/contracts/tests/`](../../capabilities/contracts/tests/README.md).
+
+An opt-in scenario looks like:
+
+```markdown
+---
+id: contracts-describe
+owner: contracts
+kind: capability
+capability: contracts@v1
+backend: manual
+entrypoint: /spec:define
+stages: [define, build, merge]
+isolation: fresh-project
+authorship-mode: prose
+assertions:
+  - files-exist
+  - contract-validator-clean
+expected-artifacts:
+  - contracts/schemas/profile.yaml
+negative-expectations:
+  - artifacts-outside-contracts-directory
+---
+
+# Scenario Title
+
+Scenario ID: `contracts-describe`
+```
+
+The check enforces:
+
+- **Schema conformance** — `id`, `owner`, `kind`, `backend`, `entrypoint`, `stages`, `isolation` are required; `capability` is required when `kind` is `capability` or `capability-boundary`; `negative-expectations` is required (with at least one entry) when `kind` is `capability-boundary`. `kind` is an open enum (`capability`, `capability-boundary`, `suite`, `skill`); only the first two are actively required by C02. `backend` ∈ {`manual`, `stub`, `agent`, `recorded`}. `isolation` ∈ {`fresh-project`, `shared-baseline`, `shared-slice`}. `capability` matches `^[a-z][a-z0-9-]*@v\d+$`. `entrypoint` matches `^/[a-z]+:[a-z][a-z0-9-]*$`. `id` matches `^[a-z][a-z0-9-]*$`.
+- **Stages prefix** — `stages` must be a contiguous prefix of `[define, build, merge, drop]` starting at `define`. `[define, build, merge]` is valid; `[build, define]`, `[define, merge]`, `[merge]` are not.
+- **Body-id consistency** — when the visible `Scenario ID:` body line is present (C02 doubles the id in prose for resilience against environments that suppress frontmatter), it must equal the frontmatter `id`.
+- **Expected-artifact path safety** — every entry in `expected-artifacts` must be a relative path with no `..` segments and no leading `/`. The check stops short of pinning a per-capability prefix (e.g. `contracts/`) so future capabilities are not over-constrained; the C04 runner can layer on a stricter capability-owned root rule when it lands.
+- **Cross-file id uniqueness** — every opted-in scenario `id` is unique across the repo; duplicates are reported with both file paths.
+
+Internal markdown link resolution within scenarios is handled by check 1 (markdown link resolution); the scenario validator does not duplicate it.
+
+**Example failure messages:**
+
+```text
+FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — / must have required property 'negative-expectations'
+FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — stages must be a contiguous prefix of [define, build, merge, drop] starting at 'define'; got ["build","define"]
+FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
+FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
+FAIL: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: capabilities/contracts/tests/_probe.md, capabilities/contracts/tests/describe.md
+```
+
+Common fixes: align `kind`/`capability` per the schema, walk back `stages` to a contiguous prefix starting at `define`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
+
+### 15. Recorded acceptance trace freshness
+
+Every `acceptance/recorded/**/*.jsonl` trace must lead with a `recorded-trace-header` line carrying `schemaVersion: 1` and the four metadata fields the recorded backend depends on (`sourceBackend`, `sourceRunId`, `sourceTimestamp`, `scenarioId`). The check is opt-in / lenient: when `acceptance/recorded/` is missing or has no trace files (fresh checkout, no recorded coverage yet) nothing runs. Only present `.jsonl` files are validated.
+
+**Example failures:**
+
+```text
+FAIL: Recorded trace: acceptance/recorded/rm01-cross-repo/baseline.jsonl — first line is not valid JSON: Unexpected token...
+FAIL: Recorded trace: acceptance/recorded/rm01-cross-repo/baseline.jsonl — recorded-trace-header.schemaVersion must be 1 (got 2)
+FAIL: Recorded trace: acceptance/recorded/rm01-cross-repo/baseline.jsonl — recorded-trace-header missing required field 'sourceRunId'
+```
+
+In addition, when the most recent commit (`HEAD~1..HEAD`) touches a recorded trace and the script has permission to spawn `git`, a non-fatal `WARN:` line suggests the commit body quote the source run id from the header so reviewers can correlate the trace back to the live run that produced it. The warning never increments the failure counter — `make checks` keeps its narrow `--allow-read` posture, and the recency hint is silently skipped on shallow clones or environments without `git`. See [Regenerating Recorded Traces](acceptance.md#regenerating-recorded-traces) for the regen procedure.
+
 ## Extending the checks
 
 To add a new check:

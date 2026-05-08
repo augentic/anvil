@@ -1,0 +1,7 @@
+# Acceptance fixture for scenario 'contracts-describe' (C05 smoke).
+# Placeholder content. The fixture backend materialises this file into
+# the runner workspace so the 'files-exist' assertion has something to
+# observe. Real schema authoring is exercised by the live agent backend
+# (later changes in the implementation plan).
+$schema: placeholder
+title: CreateProfileRequest
