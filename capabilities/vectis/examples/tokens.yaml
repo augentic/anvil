@@ -95,7 +95,7 @@ typefaces:
     fallback: "system-ui, sans-serif"
     source: google-fonts
   mono:
-    family: "JetBrains Mono"
+    family: "Roboto Mono"
     fallback: "ui-monospace, monospace"
     source: google-fonts
 
