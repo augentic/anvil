@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/augentic/specify/.cursor/schemas/operator-results.schema.json",
   "title": "Operator Results",
-  "description": "Recorded operator (or upstream agent) results consumed by the acceptance runner via --operator-results <path>. Today consumed by the `manual` and `agent` backends. The runner's on-disk assertion handlers always re-score the live workspace; operator-recorded assertions are merged in for audit purposes only and never substitute for verification.",
+  "description": "Recorded operator (or upstream agent) results shape reserved for future scenario automation. Operator-recorded assertions are audit hints only and never substitute for verification.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -43,7 +43,7 @@
           },
           "design": {
             "type": ["string", "null"],
-            "description": "Body written to .specify/specs/<slice>/design.md by the agent phase driver, OR null/omitted for capability briefs that do not produce design.md (today: `contracts`). The capability policy table in acceptance/assertions/define.ts is the single source of truth for which slices require design.md."
+            "description": "Body written to .specify/specs/<slice>/design.md by a future agent driver, OR null/omitted for capability briefs that do not produce design.md (today: `contracts`)."
           },
           "residue": {
             "type": "string",
@@ -79,7 +79,7 @@
           },
           "fault-domain": {
             "type": "string",
-            "description": "Optional fault-domain hint. See acceptance/assertions/README.md for the canonical list."
+            "description": "Optional fault-domain hint."
           }
         }
       }

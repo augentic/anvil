@@ -1,26 +1,6 @@
-# Acceptance workflow (C16). Wires the documented `make` aggregators
-# into CI without destabilising the existing `ci.yaml` Tier-0 job.
-#
-# Tier matrix (mirrors docs/contributing/acceptance.md and
-# rfcs/rm-01-acceptance-framework-implementation-plan.md §C16):
-#
-#   tier-0          → `make checks` (covered by ci.yaml; re-asserted here
-#                     for self-containment when this workflow is run via
-#                     workflow_dispatch in isolation).
-#   tier-1-and-2    → narrow + cross-repo deterministic smokes; runs on
-#                     every PR and on demand.
-#   tier-3-builds   → contracts/omnia/vectis specialist build smokes;
-#                     gated on PR diff via dorny/paths-filter so the
-#                     specialist tier only runs when its capability or
-#                     plugin tree changed (or the runner / assertions
-#                     changed, which can affect every build).
-#
-# Tier 4 (`acceptance-cross-repo-define-smoke` with OPERATOR_RESULTS) is
-# operator-driven and intentionally not wired into CI.
-#
-# This workflow is published as a recommended shape, not a required
-# gate. The maintainer can flip `pull_request` on/off without touching
-# the make targets — those remain the source of truth.
+# Acceptance workflow for the direct RM-01 cross-repo proof. The make
+# target remains the source of truth; this workflow just builds a fresh
+# `specify` binary and runs it in CI.
 
 name: Acceptance
 
@@ -31,7 +11,7 @@ on:
     paths:
       - "Makefile"
       - "scripts/**"
-      - "acceptance/**"
+      - "tests/**"
       - "capabilities/**"
       - "plugins/**"
       - ".github/workflows/acceptance.yml"
@@ -48,20 +28,10 @@ env:
   SPECIFY_CLI_REPO: augentic/specify-cli
 
 jobs:
-  tier-0:
-    name: Tier 0 — static checks
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v6
-      - uses: denoland/setup-deno@v2
-      - run: make checks
-
-  tier-1-and-2:
-    name: Tier 1+2 — narrow + cross-repo deterministic smokes
+  rm01:
+    name: RM-01 acceptance
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    needs: [tier-0]
     steps:
       - name: Checkout specify
         uses: actions/checkout@v6
@@ -86,134 +56,17 @@ jobs:
       - name: Export SPECIFY_BIN
         run: echo "SPECIFY_BIN=${GITHUB_WORKSPACE}/specify-cli/target/release/specify" >> "$GITHUB_ENV"
 
-      - name: Tier 1 narrow smokes
-        run: |
-          make acceptance-smoke
-          make acceptance-stub-smoke
+      - name: Static checks
+        run: make checks
 
-      - name: Tier 1 + 2 cross-repo deterministic
-        run: make acceptance-cross-repo-deterministic
+      - name: RM-01 cross-repo acceptance
+        run: make acceptance-cross-repo
 
-      - name: Upload aggregator logs on failure
+      - name: Upload preserved fixture on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: acceptance-tier-1-2-logs
-          path: ${{ runner.temp }}/specify-acceptance-*
-          if-no-files-found: ignore
-          retention-days: 7
-
-  changes:
-    # Surface paths that drive Tier 3 selection. Mirrors the rules in
-    # scripts/acceptance-tier.ts so a runner / assertion change still
-    # triggers every specialist build smoke (the catch-all rule).
-    name: Tier 3 — paths filter
-    runs-on: ubuntu-latest
-    needs: [tier-0]
-    outputs:
-      contracts: ${{ steps.filter.outputs.contracts }}
-      omnia: ${{ steps.filter.outputs.omnia }}
-      vectis: ${{ steps.filter.outputs.vectis }}
-    steps:
-      - uses: actions/checkout@v6
-      - id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            contracts:
-              - 'capabilities/contracts/**'
-              - 'plugins/contract/**'
-              - 'acceptance/recorded/**'
-              - 'acceptance/runner/**'
-              - 'acceptance/assertions/**'
-            omnia:
-              - 'capabilities/omnia/**'
-              - 'plugins/omnia/**'
-              - 'acceptance/runner/**'
-              - 'acceptance/assertions/**'
-            vectis:
-              - 'capabilities/vectis/**'
-              - 'plugins/vectis/**'
-              - 'acceptance/runner/**'
-              - 'acceptance/assertions/**'
-
-  tier-3-contracts:
-    name: Tier 3 — contracts-build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [changes]
-    if: needs.changes.outputs.contracts == 'true'
-    steps:
-      - uses: actions/checkout@v6
-      - uses: denoland/setup-deno@v2
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - uses: actions/checkout@v6
-        with:
-          repository: ${{ env.SPECIFY_CLI_REPO }}
-          ref: ${{ env.SPECIFY_CLI_REF }}
-          path: specify-cli
-      - working-directory: specify-cli
-        run: cargo build --release --bin specify
-      - run: echo "SPECIFY_BIN=${GITHUB_WORKSPACE}/specify-cli/target/release/specify" >> "$GITHUB_ENV"
-      - run: make acceptance-cross-repo-contracts-build-smoke
-      - if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: acceptance-tier-3-contracts-logs
-          path: ${{ runner.temp }}/specify-acceptance-*
-          if-no-files-found: ignore
-          retention-days: 7
-
-  tier-3-omnia:
-    name: Tier 3 — omnia-build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [changes]
-    if: needs.changes.outputs.omnia == 'true'
-    steps:
-      - uses: actions/checkout@v6
-      - uses: denoland/setup-deno@v2
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - uses: actions/checkout@v6
-        with:
-          repository: ${{ env.SPECIFY_CLI_REPO }}
-          ref: ${{ env.SPECIFY_CLI_REF }}
-          path: specify-cli
-      - working-directory: specify-cli
-        run: cargo build --release --bin specify
-      - run: echo "SPECIFY_BIN=${GITHUB_WORKSPACE}/specify-cli/target/release/specify" >> "$GITHUB_ENV"
-      - run: make acceptance-cross-repo-omnia-build-smoke
-      - if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: acceptance-tier-3-omnia-logs
-          path: ${{ runner.temp }}/specify-acceptance-*
-          if-no-files-found: ignore
-          retention-days: 7
-
-  tier-3-vectis:
-    name: Tier 3 — vectis-build
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    needs: [changes]
-    if: needs.changes.outputs.vectis == 'true'
-    steps:
-      - uses: actions/checkout@v6
-      - uses: denoland/setup-deno@v2
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - uses: actions/checkout@v6
-        with:
-          repository: ${{ env.SPECIFY_CLI_REPO }}
-          ref: ${{ env.SPECIFY_CLI_REF }}
-          path: specify-cli
-      - working-directory: specify-cli
-        run: cargo build --release --bin specify
-      - run: echo "SPECIFY_BIN=${GITHUB_WORKSPACE}/specify-cli/target/release/specify" >> "$GITHUB_ENV"
-      - run: make acceptance-cross-repo-vectis-build-smoke
-      - if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: acceptance-tier-3-vectis-logs
-          path: ${{ runner.temp }}/specify-acceptance-*
+          name: rm01-acceptance-fixture
+          path: /tmp/specify-rm01-*
           if-no-files-found: ignore
           retention-days: 7

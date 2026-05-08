@@ -21,7 +21,7 @@ stubbed-stages:
   - build
   - merge
 stub-fixtures:
-  build: acceptance/fixtures/contracts-describe/expected
+  build: tests/fixtures/contracts-describe/expected
 ---
 
 # Stub Variant Of Contracts Describe
@@ -37,10 +37,9 @@ live-agent generation cost.
 
 ## Intent
 
-Prove that `make acceptance-stub-smoke` can drive a contracts scenario through
-`define → build → merge` in one shot using the C08 deterministic stub backend.
-The scenario also exercises the runner's `stub-actions.jsonl` evidence file
-and the stub-disclosure block in `summary.md`.
+Keep a deterministic fixture-backed variant of `contracts-describe` for static
+scenario validation. The expected artifact list and fixture paths stay aligned
+without requiring a live agent run.
 
 ## Workspace
 
@@ -49,29 +48,24 @@ and the stub-disclosure block in `summary.md`.
   in-repo capability directory via `specify init --name <slice> file://...`.
 - **Isolation:** `fresh-project`. The runner creates a temp workspace and
   cleans it on pass.
-- **Backend:** `stub` — the runner shells out to `specify` for every
-  lifecycle transition; nothing is hand-edited under `.specify/`.
+- **Backend:** `stub` — retained as scenario metadata so static validation can
+  check fixture references.
 
 ## Inputs
 
-The stub backend writes the slice's `proposal.md`, `specs/main.md`, and
-`tasks.md` itself with explicit `STUB:` markers so a reader can tell the
-artifacts are fake. The build-stage artifacts are copied verbatim from
-`acceptance/fixtures/contracts-describe/expected/` — the same fixture the
-C05 `fixture` backend uses, so the on-disk shape stays in lock-step with
-the manual scenario.
+The fixture artifacts are copied verbatim from
+`tests/fixtures/contracts-describe/expected/`, so the on-disk shape stays in
+lock-step with the manual scenario.
 
 ## Invocation
 
 ```text
-deno run --allow-read --allow-write --allow-env --allow-run \
-  acceptance/runner/main.ts \
-  --scenario contracts-describe-stub \
-  --backend stub
+Use this scenario as metadata-backed documentation; there is no dedicated
+make target for it.
 ```
 
-The runner drives `specify slice create`, `specify slice transition`, and
-`specify slice merge run` against the resolved binary (set `SPECIFY_BIN` to
+If you run it manually, drive `specify slice create`, `specify slice transition`,
+and `specify slice merge run` against the resolved binary (set `SPECIFY_BIN` to
 override). It does not invoke `/spec:define`, `/spec:build`, or `/spec:merge`
 agent entrypoints — those are out of scope for the C08 stub.
 

@@ -11,24 +11,17 @@ interface generation. They exercise the dedicated contract slice loop:
 Implementation capabilities such as Omnia and Vectis consume baseline contracts
 as context. They do not generate new or changed interface shapes inline.
 
-## Relationship To The Acceptance Framework
+## Relationship To Acceptance
 
-These scenarios are **Layer 2** scenario packs in the repo's
-[acceptance framework](../../../acceptance/README.md). They live next to the
-`contracts` capability because the behavior under test is one capability's
-slice loop in isolation; the
-[Owner-local vs shared](../../../acceptance/README.md#owner-local-scenarios-vs-shared-acceptance)
-boundary rule keeps them owner-local. They follow the
-[Scenario Pack Shape](../../../acceptance/README.md#scenario-pack-shape) and are
-discoverable via the flat owner-local form (rule 2) in
-[Scenario Discovery](../../../acceptance/README.md#scenario-discovery): a flat
-`<scenario>.md` file inside this `tests/` directory is a scenario file.
+These are owner-local scenario documents. They live next to the `contracts`
+capability because the behavior under test is one capability's slice loop in
+isolation. Static checks validate their YAML frontmatter and scenario IDs; the
+scenario bodies remain human-readable operator instructions.
 
-The current backend for every scenario in this directory is **manual** — a
+The current backend for every scenario in this directory is **manual** except
+`describe-stub.md`, which retains fixture metadata for static validation. A
 human or agent follows the prose, runs the prompts, and fills out a
-[run summary](run-summary-template.md). When the future runner skeleton lands,
-it will discover these scenarios by their frontmatter without re-parsing the
-prose, and produce the same evidence shape.
+[run summary](run-summary-template.md).
 
 ## Scenario Index
 
@@ -41,10 +34,9 @@ prose, and produce the same evidence shape.
 | [`import.md`](import.md)                   | `contracts-import`           | `capability`          | Import existing contracts | `manual` |
 | [`source.md`](source.md)                   | `contracts-source`           | `capability`          | Extract from source code  | `manual` |
 
-`describe-stub.md` is the deterministic-stub twin of `describe.md` introduced
-by [C08 Deterministic Stub Backend](../../../rfcs/rm-01-acceptance-framework-implementation-plan.md#c08-deterministic-stub-backend).
-The prompt and expected artifacts are identical; only the runner backend
-differs. `make acceptance-stub-smoke` drives this scenario.
+`describe-stub.md` is the deterministic-fixture twin of `describe.md`; its
+expected artifacts are kept under `tests/fixtures/contracts-describe/expected/`
+so static scenario validation can prove fixture references resolve.
 
 Scenario IDs are kebab-case, prefixed with the capability name, and globally
 unique within the opted-in scenario set in this repo. `update.md` is marked
@@ -56,8 +48,7 @@ sections every scenario file uses.
 
 ## Scenario Pack Shape
 
-Every scenario file in this directory uses the canonical sections from
-[`acceptance/README.md` §Scenario Pack Shape](../../../acceptance/README.md#scenario-pack-shape):
+Every scenario file in this directory uses the same compact shape:
 
 1. **YAML frontmatter** — machine-readable routing (id, owner, kind, capability,
    backend, entrypoint, stages, isolation, optional assertions and
@@ -110,10 +101,8 @@ negative-expectations:                # optional, free-form forbidden-condition 
 ---
 ```
 
-The fields are intentionally compatible with the optional frontmatter shape in
-[`acceptance/README.md` §Scenario Pack Shape](../../../acceptance/README.md#scenario-pack-shape).
-Static validation will land later in the implementation plan; until then the
-shape is enforced by convention.
+The fields are intentionally compatible with `.cursor/schemas/scenario.schema.json`.
+Static validation in `scripts/checks.ts` enforces the frontmatter shape.
 
 ## Manual Test Flow
 
@@ -186,9 +175,6 @@ requires the previous baseline. At the end, report:
 
 ## Run Summary Template
 
-Every run — manual or automated — should produce a summary using the shape in
-[`run-summary-template.md`](run-summary-template.md). The template mirrors the
-runner's future `summary.md` shape (see
-[`acceptance/runner/README.md` §Run Directories And Evidence](../../../acceptance/runner/README.md#run-directories-and-evidence))
-so a human-driven run today produces output the runner can replicate
-mechanically tomorrow.
+Every manual run should produce a summary using the shape in
+[`run-summary-template.md`](run-summary-template.md) so reviewers can compare
+runs consistently.

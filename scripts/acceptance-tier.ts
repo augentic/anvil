@@ -1,6 +1,5 @@
-// Acceptance tier selector (C16): map a list of touched files to the
-// smallest sufficient set of `make` targets the operator (or CI) should
-// run before pushing.
+// Acceptance target selector: map touched files to the smallest useful
+// set of `make` targets before pushing.
 //
 // Usage:
 //   deno run --allow-read --allow-run scripts/acceptance-tier.ts
@@ -12,9 +11,6 @@
 //   - Only `make checks` is emitted when the diff is empty or touches
 //     only neutral files (docs, RFCs, READMEs unrelated to acceptance).
 //
-// The tier mapping follows the C16 amendment in the implementation plan.
-// New mappings should be added there first, then mirrored here.
-//
 // Exit code is always 0 on a successful selection. A non-zero exit means
 // the script itself failed (e.g. git not available); operators should
 // fall back to `make acceptance-cross-repo` in that case.
@@ -23,55 +19,16 @@ import { dirname, fromFileUrl, resolve } from "jsr:@std/path@1";
 
 const REPO_ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 
-type Target =
-  | "checks"
-  | "acceptance-smoke"
-  | "acceptance-stub-smoke"
-  | "acceptance-cross-repo-recorded-smoke"
-  | "acceptance-cross-repo-setup-smoke"
-  | "acceptance-cross-repo-plan-smoke"
-  | "acceptance-cross-repo-execute-smoke"
-  | "acceptance-cross-repo-finalize-smoke"
-  | "acceptance-cross-repo-contracts-build-smoke"
-  | "acceptance-cross-repo-omnia-build-smoke"
-  | "acceptance-cross-repo-vectis-build-smoke";
+type Target = "checks" | "acceptance-cross-repo";
 
-// Stable ordering used when emitting selected targets so the output is
-// deterministic across invocations. Mirrors the tier order in the plan.
+// Stable ordering used when emitting selected targets so output is
+// deterministic across invocations.
 const TARGET_ORDER: Target[] = [
   "checks",
-  "acceptance-smoke",
-  "acceptance-stub-smoke",
-  "acceptance-cross-repo-recorded-smoke",
-  "acceptance-cross-repo-setup-smoke",
-  "acceptance-cross-repo-plan-smoke",
-  "acceptance-cross-repo-execute-smoke",
-  "acceptance-cross-repo-finalize-smoke",
-  "acceptance-cross-repo-contracts-build-smoke",
-  "acceptance-cross-repo-omnia-build-smoke",
-  "acceptance-cross-repo-vectis-build-smoke",
+  "acceptance-cross-repo",
 ];
 
-const TIER_0: Target[] = ["checks"];
-const TIER_1: Target[] = [
-  "acceptance-smoke",
-  "acceptance-stub-smoke",
-  "acceptance-cross-repo-recorded-smoke",
-];
-const TIER_2: Target[] = [
-  "acceptance-cross-repo-setup-smoke",
-  "acceptance-cross-repo-plan-smoke",
-  "acceptance-cross-repo-execute-smoke",
-  "acceptance-cross-repo-finalize-smoke",
-];
-const TIER_3_CONTRACTS: Target[] = ["acceptance-cross-repo-contracts-build-smoke"];
-const TIER_3_OMNIA: Target[] = ["acceptance-cross-repo-omnia-build-smoke"];
-const TIER_3_VECTIS: Target[] = ["acceptance-cross-repo-vectis-build-smoke"];
-const TIER_3_ALL: Target[] = [
-  ...TIER_3_CONTRACTS,
-  ...TIER_3_OMNIA,
-  ...TIER_3_VECTIS,
-];
+const RM01: Target[] = ["checks", "acceptance-cross-repo"];
 
 interface PathRule {
   pattern: RegExp;
@@ -83,41 +40,26 @@ interface PathRule {
 // the selector unions all matching rules' targets.
 const RULES: PathRule[] = [
   {
-    // Runner / assertion changes can affect every cross-repo smoke.
-    pattern: /^acceptance\/runner\/.+|^acceptance\/assertions\/.+/,
-    add: [...TIER_0, ...TIER_1, ...TIER_2, ...TIER_3_ALL],
-    reason: "runner or assertion change → all cross-repo smokes (Tier 1+2+3)",
+    pattern: /^tests\/.+/,
+    add: RM01,
+    reason: "acceptance test or fixture change → RM-01 cross-repo test",
   },
   {
-    pattern: /^capabilities\/contracts\/.+|^plugins\/contract\/.+|^acceptance\/recorded\/.+/,
-    add: [...TIER_0, ...TIER_1, ...TIER_3_CONTRACTS],
-    reason: "contracts capability / plugin / recorded trace → Tier 1 + contracts-build",
+    pattern: /^plugins\/(?:spec|change)\/.+/,
+    add: RM01,
+    reason: "workflow skill change → RM-01 cross-repo test",
   },
   {
-    pattern: /^capabilities\/omnia\/.+|^plugins\/omnia\/.+/,
-    add: [...TIER_0, ...TIER_1, ...TIER_3_OMNIA],
-    reason: "omnia capability or plugin → Tier 1 + omnia-build",
-  },
-  {
-    pattern: /^capabilities\/vectis\/.+|^plugins\/vectis\/.+/,
-    add: [...TIER_0, ...TIER_1, ...TIER_3_VECTIS],
-    reason: "vectis capability or plugin → Tier 1 + vectis-build",
-  },
-  {
-    pattern: /^plugins\/spec\/.+|^plugins\/change\/.+/,
-    add: [...TIER_0, ...TIER_1, ...TIER_2],
-    reason: "spec/change plugin (skill prose) → Tier 1 + Tier 2 (deterministic flows)",
-  },
-  {
-    // General acceptance/ changes (READMEs, suites, fixtures, schemas)
-    // and Makefile / scripts/checks.ts edits are framework-level: keep
-    // Tier 0 and Tier 1 to catch obvious regressions cheaply. Tier 2/3
-    // are only triggered when the runner or specific capability code
-    // changes (the more specific rules above).
     pattern:
-      /^Makefile$|^scripts\/checks\.ts$|^scripts\/acceptance-(?:tier|aggregate)\.ts$|^acceptance\/.+|^\.cursor\/schemas\/(?:scenario|operator-results)\.schema\.json$/,
-    add: [...TIER_0, ...TIER_1],
-    reason: "framework / Makefile / acceptance docs → Tier 0 + Tier 1",
+      /^capabilities\/(?:contracts|omnia|vectis)\/.+|^plugins\/(?:contract|omnia|vectis)\/.+/,
+    add: RM01,
+    reason: "RM-01 capability/plugin change → RM-01 cross-repo test",
+  },
+  {
+    pattern:
+      /^Makefile$|^scripts\/checks\.ts$|^scripts\/acceptance-tier\.ts$|^\.github\/workflows\/acceptance\.yml$|^\.cursor\/schemas\/scenario\.schema\.json$/,
+    add: RM01,
+    reason: "acceptance wiring change → RM-01 cross-repo test",
   },
 ];
 
@@ -149,7 +91,9 @@ function parseArgs(argv: string[]): ParsedArgs {
     } else if (arg === "--format" && i + 1 < argv.length) {
       const next = argv[++i];
       if (next !== "lines" && next !== "make-args") {
-        console.error(`unknown --format: ${next} (expected 'lines' or 'make-args')`);
+        console.error(
+          `unknown --format: ${next} (expected 'lines' or 'make-args')`,
+        );
         Deno.exit(2);
       }
       out.format = next;
@@ -167,11 +111,11 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 function printHelp(): void {
   console.log(
-    "usage: acceptance-tier.ts [--base <ref>] [--files \"<a> <b> ...\"] [--explain] [--format lines|make-args]",
+    'usage: acceptance-tier.ts [--base <ref>] [--files "<a> <b> ..."] [--explain] [--format lines|make-args]',
   );
   console.log("");
   console.log("Selects the smallest sufficient set of `make` targets for a");
-  console.log("change set, based on the C16 tier mapping. With no flags,");
+  console.log("change set. With no flags,");
   console.log("derives the file list from `git diff --name-only` against");
   console.log("`origin/main` (falling back to `HEAD~1`).");
 }
@@ -269,19 +213,9 @@ async function main(): Promise<number> {
       const msg = e instanceof Error ? e.message : String(e);
       console.error(`[acceptance-tier] ${msg}`);
       console.error(
-        "[acceptance-tier] falling back to all targets; pass --files \"\" for empty diff.",
+        '[acceptance-tier] falling back to all targets; pass --files "" for empty diff.',
       );
-      // Conservative fallback: include every cross-repo smoke so the
-      // operator does not silently under-test a change just because git
-      // misbehaved.
-      const allTargets: Target[] = [
-        ...TIER_0,
-        ...TIER_1,
-        ...TIER_2,
-        ...TIER_3_ALL,
-      ];
-      const ordered = TARGET_ORDER.filter((t) => allTargets.includes(t));
-      printSelection(ordered, args.format);
+      printSelection(TARGET_ORDER, args.format);
       return 0;
     }
   }
@@ -319,7 +253,10 @@ async function main(): Promise<number> {
   return 0;
 }
 
-function printSelection(selected: Target[], format: ParsedArgs["format"]): void {
+function printSelection(
+  selected: Target[],
+  format: ParsedArgs["format"],
+): void {
   if (format === "make-args") {
     console.log(selected.join(" "));
   } else {

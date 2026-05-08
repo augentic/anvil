@@ -4,8 +4,8 @@
 
 import { walk } from "jsr:@std/fs@1/walk";
 import { parse as parseYaml } from "jsr:@std/yaml@1";
-import { relative, join, dirname, resolve, fromFileUrl } from "jsr:@std/path@1";
-import Ajv2020 from "npm:ajv@8/dist/2020.js";
+import { dirname, fromFileUrl, join, relative, resolve } from "jsr:@std/path@1";
+import Ajv2020Module from "npm:ajv@8/dist/2020.js";
 
 const REPO_ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const CAPABILITIES_DIR = join(REPO_ROOT, "capabilities");
@@ -15,6 +15,13 @@ const NC = "\x1b[0m";
 const SKILL_MAX_BODY_LINES = 500;
 const SKILL_CRITICAL_PATH_MIN_BODY_LINES = 150;
 const SKILL_CRITICAL_PATH_HEADING = "## Critical Path (Quick Reference)";
+const Ajv2020 = Ajv2020Module as unknown as {
+  new (opts: { allErrors?: boolean }): {
+    compile(schema: unknown): ((data: unknown) => boolean) & {
+      errors?: Array<{ instancePath?: string; message?: string }>;
+    };
+  };
+};
 
 let errors = 0;
 
@@ -45,10 +52,12 @@ async function checkMarkdownLinks(): Promise<void> {
   const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
   const FENCE_RE = /```[\s\S]*?```/g;
 
-  for await (const entry of walk(REPO_ROOT, {
-    exts: [".md"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(REPO_ROOT, {
+      exts: [".md"],
+      includeDirs: false,
+    })
+  ) {
     if (SKIP_DIRS.some((re) => re.test(entry.path))) continue;
     if (await isUnderSymlink(entry.path)) continue;
 
@@ -118,10 +127,12 @@ function skillBodyLines(content: string): string[] | null {
 async function checkStaleClaims(): Promise<void> {
   const PATTERNS = [/109-point/, /109 items/, /109 Items/];
 
-  for await (const entry of walk(REPO_ROOT, {
-    exts: [".md"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(REPO_ROOT, {
+      exts: [".md"],
+      includeDirs: false,
+    })
+  ) {
     if (/node_modules|\.git/.test(entry.path)) continue;
     if (await isUnderSymlink(entry.path)) continue;
     let content: string;
@@ -165,16 +176,20 @@ async function validateCapabilityYaml(): Promise<void> {
 
   const validate = ajv.compile(capabilitySchema);
 
-  for await (const entry of walk(CAPABILITIES_DIR, {
-    maxDepth: 2,
-    includeDirs: false,
-    match: [/capability\.yaml$/],
-  })) {
+  for await (
+    const entry of walk(CAPABILITIES_DIR, {
+      maxDepth: 2,
+      includeDirs: false,
+      match: [/capability\.yaml$/],
+    })
+  ) {
     const rel = relative(REPO_ROOT, entry.path);
     const data = parseYaml(await Deno.readTextFile(entry.path));
     if (!validate(data)) {
       for (const err of validate.errors ?? []) {
-        fail(`Capability validation failed: ${rel} — ${err.instancePath} ${err.message}`);
+        fail(
+          `Capability validation failed: ${rel} — ${err.instancePath} ${err.message}`,
+        );
       }
     }
   }
@@ -204,11 +219,13 @@ async function parseBriefFrontmatter(
 }
 
 async function checkCapabilityIntegrity(): Promise<void> {
-  for await (const entry of walk(CAPABILITIES_DIR, {
-    maxDepth: 2,
-    includeDirs: false,
-    match: [/capability\.yaml$/],
-  })) {
+  for await (
+    const entry of walk(CAPABILITIES_DIR, {
+      maxDepth: 2,
+      includeDirs: false,
+      match: [/capability\.yaml$/],
+    })
+  ) {
     const dirPath = dirname(entry.path);
     const name = dirPath.split("/").pop()!;
     const manifest = parseYaml(
@@ -316,10 +333,12 @@ async function checkCapabilityIntegrity(): Promise<void> {
 async function checkSymlinks(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    includeDirs: true,
-    includeFiles: true,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      includeDirs: true,
+      includeFiles: true,
+    })
+  ) {
     let info: Deno.FileInfo;
     try {
       info = await Deno.lstat(entry.path);
@@ -341,9 +360,21 @@ async function checkSymlinks(): Promise<void> {
 // ──────────────────────────────────────────────────────────────
 
 const KNOWN_TOOLS = new Set([
-  "Read", "Write", "StrReplace", "Shell", "Grep", "Glob",
-  "ReadLints", "WebFetch", "WebSearch", "AskQuestion", "Task",
-  "TodoWrite", "SemanticSearch", "EditNotebook", "GenerateImage",
+  "Read",
+  "Write",
+  "StrReplace",
+  "Shell",
+  "Grep",
+  "Glob",
+  "ReadLints",
+  "WebFetch",
+  "WebSearch",
+  "AskQuestion",
+  "Task",
+  "TodoWrite",
+  "SemanticSearch",
+  "EditNotebook",
+  "GenerateImage",
 ]);
 
 async function validateSkillFrontmatter(): Promise<void> {
@@ -367,10 +398,12 @@ async function validateSkillFrontmatter(): Promise<void> {
   // Track names for the global-uniqueness check (RFC-10 §A.1).
   const namesByValue = new Map<string, string[]>();
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -452,10 +485,12 @@ async function validateSkillFrontmatter(): Promise<void> {
 async function checkSkillBodyLineCount(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -480,10 +515,12 @@ async function checkSkillCriticalPath(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
   const LIST_ITEM_RE = /^(?:\d+\.|-)\s+\S/;
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -536,10 +573,12 @@ async function checkSkillDescriptionLength(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
   const MAX_DESCRIPTION_CHARS = 1024;
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -577,10 +616,12 @@ async function checkSkillArgumentHint(): Promise<void> {
     { token: "|", reason: "alternative-value pipe" },
   ];
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -641,10 +682,12 @@ async function checkSlashSkillInvocationsUsePositionals(): Promise<void> {
     }
   }
   for (const root of SCAN_ROOTS) {
-    for await (const entry of walk(root, {
-      exts: [".md", ".mdc"],
-      includeDirs: false,
-    })) {
+    for await (
+      const entry of walk(root, {
+        exts: [".md", ".mdc"],
+        includeDirs: false,
+      })
+    ) {
       if (await isUnderSymlink(entry.path)) continue;
       targets.push(entry.path);
     }
@@ -685,7 +728,9 @@ async function checkSlashSkillInvocationsUsePositionals(): Promise<void> {
         )
       ) {
         fail(
-          `Slash skill invocation uses flag-style arguments in ${rel}:${i + 1}` +
+          `Slash skill invocation uses flag-style arguments in ${rel}:${
+            i + 1
+          }` +
             (end > i ? `-${end + 1}` : "") +
             " — use positional skill arguments; reserve --flags for underlying CLI commands",
         );
@@ -701,10 +746,12 @@ async function checkSlashSkillInvocationsUsePositionals(): Promise<void> {
 async function checkSkillNoLicense(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -770,9 +817,9 @@ async function checkRetiredSlashCommands(): Promise<void> {
       for (const pattern of RETIRED_PATTERNS) {
         if (lines[i].includes(pattern)) {
           fail(
-            `Retired slash command in ${rel}:${
-              i + 1
-            } -- '${pattern}' (line: ${lines[i].trim()})`,
+            `Retired slash command in ${rel}:${i + 1} -- '${pattern}' (line: ${
+              lines[i].trim()
+            })`,
           );
         }
       }
@@ -788,10 +835,12 @@ async function checkRetiredSlashCommands(): Promise<void> {
     }
     if (!exists) continue;
 
-    for await (const entry of walk(root, {
-      exts: [".md"],
-      includeDirs: false,
-    })) {
+    for await (
+      const entry of walk(root, {
+        exts: [".md"],
+        includeDirs: false,
+      })
+    ) {
       if (await isUnderSymlink(entry.path)) continue;
       await scanFile(entry.path);
     }
@@ -819,10 +868,12 @@ async function checkSkillReferences(): Promise<void> {
 
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const skillDir = dirname(entry.path);
@@ -860,10 +911,12 @@ async function checkSkillVariables(): Promise<void> {
 
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -943,10 +996,12 @@ async function checkSkillDirectives(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
   const registry = new Map<string, Set<string>>();
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     const parts = relative(PLUGINS_DIR, entry.path).split("/");
     if (parts.length >= 4 && parts[1] === "skills") {
       const plugin = parts[0];
@@ -958,10 +1013,12 @@ async function checkSkillDirectives(): Promise<void> {
 
   const SKIP_DIRS = [/node_modules/, /\.git/, /temp/, /rfcs/];
 
-  for await (const entry of walk(REPO_ROOT, {
-    exts: [".md"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(REPO_ROOT, {
+      exts: [".md"],
+      includeDirs: false,
+    })
+  ) {
     if (SKIP_DIRS.some((re) => re.test(entry.path))) continue;
     if (await isUnderSymlink(entry.path)) continue;
 
@@ -1007,11 +1064,13 @@ async function checkPluginConsistency(): Promise<void> {
   const declaredSources = new Set(manifest.plugins.map((p) => p.source));
 
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-  for await (const entry of walk(PLUGINS_DIR, {
-    maxDepth: 3,
-    match: [/plugin\.json$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      maxDepth: 3,
+      match: [/plugin\.json$/],
+      includeDirs: false,
+    })
+  ) {
     const relParts = relative(PLUGINS_DIR, entry.path).split("/");
     if (
       relParts.length === 3 &&
@@ -1149,10 +1208,12 @@ async function checkRetiredCliVerbs(): Promise<void> {
   ];
 
   for (const root of SCAN_ROOTS) {
-    for await (const entry of walk(root, {
-      exts: [".md"],
-      includeDirs: false,
-    })) {
+    for await (
+      const entry of walk(root, {
+        exts: [".md"],
+        includeDirs: false,
+      })
+    ) {
       if (await isUnderSymlink(entry.path)) continue;
       const rel = relative(REPO_ROOT, entry.path);
       if (ALLOWLIST.has(rel)) continue;
@@ -1170,9 +1231,9 @@ async function checkRetiredCliVerbs(): Promise<void> {
         for (const { pattern, hint } of PATTERNS) {
           if (pattern.test(line)) {
             fail(
-              `Retired CLI verb in ${rel}:${i + 1} -- ${
-                line.trim()
-              } -- ${hint}`,
+              `Retired CLI verb in ${rel}:${
+                i + 1
+              } -- ${line.trim()} -- ${hint}`,
             );
           }
         }
@@ -1224,10 +1285,12 @@ async function checkRfc14WorkspaceLanding(): Promise<void> {
       exists = false;
     }
     if (!exists) continue;
-    for await (const entry of walk(root, {
-      includeDirs: false,
-      exts: [".md", ".mdx", ".mdc"],
-    })) {
+    for await (
+      const entry of walk(root, {
+        includeDirs: false,
+        exts: [".md", ".mdx", ".mdc"],
+      })
+    ) {
       if (await isUnderSymlink(entry.path)) continue;
       targets.push(entry.path);
     }
@@ -1262,9 +1325,9 @@ async function checkRfc14WorkspaceLanding(): Promise<void> {
         !ALLOWED_WORKSPACE_MERGE_CONTEXT.test(line)
       ) {
         fail(
-          `RFC-14 workspace merge automation in ${rel}:${i + 1} -- ${
-            line.trim()
-          } -- describe it only as a retired/non-zero shim or migration note`,
+          `RFC-14 workspace merge automation in ${rel}:${
+            i + 1
+          } -- ${line.trim()} -- describe it only as a retired/non-zero shim or migration note`,
         );
       }
 
@@ -1273,9 +1336,9 @@ async function checkRfc14WorkspaceLanding(): Promise<void> {
         !ALLOWED_AUTO_MERGE_CONTEXT.test(line)
       ) {
         fail(
-          `RFC-14 retired --auto-merge mention in ${rel}:${i + 1} -- ${
-            line.trim()
-          } -- the flag must be described as retired/rejected, not active`,
+          `RFC-14 retired --auto-merge mention in ${rel}:${
+            i + 1
+          } -- ${line.trim()} -- the flag must be described as retired/rejected, not active`,
         );
       }
 
@@ -1285,9 +1348,9 @@ async function checkRfc14WorkspaceLanding(): Promise<void> {
         !ALLOWED_GH_MERGE_CONTEXT.test(line)
       ) {
         fail(
-          `RFC-14 automated gh merge instruction in ${rel}:${i + 1} -- ${
-            line.trim()
-          } -- Specify may only point operators at gh pr merge; it must not invoke it`,
+          `RFC-14 automated gh merge instruction in ${rel}:${
+            i + 1
+          } -- ${line.trim()} -- Specify may only point operators at gh pr merge; it must not invoke it`,
         );
       }
     }
@@ -1303,13 +1366,16 @@ async function checkInstructionPreambles(): Promise<void> {
   // `.specify/slices/`. Both paths are accepted here for the duration of
   // the cut-over so vendored capability instruction files that still
   // reference the historical path do not silently fail this check.
-  const OUTPUT_LOCATION_RE = /^> \*\*Output location\*\*: `\.specify\/(changes|slices)\//m;
+  const OUTPUT_LOCATION_RE =
+    /^> \*\*Output location\*\*: `\.specify\/(changes|slices)\//m;
 
-  for await (const entry of walk(CAPABILITIES_DIR, {
-    maxDepth: 3,
-    includeDirs: false,
-    match: [/instructions\/[a-z]+\.md$/],
-  })) {
+  for await (
+    const entry of walk(CAPABILITIES_DIR, {
+      maxDepth: 3,
+      includeDirs: false,
+      match: [/instructions\/[a-z]+\.md$/],
+    })
+  ) {
     const rel = relative(REPO_ROOT, entry.path);
     let content: string;
     try {
@@ -1447,10 +1513,12 @@ async function checkV1LayoutPaths(): Promise<void> {
       exists = false;
     }
     if (!exists) continue;
-    for await (const entry of walk(root, {
-      includeDirs: false,
-      exts: [".md", ".mdx", ".mdc", ".yaml", ".yml", ".json", ".toml"],
-    })) {
+    for await (
+      const entry of walk(root, {
+        includeDirs: false,
+        exts: [".md", ".mdx", ".mdc", ".yaml", ".yml", ".json", ".toml"],
+      })
+    ) {
       if (await isUnderSymlink(entry.path)) continue;
       targets.push(entry.path);
     }
@@ -1495,8 +1563,7 @@ async function checkV1LayoutPaths(): Promise<void> {
 // ──────────────────────────────────────────────────────────────
 // 14. Acceptance scenario frontmatter validation (C03)
 //
-// Discovers opted-in scenario files under the four roots documented
-// in `acceptance/README.md` §Scenario Discovery, validates frontmatter
+// Discovers opted-in scenario files under the four accepted roots, validates frontmatter
 // against `.cursor/schemas/scenario.schema.json`, and runs cross-file
 // invariants (id uniqueness, body-id consistency, stages prefix,
 // expected-artifact path safety, capability-boundary requirements).
@@ -1519,16 +1586,18 @@ const SCENARIO_ID_BODY_RE = /^Scenario ID:\s*`?([a-z][a-z0-9-]*)`?\s*$/m;
 async function discoverScenarioCandidates(): Promise<string[]> {
   const candidates: string[] = [];
 
-  // Discovery root 1: acceptance/suites/<suite>/scenario.md
-  const suitesDir = join(REPO_ROOT, "acceptance", "suites");
+  // Discovery root 1: tests/suites/<suite>/scenario.md
+  const suitesDir = join(REPO_ROOT, "tests", "suites");
   try {
     const stat = await Deno.stat(suitesDir);
     if (stat.isDirectory) {
-      for await (const entry of walk(suitesDir, {
-        maxDepth: 2,
-        includeDirs: false,
-        match: [/scenario\.md$/],
-      })) {
+      for await (
+        const entry of walk(suitesDir, {
+          maxDepth: 2,
+          includeDirs: false,
+          match: [/scenario\.md$/],
+        })
+      ) {
         const rel = relative(suitesDir, entry.path).split("/");
         if (rel.length === 2 && rel[1] === "scenario.md") {
           candidates.push(entry.path);
@@ -1544,10 +1613,12 @@ async function discoverScenarioCandidates(): Promise<string[]> {
   try {
     const stat = await Deno.stat(CAPABILITIES_DIR);
     if (stat.isDirectory) {
-      for await (const entry of walk(CAPABILITIES_DIR, {
-        exts: [".md"],
-        includeDirs: false,
-      })) {
+      for await (
+        const entry of walk(CAPABILITIES_DIR, {
+          exts: [".md"],
+          includeDirs: false,
+        })
+      ) {
         const rel = relative(CAPABILITIES_DIR, entry.path).split("/");
         // Flat: <cap>/tests/<scenario>.md  → 3 parts
         if (rel.length === 3 && rel[1] === "tests") {
@@ -1572,10 +1643,12 @@ async function discoverScenarioCandidates(): Promise<string[]> {
   try {
     const stat = await Deno.stat(pluginsDir);
     if (stat.isDirectory) {
-      for await (const entry of walk(pluginsDir, {
-        includeDirs: false,
-        match: [/scenario\.md$/],
-      })) {
+      for await (
+        const entry of walk(pluginsDir, {
+          includeDirs: false,
+          match: [/scenario\.md$/],
+        })
+      ) {
         if (await isUnderSymlink(entry.path)) continue;
         const rel = relative(pluginsDir, entry.path).split("/");
         if (
@@ -1679,7 +1752,7 @@ async function validateScenarioFrontmatter(): Promise<void> {
     const id = sc.frontmatter.id;
     if (typeof id !== "string") continue;
     const body = sc.content.slice(
-      (sc.content.match(/^---\n[\s\S]*?\n---/)?.[0].length ?? 0),
+      sc.content.match(/^---\n[\s\S]*?\n---/)?.[0].length ?? 0,
     );
     const m = body.match(SCENARIO_ID_BODY_RE);
     if (!m) continue;
@@ -1819,10 +1892,10 @@ async function validateScenarioFrontmatter(): Promise<void> {
 // ──────────────────────────────────────────────────────────────
 // 15. Recorded acceptance trace header freshness (C16)
 //
-// Every `acceptance/recorded/**/*.jsonl` trace must lead with a
+// Every `tests/recorded/**/*.jsonl` trace must lead with a
 // `recorded-trace-header` line carrying a non-empty `schemaVersion: 1`,
 // `sourceBackend`, `sourceRunId`, `sourceTimestamp`, and `scenarioId`.
-// The check is opt-in / lenient: a missing `acceptance/recorded/`
+// The check is opt-in / lenient: a missing `tests/recorded/`
 // directory or zero trace files is fine (fresh checkout / no recorded
 // coverage yet). Only present `.jsonl` files are validated.
 //
@@ -1846,7 +1919,7 @@ const RECORDED_TRACE_REQUIRED_FIELDS = [
 ] as const;
 
 async function checkRecordedTraceFreshness(): Promise<void> {
-  const recordedRoot = join(REPO_ROOT, "acceptance", "recorded");
+  const recordedRoot = join(REPO_ROOT, "tests", "recorded");
   let rootExists = true;
   try {
     const stat = await Deno.stat(recordedRoot);
@@ -1857,10 +1930,12 @@ async function checkRecordedTraceFreshness(): Promise<void> {
   if (!rootExists) return;
 
   const tracePaths: string[] = [];
-  for await (const entry of walk(recordedRoot, {
-    exts: [".jsonl"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(recordedRoot, {
+      exts: [".jsonl"],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     tracePaths.push(entry.path);
   }
@@ -1892,7 +1967,9 @@ async function checkRecordedTraceFreshness(): Promise<void> {
       fail(`Recorded trace: ${rel} — first line is not valid JSON: ${msg}`);
       continue;
     }
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    if (
+      parsed === null || typeof parsed !== "object" || Array.isArray(parsed)
+    ) {
       fail(`Recorded trace: ${rel} — first line must be a JSON object`);
       continue;
     }
@@ -1948,7 +2025,9 @@ async function checkRecordedTraceFreshness(): Promise<void> {
       .split("\n")
       .map((s) => s.trim())
       .filter((s) => s.length > 0);
-    const tracesByRel = new Map(tracePaths.map((p) => [relative(REPO_ROOT, p), p]));
+    const tracesByRel = new Map(
+      tracePaths.map((p) => [relative(REPO_ROOT, p), p]),
+    );
     for (const rel of diff) {
       if (!tracesByRel.has(rel)) continue;
       const path = tracesByRel.get(rel)!;

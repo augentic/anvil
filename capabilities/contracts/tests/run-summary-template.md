@@ -1,15 +1,10 @@
 # Scenario Run Summary
 
-> Reusable template for capturing one acceptance run of a contracts scenario.
-> Mirrors the future runner's `summary.md` shape from
-> [`acceptance/runner/README.md` §Run Directories And Evidence](../../../acceptance/runner/README.md#run-directories-and-evidence)
-> so a human-driven run today produces output the runner can replicate
-> mechanically tomorrow.
+> Reusable template for capturing one manual run of a contracts scenario.
 
 Fill in the fields below for one run. Keep this document next to the run's
 evidence (or paste it into the operator's notes for a fully manual run). On
-failure, preserve the run-evidence directory per the
-[Run Evidence Policy](../../../acceptance/README.md#run-evidence-policy).
+failure, preserve the evidence directory or notes that explain the result.
 
 ---
 
@@ -108,9 +103,7 @@ Record what cleanup the operator/runner actually performed, per the scenario's
 
 - **Result:** `pass | fail`
 - **Fault domain (on failure):** one of `cli-substrate`,
-  `skill-orchestration`, `capability-brief`, `specialist-generation`,
-  `runner-setup`, `external-fake-boundary`, `live-agent-nondeterminism`, or
-  `unknown`. Taxonomy from
-  [`acceptance/runner/README.md` §Failure Reporting](../../../acceptance/runner/README.md#failure-reporting).
+  `skill-orchestration`, `capability-brief`, `specialist-generation`, or
+  `unknown`.
 - **Notes:** free-form prose for context the structured fields above can't
   capture. Keep this short.

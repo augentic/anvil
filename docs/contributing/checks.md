@@ -100,9 +100,9 @@ This prevents cross-plugin path contamination by making every instruction file d
 
 ### 14. Acceptance scenario frontmatter
 
-Acceptance scenario files are validated against `.cursor/schemas/scenario.schema.json` (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows the four-location convention from [`acceptance/README.md` §Scenario Discovery](../../acceptance/README.md#scenario-discovery):
+Acceptance scenario files are validated against `.cursor/schemas/scenario.schema.json` (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
 
-1. `acceptance/suites/<suite>/scenario.md` — shared outside-in suites.
+1. `tests/suites/<suite>/scenario.md` — shared outside-in suites, when present.
 2. `capabilities/<capability>/tests/<scenario>.md` — flat owner-local capability scenarios.
 3. `capabilities/<capability>/tests/<scenario>/scenario.md` — directory-form owner-local capability scenarios.
 4. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
@@ -158,19 +158,12 @@ FAIL: Scenario frontmatter: duplicate scenario id 'contracts-describe' across fi
 
 Common fixes: align `kind`/`capability` per the schema, walk back `stages` to a contiguous prefix starting at `define`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
 
-### 15. Recorded acceptance trace freshness
+### 15. Recorded trace freshness
 
-Every `acceptance/recorded/**/*.jsonl` trace must lead with a `recorded-trace-header` line carrying `schemaVersion: 1` and the four metadata fields the recorded backend depends on (`sourceBackend`, `sourceRunId`, `sourceTimestamp`, `scenarioId`). The check is opt-in / lenient: when `acceptance/recorded/` is missing or has no trace files (fresh checkout, no recorded coverage yet) nothing runs. Only present `.jsonl` files are validated.
-
-**Example failures:**
-
-```text
-FAIL: Recorded trace: acceptance/recorded/rm01-cross-repo/baseline.jsonl — first line is not valid JSON: Unexpected token...
-FAIL: Recorded trace: acceptance/recorded/rm01-cross-repo/baseline.jsonl — recorded-trace-header.schemaVersion must be 1 (got 2)
-FAIL: Recorded trace: acceptance/recorded/rm01-cross-repo/baseline.jsonl — recorded-trace-header missing required field 'sourceRunId'
-```
-
-In addition, when the most recent commit (`HEAD~1..HEAD`) touches a recorded trace and the script has permission to spawn `git`, a non-fatal `WARN:` line suggests the commit body quote the source run id from the header so reviewers can correlate the trace back to the live run that produced it. The warning never increments the failure counter — `make checks` keeps its narrow `--allow-read` posture, and the recency hint is silently skipped on shallow clones or environments without `git`. See [Regenerating Recorded Traces](acceptance.md#regenerating-recorded-traces) for the regen procedure.
+The recorded-trace check is opt-in. If a future suite adds
+`tests/recorded/**/*.jsonl`, every trace must lead with a
+`recorded-trace-header` line carrying `schemaVersion: 1`, `sourceBackend`,
+`sourceRunId`, `sourceTimestamp`, and `scenarioId`.
 
 ## Extending the checks
 
