@@ -29,17 +29,17 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 
 ## Sequenced Roadmap
 
-Items are ordered by intended sequencing. Earlier items unblock later ones unless noted otherwise. Command examples in this roadmap are target surfaces unless the item explicitly says the command is already implemented.
+Items are ordered by intended sequencing and identified as `RM-NN`. Earlier items unblock later ones unless noted otherwise. Command examples in this roadmap are target surfaces unless the item explicitly says the command is already implemented.
 
 ### Near Term
 
-#### Multi-repo acceptance fixture
+#### RM-01: Multi-repo acceptance fixture
 
 **Goal:** Prove a realistic multi-slice, multi-repo flow.
 **Covers:** plan generation, registry routing, dependent slice execution, branch preparation, workspace sync, residue and baseline commit behavior, push and PR/MR handoff, and finalize after external merge.
 **Output:** an automated or semi-automated suite against local fixture repositories with fake or recorded forge behavior. Recovery paths land in *Multi-repo acceptance suite expansion*.
 
-#### `AGENTS.md` generation under proposed `specify context`
+#### RM-02: `AGENTS.md` generation under proposed `specify context`
 
 **Goal:** Generate concise, deterministic, refreshable repository context.
 **Target surface:**
@@ -53,7 +53,7 @@ specify context check
 **Output:** short `AGENTS.md` guidance covering runtime, tests, linting, navigation, conventions, boundaries, and dependencies. The proposed `specify context check` warns when repo changes imply a refresh.
 **Why now:** High direct user value, and it unblocks stale-context checks in `specify review`.
 
-#### Codex rule format
+#### RM-03: Codex rule format
 
 **Goal:** Give generators and reviewers stable, citable engineering rules.
 **Seed:** `plugins/references/review-checks.md` and its existing `UNI-*` catalogue.
@@ -68,13 +68,13 @@ codex/
   security/secrets.md
 ```
 
-#### `specify review` finding schema
+#### RM-04: `specify review` finding schema
 
 **Goal:** Define the structured finding shape before reviewer code lands.
 **Depends on:** *Codex rule format*.
 **Schema includes:** severity (`critical` / `important` / `suggestion` / `optional`), rule id, file/line references, verbatim evidence, remediation, and machine-readable output for terminals, CI annotations, PR comments, and future dashboards.
 
-#### Cross-project compatibility classification
+#### RM-05: Cross-project compatibility classification
 
 **Goal:** Reconcile the retired consumer-compatibility vocabulary with the current contract validation gate, then expose a classified compatibility report.
 **Seed:** `plugins/contract/references/cross-project-compatibility.md` and its `change-kind` vocabulary.
@@ -88,36 +88,36 @@ specify compatibility report --change <name>
 
 **Scope:** Contract-first and dependency-aware. This does not replace the current `specify tool run contract` baseline validation gate; it adds a consumer-impact classifier after the stale cross-project reference docs are reconciled. Change-level gates land later.
 
-#### RFC-13 rename-tail cleanup
+#### RM-06: RFC-13 rename-tail cleanup
 
 **Goal:** Remove transition shims before they become load-bearing.
 **Output:** a release that deletes the `specify migrate slice-layout` and `specify migrate change-noun` CLI shims from `specify-cli`, and deletes the `/spec:plan` / `/spec:execute` deprecation shims from `plugins/spec/skills/`.
 
-#### RFC-5: `specify check` framework linter port
+#### RM-07: RFC-5: `specify check` framework linter port
 
 **Goal:** Port `scripts/checks.ts` from Deno into a Rust `specify-check` crate exposed as `specify check`.
 **Why now:** Removes Deno from CI, reuses CLI schema parsers, and turns reserved framework-lint rule ids into a working scanner.
 **Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
 
-#### RFC-4 Option 1: typed skill expression
+#### RM-08: RFC-4 Option 1: typed skill expression
 
 **Goal:** Add deterministic structural validation for skill authoring inside `specify check`.
 **Checks:** frontmatter schema, reference resolution, variable consistency, and cross-skill directive validation.
 **Defers:** typed YAML manifests and a Rust DSL until skill count justifies them.
 
-#### Skill-hygiene refactors
+#### RM-09: Skill-hygiene refactors
 
 **Goal:** Compress always-loaded surface area and remove duplicated skill prose.
 **Scope:** factor repeated phase-outcome, journal, and plan-mutation instructions into shared references while preserving stable Specify artifact identifiers.
 
-#### Migrate remaining first-party host helpers to declared WASI tools
+#### RM-10: Migrate remaining first-party host helpers to declared WASI tools
 
 **Goal:** Move remaining first-party host helpers behind `specify tool run` where the cost/benefit is favorable.
 **Depends on:** the `specify check` port, which can enforce `skill.invokes-host-binary-with-declared-tool-equivalent`.
 
 ### Mid Term
 
-#### CI-native `specify review`
+#### RM-11: CI-native `specify review`
 
 **Goal:** Continuously review consumer projects.
 **Target surface:**
@@ -131,7 +131,7 @@ specify review --format json
 **Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.
 **Output:** structured findings via the settled review schema.
 
-#### Dependency-aware compatibility gates
+#### RM-12: Dependency-aware compatibility gates
 
 **Goal:** Block producer slices from reaching `done` while breaking consumer follow-up is unaccounted for.
 **Answers:** whether consumer plan entries exist, whether producer completion is allowed, and what SemVer or release impact is implied.
@@ -141,7 +141,7 @@ specify review --format json
 specify change plan impact --change <name>
 ```
 
-#### Catalog import: Backstage adapter
+#### RM-13: Catalog import: Backstage adapter
 
 **Goal:** Enrich Specify planning from external catalogs without making Specify a developer portal.
 **Target surface:**
@@ -155,17 +155,17 @@ specify registry diff <source>
 **Mapping:** Backstage `System` to platform/product boundary; `Component` to registry project; `API` to interface inventory; ownership/domain/dependencies to routing and review signals.
 **Output:** explicit registry diff for operator review before planning or execution.
 
-#### Multi-repo acceptance suite expansion
+#### RM-14: Multi-repo acceptance suite expansion
 
 **Goal:** Extend the acceptance fixture to blocked, failed, interrupted, and stale-workspace recovery paths.
 
-#### Read-oriented Specify MCP server
+#### RM-15: Read-oriented Specify MCP server
 
 **Goal:** Make Specify state available to agents through MCP without duplicating business logic.
 **Initial tools:** `specify_status`, `specify_registry_show`, `specify_workspace_status`, `specify_change_plan_status`, `specify_change_plan_next`, `specify_change_plan_doctor`, `specify_slice_validate`, `specify_slice_outcome_show`.
 **Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 
-#### Local structured workflow events
+#### RM-16: Local structured workflow events
 
 **Goal:** Measure workflow performance, failure modes, and model/tool usage without requiring hosted infrastructure.
 **Events include:** command/version, project/capability, slice or plan entry, phase start/finish, validation result, invoked skill, review findings, recovery attempts, human intervention points, and model/tool metadata when available.
@@ -179,7 +179,7 @@ specify events export
 
 **Output:** local JSONL or configurable telemetry sink with run identity.
 
-#### Forge abstraction behind workspace push and change finalize
+#### RM-17: Forge abstraction behind workspace push and change finalize
 
 **Goal:** Support branch transport, PR/MR creation, and finalize beyond GitHub CLI.
 **Adapter covers:** remote discovery, auth checks, branch existence, push permissions, PR/MR create-or-update, CI/mergeability status, merged-state verification, and provider links.
@@ -191,7 +191,7 @@ specify workspace push --forge github
 specify change finalize --forge github
 ```
 
-#### Structured orchestration status for re-entry
+#### RM-18: Structured orchestration status for re-entry
 
 **Goal:** Make `/change:plan <name> orchestrate` re-entry and pause points machine-readable.
 **Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
@@ -199,7 +199,7 @@ specify change finalize --forge github
 
 ### Long Term
 
-#### Cloud-hosted execute loop
+#### RM-19: Cloud-hosted execute loop
 
 **Goal:** Run Specify plans durably in the background while preserving local workflow semantics.
 **Requires:** sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/change:execute loop`.
@@ -211,20 +211,20 @@ specify execute status <run-id>
 specify execute resume <run-id>
 ```
 
-#### Multi-forge adapter coverage
+#### RM-20: Multi-forge adapter coverage
 
 **Goal:** Extend the forge abstraction to GitHub, GitLab, Bitbucket, and self-hosted forges.
 
-#### Catalog-backed initiatives across many repositories
+#### RM-21: Catalog-backed initiatives across many repositories
 
 **Goal:** Drive multi-repo initiatives from live catalog-backed registry projections.
 
-#### Capability ecosystem operating model
+#### RM-22: Capability ecosystem operating model
 
 **Goal:** Make capabilities feel like a dependable ecosystem rather than bespoke first-party packages.
 **Includes:** publishing and discovery conventions, version compatibility tests, declared-tool compatibility, migration guidance, quality gates, examples beyond Omnia/Vectis/contracts, and ownership for codex rules, artifact templates, and tool manifests.
 
-#### Hosted observability dashboards
+#### RM-23: Hosted observability dashboards
 
 **Goal:** Build hosted dashboards on top of local structured workflow events without making local workflows depend on hosted infrastructure.
 
