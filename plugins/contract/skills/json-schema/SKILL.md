@@ -26,10 +26,10 @@ The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong 
 /contract:json-schema <slice-dir>
 ```
 
-Optional internal flags (recognised by the verifier sibling):
+Optional internal positionals (recognised by the verifier sibling):
 
-- `--mode single` — default. Validate the slice's schema artefacts in isolation against the specs and any baseline bindings that reference them. Read-only, markdown report.
-- `--mode cross-project` — invoked by `/change:execute` after a producer's contract change merges. Compares each merged schema against each consumer's tier-2 workspace clone view of the same schema. Read-only, structured YAML report. See `verifier.md` §Cross-project mode.
+- `mode single` — default. Validate the slice's schema artefacts in isolation against the specs and any baseline bindings that reference them. Read-only, markdown report.
+- `mode cross-project` — invoked by `/change:execute` after a producer's contract change merges. Compares each merged schema against each consumer's tier-2 workspace clone view of the same schema. Read-only, structured YAML report. See `verifier.md` §Cross-project mode.
 
 When invoked from the contracts capability build brief during `/spec:build`, `<slice-dir>` is the active slice directory; the brief routes the intent (author or importer) based on whether the operator supplied external schema files for `contracts/schemas/`. When invoked post-merge by `/change:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged schemas.
 
@@ -132,6 +132,6 @@ When authoring or importing, never silently delete or narrow a baseline schema's
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for computing the minimal delta between baseline and change-local files, including the `$id` stability rule and opaque-file-replacement merge contract.
 - [`import-upgrade-policy`](../../references/import-upgrade-policy.md) — shared framework for the importer sibling (format detection, draft upgrades, lossless-vs-lossy decisions).
 - [`report-shape`](../../references/report-shape.md) — single-mode markdown and cross-project YAML report formats produced by the verifier sibling.
-- [`cross-project-compatibility`](../../references/cross-project-compatibility.md) — `change-kind` vocabulary used by the verifier in `--mode cross-project` and by Check 4 in `single` mode.
+- [`cross-project-compatibility`](../../references/cross-project-compatibility.md) — `change-kind` vocabulary used by the verifier in `mode cross-project` and by Check 4 in `single` mode.
 - [`openapi-conventions`](../../references/openapi-conventions.md) — referenced for understanding how `/contract:openapi` consumes the schemas authored here.
 - [`asyncapi-conventions`](../../references/asyncapi-conventions.md) — referenced for understanding how `/contract:asyncapi` consumes the schemas authored here.

@@ -141,7 +141,7 @@ specify change plan lock release --pid <pid>
 specify change plan lock status
 ```
 
-The lock (`.specify/plan.lock`) is a PID stamp held by `/change:execute` to prevent concurrent execution. `--pid` defaults to the current process PID; `/change:execute` passes a stable agent-session PID so `release` can authenticate the holder. `status` reports whether the lock is held and by which PID.
+The lock (`.specify/plan.lock`) is a PID stamp held by `/change:execute` to prevent concurrent execution. The CLI `pid` option defaults to the current process PID; `/change:execute` passes a stable agent-session PID so `release` can authenticate the holder. `status` reports whether the lock is held and by which PID.
 
 ## See also
 

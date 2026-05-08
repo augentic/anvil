@@ -211,5 +211,5 @@ Validate: OK
 
 Next:
   - Review: specify change plan status
-  - Execute: /change:execute --loop
+  - Execute: /change:execute loop
 ```

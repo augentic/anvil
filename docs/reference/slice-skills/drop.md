@@ -5,7 +5,7 @@ Discard a slice without merging specs into the baseline.
 ## Synopsis
 
 ```text
-/spec:drop [change-name?] [--reason "<rationale>"]
+/spec:drop [change-name?] [reason "<rationale>"]
 ```
 
 ## Arguments
@@ -55,7 +55,7 @@ Drop is available from any pre-terminal state.
 /spec:drop
 
 # Drop with a reason (non-interactive)
-/spec:drop add-auth --reason "Superseded by SSO integration"
+/spec:drop add-auth reason "Superseded by SSO integration"
 ```
 
 ## See also

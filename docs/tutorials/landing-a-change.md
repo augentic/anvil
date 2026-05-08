@@ -1,6 +1,8 @@
 # Landing a Change
 
-This tutorial picks up where [Cross-Repo Changes](cross-repo-change.md) leaves off: two PRs are open against the registered projects, and the `oauth-login` plan has every entry `done`. We now exercise the **landing half** of the platform-first loop -- merging the PRs through the forge and archiving the plan -- and round it out with the `/change:plan --orchestrate` umbrella (formerly the `/spec:initiative` skill) that drives each of the three change shapes.
+This tutorial picks up where [Cross-Repo Changes](cross-repo-change.md) leaves off: two PRs are open against the registered projects, and the `oauth-login` plan has every entry `done`. We now exercise the **landing half** of the platform-first loop -- merging the PRs through the forge and archiving the plan -- and round it out with the `/change:plan <name> orchestrate` umbrella that drives each of the three change shapes.
+
+Use this page when you want the worked scenario and full end-to-end narrative. If you already have PRs open and just need the operator checklist, use [Land a Change](../how-to/land-a-change.md).
 
 It exercises Steps 8-9 of the RFC-9 §1C critical path:
 
@@ -25,7 +27,7 @@ Recap the on-disk state we are starting from:
 | `specify change plan status` | Three entries; `Summary: 0 pending, 0 in-progress, 3 done` |
 | `gh pr list -R org/shop-backend --head specify/oauth-login` | Exactly one open PR |
 | `gh pr list -R org/shop-mobile --head specify/oauth-login` | Exactly one open PR |
-| `git status` (in each workspace clone) | Clean (the auto-commits from `/change:execute --loop` are pushed, not staged) |
+| `git status` (in each workspace clone) | Clean (the auto-commits from `/change:execute loop` are pushed, not staged) |
 
 ## 8. Land the PRs
 
@@ -91,7 +93,7 @@ Change `oauth-login` finalized.
 
 </details>
 
-The two workspace clones stay on disk under `.specify/workspace/` -- they are the staging area for the next initiative. To prune them at the same time:
+The two workspace clones stay on disk under `.specify/workspace/` -- they are the staging area for the next change. To prune them at the same time:
 
 ```bash
 specify change finalize --clean
@@ -101,7 +103,7 @@ specify change finalize --clean
 
 Use `--dry-run` to preview the guard table without writing anything -- useful for verifying readiness before you commit. `finalize` is **idempotent**: re-running it after manually clearing a refused guard (e.g. merging the last PR by hand) completes the archive on the second invocation. Re-running after a successful finalize returns `plan-not-found`, the explicit "already finalized" signal.
 
-> **One-shot variant -- `/change:plan --orchestrate` (RFC-9 §2C).** The Layer 4 umbrella mode (formerly `/spec:initiative`) composes the automated half of the loop: brief -> registry validate -> plan -> execute -> push. It then lists the opened PRs and stops. After the operator merges those PRs through the forge UI or `gh pr merge`, re-running the umbrella resumes at `specify change finalize`. The three subsections below show the umbrella driving each of the three change shapes against the same hub. See [`/change:plan --orchestrate`](../reference/change-skills/change.md) for the full algorithm, halt semantics, and re-entry rules.
+> **One-shot variant -- `/change:plan <name> orchestrate` (RFC-9 §2C).** The Layer 4 umbrella mode composes the automated half of the loop: brief -> registry validate -> plan -> execute -> push. It then lists the opened PRs and stops. After the operator merges those PRs through the forge UI or `gh pr merge`, re-running the umbrella resumes at `specify change finalize`. The three subsections below show the umbrella driving each of the three change shapes against the same hub. See [`/change:plan <name> orchestrate`](../reference/change-skills/change.md) for the full algorithm, halt semantics, and re-entry rules.
 
 ## Verification
 
@@ -118,18 +120,18 @@ Any deviation is a blocker. File the failing transcript against this tutorial; p
 
 ## Change shapes
 
-The platform-first loop is shape-agnostic. The same Steps 1-9 drive three change shapes (RFC-9 §Motivation -> *The three initiative shapes*); only the inputs to Step 4 (Plan) differ. Each shape is also drivable via the Layer 4 umbrella mode `/change:plan --orchestrate` (RFC-9 §2C, formerly `/spec:initiative`). The transcripts below show each shape from the umbrella's perspective; the manual fallback for every step is the same Layer 1 verb the umbrella shells out to (see [Drop down a layer](../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the exact verb sequence).
+The platform-first loop is shape-agnostic. The same Steps 1-9 drive three change shapes: `migrate-legacy`, `new-feature`, and `update-existing`. Only the inputs to Step 4 (Plan) differ. Each shape is also drivable via the Layer 4 umbrella mode `/change:plan <name> orchestrate`. The transcripts below show each shape from the umbrella's perspective; the manual fallback for every step is the same Layer 1 verb the umbrella shells out to (see [Drop down a layer](../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the exact verb sequence).
 
 ### Variant: migrate-legacy
 
-Sources arrive via `--source <key>=<git-url-or-path>`. `/spec:analyze` clones each source into `.specify/plans/<initiative>/analyze/<key>/` (the [tier-1 workspace](../explanation/workspace-tiers.md#the-two-tiers)) for shallow capability inventory; deep `/spec:extract` runs at define time per change. Targets are existing or newly-minted registered projects.
+Sources arrive via `--source <key>=<git-url-or-path>`. `/spec:analyze` clones each source into `.specify/plans/<change>/analyze/<key>/` (the [tier-1 workspace](../explanation/workspace-tiers.md#the-two-tiers)) for shallow capability inventory; deep `/spec:extract` runs at define time per slice. Targets are existing or newly-minted registered projects.
 
 Run against an empty hub:
 
 ```text
-/change:plan --orchestrate migrate-foo \
-    --shape migrate-legacy \
-    --source monolith=git@github.com:org/legacy-foo.git
+/change:plan <name> orchestrate migrate-foo \
+    shape migrate-legacy \
+    source monolith=git@github.com:org/legacy-foo.git
 ```
 
 The umbrella runs through PR creation, stops for operator merge, then finalizes on re-entry:
@@ -137,12 +139,12 @@ The umbrella runs through PR creation, stops for operator merge, then finalizes 
 1. **Brief.** `specify change create migrate-foo` scaffolds `change.md`; the operator confirms a default body listing the legacy monolith as a `legacy-code` input.
 2. **Registry.** Empty + `--shape migrate-legacy` -> hand off to the 2B greenfield path inside `/change:plan`.
 3. **Plan.** `/change:plan` runs discovery against the cloned monolith, proposes a two-project topology (`foo-backend` + `foo-mobile`), shells `specify registry add` x 2 and `specify workspace sync` once, then propose decomposes into one cross-project contract change plus one implementation slice per project. Assignment routes the implementation slices.
-4. **Execute.** `/change:execute --loop` drives all three changes to `done` (contract change runs against the hub; the two implementation changes run inside their workspace clones).
+4. **Execute.** `/change:execute loop` drives all three changes to `done` (contract change runs against the hub; the two implementation changes run inside their workspace clones).
 5. **Push.** `specify workspace push` opens two PRs.
 6. **Land.** The operator reviews and merges both PRs through the forge UI or `gh pr merge`.
-7. **Finalize.** Re-run `/change:plan --orchestrate migrate-foo`; it observes merged PRs and runs `specify change finalize`.
+7. **Finalize.** Re-run `/change:plan <name> orchestrate migrate-foo`; it observes merged PRs and runs `specify change finalize`.
 
-Verb sequence: `specify change create` -> `specify registry validate` -> `/change:plan` -> `specify change plan create` -> `specify registry add` x 2 -> `specify workspace sync` -> `specify change plan add` x 3 -> `specify change plan amend --project` x 2 -> `specify change plan validate` -> `/change:execute --loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`. Full transcript and on-disk shapes: [`fixtures/migrate-legacy/`](../../plugins/change/skills/plan/fixtures/migrate-legacy/).
+Verb sequence: `specify change create` -> `specify registry validate` -> `/change:plan` -> `specify change plan create` -> `specify registry add` x 2 -> `specify workspace sync` -> `specify change plan add` x 3 -> `specify change plan amend --project` x 2 -> `specify change plan validate` -> `/change:execute loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`. Full transcript and on-disk shapes: [`fixtures/migrate-legacy/`](../../plugins/change/skills/plan/fixtures/migrate-legacy/).
 
 ### Variant: new-feature
 
@@ -151,14 +153,14 @@ Sources arrive via `--from <docs>` only (or via `change.md:inputs`). Targets are
 Run against the populated hub from [Cross-Repo Changes](cross-repo-change.md) Steps 1-3 (or your own equivalent):
 
 ```text
-/change:plan --orchestrate dark-mode \
-    --shape new-feature \
-    --from ./docs/dark-mode-spec.md
+/change:plan <name> orchestrate dark-mode \
+    shape new-feature \
+    from ./docs/dark-mode-spec.md
 ```
 
 **The walkthrough across [Cross-Repo Changes](cross-repo-change.md) and this tutorial is this shape.** The umbrella drives the same nine-step flow, with one deliberate pause: after `specify workspace push`, it lists the open PRs and **stops**. The operator merges PRs through the forge UI or `gh pr merge`, then re-runs the umbrella to finalize. Re-entry inspects on-disk state -- brief present, plan terminal, every PR `MERGED` on remote -- and skips straight to `specify change finalize`.
 
-Verb sequence (run 1, halts at step 6): `specify change create` -> `specify registry validate` -> `/change:plan --from ./docs/dark-mode-spec.md` -> `specify change plan create` -> `specify workspace sync` -> `specify change plan add` x 3 -> `specify change plan amend --project` x 2 -> `specify change plan validate` -> `/change:execute --loop` -> `specify workspace push` -> `gh pr list` (read-only). No registry mutation -- both projects exist before the run.
+Verb sequence (run 1, halts at step 6): `specify change create` -> `specify registry validate` -> `/change:plan <name> from ./docs/dark-mode-spec.md` -> `specify change plan create` -> `specify workspace sync` -> `specify change plan add` x 3 -> `specify change plan amend --project` x 2 -> `specify change plan validate` -> `/change:execute loop` -> `specify workspace push` -> `gh pr list` (read-only). No registry mutation -- both projects exist before the run.
 
 Verb sequence (run 2, after the operator merges PRs by hand): `specify registry validate` -> `specify workspace push` (reports `up-to-date`) -> `gh pr list` -> `specify change finalize`.
 
@@ -171,8 +173,8 @@ No `--from` and no `--source` -- sources are unused. Targets are existing regist
 Run against the same populated hub:
 
 ```text
-/change:plan --orchestrate polish-pass \
-    --shape update-existing
+/change:plan <name> orchestrate polish-pass \
+    shape update-existing
 ```
 
 Pre-flight forbids `--from`, `--against`, and `--source` under this shape; supplying any is a hard exit. The umbrella runs through push, stops for operator PR merge, and finalizes on re-entry:
@@ -185,7 +187,7 @@ Pre-flight forbids `--from`, `--against`, and `--source` under this shape; suppl
 6. **Land.** The operator reviews and merges both PRs through the forge UI or `gh pr merge`.
 7. **Finalize.** Re-run the umbrella; archive completes.
 
-Verb sequence: `specify change create` -> `specify registry validate` -> `/change:plan` -> `specify change plan create` -> `specify workspace sync` -> `specify change plan add` x 2 -> `specify change plan amend --project` x 2 -> `specify change plan validate` -> `/change:execute --loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`.
+Verb sequence: `specify change create` -> `specify registry validate` -> `/change:plan` -> `specify change plan create` -> `specify workspace sync` -> `specify change plan add` x 2 -> `specify change plan amend --project` x 2 -> `specify change plan validate` -> `/change:execute loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`.
 
 Full transcript and on-disk shapes: [`fixtures/update-existing/`](../../plugins/change/skills/plan/fixtures/update-existing/).
 
@@ -200,15 +202,15 @@ Each step in every shape above is a shell-out the umbrella runs verbatim. Operat
 - `--clean` prunes `.specify/workspace/<peer>/` after the archive completes; `--dry-run` previews the guard table without writing.
 - `finalize` is idempotent: re-running after a refused guard completes the archive on the second invocation; re-running after a successful finalize returns `plan-not-found` (the "already finalized" signal).
 - The same Steps 8-9 close out all three change shapes (`migrate-legacy`, `new-feature`, `update-existing`); only the inputs to Step 4 (Plan) differ.
-- The Layer 4 umbrella `/change:plan --orchestrate <name>` composes Steps 1-9 into a single operator action; it is composition only and adds no behaviour beyond the underlying skills and CLI verbs.
+- The Layer 4 umbrella `/change:plan <name> orchestrate` composes Steps 1-9 into a single operator action; it is composition only and adds no behaviour beyond the underlying skills and CLI verbs.
 
 ## Cross-links
 
-- [`/change:plan --orchestrate`](../reference/change-skills/change.md) -- Layer 4 umbrella reference page (formerly `/spec:initiative`).
+- [`/change:plan <name> orchestrate`](../reference/change-skills/change.md) -- Layer 4 umbrella reference page.
 - [Land a change](../how-to/land-a-change.md) -- focused how-to on autonomous vs supervised landing.
 - [`specify workspace`](../reference/cli/workspace.md) -- workspace sync, status, and push.
 - [`specify change finalize`](../reference/cli/change.md#specify-change-finalize) -- CLI reference, the four guards, JSON v2 envelope.
-- [Initiative landing issues](../appendices/troubleshooting.md#initiative-landing-issues) -- `branch-pattern-mismatch`, `plan-not-found`, dirty clones.
+- [Change landing issues](../appendices/troubleshooting.md#change-landing-issues) -- `branch-pattern-mismatch`, `plan-not-found`, dirty clones.
 - [Drop down a layer](../how-to/drop-down-a-layer.md) -- manual-fallback for every umbrella step.
 
 ## Next

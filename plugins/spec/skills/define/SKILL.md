@@ -1,18 +1,28 @@
 ---
 name: specify-define
-description: Define a new change with all artifacts generated in one step. Use when the user wants to quickly describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
+description: Define a new Specify slice with all artifacts generated in one step. Use when the user wants to describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
 argument-hint: "[description]"
 ---
 
 # Define Skill
 
-Define a new change - create the slice and generate all artifacts in one step.
+## Critical Path (Quick Reference)
+
+1. **Resolve intent and config** — derive or confirm the slice name, read `.specify/project.yaml`, and treat `domain` / `rules` as constraints only.
+2. **Create or resume via CLI** — run `specify slice create <name> --if-exists continue --format json`, surface overlaps, and never hand-edit metadata.
+3. **Handle regenerate mode narrowly** — when an artifact ID is provided, resolve that define brief, read its dependencies, rewrite only its `generates` output, and leave lifecycle state unchanged.
+4. **Resolve the define pipeline** — call `specify capability pipeline define --change .specify/slices/<name> --format json` and follow the returned topological brief order.
+5. **Generate artifacts in dependency order** — read each brief and its `needs`, write every output under `.specify/slices/<name>/`, validate YAML outputs, and follow spec/design/task conventions.
+6. **Stamp readiness through CLI** — scan touched specs, transition to `defined`, and summarize artifacts, modified baselines, blockers, and the `/spec:build` handoff.
+7. **Report phase outcome** — apply the shared [phase outcome contract](../../references/phase-outcome-contract.md) for `success`, `failure`, or `deferred`, including any plan-entry mutations discovered mid-run.
+
+Define a new slice - create it and generate all artifacts in one step.
 
 When ready to implement, run `/spec:build`.
 
 When working plan-driven (a `plan.yaml` exists), `specify change plan next` can be run to pick the next eligible entry, and `specify change plan transition <name> in-progress` claims it before `/spec:define` starts. If this skill uncovers a neighbouring slice that should be tracked (e.g. a bug fix spotted during extraction), shell out to `specify change plan add <name> ...` — it is the only supported way to add a new entry. Use `specify change plan amend <name> ...` to edit non-status fields on the active or a pending entry; `status` stays off-limits to `amend` by design.
 
-Deterministic bookkeeping — name validation, `.metadata.yaml` writes, schema resolution, pipeline topology, touched-specs scanning, overlap detection — is delegated to the `specify` CLI. This skill only drives the agent-side work: eliciting intent from the user, reading brief bodies, and writing the artifact files those briefs describe.
+Deterministic bookkeeping — name validation, `.metadata.yaml` writes, capability resolution, pipeline topology, touched-specs scanning, overlap detection — is delegated to the `specify` CLI. This skill only drives the agent-side work: eliciting intent from the user, reading brief bodies, and writing the artifact files those briefs describe.
 
 ---
 
@@ -22,7 +32,7 @@ When invoked by `/change:execute` from a plan entry, this skill accepts:
 
 ```
 /spec:define <name> \
-    [--source <key>=<path-or-url>...]
+    [source <key>=<path-or-url>...]
 ```
 
 - **`--source <key>=<path-or-url>`** — a resolved entry from the plan's top-level `sources` map. The key is the kebab-case identifier used in the plan entry's `sources` list; the value is either a local filesystem path or a git URL. `/change:execute` has already validated that the key exists in the plan's top-level `sources` map; this skill treats the `value` as opaque and forwards it to whichever define brief invokes `/spec:extract` (which inlines a guarded `git clone` snippet for URL values — see the *Cloning a source tree* subsection in [`../analyze/SKILL.md`](../analyze/SKILL.md)). The driver never clones; that stays inside the brief pipeline.
@@ -33,7 +43,7 @@ The plan entry's `description` field provides the scoping and delta- targeting c
 
 The specs brief infers which files to extract from each source by reading the plan entry's `description` for file-path hints. This replaces the former `--scope-*` flag-forwarding pipeline; the define skill no longer receives scope flags from the driver.
 
-- **Path hints present** — the description contains path-like references (e.g. `src/common/validation/`, `src/auth/**`). The brief uses these as `--include` globs on `/spec:extract`, treating bare directory names as recursive globs.
+- **Path hints present** — the description contains path-like references (e.g. `src/common/validation/`, `src/auth/**`). The brief uses these as `include` globs on `/spec:extract`, treating bare directory names as recursive globs.
 - **No path hints** — the brief runs extract on the full source tree.
 
 The brief logs the inferred scope in the journal so operators can audit what was extracted and amend the description if the inference was wrong.
@@ -198,7 +208,7 @@ The user's request should include a slice name (kebab-case) OR a description of 
 
    Format: `- [ ] X.Y Task description <!-- skill: plugin:skill-name -->`
 
-   Tasks without a skill tag are implemented via the default build instruction (mode detection, verification loop, etc.). Use skill tags when a task maps cleanly to a single specialist skill invocation. The instruction file lists available skills per schema.
+   Tasks without a skill tag are implemented via the default build instruction (mode detection, verification loop, etc.). Use skill tags when a task maps cleanly to a single specialist skill invocation. The instruction file lists available skills per capability.
 
 8. **Finalize and show status**
 

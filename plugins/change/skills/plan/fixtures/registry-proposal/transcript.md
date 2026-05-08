@@ -71,7 +71,7 @@ Wrote .specify/plans/platform-modernisation/proposal.md.
 
 Done. Next steps:
   - specify change plan status
-  - /change:execute --loop
+  - /change:execute loop
 ```
 
 ## Invariants pinned by this transcript

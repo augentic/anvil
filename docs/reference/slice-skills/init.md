@@ -6,7 +6,7 @@ Initialise Specify in a project. Run once before any other `/spec:` skill.
 
 ```text
 /spec:init [<capability>]
-/spec:init --hub
+/spec:init hub
 ```
 
 ## Arguments
@@ -62,7 +62,7 @@ None -- init creates the project scaffold, not a slice.
 /spec:init https://github.com/augentic/specify/capabilities/vectis@v1
 
 # Bootstrap a registry-only platform hub
-/spec:init --hub
+/spec:init hub
 ```
 
 ## See also

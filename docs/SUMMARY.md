@@ -56,7 +56,7 @@
   - [/spec:drop](reference/slice-skills/drop.md)
   - [/spec:extract](reference/slice-skills/extract.md)
 - [Change Skills (Layers 3 & 4)](reference/change-skills/index.md)
-  - [/change:plan --orchestrate](reference/change-skills/change.md)
+  - [/change:plan <name> orchestrate](reference/change-skills/change.md)
   - [/change:plan](reference/change-skills/plan.md)
   - [/change:execute](reference/change-skills/execute.md)
   - [/spec:analyze](reference/change-skills/analyze.md)

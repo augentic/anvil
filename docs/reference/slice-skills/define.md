@@ -1,11 +1,11 @@
 # /spec:define
 
-Create a new change and generate all artifacts in one step.
+Create a new slice and generate all artifacts in one step.
 
 ## Synopsis
 
 ```text
-/spec:define [description] [artifact-id?] [--source <key>=<path-or-url>...]
+/spec:define [description] [artifact-id?] [source <key>=<path-or-url>...]
 ```
 
 ## Arguments
@@ -13,14 +13,14 @@ Create a new change and generate all artifacts in one step.
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `description` | Yes | What you want to build or change |
-| `artifact-id` | No | Regenerate a single artifact for an existing change |
+| `artifact-id` | No | Regenerate a single artifact for an existing slice |
 | `--source` | No | Named source paths for extraction (e.g. `legacy=./src/auth`) |
 
 ## When to use
 
 - You have a clear idea of what to build and want a complete set of artifacts ready for implementation.
-- You need to regenerate a single artifact for an existing change (pass the artifact ID).
-- You are defining a slice in a plan-driven initiative and the plan entry has `sources` for extraction.
+- You need to regenerate a single artifact for an existing slice (pass the artifact ID).
+- You are defining a slice in a plan-driven change and the plan entry has `sources` for extraction.
 
 ## Artifacts produced
 
@@ -50,9 +50,9 @@ Create a new change and generate all artifacts in one step.
 | Error | Cause | Resolution |
 |-------|-------|------------|
 | Name collision | A change with this name already exists | Choose a different name or use `--if-exists` |
-| Schema not cached | `/spec:init` not run | Run `/spec:init` first |
+| Capability not cached | `/spec:init` not run | Run `/spec:init` first |
 | Source resolution failure | `--source` path does not exist | Check the path |
-| Brief pipeline error | Schema brief has unresolvable dependency | Check schema configuration |
+| Brief pipeline error | Capability brief has unresolvable dependency | Check capability configuration |
 
 ## Examples
 
@@ -61,7 +61,7 @@ Create a new change and generate all artifacts in one step.
 /spec:define "Add user authentication with JWT tokens"
 
 # Define with legacy source for extraction
-/spec:define "Migrate auth service" --source legacy=./services/auth
+/spec:define "Migrate auth service" source legacy=./services/auth
 
 # Regenerate just the design for an existing change
 /spec:define add-auth design
@@ -71,4 +71,4 @@ Create a new change and generate all artifacts in one step.
 
 - [Artifact Format](../artifact-format.md) -- format of the generated artifacts
 - [/spec:build](build.md) -- next step after define
-- [/spec:extract](extract.md) -- how source extraction works when `--source` is provided
+- [/spec:extract](extract.md) -- how source extraction works when `source` is provided

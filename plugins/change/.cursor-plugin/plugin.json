@@ -1,0 +1,19 @@
+{
+  "name": "change",
+  "displayName": "Change Orchestration",
+  "description": "Plan and execute Specify changes across one or more slices.",
+  "version": "0.26.0",
+  "author": {
+    "name": "Augentic",
+    "email": "andrew@augentic.io"
+  },
+  "homepage": "https://github.com/augentic/specify",
+  "repository": "https://github.com/augentic/specify",
+  "license": "MIT or Apache-2.0",
+  "keywords": [
+    "specify",
+    "change",
+    "orchestration"
+  ],
+  "settings": {}
+}

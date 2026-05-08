@@ -33,7 +33,7 @@ See the [Contributing Overview](docs/contributing/index.md) for the full reposit
 
 - Follow the conventions of existing `SKILL.md` files in the same plugin -- see [Anatomy of a Skill](docs/contributing/skill-anatomy.md)
 - `make checks` must pass before submitting a pull request
-- Use kebab-case for file names, change names, and schema identifiers
+- Use kebab-case for file names, change names, and capability identifiers
 
 ## Developer's Certificate of Origin
 

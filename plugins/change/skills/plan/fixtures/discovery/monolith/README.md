@@ -1,6 +1,6 @@
 # Monolith discovery fixture
 
-Pins the `.specify/plans/<name>/discovery.md` shape for a small, purpose-built three-capability TypeScript monolith passed through [`/spec:analyze --kind legacy-code`](../../../../../../spec/skills/analyze/SKILL.md) via [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md). Sibling of [`mixed-inputs/`](../mixed-inputs/), which pins the combined documentation + legacy-code shape.
+Pins the `.specify/plans/<name>/discovery.md` shape for a small, purpose-built three-capability TypeScript monolith passed through [`/spec:analyze legacy-code`](../../../../../../spec/skills/analyze/SKILL.md) via [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md). Sibling of [`mixed-inputs/`](../mixed-inputs/), which pins the combined documentation + legacy-code shape.
 
 This fixture is the acceptance target for:
 
@@ -26,7 +26,7 @@ Three capabilities, alphabetical order:
 
 ## Relationship to the Omnia analyze fixture
 
-The Omnia fixture at [`plugins/change/skills/plan/briefs/omnia/fixtures/analyze/legacy-code/`](../../../briefs/omnia/fixtures/analyze/legacy-code/) pins the **brief-level** output of `/spec:analyze --kind legacy-code` on a four-capability tree (adds `billing-subscription`). This fixture pins the **plan-level** combined `discovery.md` produced after `/change:plan`'s discovery brief wraps the analyze output in `# Discovery — <name>` + `## Capability inventory`. Different layers, different scopes, different owners — the two fixtures do not share source trees or expected outputs.
+The Omnia fixture at [`plugins/change/skills/plan/briefs/omnia/fixtures/analyze/legacy-code/`](../../../briefs/omnia/fixtures/analyze/legacy-code/) pins the **brief-level** output of `/spec:analyze legacy-code` on a four-capability tree (adds `billing-subscription`). This fixture pins the **plan-level** combined `discovery.md` produced after `/change:plan`'s discovery brief wraps the analyze output in `# Discovery — <name>` + `## Capability inventory`. Different layers, different scopes, different owners — the two fixtures do not share source trees or expected outputs.
 
 ## What this fixture pins
 

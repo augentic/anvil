@@ -1,13 +1,13 @@
 # halted-on-self-heal-ambiguity — `--loop` halts before the iteration begins
 
-The prior `/change:execute` run left `shopping-cart` as `in-progress` in `plan.yaml`, and its `.metadata.yaml` carries a contradictory pair (`status: defining` + `outcome.phase: merge` / `outcome: success`). A new `/change:execute --loop` invocation enters self-heal (step 3 of the `--loop` algorithm), detects the contradiction, refuses to speculate, and halts before the outer iteration loop runs at all.
+The prior `/change:execute` run left `shopping-cart` as `in-progress` in `plan.yaml`, and its `.metadata.yaml` carries a contradictory pair (`status: defining` + `outcome.phase: merge` / `outcome: success`). A new `/change:execute loop` invocation enters self-heal (step 3 of the `loop` algorithm), detects the contradiction, refuses to speculate, and halts before the outer iteration loop runs at all.
 
 The `checkout-api` entry is structurally blocked by `shopping-cart` anyway, so the halt costs nothing — but the semantics matter: even if the plan had other independent entries with all-`done` dependencies, self-heal halt stops the whole loop. Ambiguity is a signal that the on-disk state is inconsistent; continuing with other work while that inconsistency sits unresolved risks compounding the damage.
 
 ## Driver timeline
 
 ```text
-$ /change:execute --loop
+$ /change:execute loop
 
 # step 1 (project resolution): silent on success.
 # step 2: acquire the driver lock. No diagnostic on success.
@@ -44,7 +44,7 @@ Progress: done 0, in-progress 1, pending 1, blocked 0, failed 0, skipped 0 (tota
 
 Completion: halted
 
-Next action: Manually triage the halted change: inspect .specify/slices/shopping-cart/.metadata.yaml against plan.yaml, repair the contradiction, then re-run /change:execute --loop.
+Next action: Manually triage the halted change: inspect .specify/slices/shopping-cart/.metadata.yaml against plan.yaml, repair the contradiction, then re-run /change:execute loop.
 ```
 
 ## Invariants pinned

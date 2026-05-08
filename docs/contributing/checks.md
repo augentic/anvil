@@ -62,6 +62,8 @@ Every `SKILL.md` under `plugins/` is validated against `.cursor/schemas/skill.sc
 
 The recognized tool set includes: `Read`, `Write`, `StrReplace`, `Shell`, `Grep`, `Glob`, `ReadLints`, `WebFetch`, `WebSearch`, `AskQuestion`, `Task`, `TodoWrite`, `SemanticSearch`, `EditNotebook`, `GenerateImage`.
 
+Long `SKILL.md` bodies are also checked for structure: bodies over 500 post-frontmatter lines fail, and bodies with at least 150 post-frontmatter lines must include a `## Critical Path (Quick Reference)` section with 5-7 bullets or numbered items.
+
 ### 7. Skill reference link resolution
 
 Links in `SKILL.md` bodies that point to `references/...` or `examples/...` paths are resolved relative to the skill directory. Every such link must resolve to an existing file.
@@ -95,6 +97,74 @@ Files matching `capabilities/**/instructions/<name>.md` must contain an output l
 ```
 
 This prevents cross-plugin path contamination by making every instruction file declare where its output goes.
+
+### 14. Acceptance scenario frontmatter
+
+Acceptance scenario files are validated against `.cursor/schemas/scenario.schema.json` (JSON Schema 2020-12, validated through the same Ajv2020 path as the SKILL.md schema). Discovery follows these opt-in roots:
+
+1. `tests/<suite>/scenario.md` — shared outside-in suites.
+2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
+3. `capabilities/<capability>/tests/<scenario>.md` — flat owner-local capability scenarios.
+4. `capabilities/<capability>/tests/<scenario>/scenario.md` — directory-form owner-local capability scenarios.
+5. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
+
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. The first shared suite is the RM-01 manual acceptance scenario under [`tests/rm-01/`](../../tests/rm-01/), and the first owner-local capability pack is the contracts test suite under [`capabilities/contracts/tests/`](../../capabilities/contracts/tests/README.md).
+
+An opt-in scenario looks like:
+
+```markdown
+---
+id: contracts-describe
+owner: contracts
+kind: capability
+capability: contracts@v1
+backend: manual
+entrypoint: /spec:define
+stages: [define, build, merge]
+isolation: fresh-project
+authorship-mode: prose
+assertions:
+  - files-exist
+  - contract-validator-clean
+expected-artifacts:
+  - contracts/schemas/profile.yaml
+negative-expectations:
+  - artifacts-outside-contracts-directory
+---
+
+# Scenario Title
+
+Scenario ID: `contracts-describe`
+```
+
+The check enforces:
+
+- **Schema conformance** — `id`, `owner`, `kind`, `backend`, `entrypoint`, `stages`, `isolation` are required; `capability` is required when `kind` is `capability` or `capability-boundary`; `negative-expectations` is required (with at least one entry) when `kind` is `capability-boundary`. `kind` is an open enum (`capability`, `capability-boundary`, `suite`, `skill`); only the first two are actively required by C02. `backend` ∈ {`manual`, `agent`, `recorded`, `fixture`}. `isolation` ∈ {`fresh-project`, `shared-baseline`, `shared-slice`}. `capability` matches `^[a-z][a-z0-9-]*@v\d+$`. `entrypoint` matches `^/[a-z]+:[a-z][a-z0-9-]*$`. `id` matches `^[a-z][a-z0-9-]*$`.
+- **Stages prefix** — `stages` must be a contiguous prefix of `[define, build, merge, drop]` starting at `define`. `[define, build, merge]` is valid; `[build, define]`, `[define, merge]`, `[merge]` are not.
+- **Body-id consistency** — when the visible `Scenario ID:` body line is present (C02 doubles the id in prose for resilience against environments that suppress frontmatter), it must equal the frontmatter `id`.
+- **Expected-artifact path safety** — every entry in `expected-artifacts` must be a relative path with no `..` segments and no leading `/`. The check stops short of pinning a per-capability prefix (e.g. `contracts/`) so future capabilities are not over-constrained.
+- **Cross-file id uniqueness** — every opted-in scenario `id` is unique across the repo; duplicates are reported with both file paths.
+
+Internal markdown link resolution within scenarios is handled by check 1 (markdown link resolution); the scenario validator does not duplicate it.
+
+**Example failure messages:**
+
+```text
+FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — / must have required property 'negative-expectations'
+FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — stages must be a contiguous prefix of [define, build, merge, drop] starting at 'define'; got ["build","define"]
+FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — body 'Scenario ID: `contracts-foo`' does not match frontmatter id 'contracts-bar'; align the visible line with the frontmatter id
+FAIL: Scenario frontmatter: capabilities/contracts/tests/_probe.md — expected-artifact '../escape.yaml' must not escape the scenario workspace ('..' segment not allowed)
+FAIL: Scenario frontmatter: duplicate scenario id 'contracts-describe' across files: capabilities/contracts/tests/_probe.md, capabilities/contracts/tests/describe.md
+```
+
+Common fixes: align `kind`/`capability` per the schema, walk back `stages` to a contiguous prefix starting at `define`, keep the body `Scenario ID:` line in lockstep with the frontmatter `id`, rewrite expected-artifact paths to be relative to the scenario workspace root, and ensure new scenario ids are unique.
+
+### 15. Recorded trace freshness
+
+The recorded-trace check is opt-in. If a future suite adds
+`tests/recorded/**/*.jsonl`, every trace must lead with a
+`recorded-trace-header` line carrying `schemaVersion: 1`, `sourceBackend`,
+`sourceRunId`, `sourceTimestamp`, and `scenarioId`.
 
 ## Extending the checks
 

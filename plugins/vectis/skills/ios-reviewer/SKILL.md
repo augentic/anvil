@@ -6,6 +6,16 @@ argument-hint: "<target-dir>"
 
 # Crux iOS Shell Reviewer
 
+## Critical Path (Quick Reference)
+
+1. **Gather review context** — read Crux core files, all iOS Swift/build files, optional reference app files, and available composition/tokens/assets inputs.
+2. **Spawn the review team** — run Structural and Quality every iteration; add Integration on the first full-scope iteration only.
+3. **Apply lead checks** — run Swift-specific universal checks and tag design-level/spec-change indicators for later consolidation.
+4. **Challenge findings** — send all specialist and universal findings to the antagonist for evidence review, severity adjustment, and counter-scan.
+5. **Synthesize and auto-fix** — merge findings into one report, classify mechanical vs design-level, apply safe mechanical fixes, and revert all fixes if they regress verification.
+6. **Loop deliberately** — repeat changed-file review until no mechanical fixes remain or the three-iteration cap is reached.
+7. **Express design-level findings** — return classified findings when orchestrated; otherwise delegate one `/spec:define` slice that captures code-fix and spec-change work.
+
 Systematically review the generated iOS shell (SwiftUI) for structural issues, integration correctness, and general code quality problems. Produces a severity-graded report with actionable findings and suggested fixes.
 
 This skill catches issues that the Swift compiler and swiftformat miss: missing ViewModel/screen view correspondence, incomplete effect handlers, hardcoded design tokens, missing accessibility labels, and concurrency violations.

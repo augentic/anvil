@@ -1,12 +1,22 @@
 ---
 name: specify-build
-description: Implement tasks from a Specify change. Use when the user wants to start implementing, continue implementation, or work through tasks.
+description: Implement tasks from a Specify slice. Use when the user wants to start implementing, continue implementation, or work through tasks.
 argument-hint: "[slice-name]"
 ---
 
-Implement tasks from a Specify change.
+## Critical Path (Quick Reference)
 
-Deterministic bookkeeping — change selection, lifecycle transitions, schema resolution, brief completion checks, task progress counting, checkbox flips — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the build brief body, dispatching skill directives, and making code changes.
+1. **Select the slice** — infer or ask for the active slice, then use `specify slice status <name> --format json` to confirm lifecycle.
+2. **Preflight tasks and artifacts** — read `tasks.md` for agent-completability before running `specify slice validate <name> --format json`.
+3. **Load build context** — resolve the build brief with `specify capability pipeline build`, then read tracked tasks and required define artifacts.
+4. **Enter build state** — show task progress, transition `defined → building` through the CLI, and never edit `.metadata.yaml` directly.
+5. **Implement pending tasks** — dispatch any `skill-directive` tasks to the named specialist; otherwise follow the build brief with focused code changes.
+6. **Mark progress through CLI** — after each completed task, run `specify slice task mark <name> <task-number> --format json`; pause on ambiguity or blockers.
+7. **Close or report outcome** — transition to `complete` when pending reaches zero, or apply the shared [phase outcome contract](../../references/phase-outcome-contract.md) for failure/deferred pauses.
+
+Implement tasks from a Specify slice.
+
+Deterministic bookkeeping — slice selection, lifecycle transitions, capability resolution, brief completion checks, task progress counting, checkbox flips — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the build brief body, dispatching skill directives, and making code changes.
 
 When working plan-driven (a `plan.yaml` exists), the corresponding plan entry should already be `in-progress` — the human runs `specify change plan transition <name> in-progress` once before `/spec:build` starts. `/spec:build` itself does not touch `plan.yaml`; the plan transition out of `in-progress` happens from `/spec:merge` (→ `done`) or `/spec:drop` (→ `failed` / `blocked`).
 
@@ -23,7 +33,7 @@ This phase's outcome-specific deltas:
 - `failure` — a test or build halted after the repair budget (Omnia's 3-iteration verify-repair loop could not converge, a specialist writer skill returned non-recoverable).
 - `deferred` — blocked on a question (an ambiguous task, a design issue surfaced during implementation, an unsafe artefact update).
 
-**Input**: Optionally specify a slice name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.
+**Input**: Optionally specify a slice name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available slices.
 
 **Steps**
 
@@ -34,7 +44,7 @@ This phase's outcome-specific deltas:
    - Infer from conversation context if the user mentioned a slice.
    - Run `specify status --format json` to enumerate active slices from the dashboard. If only one entry exists, auto-select it. If multiple, use the **AskQuestion tool** to let the user pick.
 
-   Always announce: "Using change: <name>" and how to override (e.g., `/spec:build <other>`).
+   Always announce: "Using slice: <name>" and how to override (e.g., `/spec:build <other>`).
 
 2. **Read project config**
 
@@ -46,7 +56,7 @@ This phase's outcome-specific deltas:
 
    - `defining`: warn that artifacts may be incomplete — some may not have been generated yet. Suggest running `/spec:define` to complete them. Optionally abort.
    - `complete`: congratulate, all tasks already done. Suggest `/spec:merge` and stop.
-   - `merged` or `dropped`: tell the user the slice is terminal; ask if they want a new change.
+   - `merged` or `dropped`: tell the user the slice is terminal; ask if they want a new slice.
    - Otherwise (`defined`, `building`): proceed.
 
 4. **Validate prerequisites (define artifacts + build-brief needs)**

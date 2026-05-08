@@ -42,7 +42,7 @@ Run the verify-repair loop described below.
 
 ### Phase 3: Review
 
-4. /omnia:code-reviewer $CRATE_PATH --fix
+4. /omnia:code-reviewer $CRATE_PATH fix
 
 ### Phase 4: Remediate review findings
 
@@ -77,7 +77,7 @@ Run the verify-repair loop described below. In update mode, step 3 includes a re
 
 ### Phase 3: Review
 
-3. /omnia:code-reviewer $CRATE_PATH --fix
+3. /omnia:code-reviewer $CRATE_PATH fix
 
 ### Phase 4: Remediate review findings
 
@@ -104,7 +104,7 @@ Parse `$CRATE_PATH/REVIEW.md`. Process findings by severity:
 
 **LOW findings**: No action required. Document in REVIEW.md.
 
-After remediation, re-run /omnia:code-reviewer $CRATE_PATH (without --fix) to verify fix quality. If new CRITICAL or HIGH findings are introduced by the fixes, repeat the remediation cycle once.
+After remediation, re-run /omnia:code-reviewer $CRATE_PATH (without the `fix` positional) to verify fix quality. If new CRITICAL or HIGH findings are introduced by the fixes, repeat the remediation cycle once.
 
 ---
 

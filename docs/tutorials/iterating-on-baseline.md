@@ -2,7 +2,7 @@
 
 In the [previous tutorial](first-change.md), you created a greeting capability and merged it into the baseline. Now you will modify that capability, learning how delta specs work and how to verify that your code matches the baseline.
 
-**Prerequisites:** Complete [Your First Change](first-change.md). You should have a baseline spec at `.specify/specs/greeting/spec.md`.
+**Prerequisites:** Complete [Your First Slice](first-change.md). You should have a baseline spec at `.specify/specs/greeting/spec.md`.
 
 ## 1. Define a slice that modifies an existing capability
 
@@ -14,7 +14,7 @@ In the [previous tutorial](first-change.md), you created a greeting capability a
 <summary>Expected output</summary>
 
 ```text
-Change created: add-language-parameter
+Slice created: add-language-parameter
 
 Baseline detected: specs/greeting/spec.md
   Generating delta spec...
@@ -25,7 +25,7 @@ Generating artifacts...
   ✓ design.md
   ✓ tasks.md
 
-Change defined (3 tasks).
+Slice defined (3 tasks).
 ```
 
 </details>

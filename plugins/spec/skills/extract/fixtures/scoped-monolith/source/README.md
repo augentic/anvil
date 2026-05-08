@@ -6,4 +6,4 @@ A two-capability toy monolith:
 - `src/b/handler.ts` — capability **b**: computes a loyalty tier from a customer id.
 - `src/common/util.ts` — cross-cutting helpers.
 
-Used as an `/spec:extract --include 'src/a/**'` walk-through fixture.
+Used as an `/spec:extract include 'src/a/**'` walk-through fixture.

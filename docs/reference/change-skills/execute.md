@@ -8,8 +8,8 @@ Drive a change through its plan, automating define-build-merge.
 
 ```text
 /change:execute              # run one slice, stop
-/change:execute --dry-run    # preview next slice + progress
-/change:execute --loop       # run until no eligible slice remains
+/change:execute dry-run    # preview next slice + progress
+/change:execute loop       # run until no eligible slice remains
 ```
 
 ## Arguments
@@ -79,21 +79,21 @@ Transitions plan entries: `pending --> in-progress --> done|failed|blocked`.
 
 ```text
 # Preview what would happen next
-/change:execute --dry-run
+/change:execute dry-run
 
 # Run one slice
 /change:execute
 
 # Run until all done
-/change:execute --loop
+/change:execute loop
 ```
 
 **Typical change flow:**
 
 ```text
-/change:plan migrate-to-v2 --source monolith=/path/to/legacy
+/change:plan migrate-to-v2 source monolith=/path/to/legacy
 specify change plan status         # review the plan
-/change:execute --loop             # run until all-done
+/change:execute loop             # run until all-done
 ```
 
 ## See also

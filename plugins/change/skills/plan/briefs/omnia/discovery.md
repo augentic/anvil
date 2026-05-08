@@ -18,14 +18,14 @@ At least one of `--from`, `--against`, or `--source` must be supplied.
 
 ## Input dispatch (per-kind)
 
-Every input reaching this brief is pre-classified by kind (see [`../../SKILL.md` §*Kind defaults for CLI flags*](../../SKILL.md)). Dispatch per kind — one [`/spec:analyze`](../../../../../spec/skills/analyze/SKILL.md) invocation per input, processed in CLI declaration order (`--from` entries before `--source` entries before `--against`; within each flag, left-to-right), and `change.md:inputs[]` entries interleaved in file order after the CLI inputs of matching kind.
+Every input reaching this brief is pre-classified by kind (see [`../../SKILL.md` §*Kind defaults for CLI flags*](../../SKILL.md)). Dispatch per kind — one [`/spec:analyze`](../../../../../spec/skills/analyze/SKILL.md) invocation per input, processed in CLI declaration order (`from` entries before `source` entries before `against`; within each flag, left-to-right), and `change.md:inputs[]` entries interleaved in file order after the CLI inputs of matching kind.
 
 ### `kind: documentation`
 
 For each documentation input, invoke [`/spec:analyze`](../../../../../spec/skills/analyze/SKILL.md):
 
 ```text
-/spec:analyze <input-path> <plan-dir> --kind documentation --source-key <k>
+/spec:analyze <input-path> <plan-dir> documentation <k>
 ```
 
 where `<plan-dir>` is `.specify/plans/<initiative-name>/` — the same directory this brief writes `discovery.md` to — and `<k>` is the source key used to tag the emitted capabilities:
@@ -42,7 +42,7 @@ where `<plan-dir>` is `.specify/plans/<initiative-name>/` — the same directory
 For each legacy-code input, invoke [`/spec:analyze`](../../../../../spec/skills/analyze/SKILL.md):
 
 ```text
-/spec:analyze <input-path> <plan-dir> --kind legacy-code --source-key <k>
+/spec:analyze <input-path> <plan-dir> legacy-code <k>
 ```
 
 where `<plan-dir>` is `.specify/plans/<initiative-name>/` and `<k>` is the source key used to tag the emitted capabilities:

@@ -12,9 +12,9 @@ Deterministic bookkeeping — slice selection, lifecycle transition, archive mov
 
 ## Non-interactive mode
 
-When invoked with `--reason`, skip the confirmation `AskQuestion` calls in steps 1–3; proceed directly to step 4 with the supplied reason. The slice name must be provided explicitly as the positional argument. Exit code is 0 on a clean drop, non-zero only on CLI failure.
+When invoked with `reason`, skip the confirmation `AskQuestion` calls in steps 1–3; proceed directly to step 4 with the supplied reason. The slice name must be provided explicitly as the positional argument. Exit code is 0 on a clean drop, non-zero only on CLI failure.
 
-Non-interactive mode is how `/change:execute` invokes this skill during `--loop`, supervised single-slice runs, and self-heal reclaim of a `failure` / `deferred` outcome (see [`../../../change/skills/execute/SKILL.md`](../../../change/skills/execute/SKILL.md) steps 11b, 12b, and §"Self-heal on startup" step 2). The driver supplies a `--reason` string assembled from the upstream phase's outcome — see the verbatim-`summary` rule in [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md). This skill forwards that string to `specify slice drop` verbatim, without prompting.
+Non-interactive mode is how `/change:execute` invokes this skill during `loop`, supervised single-slice runs, and self-heal reclaim of a `failure` / `deferred` outcome (see [`../../../change/skills/execute/SKILL.md`](../../../change/skills/execute/SKILL.md) steps 11b, 12b, and §"Self-heal on startup" step 2). The driver supplies a `reason` string assembled from the upstream phase's outcome — see the verbatim-`summary` rule in [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md). This skill forwards that string to `specify slice drop` verbatim, without prompting.
 
 When working plan-driven (a `plan.yaml` exists), after `specify slice drop` succeeds the plan entry should transition to `failed` or `blocked` — `failed` for a build/test failure the human does not intend to retry automatically, `blocked` when a design question needs resolving before the entry is re-entered as `pending`:
 
@@ -34,7 +34,7 @@ authored once at [`../../references/phase-outcome-contract.md`](../../references
 
 This phase's outcome-specific deltas:
 
-- `success` — `specify slice drop` exited zero: the slice is archived with status `dropped` and the supplied `--reason` recorded in `.metadata.yaml`. The lifecycle stamp itself is the success signal — no separate `outcome set` call.
+- `success` — `specify slice drop` exited zero: the slice is archived with status `dropped` and the supplied reason recorded in `.metadata.yaml`. The lifecycle stamp itself is the success signal — no separate `outcome set` call.
 - `failure` — `specify slice drop` returned a lifecycle violation (the slice is already `merged`/`dropped`, the directory is malformed); record skill-side via `outcome set ... drop failure ...`.
 - `deferred` — rare; an interactive cancel mid-flow or a precondition that needs human resolution before the drop is safe. Non-interactive runs from `/change:execute` do not reach this path.
 
@@ -53,7 +53,7 @@ Optionally specify a slice name. If omitted, check whether it can be inferred fr
 
    **IMPORTANT**: Always confirm the slice name before dropping it.
 
-   If `--reason` was supplied (non-interactive mode — see above), the slice name must be the positional argument; skip the prompting fallback and the confirmation.
+   If `reason` was supplied (non-interactive mode — see above), the slice name must be the positional argument; skip the prompting fallback and the confirmation.
 
 2. **Check lifecycle status**
 
@@ -63,7 +63,7 @@ Optionally specify a slice name. If omitted, check whether it can be inferred fr
    - `merged` or `dropped`: stop and tell the user the slice is already finalized (the CLI would error with `lifecycle`, but surface it clearly before attempting).
    - Any other status: explain that dropping will discard the working slice without promoting its specs.
 
-   If `--reason` was NOT supplied, use the **AskQuestion tool** to confirm the user wants to drop the slice. In non-interactive mode skip the prompt and proceed (the CLI still enforces the terminal-status check in step 4 — a `merged` / `dropped` slice surfaces `Error::Lifecycle` there).
+   If `reason` was NOT supplied, use the **AskQuestion tool** to confirm the user wants to drop the slice. In non-interactive mode skip the prompt and proceed (the CLI still enforces the terminal-status check in step 4 — a `merged` / `dropped` slice surfaces `Error::Lifecycle` there).
 
 3. **Summarize what will happen**
 
@@ -78,7 +78,7 @@ Optionally specify a slice name. If omitted, check whether it can be inferred fr
    - Existing baseline specs remain unchanged
    ```
 
-   If `--reason` was NOT supplied, use the **AskQuestion tool** to confirm:
+   If `reason` was NOT supplied, use the **AskQuestion tool** to confirm:
 
    - **Proceed**: drop the slice
    - **Cancel**: keep the slice as-is

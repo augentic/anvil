@@ -1,13 +1,13 @@
-# Transcript — `/change:plan --orchestrate migrate-foo --shape migrate-legacy --source monolith=…`
+# Transcript — `/change:plan <name> orchestrate migrate-foo shape migrate-legacy source monolith=…`
 
 This transcript pins the dialogue and the shell-outs the umbrella runs against an empty hub when migrating the legacy `mono-repo-foo` monolith. Every shell-out uses post-1F+1G v1 verbs verbatim — none of the retired hyphenated, nested, or `init`-named forms appears (see the v1 [migration map](../../../../../../docs/explanation/migrating-cli-v1.md)).
 
 The transcript starts at the operator's invocation. Run 1 drives through PR creation and stops for operator merge; run 2 resumes after the PRs are merged and finalizes.
 
 ```text
-$ /change:plan --orchestrate migrate-foo \
-    --shape migrate-legacy \
-    --source monolith=git@github.com:org/legacy-foo.git
+$ /change:plan <name> orchestrate migrate-foo \
+    shape migrate-legacy \
+    source monolith=git@github.com:org/legacy-foo.git
 
 Pre-flight
   shape:        migrate-legacy
@@ -54,7 +54,7 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
 
 ## Step 3 — Plan
 
-  $ /change:plan migrate-foo --source monolith=git@github.com:org/legacy-foo.git
+  $ /change:plan migrate-foo source monolith=git@github.com:org/legacy-foo.git
 
   ── /change:plan migrate-foo ──
 
@@ -130,13 +130,13 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
 
   Done. Next steps:
     - specify change plan status
-    - /change:execute --loop
+    - /change:execute loop
 
 ---
 
 ## Step 4 — Execute
 
-  $ /change:execute --loop
+  $ /change:execute loop
 
   ## /change:execute — migrate-foo
 
@@ -221,18 +221,18 @@ Open PRs on `specify/migrate-foo`:
   foo-mobile    specify/migrate-foo    PR #18    https://github.com/org/foo-mobile/pull/18
 
 Merge these PRs through the forge UI or an explicit hand-run `gh pr merge`,
-then re-run /change:plan --orchestrate migrate-foo to finalize.
+then re-run /change:plan <name> orchestrate migrate-foo to finalize.
 
 ---
 
-## /change:plan --orchestrate — migrate-foo — paused
+## /change:plan <name> orchestrate — migrate-foo — paused
 
   Brief:    change.md
   Plan:     plan.yaml (3 changes, all `done`)
   PRs:      foo-backend#41 (open), foo-mobile#18 (open)
 
-  Next action: merge PRs, then re-run /change:plan --orchestrate
-  migrate-foo --shape migrate-legacy --source monolith=...
+  Next action: merge PRs, then re-run /change:plan <name> orchestrate
+  migrate-foo shape migrate-legacy source monolith=...
 ```
 
 ## Operator merges PRs
@@ -242,9 +242,9 @@ The operator merges both PRs on github.com (squash, conventional commit titles) 
 ## Run 2 — re-entry, runs step 7 only
 
 ```text
-$ /change:plan --orchestrate migrate-foo \
-    --shape migrate-legacy \
-    --source monolith=git@github.com:org/legacy-foo.git
+$ /change:plan <name> orchestrate migrate-foo \
+    shape migrate-legacy \
+    source monolith=git@github.com:org/legacy-foo.git
 
 Pre-flight
   shape:        migrate-legacy
@@ -311,14 +311,14 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ---
 
-## /change:plan --orchestrate — migrate-foo — landed
+## /change:plan <name> orchestrate — migrate-foo — landed
 
   Brief:    .specify/archive/plans/migrate-foo-20260428/change.md
   Plan:     .specify/archive/plans/migrate-foo-20260428.yaml
   Registry: foo-backend, foo-mobile (added in step 3)
   PRs:      foo-backend#41 (merged), foo-mobile#18 (merged)
 
-  Re-running /change:plan --orchestrate migrate-foo will report
+  Re-running /change:plan <name> orchestrate migrate-foo will report
   plan-not-found from `specify change finalize` and exit 0.
 ```
 
@@ -328,4 +328,4 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 - **Greenfield ordering.** `specify registry add` (×2) precedes `specify workspace sync`, which precedes any `specify change plan add` for entries routed to the new projects. This is the 2B invariant.
 - **Cross-project contract change has no `project`.** `migrate-foo-contract` runs against the hub itself (no `Routing:` diagnostic from `/change:execute`), exactly as the cross-repo tutorial pins.
 - **PR merge is outside orchestration.** The transcript shows the umbrella stopping with open PRs in run 1, then observing both PRs as `MERGED` in run 2. It never calls `specify workspace merge` or `gh pr merge`.
-- **Idempotent re-entry.** The umbrella's terminal summary points the operator at re-running `/change:plan --orchestrate migrate-foo`, which exits zero with `plan-not-found` after the archive completes.
+- **Idempotent re-entry.** The umbrella's terminal summary points the operator at re-running `/change:plan <name> orchestrate migrate-foo`, which exits zero with `plan-not-found` after the archive completes.

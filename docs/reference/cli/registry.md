@@ -2,13 +2,13 @@
 
 Manage the platform registry at `registry.yaml` -- the catalogue of repositories that make up a multi-repo platform. Optional for single-repo projects.
 
-The registry was promoted from `specify change registry ...` to a top-level noun group in the CLI cleanup: `registry.yaml` is platform-scoped (it spans every initiative the platform runs), not initiative-scoped, so the verb shape now reflects that.
+The registry was promoted from `specify change registry ...` to a top-level noun group in the CLI cleanup: `registry.yaml` is platform-scoped (it spans every change the platform runs), not change-scoped, so the verb shape now reflects that.
 
 ## Verb cheat-sheet
 
 | Verb | When to use |
 |------|-------------|
-| [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name, URL classification, schema, and the `description-missing-multi-repo` invariant after the write. |
+| [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name, URL classification, the capability identifier stored in `schema:`, and the `description-missing-multi-repo` invariant after the write. |
 | [`remove`](#specify-registry-remove) | Delete a project entry. Warns when `plan.yaml` references the removed project. |
 | [`show`](#specify-registry-show) | Render the registry as parsed YAML (or JSON via `--format json`). The canonical surface `/change:plan`'s sync-peers step consumes. |
 | [`validate`](#specify-registry-validate) | Structural and referential check; runs the multi-repo description invariant and (on hubs) the `hub-cannot-be-project` invariant. |
@@ -35,9 +35,9 @@ specify registry validate
 
 Validates:
 
-- Schema-level shape (required fields, kebab-case names, well-formed `url:` values).
+- Registry shape (required fields, kebab-case names, well-formed `url:` values).
 - `description` is required when more than one project is declared (multi-repo invariant).
-- Per-project `schema:` URLs are resolvable.
+- Per-project `schema:` capability identifiers or URLs are resolvable.
 - When `contracts` blocks are present on entries, the producer / consumer / imports invariants are coherent.
 
 Used by `/change:plan` after populating contract roles, and by operators who edit `registry.yaml` by hand.
@@ -47,12 +47,12 @@ Used by `/change:plan` after populating contract roles, and by operators who edi
 Append a new project entry to `registry.yaml`. Creates the file with `version: 1` when absent. (RFC-9 §2A.)
 
 ```bash
-specify registry add <name> --url <url> --schema <schema> [--description "..."]
+specify registry add <name> --url <url> --schema <capability> [--description "..."]
 ```
 
 Behaviour:
 
-- Validates `name` (kebab-case), `--url` (same shape rules `registry validate` enforces — `.`, repo-relative path, `git@host:path`, `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://`), and `--schema` (non-empty after trim).
+- Validates `name` (kebab-case), `--url` (same shape rules `registry validate` enforces — `.`, repo-relative path, `git@host:path`, `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://`), and the `--schema` capability value (non-empty after trim).
 - Refuses to add a project that already exists.
 - Runs `Registry::validate_shape` after the write — including the `description-missing-multi-repo` invariant: if the addition produces a multi-project registry and any existing entry lacks a `description`, the verb fails with a diagnostic naming the offending entry.
 - Hub repos (`project.yaml: hub: true`) layer on the `hub-cannot-be-project` invariant: an entry with `url: .` is rejected.

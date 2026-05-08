@@ -1,6 +1,6 @@
 ---
 name: specify-plan
-description: "Deprecated alias. /spec:plan moved to /change:plan in RFC-13 §3.9. This shim delegates to the canonical change-plan skill, prints a one-line deprecation warning, and is removed before the post-RFC release. Use only if invoking the historical command path; new work should call /change:plan directly."
+description: "Deprecated alias for `/change:plan`. Use only when an operator invokes `/spec:plan`; it prints one deprecation warning and delegates to the canonical change planning skill. New work should call `/change:plan` directly."
 argument-hint: "<change-name>"
 ---
 
@@ -18,9 +18,9 @@ argument-hint: "<change-name>"
    Deprecated: /spec:plan moved to /change:plan in RFC-13 §3.9. This shim will be removed before release. See ../../../change/skills/plan/SKILL.md.
    ```
 
-2. Then read `../../../change/skills/plan/SKILL.md` and follow it verbatim. Every flag, every step of the Critical Path, every brief invocation, and every `specify change plan *` shell-out is the canonical skill's responsibility — this shim adds no behaviour of its own beyond the warning above.
+2. Then read `../../../change/skills/plan/SKILL.md` and follow it verbatim. Every positional argument, every step of the Critical Path, every brief invocation, and every `specify change plan *` shell-out is the canonical skill's responsibility — this shim adds no behaviour of its own beyond the warning above.
 
-3. The argument shape is unchanged (`<change-name>` plus the same `--from`, `--against`, `--source`, `--focus`, `--extend`, `--dry-run`, `--orchestrate`, and `--shape` flag set; the retired `--auto-merge` flag is passed through only so the canonical skill can reject it with the RFC-14 diagnostic). Pass through whatever the operator supplied.
+3. The argument shape is unchanged (`<change-name>` plus the same `from`, `against`, `source`, `focus`, `extend`, `dry-run`, `orchestrate`, and `shape` positional set; the retired `auto-merge` positional is passed through only so the canonical skill can reject it with the RFC-14 diagnostic). Pass through whatever the operator supplied.
 
 ## Why this shim exists
 

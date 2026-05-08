@@ -1,19 +1,19 @@
-# driver-busy — second `/change:execute --loop` refused while the first runs
+# driver-busy — second `/change:execute loop` refused while the first runs
 
-A first `/change:execute --loop` invocation has already acquired `.specify/plan.lock` and is iterating through the plan. A second invocation — from another agent session, a human's shell, or a stale retry — runs concurrently. The lock abstraction (RFC-2 §"Driver Concurrency") refuses the second acquire with `Error::DriverBusy { pid }`. The second `/change:execute` reports the conflict and exits 1 without touching the plan.
+A first `/change:execute loop` invocation has already acquired `.specify/plan.lock` and is iterating through the plan. A second invocation — from another agent session, a human's shell, or a stale retry — runs concurrently. The lock abstraction (RFC-2 §"Driver Concurrency") refuses the second acquire with `Error::DriverBusy { pid }`. The second `/change:execute` reports the conflict and exits 1 without touching the plan.
 
 This fixture ships no `plan.yaml.before` / `plan.yaml.after` because the refused run never reaches a state where plan contents matter. It pins the diagnostic shape an operator sees when they collide with a running driver.
 
 ## Driver timeline
 
 ```text
-# (First /change:execute --loop invocation is running in another
+# (First /change:execute loop invocation is running in another
 # agent session — PID 48217 — and has held .specify/plan.lock for
 # several minutes. It is currently partway through /spec:build on
 # some change; irrelevant here.)
 
 # Second invocation:
-$ /change:execute --loop
+$ /change:execute loop
 
 # step 1 of the --loop algorithm: project resolution — silent on
 # success.

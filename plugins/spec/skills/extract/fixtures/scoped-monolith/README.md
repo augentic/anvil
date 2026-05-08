@@ -1,6 +1,6 @@
 # scoped-monolith fixture
 
-Demonstrates `/spec:extract` with `--include` shrinking the read set without disturbing language / dependency detection.
+Demonstrates `/spec:extract` with `include` shrinking the read set without disturbing language / dependency detection.
 
 `source/` is a tiny TypeScript monolith with two capabilities (`a`, `b`) and a shared util. Running extract with `--include 'src/a/**'` should:
 

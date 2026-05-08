@@ -1,13 +1,13 @@
-# Transcript — `/change:plan --orchestrate dark-mode --shape new-feature --from ./docs/dark-mode-spec.md`
+# Transcript — `/change:plan <name> orchestrate dark-mode shape new-feature from ./docs/dark-mode-spec.md`
 
 This transcript pins the dialogue and shell-outs across **two runs** of the umbrella: the first run drives steps 1–6 and halts at PR handoff, the second run resumes at step 7 once the operator has merged both PRs by hand. Every shell-out uses post-1F+1G v1 verbs.
 
 ## Run 1 — drive through to step 6, halt at step 6
 
 ```text
-$ /change:plan --orchestrate dark-mode \
-    --shape new-feature \
-    --from ./docs/dark-mode-spec.md
+$ /change:plan <name> orchestrate dark-mode \
+    shape new-feature \
+    from ./docs/dark-mode-spec.md
 
 Pre-flight
   shape:        new-feature
@@ -54,7 +54,7 @@ Multi-project registry; descriptions complete. Continuing.
 
 ## Step 3 — Plan
 
-  $ /change:plan dark-mode --from ./docs/dark-mode-spec.md
+  $ /change:plan dark-mode from ./docs/dark-mode-spec.md
 
   ── /change:plan dark-mode ──
 
@@ -111,13 +111,13 @@ Multi-project registry; descriptions complete. Continuing.
 
   Done. Next steps:
     - specify change plan status
-    - /change:execute --loop
+    - /change:execute loop
 
 ---
 
 ## Step 4 — Execute
 
-  $ /change:execute --loop
+  $ /change:execute loop
 
   ## /change:execute — dark-mode
 
@@ -196,18 +196,18 @@ Open PRs on `specify/dark-mode`:
   vectis-mobile   specify/dark-mode    PR #29    https://github.com/org/vectis-mobile/pull/29
 
 Merge these PRs through the forge UI or an explicit hand-run `gh pr merge`,
-then re-run /change:plan --orchestrate dark-mode to finalize.
+then re-run /change:plan <name> orchestrate dark-mode to finalize.
 
 ---
 
-## /change:plan --orchestrate — dark-mode — paused
+## /change:plan <name> orchestrate — dark-mode — paused
 
   Brief:    change.md
   Plan:     plan.yaml (3 changes, all `done`)
   PRs:      omnia-backend#57 (open), vectis-mobile#29 (open)
 
-  Next action: merge PRs, then re-run /change:plan --orchestrate
-  dark-mode --shape new-feature --from ./docs/dark-mode-spec.md
+  Next action: merge PRs, then re-run /change:plan <name> orchestrate
+  dark-mode shape new-feature from ./docs/dark-mode-spec.md
   to finalize.
 ```
 
@@ -218,9 +218,9 @@ The operator merges both PRs on github.com (squash, conventional commit titles).
 ## Run 2 — re-entry, runs step 7 only
 
 ```text
-$ /change:plan --orchestrate dark-mode \
-    --shape new-feature \
-    --from ./docs/dark-mode-spec.md
+$ /change:plan <name> orchestrate dark-mode \
+    shape new-feature \
+    from ./docs/dark-mode-spec.md
 
 Pre-flight
   shape:        new-feature
@@ -287,14 +287,14 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ---
 
-## /change:plan --orchestrate — dark-mode — landed
+## /change:plan <name> orchestrate — dark-mode — landed
 
   Brief:    .specify/archive/plans/dark-mode-20260428/change.md
   Plan:     .specify/archive/plans/dark-mode-20260428.yaml
   Registry: omnia-backend, vectis-mobile (unchanged)
   PRs:      omnia-backend#57 (merged), vectis-mobile#29 (merged)
 
-  Re-running /change:plan --orchestrate dark-mode will report
+  Re-running /change:plan <name> orchestrate dark-mode will report
   plan-not-found from `specify change finalize` and exit 0.
 ```
 

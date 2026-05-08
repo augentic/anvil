@@ -21,7 +21,7 @@ Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "in
 The intended workflow is human-driven Specify. Single-slice loop:
 
 ```bash
-/spec:init      # once per project (use --hub for a registry-only platform hub)
+/spec:init      # once per project (use `hub` for a registry-only platform hub)
 /spec:define
 /spec:build     # validates artifacts, then implements
 /spec:merge
@@ -31,14 +31,14 @@ The intended workflow is human-driven Specify. Single-slice loop:
 Multi-slice change (Layer 3):
 
 ```bash
-/change:plan <name> --source legacy=./path
-/change:execute --loop
+/change:plan <name> source legacy=./path
+/change:execute loop
 ```
 
 Cross-repo change end-to-end (Layer 4 umbrella, RFC-9 §2C):
 
 ```bash
-/change:plan --orchestrate <name> [--shape migrate-legacy|new-feature|update-existing]
+/change:plan <name> orchestrate [shape migrate-legacy|new-feature|update-existing]
 ```
 
 Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
@@ -79,20 +79,20 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Specify Plugin (`plugins/spec/`)
 
-- `init` - initialize Specify in a project from a positional `<capability>` (one-time setup; mutually exclusive with `--hub`, which scaffolds a registry-only platform hub per RFC-9 §1D and writes only `hub: true` to `project.yaml`)
+- `init` - initialize Specify in a project from a positional `<capability>` (one-time setup; mutually exclusive with the `hub` positional, which scaffolds a registry-only platform hub per RFC-9 §1D and writes only `hub: true` to `project.yaml`)
 - `define` - create a slice and generate all artifacts in one step
 - `build` - validate artifacts and implement tasks from a Specify slice
 - `merge` - finalize and merge a completed slice
 - `drop` - discard a slice without merging specs into baseline
 - `extract` - extract Specify artifacts from existing source code
 - `analyze` - plan-time capability inference; emits capability summaries
-- `plan` - **deprecated alias** that delegates to `/change:plan` (RFC-13 §3.9). Removed before the post-RFC release.
-- `execute` - **deprecated alias** that delegates to `/change:execute` (RFC-13 §3.9). Removed before the post-RFC release.
+- `plan` - **deprecated alias** that prints a warning and delegates to `/change:plan`
+- `execute` - **deprecated alias** that prints a warning and delegates to `/change:execute`
 
 ### Change Plugin (`plugins/change/`)
 
-- `plan` - author `plan.yaml` via the planning brief pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → optional merge → finalize) — RFC-9 §2C. Was `/change:plan` until RFC-13 §3.9.
-- `execute` - drive a change's plan through define, build, merge per slice. Was `/change:execute` until RFC-13 §3.9.
+- `plan` - author `plan.yaml` via the planning brief pipeline; with the `orchestrate` positional, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → operator PR merge → finalize) — RFC-9 §2C. Historical `/spec:plan` delegates here.
+- `execute` - drive a change's plan through define, build, merge per slice. Historical `/spec:execute` delegates here.
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -231,7 +231,13 @@ Optional:
 Forbidden (validated by `make checks` via `.cursor/schemas/skill.schema.json`):
 
 - `license` — license is declared once in the plugin manifest and the repo `LICENSE` file.
-- `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `paths` — all dropped; use the body for trigger phrases, gating, and platform notes.
+- `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `context`, `paths` — all dropped; use the body for trigger phrases, gating, and platform notes.
+
+Portability posture:
+
+- This repo is Cursor-plugin-first. Source skills may use Cursor marketplace manifests, `/plugin:skill` slash commands, `argument-hint`, Cursor tool names, MCP tool names, and `<!-- skill: plugin:skill -->` delegation directives.
+- Do not add Claude Code / Agent Skills export-only fields to source frontmatter unless the repository policy changes. A future export/profile should translate Cursor-only conventions, substitute host tools, and add target metadata such as `disable-model-invocation`, `user-invocable`, or `context` outside the source `SKILL.md` files.
+- Side-effect workflow skills omit `disable-model-invocation` because Cursor expects them to be slash-command or pipeline-invocable; their mutation guardrails live in the body and in the `specify` CLI. Apply stricter activation only in a target-specific export profile.
 
 ### `name`
 
@@ -251,14 +257,14 @@ Forbidden (validated by `make checks` via `.cursor/schemas/skill.schema.json`):
 
 - Single short hint that names the **primary positional** argument as Cursor placeholder text (the grey hint shown after `/plugin:skill `).
 - Required positional → angle brackets: `<slice-dir>`. Optional positional → square brackets: `[crate-name]`.
-- No flag names (`--dry-run`, `--source`), no `?` optional-suffix marker, no `|` alternative-value pipes. Flags and secondary positionals are documented in the body's "Invocation" section.
-- Skills that only take flags omit the field entirely (e.g. `/change:execute`).
+- No flag names (`--dry-run`, `--source`), no `?` optional-suffix marker, no `|` alternative-value pipes. Secondary skill arguments are documented as positionals in the body's "Invocation" section.
+- Skills that only take secondary mode tokens keep those tokens out of the hint unless a primary positional exists (e.g. `/change:execute` uses `[mode]` only in its body).
 
 ### Critical Path (Quick Reference)
 
 Every SKILL.md ≥150 body lines must lead with a `## Critical Path (Quick Reference)` block of 5–7 bullets that name the algorithmic spine of the skill — the steps a maintainer (or Claude itself, when a sibling has not been read) must follow. Each bullet may link to the sibling that holds the depth (`See [verifier.md](verifier.md).`).
 
-The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/spec/skills/execute/`, `plugins/spec/skills/plan/`, `plugins/spec/skills/merge/`, and the three `plugins/contract/skills/*/` skills.
+The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/change/skills/execute/`, `plugins/change/skills/plan/`, `plugins/spec/skills/merge/`, and the three `plugins/contract/skills/*/` skills.
 
 ### Body length
 
@@ -273,7 +279,9 @@ The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/spe
 - `name` matches `^[a-z][a-z0-9-]*$`, carries the plugin prefix, and is globally unique across all SKILL.md files.
 - `description` is ≤1024 characters.
 - `argument-hint` contains no `?`, no `--`, and no `|`.
+- Slash-skill invocation examples use positionals only; leading double-dash option tokens are reserved for ordinary CLI commands and fail checks when used as skill arguments.
 - SKILL.md body is ≤500 lines (post-frontmatter).
+- SKILL.md bodies with ≥150 post-frontmatter lines include a `## Critical Path (Quick Reference)` block with 5–7 bullets or numbered items.
 - No SKILL.md carries a top-level `license:` (or any other forbidden frontmatter key).
 
 See `scripts/checks.ts` and `.cursor/schemas/skill.schema.json` for the exact rules.

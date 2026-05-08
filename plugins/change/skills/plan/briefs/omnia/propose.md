@@ -15,7 +15,7 @@ Turn the capability inventory in `discovery.md` into a concrete set of plan entr
 
 ## Decomposition — 1:1 capability → slice
 
-`discovery.md` already carries capability boundaries. Propose's job is to mechanically map each capability to a plan entry. The clustering judgement is schema-owned inside `/spec:analyze`.
+`discovery.md` already carries capability boundaries. Propose's job is to mechanically map each capability to a plan entry. The clustering judgement is capability-owned inside `/spec:analyze`.
 
 ### Mapping rule
 
@@ -40,7 +40,7 @@ When the assignment step (3(d)) routes an entry to a project that does not yet e
 
 ### Documentation capabilities (no source-key marker for code)
 
-Capabilities produced from `/spec:analyze --kind documentation` carry `sources:` pointing at prose references (`ops-runbook.md#rotate-upstream-ingest-key`), not code files. The `<!-- source-key -->` marker still names the documentation input the capability came from. For these:
+Capabilities produced from `/spec:analyze documentation` carry `sources:` pointing at prose references (`ops-runbook.md#rotate-upstream-ingest-key`), not code files. The `<!-- source-key -->` marker still names the documentation input the capability came from. For these:
 - Plan entry `sources:` stays `[<doc-key>]`.
 - `depends-on` still carries over.
 - `description` is `[from docs] <summary>` so the operator knows the intent source. No file-path hints are included since documentation inputs have no extractable file tree.
@@ -94,7 +94,7 @@ For each candidate slice in emit order:
    - **accept** — shell out to `specify change plan add` with the mapped flags above. Record the entry in the proposal table.
    - **edit** — reprompt for changed field(s) (name, sources, depends-on, description) and re-present. Loop until accept or reject. Edits may rename the capability, drop a dependency edge, or refine the description prose.
    - **reject** — drop the slice. Upcoming slices with an implicit `depends-on` on this slice lose that edge before they are presented; if a later slice is semantically blocked by the rejection, flag it during its own review.
-   - **abort** — stop the loop. Already-accepted entries remain on disk (written by `specify change plan add`); the brief writes `proposal.md` with decisions to date and exits non-zero, pointing the operator at `/change:plan --extend` to resume.
+   - **abort** — stop the loop. Already-accepted entries remain on disk (written by `specify change plan add`); the brief writes `proposal.md` with decisions to date and exits non-zero, pointing the operator at `/change:plan <name> extend` to resume.
 
 Present slices in the order the emit rule produces; do not re-order mid-loop beyond dropping stale dependency edges after a reject.
 

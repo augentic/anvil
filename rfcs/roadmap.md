@@ -3,138 +3,66 @@
 > Status: Draft
 > Source: Review of Cloudflare's internal AI engineering stack, especially the platform, knowledge, and enforcement layers described in <https://blog.cloudflare.com/internal-ai-engineering-stack/>.
 
-## Purpose
+## Thesis
 
-Specify is moving toward a highly opinionated, spec-driven workflow framework for agentic software delivery. The existing direction is sound: deterministic CLI operations, durable artifacts, explicit lifecycle state, registry-aware planning, workspace execution, and specialist skills are the right foundations.
+Specify should be the spec-driven workflow control plane for agentic software delivery. It should use developer portals, model gateways, CI, forges, and hosted runners without becoming any of them.
 
-This roadmap captures the next strategic corrections and extensions. The goal is not to turn Specify into a general developer portal, AI gateway, or CI system. The goal is to make Specify the workflow control plane that can use those systems while preserving local, reviewable, deterministic execution.
+The local substrate is now credible: slice/change vocabulary, registry-aware planning, workspace execution, branch preparation, push/finalize handoff, declared tools, and layered skills have landed across RFCs 10, 13, 15, and 16. The next phase should make that substrate provable end-to-end, enforceable, observable, and portable across teams, forges, agents, and catalogs.
 
-## Product Thesis
+At scale, Specify spans three connected layers:
 
-AI engineering at scale needs three connected layers:
+1. **Platform:** models, tools, sandboxes, logs, and long-running execution.
+2. **Knowledge:** repositories, owners, dependencies, standards, capabilities, and plans.
+3. **Enforcement:** review, compatibility checks, standards checks, and stale-context detection.
 
-1. **Platform layer.** Authenticated access to models, tools, sandboxes, logs, and long-running execution.
-2. **Knowledge layer.** Explicit context about repositories, owners, dependencies, standards, capabilities, and current plans.
-3. **Enforcement layer.** Continuous review, compatibility checks, standards checks, and stale-context detection.
+Specify owns the workflow semantics across those layers: intent becomes artifacts; artifacts become plans; plans route work to repositories; repositories change through controlled phases; outcomes are reviewed and recorded for audit and recovery.
 
-Specify should own the spec-driven workflow semantics across those layers:
+## Principles
 
-- intent becomes artifacts;
-- artifacts become executable plans;
-- plans route work to repositories;
-- repositories are changed through controlled phases;
-- changes are reviewed against capabilities, contracts, and standards;
-- outcomes are recorded for recovery and audit.
+- **Keep the CLI authoritative.** Skills, MCP servers, CI, and cloud runners may orchestrate `specify`; they must not reimplement lifecycle transitions, plan validation, registry validation, workspace sync, or merge behavior.
+- **Treat `registry.yaml` as a projection.** Rich catalog metadata can live in Backstage or another catalog; Specify should consume reviewable registry projections for routing, workspace sync, and execution.
+- **Separate workflow, standards, and artifacts.** Workflow skills orchestrate phases; codex rules carry durable engineering policy; artifacts capture slice-local and baseline product intent.
+- **Optimize for local first, cloud later.** `/change:execute loop` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
+- **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
+- **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
+- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo linting and consumer-project review. The planned `specify check` linter and `specify review` reviewer may share rule ids and finding shape, but not scanner lifecycle or inputs.
 
-## Directional Principles
+## Sequenced Roadmap
 
-### Keep The CLI Authoritative
+Items are ordered by intended sequencing and identified as `RM-NN`. Earlier items unblock later ones unless noted otherwise. Command examples in this roadmap are target surfaces unless the item explicitly says the command is already implemented.
 
-The `specify` CLI should remain the source of deterministic behavior. Skills, MCP servers, CI integrations, and cloud runners may orchestrate the CLI, but they should not reimplement lifecycle transitions, plan validation, registry validation, workspace sync, or merge behavior.
+---
 
-This keeps every integration honest: if a behavior matters, it belongs in one deterministic command surface.
+### Near Term
 
-### Treat The Registry As A Projection
+#### RM-01: Multi-repo acceptance fixture
 
-`registry.yaml` should remain a compact execution snapshot, not grow into a full developer catalog. Catalog systems such as Backstage are better suited to long-lived organizational knowledge: owners, teams, systems, domains, APIs, databases, dependencies, and documentation.
+**Goal:** Prove a realistic multi-slice, multi-repo flow.
+**Covers:** plan generation, registry routing, dependent slice execution, branch preparation, workspace sync, residue and baseline commit behavior, push and PR/MR handoff, and finalize after external merge.
+**Output:** an automated or semi-automated suite against local fixture repositories with fake or recorded forge behavior. Recovery paths land in *Multi-repo acceptance suite expansion*.
+**Executable proof:** `specify-cli` repo's `tests/cross_repo.rs`.
 
-Specify should consume that knowledge through importers and projections:
+#### RM-02: `AGENTS.md` generation under proposed `specify context`
 
-```text
-Backstage or another catalog
-  -> Specify registry projection
-  -> plan routing, workspace sync, execute loop
-```
-
-The registry should stay local, reviewable, and reproducible. Rich catalog metadata can remain upstream.
-
-### Separate Workflow, Standards, And Artifacts
-
-Specify should make a clear distinction between:
-
-- **Workflow skills**: phase orchestration and specialist generation behavior.
-- **Standards**: durable engineering rules with stable identifiers.
-- **Artifacts**: slice-local and baseline material produced by the workflow.
-
-This avoids overloading `SKILL.md` with general policy, and gives reviewers and generators a shared rule vocabulary.
-
-### Optimize For Background Execution Later
-
-The local `/change:execute --loop` path should remain first-class, but the primitives should be portable to cloud execution: plan locks, journals, phase outcomes, workspace state, review results, and recovery records should all be serializable and durable.
-
-The long-term shape is:
-
-```text
-local operator-driven execute loop
-cloud background execute loop
-```
-
-The same CLI and artifacts should support both.
-
-## Roadmap
-
-### 1. Foundation: Skill And Context Hygiene
-
-**Goal:** Make agent behavior easier to select, cheaper to load, and less dependent on inference.
-
-The skill-hygiene foundation has now landed across RFCs 10, 13, 15, and 16:
-
-- RFC-10 normalised plugin namespaces and capped skill bodies at the progressive-disclosure ceiling;
-- RFC-13 renamed "schema" to "capability", split per-loop *slices* from umbrella *changes*, moved `/spec:plan` and `/spec:execute` to the `change` plugin, and reframed the registry and change orchestration as platform components rather than capabilities;
-- RFC-15 introduced declared WASI capability tools (`specify tool`, `tools.yaml` sidecars) so deterministic helpers run with explicit permissions and SHA-256 pins instead of as bundled native code;
-- RFC-16 retired the `specify-vectis` host binary in favour of the declared `vectis-validate` and `vectis-scaffold` WASI components, leaving operators with one installed binary.
-
-Open hygiene items still owned by this strand:
-
-- factor duplicated phase outcome, journal, and plan-mutation instructions into shared references;
-- preserve stable Specify artifact identifiers while improving skill discoverability;
-- continue compressing always-loaded surface area as more first-party helpers move to declared tools.
-
-Next, add a first-class repository context output:
-
-- generate concise `AGENTS.md` files from Specify project metadata, capability references, repo inspection, and registry data;
-- include runtime, test command, lint command, navigation hints, conventions, boundaries, and dependencies;
-- keep the file short enough to sit directly in agent context;
-- add checks that warn when repo structure changes imply `AGENTS.md` should be refreshed.
-
-Candidate surfaces:
+**Goal:** Generate concise, deterministic, refreshable repository context.
+**Target surface:**
 
 ```bash
 specify context generate
 specify context check
 ```
 
-Open question: whether this belongs under `specify context`, `specify project`, or a new plugin skill such as `/spec:context`.
+**Inputs:** Specify project metadata, capability references, repo inspection, and registry data.
+**Output:** short `AGENTS.md` guidance covering runtime, tests, linting, navigation, conventions, boundaries, and dependencies. The proposed `specify context check` warns when repo changes imply a refresh.
+**Why now:** High direct user value, and it unblocks stale-context checks in `specify review`.
 
-### 2. Catalog Integration Without Catalog Ownership
+#### RM-03: Codex rule format
 
-**Goal:** Let external catalogs enrich Specify planning without making Specify a developer portal.
-
-Add registry import and validation adapters:
-
-```bash
-specify registry import backstage
-specify registry import <source>
-specify registry diff <source>
-```
-
-The first supported adapter should map Backstage catalog entities into `registry.yaml`:
-
-- Backstage `System` -> platform or product boundary;
-- Backstage `Component` -> Specify registry project;
-- Backstage `API` -> interface contract inventory;
-- ownership and domain data -> project descriptions and routing signals;
-- dependency relations -> future plan and review signals.
-
-The output should be an explicit file diff, not an implicit remote dependency. Operators should be able to review the projected registry before planning or execution.
-
-Non-goal: replacing `registry.yaml`, `.specify/project.yaml`, `plan.yaml`, or workspace state with live Backstage lookups.
-
-### 3. Standards As A First-Class Codex
-
-**Goal:** Give generators and reviewers stable, citeable engineering rules.
-
-Introduce a markdown-first Specify codex format:
+**Goal:** Give generators and reviewers stable, citable engineering rules.
+**Seed:** `plugins/references/review-checks.md` and its existing `UNI-*` catalogue.
+**Each rule carries:** stable id, concise trigger, normative guidance, examples or references where useful, and applicability metadata.
+**First cut:** reserve namespaces such as `RUST-*`, `IFACE-*`, and `SEC-*`; add filtering metadata; migrate the seed catalogue without breaking existing ids.
+**Open:** storage location: `.specify/codex/`, repo-root `codex/`, or shared catalog.
 
 ```text
 codex/
@@ -143,23 +71,61 @@ codex/
   security/secrets.md
 ```
 
-Each rule should have:
+#### RM-04: `specify review` finding schema
 
-- a stable rule id;
-- a concise trigger;
-- normative guidance;
-- examples or references where useful;
-- applicability metadata for capabilities, plugins, or languages.
+**Goal:** Define the structured finding shape before reviewer code lands.
+**Depends on:** *Codex rule format*.
+**Schema includes:** severity (`critical` / `important` / `suggestion` / `optional`), rule id, file/line references, verbatim evidence, remediation, and machine-readable output for terminals, CI annotations, PR comments, and future dashboards.
 
-Skills should be able to cite codex rules while generating artifacts. Reviewers should cite the same rule ids when reporting violations.
+#### RM-05: Cross-project compatibility classification
 
-This should complement, not replace, artifact schemas. Artifact schemas define structure. Codex rules define durable engineering policy.
+**Goal:** Reconcile the retired consumer-compatibility vocabulary with the current contract validation gate, then expose a classified compatibility report.
+**Seed:** `plugins/contract/references/cross-project-compatibility.md` and its `change-kind` vocabulary.
+**Classification:** `additive`, `breaking`, `ambiguous`, or `unverifiable`.
+**Target surface:**
 
-### 4. CI-Native Specify Review
+```bash
+specify compatibility check
+specify compatibility report --change <name>
+```
 
-**Goal:** Move from workflow correctness to continuous enforcement.
+**Scope:** Contract-first and dependency-aware. This does not replace the current `specify tool run contract` baseline validation gate; it adds a consumer-impact classifier after the stale cross-project reference docs are reconciled. Change-level gates land later.
 
-Add a review mode that can run locally or in CI:
+#### RM-06: RFC-13 rename-tail cleanup
+
+**Goal:** Remove transition shims before they become load-bearing.
+**Output:** a release that deletes the `specify migrate slice-layout` and `specify migrate change-noun` CLI shims from `specify-cli`, and deletes the `/spec:plan` / `/spec:execute` deprecation shims from `plugins/spec/skills/`.
+
+#### RM-07: RFC-5: `specify check` framework linter port
+
+**Goal:** Port `scripts/checks.ts` from Deno into a Rust `specify-check` crate exposed as `specify check`.
+**Why now:** Removes Deno from CI, reuses CLI schema parsers, and turns reserved framework-lint rule ids into a working scanner.
+**Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
+
+#### RM-08: RFC-4 Option 1: typed skill expression
+
+**Goal:** Add deterministic structural validation for skill authoring inside `specify check`.
+**Checks:** frontmatter schema, reference resolution, variable consistency, and cross-skill directive validation.
+**Defers:** typed YAML manifests and a Rust DSL until skill count justifies them.
+
+#### RM-09: Skill-hygiene refactors
+
+**Goal:** Compress always-loaded surface area and remove duplicated skill prose.
+**Scope:** factor repeated phase-outcome, journal, and plan-mutation instructions into shared references while preserving stable Specify artifact identifiers.
+
+#### RM-10: Migrate remaining first-party host helpers to declared WASI tools
+
+**Goal:** Move remaining first-party host helpers behind `specify tool run` where the cost/benefit is favorable.
+**Depends on:** the `specify check` port, which can enforce `skill.invokes-host-binary-with-declared-tool-equivalent`.
+
+---
+
+### Mid Term
+
+#### RM-11: CI-native `specify review`
+
+**Goal:** Continuously review consumer projects.
+**Target surface:**
 
 ```bash
 specify review
@@ -167,65 +133,48 @@ specify review --slice <name>
 specify review --format json
 ```
 
-The reviewer should inspect:
+**Inspects:** artifact completeness, responsibility boundaries, schema validation, plan/registry consistency, compatibility classification, stale `AGENTS.md`, codex compliance, source changes missing spec coverage, and specs missing implementation evidence.
+**Output:** structured findings via the settled review schema.
 
-- artifact completeness and responsibility boundaries;
-- schema validation results;
-- plan and registry consistency;
-- cross-project contract compatibility;
-- stale `AGENTS.md` or stale project context;
-- codex rule compliance;
-- source changes whose behavior is not reflected in specs;
-- specs whose expected implementation appears absent.
+#### RM-12: Dependency-aware compatibility gates
 
-Review output should be structured by severity:
+**Goal:** Block producer slices from reaching `done` while breaking consumer follow-up is unaccounted for.
+**Answers:** whether consumer plan entries exist, whether producer completion is allowed, and what SemVer or release impact is implied.
+**Target surface:**
 
-- critical;
-- important;
-- suggestion;
-- optional.
+```bash
+specify change plan impact --change <name>
+```
 
-Findings should include file references, rule ids where applicable, and clear remediation guidance. The same output shape should support terminal display, CI annotations, and pull request comments.
+#### RM-13: Catalog import: Backstage adapter
 
-### 5. Specify MCP Surface
+**Goal:** Enrich Specify planning from external catalogs without making Specify a developer portal.
+**Target surface:**
 
-**Goal:** Make Specify available to agents through tools without duplicating business logic.
+```bash
+specify registry import backstage
+specify registry import <source>
+specify registry diff <source>
+```
 
-Expose a thin MCP server over CLI-backed operations:
+**Mapping:** Backstage `System` to platform/product boundary; `Component` to registry project; `API` to interface inventory; ownership/domain/dependencies to routing and review signals.
+**Output:** explicit registry diff for operator review before planning or execution.
 
-- `specify_status`;
-- `specify_registry_show`;
-- `specify_workspace_status`;
-- `specify_change_plan_status`;
-- `specify_change_plan_next`;
-- `specify_change_plan_doctor`;
-- `specify_slice_validate`;
-- `specify_slice_outcome_show`.
+#### RM-14: Multi-repo acceptance suite expansion
 
-The MCP server should be mostly read-oriented at first. Mutating tools can come later, but only as wrappers around existing CLI verbs with the same validation and failure semantics.
+**Goal:** Extend the acceptance fixture to blocked, failed, interrupted, and stale-workspace recovery paths.
 
-Non-goal: placing independent plan, registry, or lifecycle logic in the MCP server.
+#### RM-15: Read-oriented Specify MCP server
 
-### 6. Observability For Agentic Work
+**Goal:** Make Specify state available to agents through MCP without duplicating business logic.
+**Initial tools:** `specify_status`, `specify_registry_show`, `specify_workspace_status`, `specify_change_plan_status`, `specify_change_plan_next`, `specify_change_plan_doctor`, `specify_slice_validate`, `specify_slice_outcome_show`.
+**Boundary:** mutating tools may come later only as wrappers around existing CLI verbs.
 
-**Goal:** Make workflow performance, failure modes, and model/tool usage measurable.
+#### RM-16: Local structured workflow events
 
-Add structured event emission for major workflow operations:
-
-- command name and version;
-- project and capability;
-- slice or plan entry;
-- phase start and finish;
-- validation result;
-- skill invoked;
-- review findings;
-- recovery attempts;
-- human intervention points;
-- model and tool metadata when available.
-
-This should begin as local JSONL output or a configurable telemetry sink. The design should avoid requiring a hosted service, but should make hosted dashboards possible later.
-
-Candidate surfaces:
+**Goal:** Measure workflow performance, failure modes, and model/tool usage without requiring hosted infrastructure.
+**Events include:** command/version, project/capability, slice or plan entry, phase start/finish, validation result, invoked skill, review findings, recovery attempts, human intervention points, and model/tool metadata when available.
+**Target surface:**
 
 ```bash
 specify status --format json
@@ -233,24 +182,35 @@ specify events tail
 specify events export
 ```
 
-### 7. Cloud-Hosted Execution
+**Output:** local JSONL or configurable telemetry sink with run identity.
 
-**Goal:** Allow durable background execution of Specify plans while preserving the local workflow contract.
+#### RM-17: Forge abstraction behind workspace push and change finalize
 
-The current primitives already point in this direction: plan locks, workspace clones, phase outcomes, journals, and explicit workspace push. Cloud execution should reuse those primitives rather than introduce a parallel workflow.
+**Goal:** Support branch transport, PR/MR creation, and finalize beyond GitHub CLI.
+**Adapter covers:** remote discovery, auth checks, branch existence, push permissions, PR/MR create-or-update, CI/mergeability status, merged-state verification, and provider links.
+**Target surface:**
 
-Requirements:
+```bash
+specify forge doctor
+specify workspace push --forge github
+specify change finalize --forge github
+```
 
-- sandboxed workspace clones;
-- durable plan lock ownership;
-- resumable agent sessions;
-- serialized phase outcomes and journals;
-- explicit human approval gates;
-- controlled push and PR/MR creation;
-- deterministic recovery after interruption;
-- parity with local `/change:execute --loop`.
+#### RM-18: Structured orchestration status for re-entry
 
-Candidate surface:
+**Goal:** Make `/change:plan <name> orchestrate` re-entry and pause points machine-readable.
+**Output:** JSON status with current step, last completed step, pending human action, owner, and next valid resume point.
+**Consumes:** *Local structured workflow events*.
+
+---
+
+### Long Term
+
+#### RM-19: Cloud-hosted execute loop
+
+**Goal:** Run Specify plans durably in the background while preserving local workflow semantics.
+**Requires:** sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/change:execute loop`.
+**Target surface:**
 
 ```bash
 specify execute submit
@@ -258,55 +218,45 @@ specify execute status <run-id>
 specify execute resume <run-id>
 ```
 
-This should remain a long-term track. Local execution is the proving ground.
+#### RM-20: Multi-forge adapter coverage
 
-## Phasing
+**Goal:** Extend the forge abstraction to GitHub, GitLab, Bitbucket, and self-hosted forges.
 
-### Landed
+#### RM-21: Catalog-backed initiatives across many repositories
 
-- RFC-10: plugin namespace renormalisation and skill-body ceiling.
-- RFC-13: capability rename, slice/change vocabulary, platform-component split, `change` plugin.
-- RFC-15: declared WASI capability tools and the `specify tool` runner; contract validator as the first declared tool.
-- RFC-16: Vectis WASI tools (`vectis-validate`, `vectis-scaffold`) and `specify-vectis` retirement.
+**Goal:** Drive multi-repo initiatives from live catalog-backed registry projections.
 
-### Near Term
+#### RM-22: Capability ecosystem operating model
 
-- Add concise `AGENTS.md` generation and checking.
-- Define the codex rule format.
-- Keep the Backstage/catalog decision to adapter design, not core registry replacement.
-- Add initial structured review output for Specify artifacts.
-- Migrate any remaining first-party host helpers to declared WASI tools where the cost/benefit is favourable (the `skill.invokes-host-binary-with-declared-tool-equivalent` lint reserved by RFC-15 enforces this once the linter has enough context).
+**Goal:** Make capabilities feel like a dependable ecosystem rather than bespoke first-party packages.
+**Includes:** publishing and discovery conventions, version compatibility tests, declared-tool compatibility, migration guidance, quality gates, examples beyond Omnia/Vectis/contracts, and ownership for codex rules, artifact templates, and tool manifests.
 
-### Mid Term
+#### RM-23: Hosted observability dashboards
 
-- Add `specify registry import` with a Backstage adapter.
-- Add CI-native `specify review`.
-- Add a read-oriented Specify MCP server.
-- Add local structured workflow events.
-- Expand cross-repo contract and dependency checks using registry/catalog projections.
+---
 
-### Long Term
-
-- Add cloud-hosted `/change:execute --loop` equivalents.
-- Support durable background agents with sandboxed workspace clones.
-- Add first-class PR/MR creation and review loops.
-- Support catalog-backed initiatives across many repositories.
-- Build toward a full spec-driven engineering control plane: define, plan, execute, review, enforce, observe.
+**Goal:** Build hosted dashboards on top of local structured workflow events without making local workflows depend on hosted infrastructure.
 
 ## Non-Goals
 
-- Do not make Specify a general developer portal.
-- Do not replace catalog systems such as Backstage.
-- Do not put lifecycle authority in skills, MCP servers, or hosted services.
+- Do not make Specify a general developer portal, AI gateway, CI system, or forge policy engine.
+- Do not replace Backstage or other catalog systems.
+- Do not put lifecycle authority in skills, MCP servers, hosted services, or adapters.
 - Do not require hosted infrastructure for the core workflow.
-- Do not make `AGENTS.md` a dumping ground for long-form documentation.
-- Do not blur stable artifact schemas with mutable engineering standards.
+- Do not make `AGENTS.md` long-form documentation.
+- Do not blur artifact schemas with mutable engineering standards.
+- Do not hard-code the long-term model to one forge, catalog, or agent host.
+- Do not treat compatibility warnings as sufficient enforcement for breaking changes.
 
 ## Open Questions
 
-- Should repo context generation live under `specify context`, `specify project`, or a plugin skill?
-- Should codex rules live inside `.specify/`, at the repository root, or in a shared catalog?
-- Which parts of `specify review` should be deterministic CLI checks versus model-assisted analysis?
-- What is the minimum registry projection needed from Backstage for useful multi-repo planning?
-- How much telemetry should be emitted by default, and what should require explicit opt-in?
-- What approval model is required before cloud-hosted execution can push or open pull requests?
+- Where should codex rules live: `.specify/codex/`, repo-root `codex/`, or a shared catalog?
+- Which `specify review` checks are deterministic CLI logic versus model-assisted analysis?
+- What is the minimum Backstage registry projection needed for useful planning?
+- What compatibility classifier is sufficient before producer changes can gate on consumer impact?
+- Which acceptance fixtures best represent the product proof path?
+- What is the smallest forge adapter contract for push, PR/MR handoff, CI state, and finalize?
+- How should orchestration ownership and handoff work across multiple operators or agents?
+- What compatibility guarantees should capability authors provide across capability and declared-tool versions?
+- How much telemetry should emit by default, and what requires explicit opt-in?
+- What approval model is required before hosted execution can push branches or open pull requests?

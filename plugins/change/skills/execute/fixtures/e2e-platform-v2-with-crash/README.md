@@ -1,8 +1,8 @@
-# `/change:execute --loop` — crash-recovery meta-fixture
+# `/change:execute loop` — crash-recovery meta-fixture
 
 This meta-fixture pins crash-recovery acceptance: "An injected mid-build SIGKILL, followed by a re-run, recovers via self-heal and completes the change."
 
-The seed is the same full `platform-v2` plan used by the sibling `../e2e-platform-v2/`. The only difference is the scenario: a SIGKILL arrives mid-iteration-4 while `/spec:build product-catalog` is running. A second `/change:execute --loop` run, launched against the unchanged workspace, picks up where Run 1 left off and drives the change to the same terminal state as the uncrashed sibling.
+The seed is the same full `platform-v2` plan used by the sibling `../e2e-platform-v2/`. The only difference is the scenario: a SIGKILL arrives mid-iteration-4 while `/spec:build product-catalog` is running. A second `/change:execute loop` run, launched against the unchanged workspace, picks up where Run 1 left off and drives the change to the same terminal state as the uncrashed sibling.
 
 ## Files
 
@@ -19,7 +19,7 @@ The seed is the same full `platform-v2` plan used by the sibling `../e2e-platfor
 
 1. **Mid-build crashes are recoverable.** A SIGKILL between `/spec:build`'s start and its terminal `specify slice outcome set` call leaves `.metadata.yaml` with `status: building` and no `outcome` — a state self-heal classifies as mid-change resume (§Self-heal on startup, step 3 → `LifecycleStatus=building` → resume `/spec:build`).
 2. **Stale driver locks are reclaimed.** Run 2's `specify change plan lock acquire` does not fail with `Error::DriverBusy` — the CLI's liveness check notices Run 1's PID is gone and reclaims the stamp.
-3. **The argument-resolution plumbing is stateless.** `/change:execute` does not persist the resolved `--source` flags across runs. When the outer loop in Run 2 advances past the resumed `product-catalog` iteration to `shopping-cart`, it resolves that entry's `sources: [orders]` fresh from the plan's top-level `sources` map — same code path as Run 1 would have used.
+3. **The argument-resolution plumbing is stateless.** `/change:execute` does not persist the resolved `source` flags across runs. When the outer loop in Run 2 advances past the resumed `product-catalog` iteration to `shopping-cart`, it resolves that entry's `sources: [orders]` fresh from the plan's top-level `sources` map — same code path as Run 1 would have used.
 4. **Crash recovery is observably indistinguishable at the plan level.** `plan.yaml.after` is byte-for-byte identical to the uncrashed sibling's. The only difference is one additional `type: recovery` entry in `product-catalog/journal.yaml`.
 
 ## Relationship to earlier fixtures

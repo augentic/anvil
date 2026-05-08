@@ -24,16 +24,16 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 **Decision:** The system is structured in four layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them.
 
-1. **Layer 1 — CLI primitives.** Deterministic verbs (`specify change`, `specify plan`, `specify registry`, `specify workspace`, `specify change`).
-2. **Layer 2 — Change lifecycle.** The define-build-merge skills that operate on a single change.
+1. **Layer 1 — CLI primitives.** Deterministic verbs (`specify slice`, `specify change plan`, `specify change`, `specify registry`, `specify workspace`, `specify capability`).
+2. **Layer 2 — Slice lifecycle.** The define-build-merge skills that operate on a single slice.
 3. **Layer 3 — Plan & Drive.** `/change:plan` authors `plan.yaml`; `/change:execute` runs it.
-4. **Layer 4 — Initiative orchestration.** `/change:plan --orchestrate` (RFC-9 §2C, formerly `/spec:initiative`) composes Layers 1-3 plus `specify workspace {push, merge}` and `specify change finalize` into a single operator action.
+4. **Layer 4 — Change orchestration.** `/change:plan <name> orchestrate` composes Layers 1-3 plus `specify workspace push`, operator PR merge, and `specify change finalize` into a single operator action.
 
-**Rationale:** Not every use case needs automation. A single change needs only Layer 2. A small initiative can be driven manually with Layer 1 CLI commands. Plan/execute automation (Layer 3) composes on top, and the cross-repo umbrella (Layer 4) composes on top of that. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
+**Rationale:** Not every use case needs automation. A single slice needs only Layer 2. A small change can be driven manually with Layer 1 CLI commands. Plan/execute automation (Layer 3) composes on top, and the cross-repo umbrella (Layer 4) composes on top of that. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
 
 The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 was promoted from "an aggregator inside Layer 3" to its own layer by RFC-9 §2C because the umbrella verb is a strict superset of the plan/execute layer and giving it a dedicated layer keeps the operator-facing entry-point per layer canonical.
 
-**Source:** [RFC-2: Execution](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-2-execution.md), [RFC-9 §2C: Initiative umbrella](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md)
+**Source:** [RFC-2: Execution](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-2-execution.md), [RFC-9 §2C: Change umbrella](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md)
 
 ## Plan as a data file, not a configuration
 
@@ -55,7 +55,7 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 **Decision:** Multi-repo coordination uses a `registry.yaml` platform catalogue and an automatic sync-peers phase, not a configuration DSL or federation protocol.
 
-**Rationale:** The same `/change:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what schema they use, what domain they own). Sync-peers runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
+**Rationale:** The same `/change:plan <name>` command should work unchanged from one repo to 100+. The registry adds the minimum information needed (what repos exist, what capability they use, what domain they own). Sync-peers runs automatically when the registry has multiple projects, and not at all for single-repo work. No new user-facing concepts for the common case.
 
 **Source:** [RFC-3a: Monolith Migration Planning](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3a-monoliths.md), [RFC-3b: Platform Changes](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
@@ -67,11 +67,11 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 **Source:** [RFC-3b: Platform Changes, §Execution routing](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
-## One change, one project
+## One plan entry, one project
 
-**Decision:** Each plan change targets exactly one registry project. Capabilities that span multiple repos are decomposed into separate plan entries (one per project) linked by `depends-on` edges.
+**Decision:** Each plan entry targets exactly one registry project. Capabilities that span multiple repos are decomposed into separate slices (one per project) linked by `depends-on` edges.
 
-**Rationale:** Allowing a single change to span repos would require the execution loop to manage multiple project roots, multiple capabilities, and multiple baseline merge targets within one define-build-merge cycle. Decomposing cross-cutting capabilities into per-project entries keeps the loop simple and matches the existing baseline-accumulation model where each merge has a single target.
+**Rationale:** Allowing a single slice to span repos would require the execution loop to manage multiple project roots, multiple capabilities, and multiple baseline merge targets within one define-build-merge cycle. Decomposing cross-cutting capabilities into per-project entries keeps the loop simple and matches the existing baseline-accumulation model where each merge has a single target.
 
 **Source:** [RFC-3b: Platform Changes, §One change, one project](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-3b-platform.md)
 
@@ -125,7 +125,7 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 ## Platform artifacts at the repo root, framework state under `.specify/`
 
-**Decision:** The four operator-facing platform artifacts -- `registry.yaml`, `plan.yaml`, `initiative.md`, `contracts/` -- live at the repo root. `.specify/` retains only framework-managed state: `project.yaml`, `changes/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`. The CLI ships `specify migrate v2-layout` to upgrade existing projects in place and refuses every project-aware verb on a v1-layout project with the stable `legacy-layout` error code (hard cutover, no transition window).
+**Decision:** The four operator-facing platform artifacts -- `registry.yaml`, `plan.yaml`, `change.md`, `contracts/` -- live at the repo root. `.specify/` retains only framework-managed state: `project.yaml`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`. The CLI ships one-shot migrations to upgrade existing projects in place and refuses every project-aware verb on a v1-layout project with the stable `legacy-layout` error code (hard cutover, no transition window).
 
 **Rationale:** `.specify/` started life as workflow scratch -- cache, archive, working changes, lifecycle metadata. The artifacts that have accreted there since (the registry, the operator brief, the plan, contracts) are durable, PR-reviewed, human-edited material. Putting them under a dot-prefixed framework directory understated their importance and forced operators to navigate framework internals to inspect or hand-edit them. Pulling them up to the root makes the boundary explicit: framework owns `.specify/`; operators own everything else. The hard-cutover stance avoids carrying a dual-read code path indefinitely; the migrate verb is a one-line operator action that addresses the upgrade in a single step.
 

@@ -22,11 +22,11 @@ specs -> design: "behavioral input"
 design -> tasks: "what to build"
 ```
 
-The Vectis schema inserts a `composition.yaml` stage between contracts and design.
+The Vectis capability inserts a `composition.yaml` stage between contracts and design.
 
 ## Core artifacts
 
-All schemas produce these four artifacts:
+All capabilities produce these four artifacts:
 
 | Artifact | Question it answers | Location |
 |----------|-------------------|----------|
@@ -35,9 +35,9 @@ All schemas produce these four artifacts:
 | `design.md` | *How* will the behavior be implemented? | `.specify/slices/<name>/design.md` |
 | `tasks.md` | In what *sequence* should it be built? | `.specify/slices/<name>/tasks.md` |
 
-## Schema-specific artifacts
+## Capability-specific artifacts
 
-Some schemas add artifacts to the define pipeline. The Vectis schema adds:
+Some capabilities add artifacts to the define pipeline. The Vectis capability adds:
 
 | Artifact | Question it answers | Location |
 |----------|-------------------|----------|

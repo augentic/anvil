@@ -10,6 +10,8 @@ Plugins are installed from the Cursor marketplace (Settings > Plugins > search f
 - **Rules** -- `.mdc` files that provide context to the agent.
 - **References** -- markdown documents that skills read for domain knowledge.
 
+This is the repository's source profile: Cursor plugin manifests, slash-command routing, Cursor tool names, and `<!-- skill: plugin:skill -->` delegation directives are expected. The skills follow Anthropic Agent Skills authoring guidance where it fits, but they are not a drop-in Claude Code or upstream Agent Skills export. A future export/profile should translate Cursor-only conventions and add target-specific metadata such as `disable-model-invocation`, `user-invocable`, or `context` outside the source `SKILL.md` files.
+
 ## Workspace rules
 
 Installing plugins from the marketplace gives you each plugin's rules and skills. For cross-plugin coordination, copy the workspace rule from the Specify repository (`.cursor/rules/project.mdc`) into your project's `.cursor/rules/` directory.
@@ -19,7 +21,7 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 | Plugin | Prefix | Purpose | Reference |
 |--------|--------|---------|-----------|
 | **Specify** | `/spec:` | Per-slice workflow orchestration: init, define, build, merge, drop, extract, analyze. Carries deprecation shims for the historical `/change:plan` and `/change:execute` commands while RFC-13 §3.9 lands. | [Change Skills](../slice-skills/index.md) |
-| **Change** | `/change:` | Cross-repo change orchestration: `/change:plan` (Layer 3 authoring + Layer 4 umbrella under `--orchestrate`) and `/change:execute` (Layer 2 driver). | [Initiative Skills](../change-skills/index.md), [Change](change.md) |
+| **Change** | `/change:` | Cross-repo change orchestration: `/change:plan` (Layer 3 authoring + Layer 4 umbrella under `orchestrate`) and `/change:execute` (Layer 2 driver). | [Change Skills](../change-skills/index.md), [Change](change.md) |
 | **Omnia** | `/omnia:` | Rust WASM crate generation and review | [Omnia](omnia.md) |
 | **Vectis** | `/vectis:` | Cross-platform Crux app generation | [Vectis](vectis.md) |
 | **Contract** | `/contract:` | API contract generation, validation, and import (OpenAPI, AsyncAPI, JSON Schema) | [Contract](contract.md) |

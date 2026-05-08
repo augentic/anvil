@@ -46,3 +46,13 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
 - [CLI Architecture](cli-architecture.md) -- crate graph, dispatch pattern, and JSON contract
 - [Consistency Checks](checks.md) -- what `make checks` enforces and how to extend it
+
+## Example Patterns
+
+Advanced examples live beside the skills that own them, so they stay close to the implementation rules they illustrate:
+
+- `plugins/omnia/skills/crate-writer/examples/` -- generated crate patterns and update cases.
+- `plugins/omnia/skills/test-writer/examples/` -- provider-backed test patterns.
+- `plugins/vectis/skills/core-writer/references/examples/` -- Crux core examples.
+- `plugins/vectis/skills/ios-writer/references/examples/` and `plugins/vectis/skills/android-writer/references/examples/` -- shell integration examples.
+- `plugins/change/skills/execute/fixtures/` and `plugins/change/skills/plan/fixtures/` -- plan and execution transcripts for workflow behavior.

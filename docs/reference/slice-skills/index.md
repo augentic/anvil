@@ -1,6 +1,6 @@
 # Change Skills (Layer 2)
 
-Layer 2 skills operate on a single change inside `.specify/slices/<name>/`. They form the core define-build-merge loop and provide supporting capabilities for extracting artifacts from existing source.
+Layer 2 skills operate on a single slice inside `.specify/slices/<name>/`. They form the core define-build-merge loop and provide supporting capabilities for extracting artifacts from existing source.
 
 ## The define-build-merge loop
 
@@ -15,13 +15,13 @@ This is the primary workflow. You initialise a project once, then repeat the def
 | Skill | Purpose | Reads | Writes |
 |-------|---------|-------|--------|
 | [/spec:init](init.md) | One-time project setup | -- | `.specify/`, `project.yaml`, cache |
-| [/spec:define](define.md) | Generate all artifacts for a new change | Schema briefs, baseline specs | `proposal.md`, `spec.md`, `composition.yaml`*, `design.md`, `tasks.md` |
+| [/spec:define](define.md) | Generate all artifacts for a new change | Capability briefs, baseline specs | `proposal.md`, `spec.md`, `composition.yaml`*, `design.md`, `tasks.md` |
 | [/spec:build](build.md) | Implement tasks from a defined change | All artifacts, build brief | Source code, task checkmarks |
 | [/spec:merge](merge.md) | Merge completed slice into baseline | Change specs + composition*, baseline | Updated baseline, archived change |
 | [/spec:drop](drop.md) | Discard a slice without merging | Change metadata | Archived change (dropped) |
 | [/spec:extract](extract.md) | Produce specs and design from existing code | Source code | `spec.md`, `design.md` |
 
-*\* `composition.yaml` is Vectis-schema only.*
+*\* `composition.yaml` is Vectis-capability only.*
 
 ## How skills delegate
 

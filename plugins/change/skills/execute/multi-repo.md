@@ -17,8 +17,8 @@ Read `project` from the `specify change plan next` response (step 4 of the per-s
   ```bash
   specify workspace prepare-branch <project> \
       --change <change-name> \
-      [--source <absolute-source-path> ...] \
-      [--output <capability-owned-output-path> ...] \
+      [source <absolute-source-path> ...] \
+      [output <capability-owned-output-path> ...] \
       --format json
   ```
   The target branch is exactly `specify/<change-name>`. The helper fetches the remote-backed slot, resolves `origin/HEAD`, creates or reuses the local change branch, fast-forwards from `origin/specify/<change-name>` when appropriate, and classifies dirty work against the active slice boundary.
@@ -74,13 +74,13 @@ When step 10 transitions a slice to `done`, the driver runs a non-fatal contract
 2. `registry.yaml` exists and the producer's project entry declares a non-empty `contracts.produces` list.
 3. At least one project-output path changed by the completed slice under the producer slot's `contracts/` directory matches an entry in the producer's `produces` list (i.e. the routed workspace work actually touched a produced contract — most merges that just touch specs do nothing here).
 
-When all three hold, walk the producer's `produces` list and find every consumer project (any registry entry whose `contracts.consumes` list contains the same path). RFC-12 collapsed the contract role set to `produces` and `consumes`; externally-authored contracts are encoded by the absence of any `produces` entry, not by a separate `imports` field. For each `(produced-contract, consumer)` pair, invoke the format-appropriate `/contract:*` skill in its verifier intent with `--mode cross-project` — pick the skill from the produced contract's category: `/contract:openapi` for HTTP / resource APIs (`contracts/http/*`), `/contract:asyncapi` for evented / pub-sub / streaming (`contracts/messages/*`), `/contract:json-schema` for shared payload schemas (`contracts/schemas/*`):
+When all three hold, walk the producer's `produces` list and find every consumer project (any registry entry whose `contracts.consumes` list contains the same path). RFC-12 collapsed the contract role set to `produces` and `consumes`; externally-authored contracts are encoded by the absence of any `produces` entry, not by a separate `imports` field. For each `(produced-contract, consumer)` pair, invoke the format-appropriate `/contract:*` skill in its verifier intent with the `cross-project` mode positional — pick the skill from the produced contract's category: `/contract:openapi` for HTTP / resource APIs (`contracts/http/*`), `/contract:asyncapi` for evented / pub-sub / streaming (`contracts/messages/*`), `/contract:json-schema` for shared payload schemas (`contracts/schemas/*`):
 
 ```bash
 /contract:openapi \
-    --mode cross-project \
-    --producer-contract .specify/workspace/<producer>/<contract-path> \
-    --consumer-workspace .specify/workspace/<consumer>/
+    cross-project \
+    producer-contract .specify/workspace/<producer>/<contract-path> \
+    consumer-workspace .specify/workspace/<consumer>/
 ```
 
 Both arguments are paths anchored at the **initiating repo root**. The producer contract path points into the producer's workspace slot because RFC-14 keeps project-output residue in that slot; journal entries and warning summaries still use the logical contract path (`contracts/...`) so operators do not see workspace implementation details in the contract identity.
@@ -149,9 +149,9 @@ The block is omitted entirely when `summary.total-findings == 0`. Multiple consu
 
 - **The execute loop never halts on cross-project warnings.** The merged slice has already transitioned to `done`. Findings are advisory output for the operator; the driver continues to the next iteration in `--loop` mode or exits normally in supervised mode.
 - **The merged slice is not re-touched** beyond the journal append. No plan transition, no metadata edit, no follow-up phase invocation.
-- **Verifier errors do not halt the driver.** If the format verifier (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema` running its verifier intent in `--mode cross-project`) exits non-zero (read failure on a consumer workspace, malformed contract), record the failure as a single `failure`-kind journal entry on the merged slice with `--summary "cross-project-warning: validator-error in <consumer>"` and continue. The driver does not retry the verifier.
-- **The check is skipped under `--dry-run`** end-to-end — dry-run never invokes phase skills (per the §Guardrails MUST-NOTs in the main SKILL.md) and the post-merge step inherits that prohibition.
+- **Verifier errors do not halt the driver.** If the format verifier (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema` running its verifier intent in `mode cross-project`) exits non-zero (read failure on a consumer workspace, malformed contract), record the failure as a single `failure`-kind journal entry on the merged slice with summary `cross-project-warning: validator-error in <consumer>` and continue. The driver does not retry the verifier.
+- **The check is skipped under `dry-run`** end-to-end — dry-run never invokes phase skills (per the §Guardrails MUST-NOTs in the main SKILL.md) and the post-merge step inherits that prohibition.
 
 ### Self-heal interaction
 
-Self-heal does **not** run the cross-project check on a reclaimed `success`-on-merge entry. The check is a one-shot side-effect of the live merge transition; on the next normal `/change:execute` startup, the merged slice has already been transitioned to `done` and no producer-side work remains. If a prior crash interrupted the cross-project check itself, the operator can re-trigger it manually by re-running the format-appropriate `/contract:*` skill (verifier intent, `--mode cross-project`) against the same `(producer-contract, consumer-workspace)` pair — the verifier is idempotent and writes nothing to disk.
+Self-heal does **not** run the cross-project check on a reclaimed `success`-on-merge entry. The check is a one-shot side-effect of the live merge transition; on the next normal `/change:execute` startup, the merged slice has already been transitioned to `done` and no producer-side work remains. If a prior crash interrupted the cross-project check itself, the operator can re-trigger it manually by re-running the format-appropriate `/contract:*` skill (verifier intent, `mode cross-project`) against the same `(producer-contract, consumer-workspace)` pair — the verifier is idempotent and writes nothing to disk.

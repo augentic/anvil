@@ -23,9 +23,9 @@ Humans are expected to work through stock Specify:
 - `/spec:merge`
 - `/spec:drop`
 - `/spec:extract` (extract Specify artifacts from existing source code)
-- `/change:execute` (drive a change's `plan.yaml` through define → build → merge; RFC-2 Layer 2, fully landed — `--dry-run` preview, supervised single-slice run, self-heal on startup, `--loop` mode with terminal summary + SIGINT/SIGTERM handling, `sources` execution wiring, and post-merge cross-project contract validation per RFC-9 §3B). Was `/change:execute` until RFC-13 §3.9 moved it to the `change` plugin; the historical command survives as a deprecation shim.
-- `/change:plan` (author `plan.yaml` via the planning brief pipeline; RFC-2 Layer 3 + RFC-3a + RFC-3b — discovery through `/spec:analyze`, optional **sync-peers** when `registry.yaml` declares multiple projects (`specify workspace sync` + `workspace.md`), propose with glob or **manifest** scopes (Stage C), **project assignment** step for multi-repo plans (RFC-3b: infers `project` per entry from registry descriptions, writes via `specify change plan amend --project`), `.specify/plans/<name>/` artefacts archived with the plan; see [rfcs/archive/rfc-3a-monoliths.md](rfcs/archive/rfc-3a-monoliths.md) and [rfcs/archive/rfc-3b-platform.md](rfcs/archive/rfc-3b-platform.md)). Was `/change:plan` until RFC-13 §3.9 moved it to the `change` plugin; the historical command survives as a deprecation shim.
-- `/change:plan --orchestrate` (Layer 4 umbrella mode that strings the cross-repo loop into one operator action: brief → registry validate → `/change:plan` (default mode) → `/change:execute --loop` → `specify workspace push` → operator PR merge → `specify change finalize`; RFC-9 §2C + RFC-14 — composition only, idempotent on re-entry, opens/updates PRs but never merges them, supports `migrate-legacy` / `new-feature` / `update-existing` shapes through a single uniform sequence; was previously a separate `/spec:initiative` skill before being folded into `/change:plan` and then renamed to `/change:plan` in RFC-13 §3.9)
+- `/change:execute` (drive a change's `plan.yaml` through define → build → merge; RFC-2 Layer 2, fully landed — `dry-run` preview, supervised single-slice run, self-heal on startup, `loop` mode with terminal summary + SIGINT/SIGTERM handling, `sources` execution wiring, and post-merge cross-project contract validation per RFC-9 §3B). Historical `/spec:execute` survives as a deprecation shim.
+- `/change:plan` (author `plan.yaml` via the planning brief pipeline; RFC-2 Layer 3 + RFC-3a + RFC-3b — discovery through `/spec:analyze`, optional **sync-peers** when `registry.yaml` declares multiple projects (`specify workspace sync` + `workspace.md`), propose with glob or **manifest** scopes (Stage C), **project assignment** step for multi-repo plans (RFC-3b: infers `project` per entry from registry descriptions, writes via `specify change plan amend --project`), `.specify/plans/<name>/` artefacts archived with the plan; see [rfcs/archive/rfc-3a-monoliths.md](rfcs/archive/rfc-3a-monoliths.md) and [rfcs/archive/rfc-3b-platform.md](rfcs/archive/rfc-3b-platform.md)). Historical `/spec:plan` survives as a deprecation shim.
+- `/change:plan <name> orchestrate` (Layer 4 umbrella mode that strings the cross-repo loop into one operator action: brief → registry validate → `/change:plan` (default mode) → `/change:execute loop` → `specify workspace push` → operator PR merge → `specify change finalize`; RFC-9 §2C + RFC-14 — composition only, idempotent on re-entry, opens/updates PRs but never merges them, supports `migrate-legacy` / `new-feature` / `update-existing` shapes through a single uniform sequence; was previously a separate `/spec:initiative` skill before being folded into `/change:plan`)
 
 This repository provides specialist skills and references that support that workflow.
 
@@ -64,8 +64,8 @@ The matching CLI surface is the declared `contract` WASI tool, run through `spec
 
 When a change is coordinated through a `plan.yaml`, the recommended path is:
 
-1. **Author.** `/change:plan <change-name> --source <key>=<path-or-url> ...` — Layer 3 skill runs the planning brief pipeline, optionally **sync-peers** + `workspace.md` when the registry is multi-project, then `specify change plan create` + one `specify change plan add` per accepted slice (globs or `--scope-manifest` per RFC-3a Stage C). Plan-time sync-peers is discovery-oriented and may sync all registered peers.
-2. **Execute.** `/change:execute --loop` — Layer 2 driver that repeatedly picks `specify change plan next`, prepares only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set, runs `/spec:define → /spec:build → /spec:merge`, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
+1. **Author.** `/change:plan <change-name> source <key>=<path-or-url> ...` — Layer 3 skill runs the planning brief pipeline, optionally **sync-peers** + `workspace.md` when the registry is multi-project, then `specify change plan create` + one `specify change plan add` per accepted slice (globs or `--scope-manifest` per RFC-3a Stage C). Plan-time sync-peers is discovery-oriented and may sync all registered peers.
+2. **Execute.** `/change:execute loop` — Layer 2 driver that repeatedly picks `specify change plan next`, prepares only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set, runs `/spec:define → /spec:build → /spec:merge`, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
 3. **Archive.** `specify change plan archive` sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
 Hand-driven fallback (RFC-2 Layer 1): skip `/change:plan` and `/change:execute`, author `plan.yaml` entry-by-entry with `specify change plan {create, add, amend}`, and drive the loop yourself via `specify change plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
@@ -76,9 +76,12 @@ The phase skills themselves stay unaware of the plan — they operate slice-by-s
 
 All commands are run from the repository root:
 
-- **`make checks`** -- runs `scripts/checks.ts` via Deno for documentation and workflow consistency checks
-- **`make use-local-plugins`** -- use local plugins from the working tree for development/testing
-- **`make use-team-plugins`** -- use Augentic marketplace plugins (reload Cursor after either)
+- **`make checks`** -- runs `scripts/checks.ts` via Deno for documentation and workflow consistency checks.
+- **`make test`** -- runs the direct RM-01 Deno acceptance test. It drives a temp hub, two fixture repos, fake `gh`/SSH, plan, execute, push, and finalize through the real `specify` binary; it skips cleanly when no suitable binary is available.
+- **`make use-local-plugins`** -- use local plugins from the working tree for development/testing.
+- **`make use-team-plugins`** -- use Augentic marketplace plugins (reload Cursor after either).
+
+The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolute/path/to/specify-cli/target/release/specify` (the system PATH `specify` is typically the older v0.1.0 install and the test will skip against it). Full operator guide: [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
 
 ### Skill authoring
 

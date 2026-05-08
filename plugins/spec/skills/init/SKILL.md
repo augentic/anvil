@@ -4,6 +4,16 @@ description: Initialize Specify in a project. Bootstraps the `specify` CLI when 
 argument-hint: "<capability>"
 ---
 
+## Critical Path (Quick Reference)
+
+1. **Verify the CLI** — run `specify --version`; install with `cargo install --git https://github.com/augentic/specify-cli` only after explicit user confirmation.
+2. **Check existing initialization** — detect `.specify/project.yaml`, ask before reinitializing, and treat reinit as an upgrade path owned by the CLI.
+3. **Choose topology** — decide regular project vs registry-only platform hub; capability is required for regular projects and forbidden in hub mode.
+4. **Resolve metadata** — choose `$CAPABILITY`, `$PROJECT_NAME`, and optional `$DOMAIN`; never pre-populate `.specify/.cache/`.
+5. **Invoke `specify init`** — run either `specify init "$CAPABILITY" ...` or `specify init --hub ...`; surface non-zero CLI errors without hand-rolling scaffold files.
+6. **Offer baseline extraction** — for regular projects with code indicators, ask whether to create `initial-baseline`; skip this entirely for hubs.
+7. **Summarize the correct shape** — report regular vs hub outputs, next actions, and any baseline-extraction handoff.
+
 ## CLI bootstrap
 
 `/spec:init` is the one Specify skill that may install the CLI before continuing. Other CLI-dependent skills still stop when `specify` is missing.
@@ -208,7 +218,7 @@ Next steps:
 Next steps:
 1. Add registered projects to `registry.yaml` (hand-edit, or `specify registry add` once that verb lands)
 2. Edit `change.md` to frame the first initiative
-3. Run `/change:plan <name>` to author a plan, then `/change:execute --loop` to drive it
+3. Run `/change:plan <name>` to author a plan, then `/change:execute loop` to drive it
 ```
 
 **Guardrails**

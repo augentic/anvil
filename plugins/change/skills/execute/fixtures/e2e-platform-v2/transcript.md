@@ -1,6 +1,6 @@
-# e2e-platform-v2 — `/change:execute --loop` drains the `platform-v2` plan
+# e2e-platform-v2 — `/change:execute loop` drains the `platform-v2` plan
 
-This is the Layer 2 exit-gate meta-fixture. The seed is the full `platform-v2` plan — nine entries spanning every shape the driver must handle: greenfield, `sources`-only, description-driven, combined, pre-failed, mid-run-crashed. `/change:execute --loop` starts against this seed and drives the plan until no eligible change remains.
+This is the Layer 2 exit-gate meta-fixture. The seed is the full `platform-v2` plan — nine entries spanning every shape the driver must handle: greenfield, `sources`-only, description-driven, combined, pre-failed, mid-run-crashed. `/change:execute loop` starts against this seed and drives the plan until no eligible change remains.
 
 There is no automated harness; this is an authoring pin covering the argument-resolution plumbing introduced in L2.I end-to-end.
 
@@ -30,7 +30,7 @@ Every `sources` key referenced by an entry resolves; no `unknown-source` validat
 ## Driver timeline
 
 ```text
-$ /change:execute --loop
+$ /change:execute loop
 
 # step 1: project resolution — silent on success.
 # step 2: acquire the driver lock — single acquire for the whole run.
@@ -145,10 +145,10 @@ Step 3/3: merge
 #                         /path/to/legacy-codebase (local filesystem path)
 #                         → --source monolith=/path/to/legacy-codebase
 # Invocation:
-#   /spec:define product-catalog --source monolith=/path/to/legacy-codebase
+#   /spec:define product-catalog source monolith=/path/to/legacy-codebase
 
 # specify change plan transition product-catalog in-progress
-# /spec:define product-catalog --source monolith=/path/to/legacy-codebase → success
+# /spec:define product-catalog source monolith=/path/to/legacy-codebase → success
 #   (define's brief pipeline invokes /spec:extract with the resolved
 #    path; no clone — path is local.)
 # /spec:build  product-catalog → success
@@ -178,7 +178,7 @@ Step 3/3: merge
 #                        git@github.com:org/orders-service.git (git URL)
 #                        → --source orders=git@github.com:org/orders-service.git
 # Invocation:
-#   /spec:define shopping-cart --source orders=git@github.com:org/orders-service.git
+#   /spec:define shopping-cart source orders=git@github.com:org/orders-service.git
 
 # The driver does NOT clone here. /spec:define's brief pipeline
 # invokes /spec:extract, which inlines a guarded `git clone`
@@ -187,7 +187,7 @@ Step 3/3: merge
 # clone cache. The --source value travels through as a URL string.
 
 # specify change plan transition shopping-cart in-progress
-# /spec:define shopping-cart --source orders=… → success
+# /spec:define shopping-cart source orders=… → success
 # /spec:build  shopping-cart → success
 # /spec:merge  shopping-cart → success
 # specify change plan transition shopping-cart done

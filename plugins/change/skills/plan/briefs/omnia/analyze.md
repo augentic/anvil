@@ -136,7 +136,7 @@ Fixture tree: [`./fixtures/analyze/documentation/`](./fixtures/analyze/documenta
 Invocation (run from the fixture directory):
 
 ```
-/spec:analyze --kind documentation ./inputs/ ./expected/
+/spec:analyze documentation ./inputs/ ./expected/
 ```
 
 Input: a single runbook under [`inputs/ops-runbook.md`](./fixtures/analyze/documentation/inputs/ops-runbook.md) describing two operational procedures plus one deferred decision.
@@ -233,7 +233,7 @@ Fixture tree: [`./fixtures/analyze/legacy-code/`](./fixtures/analyze/legacy-code
 Invocation (run from the fixture directory):
 
 ```
-/spec:analyze --kind legacy-code --source-key monolith ./inputs/monolith/ ./expected/plans/legacy-code/
+/spec:analyze legacy-code monolith ./inputs/monolith/ ./expected/plans/legacy-code/
 ```
 
 Input: a small TypeScript monolith under [`inputs/monolith/`](./fixtures/analyze/legacy-code/inputs/monolith/) with four inferable capabilities spanning `src/users`, `src/auth`, `src/common`, and `src/billing`.

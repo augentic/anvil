@@ -8,13 +8,13 @@ argument-hint: "[crate-path]"
 
 ## Critical Path (Quick Reference)
 
-1. **Parse invocation**: resolve `$CRATE_PATH` and the `--fix` flag; verify `cargo check` passes (see [Invocation](#invocation)).
+1. **Parse invocation**: resolve `$CRATE_PATH` and the `fix` positional; verify `cargo check` passes (see [Invocation](#invocation)).
 2. **Initialize team**: spawn Security, Correctness, and Quality specialist sub-agents with the prompts in [`team-protocol.md`](team-protocol.md).
 3. **Specialist analysis (concurrent)**: each specialist scans `src/*.rs` and emits findings prefixed `SEC-`, `COR-`, `QUA-` per the categories in [`categories.md`](categories.md).
 4. **Universal checks (lead)**: lead applies UNI-001…UNI-021 with the Omnia/WASM heuristics in [`categories.md`](categories.md#universal-checks-uni--prefix), prefixing findings `UNI-`.
 5. **Adversarial challenge**: lead forwards all findings to the antagonist, which confirms / upgrades / downgrades / disputes them and adds `NEW-` findings (rules in [`team-protocol.md`](team-protocol.md)).
 6. **Synthesis**: lead writes `$REVIEW_OUTPUT` using the template in [`output.md`](output.md), recording adversarial-review statistics and a confidence level.
-7. **Auto-fix (only if `--fix`)**: lead applies safe fixes per [`auto-fix.md`](auto-fix.md), runs `cargo check`, and reverts on failure. Then shut down the team.
+7. **Auto-fix (only if `fix`)**: lead applies safe fixes per [`auto-fix.md`](auto-fix.md), runs `cargo check`, and reverts on failure. Then shut down the team.
 
 ## Overview
 
@@ -40,21 +40,21 @@ Research findings on AI code quality:
 5. **Unclear naming**: generic identifiers increase cognitive load
 6. **Business logic errors**: incorrect dependencies, flawed control flow
 
-This skill provides automated detection of common AI code issues, specific fixes for critical problems (not just "check this"), an auto-fix path for simple issues (`--fix`), and educational feedback to improve future generations.
+This skill provides automated detection of common AI code issues, specific fixes for critical problems (not just "check this"), an auto-fix path for simple issues (`fix`), and educational feedback to improve future generations.
 
 ## Invocation
 
-The argument-hint advertises a single positional `crate-path`. The `--fix` flag is parsed from the raw arguments inside the body — it is intentionally **not** in the hint so the slash-command UI stays single-token.
+The argument-hint advertises a single positional `crate-path`. The `fix` positional is parsed from the raw arguments inside the body — it is intentionally **not** in the hint so the slash-command UI stays single-token.
 
 ```text
 $CRATE_PATH    = $ARGUMENTS[0]
-$AUTO_FIX      = "--fix" in $ARGUMENTS  # boolean
+$AUTO_FIX      = "fix" in $ARGUMENTS  # boolean
 $REVIEW_OUTPUT = $CRATE_PATH/REVIEW.md
 ```
 
-**Flags**:
+**Positional arguments**:
 
-- `--fix` (optional) — apply auto-fixes for confirmed/upgraded auto-fixable findings after synthesis. See [`auto-fix.md`](auto-fix.md) for the full scope, success-rate table, and regression guard.
+- `fix` (optional) — apply auto-fixes for confirmed/upgraded auto-fixable findings after synthesis. See [`auto-fix.md`](auto-fix.md) for the full scope, success-rate table, and regression guard.
 
 **Prerequisites**:
 
@@ -89,7 +89,7 @@ Key invariants the lead must preserve:
 
 - [`categories.md`](categories.md) — Full SEC-/COR-/QUA-/UNI- check libraries and Omnia/WASM heuristics.
 - [`team-protocol.md`](team-protocol.md) — Specialist spawn prompts, antagonist protocol, synthesis rules.
-- [`auto-fix.md`](auto-fix.md) — `--fix` scope, success-rate table, regression guard, recovery process.
+- [`auto-fix.md`](auto-fix.md) — `fix` scope, success-rate table, regression guard, recovery process.
 - [`output.md`](output.md) — `REVIEW.md` template and finding-ID conventions.
 - [Review Checks](references/review-checks.md) — Language- and domain-agnostic review checklist (UNI-001…UNI-021) shared across all reviewer skills.
 - [Agent Team Patterns](references/agent-teams.md) — Shared team roles, antagonist protocol, synthesis rules, and file ownership.
@@ -171,7 +171,7 @@ The auto-fix success-rate table per category lives in [`auto-fix.md`](auto-fix.m
 Add code review near the end of implementation, after generation and verification:
 
 ```bash
-/code-reviewer $CRATE_PATH --fix
+/code-reviewer $CRATE_PATH fix
 
 if grep "Critical Issues: [1-9]" $CRATE_PATH/REVIEW.md; then
     echo "Critical issues found - manual review required"

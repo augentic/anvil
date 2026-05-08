@@ -1,6 +1,6 @@
 # `--shape update-existing` — `polish-pass` end-to-end
 
-This fixture pins the **happy path** of `/change:plan --orchestrate` (formerly `/spec:initiative`) driving the `update-existing` shape against a populated multi-project hub. No `--from`, no `--source`, no `--against` — sources are unused and `/change:plan` reads `.specify/workspace/<peer>/specs/` baselines as the dominant signal during discovery. The umbrella pushes PRs, stops for operator merge, and finalizes on re-entry.
+This fixture pins the **happy path** of `/change:plan <name> orchestrate` (formerly `/spec:initiative`) driving the `update-existing` shape against a populated multi-project hub. No `from`, no `source`, no `against` — sources are unused and `/change:plan` reads `.specify/workspace/<peer>/specs/` baselines as the dominant signal during discovery. The umbrella pushes PRs, stops for operator merge, and finalizes on re-entry.
 
 ## Scenario
 
@@ -14,8 +14,8 @@ The platform hub `shop-platform/` has been driving cross-repo work for a while; 
 The operator wants a polish pass: tighten error messages on the auth flow, fix a missing accessibility label on the theme picker, and round off the documentation block in the theme-preference API. None of this is a new feature — it extends existing capabilities on both sides. They invoke:
 
 ```text
-/change:plan --orchestrate polish-pass \
-    --shape update-existing
+/change:plan <name> orchestrate polish-pass \
+    shape update-existing
 ```
 
 The umbrella runs through PR handoff, then resumes after operator merge:
@@ -23,7 +23,7 @@ The umbrella runs through PR handoff, then resumes after operator merge:
 1. **Brief.** `specify change create polish-pass` scaffolds `change.md` with **empty** `inputs:` (no `--from` / `--source` / `--against`). The operator writes one paragraph naming the capabilities being polished.
 2. **Registry.** `specify registry validate` passes (multi-project, descriptions complete). No mutation.
 3. **Plan.** `/change:plan polish-pass` runs discovery against the empty input set; the discovery brief falls back to **baseline accumulation** in `.specify/workspace/<peer>/specs/` and surfaces the polish opportunities. Sync-peers refreshes both clones; propose decomposes into two slices (one per project, no contract change because the polish does not change the API surface); assignment routes each slice to its existing project; validate passes.
-4. **Execute.** `/change:execute --loop` drives both changes to `done`. Terminal classification: `all-done`.
+4. **Execute.** `/change:execute loop` drives both changes to `done`. Terminal classification: `all-done`.
 5. **Push.** `specify workspace push` opens two PRs on `specify/polish-pass`.
 6. **PR handoff.** The umbrella lists the open PRs and stops. The operator merges both PRs through the forge UI or an explicit hand-run `gh pr merge`.
 7. **Finalize.** Re-running the umbrella observes both PRs `MERGED`; `specify change finalize` verifies remote PR state and archives `plan.yaml` + `change.md` + `.specify/plans/polish-pass/` into `.specify/archive/plans/<YYYYMMDD>-polish-pass/`.

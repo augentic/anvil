@@ -4,6 +4,12 @@ DENO := $(or $(shell command -v deno 2>/dev/null),$(wildcard $(HOME)/.deno/bin/d
 checks:
 	@$(DENO) run --allow-read scripts/checks.ts
 
+.PHONY: test
+test:
+	@$(DENO) test \
+		--allow-read --allow-write --allow-env --allow-run --allow-net=none \
+		tests/cross_repo.ts
+
 .PHONY: use-local-plugins
 use-local-plugins:
 	@bash ./scripts/use-local-plugins.sh

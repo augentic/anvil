@@ -8,7 +8,7 @@ The core CLI crates stay capability-agnostic:
 
 ```text
 specify (binary)
-├── specify-change      Change lifecycle, plan CRUD, locks, journals
+├── specify-change      Change orchestration, plan CRUD, locks, journals
 ├── specify-drift       Code-vs-baseline drift detection
 ├── specify-error       Shared error types
 ├── specify-merge       Delta merge engine, conflict detection

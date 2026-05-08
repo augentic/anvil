@@ -8,8 +8,8 @@ The `change` plugin owns RFC-13's umbrella orchestration noun. Per-loop phase sk
 
 | Skill | Command | Description |
 |-------|---------|-------------|
-| [plan](skills/plan/SKILL.md) | `/change:plan` | Author `plan.yaml` for a change via the planning brief pipeline (Layer 3); with `--orchestrate`, drive the cross-repo umbrella through PR creation, operator merge handoff, and finalize verification (Layer 4). |
-| [execute](skills/execute/SKILL.md) | `/change:execute` | Drive the authored plan through the per-loop phases (`/spec:define → /spec:build → /spec:merge`); supports supervised, dry-run, and `--loop` modes. |
+| [plan](skills/plan/SKILL.md) | `/change:plan` | Author `plan.yaml` for a change via the planning brief pipeline (Layer 3); with `orchestrate`, drive the cross-repo umbrella through PR creation, operator merge handoff, and finalize verification (Layer 4). |
+| [execute](skills/execute/SKILL.md) | `/change:execute` | Drive the authored plan through the per-loop phases (`/spec:define → /spec:build → /spec:merge`); supports supervised, dry-run, and `loop` modes. |
 
 ## See also
 

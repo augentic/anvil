@@ -94,8 +94,6 @@ specify-change → specify-registry → specify-capability
 
 The invariant: **`specify-core` does not depend on `specify-registry`**, and `specify-registry` does not depend on `specify-change`. The slice component MAY depend on the registry because orchestration composes registry materialisation; the reverse is forbidden. RFC-13 invariant #4 spells this out and [RFC-5](../../rfcs/rfc-5-lint.md) is the home for the lint that enforces it. See [RFC-13 §Migration](../../rfcs/archive/rfc-13-extensibility.md#migration).
 
-> **Crate naming on the rfc-13 branch.** The umbrella crate is currently named `specify-initiative` on disk; Phase 3.4 of the RFC-13 plan renames it to `specify-change`. This page describes the post-Phase-3 surface so it stays accurate after the rename — read every reference to `specify-change` (the umbrella) as `specify-initiative` while you are working on the rfc-13 branch.
-
 ## What the registry must NOT own
 
 The registry is topology plus local materialisation. It is **not** a place to park orchestration, validation findings, or PR metadata. Mirror of the [RFC-13 §"Platform components are not capabilities"](../../rfcs/archive/rfc-13-extensibility.md#platform-components-are-not-capabilities) table:

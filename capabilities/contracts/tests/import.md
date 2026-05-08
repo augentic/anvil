@@ -1,4 +1,30 @@
+---
+id: contracts-import
+owner: contracts
+kind: capability
+capability: contracts@v1
+backend: manual
+entrypoint: /spec:define
+stages: [define, build, merge]
+isolation: fresh-project
+authorship-mode: import
+assertions:
+  - files-exist
+  - contract-validator-clean
+  - import-report-present
+expected-artifacts:
+  - contracts/http/ticket-api.yaml
+  - contracts/schemas/create-ticket-request.yaml
+  - contracts/schemas/ticket.yaml
+negative-expectations:
+  - artifacts-outside-contracts-directory
+  - source-format-not-upgraded-to-openapi-31
+  - inline-schemas-not-decomposed
+---
+
 # Import A Contract Passed To `/spec:define`
+
+Scenario ID: `contracts-import`
 
 Use this test to verify that an externally supplied OpenAPI document is imported,
 upgraded if needed, decomposed into shared schemas, and verified.
@@ -12,7 +38,24 @@ Pipeline note:
   context. Imported interface shapes should be introduced through a separate
   `contracts@v1` change before implementation depends on them.
 
-## Source Contract
+## Intent
+
+Prove that the `contracts@v1` slice loop can normalise an externally supplied
+OpenAPI document: it preserves the source endpoint behavior, upgrades the
+document to OpenAPI 3.1, decomposes inline schemas into `contracts/schemas/`,
+and runs the verifier on the resulting artifacts.
+
+## Workspace
+
+- **Capability:** `contracts@v1`.
+- **Project shape:** a single project initialised with the `contracts@v1`
+  schema (run `/spec:init` first if the workspace is fresh).
+- **Registry shape:** not applicable.
+- **Isolation:** `fresh-project`. Start from an empty `contracts/` baseline.
+- **Backend:** `manual` — a human or agent runs the prompts in **Invocation**
+  and records results in the [run summary](run-summary-template.md).
+
+## Inputs
 
 Create an external OpenAPI document, for example
 `vendor/ticket-api.openapi.yaml`:
@@ -63,7 +106,7 @@ components:
           enum: [open, pending, closed]
 ```
 
-## Prompt
+## Invocation
 
 Invoke `/spec:define` in import mode:
 
@@ -84,7 +127,12 @@ if needed, decompose inline schemas into contracts/schemas, and verify the
 resulting contract artifacts.
 ```
 
-## Expected Contract Files
+After `/spec:define` succeeds, drive `/spec:build import-ticket-api-contract`
+to produce the normalised contract YAML, then optionally
+`/spec:merge import-ticket-api-contract` to promote the deltas into the
+baseline.
+
+## Expected Artifacts
 
 During `/spec:build`, the import should produce these change-local contract
 deltas. After merge, the same paths become root `contracts/` baseline files.
@@ -95,3 +143,32 @@ deltas. After merge, the same paths become root `contracts/` baseline files.
 
 The import report should identify the source format, any lossless upgrades, any
 manual-review warnings, and the verifier result.
+
+## Assertions
+
+- `files-exist`: every path in **Expected Artifacts** exists in the slice
+  working tree after `/spec:build`.
+- `contract-validator-clean`: the build's contract verifier exits `0` with no
+  unresolved `$ref` failures, missing schema metadata, or binding coverage
+  failures on the imported artifacts. Manual-review warnings are surfaced in
+  the run summary but do not by themselves fail this assertion.
+- `import-report-present`: the build phase produces an import report (in build
+  output or proposal annotations) identifying the source format, any lossless
+  upgrades performed, manual-review warnings, and the verifier result.
+
+## Negative Expectations
+
+- `artifacts-outside-contracts-directory`: no contract YAML is written outside
+  `contracts/http/` or `contracts/schemas/`.
+- `source-format-not-upgraded-to-openapi-31`: the resulting `contracts/http/ticket-api.yaml`
+  must declare `openapi: "3.1.x"`. Leaving the document at OpenAPI 3.0.3 (the
+  source version) is a failure of this scenario.
+- `inline-schemas-not-decomposed`: `CreateTicketRequest` and `Ticket` must
+  appear as standalone `contracts/schemas/*.yaml` files; leaving them inline
+  under `components.schemas` in the HTTP document is a failure.
+
+## Cleanup
+
+Drop or archive the slice before moving to the next scenario. Remove
+`vendor/ticket-api.openapi.yaml` if your run-all sequence requires a clean
+working tree.

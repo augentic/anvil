@@ -6,8 +6,8 @@ The invocation in [`invocation.txt`](invocation.txt) supplies one `documentation
 
 | Kind            | Skill invocation                                               | Output shape                                                      |
 | --------------- | -------------------------------------------------------------- | ----------------------------------------------------------------- |
-| `documentation` | `/spec:analyze <input> <plan-dir> --kind documentation ...`    | `### <name>` + fenced YAML capability summary, plus appendix blocks. |
-| `legacy-code`   | `/spec:analyze <input> <plan-dir> --kind legacy-code ...`      | `### <name>` + fenced YAML capability summary, plus `metadata.json`. |
+| `documentation` | `/spec:analyze <input> <plan-dir> documentation ...`    | `### <name>` + fenced YAML capability summary, plus appendix blocks. |
+| `legacy-code`   | `/spec:analyze <input> <plan-dir> legacy-code ...`      | `### <name>` + fenced YAML capability summary, plus `metadata.json`. |
 
 Both branches emit the same capability-summary shape, so `expected/discovery.md` carries a single inventory block sorted alphabetically across both kinds. Documentation inputs additionally contribute the `## Constraints (from documentation)` and `## Open questions (from documentation)` appendix blocks; legacy-code inputs additionally write `expected/plans/traffic/analyze/legacy/metadata.json`.
 

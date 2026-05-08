@@ -12,7 +12,7 @@ The description contains the path hint `src/common/validation/`. The brief infer
 
 ```text
 /spec:extract ./legacy/monolith <slice-dir>/.extract/monolith/ \
-    --include 'src/common/validation/**'
+    include 'src/common/validation/**'
 ```
 
 ## After `/spec:extract` returns

@@ -1,4 +1,30 @@
+---
+id: contracts-describe
+owner: contracts
+kind: capability
+capability: contracts@v1
+backend: manual
+entrypoint: /spec:define
+stages: [define, build, merge]
+isolation: fresh-project
+authorship-mode: prose
+assertions:
+  - files-exist
+  - contract-validator-clean
+expected-artifacts:
+  - contracts/schemas/create-profile-request.yaml
+  - contracts/schemas/profile.yaml
+  - contracts/schemas/update-profile-request.yaml
+  - contracts/schemas/error-response.yaml
+  - contracts/http/profile-api.yaml
+negative-expectations:
+  - artifacts-outside-contracts-directory
+  - implementation-shapes-authored-inline
+---
+
 # Generate From Prose Passed To `/spec:define`
+
+Scenario ID: `contracts-describe`
 
 Use this prompt to test authoring JSON Schema and OpenAPI artifacts from prose
 requirements.
@@ -12,7 +38,31 @@ Pipeline note:
   context. New or changed interface shapes should be introduced through a
   separate `contracts@v1` change before implementation depends on them.
 
-## Prompt
+## Intent
+
+Prove that the `contracts@v1` slice loop can author HTTP and JSON Schema
+artifacts from a prose requirements block embedded directly in a `/spec:define`
+prompt. The scenario covers the full define → build → merge path for a
+greenfield contract change with no pre-existing source document.
+
+## Workspace
+
+- **Capability:** `contracts@v1`.
+- **Project shape:** a single project initialised with the `contracts@v1`
+  schema (run `/spec:init` first if the workspace is fresh).
+- **Registry shape:** not applicable; this scenario does not exercise
+  multi-project registry behavior.
+- **Isolation:** `fresh-project`. Start from an empty `contracts/` baseline so
+  the expected artifact list is unambiguous.
+- **Backend:** `manual` — a human or agent runs the prompts in **Invocation**
+  and records results in the [run summary](run-summary-template.md).
+
+## Inputs
+
+This scenario has no source files to seed. The prose requirements live inside
+the `/spec:define` prompt itself; see **Invocation** below.
+
+## Invocation
 
 ```text
 /spec:define user-profile-api
@@ -59,9 +109,13 @@ All endpoints use application/json. ErrorResponse has code: string, message:
 string, and optional details: object.
 ```
 
-## Expected Contract Files
+After `/spec:define` succeeds, drive `/spec:build user-profile-api` to produce
+the contract YAML, then optionally `/spec:merge user-profile-api` to promote
+the deltas into the baseline.
 
-During `/spec:build`, the change should produce these change-local contract
+## Expected Artifacts
+
+During `/spec:build`, the slice should produce these change-local contract
 deltas. After merge, the same paths become root `contracts/` baseline files.
 
 - `contracts/schemas/create-profile-request.yaml`
@@ -69,3 +123,34 @@ deltas. After merge, the same paths become root `contracts/` baseline files.
 - `contracts/schemas/update-profile-request.yaml`
 - `contracts/schemas/error-response.yaml`
 - `contracts/http/profile-api.yaml`
+
+## Assertions
+
+- `files-exist`: every path in **Expected Artifacts** exists in the slice
+  working tree after `/spec:build`, and (when merge is run) in the baseline
+  `contracts/` tree after `/spec:merge`.
+- `contract-validator-clean`: the build's contract verifier (the `contract`
+  WASI tool, run as `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`)
+  exits `0` with no findings and no manual-review warnings on the produced
+  artifacts.
+
+## Negative Expectations
+
+- `artifacts-outside-contracts-directory`: no contract YAML is written outside
+  `contracts/http/` or `contracts/schemas/`. The slice must not author
+  implementation files (Omnia crates, Vectis Crux modules, etc.).
+- `implementation-shapes-authored-inline`: the slice must not pre-author
+  Omnia/Vectis interface shapes; only the `contracts@v1` artifacts above are
+  produced.
+
+## Cleanup
+
+Drop or archive the slice before moving to the next scenario unless you
+explicitly want the new baseline contracts to persist:
+
+- `specify slice drop user-profile-api` to discard without merging, or
+- `/spec:merge user-profile-api` followed by `specify slice archive` (via the
+  CLI verbs the merge skill drives) to retain the baseline.
+
+Default for a clean run-all sequence: drop. Record the choice in the run
+summary's **Cleanup** section.

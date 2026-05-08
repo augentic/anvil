@@ -1,8 +1,8 @@
 # Legacy Migration at Scale
 
-Migrating a large legacy codebase is one of the most demanding uses of Specify. This tutorial shows how to decompose a monolith into a multi-repo, multi-slice initiative using the analyze/extract split -- the strategy that makes this tractable.
+Migrating a large legacy codebase is one of the most demanding uses of Specify. This tutorial shows how to decompose a monolith into a multi-repo, multi-slice change using the analyze/extract split -- the strategy that makes this tractable.
 
-**Prerequisites:** Familiarity with [multi-slice initiatives](single-repo-change.md) and [cross-repo planning](cross-repo-change.md).
+**Prerequisites:** Familiarity with [multi-slice changes](single-repo-change.md) and [cross-repo planning](cross-repo-change.md).
 
 ## The scaling challenge
 
@@ -52,7 +52,7 @@ projects:
 Point the plan skill at the monolith:
 
 ```text
-/change:plan modernise-platform --source monolith=/path/to/legacy-monolith
+/change:plan modernise-platform source monolith=/path/to/legacy-monolith
 ```
 
 <details>
@@ -157,7 +157,7 @@ When multiple slices touch the same source files, `specify slice overlap` detect
 ## 4. Execute the migration
 
 ```text
-/change:execute --loop
+/change:execute loop
 ```
 
 For each slice in dependency order:
@@ -200,13 +200,13 @@ changes:
 ```text
 # One-time setup
 Create registry.yaml with target repos
-/change:plan modernise-platform --source monolith=/path/to/legacy
+/change:plan modernise-platform source monolith=/path/to/legacy
 
 # Review
 specify change plan status
 
 # Execute
-/change:execute --loop
+/change:execute loop
 
 # Push workspace clones to remotes
 specify workspace push

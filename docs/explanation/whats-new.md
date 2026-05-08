@@ -117,7 +117,7 @@ See [Vectis WASI tools](../reference/cli/vectis.md) for the operator-facing surf
 
 ## v2 layout — platform artifacts at the repo root (specify-cli `0.2.0`)
 
-The on-disk layout split along a clear boundary: **operator-facing platform artifacts** (`registry.yaml`, `plan.yaml`, `initiative.md`, `contracts/`) live at the repo root; **framework-managed state** (`project.yaml`, `changes/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`. The boundary makes the responsibilities explicit — operators own everything at the root; Specify owns `.specify/`.
+The on-disk layout split along a clear boundary: **operator-facing platform artifacts** (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at the repo root; **framework-managed state** (`project.yaml`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`. The boundary makes the responsibilities explicit — operators own everything at the root; Specify owns `.specify/`.
 
 This is a **hard cutover**. The CLI no longer reads the v1 layout. Any project-aware verb on a v1-layout project errors with the stable `legacy-layout` code (exit 1) and points the operator at:
 
@@ -132,8 +132,8 @@ Per-artifact migration map:
 | Artifact | v1 path | v2 path |
 |---|---|---|
 | Platform catalogue | `.specify/registry.yaml` | `registry.yaml` |
-| Initiative plan | `.specify/plan.yaml` | `plan.yaml` |
-| Operator brief | `.specify/initiative.md` | `initiative.md` |
+| Change plan | `.specify/plan.yaml` | `plan.yaml` |
+| Operator brief | `.specify/initiative.md` | `change.md` after `specify migrate change-noun` |
 | API contracts | `.specify/contracts/` | `contracts/` |
 
 `project.yaml` stays under `.specify/`. The `contracts@v1` schema id, the `contracts` brief, the merge semantics, the produces/consumes registry roles, and the workspace flow are all unchanged — only the file locations moved. The decision-log entry "Platform artifacts at the repo root, framework state under `.specify/`" carries the design rationale.
@@ -147,7 +147,7 @@ Per-artifact migration map:
 - **`contracts.imports` removed from the registry.** The role set on each `registry.yaml` project entry collapses to two: `produces` and `consumes`. Contracts that no project produces are, by definition, externally authored — no separate field is needed to flag them. `specify registry validate` rejects the unknown `imports` key after upgrade, so any surviving usage surfaces immediately.
 - **In-binary `specify contract` verbs retired in RFC-13 chunk 2.7.** RFC-12 originally landed `specify contract { list, validate }` as in-binary CLI verbs; RFC-13 retired the family when contracts became a first-party capability owning its own validation behavior. The validation rules survived intact: the contracts capability now declares a [`contract` WASI tool](../reference/cli/contract.md) run through `specify tool run contract -- <BASELINE_DIR> --format json`, and the contracts capability merge brief ([`capabilities/contracts/briefs/merge.md`](../../capabilities/contracts/briefs/merge.md)) is where the post-merge gate runs. There is no replacement for `contract list`; consult the merged `contracts/` directory directly when projecting top-level contracts.
 
-## Vectis schema v3 — design-system-writer removed (RFC-11)
+## Vectis capability v3 — design-system-writer removed (RFC-11)
 
 [RFC-11](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-11-ui-spec.md) dissolves the standalone `vectis:design-system-writer` skill and the `design-system` platform enum value. Each shell writer (`ios-writer`, `android-writer`) now reads `tokens.yaml` and `assets.yaml` directly and emits shell-local theme + asset code under its own tree (`iOS/<App>/Theme/` for iOS, `Android/.../ui/theme/` for Android). The Vectis capability bumps from `2` to `3` (the manifest moved from `schemas/vectis/schema.yaml` to `capabilities/vectis/capability.yaml` as part of RFC-13 — see §RFC-13 below) and the `plugins/vectis/skills/design-system-writer/` directory is deleted. Projects that reference `design-system` in their Platforms list or import `VectisDesign` / `:vectis-design` should migrate to the shell-local theming model.
 
@@ -186,13 +186,13 @@ For the full rationale and migration plan, see [rfcs/archive/rfc-10-skills.md](h
 
 ## Hub topology
 
-A **registry-only platform hub** (RFC-9 ?1D) is now the canonical starting shape for a multi-repo initiative. The hub holds platform state -- `registry.yaml`, `initiative.md`, `plan.yaml`, `workspace/` -- and is never itself a code project.
+A **registry-only platform hub** (RFC-9 ?1D) is now the canonical starting shape for a multi-repo change. The hub holds platform state -- `registry.yaml`, `change.md`, `plan.yaml`, `workspace/` -- and is never itself a code project.
 
 ```bash
 specify init --hub --name shop-platform
 ```
 
-The flag scaffolds a sentinel `project.yaml { hub: true, ... }` (the `capability:` field is omitted on hubs) that disables phase pipelines on the hub itself, plus an empty `registry.yaml` and an `initiative.md` template. `Registry::validate_shape` extends with a `hub-only` mode that rejects any registry entry whose `url` is `.`.
+The flag scaffolds a sentinel `project.yaml { hub: true, ... }` (the `capability:` field is omitted on hubs) that disables phase pipelines on the hub itself, plus an empty `registry.yaml`. `change.md` and `plan.yaml` are created later by `specify change create` and `specify change plan create`. `Registry::validate_shape` extends with a `hub-only` mode that rejects any registry entry whose `url` is `.`.
 
 The platform-as-project shape (initiating repo with `url: .`) is still permitted for single-repo and small-team cases.
 
@@ -207,25 +207,25 @@ Specify now distinguishes two kinds of clones with very different lifecycles:
 - **Tier 1 (legacy-source clone)**: ephemeral, read-only, lives at `.specify/plans/<name>/analyze/<key>/`. Materialised by `/spec:analyze`; swept by `specify change plan archive`.
 - **Tier 2 (registered project clone)**: durable, read-write, lives at `.specify/workspace/<name>/`. Materialised by `specify workspace sync`; pushed by `specify workspace push`.
 
-The distinction was always implicit; RFC-9 ?1E codifies it so operators stop losing tier-1 writes or expecting tier-2 clones to disappear after an initiative.
+The distinction was always implicit; RFC-9 ?1E codifies it so operators stop losing tier-1 writes or expecting tier-2 clones to disappear after a change.
 
 - Explanation: [Workspace Tiers](workspace-tiers.md)
 
-## `/change:plan --orchestrate` umbrella mode (Layer 4)
+## `/change:plan <name> orchestrate` umbrella mode (Layer 4)
 
 A Layer 4 mode of `/change:plan` (RFC-9 ?2C) drives the cross-repo loop end-to-end as a single operator action:
 
 ```text
-/change:plan --orchestrate <name> [--shape ...] [--from ...] [--source ...]
+/change:plan <name> orchestrate [shape ...] [from ...] [source ...]
 ```
 
-> **Note.** This was originally a separate `/spec:initiative` skill; it was folded into `/change:plan` as a flag-gated `--orchestrate` mode in a progressive-disclosure pass. The seven-step umbrella sequence is unchanged.
+> **Note.** This was originally a separate `/spec:initiative` skill; it was folded into `/change:plan` as a flag-gated `orchestrate` mode in a progressive-disclosure pass. The seven-step umbrella sequence is unchanged.
 
-The mode composes: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute --loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`. Every automated step is a shell-out to a Layer 1 verb or a Layer 3 skill; the orchestration mode adds no new logic. Halts (self-heal, `stuck`, `registry-amendment-required`, unmerged PRs) surface verbatim, and re-running `--orchestrate` against an in-progress change resumes at the first incomplete step.
+The mode composes: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`. Every automated step is a shell-out to a Layer 1 verb or a Layer 3 skill; the orchestration mode adds no new logic. Halts (self-heal, `stuck`, `registry-amendment-required`, unmerged PRs) surface verbatim, and re-running `--orchestrate` against an in-progress change resumes at the first incomplete step.
 
 Three change shapes flow through the same uniform sequence: `migrate-legacy` (sources via `--source`), `new-feature` (docs via `--from`), `update-existing` (no input flags).
 
-- Reference: [`/change:plan --orchestrate`](../reference/change-skills/change.md)
+- Reference: [`/change:plan <name> orchestrate`](../reference/change-skills/change.md)
 - Tutorial: [Cross-Repo Changes](../tutorials/cross-repo-change.md) -> [Landing a Change](../tutorials/landing-a-change.md)
 - Explanation: [The Layered Stack](three-layer-stack.md) (Layer 4 row)
 
@@ -234,7 +234,7 @@ Three change shapes flow through the same uniform sequence: `migrate-legacy` (so
 Registry mutation is now a CLI verb instead of a hand-edit (RFC-9 ?2A):
 
 ```bash
-specify registry add <name> --url <url> --schema <schema> --description "..."
+specify registry add <name> --url <url> --schema <capability> --description "..."
 specify registry remove <name>
 ```
 
@@ -266,7 +266,7 @@ A strict superset of `specify change plan validate` with four additional health 
 | `stale-workspace-clone` | warning | Workspace clone signature drifted from registry. |
 | `unreachable-entry` | error | Pending entry blocked by `failed`/`skipped` predecessors. |
 
-`plan doctor` is the canonical first triage step when `/change:execute --loop` reports `stuck`.
+`plan doctor` is the canonical first triage step when `/change:execute loop` reports `stuck`.
 
 - Reference: [`specify change plan doctor`](../reference/cli/plan.md#specify-plan-doctor)
 - Troubleshooting: [Plan doctor diagnostics](../appendices/troubleshooting.md#plan-doctor-diagnostics)
@@ -276,7 +276,7 @@ A strict superset of `specify change plan validate` with four additional health 
 The canonical closure verb for the platform-first loop (RFC-9 ?4C):
 
 ```bash
-specify change finalize [--clean] [--dry-run]
+specify change finalize [--clean] [dry-run]
 ```
 
 Runs four guards in order (plan-presence, plan terminal-state, per-project PR-state, workspace-cleanliness) before atomically archiving `plan.yaml`, `change.md`, and `.specify/plans/<name>/`. Any guard refusal leaves the on-disk state untouched. `--clean` prunes `.specify/workspace/<peer>/` after the archive completes. Idempotent: re-running after a successful finalize returns `plan-not-found` (the explicit "already finalized" signal).
@@ -295,7 +295,7 @@ The `contracts` brief in the define pipeline runs alignment validation against t
 
 ## Cross-project contract validation (RFC-9 ?3B)
 
-Post-merge, `/change:execute` runs a cross-project compatibility check: for each contract the producer `produces`, find every consumer that `consumes` it and run the format-appropriate verifier against each consumer's workspace clone (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema`, picking the verifier intent and threading `--mode cross-project`). Incompatibilities surface as warnings on the merge transcript and on the merged change's `journal.yaml` (`cross-project-warning:` entries). **Warnings never halt the loop** -- the operator triages.
+Post-merge, `/change:execute` runs a cross-project compatibility check: for each contract the producer `produces`, find every consumer that `consumes` it and run the format-appropriate verifier against each consumer's workspace clone (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema`, picking the verifier intent and threading `mode cross-project`). Incompatibilities surface as warnings on the merge transcript and on the merged change's `journal.yaml` (`cross-project-warning:` entries). **Warnings never halt the loop** -- the operator triages.
 
 - How-to: [Resolve Cross-Project Contract Warnings](../how-to/resolve-cross-project-contract-warnings.md)
 - Troubleshooting: [Cross-project contract warnings on the merge transcript](../appendices/troubleshooting.md#cross-project-contract-warnings-on-the-merge-transcript)

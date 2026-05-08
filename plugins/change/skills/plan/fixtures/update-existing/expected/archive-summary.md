@@ -19,6 +19,6 @@ shop-platform/
         └── vectis-mobile/                              # tier-2 clone (durable)
 ```
 
-A second run of `/change:plan --orchestrate polish-pass --shape
+A second run of `/change:plan <name> orchestrate polish-pass shape
 update-existing` reports `plan-not-found` from `specify change
 finalize` and exits zero — the explicit "already finalized" signal.

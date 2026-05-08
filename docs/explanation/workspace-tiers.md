@@ -25,7 +25,7 @@ Each tier is created by a different command, at a different stage of the loop.
 
 Tier 1 is on-demand and per-input: discovery clones one tree per `--source <key>=<git-url>` (and per `kind: legacy-code` entry in `change.md:inputs`). Local paths and `--from` documentation inputs do not produce a tier-1 clone -- the skill reads them in place.
 
-Tier 2 is registry-shaped: one slot per `projects[]` entry in `registry.yaml`. `specify workspace sync` is idempotent. Running it again refreshes existing slots (`git fetch` for remotes, no-op for symlinks) and bootstraps any slots that went missing. In single-repo initiatives the registry is absent or has at most one project, and tier 2 does not materialise at all -- everything happens in the initiating repo's working tree.
+Tier 2 is registry-shaped: one slot per `projects[]` entry in `registry.yaml`. `specify workspace sync` is idempotent. Running it again refreshes existing slots (`git fetch` for remotes, no-op for symlinks) and bootstraps any slots that went missing. In single-repo changes the registry is absent or has at most one project, and tier 2 does not materialise at all -- everything happens in the initiating repo's working tree.
 
 ## Lifecycle
 
@@ -44,7 +44,7 @@ No verb crosses tiers. There is no `workspace push` for legacy-source clones (th
 ```text
 .specify/
 ├── plans/
-│   └── <initiative-name>/
+│   └── <change-name>/
 │       ├── discovery.md
 │       └── analyze/
 │           └── <source-key>/    # tier 1 lives here
@@ -68,7 +68,7 @@ tier2: "Tier 2 — registered project clone" {
   shape: rectangle
   loc: ".specify/workspace/<project>/" {shape: cylinder}
   sync: "specify workspace sync" {shape: rectangle}
-  execute: "/change:execute --loop" {shape: rectangle}
+  execute: "/change:execute loop" {shape: rectangle}
   push: "specify workspace push" {shape: rectangle}
   sync -> loc: "materialises (one per registry entry)"
   execute -> loc: "chdir + writes (define-build-merge)"
@@ -90,8 +90,8 @@ The shorthand: **tier 1 is the input the planner reads; tier 2 is the output the
 ## See also
 
 - [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- end-to-end worked example that exercises tier-2 materialisation, CWD routing during execution, and `specify workspace push`.
-- [The Layered Stack](three-layer-stack.md) -- where `/change:plan` (default + `--orchestrate` modes) and `/change:execute` sit in the layered model.
+- [The Layered Stack](three-layer-stack.md) -- where `/change:plan` (default + `orchestrate` modes) and `/change:execute` sit in the layered model.
 - [`/change:plan`](../../plugins/change/skills/plan/SKILL.md) -- the skill that triggers tier-1 materialisation (step 3(a)) and tier-2 materialisation (step 3(b)).
 - [`/change:execute`](../../plugins/change/skills/execute/SKILL.md) -- the skill that `chdir`s into tier-2 clones to drive define-build-merge.
 - [`specify workspace`](../reference/cli/workspace.md) -- CLI reference for `sync`, `status`, and `push`.
-- [`specify plan`](../reference/cli/plan.md) -- CLI reference for `archive` (the tier-1 sweep).
+- [`specify change plan`](../reference/cli/plan.md) -- CLI reference for `archive` (the tier-1 sweep).

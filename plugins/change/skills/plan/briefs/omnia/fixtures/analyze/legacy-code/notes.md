@@ -3,7 +3,7 @@
 The legacy-code branch of `/spec:analyze` is byte-deterministic. Re-running
 
 ```
-/spec:analyze --kind legacy-code --source-key monolith ./inputs/monolith/ ./expected/plans/legacy-code/
+/spec:analyze legacy-code monolith ./inputs/monolith/ ./expected/plans/legacy-code/
 ```
 
 on an unchanged `inputs/monolith/` tree MUST produce byte-identical `expected/discovery.md` and `expected/plans/legacy-code/analyze/monolith/metadata.json`.

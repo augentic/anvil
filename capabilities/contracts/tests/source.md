@@ -1,8 +1,37 @@
+---
+id: contracts-source
+owner: contracts
+kind: capability
+capability: contracts@v1
+backend: manual
+entrypoint: /spec:define
+stages: [define, build, merge]
+isolation: fresh-project
+authorship-mode: extract
+assertions:
+  - files-exist
+  - contract-validator-clean
+  - unknown-fields-marked
+  - out-of-scope-flagged-manual-review
+expected-artifacts:
+  - contracts/http/orders-api.yaml
+  - contracts/schemas/create-order-request.yaml
+  - contracts/schemas/order-item.yaml
+  - contracts/schemas/order.yaml
+  - contracts/schemas/error-response.yaml
+negative-expectations:
+  - artifacts-outside-contracts-directory
+  - silently-expanded-beyond-discovery-scope
+  - wire-level-fields-guessed-not-marked-unknown
+---
+
 # Reverse-Engineer A Contract From A Legacy TypeScript Codebase
+
+Scenario ID: `contracts-source`
 
 Use this test to verify that `/spec:define` can reverse-engineer Specify
 contract artifacts from a legacy TypeScript codebase whose API surface a
-prior `/spec:analyze --kind legacy-code` run has already identified.
+prior `/spec:analyze legacy-code` run has already identified.
 
 Pipeline note:
 
@@ -12,13 +41,37 @@ Pipeline note:
 - Omnia and Vectis implementation changes consume existing baseline contracts
   as context. Reverse-engineered interface shapes should be introduced through
   a separate `contracts@v1` change before implementation depends on them.
-- Extract-from-source changes assume `/spec:analyze --kind legacy-code` has
+- Extract-from-source changes assume `/spec:analyze legacy-code` has
   already produced a `discovery.md` capability summary identifying the API
   surface; this test stipulates that precondition rather than exercising it.
 
-## Prerequisite
+## Intent
 
-This test assumes a prior `/spec:analyze --kind legacy-code` run against
+Prove that the `contracts@v1` slice loop can extract HTTP and JSON Schema
+artifacts from a legacy TypeScript service when a prior `/spec:analyze`
+run has constrained the scope to one capability. The scenario covers
+analysis-bounded extraction: the contract change must stay inside the scoped
+entry points and must mark wire-level fields as `[unknown]` rather than
+guessing.
+
+## Workspace
+
+- **Capability:** `contracts@v1`.
+- **Project shape:** a single project initialised with the `contracts@v1`
+  schema (run `/spec:init` first if the workspace is fresh).
+- **Registry shape:** not applicable.
+- **Isolation:** `fresh-project`. Start from an empty `contracts/` baseline.
+- **Backend:** `manual` — a human or agent runs the prompts in **Invocation**
+  and records results in the [run summary](run-summary-template.md).
+- **Precondition:** the discovery block in **Inputs** below must already be
+  present in the plan's `discovery.md`. The scenario stipulates this, it does
+  not exercise `/spec:analyze`.
+
+## Inputs
+
+### Discovery precondition
+
+This test assumes a prior `/spec:analyze legacy-code` run against
 `vendor/orders-service/` has appended this capability block to the plan's
 `discovery.md` (shape pinned by `plugins/spec/skills/analyze/SKILL.md`):
 
@@ -43,7 +96,7 @@ The `entry_points` list is the analysis-identified scope boundary for the
 contract change; surface beyond `POST /orders` and `GET /orders/:orderId`
 must be flagged `[manual review required]` rather than silently transcribed.
 
-## Source Code
+### Source code
 
 Create a small legacy TypeScript service under `vendor/orders-service/`.
 
@@ -128,7 +181,7 @@ app.get("/orders/:orderId", getOrder);
 app.listen(3000);
 ```
 
-## Prompt
+## Invocation
 
 Invoke `/spec:define` in extract-from-source mode:
 
@@ -162,9 +215,13 @@ additional surface as [manual review required] rather than silently
 expanding the contract change.
 ```
 
-## Expected Contract Files
+After `/spec:define` succeeds, drive `/spec:build orders-api-contract` to
+produce the contract YAML, then optionally `/spec:merge orders-api-contract`
+to promote the deltas into the baseline.
 
-During `/spec:build`, the change should produce these change-local contract
+## Expected Artifacts
+
+During `/spec:build`, the slice should produce these change-local contract
 deltas. After merge, the same paths become root `contracts/` baseline files.
 
 - `contracts/http/orders-api.yaml`
@@ -178,3 +235,36 @@ and rate-limit fields as `[unknown]` because the TypeScript source does not
 encode them. Endpoints or payloads outside the `orders` capability listed in
 Analysis Context must surface as `[manual review required]` rather than be
 silently included.
+
+## Assertions
+
+- `files-exist`: every path in **Expected Artifacts** exists in the slice
+  working tree after `/spec:build`.
+- `contract-validator-clean`: the build's contract verifier exits `0` with no
+  unresolved `$ref` failures, missing schema metadata, or binding coverage
+  failures on the extracted artifacts. Manual-review warnings are surfaced in
+  the run summary but do not by themselves fail this assertion.
+- `unknown-fields-marked`: Content-Type, authentication, pagination, and
+  rate-limit fields appear in the slice specs marked `[unknown]` rather than
+  filled in with guessed values.
+- `out-of-scope-flagged-manual-review`: any surface beyond the entry points
+  declared in the discovery block (`POST /orders`, `GET /orders/:orderId`)
+  appears in the slice artifacts as `[manual review required]` and is not
+  silently transcribed into the contract.
+
+## Negative Expectations
+
+- `artifacts-outside-contracts-directory`: no contract YAML is written outside
+  `contracts/http/` or `contracts/schemas/`.
+- `silently-expanded-beyond-discovery-scope`: the slice must not author
+  contract entries for endpoints outside the analysis-declared `entry_points`.
+- `wire-level-fields-guessed-not-marked-unknown`: Content-Type, auth headers,
+  pagination semantics, rate limits, or idempotency-key conventions must not
+  be filled in with values that the TypeScript source does not encode. Any
+  guessed value is a failure of this scenario.
+
+## Cleanup
+
+Drop or archive the slice before moving to the next scenario. Remove the
+seeded `vendor/orders-service/` tree if your run-all sequence requires a
+clean working tree.

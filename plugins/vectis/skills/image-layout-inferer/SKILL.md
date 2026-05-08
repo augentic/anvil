@@ -15,7 +15,7 @@ The producer surface every layout inferer shares (arguments, output rules, idemp
 ## Critical Path (Quick Reference)
 
 1. Run the **vision prerequisite check** by attempting to read at least one input image through the agent runtime's native attachment / file-read mechanism (RFC-11 §C). If the runtime cannot inspect images, exit 1 with the supported-runtimes message — never fall back to filename-based inference.
-2. **Triage and crop.** Group inputs into screens / states, then crop platform chrome (status bars, navigation bars, browser chrome, emulator frames) when `--platform` is supplied or detected.
+2. **Triage and crop.** Group inputs into screens / states, then crop platform chrome (status bars, navigation bars, browser chrome, emulator frames) when `platform` is supplied or detected.
 3. **Stage the recovery.** Walk top-down: regions (header / body / footer / fab / overlays / state replacements) → containers (rows, columns, lists, grids, cards, padding, gap, alignment, sizing, surface decoration) → leaves (text, controls, images, icons, fields).
 4. **Detect candidate components conservatively.** Compare groups across screens for structural identity (§G); emit `component: <slug>` only when the operator confirms it or the same skeleton appears in **≥2 screens of the same run**, otherwise leave a `# candidate component: <slug>` comment. See [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md#component-directive-emission).
 5. **Reference siblings, never invent.** Use `tokens.yaml` / `assets.yaml` names only when they already resolve; otherwise emit raw values plus `# TODO` comments and a gap entry.
@@ -35,17 +35,17 @@ When conflicts arise, follow this strict precedence:
 
 ## Arguments
 
-The contract pins three common arguments (`--output`, `--baseline`, `--screen`). They MUST behave identically across every inferer; consult [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md#common-arguments) for the canonical surface. The image-specific arguments below sit on top of that surface.
+The contract pins three common arguments (`output`, `baseline`, `screen`). They MUST behave identically across every inferer; consult [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md#common-arguments) for the canonical surface. The image-specific arguments below sit on top of that surface.
 
 | Argument | Required | Description |
 |---|---|---|
 | `image-paths` | **Yes** | One or more PNG or JPEG file paths. Repeat or comma-separate to pass several images in a single run. |
-| `--platform <ios\|android\|web>` | No | When supplied, helps the skill ignore system chrome and recognise platform conventions during triage and chrome cropping. |
-| `--group <screen-slug>:<path>,<path>...` | No | Repeatable. Identifies images that represent the same screen (e.g. populated, empty, error states) so triage groups them deterministically rather than relying on visual similarity. |
-| `--state <screen-slug>:<state-name>=<path>` | No | Repeatable. Explicit state mapping (`loading`, `empty`, `populated`, `error`) for a named screen. Wins over `--group` triage when both target the same image. |
-| `--output <path>` | No | Inherited from the contract. Defaults to the active slice directory's `layout.yaml`, then `design-system/layout.yaml`. |
-| `--baseline <path>` | No | Inherited from the contract. Defaults to the existing output, then `design-system/layout.yaml`, then `.specify/specs/composition.yaml`. |
-| `--screen <slug>=<hint>` | No | Inherited from the contract. The image inferer treats `<hint>` as a free-form note for screen-boundary disambiguation. |
+| `platform <ios\|android\|web>` | No | When supplied, helps the skill ignore system chrome and recognise platform conventions during triage and chrome cropping. |
+| `group <screen-slug>:<path>,<path>...` | No | Repeatable. Identifies images that represent the same screen (e.g. populated, empty, error states) so triage groups them deterministically rather than relying on visual similarity. |
+| `state <screen-slug>:<state-name>=<path>` | No | Repeatable. Explicit state mapping (`loading`, `empty`, `populated`, `error`) for a named screen. Wins over `group` triage when both target the same image. |
+| `output <path>` | No | Inherited from the contract. Defaults to the active slice directory's `layout.yaml`, then `design-system/layout.yaml`. |
+| `baseline <path>` | No | Inherited from the contract. Defaults to the existing output, then `design-system/layout.yaml`, then `.specify/specs/composition.yaml`. |
+| `screen <slug>=<hint>` | No | Inherited from the contract. The image inferer treats `<hint>` as a free-form note for screen-boundary disambiguation. |
 
 Accepted image formats: PNG and JPEG only. HEIC, TIFF, PDF, SVG, WebP, and GIF MUST be converted before invocation; the skill MUST NOT invent a conversion step or call out to a hosted service. A `screen-slug` is kebab-case (`login`, `task-list`, `settings-detail`); a `state-name` is kebab-case (`loading`, `empty`, `populated`, `error`).
 
@@ -70,14 +70,14 @@ The pipeline mirrors RFC-11 §C and runs top-down. Each stage produces evidence 
 
 Group images into screens and states using explicit hints first, visual similarity second:
 
-1. Apply every `--state <slug>:<name>=<path>` mapping. These bindings are authoritative.
-2. Apply every `--group <slug>:<paths>` mapping for un-bound images.
+1. Apply every `state <slug>:<name>=<path>` mapping. These bindings are authoritative.
+2. Apply every `group <slug>:<paths>` mapping for un-bound images.
 3. For remaining images, group by visual similarity (header / chrome match, dominant content match) and propose screen slugs from visible titles. Emit `# screen <slug>: triaged from <path>, <path>` comments above each screen entry.
 4. Single-image screens are accepted; the contract's "≥2 screens" rule governs `component:` emission, not screen recognition itself.
 
 ### 2. Crop platform chrome
 
-Skip when `--platform` is absent and no chrome is detected. Otherwise remove:
+Skip when `platform` is absent and no chrome is detected. Otherwise remove:
 
 - iOS: status bar, dynamic island / notch, software home indicator.
 - Android: status bar, system navigation bar, gesture indicator.
@@ -94,9 +94,9 @@ For each triaged screen, identify the schema's region keys:
 - `body` (primary content area).
 - `footer` (bottom app bar / tab bar / persistent action row).
 - `fab` (floating action button — at most one per screen).
-- `states.<name>` (replacement bodies for `loading`, `empty`, `error`, etc.; reuse the state names from `--state` when available, otherwise propose kebab-case names from visible cues like "no tasks yet" → `empty`).
+- `states.<name>` (replacement bodies for `loading`, `empty`, `error`, etc.; reuse the state names from `state` when available, otherwise propose kebab-case names from visible cues like "no tasks yet" → `empty`).
 - `overlays.<name>` (modals, sheets, dialogs, popovers, snackbars). Overlays MUST NOT include `trigger:` — that key is define-owned.
-- `platforms.<ios|android>` (per-platform region overrides) — only when multiple `--platform` runs supply distinct chrome shapes for the same screen.
+- `platforms.<ios|android>` (per-platform region overrides) — only when multiple `platform` runs supply distinct chrome shapes for the same screen.
 
 A region MAY be omitted when there is no visible evidence for it (e.g. a screen with no FAB).
 
@@ -137,7 +137,7 @@ Walk every screen produced by stages 3–5 and compare every `group` against eve
 
 Apply the conservative emission policy from the contract:
 
-- Promote to `component: <slug>` only when **either** the operator confirms a candidate (via a `--screen` hint, an existing `component:` slug already on the group, or a previous accepted `layout.yaml`) **or** the inferer observes ≥2 structurally identical groups across screens of the same run.
+- Promote to `component: <slug>` only when **either** the operator confirms a candidate (via a `screen` hint, an existing `component:` slug already on the group, or a previous accepted `layout.yaml`) **or** the inferer observes ≥2 structurally identical groups across screens of the same run.
 - Otherwise leave the groups flattened and emit a `# candidate component: <slug>` comment adjacent to each occurrence.
 - Slugs MUST match `^[a-z][a-z0-9]*(-[a-z0-9]+)*$` (kebab-case). Reserved region names (`header`, `body`, `footer`, `fab`) MUST NOT be used as slugs.
 - Derive slugs from visible content (`task-row`, `setting-row`, `chip-tag`) — never from layout shape (`row-1`, `card-2`).
@@ -182,10 +182,10 @@ Re-runs are additive and conservative; details live in [`references/layout-infer
 
 Before writing, classify the run:
 
-- **Greenfield mode.** No existing `layout.yaml` at the resolved output path or `--baseline`. Stage outputs become the entire document; provenance starts at `provenance.sources[]: [{ kind: screenshots, captured_at: <ISO 8601> }]`.
-- **Refine mode.** A `layout.yaml` (or wired `composition.yaml` consumed via `--baseline`) already exists. Diff the inferred output against the baseline screen-by-screen, group-by-group; apply the idempotence rules above; **append** to `provenance.sources[]` instead of replacing it.
+- **Greenfield mode.** No existing `layout.yaml` at the resolved output path or `baseline`. Stage outputs become the entire document; provenance starts at `provenance.sources[]: [{ kind: screenshots, captured_at: <ISO 8601> }]`.
+- **Refine mode.** A `layout.yaml` (or wired `composition.yaml` consumed via `baseline`) already exists. Diff the inferred output against the baseline screen-by-screen, group-by-group; apply the idempotence rules above; **append** to `provenance.sources[]` instead of replacing it.
 
-Detection rule: if `--baseline` is supplied OR a file exists at the resolved `--output`, run in refine mode.
+Detection rule: if `baseline` is supplied OR a file exists at the resolved `output`, run in refine mode.
 
 ## Verification
 
@@ -242,7 +242,7 @@ When adding a fixture, follow the existing convention:
 ## Operator ergonomics
 
 - Optimise for **reviewable, bounded** runs. Operators SHOULD invoke the skill for one screen or one small coherent flow at a time, especially when refining an existing `layout.yaml`. Bulk-processing a 30-screen app in a single run is contract-legal but produces an un-reviewable diff.
-- Multiple inputs in a single run are appropriate when they describe the same screen set (e.g. several state variants of one screen). Use `--state` and `--group` to keep triage explicit.
+- Multiple inputs in a single run are appropriate when they describe the same screen set (e.g. several state variants of one screen). Use `state` and `group` to keep triage explicit.
 - Mixed-source reconciliation (image inputs combined with future Figma or code-source inputs) is **not** a v1 mode. Operators run each inferer separately against the same `layout.yaml`; the idempotence rules keep that workflow reviewable.
 
 ## See also

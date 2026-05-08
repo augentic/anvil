@@ -54,13 +54,13 @@ For large codebases, you can narrow the scope:
 
 ```text
 # Extract only the auth module
-/spec:extract . .specify/slices/initial-baseline/ --include "src/auth/**"
+/spec:extract . .specify/slices/initial-baseline/ include "src/auth/**"
 
 # Exclude test files
-/spec:extract . .specify/slices/initial-baseline/ --exclude "**/*test*"
+/spec:extract . .specify/slices/initial-baseline/ exclude "**/*test*"
 
 # Use a manifest of specific files
-/spec:extract . .specify/slices/initial-baseline/ --manifest ./files-to-extract.txt
+/spec:extract . .specify/slices/initial-baseline/ manifest ./files-to-extract.txt
 ```
 
 ## 3. Review the extracted artifacts
@@ -122,4 +122,4 @@ The agent knows the current auth requirements from the baseline. The generated d
 
 ## Next
 
-[A Multi-Change Initiative](single-repo-change.md) -- coordinate multiple related changes with a plan.
+[A Multi-Slice Change](single-repo-change.md) -- coordinate multiple related slices with a plan.

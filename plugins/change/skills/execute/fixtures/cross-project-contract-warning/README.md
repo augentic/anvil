@@ -39,7 +39,7 @@ When `specify slice merge run` returns success, `/change:execute`:
    in-scope).
 5. Walks the registry to find consumers — `mobile.contracts.consumes`
    matches.
-6. Invokes `/contract:openapi` (verifier intent, `--mode cross-project`)
+6. Invokes `/contract:openapi` (verifier intent, `mode cross-project`)
    with the producer contract path in `.specify/workspace/backend/`
    and the consumer's workspace clone path. (HTTP / resource APIs route
    to OpenAPI; an AsyncAPI contract would route to `/contract:asyncapi`,
@@ -65,7 +65,7 @@ cross-project-contract-warning/
 │   └── after/http/user-api.yaml                # post-merge (v2) — passed to validator
 ├── consumer-workspace/                         # snapshot of .specify/workspace/mobile/
 │   └── contracts/http/user-api.yaml   # consumer's last-known view (v1)
-├── validator-output.yaml                       # /contract:openapi (verifier intent, --mode cross-project) output
+├── validator-output.yaml                       # /contract:openapi (verifier intent, mode cross-project) output
 ├── transcript.md                               # /change:execute success transcript with warning block
 └── expected-journal.yaml                       # update-user-api-v2/journal.yaml after recording
 ```

@@ -2,7 +2,7 @@
 
 ## What this fixture pins
 
-The invocation in [`invocation.txt`](invocation.txt) — `/change:plan traffic --source monolith=./inputs` — passes a single legacy-code input through the discovery brief, which dispatches it to [`/spec:analyze --kind legacy-code`](../../../../../../spec/skills/analyze/SKILL.md) per [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md). The fixture pins the byte-stable output of that round-trip: [`expected/discovery.md`](expected/discovery.md) (three capability summaries) and [`expected/plans/traffic/analyze/monolith/metadata.json`](expected/plans/traffic/analyze/monolith/metadata.json) (structural-metadata sidecar).
+The invocation in [`invocation.txt`](invocation.txt) — `/change:plan traffic source monolith=./inputs` — passes a single legacy-code input through the discovery brief, which dispatches it to [`/spec:analyze legacy-code`](../../../../../../spec/skills/analyze/SKILL.md) per [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md). The fixture pins the byte-stable output of that round-trip: [`expected/discovery.md`](expected/discovery.md) (three capability summaries) and [`expected/plans/traffic/analyze/monolith/metadata.json`](expected/plans/traffic/analyze/monolith/metadata.json) (structural-metadata sidecar).
 
 ## Fixture-build choice: (c) purpose-built three-capability tree
 

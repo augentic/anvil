@@ -1,6 +1,6 @@
 # Re-entry / idempotency (orchestration mode)
 
-Running `/change:plan --orchestrate <name>` a second time after a halt is the canonical resume mechanism. The orchestration mode inspects on-disk state and resumes at the first incomplete step, without prompting and without re-doing earlier work.
+Running `/change:plan <name> orchestrate` a second time after a halt is the canonical resume mechanism. The orchestration mode inspects on-disk state and resumes at the first incomplete step, without prompting and without re-doing earlier work.
 
 ## Resume table
 
@@ -8,7 +8,7 @@ Running `/change:plan --orchestrate <name>` a second time after a halt is the ca
 |---|---|
 | change brief absent (`change.md` / legacy `change.md`) | step 1 |
 | brief present, `plan.yaml` absent | step 3 (with `/change:plan` default mode running fresh) |
-| `plan.yaml` present, any entry not in `{done, failed, skipped}` | step 4 (`/change:execute --loop` resumes — self-heal reclaims any `in-progress` left by a prior crash) |
+| `plan.yaml` present, any entry not in `{done, failed, skipped}` | step 4 (`/change:execute loop` resumes — self-heal reclaims any `in-progress` left by a prior crash) |
 | every plan entry terminal, no PRs pushed yet (no `specify/<name>` branch on any remote) | step 5 |
 | PRs pushed, not all `MERGED` | step 6 lists PRs and stops for operator merge |
 | every PR `MERGED`, plan still on disk | step 7 |

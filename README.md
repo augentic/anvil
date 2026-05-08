@@ -6,110 +6,46 @@ Each slice flows through a defined lifecycle — define, build, merge — with a
 
 ## Getting Started
 
-### Prerequisites
+Read the [Developer Guide](docs/index.md) in this order:
 
-You will need to have the [Cursor IDE](https://cursor.com) installed with the Augentic plugin marketplace installed in Cursor (Settings > Plugins > search for `Augentic`).
+1. [What is Specify?](docs/orientation/index.md)
+2. [Prerequisites](docs/orientation/prerequisites.md)
+3. [Quick Start](docs/tutorials/quick-start.md)
+4. [Your First Slice](docs/tutorials/first-change.md)
 
-### Initialize a project
-
-Initialize Specify in a project by running the `/spec:init "<capability URL>"` skill in Cursor Agent chat. The `<capability URL>` argument is used to select the capability to use for the project.
-
-Available capabilities are:
-
-
-| Capability | URL | Use case |
-| ---------- | --- | -------- |
-| `omnia` | `https://github.com/augentic/specify/capabilities/omnia` | Greenfield [Omnia](https://omnia.host) development |
-| `vectis` | `https://github.com/augentic/specify/capabilities/vectis` | Cross-platform [Crux](https://redbadger.github.io/crux/) apps (Rust core, iOS/Android shells) |
-
-
-For example, to initialize a new Omnia project:
+Initialize a project in Cursor Agent chat with a capability:
 
 ```text
 /spec:init https://github.com/augentic/specify/capabilities/omnia
 ```
 
-Or to start a new cross-platform Crux app:
+Common capabilities:
+
+| Capability | URL | Use case |
+| ---------- | --- | -------- |
+| `omnia` | `https://github.com/augentic/specify/capabilities/omnia` | [Omnia](https://omnia.host) Rust WASM services |
+| `vectis` | `https://github.com/augentic/specify/capabilities/vectis` | Cross-platform [Crux](https://redbadger.github.io/crux/) apps |
+| `contracts` | `https://github.com/augentic/specify/capabilities/contracts` | API/interface contract work |
+
+Then work through a slice:
 
 ```text
-/spec:init https://github.com/augentic/specify/capabilities/vectis
+/spec:define "Add a new feature"
+/spec:build
+/spec:merge
 ```
 
-This creates the `.specify/` directory with a `project.yaml` you can customize to describe your project's tech stack, architecture, and constraints. Capability URLs support an optional `@ref` suffix (e.g., `@v1`, `@main`) to pin a specific version.
-
-### Work through a slice
-
-Once initialized, use the Specify workflow to define, build, and merge slices:
-
-```text
-/spec:define -> /spec:build -> /spec:merge
-```
-
-To define a new slice:
-
-```text
-/spec:define "Add a new feature to the user interface"
-```
-
-To migrate a TypeScript project to Omnia:
-
-```text
-/spec:define "Migrate https://github.com/org/repo"
-```
-
-#### Commands
-
-Core commands:
-
-- `/spec:define "description"` -- Generate a complete set of artifacts (proposal, specs, design, tasks) from a description of what you want to build.
-- `/spec:build` -- Validate artifacts against capability rules, then implement the tasks defined in the slice artifacts.
-- `/spec:merge` -- Merge delta specs into the baseline and archive the completed slice.
-
-Additional commands:
-
-- `/spec:drop` -- Discard a slice without merging specs into baseline.
-- `/spec:extract` -- Extract Specify artifacts from existing source code.
-- `/change:plan` -- Author `plan.yaml` for a multi-slice change (RFC-2 Layer 3 + RFC-3a: `/spec:analyze` discovery, optional multi-repo workspace sync, manifest scopes when tangled). Was `/change:plan` until RFC-13 §3.9; the historical command survives as a deprecation shim.
-- `/change:execute` -- Drive a change's `plan.yaml` through `define → build → merge` automatically (RFC-2 Layer 2; `--loop` runs until `all-done`). See [Change authoring + execution](#change-authoring--execution-plans) below for the full workflow. Was `/change:execute` until RFC-13 §3.9; the historical command survives as a deprecation shim.
-- `/change:plan --orchestrate` -- Layer 4 umbrella mode that strings the cross-repo loop into one operator action: brief → registry → plan → execute → push → optional merge → finalize (RFC-9 §2C). Composition only; honours every halt the underlying skills surface and is idempotent on re-entry. Folded into `/change:plan` from a former `/spec:initiative` skill (and renamed from `/change:plan` by RFC-13 §3.9).
-
-### Change authoring + execution (plans)
-
-A **plan** (`plan.yaml`) is a change's table of contents — an ordered, dependency-aware list of slices with per-entry status. It turns a sprawling effort (greenfield build, legacy migration, platform modernisation) into a series of self-contained Specify slices that accumulate in the baseline as each one merges. See [rfcs/archive/rfc-2-execution.md](rfcs/archive/rfc-2-execution.md) (status: **Implemented**) for the full design.
-
-Three layers, independently useful, stacked top to bottom:
-
-- **`/change:plan <change-name> --source <key>=<path-or-url> ...`** authors `plan.yaml` (Layer 3). Runs the planning brief pipeline — discovery (`/spec:analyze`), optional **sync-peers** + `workspace.md` when `registry.yaml` lists multiple projects, then propose — with an interactive accept / edit / reject loop per slice. See [rfcs/archive/rfc-3a-monoliths.md](rfcs/archive/rfc-3a-monoliths.md) and [rfcs/archive/rfc-3b-platform.md](rfcs/archive/rfc-3b-platform.md).
-- **`/change:execute --loop`** drives the plan to completion (Layer 2). Picks the next eligible entry, runs `/spec:define → /spec:build → /spec:merge`, transitions status, repeats until `all-done` or `stuck`. `--dry-run` previews; a bare invocation runs one slice then stops.
-- **`specify change plan {create, validate, doctor, next, status, add, amend, transition, archive, lock}`** are the Layer 1 plan CRUD and lifecycle CLI primitives both skills shell out to (folded under `specify change` by RFC-13 §3.5; replaces the v1.x `specify plan *` group). They stay available for hand-driven changes where automation is overkill:
-
-  - `specify change plan create <name> [--source ...]` -- Scaffold `plan.yaml` with an empty `changes:` list (renamed from v1 `plan init` by RFC-9 §1G).
-  - `specify change plan validate` -- Structural and referential integrity checks (duplicate names, dependency cycles, unknown `depends-on` / `sources`, at most one `in-progress`).
-  - `specify change plan doctor` -- Strict superset of `validate` with four extra health diagnostics: `cycle-in-depends-on`, `unreachable-entry`, `orphan-source-key`, `stale-workspace-clone` (RFC-9 §4B).
-  - `specify change plan next` -- Report the next eligible entry (first `pending` whose `depends-on` is all `done`).
-  - `specify change plan status` -- Render progress in topological order with per-status counts, the active `in-progress` entry, and any `status-reason`.
-  - `specify change plan add <name>` -- Append a new entry (starts `pending`); renamed from the v1 entry-append `plan create` by RFC-9 §1G.
-  - `specify change plan amend <name>` -- Edit non-status fields on an existing entry.
-  - `specify change plan transition <name> <target>` -- Move an entry through the status state machine (`pending → in-progress → done`, plus `blocked`, `failed`, `skipped`).
-  - `specify change plan archive` -- Move a completed `plan.yaml` (and its `.specify/plans/<name>/` working directory) to `.specify/archive/plans/<YYYYMMDD>-<name>/`.
-  - `specify change plan lock {acquire, release, status}` -- Advisory `.specify/plan.lock` PID stamp held by the `/change:execute` driver.
-
-- **`specify change {create, show, finalize}`** -- Operator brief at `change.md`. `create` was renamed from v1 `init` (RFC-9 §1F; replaces v1.x `specify change create`); `finalize` is the canonical closure verb that confirms every per-project PR has merged before archiving the plan (RFC-9 §4C).
-- **`specify registry {add, remove, show, validate}`** -- Platform registry at `registry.yaml`. `add` and `remove` were added by RFC-9 §2A; both validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
-- **`specify workspace {sync, status, push, merge}`** -- Materialises `.specify/workspace/<peer>/` for multi-repo planning, pushes workspace clones to remotes after execution, and squash-merges the resulting PRs once CI is green (`merge`, RFC-9 §4A).
-- **`specify init <capability>`** / **`specify init --hub`** -- Project scaffold. Regular init takes the capability identifier as a required positional (a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI) and resolves/caches it directly; `--hub` (RFC-9 §1D) is the mutually exclusive alternative that scaffolds a registry-only platform hub. Running `specify init` with neither (or with both) fails with the `init-requires-capability-or-hub` diagnostic. See [RFC-13 §Migration "Hub project shape"](rfcs/archive/rfc-13-extensibility.md#migration).
-
-A typical change: `/change:plan migrate-to-v2 --source monolith=/path/to/legacy` → review the authored plan with `specify change plan status` → `/change:execute --loop` until it reports `all-done`.
+For larger efforts, `/change:plan` authors `plan.yaml` and `/change:execute loop` drives each planned slice through the same define-build-merge loop. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, operator-owned PR merge, and `specify change finalize`. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
 
 ## Plugins
 
 Specify ships as a Cursor plugin marketplace with seven plugins:
 
-- **Specify** (`spec`) -- Per-slice workflow: init, define, build, merge, drop, extract, analyze. Carries deprecation shims for the historical `/change:plan` and `/change:execute` commands while RFC-13 §3.9 lands.
-- **Change** (`change`) -- Cross-repo change orchestration: `/change:plan` (Layer 3 + Layer 4 umbrella) and `/change:execute` (Layer 2 driver). Was on the `spec` plugin until RFC-13 §3.9.
+- **Specify** (`spec`) -- Per-slice workflow: init, define, build, merge, drop, extract, analyze. Carries deprecation shims for the historical `/spec:plan` and `/spec:execute` commands.
+- **Change** (`change`) -- Change orchestration: `/change:plan` (Layer 3 + Layer 4 umbrella) and `/change:execute` (Layer 3 driver).
 - **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
 - **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
-- **Contracts** (`contracts`) -- API contract generation, validation, and import
+- **Contract** (`contract`) -- API contract generation, validation, and import
 - **RT** (`rt`) -- Repository cloning, fixture capture, and regression testing for migration
 - **Client** (`client`) -- Client-facing deliverables (Statements of Work, proposals, pricing summaries) generated from Specify artifacts
 
@@ -124,22 +60,13 @@ Two lifecycle nouns appear constantly in this codebase. RFC-13 §Migration locke
 
 ## Installing the CLI
 
-The `specify` binary backs every skill in the `spec` plugin. For one-stop project setup in Cursor, run `/spec:init`; if the CLI is missing, the skill can install it after confirmation with:
+The `specify` binary backs every workflow skill. `/spec:init` can bootstrap a missing CLI after confirmation; for manual setup use:
 
 ```bash
-cargo install --git https://github.com/augentic/specify-cli
+brew install augentic/tap/specify
 ```
 
-Manual install paths remain available:
-
-```bash
-brew install augentic/tap/specify           # macOS + Linux (primary)
-cargo install specify                       # any platform with a Rust toolchain
-curl -sSfL https://specify.sh/install.sh | sh   # pre-built binary, any POSIX shell
-make build                                  # local checkout, drops ./specify at repo root
-```
-
-Pin a specific version with `SPECIFY_VERSION=v0.1.0` in front of the `curl` line, or override the install location with `SPECIFY_INSTALL_DIR=/usr/local/bin`.
+See [Prerequisites](docs/orientation/prerequisites.md) for all install paths and capability-specific tooling.
 
 ## Development
 

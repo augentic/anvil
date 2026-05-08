@@ -44,10 +44,10 @@ If `.metadata.yaml:outcome` is missing or malformed when `/change:execute` reads
 
 ## Verbatim-`summary` rule
 
-When `/change:execute` reclaims a `failure` or `deferred` outcome by invoking `/spec:drop` (self-heal on startup, or per-iteration cleanup), it copies `outcome.summary` **byte-for-byte** into the `--reason` argument:
+When `/change:execute` reclaims a `failure` or `deferred` outcome by invoking `/spec:drop` (self-heal on startup, or per-iteration cleanup), it copies `outcome.summary` **byte-for-byte** into the `reason` argument:
 
 ```bash
-/spec:drop <change> --reason "<outcome.summary verbatim>"
+/spec:drop <change> reason "<outcome.summary verbatim>"
 ```
 
 Skills MUST therefore write `--summary` strings that are useful as a `--reason`: present-tense, self-contained, and short enough to fit a CLI argument without truncation. Route any verbatim stderr / log tail through `--context` instead — that field is not forwarded to `--reason`.

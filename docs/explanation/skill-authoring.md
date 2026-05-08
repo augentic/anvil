@@ -89,16 +89,16 @@ Examples after RFC-10:
 
 | Skill | `argument-hint` |
 |---|---|
-| `/spec:init` | `[schema-url]` |
+| `/spec:init` | `<capability>` |
 | `/spec:define` | `[description]` |
-| `/spec:build` | `[change-name]` |
-| `/change:plan` | `<initiative-name>` |
+| `/spec:build` | `[slice-name]` |
+| `/change:plan` | `<change-name>` |
 | `/spec:extract` | `<source-path> <slice-dir>` |
 | `/omnia:crate-writer` | `[crate-name]` |
 | `/contract:openapi` | `[slice-dir]` |
-| `/change:execute` | (omitted — flag-only invocation) |
+| `/change:execute` | `[mode]` |
 
-The complete set of flags and secondary positionals each skill accepts moves into a body section called "Invocation". The pattern follows `spec/execute` — block-text examples that include the flag form alongside a one-line note about what each form does.
+The complete set of secondary positionals each skill accepts moves into a body section called "Invocation". Slash-skill examples use positional arguments only; reserve `--flag` notation for underlying CLI commands such as `specify ... --format json`, not for `/plugin:skill` arguments.
 
 The shape constraints are enforced by `make checks`. A SKILL.md that ships `argument-hint: "crate-name?"` fails the check because the trailing `?` is the old in-line-optional marker, replaced by the angle/square-bracket convention.
 
@@ -129,8 +129,8 @@ The 150-line trigger is a soft heuristic: short skills don't need the block (the
 The pattern is in active use under several skills in this repository — both as exemplars to copy and as live targets when authoring new skills:
 
 - `plugins/spec/skills/extract/SKILL.md` — Critical Path links to `business-logic.md`, `external-api.md`, `dependencies.md`, `observability.md`, `design-template.md`, `verification.md`.
-- `plugins/spec/skills/execute/SKILL.md` — Critical Path drives the loop semantics; per-mode and per-failure detail lives in siblings.
-- `plugins/spec/skills/plan/SKILL.md` — orchestrate / propose / refine modes each have their own sibling file.
+- `plugins/change/skills/execute/SKILL.md` — Critical Path drives the loop semantics; per-mode and per-failure detail lives in siblings.
+- `plugins/change/skills/plan/SKILL.md` — orchestrate / propose / refine modes each have their own sibling file.
 - `plugins/spec/skills/merge/SKILL.md` — the success / failure / deferred paths are summarised in the Critical Path; the per-path prose is kept compact.
 - `plugins/omnia/skills/code-reviewer/SKILL.md` — after RFC-10 Chunk 15: Critical Path + invocation; categories, team protocol, auto-fix, and output template each live in siblings (`categories.md`, `team-protocol.md`, `auto-fix.md`, `output.md`).
 - `plugins/omnia/skills/crate-writer/SKILL.md` — after RFC-10 Chunk 16: hard rules and authority hierarchy factored into `rules.md`; SKILL.md retains the mode-dispatch table and artifact-mapping section.
@@ -165,6 +165,21 @@ Drift is now physically impossible: editing the contract in one place is the onl
 
 When you find yourself copying ≥30 lines of prose between two SKILL.md files, that is a candidate for the same factor-out. The reference goes under `plugins/<plugin>/references/` (or `plugins/references/` if it is cross-plugin); each consumer keeps a 4-line shim plus a link.
 
+## Portability posture
+
+Specify skills are authored first for Cursor plugins. The repository deliberately uses the Cursor marketplace layout, `/plugin:skill` slash-command routing, `argument-hint` placeholder text, Cursor tool names, MCP tool prefixes, and `<!-- skill: plugin:skill -->` body directives. Those pieces are part of the source profile because they are how the skills compose inside Cursor.
+
+The source profile is still shaped by Anthropic Agent Skills guidance: concise `name` and `description`, progressive disclosure, a 500-line body ceiling, and small frontmatter. It is not, however, a claim that the repository can be copied unchanged into Claude Code or every Agent Skills host.
+
+A Claude Code or upstream Agent Skills package should be generated as a separate compatibility profile. That profile can make host-specific choices without weakening the Cursor source contract:
+
+- Strip or map Cursor-only fields such as `argument-hint`.
+- Convert `<!-- skill: plugin:skill -->` delegation into host-native composition, or rewrite the body so it names the referenced skill and loading step explicitly.
+- Replace Cursor-only tool names with the target host's tools.
+- Add target-only metadata such as `disable-model-invocation`, `user-invocable`, `context`, or path activation fields where the target host benefits from them.
+
+The source skills intentionally do not add `disable-model-invocation` to mutating workflow skills. `/spec:*` and `/change:*` skills are side-effecting by design, but their Cursor contract is explicit slash-command or pipeline invocation, with runtime guardrails and deterministic mutations routed through the `specify` CLI. Marking them non-model-invocable in the source profile would fight direct operator requests like "run build for this slice" and the plan-driven delegation flow. A Claude Code export may choose stricter activation metadata for those same skills; that is export policy, not source schema policy.
+
 ## Forbidden frontmatter
 
 The Anthropic spec is permissive — it accepts a number of optional fields beyond the four this repository uses. RFC-10 narrows the surface explicitly:
@@ -172,9 +187,10 @@ The Anthropic spec is permissive — it accepts a number of optional fields beyo
 - **`license`** — not part of the Anthropic SKILL.md spec. License is already declared in the plugin manifest (`plugins/<plugin>/.cursor-plugin/plugin.json`) and the repo root `LICENSE` file. Saved ~12 tokens per skill in always-loaded metadata across all skills.
 - **`compatibility`** — environment requirements (system packages, network access). When relevant, document them in the body's "Prerequisites" or "Setup" section.
 - **`metadata`** — arbitrary key-value mapping. The use cases are too open-ended to standardise; if information is worth carrying, it deserves a named field or body prose.
-- **`disable-model-invocation`** — Cursor / Claude Code knob to hide the skill from auto-trigger. Every skill in this repo is intended to be agent-invocable; the field has no current use.
+- **`disable-model-invocation`** — Claude Code / host-specific knob to hide the skill from auto-trigger. Source skills stay agent-invocable in Cursor; export profiles can add this field for mutating workflows if the target host needs it.
 - **`when_to_use`** — Claude Code's appended-trigger field. Triggers belong in `description` per Anthropic's own guidance; carrying them twice doubles the metadata cost without doubling the signal.
-- **`user-invocable`** — Claude Code's hide-from-`/`-menu knob. Same reasoning as `disable-model-invocation`.
+- **`user-invocable`** — Claude Code's hide-from-`/`-menu knob. Source visibility is governed by Cursor plugin manifests and slash commands; export profiles can decide target-menu visibility.
+- **`context`** — Claude Code / host-specific context attachment metadata. Source skills load durable context through body links and `<!-- skill: ... -->` directives instead.
 - **`paths`** — Claude Code's auto-activation glob. Specify skills are invoked by slash command, by phase pipeline, or by direct trigger phrases — not by file pattern.
 
 The forbidden list is enforced in [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json) via `additionalProperties: false`. A skill shipping any of these keys fails `make checks`.
@@ -188,8 +204,10 @@ The forbidden list is enforced in [`.cursor/schemas/skill.schema.json`](../../.c
 - **Global uniqueness.** No two SKILL.md files in the repo carry the same `name`.
 - **Description length.** `description` is ≤1024 characters.
 - **Argument-hint shape.** `argument-hint` contains no `?`, no `--`, and no `|`.
+- **Slash invocation shape.** `/plugin:skill` examples use positional arguments only; leading double-dash option tokens after a slash skill are rejected.
 - **Body length.** SKILL.md body (post-frontmatter) is ≤500 lines.
-- **Forbidden keys.** No top-level `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, or `paths`. Enforced by the `additionalProperties: false` clause in `.cursor/schemas/skill.schema.json`.
+- **Critical Path.** SKILL.md bodies with ≥150 post-frontmatter lines include a `## Critical Path (Quick Reference)` block with 5–7 bullets or numbered items.
+- **Forbidden keys.** No top-level `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `context`, or `paths`. Enforced by the `additionalProperties: false` clause in `.cursor/schemas/skill.schema.json`.
 
 A skill that fails any of these checks will fail CI. When a check fires, the right fix is to bring the skill into compliance, not to relax the check; the rules are deliberately mechanical so `make checks` can keep them honest without operator review.
 

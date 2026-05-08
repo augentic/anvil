@@ -1,12 +1,12 @@
 # Recover from `registry-amendment-required`
 
-When `/change:execute --loop` halts on a change with the `registry-amendment-required` outcome, a phase skill (typically `/spec:extract` or a build brief) discovered that the change targets a capability that does not fit any existing registry project and proposed a new one. The framework refuses to auto-modify `registry.yaml`; the operator owns the decision.
+When `/change:execute loop` halts on a change with the `registry-amendment-required` outcome, a phase skill (typically `/spec:extract` or a build brief) discovered that the change targets a capability that does not fit any existing registry project and proposed a new one. The framework refuses to auto-modify `registry.yaml`; the operator owns the decision.
 
 This how-to walks the canonical recovery sequence end-to-end. RFC-9 Section 2B introduces the outcome variant and pins this exact sequence so phase skills, executors, and umbrella skills compose against it.
 
 ## Prerequisites
 
-- A change where `/change:execute --loop` halted with `Completion: stuck` or surfaced a `registry-amendment-required` line in the per-slice summary.
+- A change where `/change:execute loop` halted with `Completion: stuck` or surfaced a `registry-amendment-required` line in the per-slice summary.
 - The dropped change's name (from `specify change plan status` -- the entry is in `blocked` state with `status-reason: registry-amendment-required`).
 
 ## 1. Read the proposal payload
@@ -73,12 +73,12 @@ The entry transitions back to `pending`. The next `/change:execute` cycle picks 
 ## 4. Re-run `/change:execute`
 
 ```bash
-/change:execute --loop
+/change:execute loop
 ```
 
 The driver picks up the re-queued change first (it has no unsatisfied dependencies that were not already satisfied before the halt), runs `/spec:define` -> `/spec:build` -> `/spec:merge` against the new workspace slot, and continues with the rest of the plan.
 
-If you started this change via `/change:plan --orchestrate <name>`, re-running the umbrella achieves the same end state -- the umbrella's re-entry algorithm detects the now-pending change and resumes at step 4 (Execute). See [`/change:plan --orchestrate` re-entry](../reference/change-skills/change.md#re-entry--idempotency).
+If you started this change via `/change:plan <name> orchestrate`, re-running the umbrella achieves the same end state -- the umbrella's re-entry algorithm detects the now-pending change and resumes at step 4 (Execute). See [`/change:plan <name> orchestrate` re-entry](../reference/change-skills/change.md#re-entry--idempotency).
 
 ## Re-route to an existing project
 
@@ -87,7 +87,7 @@ If the right answer is an existing project rather than a new one, skip steps 3a 
 ```bash
 specify change plan amend <change> --project <existing-project>
 specify change plan transition <change> pending
-/change:execute --loop
+/change:execute loop
 ```
 
 The phase skill that proposed the amendment will not see the rejection; the journal entry stays in place as audit. If the same proposal recurs on the next run, that is a signal the capability is genuinely ambiguous and the phase skill's heuristic deserves an update -- file an issue.
@@ -99,7 +99,7 @@ The phase skill that proposed the amendment will not see the rejection; the jour
 | Registry has the new project | `specify registry show` | `<proposed-name>` listed under `projects[]`. |
 | Workspace slot is materialised | `specify workspace status` | `<proposed-name>` shows `git-clone` or `symlink`, `dirty: no`. |
 | Plan entry is re-routed | `specify change plan status` | `<change>` is `pending`, `project: <proposed-name>`. |
-| Change drives to `done` on next run | `/change:execute --loop` | The change merges; the plan progresses. |
+| Change drives to `done` on next run | `/change:execute loop` | The change merges; the plan progresses. |
 
 ## Why the framework requires operator confirmation
 
@@ -116,4 +116,4 @@ The framework reports drift; the operator decides what to do about it. Same post
 - [`specify registry`](../reference/cli/registry.md) -- CLI reference for `add` and `remove`.
 - [Manage registry projects](manage-registry-projects.md) -- the broader add/remove how-to.
 - [`/change:execute`](../reference/change-skills/execute.md) -- the executor that surfaces the halt.
-- [`/change:plan --orchestrate`](../reference/change-skills/change.md) -- the umbrella mode (formerly `/spec:initiative`), which composes against this same recovery sequence.
+- [`/change:plan <name> orchestrate`](../reference/change-skills/change.md) -- the umbrella mode, which composes against this same recovery sequence.

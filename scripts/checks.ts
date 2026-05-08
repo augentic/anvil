@@ -4,14 +4,24 @@
 
 import { walk } from "jsr:@std/fs@1/walk";
 import { parse as parseYaml } from "jsr:@std/yaml@1";
-import { relative, join, dirname, resolve, fromFileUrl } from "jsr:@std/path@1";
-import Ajv2020 from "npm:ajv@8/dist/2020.js";
+import { dirname, fromFileUrl, join, relative, resolve } from "jsr:@std/path@1";
+import Ajv2020Module from "npm:ajv@8/dist/2020.js";
 
 const REPO_ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 const CAPABILITIES_DIR = join(REPO_ROOT, "capabilities");
 const CURSOR_SCHEMA_DIR = join(REPO_ROOT, ".cursor", "schemas");
 const RED = "\x1b[0;31m";
 const NC = "\x1b[0m";
+const SKILL_MAX_BODY_LINES = 500;
+const SKILL_CRITICAL_PATH_MIN_BODY_LINES = 150;
+const SKILL_CRITICAL_PATH_HEADING = "## Critical Path (Quick Reference)";
+const Ajv2020 = Ajv2020Module as unknown as {
+  new (opts: { allErrors?: boolean }): {
+    compile(schema: unknown): ((data: unknown) => boolean) & {
+      errors?: Array<{ instancePath?: string; message?: string }>;
+    };
+  };
+};
 
 let errors = 0;
 
@@ -42,10 +52,12 @@ async function checkMarkdownLinks(): Promise<void> {
   const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
   const FENCE_RE = /```[\s\S]*?```/g;
 
-  for await (const entry of walk(REPO_ROOT, {
-    exts: [".md"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(REPO_ROOT, {
+      exts: [".md"],
+      includeDirs: false,
+    })
+  ) {
     if (SKIP_DIRS.some((re) => re.test(entry.path))) continue;
     if (await isUnderSymlink(entry.path)) continue;
 
@@ -96,6 +108,18 @@ function stripHtmlComments(content: string): string {
   return stripped;
 }
 
+function skillBodyLines(content: string): string[] | null {
+  const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!fmMatch) return null;
+
+  const lines = content.slice(fmMatch[0].length).split("\n");
+  // Drop leading separator newline and trailing terminating newline so the
+  // count matches what an editor displays after the closing `---`.
+  if (lines.length > 0 && lines[0] === "") lines.shift();
+  if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+  return lines;
+}
+
 // ──────────────────────────────────────────────────────────────
 // 2. No "109-point" claims remain
 // ──────────────────────────────────────────────────────────────
@@ -103,10 +127,12 @@ function stripHtmlComments(content: string): string {
 async function checkStaleClaims(): Promise<void> {
   const PATTERNS = [/109-point/, /109 items/, /109 Items/];
 
-  for await (const entry of walk(REPO_ROOT, {
-    exts: [".md"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(REPO_ROOT, {
+      exts: [".md"],
+      includeDirs: false,
+    })
+  ) {
     if (/node_modules|\.git/.test(entry.path)) continue;
     if (await isUnderSymlink(entry.path)) continue;
     let content: string;
@@ -150,16 +176,20 @@ async function validateCapabilityYaml(): Promise<void> {
 
   const validate = ajv.compile(capabilitySchema);
 
-  for await (const entry of walk(CAPABILITIES_DIR, {
-    maxDepth: 2,
-    includeDirs: false,
-    match: [/capability\.yaml$/],
-  })) {
+  for await (
+    const entry of walk(CAPABILITIES_DIR, {
+      maxDepth: 2,
+      includeDirs: false,
+      match: [/capability\.yaml$/],
+    })
+  ) {
     const rel = relative(REPO_ROOT, entry.path);
     const data = parseYaml(await Deno.readTextFile(entry.path));
     if (!validate(data)) {
       for (const err of validate.errors ?? []) {
-        fail(`Capability validation failed: ${rel} — ${err.instancePath} ${err.message}`);
+        fail(
+          `Capability validation failed: ${rel} — ${err.instancePath} ${err.message}`,
+        );
       }
     }
   }
@@ -189,11 +219,13 @@ async function parseBriefFrontmatter(
 }
 
 async function checkCapabilityIntegrity(): Promise<void> {
-  for await (const entry of walk(CAPABILITIES_DIR, {
-    maxDepth: 2,
-    includeDirs: false,
-    match: [/capability\.yaml$/],
-  })) {
+  for await (
+    const entry of walk(CAPABILITIES_DIR, {
+      maxDepth: 2,
+      includeDirs: false,
+      match: [/capability\.yaml$/],
+    })
+  ) {
     const dirPath = dirname(entry.path);
     const name = dirPath.split("/").pop()!;
     const manifest = parseYaml(
@@ -301,10 +333,12 @@ async function checkCapabilityIntegrity(): Promise<void> {
 async function checkSymlinks(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    includeDirs: true,
-    includeFiles: true,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      includeDirs: true,
+      includeFiles: true,
+    })
+  ) {
     let info: Deno.FileInfo;
     try {
       info = await Deno.lstat(entry.path);
@@ -326,9 +360,21 @@ async function checkSymlinks(): Promise<void> {
 // ──────────────────────────────────────────────────────────────
 
 const KNOWN_TOOLS = new Set([
-  "Read", "Write", "StrReplace", "Shell", "Grep", "Glob",
-  "ReadLints", "WebFetch", "WebSearch", "AskQuestion", "Task",
-  "TodoWrite", "SemanticSearch", "EditNotebook", "GenerateImage",
+  "Read",
+  "Write",
+  "StrReplace",
+  "Shell",
+  "Grep",
+  "Glob",
+  "ReadLints",
+  "WebFetch",
+  "WebSearch",
+  "AskQuestion",
+  "Task",
+  "TodoWrite",
+  "SemanticSearch",
+  "EditNotebook",
+  "GenerateImage",
 ]);
 
 async function validateSkillFrontmatter(): Promise<void> {
@@ -352,10 +398,12 @@ async function validateSkillFrontmatter(): Promise<void> {
   // Track names for the global-uniqueness check (RFC-10 §A.1).
   const namesByValue = new Map<string, string[]>();
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -436,47 +484,101 @@ async function validateSkillFrontmatter(): Promise<void> {
 
 async function checkSkillBodyLineCount(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-  const MAX_BODY_LINES = 500;
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
 
-    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
-    if (!fmMatch) continue;
-
-    const body = content.slice(fmMatch[0].length);
-    const lines = body.split("\n");
-    // Drop leading separator newline and trailing terminating newline so the
-    // count matches what an editor displays after the closing `---`.
-    if (lines.length > 0 && lines[0] === "") lines.shift();
-    if (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
+    const lines = skillBodyLines(content);
+    if (!lines) continue;
     const lineCount = lines.length;
 
-    if (lineCount > MAX_BODY_LINES) {
+    if (lineCount > SKILL_MAX_BODY_LINES) {
       fail(
-        `Skill body too long: ${rel} — ${lineCount} body lines (limit ${MAX_BODY_LINES})`,
+        `Skill body too long: ${rel} — ${lineCount} body lines (limit ${SKILL_MAX_BODY_LINES})`,
       );
     }
   }
 }
 
 // ──────────────────────────────────────────────────────────────
-// 6c. SKILL.md description length ceiling (RFC-10 §D)
+// 6c. Long SKILL.md bodies must include a Critical Path block
+// ──────────────────────────────────────────────────────────────
+
+async function checkSkillCriticalPath(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+  const LIST_ITEM_RE = /^(?:\d+\.|-)\s+\S/;
+
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
+    if (await isUnderSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+
+    const lines = skillBodyLines(content);
+    if (!lines || lines.length < SKILL_CRITICAL_PATH_MIN_BODY_LINES) continue;
+
+    const headingIndex = lines.findIndex((line) =>
+      line.trim() === SKILL_CRITICAL_PATH_HEADING
+    );
+    if (headingIndex < 0) {
+      fail(
+        `Missing Critical Path: ${rel} — ${lines.length} body lines requires '${SKILL_CRITICAL_PATH_HEADING}'`,
+      );
+      continue;
+    }
+
+    const nextH2Offset = lines.slice(headingIndex + 1).findIndex((line) =>
+      line.startsWith("## ")
+    );
+    const sectionLines = nextH2Offset >= 0
+      ? lines.slice(headingIndex + 1, headingIndex + 1 + nextH2Offset)
+      : lines.slice(headingIndex + 1);
+    let itemCount = 0;
+    let inCriticalPathList = false;
+    for (const line of sectionLines) {
+      if (line.trim() === "") {
+        if (inCriticalPathList) break;
+        continue;
+      }
+      if (LIST_ITEM_RE.test(line)) {
+        inCriticalPathList = true;
+        itemCount++;
+      }
+    }
+
+    if (itemCount < 5 || itemCount > 7) {
+      fail(
+        `Invalid Critical Path: ${rel} — expected 5-7 bullets or numbered items, found ${itemCount}`,
+      );
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 6d. SKILL.md description length ceiling (RFC-10 §D)
 // ──────────────────────────────────────────────────────────────
 
 async function checkSkillDescriptionLength(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
   const MAX_DESCRIPTION_CHARS = 1024;
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -503,7 +605,7 @@ async function checkSkillDescriptionLength(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 6d. SKILL.md argument-hint shape (RFC-10 §A.3, §D)
+// 6e. SKILL.md argument-hint shape (RFC-10 §A.3, §D)
 // ──────────────────────────────────────────────────────────────
 
 async function checkSkillArgumentHint(): Promise<void> {
@@ -514,10 +616,12 @@ async function checkSkillArgumentHint(): Promise<void> {
     { token: "|", reason: "alternative-value pipe" },
   ];
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -550,16 +654,104 @@ async function checkSkillArgumentHint(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 6e. SKILL.md frontmatter must not declare `license` (RFC-10 §A.4, §D)
+// 6f. Slash-skill invocations use positional arguments (Claude Skills parity)
+// ──────────────────────────────────────────────────────────────
+
+async function checkSlashSkillInvocationsUsePositionals(): Promise<void> {
+  const SCAN_ROOTS = [
+    join(REPO_ROOT, "docs"),
+    join(REPO_ROOT, "plugins"),
+    join(REPO_ROOT, "capabilities"),
+  ];
+  const SCAN_FILES = [
+    join(REPO_ROOT, "README.md"),
+    join(REPO_ROOT, "AGENTS.md"),
+    join(REPO_ROOT, "rfcs", "roadmap.md"),
+    join(REPO_ROOT, ".cursor", "rules", "project.mdc"),
+  ];
+  const SKILL_TOKEN_RE = /\/[a-z][a-z0-9-]*:[a-z][a-z0-9-]*/;
+  const FLAG_TOKEN_RE = /--[a-z][a-z0-9-]*/;
+
+  const targets: string[] = [];
+  for (const file of SCAN_FILES) {
+    try {
+      const stat = await Deno.stat(file);
+      if (stat.isFile) targets.push(file);
+    } catch {
+      // Optional top-level files may not exist in downstream checkouts.
+    }
+  }
+  for (const root of SCAN_ROOTS) {
+    for await (
+      const entry of walk(root, {
+        exts: [".md", ".mdc"],
+        includeDirs: false,
+      })
+    ) {
+      if (await isUnderSymlink(entry.path)) continue;
+      targets.push(entry.path);
+    }
+  }
+
+  for (const path of targets) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
+    const lines = content.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+      let logical = lines[i];
+      let end = i;
+
+      // Fenced examples often wrap slash invocations with backslashes and
+      // indented continuation rows. Normalize a short logical invocation so
+      // `[--flag]` on the next row cannot hide from the check.
+      for (let j = i + 1; j < Math.min(lines.length, i + 8); j++) {
+        const previousContinues = logical.trimEnd().endsWith("\\");
+        const nextIsIndented = /^[ \t]+/.test(lines[j]);
+        if (!previousContinues && !nextIsIndented) break;
+        logical += "\n" + lines[j];
+        end = j;
+        if (!lines[j].trimEnd().endsWith("\\") && !nextIsIndented) break;
+      }
+
+      const scanLogical = logical.replace(/\]\([^)]+\)/g, "]");
+      const skillMatch = SKILL_TOKEN_RE.exec(scanLogical);
+      const flagMatch = FLAG_TOKEN_RE.exec(scanLogical);
+      if (
+        skillMatch && flagMatch &&
+        flagMatch.index > skillMatch.index + skillMatch[0].length &&
+        !/\b(specify|cargo|gh|git|deno|npm|pnpm|yarn)\s/.test(
+          scanLogical.slice(
+            skillMatch.index + skillMatch[0].length,
+            flagMatch.index,
+          ),
+        )
+      ) {
+        fail(
+          `Slash skill invocation uses flag-style arguments in ${rel}:${
+            i + 1
+          }` +
+            (end > i ? `-${end + 1}` : "") +
+            " — use positional skill arguments; reserve --flags for underlying CLI commands",
+        );
+      }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 6g. SKILL.md frontmatter must not declare `license` (RFC-10 §A.4, §D)
 // ──────────────────────────────────────────────────────────────
 
 async function checkSkillNoLicense(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -583,7 +775,7 @@ async function checkSkillNoLicense(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 6f. Retired slash commands must not appear in active prose (RFC-10 §D)
+// 6h. Retired slash commands must not appear in active prose (RFC-10 §D)
 // ──────────────────────────────────────────────────────────────
 
 async function checkRetiredSlashCommands(): Promise<void> {
@@ -625,9 +817,9 @@ async function checkRetiredSlashCommands(): Promise<void> {
       for (const pattern of RETIRED_PATTERNS) {
         if (lines[i].includes(pattern)) {
           fail(
-            `Retired slash command in ${rel}:${
-              i + 1
-            } -- '${pattern}' (line: ${lines[i].trim()})`,
+            `Retired slash command in ${rel}:${i + 1} -- '${pattern}' (line: ${
+              lines[i].trim()
+            })`,
           );
         }
       }
@@ -643,10 +835,12 @@ async function checkRetiredSlashCommands(): Promise<void> {
     }
     if (!exists) continue;
 
-    for await (const entry of walk(root, {
-      exts: [".md"],
-      includeDirs: false,
-    })) {
+    for await (
+      const entry of walk(root, {
+        exts: [".md"],
+        includeDirs: false,
+      })
+    ) {
       if (await isUnderSymlink(entry.path)) continue;
       await scanFile(entry.path);
     }
@@ -674,10 +868,12 @@ async function checkSkillReferences(): Promise<void> {
 
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const skillDir = dirname(entry.path);
@@ -715,10 +911,12 @@ async function checkSkillVariables(): Promise<void> {
 
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     if (await isUnderSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -798,10 +996,12 @@ async function checkSkillDirectives(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
   const registry = new Map<string, Set<string>>();
-  for await (const entry of walk(PLUGINS_DIR, {
-    match: [/SKILL\.md$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
     const parts = relative(PLUGINS_DIR, entry.path).split("/");
     if (parts.length >= 4 && parts[1] === "skills") {
       const plugin = parts[0];
@@ -813,10 +1013,12 @@ async function checkSkillDirectives(): Promise<void> {
 
   const SKIP_DIRS = [/node_modules/, /\.git/, /temp/, /rfcs/];
 
-  for await (const entry of walk(REPO_ROOT, {
-    exts: [".md"],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(REPO_ROOT, {
+      exts: [".md"],
+      includeDirs: false,
+    })
+  ) {
     if (SKIP_DIRS.some((re) => re.test(entry.path))) continue;
     if (await isUnderSymlink(entry.path)) continue;
 
@@ -862,11 +1064,13 @@ async function checkPluginConsistency(): Promise<void> {
   const declaredSources = new Set(manifest.plugins.map((p) => p.source));
 
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-  for await (const entry of walk(PLUGINS_DIR, {
-    maxDepth: 3,
-    match: [/plugin\.json$/],
-    includeDirs: false,
-  })) {
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      maxDepth: 3,
+      match: [/plugin\.json$/],
+      includeDirs: false,
+    })
+  ) {
     const relParts = relative(PLUGINS_DIR, entry.path).split("/");
     if (
       relParts.length === 3 &&
@@ -883,16 +1087,40 @@ async function checkPluginConsistency(): Promise<void> {
   }
 
   for (const p of manifest.plugins) {
-    const skillsDir = join(PLUGINS_DIR, p.source, "skills");
+    const pluginDir = join(PLUGINS_DIR, p.source);
+    const skillsDir = join(pluginDir, "skills");
+    let hasSkillsDir = false;
     try {
       const stat = await Deno.stat(skillsDir);
       if (!stat.isDirectory) {
         fail(`Plugin '${p.name}' has no skills/ directory`);
+      } else {
+        hasSkillsDir = true;
       }
     } catch {
       fail(
         `Plugin '${p.name}' declared in marketplace.json but skills/ not found`,
       );
+    }
+
+    if (hasSkillsDir) {
+      const pluginManifestPath = join(
+        pluginDir,
+        ".cursor-plugin",
+        "plugin.json",
+      );
+      try {
+        const stat = await Deno.stat(pluginManifestPath);
+        if (!stat.isFile) {
+          fail(
+            `Plugin '${p.name}' has skills/ but .cursor-plugin/plugin.json is not a file`,
+          );
+        }
+      } catch {
+        fail(
+          `Plugin '${p.name}' has skills/ but .cursor-plugin/plugin.json not found`,
+        );
+      }
     }
   }
 }
@@ -980,10 +1208,12 @@ async function checkRetiredCliVerbs(): Promise<void> {
   ];
 
   for (const root of SCAN_ROOTS) {
-    for await (const entry of walk(root, {
-      exts: [".md"],
-      includeDirs: false,
-    })) {
+    for await (
+      const entry of walk(root, {
+        exts: [".md"],
+        includeDirs: false,
+      })
+    ) {
       if (await isUnderSymlink(entry.path)) continue;
       const rel = relative(REPO_ROOT, entry.path);
       if (ALLOWLIST.has(rel)) continue;
@@ -1001,9 +1231,9 @@ async function checkRetiredCliVerbs(): Promise<void> {
         for (const { pattern, hint } of PATTERNS) {
           if (pattern.test(line)) {
             fail(
-              `Retired CLI verb in ${rel}:${i + 1} -- ${
-                line.trim()
-              } -- ${hint}`,
+              `Retired CLI verb in ${rel}:${
+                i + 1
+              } -- ${line.trim()} -- ${hint}`,
             );
           }
         }
@@ -1055,10 +1285,12 @@ async function checkRfc14WorkspaceLanding(): Promise<void> {
       exists = false;
     }
     if (!exists) continue;
-    for await (const entry of walk(root, {
-      includeDirs: false,
-      exts: [".md", ".mdx", ".mdc"],
-    })) {
+    for await (
+      const entry of walk(root, {
+        includeDirs: false,
+        exts: [".md", ".mdx", ".mdc"],
+      })
+    ) {
       if (await isUnderSymlink(entry.path)) continue;
       targets.push(entry.path);
     }
@@ -1093,9 +1325,9 @@ async function checkRfc14WorkspaceLanding(): Promise<void> {
         !ALLOWED_WORKSPACE_MERGE_CONTEXT.test(line)
       ) {
         fail(
-          `RFC-14 workspace merge automation in ${rel}:${i + 1} -- ${
-            line.trim()
-          } -- describe it only as a retired/non-zero shim or migration note`,
+          `RFC-14 workspace merge automation in ${rel}:${
+            i + 1
+          } -- ${line.trim()} -- describe it only as a retired/non-zero shim or migration note`,
         );
       }
 
@@ -1104,9 +1336,9 @@ async function checkRfc14WorkspaceLanding(): Promise<void> {
         !ALLOWED_AUTO_MERGE_CONTEXT.test(line)
       ) {
         fail(
-          `RFC-14 retired --auto-merge mention in ${rel}:${i + 1} -- ${
-            line.trim()
-          } -- the flag must be described as retired/rejected, not active`,
+          `RFC-14 retired --auto-merge mention in ${rel}:${
+            i + 1
+          } -- ${line.trim()} -- the flag must be described as retired/rejected, not active`,
         );
       }
 
@@ -1116,9 +1348,9 @@ async function checkRfc14WorkspaceLanding(): Promise<void> {
         !ALLOWED_GH_MERGE_CONTEXT.test(line)
       ) {
         fail(
-          `RFC-14 automated gh merge instruction in ${rel}:${i + 1} -- ${
-            line.trim()
-          } -- Specify may only point operators at gh pr merge; it must not invoke it`,
+          `RFC-14 automated gh merge instruction in ${rel}:${
+            i + 1
+          } -- ${line.trim()} -- Specify may only point operators at gh pr merge; it must not invoke it`,
         );
       }
     }
@@ -1134,13 +1366,16 @@ async function checkInstructionPreambles(): Promise<void> {
   // `.specify/slices/`. Both paths are accepted here for the duration of
   // the cut-over so vendored capability instruction files that still
   // reference the historical path do not silently fail this check.
-  const OUTPUT_LOCATION_RE = /^> \*\*Output location\*\*: `\.specify\/(changes|slices)\//m;
+  const OUTPUT_LOCATION_RE =
+    /^> \*\*Output location\*\*: `\.specify\/(changes|slices)\//m;
 
-  for await (const entry of walk(CAPABILITIES_DIR, {
-    maxDepth: 3,
-    includeDirs: false,
-    match: [/instructions\/[a-z]+\.md$/],
-  })) {
+  for await (
+    const entry of walk(CAPABILITIES_DIR, {
+      maxDepth: 3,
+      includeDirs: false,
+      match: [/instructions\/[a-z]+\.md$/],
+    })
+  ) {
     const rel = relative(REPO_ROOT, entry.path);
     let content: string;
     try {
@@ -1278,10 +1513,12 @@ async function checkV1LayoutPaths(): Promise<void> {
       exists = false;
     }
     if (!exists) continue;
-    for await (const entry of walk(root, {
-      includeDirs: false,
-      exts: [".md", ".mdx", ".mdc", ".yaml", ".yml", ".json", ".toml"],
-    })) {
+    for await (
+      const entry of walk(root, {
+        includeDirs: false,
+        exts: [".md", ".mdx", ".mdc", ".yaml", ".yml", ".json", ".toml"],
+      })
+    ) {
       if (await isUnderSymlink(entry.path)) continue;
       targets.push(entry.path);
     }
@@ -1324,6 +1561,450 @@ async function checkV1LayoutPaths(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
+// 14. Acceptance scenario frontmatter validation (C03)
+//
+// Discovers opted-in scenario files under the accepted roots, validates frontmatter
+// against `.cursor/schemas/scenario.schema.json`, and runs cross-file
+// invariants (id uniqueness, body-id consistency, stages prefix,
+// expected-artifact path safety, capability-boundary requirements).
+//
+// Opt-in rule: a markdown file under one of those roots is validated
+// only if it begins with YAML frontmatter. Prose-only docs (READMEs,
+// templates, narrative) are skipped silently.
+// ──────────────────────────────────────────────────────────────
+
+interface ScenarioFile {
+  path: string;
+  rel: string;
+  content: string;
+  frontmatter: Record<string, unknown>;
+}
+
+const STAGES_ORDER = ["define", "build", "merge", "drop"] as const;
+const SCENARIO_ID_BODY_RE = /^Scenario ID:\s*`?([a-z][a-z0-9-]*)`?\s*$/m;
+
+async function discoverScenarioCandidates(): Promise<string[]> {
+  const candidates: string[] = [];
+
+  // Discovery root 1: tests/<suite>/scenario.md
+  const testsDir = join(REPO_ROOT, "tests");
+  try {
+    const stat = await Deno.stat(testsDir);
+    if (stat.isDirectory) {
+      for await (
+        const entry of walk(testsDir, {
+          maxDepth: 2,
+          includeDirs: false,
+          match: [/scenario\.md$/],
+        })
+      ) {
+        const rel = relative(testsDir, entry.path).split("/");
+        if (rel.length === 2 && rel[1] === "scenario.md") {
+          candidates.push(entry.path);
+        }
+      }
+    }
+  } catch {
+    // Optional root.
+  }
+
+  // Discovery root 2: tests/suites/<suite>/scenario.md
+  const suitesDir = join(REPO_ROOT, "tests", "suites");
+  try {
+    const stat = await Deno.stat(suitesDir);
+    if (stat.isDirectory) {
+      for await (
+        const entry of walk(suitesDir, {
+          maxDepth: 2,
+          includeDirs: false,
+          match: [/scenario\.md$/],
+        })
+      ) {
+        const rel = relative(suitesDir, entry.path).split("/");
+        if (rel.length === 2 && rel[1] === "scenario.md") {
+          candidates.push(entry.path);
+        }
+      }
+    }
+  } catch {
+    // Optional root.
+  }
+
+  // Discovery roots 3 & 4: capabilities/<cap>/tests/<scenario>.md
+  // and capabilities/<cap>/tests/<scenario>/scenario.md
+  try {
+    const stat = await Deno.stat(CAPABILITIES_DIR);
+    if (stat.isDirectory) {
+      for await (
+        const entry of walk(CAPABILITIES_DIR, {
+          exts: [".md"],
+          includeDirs: false,
+        })
+      ) {
+        const rel = relative(CAPABILITIES_DIR, entry.path).split("/");
+        // Flat: <cap>/tests/<scenario>.md  → 3 parts
+        if (rel.length === 3 && rel[1] === "tests") {
+          candidates.push(entry.path);
+        }
+        // Directory: <cap>/tests/<scenario>/scenario.md → 4 parts
+        if (
+          rel.length === 4 &&
+          rel[1] === "tests" &&
+          rel[3] === "scenario.md"
+        ) {
+          candidates.push(entry.path);
+        }
+      }
+    }
+  } catch {
+    // No capabilities/.
+  }
+
+  // Discovery root 5: plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md
+  const pluginsDir = join(REPO_ROOT, "plugins");
+  try {
+    const stat = await Deno.stat(pluginsDir);
+    if (stat.isDirectory) {
+      for await (
+        const entry of walk(pluginsDir, {
+          includeDirs: false,
+          match: [/scenario\.md$/],
+        })
+      ) {
+        if (await isUnderSymlink(entry.path)) continue;
+        const rel = relative(pluginsDir, entry.path).split("/");
+        if (
+          rel.length === 6 &&
+          rel[1] === "skills" &&
+          rel[3] === "fixtures" &&
+          rel[5] === "scenario.md"
+        ) {
+          candidates.push(entry.path);
+        }
+      }
+    }
+  } catch {
+    // No plugins/.
+  }
+
+  return candidates;
+}
+
+function isContiguousStagesPrefix(stages: unknown): boolean {
+  if (!Array.isArray(stages) || stages.length === 0) return false;
+  for (let i = 0; i < stages.length; i++) {
+    if (i >= STAGES_ORDER.length) return false;
+    if (stages[i] !== STAGES_ORDER[i]) return false;
+  }
+  return true;
+}
+
+async function validateScenarioFrontmatter(): Promise<void> {
+  const scenarioSchema = JSON.parse(
+    await Deno.readTextFile(join(CURSOR_SCHEMA_DIR, "scenario.schema.json")),
+  );
+  const ajv = new Ajv2020({ allErrors: true });
+  const validate = ajv.compile(scenarioSchema);
+
+  const candidatePaths = await discoverScenarioCandidates();
+  // Stable order for reproducible failure output.
+  candidatePaths.sort();
+
+  const opted: ScenarioFile[] = [];
+
+  for (const path of candidatePaths) {
+    let content: string;
+    try {
+      content = await Deno.readTextFile(path);
+    } catch {
+      continue;
+    }
+    const rel = relative(REPO_ROOT, path);
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    // Opt-in rule: only files that lead with YAML frontmatter are scenarios.
+    if (!fmMatch) continue;
+
+    let fm: Record<string, unknown>;
+    try {
+      fm = parseYaml(fmMatch[1]) as Record<string, unknown>;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      fail(`Scenario frontmatter: ${rel} — invalid YAML: ${msg}`);
+      continue;
+    }
+    if (fm === null || typeof fm !== "object") {
+      fail(
+        `Scenario frontmatter: ${rel} — frontmatter must be a YAML mapping`,
+      );
+      continue;
+    }
+
+    opted.push({ path, rel, content, frontmatter: fm });
+  }
+
+  // Schema validation per file.
+  for (const sc of opted) {
+    if (!validate(sc.frontmatter)) {
+      for (const err of validate.errors ?? []) {
+        const at = err.instancePath || "/";
+        fail(
+          `Scenario frontmatter: ${sc.rel} — ${at} ${err.message ?? ""}`.trim(),
+        );
+      }
+    }
+  }
+
+  // Stages contiguous-prefix rule (cannot be expressed in JSON Schema
+  // cleanly; the schema only enforces enum membership and minItems).
+  for (const sc of opted) {
+    const stages = sc.frontmatter.stages;
+    if (stages === undefined) continue;
+    if (!isContiguousStagesPrefix(stages)) {
+      fail(
+        `Scenario frontmatter: ${sc.rel} — stages must be a contiguous prefix of [define, build, merge, drop] starting at 'define'; got ${
+          JSON.stringify(stages)
+        }`,
+      );
+    }
+  }
+
+  // Body Scenario ID consistency (C02 doubles the id in body prose for
+  // resilience; if the body line is present, it must equal frontmatter id).
+  for (const sc of opted) {
+    const id = sc.frontmatter.id;
+    if (typeof id !== "string") continue;
+    const body = sc.content.slice(
+      sc.content.match(/^---\n[\s\S]*?\n---/)?.[0].length ?? 0,
+    );
+    const m = body.match(SCENARIO_ID_BODY_RE);
+    if (!m) continue;
+    if (m[1] !== id) {
+      fail(
+        `Scenario frontmatter: ${sc.rel} — body 'Scenario ID: \`${
+          m[1]
+        }\`' does not match frontmatter id '${id}'; align the visible line with the frontmatter id`,
+      );
+    }
+  }
+
+  // expected-artifacts path safety (relative, no '..', no absolute).
+  for (const sc of opted) {
+    const arts = sc.frontmatter["expected-artifacts"];
+    if (!Array.isArray(arts)) continue;
+    for (const a of arts) {
+      if (typeof a !== "string") continue;
+      if (a.length === 0) {
+        fail(
+          `Scenario frontmatter: ${sc.rel} — expected-artifacts entry is empty`,
+        );
+        continue;
+      }
+      if (a.startsWith("/")) {
+        fail(
+          `Scenario frontmatter: ${sc.rel} — expected-artifact '${a}' must be relative to the scenario workspace, not absolute`,
+        );
+        continue;
+      }
+      const segments = a.split("/");
+      if (segments.some((seg) => seg === "..")) {
+        fail(
+          `Scenario frontmatter: ${sc.rel} — expected-artifact '${a}' must not escape the scenario workspace ('..' segment not allowed)`,
+        );
+      }
+    }
+  }
+
+  // Cross-file id uniqueness.
+  const idsByValue = new Map<string, string[]>();
+  for (const sc of opted) {
+    const id = sc.frontmatter.id;
+    if (typeof id !== "string") continue;
+    const seen = idsByValue.get(id) ?? [];
+    seen.push(sc.rel);
+    idsByValue.set(id, seen);
+  }
+  for (const [id, paths] of idsByValue) {
+    if (paths.length > 1) {
+      fail(
+        `Scenario frontmatter: duplicate scenario id '${id}' across files: ${
+          paths.join(", ")
+        }`,
+      );
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 15. Recorded acceptance trace header freshness (C16)
+//
+// Every `tests/recorded/**/*.jsonl` trace must lead with a
+// `recorded-trace-header` line carrying a non-empty `schemaVersion: 1`,
+// `sourceBackend`, `sourceRunId`, `sourceTimestamp`, and `scenarioId`.
+// The check is opt-in / lenient: a missing `tests/recorded/`
+// directory or zero trace files is fine (fresh checkout / no recorded
+// coverage yet). Only present `.jsonl` files are validated.
+//
+// In addition, when the most recent commit (HEAD~1..HEAD) touches one
+// of these traces, emit a non-fatal warning suggesting the commit body
+// quote the source run id from the header so reviewers can correlate
+// the trace back to the live run that produced it. The warning is
+// printed with the `WARN:` prefix and does NOT increment the failure
+// counter (operators must be able to push from a shallow clone where
+// HEAD~1 is unavailable). When git itself is missing, the diff probe
+// is silently skipped.
+// ──────────────────────────────────────────────────────────────
+
+const RECORDED_TRACE_REQUIRED_FIELDS = [
+  "kind",
+  "schemaVersion",
+  "sourceBackend",
+  "sourceRunId",
+  "sourceTimestamp",
+  "scenarioId",
+] as const;
+
+async function checkRecordedTraceFreshness(): Promise<void> {
+  const recordedRoot = join(REPO_ROOT, "tests", "recorded");
+  let rootExists = true;
+  try {
+    const stat = await Deno.stat(recordedRoot);
+    if (!stat.isDirectory) rootExists = false;
+  } catch {
+    rootExists = false;
+  }
+  if (!rootExists) return;
+
+  const tracePaths: string[] = [];
+  for await (
+    const entry of walk(recordedRoot, {
+      exts: [".jsonl"],
+      includeDirs: false,
+    })
+  ) {
+    if (await isUnderSymlink(entry.path)) continue;
+    tracePaths.push(entry.path);
+  }
+  // Stable ordering for deterministic output across runs.
+  tracePaths.sort();
+
+  for (const path of tracePaths) {
+    const rel = relative(REPO_ROOT, path);
+    let content: string;
+    try {
+      content = await Deno.readTextFile(path);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      fail(`Recorded trace: ${rel} — cannot read: ${msg}`);
+      continue;
+    }
+    const firstLine = content.split("\n")[0]?.trim() ?? "";
+    if (firstLine.length === 0) {
+      fail(
+        `Recorded trace: ${rel} — empty file (expected a 'recorded-trace-header' line first)`,
+      );
+      continue;
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(firstLine);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      fail(`Recorded trace: ${rel} — first line is not valid JSON: ${msg}`);
+      continue;
+    }
+    if (
+      parsed === null || typeof parsed !== "object" || Array.isArray(parsed)
+    ) {
+      fail(`Recorded trace: ${rel} — first line must be a JSON object`);
+      continue;
+    }
+    const header = parsed as Record<string, unknown>;
+    if (header.kind !== "recorded-trace-header") {
+      fail(
+        `Recorded trace: ${rel} — first line kind must be 'recorded-trace-header' (got ${
+          JSON.stringify(header.kind)
+        })`,
+      );
+      continue;
+    }
+    if (header.schemaVersion !== 1) {
+      fail(
+        `Recorded trace: ${rel} — recorded-trace-header.schemaVersion must be 1 (got ${
+          JSON.stringify(header.schemaVersion)
+        })`,
+      );
+    }
+    for (const field of RECORDED_TRACE_REQUIRED_FIELDS) {
+      const value = header[field];
+      if (
+        value === undefined ||
+        value === null ||
+        (typeof value === "string" && value.length === 0)
+      ) {
+        fail(
+          `Recorded trace: ${rel} — recorded-trace-header missing required field '${field}'`,
+        );
+      }
+    }
+  }
+
+  // Best-effort recency hint: if `git diff --name-only HEAD~1..HEAD`
+  // surfaces any of the present trace files, suggest the operator
+  // disclose the source run in their commit message. Failures here
+  // (no git, shallow clone, single-commit history, no `--allow-run`
+  // permission) are non-fatal — `make checks` keeps its narrow
+  // `--allow-read` posture by default.
+  try {
+    const perm = await Deno.permissions.query({ name: "run", command: "git" });
+    if (perm.state !== "granted") return;
+    const proc = new Deno.Command("git", {
+      args: ["diff", "--name-only", "HEAD~1..HEAD"],
+      cwd: REPO_ROOT,
+      stdout: "piped",
+      stderr: "null",
+    });
+    const out = await proc.output();
+    if (out.code !== 0) return;
+    const diff = new TextDecoder()
+      .decode(out.stdout)
+      .split("\n")
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const tracesByRel = new Map(
+      tracePaths.map((p) => [relative(REPO_ROOT, p), p]),
+    );
+    for (const rel of diff) {
+      if (!tracesByRel.has(rel)) continue;
+      const path = tracesByRel.get(rel)!;
+      let firstLine = "";
+      try {
+        firstLine = (await Deno.readTextFile(path)).split("\n")[0] ?? "";
+      } catch {
+        continue;
+      }
+      let header: Record<string, unknown> | null = null;
+      try {
+        const parsed = JSON.parse(firstLine.trim());
+        if (parsed && typeof parsed === "object") {
+          header = parsed as Record<string, unknown>;
+        }
+      } catch {
+        // Header issues already reported above; skip the recency hint.
+      }
+      const runId = header?.sourceRunId ?? "<unknown>";
+      const ts = header?.sourceTimestamp ?? "<unknown>";
+      console.log(
+        `WARN: Recorded trace updated in HEAD: ${rel} — ` +
+          `consider quoting sourceRunId='${runId}' / sourceTimestamp='${ts}' ` +
+          `in the commit message so reviewers can trace it back to the live run.`,
+      );
+    }
+  } catch {
+    // git missing or shallow checkout; the recency hint is opt-in.
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // Run all checks
 // ──────────────────────────────────────────────────────────────
 
@@ -1340,12 +2021,16 @@ await Promise.all([
   checkRfc14WorkspaceLanding(),
   checkRetiredAffectsField(),
   checkV1LayoutPaths(),
+  validateScenarioFrontmatter(),
+  checkRecordedTraceFreshness(),
 ]);
 await Promise.all([
   validateSkillFrontmatter(),
   checkSkillBodyLineCount(),
+  checkSkillCriticalPath(),
   checkSkillDescriptionLength(),
   checkSkillArgumentHint(),
+  checkSlashSkillInvocationsUsePositionals(),
   checkSkillNoLicense(),
   checkSkillReferences(),
   checkSkillVariables(),

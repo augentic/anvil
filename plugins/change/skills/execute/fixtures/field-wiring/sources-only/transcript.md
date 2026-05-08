@@ -1,6 +1,6 @@
 # sources-only — `/change:execute` resolves a single source key
 
-The plan entry `user-registration` declares `sources: [monolith]` and a description with no delta-targeting intent. `/change:execute` looks up `monolith` in the plan's top-level `sources` map, finds the local path `/path/to/legacy-codebase`, and passes the pair through to `/spec:define` as a single `--source` flag.
+The plan entry `user-registration` declares `sources: [monolith]` and a description with no delta-targeting intent. `/change:execute` looks up `monolith` in the plan's top-level `sources` map, finds the local path `/path/to/legacy-codebase`, and passes the pair through to `/spec:define` as a single `source` flag.
 
 ## Resolution trace
 
@@ -21,7 +21,7 @@ resolve "monolith":
 Contents of `invocation.txt`:
 
 ```text
-/spec:define user-registration --source monolith=/path/to/legacy-codebase
+/spec:define user-registration source monolith=/path/to/legacy-codebase
 ```
 
 ## Rendered define step

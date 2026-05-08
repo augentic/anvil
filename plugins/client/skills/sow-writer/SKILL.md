@@ -14,7 +14,7 @@ argument-hint: "<slice-dir>"
 4. Generate Services — Scope statement + In-Scope bullets, Design Inputs table, Deliverables table with placeholder costs (always include an Automated Test Suite line item) and lettered Exclusions.
 5. Generate Fees + Payment Schedule with placeholder amounts and the Other Issues block (Dependencies, Assumptions, Change Requests, Warranty).
 6. Generate Acceptance, Appendix A (verbatim from `references/sow-template.md`), and Appendix B only when test-related artifact content is available.
-7. Write Markdown to `$OUTPUT_PATH`, emit a review checklist, and optionally render a branded PDF when `--pdf` is passed.
+7. Write Markdown to `$OUTPUT_PATH`, emit a review checklist, and optionally render a branded PDF when `pdf` is passed.
 
 ## Overview
 
@@ -37,7 +37,7 @@ $SLICE_DIR  = $ARGUMENTS[0]                           # Path to Specify slice di
 $OUTPUT_PATH = $ARGUMENTS[1] OR derive_from_change_dir # Output SoW path
 $CLIENT_NAME  = $ARGUMENTS[2] OR "unknown — to be confirmed" # Client organisation name
 $COMPANY_NAME = $ARGUMENTS[3] OR "Propellerhead"             # Company name (default: Propellerhead)
-$PDF_FLAG     = "--pdf" present in $ARGUMENTS                # Optional: also generate PDF
+$PDF_FLAG     = "pdf" present in $ARGUMENTS                # Optional: also generate PDF
 ```
 
 Path derivation:
@@ -393,7 +393,7 @@ Review required:
 
 ### Step 12: Generate PDF (Optional)
 
-If `$PDF_FLAG` is set (`--pdf` was provided):
+If `$PDF_FLAG` is set (`pdf` was provided):
 
 1. Use Python with `reportlab` to create a branded PDF from the generated Markdown:
 

@@ -6,7 +6,7 @@ On the next startup, self-heal:
 
 1. Scans `plan.yaml`, finds `checkout-api` with `status: in-progress`.
 2. Reads `.specify/slices/checkout-api/.metadata.yaml`. Classifies `outcome.outcome == failure` → drop-and-fail path.
-3. Runs `/spec:drop checkout-api --reason "<outcome.summary>"` to archive the partial artifacts (idempotent against an already- dropped slice; in this fixture the slice dir is still active so the drop actually runs).
+3. Runs `/spec:drop checkout-api reason "<outcome.summary>"` to archive the partial artifacts (idempotent against an already- dropped slice; in this fixture the slice dir is still active so the drop actually runs).
 4. Runs `specify change plan transition checkout-api failed --reason "<outcome.summary>"`. The `--reason` string is byte-identical to `outcome.summary` in `metadata.yaml`; `plan.yaml.after`'s `status-reason` pins that equality.
 5. Appends one `type: recovery` entry to `journal.yaml` (see `journal.yaml.after`); the three pre-existing `type: failure` entries the phase wrote during its verify-repair loop are preserved unchanged.
 6. Emits exactly one diagnostic line and falls through to step 4 of the supervised run.

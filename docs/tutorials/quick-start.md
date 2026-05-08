@@ -1,6 +1,6 @@
 # Quick Start (5 Minutes)
 
-This gets you from zero to a merged change with no explanation. For the "why" behind each step, see [Your First Change](first-change.md).
+This gets you from zero to a merged slice with no explanation. For the "why" behind each step, see [Your First Slice](first-change.md).
 
 **Prerequisites:** [Cursor, Augentic plugins, and the `specify` CLI installed](../orientation/prerequisites.md).
 
@@ -36,7 +36,7 @@ Specify Initialized
 <summary>Expected output</summary>
 
 ```text
-Change created: add-greeting-endpoint
+Slice created: add-greeting-endpoint
 
 Generating artifacts...
   ✓ proposal.md
@@ -44,7 +44,7 @@ Generating artifacts...
   ✓ design.md
   ✓ tasks.md
 
-Change defined. Run /spec:build to implement.
+Slice defined. Run /spec:build to implement.
 ```
 
 </details>
@@ -95,6 +95,6 @@ Your project now has a baseline specification at `.specify/specs/`. Future chang
 
 **Next steps:**
 
-- [Your First Change](first-change.md) -- understand what just happened and why each artifact exists.
+- [Your First Slice](first-change.md) -- understand what just happened and why each artifact exists.
 - [Iterating on a Baseline](iterating-on-baseline.md) -- modify an existing capability with delta specs.
 - [Quick Reference Card](../reference/quick-reference.md) -- all skills and commands on one page.
