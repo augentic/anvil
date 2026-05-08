@@ -25,11 +25,11 @@ Specify owns the workflow semantics across those layers: intent becomes artifact
 - **Optimize for local first, cloud later.** `/change:execute loop` remains the proving ground, but plan locks, journals, phase outcomes, workspace state, review results, and recovery records should be durable enough for hosted execution.
 - **Prove the whole loop.** Acceptance coverage should exercise realistic multi-repo flows, not just isolated command behavior.
 - **Abstract external systems at the boundary.** Forges, catalogs, agents, and hosted runners should integrate through narrow adapters.
-- **Keep enforcement surfaces distinct.** `specify check` is the framework-repo linter; `specify review` is the consumer-project reviewer. They may share rule ids and finding shape, but not scanner lifecycle or inputs.
+- **Keep enforcement surfaces distinct.** Reserve separate enforcement surfaces for framework-repo linting and consumer-project review. The planned `specify check` linter and `specify review` reviewer may share rule ids and finding shape, but not scanner lifecycle or inputs.
 
-## Ordered Backlog
+## Sequenced Roadmap
 
-Items are ordered by intended sequencing. Earlier items unblock later ones unless noted otherwise.
+Items are ordered by intended sequencing. Earlier items unblock later ones unless noted otherwise. Command examples in this roadmap are target surfaces unless the item explicitly says the command is already implemented.
 
 ### Near Term
 
@@ -39,10 +39,10 @@ Items are ordered by intended sequencing. Earlier items unblock later ones unles
 **Covers:** plan generation, registry routing, dependent slice execution, branch preparation, workspace sync, residue and baseline commit behavior, push and PR/MR handoff, and finalize after external merge.
 **Output:** an automated or semi-automated suite against local fixture repositories with fake or recorded forge behavior. Recovery paths land in *Multi-repo acceptance suite expansion*.
 
-#### `AGENTS.md` generation under `specify context`
+#### `AGENTS.md` generation under proposed `specify context`
 
 **Goal:** Generate concise, deterministic, refreshable repository context.
-**Surface:**
+**Target surface:**
 
 ```bash
 specify context generate
@@ -50,7 +50,7 @@ specify context check
 ```
 
 **Inputs:** Specify project metadata, capability references, repo inspection, and registry data.
-**Output:** short `AGENTS.md` guidance covering runtime, tests, linting, navigation, conventions, boundaries, and dependencies. `specify context check` warns when repo changes imply a refresh.
+**Output:** short `AGENTS.md` guidance covering runtime, tests, linting, navigation, conventions, boundaries, and dependencies. The proposed `specify context check` warns when repo changes imply a refresh.
 **Why now:** High direct user value, and it unblocks stale-context checks in `specify review`.
 
 #### Codex rule format
@@ -76,27 +76,27 @@ codex/
 
 #### Cross-project compatibility classification
 
-**Goal:** Turn cross-project contract warnings into a classified compatibility report.
+**Goal:** Reconcile the retired consumer-compatibility vocabulary with the current contract validation gate, then expose a classified compatibility report.
 **Seed:** `plugins/contract/references/cross-project-compatibility.md` and its `change-kind` vocabulary.
 **Classification:** `additive`, `breaking`, `ambiguous`, or `unverifiable`.
-**Surface:**
+**Target surface:**
 
 ```bash
 specify compatibility check
 specify compatibility report --change <name>
 ```
 
-**Scope:** Contract-first, dependency-aware, and additive to existing warning emitters. Change-level gates land later.
+**Scope:** Contract-first and dependency-aware. This does not replace the current `specify tool run contract` baseline validation gate; it adds a consumer-impact classifier after the stale cross-project reference docs are reconciled. Change-level gates land later.
 
 #### RFC-13 rename-tail cleanup
 
 **Goal:** Remove transition shims before they become load-bearing.
-**Output:** a release that deletes `specify migrate slice-layout`, `specify migrate change-noun`, and the `/spec:plan` / `/spec:execute` deprecation shims from `specify-cli` and `plugins/spec/skills/`.
+**Output:** a release that deletes the `specify migrate slice-layout` and `specify migrate change-noun` CLI shims from `specify-cli`, and deletes the `/spec:plan` / `/spec:execute` deprecation shims from `plugins/spec/skills/`.
 
 #### RFC-5: `specify check` framework linter port
 
 **Goal:** Port `scripts/checks.ts` from Deno into a Rust `specify-check` crate exposed as `specify check`.
-**Why now:** Removes Deno from CI, reuses `specify-schema` parsers, and turns reserved RFC-5/RFC-15 rule ids into a working scanner.
+**Why now:** Removes Deno from CI, reuses CLI schema parsers, and turns reserved framework-lint rule ids into a working scanner.
 **Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
 
 #### RFC-4 Option 1: typed skill expression
@@ -120,7 +120,7 @@ specify compatibility report --change <name>
 #### CI-native `specify review`
 
 **Goal:** Continuously review consumer projects.
-**Surface:**
+**Target surface:**
 
 ```bash
 specify review
@@ -135,7 +135,7 @@ specify review --format json
 
 **Goal:** Block producer slices from reaching `done` while breaking consumer follow-up is unaccounted for.
 **Answers:** whether consumer plan entries exist, whether producer completion is allowed, and what SemVer or release impact is implied.
-**Surface:**
+**Target surface:**
 
 ```bash
 specify change plan impact --change <name>
@@ -144,7 +144,7 @@ specify change plan impact --change <name>
 #### Catalog import: Backstage adapter
 
 **Goal:** Enrich Specify planning from external catalogs without making Specify a developer portal.
-**Surface:**
+**Target surface:**
 
 ```bash
 specify registry import backstage
@@ -169,7 +169,7 @@ specify registry diff <source>
 
 **Goal:** Measure workflow performance, failure modes, and model/tool usage without requiring hosted infrastructure.
 **Events include:** command/version, project/capability, slice or plan entry, phase start/finish, validation result, invoked skill, review findings, recovery attempts, human intervention points, and model/tool metadata when available.
-**Surface:**
+**Target surface:**
 
 ```bash
 specify status --format json
@@ -183,7 +183,7 @@ specify events export
 
 **Goal:** Support branch transport, PR/MR creation, and finalize beyond GitHub CLI.
 **Adapter covers:** remote discovery, auth checks, branch existence, push permissions, PR/MR create-or-update, CI/mergeability status, merged-state verification, and provider links.
-**Surface:**
+**Target surface:**
 
 ```bash
 specify forge doctor
@@ -203,7 +203,7 @@ specify change finalize --forge github
 
 **Goal:** Run Specify plans durably in the background while preserving local workflow semantics.
 **Requires:** sandboxed workspace clones, durable lock ownership, resumable agent sessions, serialized phase outcomes and journals, human approval gates, controlled push/PR creation, deterministic recovery, and parity with `/change:execute loop`.
-**Surface:**
+**Target surface:**
 
 ```bash
 specify execute submit
