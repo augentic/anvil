@@ -40,7 +40,7 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 **Goal:** Prove a realistic multi-slice, multi-repo flow.
 **Covers:** plan generation, registry routing, dependent slice execution, branch preparation, workspace sync, residue and baseline commit behavior, push and PR/MR handoff, and finalize after external merge.
 **Output:** an automated or semi-automated suite against local fixture repositories with fake or recorded forge behavior. Recovery paths land in *Multi-repo acceptance suite expansion*.
-**Executable proof:** `specify-cli/tests/cross_repo.rs`.
+**Executable proof:** `specify-cli` repo's `tests/cross_repo.rs`.
 
 #### RM-02: `AGENTS.md` generation under proposed `specify context`
 
