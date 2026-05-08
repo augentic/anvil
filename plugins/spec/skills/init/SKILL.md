@@ -1,6 +1,6 @@
 ---
 name: specify-init
-description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, decides between a regular single-project init and a registry-only platform hub, then invokes `specify init <capability>` (regular) or `specify init --hub` (hub) to scaffold `.specify/` and write `project.yaml`. Use when setting up a new project for spec-driven development.
+description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, decides between a regular single-project init and a registry-only platform hub, then invokes `specify init <capability>` (regular) or `specify init --hub` (hub) to scaffold `.specify/`, write `project.yaml`, and generate starter `AGENTS.md` context when absent. Use when setting up a new project for spec-driven development.
 argument-hint: "<capability>"
 ---
 
@@ -10,7 +10,7 @@ argument-hint: "<capability>"
 2. **Check existing initialization** — detect `.specify/project.yaml`, ask before reinitializing, and treat reinit as an upgrade path owned by the CLI.
 3. **Choose topology** — decide regular project vs registry-only platform hub; capability is required for regular projects and forbidden in hub mode.
 4. **Resolve metadata** — choose `$CAPABILITY`, `$PROJECT_NAME`, and optional `$DOMAIN`; never pre-populate `.specify/.cache/`.
-5. **Invoke `specify init`** — run either `specify init "$CAPABILITY" ...` or `specify init --hub ...`; surface non-zero CLI errors without hand-rolling scaffold files.
+5. **Invoke `specify init`** — run either `specify init "$CAPABILITY" ...` or `specify init --hub ...`; let the CLI scaffold files and generate starter context, and surface non-zero CLI errors without hand-rolling scaffold files.
 6. **Offer baseline extraction** — for regular projects with code indicators, ask whether to create `initial-baseline`; skip this entirely for hubs.
 7. **Summarize the correct shape** — report regular vs hub outputs, next actions, and any baseline-extraction handoff.
 
@@ -24,7 +24,7 @@ argument-hint: "<capability>"
 $CAPABILITY     = $ARGUMENTS[0]
 ```
 
-I'll ensure the `specify` CLI is available, decide whether this is a regular single-project init or a registry-only platform hub, then invoke `specify init <capability>` (regular) or `specify init --hub` (hub) to install a starter `project.yaml`.
+I'll ensure the `specify` CLI is available, decide whether this is a regular single-project init or a registry-only platform hub, then invoke `specify init <capability>` (regular) or `specify init --hub` (hub) to install a starter `project.yaml` and generated `AGENTS.md` context.
 
 ---
 
@@ -126,10 +126,12 @@ A regular project must declare a capability; a hub must declare `--hub` and neve
 
    The CLI writes:
 
-   - **Regular** — `.specify/{changes,specs,archive,.cache}/`, `.specify/project.yaml` with `capability:` set to the resolved value and one empty `rules:` entry per `pipeline.define` brief, the resolved capability manifest cached under `.specify/.cache/`, `.specify/.cache/` upserted into `.gitignore`, and `specify-version` recorded.
-   - **Hub** — `.specify/project.yaml` with `hub: true` only (the `capability:` field is **omitted** — its absence is the sentinel that disables capability resolution on the hub itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `change.md` from the canonical template named after `$PROJECT_NAME`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`. Phase-pipeline directories (`changes/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines.
+   - **Regular** — `.specify/{slices,specs,archive,.cache}/`, `.specify/project.yaml` with `capability:` set to the resolved value and one empty `rules:` entry per `pipeline.define` brief, the resolved capability manifest cached under `.specify/.cache/`, `.specify/.cache/` upserted into `.gitignore`, `specify-version` recorded, and generated root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent.
+   - **Hub** — `.specify/project.yaml` with `hub: true` only (the `capability:` field is **omitted** — its absence is the sentinel that disables capability resolution on the hub itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`; generated hub-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands.
 
-   For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `capability-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, and `hub`. Normal operator-facing examples should use text output.
+   If root `AGENTS.md` already exists, `specify init` preserves it byte-for-byte and prints `AGENTS.md already present; skipping context generate` in text mode. Init inside `.specify/workspace/<peer>/` also skips nested context generation.
+
+   For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `capability-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, `hub`, `context-generated`, `context-skipped`, and optional `context-skip-reason`. Normal operator-facing examples should use text output.
 
    On non-zero exit, surface the CLI error. Do not attempt a prose fallback. Hub mode in particular refuses to scaffold over an existing `.specify/` directory — if the user wants to convert an existing single-repo project into a hub, they remove `.specify/` first.
 
@@ -137,13 +139,14 @@ A regular project must declare a capability; a hub must declare `--hub` and neve
 
    For a **regular** init, tell the user:
    - "Specify initialized. Config written to `.specify/project.yaml`."
+   - "Generated starter context at `AGENTS.md`; refresh it later with `specify context generate`."
    - "Edit the `domain` field to describe your project's tech stack, architecture, and testing approach."
    - "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/<capability>/capability.yaml`."
 
    For a **hub** init, tell the user:
    - "Specify initialized as a registry-only platform hub. Config written to `.specify/project.yaml` (`hub: true`, no `capability:`)."
+   - "Generated hub context at `AGENTS.md`; refresh it later with `specify context generate`."
    - "Add code projects to `registry.yaml` once they exist. The hub starts with `projects: []`."
-   - "Edit `change.md` to frame the first initiative this hub will drive."
 
    Do NOT print "Next steps" yet — Step 7 determines which output to show.
 
@@ -181,7 +184,9 @@ A regular project must declare a capability; a hub must declare `--hub` and neve
 
 **Capability**: $CAPABILITY
 **Config**: .specify/project.yaml
-**Changes**: .specify/slices/
+**Context**: AGENTS.md
+**Context lock**: .specify/context.lock
+**Slices**: .specify/slices/
 **Baseline specs**: .specify/specs/
 
 Next steps:
@@ -196,6 +201,7 @@ Next steps:
 
 **Capability**: $CAPABILITY
 **Config**: .specify/project.yaml
+**Context**: AGENTS.md
 **Baseline change**: .specify/slices/initial-baseline/
 
 Next steps:
@@ -212,12 +218,13 @@ Next steps:
 
 **Topology**: registry-only hub (RFC-9 §1D)
 **Config**: .specify/project.yaml (`hub: true`; `capability:` omitted)
+**Context**: AGENTS.md
+**Context lock**: .specify/context.lock
 **Registry**: registry.yaml (`version: 1`, `projects: []`)
-**Initiative brief**: change.md
 
 Next steps:
-1. Add registered projects to `registry.yaml` (hand-edit, or `specify registry add` once that verb lands)
-2. Edit `change.md` to frame the first initiative
+1. Add registered projects with `specify registry add`
+2. Run `specify change create <name>` to frame the first change
 3. Run `/change:plan <name>` to author a plan, then `/change:execute loop` to drive it
 ```
 
@@ -227,6 +234,7 @@ Next steps:
 - Do not overwrite an existing project.yaml without user confirmation
 - For regular projects, pass the capability identifier (bare name or URL) as the **first positional argument** to `specify init`; do not hand-populate `.specify/.cache/`
 - For hubs, never populate `.specify/.cache/` and never resolve a capability — the absence of `capability:` (paired with `hub: true`) disables phase pipelines on the hub itself, so there is nothing to cache
+- Do not hand-roll `AGENTS.md` during init. The CLI generates it when absent, preserves an existing root `AGENTS.md`, and writes `.specify/context.lock` for `specify context check`.
 - Never combine a capability positional with `--hub`; the CLI rejects that combination with `init-requires-capability-or-hub`
 - Hub init refuses to run over an existing `.specify/`; if the user wants to convert a regular project into a hub, they must remove `.specify/` first
 - If the CLI exits non-zero, surface the error and stop; do not hand-roll the scaffold

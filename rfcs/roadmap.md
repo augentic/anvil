@@ -1,7 +1,7 @@
 # Specify Roadmap
 
 > Status: Draft
-> Source: Review of Cloudflare's internal AI engineering stack, especially the platform, knowledge, and enforcement layers described in <https://blog.cloudflare.com/internal-ai-engineering-stack/>.
+> Source: Review of Cloudflare's internal AI engineering stack, especially the platform, knowledge, and enforcement layers described in [https://blog.cloudflare.com/internal-ai-engineering-stack/](https://blog.cloudflare.com/internal-ai-engineering-stack/).
 
 ## Thesis
 
@@ -45,16 +45,16 @@ specify context generate
 specify context check
 ```
 
-**Inputs:** Specify project metadata, capability references, repo inspection, and registry data.
-**Output:** short `AGENTS.md` guidance covering runtime, tests, linting, navigation, conventions, boundaries, and dependencies. The proposed `specify context check` warns when repo changes imply a refresh.
+**Inputs:** Specify project metadata, capability references, repo inspection, and registry data.  
+**Output:** short `AGENTS.md` guidance covering runtime, tests, linting, navigation, conventions, boundaries, and dependencies. The proposed `specify context check` warns when repo changes imply a refresh.  
 **Why now:** High direct user value, and it unblocks stale-context checks in `specify review`.
 
 #### RM-03: Codex rule format
 
 **Goal:** Give generators and reviewers stable, citable engineering rules.
-**Seed:** `plugins/references/review-checks.md` and its existing `UNI-*` catalogue.
+**Seed:** `plugins/references/review-checks.md` and its existing `UNI-`* catalogue.
 **Each rule carries:** stable id, concise trigger, normative guidance, examples or references where useful, and applicability metadata.
-**First cut:** reserve namespaces such as `RUST-*`, `IFACE-*`, and `SEC-*`; add filtering metadata; migrate the seed catalogue without breaking existing ids.
+**First cut:** reserve namespaces such as `RUST-`*, `IFACE-`*, and `SEC-*`; add filtering metadata; migrate the seed catalogue without breaking existing ids.
 **Open:** storage location: `.specify/codex/`, repo-root `codex/`, or shared catalog.
 
 ```text
@@ -63,6 +63,12 @@ codex/
   interfaces/compatibility.md
   security/secrets.md
 ```
+
+**Questions**:
+
+- What does the codex rule format look like? Can you point me to an example?
+- Where should codex rules live: `.specify/codex/`, repo-root `codex/`, or a shared catalog?
+- Which `specify review` checks are deterministic CLI logic versus model-assisted analysis?
 
 #### RM-04: `specify review` finding schema
 
@@ -264,3 +270,4 @@ specify execute resume <run-id>
 - What compatibility guarantees should capability authors provide across capability and declared-tool versions?
 - How much telemetry should emit by default, and what requires explicit opt-in?
 - What approval model is required before hosted execution can push branches or open pull requests?
+

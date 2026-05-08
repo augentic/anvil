@@ -19,6 +19,8 @@ Open your project in Cursor and type in the agent chat:
 Specify Initialized
   Capability: omnia@latest
   Project config: .specify/project.yaml
+  Agent context: AGENTS.md
+  Context lock: .specify/context.lock
   Cache: .specify/.cache/omnia/
 ```
 

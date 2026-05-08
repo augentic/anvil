@@ -14,7 +14,7 @@ This is the primary workflow. You initialise a project once, then repeat the def
 
 | Skill | Purpose | Reads | Writes |
 |-------|---------|-------|--------|
-| [/spec:init](init.md) | One-time project setup | -- | `.specify/`, `project.yaml`, cache |
+| [/spec:init](init.md) | One-time project setup | -- | `.specify/`, `project.yaml`, cache, `AGENTS.md` |
 | [/spec:define](define.md) | Generate all artifacts for a new change | Capability briefs, baseline specs | `proposal.md`, `spec.md`, `composition.yaml`*, `design.md`, `tasks.md` |
 | [/spec:build](build.md) | Implement tasks from a defined change | All artifacts, build brief | Source code, task checkmarks |
 | [/spec:merge](merge.md) | Merge completed slice into baseline | Change specs + composition*, baseline | Updated baseline, archived change |

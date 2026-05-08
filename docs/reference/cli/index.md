@@ -43,6 +43,7 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | [specify change](change.md) | Manage the operator-authored change brief and finalize landed changes | Layers 3–4 closure |
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
 | [specify capability](capability.md) | Capability resolution and brief pipeline queries | Capability infrastructure |
+| [specify context](context.md) | Generate and check refreshable `AGENTS.md` guidance | Agent context |
 | [specify tool](tool.md) | Resolve, cache, and run declared WASI helper tools | Deterministic extension runner |
 | [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |
 | [specify init](init.md) | Project scaffold | One-time setup |

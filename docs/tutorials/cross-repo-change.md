@@ -58,11 +58,13 @@ This tutorial uses the [platform-hub topology](../explanation/platform-repo.md) 
 
 ```text
 shop-platform/                              # the hub repo (this tutorial's working directory)
+├── AGENTS.md                               # generated hub context
 ├── registry.yaml                           # version: 1, projects: [shop-backend, shop-mobile]
 ├── change.md                           # operator brief for `oauth-login`
 ├── plan.yaml                               # the plan authored by /change:plan
 └── .specify/
     ├── project.yaml                        # { hub: true, name: shop-platform } (capability: omitted)
+    ├── context.lock                        # context freshness fingerprint
     ├── plans/oauth-login/                  # discovery, workspace, proposal markdown
     ├── archive/                            # finalised changes (after Step 9)
     └── workspace/
@@ -82,7 +84,7 @@ git remote add origin git@github.com:org/shop-platform.git
 specify init --hub --name shop-platform
 ```
 
-In hub mode, **no positional** capability argument is passed — `--hub` is the discriminator. Combining a capability positional with `--hub` is rejected with `init-requires-capability-or-hub`. `--name` must be kebab-case because the CLI bakes it into `change.md`'s frontmatter.
+In hub mode, **no positional** capability argument is passed — `--hub` is the discriminator. Combining a capability positional with `--hub` is rejected with `init-requires-capability-or-hub`. `--name` must be kebab-case because later change commands use it when scaffolding operator-facing artifacts.
 
 <details>
 <summary>Expected output</summary>
@@ -102,14 +104,15 @@ The hub now has:
 
 ```text
 shop-platform/
+├── AGENTS.md         # generated hub context
 ├── registry.yaml     # version: 1, projects: []
-├── change.md     # canonical template, name: shop-platform
 ├── .gitignore        # upserts .specify/.cache/ and .specify/workspace/
 └── .specify/
-    └── project.yaml  # hub: true (capability: omitted)
+    ├── project.yaml  # hub: true (capability: omitted)
+    └── context.lock  # context freshness fingerprint
 ```
 
-`specify init --hub` refuses to run when `.specify/` already exists. To convert an existing single-repo project into a hub, remove `.specify/` first.
+`specify init --hub` does not create `change.md` or `plan.yaml`; those are minted later by `specify change create` and `specify change plan create`. It refuses to run when `.specify/` already exists. To convert an existing single-repo project into a hub, remove `.specify/` first.
 
 > **Why hub mode?** A hub gets `hub: true` (the validation flag that rejects any registry entry whose `url` is `.`) and **omits** `capability:` (the absence of which is what disables phase pipelines on the hub itself). Together these pin the platform repo's identity unambiguously. See [Platform repo topologies](../explanation/platform-repo.md) for the full contract.
 
@@ -471,7 +474,8 @@ A reviewer (or an operator stepping through this tutorial as an integration test
 | After | Command | Expect |
 |---|---|---|
 | Step 1 | `cat .specify/project.yaml` | A line containing `hub: true` and **no** `capability:` line. |
-| Step 1 | `ls .specify/` | `project.yaml`, `registry.yaml`, `change.md`. **No** `changes/` or `specs/` (phase pipelines disabled). |
+| Step 1 | `ls .specify/` | `project.yaml`, `context.lock`. **No** `slices/`, `specs/`, or `.cache/` (phase pipelines disabled). |
+| Step 1 | `test -f AGENTS.md && specify context check` | Exit 0. |
 | Step 2 | `specify registry validate` | Exit 0; no diagnostics. |
 | Step 2 | `specify registry show` | `version: 1` and two `projects[]` entries with descriptions. |
 | Step 3 | `head -10 change.md` | Frontmatter `name: oauth-login` and the documentation `inputs:` entry. |

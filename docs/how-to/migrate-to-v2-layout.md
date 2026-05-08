@@ -9,7 +9,7 @@ The v2 layout (specify-cli `0.2.0`) moves the four operator-facing platform arti
 | Operator brief | `.specify/initiative.md` | `initiative.md`, then `change.md` after `specify migrate change-noun` |
 | API contracts | `.specify/contracts/` | `contracts/` |
 
-`.specify/` continues to hold framework-managed state — `project.yaml`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`. The boundary is "operator artifacts at root, framework state under `.specify/`". See [Decision Log](../explanation/decision-log.md) for the rationale.
+`.specify/` continues to hold framework-managed state — `project.yaml`, `context.lock`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`. The boundary is "operator artifacts and generated context at root, framework state under `.specify/`". See [Decision Log](../explanation/decision-log.md) for the rationale.
 
 ## When you'll see this
 

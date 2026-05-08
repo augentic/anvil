@@ -15,7 +15,7 @@ specify migrate change-noun [--dry-run] [--format json]
 The v2 layout (specify-cli `0.2.0`) split Specify's on-disk shape along a clear boundary:
 
 - **Operator artifacts** (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at the repo root.
-- **Framework state** (`project.yaml`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`.
+- **Framework state** (`project.yaml`, `context.lock`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`.
 
 `specify migrate v2-layout` walks the legacy platform artifact paths under `.specify/` and renames each one in place to its v2 destination at the repo root. It is the canonical recovery action when any other CLI verb refuses with `Error::LegacyLayout` (stable code `legacy-layout`, exit 1).
 
@@ -102,7 +102,7 @@ my-project/
     └── slices/
 ```
 
-`project.yaml` stays under `.specify/` (it is framework configuration, not operator content). The `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and `plan.lock` paths under `.specify/` are likewise untouched.
+`project.yaml` stays under `.specify/` (it is framework configuration, not operator content). The `context.lock`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and `plan.lock` paths under `.specify/` are likewise untouched.
 
 ## See also
 
