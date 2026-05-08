@@ -35,7 +35,7 @@ Then work through a slice:
 /spec:merge
 ```
 
-For larger efforts, `/change:plan` authors `plan.yaml` and `/change:execute --loop` drives each planned slice through the same define-build-merge loop. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, operator-owned PR merge, and `specify change finalize`. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
+For larger efforts, `/change:plan` authors `plan.yaml` and `/change:execute loop` drives each planned slice through the same define-build-merge loop. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, operator-owned PR merge, and `specify change finalize`. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
 
 ## Plugins
 

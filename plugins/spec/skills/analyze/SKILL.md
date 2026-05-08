@@ -3,7 +3,7 @@ name: specify-analyze
 description: |
   Plan-time capability inference for both legacy code and documentation
   inputs. Emits capability summaries into discovery.md — not full specs.
-  Branches internally on --kind; per-kind clustering / extraction prompts
+  Branches internally on the kind positional; per-kind clustering / extraction prompts
   are capability-owned. Use when the plan-time discovery brief needs a
   capability-level inventory of a source before propose slices it.
 argument-hint: "<input-path> <output-dir>"
@@ -13,7 +13,7 @@ argument-hint: "<input-path> <output-dir>"
 
 ## Critical Path (Quick Reference)
 
-1. **Validate invocation** — require a local `$INPUT_PATH`, writable `$OUTPUT_DIR`, and `--kind` exactly `legacy-code` or `documentation`; fail before partial writes.
+1. **Validate invocation** — require a local `$INPUT_PATH`, writable `$OUTPUT_DIR`, and kind exactly `legacy-code` or `documentation`; fail before partial writes.
 2. **Materialize remotes outside analyze** — if the source is remote, use the guarded clone snippet first and pass the resulting local path as `$INPUT_PATH`.
 3. **Resolve capability prompt** — run capability resolution and load `plugins/change/skills/plan/briefs/<capability>/analyze.md`; never embed clustering heuristics in this SKILL.
 4. **Emit capability summaries only** — append one sorted capability block per inferred capability to `$DISCOVERY`; never produce full `specs/` or `design.md`.
@@ -30,16 +30,16 @@ The rationale for the two-skill split: analyze produces capability summaries at 
 ```text
 $INPUT_PATH  = $ARGUMENTS[0]
 $OUTPUT_DIR  = $ARGUMENTS[1]
-$KIND        = $ARGUMENTS --kind flag value   # closed: legacy-code | documentation
-$SOURCE_KEY  = $ARGUMENTS --source-key flag value (optional)
+$KIND        = $ARGUMENTS[2]   # closed: legacy-code | documentation
+$SOURCE_KEY  = $ARGUMENTS[3]   # optional source-key
 $DISCOVERY   = $OUTPUT_DIR/discovery.md
 ```
 
-`$INPUT_PATH` is either a filesystem path to a source tree (for `--kind legacy-code`) or to a documentation bundle (for `--kind documentation`). `$OUTPUT_DIR` is the plan working directory (`.specify/plans/<initiative>/` when called from the discovery brief); the skill writes to `$DISCOVERY` under it, and — for `--kind legacy-code` only — to the structural-metadata sidecar at `$OUTPUT_DIR/analyze/<$SOURCE_KEY>/metadata.json` (see §*Structural metadata*). `$SOURCE_KEY` is optional; when supplied, the discovery brief uses it to tag this run for a specific top-level plan source.
+`$INPUT_PATH` is either a filesystem path to a source tree (for `legacy-code`) or to a documentation bundle (for `documentation`). `$OUTPUT_DIR` is the plan working directory (`.specify/plans/<initiative>/` when called from the discovery brief); the skill writes to `$DISCOVERY` under it, and — for `legacy-code` only — to the structural-metadata sidecar at `$OUTPUT_DIR/analyze/<$SOURCE_KEY>/metadata.json` (see §*Structural metadata*). `$SOURCE_KEY` is optional; when supplied, the discovery brief uses it to tag this run for a specific top-level plan source.
 
 ### Cloning a source tree
 
-`/spec:analyze` only consumes local paths. When a `--source <key>=<url>` (or any caller) needs to materialise a remote git URL into `$INPUT_PATH` first, use the following guarded clone — the inlined replacement for the retired RT clone skill:
+`/spec:analyze` only consumes local paths. When a `source <key>=<url>` (or any caller) needs to materialise a remote git URL into `$INPUT_PATH` first, use the following guarded clone — the inlined replacement for the retired RT clone skill:
 
 ```bash
 # Quote DEST and never run rm -rf without verifying the target.
@@ -51,7 +51,7 @@ Pass the resulting `$DEST` as `$INPUT_PATH` on the next `/spec:analyze` invocati
 
 ## Input kinds (closed enum)
 
-`--kind` must be exactly one of:
+`kind` must be exactly one of:
 
 | kind            | Branch                                                                |
 | --------------- | --------------------------------------------------------------------- |
@@ -93,15 +93,15 @@ Append semantics: each `/spec:analyze` invocation appends its capabilities to `$
 
 The code branch additionally writes a structural-metadata sidecar — see §*Structural metadata* below.
 
-### `--source-key` tagging
+### `source-key` tagging
 
-When `$SOURCE_KEY` is supplied, the skill carries it into `$DISCOVERY` as a top-of-block marker next to each capability it produced on this invocation (e.g. an HTML comment `<!-- source-key: <k> -->` immediately before the `### <name>` heading). For the scaffold branch the semantics stay thin: the flag is recorded, not used to rewrite `sources:` paths. Path-rewriting nuance is refined in the documentation branch and code branch once the per-kind prompts land.
+When `$SOURCE_KEY` is supplied, the skill carries it into `$DISCOVERY` as a top-of-block marker next to each capability it produced on this invocation (e.g. an HTML comment `<!-- source-key: <k> -->` immediately before the `### <name>` heading). For the scaffold branch the semantics stay thin: the positional is recorded, not used to rewrite `sources:` paths. Path-rewriting nuance is refined in the documentation branch and code branch once the per-kind prompts land.
 
 ## Structural metadata (per-source)
 
-In addition to appending capability summaries to `$DISCOVERY`, the code branch (`--kind legacy-code`) writes a small JSON sidecar capturing source-tree structural facts. The documentation branch does **not** write this sidecar — it has no code structure to measure.
+In addition to appending capability summaries to `$DISCOVERY`, the code branch (`legacy-code`) writes a small JSON sidecar capturing source-tree structural facts. The documentation branch does **not** write this sidecar — it has no code structure to measure.
 
-**Location.** `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json`, where `<plan-dir>` is `.specify/plans/<initiative-name>/` (i.e. `$OUTPUT_DIR` when the skill is invoked by the discovery brief). The `<$SOURCE_KEY>` segment matches the `--source-key` flag value; when the flag is omitted, analyze synthesises a key using the same rule as §*`--source-key` tagging*.
+**Location.** `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json`, where `<plan-dir>` is `.specify/plans/<initiative-name>/` (i.e. `$OUTPUT_DIR` when the skill is invoked by the discovery brief). The `<$SOURCE_KEY>` segment matches the `source-key` positional value; when the flag is omitted, analyze synthesises a key using the same rule as §*`source-key` tagging*.
 
 **Shape (version 1):**
 
@@ -149,7 +149,7 @@ A byte-stable output lets the propose brief cache its slicing decisions and surf
 
 ## Per-kind prompts (planning-skill-owned)
 
-The detailed clustering / extraction prompt for each `--kind` value lives under `plugins/change/skills/plan/briefs/<capability>/analyze.md` (RFC-13 §3.11 moved planning briefs out of the capability manifest into the change-planning skill):
+The detailed clustering / extraction prompt for each `kind` value lives under `plugins/change/skills/plan/briefs/<capability>/analyze.md` (RFC-13 §3.11 moved planning briefs out of the capability manifest into the change-planning skill):
 
 - [`plugins/change/skills/plan/briefs/omnia/analyze.md`](../../../change/skills/plan/briefs/omnia/analyze.md) — Omnia's per-kind prompt (documentation branch and code branch).
 - Other capabilities ship their own variant alongside under `plugins/change/skills/plan/briefs/<capability>/`.
@@ -167,7 +167,7 @@ The detailed clustering / extraction prompt for each `--kind` value lives under 
 
 ## Error handling
 
-- **Unknown `--kind`** — hard exit. The diagnostic names the closed enum and points at [`../../../change/skills/plan/SKILL.md` §*Input kinds*](../../../change/skills/plan/SKILL.md).
+- **Unknown `kind`** — hard exit. The diagnostic names the closed enum and points at [`../../../change/skills/plan/SKILL.md` §*Input kinds*](../../../change/skills/plan/SKILL.md).
 - **Missing `$INPUT_PATH`** — hard exit; no placeholder entry.
 - **Malformed brief output** (missing required field, non-enum confidence, non-string summary) — halt with a diagnostic that names the offending capability and the brief path; do not write a partially-valid `$DISCOVERY`.
 - **Metadata sidecar on the documentation branch** — hard guardrail, not a runtime error: `$KIND = documentation` MUST NOT write `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json`. The documentation branch has no code structure to measure, so the slot stays absent for doc inputs.

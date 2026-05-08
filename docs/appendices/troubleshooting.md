@@ -144,7 +144,7 @@ If self-heal itself fails, manually resolve:
 
 ### Execution stuck
 
-**Symptom:** `/change:execute --loop` exits with `stuck`.
+**Symptom:** `/change:execute loop` exits with `stuck`.
 
 **Cause:** No `pending` entry has all dependencies satisfied. Typically because a dependency is `failed` or `blocked`, or a structural problem in the plan (cycle, unreachable entry) is preventing progress.
 
@@ -159,7 +159,7 @@ If self-heal itself fails, manually resolve:
 
 ### Registry amendment required
 
-**Symptom:** `/change:execute --loop` halts with a `registry-amendment-required` outcome on the offending slice. The slice is transitioned to `blocked` and the proposal payload is written to its `journal.yaml`.
+**Symptom:** `/change:execute loop` halts with a `registry-amendment-required` outcome on the offending slice. The slice is transitioned to `blocked` and the proposal payload is written to its `journal.yaml`.
 
 **Cause:** A phase skill (typically `/spec:extract` or a build brief) discovered that the slice targets a capability that does not fit any existing registry project, and proposed a new project. Introduced by RFC-9 Section 2B; the framework never auto-modifies the registry.
 
@@ -287,7 +287,7 @@ specify registry add <existing-name> \
 
 ## Plan doctor diagnostics
 
-`specify change plan doctor` (RFC-9 Section 4B) is the first triage step when `/change:execute --loop` reports `stuck`. It runs every check `validate` runs, then layers four health diagnostics.
+`specify change plan doctor` (RFC-9 Section 4B) is the first triage step when `/change:execute loop` reports `stuck`. It runs every check `validate` runs, then layers four health diagnostics.
 
 ### `cycle-in-depends-on`
 
@@ -379,7 +379,7 @@ specify registry add <existing-name> \
 
 ### Cross-project contract warnings on the merge transcript
 
-**Symptom:** `/change:execute --loop`'s merge transcript shows `cross-project-warning:` entries, and the merged slice's `journal.yaml` carries the same warnings.
+**Symptom:** `/change:execute loop`'s merge transcript shows `cross-project-warning:` entries, and the merged slice's `journal.yaml` carries the same warnings.
 
 **Cause:** RFC-9 Section 3B post-merge cross-project contract validation. After a producer merges, the driver walks `contracts.produces`, finds consumer projects via `contracts.consumes`, and runs the format-appropriate `/contract:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone — `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas. Any incompatibilities surface as warnings. Warnings never halt the loop -- the operator triages.
 

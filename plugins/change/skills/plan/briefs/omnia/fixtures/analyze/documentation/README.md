@@ -12,7 +12,7 @@ Worked example for the documentation branch of [Omnia `analyze.md`](../../../ana
 Run from this directory:
 
 ```
-/spec:analyze --kind documentation ./inputs/ ./expected/
+/spec:analyze documentation ./inputs/ ./expected/
 ```
 
 The brief walks `./inputs/`, extracts two capabilities (`drain-backpressure-queue`, `rotate-upstream-ingest-key` — alphabetical), emits constraints and open questions into the two appendix blocks, and writes the merged result to `./expected/discovery.md`.

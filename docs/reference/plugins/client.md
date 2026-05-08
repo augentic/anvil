@@ -11,7 +11,7 @@ Translate Specify artifacts into a client-facing Statement of Work document.
 **Synopsis:**
 
 ```text
-/client:sow-writer <slice-dir> [--output <path>] [--client <name>] [--company <name>] [--pdf]
+/client:sow-writer <slice-dir> [output <path>] [client <name>] [company <name>] [pdf]
 ```
 
 **Inputs:**

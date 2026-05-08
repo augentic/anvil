@@ -26,10 +26,10 @@ The skill is OpenAPI-only. Shared payload schemas under `contracts/schemas/` are
 /contract:openapi <slice-dir>
 ```
 
-Optional internal flags (recognised by the verifier sibling):
+Optional internal positionals (recognised by the verifier sibling):
 
-- `--mode single` — default. Validate the slice's OpenAPI artefacts in isolation against the specs and baseline. Read-only, markdown report.
-- `--mode cross-project` — invoked by `/change:execute` after a producer's contract change merges. Compares the merged OpenAPI document against each consumer's tier-2 workspace clone. Read-only, structured YAML report. See `verifier.md` §Cross-project mode.
+- `mode single` — default. Validate the slice's OpenAPI artefacts in isolation against the specs and baseline. Read-only, markdown report.
+- `mode cross-project` — invoked by `/change:execute` after a producer's contract change merges. Compares the merged OpenAPI document against each consumer's tier-2 workspace clone. Read-only, structured YAML report. See `verifier.md` §Cross-project mode.
 
 When invoked from the contracts capability build brief during `/spec:build`, `<slice-dir>` is the active slice directory; the brief routes the intent (author or importer) based on whether the operator supplied an external document for `contracts/http/`. When invoked post-merge by `/change:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged contract.
 
@@ -119,5 +119,5 @@ These constraints are non-negotiable for any of the three sibling paths:
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for computing the minimal delta between baseline and change-local files.
 - [`import-upgrade-policy`](../../references/import-upgrade-policy.md) — shared framework for the importer sibling (format detection, upgrade targets, lossless vs lossy decisions).
 - [`report-shape`](../../references/report-shape.md) — single-mode markdown and cross-project YAML report formats produced by the verifier sibling.
-- [`cross-project-compatibility`](../../references/cross-project-compatibility.md) — `change-kind` vocabulary used by the verifier in `--mode cross-project`.
+- [`cross-project-compatibility`](../../references/cross-project-compatibility.md) — `change-kind` vocabulary used by the verifier in `mode cross-project`.
 - [`json-schema-conventions`](../../references/json-schema-conventions.md) — payload schema rules (owned by `/contract:json-schema`; linked here so authors of OpenAPI files understand the schema files they reference).

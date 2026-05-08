@@ -54,13 +54,13 @@ For large codebases, you can narrow the scope:
 
 ```text
 # Extract only the auth module
-/spec:extract . .specify/slices/initial-baseline/ --include "src/auth/**"
+/spec:extract . .specify/slices/initial-baseline/ include "src/auth/**"
 
 # Exclude test files
-/spec:extract . .specify/slices/initial-baseline/ --exclude "**/*test*"
+/spec:extract . .specify/slices/initial-baseline/ exclude "**/*test*"
 
 # Use a manifest of specific files
-/spec:extract . .specify/slices/initial-baseline/ --manifest ./files-to-extract.txt
+/spec:extract . .specify/slices/initial-baseline/ manifest ./files-to-extract.txt
 ```
 
 ## 3. Review the extracted artifacts

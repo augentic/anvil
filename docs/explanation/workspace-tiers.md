@@ -68,7 +68,7 @@ tier2: "Tier 2 — registered project clone" {
   shape: rectangle
   loc: ".specify/workspace/<project>/" {shape: cylinder}
   sync: "specify workspace sync" {shape: rectangle}
-  execute: "/change:execute --loop" {shape: rectangle}
+  execute: "/change:execute loop" {shape: rectangle}
   push: "specify workspace push" {shape: rectangle}
   sync -> loc: "materialises (one per registry entry)"
   execute -> loc: "chdir + writes (define-build-merge)"
@@ -90,7 +90,7 @@ The shorthand: **tier 1 is the input the planner reads; tier 2 is the output the
 ## See also
 
 - [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- end-to-end worked example that exercises tier-2 materialisation, CWD routing during execution, and `specify workspace push`.
-- [The Layered Stack](three-layer-stack.md) -- where `/change:plan` (default + `--orchestrate` modes) and `/change:execute` sit in the layered model.
+- [The Layered Stack](three-layer-stack.md) -- where `/change:plan` (default + `orchestrate` modes) and `/change:execute` sit in the layered model.
 - [`/change:plan`](../../plugins/change/skills/plan/SKILL.md) -- the skill that triggers tier-1 materialisation (step 3(a)) and tier-2 materialisation (step 3(b)).
 - [`/change:execute`](../../plugins/change/skills/execute/SKILL.md) -- the skill that `chdir`s into tier-2 clones to drive define-build-merge.
 - [`specify workspace`](../reference/cli/workspace.md) -- CLI reference for `sync`, `status`, and `push`.

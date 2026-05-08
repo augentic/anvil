@@ -202,7 +202,7 @@ Slice dropped.
 The slice is archived with status `dropped`. Baseline specs remain unchanged. You can provide a reason to skip the interactive confirmation:
 
 ```text
-/spec:drop --reason "Superseded by a different approach"
+/spec:drop reason "Superseded by a different approach"
 ```
 
 ## What you learned

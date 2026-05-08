@@ -211,21 +211,21 @@ The distinction was always implicit; RFC-9 ?1E codifies it so operators stop los
 
 - Explanation: [Workspace Tiers](workspace-tiers.md)
 
-## `/change:plan --orchestrate` umbrella mode (Layer 4)
+## `/change:plan <name> orchestrate` umbrella mode (Layer 4)
 
 A Layer 4 mode of `/change:plan` (RFC-9 ?2C) drives the cross-repo loop end-to-end as a single operator action:
 
 ```text
-/change:plan --orchestrate <name> [--shape ...] [--from ...] [--source ...]
+/change:plan <name> orchestrate [shape ...] [from ...] [source ...]
 ```
 
-> **Note.** This was originally a separate `/spec:initiative` skill; it was folded into `/change:plan` as a flag-gated `--orchestrate` mode in a progressive-disclosure pass. The seven-step umbrella sequence is unchanged.
+> **Note.** This was originally a separate `/spec:initiative` skill; it was folded into `/change:plan` as a flag-gated `orchestrate` mode in a progressive-disclosure pass. The seven-step umbrella sequence is unchanged.
 
-The mode composes: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute --loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`. Every automated step is a shell-out to a Layer 1 verb or a Layer 3 skill; the orchestration mode adds no new logic. Halts (self-heal, `stuck`, `registry-amendment-required`, unmerged PRs) surface verbatim, and re-running `--orchestrate` against an in-progress change resumes at the first incomplete step.
+The mode composes: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`. Every automated step is a shell-out to a Layer 1 verb or a Layer 3 skill; the orchestration mode adds no new logic. Halts (self-heal, `stuck`, `registry-amendment-required`, unmerged PRs) surface verbatim, and re-running `--orchestrate` against an in-progress change resumes at the first incomplete step.
 
 Three change shapes flow through the same uniform sequence: `migrate-legacy` (sources via `--source`), `new-feature` (docs via `--from`), `update-existing` (no input flags).
 
-- Reference: [`/change:plan --orchestrate`](../reference/change-skills/change.md)
+- Reference: [`/change:plan <name> orchestrate`](../reference/change-skills/change.md)
 - Tutorial: [Cross-Repo Changes](../tutorials/cross-repo-change.md) -> [Landing a Change](../tutorials/landing-a-change.md)
 - Explanation: [The Layered Stack](three-layer-stack.md) (Layer 4 row)
 
@@ -266,7 +266,7 @@ A strict superset of `specify change plan validate` with four additional health 
 | `stale-workspace-clone` | warning | Workspace clone signature drifted from registry. |
 | `unreachable-entry` | error | Pending entry blocked by `failed`/`skipped` predecessors. |
 
-`plan doctor` is the canonical first triage step when `/change:execute --loop` reports `stuck`.
+`plan doctor` is the canonical first triage step when `/change:execute loop` reports `stuck`.
 
 - Reference: [`specify change plan doctor`](../reference/cli/plan.md#specify-plan-doctor)
 - Troubleshooting: [Plan doctor diagnostics](../appendices/troubleshooting.md#plan-doctor-diagnostics)
@@ -276,7 +276,7 @@ A strict superset of `specify change plan validate` with four additional health 
 The canonical closure verb for the platform-first loop (RFC-9 ?4C):
 
 ```bash
-specify change finalize [--clean] [--dry-run]
+specify change finalize [--clean] [dry-run]
 ```
 
 Runs four guards in order (plan-presence, plan terminal-state, per-project PR-state, workspace-cleanliness) before atomically archiving `plan.yaml`, `change.md`, and `.specify/plans/<name>/`. Any guard refusal leaves the on-disk state untouched. `--clean` prunes `.specify/workspace/<peer>/` after the archive completes. Idempotent: re-running after a successful finalize returns `plan-not-found` (the explicit "already finalized" signal).
@@ -295,7 +295,7 @@ The `contracts` brief in the define pipeline runs alignment validation against t
 
 ## Cross-project contract validation (RFC-9 ?3B)
 
-Post-merge, `/change:execute` runs a cross-project compatibility check: for each contract the producer `produces`, find every consumer that `consumes` it and run the format-appropriate verifier against each consumer's workspace clone (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema`, picking the verifier intent and threading `--mode cross-project`). Incompatibilities surface as warnings on the merge transcript and on the merged change's `journal.yaml` (`cross-project-warning:` entries). **Warnings never halt the loop** -- the operator triages.
+Post-merge, `/change:execute` runs a cross-project compatibility check: for each contract the producer `produces`, find every consumer that `consumes` it and run the format-appropriate verifier against each consumer's workspace clone (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema`, picking the verifier intent and threading `mode cross-project`). Incompatibilities surface as warnings on the merge transcript and on the merged change's `journal.yaml` (`cross-project-warning:` entries). **Warnings never halt the loop** -- the operator triages.
 
 - How-to: [Resolve Cross-Project Contract Warnings](../how-to/resolve-cross-project-contract-warnings.md)
 - Troubleshooting: [Cross-project contract warnings on the merge transcript](../appendices/troubleshooting.md#cross-project-contract-warnings-on-the-merge-transcript)

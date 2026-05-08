@@ -2,7 +2,7 @@
 
 Use this test to verify that `/spec:define` can reverse-engineer Specify
 contract artifacts from a legacy TypeScript codebase whose API surface a
-prior `/spec:analyze --kind legacy-code` run has already identified.
+prior `/spec:analyze legacy-code` run has already identified.
 
 Pipeline note:
 
@@ -12,13 +12,13 @@ Pipeline note:
 - Omnia and Vectis implementation changes consume existing baseline contracts
   as context. Reverse-engineered interface shapes should be introduced through
   a separate `contracts@v1` change before implementation depends on them.
-- Extract-from-source changes assume `/spec:analyze --kind legacy-code` has
+- Extract-from-source changes assume `/spec:analyze legacy-code` has
   already produced a `discovery.md` capability summary identifying the API
   surface; this test stipulates that precondition rather than exercising it.
 
 ## Prerequisite
 
-This test assumes a prior `/spec:analyze --kind legacy-code` run against
+This test assumes a prior `/spec:analyze legacy-code` run against
 `vendor/orders-service/` has appended this capability block to the plan's
 `discovery.md` (shape pinned by `plugins/spec/skills/analyze/SKILL.md`):
 

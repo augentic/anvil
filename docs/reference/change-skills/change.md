@@ -1,18 +1,18 @@
-# /change:plan --orchestrate
+# /change:plan <name> orchestrate
 
-Drive a cross-repo Specify change from a single operator action: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute --loop` -> `specify workspace push`, then resume to `specify change finalize` after the operator merges PRs through the forge UI or `gh pr merge`.
+Drive a cross-repo Specify change from a single operator action: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute loop` -> `specify workspace push`, then resume to `specify change finalize` after the operator merges PRs through the forge UI or `gh pr merge`.
 
-`/change:plan --orchestrate` is the Layer 4 umbrella mode (RFC-9 Section 2C). It is **composition only** -- every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the orchestration mode adds no new logic, owns no new on-disk state, and never invents a CLI verb.
+`/change:plan <name> orchestrate` is the Layer 4 umbrella mode (RFC-9 Section 2C). It is **composition only** -- every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the orchestration mode adds no new logic, owns no new on-disk state, and never invents a CLI verb.
 
 ## Synopsis
 
 ```text
-/change:plan --orchestrate <name> \
-    [--shape migrate-legacy | new-feature | update-existing] \
-    [--from <path>[:<kind>]...] \
-    [--against <path>[:<kind>]] \
-    [--source <key>=<path-or-url>[:<kind>]...] \
-    [--dry-run]
+/change:plan <name> orchestrate \
+    [shape migrate-legacy | new-feature | update-existing] \
+    [from <path>[:<kind>]...] \
+    [against <path>[:<kind>]] \
+    [source <key>=<path-or-url>[:<kind>]...] \
+    [dry-run]
 ```
 
 Re-running `--orchestrate` against an existing change is the canonical resume path -- see [Re-entry / idempotency](#re-entry--idempotency).
@@ -26,7 +26,7 @@ Re-running `--orchestrate` against an existing change is the canonical resume pa
 | `--from <path>` | No | Documentation input forwarded to `/change:plan`. Repeatable. Default kind is `documentation`; override per-input via `:<kind>` suffix. |
 | `--against <path>` | No | Refactor-target codebase forwarded to `/change:plan`. Single-valued. Default kind is `legacy-code`. |
 | `--source <key>=<path-or-url>` | No | Named legacy source forwarded to `/change:plan` and threaded through `/change:execute` per-slice. Repeatable. Default kind is `legacy-code`. Git URLs flow into `/spec:analyze` clones (tier-1 workspace); local paths are passed through verbatim. |
-| `--dry-run` | No | Observation-only end-to-end. Runs read-side checks for steps 1-3 and invokes `/change:plan --dry-run`; never invokes `/change:execute`, `specify workspace push`, or `specify change finalize`. |
+| `--dry-run` | No | Observation-only end-to-end. Runs read-side checks for steps 1-3 and invokes `/change:plan <name> dry-run`; never invokes `/change:execute`, `specify workspace push`, or `specify change finalize`. |
 
 `--auto-merge` is retired. Supplying it is a hard error explaining that Specify never calls `specify workspace merge` or `gh pr merge`; operators merge PRs themselves, then re-run the umbrella to finalize.
 
@@ -46,8 +46,8 @@ The umbrella drives the canonical platform-first loop:
 |------|------------|----------|
 | 1. Brief | `specify change create <name>` (when `change.md` is absent) | Kebab-case violation, partial scaffold |
 | 2. Registry | `specify registry validate` | `description-missing-multi-repo`, `hub-cannot-be-project`, kebab-case / URL / capability identifier violations |
-| 3. Plan | `/change:plan <name> [--from ...] [--against ...] [--source ...]` | Operator `abort` in propose loop, `specify change plan validate` failure |
-| 4. Execute | `/change:execute --loop` | `stuck`, `halted`, `driver-interrupted`, `registry-amendment-required` |
+| 3. Plan | `/change:plan <name> [from ...] [against ...] [source ...]` | Operator `abort` in propose loop, `specify change plan validate` failure |
+| 4. Execute | `/change:execute loop` | `stuck`, `halted`, `driver-interrupted`, `registry-amendment-required` |
 | 5. Push | `specify workspace push` | Per-project `failed` status (auth, missing remote) |
 | 6. Land | Operator merges PRs through forge UI or `gh pr merge`; umbrella lists PRs and stops until this is done | Unmerged PRs |
 | 7. Finalize | `specify change finalize` | Non-terminal plan entry, unmerged PR, dirty workspace clone |
@@ -85,7 +85,7 @@ The umbrella stops on:
 
 ## Re-entry / idempotency
 
-Running `/change:plan --orchestrate <name>` against a populated change is the canonical resume path. The mode walks the on-disk state (`change.md` present? `plan.yaml` present and terminal? PRs merged on remote?) and resumes at the first incomplete step:
+Running `/change:plan <name> orchestrate` against a populated change is the canonical resume path. The mode walks the on-disk state (`change.md` present? `plan.yaml` present and terminal? PRs merged on remote?) and resumes at the first incomplete step:
 
 | State on entry | Resumes at |
 |----------------|------------|
@@ -128,24 +128,24 @@ The umbrella is a composition of existing skills and CLI verbs. It does not intr
 
 ```text
 # migrate-legacy: drive through PR creation
-/change:plan --orchestrate migrate-foo \
-    --shape migrate-legacy \
-    --source monolith=git@github.com:org/legacy-foo.git
+/change:plan <name> orchestrate migrate-foo \
+    shape migrate-legacy \
+    source monolith=git@github.com:org/legacy-foo.git
 
 # new-feature: supervised land (operator merges PRs by hand)
-/change:plan --orchestrate dark-mode \
-    --shape new-feature \
-    --from ./docs/dark-mode-spec.md
+/change:plan <name> orchestrate dark-mode \
+    shape new-feature \
+    from ./docs/dark-mode-spec.md
 
 # update-existing: baseline-driven polish
-/change:plan --orchestrate polish-pass \
-    --shape update-existing
+/change:plan <name> orchestrate polish-pass \
+    shape update-existing
 
 # Dry-run: read-side checks + plan preview, no writes
-/change:plan --orchestrate migrate-foo \
-    --shape migrate-legacy \
-    --source monolith=git@github.com:org/legacy-foo.git \
-    --dry-run
+/change:plan <name> orchestrate migrate-foo \
+    shape migrate-legacy \
+    source monolith=git@github.com:org/legacy-foo.git \
+    dry-run
 ```
 
 ## See also

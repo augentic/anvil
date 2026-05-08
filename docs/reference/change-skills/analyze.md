@@ -5,7 +5,7 @@ Plan-time capability inference for legacy code and documentation inputs.
 ## Synopsis
 
 ```text
-/spec:analyze <input-path> <output-dir> --kind <legacy-code|documentation> [--source-key <key>]
+/spec:analyze <input-path> <output-dir> <legacy-code|documentation> [source-key <key>]
 ```
 
 ## Arguments
@@ -74,10 +74,10 @@ None. Analyze is a supporting skill invoked during planning.
 
 ```text
 # Analyse legacy code
-/spec:analyze ./src/legacy .specify/plans/migrate/  --kind legacy-code --source-key monolith
+/spec:analyze ./src/legacy .specify/plans/migrate/ legacy-code monolith
 
 # Analyse documentation
-/spec:analyze ./docs/prd.md .specify/plans/new-platform/ --kind documentation
+/spec:analyze ./docs/prd.md .specify/plans/new-platform/ documentation
 ```
 
 ## See also

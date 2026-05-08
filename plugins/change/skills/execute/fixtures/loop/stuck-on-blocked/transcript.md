@@ -7,7 +7,7 @@ The key behaviour this fixture pins: **an individual deferral does NOT halt `--l
 ## Driver timeline
 
 ```text
-$ /change:execute --loop
+$ /change:execute loop
 
 # step 1: project resolution — silent on success.
 # step 2: acquire lock — silent on success.
@@ -29,7 +29,7 @@ Self-heal: no in-progress entries found.
 #     description; cannot safely design verification-email template
 #     without it."
 #   Driver reads outcome.outcome == deferred → steps 12a–c:
-#     /spec:drop email-verification --reason "<outcome.summary>"
+#     /spec:drop email-verification reason "<outcome.summary>"
 #     specify change plan transition email-verification blocked \
 #         --reason "<outcome.summary>"
 #   (status-reason on the plan entry now matches outcome.summary

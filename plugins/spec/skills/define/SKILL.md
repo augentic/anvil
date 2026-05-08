@@ -32,7 +32,7 @@ When invoked by `/change:execute` from a plan entry, this skill accepts:
 
 ```
 /spec:define <name> \
-    [--source <key>=<path-or-url>...]
+    [source <key>=<path-or-url>...]
 ```
 
 - **`--source <key>=<path-or-url>`** — a resolved entry from the plan's top-level `sources` map. The key is the kebab-case identifier used in the plan entry's `sources` list; the value is either a local filesystem path or a git URL. `/change:execute` has already validated that the key exists in the plan's top-level `sources` map; this skill treats the `value` as opaque and forwards it to whichever define brief invokes `/spec:extract` (which inlines a guarded `git clone` snippet for URL values — see the *Cloning a source tree* subsection in [`../analyze/SKILL.md`](../analyze/SKILL.md)). The driver never clones; that stays inside the brief pipeline.
@@ -43,7 +43,7 @@ The plan entry's `description` field provides the scoping and delta- targeting c
 
 The specs brief infers which files to extract from each source by reading the plan entry's `description` for file-path hints. This replaces the former `--scope-*` flag-forwarding pipeline; the define skill no longer receives scope flags from the driver.
 
-- **Path hints present** — the description contains path-like references (e.g. `src/common/validation/`, `src/auth/**`). The brief uses these as `--include` globs on `/spec:extract`, treating bare directory names as recursive globs.
+- **Path hints present** — the description contains path-like references (e.g. `src/common/validation/`, `src/auth/**`). The brief uses these as `include` globs on `/spec:extract`, treating bare directory names as recursive globs.
 - **No path hints** — the brief runs extract on the full source tree.
 
 The brief logs the inferred scope in the journal so operators can audit what was extracted and amend the description if the inference was wrong.

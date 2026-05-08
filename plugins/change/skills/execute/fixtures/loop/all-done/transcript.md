@@ -5,7 +5,7 @@ A three-entry `platform-v2` plan with `user-registration` as root and two siblin
 ## Driver timeline
 
 ```text
-$ /change:execute --loop
+$ /change:execute loop
 
 # step 1 of the --loop algorithm (project resolution) is silent on
 # success; step 2 acquires the lock and emits no diagnostic when the

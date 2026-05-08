@@ -34,7 +34,7 @@ specify slice journal append <slice> merge failure \
   --context "<verbatim stderr / coherence-check tail / failing delta path>"
 
 specify slice outcome set <slice> merge failure \
-  --summary "<same load-bearing summary, written so it is useful as a /spec:drop --reason>"
+  --summary "<same load-bearing summary, written so it is useful as a /spec:drop reason>"
 ```
 
 `/change:execute` translates `failure` into a plan-entry transition to `failed`, surfaces the journal entries to the operator, and stops the loop. The brief MUST NOT retry the merge automatically — the failing delta or lifecycle state needs human attention before a repeat attempt is safe.
@@ -63,4 +63,4 @@ specify slice outcome set <slice> merge deferred \
 
 ### Summary writing rules
 
-The `--summary` strings ride into `/spec:drop --reason` byte-for-byte when `/change:execute` reclaims a `failure` or `deferred` slice (see [`phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md) §"Verbatim-`summary` rule"). Keep them present-tense, self-contained, and short enough to fit a CLI argument without truncation. Route any verbatim stderr or log tail through `--context` instead — that field is not forwarded to `--reason`.
+The `--summary` strings ride into `/spec:drop reason` byte-for-byte when `/change:execute` reclaims a `failure` or `deferred` slice (see [`phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md) §"Verbatim-`summary` rule"). Keep them present-tense, self-contained, and short enough to fit a CLI argument without truncation. Route any verbatim stderr or log tail through `--context` instead — that field is not forwarded to `--reason`.

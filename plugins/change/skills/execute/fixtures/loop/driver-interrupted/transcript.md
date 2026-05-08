@@ -1,6 +1,6 @@
 # driver-interrupted — SIGINT arrives mid-build; `--loop` exits cleanly
 
-A three-entry plan; `user-registration` is already `done`. `/change:execute --loop` picks `email-verification` as the next eligible entry, transitions it to `in-progress`, runs `/spec:define` (success) and `/spec:build` (success). Between `/spec:build` returning and the driver invoking `/spec:merge`, the operator presses Ctrl-C. The agent surfaces the interrupt to the skill.
+A three-entry plan; `user-registration` is already `done`. `/change:execute loop` picks `email-verification` as the next eligible entry, transitions it to `in-progress`, runs `/spec:define` (success) and `/spec:build` (success). Between `/spec:build` returning and the driver invoking `/spec:merge`, the operator presses Ctrl-C. The agent surfaces the interrupt to the skill.
 
 Per §Loop mode → SIGINT / SIGTERM handling:
 
@@ -11,12 +11,12 @@ Per §Loop mode → SIGINT / SIGTERM handling:
 - Rule 5: emit the terminal summary with `Completion: driver-interrupted`.
 - Rule 6: exit non-zero (130 for SIGINT).
 
-On the next `/change:execute --loop` invocation, self-heal (step 3 of the `--loop` algorithm) reads `.specify/slices/email-verification/.metadata.yaml`, sees `outcome.outcome == success` with `outcome.phase == build`, and resumes by invoking `/spec:merge` (mid-change resume path, step 3 of the self-heal algorithm; RFC-2 §"Context Threading → Resumption Within a Change"). The interrupt therefore costs one restart but loses no completed phase work.
+On the next `/change:execute loop` invocation, self-heal (step 3 of the `loop` algorithm) reads `.specify/slices/email-verification/.metadata.yaml`, sees `outcome.outcome == success` with `outcome.phase == build`, and resumes by invoking `/spec:merge` (mid-change resume path, step 3 of the self-heal algorithm; RFC-2 §"Context Threading → Resumption Within a Change"). The interrupt therefore costs one restart but loses no completed phase work.
 
 ## Driver timeline
 
 ```text
-$ /change:execute --loop
+$ /change:execute loop
 
 # step 1 (project resolution): silent on success.
 # step 2: acquire lock.
@@ -85,7 +85,7 @@ Progress: done 1, in-progress 1, pending 1, blocked 0, failed 0, skipped 0 (tota
 
 Completion: driver-interrupted
 
-Next action: Re-run /change:execute --loop — self-heal will reclaim the interrupted change on the next startup.
+Next action: Re-run /change:execute loop — self-heal will reclaim the interrupted change on the next startup.
 ```
 
 ## Invariants pinned

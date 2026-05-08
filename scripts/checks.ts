@@ -613,7 +613,89 @@ async function checkSkillArgumentHint(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 6f. SKILL.md frontmatter must not declare `license` (RFC-10 §A.4, §D)
+// 6f. Slash-skill invocations use positional arguments (Claude Skills parity)
+// ──────────────────────────────────────────────────────────────
+
+async function checkSlashSkillInvocationsUsePositionals(): Promise<void> {
+  const SCAN_ROOTS = [
+    join(REPO_ROOT, "docs"),
+    join(REPO_ROOT, "plugins"),
+    join(REPO_ROOT, "capabilities"),
+  ];
+  const SCAN_FILES = [
+    join(REPO_ROOT, "README.md"),
+    join(REPO_ROOT, "AGENTS.md"),
+    join(REPO_ROOT, "rfcs", "roadmap.md"),
+    join(REPO_ROOT, ".cursor", "rules", "project.mdc"),
+  ];
+  const SKILL_TOKEN_RE = /\/[a-z][a-z0-9-]*:[a-z][a-z0-9-]*/;
+  const FLAG_TOKEN_RE = /--[a-z][a-z0-9-]*/;
+
+  const targets: string[] = [];
+  for (const file of SCAN_FILES) {
+    try {
+      const stat = await Deno.stat(file);
+      if (stat.isFile) targets.push(file);
+    } catch {
+      // Optional top-level files may not exist in downstream checkouts.
+    }
+  }
+  for (const root of SCAN_ROOTS) {
+    for await (const entry of walk(root, {
+      exts: [".md", ".mdc"],
+      includeDirs: false,
+    })) {
+      if (await isUnderSymlink(entry.path)) continue;
+      targets.push(entry.path);
+    }
+  }
+
+  for (const path of targets) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
+    const lines = content.split("\n");
+
+    for (let i = 0; i < lines.length; i++) {
+      let logical = lines[i];
+      let end = i;
+
+      // Fenced examples often wrap slash invocations with backslashes and
+      // indented continuation rows. Normalize a short logical invocation so
+      // `[--flag]` on the next row cannot hide from the check.
+      for (let j = i + 1; j < Math.min(lines.length, i + 8); j++) {
+        const previousContinues = logical.trimEnd().endsWith("\\");
+        const nextIsIndented = /^[ \t]+/.test(lines[j]);
+        if (!previousContinues && !nextIsIndented) break;
+        logical += "\n" + lines[j];
+        end = j;
+        if (!lines[j].trimEnd().endsWith("\\") && !nextIsIndented) break;
+      }
+
+      const scanLogical = logical.replace(/\]\([^)]+\)/g, "]");
+      const skillMatch = SKILL_TOKEN_RE.exec(scanLogical);
+      const flagMatch = FLAG_TOKEN_RE.exec(scanLogical);
+      if (
+        skillMatch && flagMatch &&
+        flagMatch.index > skillMatch.index + skillMatch[0].length &&
+        !/\b(specify|cargo|gh|git|deno|npm|pnpm|yarn)\s/.test(
+          scanLogical.slice(
+            skillMatch.index + skillMatch[0].length,
+            flagMatch.index,
+          ),
+        )
+      ) {
+        fail(
+          `Slash skill invocation uses flag-style arguments in ${rel}:${i + 1}` +
+            (end > i ? `-${end + 1}` : "") +
+            " — use positional skill arguments; reserve --flags for underlying CLI commands",
+        );
+      }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 6g. SKILL.md frontmatter must not declare `license` (RFC-10 §A.4, §D)
 // ──────────────────────────────────────────────────────────────
 
 async function checkSkillNoLicense(): Promise<void> {
@@ -646,7 +728,7 @@ async function checkSkillNoLicense(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 6g. Retired slash commands must not appear in active prose (RFC-10 §D)
+// 6h. Retired slash commands must not appear in active prose (RFC-10 §D)
 // ──────────────────────────────────────────────────────────────
 
 async function checkRetiredSlashCommands(): Promise<void> {
@@ -1434,6 +1516,7 @@ await Promise.all([
   checkSkillCriticalPath(),
   checkSkillDescriptionLength(),
   checkSkillArgumentHint(),
+  checkSlashSkillInvocationsUsePositionals(),
   checkSkillNoLicense(),
   checkSkillReferences(),
   checkSkillVariables(),

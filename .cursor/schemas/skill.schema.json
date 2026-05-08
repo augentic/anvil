@@ -21,7 +21,7 @@
     },
     "argument-hint": {
       "type": "string",
-      "description": "Cursor slash-command placeholder text rendered after `/plugin:skill ` in chat. Convention: short, single-line; `<arg>` for required positional arguments, `[arg]` for optional ones. No `--flag` prefixes - flags are documented in the SKILL.md body. The shape constraints (no `?`, `--`, or `|`) are enforced by `scripts/checks.ts`."
+      "description": "Cursor slash-command placeholder text rendered after `/plugin:skill ` in chat. Convention: short, single-line; `<arg>` for required positional arguments, `[arg]` for optional ones. No `--flag` prefixes; secondary skill arguments are documented as positionals in the SKILL.md body. The shape constraints (no `?`, `--`, or `|`) are enforced by `scripts/checks.ts`."
     },
     "allowed-tools": {
       "type": "string",

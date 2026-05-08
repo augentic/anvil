@@ -5,8 +5,8 @@ Pins the combined `discovery.md` shape produced by the Omnia discovery brief whe
 | Path                                                              | Role                                                                                                  |
 | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | [`invocation.txt`](invocation.txt)                                | Operator invocation exercised by this fixture.                                                        |
-| [`inputs/ops-runbook.md`](inputs/ops-runbook.md)                  | Documentation input. Compact two-procedure runbook; dispatches to `/spec:analyze --kind documentation`. |
-| [`inputs/legacy-service/`](inputs/legacy-service/)                | Legacy-code input. Single-file stub; dispatches to `/spec:analyze --kind legacy-code`.                |
+| [`inputs/ops-runbook.md`](inputs/ops-runbook.md)                  | Documentation input. Compact two-procedure runbook; dispatches to `/spec:analyze documentation`. |
+| [`inputs/legacy-service/`](inputs/legacy-service/)                | Legacy-code input. Single-file stub; dispatches to `/spec:analyze legacy-code`.                |
 | [`expected/discovery.md`](expected/discovery.md)                  | Byte-stable combined output. Four capability summaries (YAML), alphabetically sorted, plus the documentation appendix blocks. |
 | [`expected/plans/traffic/analyze/legacy/metadata.json`](expected/plans/traffic/analyze/legacy/metadata.json) | Structural-metadata sidecar written by the legacy-code branch of `/spec:analyze` for the `legacy` source. |
 | [`notes.md`](notes.md)                                            | Capability-level notes and downstream-consumer pointers.                                              |

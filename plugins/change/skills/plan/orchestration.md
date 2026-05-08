@@ -26,7 +26,7 @@ Run **all** of the following before any side-effect. Any failure exits non-zero 
 1. **Hub presence.** Walk upward from CWD for `.specify/project.yaml`. Absent → exit non-zero pointing the operator at `/spec:init` (and, for cross-repo work, `/spec:init` with the hub option per [Platform repo topologies](../../../../docs/explanation/platform-repo.md)).
 2. **`specify` binary.** `which specify`. Missing → exit non-zero pointing the operator at the [installation instructions](../../../../docs/orientation/prerequisites.md). The skill does not attempt a prose fallback — every step depends on the binary.
 3. **`<name>` validation.** Reject any value not matching `^[a-z][a-z0-9-]*$`.
-4. **Retired `--auto-merge` flag.** If supplied, exit non-zero before any side effect. The diagnostic MUST say `/change:plan --orchestrate` never calls `specify workspace merge` or `gh pr merge`; operators merge PRs through the forge UI or an explicit hand-run `gh pr merge`, then re-run to finalize.
+4. **Retired `--auto-merge` flag.** If supplied, exit non-zero before any side effect. The diagnostic MUST say `/change:plan <name> orchestrate` never calls `specify workspace merge` or `gh pr merge`; operators merge PRs through the forge UI or an explicit hand-run `gh pr merge`, then re-run to finalize.
 5. **Shape resolution.** Apply the rules in [shapes.md](shapes.md) to pin a single shape value before step 1. Conflicts (e.g. explicit `--shape new-feature` with `--source ...`) are hard exits.
 
 ## Internal sequence (composition only)
@@ -87,13 +87,13 @@ specify workspace sync             # after any add/remove
 
 ```bash
 /change:plan <name> \
-    [--from <path>...] \
-    [--against <path>] \
-    [--source <key>=<path-or-url>...] \
-    [--dry-run]
+    [from <path>...] \
+    [against <path>] \
+    [source <key>=<path-or-url>...] \
+    [dry-run]
 ```
 
-Note: **the orchestration mode delegates to the default mode of the same `/change:plan` skill**. It does not recurse into `--orchestrate`. The default mode runs the five-step authoring loop (parse → scaffold → brief pipeline → validate → hand-off) documented in [SKILL.md](SKILL.md).
+Note: **the orchestration mode delegates to the default mode of the same `/change:plan` skill**. It does not recurse into `orchestrate`. The default mode runs the five-step authoring loop (parse → scaffold → brief pipeline → validate → hand-off) documented in [SKILL.md](SKILL.md).
 
 The orchestration mode forwards every supplied input flag verbatim — no flag is renamed, suppressed, or invented. Under `--dry-run`, append `--dry-run` to the `/change:plan` invocation; the plan skill emits its own preview output and the umbrella stops at end of step 3.
 
@@ -108,13 +108,13 @@ The plan skill internally:
 
 **Halts.**
 
-- Plan-skill abort during the propose loop (operator typed `abort`) → umbrella stops; `proposal.md` records the partial decision trail; resume by re-running `/change:plan --orchestrate <name>` (which re-enters step 3 under `--extend` semantics — see [re-entry.md](re-entry.md)).
+- Plan-skill abort during the propose loop (operator typed `abort`) → umbrella stops; `proposal.md` records the partial decision trail; resume by re-running `/change:plan <name> orchestrate` (which re-enters step 3 under `extend` semantics — see [re-entry.md](re-entry.md)).
 - `specify change plan validate` failure → umbrella stops; the operator amends via `specify change plan amend` and re-runs.
 
 **Manual fallback.**
 
 ```bash
-specify change plan create <name> [--source ...]
+specify change plan create <name> [source ...]
 # discovery / sync-peers / propose / assignment cycles run by hand or via /change:plan default
 specify change plan add <slice-name> ...
 specify change plan amend <slice-name> --project <project>
@@ -123,14 +123,14 @@ specify workspace sync
 specify change plan validate
 ```
 
-**Failure recovery.** A non-zero exit from `/change:plan` leaves the partial plan on disk (entries written via `specify change plan add` are durable). The operator inspects `specify change plan status`, fixes the offending entry, and re-runs the umbrella with `--extend` semantics implicit (re-running `/change:plan --orchestrate <name>` against an already-populated plan is idempotent — see [re-entry.md](re-entry.md)).
+**Failure recovery.** A non-zero exit from `/change:plan` leaves the partial plan on disk (entries written via `specify change plan add` are durable). The operator inspects `specify change plan status`, fixes the offending entry, and re-runs the umbrella with `--extend` semantics implicit (re-running `/change:plan <name> orchestrate` against an already-populated plan is idempotent — see [re-entry.md](re-entry.md)).
 
 ### Step 4 — Execute
 
 **Invocation.**
 
 ```bash
-/change:execute --loop
+/change:execute loop
 ```
 
 The execute skill takes the `.specify/plan.lock` PID stamp, runs self-heal, then iterates `specify change plan next → /spec:define → /spec:build → /spec:merge → specify change plan transition` until no eligible change remains. Multi-repo entries route into `.specify/workspace/<project>/` via the executor's CWD-routing step.
@@ -199,7 +199,7 @@ gh pr create --title "..." --body "..."
 
 The umbrella **lists** PRs for `specify/<name>` (using `gh pr list --head specify/<name>` per project, or by parsing `specify workspace push --format json` output captured in step 5) and inspects whether every pushed PR is already `MERGED`.
 
-- If any PR is open, pending, failed, closed, missing, or has the wrong head branch, the umbrella stops before step 7 and prints the PR table plus the next action: merge the open PRs through the forge UI or a hand-run `gh pr merge`, then re-run `/change:plan --orchestrate <name>` to finalize.
+- If any PR is open, pending, failed, closed, missing, or has the wrong head branch, the umbrella stops before step 7 and prints the PR table plus the next action: merge the open PRs through the forge UI or a hand-run `gh pr merge`, then re-run `/change:plan <name> orchestrate` to finalize.
 - If every PR is already `MERGED`, the umbrella continues to step 7.
 
 The umbrella MUST NOT call `specify workspace merge` or `gh pr merge`. `workspace merge` exists only as a one-release non-zero deprecation shim; invoking it from orchestration is a regression.
@@ -249,28 +249,28 @@ Under `--dry-run` with `--orchestrate` the mode is **observation-only** end-to-e
 - invoke `/change:execute` (step 4 is skipped entirely);
 - run `specify workspace push` or any PR merge command (steps 5 and 6 are skipped);
 - run `specify change finalize` (step 7 is skipped);
-- write any file under `.specify/` other than what `/change:plan --dry-run` itself emits (and the plan skill's default mode under `--dry-run` writes nothing under `.specify/` either).
+- write any file under `.specify/` other than what `/change:plan <name> dry-run` itself emits (and the plan skill's default mode under `dry-run` writes nothing under `.specify/` either).
 
 The skill MAY:
 
 - read the registry, plan, and workspace state (`specify registry show`, `specify change plan status`, `specify workspace status`);
-- invoke `/change:plan --dry-run` (default mode dry-run, which runs read-only — it reads `--from`/`--against`/`--source` inputs, runs the discovery brief in preview mode, and emits the readiness report and proposed-plan preview to stdout);
+- invoke `/change:plan <name> dry-run` (default mode dry-run, which runs read-only — it reads `from`/`against`/`source` inputs, runs the discovery brief in preview mode, and emits the readiness report and proposed-plan preview to stdout);
 - emit a final preview block summarising what each subsequent step *would* do.
 
 Output shape:
 
 ```text
-[dry-run] /change:plan --orchestrate — <name>
+[dry-run] /change:plan <name> orchestrate — <name>
 
 Shape: <migrate-legacy | new-feature | update-existing>
 Brief: <present | would-create>
 Registry: <empty | single-project | multi-project> (<N> projects, descriptions: <ok | missing>)
 Plan:
     <inline plan-skill --dry-run output>
-Would invoke /change:execute --loop (skipped under --dry-run).
-Would invoke specify workspace push (skipped under --dry-run).
-Would list PRs for specify/<name> and stop for operator merge if any remain open (skipped under --dry-run).
-Would invoke specify change finalize (skipped under --dry-run).
+Would invoke /change:execute loop (skipped under dry-run).
+Would invoke specify workspace push (skipped under dry-run).
+Would list PRs for specify/<name> and stop for operator merge if any remain open (skipped under dry-run).
+Would invoke specify change finalize (skipped under dry-run).
 
 No changes written. Remove --dry-run to run the full sequence.
 ```
@@ -279,10 +279,10 @@ No changes written. Remove --dry-run to run the full sequence.
 
 `--auto-merge` is retired. Supplying it with `--orchestrate` is a hard pre-flight error before any side effect. The error text MUST direct the operator to:
 
-1. run `/change:plan --orchestrate <name>` without `--auto-merge`;
+1. run `/change:plan <name> orchestrate` without `auto-merge`;
 2. let `specify workspace push` create or update PRs;
 3. merge those PRs through the forge UI or an explicit hand-run `gh pr merge`;
-4. re-run `/change:plan --orchestrate <name>` so step 6 observes `MERGED` PR state and step 7 invokes `specify change finalize`.
+4. re-run `/change:plan <name> orchestrate` so step 6 observes `MERGED` PR state and step 7 invokes `specify change finalize`.
 
 The orchestration never calls `specify workspace merge` and never calls `gh pr merge`. `specify workspace merge` is a one-release non-zero deprecation shim, not an active automation path.
 
@@ -295,9 +295,9 @@ Every shell-out in this mode is a v1 verb verbatim. The list a reviewer can grep
 | Pre-flight | `specify --version` |
 | 1 Brief | `specify change create <name>` |
 | 2 Registry | `specify registry validate`, `specify registry show --format json` |
-| 3 Plan | `/change:plan <name> [--from ...] [--against ...] [--source ...] [--dry-run] [--extend]` (default mode, not `--orchestrate`) |
+| 3 Plan | `/change:plan <name> [from ...] [against ...] [source ...] [dry-run] [extend]` (default mode, not `orchestrate`) |
 | 3 (internal to plan default) | `specify change plan create`, `specify change plan add`, `specify change plan amend`, `specify change plan validate`, `specify registry add`, `specify workspace sync` |
-| 4 Execute | `/change:execute --loop` |
+| 4 Execute | `/change:execute loop` |
 | 4 (internal to execute) | `specify change plan lock {acquire, release}`, `specify change plan next`, `specify change plan transition`, `specify slice outcome show`, `specify slice journal append`, `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` |
 | 5 Push | `specify workspace push` |
 | 6 PR handoff | `gh pr list`, `gh pr view` (read-only listing only) |
@@ -340,7 +340,7 @@ If a behaviour drift surfaces between the orchestration mode and a manual run of
 - **Forge-agnostic land step.** Step 6 uses `gh`; non-GitHub forges fall back to the manual fallback path (merge by hand, re-run the umbrella to finalize).
 - **Multi-plan output.** RFC-3a's single `plan.yaml` invariant is preserved. The orchestration drives one change at a time.
 - **Driving completed changes.** Once `specify change finalize` returns `plan-not-found`, re-running the orchestration reports the change as already finalized and exits zero. There is no "rewind" verb.
-- **Phase invocation.** This mode never invokes `/spec:define`, `/spec:build`, or `/spec:merge` directly. The phase skills are reached only through `/change:execute --loop` (step 4).
+- **Phase invocation.** This mode never invokes `/spec:define`, `/spec:build`, or `/spec:merge` directly. The phase skills are reached only through `/change:execute loop` (step 4).
 
 ## Guardrails (orchestration mode)
 

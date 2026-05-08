@@ -14,7 +14,7 @@ Worked example for the legacy-code branch of [Omnia `analyze.md`](../../../analy
 Run from this directory:
 
 ```
-/spec:analyze --kind legacy-code --source-key monolith ./inputs/monolith/ ./expected/plans/legacy-code/
+/spec:analyze legacy-code monolith ./inputs/monolith/ ./expected/plans/legacy-code/
 ```
 
 The brief walks `./inputs/monolith/`, clusters its source tree into four capabilities, emits each as a `<!-- source-key: monolith -->`- tagged `### <name>` block into `./expected/plans/legacy-code/discovery.md`, and writes the structural sidecar to `./expected/plans/legacy-code/analyze/monolith/metadata.json`.

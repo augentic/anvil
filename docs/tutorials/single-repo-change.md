@@ -22,7 +22,7 @@ For one or two independent slices, the manual define-build-merge loop is simpler
 Suppose you want to migrate an auth service from a legacy codebase. Start by telling Specify what you are working from:
 
 ```text
-/change:plan migrate-auth --source legacy=./src/auth
+/change:plan migrate-auth source legacy=./src/auth
 ```
 
 <details>
@@ -105,7 +105,7 @@ You can also look at `plan.yaml` directly to see the full plan structure includi
 Before committing to automated execution, preview what would happen:
 
 ```text
-/change:execute --dry-run
+/change:execute dry-run
 ```
 
 <details>
@@ -152,7 +152,7 @@ After this, `specify change plan status` shows:
 To let Specify work through the remaining slices:
 
 ```text
-/change:execute --loop
+/change:execute loop
 ```
 
 Loop mode repeats the pick-define-build-merge cycle until:
@@ -171,7 +171,7 @@ If a slice fails during execution:
 
 If all remaining entries depend on the failed one, execution reports `stuck`. You can then:
 
-- Fix the issue and re-run: `specify change plan transition extract-token-validation pending` to reset it, then `/change:execute --loop`.
+- Fix the issue and re-run: `specify change plan transition extract-token-validation pending` to reset it, then `/change:execute loop`.
 - Skip it: `specify change plan transition extract-token-validation skipped`.
 - Amend the plan: `specify change plan amend consolidate-auth-middleware --depends-on extract-session-management` to remove the dependency.
 

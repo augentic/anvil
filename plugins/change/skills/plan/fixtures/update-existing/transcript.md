@@ -1,9 +1,9 @@
-# Transcript — `/change:plan --orchestrate polish-pass --shape update-existing`
+# Transcript — `/change:plan <name> orchestrate polish-pass shape update-existing`
 
 This transcript pins the dialogue and shell-outs the umbrella runs against a populated multi-project hub when sources are unused. The discovery brief falls back to baseline accumulation in `.specify/workspace/<peer>/specs/` to surface polish opportunities; the operator approves two slices, the umbrella pushes PRs, stops for operator merge, and finalizes on re-entry. Every shell-out uses post-1F+1G v1 verbs.
 
 ```text
-$ /change:plan --orchestrate polish-pass --shape update-existing
+$ /change:plan <name> orchestrate polish-pass shape update-existing
 
 Pre-flight
   shape:        update-existing
@@ -105,13 +105,13 @@ Multi-project registry; descriptions complete. Continuing.
 
   Done. Next steps:
     - specify change plan status
-    - /change:execute --loop
+    - /change:execute loop
 
 ---
 
 ## Step 4 — Execute
 
-  $ /change:execute --loop
+  $ /change:execute loop
 
   ## /change:execute — polish-pass
 
@@ -178,18 +178,18 @@ Open PRs on `specify/polish-pass`:
   vectis-mobile   specify/polish-pass    PR #34    https://github.com/org/vectis-mobile/pull/34
 
 Merge these PRs through the forge UI or an explicit hand-run `gh pr merge`,
-then re-run /change:plan --orchestrate polish-pass to finalize.
+then re-run /change:plan <name> orchestrate polish-pass to finalize.
 
 ---
 
-## /change:plan --orchestrate — polish-pass — paused
+## /change:plan <name> orchestrate — polish-pass — paused
 
   Brief:    change.md
   Plan:     plan.yaml (2 changes, all `done`)
   PRs:      omnia-backend#62 (open), vectis-mobile#34 (open)
 
-  Next action: merge PRs, then re-run /change:plan --orchestrate
-  polish-pass --shape update-existing.
+  Next action: merge PRs, then re-run /change:plan <name> orchestrate
+  polish-pass shape update-existing.
 ```
 
 ## Operator merges PRs
@@ -199,7 +199,7 @@ The operator merges both PRs on github.com (squash, conventional commit titles) 
 ## Run 2 — re-entry, runs step 7 only
 
 ```text
-$ /change:plan --orchestrate polish-pass --shape update-existing
+$ /change:plan <name> orchestrate polish-pass shape update-existing
 
 Pre-flight
   shape:        update-existing
@@ -269,14 +269,14 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ---
 
-## /change:plan --orchestrate — polish-pass — landed
+## /change:plan <name> orchestrate — polish-pass — landed
 
   Brief:    .specify/archive/plans/polish-pass-20260428/change.md
   Plan:     .specify/archive/plans/polish-pass-20260428.yaml
   Registry: omnia-backend, vectis-mobile (unchanged)
   PRs:      omnia-backend#62 (merged), vectis-mobile#34 (merged)
 
-  Re-running /change:plan --orchestrate polish-pass will report
+  Re-running /change:plan <name> orchestrate polish-pass will report
   plan-not-found from `specify change finalize` and exit 0.
 ```
 

@@ -62,7 +62,7 @@ This avoids overloading `SKILL.md` with general policy, and gives reviewers and 
 
 ### Optimize For Background Execution Later
 
-The local `/change:execute --loop` path should remain first-class, but the primitives should be portable to cloud execution: plan locks, journals, phase outcomes, workspace state, review results, and recovery records should all be serializable and durable.
+The local `/change:execute loop` path should remain first-class, but the primitives should be portable to cloud execution: plan locks, journals, phase outcomes, workspace state, review results, and recovery records should all be serializable and durable.
 
 The long-term shape is:
 
@@ -94,11 +94,24 @@ The skill-hygiene foundation has now landed across RFCs 10, 13, 15, and 16:
 - RFC-15 introduced declared WASI capability tools (`specify tool`, `tools.yaml` sidecars) so deterministic helpers run with explicit permissions and SHA-256 pins instead of as bundled native code;
 - RFC-16 retired the `specify-vectis` host binary in favour of the declared `vectis-validate` and `vectis-scaffold` WASI components, leaving operators with one installed binary.
 
+Two live RFCs sit alongside this strand and should be tracked here rather than drifting on their own:
+
+- **RFC-4 (typed skill expression).** Frontmatter schema enforcement, reference resolution, variable consistency, and cross-skill directive validation. The Option 1 surface lands inside the framework linter once the `checks.ts` port is in place; Options 2 and 3 (typed manifests / Rust DSL) remain deferred until skill count makes the lift worthwhile.
+- **RFC-5 (framework linter port).** `scripts/checks.ts` (~1500 lines, Deno) is still the framework-level linter; `make checks` invokes it. The port to a Rust `specify-check` crate exposed via `specify check` is one-for-one, message-preserving, and unblocks RFC-4 Option 1. `crates/validate/src/rfc5.rs` already reserves the rule-id namespace (`tool.write-permission-too-broad`, `tool.lifecycle-state-write-denied`, `skill.invokes-host-binary-with-declared-tool-equivalent`) but the scanner is a TODO.
+
+Naming convention for the two enforcement surfaces:
+
+- `specify check` — **framework-repo integrity** (RFC-5). Runs in CI on this repo: skill frontmatter, marketplace alignment, capability briefs, declared-tool manifests, docs inventory.
+- `specify review` — **consumer-project review** (roadmap §4). Runs against a downstream project's slices, plans, contracts, and codex compliance.
+
+The two surfaces share rule-id vocabulary but never the same scanner; keeping the names distinct prevents the §4 design from colliding with the RFC-5 port.
+
 Open hygiene items still owned by this strand:
 
-- factor duplicated phase outcome, journal, and plan-mutation instructions into shared references;
+- factor duplicated phase outcome, journal, and plan-mutation instructions into shared references (the `plugins/spec/references/` and `plugins/change/skills/execute/` references are the right home; today the same prose recurs across multiple skill bodies);
 - preserve stable Specify artifact identifiers while improving skill discoverability;
-- continue compressing always-loaded surface area as more first-party helpers move to declared tools.
+- continue compressing always-loaded surface area as more first-party helpers move to declared tools (`skill.invokes-host-binary-with-declared-tool-equivalent` enforces the migration once the linter lands);
+- finish the RFC-13 rename tail before it becomes load-bearing: pick a release in which `specify migrate slice-layout`, `specify migrate change-noun`, and the `/spec:plan` / `/spec:execute` deprecation shims are deleted.
 
 Next, add a first-class repository context output:
 
@@ -107,14 +120,14 @@ Next, add a first-class repository context output:
 - keep the file short enough to sit directly in agent context;
 - add checks that warn when repo structure changes imply `AGENTS.md` should be refreshed.
 
-Candidate surfaces:
+Candidate surface (preferred):
 
 ```bash
 specify context generate
 specify context check
 ```
 
-Open question: whether this belongs under `specify context`, `specify project`, or a new plugin skill such as `/spec:context`.
+`specify context` is the durable home: every other artifact noun in the post-RFC-13 CLI lives at `specify <noun> <action>` (`registry`, `workspace`, `slice`, `change`, `capability`), and `AGENTS.md` is a first-party Specify artifact derived from those nouns. A plugin skill (`/spec:context`) can wrap it later if useful, but the deterministic generator belongs in the CLI.
 
 ### 2. Catalog Integration Without Catalog Ownership
 
@@ -165,9 +178,20 @@ Skills should be able to cite codex rules while generating artifacts. Reviewers 
 
 This should complement, not replace, artifact schemas. Artifact schemas define structure. Codex rules define durable engineering policy.
 
+`plugins/references/review-checks.md` is already the de facto codex: it carries the `UNI-*` rule catalogue that every reviewer skill cites today, with severity, "what to look for" prose, and spec-change indicators. The first codex deliverable is a one-RFC unit of work that:
+
+- formalises the rule-id namespace (the existing `UNI-*` ids are the seed) and reserves prefixes for new tracks (e.g. `RUST-*`, `IFACE-*`, `SEC-*`);
+- adds applicability metadata so skills and reviewers can filter rules by capability, plugin, or language;
+- decides the storage location — `.specify/codex/` (per-project, reviewable, projection-friendly) versus repo-root `codex/` (framework-owned) versus a shared catalog (multi-repo);
+- migrates `plugins/references/review-checks.md` into the chosen location without losing rule-id stability.
+
+Defining the format must precede any reviewer code in §4 — without stable rule ids the review output cannot be cited or suppressed safely.
+
 ### 4. CI-Native Specify Review
 
 **Goal:** Move from workflow correctness to continuous enforcement.
+
+This surface is distinct from `specify check` (RFC-5, §1): `check` validates *this framework repo* at framework CI time; `review` validates a *consumer project* at consumer CI time. They share rule-id vocabulary and finding shape, but they are separate scanners with separate inputs. Settling the names now prevents the §4 design from colliding with the RFC-5 port.
 
 Add a review mode that can run locally or in CI:
 
@@ -202,6 +226,8 @@ Findings should include file references, rule ids where applicable, and clear re
 **Goal:** Move from cross-project warnings to change-level coherence.
 
 The current contract-warning loop is useful discovery, but multi-repo execution needs a stronger compatibility model before a change can be called complete. Producer changes should be classified by impact, connected to affected consumers, and reflected in the plan before finalization.
+
+The vocabulary already exists in `plugins/contract/references/cross-project-compatibility.md`: the `change-kind` enumeration (`removed-field`, `required-field-added`, `type-narrowed`, `enum-value-removed`, `additional-properties-tightened`, `removed-endpoint`, `status-code-removed`, …) is the seed dictionary. The work here is layering a deterministic *classification* over that enumeration — each `change-kind` maps to one of `additive` / `breaking` / `ambiguous` / `unverifiable` — and then wiring the classification into the change-level plan so producer slices can require consumer follow-up entries before they are eligible for `done`. This staged model means the existing warning emitters keep working unchanged; the gate is layered on top.
 
 Add deterministic compatibility outputs that can answer:
 
@@ -325,7 +351,7 @@ Requirements:
 - explicit human approval gates;
 - controlled push and PR/MR creation;
 - deterministic recovery after interruption;
-- parity with local `/change:execute --loop`.
+- parity with local `/change:execute loop`.
 
 Candidate surface:
 
@@ -363,11 +389,16 @@ This should avoid a heavy marketplace requirement. The near-term need is a revie
 
 ### Near Term
 
-- Add concise `AGENTS.md` generation and checking.
-- Define the codex rule format.
-- Define the first structured `specify review` finding schema, including severity, rule id, evidence, remediation, and machine-readable output.
-- Promote cross-project contract warnings into a classified compatibility report.
-- Create the first multi-repo acceptance fixture that runs through plan, execute, push handoff, and finalize without live forge dependencies.
+Ordered by leverage. The multi-repo acceptance fixture comes first because §6 says the framework should be judged on whole-loop correctness, and nothing in §3–§5 is meaningful without that proof path.
+
+- Create the first multi-repo acceptance fixture that runs through plan, execute, push handoff, and finalize without live forge dependencies (§6 / §1 proof path).
+- Add concise `AGENTS.md` generation and checking under `specify context generate` / `specify context check` (§1) — second-best end-to-end deliverable after the acceptance fixture; smallest scope, most direct user value, unblocks staleness detection in §4.
+- Define the codex rule format and migrate `plugins/references/review-checks.md` into the chosen layout without losing rule-id stability (§3). Must precede any reviewer code.
+- Define the first structured `specify review` finding schema (severity, rule id, evidence, remediation, machine-readable output) — depends on the codex rule format.
+- Promote cross-project contract warnings into a classified compatibility report by mapping the existing `change-kind` enumeration onto `additive` / `breaking` / `ambiguous` / `unverifiable` (§5).
+- Finish the RFC-13 rename tail: pick a release in which `specify migrate slice-layout`, `specify migrate change-noun`, and the `/spec:plan` / `/spec:execute` deprecation shims are deleted.
+- Land RFC-5: port `scripts/checks.ts` into the `specify-check` Rust crate exposed via `specify check`, retire the Deno linter from `make checks`, and lift `crates/validate/src/rfc5.rs` from rule-id reservations to a working scanner. Unblocks RFC-4 Option 1.
+- Land RFC-4 Option 1 inside the framework linter (frontmatter schema, reference resolution, variable consistency, cross-skill directive validation) — depends on RFC-5. Options 2 and 3 stay deferred.
 - Keep the Backstage/catalog decision to adapter design, not core registry replacement.
 - Migrate any remaining first-party host helpers to declared WASI tools where the cost/benefit is favourable (the `skill.invokes-host-binary-with-declared-tool-equivalent` lint reserved by RFC-15 enforces this once the linter has enough context).
 
@@ -380,11 +411,11 @@ This should avoid a heavy marketplace requirement. The near-term need is a revie
 - Add a read-oriented Specify MCP server.
 - Add local structured workflow events.
 - Add a first forge abstraction behind workspace push and change finalize.
-- Add structured orchestration status for `/change:plan --orchestrate` re-entry and pause points.
+- Add structured orchestration status for `/change:plan <name> orchestrate` re-entry and pause points.
 
 ### Long Term
 
-- Add cloud-hosted `/change:execute --loop` equivalents.
+- Add cloud-hosted `/change:execute loop` equivalents.
 - Support durable background agents with sandboxed workspace clones.
 - Support PR/MR creation and review loops across GitHub, GitLab, Bitbucket, and self-hosted forges through adapters.
 - Support catalog-backed initiatives across many repositories.
@@ -404,14 +435,18 @@ This should avoid a heavy marketplace requirement. The near-term need is a revie
 
 ## Open Questions
 
-- Should repo context generation live under `specify context`, `specify project`, or a plugin skill?
-- Should codex rules live inside `.specify/`, at the repository root, or in a shared catalog?
-- Which parts of `specify review` should be deterministic CLI checks versus model-assisted analysis?
+- Should codex rules live inside `.specify/codex/`, at the repository root (`codex/`), or in a shared catalog accessible to multiple repos?
+- Which parts of `specify review` should be deterministic CLI checks versus model-assisted analysis, and where does the boundary sit relative to `specify check` (which stays deterministic by construction)?
 - What is the minimum registry projection needed from Backstage for useful multi-repo planning?
-- What is the minimum compatibility classifier needed before producer changes can gate on consumer impact?
+- What is the minimum compatibility classifier needed before producer changes can gate on consumer impact, given the existing `change-kind` enumeration as the seed dictionary?
 - Which multi-repo acceptance fixtures best represent the product proof path?
 - What is the smallest forge adapter contract that supports push, PR/MR handoff, CI state, and finalize?
 - How should orchestration ownership and handoff work when more than one operator or agent can touch the same change?
 - What compatibility guarantees should capability authors provide across capability and declared-tool versions?
 - How much telemetry should be emitted by default, and what should require explicit opt-in?
 - What approval model is required before cloud-hosted execution can push or open pull requests?
+
+Resolved:
+
+- *Where does repo context generation live?* — `specify context generate` / `specify context check` (see §1). The plugin skill (`/spec:context`) can wrap the CLI later if useful, but the deterministic generator belongs in the CLI.
+- *What are the names for framework versus consumer enforcement?* — `specify check` is the framework-repo linter (RFC-5); `specify review` is the consumer-project reviewer (§4). They share rule-id vocabulary and finding shape, never the same scanner.

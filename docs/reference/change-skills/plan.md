@@ -8,12 +8,12 @@ Author `plan.yaml` for a change.
 
 ```text
 /change:plan <change-name> \
-    [--from <path>...]          # documentation inputs
-    [--against <path>]          # existing codebase to delta against
-    [--source <key>=<path>...]  # named legacy-code sources
-    [--focus <area>]            # scoping hint
-    [--extend]                  # add to existing plan
-    [--dry-run]                 # preview only, write nothing
+    [from <path>...]          # documentation inputs
+    [against <path>]          # existing codebase to delta against
+    [source <key>=<path>...]  # named legacy-code sources
+    [focus <area>]            # scoping hint
+    [extend]                  # add to existing plan
+    [dry-run]                 # preview only, write nothing
 ```
 
 ## Arguments
@@ -100,19 +100,19 @@ Creates plan entries in `pending` state via `specify change plan add`.
 
 ```text
 # Plan a migration from a legacy codebase
-/change:plan migrate-to-v2 --source monolith=/path/to/legacy
+/change:plan migrate-to-v2 source monolith=/path/to/legacy
 
 # Plan from documentation
-/change:plan new-platform --from ./docs/prd.md --from ./docs/architecture.md
+/change:plan new-platform from ./docs/prd.md from ./docs/architecture.md
 
 # Plan with a focus area
-/change:plan auth-overhaul --source legacy=./src --focus authentication
+/change:plan auth-overhaul source legacy=./src focus authentication
 
 # Preview without writing
-/change:plan migrate-to-v2 --source monolith=/path/to/legacy --dry-run
+/change:plan migrate-to-v2 source monolith=/path/to/legacy dry-run
 
 # Extend an existing plan
-/change:plan migrate-to-v2 --source payments=./src/payments --extend
+/change:plan migrate-to-v2 source payments=./src/payments extend
 ```
 
 ## See also

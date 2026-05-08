@@ -1,8 +1,8 @@
 # Land a Change
 
-Once `/change:execute --loop` has driven every plan entry to `done` and `specify workspace push` has shipped the local commits as PRs, the remaining work is **landing** -- merging the PRs through the forge and archiving the plan. This how-to covers the operator-owned merge step and the four guards that `specify change finalize` runs before it touches anything.
+Once `/change:execute loop` has driven every plan entry to `done` and `specify workspace push` has shipped the local commits as PRs, the remaining work is **landing** -- merging the PRs through the forge and archiving the plan. This how-to covers the operator-owned merge step and the four guards that `specify change finalize` runs before it touches anything.
 
-This is the checklist version. For the full scenario with example project names, expected outputs, and the `/change:plan --orchestrate` variants, read the [Landing a Change tutorial](../tutorials/landing-a-change.md).
+This is the checklist version. For the full scenario with example project names, expected outputs, and the `/change:plan <name> orchestrate` variants, read the [Landing a Change tutorial](../tutorials/landing-a-change.md).
 
 ## Prerequisites
 
@@ -69,7 +69,7 @@ Observation-only: classifies every guard, prints the per-project status table, a
 - First run refuses on an unmerged PR -> operator merges manually -> re-run completes the archive.
 - After successful finalize, re-running returns `plan-not-found` (the explicit "already finalized" signal). This is the canonical way to confirm a change is closed.
 
-The umbrella mode `/change:plan --orchestrate <name>` honours the same idempotency: re-running the umbrella against a state where every PR is merged and the plan still exists on disk skips straight to `specify change finalize`.
+The umbrella mode `/change:plan <name> orchestrate` honours the same idempotency: re-running the umbrella against a state where every PR is merged and the plan still exists on disk skips straight to `specify change finalize`.
 
 ## Output reference
 
@@ -80,5 +80,5 @@ Refer to [`specify change finalize` -- output](../reference/cli/change.md#specif
 - [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- end-to-end walkthrough that exercises this landing flow.
 - [`specify workspace`](../reference/cli/workspace.md) -- CLI reference for `sync`, `status`, and `push`.
 - [`specify change`](../reference/cli/change.md) -- CLI reference for `finalize`.
-- [`/change:plan --orchestrate`](../reference/change-skills/change.md) -- the Layer 4 umbrella mode that automates through PR creation, then finalizes after operator merge.
+- [`/change:plan <name> orchestrate`](../reference/change-skills/change.md) -- the Layer 4 umbrella mode that automates through PR creation, then finalizes after operator merge.
 - [Change landing issues](../appendices/troubleshooting.md#change-landing-issues) -- `branch-pattern-mismatch`, `plan-not-found`, dirty clones.

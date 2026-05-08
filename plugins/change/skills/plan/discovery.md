@@ -8,7 +8,7 @@ Discovery is read-only with respect to `plan.yaml`. The output header is exactly
 
 ## Greenfield discovery → initial registry topology (RFC-9 §2B)
 
-When `/change:plan` runs **before** any `registry.yaml` exists and the discovery brief surfaces capabilities that cluster into more than one project (e.g. a TypeScript backend monolith with a separate Crux mobile shell, or two unrelated services in a single migration), the skill enters the **greenfield registry-bootstrap** flow between discovery (step 3(a)) and propose (step 3(c)). Single-project greenfield runs (`--from <single-codebase>`, no clear cluster split) skip this flow and continue as a standard single-repo change.
+When `/change:plan` runs **before** any `registry.yaml` exists and the discovery brief surfaces capabilities that cluster into more than one project (e.g. a TypeScript backend monolith with a separate Crux mobile shell, or two unrelated services in a single migration), the skill enters the **greenfield registry-bootstrap** flow between discovery (step 3(a)) and propose (step 3(c)). Single-project greenfield runs (`from <single-codebase>`, no clear cluster split) skip this flow and continue as a standard single-repo change.
 
 **Detection.** The discovery brief decides whether the capability inventory implies more than one project. The brief writes a `## Proposed registry topology` section to `.specify/plans/<slice-name>/discovery.md` whenever its clustering produces ≥ 2 candidate projects. Absence of that section (or a section with exactly one candidate) means single-repo — the bootstrap flow is skipped.
 

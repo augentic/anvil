@@ -14,23 +14,23 @@
 ### Multi-slice change
 
 ```text
-/change:plan <name> --source legacy=./path    # author plan
-/change:execute --loop                        # run until done
+/change:plan <name> source legacy=./path    # author plan
+/change:execute loop                        # run until done
 ```
 
 ### Cross-repo umbrella
 
 ```text
-/spec:init --hub                                     # bootstrap a platform hub
+/spec:init hub                                     # bootstrap a platform hub
 specify registry add <project> --url ... --schema ...      # `--schema` flag is the legacy spelling; renamed in a later phase
-/change:plan --orchestrate <name> [--shape ...]
+/change:plan <name> orchestrate [shape ...]
 ```
 
 ## All skills
 
 | Skill | Layer | Purpose |
 |-------|-------|---------|
-| `/spec:init` | 2 | One-time project setup (`--hub` for a platform hub) |
+| `/spec:init` | 2 | One-time project setup (`hub` for a platform hub) |
 | `/spec:define` | 2 | Generate artifacts for a new slice |
 | `/spec:build` | 2 | Implement tasks |
 | `/spec:merge` | 2 | Merge completed slice into baseline |
@@ -39,7 +39,7 @@ specify registry add <project> --url ... --schema ...      # `--schema` flag is 
 | `/spec:analyze` | 3 | Plan-time capability inference (invoked by `/change:plan`) |
 | `/change:plan` | 3 | Author a multi-slice plan |
 | `/change:execute` | 3 | Automate the plan loop |
-| `/change:plan --orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> operator PR merge -> finalize |
+| `/change:plan <name> orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> operator PR merge -> finalize |
 | `/contract:openapi` | -- | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
 | `/contract:asyncapi` | -- | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
 | `/contract:json-schema` | -- | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |

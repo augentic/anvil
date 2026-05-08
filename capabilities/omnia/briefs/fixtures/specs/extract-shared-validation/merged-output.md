@@ -14,7 +14,7 @@ The brief infers `--include src/common/validation/**` from the path hint and log
 
 ```text
 /spec:extract ./legacy/monolith <slice-dir>/.extract/monolith/ \
-    --include 'src/common/validation/**'
+    include 'src/common/validation/**'
 ```
 
 ## After `/spec:extract` returns

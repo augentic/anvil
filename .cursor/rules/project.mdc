@@ -21,7 +21,7 @@ Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "in
 The intended workflow is human-driven Specify. Single-slice loop:
 
 ```bash
-/spec:init      # once per project (use --hub for a registry-only platform hub)
+/spec:init      # once per project (use `hub` for a registry-only platform hub)
 /spec:define
 /spec:build     # validates artifacts, then implements
 /spec:merge
@@ -31,14 +31,14 @@ The intended workflow is human-driven Specify. Single-slice loop:
 Multi-slice change (Layer 3):
 
 ```bash
-/change:plan <name> --source legacy=./path
-/change:execute --loop
+/change:plan <name> source legacy=./path
+/change:execute loop
 ```
 
 Cross-repo change end-to-end (Layer 4 umbrella, RFC-9 §2C):
 
 ```bash
-/change:plan --orchestrate <name> [--shape migrate-legacy|new-feature|update-existing]
+/change:plan <name> orchestrate [shape migrate-legacy|new-feature|update-existing]
 ```
 
 Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
@@ -79,7 +79,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Specify Plugin (`plugins/spec/`)
 
-- `init` - initialize Specify in a project from a positional `<capability>` (one-time setup; mutually exclusive with `--hub`, which scaffolds a registry-only platform hub per RFC-9 §1D and writes only `hub: true` to `project.yaml`)
+- `init` - initialize Specify in a project from a positional `<capability>` (one-time setup; mutually exclusive with the `hub` positional, which scaffolds a registry-only platform hub per RFC-9 §1D and writes only `hub: true` to `project.yaml`)
 - `define` - create a slice and generate all artifacts in one step
 - `build` - validate artifacts and implement tasks from a Specify slice
 - `merge` - finalize and merge a completed slice
@@ -91,7 +91,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Change Plugin (`plugins/change/`)
 
-- `plan` - author `plan.yaml` via the planning brief pipeline; with `--orchestrate`, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → operator PR merge → finalize) — RFC-9 §2C. Historical `/spec:plan` delegates here.
+- `plan` - author `plan.yaml` via the planning brief pipeline; with the `orchestrate` positional, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → operator PR merge → finalize) — RFC-9 §2C. Historical `/spec:plan` delegates here.
 - `execute` - drive a change's plan through define, build, merge per slice. Historical `/spec:execute` delegates here.
 
 ### Omnia Plugin (`plugins/omnia/`)
@@ -257,8 +257,8 @@ Portability posture:
 
 - Single short hint that names the **primary positional** argument as Cursor placeholder text (the grey hint shown after `/plugin:skill `).
 - Required positional → angle brackets: `<slice-dir>`. Optional positional → square brackets: `[crate-name]`.
-- No flag names (`--dry-run`, `--source`), no `?` optional-suffix marker, no `|` alternative-value pipes. Flags and secondary positionals are documented in the body's "Invocation" section.
-- Skills that only take flags omit the field entirely (e.g. `/change:execute`).
+- No flag names (`--dry-run`, `--source`), no `?` optional-suffix marker, no `|` alternative-value pipes. Secondary skill arguments are documented as positionals in the body's "Invocation" section.
+- Skills that only take secondary mode tokens keep those tokens out of the hint unless a primary positional exists (e.g. `/change:execute` uses `[mode]` only in its body).
 
 ### Critical Path (Quick Reference)
 
@@ -279,6 +279,7 @@ The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/cha
 - `name` matches `^[a-z][a-z0-9-]*$`, carries the plugin prefix, and is globally unique across all SKILL.md files.
 - `description` is ≤1024 characters.
 - `argument-hint` contains no `?`, no `--`, and no `|`.
+- Slash-skill invocation examples use positionals only; leading double-dash option tokens are reserved for ordinary CLI commands and fail checks when used as skill arguments.
 - SKILL.md body is ≤500 lines (post-frontmatter).
 - SKILL.md bodies with ≥150 post-frontmatter lines include a `## Critical Path (Quick Reference)` block with 5–7 bullets or numbered items.
 - No SKILL.md carries a top-level `license:` (or any other forbidden frontmatter key).

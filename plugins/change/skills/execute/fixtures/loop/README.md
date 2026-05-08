@@ -1,4 +1,4 @@
-# `/change:execute --loop` — behavioural fixtures
+# `/change:execute loop` — behavioural fixtures
 
 These fixtures pin the five terminal paths a `--loop` invocation can take: drain the plan to completion (`all-done`), refuse the run because another driver is already holding the lock (`driver-busy`), halt on a self-heal ambiguity before any iteration runs (`halted`), drain eligible work until only `blocked` / `failed` entries remain (`stuck`), or handle a SIGINT mid-run cleanly (`driver-interrupted`). They correspond to RFC-2 Change L2.H; the algorithms they illustrate live in [`../../SKILL.md` → §Loop mode (`--loop`)](../../SKILL.md) and [`../../SKILL.md` → §Terminal summary (`--loop` exit)](../../SKILL.md).
 

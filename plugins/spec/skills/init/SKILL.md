@@ -218,7 +218,7 @@ Next steps:
 Next steps:
 1. Add registered projects to `registry.yaml` (hand-edit, or `specify registry add` once that verb lands)
 2. Edit `change.md` to frame the first initiative
-3. Run `/change:plan <name>` to author a plan, then `/change:execute --loop` to drive it
+3. Run `/change:plan <name>` to author a plan, then `/change:execute loop` to drive it
 ```
 
 **Guardrails**

@@ -48,20 +48,20 @@ No other top-level keys are permitted. RFC-10 (§D) removed `license`, `compatib
 |-------|----------|-------------|
 | `name` | yes | Globally unique, plugin-qualified, kebab-case identifier (`^[a-z][a-z0-9-]*$`, ≤64 chars). Must start with the containing plugin's directory name plus `-` (e.g. `omnia-crate-writer`, `vectis-core-writer`, `contract-openapi`). The `spec/` plugin uses the `specify-` prefix per RFC §A.1 (so `plugins/spec/skills/init/` carries `name: specify-init`). Reserved words `anthropic` and `claude` are not allowed. |
 | `description` | yes | Description that includes both *what* the skill does and *when* to use it, in third person (10–1024 characters). Avoid XML tags and avoid RFC / layer citations — those belong in the body. |
-| `argument-hint` | no | Cursor placeholder text shown after the user types the slash command. Single short hint with `<>` for required and `[]` for optional positional arguments; no flag names; no trailing `?`; no `--` prefix; avoid alternation pipes outside bracketed enums. Flags belong in the body's "Invocation" section. |
+| `argument-hint` | no | Cursor placeholder text shown after the user types the slash command. Single short hint with `<>` for required and `[]` for optional positional arguments; no flag names; no trailing `?`; no `--` prefix; avoid alternation pipes outside bracketed enums. Secondary skill arguments belong in the body's "Invocation" section as positionals. |
 | `allowed-tools` | no | Space-separated list of tools the skill may use. Recommended policy is to omit this field and inherit the caller's full toolbelt; see RFC §A.5 for the rationale. When set, values are validated against a known toolset plus `mcp__*` prefixed tools. |
 
 ### Argument-hint vs reference-doc synopsis
 
 The `argument-hint` field is single-line Cursor placeholder text — the operator sees it after typing `/plugin:skill ` in chat. Use `<required>` for required positionals and `[optional]` for optional positionals; never list flags in the hint.
 
-The reference docs under `docs/reference/slice-skills/` and `docs/reference/change-skills/` use a **narrative** synopsis convention that documents flags as well:
+The reference docs under `docs/reference/slice-skills/` and `docs/reference/change-skills/` use a **narrative** synopsis convention that documents secondary positionals as well:
 
 ```text
-/spec:define [description] [--source <key>=<path-or-url>...]
+/spec:define [description] [source <key>=<path-or-url>...]
 ```
 
-This is documentation-only. Contributors copying a synopsis line from a reference doc into a SKILL.md frontmatter must reduce it to a single placeholder for the primary positional argument; flag and secondary-positional documentation goes into the body's "Invocation" section.
+This is documentation-only. Contributors copying a synopsis line from a reference doc into a SKILL.md frontmatter must reduce it to a single placeholder for the primary positional argument; secondary-positionals documentation goes into the body's "Invocation" section. Slash-skill examples must not use `--flag` notation; reserve that shape for underlying CLI commands.
 
 ### Cursor plugin posture
 

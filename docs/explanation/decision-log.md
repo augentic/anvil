@@ -27,7 +27,7 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 1. **Layer 1 — CLI primitives.** Deterministic verbs (`specify slice`, `specify change plan`, `specify change`, `specify registry`, `specify workspace`, `specify capability`).
 2. **Layer 2 — Slice lifecycle.** The define-build-merge skills that operate on a single slice.
 3. **Layer 3 — Plan & Drive.** `/change:plan` authors `plan.yaml`; `/change:execute` runs it.
-4. **Layer 4 — Change orchestration.** `/change:plan --orchestrate` composes Layers 1-3 plus `specify workspace push`, operator PR merge, and `specify change finalize` into a single operator action.
+4. **Layer 4 — Change orchestration.** `/change:plan <name> orchestrate` composes Layers 1-3 plus `specify workspace push`, operator PR merge, and `specify change finalize` into a single operator action.
 
 **Rationale:** Not every use case needs automation. A single slice needs only Layer 2. A small change can be driven manually with Layer 1 CLI commands. Plan/execute automation (Layer 3) composes on top, and the cross-repo umbrella (Layer 4) composes on top of that. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
 

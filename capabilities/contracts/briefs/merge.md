@@ -73,7 +73,7 @@ The brief MUST NOT call `specify slice outcome set` on this path — the slice d
 This branch covers two distinct failure modes:
 
 1. **`specify slice merge run` exited non-zero** (a delta could not be applied, baseline coherence failed inside the merge call, the lifecycle gate refused the call). The filesystem is unchanged: no baseline was written and the slice directory was not moved. Same shape as the omnia merge brief's `failure` branch.
-2. **`specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` returned exit code `1` or `2` after a successful `specify slice merge run`.** The deltas have already landed in the baseline (the CLI stamped `success` atomically), but the merged baseline is now invalid under the RFC-12 rules or the declared tool could not run. **The brief MUST NOT attempt to roll back the merge** — `specify slice merge run` is not transactional with the validator. Instead, journal the validator's findings or tool diagnostic on the now-archived slice and surface the failure to the operator; the operator opens a follow-up slice (or `/spec:drop --reason …` and re-defines) to repair the baseline.
+2. **`specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` returned exit code `1` or `2` after a successful `specify slice merge run`.** The deltas have already landed in the baseline (the CLI stamped `success` atomically), but the merged baseline is now invalid under the RFC-12 rules or the declared tool could not run. **The brief MUST NOT attempt to roll back the merge** — `specify slice merge run` is not transactional with the validator. Instead, journal the validator's findings or tool diagnostic on the now-archived slice and surface the failure to the operator; the operator opens a follow-up slice (or `/spec:drop reason …` and re-defines) to repair the baseline.
 
 In both modes, record the failure on the slice — first journal the diagnostic, then stamp the outcome (when the slice is still under `.specify/slices/`):
 
@@ -84,7 +84,7 @@ specify slice journal append <slice> merge failure \
   --context "<verbatim stderr / coherence-check tail / failing delta path>"
 
 specify slice outcome set <slice> merge failure \
-  --summary "<same load-bearing summary, written so it is useful as a /spec:drop --reason>"
+  --summary "<same load-bearing summary, written so it is useful as a /spec:drop reason>"
 ```
 
 ```bash
@@ -135,4 +135,4 @@ specify slice outcome set <slice> merge deferred \
 
 ### Summary writing rules
 
-The `--summary` strings ride into `/spec:drop --reason` byte-for-byte when `/change:execute` reclaims a `failure` or `deferred` slice (see [`phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md) §"Verbatim-`summary` rule"). Keep them present-tense, self-contained, and short enough to fit a CLI argument without truncation. Route any verbatim stderr, validator JSON, or log tail through `--context` instead — that field is not forwarded to `--reason`.
+The `--summary` strings ride into `/spec:drop reason` byte-for-byte when `/change:execute` reclaims a `failure` or `deferred` slice (see [`phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md) §"Verbatim-`summary` rule"). Keep them present-tense, self-contained, and short enough to fit a CLI argument without truncation. Route any verbatim stderr, validator JSON, or log tail through `--context` instead — that field is not forwarded to `--reason`.

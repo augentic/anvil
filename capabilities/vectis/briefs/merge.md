@@ -91,7 +91,7 @@ This branch covers three distinct failure modes:
    - A specific platform shell (iOS `make build` / `make sim-build`, Android `make build` / `:shared:cargoBuild` / `:app:assembleDebug`) failed its compile pipeline.
    - A host prerequisite check failed (Java 21, Android SDK / NDK, Rust Android targets, Gradle wrapper, cargo-swift, Xcode command line tools).
 
-For modes 2 and 3, **the brief MUST NOT attempt to roll back the merge** — `specify slice merge run` is not transactional with validation or host verification. Instead, journal the findings on the now-archived slice and surface the failure to the operator; the operator opens a follow-up slice (or `/spec:drop --reason …` and re-defines) to repair the baseline.
+For modes 2 and 3, **the brief MUST NOT attempt to roll back the merge** — `specify slice merge run` is not transactional with validation or host verification. Instead, journal the findings on the now-archived slice and surface the failure to the operator; the operator opens a follow-up slice (or `/spec:drop reason …` and re-defines) to repair the baseline.
 
 In all three modes, record the failure on the slice — first journal the diagnostic, then stamp the outcome (when the slice is still under `.specify/slices/`):
 
@@ -102,7 +102,7 @@ specify slice journal append <slice> merge failure \
   --context "<verbatim stderr / coherence-check tail / failing delta path>"
 
 specify slice outcome set <slice> merge failure \
-  --summary "<same load-bearing summary, written so it is useful as a /spec:drop --reason>"
+  --summary "<same load-bearing summary, written so it is useful as a /spec:drop reason>"
 ```
 
 ```bash
@@ -152,4 +152,4 @@ specify slice outcome set <slice> merge deferred \
 
 ### Summary writing rules
 
-The `--summary` strings ride into `/spec:drop --reason` byte-for-byte when `/change:execute` reclaims a `failure` or `deferred` slice (see [`phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md) §"Verbatim-`summary` rule"). Keep them present-tense, self-contained, and short enough to fit a CLI argument without truncation. Route any validator report, host step list, verbatim stderr, or log tail through `--context` instead — that field is not forwarded to `--reason`.
+The `--summary` strings ride into `/spec:drop reason` byte-for-byte when `/change:execute` reclaims a `failure` or `deferred` slice (see [`phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md) §"Verbatim-`summary` rule"). Keep them present-tense, self-contained, and short enough to fit a CLI argument without truncation. Route any validator report, host step list, verbatim stderr, or log tail through `--context` instead — that field is not forwarded to `--reason`.

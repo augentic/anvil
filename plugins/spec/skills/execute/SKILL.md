@@ -17,9 +17,9 @@ description: "Deprecated alias for `/change:execute`. Use only when an operator 
    Deprecated: /spec:execute moved to /change:execute in RFC-13 §3.9. This shim will be removed before release. See ../../../change/skills/execute/SKILL.md.
    ```
 
-2. Then read `../../../change/skills/execute/SKILL.md` and follow it verbatim. Every step of the per-slice algorithm, every mode (`--dry-run`, supervised, `--loop`), every self-heal branch, and every `specify change plan *` shell-out is the canonical skill's responsibility — this shim adds no behaviour of its own beyond the warning above.
+2. Then read `../../../change/skills/execute/SKILL.md` and follow it verbatim. Every step of the per-slice algorithm, every mode (`dry-run`, supervised, `loop`), every self-heal branch, and every `specify change plan *` shell-out is the canonical skill's responsibility — this shim adds no behaviour of its own beyond the warning above.
 
-3. The flag shape is unchanged (`--dry-run`, `--loop`, no positional arguments). Pass through whatever the operator supplied.
+3. The positional mode shape is unchanged (`dry-run`, `loop`). Pass through whatever the operator supplied.
 
 ## Why this shim exists
 

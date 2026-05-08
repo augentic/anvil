@@ -60,7 +60,7 @@ Authorship pattern where a dedicated contract change defines interface shapes be
 Authorship pattern where API contracts are imported from an external system or legacy API. The operator places the external files into the change's `contracts/` directory. `/change:plan` inserts import changes when a source is flagged as external.
 
 **Cross-project contract validation**
-The post-merge check `/change:execute` runs against the producer's `contracts.produces` list (RFC-9 Section 3B). For each produced contract, the driver finds consumer projects via `contracts.consumes`, runs the format-appropriate `/contract:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone, and writes any incompatibilities to the merged change's `journal.yaml` as `cross-project-warning:` entries. Warnings never halt the loop; the operator triages them.
+The post-merge check `/change:execute` runs against the producer's `contracts.produces` list (RFC-9 Section 3B). For each produced contract, the driver finds consumer projects via `contracts.consumes`, runs the format-appropriate `/contract:*` skill (verifier intent, with `mode cross-project`) against each consumer's workspace clone, and writes any incompatibilities to the merged change's `journal.yaml` as `cross-project-warning:` entries. Warnings never halt the loop; the operator triages them.
 
 ## D
 
@@ -103,7 +103,7 @@ The optional `info.x-specify-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0
 Legacy name for `specify change finalize`. The command verifies operator-merged PRs and archives `plan.yaml`, `change.md`, and `.specify/plans/<name>/`; it does not merge pull requests.
 
 **Change shapes (three)**
-The three input topologies the platform-first loop handles uniformly: `migrate-legacy` (sources via `--source <key>=<git-url-or-path>`, targets are existing or newly-minted registered projects), `new-feature` (sources via `--from <docs>`, targets are existing registered projects with new ones spawned at assignment time via the registry-proposal sub-step), and `update-existing` (no input flags, targets are existing registered projects, baseline accumulation in workspace clones is the dominant signal). All three flow through the same `/change:plan --orchestrate` sequence.
+The three input topologies the platform-first loop handles uniformly: `migrate-legacy` (sources via `--source <key>=<git-url-or-path>`, targets are existing or newly-minted registered projects), `new-feature` (sources via `--from <docs>`, targets are existing registered projects with new ones spawned at assignment time via the registry-proposal sub-step), and `update-existing` (no input flags, targets are existing registered projects, baseline accumulation in workspace clones is the dominant signal). All three flow through the same `/change:plan <name> orchestrate` sequence.
 
 ## L
 
@@ -126,7 +126,7 @@ The `/spec:define`, `/spec:build`, `/spec:merge` loop and supporting skills (`/s
 The skills that coordinate multi-slice changes through `plan.yaml`: `/change:plan` (authors the plan via discovery, propose, and assignment), `/change:execute` (automates the define-build-merge loop per slice with CWD-based routing for multi-repo plans), and `/spec:analyze` (plan-time capability inference). Includes sync-peers for multi-repo registries and project assignment (RFC-3b).
 
 **Layer 4 (Change orchestration)**
-The orchestration mode of `/change:plan` (`/change:plan --orchestrate`, RFC-9 Section 2C) that strings the platform-first loop -- brief, registry validate, plan, execute, push, operator PR merge, finalize -- into one operator action. Composition only: every Specify step shells out to a Layer 1 CLI verb or a Layer 3 skill; the operator or forge owns the PR merge decision. Honours every halt the underlying skills surface and is idempotent on re-entry.
+The orchestration mode of `/change:plan` (`/change:plan <name> orchestrate`, RFC-9 Section 2C) that strings the platform-first loop -- brief, registry validate, plan, execute, push, operator PR merge, finalize -- into one operator action. Composition only: every Specify step shells out to a Layer 1 CLI verb or a Layer 3 skill; the operator or forge owns the PR merge decision. Honours every halt the underlying skills surface and is idempotent on re-entry.
 
 **Lifecycle state**
 The current status of a slice: `created`, `defining`, `defined`, `building`, `complete`, `merged`, or `dropped`. `defining` and `building` are transient states indicating a phase is in-flight. Managed by the CLI via `.metadata.yaml`.
@@ -153,7 +153,7 @@ A classification (`success`, `failure`, `deferred`, or `registry-amendment-requi
 An ordered, dependency-aware list of slices stored in `plan.yaml`. The change's table of contents.
 
 **Plan doctor**
-`specify change plan doctor` (RFC-9 Section 4B). A strict superset of `specify change plan validate` that runs every check `validate` runs and then layers four health diagnostics on top: `cycle-in-depends-on` (dependency cycles in `depends-on`), `orphan-source-key` (top-level `sources:` keys no entry references), `stale-workspace-clone` (clones whose registry signature has drifted), and `unreachable-entry` (pending entries blocked by `failed`/`skipped` predecessors). The first triage step when `/change:execute --loop` reports `stuck`.
+`specify change plan doctor` (RFC-9 Section 4B). A strict superset of `specify change plan validate` that runs every check `validate` runs and then layers four health diagnostics on top: `cycle-in-depends-on` (dependency cycles in `depends-on`), `orphan-source-key` (top-level `sources:` keys no entry references), `stale-workspace-clone` (clones whose registry signature has drifted), and `unreachable-entry` (pending entries blocked by `failed`/`skipped` predecessors). The first triage step when `/change:execute loop` reports `stuck`.
 
 **Platform-as-project**
 The single-repo platform topology where the initiating repo is both the platform repo and a code project. Identified by `url: .` on the repo's own registry entry. Phase pipelines run normally because `project.yaml:capability:` resolves to a real capability (`hub:` is absent or `false`). Still permitted for single-repo and small-team cases. Contrast with [Hub](#h). See [Platform repo topologies](../explanation/platform-repo.md).

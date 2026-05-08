@@ -96,9 +96,9 @@ Examples after RFC-10:
 | `/spec:extract` | `<source-path> <slice-dir>` |
 | `/omnia:crate-writer` | `[crate-name]` |
 | `/contract:openapi` | `[slice-dir]` |
-| `/change:execute` | (omitted — flag-only invocation) |
+| `/change:execute` | `[mode]` |
 
-The complete set of flags and secondary positionals each skill accepts moves into a body section called "Invocation". The pattern follows `change/execute` — block-text examples that include the flag form alongside a one-line note about what each form does.
+The complete set of secondary positionals each skill accepts moves into a body section called "Invocation". Slash-skill examples use positional arguments only; reserve `--flag` notation for underlying CLI commands such as `specify ... --format json`, not for `/plugin:skill` arguments.
 
 The shape constraints are enforced by `make checks`. A SKILL.md that ships `argument-hint: "crate-name?"` fails the check because the trailing `?` is the old in-line-optional marker, replaced by the angle/square-bracket convention.
 
@@ -204,6 +204,7 @@ The forbidden list is enforced in [`.cursor/schemas/skill.schema.json`](../../.c
 - **Global uniqueness.** No two SKILL.md files in the repo carry the same `name`.
 - **Description length.** `description` is ≤1024 characters.
 - **Argument-hint shape.** `argument-hint` contains no `?`, no `--`, and no `|`.
+- **Slash invocation shape.** `/plugin:skill` examples use positional arguments only; leading double-dash option tokens after a slash skill are rejected.
 - **Body length.** SKILL.md body (post-frontmatter) is ≤500 lines.
 - **Critical Path.** SKILL.md bodies with ≥150 post-frontmatter lines include a `## Critical Path (Quick Reference)` block with 5–7 bullets or numbered items.
 - **Forbidden keys.** No top-level `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `context`, or `paths`. Enforced by the `additionalProperties: false` clause in `.cursor/schemas/skill.schema.json`.

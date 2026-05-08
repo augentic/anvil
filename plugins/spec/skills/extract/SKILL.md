@@ -1,13 +1,13 @@
 ---
 name: specify-extract
-description: Extract Specify artifacts (specs + design.md) from existing source code. Produces reconstruction-grade, language-agnostic artifacts capturing domain-level business logic. Supports optional `--include` / `--exclude` / `--manifest` filters that scope which source files are read for business-logic extraction without changing the artifact output shape. Use when reconstructing Specify artifacts from a legacy code tree, or when the user mentions `extract`.
+description: Extract Specify artifacts (specs + design.md) from existing source code. Produces reconstruction-grade, language-agnostic artifacts capturing domain-level business logic. Supports optional `include` / `exclude` / `manifest` filters that scope which source files are read for business-logic extraction without changing the artifact output shape. Use when reconstructing Specify artifacts from a legacy code tree, or when the user mentions `extract`.
 argument-hint: "<source-path> <slice-dir>"
 ---
 
 ## Critical Path (Quick Reference)
 
 1. **Identify component structure** — detect source language, entry points, module organization, async patterns, and guest/entry-point layer. Pin dependency versions from the lock file, not the manifest.
-2. **Extract business logic** — apply scope filters (`--include`/`--exclude`/`--manifest`), then analyze depth-first by domain. Tag every statement `[domain]`, `[infrastructure]`, `[mechanical]`, or `[unknown]`. Copy type definitions verbatim; capture all serialization attributes, wire-format names, and field optionality. See [business-logic.md](business-logic.md).
+2. **Extract business logic** — apply scope filters (`include`/`exclude`/`manifest`), then analyze depth-first by domain. Tag every statement `[domain]`, `[infrastructure]`, `[mechanical]`, or `[unknown]`. Copy type definitions verbatim; capture all serialization attributes, wire-format names, and field optionality. See [business-logic.md](business-logic.md).
 3. **Document external API surfaces** — trace actual deserialization code (not type declarations) for every HTTP/API call. Record exact URLs, headers, request/response shapes, auth sources, retries, and timeouts. See [external-api.md](external-api.md).
 4. **Capture external service dependencies** — classify each service by type (`database`, `managed table store`, `message broker`, `cache`, `identity provider`, `API`, `WebSocket`). See [dependencies.md](dependencies.md).
 5. **Capture publication & timing patterns** — document exact publication counts, delay placement, payload identity, partition keys, and message metadata. See [dependencies.md](dependencies.md).
@@ -28,21 +28,21 @@ Analyze a source codebase to produce reconstruction-grade, **language-agnostic**
 
 1. **Source Path** (`$SOURCE_PATH`): Path to the source codebase
 2. **Change Directory** (`$SLICE_DIR`): Specify slice directory (e.g., `./.specify/slices/component/`)
-3. **Include globs** (`$INCLUDE`): Zero or more `--include <glob>` values that narrow the read set for business-logic extraction. Empty ≡ today's behaviour.
-4. **Exclude globs** (`$EXCLUDE`): Zero or more `--exclude <glob>` values that remove paths from the read set for business-logic extraction. Empty ≡ today's behaviour.
-5. **Manifest path** (`$MANIFEST`): Optional single `--manifest <path>` pointing at a slice manifest. Mutually exclusive with `$INCLUDE` / `$EXCLUDE`. See [scope-filters.md](scope-filters.md) §Manifest shape.
+3. **Include globs** (`$INCLUDE`): Zero or more `include <glob>` values that narrow the read set for business-logic extraction. Empty ≡ today's behaviour.
+4. **Exclude globs** (`$EXCLUDE`): Zero or more `exclude <glob>` values that remove paths from the read set for business-logic extraction. Empty ≡ today's behaviour.
+5. **Manifest path** (`$MANIFEST`): Optional single `manifest <path>` pointing at a slice manifest. Mutually exclusive with `$INCLUDE` / `$EXCLUDE`. See [scope-filters.md](scope-filters.md) §Manifest shape.
 
 ```text
 $SOURCE_PATH = $ARGUMENTS[0]
 $SLICE_DIR  = $ARGUMENTS[1]
 $SPECS_DIR   = $SLICE_DIR/specs
 $DESIGN_PATH = $SLICE_DIR/design.md
-$INCLUDE     = [--include <glob> ...]       # repeatable; possibly empty
-$EXCLUDE     = [--exclude <glob> ...]       # repeatable; possibly empty
-$MANIFEST    = --manifest <path>            # single; mutually exclusive with $INCLUDE/$EXCLUDE
+$INCLUDE     = [include <glob> ...]       # repeatable; possibly empty
+$EXCLUDE     = [exclude <glob> ...]       # repeatable; possibly empty
+$MANIFEST    = manifest <path>            # single; mutually exclusive with $INCLUDE/$EXCLUDE
 ```
 
-`$MANIFEST` is mutually exclusive with `$INCLUDE` / `$EXCLUDE`. Invoking extract with a `$MANIFEST` alongside any `$INCLUDE` or `$EXCLUDE` flag is a hard error — the driver (`/change:execute`) and the capability's define brief should have caught it upstream at `specify change plan validate` time. Extract fails fast with a clear message rather than trying to reconcile the two modes.
+`$MANIFEST` is mutually exclusive with `$INCLUDE` / `$EXCLUDE`. Invoking extract with a `$MANIFEST` alongside any `$INCLUDE` or `$EXCLUDE` positional is a hard error — the driver (`/change:execute`) and the capability's define brief should have caught it upstream at `specify change plan validate` time. Extract fails fast with a clear message rather than trying to reconcile the two modes.
 
 ## Scope filters at a glance
 

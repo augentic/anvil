@@ -8,7 +8,7 @@ Specify is organised in four layers. Each layer is independently useful, and eac
 direction: down
 
 Layer4: "Layer 4 — Change Orchestration" {
-  orchestrate: "/change:plan --orchestrate"
+  orchestrate: "/change:plan <name> orchestrate"
 }
 
 Layer3: "Layer 3 — Plan & Drive" {
@@ -96,7 +96,7 @@ Layer 3 skills coordinate **multi-slice changes** through `plan.yaml` -- an orde
 The plan is the slice's table of contents. `/change:plan` produces it by analysing inputs and proposing slices. `/change:execute` consumes it by picking the next eligible slice, running define-build-merge, and updating the plan's status.
 
 ```text
-/change:plan <name> --source legacy=./path  -->  /change:execute --loop
+/change:plan <name> source legacy=./path  -->  /change:execute loop
 ```
 
 **Who uses it:** Change leads coordinating multi-slice programs -- greenfield builds, legacy migrations, platform modernisations -- when they want fine-grained control over the plan/execute loop or only need a subset of the platform-first flow.
@@ -105,14 +105,14 @@ The plan is the slice's table of contents. `/change:plan` produces it by analysi
 
 ## Layer 4: Change orchestration
 
-Layer 4 is a flag-gated mode of `/change:plan` — `/change:plan --orchestrate` — that strings the entire platform-first loop into one operator action. It is **composition only**: every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the orchestration mode adds no new logic.
+Layer 4 is a flag-gated mode of `/change:plan` — `/change:plan <name> orchestrate` — that strings the entire platform-first loop into one operator action. It is **composition only**: every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the orchestration mode adds no new logic.
 
 | Skill | Role |
 |-------|------|
-| `/change:plan --orchestrate` | Brief → registry validate → `/change:plan` (default mode) → `/change:execute --loop` → `specify workspace push` → operator PR merge through forge UI / `gh pr merge` → `specify change finalize` |
+| `/change:plan <name> orchestrate` | Brief → registry validate → `/change:plan` (default mode) → `/change:execute loop` → `specify workspace push` → operator PR merge through forge UI / `gh pr merge` → `specify change finalize` |
 
 ```text
-/change:plan --orchestrate <name> [--shape ...] [--from ...] [--source ...]
+/change:plan <name> orchestrate [shape ...] [from ...] [source ...]
 ```
 
 The orchestration mode honours all the halts the underlying skills surface (self-heal, stuck, `registry-amendment-required`) and is **idempotent on re-entry** — running it again after a halt resumes from the appropriate step.
@@ -121,11 +121,11 @@ The orchestration mode honours all the halts the underlying skills surface (self
 
 ## The layers compose
 
-A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `/change:plan --orchestrate` calls `/change:plan` (default mode) and `/change:execute`; `/change:execute` calls `/spec:define`, `/spec:build`, and `/spec:merge` -- the same skills you would invoke manually. The phase skills themselves do not know whether they are running inside an automated loop or being driven by a human.
+A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `/change:plan <name> orchestrate` calls `/change:plan` (default mode) and `/change:execute`; `/change:execute` calls `/spec:define`, `/spec:build`, and `/spec:merge` -- the same skills you would invoke manually. The phase skills themselves do not know whether they are running inside an automated loop or being driven by a human.
 
 This means you can always drop down a layer:
 
-- If `/change:plan --orchestrate` halts on a step, you can pick up by hand at the next action (`specify workspace push`, operator PR merge, `specify change finalize`).
+- If `/change:plan <name> orchestrate` halts on a step, you can pick up by hand at the next action (`specify workspace push`, operator PR merge, `specify change finalize`).
 - If `/change:execute` fails on a slice, you can finish it manually with `/spec:build` and `/spec:merge`.
 - If `/change:plan` produces a plan you want to adjust, you can edit it with `specify change plan amend` and drive it yourself with `specify change plan next`.
 - If a skill does something unexpected, you can inspect the underlying state with `specify slice status` or `specify change plan status`.

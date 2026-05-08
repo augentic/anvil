@@ -5,7 +5,7 @@ Extract Specify artifacts from existing source code.
 ## Synopsis
 
 ```text
-/spec:extract <source-path> <slice-dir> [--include <glob>...] [--exclude <glob>...] [--manifest <path>]
+/spec:extract <source-path> <slice-dir> [include <glob>...] [exclude <glob>...] [manifest <path>]
 ```
 
 ## Arguments
@@ -62,10 +62,10 @@ None directly. Extract is typically invoked as part of `/spec:define`, which han
 /spec:extract ./src .specify/slices/initial-baseline/
 
 # Extract only the auth module
-/spec:extract ./src .specify/slices/migrate-auth/ --include "src/auth/**"
+/spec:extract ./src .specify/slices/migrate-auth/ include "src/auth/**"
 
 # Extract using a manifest
-/spec:extract ./src .specify/slices/migrate-core/ --manifest ./migration-manifest.txt
+/spec:extract ./src .specify/slices/migrate-core/ manifest ./migration-manifest.txt
 ```
 
 **Brownfield onboarding flow:**
@@ -78,6 +78,6 @@ None directly. Extract is typically invoked as part of `/spec:define`, which han
 
 ## See also
 
-- [/spec:define](define.md) -- invokes extract when `--source` is provided
+- [/spec:define](define.md) -- invokes extract when `source` is provided
 - [/spec:analyze](../change-skills/analyze.md) -- the plan-time counterpart (cheap capability summaries vs deep extraction)
 - [Tutorial: Brownfield Onboarding](../../tutorials/brownfield-onboarding.md) -- full walkthrough

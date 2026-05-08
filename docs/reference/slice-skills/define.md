@@ -5,7 +5,7 @@ Create a new slice and generate all artifacts in one step.
 ## Synopsis
 
 ```text
-/spec:define [description] [artifact-id?] [--source <key>=<path-or-url>...]
+/spec:define [description] [artifact-id?] [source <key>=<path-or-url>...]
 ```
 
 ## Arguments
@@ -61,7 +61,7 @@ Create a new slice and generate all artifacts in one step.
 /spec:define "Add user authentication with JWT tokens"
 
 # Define with legacy source for extraction
-/spec:define "Migrate auth service" --source legacy=./services/auth
+/spec:define "Migrate auth service" source legacy=./services/auth
 
 # Regenerate just the design for an existing change
 /spec:define add-auth design
@@ -71,4 +71,4 @@ Create a new slice and generate all artifacts in one step.
 
 - [Artifact Format](../artifact-format.md) -- format of the generated artifacts
 - [/spec:build](build.md) -- next step after define
-- [/spec:extract](extract.md) -- how source extraction works when `--source` is provided
+- [/spec:extract](extract.md) -- how source extraction works when `source` is provided

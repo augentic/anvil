@@ -3,7 +3,7 @@
 Concrete fix items carried into this skill from earlier RFC-6 chunks. Each item is reproducible today via:
 
 ```sh
-/vectis:template-updater --version-file <scratch proposed versions.toml>
+/vectis:template-updater version-file <scratch proposed versions.toml>
 ```
 
 The skill queries live registries from the host, renders scratch projects with `specify tool run vectis-scaffold -- ... --version-file <scratch proposed versions.toml>`, then runs the explicit host Cargo/codegen/Gradle/Xcode matrix. `vectis-scaffold` is render-only; it does not query registries, discover SDKs, or run scratch builds. When the skill runs against a new bump, it should check this list **first**: if the reproduced failure matches an item below, follow that item's playbook rather than re-diagnosing from scratch.

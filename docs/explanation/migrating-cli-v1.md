@@ -4,7 +4,7 @@ The `specify` CLI was reshaped in the v1 release so per-slice operations live un
 
 The behavioural surface did not change -- every renamed command does exactly the same thing it did before. The reshape is a routing change, not a semantic one.
 
-> **For the additive and breaking behavior surface** -- new verbs (`specify registry add`, `specify change plan doctor`, `specify change finalize`), the retired `specify workspace merge` automation, new flags (`specify init --hub`), the `/change:plan --orchestrate` Layer 4 umbrella mode (formerly the `/spec:initiative` skill), workspace branch ownership, and contracts -- see [What's New Since v0.23](whats-new.md). The two pages compose: this one is **what was renamed**, the other is **what changed or was added**.
+> **For the additive and breaking behavior surface** -- new verbs (`specify registry add`, `specify change plan doctor`, `specify change finalize`), the retired `specify workspace merge` automation, new flags (`specify init --hub`), the `/change:plan <name> orchestrate` Layer 4 umbrella mode (formerly the `/spec:initiative` skill), workspace branch ownership, and contracts -- see [What's New Since v0.23](whats-new.md). The two pages compose: this one is **what was renamed**, the other is **what changed or was added**.
 
 ## Rename map
 

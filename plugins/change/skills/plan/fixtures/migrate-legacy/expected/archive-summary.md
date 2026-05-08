@@ -21,7 +21,7 @@ shop-platform/
 
 `plan.yaml` and `change.md` no longer live at their pre-finalize paths
 — `specify change finalize` moved them atomically. Re-running
-`/change:plan --orchestrate migrate-foo …` reports `plan-not-found` (the
+`/change:plan <name> orchestrate migrate-foo …` reports `plan-not-found` (the
 explicit "already finalized" signal) and exits zero.
 
 If the operator runs `specify change finalize --clean` by hand, the

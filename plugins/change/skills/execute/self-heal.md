@@ -16,7 +16,7 @@ For every plan entry `E` whose `status` is `in-progress`, in the order they appe
 **Multi-repo self-heal.** For each `in-progress` entry `E` in `plan.yaml`, self-heal reads `E.project` from the plan entry. If non-null:
 1. Resolve the target project through `registry.yaml` (same selector preflight as step 5a of the per-slice algorithm).
 2. Check workspace state for that slot. If `missing`, run selected materialisation for only that project (`specify workspace sync <project>`) and re-check. Mismatched materialisation halts.
-3. Run `specify workspace prepare-branch <project> --change <change-name> [--source ...] [--output ...] --format json` before resuming any phase. If it returns `origin-head-unresolved`, `dirty-unrelated-tracked`, `dirty-branch-mismatch`, or another diagnostic, append a `failure` journal entry when the slice journal exists (`branch-preparation-failed: <diagnostic-key>`) and halt without new phase writes.
+3. Run `specify workspace prepare-branch <project> --change <change-name> [source ...] [output ...] --format json` before resuming any phase. If it returns `origin-head-unresolved`, `dirty-unrelated-tracked`, `dirty-branch-mismatch`, or another diagnostic, append a `failure` journal entry when the slice journal exists (`branch-preparation-failed: <diagnostic-key>`) and halt without new phase writes.
 4. Look for `.specify/slices/<E.name>/.metadata.yaml` under the resolved project root instead of the initiating repo root. The classification logic (step 2 of self-heal) and recovery journal append (step 4) are otherwise unchanged.
 5. Restore CWD to the initiating repo root after each entry's reconciliation.
 
@@ -28,13 +28,13 @@ For entries without a `project` field, self-heal follows the standard single-rep
      specify change plan transition <name> done
      ``` No `status-reason` on success.
    - `outcome.outcome == success` and `outcome.phase ∈ {define, build}` → the phase finished but the driver crashed before launching the next phase. This is **not** a terminal state. Do NOT transition the plan. Fall through to step 3 with `LifecycleStatus ∈ {defined, complete}` to resume the next phase.
-   - `outcome.outcome == failure` → run `/spec:drop <name> --reason "<outcome.summary>"` (same drop skill steps 11a/b invoke for a live failure — it is idempotent against an already-dropped slice). Then:
+   - `outcome.outcome == failure` → run `/spec:drop <name> reason "<outcome.summary>"` (same drop skill steps 11a/b invoke for a live failure — it is idempotent against an already-dropped slice). Then:
      ```bash
      specify change plan transition <name> failed --reason "<outcome.summary>"
      ``` `--reason` copied byte-for-byte from `outcome.summary`; never paraphrase or truncate.
    - `outcome.outcome == deferred` → same shape with `blocked`:
      ```bash
-     /spec:drop <name> --reason "<outcome.summary>"
+     /spec:drop <name> reason "<outcome.summary>"
      specify change plan transition <name> blocked --reason "<outcome.summary>"
      ```
    - The `outcome` field is **absent** and `LifecycleStatus` is non-terminal (`defining`, `defined`, `building`, `complete`) → no terminal outcome was ever stamped; the prior phase was in-flight at crash time. Fall through to step 3 with the on-disk `LifecycleStatus`.

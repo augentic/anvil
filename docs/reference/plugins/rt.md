@@ -11,7 +11,7 @@ Capture request/response and side-effect data from a legacy TypeScript service.
 **Synopsis:**
 
 ```text
-/rt:wiretapper <legacy-dir> [--app-name <name>]
+/rt:wiretapper <legacy-dir> [app-name <name>]
 ```
 
 **Inputs:**
@@ -38,7 +38,7 @@ Add regression tests from captured JSON fixtures.
 **Synopsis:**
 
 ```text
-/rt:replay-writer <crate-name> [--project-dir <path>]
+/rt:replay-writer <crate-name> [project-dir <path>]
 ```
 
 **Inputs:**
@@ -69,6 +69,6 @@ git clone "$URL" "$DEST"   --> bootstrap the legacy repo (inlined snippet)
 This pipeline is typically used alongside the core Specify workflow:
 
 1. Clone and wiretap the legacy service to capture fixtures.
-2. Use `/change:plan` with `--source legacy=<path>` to plan the migration.
+2. Use `/change:plan` with `source legacy=<path>` to plan the migration.
 3. Use `/change:execute` to implement each slice.
 4. Use `/rt:replay-writer` to add regression tests that verify the new implementation matches the legacy behavior.

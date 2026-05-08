@@ -9,10 +9,10 @@ It exercises Steps 1-7 of the RFC-9 §1C critical path:
 3. `specify change create` (RFC-9 §1F)
 4. `/change:plan` with multi-repo sync-peers and assignment
 5. (Inspect the workspace)
-6. `/change:execute --loop` with CWD routing across two workspace clones
+6. `/change:execute loop` with CWD routing across two workspace clones
 7. `specify workspace push` to publish branches and PRs
 
-The remaining steps -- merging the PRs and archiving the plan -- live in the follow-on tutorial [Landing a Change](landing-a-change.md). Between them, the two tutorials walk the full Steps 1-9 RFC-9 §1C path. The `/change:plan --orchestrate` umbrella variants and the three change shapes (migrate-legacy / new-feature / update-existing) also live there.
+The remaining steps -- merging the PRs and archiving the plan -- live in the follow-on tutorial [Landing a Change](landing-a-change.md). Between them, the two tutorials walk the full Steps 1-9 RFC-9 §1C path. The `/change:plan <name> orchestrate` umbrella variants and the three change shapes (migrate-legacy / new-feature / update-existing) also live there.
 
 > **Choosing your topology.** This tutorial uses the platform-hub topology because the feature spans two registered projects -- the hub holds platform state and the code lives in registered repos. If your work is single-repo, the platform-as-project shape (initiating repo with `url: .` in the registry) is simpler; see [Platform repo topologies](../explanation/platform-repo.md) for the comparison and [A Multi-Slice Change](single-repo-change.md) for the single-repo flow.
 
@@ -209,7 +209,7 @@ Then author `./docs/oauth-login.md` with the prose feature description — one p
 Run the planning skill:
 
 ```text
-/change:plan oauth-login --from ./docs/oauth-login.md
+/change:plan oauth-login from ./docs/oauth-login.md
 ```
 
 `/change:plan` runs the four-phase planning pipeline (the briefs live alongside the skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../plugins/change/skills/plan/briefs/) — RFC-13 §3.11 moved them out of the capability manifest):
@@ -284,7 +284,7 @@ shop-mobile      git-clone     <40-char sha>     dirty: no     specify-tree: pro
 Drive every change in dependency order:
 
 ```text
-/change:execute --loop
+/change:execute loop
 ```
 
 The driver:
@@ -382,7 +382,7 @@ Next action: Change complete. Run specify workspace push to publish prepared spe
 
 Each implementation slice leaves two local commits in its workspace clone: `/spec:merge` commits only `.specify/specs/` and `.specify/archive/` as `specify: merge <slice-name>`, then `/change:execute` commits project-output residue as `specify: residue <slice-name>`. This is what `specify workspace push` ships in Step 7.
 
-> **Failure handling.** If a change fails mid-loop, `/change:execute` invokes `/spec:drop`, transitions the entry to `failed` (verbatim `outcome.summary` as `--reason`), and continues. Subsequent changes that depend on the failed one stay `pending` until you `specify change plan transition <pred> pending` to retry, or `specify change plan transition <entry> skipped --reason …` to drop the dependency leaf. See `/change:execute`'s [§Output format → Failure transcript](../../plugins/change/skills/execute/SKILL.md) for the recovery prompt.
+> **Failure handling.** If a change fails mid-loop, `/change:execute` invokes `/spec:drop`, transitions the entry to `failed` (verbatim `outcome.summary` as `reason`), and continues. Subsequent changes that depend on the failed one stay `pending` until you `specify change plan transition <pred> pending` to retry, or `specify change plan transition <entry> skipped reason …` to drop the dependency leaf. See `/change:execute`'s [§Output format → Failure transcript](../../plugins/change/skills/execute/SKILL.md) for the recovery prompt.
 
 ## 7. Push branches and PRs
 
@@ -435,13 +435,13 @@ For greenfield projects (remote did not exist before this run), the per-project 
 
 Two PRs are now open against `org/shop-backend` and `org/shop-mobile`, both on the `specify/oauth-login` branch. The `oauth-login` plan still lives at `plan.yaml` with every entry `done`. The hub is in the canonical "ready to land" state.
 
-[**Continue to Landing a Change**](landing-a-change.md) for Steps 8 (operator PR merge through the forge UI or `gh pr merge`) and 9 (archive with `specify change finalize`), the `/change:plan --orchestrate` umbrella variants, and the three change shapes (migrate-legacy / new-feature / update-existing).
+[**Continue to Landing a Change**](landing-a-change.md) for Steps 8 (operator PR merge through the forge UI or `gh pr merge`) and 9 (archive with `specify change finalize`), the `/change:plan <name> orchestrate` umbrella variants, and the three change shapes (migrate-legacy / new-feature / update-existing).
 
 If you stop here, the platform-first work is shipped but unmerged. The PRs sit on the forge until reviewed; nothing is blocking. You can resume landing at any time -- the umbrella is idempotent on re-entry, and the manual flow is to merge the PRs through the forge UI or `gh pr merge`, then run `specify change finalize`.
 
 ## Troubleshooting
 
-If `/change:execute --loop` exits with `Completion: stuck` or any single invocation reports `reason: stuck`, the first triage step is `specify change plan doctor`:
+If `/change:execute loop` exits with `Completion: stuck` or any single invocation reports `reason: stuck`, the first triage step is `specify change plan doctor`:
 
 ```bash
 specify change plan doctor
@@ -486,7 +486,7 @@ Any deviation is a blocker. File the failing transcript against this tutorial; p
 
 ## Change shapes (preview)
 
-The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three change shapes -- `migrate-legacy`, `new-feature`, `update-existing` -- through a single uniform sequence. The walkthrough at the top of this page is the **new-feature** shape (sources are documentation only); the other two arrive in [Landing a Change](landing-a-change.md#change-shapes), which also covers the `/change:plan --orchestrate` umbrella that drives each shape as a single operator action.
+The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three change shapes -- `migrate-legacy`, `new-feature`, `update-existing` -- through a single uniform sequence. The walkthrough at the top of this page is the **new-feature** shape (sources are documentation only); the other two arrive in [Landing a Change](landing-a-change.md#change-shapes), which also covers the `/change:plan <name> orchestrate` umbrella that drives each shape as a single operator action.
 
 ## What you learned
 
@@ -494,14 +494,14 @@ The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three 
 - `specify registry add` registers code projects with kebab-case names, capability identifiers, and domain descriptions. Descriptions drive automated assignment in `/change:plan`.
 - `specify change create` scaffolds the operator brief; the `inputs:` frontmatter feeds the discovery brief.
 - `/change:plan` runs discovery -> sync-peers -> propose -> assignment, and finishes with `specify change plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
-- `/change:execute --loop` `chdir`s into each workspace clone, runs define-build-merge, transitions the plan entry, and routes back. Multi-repo CWD routing is invisible to the phase skills.
+- `/change:execute loop` `chdir`s into each workspace clone, runs define-build-merge, transitions the plan entry, and routes back. Multi-repo CWD routing is invisible to the phase skills.
 - `specify workspace push` ships prepared `specify/<change-name>` branches as PRs without creating branches, committing residue, pushing default branches, or merging PRs.
 
 ## Cross-links
 
 - [Platform repo topologies](../explanation/platform-repo.md) -- registry-only hub vs platform-as-project, the validation invariant, and the on-disk shape of each.
 - [Workspace tiers](../explanation/workspace-tiers.md) -- the legacy-source vs registered-project clone distinction the loop relies on.
-- [The Layered Stack](../explanation/three-layer-stack.md) -- where `/change:plan` (default + `--orchestrate` modes) and `/change:execute` sit in the layered model.
+- [The Layered Stack](../explanation/three-layer-stack.md) -- where `/change:plan` (default + `orchestrate` modes) and `/change:execute` sit in the layered model.
 - [`/change:plan`](../reference/change-skills/plan.md) -- Layer 3 plan authoring skill.
 - [`/change:execute`](../reference/change-skills/execute.md) -- Layer 2 plan driver, including the cross-project contract check (RFC-9 §3B).
 - [`specify init`](../reference/cli/init.md) -- the `--hub` flag.
@@ -512,4 +512,4 @@ The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three 
 
 ## Next
 
-[Landing a Change](landing-a-change.md) -- merge the PRs you just pushed, finalize the change, and exercise the `/change:plan --orchestrate` umbrella shapes.
+[Landing a Change](landing-a-change.md) -- merge the PRs you just pushed, finalize the change, and exercise the `/change:plan <name> orchestrate` umbrella shapes.

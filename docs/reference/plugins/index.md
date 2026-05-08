@@ -21,7 +21,7 @@ Installing plugins from the marketplace gives you each plugin's rules and skills
 | Plugin | Prefix | Purpose | Reference |
 |--------|--------|---------|-----------|
 | **Specify** | `/spec:` | Per-slice workflow orchestration: init, define, build, merge, drop, extract, analyze. Carries deprecation shims for the historical `/change:plan` and `/change:execute` commands while RFC-13 §3.9 lands. | [Change Skills](../slice-skills/index.md) |
-| **Change** | `/change:` | Cross-repo change orchestration: `/change:plan` (Layer 3 authoring + Layer 4 umbrella under `--orchestrate`) and `/change:execute` (Layer 2 driver). | [Change Skills](../change-skills/index.md), [Change](change.md) |
+| **Change** | `/change:` | Cross-repo change orchestration: `/change:plan` (Layer 3 authoring + Layer 4 umbrella under `orchestrate`) and `/change:execute` (Layer 2 driver). | [Change Skills](../change-skills/index.md), [Change](change.md) |
 | **Omnia** | `/omnia:` | Rust WASM crate generation and review | [Omnia](omnia.md) |
 | **Vectis** | `/vectis:` | Cross-platform Crux app generation | [Vectis](vectis.md) |
 | **Contract** | `/contract:` | API contract generation, validation, and import (OpenAPI, AsyncAPI, JSON Schema) | [Contract](contract.md) |

@@ -27,7 +27,7 @@ Branch on the flag surface handed to `/spec:define`:
 - **Source-driven** — at least one `--source <key>=<path>` flag is present. Run the per-source extract loop below, then merge.
 - **Manual** — no `--source` flags are present. Author specs by hand using the manual templates at the bottom of this brief.
 
-> **Migration note.** Proposals that used to name a single *Repository* URL or *Source-code* path are still valid; `/change:execute` (or the operator on a direct invocation) translates those into a single `--source <key>=<path>` flag before reaching this brief. The proposal's Source section is a secondary signal for context only — the authoritative branching trigger is the `--source` flag set.
+> **Migration note.** Proposals that used to name a single *Repository* URL or *Source-code* path are still valid; `/change:execute` (or the operator on a direct invocation) translates those into a single `source <key>=<path>` flag before reaching this brief. The proposal's Source section is a secondary signal for context only — the authoritative branching trigger is the `source` flag set.
 
 ---
 
