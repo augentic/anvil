@@ -1,8 +1,7 @@
-// Fixture-project setup helper for the acceptance runner (RM-01 plan,
-// C07).
+// Fixture-project setup helper for the RM-01 test.
 //
 // `setupFixtureProject` scaffolds a single source repo + bare remote
-// pair under the runner's temp root. The shape mirrors the
+// pair under the test's temp root. The shape mirrors the
 // `FixtureProject::new` constructor in `specify-cli/tests/cross_repo.rs`:
 //
 //   sources/<name>/                # working source repo (where we
@@ -91,7 +90,7 @@ export async function setupFixtureProject(
 
   await Deno.writeTextFile(
     join(opts.sourceDir, "README.md"),
-    `# ${opts.name}\n\nSeed source repo for the RM-01 acceptance suite.\n`,
+    `# ${opts.name}\n\nSeed source repo for the RM-01 test.\n`,
   );
   await Deno.writeTextFile(
     join(specifyDir, "project.yaml"),

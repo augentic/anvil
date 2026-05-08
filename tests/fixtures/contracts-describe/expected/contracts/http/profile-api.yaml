@@ -1,7 +1,0 @@
-# Placeholder fixture for scenario 'contracts-describe'.
-# See tests/fixtures/README.md for context.
-openapi: 3.1.0
-info:
-  title: Profile API (placeholder)
-  version: 0.0.0
-paths: {}

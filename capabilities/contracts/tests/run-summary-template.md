@@ -13,16 +13,16 @@ failure, preserve the evidence directory or notes that explain the result.
 - **Scenario ID:** `<contracts-describe | contracts-design | contracts-update-boundary | contracts-import | contracts-source>`
 - **Scenario file:** `<relative path, e.g. capabilities/contracts/tests/describe.md>`
 - **Capability:** `contracts@v1`
-- **Backend:** `<manual | stub | agent | recorded>`
+- **Backend:** `<manual | agent | recorded | fixture>`
 - **Operator / agent:** `<name or model identifier>`
-- **Run id:** `<timestamp or uuid the runner would use>`
+- **Run id:** `<timestamp or uuid>`
 - **Started at:** `<ISO 8601 timestamp>`
 - **Finished at:** `<ISO 8601 timestamp>`
 - **Workspace root:** `<temp project root used for the run>`
 
 ## Inputs Created
 
-List every file the operator/runner created before invocation, with a one-line
+List every file the operator created before invocation, with a one-line
 description. These come from the scenario's **Inputs** section.
 
 - `<path>` — `<one-line description>`
@@ -92,7 +92,7 @@ build phase's verifier summary):
 
 ## Cleanup
 
-Record what cleanup the operator/runner actually performed, per the scenario's
+Record what cleanup the operator actually performed, per the scenario's
 **Cleanup** section.
 
 - **Slice action:** `<dropped | archived | preserved>`

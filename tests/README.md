@@ -21,7 +21,7 @@ fixture projects, local bare remotes, and fake `gh`/SSH, then drives the real
 Run it with:
 
 ```bash
-make acceptance-cross-repo
+make test
 ```
 
 Set `SPECIFY_BIN=/path/to/specify` to use a freshly built CLI. The test skips
@@ -30,11 +30,8 @@ cleanly when no suitable binary is available.
 ## Support Files
 
 - `fixtures/rm01/oauth-login.md` is the concise feature brief used by the test.
-- `runner/` contains small reusable helpers for local Git, fake `gh`, fixture
-  projects, workspace sync, and invoking the `specify` CLI. It is support code,
-  not a backend framework.
-- `fixtures/contracts-describe/` supports the owner-local contracts scenario
-  metadata under `capabilities/contracts/tests/`.
+- `support/` contains small reusable helpers for local Git, fake `gh`, fixture
+  projects, workspace sync, and invoking the `specify` CLI.
 
 Capability-owned manual scenario documents still live beside their owners, for
 example `capabilities/contracts/tests/`.

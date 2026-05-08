@@ -1,4 +1,4 @@
-// Git helpers for the acceptance runner (RM-01 plan, C07).
+// Git helpers for the RM-01 test.
 //
 // All Git operations the cross-repo setup primitives need go through the
 // helpers in this file so:
@@ -8,15 +8,12 @@
 //   2. callers can opt into the fake-`gh` / fake-SSH boundary by passing
 //      a `GitEnv` that already carries `FAKE_GITHUB_REMOTE_ROOT` and
 //      `GIT_SSH_COMMAND`,
-//   3. stdout AND stderr are captured into the shared `stdout.log` /
-//      `stderr.log` per the C07 guardrail (every subprocess call surfaces
-//      its last 50 lines on assertion failure),
-//   4. helpers return the same `GitRun` shape so a higher-level helper
-//      can wrap a non-zero exit into a `runner-setup` fault domain.
+//   3. stdout AND stderr can be captured into shared logs,
+//   4. helpers return the same `GitRun` shape for useful failures.
 //
 // The shape mirrors `specify-cli/tests/cross_repo.rs` (`run_git`,
 // `git_output`, `GIT_TEST_ENV`) so a reader who knows the Layer 0
-// substrate test recognises the Layer 4 setup translation.
+// substrate test recognises the setup translation.
 
 import { join } from "jsr:@std/path@1";
 
@@ -152,7 +149,7 @@ export async function captureGitLog(
   env: GitEnv,
   limit = 200,
 ): Promise<string> {
-  // Allow callers to pass a non-existent dir without crashing the runner;
+  // Allow callers to pass a non-existent dir without crashing the test;
   // a missing log shows up in evidence as a one-line marker instead.
   try {
     await Deno.stat(dir);

@@ -8,9 +8,7 @@ real `specify` CLI through the cross-repo happy path.
 ## Targets
 
 - `make checks` runs static repository checks.
-- `make acceptance-cross-repo` runs the RM-01 test.
-- `make acceptance-cross-repo-deterministic` and `make acceptance-all` are aliases for `acceptance-cross-repo`.
-- `make acceptance-tiers` prints the recommended targets for the current diff.
+- `make test` runs the RM-01 test.
 
 ## What RM-01 Proves
 
@@ -33,7 +31,7 @@ workflow proof needed for RM-01.
 
 ## Setting `SPECIFY_BIN`
 
-`make acceptance-cross-repo` resolves `specify` in this order:
+`make test` resolves `specify` in this order:
 
 1. `$SPECIFY_BIN`
 2. `specify` on `PATH`
@@ -47,21 +45,8 @@ cargo build --release
 
 # In this repo:
 export SPECIFY_BIN=/absolute/path/to/specify-cli/target/release/specify
-make acceptance-cross-repo
+make test
 ```
 
 Set `SPECIFY_ACCEPTANCE_PRESERVE=1` to keep the temp fixture directory after a
 passing run. Failed runs are preserved automatically and print their location.
-
-## Target Selection
-
-[`scripts/acceptance-tier.ts`](../../scripts/acceptance-tier.ts) emits
-`make checks` for every diff and adds `acceptance-cross-repo` for changes that
-touch RM-01 tests, acceptance wiring, workflow skills, or the contracts/omnia/
-vectis capability and plugin trees.
-
-```bash
-make acceptance-tiers
-make acceptance-tiers TIER_ARGS='--explain'
-make $(make acceptance-tiers)
-```

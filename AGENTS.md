@@ -77,9 +77,7 @@ The phase skills themselves stay unaware of the plan — they operate slice-by-s
 All commands are run from the repository root:
 
 - **`make checks`** -- runs `scripts/checks.ts` via Deno for documentation and workflow consistency checks.
-- **`make acceptance-cross-repo`** -- runs the direct RM-01 Deno acceptance test. It drives a temp hub, two fixture repos, fake `gh`/SSH, plan, execute, push, and finalize through the real `specify` binary; it skips cleanly when no suitable binary is available.
-- **`make acceptance-cross-repo-deterministic`** / **`make acceptance-all`** -- aliases for `acceptance-cross-repo`.
-- **`make acceptance-tiers`** -- prints the recommended `make` targets for the current `git diff`. Pass `TIER_ARGS='--explain'` for per-file rationale; `TIER_ARGS='--files "<a> <b>"'` for ad-hoc input. Does NOT execute the targets.
+- **`make test`** -- runs the direct RM-01 Deno acceptance test. It drives a temp hub, two fixture repos, fake `gh`/SSH, plan, execute, push, and finalize through the real `specify` binary; it skips cleanly when no suitable binary is available.
 - **`make use-local-plugins`** -- use local plugins from the working tree for development/testing.
 - **`make use-team-plugins`** -- use Augentic marketplace plugins (reload Cursor after either).
 

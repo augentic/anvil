@@ -60,7 +60,7 @@ jobs:
         run: make checks
 
       - name: RM-01 cross-repo acceptance
-        run: make acceptance-cross-repo
+        run: make test
 
       - name: Upload preserved fixture on failure
         if: failure()

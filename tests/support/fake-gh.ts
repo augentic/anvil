@@ -1,8 +1,8 @@
-// Fake `gh` CLI shim for the acceptance runner (RM-01 plan, C07).
+// Fake `gh` CLI shim for the RM-01 test.
 //
 // Mirrors `specify-cli/tests/cross_repo.rs` (`FAKE_GH`, `FAKE_SSH`) so a
-// helper that drives the Layer 4 acceptance suites sees the same
-// substrate behaviour as the Layer 0 substrate test:
+// helper that drives RM-01 sees the same substrate behaviour as the
+// CLI substrate test:
 //
 //   * env vars: `GH_STATE_DIR` (where PR-state files live),
 //     `FAKE_GITHUB_REMOTE_ROOT` (where bare remotes live; consumed by
@@ -17,7 +17,7 @@
 //     `true` while preserving fields 1, 4, 5.
 //
 // The PR-numbering policy is **not** baked into the script; it is
-// rendered into the script's `case` statement from a runner-supplied
+// rendered into the script's `case` statement from a test-supplied
 // `Record<repoName, prNumber>` map (the cross-repo test had `shop-backend
 // → 41`, `shop-mobile → 18` hardcoded; RM-14 suites need to pick their
 // own).
@@ -101,7 +101,7 @@ export async function installFakeGh(
  * records. Useful for evidence collectors and assertion helpers.
  *
  * Throws `Error` when a file does not have the canonical 5-field shape
- * — the runner's invariant is that every `.pr` file is well-formed,
+ * — the test invariant is that every `.pr` file is well-formed,
  * because `installFakeGh` is the only writer.
  */
 export async function readAllPrStates(stateDir: string): Promise<PrState[]> {
@@ -201,9 +201,9 @@ function renderFakeGh(prNumbers: Record<string, number>): string {
     .join("\n");
 
   return `#!/bin/sh
-# Fake gh installed by tests/runner/fake-gh.ts.
+# Fake gh installed by tests/support/fake-gh.ts.
 # Mirrors specify-cli/tests/cross_repo.rs FAKE_GH; PR-number policy is
-# rendered from the runner config (see DEFAULT_PR_NUMBERS in fake-gh.ts).
+# rendered from the test config (see DEFAULT_PR_NUMBERS in fake-gh.ts).
 set -eu
 
 state_dir="\${GH_STATE_DIR:?GH_STATE_DIR is required}"
@@ -293,7 +293,7 @@ exit 1
 }
 
 const FAKE_SSH = `#!/bin/sh
-# Fake SSH installed by tests/runner/fake-gh.ts.
+# Fake SSH installed by tests/support/fake-gh.ts.
 # Mirrors specify-cli/tests/cross_repo.rs FAKE_SSH: rewrites
 # git-upload-pack / git-receive-pack onto a local bare remote under
 # FAKE_GITHUB_REMOTE_ROOT so 'git clone git@github.com:...' resolves

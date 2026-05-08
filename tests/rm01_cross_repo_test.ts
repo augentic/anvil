@@ -9,17 +9,17 @@ import { copy, ensureDir, exists } from "jsr:@std/fs@1";
 import { dirname, fromFileUrl, join, resolve } from "jsr:@std/path@1";
 import { parse as parseYaml } from "jsr:@std/yaml@1";
 
-import { markPrMerged, readAllPrStates } from "./runner/fake-gh.ts";
-import { gitOutput, runGit } from "./runner/git.ts";
-import { setupHub } from "./runner/hub.ts";
+import { markPrMerged, readAllPrStates } from "./support/fake-gh.ts";
+import { gitOutput, runGit } from "./support/git.ts";
+import { setupHub } from "./support/hub.ts";
 import {
   findSpecifyBin,
   runSpecify,
   runSpecifyJson,
   type SpecifyBin,
   SpecifyCommandError,
-} from "./runner/specify-cli.ts";
-import { runWorkspaceSync } from "./runner/workspace-sync.ts";
+} from "./support/specify-cli.ts";
+import { runWorkspaceSync } from "./support/workspace-sync.ts";
 
 const REPO_ROOT = resolve(dirname(fromFileUrl(import.meta.url)), "..");
 

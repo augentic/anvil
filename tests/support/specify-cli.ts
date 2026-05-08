@@ -1,5 +1,4 @@
-// Wrapper around the `specify` CLI for the acceptance runner (RM-01
-// plan, C07).
+// Wrapper around the `specify` CLI for the RM-01 test.
 //
 // Every Specify lifecycle mutation goes through `specify`. This file is
 // the single place subprocess flags / env propagation lives so helpers
@@ -76,7 +75,7 @@ export async function findSpecifyBin(): Promise<SpecifyBin | null> {
 }
 
 /**
- * Run `specify` with the runner's deterministic env and capture
+ * Run `specify` with the test's deterministic env and capture
  * stdout/stderr. Throws `SpecifyCommandError` on non-zero exit.
  */
 export async function runSpecify(opts: {
@@ -123,7 +122,7 @@ export async function runSpecifyJson<T = unknown>(opts: {
       {
         ...run,
         stderr: run.stderr +
-          `\n[runner] failed to parse stdout as JSON: ${msg}\n`,
+          `\n[test] failed to parse stdout as JSON: ${msg}\n`,
       },
       opts.bin.path,
     );

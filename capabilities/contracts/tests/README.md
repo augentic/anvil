@@ -18,9 +18,8 @@ capability because the behavior under test is one capability's slice loop in
 isolation. Static checks validate their YAML frontmatter and scenario IDs; the
 scenario bodies remain human-readable operator instructions.
 
-The current backend for every scenario in this directory is **manual** except
-`describe-stub.md`, which retains fixture metadata for static validation. A
-human or agent follows the prose, runs the prompts, and fills out a
+The current backend for every scenario in this directory is **manual**. A human
+or agent follows the prose, runs the prompts, and fills out a
 [run summary](run-summary-template.md).
 
 ## Scenario Index
@@ -28,15 +27,10 @@ human or agent follows the prose, runs the prompts, and fills out a
 | Scenario file                              | Scenario ID                  | Kind                  | Authorship mode          | Backend  |
 | ------------------------------------------ | ---------------------------- | --------------------- | ------------------------ | -------- |
 | [`describe.md`](describe.md)               | `contracts-describe`         | `capability`          | Generate from prose      | `manual` |
-| [`describe-stub.md`](describe-stub.md)     | `contracts-describe-stub`    | `capability`          | Generate from prose      | `stub`   |
 | [`design.md`](design.md)                   | `contracts-design`           | `capability`          | Generate from prose      | `manual` |
 | [`update.md`](update.md)                   | `contracts-update-boundary`  | `capability-boundary` | Generate from prose      | `manual` |
 | [`import.md`](import.md)                   | `contracts-import`           | `capability`          | Import existing contracts | `manual` |
 | [`source.md`](source.md)                   | `contracts-source`           | `capability`          | Extract from source code  | `manual` |
-
-`describe-stub.md` is the deterministic-fixture twin of `describe.md`; its
-expected artifacts are kept under `tests/fixtures/contracts-describe/expected/`
-so static scenario validation can prove fixture references resolve.
 
 Scenario IDs are kebab-case, prefixed with the capability name, and globally
 unique within the opted-in scenario set in this repo. `update.md` is marked
@@ -57,8 +51,8 @@ Every scenario file in this directory uses the same compact shape:
    it survives any environment that suppresses frontmatter rendering.
 3. **Intent** — what behavior the scenario proves.
 4. **Workspace** — capability, project shape, isolation rules, and any
-   precondition the runner or operator must satisfy before invocation.
-5. **Inputs** — files or source trees the runner/operator must create before
+   precondition the operator must satisfy before invocation.
+5. **Inputs** — files or source trees the operator must create before
    invocation. The actual file bodies live here as fenced blocks; the prompts
    reference them by path.
 6. **Invocation** — the slash-command prompt(s) to run, copied verbatim. These
@@ -67,15 +61,14 @@ Every scenario file in this directory uses the same compact shape:
    `/spec:build` (and, after merge, the same paths in the baseline `contracts/`
    tree). For boundary scenarios this section may describe the artifacts of a
    regression path rather than the negative path.
-8. **Assertions** — structural checks that define pass/fail. These reference
-   reusable assertion ids the future runner can dispatch (`files-exist`,
-   `contract-validator-clean`, etc.).
+8. **Assertions** — structural checks that define pass/fail, such as
+   `files-exist` and `contract-validator-clean`.
 9. **Negative Expectations** — boundary behavior that must not occur. For
    `update.md` this section is load-bearing: it is the primary oracle.
 10. **Cleanup** — whether to drop, archive, or preserve slice and baseline
     state before moving to the next scenario.
 
-The frontmatter is the source of truth for routing fields a runner consumes.
+The frontmatter is the source of truth for routing fields future automation may consume.
 The body remains canonical for human-readable prose.
 
 ### Frontmatter fields used here
@@ -86,7 +79,7 @@ id: contracts-describe                # required, kebab-case, globally unique
 owner: contracts                      # required
 kind: capability                      # required: capability | capability-boundary
 capability: contracts@v1              # required for capability and capability-boundary
-backend: manual                       # required: manual | stub | agent | recorded
+backend: manual                       # required: manual | agent | recorded | fixture
 entrypoint: /spec:define              # required: slash-command, /<plugin>:<skill>
 stages: [define, build, merge]        # required: subset of define | build | merge | drop
 isolation: fresh-project              # required: fresh-project | shared-baseline | shared-slice

@@ -39,8 +39,8 @@
     },
     "backend": {
       "type": "string",
-      "enum": ["manual", "stub", "agent", "recorded", "fixture"],
-      "description": "Scenario execution style. `manual` documents a human-driven scenario; `stub` and `fixture` are deterministic metadata-backed variants; `agent` and `recorded` are reserved for future automation."
+      "enum": ["manual", "agent", "recorded", "fixture"],
+      "description": "Scenario execution style. `manual` documents a human-driven scenario; `agent`, `recorded`, and `fixture` are reserved for future automation."
     },
     "entrypoint": {
       "type": "string",
@@ -69,7 +69,7 @@
     "assertions": {
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
-      "description": "Optional list of named assertion ids the runner dispatches. Free-form kebab-case strings."
+      "description": "Optional list of named assertion ids. Free-form kebab-case strings."
     },
     "expected-artifacts": {
       "type": "array",
@@ -80,26 +80,6 @@
       "type": "array",
       "items": { "type": "string", "minLength": 1 },
       "description": "Forbidden-condition ids. Required (with at least one entry) when `kind` is `capability-boundary`."
-    },
-    "stubbed-stages": {
-      "type": "array",
-      "uniqueItems": true,
-      "items": {
-        "type": "string",
-        "enum": ["define", "build", "merge"]
-      },
-      "description": "Subset of `stages` that the deterministic stub backend (C08) drives via the `specify` CLI. Each entry maps to a deterministic CLI sequence (`slice transition`, optional fixture materialisation, `slice merge run`). Only valid when `backend: stub`. Cross-field invariants — must be a subset of `stages` and only appears with `backend: stub` — are enforced in `scripts/checks.ts` because JSON Schema cannot express inter-field rules cleanly."
-    },
-    "stub-fixtures": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "string",
-        "minLength": 1
-      },
-      "propertyNames": {
-        "enum": ["define", "build", "merge"]
-      },
-      "description": "Optional per-stage fixture directory (repo-relative). Keys are stage names (`define` / `build` / `merge`); values are paths under the repo root (e.g. `tests/fixtures/<scenario-id>/expected`)."
     }
   },
   "allOf": [

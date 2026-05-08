@@ -1,12 +1,7 @@
-// Hub setup primitive for the acceptance runner (RM-01 plan, C07).
+// Hub setup primitive for the RM-01 test.
 //
 // `setupHub` is the **single primitive** that lands hub state, fixture
 // source repos, bare remotes, fake `gh`, and the registry rows together.
-// Per the C07 plan amendment: "Expose a single `setup-hub(name,
-// projects[])` primitive that produces hub state + bare remotes + seeded
-// source repos together; do not split the consistency invariants across
-// separate primitives."
-//
 // What it does, in order:
 //
 //   1. Lay out the per-run directory tree under `tempDir`:
@@ -73,10 +68,7 @@ export interface SetupHubOptions {
   prNumbers?: Record<string, number>;
   /**
    * Optional log-capture sinks. When set, every `git` and `specify`
-   * call streams stdout/stderr here (per the C07 guardrail "Capture
-   * stdout AND stderr for every subprocess call into stdout.log /
-   * stderr.log in the run dir"). The smoke target wires these to the
-   * runner's `RunPaths.stdoutLog` / `stderrLog`.
+   * call streams stdout/stderr here.
    */
   capture?: { stdoutLog?: string; stderrLog?: string };
 }
@@ -102,9 +94,8 @@ export interface SetupHubResult {
 }
 
 /**
- * Build a hub + registered projects + fake-`gh` substrate ready for
- * the four `setup-*` assertions. Side-effect on disk + the supplied
- * `specify` binary.
+ * Build a hub + registered projects + fake-`gh` substrate. Side-effect
+ * on disk + the supplied `specify` binary.
  */
 export async function setupHub(opts: SetupHubOptions): Promise<SetupHubResult> {
   const layout = await materialiseLayout(opts.tempDir, opts.hubName);

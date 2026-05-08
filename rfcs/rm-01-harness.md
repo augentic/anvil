@@ -293,7 +293,7 @@ Goal: make the harness usable without destabilizing normal PR checks.
 Recommended command:
 
 ```bash
-make acceptance-cross-repo
+make test
 ```
 
 Suggested CI posture:

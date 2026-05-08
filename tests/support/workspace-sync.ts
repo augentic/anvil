@@ -1,8 +1,8 @@
 // Wrappers around `specify workspace sync` and `specify workspace
-// status --format json` for the acceptance runner (RM-01 plan, C07).
+// status --format json` for the RM-01 test.
 //
 // These are thin shims that:
-//   1. invoke the CLI with the runner's `GitEnv` so fake-SSH and fake
+//   1. invoke the CLI with the test's `GitEnv` so fake-SSH and fake
 //      `gh` are wired in,
 //   2. capture stdout/stderr to the run's log sinks,
 //   3. parse the JSON status output into a typed shape later assertion
@@ -11,7 +11,7 @@
 //
 // The status shape is taken from the JSON `specify workspace status
 // --format json` returns (see `specify-cli/tests/cross_repo.rs`'s
-// `assert_workspace_ready_for_push`). Fields beyond what the C07 smoke
+// `assert_workspace_ready_for_push`). Fields beyond what this test
 // needs are kept as `unknown` so future chunks can extend without a
 // type churn round-trip.
 
@@ -27,7 +27,7 @@ export interface WorkspaceSlot {
   dirty?: boolean;
   "branch-matches-change"?: boolean;
   "project-config-present"?: boolean;
-  /** Catch-all for fields the C07 smoke does not assert on. */
+  /** Catch-all for fields this test does not assert on. */
   [extra: string]: unknown;
 }
 
@@ -53,7 +53,7 @@ export async function runWorkspaceSync(opts: {
 
 /**
  * Run `specify workspace status --format json` and return the parsed
- * payload. The runner forwards a `--format json` global flag.
+ * payload. The helper forwards a `--format json` global flag.
  */
 export async function getWorkspaceStatus(opts: {
   bin: SpecifyBin;
