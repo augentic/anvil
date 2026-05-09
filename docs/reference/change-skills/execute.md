@@ -2,8 +2,6 @@
 
 Drive a change through its plan, automating define-build-merge.
 
-> **Renamed.** This skill was previously `/spec:execute`. RFC-13 §3.9 moved it to the `change` plugin as `/change:execute`. The historical command has been removed; see [RFC-13 §Migration](../../../rfcs/archive/rfc-13-extensibility.md#migration).
-
 ## Synopsis
 
 ```text

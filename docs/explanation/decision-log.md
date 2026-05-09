@@ -129,7 +129,7 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 **Rationale:** `.specify/` started life as workflow scratch -- cache, archive, working changes, lifecycle metadata. The artifacts that have accreted there since (the registry, the operator brief, the plan, contracts) are durable, PR-reviewed, human-edited material. Putting them under a dot-prefixed framework directory understated their importance and forced operators to navigate framework internals to inspect or hand-edit them. Pulling them up to the root makes the boundary explicit: framework owns `.specify/`; operators own everything else. The hard-cutover stance avoids carrying a dual-read code path indefinitely; the migrate verb is a one-line operator action that addresses the upgrade in a single step.
 
-**Source:** specify-cli [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) (v2 layout entry); operator walkthrough at [`docs/how-to/migrate-to-v2-layout.md`](../how-to/migrate-to-v2-layout.md).
+**Source:** specify-cli [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) (v2 layout entry).
 
 ## JSON Schema + OpenAPI + AsyncAPI, not a new IDL
 

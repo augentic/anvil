@@ -1,6 +1,6 @@
 # Registry-proposal sub-step (RFC-9 §2B)
 
-This fixture pins the **happy path** of the registry-proposal sub-step the plan skill runs in step 3(d).1 (`plugins/spec/skills/plan/SKILL.md` → §"Step 3(d).1 — Registry proposal sub-step").
+This fixture pins the **happy path** of the registry-proposal sub-step the plan skill runs in step 3(d).1 (`plugins/change/skills/plan/SKILL.md` → §"Step 3(d).1 — Registry proposal sub-step").
 
 ## Scenario
 

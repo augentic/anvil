@@ -514,7 +514,6 @@ The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three 
 - [`specify registry`](../reference/cli/registry.md) -- `add` / `remove` / `show` / `validate`.
 - [`specify workspace`](../reference/cli/workspace.md) -- `sync` / `status` / `push`.
 - [`specify change plan`](../reference/cli/plan.md) -- `create` / `add` / `amend` / `next` / `doctor` / `archive` / `lock`.
-- [Migrating to CLI v1](../explanation/migrating-cli-v1.md) -- rename map covering the v1.x `init`->`create` and `create`->`add` renames.
 
 ## Next
 

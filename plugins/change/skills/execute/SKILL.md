@@ -19,8 +19,6 @@ The full algorithm lives in [per-slice-algorithm.md](per-slice-algorithm.md). Sh
 
 Drive a change through `plan.yaml` by automating the Layer 1 loop: `get next slice` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify change plan transition`.
 
-> **Renamed.** This skill was previously `/spec:execute` (skill name `specify-execute`); RFC-13 §3.9 moved it to the change surface as `/change:execute`. The old slash-command has been removed — see [RFC-13 §Migration](../../../../rfcs/archive/rfc-13-extensibility.md#migration).
-
 > **Status.** Layer 2 is fully landed. The driver supports multi-repo workspace routing (`project` field on plan entries), selected slot materialisation, RFC-14 branch preparation on `specify/<change-name>`, `plan next` field extensions (`project`, `description`, `sources` in JSON), merge-baseline commit verification, residue commits in workspace slots, and self-heal under multi-repo. This skill ships the `dry-run` preview, the supervised single-slice run, the self-heal pass on startup, `loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/change:execute loop` drives the `platform-v2` example end-to-end against a plan authored by `/change:plan` — see [fixtures.md](fixtures.md) for the exit-gate meta-fixture.
 
 ## Overview

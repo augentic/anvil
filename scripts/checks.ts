@@ -1369,124 +1369,7 @@ async function checkPluginConsistency(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 11. Retired CLI verbs do not appear in skills or docs
-//     (see docs/explanation/migrating-cli-v1.md for the rename map)
-// ──────────────────────────────────────────────────────────────
-
-interface DenyPattern {
-  pattern: RegExp;
-  hint: string;
-}
-
-async function checkRetiredCliVerbs(): Promise<void> {
-  // Files that intentionally reference the old verbs (rename map, narrative
-  // explanation of the cleanup). These pages are exempt from the deny list.
-  const ALLOWLIST = new Set<string>([
-    "docs/explanation/migrating-cli-v1.md",
-    "docs/reference/cli/change.md",
-    "docs/reference/cli/slice.md",
-    "docs/reference/cli/plan.md",
-    "docs/reference/cli/registry.md",
-    "docs/reference/cli/status.md",
-  ]);
-
-  const PATTERNS: DenyPattern[] = [
-    {
-      pattern: /\bspecify validate /,
-      hint: "use `specify slice validate <name>`",
-    },
-    {
-      pattern: /\bspecify merge /,
-      hint: "use `specify slice merge run <name>`",
-    },
-    {
-      pattern: /\bspecify spec /,
-      hint:
-        "use `specify slice merge {preview, conflict-check}` (the `spec` group is retired)",
-    },
-    {
-      pattern: /\bspecify task /,
-      hint:
-        "use `specify slice task {progress, mark}` (the `task` group is retired)",
-    },
-    {
-      pattern: /\bspecify initiative brief\b/,
-      hint:
-        "use `specify change {create, show}` (the `initiative` family was renamed to `change` by RFC-13 §3.5)",
-    },
-    {
-      pattern: /\bspecify initiative registry\b/,
-      hint: "use `specify registry {show, validate}`",
-    },
-    {
-      pattern: /\bspecify change phase-outcome\b/,
-      hint:
-        "use `specify slice outcome set ...` (per-loop verbs moved from `change` to `slice` by RFC-13 §3.2)",
-    },
-    {
-      pattern: /\bspecify change journal-append\b/,
-      hint:
-        "use `specify slice journal append ...` (per-loop verbs moved from `change` to `slice` by RFC-13 §3.2)",
-    },
-    {
-      // The bare `specify slice outcome <name>` form (no `set`/`show` after
-      // `outcome`) is ambiguous after the cleanup. Reads must use `outcome
-      // show`; writes must use `outcome set`.
-      pattern: /\bspecify slice outcome (?!set\b|show\b)/,
-      hint:
-        "use `specify slice outcome show <name>` to read or `specify slice outcome set <name> <phase> <outcome> ...` to write",
-    },
-    {
-      // Likewise for the bare `specify slice journal <name>` form.
-      pattern: /\bspecify slice journal (?!append\b|show\b)/,
-      hint:
-        "use `specify slice journal show <name>` to read or `specify slice journal append <name> <phase> <kind> ...` to write",
-    },
-  ];
-
-  const SCAN_ROOTS = [
-    join(REPO_ROOT, "plugins", "spec", "skills"),
-    join(REPO_ROOT, "plugins", "change", "skills"),
-    join(REPO_ROOT, "docs"),
-  ];
-
-  for (const root of SCAN_ROOTS) {
-    for await (
-      const entry of walk(root, {
-        exts: [".md"],
-        includeDirs: false,
-      })
-    ) {
-      if (await underSymlink(entry.path)) continue;
-      const rel = relative(REPO_ROOT, entry.path);
-      if (ALLOWLIST.has(rel)) continue;
-
-      let content: string;
-      try {
-        content = await Deno.readTextFile(entry.path);
-      } catch {
-        continue;
-      }
-
-      const lines = content.split("\n");
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        for (const { pattern, hint } of PATTERNS) {
-          if (pattern.test(line)) {
-            fail(
-              `Retired CLI verb in ${rel}:${
-                i + 1
-              } -- ${line.trim()} -- ${hint}`,
-            );
-          }
-        }
-      }
-    }
-  }
-}
-
-// ──────────────────────────────────────────────────────────────
-// 12. RFC-14 workspace landing automation stays retired
+// 11. RFC-14 workspace landing automation stays retired
 // ──────────────────────────────────────────────────────────────
 
 async function checkWorkspaceLanding(): Promise<void> {
@@ -1599,12 +1482,8 @@ async function checkWorkspaceLanding(): Promise<void> {
 // ──────────────────────────────────────────────────────────────
 
 async function checkInstructionPreambles(): Promise<void> {
-  // Per-Phase-3 the slice working dir moved from `.specify/changes/` to
-  // `.specify/slices/`. Both paths are accepted here for the duration of
-  // the cut-over so vendored capability instruction files that still
-  // reference the historical path do not silently fail this check.
   const OUTPUT_LOCATION_RE =
-    /^> \*\*Output location\*\*: `\.specify\/(changes|slices)\//m;
+    /^> \*\*Output location\*\*: `\.specify\/slices\//m;
 
   for await (
     const entry of walk(CAPABILITIES_DIR, {
@@ -1697,13 +1576,9 @@ async function checkLegacyLayout(): Promise<void> {
   // - rfcs/archive/* — historical RFCs carry v2-layout banners and
   //   intentionally retain their original paths.
   // - rfcs/roadmap.md — narrative may still reference legacy shapes.
-  // - docs/how-to/migrate-to-v2-layout.md, docs/reference/cli/migrate.md,
-  //   docs/explanation/whats-new.md, docs/explanation/decision-log.md,
-  //   docs/appendices/{glossary,troubleshooting}.md,
+  // - docs/explanation/whats-new.md, docs/explanation/decision-log.md,
   //   docs/reference/directory-layout.md — these documents *describe*
   //   the migration and so must mention both the old and new paths.
-  // - plugins/spec/skills/init/fixtures/v2-layout-migration/* — the
-  //   illustrative fixture for the migration.
   // - The CLI's own legacy-layout error message (in scripts that quote it).
   const FORBIDDEN_PATTERNS: RegExp[] = [
     /\.specify\/registry\.yaml/,
@@ -1719,14 +1594,9 @@ async function checkLegacyLayout(): Promise<void> {
   const ALLOWED_PREFIXES = [
     "rfcs/archive/",
     "rfcs/roadmap.md",
-    "docs/how-to/migrate-to-v2-layout.md",
-    "docs/reference/cli/migrate.md",
     "docs/reference/directory-layout.md",
     "docs/explanation/whats-new.md",
     "docs/explanation/decision-log.md",
-    "docs/appendices/glossary.md",
-    "docs/appendices/troubleshooting.md",
-    "plugins/spec/skills/init/fixtures/v2-layout-migration/",
     "scripts/checks.ts",
   ];
 
@@ -1787,8 +1657,7 @@ async function checkLegacyLayout(): Promise<void> {
             `v1-layout path in ${rel}:${i + 1} -- ${
               lines[i].trim()
             } -- the v2 layout moved this artifact to the repo root; ` +
-              `update the reference or add the file to the allow-list in scripts/checks.ts ` +
-              `(see docs/how-to/migrate-to-v2-layout.md)`,
+              `update the reference or add the file to the allow-list in scripts/checks.ts`,
           );
           break;
         }
@@ -2477,7 +2346,6 @@ await Promise.all([
   checkCapabilityIntegrity(),
   checkFirstPartyToolDeclarations(),
   checkInstructionPreambles(),
-  checkRetiredCliVerbs(),
   checkWorkspaceLanding(),
   checkRetiredAffectsField(),
   checkLegacyLayout(),

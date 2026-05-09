@@ -1,6 +1,6 @@
 # specify slice
 
-Create, inspect, validate, transition, merge, and archive individual slices. The `slice` noun group covers every per-slice operation (renamed from `specify change *` by RFC-13 §3.2 — the `change` noun now belongs to the umbrella surface). The previously top-level groups `specify validate`, `specify merge`, `specify spec`, and `specify task` were folded into `specify slice` by the CLI cleanup; see [Migrating CLI v1](../../explanation/migrating-cli-v1.md) for the rename map.
+Create, inspect, validate, transition, merge, and archive individual slices. The `slice` noun group covers every per-slice operation (renamed from `specify change *` by RFC-13 §3.2 — the `change` noun now belongs to the umbrella surface). The previously top-level groups `specify validate`, `specify merge`, `specify spec`, and `specify task` were folded into `specify slice` by the CLI cleanup.
 
 Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk directory from the name internally (no `<slice-dir>` arg).
 
@@ -270,4 +270,3 @@ Renders the journal in chronological order. Useful for triaging failed or deferr
 - [specify change](change.md) -- umbrella surface that coordinates one or more slices through `change.md` + `plan.yaml`.
 - [Lifecycle](../lifecycle.md) -- slice state machine reference
 - [Configuration Files](../configuration.md) -- project and slice metadata
-- [Migrating CLI v1](../../explanation/migrating-cli-v1.md) -- rename map for the cleanup.

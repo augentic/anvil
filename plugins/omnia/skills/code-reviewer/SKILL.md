@@ -95,7 +95,6 @@ Key invariants the lead must preserve:
 - [`output.md`](output.md) — `REVIEW.md` template and finding-ID conventions.
 - [Default Codex](../../../../capabilities/default/codex/) — Source of truth for migrated universal rules `UNI-001`…`UNI-021`.
 - [Omnia Codex](../../../../capabilities/omnia/codex/) — Source of truth for Omnia-specific rules `OMNIA-001`, `OMNIA-002`, `RUST-001`, and `SEC-001`.
-- [Review Checks](../../../references/review-checks.md) — Transitional pointer kept so older reviewer-skill links continue to resolve before codex export is wired into agent workflows.
 - [Agent Team Patterns](references/agent-teams.md) — Shared team roles, antagonist protocol, synthesis rules, and file ownership.
 - [CodeRabbit Study: AI Code Creates 1.7× More Issues](https://www.coderabbit.ai/blog/state-of-ai-vs-human-code-generation-report)
 - [Security Best Practices for Rust](https://anssi-fr.github.io/rust-guide/)

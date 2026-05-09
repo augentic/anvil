@@ -89,8 +89,8 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Change Plugin (`plugins/change/`)
 
-- `plan` - author `plan.yaml` via the planning brief pipeline; with the `orchestrate` positional, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → operator PR merge → finalize) — RFC-9 §2C. Use `/change:plan`; the historical `/spec:plan` alias has been removed.
-- `execute` - drive a change's plan through define, build, merge per slice. Use `/change:execute`; the historical `/spec:execute` alias has been removed.
+- `plan` - author `plan.yaml` via the planning brief pipeline; with the `orchestrate` positional, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → operator PR merge → finalize) — RFC-9 §2C.
+- `execute` - drive a change's plan through define, build, merge per slice.
 
 ### Omnia Plugin (`plugins/omnia/`)
 

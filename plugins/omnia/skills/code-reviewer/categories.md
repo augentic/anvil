@@ -14,7 +14,7 @@ These prefixes are review-local occurrence IDs. They restart in each report (`SE
 Stable codex sources for this reviewer:
 
 - `capabilities/omnia/codex/` — Omnia-specific rules: `OMNIA-001` Provider-Only Host Access, `OMNIA-002` WASM Guest Runtime Constraints, `RUST-001` Classified SDK Errors, No Panic Paths, and `SEC-001` Host-Managed Secrets and Identity.
-- `capabilities/default/codex/` — migrated universal `UNI-001` through `UNI-021` rules. Use these codex files as the source of truth for universal checks. `references/review-checks.md` is only a transitional pointer for older links until resolved codex export is wired into reviewer workflows.
+- `capabilities/default/codex/` — universal `UNI-001` through `UNI-021` rules. Read these codex files directly.
 
 Prefer the most specific matching rule. For example, direct `std::env` access for a secret maps to `SEC-001`; direct `std::env` access for ordinary configuration maps to `OMNIA-002` or `OMNIA-001` depending on whether the core violation is WASM runtime behavior or provider bypass.
 

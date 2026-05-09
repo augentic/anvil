@@ -20,7 +20,7 @@ Scaffold `change.md` with the frontmatter template.
 specify change create <name>
 ```
 
-Refuses to overwrite an existing brief — mirrors the `specify change plan create` posture for `plan.yaml`. (Renamed from the v1 `init` verb by RFC-9 §1F; see [Migrating CLI v1](../../explanation/migrating-cli-v1.md#v1x-renames).)
+Refuses to overwrite an existing brief — mirrors the `specify change plan create` posture for `plan.yaml`.
 
 ### specify change show
 
@@ -126,5 +126,4 @@ The old `specify workspace merge` automation has been removed. Operators land PR
 
 - [specify slice](slice.md) -- the per-slice CLI verbs that change-orchestration drives through the slice loop.
 - [specify registry](registry.md) -- platform registry.
-- [specify workspace](workspace.md) -- workspace sync, status, push, and the deprecated merge shim.
-- [Migrating CLI v1](../../explanation/migrating-cli-v1.md) -- rename map for the cleanup.
+- [specify workspace](workspace.md) -- sync, status, push.

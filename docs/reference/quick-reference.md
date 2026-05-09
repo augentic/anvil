@@ -147,7 +147,7 @@ specify slice merge conflict-check <name>
     └── archive/          # finalized slices and plans
 ```
 
-The `0.2.0` v2 layout split operator-facing platform artifacts (root) from framework-managed state (`.specify/`); v1-layout projects upgrade with [`specify migrate v2-layout`](cli/migrate.md).
+The `0.2.0` v2 layout split operator-facing platform artifacts (root) from framework-managed state (`.specify/`).
 
 ## Install
 

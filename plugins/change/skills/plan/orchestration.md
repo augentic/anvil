@@ -303,7 +303,7 @@ Every shell-out in this mode is a v1 verb verbatim. The list a reviewer can grep
 | 6 PR handoff | `gh pr list`, `gh pr view` (read-only listing only) |
 | 7 Finalize | `specify change finalize` |
 
-**Pre-v1 forms that MUST NOT appear** (per [migrating-cli-v1.md](../../../../docs/explanation/migrating-cli-v1.md) and the v1.x rename rows for §1F+§1G):
+**Pre-v1 forms that MUST NOT appear:**
 
 - the hyphenated `phase-outcome` form → use `specify slice outcome set`.
 - the hyphenated `journal-append` form → use `specify slice journal append`.
@@ -361,7 +361,6 @@ If a behaviour drift surfaces between the orchestration mode and a manual run of
 - [`specify plan`](../../../../docs/reference/cli/plan.md) — Layer 1 plan CRUD and lifecycle (recovery and manual fallback).
 - [`specify workspace`](../../../../docs/reference/cli/workspace.md) — `sync`, `status`, and `push` (plan-time peer discovery and PR transport).
 - [Cross-Repo Changes tutorial](../../../../docs/tutorials/cross-repo-change.md) — worked example for all three shapes (RFC-9 §1C and §2C).
-- [Migrating CLI v1](../../../../docs/explanation/migrating-cli-v1.md) — verb rename map; pin every shell-out against the v1 surface.
 - [The Layered Stack](../../../../docs/explanation/three-layer-stack.md) — Layer 4's place in Specify's layered architecture.
 - [Drop down a layer](../../../../docs/how-to/drop-down-a-layer.md) — when to bypass the orchestration and run the steps by hand.
 - [RFC-9 §2C](../../../../rfcs/archive/rfc-9-platform.md) — the design that introduced this orchestration.

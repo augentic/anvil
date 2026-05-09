@@ -22,8 +22,6 @@ argument-hint: "<change-name>"
 
 Author `plan.yaml` for a change by running the planning brief pipeline declared in the active capability's `capability.yaml`. `/change:plan` is the Layer 3 authoring counterpart to `/change:execute`: one *writes* the plan, the other *runs* it.
 
-> **Renamed.** This skill was previously `/spec:plan` (skill name `specify-plan`); RFC-13 §3.9 moved it to the change surface as `/change:plan`. The old slash-command has been removed — see [RFC-13 §Migration](../../../../rfcs/archive/rfc-13-extensibility.md#migration).
-
 > **Status.** Layer 3 is fully landed: discovery (step 3(a)) routes through `/spec:analyze`; when the registry declares **more than one project**, a **sync-peers** step (3(b)) runs `specify workspace sync` and authors `workspace.md` before propose (step 3(c)); after propose, an **assignment** step (3(d)) infers and writes `project` per entry for multi-repo routing.
 
 ## Overview

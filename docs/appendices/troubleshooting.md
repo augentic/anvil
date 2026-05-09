@@ -2,22 +2,6 @@
 
 Common failure modes and their resolutions.
 
-## Layout issues
-
-### `legacy-layout` error from every CLI verb
-
-**Symptom:** Any project-aware verb (`specify status`, `specify change plan ...`, `specify registry ...`, etc.) exits 1 with `error: legacy v1 layout detected; run \`specify migrate v2-layout\` to upgrade ([".specify/registry.yaml", ...])`. JSON callers see `error: "legacy-layout"`.
-
-**Cause:** The CLI was upgraded past `0.2.0` (which moved operator-facing platform artifacts to the repo root) but the project still has v1-layout files under `.specify/`.
-
-**Resolution:**
-
-```bash
-specify migrate v2-layout
-```
-
-The mover is idempotent and refuses to clobber existing destinations. The RFC-13 follow-on migration shims have been removed, so projects that still use `initiative.md` or `.specify/changes/` must be renamed to `change.md` and `.specify/slices/` manually before using current change or slice commands. See [Migrating to the v2 layout](../how-to/migrate-to-v2-layout.md) for the full walkthrough, including multi-repo platforms and collision recovery.
-
 ## Slice lifecycle issues
 
 ### "Slice not found"

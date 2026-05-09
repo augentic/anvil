@@ -1,6 +1,6 @@
 # What's New Since v0.23
 
-This page captures the **additive** changes to the Specify framework since the v1 CLI cleanup landed in v0.23. The v1 cleanup was a routing-only reshape (renamed verbs, no new behaviour); the work below adds new capabilities. For pure rename mappings see [Migrating to CLI v1](migrating-cli-v1.md). The two pages compose: this one tells you **what is new**, the migration map tells you **what was renamed**.
+This page captures the **additive** changes to the Specify framework since the v1 CLI cleanup landed in v0.23. The v1 cleanup was a routing-only reshape (renamed verbs, no new behaviour); the work below adds new capabilities.
 
 The bulk of the additions ship under [RFC-9: Platform-First Operator Experience](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md) and [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md). RFC-9 closes the operator-experience gaps in the cross-repo loop; RFC-8 introduces contracts as platform-level artifacts. The most recent additions land [RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md) (capability rename, platform-component split, change/slice vocabulary), [RFC-14](../../rfcs/archive/rfc-14-workspace.md) (workspace branch and PR ownership), [RFC-15](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasm-plugins.md) (declared WASI capability tools), and [RFC-16](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-16-wasi-vectis.md) (Vectis WASI tools and `specify-vectis` retirement).
 
@@ -24,10 +24,6 @@ The two lifecycle nouns are now stable:
 - **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, and the `specify change *` CLI verbs (which include the `specify change plan *` subresource).
 
 Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "initiative". Both were renamed in Phase 3 of the RFC; "the change loop" no longer exists as a phrase — call it the *slice loop*. Current releases expect `.specify/slices/` and `change.md`; the temporary RFC-13 migration shims have been removed.
-
-### `/change:plan` and `/change:execute` move to the `change` plugin
-
-`/spec:plan` and `/spec:execute` moved to the new `change` plugin as `/change:plan` and `/change:execute`. The historical commands have been removed. See [Change skills](../reference/change-skills/index.md).
 
 ### Platform components are not capabilities
 
@@ -118,23 +114,6 @@ See [Vectis WASI tools](../reference/cli/vectis.md) for the operator-facing surf
 ## v2 layout — platform artifacts at the repo root (specify-cli `0.2.0`)
 
 The on-disk layout split along a clear boundary: **operator-facing platform artifacts** (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at the repo root; generated `AGENTS.md` guidance also lives at the root with Specify owning only its fenced block; **framework-managed state** (`project.yaml`, `context.lock`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`. The boundary makes the responsibilities explicit — operators own root artifacts and prose outside generated fences; Specify owns `.specify/`.
-
-This is a **hard cutover**. The CLI no longer reads the v1 layout. Any project-aware verb on a v1-layout project errors with the stable `legacy-layout` code (exit 1) and points the operator at:
-
-```bash
-specify migrate v2-layout
-```
-
-The migrate verb is idempotent, refuses to clobber an existing destination, and refuses to run inside a workspace clone (peer clones get migrated explicitly per-clone). See [`specify migrate v2-layout`](../reference/cli/migrate.md) for the wire shape and [Migrating to the v2 layout](../how-to/migrate-to-v2-layout.md) for the operator-facing walkthrough.
-
-Per-artifact migration map:
-
-| Artifact | v1 path | v2 path |
-|---|---|---|
-| Platform catalogue | `.specify/registry.yaml` | `registry.yaml` |
-| Change plan | `.specify/plan.yaml` | `plan.yaml` |
-| Operator brief | `.specify/initiative.md` | `change.md` |
-| API contracts | `.specify/contracts/` | `contracts/` |
 
 `project.yaml` stays under `.specify/`. The `contracts@v1` schema id, the `contracts` brief, the merge semantics, the produces/consumes registry roles, and the workspace flow are all unchanged — only the file locations moved. The decision-log entry "Platform artifacts at the repo root, framework state under `.specify/`" carries the design rationale.
 
@@ -315,11 +294,8 @@ Three renames landed on top of the v1 cleanup so every noun-create verb now uses
 
 The renames ship together so the `plan` group never spent an interim release with `init` and `create` for the same noun.
 
-- See: [Migrating to CLI v1 -- v1.x renames](migrating-cli-v1.md#v1x-renames)
-
 ## See also
 
-- [Migrating to CLI v1](migrating-cli-v1.md) -- the v1 rename map (companion page).
 - [The Layered Stack](three-layer-stack.md) -- updated for Layer 4.
 - [Cross-Repo Changes](../tutorials/cross-repo-change.md) and [Landing a Change](../tutorials/landing-a-change.md) -- the worked example exercising all of the above.
 - [Quick Reference](../reference/quick-reference.md) -- single-page cheat sheet for the post-RFC-9 surface.

@@ -39,7 +39,7 @@ Keep review-local finding IDs separate from stable codex rule IDs:
 - **Finding ID**: the report-local occurrence identifier used for triage and ownership, such as `CRX-001-1`, `LOG-003-1`, `UNI-1`, or `NEW-1`. These remain scoped to this review run.
 - **Rule ID**: the stable codex catalogue identifier when the finding maps to a codex rule, such as `VECTIS-002` or `UNI-016`. Include it as `rule_id` in structured outputs and as `**Rule ID**` in markdown reports.
 
-Use the resolved project codex when the caller provides it. Until `specify codex export` is wired into reviewer workflows, read first-party rules directly from `capabilities/default/codex/` and `capabilities/vectis/codex/`; use `plugins/references/review-checks.md` only as a transitional index for migrated universal rule details. Do not copy full codex prose into reports or prompts.
+Use the resolved project codex when the caller provides it. Read first-party rules directly from `capabilities/default/codex/` and `capabilities/vectis/codex/`. Do not copy full codex prose into reports or prompts.
 
 Vectis-specific mappings for core review:
 
@@ -208,7 +208,7 @@ The specialists analyze the crate concurrently. Each reads all `.rs` files in `s
 
 #### 2c. Universal checks (lead; skip if scope = quick)
 
-After all specialists report, the lead applies universal codex rules `UNI-001` through `UNI-021` from the resolved default codex with Rust-specific detection. Until resolved codex export is available in the workflow, read `capabilities/default/codex/*.md` directly and use `../../references/review-checks.md` only as a transitional index for migrated universal rule details. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
+After all specialists report, the lead applies universal codex rules `UNI-001` through `UNI-021` from the resolved default codex with Rust-specific detection. Read `capabilities/default/codex/*.md` directly. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
 
 | Universal check | Already covered by | Action |
 |---|---|---|
@@ -385,7 +385,7 @@ Before creating the Specify change, classify each design-level finding:
 - **Code-fix**: The spec is clear and the code simply does not implement it correctly. The fix is a code change; no spec update is needed. These become tasks in `tasks.md`.
 - **Spec-change**: The spec is silent, ambiguous, or mandates behavior that the review identified as problematic. The fix requires updating the spec first, then implementing. These become requirements in `specs/` and decisions in `design.md`.
 
-Universal checks with a Spec-change indicator (`UNI-002`, `UNI-004`, `UNI-007`, `UNI-008`, `UNI-011`, `UNI-012`, `UNI-014`, `UNI-021`) commonly surface as spec-change findings. Prefer the matching default codex rule's Spec Guidance; use `../../references/review-checks.md` only as a transitional index if the codex file is not yet available to the reviewer.
+Universal checks with a Spec-change indicator (`UNI-002`, `UNI-004`, `UNI-007`, `UNI-008`, `UNI-011`, `UNI-012`, `UNI-014`, `UNI-021`) commonly surface as spec-change findings. Use the matching default codex rule's Spec Guidance from `capabilities/default/codex/`.
 
 If design-level findings exist, delegate to `/spec:define` to create a single Specify change that tracks all of them:
 

@@ -128,8 +128,4 @@ Operator-facing platform artifacts (`registry.yaml`, `plan.yaml`, `change.md`, `
 - **Generated context** — `AGENTS.md` is root-level guidance for agents. `specify context generate` refreshes the fenced block, and `.specify/context.lock` records the input fingerprint for `specify context check`.
 - **Framework state** — CLI-managed, frequently mutated, sometimes ephemeral. Lives under `.specify/` so the dot-prefix signals "framework owns this".
 
-See [Decision Log: Platform artifacts at the repo root](../explanation/decision-log.md) for the reasoning, and [`specify migrate v2-layout`](cli/migrate.md) for the one-shot mover that upgrades a v1-layout project in place.
-
-## v1 layout (deprecated)
-
-Pre-`0.2.0` projects nested every operator artifact under `.specify/` (`.specify/registry.yaml`, `.specify/plan.yaml`, etc.). The CLI no longer reads that shape: `specify` errors out with the stable `legacy-layout` code (exit 1) and points the operator at `specify migrate v2-layout`, the one-shot mover that renames each present artifact in place. See [Migrating to the v2 layout](../how-to/migrate-to-v2-layout.md) for the operator-facing walkthrough.
+See [Decision Log: Platform artifacts at the repo root](../explanation/decision-log.md) for the reasoning.

@@ -1,4 +1,4 @@
-# .specify/changes/email-verification/journal.yaml after self-heal
+# .specify/slices/email-verification/journal.yaml after self-heal
 # appends its one type: recovery entry. The prior entries in the file
 # (whatever /spec:define, /spec:build, /spec:merge wrote during the
 # interrupted run) are preserved untouched above the recovery entry.

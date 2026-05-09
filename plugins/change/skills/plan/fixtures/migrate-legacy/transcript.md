@@ -1,6 +1,6 @@
 # Transcript — `/change:plan <name> orchestrate migrate-foo shape migrate-legacy source monolith=…`
 
-This transcript pins the dialogue and the shell-outs the umbrella runs against an empty hub when migrating the legacy `mono-repo-foo` monolith. Every shell-out uses post-1F+1G v1 verbs verbatim — none of the retired hyphenated, nested, or `init`-named forms appears (see the v1 [migration map](../../../../../../docs/explanation/migrating-cli-v1.md)).
+This transcript pins the dialogue and the shell-outs the umbrella runs against an empty hub when migrating the legacy `mono-repo-foo` monolith. Every shell-out uses post-1F+1G v1 verbs verbatim — none of the retired hyphenated, nested, or `init`-named forms appears.
 
 The transcript starts at the operator's invocation. Run 1 drives through PR creation and stops for operator merge; run 2 resumes after the PRs are merged and finalizes.
 
