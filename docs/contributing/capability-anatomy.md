@@ -9,6 +9,10 @@ Each first-party capability lives under `capabilities/<name>/`:
 ```text
 capabilities/
 ├── capability.schema.json       # JSON Schema for capability.yaml
+├── default/
+│   ├── capability.yaml          # Foundational pipeline declarations
+│   ├── briefs/
+│   └── codex/                   # Universal review rules
 ├── omnia/
 │   ├── capability.yaml          # Pipeline declarations
 │   ├── tools.yaml               # Optional WASI tool sidecar
@@ -76,6 +80,12 @@ pipeline:
 | `pipeline` | object | yes | Pipeline phases with ordered brief references. |
 
 The post-RFC manifest deliberately drops the legacy `domain` and `extends` fields. Tech-stack guidance, architectural notes, and testing context belong in capability references and skills, not in always-loaded manifest metadata.
+
+### Optional codex directory
+
+Capabilities may ship a `codex/` directory next to `capability.yaml` to distribute review rules owned by that capability. The directory is a repository convention, not a manifest field: do not add `codex:` to `capability.yaml`.
+
+Codex files are Markdown documents with RM-03 frontmatter (`id`, `title`, `severity`, `trigger`) and a self-contained `## Rule` section. The foundational `default` capability owns capability-independent universal rules; domain capabilities may add smaller packs for their own review concerns.
 
 ### Optional tool sidecar
 
@@ -181,7 +191,7 @@ The CLI resolves the capability to a local directory by checking `.specify/.cach
 
 ## Adding or modifying a capability
 
-1. **Create the directory** under `capabilities/<name>/` with a `capability.yaml` and a `briefs/` subdirectory.
+1. **Create the directory** under `capabilities/<name>/` with a `capability.yaml` and a `briefs/` subdirectory. Add `codex/` only when the capability owns review rules.
 
 2. **Declare the pipeline.** List the define, build, and merge phases with their brief entries.
 
@@ -194,4 +204,4 @@ The CLI resolves the capability to a local directory by checking `.specify/.cach
    - All `needs` references point to declared brief IDs
    - The `needs` graph contains no cycles (Kahn's algorithm)
 
-5. **Register in the README.** Update `capabilities/README.md` with the new capability's entry.
+5. **Register in the README.** Update `capabilities/README.md` with the new capability's entry and mention any codex pack the capability owns.

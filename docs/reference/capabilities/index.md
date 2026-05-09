@@ -1,6 +1,6 @@
 # Capabilities
 
-> Status: Draft (Phase 3.11 of [RFC-13](../../../rfcs/archive/rfc-13-extensibility.md) landed). The post-RFC manifest shape and dependency invariants are pinned and the first-party capabilities (`omnia`, `contracts`, `vectis`) now live at [`capabilities/<name>/capability.yaml`](../../../capabilities/). [`capability.schema.json`](../../../capabilities/capability.schema.json) actively rejects `pipeline.plan` — planning briefs live with the change-planning skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../../plugins/change/skills/plan/briefs/).
+> Status: Draft (Phase 3.11 of [RFC-13](../../../rfcs/archive/rfc-13-extensibility.md) landed). The post-RFC manifest shape and dependency invariants are pinned and the first-party capabilities (`default`, `omnia`, `contracts`, `vectis`) now live at [`capabilities/<name>/capability.yaml`](../../../capabilities/). [`capability.schema.json`](../../../capabilities/capability.schema.json) actively rejects `pipeline.plan` — planning briefs live with the change-planning skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../../plugins/change/skills/plan/briefs/).
 
 ## What is a capability?
 
@@ -51,7 +51,7 @@ Each pipeline entry is `{ id, brief }`:
 | `id`    | yes      | Kebab-case brief identifier. Unique within the manifest and equal to the brief file's frontmatter `id`.              |
 | `brief` | yes      | Relative path (from the manifest) to the markdown brief template. URIs and absolute paths are rejected.              |
 
-The post-RFC manifest deliberately drops the legacy `domain` and `extends` fields. Tech-stack guidance, architectural notes, and testing context belong in capability references and skills, not in always-loaded manifest metadata. The schema is closed (`additionalProperties: false`) so attempts to reintroduce these fields fail loudly at load time.
+The post-RFC manifest deliberately drops the legacy `domain` and `extends` fields. Tech-stack guidance, architectural notes, testing context, and codex rule directories belong beside the manifest in capability-owned files, not in always-loaded manifest metadata. The schema is closed (`additionalProperties: false`) so attempts to reintroduce these fields fail loudly at load time.
 
 ## Pipeline and the slice loop
 
@@ -86,6 +86,10 @@ Registry and the slice component are first-party Specify components, but they ar
 A capability ships a manifest plus the skills and references that implement domain behaviour. The manifest is the only declarative surface; everything imperative — provider configuration, file generation, format validation, drift detection, fixture replay — lives in skills under `plugins/<name>/` and in checked-in helper scripts.
 
 The security posture is therefore the skill and tooling posture: capability skills run through the host agent's tool execution model. RFC-13 deliberately does not introduce a second plugin runtime hidden behind `capability.yaml`.
+
+Capabilities may also ship an optional `codex/` directory by convention. Codex files are Markdown review rules with their own frontmatter contract and are resolved outside `capability.yaml`; do not add a `codex` field to the manifest. The first-party `default` capability carries universal capability-independent rules, while domain capabilities may add rules specific to their artifact and implementation boundaries.
+
+`specify codex *` resolves rule sources in this order: `default` capability, project capability, future shared catalogs, then the repo-root `codex/` overlay. First-party `default` is distributed as a normal capability under `capabilities/default`; regular `specify init <capability>` caches it into `.specify/.cache/default/` when the selected capability comes from a tree with that sibling. This makes the foundational codex available after init without adding manifest fields or a separate rule package.
 
 ## Validation
 

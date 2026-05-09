@@ -1,6 +1,6 @@
-# RM-01 Scenario Run Summary
+# Cross-Repo Scenario Run Summary
 
-> Reusable template for capturing one manual RM-01 scenario run.
+> Reusable template for capturing one manual cross-repo scenario run.
 
 Fill in the fields below for one run. Keep this document next to the run's
 evidence, or paste it into the operator's notes for a fully manual run. On
@@ -10,8 +10,8 @@ failure, preserve enough evidence for another operator to reproduce the state.
 
 ## Run Header
 
-- **Scenario ID:** `rm-01-cross-repo-contract-flow`
-- **Scenario file:** `tests/rm-01/scenario.md`
+- **Scenario ID:** `cross-repo-contract-flow`
+- **Scenario file:** `tests/cross-repo/scenario.md`
 - **Backend:** `manual`
 - **Operator / agent:** `<name or model identifier>`
 - **Run id:** `<timestamp or uuid>`

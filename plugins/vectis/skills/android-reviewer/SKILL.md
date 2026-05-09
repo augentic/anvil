@@ -10,7 +10,7 @@ argument-hint: "<target-dir>"
 
 1. Gather context — read `shared/src/app.rs`, every `.kt` file under `Android/app/src/main/java/`, Gradle/manifest config, and the wired UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml` — change-local then baseline / project paths per RFC-11 §H); if `reference-dir` is provided, read its counterparts too.
 2. Spawn team — Structural + Quality (always); Integration only on the first iteration when `scope = full`. Each specialist applies its own check set (AND-, KTL-, INT-).
-3. Lead applies universal checks (UNI-001..021) with Android/Compose heuristics, skipping checks already covered by the specialists.
+3. Lead applies universal codex checks (UNI-001..021) with Android/Compose heuristics, attaches `rule_id` on mapped findings, and skips checks already covered by the specialists.
 4. Antagonist (see [`team-protocol.md`](team-protocol.md)) challenges every finding with evidence and counter-scans for Android blind spots; lead synthesises into a single iteration report and assigns a confidence level.
 5. Auto-fix mechanical issues (a11y `contentDescription`, design-token swaps, missing `@Preview`, generated-FFI-type imports `import com.example.app.*`, `CancellationException` rethrow, replacing stale `import com.vectis.design.*` with `import com.vectis.<appname>.ui.theme.*`); revert all auto-fixes if the build breaks.
 6. Loop control — re-spawn Structural + Quality on the changed files until `iteration == 3` or no mechanical fixes were applied.
@@ -32,6 +32,23 @@ This skill catches issues that the Kotlin compiler and linter miss: missing scre
 ## Process
 
 This skill uses an agent team with 3 specialist reviewers and 1 antagonist. The lead coordinates the team, synthesizes findings, and produces the final report. See [Agent Team Patterns](references/agent-teams.md) for shared protocols (team roles, antagonist protocol, synthesis rules, file ownership, and confidence scoring).
+
+### Codex rule citations
+
+Keep review-local finding IDs separate from stable codex rule IDs:
+
+- **Finding ID**: the report-local occurrence identifier used for triage and ownership, such as `AND-001-1`, `KTL-006-1`, `UNI-1`, or `NEW-1`. These remain scoped to this review run.
+- **Rule ID**: the stable codex catalogue identifier when the finding maps to a codex rule, such as `VECTIS-003` or `UNI-016`. Include it as `rule_id` in structured outputs and as `**Rule ID**` in markdown reports.
+
+Use the resolved project codex when the caller provides it. Until `specify codex export` is wired into reviewer workflows, read first-party rules directly from `capabilities/default/codex/` and `capabilities/vectis/codex/`; use `plugins/references/review-checks.md` only as a transitional index for migrated universal rule details. Do not copy full codex prose into reports or prompts.
+
+Vectis-specific mappings for Android review:
+
+| Rule ID | Use when finding concerns |
+|---|---|
+| `VECTIS-001` | Shell-side domain rules, duplicated core state, or platform-only behavior fixes |
+| `VECTIS-003` | ViewModel/Event/Effect/Route coverage between the Rust core and Kotlin shell |
+| `VECTIS-004` | Android effect lifecycle, CoreFfi calls, coroutine cancellation, error handling, or ViewModel preservation |
 
 ### 1. Gather context
 
@@ -104,9 +121,10 @@ pattern-based checks that verify the shell correctly maps to the Crux core:
 - Crash recovery handler presence in Application class
 - Recurring composition groups without a `component:` slug (RFC-11 §I "Reviewer surface")
 
-For each finding, report: check ID (AND-NNN), file:line, code snippet,
-severity (Critical or Warning), risk description, suggested fix, and
-whether it is auto-fixable (mechanical).
+For each finding, report: check ID (AND-NNN), stable rule_id when it
+clearly maps to a codex rule, file:line, code snippet, severity
+(Critical or Warning), risk description, suggested fix, and whether it
+is auto-fixable (mechanical).
 
 Output your findings as a numbered list in markdown. Prefix each finding
 ID with "AND-" (e.g., AND-001-1, AND-023-1).
@@ -134,9 +152,10 @@ Kotlin/Jetpack Compose best practice checks:
 - Accessibility descriptions on interactive icons
 - Event callback naming consistency
 
-For each finding, report: check ID (KTL-NNN), file:line, code snippet,
-severity (Warning or Info), risk description, suggested fix, and whether
-it is auto-fixable.
+For each finding, report: check ID (KTL-NNN), stable rule_id when it
+clearly maps to a codex rule, file:line, code snippet, severity
+(Warning or Info), risk description, suggested fix, and whether it is
+auto-fixable.
 
 Output your findings as a numbered list in markdown. Prefix each finding
 ID with "KTL-" (e.g., KTL-001-1, KTL-006-1).
@@ -171,9 +190,10 @@ Kotlin implementation:
    Application class (if Koin), the correct theme, and network security
    config (if HTTP/SSE effects).
 
-For each finding, report: a finding ID (INT-NNN), file:line, code snippet,
-severity (Critical or Warning), risk description, suggested fix, and
-whether it is auto-fixable.
+For each finding, report: a finding ID (INT-NNN), stable rule_id when it
+clearly maps to a codex rule, file:line, code snippet, severity
+(Critical or Warning), risk description, suggested fix, and whether it
+is auto-fixable.
 
 Output your findings as a numbered list in markdown. Prefix each finding
 ID with "INT-" (e.g., INT-001, INT-002).
@@ -187,7 +207,7 @@ The specialists analyze the shell concurrently. Each reads all `.kt` files under
 
 #### 2c. Universal checks (lead; skip if scope = quick)
 
-After all specialists report, the lead reads `../../references/review-checks.md` and applies checks UNI-001 through UNI-021 with Kotlin/Android-specific detection. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
+After all specialists report, the lead applies universal codex rules `UNI-001` through `UNI-021` from the resolved default codex with Kotlin/Android-specific detection. Until resolved codex export is available in the workflow, read `capabilities/default/codex/*.md` directly and use `../../references/review-checks.md` only as a transitional index for migrated universal rule details. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
 
 | Universal check | Already covered by | Action |
 |---|---|---|
@@ -216,7 +236,7 @@ Apply the remaining checks with these Kotlin/Android-specific heuristics:
 - **UNI-020** (unsafe deserialization): Look for bincode or JSON deserialization of untrusted external payloads directly into model types that carry privilege state. Check for missing payload size limits on data fetched from external sources.
 - **UNI-021** (missing auth checks): Check that effect handlers attaching authentication credentials (Bearer tokens, API keys) to outbound requests source them from secure storage (Android Keystore / `EncryptedSharedPreferences`), not from hardcoded values or unprotected `SharedPreferences`. Flag API calls to protected endpoints dispatched without any auth header.
 
-Prefix findings from this step with `UNI-` (e.g., UNI-1, UNI-2). Use the severity defined in the universal checklist for each check.
+Prefix findings from this step with `UNI-` occurrence IDs (e.g., `UNI-1`, `UNI-2`) and include the matching stable `rule_id` (e.g., `UNI-016`) on each finding. Use the severity defined by the codex rule.
 
 Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004, UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in the adversarial review and spec-change output in step 3.
 
@@ -255,6 +275,7 @@ Output the synthesized findings for this iteration. On the first iteration, use 
 ### Critical Findings
 
 #### [AND-001-1] Missing screen composable for ViewModel variant
+- **Rule ID**: VECTIS-003
 - **File**: Android/app/src/main/java/com/vectis/{appname}/ui/screens/
 - **Reviewer**: Structural Specialist
 - **Antagonist**: Confirmed
@@ -352,13 +373,13 @@ Classify each design-level finding:
 - **Code-fix**: The spec is clear and the code simply does not implement it correctly. The fix is a code change; no spec update is needed. These become tasks in `tasks.md`.
 - **Spec-change**: The spec is silent, ambiguous, or mandates behavior that the review identified as problematic. The fix requires updating the spec first, then implementing. These become requirements in `specs/` and decisions in `design.md`.
 
-Universal checks with a Spec-change indicator (UNI-002, UNI-004, UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) commonly surface as spec-change findings. Consult `../../references/review-checks.md` for the indicator description on each check.
+Universal checks with a Spec-change indicator (`UNI-002`, `UNI-004`, `UNI-007`, `UNI-008`, `UNI-011`, `UNI-012`, `UNI-014`, `UNI-021`) commonly surface as spec-change findings. Prefer the matching default codex rule's Spec Guidance; use `../../references/review-checks.md` only as a transitional index if the codex file is not yet available to the reviewer.
 
 #### When `orchestrated: true` (build-phase invocation)
 
 Return the classified findings in the `design_findings` output field
 and stop. Each finding entry includes: finding ID (e.g., AND-001-1),
-check ID, severity, classification (`code-fix` or `spec-change`),
+check ID, optional `rule_id`, severity, classification (`code-fix` or `spec-change`),
 file:line, description, and suggested fix. The orchestrator
 consolidates findings from all platform reviewers and creates a
 single Specify change. Do **not** call `/spec:define`.
@@ -387,7 +408,7 @@ single Specify change that tracks all of them:
 
    - **proposal.md**: The "Why" section summarizes the accumulated review findings by severity and risk, distinguishing spec-change findings (requirements gaps) from code-fix findings (implementation bugs). The "What Changes" section lists each design-level finding as a bullet, prefixed with `[spec]` or `[code]` to indicate its classification. Note which mechanical fixes were already applied across all iterations and how many review cycles ran. The "Impact" section identifies affected files, core contract slices, and migration concerns.
 
-   - **design.md**: Each design-level finding becomes a Decision section with rationale and alternatives considered. Group related findings (e.g., all effect-handler-related changes under one decision). Reference the specific check IDs (AND-xxx, KTL-xxx, UNI-xxx) that motivated each decision. For spec-change findings, explain why the current spec is insufficient and what the proposed requirement should be.
+   - **design.md**: Each design-level finding becomes a Decision section with rationale and alternatives considered. Group related findings (e.g., all effect-handler-related changes under one decision). Reference the specific finding IDs (AND-xxx, KTL-xxx, UNI-xxx) and any stable rule IDs (VECTIS-xxx, UNI-xxx) that motivated each decision. For spec-change findings, explain why the current spec is insufficient and what the proposed requirement should be.
 
    - **specs/**: Create one spec file per logical area (e.g., `android-shell-effects`, `android-shell-navigation`). Each requirement maps to a review finding. Spec-change findings become new requirements with explicit acceptance criteria. Code-fix findings become scenarios under existing requirements. Use WHEN/THEN format.
 
@@ -431,6 +452,7 @@ Before completing review:
 - [ ] Adversarial Review section included with challenge statistics
 - [ ] Confidence level assigned based on antagonist results
 - [ ] Finding IDs use correct prefixes (AND-, KTL-, INT-, UNI-, NEW-)
+- [ ] Findings include `rule_id` / `Rule ID` when they map to a stable codex rule
 - [ ] Design-level findings classified as code-fix or spec-change
 
 ## Integration with Specify Workflow

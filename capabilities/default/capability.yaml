@@ -1,0 +1,15 @@
+# yaml-language-server: $schema=../capability.schema.json
+name: default
+version: 1
+description: Foundational Specify workflow and universal review codex
+
+pipeline:
+  define:
+    - id: define
+      brief: briefs/define.md
+  build:
+    - id: build
+      brief: briefs/build.md
+  merge:
+    - id: merge
+      brief: briefs/merge.md

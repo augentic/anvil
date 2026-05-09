@@ -12,13 +12,20 @@ const CAPABILITIES_DIR = join(REPO_ROOT, "capabilities");
 const CURSOR_SCHEMA_DIR = join(REPO_ROOT, ".cursor", "schemas");
 const RED = "\x1b[0;31m";
 const NC = "\x1b[0m";
-const SKILL_MAX_BODY_LINES = 500;
-const SKILL_CRITICAL_PATH_MIN_BODY_LINES = 150;
-const SKILL_CRITICAL_PATH_HEADING = "## Critical Path (Quick Reference)";
+const MAX_BODY_LINES = 500;
+const CRITICAL_PATH_MIN_LINES = 150;
+const CRITICAL_PATH_HEADING = "## Critical Path (Quick Reference)";
+type AjvValidationError = {
+  instancePath?: string;
+  message?: string;
+  keyword?: string;
+  params?: Record<string, unknown>;
+};
+
 const Ajv2020 = Ajv2020Module as unknown as {
   new (opts: { allErrors?: boolean }): {
     compile(schema: unknown): ((data: unknown) => boolean) & {
-      errors?: Array<{ instancePath?: string; message?: string }>;
+      errors?: AjvValidationError[];
     };
   };
 };
@@ -30,7 +37,7 @@ function fail(msg: string): void {
   errors++;
 }
 
-async function isUnderSymlink(filepath: string): Promise<boolean> {
+async function underSymlink(filepath: string): Promise<boolean> {
   const rel = relative(REPO_ROOT, filepath);
   const parts = rel.split("/");
   let current = REPO_ROOT;
@@ -59,7 +66,7 @@ async function checkMarkdownLinks(): Promise<void> {
     })
   ) {
     if (SKIP_DIRS.some((re) => re.test(entry.path))) continue;
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
 
     const relFile = relative(REPO_ROOT, entry.path);
     const parent = dirname(entry.path);
@@ -134,7 +141,7 @@ async function checkStaleClaims(): Promise<void> {
     })
   ) {
     if (/node_modules|\.git/.test(entry.path)) continue;
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
     let content: string;
     try {
       content = await Deno.readTextFile(entry.path);
@@ -404,7 +411,7 @@ async function validateSkillFrontmatter(): Promise<void> {
       includeDirs: false,
     })
   ) {
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
 
@@ -482,7 +489,7 @@ async function validateSkillFrontmatter(): Promise<void> {
 // 6b. SKILL.md body line-count ceiling (RFC-10 §D)
 // ──────────────────────────────────────────────────────────────
 
-async function checkSkillBodyLineCount(): Promise<void> {
+async function checkBodyLineCount(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
   for await (
@@ -491,7 +498,7 @@ async function checkSkillBodyLineCount(): Promise<void> {
       includeDirs: false,
     })
   ) {
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
 
@@ -499,9 +506,9 @@ async function checkSkillBodyLineCount(): Promise<void> {
     if (!lines) continue;
     const lineCount = lines.length;
 
-    if (lineCount > SKILL_MAX_BODY_LINES) {
+    if (lineCount > MAX_BODY_LINES) {
       fail(
-        `Skill body too long: ${rel} — ${lineCount} body lines (limit ${SKILL_MAX_BODY_LINES})`,
+        `Skill body too long: ${rel} — ${lineCount} body lines (limit ${MAX_BODY_LINES})`,
       );
     }
   }
@@ -511,7 +518,7 @@ async function checkSkillBodyLineCount(): Promise<void> {
 // 6c. Long SKILL.md bodies must include a Critical Path block
 // ──────────────────────────────────────────────────────────────
 
-async function checkSkillCriticalPath(): Promise<void> {
+async function checkCriticalPath(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
   const LIST_ITEM_RE = /^(?:\d+\.|-)\s+\S/;
 
@@ -521,19 +528,19 @@ async function checkSkillCriticalPath(): Promise<void> {
       includeDirs: false,
     })
   ) {
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
 
     const lines = skillBodyLines(content);
-    if (!lines || lines.length < SKILL_CRITICAL_PATH_MIN_BODY_LINES) continue;
+    if (!lines || lines.length < CRITICAL_PATH_MIN_LINES) continue;
 
     const headingIndex = lines.findIndex((line) =>
-      line.trim() === SKILL_CRITICAL_PATH_HEADING
+      line.trim() === CRITICAL_PATH_HEADING
     );
     if (headingIndex < 0) {
       fail(
-        `Missing Critical Path: ${rel} — ${lines.length} body lines requires '${SKILL_CRITICAL_PATH_HEADING}'`,
+        `Missing Critical Path: ${rel} — ${lines.length} body lines requires '${CRITICAL_PATH_HEADING}'`,
       );
       continue;
     }
@@ -569,7 +576,7 @@ async function checkSkillCriticalPath(): Promise<void> {
 // 6d. SKILL.md description length ceiling (RFC-10 §D)
 // ──────────────────────────────────────────────────────────────
 
-async function checkSkillDescriptionLength(): Promise<void> {
+async function checkDescriptionLength(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
   const MAX_DESCRIPTION_CHARS = 1024;
 
@@ -579,7 +586,7 @@ async function checkSkillDescriptionLength(): Promise<void> {
       includeDirs: false,
     })
   ) {
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
 
@@ -608,7 +615,7 @@ async function checkSkillDescriptionLength(): Promise<void> {
 // 6e. SKILL.md argument-hint shape (RFC-10 §A.3, §D)
 // ──────────────────────────────────────────────────────────────
 
-async function checkSkillArgumentHint(): Promise<void> {
+async function checkArgumentHint(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
   const FORBIDDEN: { token: string; reason: string }[] = [
     { token: "?", reason: "trailing optional marker" },
@@ -622,7 +629,7 @@ async function checkSkillArgumentHint(): Promise<void> {
       includeDirs: false,
     })
   ) {
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
 
@@ -657,7 +664,7 @@ async function checkSkillArgumentHint(): Promise<void> {
 // 6f. Slash-skill invocations use positional arguments (Claude Skills parity)
 // ──────────────────────────────────────────────────────────────
 
-async function checkSlashSkillInvocationsUsePositionals(): Promise<void> {
+async function checkInvocationPositionals(): Promise<void> {
   const SCAN_ROOTS = [
     join(REPO_ROOT, "docs"),
     join(REPO_ROOT, "plugins"),
@@ -688,7 +695,7 @@ async function checkSlashSkillInvocationsUsePositionals(): Promise<void> {
         includeDirs: false,
       })
     ) {
-      if (await isUnderSymlink(entry.path)) continue;
+      if (await underSymlink(entry.path)) continue;
       targets.push(entry.path);
     }
   }
@@ -743,7 +750,7 @@ async function checkSlashSkillInvocationsUsePositionals(): Promise<void> {
 // 6g. SKILL.md frontmatter must not declare `license` (RFC-10 §A.4, §D)
 // ──────────────────────────────────────────────────────────────
 
-async function checkSkillNoLicense(): Promise<void> {
+async function checkNoLicense(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
   for await (
@@ -752,7 +759,7 @@ async function checkSkillNoLicense(): Promise<void> {
       includeDirs: false,
     })
   ) {
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
 
@@ -841,7 +848,7 @@ async function checkRetiredSlashCommands(): Promise<void> {
         includeDirs: false,
       })
     ) {
-      if (await isUnderSymlink(entry.path)) continue;
+      if (await underSymlink(entry.path)) continue;
       await scanFile(entry.path);
     }
   }
@@ -862,7 +869,7 @@ async function checkRetiredSlashCommands(): Promise<void> {
 // 7. Skill reference link resolution
 // ──────────────────────────────────────────────────────────────
 
-async function checkSkillReferences(): Promise<void> {
+async function checkReferences(): Promise<void> {
   const REF_LINK_RE = /\[([^\]]*)\]\((references\/[^)]+|examples\/[^)]+)\)/g;
   const FENCE_RE = /```[\s\S]*?```/g;
 
@@ -874,7 +881,7 @@ async function checkSkillReferences(): Promise<void> {
       includeDirs: false,
     })
   ) {
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const skillDir = dirname(entry.path);
     const content = await Deno.readTextFile(entry.path);
@@ -900,7 +907,7 @@ async function checkSkillReferences(): Promise<void> {
 // 8. Skill variable consistency
 // ──────────────────────────────────────────────────────────────
 
-async function checkSkillVariables(): Promise<void> {
+async function checkVariables(): Promise<void> {
   const DEF_RE = /^\$([A-Z_][A-Z_0-9]*)\s*=/gm;
   const USE_RE = /\$([A-Z_][A-Z_0-9]*)/g;
   const ARGS_HEADING_RE = /^## (?:Derived )?Arguments/m;
@@ -917,7 +924,7 @@ async function checkSkillVariables(): Promise<void> {
       includeDirs: false,
     })
   ) {
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
     const rel = relative(REPO_ROOT, entry.path);
     const content = await Deno.readTextFile(entry.path);
 
@@ -988,7 +995,7 @@ async function checkSkillVariables(): Promise<void> {
 // 9. Skill directive validation
 // ──────────────────────────────────────────────────────────────
 
-async function checkSkillDirectives(): Promise<void> {
+async function checkDirectives(): Promise<void> {
   const DIRECTIVE_RE = /<!-- skill: ([a-z][a-z0-9-]*):([a-z][a-z0-9-]*) -->/g;
   const FENCE_RE = /```[\s\S]*?```/g;
   const INLINE_CODE_RE = /`[^`]+`/g;
@@ -1020,7 +1027,7 @@ async function checkSkillDirectives(): Promise<void> {
     })
   ) {
     if (SKIP_DIRS.some((re) => re.test(entry.path))) continue;
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
 
     let content: string;
     try {
@@ -1214,7 +1221,7 @@ async function checkRetiredCliVerbs(): Promise<void> {
         includeDirs: false,
       })
     ) {
-      if (await isUnderSymlink(entry.path)) continue;
+      if (await underSymlink(entry.path)) continue;
       const rel = relative(REPO_ROOT, entry.path);
       if (ALLOWLIST.has(rel)) continue;
 
@@ -1246,7 +1253,7 @@ async function checkRetiredCliVerbs(): Promise<void> {
 // 12. RFC-14 workspace landing automation stays retired
 // ──────────────────────────────────────────────────────────────
 
-async function checkRfc14WorkspaceLanding(): Promise<void> {
+async function checkWorkspaceLanding(): Promise<void> {
   const SCAN_ROOTS = [
     join(REPO_ROOT, "plugins"),
     join(REPO_ROOT, "docs"),
@@ -1291,7 +1298,7 @@ async function checkRfc14WorkspaceLanding(): Promise<void> {
         exts: [".md", ".mdx", ".mdc"],
       })
     ) {
-      if (await isUnderSymlink(entry.path)) continue;
+      if (await underSymlink(entry.path)) continue;
       targets.push(entry.path);
     }
   }
@@ -1427,7 +1434,7 @@ async function checkRetiredAffectsField(): Promise<void> {
 
     for await (const entry of walk(root, { includeDirs: false })) {
       if (!FIXTURE_NAME_RE.test(entry.path)) continue;
-      if (await isUnderSymlink(entry.path)) continue;
+      if (await underSymlink(entry.path)) continue;
 
       let content: string;
       try {
@@ -1451,7 +1458,7 @@ async function checkRetiredAffectsField(): Promise<void> {
   }
 }
 
-async function checkV1LayoutPaths(): Promise<void> {
+async function checkLegacyLayout(): Promise<void> {
   // The v2 layout (specify-cli 0.2.0) moved operator-facing platform
   // artifacts from `.specify/` to the repo root. Doc/skill prose that
   // still references the v1 paths is drift; this check pins the new
@@ -1519,7 +1526,7 @@ async function checkV1LayoutPaths(): Promise<void> {
         exts: [".md", ".mdx", ".mdc", ".yaml", ".yml", ".json", ".toml"],
       })
     ) {
-      if (await isUnderSymlink(entry.path)) continue;
+      if (await underSymlink(entry.path)) continue;
       targets.push(entry.path);
     }
   }
@@ -1671,7 +1678,7 @@ async function discoverScenarioCandidates(): Promise<string[]> {
           match: [/scenario\.md$/],
         })
       ) {
-        if (await isUnderSymlink(entry.path)) continue;
+        if (await underSymlink(entry.path)) continue;
         const rel = relative(pluginsDir, entry.path).split("/");
         if (
           rel.length === 6 &&
@@ -1854,7 +1861,7 @@ async function validateScenarioFrontmatter(): Promise<void> {
 // is silently skipped.
 // ──────────────────────────────────────────────────────────────
 
-const RECORDED_TRACE_REQUIRED_FIELDS = [
+const TRACE_REQUIRED_FIELDS = [
   "kind",
   "schemaVersion",
   "sourceBackend",
@@ -1881,7 +1888,7 @@ async function checkRecordedTraceFreshness(): Promise<void> {
       includeDirs: false,
     })
   ) {
-    if (await isUnderSymlink(entry.path)) continue;
+    if (await underSymlink(entry.path)) continue;
     tracePaths.push(entry.path);
   }
   // Stable ordering for deterministic output across runs.
@@ -1934,7 +1941,7 @@ async function checkRecordedTraceFreshness(): Promise<void> {
         })`,
       );
     }
-    for (const field of RECORDED_TRACE_REQUIRED_FIELDS) {
+    for (const field of TRACE_REQUIRED_FIELDS) {
       const value = header[field];
       if (
         value === undefined ||
@@ -2005,6 +2012,206 @@ async function checkRecordedTraceFreshness(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
+// 16. First-party codex rule shape validation (RM-03 Change 07)
+//
+// Discovers first-party rule markdown under `capabilities/*/codex/**/*.md`
+// plus the optional repo-root `codex/**/*.md` overlay, validates frontmatter
+// against `.cursor/schemas/codex-rule.schema.json`, and checks repo-local
+// invariants that are intentionally outside the per-file schema.
+// ──────────────────────────────────────────────────────────────
+
+interface CodexFile {
+  rel: string;
+  frontmatter: Record<string, unknown>;
+}
+
+const CODEX_RULE_HEADING_RE = /^## Rule\s*$/m;
+const CODEX_CAPABILITY_NAMESPACES: Record<string, Set<string>> = {
+  default: new Set(["UNI"]),
+  omnia: new Set(["OMNIA", "RUST", "SEC"]),
+  contracts: new Set(["IFACE"]),
+  vectis: new Set(["VECTIS"]),
+};
+
+async function discoverCodexRuleFiles(): Promise<string[]> {
+  const paths: string[] = [];
+
+  try {
+    const stat = await Deno.stat(CAPABILITIES_DIR);
+    if (stat.isDirectory) {
+      for await (
+        const entry of walk(CAPABILITIES_DIR, {
+          exts: [".md"],
+          includeDirs: false,
+        })
+      ) {
+        if (await underSymlink(entry.path)) continue;
+        const parts = relative(CAPABILITIES_DIR, entry.path).split("/");
+        if (parts.length >= 3 && parts[1] === "codex") {
+          paths.push(entry.path);
+        }
+      }
+    }
+  } catch {
+    // No capabilities/.
+  }
+
+  const rootCodexDir = join(REPO_ROOT, "codex");
+  try {
+    const stat = await Deno.stat(rootCodexDir);
+    if (stat.isDirectory) {
+      for await (
+        const entry of walk(rootCodexDir, {
+          exts: [".md"],
+          includeDirs: false,
+        })
+      ) {
+        if (await underSymlink(entry.path)) continue;
+        paths.push(entry.path);
+      }
+    }
+  } catch {
+    // Repo-root codex overlay is optional.
+  }
+
+  return Array.from(new Set(paths)).sort();
+}
+
+function formatSchemaError(err: AjvValidationError): string {
+  const at = err.instancePath || "/";
+  if (
+    err.keyword === "required" &&
+    typeof err.params?.missingProperty === "string"
+  ) {
+    return `${at} missing required property '${err.params.missingProperty}'`;
+  }
+  if (
+    err.keyword === "additionalProperties" &&
+    typeof err.params?.additionalProperty === "string"
+  ) {
+    return `${at} unknown property '${err.params.additionalProperty}'`;
+  }
+  if (err.keyword === "enum" && Array.isArray(err.params?.allowedValues)) {
+    return `${at} must be one of ${
+      err.params.allowedValues.map((v) => JSON.stringify(v)).join(", ")
+    }`;
+  }
+  if (err.keyword === "pattern" && typeof err.params?.pattern === "string") {
+    return `${at} must match ${err.params.pattern}`;
+  }
+  return `${at} ${err.message ?? "schema violation"}`.trim();
+}
+
+function capabilityOwnerForCodexPath(path: string): string | null {
+  const parts = relative(CAPABILITIES_DIR, path).split("/");
+  if (parts.length >= 3 && parts[1] === "codex") return parts[0];
+  return null;
+}
+
+function namespaceForRuleId(id: string): string | null {
+  return id.match(/^([A-Z]+)-[0-9]{3}$/)?.[1] ?? null;
+}
+
+function namespaceList(namespaces: Set<string>): string {
+  return [...namespaces].map((ns) => `${ns}-*`).join(", ");
+}
+
+async function validateCodexRuleShape(): Promise<void> {
+  const codexSchema = JSON.parse(
+    await Deno.readTextFile(join(CURSOR_SCHEMA_DIR, "codex-rule.schema.json")),
+  );
+  const ajv = new Ajv2020({ allErrors: true });
+  const validate = ajv.compile(codexSchema);
+
+  const rulePaths = await discoverCodexRuleFiles();
+  const rules: CodexFile[] = [];
+
+  for (const path of rulePaths) {
+    const rel = relative(REPO_ROOT, path);
+    let content: string;
+    try {
+      content = await Deno.readTextFile(path);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      fail(`Codex rule: ${rel} — cannot read: ${msg}`);
+      continue;
+    }
+
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) {
+      fail(
+        `Codex rule: ${rel} — missing leading YAML frontmatter delimited by ---`,
+      );
+      continue;
+    }
+
+    let fm: Record<string, unknown>;
+    try {
+      fm = parseYaml(fmMatch[1]) as Record<string, unknown>;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      fail(`Codex rule frontmatter: ${rel} — invalid YAML: ${msg}`);
+      continue;
+    }
+    if (fm === null || typeof fm !== "object" || Array.isArray(fm)) {
+      fail(`Codex rule frontmatter: ${rel} — frontmatter must be a YAML mapping`);
+      continue;
+    }
+
+    const rule: CodexFile = { rel, frontmatter: fm };
+    rules.push(rule);
+
+    if (!validate(fm)) {
+      for (const err of validate.errors ?? []) {
+        fail(`Codex rule frontmatter: ${rel} — ${formatSchemaError(err)}`);
+      }
+    }
+
+    const body = content.slice(fmMatch[0].length);
+    if (!CODEX_RULE_HEADING_RE.test(body)) {
+      fail(`Codex rule body: ${rel} — missing required '## Rule' heading`);
+    }
+
+    const id = fm.id;
+    if (typeof id !== "string") continue;
+
+    const capability = capabilityOwnerForCodexPath(path);
+    if (!capability) continue;
+
+    const allowedNamespaces = CODEX_CAPABILITY_NAMESPACES[capability];
+    if (!allowedNamespaces) {
+      fail(
+        `Codex namespace ownership: ${rel} — capability '${capability}' has no configured codex namespace owner; update scripts/checks.ts before adding first-party rules here`,
+      );
+      continue;
+    }
+
+    const namespace = namespaceForRuleId(id);
+    if (namespace && !allowedNamespaces.has(namespace)) {
+      fail(
+        `Codex namespace ownership: ${rel} — capability '${capability}' may only use ${namespaceList(allowedNamespaces)} ids, got '${id}'`,
+      );
+    }
+  }
+
+  const idsByValue = new Map<string, string[]>();
+  for (const rule of rules) {
+    const id = rule.frontmatter.id;
+    if (typeof id !== "string") continue;
+    const seen = idsByValue.get(id) ?? [];
+    seen.push(rule.rel);
+    idsByValue.set(id, seen);
+  }
+  for (const [id, paths] of idsByValue) {
+    if (paths.length > 1) {
+      fail(
+        `Codex rule duplicate id '${id}' across files: ${paths.join(", ")}`,
+      );
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // Run all checks
 // ──────────────────────────────────────────────────────────────
 
@@ -2018,23 +2225,24 @@ await Promise.all([
   checkCapabilityIntegrity(),
   checkInstructionPreambles(),
   checkRetiredCliVerbs(),
-  checkRfc14WorkspaceLanding(),
+  checkWorkspaceLanding(),
   checkRetiredAffectsField(),
-  checkV1LayoutPaths(),
+  checkLegacyLayout(),
   validateScenarioFrontmatter(),
   checkRecordedTraceFreshness(),
+  validateCodexRuleShape(),
 ]);
 await Promise.all([
   validateSkillFrontmatter(),
-  checkSkillBodyLineCount(),
-  checkSkillCriticalPath(),
-  checkSkillDescriptionLength(),
-  checkSkillArgumentHint(),
-  checkSlashSkillInvocationsUsePositionals(),
-  checkSkillNoLicense(),
-  checkSkillReferences(),
-  checkSkillVariables(),
-  checkSkillDirectives(),
+  checkBodyLineCount(),
+  checkCriticalPath(),
+  checkDescriptionLength(),
+  checkArgumentHint(),
+  checkInvocationPositionals(),
+  checkNoLicense(),
+  checkReferences(),
+  checkVariables(),
+  checkDirectives(),
   checkPluginConsistency(),
   checkRetiredSlashCommands(),
 ]);

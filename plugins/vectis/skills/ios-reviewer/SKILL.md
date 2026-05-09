@@ -10,7 +10,7 @@ argument-hint: "<target-dir>"
 
 1. **Gather review context** — read Crux core files, all iOS Swift/build files, optional reference app files, and available composition/tokens/assets inputs.
 2. **Spawn the review team** — run Structural and Quality every iteration; add Integration on the first full-scope iteration only.
-3. **Apply lead checks** — run Swift-specific universal checks and tag design-level/spec-change indicators for later consolidation.
+3. **Apply lead checks** — run Swift-specific universal codex checks, attach `rule_id` on mapped findings, and tag design-level/spec-change indicators for later consolidation.
 4. **Challenge findings** — send all specialist and universal findings to the antagonist for evidence review, severity adjustment, and counter-scan.
 5. **Synthesize and auto-fix** — merge findings into one report, classify mechanical vs design-level, apply safe mechanical fixes, and revert all fixes if they regress verification.
 6. **Loop deliberately** — repeat changed-file review until no mechanical fixes remain or the three-iteration cap is reached.
@@ -32,6 +32,23 @@ This skill catches issues that the Swift compiler and swiftformat miss: missing 
 ## Process
 
 This skill uses an agent team with 3 specialist reviewers and 1 antagonist. The lead coordinates the team, synthesizes findings, and produces the final report. See [Agent Team Patterns](references/agent-teams.md) for shared protocols (team roles, antagonist protocol, synthesis rules, file ownership, and confidence scoring).
+
+### Codex rule citations
+
+Keep review-local finding IDs separate from stable codex rule IDs:
+
+- **Finding ID**: the report-local occurrence identifier used for triage and ownership, such as `IOS-001-1`, `SWF-006-1`, `UNI-1`, or `NEW-1`. These remain scoped to this review run.
+- **Rule ID**: the stable codex catalogue identifier when the finding maps to a codex rule, such as `VECTIS-003` or `UNI-016`. Include it as `rule_id` in structured outputs and as `**Rule ID**` in markdown reports.
+
+Use the resolved project codex when the caller provides it. Until `specify codex export` is wired into reviewer workflows, read first-party rules directly from `capabilities/default/codex/` and `capabilities/vectis/codex/`; use `plugins/references/review-checks.md` only as a transitional index for migrated universal rule details. Do not copy full codex prose into reports or prompts.
+
+Vectis-specific mappings for iOS review:
+
+| Rule ID | Use when finding concerns |
+|---|---|
+| `VECTIS-001` | Shell-side domain rules, duplicated core state, or platform-only behavior fixes |
+| `VECTIS-003` | ViewModel/Event/Effect/Route coverage between the Rust core and Swift shell |
+| `VECTIS-004` | Swift effect lifecycle, CoreFfi calls, threading, cancellation, error handling, or ViewModel preservation |
 
 ### 1. Gather context
 
@@ -91,9 +108,10 @@ pattern-based checks that verify the shell correctly maps to the Crux core:
 - ScrollView interaction hazards (touch delay, nested gesture conflicts)
 - Recurring composition groups without a `component:` slug (RFC-11 §I "Reviewer surface")
 
-For each finding, report: check ID (IOS-NNN), file:line, code snippet,
-severity (Critical or Warning), risk description, suggested fix, and
-whether it is auto-fixable (mechanical).
+For each finding, report: check ID (IOS-NNN), stable rule_id when it
+clearly maps to a codex rule, file:line, code snippet, severity
+(Critical or Warning), risk description, suggested fix, and whether it
+is auto-fixable (mechanical).
 
 Output your findings as a numbered list in markdown. Prefix each finding
 ID with "IOS-" (e.g., IOS-001-1, IOS-005-1).
@@ -118,9 +136,10 @@ Swift/SwiftUI best practice checks:
 - Preview coverage
 - swiftformat compliance
 
-For each finding, report: check ID (SWF-NNN), file:line, code snippet,
-severity (Warning or Info), risk description, suggested fix, and whether
-it is auto-fixable.
+For each finding, report: check ID (SWF-NNN), stable rule_id when it
+clearly maps to a codex rule, file:line, code snippet, severity
+(Warning or Info), risk description, suggested fix, and whether it is
+auto-fixable.
 
 Output your findings as a numbered list in markdown. Prefix each finding
 ID with "SWF-" (e.g., SWF-001-1, SWF-006-1).
@@ -145,9 +164,10 @@ Swift implementation:
 4. Capability alignment -- every Effect variant in `app.rs` must have a
    handler in `Core.swift`.
 
-For each finding, report: a finding ID (INT-NNN), file:line, code snippet,
-severity (Critical or Warning), risk description, suggested fix, and
-whether it is auto-fixable.
+For each finding, report: a finding ID (INT-NNN), stable rule_id when it
+clearly maps to a codex rule, file:line, code snippet, severity
+(Critical or Warning), risk description, suggested fix, and whether it
+is auto-fixable.
 
 Output your findings as a numbered list in markdown. Prefix each finding
 ID with "INT-" (e.g., INT-001, INT-002).
@@ -161,7 +181,7 @@ The specialists analyze the shell concurrently. Each reads all `.swift` files un
 
 #### 2c. Universal checks (lead; skip if scope = quick)
 
-After all specialists report, the lead reads `../../references/review-checks.md` and applies checks UNI-001 through UNI-021 with Swift-specific detection. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
+After all specialists report, the lead applies universal codex rules `UNI-001` through `UNI-021` from the resolved default codex with Swift-specific detection. Until resolved codex export is available in the workflow, read `capabilities/default/codex/*.md` directly and use `../../references/review-checks.md` only as a transitional index for migrated universal rule details. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
 
 | Universal check | Already covered by | Action |
 |---|---|---|
@@ -190,7 +210,7 @@ Apply the remaining checks with these Swift-specific heuristics:
 - **UNI-020** (unsafe deserialization): Look for `JSONDecoder` decoding of untrusted external payloads directly into model types that carry privilege state. Check for missing `Content-Length` header checks, `URLResponse.expectedContentLength` checks, or explicit payload size limits on data fetched from external sources.
 - **UNI-021** (missing auth checks): Check that effect handlers attaching authentication credentials (Bearer tokens, API keys) to outbound requests source them from secure storage (Keychain), not from hardcoded values or unprotected UserDefaults. Flag API calls to protected endpoints dispatched without any auth header.
 
-Prefix findings from this step with `UNI-` (e.g., UNI-1, UNI-2). Use the severity defined in the universal checklist for each check.
+Prefix findings from this step with `UNI-` occurrence IDs (e.g., `UNI-1`, `UNI-2`) and include the matching stable `rule_id` (e.g., `UNI-016`) on each finding. Use the severity defined by the codex rule.
 
 Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004, UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in the adversarial review and spec-change output in step 3.
 
@@ -213,6 +233,8 @@ For EACH finding (IOS-, SWF-, INT-, and UNI- prefixed):
 3. Check for false positives: Could this be a non-issue or acceptable
    SwiftUI pattern?
 4. Assess auto-fix safety: Could the suggested fix introduce regressions?
+5. Preserve any attached rule_id. For new findings, add rule_id only when
+   the issue clearly maps to a stable codex rule.
 
 Then perform a COUNTER-SCAN of all `.swift` files under `iOS/` looking
 for issues ALL specialists missed. Common SwiftUI blind spots:
@@ -271,6 +293,7 @@ Output the synthesized findings for this iteration. On the first iteration, use 
 ### Critical Findings
 
 #### [IOS-001-1] Missing screen view for ViewModel variant
+- **Rule ID**: VECTIS-003
 - **File**: iOS/{AppName}/ContentView.swift
 - **Reviewer**: Structural Specialist
 - **Antagonist**: Confirmed
@@ -365,13 +388,13 @@ Classify each design-level finding:
 - **Code-fix**: The spec is clear and the code simply does not implement it correctly. The fix is a code change; no spec update is needed. These become tasks in `tasks.md`.
 - **Spec-change**: The spec is silent, ambiguous, or mandates behavior that the review identified as problematic. The fix requires updating the spec first, then implementing. These become requirements in `specs/` and decisions in `design.md`.
 
-Universal checks with a Spec-change indicator (UNI-002, UNI-004, UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) commonly surface as spec-change findings. Consult `../../references/review-checks.md` for the indicator description on each check.
+Universal checks with a Spec-change indicator (`UNI-002`, `UNI-004`, `UNI-007`, `UNI-008`, `UNI-011`, `UNI-012`, `UNI-014`, `UNI-021`) commonly surface as spec-change findings. Prefer the matching default codex rule's Spec Guidance; use `../../references/review-checks.md` only as a transitional index if the codex file is not yet available to the reviewer.
 
 #### When `orchestrated: true` (build-phase invocation)
 
 Return the classified findings in the `design_findings` output field
 and stop. Each finding entry includes: finding ID (e.g., IOS-001-1),
-check ID, severity, classification (`code-fix` or `spec-change`),
+check ID, optional `rule_id`, severity, classification (`code-fix` or `spec-change`),
 file:line, description, and suggested fix. The orchestrator
 consolidates findings from all platform reviewers and creates a
 single Specify change. Do **not** call `/spec:define`.
@@ -400,7 +423,7 @@ single Specify change that tracks all of them:
 
    - **proposal.md**: The "Why" section summarizes the accumulated review findings by severity and risk, distinguishing spec-change findings (requirements gaps) from code-fix findings (implementation bugs). The "What Changes" section lists each design-level finding as a bullet, prefixed with `[spec]` or `[code]` to indicate its classification. Note which mechanical fixes were already applied across all iterations and how many review cycles ran. The "Impact" section identifies affected files, core contract slices, and migration concerns.
 
-   - **design.md**: Each design-level finding becomes a Decision section with rationale and alternatives considered. Group related findings (e.g., all effect-handler-related changes under one decision). Reference the specific check IDs (IOS-xxx, SWF-xxx, UNI-xxx) that motivated each decision. For spec-change findings, explain why the current spec is insufficient and what the proposed requirement should be.
+   - **design.md**: Each design-level finding becomes a Decision section with rationale and alternatives considered. Group related findings (e.g., all effect-handler-related changes under one decision). Reference the specific finding IDs (IOS-xxx, SWF-xxx, UNI-xxx) and any stable rule IDs (VECTIS-xxx, UNI-xxx) that motivated each decision. For spec-change findings, explain why the current spec is insufficient and what the proposed requirement should be.
 
    - **specs/**: Create one spec file per logical area (e.g., `ios-shell-effects`, `ios-shell-navigation`). Each requirement maps to a review finding. Spec-change findings become new requirements with explicit acceptance criteria. Code-fix findings become scenarios under existing requirements. Use WHEN/THEN format.
 
@@ -444,6 +467,7 @@ Before completing review:
 - [ ] Adversarial Review section included with challenge statistics
 - [ ] Confidence level assigned based on antagonist results
 - [ ] Finding IDs use correct prefixes (IOS-, SWF-, INT-, UNI-, NEW-)
+- [ ] Findings include `rule_id` / `Rule ID` when they map to a stable codex rule
 - [ ] Design-level findings classified as code-fix or spec-change
 
 ## Integration with Specify Workflow

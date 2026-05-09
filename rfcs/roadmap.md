@@ -35,45 +35,11 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 
 ### Near Term
 
-#### RM-02: `AGENTS.md` generation under proposed `specify context`
-
-**Goal:** Generate concise, deterministic, refreshable repository context.
-**Target surface:**
-
-```bash
-specify context generate
-specify context check
-```
-
-**Inputs:** Specify project metadata, capability references, repo inspection, and registry data.  
-**Output:** short `AGENTS.md` guidance covering runtime, tests, linting, navigation, conventions, boundaries, and dependencies. The proposed `specify context check` warns when repo changes imply a refresh.  
-**Why now:** High direct user value, and it unblocks stale-context checks in `specify review`.
-
-#### RM-03: Codex rule format
-
-**Goal:** Give generators and reviewers stable, citable engineering rules.
-**Seed:** `plugins/references/review-checks.md` and its existing `UNI-`* catalogue.
-**Each rule carries:** stable id, concise trigger, normative guidance, examples or references where useful, and applicability metadata.
-**First cut:** reserve namespaces such as `RUST-`*, `IFACE-`*, and `SEC-*`; add filtering metadata; migrate the seed catalogue without breaking existing ids.
-**Open:** storage location: `.specify/codex/`, repo-root `codex/`, or shared catalog.
-
-```text
-codex/
-  rust/errors.md
-  interfaces/compatibility.md
-  security/secrets.md
-```
-
-**Questions**:
-
-- What does the codex rule format look like? Can you point me to an example?
-- Where should codex rules live: `.specify/codex/`, repo-root `codex/`, or a shared catalog?
-- Which `specify review` checks are deterministic CLI logic versus model-assisted analysis?
-
 #### RM-04: `specify review` finding schema
 
 **Goal:** Define the structured finding shape before reviewer code lands.
-**Depends on:** *Codex rule format*.
+**Depends on:** RM-03 codex rule format.
+**Consumes:** `specify codex export --format json` as the resolved rule-catalog input. RM-04 owns finding-specific fields and should not redefine codex rule storage.
 **Schema includes:** severity (`critical` / `important` / `suggestion` / `optional`), rule id, file/line references, verbatim evidence, remediation, and machine-readable output for terminals, CI annotations, PR comments, and future dashboards.
 
 #### RM-05: Cross-project compatibility classification
@@ -99,6 +65,7 @@ specify compatibility report --change <name>
 
 **Goal:** Port `scripts/checks.ts` from Deno into a Rust `specify-check` crate exposed as `specify check`.
 **Why now:** Removes Deno from CI, reuses CLI schema parsers, and turns reserved framework-lint rule ids into a working scanner.
+**Codex follow-up:** May surface first-party codex shape validation by delegating to the codex parser/resolver, while leaving project-resolved review behavior under `specify codex` and future `specify review`.
 **Unblocks:** *RFC-4 Option 1* and *Migrate remaining first-party host helpers to declared WASI tools*.
 
 #### RM-08: RFC-4 Option 1: typed skill expression
@@ -124,6 +91,7 @@ specify compatibility report --change <name>
 #### RM-11: CI-native `specify review`
 
 **Goal:** Continuously review consumer projects.
+**Consumes:** RM-03 resolved codex export plus the RM-04 finding schema.
 **Target surface:**
 
 ```bash
@@ -236,12 +204,35 @@ specify execute resume <run-id>
 
 ### Completed
 
-~~**RM-01:** Multi-repo acceptance fixture~~
+**RM-01:** Multi-repo acceptance fixture
 
-~~**Goal:** Prove a realistic multi-slice, multi-repo flow.~~
-~~**Covers:** plan generation, registry routing, dependent slice execution, branch preparation, workspace sync, residue and baseline commit behavior, push and PR/MR handoff, and finalize after external merge.~~
-~~**Output:** an automated or semi-automated suite against local fixture repositories with fake or recorded forge behavior. Recovery paths land in *Multi-repo acceptance suite expansion*.~~ 
-~~**Executable proof:** `specify-cli` repo's `tests/cross_repo.rs`.~~
+**Goal:** Prove a realistic multi-slice, multi-repo flow.
+**Covers:** plan generation, registry routing, dependent slice execution, branch preparation, workspace sync, residue and baseline commit behavior, push and PR/MR handoff, and finalize after external merge.
+**Output:** an automated or semi-automated suite against local fixture repositories with fake or recorded forge behavior. Recovery paths land in *Multi-repo acceptance suite expansion*.
+**Executable proof:** `specify-cli` repo's `tests/cross_repo.rs`.
+
+#### RM-02: `AGENTS.md` generation under proposed `specify context`
+
+**Goal:** Generate concise, deterministic, refreshable repository context.
+**Target surface:**
+
+```bash
+specify context generate
+specify context check
+```
+
+**Inputs:** Specify project metadata, capability references, repo inspection, and registry data.  
+**Output:** short `AGENTS.md` guidance covering runtime, tests, linting, navigation, conventions, boundaries, and dependencies. The proposed `specify context check` warns when repo changes imply a refresh.  
+**Why now:** High direct user value, and it unblocks stale-context checks in `specify review`.
+
+#### RM-03: Codex rule format
+
+**Goal:** Give generators and reviewers stable, citable engineering rules.
+**Seed:** `plugins/references/review-checks.md` and its existing `UNI-`* catalogue.
+**Each rule carries:** stable id, concise trigger, normative guidance, examples or references where useful, and applicability metadata.
+**Implemented:** Markdown/YAML-frontmatter V1 schema; `specify codex {list, show, validate, export --format json}`; deterministic project resolution; default `UNI-001` through `UNI-021` migration; first-cut Omnia, Contracts, and Vectis codex packs; first-party codex validation in `make checks`; reviewer citation guidance for stable `rule_id` values.
+**Storage answer:** First-party rules live at `capabilities/<name>/codex/`. The foundational `default` capability carries universal rules and is cached alongside selected first-party capabilities during `specify init`. Repo-root `codex/` is the local overlay. `.specify/codex/` remains reserved for generated cache or lock state. Shared catalog resolution is a reserved V1 hook with no config surface yet.
+**Follow-ups:** RM-04 defines the review finding schema that consumes codex rule IDs and provenance. RM-11 implements CI-native review against the resolved codex. RM-07 may port first-party codex shape validation into `specify check`.
 
 ---
 
@@ -260,8 +251,7 @@ specify execute resume <run-id>
 
 ## Open Questions
 
-- Where should codex rules live: `.specify/codex/`, repo-root `codex/`, or a shared catalog?
-- Which `specify review` checks are deterministic CLI logic versus model-assisted analysis?
+- Which codex rules should RM-11 implement as deterministic scanners first, and which should stay model-assisted findings?
 - What is the minimum Backstage registry projection needed for useful planning?
 - What compatibility classifier is sufficient before producer changes can gate on consumer impact?
 - Which acceptance fixtures best represent the product proof path?

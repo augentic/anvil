@@ -4,6 +4,8 @@ Shared vocabulary used by every format-skill verifier (`/contract:openapi`, `/co
 
 For the report's structural shape and exit semantics, see [`report-shape`](report-shape.md). This reference documents the **vocabulary** — the `change-kind` enumeration the verifiers use to classify deltas, the workspace clone resolution rules, and the breaking-change classification policy.
 
+For reviewer-facing rule prose that cites this vocabulary, see [`IFACE-005 Consumer Impact Classification`](../../../capabilities/contracts/codex/consumer-impact-classification.md).
+
 ## When the mode runs
 
 The `/change:execute` driver invokes `cross-project` mode after every successful `specify slice merge run` of a contract change. For each contract listed in the producer project's `registry.yaml:contracts.produces`, the driver iterates over each consumer (every other project in the registry) and invokes the appropriate format-skill verifier once per `(producer-contract, consumer-workspace)` pair.
@@ -117,4 +119,5 @@ The execute driver records findings on the merging change's `journal.yaml` and r
 - [`report-shape`](report-shape.md) — the structural shape of cross-project YAML reports, including `severity` levels and locator format.
 - [`baseline-vs-delta`](baseline-vs-delta.md) — single-project counterpart for delta computation; the cross-format compatibility check (Check 4 in the JSON Schema verifier) uses the same `change-kind` vocabulary against in-project baseline bindings.
 - [`artifact-structure`](artifact-structure.md) — workspace clone layout (`.specify/workspace/<peer>/`) and the materialisation contract.
+- [`IFACE-005 Consumer Impact Classification`](../../../capabilities/contracts/codex/consumer-impact-classification.md) — stable codex rule for reviewer and verifier findings.
 - Format-specific verifiers — `plugins/contract/skills/{openapi,asyncapi,json-schema}/verifier.md` (see `--mode cross-project` sections).

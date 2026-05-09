@@ -45,3 +45,4 @@ Cross-format references shared by every format skill:
 - [Import / Upgrade Policy](references/import-upgrade-policy.md) — format detection, per-format upgrade targets (Swagger 2.0 → OpenAPI 3.1; AsyncAPI 2.x → 3.0; JSON Schema Draft 4 / 6 / 7 / 2019-09 → 2020-12), lossless-vs-lossy decisions, when to refuse and ask the operator
 - [Report Shape](references/report-shape.md) — single-mode markdown and cross-project YAML report formats, severity levels, locator format, exit semantics
 - [Cross-Project Compatibility](references/cross-project-compatibility.md) — `change-kind` enumeration, consumer-view resolution, breaking-change classification policy
+- [Contracts Codex](../../capabilities/contracts/codex/) — stable `IFACE-*` reviewer rules

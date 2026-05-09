@@ -19,6 +19,7 @@
 | `briefs/tasks.md` | Generation brief for the tasks stage |
 | `briefs/build.md` | Implementation brief for the build stage |
 | `briefs/merge.md` | Merge brief for finalizing a change |
+| `codex/*.md` | Vectis-specific review rules for Crux core/shell boundaries, state transitions, and platform shell responsibilities |
 
 ## Blueprints
 
@@ -31,6 +32,10 @@ The capability declares five blueprints in dependency order:
 5. **tasks** — implementation checklist (`tasks.md`), requires specs + design
 
 Build requires tasks to be complete and is tracked via `tasks.md`.
+
+## Codex
+
+Vectis review rules live under [`codex/`](codex/). This first cut is intentionally small and covers the highest-value checks that are specific to Crux core behavior and generated iOS/Android shells.
 
 ## Feature-Centric Specs
 

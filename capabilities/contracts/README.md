@@ -16,6 +16,7 @@
 | `briefs/tasks.md` | Generation brief for the tasks stage |
 | `briefs/build.md` | Build brief for authoring, importing, repairing, and validating contract artifacts |
 | `briefs/merge.md` | Merge brief for finalizing a change |
+| `codex/*.md` | Reviewer-facing interface compatibility rules for contract evolution |
 
 ## Pipeline
 
@@ -48,6 +49,14 @@ The schema declares three define blueprints in dependency order:
 3. **tasks** — contract build and validation task list (`tasks.md`), requires specs
 
 Build requires tasks to be complete and is tracked via `tasks.md`.
+
+## Codex
+
+The Contracts codex pack owns stable `IFACE-*` rules for reviewer-facing interface evolution checks:
+
+- OpenAPI and AsyncAPI consumer compatibility.
+- JSON Schema evolution safety.
+- SemVer versioning and consumer-impact classification hooks.
 
 ## When to Use
 

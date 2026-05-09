@@ -17,4 +17,7 @@ Cross-platform Crux application generation: Rust shared core, SwiftUI iOS shell,
 
 ## References
 
-- [Review Checks](references/review-checks.md)
+- [Vectis Codex Rules](../../capabilities/vectis/codex/)
+- [Core Review Checks](skills/core-reviewer/references/crux-review-checks.md)
+- [iOS Review Checks](skills/ios-reviewer/references/ios-review-checks.md)
+- [Android Review Checks](skills/android-reviewer/references/android-review-checks.md)
