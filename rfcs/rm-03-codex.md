@@ -161,6 +161,10 @@ Required frontmatter should stay small enough that a useful rule is cheap to wri
 | `trigger`  | yes      | One-sentence condition that tells a generator or reviewer when the rule matters.                                                                                                 |
 
 
+### Body Headings
+
+The only required body heading is `## Rule`. It should state the normative rule in self-contained prose. Other headings, such as `## Look For`, `## Good`, `## Bad`, and `## Spec Guidance`, are recommended when they make the rule easier for humans or models to apply, but V1 validation should not require them.
+
 ## Namespaces
 
 V1 reserves these namespaces:
@@ -260,7 +264,7 @@ Some rules are hybrid. For example, `SEC-* hardcoded secrets` can have determini
 
 ## Migration Plan
 
-1. **Add codex validation as a format-only parser.** Validate frontmatter shape, rule IDs, required headings, duplicate IDs, and provenance. Do not wire review yet.
+1. **Add codex validation as a format-only parser.** Validate frontmatter shape, rule IDs, the required `## Rule` body heading, duplicate IDs, and provenance. Do not wire review yet.
 2. **Migrate `UNI-`*.** Split `plugins/references/review-checks.md` into `capabilities/default/codex/` files while preserving every `UNI-001` through `UNI-021` ID.
 3. **Add capability codex directories.** Start with the default foundational rules, Omnia provider/WASM/Rust rules, Contracts interface compatibility rules, and Vectis core/shell boundary rules.
 4. **Expose `specify codex export --format json`.** This gives skills and future hosted runners one resolved rule surface.
