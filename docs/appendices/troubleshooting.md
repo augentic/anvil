@@ -14,11 +14,9 @@ Common failure modes and their resolutions.
 
 ```bash
 specify migrate v2-layout
-specify migrate slice-layout
-specify migrate change-noun
 ```
 
-The mover is idempotent and refuses to clobber existing destinations. See [Migrating to the v2 layout](../how-to/migrate-to-v2-layout.md) for the full walkthrough, including multi-repo platforms and collision recovery.
+The mover is idempotent and refuses to clobber existing destinations. The RFC-13 follow-on migration shims have been removed, so projects that still use `initiative.md` or `.specify/changes/` must be renamed to `change.md` and `.specify/slices/` manually before using current change or slice commands. See [Migrating to the v2 layout](../how-to/migrate-to-v2-layout.md) for the full walkthrough, including multi-repo platforms and collision recovery.
 
 ## Slice lifecycle issues
 

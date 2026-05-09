@@ -86,13 +86,11 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `drop` - discard a slice without merging specs into baseline
 - `extract` - extract Specify artifacts from existing source code
 - `analyze` - plan-time capability inference; emits capability summaries
-- `plan` - **deprecated alias** that prints a warning and delegates to `/change:plan`
-- `execute` - **deprecated alias** that prints a warning and delegates to `/change:execute`
 
 ### Change Plugin (`plugins/change/`)
 
-- `plan` - author `plan.yaml` via the planning brief pipeline; with the `orchestrate` positional, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → operator PR merge → finalize) — RFC-9 §2C. Historical `/spec:plan` delegates here.
-- `execute` - drive a change's plan through define, build, merge per slice. Historical `/spec:execute` delegates here.
+- `plan` - author `plan.yaml` via the planning brief pipeline; with the `orchestrate` positional, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → operator PR merge → finalize) — RFC-9 §2C. Use `/change:plan`; the historical `/spec:plan` alias has been removed.
+- `execute` - drive a change's plan through define, build, merge per slice. Use `/change:execute`; the historical `/spec:execute` alias has been removed.
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -144,7 +142,7 @@ See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for
 /docs/                    # Extended documentation (architecture, plugins)
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
-  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, verify, explore, status, extract, analyze, plan, execute)
+  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, extract, analyze)
   │   └── references/     # Artifact templates and capability resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)

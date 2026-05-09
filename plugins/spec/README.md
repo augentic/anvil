@@ -1,6 +1,6 @@
 # Specify Workflow
 
-Per-slice workflow orchestration for spec-driven development: define slices, build them, and merge or drop. Plan authoring and execution live in the [`change` plugin](../change/README.md); the `spec` plugin retains deprecated aliases at `/spec:plan` and `/spec:execute` for operators still using the old command names.
+Per-slice workflow orchestration for spec-driven development: define slices, build them, and merge or drop. Plan authoring and execution live in the [`change` plugin](../change/README.md); use `/change:plan` and `/change:execute` for change-level work.
 
 ## Skills
 
@@ -13,8 +13,6 @@ Per-slice workflow orchestration for spec-driven development: define slices, bui
 | [drop](skills/drop/SKILL.md) | `/spec:drop` | Discard a slice without merging |
 | [extract](skills/extract/SKILL.md) | `/spec:extract` | Extract Specify artifacts from existing source code |
 | [analyze](skills/analyze/SKILL.md) | `/spec:analyze` | Plan-time capability inference; emits capability summaries into `discovery.md` |
-| [plan (deprecated alias)](skills/plan/SKILL.md) | `/spec:plan` | Deprecated — delegates to [`/change:plan`](../change/skills/plan/SKILL.md). |
-| [execute (deprecated alias)](skills/execute/SKILL.md) | `/spec:execute` | Deprecated — delegates to [`/change:execute`](../change/skills/execute/SKILL.md). |
 
 ## References
 

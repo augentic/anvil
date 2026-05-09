@@ -23,11 +23,11 @@ The two lifecycle nouns are now stable:
 - **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step; lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
 - **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, and the `specify change *` CLI verbs (which include the `specify change plan *` subresource).
 
-Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "initiative". Both were renamed in Phase 3 of the RFC; "the change loop" no longer exists as a phrase — call it the *slice loop*. Per-loop directories migrate via `specify migrate slice-layout`; the operator brief renames via `specify migrate change-noun`.
+Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "initiative". Both were renamed in Phase 3 of the RFC; "the change loop" no longer exists as a phrase — call it the *slice loop*. Current releases expect `.specify/slices/` and `change.md`; the temporary RFC-13 migration shims have been removed.
 
 ### `/change:plan` and `/change:execute` move to the `change` plugin
 
-`/spec:plan` and `/spec:execute` moved to the new `change` plugin as `/change:plan` and `/change:execute`. The historical commands survive as thin deprecation shims that delegate to the canonical skills and are removed before the post-RFC-13 release. See [Change skills](../reference/change-skills/index.md).
+`/spec:plan` and `/spec:execute` moved to the new `change` plugin as `/change:plan` and `/change:execute`. The historical commands have been removed. See [Change skills](../reference/change-skills/index.md).
 
 ### Platform components are not capabilities
 
@@ -133,7 +133,7 @@ Per-artifact migration map:
 |---|---|---|
 | Platform catalogue | `.specify/registry.yaml` | `registry.yaml` |
 | Change plan | `.specify/plan.yaml` | `plan.yaml` |
-| Operator brief | `.specify/initiative.md` | `change.md` after `specify migrate change-noun` |
+| Operator brief | `.specify/initiative.md` | `change.md` |
 | API contracts | `.specify/contracts/` | `contracts/` |
 
 `project.yaml` stays under `.specify/`. The `contracts@v1` schema id, the `contracts` brief, the merge semantics, the produces/consumes registry roles, and the workspace flow are all unchanged — only the file locations moved. The decision-log entry "Platform artifacts at the repo root, framework state under `.specify/`" carries the design rationale.

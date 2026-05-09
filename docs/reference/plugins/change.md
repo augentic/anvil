@@ -13,13 +13,13 @@ The plugin separation reflects the RFC-13 dependency direction: *capabilities* o
 
 ## Migration from the `spec` plugin
 
-These skills used to live on the `spec` plugin as `/change:plan` and `/change:execute`. RFC-13 §3.9 moved them to the new `change` plugin so umbrella orchestration is owned separately from the per-slice phases. The `spec` plugin retains thin deprecation shims at the historical paths; both shims warn and delegate to the canonical commands and are removed before the post-RFC release per [RFC-13 §Migration](../../../rfcs/archive/rfc-13-extensibility.md#migration).
+These skills used to live on the `spec` plugin as `/spec:plan` and `/spec:execute`. RFC-13 §3.9 moved them to the new `change` plugin so umbrella orchestration is owned separately from the per-slice phases. The historical `spec` plugin aliases have been removed per [RFC-13 §Migration](../../../rfcs/archive/rfc-13-extensibility.md#migration).
 
-| Pre-3.9 command | Post-3.9 canonical command |
-|-----------------|----------------------------|
-| `/change:plan <name>` | `/change:plan <name>` |
-| `/change:plan <name> orchestrate` | `/change:plan <name> orchestrate` |
-| `/change:execute loop` | `/change:execute loop` |
+| Pre-3.9 command | Current command |
+|-----------------|-----------------|
+| `/spec:plan <name>` | `/change:plan <name>` |
+| `/spec:plan <name> orchestrate` | `/change:plan <name> orchestrate` |
+| `/spec:execute loop` | `/change:execute loop` |
 
 ## CLI counterpart
 

@@ -1478,9 +1478,9 @@ async function checkLegacyLayout(): Promise<void> {
   const FORBIDDEN_PATTERNS: RegExp[] = [
     /\.specify\/registry\.yaml/,
     /\.specify\/plan\.yaml/,
-    // The umbrella brief was renamed initiative.md → change.md by RFC-13 §3.5
-    // (Phase 3.7 ships `specify migrate change-noun`). Either spelling under
-    // `.specify/` is wrong post-v2-layout — the brief lives at the repo root.
+    // The umbrella brief was renamed initiative.md → change.md by RFC-13 §3.5.
+    // Either spelling under `.specify/` is wrong post-v2-layout — the brief
+    // lives at the repo root.
     /\.specify\/initiative\.md/,
     /\.specify\/change\.md/,
     /\.specify\/contracts\b/,

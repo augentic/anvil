@@ -6,8 +6,6 @@ One-shot migrations for projects crossing Specify layout and naming cutovers.
 
 ```bash
 specify migrate v2-layout [--dry-run] [--format json]
-specify migrate slice-layout [--dry-run] [--format json]
-specify migrate change-noun [--dry-run] [--format json]
 ```
 
 ## Description
@@ -19,18 +17,12 @@ The v2 layout (specify-cli `0.2.0`) split Specify's on-disk shape along a clear 
 
 `specify migrate v2-layout` walks the legacy platform artifact paths under `.specify/` and renames each one in place to its v2 destination at the repo root. It is the canonical recovery action when any other CLI verb refuses with `Error::LegacyLayout` (stable code `legacy-layout`, exit 1).
 
-RFC-13 added two follow-on noun migrations:
-
-- `specify migrate slice-layout` renames `.specify/changes/` to `.specify/slices/` and rewrites vendored skill references from `$CHANGE_DIR` to `$SLICE_DIR`.
-- `specify migrate change-noun` renames root `initiative.md` to `change.md`.
-
-Run the migrations in that order when upgrading an old project: `v2-layout`, then `slice-layout`, then `change-noun`.
+The RFC-13 follow-on migration shims for `.specify/changes/` → `.specify/slices/` and `initiative.md` → `change.md` have been removed. Projects must already be on the post-RFC-13 slice/change layout before using this release; if a repository still has those legacy names, rename them manually before running current change or slice commands.
 
 Behaviour:
 
 - **Idempotent.** Re-running on an already-migrated project exits 0 with `nothing to migrate` or the command-specific no-op message.
 - **Refuses to clobber.** If both the legacy and current path exist, the verb errors with the colliding path and leaves both copies on disk so the operator can resolve manually.
-- **Refuses unsafe active work.** `slice-layout` refuses when any legacy slice under `.specify/changes/` carries a non-terminal lifecycle status.
 - **Refuses inside a workspace clone.** `v2-layout` does not touch peer clones under `.specify/workspace/<name>/`. Migrate the hub repo first, then iterate clones explicitly.
 - **Atomic per move.** Each rename is independent. A partial failure leaves the project in a mixed state, with actionable output enumerating what moved and what did not.
 
@@ -54,8 +46,6 @@ For `v2-layout`, `--format json` returns:
 - `any-collisions` — `true` when at least one destination collision blocked a move.
 - `dry-run` — present and `true` only when `--dry-run` was passed.
 
-`slice-layout` and `change-noun` return command-specific JSON rows that report the attempted source, destination, status, and dry-run flag. Exit code is `0` when the migration completed or had nothing to do, and `1` when a collision or unsafe active slice blocked the migration.
-
 ## Worked example
 
 A v1-layout single-repo project starts out like:
@@ -72,7 +62,7 @@ my-project/
         └── http/user-api.yaml
 ```
 
-After `specify migrate v2-layout`, the operator artifacts are at the root, but legacy RFC-13 names may still be present:
+After `specify migrate v2-layout`, the operator artifacts are at the root:
 
 ```text
 my-project/
@@ -83,11 +73,10 @@ my-project/
 ├── contracts/
 │   └── http/user-api.yaml
 └── .specify/
-    ├── project.yaml
-    └── changes/
+    └── project.yaml
 ```
 
-After the follow-on migrations:
+Current releases expect the post-RFC-13 names before change and slice commands run. If this project still predates that cutover, rename `initiative.md` to `change.md` and ensure slices live under `.specify/slices/`:
 
 ```text
 my-project/

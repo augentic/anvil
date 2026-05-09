@@ -2,7 +2,7 @@
 
 Change-scoped skills coordinate multi-slice changes through `plan.yaml`. They sit above the [slice lifecycle skills](../slice-skills/index.md) and invoke them per-slice. The Layer 3 skills live on the `change` plugin (`/change:plan`, `/change:execute`) and the `spec` plugin (`/spec:analyze`); the Layer 4 umbrella mode (`/change:plan <name> orchestrate`) composes plan + execute + push, then resumes to finalize after the operator merges PRs — see the [layered stack](../../explanation/three-layer-stack.md) for the relationship.
 
-> **Historical names.** `/spec:plan`, `/spec:execute`, and `/spec:initiative` are deprecated aliases or retired entry points. Use `/change:plan`, `/change:execute`, and `/change:plan <name> orchestrate` in new docs, scripts, and operator guidance.
+> **Historical names.** `/spec:plan`, `/spec:execute`, and `/spec:initiative` are retired entry points. Use `/change:plan`, `/change:execute`, and `/change:plan <name> orchestrate` in new docs, scripts, and operator guidance.
 
 ## The plan-execute flow
 

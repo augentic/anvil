@@ -33,7 +33,7 @@
     {
       "name": "spec",
       "source": "spec",
-      "description": "Skills for the Specify per-slice loop: init, define, build, merge, drop, extract, and analyze. Plan authoring and execution moved to the `change` plugin in RFC-13 §3.9; the `spec` plan and execute skills survive only as deprecation shims that delegate to /change:plan and /change:execute."
+      "description": "Skills for the Specify per-slice loop: init, define, build, merge, drop, extract, and analyze. Plan authoring and execution moved to the `change` plugin in RFC-13 §3.9; use /change:plan and /change:execute for change-level orchestration."
     },
     {
       "name": "change",

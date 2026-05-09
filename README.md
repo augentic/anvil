@@ -41,7 +41,7 @@ For larger efforts, `/change:plan` authors `plan.yaml` and `/change:execute loop
 
 Specify ships as a Cursor plugin marketplace with seven plugins:
 
-- **Specify** (`spec`) -- Per-slice workflow: init, define, build, merge, drop, extract, analyze. Carries deprecation shims for the historical `/spec:plan` and `/spec:execute` commands.
+- **Specify** (`spec`) -- Per-slice workflow: init, define, build, merge, drop, extract, analyze. Change-level plan authoring and execution live in the `change` plugin.
 - **Change** (`change`) -- Change orchestration: `/change:plan` (Layer 3 + Layer 4 umbrella) and `/change:execute` (Layer 3 driver).
 - **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
 - **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)

@@ -6,7 +6,7 @@ The v2 layout (specify-cli `0.2.0`) moves the four operator-facing platform arti
 |---|---|---|
 | Platform catalogue | `.specify/registry.yaml` | `registry.yaml` |
 | Change plan | `.specify/plan.yaml` | `plan.yaml` |
-| Operator brief | `.specify/initiative.md` | `initiative.md`, then `change.md` after `specify migrate change-noun` |
+| Operator brief | `.specify/initiative.md` | `initiative.md` (`change.md` is required by current change commands) |
 | API contracts | `.specify/contracts/` | `contracts/` |
 
 `.specify/` continues to hold framework-managed state — `project.yaml`, `context.lock`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`. The boundary is "operator artifacts and generated context at root, framework state under `.specify/`". See [Decision Log](../explanation/decision-log.md) for the rationale.
@@ -32,12 +32,7 @@ cd <your-project>
 specify migrate v2-layout
 ```
 
-Then apply the RFC-13 noun migrations if the project predates the slice/change cutover:
-
-```bash
-specify migrate slice-layout
-specify migrate change-noun
-```
+The RFC-13 follow-on migration shims have been removed. If the project still predates the slice/change cutover, rename `initiative.md` to `change.md` and move any legacy `.specify/changes/` content to `.specify/slices/` before using current change or slice commands.
 
 The verb is **idempotent**, **atomic per file**, and **refuses to clobber** an existing destination. Re-running on an already-migrated project exits 0 with `nothing to migrate`.
 
@@ -84,12 +79,12 @@ A platform-hub repo with `.specify/workspace/<name>/` clones needs each clone mi
 2. Migrate each peer clone:
 
    ```bash
-   for clone in .specify/workspace/*/; do
-     ( cd "$clone" && specify migrate v2-layout && specify migrate slice-layout && specify migrate change-noun )
-   done
+  for clone in .specify/workspace/*/; do
+    ( cd "$clone" && specify migrate v2-layout )
+  done
    ```
 
-3. Each peer clone now has its own root-level `registry.yaml` (typically empty for non-hub projects), `plan.yaml`, `change.md`, and `contracts/` — wherever those existed under the clone's old `.specify/`.
+3. Each peer clone now has its own root-level `registry.yaml` (typically empty for non-hub projects), `plan.yaml`, and `contracts/` wherever those existed under the clone's old `.specify/`. Rename any remaining `initiative.md` to `change.md` before invoking current change verbs.
 
 4. Push the migrations using the operator's normal per-clone publishing path (`specify workspace push` once everything's committed inside each clone).
 
