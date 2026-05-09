@@ -7,14 +7,14 @@ version: 1
 projects:
   - name: foo-backend
     url: git@github.com:org/foo-backend.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       Backend service migrated from the legacy mono-repo-foo TypeScript
       monolith. Owns user accounts, order processing, and the HTTP API
       that the mobile app calls into.
   - name: foo-mobile
     url: git@github.com:org/foo-mobile.git
-    schema: vectis@v1
+    capability: vectis@v1
     description: >
       iOS and Android mobile clients migrated from the legacy
       mono-repo-foo monolith's mobile shells. Owns the storefront,

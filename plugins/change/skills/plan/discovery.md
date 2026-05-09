@@ -14,23 +14,23 @@ When `/change:plan` runs **before** any `registry.yaml` exists and the discovery
 
 **Normative sequence**
 
-1. Read the `## Proposed registry topology` block from `discovery.md`. The block lists each candidate project as `### <name>` with bullets for `url`, `schema`, and `description` — same shape `specify registry add` consumes.
+1. Read the `## Proposed registry topology` block from `discovery.md`. The block lists each candidate project as `### <name>` with bullets for `url`, `capability`, and `description` — same shape `specify registry add` consumes.
 2. Present the full topology table to the operator in a single batch review:
 
    ```markdown
    ## Proposed registry
 
-   | # | Name | URL | Schema | Description |
+   | # | Name | URL | Capability | Description |
    |---|---|---|---|---|
-   | 1 | <name-a> | <url-a> | <schema-a> | <description-a> |
-   | 2 | <name-b> | <url-b> | <schema-b> | <description-b> |
+   | 1 | <name-a> | <url-a> | <capability-a> | <description-a> |
+   | 2 | <name-b> | <url-b> | <capability-b> | <description-b> |
    ```
 
    The operator approves each row, edits any field, or rejects the entry. Rejection of a candidate drops it from the bootstrap; capabilities that would have routed to that project surface as `unresolved` during step 3(d) Assignment and re-enter the registry-proposal sub-step (3(d).1) one at a time.
 3. For each accepted row, shell out **once**:
 
    ```text
-   specify registry add <name> --url <url> --schema <schema> --description "<description>"
+   specify registry add <name> --url <url> --capability <capability> --description "<description>"
    ```
 
    Multi-project registries enforce the `description-missing-multi-repo` invariant — the description is required. Defer ordering to the discovery brief (alphabetical by `name` is the conservative default).

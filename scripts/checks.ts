@@ -12,7 +12,7 @@ const CAPABILITIES_DIR = join(REPO_ROOT, "capabilities");
 const CURSOR_SCHEMA_DIR = join(REPO_ROOT, ".cursor", "schemas");
 const RED = "\x1b[0;31m";
 const NC = "\x1b[0m";
-const MAX_BODY_LINES = 500;
+const MAX_BODY_LINES = 470;
 const CRITICAL_PATH_MIN_LINES = 150;
 const CRITICAL_PATH_HEADING = "## Critical Path (Quick Reference)";
 type AjvValidationError = {
@@ -1097,6 +1097,54 @@ async function checkDeclaredToolEquivalentInvocations(): Promise<void> {
           `${DECLARED_TOOL_EQUIVALENT_RULE}: ${rel}:${i + 1} -- '${helper.token}' has a declared-tool equivalent; use \`${helper.replacement}\``,
         );
       }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// 6j. SKILL.md must not embed long inline JSON output blocks
+//     (AGENTS.md "Skill body discipline" #2 — push these into
+//     plugins/references/cli-output-shapes.md instead).
+// ──────────────────────────────────────────────────────────────
+
+const MAX_INLINE_JSON_LINES = 30;
+
+async function checkInlineJsonBlocks(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
+    if (await underSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+    const lines = content.split("\n");
+
+    let inBlock = false;
+    let blockStart = 0;
+    let blockLength = 0;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!inBlock && /^```(json|jsonc)\b/.test(line)) {
+        inBlock = true;
+        blockStart = i + 1;
+        blockLength = 0;
+        continue;
+      }
+      if (inBlock && line.startsWith("```")) {
+        if (blockLength > MAX_INLINE_JSON_LINES) {
+          fail(
+            `Inline JSON too long: ${rel}:${blockStart} — ${blockLength} body lines (limit ${MAX_INLINE_JSON_LINES}); move large output shapes to plugins/references/cli-output-shapes.md and link to them`,
+          );
+        }
+        inBlock = false;
+        continue;
+      }
+      if (inBlock) blockLength++;
     }
   }
 }
@@ -2361,6 +2409,7 @@ await Promise.all([
   checkArgumentHint(),
   checkInvocationPositionals(),
   checkNoLicense(),
+  checkInlineJsonBlocks(),
   checkReferences(),
   checkVariables(),
   checkDirectives(),

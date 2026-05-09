@@ -2,13 +2,13 @@ version: 1
 projects:
   - name: omnia-backend
     url: git@github.com:org/omnia-backend.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       Backend service for the storefront. Owns user accounts, settings
       persistence, and the theme-preference API the mobile app reads.
   - name: vectis-mobile
     url: git@github.com:org/vectis-mobile.git
-    schema: vectis@v1
+    capability: vectis@v1
     description: >
       iOS and Android storefront shells. Owns settings screens,
       theme-aware UI components, and the cross-platform Crux core

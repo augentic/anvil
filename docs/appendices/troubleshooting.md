@@ -151,7 +151,7 @@ If self-heal itself fails, manually resolve:
 specify slice journal show <slice>             # read the proposal payload
 specify registry add <proposed-name> \
     --url <proposed-url> \
-    --schema <proposed-schema> \
+    --capability <proposed-schema> \
     --description "<proposed-description>"
 specify workspace sync                          # bootstrap the new slot
 specify change plan amend <slice> --project <proposed-name>
@@ -261,7 +261,7 @@ For the full how-to, see [Recover from registry-amendment-required](../how-to/re
 ```bash
 specify registry add <existing-name> \
     --url <existing-url> \
-    --schema <existing-schema> \
+    --capability <existing-schema> \
     --description "..."
 ```
 

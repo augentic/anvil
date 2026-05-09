@@ -63,12 +63,12 @@ Add at least two projects (descriptions are mandatory once the registry has more
 ```bash
 specify registry add shop-backend \
     --url git@github.com:org/shop-backend.git \
-    --schema omnia@v1 \
+    --capability omnia@v1 \
     --description "User registration, account management, and the authoritative implementation of the shop's HTTP API."
 
 specify registry add shop-mobile \
     --url git@github.com:org/shop-mobile.git \
-    --schema vectis@v1 \
+    --capability vectis@v1 \
     --description "iOS and Android mobile clients. Owns login screens, the cart, checkout, and OAuth redirect handling."
 ```
 

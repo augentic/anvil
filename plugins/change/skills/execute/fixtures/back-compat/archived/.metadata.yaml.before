@@ -6,7 +6,7 @@
 # The file lives at .specify/archive/2024-08-03-archived-feature/.metadata.yaml
 # in the producer's tree; the new reader resolves it via
 # `resolve_archived_metadata` in src/commands/change.rs.
-schema: omnia
+capability: omnia
 status: merged
 created-at: "2024-08-01T10:00:00Z"
 defined-at: "2024-08-01T12:30:00Z"

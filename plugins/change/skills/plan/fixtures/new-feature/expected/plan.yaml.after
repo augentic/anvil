@@ -8,7 +8,7 @@ sources: {}
 changes:
   - name: dark-mode-contract
     status: done
-    schema: contracts@v1
+    capability: contracts@v1
     description: |
       Define the cross-project HTTP contract for the per-user theme
       preference: GET/PUT /v1/users/me/theme with body { theme: light

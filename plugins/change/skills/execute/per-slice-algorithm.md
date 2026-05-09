@@ -205,7 +205,7 @@ specify slice journal append <name> <outcome.phase> failure \
     --context "$(cat <<'YAML'
 proposed-name: <outcome.proposal.proposed-name>
 proposed-url: <outcome.proposal.proposed-url>
-proposed-schema: <outcome.proposal.proposed-schema>
+proposed-capability: <outcome.proposal.proposed-schema>
 proposed-description: <outcome.proposal.proposed-description or "—">
 rationale: |
   <outcome.proposal.rationale verbatim>
@@ -228,7 +228,7 @@ The `Deferred` transcript (see [output-format.md](output-format.md) → Supervis
 Proposed registry amendment (RFC-9 §2B)
   Name:        <proposed-name>
   URL:         <proposed-url>
-  Schema:      <proposed-schema>
+  Schema:      <proposed-capability>
   Description: <proposed-description or "—">
   Rationale:   <rationale verbatim>
 
@@ -245,7 +245,7 @@ The driver does **not** apply registry amendments automatically — `specify reg
 ```text
 specify registry add <proposed-name> \
     --url <proposed-url> \
-    --schema <proposed-schema> \
+    --capability <proposed-capability> \
     --description "<proposed-description>"
 
 specify workspace sync

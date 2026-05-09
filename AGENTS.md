@@ -92,6 +92,16 @@ The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolut
 
 - Every `SKILL.md` in this repository follows the house style codified in [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions); the long-form rationale (discovery model, why metadata is precious, examples of good/bad descriptions, the progressive-disclosure pattern, and the forbidden-frontmatter list) lives at [docs/explanation/skill-authoring.md](docs/explanation/skill-authoring.md).
 
+### Skill body discipline
+
+The frontmatter rules in `.cursor/rules/project.mdc` and the body line-count ceilings in `scripts/checks.ts` are the floor — a SKILL.md that *passes* `make checks` can still be wasteful. These are the additional rules `make checks` enforces (or that review enforces until they're mechanised):
+
+1. **One Guardrails block per SKILL.md.** Scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Each SKILL.md gets a single `## Guardrails` (or `## Mode-specific guardrails`) section that consolidates the don'ts; everything else stays imperative.
+2. **No inline JSON output blocks ≥30 lines.** Long fenced ` ```json ` examples of CLI envelope shapes belong in [plugins/references/cli-output-shapes.md](plugins/references/cli-output-shapes.md), not in the skill body. The skill links to the reference and shows at most a stub. This is mechanically enforced by `checkInlineJsonBlocks` in `scripts/checks.ts`.
+3. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2.
+4. **`Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose.
+5. **Trim deprecated migration prose every release.** "Pre-RFC-N this used to be …" / "Phase 3.7 renamed it …" / "the v1.x verb was …" lines belong in [docs/explanation/decision-log.md](docs/explanation/decision-log.md) and [docs/explanation/whats-new.md](docs/explanation/whats-new.md), not in the skill that operators read every day.
+
 ### Gotchas
 
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.

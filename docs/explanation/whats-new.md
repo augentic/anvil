@@ -213,7 +213,7 @@ Three change shapes flow through the same uniform sequence: `migrate-legacy` (so
 Registry mutation is now a CLI verb instead of a hand-edit (RFC-9 ?2A):
 
 ```bash
-specify registry add <name> --url <url> --schema <capability> --description "..."
+specify registry add <name> --url <url> --capability <capability> --description "..."
 specify registry remove <name>
 ```
 

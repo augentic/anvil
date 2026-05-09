@@ -22,7 +22,7 @@
 
 ```text
 /spec:init hub                                     # bootstrap a platform hub
-specify registry add <project> --url ... --schema ...      # `--schema` flag is the legacy spelling; renamed in a later phase
+specify registry add <project> --url ... --capability ...      # `--schema` flag is the legacy spelling; renamed in a later phase
 /change:plan <name> orchestrate [shape ...]
 ```
 
@@ -98,7 +98,7 @@ specify workspace push [<project>...]      # transport existing specify/<change-
 # Platform registry (multi-repo)
 specify registry show
 specify registry validate
-specify registry add <name> --url <url> --schema <schema> --description "..."
+specify registry add <name> --url <url> --capability <schema> --description "..."
 specify registry remove <name>
 
 # Change brief and closure

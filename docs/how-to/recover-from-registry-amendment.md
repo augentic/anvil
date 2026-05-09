@@ -40,7 +40,7 @@ Four CLI verbs in this exact order. Skipping or reordering any step breaks the v
 ```bash
 specify registry add <proposed-name> \
     --url <proposed-url> \
-    --schema <proposed-schema> \
+    --capability <proposed-schema> \
     --description "<proposed-description>"
 ```
 

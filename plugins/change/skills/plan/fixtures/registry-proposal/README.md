@@ -12,7 +12,7 @@ The operator types `alpha-gateway` as the project name. That name is not in `reg
 2. Infers `--url` from the prefix shared by the existing entries (`git@github.com:augentic/`).
 3. Defaults `--schema` to the majority schema (`omnia@v1`).
 4. Prompts the operator for `--description` (required when the resulting registry is multi-project).
-5. Shells out to `specify registry add alpha-gateway --url ... --schema ... --description "..."` and then `specify workspace sync`.
+5. Shells out to `specify registry add alpha-gateway --url ... --capability ... --description "..."` and then `specify workspace sync`.
 6. Returns to the assignment table, sets `alpha-gateway-extract.project = alpha-gateway`, and shells out `specify change plan amend alpha-gateway-extract --project alpha-gateway`.
 7. Writes a `Registry amendments` block to `proposal.md` after the assignment table.
 

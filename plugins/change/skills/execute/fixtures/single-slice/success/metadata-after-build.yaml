@@ -6,7 +6,7 @@ name: user-registration
 status: complete
 created-at: 2026-04-19T10:00:00Z
 updated-at: 2026-04-19T10:27:08Z
-schema: omnia
+capability: omnia
 outcome:
   phase: build
   outcome: success

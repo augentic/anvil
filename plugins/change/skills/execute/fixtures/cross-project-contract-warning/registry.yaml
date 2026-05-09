@@ -8,7 +8,7 @@ version: 1
 projects:
   - name: backend
     url: git@github.com:org/backend.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       User registration, account management, and the authoritative
       implementation of the user-api HTTP contract.
@@ -21,7 +21,7 @@ projects:
 
   - name: mobile
     url: git@github.com:org/mobile.git
-    schema: vectis@v1
+    capability: vectis@v1
     description: >
       iOS and Android mobile clients for the platform. Calls the
       user-api endpoints from the registration and profile screens.

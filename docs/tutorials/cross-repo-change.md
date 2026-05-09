@@ -123,7 +123,7 @@ Add the backend (Omnia capability):
 ```bash
 specify registry add shop-backend \
     --url git@github.com:org/shop-backend.git \
-    --schema omnia@v1 \
+    --capability omnia@v1 \
     --description "User registration, account management, and the authoritative implementation of the shop's HTTP API. Owns persistence, OAuth provider integration, token storage, and order processing."
 ```
 
@@ -132,7 +132,7 @@ Add the mobile app (Vectis capability):
 ```bash
 specify registry add shop-mobile \
     --url git@github.com:org/shop-mobile.git \
-    --schema vectis@v1 \
+    --capability vectis@v1 \
     --description "iOS and Android mobile clients for the shop. Owns login and registration screens, the cart, checkout, and OAuth redirect handling. Calls the shop's HTTP API from the user-facing flows."
 ```
 

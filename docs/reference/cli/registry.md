@@ -47,7 +47,7 @@ Used by `/change:plan` after populating contract roles, and by operators who edi
 Append a new project entry to `registry.yaml`. Creates the file with `version: 1` when absent. (RFC-9 §2A.)
 
 ```bash
-specify registry add <name> --url <url> --schema <capability> [--description "..."]
+specify registry add <name> --url <url> --capability <capability> [--description "..."]
 ```
 
 Behaviour:

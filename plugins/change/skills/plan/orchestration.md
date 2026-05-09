@@ -74,7 +74,7 @@ Three branches based on the resolved registry:
 
 ```bash
 specify registry validate
-specify registry add <name> --url <url> --schema <capability> --description "..."
+specify registry add <name> --url <url> --capability <capability> --description "..."
 specify registry remove <name>     # if needed
 specify workspace sync             # after any add/remove
 ```
@@ -118,7 +118,7 @@ specify change plan create <name> [source ...]
 # discovery / sync-peers / propose / assignment cycles run by hand or via /change:plan default
 specify change plan add <slice-name> ...
 specify change plan amend <slice-name> --project <project>
-specify registry add <project> --url ... --schema <capability> --description "..."
+specify registry add <project> --url ... --capability <capability> --description "..."
 specify workspace sync
 specify change plan validate
 ```
@@ -152,7 +152,7 @@ The umbrella **only** continues to step 5 on `all-done`. Every other classificat
 **Canonical `registry-amendment-required` recovery.** The driver records the proposal payload to the dropped slice's `journal.yaml` before transitioning the entry to `blocked`. The operator reviews the proposal and runs:
 
 ```bash
-specify registry add <proposed-name> --url <proposed-url> --schema <proposed-schema> --description "<proposed-description>"
+specify registry add <proposed-name> --url <proposed-url> --capability <proposed-capability> --description "<proposed-description>"
 specify workspace sync
 specify change plan amend <slice-name> --project <proposed-name>
 specify change plan transition <slice-name> pending

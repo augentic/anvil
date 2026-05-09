@@ -13,7 +13,7 @@
 
 name: checkout-api
 status: building
-schema: omnia
+capability: omnia
 created-at: 2026-04-19T11:00:00Z
 defined-at: 2026-04-19T11:07:15Z
 build-started-at: 2026-04-19T11:07:58Z
