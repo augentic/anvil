@@ -31,7 +31,7 @@ Run **all** of the following before any side-effect. Any failure exits non-zero 
 
 ## Internal sequence (composition only)
 
-The seven steps below are normative. Each step lists its **invocation**, the **halts** it can surface, the **manual-fallback** sequence an operator would run by hand to perform the same step, and the **failure recovery** rule when the step exits non-zero. Step 6 is intentionally observe-only: `specify workspace merge` is a one-release non-zero shim and MUST NOT be called by orchestration.
+The seven steps below are normative. Each step lists its **invocation**, the **halts** it can surface, the **manual-fallback** sequence an operator would run by hand to perform the same step, and the **failure recovery** rule when the step exits non-zero. Step 6 is intentionally observe-only: `specify workspace merge` has been removed and MUST NOT be called by orchestration.
 
 ### Step 1 — Brief
 
@@ -202,7 +202,7 @@ The umbrella **lists** PRs for `specify/<name>` (using `gh pr list --head specif
 - If any PR is open, pending, failed, closed, missing, or has the wrong head branch, the umbrella stops before step 7 and prints the PR table plus the next action: merge the open PRs through the forge UI or a hand-run `gh pr merge`, then re-run `/change:plan <name> orchestrate` to finalize.
 - If every PR is already `MERGED`, the umbrella continues to step 7.
 
-The umbrella MUST NOT call `specify workspace merge` or `gh pr merge`. `workspace merge` exists only as a one-release non-zero deprecation shim; invoking it from orchestration is a regression.
+The umbrella MUST NOT call `specify workspace merge` or `gh pr merge`. `workspace merge` has been removed; invoking it from orchestration is a regression.
 
 **Manual fallback.**
 
@@ -284,7 +284,7 @@ No changes written. Remove --dry-run to run the full sequence.
 3. merge those PRs through the forge UI or an explicit hand-run `gh pr merge`;
 4. re-run `/change:plan <name> orchestrate` so step 6 observes `MERGED` PR state and step 7 invokes `specify change finalize`.
 
-The orchestration never calls `specify workspace merge` and never calls `gh pr merge`. `specify workspace merge` is a one-release non-zero deprecation shim, not an active automation path.
+The orchestration never calls `specify workspace merge` and never calls `gh pr merge`. `specify workspace merge` has been removed and is not an active automation path.
 
 ## Verb hygiene
 

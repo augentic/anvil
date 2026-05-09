@@ -1504,16 +1504,10 @@ async function checkWorkspaceLanding(): Promise<void> {
   const ALLOWED_PREFIXES = [
     "rfcs/",
   ];
-  const ALLOWED_FILES = new Set([
-    // These pages intentionally document the one-release non-zero shim and
-    // migration story, including command synopsis lines with no prose context.
-    "docs/reference/cli/workspace.md",
-    "docs/explanation/whats-new.md",
-    "docs/explanation/migrating-cli-v1.md",
-  ]);
+  const ALLOWED_FILES = new Set<string>();
 
   const ALLOWED_WORKSPACE_MERGE_CONTEXT =
-    /\b(retir(?:ed|es|ing)|deprecat(?:ed|ion)|shim|non-zero|no longer|removed|must not|never|does not|do not|outside orchestration|operator-owned|operator merge|migration|pre-RFC-14|old `specify workspace merge`|compatibility)\b/i;
+    /\b(no longer|removed|must not|never|does not|do not|outside orchestration|operator-owned|operator merge|pre-RFC-14|old `specify workspace merge`)\b/i;
   const ALLOWED_AUTO_MERGE_CONTEXT =
     /\b(retir(?:ed|es|ing)|hard error|reject|rejected|pre-flight|without|not set|must not|never|does not|do not|migration|post-RFC|compatibility)\b/i;
   const ALLOWED_GH_MERGE_CONTEXT =
@@ -1570,7 +1564,7 @@ async function checkWorkspaceLanding(): Promise<void> {
         fail(
           `RFC-14 workspace merge automation in ${rel}:${
             i + 1
-          } -- ${line.trim()} -- describe it only as a retired/non-zero shim or migration note`,
+          } -- ${line.trim()} -- describe it only as removed or as a command Specify must not call`,
         );
       }
 

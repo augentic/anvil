@@ -9,7 +9,6 @@ Materialise, inspect, and publish registry-backed workspace slots for multi-repo
 | [`sync`](#specify-workspace-sync) | Create or refresh workspace slots. With no selectors, syncs every registry project; with selectors, materialises only those slots. |
 | [`status`](#specify-workspace-status) | Inspect selected slots, including slot kind, configured target, actual origin, branch, HEAD, dirty state, change-branch match, project config, and active slices. |
 | [`push`](#specify-workspace-push) | Publish an existing exact `specify/<change-name>` branch to its remote and create or update a PR. |
-| [`merge`](#specify-workspace-merge) | Deprecated one-release shim. Exits non-zero and tells the operator to merge through the forge UI or `gh pr merge`, then run `specify change finalize`. |
 
 ## Selectors
 
@@ -147,15 +146,9 @@ Under `--dry-run`, JSON adds `"dry-run": true` at the top level and human-readab
 
 **Prerequisites:** `gh` (GitHub CLI) is required for GitHub repository creation and PR creation/update. Plain Git remotes can still be pushed when PR creation is not needed.
 
-### specify workspace merge
+## PR landing
 
-Automated workspace merge was removed by RFC-14.
-
-```bash
-specify workspace merge [<project>...] [--dry-run]
-```
-
-This command remains for one release as a compatibility shim. It accepts the old project selectors and `--dry-run` flag, exits non-zero, and performs no registry read, PR lookup, check inspection, forge merge, or cleanup. Merge each PR through the forge UI or `gh pr merge`, then run:
+Automated workspace merge was removed by RFC-14. There is no active `specify workspace merge` subcommand. Merge each PR through the forge UI or `gh pr merge`, then run:
 
 ```bash
 specify change finalize

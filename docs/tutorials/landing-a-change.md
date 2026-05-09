@@ -41,7 +41,7 @@ gh pr checks 18 -R org/shop-mobile
 gh pr merge 18 -R org/shop-mobile --squash
 ```
 
-Specify does not merge PRs automatically. The pre-RFC-14 `specify workspace merge` command is retained, at most, as a one-release non-zero shim that points operators to forge UI / `gh pr merge` plus `specify change finalize`.
+Specify does not merge PRs automatically. The pre-RFC-14 `specify workspace merge` command has been removed; operators merge through forge UI / `gh pr merge`, then run `specify change finalize`.
 
 <details>
 <summary>Expected verification after merge</summary>

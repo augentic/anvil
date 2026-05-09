@@ -116,7 +116,7 @@ Failure JSON keeps `finalized: false` and reports the blocking statuses in the p
 
 `specify workspace push` stops at branch publication and PR creation/update. The operator lands each PR through the forge UI, `gh pr merge`, or the repository's normal merge queue. `specify change finalize` is the read-only confirmation and cleanup gate after those PRs have landed.
 
-The old `specify workspace merge` automation is now a one-release deprecation shim: it exits non-zero, performs no PR lookup or merge, and points operators at forge-side merge followed by `specify change finalize`.
+The old `specify workspace merge` automation has been removed. Operators land PRs through the forge, then use `specify change finalize` for read-only confirmation and cleanup.
 
 #### Idempotency
 

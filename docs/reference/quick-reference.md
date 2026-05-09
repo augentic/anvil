@@ -94,7 +94,6 @@ specify change plan lock status
 specify workspace sync [<project>...]      # omit selectors to sync all registry projects
 specify workspace status [<project>...]    # slot path/type, target, origin, branch, HEAD, dirty, slices
 specify workspace push [<project>...]      # transport existing specify/<change-name> branch, create/update PR
-specify workspace merge                    # deprecated shim: exits non-zero, use forge merge + finalize
 
 # Platform registry (multi-repo)
 specify registry show

@@ -4,7 +4,7 @@ The `specify` CLI was reshaped in the v1 release so per-slice operations live un
 
 The behavioural surface did not change -- every renamed command does exactly the same thing it did before. The reshape is a routing change, not a semantic one.
 
-> **For the additive and breaking behavior surface** -- new verbs (`specify registry add`, `specify change plan doctor`, `specify change finalize`), the retired `specify workspace merge` automation, new flags (`specify init --hub`), the `/change:plan <name> orchestrate` Layer 4 umbrella mode (formerly the `/spec:initiative` skill), workspace branch ownership, and contracts -- see [What's New Since v0.23](whats-new.md). The two pages compose: this one is **what was renamed**, the other is **what changed or was added**.
+> **For the additive and breaking behavior surface** -- new verbs (`specify registry add`, `specify change plan doctor`, `specify change finalize`), the removed `specify workspace merge` automation, new flags (`specify init --hub`), the `/change:plan <name> orchestrate` Layer 4 umbrella mode (formerly the `/spec:initiative` skill), workspace branch ownership, and contracts -- see [What's New Since v0.23](whats-new.md). The two pages compose: this one is **what was renamed**, the other is **what changed or was added**.
 
 ## Rename map
 
@@ -83,7 +83,7 @@ After running the bulk pass:
 RFC-14 changes two workspace behaviors that older scripts may have relied on:
 
 - `specify workspace push` no longer creates `specify/<change-name>` from whatever branch the workspace clone currently has checked out. It is transport-only: the clone must already be on `specify/<change-name>`, normally because `/change:execute` prepared the branch before running the slice. If the clone is on `main`, `master`, `origin/HEAD`, a detached HEAD, or any other branch, push reports `no-branch` and leaves the remote untouched. Recovery is to run `/change:execute` for the routed entry or manually check out the expected `specify/<change-name>` branch before retrying push.
-- `specify workspace merge` is no longer an active PR-merge automation path. During the transition it may exist only as a one-release non-zero shim that points operators to the forge UI or `gh pr merge`, followed by `specify change finalize`.
+- `specify workspace merge` is no longer an active PR-merge automation path. It has been removed; operators merge through the forge UI or `gh pr merge`, followed by `specify change finalize`.
 
 ## What did not change
 

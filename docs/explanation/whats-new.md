@@ -45,7 +45,7 @@ A hub now carries `project.yaml { hub: true, … }` with the `capability:` field
 - **`/spec:merge` owns only the baseline commit.** In workspace clones, the merge auto-commit stages `.specify/specs/` and `.specify/archive/` only, with message `specify: merge <slice-name>`. Generated code, contracts, tests, and other project outputs are left for `/change:execute`'s residue commit.
 - **`specify workspace push` is transport-only.** It verifies each selected workspace is already on `specify/<change-name>`, pushes that branch, and creates or updates the PR. It does not create branches on the fly, does not create commits, never pushes default branches, and never merges PRs. A checkout on `main`, `master`, `origin/HEAD`, or any other branch reports `no-branch`; drive the slot through `/change:execute` or check out `specify/<change-name>` explicitly before pushing.
 - **PR merge is operator-owned.** Merge through the forge UI, `gh pr merge`, or the team's normal review queue. `specify change finalize` only verifies that each PR is already merged and that workspace clones are clean before archiving the plan.
-- **`specify workspace merge` is retired.** During the transition it may exist only as a one-release non-zero shim pointing to forge UI / `gh pr merge` plus `specify change finalize`.
+- **`specify workspace merge` is removed.** Merge PRs through the forge UI, `gh pr merge`, or the team's normal merge queue, then run `specify change finalize`.
 
 ## RFC-15 — declared WASI capability tools
 
@@ -243,15 +243,9 @@ specify registry remove <name>
 - Reference: [`specify registry`](../reference/cli/registry.md)
 - How-to: [Manage Registry Projects](../how-to/manage-registry-projects.md)
 
-## `specify workspace merge` retired
+## `specify workspace merge` removed
 
-RFC-14 retires the cross-repo PR-landing verb:
-
-```bash
-specify workspace merge [<project>...]
-```
-
-If present during the migration window, this command exits non-zero with guidance to merge PRs through the forge UI or an explicit `gh pr merge`, then run `specify change finalize`. It does not inspect checks, call `gh pr merge`, or merge PRs for the operator.
+RFC-14 removed the cross-repo PR-landing verb. Specify does not inspect checks, call `gh pr merge`, or merge PRs for the operator; merge PRs through the forge UI or an explicit `gh pr merge`, then run `specify change finalize`.
 
 - How-to: [Land a Change](../how-to/land-a-change.md)
 

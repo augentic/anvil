@@ -117,7 +117,7 @@ The `0.2.0` v2 layout split Specify's on-disk shape along a clear line: **operat
 The diagnostic the CLI emits (stable code `legacy-layout`, exit 1) when a project-aware verb encounters a v1-layout project (operator artifacts still under `.specify/`). The remediation is always `specify migrate v2-layout`; see the [troubleshooting entry](troubleshooting.md#legacy-layout-error-from-every-cli-verb).
 
 **Layer 1 (CLI primitives)**
-The `specify` CLI commands that handle all deterministic operations: slice lifecycle, plan CRUD, registry mutation, workspace sync/status/push, change finalization, capability resolution, validation. The foundation that skills build on. The old workspace merge automation is no longer an active primitive; `specify workspace merge` is only a non-zero deprecation shim.
+The `specify` CLI commands that handle all deterministic operations: slice lifecycle, plan CRUD, registry mutation, workspace sync/status/push, change finalization, capability resolution, validation. The foundation that skills build on. The old workspace merge automation is no longer an active primitive; `specify workspace merge` has been removed.
 
 **Layer 2 (Slice lifecycle)**
 The `/spec:define`, `/spec:build`, `/spec:merge` loop and supporting skills (`/spec:init`, `/spec:drop`, `/spec:extract`). Each skill operates on a single slice inside `.specify/slices/<name>/` and delegates deterministic work to the Layer 1 CLI.
@@ -218,7 +218,7 @@ A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 d
 The registry workspace under `.specify/workspace/`: a derived local view of registered projects. Each child is a workspace slot. It is read-only during planning (sync-peers phase) and writable during execution (`/change:execute` routes define-build-merge into the selected slot via CWD-based routing). Local commits are published through `specify workspace push`; PR merge remains an operator action outside Specify.
 
 **Workspace merge**
-Deprecated RFC-14 compatibility shim. `specify workspace merge` no longer automates PR landing: it exits non-zero, performs no PR lookup or forge merge, and points operators to merge through the forge UI or `gh pr merge`, then run `specify change finalize`.
+Removed RFC-14 PR-landing automation. `specify workspace merge` is no longer an active CLI subcommand. Operators merge through the forge UI, `gh pr merge`, or their normal merge queue, then run `specify change finalize`.
 
 **Workspace slot**
 One project-specific child of the registry workspace, normally `.specify/workspace/<project>/`. A slot is a Git clone for remote registry URLs or a symlink for local targets. `workspace status` reports its path, materialisation type, configured target, actual origin or symlink target, branch, HEAD, dirty state, exact change-branch match, `.specify/project.yaml` presence, and active slices.
