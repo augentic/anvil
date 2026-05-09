@@ -163,8 +163,9 @@ Capability-scope tool that must create root-level project files:
 # capabilities/vectis/tools.yaml
 tools:
   - name: vectis-scaffold
-    version: 0.0.0-rfc16-placeholder
-    source: "https://github.com/augentic/specify-cli/releases/download/v0.0.0-rfc16-placeholder/vectis-scaffold.wasm"
+    version: 0.2.0
+    source: "https://github.com/augentic/specify-cli/releases/download/v0.2.0/vectis-scaffold.wasm"
+    sha256: "065e227596b0034072a0c0e442a56e2c914743e8f016c7509ca4e1caaec47ebe"
     permissions:
       read:
         - "$PROJECT_DIR"
@@ -189,7 +190,7 @@ RFC-5 owns the long-term framework linter. RFC-15 adds rule ids for this surface
 - `tool.lifecycle-state-write-denied` rejects writes to Specify lifecycle state.
 - `skill.invokes-host-binary-with-declared-tool-equivalent` will warn when a brief or skill shells out to a host helper after an equivalent declared tool exists.
 
-The current CLI already validates tool declaration structure during `specify tool` commands. The skill/brief invocation scan becomes meaningful after first-party helpers move to declared tools.
+The current CLI already validates tool declaration structure during `specify tool` commands. The framework checks also scan active first-party briefs and skills for retired helper invocations covered by the [Declared Tool Helper Inventory](../reference/declared-tool-helper-inventory.md).
 
 ## See also
 

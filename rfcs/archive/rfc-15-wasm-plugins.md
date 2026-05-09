@@ -183,7 +183,7 @@ First-party capability changes:
 | -------------------------------------- | ------------------------------------------------------ |
 | `specify-contract` binary              | `contract.wasm` declared in `capability.yaml`          |
 | manually installed `specify-vectis`    | narrow Vectis WASI modules where filesystem-only works |
-| bare `specify-vectis verify` in skills | `specify tool run vectis-verify -- [args...]`           |
+| bare `specify-vectis validate` in skills | `specify tool run vectis-validate -- [args...]`       |
 
 
 No compatibility shim is needed because these helper binaries have not shipped as public surface.

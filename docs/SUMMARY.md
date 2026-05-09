@@ -88,6 +88,7 @@
 - [Registry](reference/registry.md)
 - [Change Component](reference/change-component.md)
 - [Configuration Files](reference/configuration.md)
+- [Declared Tool Helper Inventory](reference/declared-tool-helper-inventory.md)
 
 ---
 
