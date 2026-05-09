@@ -4,17 +4,19 @@
 
 ## Finding-ID prefix conventions
 
-Every finding in `REVIEW.md` carries a stable prefix so the originating reviewer (or pass) is preserved through synthesis and auto-fix:
+Every finding in `REVIEW.md` carries a review-local prefix so the originating reviewer (or pass) is preserved through synthesis and auto-fix:
 
 | Prefix | Origin | Categories | Default severities |
 |--------|--------|------------|--------------------|
 | `SEC-` | Security Reviewer | Security, WASM Constraints | CRITICAL |
 | `COR-` | Correctness Reviewer | Error Handling, Validation Logic, Provider Misuse | CRITICAL (errors) / HIGH (validation, provider) |
 | `QUA-` | Quality Reviewer | Performance, Code Quality | MEDIUM (perf) / LOW (quality) |
-| `UNI-` | Lead universal-checks pass | Gaps not covered by SEC/COR/QUA | Per `references/review-checks.md` |
+| `UNI-` | Lead universal-checks pass | Gaps not covered by SEC/COR/QUA | Per `capabilities/default/codex/` |
 | `NEW-` | Antagonist counter-scan | Anything missed by the four passes above | As supplied by antagonist |
 
 Numbering restarts at 1 within each prefix (`SEC-1`, `SEC-2`, …). When the antagonist upgrades or downgrades a finding, the original prefix is preserved and the severity change is recorded in the **Adversarial Review** section.
+
+The report-local finding ID is not the codex rule ID. When a finding maps to a stable codex rule, add a separate `rule_id` field with the canonical value (`OMNIA-001`, `OMNIA-002`, `RUST-001`, `SEC-001`, or a migrated `UNI-###` rule). Leave the field out for genuinely unmapped findings; do not invent a rule ID. This is a reviewer report convention for RM-03 citations, not the final RM-04 finding schema.
 
 ## REVIEW.md template
 
@@ -45,6 +47,7 @@ Numbering restarts at 1 within each prefix (`SEC-1`, `SEC-2`, …). When the ant
 ### SEC-1: WASM Constraint Violation
 
 **File**: [src/config.rs:23](src/config.rs#L23)
+**rule_id**: OMNIA-002
 **Category**: WASM Compliance
 **Reviewer**: Security Reviewer
 **Antagonist**: ✅ Confirmed
@@ -67,6 +70,7 @@ let api_url = ctx.config.get("API_URL")?;
 ### COR-1: Missing Error Handling (Potential Panic)
 
 **File**: [src/handlers.rs:67](src/handlers.rs#L67)
+**rule_id**: RUST-001
 **Category**: Error Handling
 **Reviewer**: Correctness Reviewer
 **Antagonist**: ⬆️ Upgraded from HIGH to CRITICAL (untrusted input path)

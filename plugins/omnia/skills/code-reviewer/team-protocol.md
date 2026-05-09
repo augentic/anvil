@@ -35,7 +35,9 @@ WASM CONSTRAINTS: Scan every .rs file in src/ for:
 
 For each finding, report: file:line, code snippet, severity (CRITICAL for all
 in these categories), risk description, suggested fix, and whether it is
-auto-fixable.
+auto-fixable. When the issue maps to a codex rule, include `rule_id` separately
+from the finding ID (for example, `OMNIA-002`, `SEC-001`, `UNI-019`, or
+`UNI-021`).
 
 Output your findings as a numbered list in markdown. Prefix each finding ID
 with "SEC-" (e.g., SEC-1, SEC-2).
@@ -69,7 +71,9 @@ PROVIDER MISUSE: Check handler functions for:
 
 For each finding, report: file:line, code snippet, severity (CRITICAL for
 error handling panics, HIGH for validation/provider issues), risk, suggested
-fix, auto-fixable status.
+fix, auto-fixable status, and a separate `rule_id` when the issue maps to a
+codex rule (for example, `RUST-001`, `OMNIA-001`, `UNI-002`, `UNI-004`, or
+`UNI-016`).
 
 Output your findings as a numbered list in markdown. Prefix each finding ID
 with "COR-" (e.g., COR-1, COR-2).
@@ -100,7 +104,9 @@ CODE QUALITY: Check all .rs files in src/ for:
 
 For each finding, report: file:line, code snippet, severity (MEDIUM for
 performance, LOW for code quality), impact description, suggested fix,
-auto-fixable status.
+auto-fixable status, and a separate `rule_id` when the issue maps to a codex
+rule (for example, `UNI-005`, `UNI-007`, `UNI-013`, `UNI-014`, or
+`OMNIA-002`).
 
 Output your findings as a numbered list in markdown. Prefix each finding ID
 with "QUA-" (e.g., QUA-1, QUA-2).
@@ -120,6 +126,9 @@ For EACH finding (SEC-, COR-, QUA-, and UNI- prefixed):
 2. Challenge severity: Is CRITICAL really critical? Is LOW actually higher?
 3. Check for false positives: Could this be a non-issue or acceptable pattern?
 4. Assess auto-fix safety: Could the suggested fix introduce regressions?
+5. Check `rule_id` mapping when present: does the cited codex rule match the
+   evidence? If missing but obvious, recommend the stable rule ID without
+   changing the report-local finding ID.
 
 Then perform a COUNTER-SCAN of all .rs files in src/ looking for issues ALL
 THREE specialists missed. Common blind spots:
@@ -149,7 +158,7 @@ The three specialists analyze the crate concurrently. Each reads all `.rs` files
 
 ## Step 3: Universal Checks (Lead)
 
-After all specialists report, the lead applies UNI-001 through UNI-021 with Omnia/WASM-specific heuristics, skipping checks already covered by SEC/COR/QUA. The complete skip table and per-check heuristics live in [`categories.md`](categories.md#universal-checks-uni--prefix). Prefix the lead's findings with `UNI-` and tag spec-change indicators for the synthesis report.
+After all specialists report, the lead applies UNI-001 through UNI-021 from the migrated default codex with Omnia/WASM-specific heuristics, skipping checks already covered by SEC/COR/QUA. The complete skip table and per-check heuristics live in [`categories.md`](categories.md#universal-checks-uni--prefix). Prefix the lead's findings with report-local `UNI-` occurrence IDs, set `rule_id` to the matching stable codex ID, and tag spec-change indicators for the synthesis report.
 
 ## Step 4: Adversarial Challenge
 
@@ -170,8 +179,9 @@ The lead merges all findings into `$REVIEW_OUTPUT`:
 3. **Upgraded findings**: Include with the antagonist's revised severity and rationale
 4. **Disputed findings**: Lead makes final call; if included, add dispute note
 5. **New findings**: Include with the antagonist's severity and evidence
-6. Assign overall confidence level per [Agent Team Patterns - Confidence Scoring](references/agent-teams.md#confidence-scoring)
-7. Add "Adversarial Review" section documenting challenge statistics
+6. Preserve occurrence IDs and include `rule_id` for findings that map to codex rules
+7. Assign overall confidence level per [Agent Team Patterns - Confidence Scoring](references/agent-teams.md#confidence-scoring)
+8. Add "Adversarial Review" section documenting challenge statistics
 
 The full report shape lives in [`output.md`](output.md).
 

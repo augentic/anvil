@@ -17,7 +17,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### CLI
 
-- [CLI Reference](cli/index.md) -- all `specify` subcommands grouped by family (status, slice, change, registry, workspace, capability, tool, init, plus the Vectis WASI tools run through `specify tool`).
+- [CLI Reference](cli/index.md) -- all `specify` subcommands grouped by family (status, slice, change, registry, workspace, capability, codex, tool, init, plus the Vectis WASI tools run through `specify tool`).
 
 ### Plugins
 

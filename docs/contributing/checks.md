@@ -108,7 +108,7 @@ Acceptance scenario files are validated against `.cursor/schemas/scenario.schema
 4. `capabilities/<capability>/tests/<scenario>/scenario.md` — directory-form owner-local capability scenarios.
 5. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. The first shared suite is the RM-01 manual acceptance scenario under [`tests/rm-01/`](../../tests/rm-01/), and the first owner-local capability pack is the contracts test suite under [`capabilities/contracts/tests/`](../../capabilities/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. The first shared suite is the cross-repo manual acceptance scenario under [`tests/cross-repo/`](../../tests/cross-repo/), and the first owner-local capability pack is the contracts test suite under [`capabilities/contracts/tests/`](../../capabilities/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 
@@ -165,6 +165,40 @@ The recorded-trace check is opt-in. If a future suite adds
 `tests/recorded/**/*.jsonl`, every trace must lead with a
 `recorded-trace-header` line carrying `schemaVersion: 1`, `sourceBackend`,
 `sourceRunId`, `sourceTimestamp`, and `scenarioId`.
+
+### 16. First-party codex rule shape
+
+First-party codex rule files are validated under `capabilities/*/codex/**/*.md`.
+The optional repo-root `codex/**/*.md` overlay is also included when present.
+
+The check is format-only. It does not run consumer-project review and does not
+invoke the `specify` CLI validator. It validates:
+
+- **Frontmatter schema** -- each file must begin with YAML frontmatter that
+  conforms to `.cursor/schemas/codex-rule.schema.json`, mirrored from the CLI
+  schema at `specify-cli/schemas/codex-rule.schema.json`.
+- **Required body heading** -- each rule body must include a `## Rule` heading.
+- **Cross-file id uniqueness** -- every codex `id` must be unique across the
+  discovered first-party rule set.
+- **Namespace ownership** -- `default` owns `UNI-*`; `omnia` owns `OMNIA-*`,
+  `RUST-*`, and `SEC-*`; `contracts` owns `IFACE-*`; `vectis` owns `VECTIS-*`.
+
+**Example failure messages:**
+
+```text
+FAIL: Codex rule frontmatter: capabilities/default/codex/example.md — / missing required property 'trigger'
+FAIL: Codex rule frontmatter: capabilities/default/codex/example.md — /severity must be one of "critical", "important", "suggestion", "optional"
+FAIL: Codex rule body: capabilities/default/codex/example.md — missing required '## Rule' heading
+FAIL: Codex namespace ownership: capabilities/default/codex/example.md — capability 'default' may only use UNI-* ids, got 'SEC-001'
+FAIL: Codex rule duplicate id 'UNI-001' across files: capabilities/default/codex/a.md, capabilities/default/codex/b.md
+```
+
+Common fixes: add the required `id`, `title`, `severity`, and `trigger`
+frontmatter fields; use canonical severity values (`critical`, `important`,
+`suggestion`, `optional`) and review modes (`deterministic`,
+`model-assisted`, `hybrid`); keep ids in the reserved namespace-plus-three-digit
+shape such as `UNI-001`; add the `## Rule` heading; and coordinate with content
+subagents before reusing or moving ids between capability-owned namespaces.
 
 ## Extending the checks
 

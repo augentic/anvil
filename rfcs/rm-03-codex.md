@@ -1,6 +1,19 @@
-# RM-03 Codex Rule Format Design Draft
+# RM-03 Codex Rule Format
 
-> Purpose: design notes for implementing the codex rule format called for by RM-03 in `rfcs/roadmap.md`.
+> Status: Implemented. This RFC is retained as design history plus closeout notes for the codex rule format called for by RM-03 in `rfcs/roadmap.md`.
+
+## Implementation Status
+
+RM-03 landed the V1 codex surface without implementing the future reviewer itself:
+
+- Codex rules are Markdown files with YAML frontmatter validated by the V1 schema mirrored at [`.cursor/schemas/codex-rule.schema.json`](../.cursor/schemas/codex-rule.schema.json).
+- The CLI surface is `specify codex {list, show, validate, export --format json}`. See [`docs/reference/cli/codex.md`](../docs/reference/cli/codex.md).
+- First-party rules live beside capabilities under `capabilities/<name>/codex/`. The `default` capability carries the migrated `UNI-001` through `UNI-021` universal rules, and Omnia, Contracts, and Vectis have first-cut capability-specific packs.
+- `make checks` validates first-party codex file shape, required `## Rule` headings, duplicate IDs, and namespace ownership. See [`docs/contributing/checks.md`](../docs/contributing/checks.md#16-first-party-codex-rule-shape).
+- Reviewer guidance for Omnia and Vectis now separates report-local finding IDs from stable codex `rule_id` citations, while leaving the final finding schema to RM-04 and CI-native review to RM-11.
+- `default` codex distribution is ordinary capability distribution: `specify init <capability>` caches the selected capability and, when present in the same first-party tree, the sibling `default` capability. See [`plugins/spec/references/capability-resolution.md`](../plugins/spec/references/capability-resolution.md#codex-resolution).
+
+RM-03 intentionally does not claim that `specify review`, suppressions, waivers, hosted catalogs, or the RM-04 finding schema are implemented.
 
 ## Context
 
@@ -11,7 +24,7 @@ RM-03 introduces the stable rule surface that generators, reviewers, and future 
 > **Each rule carries:** stable id, concise trigger, normative guidance, examples or references where useful, and applicability metadata.
 > **First cut:** reserve namespaces such as `RUST-`*, `IFACE-`*, and `SEC-*`; add filtering metadata; migrate the seed catalogue without breaking existing ids.
 
-The key design choice is storage. Because every Specify-owned repo builds against a capability, the rules that describe correct implementation should travel with capabilities. The foundational default codex should be modeled as a capability too, included for every Specify project rather than living as a separate root-level exception. Omnia owns Omnia SDK provider usage and WASM constraints. Vectis owns Crux core/shell boundaries. Contracts owns OpenAPI, AsyncAPI, JSON Schema, and compatibility policy. A repo-local rule directory remains useful, but only as an overlay for local standards.
+The key design choice is storage. Because every Specify-owned repo builds against a capability, the rules that describe correct implementation travel with capabilities. The foundational default codex is modeled as a capability too, included for every Specify project rather than living as a separate root-level exception. Omnia owns Omnia SDK provider usage and WASM constraints. Vectis owns Crux core/shell boundaries. Contracts owns OpenAPI, AsyncAPI, JSON Schema, and compatibility policy. A repo-local rule directory remains useful, but only as an overlay for local standards.
 
 Two roadmap principles bound the design:
 
@@ -110,7 +123,7 @@ contracts@1:IFACE-007
 repo:ORG-004
 ```
 
-Rule IDs remain globally unique within the resolved rule set. V1 should reject duplicate IDs rather than allow overriding. If a repo wants stricter policy than a capability rule, it should add a new local rule ID instead of redefining the capability rule.
+Rule IDs remain globally unique within the resolved rule set. V1 rejects duplicate IDs rather than allow overriding. Duplicate IDs are resolved-set validation errors, not per-file frontmatter schema errors, because a single file cannot know which capability, catalog, and repo overlay rules will be active beside it. If a repo wants stricter policy than a capability rule, it should add a new local rule ID instead of redefining the capability rule.
 
 ## Rule Format
 
@@ -155,15 +168,27 @@ Required frontmatter should stay small enough that a useful rule is cheap to wri
 
 | Field      | Required | Meaning                                                                                                                                                                          |
 | ---------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`       | yes      | Stable rule ID, e.g. `UNI-002`, `RUST-003`, `IFACE-007`.                                                                                                                         |
+| `id`       | yes      | Stable rule ID, e.g. `UNI-002`, `RUST-003`, `IFACE-007`. V1 reserves `UNI`, `RUST`, `IFACE`, `SEC`, `OMNIA`, `VECTIS`, and `ORG` namespaces with three-digit numeric suffixes. |
 | `title`    | yes      | Short human-readable title.                                                                                                                                                      |
-| `severity` | yes      | Default review severity: `critical`, `important`, `suggestion`, or `optional`. RM-04 may refine labels, but RM-03 should not use the old `warning` / `info` labels as canonical. |
+| `severity` | yes      | Default review severity: `critical`, `important`, `suggestion`, or `optional`. RM-04 may refine labels, but RM-03 does not use the old `warning` / `info` labels as canonical. |
 | `trigger`  | yes      | One-sentence condition that tells a generator or reviewer when the rule matters.                                                                                                 |
+
+Optional V1 metadata is intentionally small:
+
+| Field | Shape | Meaning |
+| --- | --- | --- |
+| `applicability` | Object with optional `capabilities`, `languages`, `artifacts`, and `paths` string arrays | Advisory filters for where the rule is likely relevant. These are not suppressions, exceptions, or override policy. |
+| `review_mode` | `deterministic`, `model-assisted`, or `hybrid` | Classification for future review routing. If omitted, consumers should treat the rule as `model-assisted`. |
+| `deterministic_hints` | Array of `{kind, value, description?}` objects; `kind` is `path-pattern`, `regex`, `schema`, or `tool` | Hints future deterministic checks may use. V1 validates shape only, not regex syntax or tool availability. |
+| `references` | Array of labeled repository paths or HTTP(S) URLs | Supporting material that helps humans and models apply the rule. |
+| `deprecated` | Object with `reason` and optional `replaced_by` rule id | Preserves historical rule IDs while steering new citations to successor rules. |
+
+Provenance is resolver-owned metadata, not per-file frontmatter. The canonical provenance kinds for resolved rules are `capability`, `catalog`, and `repo`.
 
 
 ### Body Headings
 
-The only required body heading is `## Rule`. It should state the normative rule in self-contained prose. Other headings, such as `## Look For`, `## Good`, `## Bad`, and `## Spec Guidance`, are recommended when they make the rule easier for humans or models to apply, but V1 validation should not require them.
+The only required body heading is `## Rule`. It should state the normative rule in self-contained prose. Other headings, such as `## Look For`, `## Good`, `## Bad`, and `## Spec Guidance`, are recommended when they make the rule easier for humans or models to apply, but V1 validation does not require them.
 
 ## Namespaces
 
@@ -200,17 +225,17 @@ Codex source locations are:
 
 ### Capability Integration
 
-V1 should discover a capability's codex by convention: if a capability root contains `codex/`, load every `*.md` rule beneath it. The default capability is always loaded first, then the project's resolved capability is loaded. This avoids changing the closed `capability.yaml` schema before the rule format settles.
+V1 discovers a capability's codex by convention: if a capability root contains `codex/`, load every `*.md` rule beneath it. The default capability is always loaded first, then the project's resolved capability is loaded. This avoids changing the closed `capability.yaml` schema before the rule format settles.
 
 A later capability manifest revision may add an explicit `codex:` field if capabilities need non-default paths or generated rule bundles. That should be a separate compatibility decision.
 
 ### Shared Catalogs
 
-Shared catalogs are optional. They are useful for company-wide policy, but they should not be the first-class home for Omnia, Vectis, or Contracts rules. A shared catalog can add rules such as `ORG-*` and can be resolved from project config once the project config has a catalog field.
+Shared catalogs are optional and remain a reserved V1 hook. They are useful for company-wide policy, but they should not be the first-class home for Omnia, Vectis, or Contracts rules. A shared catalog can add rules such as `ORG-*` once a future catalog configuration surface exists.
 
 ### Resolution Command
 
-RM-03 should add a read-only CLI surface:
+RM-03 added a read-only CLI surface:
 
 ```bash
 specify codex list
@@ -219,7 +244,7 @@ specify codex validate
 specify codex export --format json
 ```
 
-`specify codex export --format json` is the handoff point for `specify review`, skills, and hosted runners. The JSON shape should include:
+`specify codex export --format json` is the handoff point for `specify review`, skills, and hosted runners. The JSON shape includes:
 
 - rule frontmatter fields,
 - rendered Markdown body,
@@ -229,7 +254,7 @@ specify codex export --format json
 
 ## Deterministic Versus Model-Assisted Review
 
-The codex format should classify how a rule can be enforced, but `specify review` decides how to run the checks.
+The codex format classifies how a rule can be enforced, but `specify review` decides how to run the checks.
 
 ### Deterministic CLI Logic
 
@@ -262,14 +287,14 @@ Use model-assisted review when the finding depends on intent, semantics, or cros
 
 Some rules are hybrid. For example, `SEC-* hardcoded secrets` can have deterministic regex scanners, but a model may be needed to distinguish fixture placeholders from live credentials. Hybrid rules should include deterministic hints and clear model guidance.
 
-## Migration Plan
+## Implemented Migration
 
-1. **Add codex validation as a format-only parser.** Validate frontmatter shape, rule IDs, the required `## Rule` body heading, duplicate IDs, and provenance. Do not wire review yet.
-2. **Migrate `UNI-`*.** Split `plugins/references/review-checks.md` into `capabilities/default/codex/` files while preserving every `UNI-001` through `UNI-021` ID.
-3. **Add capability codex directories.** Start with the default foundational rules, Omnia provider/WASM/Rust rules, Contracts interface compatibility rules, and Vectis core/shell boundary rules.
-4. **Expose `specify codex export --format json`.** This gives skills and future hosted runners one resolved rule surface.
-5. **Teach reviewer skills to cite codex IDs.** Existing reviewer skills can keep their current team protocol while citing the resolved rule IDs.
-6. **Feed RM-04 and RM-11.** Once the finding schema exists, `specify review` maps deterministic checks and model-assisted codex findings into that schema.
+1. **Codex validation as a format-only parser.** Frontmatter shape, rule IDs, the required `## Rule` body heading, duplicate IDs, and provenance are validated without wiring consumer-project review.
+2. **Migrated `UNI-`*.** `plugins/references/review-checks.md` now points to `capabilities/default/codex/`, which preserves every `UNI-001` through `UNI-021` ID.
+3. **Added capability codex directories.** The first cut includes default foundational rules, Omnia provider/WASM/Rust rules, Contracts interface compatibility rules, and Vectis core/shell boundary rules.
+4. **Exposed `specify codex export --format json`.** Skills and future hosted runners have one resolved rule surface.
+5. **Taught reviewer skills to cite codex IDs.** Omnia and Vectis reviewer skills keep their current team protocol while citing stable `rule_id` values when findings map to codex rules.
+6. **Prepared RM-04 and RM-11 inputs.** The resolved codex export is available for future review tooling, but the review finding schema and CI-native reviewer remain deferred.
 
 ## Relationship To Existing Review Skills
 
@@ -279,7 +304,7 @@ The current Omnia reviewer already has three useful concepts:
 - capability-independent checks (`UNI-`*),
 - antagonist/model-assisted confirmation.
 
-RM-03 should not preserve the current report numbering style as the rule ID model. `SEC-1` in a report is an occurrence number; `SEC-003` in codex is a stable rule. `specify review` findings should carry both:
+RM-03 does not preserve the current report numbering style as the rule ID model. `SEC-1` in a report is an occurrence number; `SEC-003` in codex is a stable rule. Future `specify review` findings should carry both:
 
 ```text
 finding_id: review-local occurrence id
@@ -289,18 +314,19 @@ rule_provenance: omnia@1
 
 This keeps reports readable while making rules stable and citable.
 
-## Open Questions
+## Decisions And Deferrals
 
-- Should shared catalog locations be configured in `.specify/project.yaml`, `registry.yaml`, or a future org-level config?
-- Should `specify codex validate` live under `specify check` for framework repos, under `specify codex`, or both?
-- Should deprecated rules remain active for historical finding links, or should they be hidden by default from `codex list`?
-- What is the minimum JSON export shape RM-04 needs to avoid schema churn?
+- **Shared catalog config location:** Deferred. V1 reserves source ordering and `catalog` provenance, but it does not define a user-facing config location. Use capability codex directories and repo-root `codex/` overlays today. A future catalog or capability-ecosystem item should decide whether org-wide codex catalogs are projected through `registry.yaml`, `.specify/project.yaml`, or a separate org config.
+- **`codex validate` versus `specify check`:** Resolved for V1. `specify codex validate` is the project-resolved CLI surface, and this repository's `make checks` performs first-party shape validation. RM-07 may expose the same validation through future `specify check` for framework repos, but RM-03 does not require a second command.
+- **Deprecated rule visibility:** Deferred. The V1 schema preserves deprecated IDs through `deprecated.reason` and optional `deprecated.replaced_by`; V1 does not hide deprecated rules by default. RM-04 and RM-11 should decide how deprecated rules appear in findings, reviewer prompts, and CI output once those surfaces exist.
+- **Minimum JSON export for RM-04:** Resolved for RM-03. `specify codex export --format json` emits `schema-version`, `rule-count`, ordered `rules`, frontmatter fields, Markdown `body`, `source-path`, `provenance-kind`, and provenance-specific fields such as capability name/version or catalog name. RM-04 owns the separate review finding schema and should consume the codex export rather than redefine rule storage.
 
-## Recommended Roadmap Answer
+## Roadmap Closeout Answer
 
 The short answer for RM-03 is:
 
-- The rule format is Markdown with YAML frontmatter. Frontmatter gives stable IDs, triggers, severity, applicability, review mode, and provenance; the body gives normative guidance and examples.
-- Codex rules should live with capabilities, including a foundational `default` capability for `UNI-*` rules, with repo-root `codex/` reserved as a local overlay. `.specify/codex/` should be reserved for generated cache or lock state, not human-authored rules.
+- The implemented rule format is Markdown with YAML frontmatter. Frontmatter gives stable IDs, triggers, severity, applicability, review mode, and optional deprecation metadata; resolver-owned provenance is attached in the exported rule set.
+- Codex rules live with capabilities, including a foundational `default` capability for `UNI-*` rules. Repo-root `codex/` is the local overlay. `.specify/codex/` remains reserved for generated cache or lock state, not human-authored rules.
+- The active project rule set is available through `specify codex list`, `show`, `validate`, and `export --format json`.
 - Deterministic review belongs in CLI logic and declared tools. Model-assisted review applies codex rules that require semantic judgment. Hybrid rules expose deterministic hints but still allow model review.
 

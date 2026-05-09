@@ -1,6 +1,6 @@
 ---
-id: rm-01-cross-repo-contract-flow
-owner: rm-01
+id: cross-repo-contract-flow
+owner: cross-repo
 kind: suite
 backend: manual
 entrypoint: /change:plan
@@ -29,11 +29,11 @@ negative-expectations:
   - golden-output-required
 ---
 
-# RM-01 Cross-Repo Contract Flow
+# Cross-Repo Contract Flow
 
-Scenario ID: `rm-01-cross-repo-contract-flow`
+Scenario ID: `cross-repo-contract-flow`
 
-Use this scenario to manually verify the simplest RM-01 happy path: a short
+Use this scenario to manually verify the simplest cross-repo happy path: a short
 feature brief becomes one contract slice and two routed implementation slices,
 then the change executes, pushes project branches, and finalizes after the
 project branches are merged.
@@ -63,7 +63,7 @@ run.
 
 ## Workspace
 
-- **Suite:** RM-01.
+- **Suite:** cross-repo.
 - **Project shape:** one temporary registry-only hub plus two temporary
   registered projects.
 - **Hub capability:** none; initialize the hub with `specify init --hub`.
@@ -148,21 +148,21 @@ the callback, and call the backend exchange endpoint using the shared contract.
 Create three disposable directories:
 
 ```text
-rm01-shop-platform/
-rm01-shop-backend/
-rm01-shop-mobile/
+cross-repo-shop-platform/
+cross-repo-shop-backend/
+cross-repo-shop-mobile/
 ```
 
 Initialize them:
 
 ```bash
-cd rm01-shop-platform
+cd cross-repo-shop-platform
 specify init --hub
 
-cd ../rm01-shop-backend
+cd ../cross-repo-shop-backend
 specify init omnia@v1
 
-cd ../rm01-shop-mobile
+cd ../cross-repo-shop-mobile
 specify init vectis@v1
 ```
 
@@ -170,9 +170,9 @@ Return to the hub and register the implementation projects. Use descriptions
 that make routing unambiguous:
 
 ```bash
-cd ../rm01-shop-platform
-specify registry add shop-backend --url ../rm01-shop-backend --schema omnia@v1 --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
-specify registry add shop-mobile --url ../rm01-shop-mobile --schema vectis@v1 --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
+cd ../cross-repo-shop-platform
+specify registry add shop-backend --url ../cross-repo-shop-backend --schema omnia@v1 --description "Omnia backend service for OAuth token exchange, sessions, and provider integration."
+specify registry add shop-mobile --url ../cross-repo-shop-mobile --schema vectis@v1 --description "Vectis mobile client for OAuth sign-in UI, callback handling, and API consumption."
 specify registry validate
 ```
 
@@ -301,7 +301,7 @@ The run should leave these artifacts or states for inspection:
 
 ## Negative Expectations
 
-These are the guardrails for this first RM-01 pass:
+These are the guardrails for this first cross-repo pass:
 
 - `automated-runner-added`: this scenario pack must not add a Deno, Rust,
   shell, Cursor SDK, or other automated test runner.

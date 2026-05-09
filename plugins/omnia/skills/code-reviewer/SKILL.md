@@ -10,8 +10,8 @@ argument-hint: "[crate-path]"
 
 1. **Parse invocation**: resolve `$CRATE_PATH` and the `fix` positional; verify `cargo check` passes (see [Invocation](#invocation)).
 2. **Initialize team**: spawn Security, Correctness, and Quality specialist sub-agents with the prompts in [`team-protocol.md`](team-protocol.md).
-3. **Specialist analysis (concurrent)**: each specialist scans `src/*.rs` and emits findings prefixed `SEC-`, `COR-`, `QUA-` per the categories in [`categories.md`](categories.md).
-4. **Universal checks (lead)**: lead applies UNI-001…UNI-021 with the Omnia/WASM heuristics in [`categories.md`](categories.md#universal-checks-uni--prefix), prefixing findings `UNI-`.
+3. **Specialist analysis (concurrent)**: each specialist scans `src/*.rs` and emits findings prefixed `SEC-`, `COR-`, `QUA-` per [`categories.md`](categories.md), adding `rule_id` when a finding maps to a stable codex rule.
+4. **Universal checks (lead)**: lead applies migrated default codex rules UNI-001…UNI-021 with the Omnia/WASM heuristics in [`categories.md`](categories.md#universal-checks-uni--prefix), prefixing report-local findings `UNI-` and setting `rule_id` to the matching stable codex ID.
 5. **Adversarial challenge**: lead forwards all findings to the antagonist, which confirms / upgrades / downgrades / disputes them and adds `NEW-` findings (rules in [`team-protocol.md`](team-protocol.md)).
 6. **Synthesis**: lead writes `$REVIEW_OUTPUT` using the template in [`output.md`](output.md), recording adversarial-review statistics and a confidence level.
 7. **Auto-fix (only if `fix`)**: lead applies safe fixes per [`auto-fix.md`](auto-fix.md), runs `cargo check`, and reverts on failure. Then shut down the team.
@@ -66,7 +66,7 @@ $REVIEW_OUTPUT = $CRATE_PATH/REVIEW.md
 The skill drives an agent team — three specialist reviewers plus an antagonist — coordinated by the lead. The pipeline implements the seven-step Critical Path above:
 
 1. The lead spawns the three specialists concurrently with the prompts in [`team-protocol.md`](team-protocol.md). Each specialist owns a slice of the categories enumerated in [`categories.md`](categories.md).
-2. Once all specialists report, the lead runs the **universal checks** pass over `src/`, applying only the `UNI-` checks not already covered by SEC/COR/QUA per the skip table in [`categories.md`](categories.md#universal-checks-uni--prefix).
+2. Once all specialists report, the lead runs the **universal checks** pass over `src/`, using the migrated default codex (`capabilities/default/codex/`) for `UNI-001` through `UNI-021` and applying only the checks not already covered by SEC/COR/QUA per the skip table in [`categories.md`](categories.md#universal-checks-uni--prefix).
 3. The lead forwards the combined findings (`SEC-`, `COR-`, `QUA-`, `UNI-`) to the antagonist. The antagonist confirms, upgrades, downgrades, or disputes each finding and runs a counter-scan that may emit `NEW-` findings.
 4. The lead synthesizes the final report using the template in [`output.md`](output.md), assigns a confidence level via the [Agent Team Patterns](references/agent-teams.md#confidence-scoring), and writes `$REVIEW_OUTPUT`.
 5. If `$AUTO_FIX == true`, the lead applies safe fixes per [`auto-fix.md`](auto-fix.md), then shuts down the team.
@@ -80,18 +80,22 @@ The review report lives at `$CRATE_PATH/REVIEW.md`. The full template — includ
 Key invariants the lead must preserve:
 
 - Every finding has a `file:line` reference and a code snippet (verbatim from the originating reviewer).
+- Every mapped finding carries both a report-local occurrence ID (`SEC-1`, `COR-1`, `QUA-1`, `UNI-1`, `NEW-1`) and a separate stable `rule_id` such as `OMNIA-002` or `UNI-014`.
 - Severity reflects antagonist adjustments — upgrades and downgrades rewrite the displayed severity but keep the original prefix and ID.
 - Finding IDs use the prefixes documented in [`output.md`](output.md): `SEC-`, `COR-`, `QUA-`, `UNI-`, `NEW-`.
+- `rule_id` is a codex citation only. Do not claim or assume the final RM-04 finding schema exists.
 - The **Adversarial Review** section reports challenge statistics (confirmed / downgraded / upgraded / disputed / new) and the acceptance rate.
 - Auto-fix outcomes (✅ applied, ⚠️ reverted, ⏭️ skipped) appear inline on each finding and aggregated in the **Auto-Fix Summary**.
 
 ## Reference documentation
 
-- [`categories.md`](categories.md) — Full SEC-/COR-/QUA-/UNI- check libraries and Omnia/WASM heuristics.
+- [`categories.md`](categories.md) — Full SEC-/COR-/QUA-/UNI- check libraries, Omnia/WASM heuristics, and codex `rule_id` mapping guidance.
 - [`team-protocol.md`](team-protocol.md) — Specialist spawn prompts, antagonist protocol, synthesis rules.
 - [`auto-fix.md`](auto-fix.md) — `fix` scope, success-rate table, regression guard, recovery process.
 - [`output.md`](output.md) — `REVIEW.md` template and finding-ID conventions.
-- [Review Checks](references/review-checks.md) — Language- and domain-agnostic review checklist (UNI-001…UNI-021) shared across all reviewer skills.
+- [Default Codex](../../../../capabilities/default/codex/) — Source of truth for migrated universal rules `UNI-001`…`UNI-021`.
+- [Omnia Codex](../../../../capabilities/omnia/codex/) — Source of truth for Omnia-specific rules `OMNIA-001`, `OMNIA-002`, `RUST-001`, and `SEC-001`.
+- [Review Checks](../../../references/review-checks.md) — Transitional pointer kept so older reviewer-skill links continue to resolve before codex export is wired into agent workflows.
 - [Agent Team Patterns](references/agent-teams.md) — Shared team roles, antagonist protocol, synthesis rules, and file ownership.
 - [CodeRabbit Study: AI Code Creates 1.7× More Issues](https://www.coderabbit.ai/blog/state-of-ai-vs-human-code-generation-report)
 - [Security Best Practices for Rust](https://anssi-fr.github.io/rust-guide/)
@@ -143,6 +147,7 @@ Before completing review:
 - [ ] Quality Reviewer: N+1 patterns, naming, function length, dead code checked
 - [ ] Universal checks: UNI-001…UNI-021 applied with Omnia heuristics (skipped where covered by SEC/COR/QUA)
 - [ ] Antagonist: counter-scan completed for blind spots
+- [ ] Mapped findings include stable codex `rule_id` values without changing occurrence IDs
 
 ### Report quality
 
@@ -151,6 +156,7 @@ Before completing review:
 - [ ] **Adversarial Review** section included with challenge statistics
 - [ ] Confidence level assigned based on antagonist results
 - [ ] Finding IDs use correct prefixes (`SEC-`, `COR-`, `QUA-`, `UNI-`, `NEW-`)
+- [ ] `rule_id` values cite existing codex rules only; unmapped findings do not invent IDs
 
 ### Auto-fix (if enabled)
 

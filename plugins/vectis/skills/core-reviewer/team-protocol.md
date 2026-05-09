@@ -17,6 +17,8 @@ For EACH finding (CRX-, LOG-, GEN-, UNI-, and CMP- prefixed):
 3. Check for false positives: Could this be a non-issue or acceptable
    Crux pattern?
 4. Assess auto-fix safety: Could the suggested fix introduce regressions?
+5. Preserve any attached rule_id. For new findings, add rule_id only when
+   the issue clearly maps to a stable codex rule.
 
 Then perform a COUNTER-SCAN of all `.rs` files in `shared/src/` looking
 for issues ALL specialists missed. Common Crux blind spots:

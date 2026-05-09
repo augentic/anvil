@@ -17,6 +17,7 @@
 | `briefs/tasks.md` | Generation brief for the tasks stage |
 | `briefs/build.md` | Implementation brief for the build stage |
 | `briefs/merge.md` | Merge brief for finalizing a change |
+| `codex/` | Omnia-specific review rules for provider usage, WASM constraints, Rust error handling, and host-managed secrets |
 
 ## Blueprints
 
@@ -28,6 +29,10 @@ The schema declares four blueprints in dependency order:
 4. **tasks** — implementation checklist (`tasks.md`), requires specs + design
 
 Build requires tasks to be complete and is tracked via `tasks.md`.
+
+## Codex
+
+Omnia review rules live under [`codex/`](codex/). This first cut is intentionally small and covers the highest-value checks that are specific to Rust WASM guest components using the Omnia SDK.
 
 ## Capability Framework
 

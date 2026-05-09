@@ -15,10 +15,17 @@ const NC = "\x1b[0m";
 const SKILL_MAX_BODY_LINES = 500;
 const SKILL_CRITICAL_PATH_MIN_BODY_LINES = 150;
 const SKILL_CRITICAL_PATH_HEADING = "## Critical Path (Quick Reference)";
+type AjvValidationError = {
+  instancePath?: string;
+  message?: string;
+  keyword?: string;
+  params?: Record<string, unknown>;
+};
+
 const Ajv2020 = Ajv2020Module as unknown as {
   new (opts: { allErrors?: boolean }): {
     compile(schema: unknown): ((data: unknown) => boolean) & {
-      errors?: Array<{ instancePath?: string; message?: string }>;
+      errors?: AjvValidationError[];
     };
   };
 };
@@ -2005,6 +2012,206 @@ async function checkRecordedTraceFreshness(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
+// 16. First-party codex rule shape validation (RM-03 Change 07)
+//
+// Discovers first-party rule markdown under `capabilities/*/codex/**/*.md`
+// plus the optional repo-root `codex/**/*.md` overlay, validates frontmatter
+// against `.cursor/schemas/codex-rule.schema.json`, and checks repo-local
+// invariants that are intentionally outside the per-file schema.
+// ──────────────────────────────────────────────────────────────
+
+interface CodexFile {
+  rel: string;
+  frontmatter: Record<string, unknown>;
+}
+
+const CODEX_RULE_HEADING_RE = /^## Rule\s*$/m;
+const CODEX_CAPABILITY_NAMESPACES: Record<string, Set<string>> = {
+  default: new Set(["UNI"]),
+  omnia: new Set(["OMNIA", "RUST", "SEC"]),
+  contracts: new Set(["IFACE"]),
+  vectis: new Set(["VECTIS"]),
+};
+
+async function discoverCodexRuleFiles(): Promise<string[]> {
+  const paths: string[] = [];
+
+  try {
+    const stat = await Deno.stat(CAPABILITIES_DIR);
+    if (stat.isDirectory) {
+      for await (
+        const entry of walk(CAPABILITIES_DIR, {
+          exts: [".md"],
+          includeDirs: false,
+        })
+      ) {
+        if (await isUnderSymlink(entry.path)) continue;
+        const parts = relative(CAPABILITIES_DIR, entry.path).split("/");
+        if (parts.length >= 3 && parts[1] === "codex") {
+          paths.push(entry.path);
+        }
+      }
+    }
+  } catch {
+    // No capabilities/.
+  }
+
+  const rootCodexDir = join(REPO_ROOT, "codex");
+  try {
+    const stat = await Deno.stat(rootCodexDir);
+    if (stat.isDirectory) {
+      for await (
+        const entry of walk(rootCodexDir, {
+          exts: [".md"],
+          includeDirs: false,
+        })
+      ) {
+        if (await isUnderSymlink(entry.path)) continue;
+        paths.push(entry.path);
+      }
+    }
+  } catch {
+    // Repo-root codex overlay is optional.
+  }
+
+  return Array.from(new Set(paths)).sort();
+}
+
+function formatSchemaError(err: AjvValidationError): string {
+  const at = err.instancePath || "/";
+  if (
+    err.keyword === "required" &&
+    typeof err.params?.missingProperty === "string"
+  ) {
+    return `${at} missing required property '${err.params.missingProperty}'`;
+  }
+  if (
+    err.keyword === "additionalProperties" &&
+    typeof err.params?.additionalProperty === "string"
+  ) {
+    return `${at} unknown property '${err.params.additionalProperty}'`;
+  }
+  if (err.keyword === "enum" && Array.isArray(err.params?.allowedValues)) {
+    return `${at} must be one of ${
+      err.params.allowedValues.map((v) => JSON.stringify(v)).join(", ")
+    }`;
+  }
+  if (err.keyword === "pattern" && typeof err.params?.pattern === "string") {
+    return `${at} must match ${err.params.pattern}`;
+  }
+  return `${at} ${err.message ?? "schema violation"}`.trim();
+}
+
+function capabilityOwnerForCodexPath(path: string): string | null {
+  const parts = relative(CAPABILITIES_DIR, path).split("/");
+  if (parts.length >= 3 && parts[1] === "codex") return parts[0];
+  return null;
+}
+
+function namespaceForRuleId(id: string): string | null {
+  return id.match(/^([A-Z]+)-[0-9]{3}$/)?.[1] ?? null;
+}
+
+function namespaceList(namespaces: Set<string>): string {
+  return [...namespaces].map((ns) => `${ns}-*`).join(", ");
+}
+
+async function validateCodexRuleShape(): Promise<void> {
+  const codexSchema = JSON.parse(
+    await Deno.readTextFile(join(CURSOR_SCHEMA_DIR, "codex-rule.schema.json")),
+  );
+  const ajv = new Ajv2020({ allErrors: true });
+  const validate = ajv.compile(codexSchema);
+
+  const rulePaths = await discoverCodexRuleFiles();
+  const rules: CodexFile[] = [];
+
+  for (const path of rulePaths) {
+    const rel = relative(REPO_ROOT, path);
+    let content: string;
+    try {
+      content = await Deno.readTextFile(path);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      fail(`Codex rule: ${rel} — cannot read: ${msg}`);
+      continue;
+    }
+
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) {
+      fail(
+        `Codex rule: ${rel} — missing leading YAML frontmatter delimited by ---`,
+      );
+      continue;
+    }
+
+    let fm: Record<string, unknown>;
+    try {
+      fm = parseYaml(fmMatch[1]) as Record<string, unknown>;
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      fail(`Codex rule frontmatter: ${rel} — invalid YAML: ${msg}`);
+      continue;
+    }
+    if (fm === null || typeof fm !== "object" || Array.isArray(fm)) {
+      fail(`Codex rule frontmatter: ${rel} — frontmatter must be a YAML mapping`);
+      continue;
+    }
+
+    const rule: CodexFile = { rel, frontmatter: fm };
+    rules.push(rule);
+
+    if (!validate(fm)) {
+      for (const err of validate.errors ?? []) {
+        fail(`Codex rule frontmatter: ${rel} — ${formatSchemaError(err)}`);
+      }
+    }
+
+    const body = content.slice(fmMatch[0].length);
+    if (!CODEX_RULE_HEADING_RE.test(body)) {
+      fail(`Codex rule body: ${rel} — missing required '## Rule' heading`);
+    }
+
+    const id = fm.id;
+    if (typeof id !== "string") continue;
+
+    const capability = capabilityOwnerForCodexPath(path);
+    if (!capability) continue;
+
+    const allowedNamespaces = CODEX_CAPABILITY_NAMESPACES[capability];
+    if (!allowedNamespaces) {
+      fail(
+        `Codex namespace ownership: ${rel} — capability '${capability}' has no configured codex namespace owner; update scripts/checks.ts before adding first-party rules here`,
+      );
+      continue;
+    }
+
+    const namespace = namespaceForRuleId(id);
+    if (namespace && !allowedNamespaces.has(namespace)) {
+      fail(
+        `Codex namespace ownership: ${rel} — capability '${capability}' may only use ${namespaceList(allowedNamespaces)} ids, got '${id}'`,
+      );
+    }
+  }
+
+  const idsByValue = new Map<string, string[]>();
+  for (const rule of rules) {
+    const id = rule.frontmatter.id;
+    if (typeof id !== "string") continue;
+    const seen = idsByValue.get(id) ?? [];
+    seen.push(rule.rel);
+    idsByValue.set(id, seen);
+  }
+  for (const [id, paths] of idsByValue) {
+    if (paths.length > 1) {
+      fail(
+        `Codex rule duplicate id '${id}' across files: ${paths.join(", ")}`,
+      );
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // Run all checks
 // ──────────────────────────────────────────────────────────────
 
@@ -2023,6 +2230,7 @@ await Promise.all([
   checkV1LayoutPaths(),
   validateScenarioFrontmatter(),
   checkRecordedTraceFreshness(),
+  validateCodexRuleShape(),
 ]);
 await Promise.all([
   validateSkillFrontmatter(),

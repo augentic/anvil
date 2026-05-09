@@ -68,6 +68,7 @@ The Contracts capability's briefs and skills carry domain context about:
 - OpenAPI 3.1 structure for HTTP endpoint bindings.
 - AsyncAPI 3.0 structure for messaging bindings.
 - Artifact structure and naming conventions for root `contracts/`.
+- Codex rules under [`capabilities/contracts/codex/`](../../../capabilities/contracts/codex/) for stable `IFACE-*` reviewer guidance on compatibility, versioning, and consumer-impact classification.
 
 ## Capability framework
 

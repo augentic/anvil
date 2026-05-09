@@ -1,7 +1,7 @@
-# RM-01 Manual Acceptance Scenarios
+# Cross-Repo Manual Acceptance Scenarios
 
-These documents are manual acceptance scenarios for RM-01. They exercise the
-cross-repo Specify workflow from an operator's point of view:
+These documents are manual acceptance scenarios for the cross-repo Specify
+workflow from an operator's point of view:
 
 1. plan a multi-slice change from a short feature brief
 2. route work through a registry-only hub into implementation projects
@@ -16,10 +16,11 @@ which parts are stable enough to automate later.
 
 ## Relationship To Acceptance
 
-These are shared outside-in scenario documents. They live under `tests/rm-01/`
-because RM-01 spans the hub, registry, workspace, change plan, contract
-capability, and implementation capabilities. Capability-local tests, such as
-the contracts scenarios, stay under `capabilities/<capability>/tests/`.
+These are shared outside-in scenario documents. They live under
+`tests/cross-repo/` because the cross-repo workflow spans the hub, registry,
+workspace, change plan, contract capability, and implementation capabilities.
+Capability-local tests, such as the contracts scenarios, stay under
+`capabilities/<capability>/tests/`.
 
 Static checks validate the YAML frontmatter and scenario ID. The scenario body
 remains the human-readable operator contract.
@@ -28,7 +29,7 @@ remains the human-readable operator contract.
 
 | Scenario file | Scenario ID | Kind | Backend |
 | --- | --- | --- | --- |
-| [`scenario.md`](scenario.md) | `rm-01-cross-repo-contract-flow` | `suite` | `manual` |
+| [`scenario.md`](scenario.md) | `cross-repo-contract-flow` | `suite` | `manual` |
 
 ## Scenario Pack Shape
 

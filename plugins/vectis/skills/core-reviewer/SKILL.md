@@ -10,7 +10,7 @@ argument-hint: "<target-dir>"
 
 1. Gather context — read `spec.md`, `shared/Cargo.toml`, every `.rs` file under `shared/src/`; if `reference-dir` is provided read its counterparts too.
 2. Spawn team — Structural + Quality (always); Logic only on the first iteration when `scope = full`. Each specialist applies its own check set (CRX-, LOG-, GEN-).
-3. Lead runs universal checks (UNI-001..021) with Rust-specific heuristics and an optional comparative pass when a reference app is supplied.
+3. Lead runs universal codex checks (UNI-001..021) with Rust-specific heuristics, attaches `rule_id` on mapped findings, and runs an optional comparative pass when a reference app is supplied.
 4. Antagonist (see [`team-protocol.md`](team-protocol.md)) challenges every finding with evidence and counter-scans for Crux blind spots; lead synthesises into a single iteration report and assigns a confidence level.
 5. Auto-fix mechanical issues (missing serde derives, `render().and(...)` wraps, `.trim()`/empty input checks, unused deps); re-run `cargo check` / `clippy` / `test` and revert all auto-fixes on regression.
 6. Loop control — re-spawn Structural + Quality on changed files until `iteration == 3` or no mechanical fixes were applied.
@@ -31,6 +31,23 @@ This skill catches semantic issues that compilers, linters, and clippy miss: mis
 ## Process
 
 This skill uses an agent team with 3 specialist reviewers and 1 antagonist. The lead coordinates the team, synthesizes findings, and produces the final report. See [Agent Team Patterns](references/agent-teams.md) for shared protocols (team roles, antagonist protocol, synthesis rules, file ownership, and confidence scoring).
+
+### Codex rule citations
+
+Keep review-local finding IDs separate from stable codex rule IDs:
+
+- **Finding ID**: the report-local occurrence identifier used for triage and ownership, such as `CRX-001-1`, `LOG-003-1`, `UNI-1`, or `NEW-1`. These remain scoped to this review run.
+- **Rule ID**: the stable codex catalogue identifier when the finding maps to a codex rule, such as `VECTIS-002` or `UNI-016`. Include it as `rule_id` in structured outputs and as `**Rule ID**` in markdown reports.
+
+Use the resolved project codex when the caller provides it. Until `specify codex export` is wired into reviewer workflows, read first-party rules directly from `capabilities/default/codex/` and `capabilities/vectis/codex/`; use `plugins/references/review-checks.md` only as a transitional index for migrated universal rule details. Do not copy full codex prose into reports or prompts.
+
+Vectis-specific mappings for core review:
+
+| Rule ID | Use when finding concerns |
+|---|---|
+| `VECTIS-001` | Core/shell boundary violations or domain behavior leaking into shells |
+| `VECTIS-002` | Core state mutation, render/persist/effect command discipline, or async transition completeness |
+| `VECTIS-003` | ViewModel/Event/Effect/Route interface coverage visible to shells |
 
 ### 1. Gather context
 
@@ -78,9 +95,10 @@ pattern-based checks that scan for known Crux-specific issues:
 - ViewModel field typing (typed values vs pre-formatted strings)
 - Unused dependencies in `Cargo.toml`
 
-For each finding, report: check ID (CRX-NNN), file:line, code snippet,
-severity (Critical or Warning), risk description, suggested fix, and
-whether it is auto-fixable (mechanical).
+For each finding, report: check ID (CRX-NNN), stable rule_id when it
+clearly maps to a codex rule, file:line, code snippet, severity
+(Critical or Warning), risk description, suggested fix, and whether it
+is auto-fixable (mechanical).
 
 Output your findings as a numbered list in markdown. Prefix each finding
 ID with "CRX-" (e.g., CRX-001-1, CRX-005-1).
@@ -143,8 +161,9 @@ sequences, not just pattern matching. For each check:
    comments that reference scenarios no longer present in the spec. Flag
    them for human review. Do not auto-delete.
 
-For each finding, report: check ID (LOG-NNN), file:line, code snippet,
-severity (Critical for data loss/incorrect server calls/conflict-resolution
+For each finding, report: check ID (LOG-NNN), stable rule_id when it
+clearly maps to a codex rule, file:line, code snippet, severity
+(Critical for data loss/incorrect server calls/conflict-resolution
 failure; Warning for stale UI/missing tests), risk description, suggested
 fix, and whether it is auto-fixable.
 
@@ -170,9 +189,10 @@ language-level quality checks:
 - Serialization round-trip completeness
 - Function length (under 50 lines)
 
-For each finding, report: check ID (GEN-NNN), file:line, code snippet,
-severity (Warning or Info), risk description, suggested fix, and whether
-it is auto-fixable.
+For each finding, report: check ID (GEN-NNN), stable rule_id when it
+clearly maps to a codex rule, file:line, code snippet, severity
+(Warning or Info), risk description, suggested fix, and whether it is
+auto-fixable.
 
 Output your findings as a numbered list in markdown. Prefix each finding
 ID with "GEN-" (e.g., GEN-001-1, GEN-005-1).
@@ -188,7 +208,7 @@ The specialists analyze the crate concurrently. Each reads all `.rs` files in `s
 
 #### 2c. Universal checks (lead; skip if scope = quick)
 
-After all specialists report, the lead reads `../../references/review-checks.md` and applies checks UNI-001 through UNI-021 with Rust-specific detection. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
+After all specialists report, the lead applies universal codex rules `UNI-001` through `UNI-021` from the resolved default codex with Rust-specific detection. Until resolved codex export is available in the workflow, read `capabilities/default/codex/*.md` directly and use `../../references/review-checks.md` only as a transitional index for migrated universal rule details. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
 
 | Universal check | Already covered by | Action |
 |---|---|---|
@@ -218,7 +238,7 @@ Apply the remaining checks with these Rust-specific heuristics:
 - **UNI-020** (unsafe deserialization): Look for deserialization of untrusted external payloads (SSE events, HTTP responses) directly into internal model types that carry authorization or privilege state. Check for missing size limits on payloads deserialized from effects.
 - **UNI-021** (missing auth checks): In a Crux core, authentication is typically managed by the shell and passed as model state. Check that handlers for sensitive operations (delete, admin actions) verify `model.auth_state` or equivalent before proceeding. Flag handlers that assume authentication without checking.
 
-Prefix findings from this step with `UNI-` (e.g., UNI-1, UNI-2). Use the severity defined in the universal checklist for each check.
+Prefix findings from this step with `UNI-` occurrence IDs (e.g., `UNI-1`, `UNI-2`) and include the matching stable `rule_id` (e.g., `UNI-016`) on each finding. Use the severity defined by the codex rule.
 
 Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004, UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in the adversarial review and spec-change output in step 3.
 
@@ -268,6 +288,7 @@ Output the synthesized findings for this iteration. On the first iteration, use 
 ### Critical Findings
 
 #### [CRX-001-1] Missing render() after page transition
+- **Rule ID**: VECTIS-002
 - **File**: shared/src/app.rs, lines 384-388
 - **Reviewer**: Structural Specialist
 - **Antagonist**: Confirmed
@@ -364,7 +385,7 @@ Before creating the Specify change, classify each design-level finding:
 - **Code-fix**: The spec is clear and the code simply does not implement it correctly. The fix is a code change; no spec update is needed. These become tasks in `tasks.md`.
 - **Spec-change**: The spec is silent, ambiguous, or mandates behavior that the review identified as problematic. The fix requires updating the spec first, then implementing. These become requirements in `specs/` and decisions in `design.md`.
 
-Universal checks with a Spec-change indicator (UNI-002, UNI-004, UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) commonly surface as spec-change findings. Consult `../../references/review-checks.md` for the indicator description on each check.
+Universal checks with a Spec-change indicator (`UNI-002`, `UNI-004`, `UNI-007`, `UNI-008`, `UNI-011`, `UNI-012`, `UNI-014`, `UNI-021`) commonly surface as spec-change findings. Prefer the matching default codex rule's Spec Guidance; use `../../references/review-checks.md` only as a transitional index if the codex file is not yet available to the reviewer.
 
 If design-level findings exist, delegate to `/spec:define` to create a single Specify change that tracks all of them:
 
@@ -387,7 +408,7 @@ If design-level findings exist, delegate to `/spec:define` to create a single Sp
 
    - **proposal.md**: The "Why" section summarizes the accumulated review findings by severity and risk, distinguishing spec-change findings (requirements gaps) from code-fix findings (implementation bugs). The "What Changes" section lists each design-level finding as a bullet, prefixed with `[spec]` or `[code]` to indicate its classification. Note which mechanical fixes were already applied across all iterations and how many review cycles ran. The "Impact" section identifies affected files, shell contract slices, and migration concerns.
 
-   - **design.md**: Each design-level finding becomes a Decision section with rationale and alternatives considered. Group related findings (e.g., all timestamp-related changes under one decision). Reference the specific check IDs (CRX-xxx, LOG-xxx, UNI-xxx) that motivated each decision. For spec-change findings, explain why the current spec is insufficient and what the proposed requirement should be.
+   - **design.md**: Each design-level finding becomes a Decision section with rationale and alternatives considered. Group related findings (e.g., all timestamp-related changes under one decision). Reference the specific finding IDs (CRX-xxx, LOG-xxx, UNI-xxx) and any stable rule IDs (VECTIS-xxx, UNI-xxx) that motivated each decision. For spec-change findings, explain why the current spec is insufficient and what the proposed requirement should be.
 
    - **specs/**: Create one spec file per logical area (e.g., `sync-logic`, `input-validation`, `resilience`). Each requirement maps to a review finding. Spec-change findings become new requirements with explicit acceptance criteria. Code-fix findings become scenarios under existing requirements. Scenarios should be derived from the simulation traces performed during the logic pass (LOG-001 through LOG-008) and from the spec-change indicators in the universal checks. Use WHEN/THEN format.
 
@@ -432,6 +453,7 @@ Before completing review:
 - [ ] Adversarial Review section included with challenge statistics
 - [ ] Confidence level assigned based on antagonist results
 - [ ] Finding IDs use correct prefixes (CRX-, LOG-, GEN-, UNI-, CMP-, NEW-)
+- [ ] Findings include `rule_id` / `Rule ID` when they map to a stable codex rule
 - [ ] Design-level findings classified as code-fix or spec-change
 
 ## Integration with Specify Workflow

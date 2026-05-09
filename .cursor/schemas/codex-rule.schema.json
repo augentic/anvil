@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/augentic/specify-cli/schemas/codex-rule.schema.json",
+  "title": "Specify codex rule frontmatter",
+  "description": "Validates the YAML frontmatter block at the top of a codex rule markdown file. The schema applies only to the machine-readable frontmatter between the opening and closing `---` delimiters; Markdown body validation, including the required `## Rule` heading and duplicate-id checks across a resolved rule set, is handled by the codex parser and resolver.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "title", "severity", "trigger"],
+  "properties": {
+    "id": {
+      "$ref": "#/$defs/ruleId",
+      "description": "Stable codex rule identifier. V1 reserves UNI, RUST, IFACE, SEC, OMNIA, VECTIS, and ORG namespaces with three-digit numeric suffixes."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "description": "Short human-readable rule title."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["critical", "important", "suggestion", "optional"],
+      "description": "Default review severity for findings associated with this rule."
+    },
+    "trigger": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500,
+      "description": "One-sentence condition that tells a generator or reviewer when the rule matters."
+    },
+    "applicability": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "Small V1 applicability filter. These fields narrow where a rule is likely relevant; they are not suppressions, exceptions, or policy overrides.",
+      "properties": {
+        "capabilities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/capabilityRef" },
+          "description": "Capability identifiers, optionally versioned as `<name>@v<major>`."
+        },
+        "languages": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/languageToken" },
+          "description": "Lowercase language or format tokens such as `rust`, `typescript`, or `json-schema`."
+        },
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/kebabToken" },
+          "description": "Lowercase artifact category tokens such as `code`, `tests`, `contracts`, or `specs`."
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/relativePathPattern" },
+          "description": "Relative path or glob patterns. Absolute paths, URI strings, and `..` segments are rejected."
+        }
+      }
+    },
+    "review_mode": {
+      "type": "string",
+      "enum": ["deterministic", "model-assisted", "hybrid"],
+      "default": "model-assisted",
+      "description": "How this rule is expected to be reviewed. The review runner decides execution; this field only classifies the rule."
+    },
+    "deterministic_hints": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Optional hints for future deterministic checks. V1 validates only the hint shape, not regex syntax or tool availability.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "value"],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["path-pattern", "regex", "schema", "tool"],
+            "description": "Kind of deterministic signal the hint describes."
+          },
+          "value": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Hint payload, interpreted by a future validator or review tool."
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Optional human explanation for the hint."
+          }
+        }
+      }
+    },
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "External or repository-local reference material that helps apply the rule.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["label"],
+        "anyOf": [{ "required": ["url"] }, { "required": ["path"] }],
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Short display label for the reference."
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^https?://.+$",
+            "description": "HTTP(S) reference URL."
+          },
+          "path": {
+            "$ref": "#/$defs/relativePathPattern",
+            "description": "Repository-relative reference path."
+          }
+        }
+      }
+    },
+    "deprecated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason"],
+      "description": "When present, marks this rule as deprecated while preserving the stable id for historical citations.",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable reason the rule is deprecated."
+        },
+        "replaced_by": {
+          "$ref": "#/$defs/ruleId",
+          "description": "Replacement codex rule id, when there is a direct successor."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "ruleId": {
+      "type": "string",
+      "pattern": "^(UNI|RUST|IFACE|SEC|OMNIA|VECTIS|ORG)-[0-9]{3}$"
+    },
+    "capabilityRef": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:@v[1-9][0-9]*)?$"
+    },
+    "kebabToken": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "languageToken": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9+#.-]*$"
+    },
+    "relativePathPattern": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?![A-Za-z][A-Za-z0-9+.-]*://)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+    }
+  }
+}

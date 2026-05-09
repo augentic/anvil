@@ -17,6 +17,8 @@ For EACH finding (AND-, KTL-, INT-, and UNI- prefixed):
 3. Check for false positives: Could this be a non-issue or acceptable
    Android/Compose pattern?
 4. Assess auto-fix safety: Could the suggested fix introduce regressions?
+5. Preserve any attached rule_id. For new findings, add rule_id only when
+   the issue clearly maps to a stable codex rule.
 
 Then perform a COUNTER-SCAN of all `.kt` files under
 `Android/app/src/main/java/` looking for issues ALL specialists missed.
