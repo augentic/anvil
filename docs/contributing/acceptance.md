@@ -1,16 +1,12 @@
 # Running Acceptance
 
-The acceptance surface is intentionally manual at this stage. The cross-repo
-scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) gives operators
-a repeatable script for the cross-repo happy path without adding an automated
-harness.
+The acceptance surface is intentionally manual at this stage. The cross-repo scenario pack at [`tests/cross-repo/`](../../tests/cross-repo/) gives operators a repeatable script for the cross-repo happy path, and the plan-generation pack at [`tests/plan/`](../../tests/plan/) gives operators reusable `/change:plan` scenarios focused on durable plan structure. Neither pack adds an automated harness.
 
 ## Targets
 
-- `make checks` runs static repository checks, including scenario frontmatter
-  validation.
-- The cross-repo scenario is run manually from
-  [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).
+- `make checks` runs static repository checks, including scenario frontmatter validation.
+- The cross-repo scenario is run manually from [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md).
+- The plan-generation scenarios are run manually from [`tests/plan/`](../../tests/plan/).
 
 ## What The Cross-Repo Scenario Proves
 
@@ -20,19 +16,18 @@ The manual scenario asks an operator to create a fresh temporary workspace with:
 - `shop-backend` and `shop-mobile` projects,
 - an OAuth login fixture brief.
 
-It then checks the durable cross-repo behavior directly: registry setup, a
-three-entry contract-first plan, routed execution on `specify/oauth-login`
-branches, workspace push, external operator merge, `change finalize`, archived
-plan state, and `plan-not-found` on a second finalize.
+It then checks the durable cross-repo behavior directly: registry setup, a three-entry contract-first plan, routed execution on `specify/oauth-login` branches, workspace push, external operator merge, `change finalize`, archived plan state, and `plan-not-found` on a second finalize.
 
-This repository does not add a Deno/Rust runner, fake forge, transcript replay,
-CI acceptance target, or golden output comparison for this scenario yet. The
-goal is to run the manual script a few times, learn which checks are stable,
-and automate only after the simple testing shape is clear.
+This repository does not add a Deno/Rust runner, fake forge, transcript replay, CI acceptance target, or golden output comparison for this scenario yet. The goal is to run the manual script a few times, learn which checks are stable, and automate only after the simple testing shape is clear.
+
+## What The Plan Scenarios Prove
+
+The plan-generation scenarios ask an operator to create disposable workspaces and run `/change:plan` only. They check durable plan-authoring outcomes: `plan.yaml` exists, `specify change plan validate` exits cleanly, generated entries have coherent roles and dependencies, and multi-project routing follows the registry descriptions deterministically.
+
+These scenarios deliberately stop before `/change:execute`, workspace push, finalize, transcript replay, or golden output comparison. They are shared orchestration scenarios because `/change:plan` coordinates slices; capability slice-loop scenarios stay under `capabilities/<capability>/tests/`.
 
 ## Evidence
 
-Each manual run should fill out
-[`tests/cross-repo/run-summary-template.md`](../../tests/cross-repo/run-summary-template.md).
-On failure, preserve the hub state, `plan.yaml`, `registry.yaml`, workspace
-status, push/finalize output, and branch or PR/MR identifiers.
+Each cross-repo manual run should fill out [`tests/cross-repo/run-summary-template.md`](../../tests/cross-repo/run-summary-template.md). On failure, preserve the hub state, `plan.yaml`, `registry.yaml`, workspace status, push/finalize output, and branch or PR/MR identifiers.
+
+Each plan-generation run should fill out [`tests/plan/run-summary-template.md`](../../tests/plan/run-summary-template.md). On failure, preserve the workspace state, exact `/change:plan` prompt, `plan.yaml`, `.specify/plans/<change-name>/` authoring trail, validation output, and any `specify change plan status` output.

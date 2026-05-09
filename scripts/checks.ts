@@ -1637,7 +1637,29 @@ async function discoverScenarioCandidates(): Promise<string[]> {
     // Optional root.
   }
 
-  // Discovery roots 3 & 4: capabilities/<cap>/tests/<scenario>.md
+  // Discovery root 3: tests/plan/<scenario>.md
+  const planTestsDir = join(REPO_ROOT, "tests", "plan");
+  try {
+    const stat = await Deno.stat(planTestsDir);
+    if (stat.isDirectory) {
+      for await (
+        const entry of walk(planTestsDir, {
+          maxDepth: 1,
+          exts: [".md"],
+          includeDirs: false,
+        })
+      ) {
+        const rel = relative(planTestsDir, entry.path).split("/");
+        if (rel.length === 1) {
+          candidates.push(entry.path);
+        }
+      }
+    }
+  } catch {
+    // Optional root.
+  }
+
+  // Discovery roots 4 & 5: capabilities/<cap>/tests/<scenario>.md
   // and capabilities/<cap>/tests/<scenario>/scenario.md
   try {
     const stat = await Deno.stat(CAPABILITIES_DIR);
@@ -1667,7 +1689,7 @@ async function discoverScenarioCandidates(): Promise<string[]> {
     // No capabilities/.
   }
 
-  // Discovery root 5: plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md
+  // Discovery root 6: plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md
   const pluginsDir = join(REPO_ROOT, "plugins");
   try {
     const stat = await Deno.stat(pluginsDir);

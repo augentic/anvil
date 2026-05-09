@@ -182,6 +182,11 @@ cargo clippy -- -D warnings
 - Clear, descriptive naming
 - Prefer small functions and explain genuinely complex logic
 
+### Markdown style
+
+- Do not hard-wrap prose in Markdown files solely for column width. Keep paragraphs and list-item prose on a single line unless the line break is semantically meaningful.
+- Preserve intentional line breaks in frontmatter, tables, lists, blockquotes, and fenced code blocks.
+
 ### WASM And Omnia SDK Constraints
 
 See [guardrails.md](plugins/omnia/references/guardrails.md) for forbidden crates and APIs, provider trait rules, validation placement, and runtime constraints.

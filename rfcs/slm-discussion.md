@@ -1,6 +1,6 @@
 # RFC: Specialized SLM Code Generation
 
-> Status: Draft - Depends: [RM-03](rm-03-codex.md), [RFC-10](archive/rfc-10-skills.md), [RFC-13](archive/rfc-13-extensibility.md)
+> Status: Draft - Depends: [RM-03](roadmap.md#rm-03-codex-rule-format), [RFC-10](archive/rfc-10-skills.md), [RFC-13](archive/rfc-13-extensibility.md)
 
 ## Abstract
 
@@ -177,7 +177,7 @@ If the prototype does not clear the scoring threshold, stop there. If it does, g
 
 ## References
 
-- [RM-03: Codex rule format](rm-03-codex.md)
+- [RM-03: Codex rule format](roadmap.md#rm-03-codex-rule-format)
 - [RFC-10: Skills](archive/rfc-10-skills.md)
 - [RFC-13: Extensibility](archive/rfc-13-extensibility.md)
 - `plugins/omnia/skills/crate-writer/SKILL.md`

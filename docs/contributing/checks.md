@@ -104,11 +104,12 @@ Acceptance scenario files are validated against `.cursor/schemas/scenario.schema
 
 1. `tests/<suite>/scenario.md` — shared outside-in suites.
 2. `tests/suites/<suite>/scenario.md` — legacy shared outside-in suites, when present.
-3. `capabilities/<capability>/tests/<scenario>.md` — flat owner-local capability scenarios.
-4. `capabilities/<capability>/tests/<scenario>/scenario.md` — directory-form owner-local capability scenarios.
-5. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
+3. `tests/plan/<scenario>.md` — shared plan-generation scenarios.
+4. `capabilities/<capability>/tests/<scenario>.md` — flat owner-local capability scenarios.
+5. `capabilities/<capability>/tests/<scenario>/scenario.md` — directory-form owner-local capability scenarios.
+6. `plugins/<plugin>/skills/<skill>/fixtures/<scenario>/scenario.md` — promoted skill-owned fixtures.
 
-Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. The first shared suite is the cross-repo manual acceptance scenario under [`tests/cross-repo/`](../../tests/cross-repo/), and the first owner-local capability pack is the contracts test suite under [`capabilities/contracts/tests/`](../../capabilities/contracts/tests/README.md).
+Discovery is **opt-in by frontmatter**: a markdown file under one of those roots is validated only if it begins with a YAML frontmatter block (`---`). Prose-only docs in those roots — `tests/README.md`, `run-summary-template.md`, narrative — are skipped silently. Shared suites include the cross-repo manual acceptance scenario under [`tests/cross-repo/`](../../tests/cross-repo/) and the plan-generation scenario pack under [`tests/plan/`](../../tests/plan/). The first owner-local capability pack is the contracts test suite under [`capabilities/contracts/tests/`](../../capabilities/contracts/tests/README.md).
 
 An opt-in scenario looks like:
 
