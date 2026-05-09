@@ -44,6 +44,7 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
 | [specify capability](capability.md) | Capability resolution and brief pipeline queries | Capability infrastructure |
 | [specify codex](codex.md) | Resolve, validate, show, and export review rules | Review rule catalogue |
+| [specify compatibility](compatibility.md) | Classify producer contract deltas against consumer workspace views | Cross-project contract reporting |
 | [specify context](context.md) | Generate and check refreshable `AGENTS.md` guidance | Agent context |
 | [specify tool](tool.md) | Resolve, cache, and run declared WASI helper tools | Deterministic extension runner |
 | [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |

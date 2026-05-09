@@ -6,7 +6,7 @@ argument-hint: "[slice-dir]"
 
 # AsyncAPI
 
-Specialist for AsyncAPI 3.0 evented contracts on Specify changes — pub/sub, streaming, queue, and WebSocket-style messaging. This skill owns three intents: authoring or extending the AsyncAPI document for a slice, importing or normalising an externally supplied AsyncAPI document, and verifying an AsyncAPI artefact (single-mode internal consistency or cross-project consumer compatibility).
+Specialist for AsyncAPI 3.0 evented contracts on Specify changes — pub/sub, streaming, queue, and WebSocket-style messaging. This skill owns three intents: authoring or extending the AsyncAPI document for a slice, importing or normalising an externally supplied AsyncAPI document, and verifying an AsyncAPI artefact (single-mode internal consistency or merge-time baseline validation).
 
 The skill is AsyncAPI-only. Shared payload schemas under `contracts/schemas/` are owned by the json-schema format skill (`/contract:json-schema`); HTTP contracts under `contracts/http/` are owned by `/contract:openapi`.
 
@@ -17,7 +17,7 @@ The skill is AsyncAPI-only. Shared payload schemas under `contracts/schemas/` ar
 3. **Dispatch to the sibling.** Open and follow [`author.md`](./author.md), [`importer.md`](./importer.md), or [`verifier.md`](./verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
 4. **Write outputs to `contracts/messages/`.** Author and importer paths produce or normalise AsyncAPI 3.0 YAML files under `$SLICE_DIR/contracts/messages/`. Decomposed payload schemas land under `$SLICE_DIR/contracts/schemas/` (json-schema-skill territory) — never inline them.
 5. **Run the verifier.** After authoring or importing, invoke the verifier sibling against the slice directory to check `$ref` resolution, message metadata completeness, and binding coverage.
-6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the structured YAML compatibility report (cross-project mode) so the calling brief or operator can triage.
+6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the contract-tool JSON envelope (cross-project mode) so the calling brief or operator can triage. Cross-project consumer impact is reported by `specify compatibility`.
 7. **Stay within change-local `contracts/messages/`.** Do not modify baseline files in root `contracts/`, do not touch `contracts/http/` or shared schemas beyond writing decomposed `$ref` targets, and do not invent constructs that the spec does not justify — mark unknowns with `[unknown]` instead.
 
 ## Invocation
@@ -29,9 +29,9 @@ The skill is AsyncAPI-only. Shared payload schemas under `contracts/schemas/` ar
 Optional internal positionals (recognised by the verifier sibling):
 
 - `mode single` — default. Validate the slice's AsyncAPI artefacts in isolation against the specs and baseline. Read-only, markdown report.
-- `mode cross-project` — invoked by `/change:execute` after a producer's contract change merges. Compares the merged AsyncAPI document against each consumer's tier-2 workspace clone. Read-only, structured YAML report. See `verifier.md` §Cross-project mode.
+- `mode cross-project` — merge-time baseline validation delegate. Walks the merged `contracts/` directory through `specify tool run contract`; it does not compare consumer workspace clones. Read-only, JSON envelope. See `verifier.md` §Cross-project mode.
 
-When invoked from the contracts capability build brief during `/spec:build`, `<slice-dir>` is the active slice directory; the brief routes the intent (author or importer) based on whether the operator supplied an external document for `contracts/messages/`. When invoked post-merge by `/change:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged contract.
+When invoked from the contracts capability build brief during `/spec:build`, `<slice-dir>` is the active slice directory; the brief routes the intent (author or importer) based on whether the operator supplied an external document for `contracts/messages/`. Consumer-impact reporting is a CLI concern under `specify compatibility`.
 
 ## Artifact layout
 
@@ -67,7 +67,7 @@ Pick the sibling that matches the trigger. Each sibling is a self-contained algo
 |---|---|---|
 | Author or extend the AsyncAPI document from a spec | contracts capability build brief during `/spec:build`; operator extending the baseline for new evented interactions | `author.md` |
 | Import or normalise an external AsyncAPI document | operator drops an AsyncAPI file into a slice's `contracts/messages/` directory | `importer.md` |
-| Verify internal consistency or run the cross-project consumer check | contracts capability build verification; post-merge cross-project check (RFC-9 §3B); operator invoking validation against an existing AsyncAPI artefact | `verifier.md` |
+| Verify internal consistency or run merge-time baseline validation | contracts capability build verification; post-merge contract baseline gate; operator invoking validation against an existing AsyncAPI artefact | `verifier.md` |
 
 The three intents share a common artefact contract (channel addresses, message naming, `$ref` discipline) but have distinct algorithms — never conflate them. An import must be followed by a verifier run before the brief considers the artefact ready for merge; an author run normally ends with a verifier run too.
 
@@ -75,7 +75,7 @@ The three intents share a common artefact contract (channel addresses, message n
 
 - [`author.md`](./author.md) — spec → channels mapping, message and operation modelling, schema reuse, baseline-delta computation rules.
 - [`importer.md`](./importer.md) — AsyncAPI version detection (2.x vs 3.0), upgrade rules to 3.0, inline-payload decomposition, Specify metadata injection.
-- [`verifier.md`](./verifier.md) — `$ref` resolution, message metadata completeness, binding coverage, single-mode and cross-project verifier modes.
+- [`verifier.md`](./verifier.md) — `$ref` resolution, message metadata completeness, binding coverage, single-mode verifier behavior, and cross-project baseline validation delegation.
 
 ## Shared format guidance
 
@@ -118,6 +118,6 @@ These constraints are non-negotiable for any of the three sibling paths:
 - [`artifact-structure`](../../references/artifact-structure.md) — directory layout for root `contracts/`.
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for computing the minimal delta between baseline and change-local files.
 - [`import-upgrade-policy`](../../references/import-upgrade-policy.md) — shared framework for the importer sibling (format detection, upgrade targets, lossless vs lossy decisions).
-- [`report-shape`](../../references/report-shape.md) — single-mode markdown and cross-project YAML report formats produced by the verifier sibling.
-- [`cross-project-compatibility`](../../references/cross-project-compatibility.md) — `change-kind` vocabulary used by the verifier in `mode cross-project`.
+- [`report-shape`](../../references/report-shape.md) — single-mode markdown, baseline validator JSON, and compatibility report JSON formats.
+- [`cross-project-compatibility`](../../references/cross-project-compatibility.md) — RM-04 compatibility classifications and `change-kind` vocabulary used by `specify compatibility`.
 - [`json-schema-conventions`](../../references/json-schema-conventions.md) — payload schema rules (owned by `/contract:json-schema`; linked here so authors of AsyncAPI files understand the schema files they reference).

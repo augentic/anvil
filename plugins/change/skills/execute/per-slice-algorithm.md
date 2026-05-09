@@ -138,9 +138,9 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
 
 10. Success wrap-up.
       specify change plan transition <name> done
-    Emit the success transcript (see output-format.md). Run the
-    post-merge cross-project contract check (multi-repo.md). Go to
-    step 13.
+    Emit the success transcript (see output-format.md). Cross-project
+    consumer-impact classification is a separate `specify compatibility`
+    CLI surface. Go to step 13.
 
 11. Failure drop path.
     a. Capture `outcome.summary` (and, if present, `outcome.context`)
@@ -216,7 +216,7 @@ YAML
 Notes:
 
 - The journal entry uses the existing `failure` kind (the canonical `EntryKind::{Question, Failure, Recovery}` set per `specify-cli/crates/change/src/journal.rs`); no new kind is introduced. Readers grep `summary` for the `registry-amendment-required:` prefix to filter.
-- The full structured payload lives in `--context` as YAML, mirroring the contract used by the cross-project contract check (RFC-9 §3B). The `--summary` carries the proposed project name so an operator scanning the journal sees what was proposed at a glance.
+- The full structured payload lives in `--context` as YAML. The `--summary` carries the proposed project name so an operator scanning the journal sees what was proposed at a glance.
 - Read `outcome.proposal.*` from `specify slice outcome show <name> --format json` — the CLI emits the proposal as a sibling object (`outcome.proposal`) so existing consumers that only read `.outcome.outcome` (a kebab-case string) keep working.
 - After the journal append, fall through to step 12.b (`/spec:drop`) and step 12.c (`specify change plan transition <name> blocked --reason "<outcome.summary>"`) with the **same `--reason` rule** the `deferred` branch follows: `outcome.summary` is copied byte-for-byte. The default summary stamped by the CLI is `registry-amendment-required: <proposed-name>`, but a phase that supplied a richer `--summary` keeps that exact text.
 

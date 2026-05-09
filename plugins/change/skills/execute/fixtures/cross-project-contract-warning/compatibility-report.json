@@ -1,0 +1,35 @@
+{
+  "schema-version": 3,
+  "change": "platform-v2",
+  "checked-pairs": 1,
+  "ok": false,
+  "findings": [
+    {
+      "classification": "breaking",
+      "change-kind": "removed-field",
+      "producer-project": "backend",
+      "consumer-project": "mobile",
+      "producer-contract": "contracts/http/user-api.yaml",
+      "consumer-contract": "contracts/http/user-api.yaml",
+      "locator": "paths./users/{id}.get.responses.200.content.application/json.schema.properties.email",
+      "details": "Consumer view defines property `email`, but the producer contract removed it"
+    },
+    {
+      "classification": "breaking",
+      "change-kind": "required-field-added",
+      "producer-project": "backend",
+      "consumer-project": "mobile",
+      "producer-contract": "contracts/http/user-api.yaml",
+      "consumer-contract": "contracts/http/user-api.yaml",
+      "locator": "paths./users.post.requestBody.content.application/json.schema.required",
+      "details": "Producer contract adds required field `phone-number`"
+    }
+  ],
+  "summary": {
+    "total-findings": 2,
+    "additive": 0,
+    "breaking": 2,
+    "ambiguous": 0,
+    "unverifiable": 0
+  }
+}

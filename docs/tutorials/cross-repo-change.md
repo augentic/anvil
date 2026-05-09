@@ -298,8 +298,9 @@ The driver:
 4. Runs `/spec:define` -> `/spec:build` -> `/spec:merge` for the slice.
 5. After a routed merge succeeds, verifies the `/spec:merge` baseline commit boundary (`.specify/specs/` plus `.specify/archive/`) and commits non-baseline residue as `specify: residue <slice-name>`.
 6. Restores CWD to the hub root and transitions the plan entry to `done`/`failed`/`blocked`.
-7. After a successful routed merge, runs the [cross-project contract check](../../plugins/change/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b) (RFC-9 §3B): walks the producer's `contracts.produces` list, finds consumer projects via `contracts.consumes`, and runs the format-appropriate `/contract:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone — `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas. Findings are recorded as `cross-project-warning:` entries on the merged slice's `journal.yaml` and rendered in the merge transcript. **Warnings never halt the loop.**
-8. Repeats from step 2 until `specify change plan next` reports `all-done` or `stuck`.
+7. Repeats from step 2 until `specify change plan next` reports `all-done` or `stuck`.
+
+After producer contracts change, run `specify compatibility report --change oauth-login` when you want a classified consumer-impact report against workspace views.
 
 <details>
 <summary>Expected loop transcript (abbreviated)</summary>
@@ -465,7 +466,7 @@ Other common issues:
 
 - **`Error::DriverBusy { pid }`** — another `/change:execute` is holding `.specify/plan.lock`. If it is dead, `specify change plan lock release --pid <pid>` reclaims the stamp; otherwise wait for the live driver.
 - **`hub-cannot-be-project`** — a registry entry has `url: .` on a hub. Either remove the entry (`specify registry remove <name>`) or convert the hub to a platform-as-project shape by removing `.specify/` and re-running `specify init <capability>` without `--hub`.
-- **Cross-project contract warnings in the merge transcript** — see [`/change:execute` §Cross-project contract check](../../plugins/change/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b). The merged change is still `done`; the warnings are advisory and recorded on the merged change's journal.
+- **Breaking compatibility findings** — run `specify compatibility report --change <name>` to inspect producer-to-consumer contract deltas, then see [Resolve Cross-Project Compatibility Findings](../how-to/resolve-cross-project-contract-warnings.md).
 
 ## Verification
 
@@ -507,7 +508,8 @@ The platform-first loop above is shape-agnostic. The same Steps 1-7 drive three 
 - [Workspace tiers](../explanation/workspace-tiers.md) -- the legacy-source vs registered-project clone distinction the loop relies on.
 - [The Layered Stack](../explanation/three-layer-stack.md) -- where `/change:plan` (default + `orchestrate` modes) and `/change:execute` sit in the layered model.
 - [`/change:plan`](../reference/change-skills/plan.md) -- Layer 3 plan authoring skill.
-- [`/change:execute`](../reference/change-skills/execute.md) -- Layer 2 plan driver, including the cross-project contract check (RFC-9 §3B).
+- [`/change:execute`](../reference/change-skills/execute.md) -- Layer 2 plan driver.
+- [`specify compatibility`](../reference/cli/compatibility.md) -- RM-04 consumer-impact contract report.
 - [`specify init`](../reference/cli/init.md) -- the `--hub` flag.
 - [`specify registry`](../reference/cli/registry.md) -- `add` / `remove` / `show` / `validate`.
 - [`specify workspace`](../reference/cli/workspace.md) -- `sync` / `status` / `push`.

@@ -35,20 +35,6 @@ Items are ordered by intended sequencing and identified as `RM-NN`. Earlier item
 
 ### Near Term
 
-#### RM-04: Cross-project compatibility classification
-
-**Goal:** Reconcile the retired consumer-compatibility vocabulary with the current contract validation gate, then expose a classified compatibility report.
-**Seed:** `plugins/contract/references/cross-project-compatibility.md` and its `change-kind` vocabulary.
-**Classification:** `additive`, `breaking`, `ambiguous`, or `unverifiable`.
-**Target surface:**
-
-```bash
-specify compatibility check
-specify compatibility report --change <name>
-```
-
-**Scope:** Contract-first and dependency-aware. This does not replace the current `specify tool run contract` baseline validation gate; it adds a consumer-impact classifier after the stale cross-project reference docs are reconciled. Change-level gates land later.
-
 #### RM-05: Multi-repo acceptance suite expansion
 
 **Goal:** Extend the acceptance fixture to blocked, failed, interrupted, and stale-workspace recovery paths.

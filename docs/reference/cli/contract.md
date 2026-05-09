@@ -62,6 +62,8 @@ Field semantics:
 
 The envelope is byte-compatible with the retired in-binary contract validator for successful validator invocation and findings cases. Resolver, permission, or runtime failures come from `specify tool run` and use the standard Specify error envelope.
 
+This tool is the baseline-validation gate only. It does not compare producer contracts against consumer workspace views. Use `specify compatibility check` or `specify compatibility report --change <name>` for RM-04 consumer-impact classification.
+
 ## Distribution
 
 The contracts capability ships `capabilities/contracts/tools.yaml`, a sidecar declaration next to `capability.yaml`. That sidecar pins the `contract` tool version, `source`, SHA-256 digest, and read-only permission on `$PROJECT_DIR/contracts`.

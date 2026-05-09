@@ -168,7 +168,7 @@ The former `contracts` plugin shipped three intent-named skills (`writer`, `vali
 |---|---|
 | `writer`, `validator`, `importer` | `/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema` |
 
-Each new skill handles author / import / verify intents internally. The former validator's `--mode {single, cross-project}` flag becomes an internal verifier option per format. `/change:execute`'s post-merge cross-project compatibility check now picks the format-appropriate skill (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema`) and threads the verifier intent with `--mode cross-project`.
+Each new skill handles author / import / verify intents internally. The former validator's `--mode {single, cross-project}` flag becomes an internal verifier option per format. The `cross-project` verifier mode is now the merge-time baseline validator delegate over `specify tool run contract`; consumer-impact classification lives under `specify compatibility`.
 
 ### Removed
 
@@ -293,12 +293,12 @@ The `contracts` brief in the define pipeline runs alignment validation against t
 - Reference: [Contract plugin](../reference/plugins/contract.md), [Contracts capability](../reference/capabilities/contracts.md), [Artifact Format -> Contracts](../reference/artifact-format.md#contract-artifacts-api-shape)
 - How-to: [Work with Contracts Across Repos](../how-to/cross-repo-contracts.md)
 
-## Cross-project contract validation (RFC-9 ?3B)
+## Cross-project compatibility classification (RM-04)
 
-Post-merge, `/change:execute` runs a cross-project compatibility check: for each contract the producer `produces`, find every consumer that `consumes` it and run the format-appropriate verifier against each consumer's workspace clone (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema`, picking the verifier intent and threading `mode cross-project`). Incompatibilities surface as warnings on the merge transcript and on the merged change's `journal.yaml` (`cross-project-warning:` entries). **Warnings never halt the loop** -- the operator triages.
+`specify compatibility report --change <name>` and `specify compatibility check` classify producer-to-consumer contract deltas from `registry.yaml`, root `contracts/`, and `.specify/workspace/<consumer>/contracts/`. Findings are `additive`, `breaking`, `ambiguous`, or `unverifiable`; `compatibility check` exits validation-failed for every non-additive risk. `/change:execute` no longer owns journal or transcript warning side effects for this report.
 
-- How-to: [Resolve Cross-Project Contract Warnings](../how-to/resolve-cross-project-contract-warnings.md)
-- Troubleshooting: [Cross-project contract warnings on the merge transcript](../appendices/troubleshooting.md#cross-project-contract-warnings-on-the-merge-transcript)
+- How-to: [Resolve Cross-Project Compatibility Findings](../how-to/resolve-cross-project-contract-warnings.md)
+- CLI: [specify compatibility](../reference/cli/compatibility.md)
 
 ## `registry-amendment-required` outcome
 

@@ -65,21 +65,11 @@ Step 3/3: merge
   Residue committed: specify: residue <name> ✓             # only when non-baseline residue exists
   Status: done
 
-⚠ Cross-project contract warnings           # OPTIONAL — see multi-repo.md
-  Contract: <produced-contract-path>
-  Consumers checked: <N> (<consumer-name>[, ...])
-
-  <consumer-name> (.specify/workspace/<consumer-name>/):
-    - <change-kind> at <locator>
-    - <change-kind> at <locator>
-
-  Recorded <M> finding(s) to .specify/slices/<name>/journal.yaml.
-  Action needed: review the warning(s); the consumer change(s) may need a follow-up.
 ```
 
 The `(sources: [...])` suffix is rendered only when the plan entry has `sources`; greenfield entries become `### Processing: <name> (greenfield)`. The extract sub-step block inside `Step 1/3: define` is elided when the entry has no `sources`. The `Workspace:` line appears only for entries with `project`. The residue line is omitted when the non-baseline worktree is clean; render `Residue: clean; no commit.` in debug transcripts when showing shell-outs.
 
-The `⚠ Cross-project contract warnings` block is rendered only when (a) the merged slice touches a contract listed in the producer's `registry.yaml:contracts.produces` list AND (b) at least one consumer's verifier invocation (the format-appropriate `/contract:*` skill in its verifier intent, `--mode cross-project`) reports `summary.total-findings > 0`. See [multi-repo.md](multi-repo.md) for the full algorithm and the per-finding journal payload schema.
+Cross-project consumer-impact findings are no longer rendered by `/change:execute`; use `specify compatibility report --change <name>` or `specify compatibility check` for the classified RM-04 report.
 
 ### Failure
 

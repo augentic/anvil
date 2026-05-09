@@ -24,11 +24,16 @@ When a change touches more than one format (HTTP + events + shared schemas), the
 
 Running OpenAPI or AsyncAPI ahead of json-schema produces dangling `$ref`s and forces protocol authors to either inline definitions (forbidden in the baseline) or guess at shapes (forbidden by the no-invention rule).
 
-### Cross-project compatibility check (RFC-9 §3B)
+### Cross-project compatibility classification (RM-04)
 
-Each format skill's `verifier.md` accepts a `--mode cross-project` flag. The `/change:execute` driver invokes the appropriate verifier after every successful merge of a contract listed in the producer project's `registry.yaml:contracts.produces`. The verifier compares the merged contract against each consumer's tier-2 workspace clone (`.specify/workspace/<consumer>/contracts/...`) and emits a structured YAML report of breaking changes (removed fields, newly-required fields, narrowed types, removed endpoints / channels). Findings are non-fatal — the execute driver records them as `cross-project-warning:` entries in the merged slice's `journal.yaml` and renders a warning block in the merge transcript, but never halts the loop.
+The retired format-skill `cross-project` compatibility heuristic has been replaced by the CLI-owned compatibility surface:
 
-See each format skill's `verifier.md` (§Cross-project mode) and [`/change:execute` → §Cross-project contract check](../change/skills/execute/SKILL.md#cross-project-contract-check-rfc-9-3b) for the post-merge invocation contract. The shared `change-kind` vocabulary lives at [`references/cross-project-compatibility.md`](references/cross-project-compatibility.md).
+```bash
+specify compatibility check
+specify compatibility report --change <name>
+```
+
+The existing contracts merge gate still invokes `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json` to validate the merged baseline's SemVer and `x-specify-id` rules. `specify compatibility` is a separate read-only report over `registry.yaml`, root `contracts/`, and `.specify/workspace/<consumer>/contracts/`; it classifies producer-to-consumer deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable`. The shared `change-kind` vocabulary lives at [`references/cross-project-compatibility.md`](references/cross-project-compatibility.md).
 
 ## References
 
@@ -43,6 +48,6 @@ Cross-format references shared by every format skill:
 - [Artifact Structure](references/artifact-structure.md) — `contracts/` layout, naming, change-level delta rules
 - [Baseline vs Delta](references/baseline-vs-delta.md) — three authorship patterns (contract-first / spec-first / contract-given), already-covered / new-or-modified / normalisation classification, opaque-file-replacement merge contract
 - [Import / Upgrade Policy](references/import-upgrade-policy.md) — format detection, per-format upgrade targets (Swagger 2.0 → OpenAPI 3.1; AsyncAPI 2.x → 3.0; JSON Schema Draft 4 / 6 / 7 / 2019-09 → 2020-12), lossless-vs-lossy decisions, when to refuse and ask the operator
-- [Report Shape](references/report-shape.md) — single-mode markdown and cross-project YAML report formats, severity levels, locator format, exit semantics
-- [Cross-Project Compatibility](references/cross-project-compatibility.md) — `change-kind` enumeration, consumer-view resolution, breaking-change classification policy
+- [Report Shape](references/report-shape.md) — single-mode markdown, baseline validator JSON, compatibility report JSON, locator format, exit semantics
+- [Cross-Project Compatibility](references/cross-project-compatibility.md) — RM-04 classifications, `change-kind` enumeration, consumer-view resolution, breaking-change classification policy
 - [Contracts Codex](../../capabilities/contracts/codex/) — stable `IFACE-*` reviewer rules

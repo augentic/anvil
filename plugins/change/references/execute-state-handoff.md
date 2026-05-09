@@ -35,7 +35,6 @@ Phase skills own ordinary `question` and `failure` entries raised during define/
 - One `recovery` entry for each self-heal action that resolves or resumes an `in-progress` entry.
 - One `failure` entry for a branch-preparation failure during self-heal resume, only when the slice journal already exists.
 - One `failure` entry with `summary` prefix `registry-amendment-required:` before dropping a slice whose outcome carries a registry proposal payload.
-- One `failure` entry per cross-project contract finding, with `summary` prefix `cross-project-warning:`, after a successful routed merge.
 
 These entries preserve audit history. They do not drive phase or plan state transitions.
 

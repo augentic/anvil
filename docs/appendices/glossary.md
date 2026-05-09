@@ -59,8 +59,8 @@ Authorship pattern where a dedicated contract change defines interface shapes be
 **Contract-given**
 Authorship pattern where API contracts are imported from an external system or legacy API. The operator places the external files into the change's `contracts/` directory. `/change:plan` inserts import changes when a source is flagged as external.
 
-**Cross-project contract validation**
-The post-merge check `/change:execute` runs against the producer's `contracts.produces` list (RFC-9 Section 3B). For each produced contract, the driver finds consumer projects via `contracts.consumes`, runs the format-appropriate `/contract:*` skill (verifier intent, with `mode cross-project`) against each consumer's workspace clone, and writes any incompatibilities to the merged change's `journal.yaml` as `cross-project-warning:` entries. Warnings never halt the loop; the operator triages them.
+**Cross-project compatibility classification**
+The RM-04 CLI report produced by `specify compatibility report --change <name>` or `specify compatibility check`. It walks `registry.yaml`, matches `contracts.produces` to `contracts.consumes`, compares root producer contracts with consumer workspace views, and classifies findings as `additive`, `breaking`, `ambiguous`, or `unverifiable`.
 
 ## D
 
