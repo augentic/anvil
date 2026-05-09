@@ -96,11 +96,25 @@ The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolut
 
 The frontmatter rules in `.cursor/rules/project.mdc` and the body line-count ceilings in `scripts/checks.ts` are the floor — a SKILL.md that *passes* `make checks` can still be wasteful. These are the additional rules `make checks` enforces (or that review enforces until they're mechanised):
 
-1. **One Guardrails block per SKILL.md.** Scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Each SKILL.md gets a single `## Guardrails` (or `## Mode-specific guardrails`) section that consolidates the don'ts; everything else stays imperative.
-2. **No inline JSON output blocks ≥30 lines.** Long fenced ` ```json ` examples of CLI envelope shapes belong in [plugins/references/cli-output-shapes.md](plugins/references/cli-output-shapes.md), not in the skill body. The skill links to the reference and shows at most a stub. This is mechanically enforced by `checkInlineJsonBlocks` in `scripts/checks.ts`.
-3. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2.
+1. **One Guardrails block per SKILL.md.** Scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Each SKILL.md gets a single `## Guardrails` (or `## Mode-specific guardrails`) section that consolidates the don'ts; everything else stays imperative. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
+2. **No inline JSON output blocks ≥30 lines.** Long fenced ` ```json ` examples of CLI envelope shapes belong in [plugins/references/cli-output-shapes.md](plugins/references/cli-output-shapes.md), not in the skill body. The skill links to the reference and shows at most a stub. Mechanically enforced by `checkInlineJsonBlocks`.
+3. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by `checkNoFrontmatterRestatement`.
 4. **`Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose.
 5. **Trim deprecated migration prose every release.** "Pre-RFC-N this used to be …" / "Phase 3.7 renamed it …" / "the v1.x verb was …" lines belong in [docs/explanation/decision-log.md](docs/explanation/decision-log.md) and [docs/explanation/whats-new.md](docs/explanation/whats-new.md), not in the skill that operators read every day.
+6. **No RFC citations in skill bodies.** `RFC-N` references in prose train operators on how the system was *built*, not how it works *today*. Move them to a trailing `## References` block as `[RFC-N](rfcs/...)` links, or to [docs/explanation/decision-log.md](docs/explanation/decision-log.md). Mechanically enforced by `checkNoRfcCitationsInSkillBody`.
+7. **Cross-cutting guardrails live in [plugins/references/specify.md](plugins/references/specify.md).** Per-skill restatements of the same `.metadata.yaml` / slice-dir / plan-write rules drift over time. Each SKILL.md links — does not restate — them.
+8. **`## Phase outcome contract` is a single-line link, not a paragraph.** Replace the canonical opening prose with `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` Mechanically enforced by `checkNoPhaseOutcomeContractRestatement`.
+
+### Mechanical enforcement
+
+`make checks` runs [scripts/checks.ts](scripts/checks.ts). Per-predicate per-file baselines for the skill-body discipline live in [scripts/standards-allowlist.json](scripts/standards-allowlist.json); a live count strictly greater than its baseline fails CI. New files start clean (missing entries default to 0). Reductions are encouraged in any PR that touches a skill; raising a number requires a justification in the PR description.
+
+Predicates surfaced by Skills-1:
+
+- `checkNoRfcCitationsInSkillBody` — `RFC[- ]?\d+` in skill body, fenced code excluded, `rfcs/` archive links excluded.
+- `checkOneGuardrailsBlockPerSkill` — count of `## Guardrails` and `## Mode-specific guardrails` headings.
+- `checkNoPhaseOutcomeContractRestatement` — restated phase-outcome contract paragraph.
+- `checkNoFrontmatterRestatement` — frontmatter `description` value re-appearing under the first H2.
 
 ### Gotchas
 

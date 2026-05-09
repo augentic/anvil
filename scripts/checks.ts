@@ -127,6 +127,49 @@ function skillBodyLines(content: string): string[] | null {
   return lines;
 }
 
+function skillFrontmatter(content: string): Record<string, unknown> | null {
+  const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (!fmMatch) return null;
+  try {
+    const parsed = parseYaml(fmMatch[1]);
+    return typeof parsed === "object" && parsed !== null
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// Per-predicate per-file baselines for skill-body discipline.
+//
+// Skills-1: snapshot the current violation count per file. A live
+// count strictly greater than the baseline fails CI; missing entries
+// default to 0 (new files start clean). Baselines drop as Skills-2
+// migrates each skill body.
+// ──────────────────────────────────────────────────────────────
+
+type StandardsAllowlist = Record<string, Record<string, number>>;
+
+let standardsAllowlistCache: StandardsAllowlist | null = null;
+
+async function standardsAllowlist(): Promise<StandardsAllowlist> {
+  if (standardsAllowlistCache !== null) return standardsAllowlistCache;
+  const path = join(REPO_ROOT, "scripts", "standards-allowlist.json");
+  try {
+    const raw = await Deno.readTextFile(path);
+    standardsAllowlistCache = JSON.parse(raw) as StandardsAllowlist;
+  } catch {
+    standardsAllowlistCache = {};
+  }
+  return standardsAllowlistCache;
+}
+
+async function baselineFor(predicate: string, file: string): Promise<number> {
+  const all = await standardsAllowlist();
+  return all[predicate]?.[file] ?? 0;
+}
+
 // ──────────────────────────────────────────────────────────────
 // 2. No "109-point" claims remain
 // ──────────────────────────────────────────────────────────────
@@ -2381,6 +2424,138 @@ async function validateCodexRuleShape(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
+// Skill body discipline (Skills-1).
+//
+// noRfcCitationsInSkillBody, oneGuardrailsBlockPerSkill,
+// noPhaseOutcomeContractRestatement, noFrontmatterRestatement.
+// Each predicate counts violations per SKILL.md; baselines come from
+// scripts/standards-allowlist.json.
+// ──────────────────────────────────────────────────────────────
+
+const PHASE_OUTCOME_CONTRACT_OPENING = /Every phase (?:exits|ends) by stamping/i;
+const PHASE_OUTCOME_LINK = /references\/phase-outcome-contract\.md/;
+
+async function walkSkillFiles(): Promise<string[]> {
+  const out: string[] = [];
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+  for await (
+    const entry of walk(PLUGINS_DIR, { match: [/SKILL\.md$/], includeDirs: false })
+  ) {
+    if (await underSymlink(entry.path)) continue;
+    out.push(entry.path);
+  }
+  return out;
+}
+
+async function checkNoRfcCitationsInSkillBody(): Promise<void> {
+  const RFC_RE = /RFC[- ]?\d+/g;
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const lines = skillBodyLines(await Deno.readTextFile(path));
+    if (!lines) continue;
+    let count = 0;
+    let inFence = false;
+    for (const line of lines) {
+      if (line.startsWith("```")) {
+        inFence = !inFence;
+        continue;
+      }
+      if (inFence) continue;
+      const text = line.replace(/\[[^\]]*\]\([^)]*rfcs\/[^)]*\)/g, "");
+      const matches = text.match(RFC_RE);
+      if (matches) count += matches.length;
+    }
+    const baseline = await baselineFor("noRfcCitationsInSkillBody", rel);
+    if (count > baseline) {
+      fail(
+        `RFC citation in skill body: ${rel} — ${count} > baseline ${baseline} (move to a trailing ## References block or rfcs/ archive link)`,
+      );
+    }
+  }
+}
+
+async function checkOneGuardrailsBlockPerSkill(): Promise<void> {
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const lines = skillBodyLines(await Deno.readTextFile(path));
+    if (!lines) continue;
+    let guardrails = 0;
+    let modeGuardrails = 0;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed === "## Guardrails") guardrails++;
+      else if (trimmed === "## Mode-specific guardrails") modeGuardrails++;
+    }
+    if (guardrails > 1) {
+      fail(`Multiple ## Guardrails blocks in ${rel} (found ${guardrails}; expected ≤1)`);
+    }
+    if (modeGuardrails > 1) {
+      fail(
+        `Multiple ## Mode-specific guardrails blocks in ${rel} (found ${modeGuardrails}; expected ≤1)`,
+      );
+    }
+  }
+}
+
+async function checkNoPhaseOutcomeContractRestatement(): Promise<void> {
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const lines = skillBodyLines(await Deno.readTextFile(path));
+    if (!lines) continue;
+    const headingIndex = lines.findIndex((line) =>
+      line.trim() === "## Phase outcome contract"
+    );
+    if (headingIndex < 0) continue;
+    let bodyLines: string[] = [];
+    for (let i = headingIndex + 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith("## ")) break;
+      if (line.trim().length > 0) bodyLines.push(line);
+    }
+    const restated = bodyLines.some((line) =>
+      PHASE_OUTCOME_CONTRACT_OPENING.test(line)
+    );
+    const isLink = bodyLines.length === 1 && PHASE_OUTCOME_LINK.test(bodyLines[0]);
+    if (restated && !isLink) {
+      const baseline = await baselineFor("noPhaseOutcomeContractRestatement", rel);
+      if (baseline === 0) {
+        fail(
+          `Phase outcome contract restated in ${rel}; replace with a single-line link to references/phase-outcome-contract.md`,
+        );
+      }
+    }
+  }
+}
+
+async function checkNoFrontmatterRestatement(): Promise<void> {
+  for (const path of await walkSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    const content = await Deno.readTextFile(path);
+    const fm = skillFrontmatter(content);
+    const description = typeof fm?.description === "string" ? fm.description : null;
+    if (!description) continue;
+    const lines = skillBodyLines(content);
+    if (!lines) continue;
+    const firstH2Index = lines.findIndex((line) => line.startsWith("## "));
+    if (firstH2Index < 0) continue;
+    let body = "";
+    for (let i = firstH2Index + 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (line.startsWith("## ")) break;
+      body += line + " ";
+    }
+    if (body.includes(description.trim())) {
+      const baseline = await baselineFor("noFrontmatterRestatement", rel);
+      if (baseline === 0) {
+        fail(
+          `Frontmatter description restated under first H2 in ${rel}; lead with new prose, not a copy of the description.`,
+        );
+      }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // Run all checks
 // ──────────────────────────────────────────────────────────────
 
@@ -2416,6 +2591,10 @@ await Promise.all([
   checkPluginConsistency(),
   checkRetiredSlashCommands(),
   checkDeclaredToolEquivalentInvocations(),
+  checkNoRfcCitationsInSkillBody(),
+  checkOneGuardrailsBlockPerSkill(),
+  checkNoPhaseOutcomeContractRestatement(),
+  checkNoFrontmatterRestatement(),
 ]);
 
 console.log();
