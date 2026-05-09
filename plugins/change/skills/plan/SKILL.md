@@ -30,7 +30,7 @@ Author `plan.yaml` for a change by running the planning brief pipeline declared 
 
 Specify at authoring time is a three-layer stack — mirror of the execution stack documented in [`../execute/SKILL.md`](../execute/SKILL.md):
 
-1. **Plan CLI** (`specify change plan {create, add, amend, next, status, doctor, lock, transition, validate, archive}`) — the library-backed verbs that read and write `plan.yaml`. The single writer of the plan file, used by humans (Layer 1), `/change:execute` (Layer 2), and this skill (Layer 3) alike.
+1. **Plan CLI** (`specify change plan {create, add, amend, next, status, doctor, lock, transition, validate, archive}`) — the library-backed verbs that read and write `plan.yaml`. The shared single-writer rules live in [plan-single-writer.md](../../references/plan-single-writer.md).
 2. **Authoring skill** (`/change:plan`, this one) — the Layer 3 driver that runs the planning brief pipeline and shells out to `specify change plan add` for each accepted slice.
 3. **Driver skill** (`/change:execute`) — the Layer 2 automation that consumes the plan this skill authored.
 
@@ -38,7 +38,7 @@ The on-disk contracts the authoring skill depends on are:
 
 | File / directory | Owner | Role |
 |---|---|---|
-| `plan.yaml` | library (`Plan::{create, amend, transition, archive}`) | Ordered change list with per-entry status. `/change:plan` writes only via `specify change plan create` (step 2) and `specify change plan add` (step 3c). |
+| `plan.yaml` | library (`Plan::{create, amend, transition, archive}`) | Ordered change list with per-entry status; write boundaries are in [plan-single-writer.md](../../references/plan-single-writer.md). |
 | `.specify/plans/<name>/` | skill (planning briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify change plan archive` alongside the plan itself. |
 | `briefs/<capability>/{discovery,propose}.md` | skill (this directory) | Per-capability planning briefs the skill renders for steps 3(a) and 3(c). Bundled here under `briefs/omnia/` and `briefs/vectis/`; further capabilities ship their planning brief variant alongside. RFC-13 §3.11 moved these briefs out of `capability.yaml:pipeline.plan` (now rejected by the schema) — planning is orchestration, not capability-owned slice work. |
 
@@ -175,9 +175,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
 
 ## Single-writer invariant
 
-Every plan entry this skill writes goes through **`specify change plan add`**. The skill never edits `plan.yaml` directly, never rewrites existing entries, and never bundles multiple entries into a batch write. This preserves the single-writer invariant: exactly two classes of writes touch `plan.yaml` (entry writes via `Plan::{create, amend}` and status writes via `Plan::transition`), and both route through the library.
-
-The invariant extends to `extend`: additional entries are added via `specify change plan add`; pre-existing entries are left untouched. The only path that calls `specify change plan amend` is step 3(d) Assignment, which writes `--project` on multi-repo plans. The skill never calls `specify change plan transition` — that verb belongs to the running change (humans in Layer 1, `/change:execute` in Layer 2), not to the authoring step.
+Every plan write this skill performs follows [plan-single-writer.md](../../references/plan-single-writer.md): create the shell through `specify change plan create`, add accepted entries through `specify change plan add`, amend only assignment fields through `specify change plan amend`, and never call `specify change plan transition` from the authoring step.
 
 ## Working directory (`.specify/plans/<name>/`)
 
@@ -249,7 +247,7 @@ Under `orchestrate dry-run`, the umbrella is observation-only end-to-end: the au
 - **Skip `specify change plan validate`.** Never. Step 4 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero.
 - **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/change:execute`.** Never. `/change:plan` only invokes the planning briefs bundled with this skill under `briefs/<capability>/`, plus the `specify change plan` CLI for scaffolding, entry creation, and validation.
 - **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/change:execute`; authoring runs outside that lock.
-- **Write `plan.yaml` directly.** Never. Every write goes through `specify change plan create` (step 2, skipped under `extend`), `specify change plan add` (step 3c, one call per accepted slice), or `specify change plan amend` (step 3d, `--project` assignment on multi-repo plans).
+- **Write `plan.yaml` directly.** Never. Every write follows [plan-single-writer.md](../../references/plan-single-writer.md).
 - **Clone git URLs from this skill.** Never for **discovery** inputs: `source` git URLs are passed through to `/spec:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync` (Layer 1 CLI), invoked only in the sync-peers step when `len(registry.projects) > 1`.
 - **Merge PRs.** Never. `specify workspace push` opens or updates PRs; the operator merges them through the forge UI or a hand-run `gh pr merge`; `specify change finalize` only verifies that remote state.
 - **Author propose brief bodies.** Never. The propose brief body is owned by the capability; the skill only drives the accept / edit / reject loop against whatever the brief emits.
@@ -257,7 +255,7 @@ Under `orchestrate dry-run`, the umbrella is observation-only end-to-end: the au
 
 The state the skill mutates:
 
-1. `plan.yaml` via `specify change plan create` (step 2; skipped under `extend`), `specify change plan add` (step 3c; once per accepted slice), and `specify change plan amend` (step 3d; `--project` assignment on multi-repo plans).
+1. `plan.yaml` through the CLI verbs allowed by [plan-single-writer.md](../../references/plan-single-writer.md).
 2. `.specify/plans/<slice-name>/discovery.md` written by the discovery brief (step 3a).
 3. `.specify/plans/<slice-name>/proposal.md` written by the propose brief (step 3c).
 4. `.specify/plans/<slice-name>/workspace.md` written by step 3(b) when the registry declares more than one project.
@@ -266,7 +264,7 @@ No other on-disk state is written by `/change:plan` itself.
 
 ## Guardrails
 
-- Never hand-edit `plan.yaml`. Route every write through `specify change plan create` (step 2), `specify change plan add` (step 3c), or `specify change plan amend` (step 3d, `--project` assignment). The single-writer invariant depends on it.
+- Never hand-edit `plan.yaml`; follow [plan-single-writer.md](../../references/plan-single-writer.md).
 - Never skip `specify change plan validate` (step 4). A plan that ships to `/change:execute` without a clean validate is a regression.
 - Validate `<slice-name>` before any filesystem read or CLI shell-out. A bad name should never leave a half-written plan behind.
 - For `dry-run` specifically: the skill MUST NOT shell out to `specify change plan create`, `specify change plan add`, `specify change plan amend`, or `specify change plan transition`; MUST NOT create `.specify/plans/<name>/`; MUST NOT write `discovery.md` or any other file under `.specify/`. The discovery brief's input-reading side still runs so the stdout inventory preview is real.

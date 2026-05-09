@@ -20,7 +20,7 @@ Define a new slice - create it and generate all artifacts in one step.
 
 When ready to implement, run `/spec:build`.
 
-When working plan-driven (a `plan.yaml` exists), `specify change plan next` can be run to pick the next eligible entry, and `specify change plan transition <name> in-progress` claims it before `/spec:define` starts. If this skill uncovers a neighbouring slice that should be tracked (e.g. a bug fix spotted during extraction), shell out to `specify change plan add <name> ...` — it is the only supported way to add a new entry. Use `specify change plan amend <name> ...` to edit non-status fields on the active or a pending entry; `status` stays off-limits to `amend` by design.
+When working plan-driven (a `plan.yaml` exists), the active entry is claimed before `/spec:define` starts. If this skill uncovers a neighbouring slice or dependency that should be tracked, mutate the plan only through the commands allowed by the shared [phase outcome contract](../../references/phase-outcome-contract.md).
 
 Deterministic bookkeeping — name validation, `.metadata.yaml` writes, capability resolution, pipeline topology, touched-specs scanning, overlap detection — is delegated to the `specify` CLI. This skill only drives the agent-side work: eliciting intent from the user, reading brief bodies, and writing the artifact files those briefs describe.
 
@@ -60,16 +60,7 @@ The authoritative contract for how `/change:execute` builds these flag values li
 
 ## Phase outcome contract
 
-This skill is the **define** phase of the `/change:execute` driver loop.
-The shared phase contract — outcome values, journal kinds, plan-mutation rules,
-the verbatim-`summary` rule, and the success/failure/deferred semantics — is
-authored once at [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md).
-
-This phase's outcome-specific deltas:
-
-- `success` — every define brief produced its `generates` artefact and there are no `[unknown]` blockers; ready for `/spec:build`.
-- `failure` — a brief halted before all artefacts were written (extraction's fixture-capture crashed, a writer brief could not converge after the repair budget).
-- `deferred` — upstream input is missing or ambiguous (source/baseline conflict, unclear scope, requirement needs human judgement).
+This skill is the **define** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including define's per-phase deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
 
 ---
 

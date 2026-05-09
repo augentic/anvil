@@ -1,6 +1,6 @@
 # Multi-repo routing and cross-project contract check
 
-For multi-repo changes the driver keeps the coordinator repo as the owner of `plan.yaml`, `.specify/plan.lock`, and terminal status transitions. For each plan entry with `project`, it resolves and prepares that project's materialised workspace slot, `chdir`s into the slot only for phase execution, then restores CWD before writing the terminal plan transition. After a successful merge, the driver commits any non-baseline residue before it can mark the entry `done`, then runs the non-fatal contract compatibility check against every consumer workspace.
+For multi-repo changes the driver keeps the coordinator repo as the owner of `plan.yaml`, `.specify/plan.lock`, and terminal status transitions. For each plan entry with `project`, it resolves and prepares that project's materialised workspace slot, `chdir`s into the slot only for phase execution, then restores CWD before writing the terminal plan transition. After a successful merge, the driver commits any non-baseline residue before it can mark the entry `done`, then runs the non-fatal contract compatibility check against every consumer workspace. Shared plan/outcome/journal ownership rules live in [execute-state-handoff.md](../../references/execute-state-handoff.md).
 
 These clones are the read-write **tier-2** workspace; they outlive the change and are pushed to remotes by `specify workspace push`. The read-only **tier-1** legacy-source clones used by `/spec:analyze` at plan time are a separate concern entirely. See [Workspace Tiers](../../../../docs/explanation/workspace-tiers.md) for the full contrast.
 
@@ -110,7 +110,7 @@ YAML
 )"
 ```
 
-The journal entry uses the existing `failure` kind (per the journal contract in `specify-cli/crates/change/src/journal.rs` — `EntryKind::{Question, Failure, Recovery}`). The summary's `cross-project-warning:` prefix is the canonical marker that this entry is a §3B finding rather than an in-loop phase failure; the structured payload lives in `--context`. No new `EntryKind` variant is introduced; readers grep `summary` for the prefix when they need to filter.
+The append follows the driver-owned journal rule in [execute-state-handoff.md](../../references/execute-state-handoff.md): it uses the existing `failure` kind, the `cross-project-warning:` summary prefix marks §3B findings, and the structured payload lives in `--context`. No new `EntryKind` variant is introduced.
 
 The `--context` payload schema is stable and round-trippable:
 

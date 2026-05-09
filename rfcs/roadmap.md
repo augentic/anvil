@@ -53,26 +53,11 @@ specify compatibility report --change <name>
 
 **Goal:** Extend the acceptance fixture to blocked, failed, interrupted, and stale-workspace recovery paths.
 
-#### RM-06: RFC-13 rename-tail cleanup
-
-**Goal:** Remove transition shims before they become load-bearing.
-**Output:** a release that deletes the `specify migrate slice-layout` and `specify migrate change-noun` CLI shims from `specify-cli`, and deletes the `/spec:plan` / `/spec:execute` deprecation shims from `plugins/spec/skills/`.
-
 #### RM-07: RFC-4 Option 1: typed skill expression
 
-**Goal:** Add deterministic structural validation for skill authoring inside `specify check`.
-**Checks:** frontmatter schema, reference resolution, variable consistency, and cross-skill directive validation.
+**Goal:** Add deterministic structural validation for skill authoring inside `specify check`.  
+**Checks:** frontmatter schema, reference resolution, variable consistency, and cross-skill directive validation.  
 **Defers:** typed YAML manifests and a Rust DSL until skill count justifies them.
-
-#### RM-08: Skill-hygiene refactors
-
-**Goal:** Compress always-loaded surface area and remove duplicated skill prose.
-**Scope:** factor repeated phase-outcome, journal, and plan-mutation instructions into shared references while preserving stable Specify artifact identifiers.
-
-#### RM-09: Migrate remaining first-party host helpers to declared WASI tools
-
-**Goal:** Move remaining first-party host helpers behind `specify tool run` where the cost/benefit is favorable.
-**Depends on:** the `specify check` port, which can enforce `skill.invokes-host-binary-with-declared-tool-equivalent`.
 
 ---
 
@@ -196,40 +181,6 @@ specify execute resume <run-id>
 #### RM-22: Hosted observability dashboards
 
 **Goal:** Build hosted dashboards on top of local structured workflow events without making local workflows depend on hosted infrastructure.
-
----
-
-### Completed
-
-**RM-01:** Multi-repo acceptance fixture
-
-**Goal:** Prove a realistic multi-slice, multi-repo flow.
-**Covers:** plan generation, registry routing, dependent slice execution, branch preparation, workspace sync, residue and baseline commit behavior, push and PR/MR handoff, and finalize after external merge.
-**Output:** an automated or semi-automated suite against local fixture repositories with fake or recorded forge behavior. Recovery paths land in *Multi-repo acceptance suite expansion*.
-**Executable proof:** `specify-cli` repo's `tests/cross_repo.rs`.
-
-#### RM-02: `AGENTS.md` generation under proposed `specify context`
-
-**Goal:** Generate concise, deterministic, refreshable repository context.
-**Target surface:**
-
-```bash
-specify context generate
-specify context check
-```
-
-**Inputs:** Specify project metadata, capability references, repo inspection, and registry data.  
-**Output:** short `AGENTS.md` guidance covering runtime, tests, linting, navigation, conventions, boundaries, and dependencies. The proposed `specify context check` warns when repo changes imply a refresh.  
-**Why now:** High direct user value, and it unblocks stale-context checks in `specify review`.
-
-#### RM-03: Codex rule format
-
-**Goal:** Give generators and reviewers stable, citable engineering rules.
-**Seed:** `plugins/references/review-checks.md` and its existing `UNI-`* catalogue.
-**Each rule carries:** stable id, concise trigger, normative guidance, examples or references where useful, and applicability metadata.
-**Implemented:** Markdown/YAML-frontmatter V1 schema; `specify codex {list, show, validate, export --format json}`; deterministic project resolution; default `UNI-001` through `UNI-021` migration; first-cut Omnia, Contracts, and Vectis codex packs; first-party codex validation in `make checks`; reviewer citation guidance for stable `rule_id` values.
-**Storage answer:** First-party rules live at `capabilities/<name>/codex/`. The foundational `default` capability carries universal rules and is cached alongside selected first-party capabilities during `specify init`. Repo-root `codex/` is the local overlay. `.specify/codex/` remains reserved for generated cache or lock state. Shared catalog resolution is a reserved V1 hook with no config surface yet.
-**Follow-ups:** RM-10 begins by defining the review finding schema that consumes codex rule IDs and provenance, then implements CI-native review against the resolved codex. RM-16 may port first-party codex shape validation into `specify check`.
 
 ---
 
