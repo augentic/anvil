@@ -78,4 +78,3 @@ Behaviour:
 - [specify change](change.md) -- operator brief at `change.md`.
 - [specify workspace](workspace.md) -- materialise registry projects under `.specify/workspace/<peer>/`.
 - [Configuration Files → registry.yaml](../configuration.md#registryyaml) -- file format reference.
-- [Migrating CLI v1](../../explanation/migrating-cli-v1.md) -- rename map for the cleanup.

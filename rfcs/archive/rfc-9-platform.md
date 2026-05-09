@@ -2,7 +2,7 @@
 
 > Status: Implemented · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](rfc-2-execution.md), [RFC-3a](rfc-3a-monoliths.md), [RFC-3b](rfc-3b-platform.md), [RFC-8](rfc-8-api-contracts.md)
 >
-> This RFC is written against the v1 CLI surface ([migration map](../../docs/explanation/migrating-cli-v1.md)). Every verb shape referenced below — `specify change {validate, outcome set, journal append}`, top-level `specify {registry, initiative}`, and so on — assumes the post-v1 noun groupings. Pre-v1 shapes (`specify change phase-outcome`, `specify initiative brief …`, `specify initiative registry …`) no longer exist.
+> This RFC is written against the v1 CLI surface. Every verb shape referenced below — `specify change {validate, outcome set, journal append}`, top-level `specify {registry, initiative}`, and so on — assumes the post-v1 noun groupings. Pre-v1 shapes (`specify change phase-outcome`, `specify initiative brief …`, `specify initiative registry …`) no longer exist.
 >
 > **v2 layout note**: this RFC predates the v2 layout move (specify-cli `0.2.0`). Every reference below to `.specify/registry.yaml`, `.specify/plan.yaml`, `.specify/initiative.md`, and `.specify/contracts/` should be read as `registry.yaml`, `plan.yaml`, `initiative.md`, and `contracts/` at the repo root in current code. The hub topology, the `specify init --hub` flag, the registry add/remove verbs, and the `specify initiative finalize` archive sweep all behave identically — only the file locations changed. See [docs/explanation/whats-new.md](../../docs/explanation/whats-new.md) for the migration story.
 >
@@ -272,7 +272,7 @@ Internally, the skill drives the canonical loop:
 
 **Composition discipline.** The umbrella skill *only* invokes other Layer 1/2/3 skills and CLI verbs — no new logic. Every step has a manual-fallback equivalent (the existing skill or CLI command) so the operator can always drop down a layer. This is the same composition principle RFC-2 applied to `/spec:execute`'s relationship with `/spec:define` / `/spec:build` / `/spec:merge`.
 
-**Verb-naming discipline.** Compose using v1 verb names verbatim — `specify change {validate, outcome set, journal append}`, top-level `specify {registry, initiative}`, and so on. The pre-v1 shapes (`specify change phase-outcome`, `specify change journal-append`, `specify initiative brief …`, `specify initiative registry …`) no longer exist. When this skill lands, double-check every shell-out against the [v1 migration map](../../docs/explanation/migrating-cli-v1.md); muscle memory for `phase-outcome` in particular dies hard.
+**Verb-naming discipline.** Compose using v1 verb names verbatim — `specify change {validate, outcome set, journal append}`, top-level `specify {registry, initiative}`, and so on. The pre-v1 shapes (`specify change phase-outcome`, `specify change journal-append`, `specify initiative brief …`, `specify initiative registry …`) no longer exist.
 
 **Three-shape acceptance criteria.** A successful 2C lands when the skill cleanly handles all three initiative shapes (Motivation §*The three initiative shapes*). The 1C tutorial is extended with a transcript per shape: a migrate-legacy transcript with `--source monolith=<git-url>`, a new-feature transcript with `--from ./docs/`, and an update-existing transcript with neither.
 
@@ -426,5 +426,4 @@ The other items (1A/1B/1E housekeeping, 3B coherence, 4B plan doctor, 4D fixture
 - [RFC-3b: Platform Changes](rfc-3b-platform.md)
 - [RFC-8: API Contracts](rfc-8-api-contracts.md)
 - [Three-Layer Stack](../../docs/explanation/three-layer-stack.md)
-- [Migrating to CLI v1](../../docs/explanation/migrating-cli-v1.md)
 

@@ -334,6 +334,136 @@ async function checkCapabilityIntegrity(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
+// 4b. First-party declared tools are pinned for release use (RM-09)
+// ──────────────────────────────────────────────────────────────
+
+interface ToolDeclaration {
+  name?: unknown;
+  version?: unknown;
+  source?: unknown;
+  sha256?: unknown;
+  permissions?: {
+    read?: unknown;
+    write?: unknown;
+  };
+}
+
+interface ToolManifest {
+  tools?: ToolDeclaration[];
+}
+
+interface ExpectedToolDeclaration {
+  capability: string;
+  name: string;
+  source: string;
+  read: string[];
+  write: string[];
+}
+
+const SHA256_RE = /^[a-f0-9]{64}$/;
+
+const EXPECTED_FIRST_PARTY_TOOLS: ExpectedToolDeclaration[] = [
+  {
+    capability: "contracts",
+    name: "contract",
+    source: "https://github.com/augentic/specify-cli/releases/download/v0.2.0/contract.wasm",
+    read: ["$PROJECT_DIR/contracts"],
+    write: [],
+  },
+  {
+    capability: "vectis",
+    name: "vectis-validate",
+    source: "https://github.com/augentic/specify-cli/releases/download/v0.2.0/vectis-validate.wasm",
+    read: ["$PROJECT_DIR/.specify", "$PROJECT_DIR/design-system"],
+    write: [],
+  },
+  {
+    capability: "vectis",
+    name: "vectis-scaffold",
+    source: "https://github.com/augentic/specify-cli/releases/download/v0.2.0/vectis-scaffold.wasm",
+    read: ["$PROJECT_DIR", "$CAPABILITY_DIR"],
+    write: ["$PROJECT_DIR"],
+  },
+];
+
+function stringArray(value: unknown): string[] | null {
+  if (!Array.isArray(value)) return null;
+  if (!value.every((entry) => typeof entry === "string")) return null;
+  return value;
+}
+
+function sameStringArray(actual: unknown, expected: string[]): boolean {
+  const values = stringArray(actual);
+  if (!values || values.length !== expected.length) return false;
+  return values.every((value, index) => value === expected[index]);
+}
+
+async function checkFirstPartyToolDeclarations(): Promise<void> {
+  const declarationsByCapability = new Map<string, Map<string, ToolDeclaration>>();
+
+  for (const expected of EXPECTED_FIRST_PARTY_TOOLS) {
+    if (declarationsByCapability.has(expected.capability)) continue;
+    const manifestPath = join(CAPABILITIES_DIR, expected.capability, "tools.yaml");
+    const rel = relative(REPO_ROOT, manifestPath);
+    let manifest: ToolManifest;
+    try {
+      manifest = parseYaml(await Deno.readTextFile(manifestPath)) as ToolManifest;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      fail(`First-party tool declaration: ${rel} — cannot read or parse: ${msg}`);
+      continue;
+    }
+
+    const tools = Array.isArray(manifest.tools) ? manifest.tools : [];
+    declarationsByCapability.set(
+      expected.capability,
+      new Map(
+        tools
+          .filter((tool) => tool && typeof tool === "object")
+          .map((tool) => [String((tool as ToolDeclaration).name), tool as ToolDeclaration]),
+      ),
+    );
+  }
+
+  for (const expected of EXPECTED_FIRST_PARTY_TOOLS) {
+    const rel = `capabilities/${expected.capability}/tools.yaml`;
+    const tool = declarationsByCapability.get(expected.capability)?.get(expected.name);
+    if (!tool) {
+      fail(
+        `First-party tool declaration: ${rel} — missing tool '${expected.name}'`,
+      );
+      continue;
+    }
+
+    if (tool.version !== "0.2.0") {
+      fail(
+        `First-party tool declaration: ${rel} — '${expected.name}' must use release version 0.2.0`,
+      );
+    }
+    if (tool.source !== expected.source) {
+      fail(
+        `First-party tool declaration: ${rel} — '${expected.name}' source must be '${expected.source}'`,
+      );
+    }
+    if (typeof tool.sha256 !== "string" || !SHA256_RE.test(tool.sha256)) {
+      fail(
+        `First-party tool declaration: ${rel} — '${expected.name}' must include a lowercase SHA-256 pin`,
+      );
+    }
+    if (!sameStringArray(tool.permissions?.read, expected.read)) {
+      fail(
+        `First-party tool declaration: ${rel} — '${expected.name}' read permissions must be ${JSON.stringify(expected.read)}`,
+      );
+    }
+    if (!sameStringArray(tool.permissions?.write, expected.write)) {
+      fail(
+        `First-party tool declaration: ${rel} — '${expected.name}' write permissions must be ${JSON.stringify(expected.write)}`,
+      );
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // 5. Symlink targets resolve
 // ──────────────────────────────────────────────────────────────
 
@@ -866,6 +996,112 @@ async function checkRetiredSlashCommands(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
+// 6i. Retired first-party host helpers stay behind declared tools (RM-09)
+// ──────────────────────────────────────────────────────────────
+
+interface RetiredHelperPattern {
+  token: string;
+  pattern: RegExp;
+  replacement: string;
+}
+
+const DECLARED_TOOL_EQUIVALENT_RULE =
+  "skill.invokes-host-binary-with-declared-tool-equivalent";
+
+const RETIRED_HELPER_PATTERNS: RetiredHelperPattern[] = [
+  {
+    token: "specify-contract-validate",
+    pattern: /\bspecify-contract-validate\b/,
+    replacement: "specify tool run contract -- <BASELINE_DIR> --format json",
+  },
+  {
+    token: "specify-contract",
+    pattern: /\bspecify-contract\b(?!-validate)/,
+    replacement: "specify tool run contract -- <BASELINE_DIR> --format json",
+  },
+  {
+    token: "specify-vectis validate",
+    pattern: /\bspecify-vectis\s+validate\b/,
+    replacement: "specify tool run vectis-validate -- <mode> [path]",
+  },
+  {
+    token: "specify vectis validate",
+    pattern: /\bspecify\s+vectis\s+validate\b/,
+    replacement: "specify tool run vectis-validate -- <mode> [path]",
+  },
+  {
+    token: "specify-vectis init",
+    pattern: /\bspecify-vectis\s+init\b/,
+    replacement: "specify tool run vectis-scaffold -- core <app-name>",
+  },
+  {
+    token: "specify vectis init",
+    pattern: /\bspecify\s+vectis\s+init\b/,
+    replacement: "specify tool run vectis-scaffold -- core <app-name>",
+  },
+  {
+    token: "specify-vectis add-shell",
+    pattern: /\bspecify-vectis\s+add-shell\b/,
+    replacement: "specify tool run vectis-scaffold -- ios|android <app-name>",
+  },
+  {
+    token: "specify vectis add-shell",
+    pattern: /\bspecify\s+vectis\s+add-shell\b/,
+    replacement: "specify tool run vectis-scaffold -- ios|android <app-name>",
+  },
+];
+
+async function activeBriefAndSkillFiles(): Promise<string[]> {
+  const files: string[] = [];
+
+  for await (
+    const entry of walk(CAPABILITIES_DIR, {
+      exts: [".md"],
+      includeDirs: false,
+    })
+  ) {
+    if (await underSymlink(entry.path)) continue;
+    const parts = relative(CAPABILITIES_DIR, entry.path).split("/");
+    if (parts.length >= 3 && parts[1] === "briefs") files.push(entry.path);
+  }
+
+  const pluginsDir = join(REPO_ROOT, "plugins");
+  for await (
+    const entry of walk(pluginsDir, {
+      exts: [".md"],
+      includeDirs: false,
+    })
+  ) {
+    if (await underSymlink(entry.path)) continue;
+    const parts = relative(pluginsDir, entry.path).split("/");
+    if (parts.length >= 3 && parts[1] === "skills") files.push(entry.path);
+  }
+
+  return files.sort();
+}
+
+async function checkDeclaredToolEquivalentInvocations(): Promise<void> {
+  for (const path of await activeBriefAndSkillFiles()) {
+    const rel = relative(REPO_ROOT, path);
+    let content: string;
+    try {
+      content = await Deno.readTextFile(path);
+    } catch {
+      continue;
+    }
+    const lines = content.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      for (const helper of RETIRED_HELPER_PATTERNS) {
+        if (!helper.pattern.test(lines[i])) continue;
+        fail(
+          `${DECLARED_TOOL_EQUIVALENT_RULE}: ${rel}:${i + 1} -- '${helper.token}' has a declared-tool equivalent; use \`${helper.replacement}\``,
+        );
+      }
+    }
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
 // 7. Skill reference link resolution
 // ──────────────────────────────────────────────────────────────
 
@@ -1133,124 +1369,7 @@ async function checkPluginConsistency(): Promise<void> {
 }
 
 // ──────────────────────────────────────────────────────────────
-// 11. Retired CLI verbs do not appear in skills or docs
-//     (see docs/explanation/migrating-cli-v1.md for the rename map)
-// ──────────────────────────────────────────────────────────────
-
-interface DenyPattern {
-  pattern: RegExp;
-  hint: string;
-}
-
-async function checkRetiredCliVerbs(): Promise<void> {
-  // Files that intentionally reference the old verbs (rename map, narrative
-  // explanation of the cleanup). These pages are exempt from the deny list.
-  const ALLOWLIST = new Set<string>([
-    "docs/explanation/migrating-cli-v1.md",
-    "docs/reference/cli/change.md",
-    "docs/reference/cli/slice.md",
-    "docs/reference/cli/plan.md",
-    "docs/reference/cli/registry.md",
-    "docs/reference/cli/status.md",
-  ]);
-
-  const PATTERNS: DenyPattern[] = [
-    {
-      pattern: /\bspecify validate /,
-      hint: "use `specify slice validate <name>`",
-    },
-    {
-      pattern: /\bspecify merge /,
-      hint: "use `specify slice merge run <name>`",
-    },
-    {
-      pattern: /\bspecify spec /,
-      hint:
-        "use `specify slice merge {preview, conflict-check}` (the `spec` group is retired)",
-    },
-    {
-      pattern: /\bspecify task /,
-      hint:
-        "use `specify slice task {progress, mark}` (the `task` group is retired)",
-    },
-    {
-      pattern: /\bspecify initiative brief\b/,
-      hint:
-        "use `specify change {create, show}` (the `initiative` family was renamed to `change` by RFC-13 §3.5)",
-    },
-    {
-      pattern: /\bspecify initiative registry\b/,
-      hint: "use `specify registry {show, validate}`",
-    },
-    {
-      pattern: /\bspecify change phase-outcome\b/,
-      hint:
-        "use `specify slice outcome set ...` (per-loop verbs moved from `change` to `slice` by RFC-13 §3.2)",
-    },
-    {
-      pattern: /\bspecify change journal-append\b/,
-      hint:
-        "use `specify slice journal append ...` (per-loop verbs moved from `change` to `slice` by RFC-13 §3.2)",
-    },
-    {
-      // The bare `specify slice outcome <name>` form (no `set`/`show` after
-      // `outcome`) is ambiguous after the cleanup. Reads must use `outcome
-      // show`; writes must use `outcome set`.
-      pattern: /\bspecify slice outcome (?!set\b|show\b)/,
-      hint:
-        "use `specify slice outcome show <name>` to read or `specify slice outcome set <name> <phase> <outcome> ...` to write",
-    },
-    {
-      // Likewise for the bare `specify slice journal <name>` form.
-      pattern: /\bspecify slice journal (?!append\b|show\b)/,
-      hint:
-        "use `specify slice journal show <name>` to read or `specify slice journal append <name> <phase> <kind> ...` to write",
-    },
-  ];
-
-  const SCAN_ROOTS = [
-    join(REPO_ROOT, "plugins", "spec", "skills"),
-    join(REPO_ROOT, "plugins", "change", "skills"),
-    join(REPO_ROOT, "docs"),
-  ];
-
-  for (const root of SCAN_ROOTS) {
-    for await (
-      const entry of walk(root, {
-        exts: [".md"],
-        includeDirs: false,
-      })
-    ) {
-      if (await underSymlink(entry.path)) continue;
-      const rel = relative(REPO_ROOT, entry.path);
-      if (ALLOWLIST.has(rel)) continue;
-
-      let content: string;
-      try {
-        content = await Deno.readTextFile(entry.path);
-      } catch {
-        continue;
-      }
-
-      const lines = content.split("\n");
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        for (const { pattern, hint } of PATTERNS) {
-          if (pattern.test(line)) {
-            fail(
-              `Retired CLI verb in ${rel}:${
-                i + 1
-              } -- ${line.trim()} -- ${hint}`,
-            );
-          }
-        }
-      }
-    }
-  }
-}
-
-// ──────────────────────────────────────────────────────────────
-// 12. RFC-14 workspace landing automation stays retired
+// 11. RFC-14 workspace landing automation stays retired
 // ──────────────────────────────────────────────────────────────
 
 async function checkWorkspaceLanding(): Promise<void> {
@@ -1268,16 +1387,10 @@ async function checkWorkspaceLanding(): Promise<void> {
   const ALLOWED_PREFIXES = [
     "rfcs/",
   ];
-  const ALLOWED_FILES = new Set([
-    // These pages intentionally document the one-release non-zero shim and
-    // migration story, including command synopsis lines with no prose context.
-    "docs/reference/cli/workspace.md",
-    "docs/explanation/whats-new.md",
-    "docs/explanation/migrating-cli-v1.md",
-  ]);
+  const ALLOWED_FILES = new Set<string>();
 
   const ALLOWED_WORKSPACE_MERGE_CONTEXT =
-    /\b(retir(?:ed|es|ing)|deprecat(?:ed|ion)|shim|non-zero|no longer|removed|must not|never|does not|do not|outside orchestration|operator-owned|operator merge|migration|pre-RFC-14|old `specify workspace merge`|compatibility)\b/i;
+    /\b(no longer|removed|must not|never|does not|do not|outside orchestration|operator-owned|operator merge|pre-RFC-14|old `specify workspace merge`)\b/i;
   const ALLOWED_AUTO_MERGE_CONTEXT =
     /\b(retir(?:ed|es|ing)|hard error|reject|rejected|pre-flight|without|not set|must not|never|does not|do not|migration|post-RFC|compatibility)\b/i;
   const ALLOWED_GH_MERGE_CONTEXT =
@@ -1334,7 +1447,7 @@ async function checkWorkspaceLanding(): Promise<void> {
         fail(
           `RFC-14 workspace merge automation in ${rel}:${
             i + 1
-          } -- ${line.trim()} -- describe it only as a retired/non-zero shim or migration note`,
+          } -- ${line.trim()} -- describe it only as removed or as a command Specify must not call`,
         );
       }
 
@@ -1369,12 +1482,8 @@ async function checkWorkspaceLanding(): Promise<void> {
 // ──────────────────────────────────────────────────────────────
 
 async function checkInstructionPreambles(): Promise<void> {
-  // Per-Phase-3 the slice working dir moved from `.specify/changes/` to
-  // `.specify/slices/`. Both paths are accepted here for the duration of
-  // the cut-over so vendored capability instruction files that still
-  // reference the historical path do not silently fail this check.
   const OUTPUT_LOCATION_RE =
-    /^> \*\*Output location\*\*: `\.specify\/(changes|slices)\//m;
+    /^> \*\*Output location\*\*: `\.specify\/slices\//m;
 
   for await (
     const entry of walk(CAPABILITIES_DIR, {
@@ -1467,20 +1576,16 @@ async function checkLegacyLayout(): Promise<void> {
   // - rfcs/archive/* — historical RFCs carry v2-layout banners and
   //   intentionally retain their original paths.
   // - rfcs/roadmap.md — narrative may still reference legacy shapes.
-  // - docs/how-to/migrate-to-v2-layout.md, docs/reference/cli/migrate.md,
-  //   docs/explanation/whats-new.md, docs/explanation/decision-log.md,
-  //   docs/appendices/{glossary,troubleshooting}.md,
+  // - docs/explanation/whats-new.md, docs/explanation/decision-log.md,
   //   docs/reference/directory-layout.md — these documents *describe*
   //   the migration and so must mention both the old and new paths.
-  // - plugins/spec/skills/init/fixtures/v2-layout-migration/* — the
-  //   illustrative fixture for the migration.
   // - The CLI's own legacy-layout error message (in scripts that quote it).
   const FORBIDDEN_PATTERNS: RegExp[] = [
     /\.specify\/registry\.yaml/,
     /\.specify\/plan\.yaml/,
-    // The umbrella brief was renamed initiative.md → change.md by RFC-13 §3.5
-    // (Phase 3.7 ships `specify migrate change-noun`). Either spelling under
-    // `.specify/` is wrong post-v2-layout — the brief lives at the repo root.
+    // The umbrella brief was renamed initiative.md → change.md by RFC-13 §3.5.
+    // Either spelling under `.specify/` is wrong post-v2-layout — the brief
+    // lives at the repo root.
     /\.specify\/initiative\.md/,
     /\.specify\/change\.md/,
     /\.specify\/contracts\b/,
@@ -1489,14 +1594,9 @@ async function checkLegacyLayout(): Promise<void> {
   const ALLOWED_PREFIXES = [
     "rfcs/archive/",
     "rfcs/roadmap.md",
-    "docs/how-to/migrate-to-v2-layout.md",
-    "docs/reference/cli/migrate.md",
     "docs/reference/directory-layout.md",
     "docs/explanation/whats-new.md",
     "docs/explanation/decision-log.md",
-    "docs/appendices/glossary.md",
-    "docs/appendices/troubleshooting.md",
-    "plugins/spec/skills/init/fixtures/v2-layout-migration/",
     "scripts/checks.ts",
   ];
 
@@ -1557,8 +1657,7 @@ async function checkLegacyLayout(): Promise<void> {
             `v1-layout path in ${rel}:${i + 1} -- ${
               lines[i].trim()
             } -- the v2 layout moved this artifact to the repo root; ` +
-              `update the reference or add the file to the allow-list in scripts/checks.ts ` +
-              `(see docs/how-to/migrate-to-v2-layout.md)`,
+              `update the reference or add the file to the allow-list in scripts/checks.ts`,
           );
           break;
         }
@@ -2245,8 +2344,8 @@ await Promise.all([
 await Promise.all([
   validateCapabilityYaml(),
   checkCapabilityIntegrity(),
+  checkFirstPartyToolDeclarations(),
   checkInstructionPreambles(),
-  checkRetiredCliVerbs(),
   checkWorkspaceLanding(),
   checkRetiredAffectsField(),
   checkLegacyLayout(),
@@ -2267,6 +2366,7 @@ await Promise.all([
   checkDirectives(),
   checkPluginConsistency(),
   checkRetiredSlashCommands(),
+  checkDeclaredToolEquivalentInvocations(),
 ]);
 
 console.log();

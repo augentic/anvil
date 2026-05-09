@@ -31,7 +31,7 @@ Run **all** of the following before any side-effect. Any failure exits non-zero 
 
 ## Internal sequence (composition only)
 
-The seven steps below are normative. Each step lists its **invocation**, the **halts** it can surface, the **manual-fallback** sequence an operator would run by hand to perform the same step, and the **failure recovery** rule when the step exits non-zero. Step 6 is intentionally observe-only: `specify workspace merge` is a one-release non-zero shim and MUST NOT be called by orchestration.
+The seven steps below are normative. Each step lists its **invocation**, the **halts** it can surface, the **manual-fallback** sequence an operator would run by hand to perform the same step, and the **failure recovery** rule when the step exits non-zero. Step 6 is intentionally observe-only: `specify workspace merge` has been removed and MUST NOT be called by orchestration.
 
 ### Step 1 — Brief
 
@@ -202,7 +202,7 @@ The umbrella **lists** PRs for `specify/<name>` (using `gh pr list --head specif
 - If any PR is open, pending, failed, closed, missing, or has the wrong head branch, the umbrella stops before step 7 and prints the PR table plus the next action: merge the open PRs through the forge UI or a hand-run `gh pr merge`, then re-run `/change:plan <name> orchestrate` to finalize.
 - If every PR is already `MERGED`, the umbrella continues to step 7.
 
-The umbrella MUST NOT call `specify workspace merge` or `gh pr merge`. `workspace merge` exists only as a one-release non-zero deprecation shim; invoking it from orchestration is a regression.
+The umbrella MUST NOT call `specify workspace merge` or `gh pr merge`. `workspace merge` has been removed; invoking it from orchestration is a regression.
 
 **Manual fallback.**
 
@@ -284,7 +284,7 @@ No changes written. Remove --dry-run to run the full sequence.
 3. merge those PRs through the forge UI or an explicit hand-run `gh pr merge`;
 4. re-run `/change:plan <name> orchestrate` so step 6 observes `MERGED` PR state and step 7 invokes `specify change finalize`.
 
-The orchestration never calls `specify workspace merge` and never calls `gh pr merge`. `specify workspace merge` is a one-release non-zero deprecation shim, not an active automation path.
+The orchestration never calls `specify workspace merge` and never calls `gh pr merge`. `specify workspace merge` has been removed and is not an active automation path.
 
 ## Verb hygiene
 
@@ -303,7 +303,7 @@ Every shell-out in this mode is a v1 verb verbatim. The list a reviewer can grep
 | 6 PR handoff | `gh pr list`, `gh pr view` (read-only listing only) |
 | 7 Finalize | `specify change finalize` |
 
-**Pre-v1 forms that MUST NOT appear** (per [migrating-cli-v1.md](../../../../docs/explanation/migrating-cli-v1.md) and the v1.x rename rows for §1F+§1G):
+**Pre-v1 forms that MUST NOT appear:**
 
 - the hyphenated `phase-outcome` form → use `specify slice outcome set`.
 - the hyphenated `journal-append` form → use `specify slice journal append`.
@@ -361,7 +361,6 @@ If a behaviour drift surfaces between the orchestration mode and a manual run of
 - [`specify plan`](../../../../docs/reference/cli/plan.md) — Layer 1 plan CRUD and lifecycle (recovery and manual fallback).
 - [`specify workspace`](../../../../docs/reference/cli/workspace.md) — `sync`, `status`, and `push` (plan-time peer discovery and PR transport).
 - [Cross-Repo Changes tutorial](../../../../docs/tutorials/cross-repo-change.md) — worked example for all three shapes (RFC-9 §1C and §2C).
-- [Migrating CLI v1](../../../../docs/explanation/migrating-cli-v1.md) — verb rename map; pin every shell-out against the v1 surface.
 - [The Layered Stack](../../../../docs/explanation/three-layer-stack.md) — Layer 4's place in Specify's layered architecture.
 - [Drop down a layer](../../../../docs/how-to/drop-down-a-layer.md) — when to bypass the orchestration and run the steps by hand.
 - [RFC-9 §2C](../../../../rfcs/archive/rfc-9-platform.md) — the design that introduced this orchestration.

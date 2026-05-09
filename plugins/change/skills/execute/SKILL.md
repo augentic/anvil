@@ -11,15 +11,13 @@ description: "Drives a change through its plan.yaml on the change surface: reads
 4. **Pick next slice** — `specify change plan next --format json`. Handle `all-done` (exit 0), `stuck` (exit 0), or `in-progress` (exit non-zero). Capture `project`, `description`, and `sources` from the response.
 5. **Prepare workspace entry** — for multi-repo entries, resolve `entry.project` through `registry.yaml`, materialise only the selected slot when missing, and run `specify workspace prepare-branch <project> --change <change-name>` before phase writes. Then transition `pending → in-progress` and `chdir` into the slot. See [multi-repo.md](multi-repo.md).
 6. **Run phase sequence** — invoke `/spec:define` → `/spec:build` → `/spec:merge`, reading `.metadata.yaml:outcome` after each phase. On `failure` → drop + transition `failed`. On `deferred` → drop + transition `blocked`. On `registry-amendment-required` (RFC-9 §2B) → record proposal payload to journal → drop + transition `blocked`. Copy `outcome.summary` verbatim into `reason`.
-7. **Wrap up** — after merge success in a workspace slot, verify the baseline commit boundary and commit non-baseline residue as `specify: residue <slice-name>` before `done`. On multi-repo successes, run the cross-project contract check (RFC-9 §3B) and append findings as `cross-project-warning:` entries. Release the driver lock on **every** exit path. In `loop` mode, repeat from step 4 until no eligible slice remains, then emit the terminal summary.
+7. **Wrap up** — after merge success in a workspace slot, verify the baseline commit boundary and commit non-baseline residue as `specify: residue <slice-name>` before `done`. Release the driver lock on **every** exit path. In `loop` mode, repeat from step 4 until no eligible slice remains, then emit the terminal summary. Cross-project consumer-impact reporting is a separate `specify compatibility` CLI surface.
 
-The full algorithm lives in [per-slice-algorithm.md](per-slice-algorithm.md). Mode-specific deltas (`dry-run`, supervised, `loop`) live in [modes.md](modes.md). Rendered output shapes live in [output-format.md](output-format.md). Behavioural fixtures pinning each shape live in [fixtures.md](fixtures.md).
+The full algorithm lives in [per-slice-algorithm.md](per-slice-algorithm.md). Shared state-handoff rules live in [execute-state-handoff.md](../../references/execute-state-handoff.md). Mode-specific deltas (`dry-run`, supervised, `loop`) live in [modes.md](modes.md). Rendered output shapes live in [output-format.md](output-format.md). Behavioural fixtures pinning each shape live in [fixtures.md](fixtures.md).
 
 # Execute skill
 
 Drive a change through `plan.yaml` by automating the Layer 1 loop: `get next slice` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify change plan transition`.
-
-> **Renamed.** This skill was previously `/spec:execute` (skill name `specify-execute`); RFC-13 §3.9 moved it to the change surface as `/change:execute`. The old slash-command remains available as a thin deprecation shim that delegates here — see [RFC-13 §Migration](../../../../rfcs/archive/rfc-13-extensibility.md#migration).
 
 > **Status.** Layer 2 is fully landed. The driver supports multi-repo workspace routing (`project` field on plan entries), selected slot materialisation, RFC-14 branch preparation on `specify/<change-name>`, `plan next` field extensions (`project`, `description`, `sources` in JSON), merge-baseline commit verification, residue commits in workspace slots, and self-heal under multi-repo. This skill ships the `dry-run` preview, the supervised single-slice run, the self-heal pass on startup, `loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/change:execute loop` drives the `platform-v2` example end-to-end against a plan authored by `/change:plan` — see [fixtures.md](fixtures.md) for the exit-gate meta-fixture.
 
@@ -31,16 +29,9 @@ Specify at runtime is a three-layer stack:
 2. **Plan CLI** (`specify change plan {validate, next, status, create, add, amend, transition, archive, lock, doctor}`) — the library-backed verbs that read and write `plan.yaml`. Both humans (Layer 1) and this skill (Layer 2) drive the loop through these verbs; no other code path writes the plan file.
 3. **Driver skill** (`/change:execute`, this one) — the Layer 2 automation that reads `plan.yaml`, picks the next entry, invokes the phase sequence, and records outcomes.
 
-The on-disk contracts the driver depends on are the same files humans read in Layer 1 — `/change:execute` introduces no new storage of its own:
+The on-disk contracts are the same files humans read in Layer 1; `/change:execute` introduces no new storage of its own. The shared state-channel ownership table lives in [execute-state-handoff.md](../../references/execute-state-handoff.md).
 
-| File | Owner | Role |
-|---|---|---|
-| `plan.yaml` | library (`Plan::{create, amend, transition, archive}`) | Ordered change list with per-entry status. Driver reads via `specify change plan next`/`status`; writes only via `specify change plan transition`. |
-| `.specify/slices/<name>/.metadata.yaml` | library (`SliceMetadata` + `specify slice outcome set`) | Slice lifecycle status **and** the phase's `outcome` field. Phases stamp this; the driver reads it on phase return. |
-| `.specify/slices/<name>/journal.yaml` | library (`Journal::append` + `specify slice journal append`) | Append-only audit log of `question` / `failure` / `recovery` entries. Never consumed as a signalling channel — `.metadata.yaml:outcome` is the only state the driver reads. |
-| `.specify/plan.lock` | library (`PlanLockStamp`) | Advisory PID stamp held by the running driver. Prevents two `/change:execute` invocations racing on the same plan. |
-
-For multi-repo changes the driver resolves the plan entry's `project` through `registry.yaml`, materialises that selected slot when missing, prepares `specify/<change-name>` before phase writes, and `chdir`s into the prepared project root before invoking the phase skills. See [multi-repo.md](multi-repo.md) for the routing algorithm, post-merge residue commit, and cross-project contract check.
+For multi-repo changes the driver resolves the plan entry's `project` through `registry.yaml`, materialises that selected slot when missing, prepares `specify/<change-name>` before phase writes, and `chdir`s into the prepared project root before invoking the phase skills. See [multi-repo.md](multi-repo.md) for the routing algorithm and post-merge residue commit. Use `specify compatibility` separately when the operator wants a classified producer-to-consumer contract report.
 
 ## Invariants
 
@@ -51,8 +42,8 @@ These invariants constrain this skill's behaviour.
 | Driver contracts with phases, not briefs | `/change:execute` only invokes `/spec:define`, `/spec:build`, `/spec:merge` |
 | Phases own verify-repair loops | Phase skills exhaust their repair budget before returning |
 | Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `outcome` into `.metadata.yaml` before returning |
-| Slice *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify change plan add` / `specify change plan amend` |
-| Slice *status* updates written only via `Plan::transition` | `/change:execute` (Layer 2) or humans (Layer 1) run `specify change plan transition` |
+| Slice *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify change plan add` / `specify change plan amend`; see [plan-single-writer.md](../../references/plan-single-writer.md) |
+| Slice *status* updates written only via `Plan::transition` | `/change:execute` (Layer 2) or humans (Layer 1) run `specify change plan transition`; see [execute-state-handoff.md](../../references/execute-state-handoff.md) |
 | Single `in-progress` at a time | `change plan next` / `change plan validate` |
 | Single `/change:execute` driver at a time | `.specify/plan.lock` advisory lock (see §Driver lock below) |
 
@@ -98,7 +89,7 @@ The full algorithm — including step 9's phase-outcome classifier and the RFC-9
 9. Read phase outcome (`specify slice outcome show <name> --format json`). Classify `success` / `failure` / `deferred` / `registry-amendment-required` / missing-or-malformed.
 9a. For multi-repo merge success: verify `.specify/specs/` and `.specify/archive/` are clean, then commit non-baseline residue as `specify: residue <name>` or halt.
 9b. Restore CWD for multi-repo entries.
-10. On terminal `success`: `specify change plan transition <name> done`. Run cross-project contract check ([multi-repo.md](multi-repo.md) §Cross-project).
+10. On terminal `success`: `specify change plan transition <name> done`.
 11. On `failure`: `/spec:drop` + `specify change plan transition <name> failed --reason "<outcome.summary>"`.
 12. On `deferred` (or `registry-amendment-required`): journal append (RFC-9 §2B path only) → `/spec:drop` + `specify change plan transition <name> blocked --reason "<outcome.summary>"`.
 13. Release driver lock — on every exit path.
@@ -117,40 +108,26 @@ The terminal summary, per-slice transcript shapes, and dry-run rendering live in
 
 ## Self-heal on startup
 
-Self-heal is the driver's reconciliation pass. It runs **once per `/change:execute` invocation**, under the driver lock, immediately after the lock is acquired and before `specify change plan next`. The full algorithm lives in [self-heal.md](self-heal.md). Key invariants:
+Self-heal is the driver's reconciliation pass. It runs **once per `/change:execute` invocation**, under the driver lock, immediately after the lock is acquired and before `specify change plan next`. The full algorithm lives in [self-heal.md](self-heal.md); the common outcome, journal, and dry-run invariants live in [execute-state-handoff.md](../../references/execute-state-handoff.md).
 
-- `.metadata.yaml:outcome` is the single authoritative signal — the driver never consults `journal.yaml`, tempfiles, or stderr transcripts.
-- Nothing speculates: every ambiguity (missing outcome with no slice dir, outcome that contradicts `LifecycleStatus`, …) halts the driver with exit code `2` so a human can triage.
-- Self-heal runs inside the lock acquired at step 2; no second acquire/release.
-- Under `dry-run`, self-heal is report-only — same classification scan, no writes.
+## Cross-project compatibility report (RM-04)
 
-## Cross-project contract check (RFC-9 §3B)
-
-After a successful merge of a multi-repo slice whose plan entry has a non-null `project` field and whose producer registry entry declares non-empty `contracts.produces`, the driver first completes the post-merge residue commit guard, transitions the entry to `done`, then runs the format-appropriate `/contract:*` skill in its verifier intent with the `cross-project` mode positional against every consumer workspace — `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas. Findings are appended to the merged slice's journal as `cross-project-warning:` entries and rendered in the merge transcript. The check is non-fatal: verifier findings (or even verifier errors) never halt the loop, and the merged slice stays `done`. See [multi-repo.md](multi-repo.md) for the full algorithm and the journal payload schema.
+`/change:execute` does not run the RM-04 compatibility classifier as part of the slice loop. Operators can run `specify compatibility report --change <name>` or `specify compatibility check` after workspace sync or after producer contract changes to compare root `contracts/` against consumer workspace views. RM-11 will decide which classifications become lifecycle gates.
 
 ## What this skill does NOT do
 
 | Surface | Status |
 |---|---|
-| Write `plan.yaml` *entries* (`create` / `amend`) | Never — those writes are the phases' concern (they shell out to `specify change plan add` / `specify change plan amend` mid-run). |
-| Write `plan.yaml` *status* (`transition`) | Only via `specify change plan transition`, at exactly three points in a supervised run: `pending → in-progress` before step 6, and the terminal `in-progress → {done, failed, blocked}` in steps 10/11/12. |
-| Write `.specify/slices/<name>/.metadata.yaml` (including the `outcome` field) | Never — that is the phase skills' concern via `specify slice outcome set`. |
-| Write `.specify/slices/<name>/journal.yaml` | Four narrowly-scoped paths only: (1) self-heal `recovery` entries — one per reclaimed/resumed in-progress entry; (2) branch-preparation failure entries during resume, only when a slice journal already exists; (3) cross-project `cross-project-warning:` entries — one per finding from the format-appropriate `/contract:*` skill (verifier intent, `cross-project` mode) on a successful multi-repo merge; (4) RFC-9 §2B `registry-amendment-required:` entries — one per `registry-amendment-required` deferral, recorded **before** `/spec:drop`. Phases own all other `type: question` / `type: failure` entries. |
+| Write `plan.yaml` *entries* (`create` / `amend`) | Never — phases, briefs, and humans use the entry-write verbs described in [plan-single-writer.md](../../references/plan-single-writer.md). |
+| Write `plan.yaml` *status* (`transition`) | Only via `specify change plan transition`, at the points named in the per-slice algorithm and [execute-state-handoff.md](../../references/execute-state-handoff.md). |
+| Write `.specify/slices/<name>/.metadata.yaml` (including the `outcome` field) | Never — phase skills own outcomes via `specify slice outcome set` or CLI-stamped merge/drop paths. |
+| Write `.specify/slices/<name>/journal.yaml` | Only the driver-owned append cases listed in [execute-state-handoff.md](../../references/execute-state-handoff.md). Phases own ordinary `question` and `failure` entries. |
 | Invoke `/spec:define`, `/spec:build`, `/spec:merge`, or `/spec:drop` | Never in `dry-run` (including dry-run self-heal); in supervised and `loop` modes, exactly as the algorithm prescribes. |
 | Run self-heal on `in-progress` entries | Yes — see [self-heal.md](self-heal.md). Five fixtures under `fixtures/self-heal/` pin the clean / done / failed / ambiguous-halt / mid-slice-resume paths. |
 | Loop across slices | `loop` iterates `specify change plan next → execute slice` until no eligible slice remains. The driver lock is held for the entire run (not per iteration). Individual failures / deferrals do NOT halt the loop. |
 | Resolve `sources` keys to paths / URLs and hand them to define | Yes — see [argument-resolution.md](argument-resolution.md). The driver does NOT clone git URLs or stat local paths; it only forwards the values. |
 
-The state the skill mutates is:
-
-1. The driver lock stamp at `.specify/plan.lock` (written on acquire, removed on release by the CLI — not by the skill directly).
-2. The plan entry's `status` field via `specify change plan transition` at the three points named in the per-slice algorithm, plus any terminal transitions self-heal applies on startup.
-3. A single `type: recovery` entry appended to `.specify/slices/<name>/journal.yaml` whenever self-heal resolves or resumes an in-progress entry.
-4. For routed workspace entries, the local Git checkout: branch preparation before phase writes and an optional `specify: residue <slice-name>` commit after merge success.
-5. One `type: failure` entry per branch-preparation failure during resume, when a slice journal already exists.
-6. One `type: failure` entry per cross-project contract finding appended to the **merged** slice's journal after a successful multi-repo `merge` transition. Each entry carries the canonical `cross-project-warning:` summary prefix.
-
-No other on-disk state is written by `/change:execute` itself.
+The state this skill may mutate is limited to the driver lock, plan status transitions, routed workspace Git state, and the driver-owned journal append cases in [execute-state-handoff.md](../../references/execute-state-handoff.md). No other on-disk state is written by `/change:execute` itself.
 
 ## Guardrails
 
@@ -165,7 +142,7 @@ No other on-disk state is written by `/change:execute` itself.
 - Phase outcome missing or malformed after a phase returns means the phase crashed or skipped its `specify slice outcome set` call. Treat as `deferred` with a synthetic summary (`"phase outcome missing after <phase>; driver stopping for triage."`) — do not speculate about which of success / failure was really intended.
 - Self-heal applies the same verbatim-`summary` rule as steps 11c / 12c. Self-heal never paraphrases ambiguity away — halt with exit code 2 and leave the plan entry as `in-progress`.
 - Argument resolution never speculates over an unresolved `sources` key. If a key on the plan entry is absent from the plan's top-level `sources` map, halt with `Error::Config`, name the offending `(slice, key)` pair, release the lock, and exit non-zero.
-- The cross-project contract check is **non-fatal by contract**. Any finding — `warning`, `info`, or even a validator read failure — is recorded to the merged slice's journal and reflected in the merge transcript, never halting the loop or rolling back the merge.
+- Cross-project compatibility reporting is outside `/change:execute`; run `specify compatibility report --change <name>` or `specify compatibility check` when consumer-impact classification is needed.
 
 ### When the loop reports `stuck`: run `specify change plan doctor`
 

@@ -5,7 +5,7 @@ needs: [discovery]
 generates: .specify/plans/<name>/proposal.md
 ---
 
-Turn the capability inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered capability. Capability boundaries were decided upstream by `/spec:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify change plan add` for every accepted slice. This is the single-writer edge for `plan.yaml` during propose: every entry is added via `specify change plan add` (without `--project`) — the brief never edits `plan.yaml` directly. Project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
+Turn the capability inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered capability. Capability boundaries were decided upstream by `/spec:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify change plan add` for every accepted slice. This is the propose edge of the shared [plan single-writer contract](../../../../references/plan-single-writer.md): entries are added without `--project`, and project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
 
 ## Input
 
@@ -36,7 +36,7 @@ The `<!-- source-key: <k> -->` HTML comment immediately above each `### <name>` 
 
 Project assignment is handled by the plan skill's assignment step (RFC-3b §*Assignment algorithm*), not by the propose brief. The propose brief creates entries without `--project`. `workspace.md` is operator-facing context: which peers were synced, where their `.specify/` trees live under `.specify/workspace/<name>/`, and whether their checkouts are clean. **Authoring rule:** every plan entry MUST still list only `sources:` keys that exist in the change plan's top-level `sources:` map (the single-writer CLI enforces this today).
 
-When the assignment step (3(d)) routes an entry to a project that does not yet exist in `registry.yaml`, the plan skill — not this brief — runs the **registry-proposal sub-step** (RFC-9 §2B; see `plugins/change/skills/plan/SKILL.md` → §"Step 3(d).1 — Registry proposal sub-step"). The sub-step shells out to `specify registry add`, then `specify workspace sync`, then `specify change plan amend --project <name>` for the entry. This brief never proposes registry entries directly — its single-writer responsibility is `specify change plan add` for each accepted slice.
+When the assignment step (3(d)) routes an entry to a project that does not yet exist in `registry.yaml`, the plan skill — not this brief — runs the **registry-proposal sub-step** (RFC-9 §2B; see `plugins/change/skills/plan/SKILL.md` → §"Step 3(d).1 — Registry proposal sub-step"). The sub-step shells out to `specify registry add`, then `specify workspace sync`, then `specify change plan amend --project <name>` for the entry. This brief never proposes registry entries directly.
 
 ### Documentation capabilities (no source-key marker for code)
 

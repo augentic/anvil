@@ -27,16 +27,7 @@ This is an advisory note — this skill does not run the command itself. `/chang
 
 ## Phase outcome contract
 
-This skill is the **drop** phase of the `/change:execute` driver loop.
-The shared phase contract — outcome values, journal kinds, plan-mutation rules,
-the verbatim-`summary` rule, and the success/failure/deferred semantics — is
-authored once at [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md).
-
-This phase's outcome-specific deltas:
-
-- `success` — `specify slice drop` exited zero: the slice is archived with status `dropped` and the supplied reason recorded in `.metadata.yaml`. The lifecycle stamp itself is the success signal — no separate `outcome set` call.
-- `failure` — `specify slice drop` returned a lifecycle violation (the slice is already `merged`/`dropped`, the directory is malformed); record skill-side via `outcome set ... drop failure ...`.
-- `deferred` — rare; an interactive cancel mid-flow or a precondition that needs human resolution before the drop is safe. Non-interactive runs from `/change:execute` do not reach this path.
+This skill is the **drop** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including drop's CLI-stamped success path, non-success deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
 
 ## Input
 

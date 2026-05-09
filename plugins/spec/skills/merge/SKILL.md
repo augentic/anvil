@@ -30,16 +30,7 @@ This is an advisory note — this skill does not run the command itself. `/chang
 
 ## Phase outcome contract
 
-This skill is the **merge** phase of the `/change:execute` driver loop.
-The shared phase contract — outcome values, journal kinds, plan-mutation rules,
-the verbatim-`summary` rule, and the success/failure/deferred semantics — is
-authored once at [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md).
-
-This phase's outcome-specific deltas:
-
-- `success` — baseline merge applied, lifecycle transitioned to `merged`, archive moved. **Uniquely CLI-stamped** — `specify slice merge run` writes the success outcome atomically with the lifecycle transition before archiving; skills MUST NOT call `outcome set` on this path (see the reference for the rationale).
-- `failure` — `specify slice merge run` exited non-zero (filesystem unchanged); record skill-side via `outcome set ... merge failure ...`.
-- `deferred` — `specify slice merge run` was never invoked (user declined the preview, conflict-check needs human arbitration, lifecycle ≠ `Complete`); record skill-side via `outcome set ... merge deferred ...`.
+This skill is the **merge** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including merge's CLI-stamped success path, non-success deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
 
 ## Input
 

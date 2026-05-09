@@ -1,4 +1,4 @@
-# .specify/changes/product-catalog/journal.yaml after self-heal
+# .specify/slices/product-catalog/journal.yaml after self-heal
 # appends its one type: recovery entry documenting the mid-change
 # resume. /spec:define's journal entries (if any) sit above this
 # one unchanged — self-heal only appends.

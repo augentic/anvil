@@ -1,6 +1,6 @@
 # Per-slice algorithm
 
-The per-slice algorithm runs a single plan entry to a terminal status (`done` / `failed` / `blocked`) and is the core of every mode. The [§Modes](modes.md) section wires this into the three invocations (`--dry-run`, supervised, `--loop`) by describing only the deltas from this algorithm.
+The per-slice algorithm runs a single plan entry to a terminal status (`done` / `failed` / `blocked`) and is the core of every mode. The [§Modes](modes.md) section wires this into the three invocations (`--dry-run`, supervised, `--loop`) by describing only the deltas from this algorithm. Shared outcome, journal, and verbatim-summary rules live in [execute-state-handoff.md](../../references/execute-state-handoff.md).
 
 The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; this skill writes nothing to `plan.yaml`, `.metadata.yaml`, or `journal.yaml` directly.
 
@@ -138,9 +138,9 @@ The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; thi
 
 10. Success wrap-up.
       specify change plan transition <name> done
-    Emit the success transcript (see output-format.md). Run the
-    post-merge cross-project contract check (multi-repo.md). Go to
-    step 13.
+    Emit the success transcript (see output-format.md). Cross-project
+    consumer-impact classification is a separate `specify compatibility`
+    CLI surface. Go to step 13.
 
 11. Failure drop path.
     a. Capture `outcome.summary` (and, if present, `outcome.context`)
@@ -216,7 +216,7 @@ YAML
 Notes:
 
 - The journal entry uses the existing `failure` kind (the canonical `EntryKind::{Question, Failure, Recovery}` set per `specify-cli/crates/change/src/journal.rs`); no new kind is introduced. Readers grep `summary` for the `registry-amendment-required:` prefix to filter.
-- The full structured payload lives in `--context` as YAML, mirroring the contract used by the cross-project contract check (RFC-9 §3B). The `--summary` carries the proposed project name so an operator scanning the journal sees what was proposed at a glance.
+- The full structured payload lives in `--context` as YAML. The `--summary` carries the proposed project name so an operator scanning the journal sees what was proposed at a glance.
 - Read `outcome.proposal.*` from `specify slice outcome show <name> --format json` — the CLI emits the proposal as a sibling object (`outcome.proposal`) so existing consumers that only read `.outcome.outcome` (a kebab-case string) keep working.
 - After the journal append, fall through to step 12.b (`/spec:drop`) and step 12.c (`specify change plan transition <name> blocked --reason "<outcome.summary>"`) with the **same `--reason` rule** the `deferred` branch follows: `outcome.summary` is copied byte-for-byte. The default summary stamped by the CLI is `registry-amendment-required: <proposed-name>`, but a phase that supplied a richer `--summary` keeps that exact text.
 
@@ -273,9 +273,9 @@ The dry-run variant uses the same line with `(if executed)` appended (mirroring 
 
 ## Subtleties
 
-- **`/change:execute` writes only plan transitions, workspace Git state, and a narrow set of journal entries.** Every write this skill performs against `plan.yaml` goes through `specify change plan transition`. It never writes `outcome` to `.metadata.yaml` (the phase does that, via `specify slice outcome set`). For routed entries it may prepare `specify/<change-name>` before phase writes and commit non-baseline residue after merge success. The driver appends to `journal.yaml` in exactly three situations: (1) the self-heal step emits one `type: recovery` entry per reclaimed or resumed in-progress entry; (2) branch preparation fails during a resume and a slice journal already exists; (3) the post-merge cross-project contract check emits one `type: failure` entry per finding the validator reports, with the canonical `cross-project-warning:` summary prefix. The define / build / merge phases own all other `type: question` and `type: failure` entries; the driver never touches those.
+- **`/change:execute` writes only plan transitions, workspace Git state, and narrow journal entries.** The exact state-channel ownership and journal append allowlist live in [execute-state-handoff.md](../../references/execute-state-handoff.md).
 
-- **Summary is copied verbatim into `status-reason`.** The string passed to `specify change plan transition … --reason "…"` in steps 11c and 12c is byte-identical to `outcome.summary` stamped by the phase. The fixtures under `fixtures/single-slice/` pin this: every `plan.yaml.after` carries `status-reason: "<exact summary from the metadata file>"`. Do not paraphrase, truncate, or reformat.
+- **Summary is copied verbatim into `status-reason`.** Steps 11c and 12c follow the verbatim `outcome.summary` rule in [execute-state-handoff.md](../../references/execute-state-handoff.md); fixtures under `fixtures/single-slice/` pin the byte-identical `status-reason`.
 
 - **Journal entries from the phase are preserved.** Whatever `type: question` / `type: failure` entries the phase wrote during its run stay on disk unchanged. The driver does not rewrite, merge, or summarise them. Humans reading the journal after a failure or deferral see the full trail the phase recorded, not a driver-authored post-hoc rollup.
 

@@ -44,11 +44,11 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
 | [specify capability](capability.md) | Capability resolution and brief pipeline queries | Capability infrastructure |
 | [specify codex](codex.md) | Resolve, validate, show, and export review rules | Review rule catalogue |
+| [specify compatibility](compatibility.md) | Classify producer contract deltas against consumer workspace views | Cross-project contract reporting |
 | [specify context](context.md) | Generate and check refreshable `AGENTS.md` guidance | Agent context |
 | [specify tool](tool.md) | Resolve, cache, and run declared WASI helper tools | Deterministic extension runner |
 | [specify workspace](workspace.md) | Materialise, inspect, and push workspace peer clones | Multi-repo operations |
 | [specify init](init.md) | Project scaffold | One-time setup |
-| [specify migrate](migrate.md) | One-shot layout migrations (currently `v2-layout`) | Upgrade path |
 | [Vectis WASI tools](vectis.md) | Declared `vectis-validate` and `vectis-scaffold` tools run through `specify tool run` | Capability-owned validation + render-only scaffolding |
 
-The previous standalone families `specify validate`, `specify spec`, `specify task`, and `specify merge` were absorbed into [`specify slice`](slice.md) (`slice validate`, `slice merge {preview, conflict-check, run}`, `slice task {progress, mark}`). See [Migrating CLI v1](../../explanation/migrating-cli-v1.md) for the full rename map.
+The previous standalone families `specify validate`, `specify spec`, `specify task`, and `specify merge` were absorbed into [`specify slice`](slice.md) (`slice validate`, `slice merge {preview, conflict-check, run}`, `slice task {progress, mark}`).

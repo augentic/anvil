@@ -2,9 +2,9 @@
 
 > Status: Implemented · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](rfc-2-execution.md), [RFC-3a](rfc-3a-monoliths.md), [RFC-3b](rfc-3b-platform.md)
 >
-> **Note**: Verb names in this archived RFC predate the CLI cleanup; see [docs/explanation/migrating-cli-v1.md](../../docs/explanation/migrating-cli-v1.md) for current names.
+> **Note**: Verb names in this archived RFC predate the CLI cleanup. See current CLI reference under `docs/reference/cli/`.
 >
-> **v2 layout note**: this RFC was authored against the v1 layout, where every platform artifact (`registry.yaml`, `plan.yaml`, `initiative.md`, and `contracts/`) sat under `.specify/`. The v2 layout (specify-cli `0.2.0`) moved these to the repo root — `contracts/` (with `schemas/`, `http/`, `messages/` subdirectories), `registry.yaml`, `plan.yaml`, and `initiative.md` all live alongside the project's source rather than under `.specify/`. The rationale, the format choice, the produces/consumes role model, the brief, and the merge semantics described below are unchanged; only the on-disk paths moved. See [docs/explanation/whats-new.md](../../docs/explanation/whats-new.md) for the migration story and [docs/reference/cli/migrate.md](../../docs/reference/cli/migrate.md) for the `specify migrate v2-layout` mover.
+> **v2 layout note**: this RFC was authored against the v1 layout, where every platform artifact (`registry.yaml`, `plan.yaml`, `initiative.md`, and `contracts/`) sat under `.specify/`. The v2 layout (specify-cli `0.2.0`) moved these to the repo root — `contracts/` (with `schemas/`, `http/`, `messages/` subdirectories), `registry.yaml`, `plan.yaml`, and `initiative.md` all live alongside the project's source rather than under `.specify/`. The rationale, the format choice, the produces/consumes role model, the brief, and the merge semantics described below are unchanged; only the on-disk paths moved. See [docs/explanation/whats-new.md](../../docs/explanation/whats-new.md) for the migration story.
 
 ## Abstract
 

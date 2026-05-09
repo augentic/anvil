@@ -2,7 +2,7 @@
 
 Self-heal is the driver's reconciliation pass. It runs **once per `/change:execute` invocation**, under the driver lock, immediately after the lock is acquired and before `specify change plan next`. Its job is to make the plan agree with what actually finished on disk before the previous driver crashed. It does not invent new phase work; the only Git write it may perform is the same post-merge residue commit the live algorithm would have performed before `done`.
 
-Two invariants frame the whole step. First, `.metadata.yaml:outcome` is the single authoritative signal: the driver never consults `journal.yaml`, tempfiles, or stderr transcripts to decide what happened. Second, nothing in self-heal speculates. Every ambiguity (missing outcome with no slice dir, outcome field that contradicts `LifecycleStatus`, two archives with equal timestamps, …) halts the driver with a non-zero exit so a human can triage. A speculative transition could silently mark a failed change as `done` and that failure mode is strictly worse than "one extra triage per N runs".
+The shared handoff invariants are in [execute-state-handoff.md](../../references/execute-state-handoff.md): `.metadata.yaml:outcome` is the authoritative signal, `journal.yaml` is audit-only, terminal reasons copy `outcome.summary` verbatim, and dry-run performs no writes. Self-heal adds one local rule: every ambiguity halts the driver for human triage rather than guessing.
 
 ## Algorithm
 
@@ -82,7 +82,7 @@ The halt variant is followed by `Exit 2` (`EXIT_VALIDATION_FAILED`; see the exit
 
 ## Dry-run variant (report-only)
 
-Under `--dry-run`, self-heal runs the same classification scan but performs **no writes**: no `specify change plan transition`, no `specify slice journal append`, no `/spec:drop`. Instead it prints what the writing path *would* do:
+Under `--dry-run`, self-heal follows the no-write rule from [execute-state-handoff.md](../../references/execute-state-handoff.md): it runs the same classification scan, then prints what the writing path *would* do:
 
 ```text
 Self-heal (dry-run): no in-progress entries found.

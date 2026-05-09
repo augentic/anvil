@@ -11,7 +11,7 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 | Mode | Caller | Trigger | Scope | Output |
 |---|---|---|---|---|
 | `single` (default) | contracts capability build brief in `/spec:build` | Post-author or post-import | One slice's `contracts/schemas/` inside one project, plus the slice's and baseline's HTTP / messaging consumers | Markdown report for the verify-repair loop |
-| `cross-project` | contracts capability merge brief; `/change:execute` post-merge step | Producer-side merge of a contract change touching schemas | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation | JSON envelope produced by `specify tool run contract` |
+| `cross-project` | contracts capability merge brief | Producer-side merge of a contract change touching schemas | Walk the merged `contracts/` baseline; enforce RFC-12 §Validation | JSON envelope produced by `specify tool run contract` |
 
 `single` mode feeds the brief's verify-repair loop and is the natural exit point for both author and importer runs. `cross-project` mode is a thin delegate over the declared `contract` WASI tool (RFC-13 §4.2a, RFC-15) — the verifier shells out through `specify tool run contract` and surfaces its findings; it does not implement its own cross-baseline check. Both modes share the read-only contract.
 
@@ -288,7 +288,7 @@ The mode is **deterministic**: the WASI tool is a thin shell over `specify_valid
 
 Per RFC-13 §"Merge and adoption contract" and §Open Question 4, the contracts capability owns merge gating; the core no longer ships an in-binary contract validator (chunk 2.7 deleted that command surface). The declared `contract` WASI tool is the replacement: a deterministic, capability-owned gate the merge brief can run through `specify` without crossing the core boundary or re-introducing concern-specific behavior into core crates.
 
-The pre-RFC-13 consumer-compatibility heuristic that the verifier markdowns described — comparing a producer schema against each consumer's tier-2 workspace clone, classifying breaking changes into a `change-kind` vocabulary — has been retired in this chunk. Schema-side breakage that the consumer-compat heuristic used to surface is caught earlier, in `single`-mode Check 4 (cross-format consumer compatibility), before the merge phase. The deterministic binary is the canonical post-merge gate; richer consumer-side analysis is a follow-up that future RFCs can re-introduce on top of the merge brief if operator demand warrants it (RFC-13 §Open Question 1).
+The pre-RFC-13 consumer-compatibility heuristic that the verifier markdowns described — comparing a producer schema against each consumer's tier-2 workspace clone, classifying breaking changes into a `change-kind` vocabulary — has been retired from this verifier. Schema-side breakage that the consumer-compat heuristic used to surface is caught earlier, in `single`-mode Check 4 (cross-format consumer compatibility), before the merge phase. The deterministic binary is the canonical post-merge gate. Cross-project consumer-impact analysis now lives in `specify compatibility check` and `specify compatibility report --change <name>` (RM-04).
 
 ## Edge cases
 

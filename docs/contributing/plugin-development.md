@@ -100,7 +100,6 @@ Files in `plugins/references/` are shared across plugins:
 |------|---------|
 | `specify.md` | Master reference: artifact format, lifecycle states, naming conventions, delta-merge rules, hard constraints |
 | `agent-teams.md` | Multi-agent review pattern (structural, logic, quality specialists + antagonist) |
-| `review-checks.md` | Transitional pointer to universal codex rules used by existing reviewer skills |
 
 Skills reference these files via symlinks. For example, a skill at `plugins/omnia/skills/crate-writer/` might symlink `references/specify.md` to `../../../references/specify.md`. This keeps relative paths in the skill body short while sharing a single source of truth.
 

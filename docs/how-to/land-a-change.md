@@ -19,7 +19,7 @@ gh pr checks <pr> -R <owner/repo>
 gh pr merge <pr> -R <owner/repo> --squash
 ```
 
-Specify does not merge PRs automatically. RFC-14 removes `workspace merge` automation; if the CLI exposes `specify workspace merge` during the transition, it is a one-release non-zero shim that points back to forge UI / `gh pr merge` plus `specify change finalize`.
+Specify does not merge PRs automatically. RFC-14 removed `workspace merge` automation; `specify workspace merge` is no longer an active CLI subcommand. Use forge UI / `gh pr merge` plus `specify change finalize`.
 
 ## 2. Confirm and archive
 

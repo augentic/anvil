@@ -18,7 +18,7 @@ Each skill carries three intents internally and dispatches via its own intent ta
 |--------|---------|--------------|
 | Author or extend | contracts capability build brief during `/spec:build`; operator extending the baseline for new interactions | `author.md` |
 | Import or normalise | operator drops an external document into a slice's `contracts/` directory | `importer.md` |
-| Verify (single mode) or run the post-merge baseline gate (cross-project mode) | contracts capability build brief in `/spec:build` (verify-repair loop); contracts capability merge brief post-merge (RFC-13 §"Merge and adoption contract"); `/change:execute` post-merge fan-out (RFC-9 §3B) | `verifier.md` |
+| Verify (single mode) or run the post-merge baseline gate (cross-project mode) | contracts capability build brief in `/spec:build` (verify-repair loop); contracts capability merge brief post-merge (RFC-13 §"Merge and adoption contract") | `verifier.md` |
 
 ### Author intent
 
@@ -44,6 +44,8 @@ The verifier intent does not modify files -- it reports issues for the brief's v
 
 It also exposes a `--mode cross-project` flag that runs the post-merge baseline gate. The mode is a thin delegate over `specify tool run contract` (RFC-13 §4.2a, RFC-15) — it shells out through `specify`, surfaces the validator JSON envelope, and propagates its exit code (`0` clean / `1` findings / `2` tool or invocation error). The contracts capability merge brief invokes this mode after `specify slice merge run` succeeds, mapping non-zero exits to the `failure` outcome per RFC-13 §"Merge and adoption contract".
 
+Cross-project consumer-impact classification is separate from the verifier intent. Use `specify compatibility check` or `specify compatibility report --change <name>` to compare producer contracts with consumer workspace views and classify deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable`.
+
 ### Importer intent (Layer 2)
 
 Automates the manual import workflow for external contracts:
@@ -62,7 +64,7 @@ Format-neutral material is shared across the three skills under `plugins/contrac
 | Reference | Content |
 |-----------|---------|
 | Baseline vs delta | What lives in `contracts/` versus a slice's `contracts/`, and how merges promote |
-| Cross-project compatibility | Producer / consumer roles, compatibility rules, finding categories |
+| Cross-project compatibility | Producer / consumer roles, RM-04 compatibility classes, `change-kind` vocabulary |
 | Import upgrade policy | Swagger 2.0 → OpenAPI 3.1, AsyncAPI 2.x → 3.0, schema metadata defaults |
 | Report shape | Alignment report and verifier output schemas |
 
@@ -80,4 +82,4 @@ The brief picks the format-appropriate skill (OpenAPI for HTTP / resource APIs, 
 
 ## CLI counterpart
 
-The matching CLI surface is the declared [`contract` WASI tool](../cli/contract.md), run as `specify tool run contract -- <BASELINE_DIR> --format json`. It walks a baseline `contracts/` directory and runs the RFC-12 §Validation checks (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness). The contracts capability merge brief shells out to it as the post-merge baseline gate (see [`capabilities/contracts/briefs/merge.md`](../../../capabilities/contracts/briefs/merge.md)). The pre-RFC-13 in-binary `specify contract` family was retired in chunk 2.7 of the RFC-13 landing; the WASI tool is the capability-owned replacement, with a byte-compatible JSON envelope for normal validator runs.
+The matching baseline-validation CLI surface is the declared [`contract` WASI tool](../cli/contract.md), run as `specify tool run contract -- <BASELINE_DIR> --format json`. It walks a baseline `contracts/` directory and runs the RFC-12 §Validation checks (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness). The contracts capability merge brief shells out to it as the post-merge baseline gate (see [`capabilities/contracts/briefs/merge.md`](../../../capabilities/contracts/briefs/merge.md)). The pre-RFC-13 in-binary `specify contract` family was retired in chunk 2.7 of the RFC-13 landing; the WASI tool is the capability-owned replacement, with a byte-compatible JSON envelope for normal validator runs. The separate consumer-impact CLI surface is `specify compatibility`.

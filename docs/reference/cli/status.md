@@ -48,4 +48,3 @@ The top-level keys mirror the noun groups they summarise:
 - [specify slice list](change.md) -- list active slices
 - [specify change plan status](plan.md) -- per-entry plan view
 - [specify registry show](registry.md) -- raw registry contents
-- [Migrating CLI v1](../../explanation/migrating-cli-v1.md) -- rename map for the cleanup.

@@ -33,7 +33,7 @@ That is the entire core workflow. Everything else in Specify builds on this loop
 
 - **Planning a large change?** Read [Your First Slice](tutorials/first-change.md) and [Iterating on a Baseline](tutorials/iterating-on-baseline.md) first, then skip to [A Multi-Slice Change](tutorials/single-repo-change.md).
 
-- **Returning after a few releases?** [What's New Since v0.23](explanation/whats-new.md) catalogues the additive RFC-8 and RFC-9 work; the [v1 migration map](explanation/migrating-cli-v1.md) covers the rename pulse.
+- **Returning after a few releases?** [What's New Since v0.23](explanation/whats-new.md) catalogues the additive RFC-8 and RFC-9 work.
 
 ## Learning Path
 

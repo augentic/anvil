@@ -21,5 +21,5 @@ Task-oriented recipes for common Specify operations. Each guide assumes you have
 | Add or remove a project from the registry | [Manage Registry Projects](manage-registry-projects.md) |
 | Land a change end-to-end (autonomous or supervised) | [Land a Change](land-a-change.md) |
 | Define API contracts that span multiple repositories | [Work with Contracts Across Repos](cross-repo-contracts.md) |
-| Triage cross-project contract warnings on the merge transcript | [Resolve Cross-Project Contract Warnings](resolve-cross-project-contract-warnings.md) |
+| Triage cross-project compatibility findings | [Resolve Cross-Project Compatibility Findings](resolve-cross-project-contract-warnings.md) |
 | Recover when `/change:execute` halts on `registry-amendment-required` | [Recover from `registry-amendment-required`](recover-from-registry-amendment.md) |

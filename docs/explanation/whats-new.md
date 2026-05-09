@@ -1,6 +1,6 @@
 # What's New Since v0.23
 
-This page captures the **additive** changes to the Specify framework since the v1 CLI cleanup landed in v0.23. The v1 cleanup was a routing-only reshape (renamed verbs, no new behaviour); the work below adds new capabilities. For pure rename mappings see [Migrating to CLI v1](migrating-cli-v1.md). The two pages compose: this one tells you **what is new**, the migration map tells you **what was renamed**.
+This page captures the **additive** changes to the Specify framework since the v1 CLI cleanup landed in v0.23. The v1 cleanup was a routing-only reshape (renamed verbs, no new behaviour); the work below adds new capabilities.
 
 The bulk of the additions ship under [RFC-9: Platform-First Operator Experience](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md) and [RFC-8: API Contracts](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-8-api-contracts.md). RFC-9 closes the operator-experience gaps in the cross-repo loop; RFC-8 introduces contracts as platform-level artifacts. The most recent additions land [RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md) (capability rename, platform-component split, change/slice vocabulary), [RFC-14](../../rfcs/archive/rfc-14-workspace.md) (workspace branch and PR ownership), [RFC-15](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasm-plugins.md) (declared WASI capability tools), and [RFC-16](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-16-wasi-vectis.md) (Vectis WASI tools and `specify-vectis` retirement).
 
@@ -23,11 +23,7 @@ The two lifecycle nouns are now stable:
 - **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step; lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
 - **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, and the `specify change *` CLI verbs (which include the `specify change plan *` subresource).
 
-Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "initiative". Both were renamed in Phase 3 of the RFC; "the change loop" no longer exists as a phrase — call it the *slice loop*. Per-loop directories migrate via `specify migrate slice-layout`; the operator brief renames via `specify migrate change-noun`.
-
-### `/change:plan` and `/change:execute` move to the `change` plugin
-
-`/spec:plan` and `/spec:execute` moved to the new `change` plugin as `/change:plan` and `/change:execute`. The historical commands survive as thin deprecation shims that delegate to the canonical skills and are removed before the post-RFC-13 release. See [Change skills](../reference/change-skills/index.md).
+Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "initiative". Both were renamed in Phase 3 of the RFC; "the change loop" no longer exists as a phrase — call it the *slice loop*. Current releases expect `.specify/slices/` and `change.md`; the temporary RFC-13 migration shims have been removed.
 
 ### Platform components are not capabilities
 
@@ -45,7 +41,7 @@ A hub now carries `project.yaml { hub: true, … }` with the `capability:` field
 - **`/spec:merge` owns only the baseline commit.** In workspace clones, the merge auto-commit stages `.specify/specs/` and `.specify/archive/` only, with message `specify: merge <slice-name>`. Generated code, contracts, tests, and other project outputs are left for `/change:execute`'s residue commit.
 - **`specify workspace push` is transport-only.** It verifies each selected workspace is already on `specify/<change-name>`, pushes that branch, and creates or updates the PR. It does not create branches on the fly, does not create commits, never pushes default branches, and never merges PRs. A checkout on `main`, `master`, `origin/HEAD`, or any other branch reports `no-branch`; drive the slot through `/change:execute` or check out `specify/<change-name>` explicitly before pushing.
 - **PR merge is operator-owned.** Merge through the forge UI, `gh pr merge`, or the team's normal review queue. `specify change finalize` only verifies that each PR is already merged and that workspace clones are clean before archiving the plan.
-- **`specify workspace merge` is retired.** During the transition it may exist only as a one-release non-zero shim pointing to forge UI / `gh pr merge` plus `specify change finalize`.
+- **`specify workspace merge` is removed.** Merge PRs through the forge UI, `gh pr merge`, or the team's normal merge queue, then run `specify change finalize`.
 
 ## RFC-15 — declared WASI capability tools
 
@@ -119,23 +115,6 @@ See [Vectis WASI tools](../reference/cli/vectis.md) for the operator-facing surf
 
 The on-disk layout split along a clear boundary: **operator-facing platform artifacts** (`registry.yaml`, `plan.yaml`, `change.md`, `contracts/`) live at the repo root; generated `AGENTS.md` guidance also lives at the root with Specify owning only its fenced block; **framework-managed state** (`project.yaml`, `context.lock`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, `plan.lock`) stays under `.specify/`. The boundary makes the responsibilities explicit — operators own root artifacts and prose outside generated fences; Specify owns `.specify/`.
 
-This is a **hard cutover**. The CLI no longer reads the v1 layout. Any project-aware verb on a v1-layout project errors with the stable `legacy-layout` code (exit 1) and points the operator at:
-
-```bash
-specify migrate v2-layout
-```
-
-The migrate verb is idempotent, refuses to clobber an existing destination, and refuses to run inside a workspace clone (peer clones get migrated explicitly per-clone). See [`specify migrate v2-layout`](../reference/cli/migrate.md) for the wire shape and [Migrating to the v2 layout](../how-to/migrate-to-v2-layout.md) for the operator-facing walkthrough.
-
-Per-artifact migration map:
-
-| Artifact | v1 path | v2 path |
-|---|---|---|
-| Platform catalogue | `.specify/registry.yaml` | `registry.yaml` |
-| Change plan | `.specify/plan.yaml` | `plan.yaml` |
-| Operator brief | `.specify/initiative.md` | `change.md` after `specify migrate change-noun` |
-| API contracts | `.specify/contracts/` | `contracts/` |
-
 `project.yaml` stays under `.specify/`. The `contracts@v1` schema id, the `contracts` brief, the merge semantics, the produces/consumes registry roles, and the workspace flow are all unchanged — only the file locations moved. The decision-log entry "Platform artifacts at the repo root, framework state under `.specify/`" carries the design rationale.
 
 ## RFC-12 contract-versioning refinement
@@ -168,7 +147,7 @@ The former `contracts` plugin shipped three intent-named skills (`writer`, `vali
 |---|---|
 | `writer`, `validator`, `importer` | `/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema` |
 
-Each new skill handles author / import / verify intents internally. The former validator's `--mode {single, cross-project}` flag becomes an internal verifier option per format. `/change:execute`'s post-merge cross-project compatibility check now picks the format-appropriate skill (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema`) and threads the verifier intent with `--mode cross-project`.
+Each new skill handles author / import / verify intents internally. The former validator's `--mode {single, cross-project}` flag becomes an internal verifier option per format. The `cross-project` verifier mode is now the merge-time baseline validator delegate over `specify tool run contract`; consumer-impact classification lives under `specify compatibility`.
 
 ### Removed
 
@@ -243,15 +222,9 @@ specify registry remove <name>
 - Reference: [`specify registry`](../reference/cli/registry.md)
 - How-to: [Manage Registry Projects](../how-to/manage-registry-projects.md)
 
-## `specify workspace merge` retired
+## `specify workspace merge` removed
 
-RFC-14 retires the cross-repo PR-landing verb:
-
-```bash
-specify workspace merge [<project>...]
-```
-
-If present during the migration window, this command exits non-zero with guidance to merge PRs through the forge UI or an explicit `gh pr merge`, then run `specify change finalize`. It does not inspect checks, call `gh pr merge`, or merge PRs for the operator.
+RFC-14 removed the cross-repo PR-landing verb. Specify does not inspect checks, call `gh pr merge`, or merge PRs for the operator; merge PRs through the forge UI or an explicit `gh pr merge`, then run `specify change finalize`.
 
 - How-to: [Land a Change](../how-to/land-a-change.md)
 
@@ -293,12 +266,12 @@ The `contracts` brief in the define pipeline runs alignment validation against t
 - Reference: [Contract plugin](../reference/plugins/contract.md), [Contracts capability](../reference/capabilities/contracts.md), [Artifact Format -> Contracts](../reference/artifact-format.md#contract-artifacts-api-shape)
 - How-to: [Work with Contracts Across Repos](../how-to/cross-repo-contracts.md)
 
-## Cross-project contract validation (RFC-9 ?3B)
+## Cross-project compatibility classification (RM-04)
 
-Post-merge, `/change:execute` runs a cross-project compatibility check: for each contract the producer `produces`, find every consumer that `consumes` it and run the format-appropriate verifier against each consumer's workspace clone (`/contract:openapi`, `/contract:asyncapi`, or `/contract:json-schema`, picking the verifier intent and threading `mode cross-project`). Incompatibilities surface as warnings on the merge transcript and on the merged change's `journal.yaml` (`cross-project-warning:` entries). **Warnings never halt the loop** -- the operator triages.
+`specify compatibility report --change <name>` and `specify compatibility check` classify producer-to-consumer contract deltas from `registry.yaml`, root `contracts/`, and `.specify/workspace/<consumer>/contracts/`. Findings are `additive`, `breaking`, `ambiguous`, or `unverifiable`; `compatibility check` exits validation-failed for every non-additive risk. `/change:execute` no longer owns journal or transcript warning side effects for this report.
 
-- How-to: [Resolve Cross-Project Contract Warnings](../how-to/resolve-cross-project-contract-warnings.md)
-- Troubleshooting: [Cross-project contract warnings on the merge transcript](../appendices/troubleshooting.md#cross-project-contract-warnings-on-the-merge-transcript)
+- How-to: [Resolve Cross-Project Compatibility Findings](../how-to/resolve-cross-project-contract-warnings.md)
+- CLI: [specify compatibility](../reference/cli/compatibility.md)
 
 ## `registry-amendment-required` outcome
 
@@ -321,11 +294,8 @@ Three renames landed on top of the v1 cleanup so every noun-create verb now uses
 
 The renames ship together so the `plan` group never spent an interim release with `init` and `create` for the same noun.
 
-- See: [Migrating to CLI v1 -- v1.x renames](migrating-cli-v1.md#v1x-renames)
-
 ## See also
 
-- [Migrating to CLI v1](migrating-cli-v1.md) -- the v1 rename map (companion page).
 - [The Layered Stack](three-layer-stack.md) -- updated for Layer 4.
 - [Cross-Repo Changes](../tutorials/cross-repo-change.md) and [Landing a Change](../tutorials/landing-a-change.md) -- the worked example exercising all of the above.
 - [Quick Reference](../reference/quick-reference.md) -- single-page cheat sheet for the post-RFC-9 surface.

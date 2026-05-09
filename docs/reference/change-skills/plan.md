@@ -2,8 +2,6 @@
 
 Author `plan.yaml` for a change.
 
-> **Renamed.** This skill was previously `/change:plan`. RFC-13 §3.9 moved it to the `change` plugin as `/change:plan`. The historical command remains as a deprecation shim that delegates here and is removed before the post-RFC-13 release; see [RFC-13 §Migration](../../../rfcs/archive/rfc-13-extensibility.md#migration).
-
 ## Synopsis
 
 ```text

@@ -2,7 +2,7 @@
 
 > Status: Implemented · Depends: [RFC-1](rfc-1-cli.md), [RFC-2](rfc-2-execution.md), [RFC-3a](rfc-3a-monoliths.md)
 >
-> **Note**: Verb names in this archived RFC predate the CLI cleanup; see [docs/explanation/migrating-cli-v1.md](../../docs/explanation/migrating-cli-v1.md) for current names.
+> **Note**: Verb names in this archived RFC predate the CLI cleanup. See current CLI reference under `docs/reference/cli/`.
 >
 > **RFC-14 supersession note**: the workspace branch and landing sections below describe the pre-RFC-14 model where `workspace push` created the change branch at push time and automated merge was left as a possible workspace verb. Current behavior prepares `specify/<change-name>` before mutation, treats `workspace push` as transport-only PR publication, and leaves PR merge to the operator before `specify change finalize`.
 

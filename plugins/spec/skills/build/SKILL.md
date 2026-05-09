@@ -18,20 +18,11 @@ Implement tasks from a Specify slice.
 
 Deterministic bookkeeping — slice selection, lifecycle transitions, capability resolution, brief completion checks, task progress counting, checkbox flips — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the build brief body, dispatching skill directives, and making code changes.
 
-When working plan-driven (a `plan.yaml` exists), the corresponding plan entry should already be `in-progress` — the human runs `specify change plan transition <name> in-progress` once before `/spec:build` starts. `/spec:build` itself does not touch `plan.yaml`; the plan transition out of `in-progress` happens from `/spec:merge` (→ `done`) or `/spec:drop` (→ `failed` / `blocked`).
+When working plan-driven (a `plan.yaml` exists), the corresponding entry should already be `in-progress`. `/spec:build` does not touch `plan.yaml`; plan-status transitions remain with the driver or human loop named in the shared [phase outcome contract](../../references/phase-outcome-contract.md).
 
 ## Phase outcome contract
 
-This skill is the **build** phase of the `/change:execute` driver loop.
-The shared phase contract — outcome values, journal kinds, plan-mutation rules,
-the verbatim-`summary` rule, and the success/failure/deferred semantics — is
-authored once at [`../../references/phase-outcome-contract.md`](../../references/phase-outcome-contract.md).
-
-This phase's outcome-specific deltas:
-
-- `success` — every build brief converged, validation is green, and `specify slice task progress` reports `pending == 0`; ready for `/spec:merge`.
-- `failure` — a test or build halted after the repair budget (Omnia's 3-iteration verify-repair loop could not converge, a specialist writer skill returned non-recoverable).
-- `deferred` — blocked on a question (an ambiguous task, a design issue surfaced during implementation, an unsafe artefact update).
+This skill is the **build** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including build's per-phase deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
 
 **Input**: Optionally specify a slice name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available slices.
 

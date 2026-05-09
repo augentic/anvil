@@ -88,6 +88,7 @@
 - [Registry](reference/registry.md)
 - [Change Component](reference/change-component.md)
 - [Configuration Files](reference/configuration.md)
+- [Declared Tool Helper Inventory](reference/declared-tool-helper-inventory.md)
 
 ---
 
@@ -100,7 +101,6 @@
 - [Workspace Tiers](explanation/workspace-tiers.md)
 - [Tool Declarations](explanation/tool-declarations.md)
 - [Decision Log](explanation/decision-log.md)
-- [Migrating CLI v1](explanation/migrating-cli-v1.md)
 - [What's New Since v0.23](explanation/whats-new.md)
 
 ---

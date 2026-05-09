@@ -6,7 +6,35 @@ The four phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop
 2. **`journal.yaml`** entries appended during the run — append-only audit log; never a signalling channel.
 3. **`plan.yaml`** mutations issued through `specify change plan add` / `specify change plan amend` — bounded by the allow/forbid table below.
 
-This document is the parameterised contract. Per-phase deltas (the concrete success criteria, failure modes, and deferral triggers for each phase) live in each skill's `## Phase outcome contract` section.
+This document is the parameterised contract, including the concrete success criteria, failure modes, and deferral triggers for each phase. Individual skills link here and keep only phase-local operational steps in their always-loaded bodies.
+
+---
+
+## Per-phase deltas
+
+### Define
+
+- **`success`** — every define brief produced its `generates` artefact and there are no `[unknown]` blockers; the slice is ready for `/spec:build`.
+- **`failure`** — a brief halted before all artefacts were written, such as extraction fixture capture crashing or a writer brief exhausting its repair budget.
+- **`deferred`** — upstream input is missing or ambiguous, such as a source/baseline conflict, unclear scope, or a requirement that needs human judgement.
+
+### Build
+
+- **`success`** — every build brief converged, validation is green, and `specify slice task progress` reports `pending == 0`; the slice is ready for `/spec:merge`.
+- **`failure`** — implementation or verification halted after the repair budget, such as a non-converging test/build loop or a specialist writer returning a non-recoverable error.
+- **`deferred`** — the build is blocked on a question, such as an ambiguous task, design issue surfaced during implementation, or unsafe artefact update.
+
+### Merge
+
+- **`success`** — baseline merge applied, lifecycle transitioned to `merged`, and the slice archive moved. This path is uniquely CLI-stamped by `specify slice merge run`; skills MUST NOT call `outcome set` after a successful merge.
+- **`failure`** — `specify slice merge run` exited non-zero and left the filesystem unchanged; record skill-side via `outcome set ... merge failure ...`.
+- **`deferred`** — `specify slice merge run` was never invoked, such as when the user declined the preview, conflict-check needs human arbitration, or lifecycle is not `Complete`; record skill-side via `outcome set ... merge deferred ...`.
+
+### Drop
+
+- **`success`** — `specify slice drop` exited zero, archiving the slice with status `dropped` and the supplied reason recorded in `.metadata.yaml`. The lifecycle stamp is the success signal; no separate `outcome set` call is made.
+- **`failure`** — `specify slice drop` returned a lifecycle violation or malformed-directory error; record skill-side via `outcome set ... drop failure ...`.
+- **`deferred`** — rare; an interactive cancel or precondition needs human resolution before the drop is safe. Non-interactive runs from `/change:execute` do not reach this path.
 
 ---
 

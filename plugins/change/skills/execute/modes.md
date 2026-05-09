@@ -8,7 +8,7 @@ Run the per-slice algorithm once, exactly as written, then exit. A supervised ru
 
 ## `--dry-run`
 
-Run the per-slice algorithm with every **write** substituted for a **report** (see the §Guardrails section in `SKILL.md` for the explicit MUST-NOTs). Concretely:
+Run the per-slice algorithm with every **write** substituted for a **report** (see [execute-state-handoff.md](../../references/execute-state-handoff.md) for the shared no-write contract). Concretely:
 
 | Write | Dry-run substitute |
 |---|---|

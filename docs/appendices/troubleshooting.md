@@ -2,24 +2,6 @@
 
 Common failure modes and their resolutions.
 
-## Layout issues
-
-### `legacy-layout` error from every CLI verb
-
-**Symptom:** Any project-aware verb (`specify status`, `specify change plan ...`, `specify registry ...`, etc.) exits 1 with `error: legacy v1 layout detected; run \`specify migrate v2-layout\` to upgrade ([".specify/registry.yaml", ...])`. JSON callers see `error: "legacy-layout"`.
-
-**Cause:** The CLI was upgraded past `0.2.0` (which moved operator-facing platform artifacts to the repo root) but the project still has v1-layout files under `.specify/`.
-
-**Resolution:**
-
-```bash
-specify migrate v2-layout
-specify migrate slice-layout
-specify migrate change-noun
-```
-
-The mover is idempotent and refuses to clobber existing destinations. See [Migrating to the v2 layout](../how-to/migrate-to-v2-layout.md) for the full walkthrough, including multi-repo platforms and collision recovery.
-
 ## Slice lifecycle issues
 
 ### "Slice not found"
@@ -377,10 +359,10 @@ specify registry add <existing-name> \
 
 **Resolution:** None needed -- the change is already closed. Inspect the archive to confirm: `ls .specify/archive/plans/`. If the plan was lost some other way (e.g. accidental `rm`), recover from version control.
 
-### Cross-project contract warnings on the merge transcript
+### Breaking findings from `specify compatibility check`
 
-**Symptom:** `/change:execute loop`'s merge transcript shows `cross-project-warning:` entries, and the merged slice's `journal.yaml` carries the same warnings.
+**Symptom:** `specify compatibility check` exits validation-failed and reports `breaking`, `ambiguous`, or `unverifiable` findings.
 
-**Cause:** RFC-9 Section 3B post-merge cross-project contract validation. After a producer merges, the driver walks `contracts.produces`, finds consumer projects via `contracts.consumes`, and runs the format-appropriate `/contract:*` skill (verifier intent, with `--mode cross-project`) against each consumer's workspace clone — `/contract:openapi` for HTTP / resource APIs, `/contract:asyncapi` for evented / pub-sub / streaming, `/contract:json-schema` for shared payload schemas. Any incompatibilities surface as warnings. Warnings never halt the loop -- the operator triages.
+**Cause:** RM-04 compatibility classification found producer-to-consumer contract risk, or it could not compare the current producer contract with a consumer workspace view.
 
-**Resolution:** Read [Resolve cross-project contract warnings](../how-to/resolve-cross-project-contract-warnings.md) for the triage checklist. Typical paths: spawn a follow-up consumer slice to track the producer's update, or accept the drift if the consumer is intentionally lagging.
+**Resolution:** Read [Resolve cross-project compatibility findings](../how-to/resolve-cross-project-contract-warnings.md) for the triage checklist. Typical paths: spawn a follow-up consumer slice to track the producer's update, refresh the workspace clone if the finding is unverifiable, or accept the drift if the consumer is intentionally lagging.

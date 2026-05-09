@@ -1,4 +1,4 @@
-# .specify/changes/checkout-api/journal.yaml after self-heal appends
+# .specify/slices/checkout-api/journal.yaml after self-heal appends
 # its one type: recovery entry. The three type: failure entries above
 # were authored by /spec:build on the prior (crashed) run — self-heal
 # preserves them unchanged and appends the recovery entry at the end.

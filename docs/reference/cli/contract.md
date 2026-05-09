@@ -2,7 +2,7 @@
 
 The contracts capability declares a `contract` WASI tool that walks a baseline `contracts/` directory, projects every top-level OpenAPI 3.1 / AsyncAPI 3.0 document, and enforces the RFC-12 §Validation rules. It is read-only and never modifies files.
 
-The legacy in-binary `specify contract` family was retired in chunk 2.7 of the RFC-13 landing. The later `specify-contract-validate` host binary is now transitional; the operator-visible merge gate is:
+The legacy in-binary `specify contract` family was retired in chunk 2.7 of the RFC-13 landing. The canonical operator-visible merge gate is the declared WASI tool:
 
 ```bash
 specify tool run contract -- <BASELINE_DIR> [--format text|json]
@@ -60,7 +60,9 @@ Field semantics:
 - `findings[].detail` — single-line human-readable description.
 - `exit-code` — mirrors the validator's process-style exit code.
 
-The envelope is byte-compatible with the retired in-binary contract validator and the transitional host binary for successful validator invocation and findings cases. Resolver, permission, or runtime failures come from `specify tool run` and use the standard Specify error envelope.
+The envelope is byte-compatible with the retired in-binary contract validator for successful validator invocation and findings cases. Resolver, permission, or runtime failures come from `specify tool run` and use the standard Specify error envelope.
+
+This tool is the baseline-validation gate only. It does not compare producer contracts against consumer workspace views. Use `specify compatibility check` or `specify compatibility report --change <name>` for RM-04 consumer-impact classification.
 
 ## Distribution
 
@@ -68,7 +70,7 @@ The contracts capability ships `capabilities/contracts/tools.yaml`, a sidecar de
 
 Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify tool run contract` resolves and caches the WASI component, verifies its SHA-256 pin, applies the declared filesystem preopen, and runs it through the embedded WASI host.
 
-The current development declaration uses a `file://` source pointing at the checked-in `specify-cli/crates/contract-validate/dist/contract-<version>.wasm` artifact. Public `https://` hosting for release distribution is a follow-up to RFC-15.
+During local development, project authors may override the capability declaration with a project-scope `file://` source that points at a locally built `contract.wasm`. The first-party capability declaration uses the released `https://` source and SHA-256 pin.
 
 ## See Also
 

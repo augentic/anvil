@@ -108,7 +108,7 @@ Two reasons drive the "operator owns every registry mutation" stance:
 1. **Topology is a design decision.** Registries describe how a platform is sliced into repos. Auto-creating a new repo (via `gh repo create` triggered by `registry add` plus a greenfield `workspace push`) is not a decision the framework has enough context to make on the operator's behalf.
 2. **The validator is opinionated.** The `description-missing-multi-repo` invariant fires the moment a registry crosses from one project to two. Auto-adding without an operator-authored description would either generate a placeholder description (degrading the assignment step's quality) or fail the validator (creating a worse halt than the one we just recovered from).
 
-The framework reports drift; the operator decides what to do about it. Same posture as the cross-project contract check -- see [Resolve cross-project contract warnings](resolve-cross-project-contract-warnings.md).
+The framework reports drift; the operator decides what to do about it. Same posture as compatibility reporting -- see [Resolve cross-project compatibility findings](resolve-cross-project-contract-warnings.md).
 
 ## See also
 

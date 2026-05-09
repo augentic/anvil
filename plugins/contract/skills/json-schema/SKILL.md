@@ -6,7 +6,7 @@ argument-hint: "[slice-dir]"
 
 # JSON Schema
 
-Specialist for standalone JSON Schema (Draft 2020-12) documents on Specify changes — the shared payload vocabulary referenced by `/contract:openapi` HTTP operations and `/contract:asyncapi` message channels. This skill owns three intents: authoring or extending reusable payload schemas, importing or normalising externally supplied schema files, and verifying schema artefacts (single-mode internal consistency or cross-format / cross-project consumer compatibility).
+Specialist for standalone JSON Schema (Draft 2020-12) documents on Specify changes — the shared payload vocabulary referenced by `/contract:openapi` HTTP operations and `/contract:asyncapi` message channels. This skill owns three intents: authoring or extending reusable payload schemas, importing or normalising externally supplied schema files, and verifying schema artefacts (single-mode internal consistency or cross-format consumer compatibility plus merge-time baseline validation).
 
 The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong to `/contract:openapi`; evented bindings under `contracts/messages/` belong to `/contract:asyncapi`. Both protocol skills delegate every payload-schema decision (`$id` shape, naming, decomposition, draft policy, metadata) to this skill.
 
@@ -17,7 +17,7 @@ The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong 
 3. **Dispatch to the sibling.** Open and follow [`author.md`](./author.md), [`importer.md`](./importer.md), or [`verifier.md`](./verifier.md). Each sibling owns its complete algorithm, decision rules, and output format.
 4. **Write outputs to `contracts/schemas/`.** Author and importer paths produce or normalise JSON Schema YAML files under `$SLICE_DIR/contracts/schemas/` — one named type per file, kebab-case filenames, URN `$id` derived from the file path.
 5. **Run the verifier.** After authoring or importing, invoke the verifier sibling to check `$ref` resolution, metadata completeness, duplicate-`$id` collisions, and cross-format consumer compatibility against any HTTP and messaging bindings that already reference the schema.
-6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the structured YAML compatibility report (cross-project mode) so the calling brief or operator can triage.
+6. **Surface diagnostics.** Render the markdown alignment / import / validation report (single mode) or the contract-tool JSON envelope (cross-project mode) so the calling brief or operator can triage. Cross-project consumer impact is reported by `specify compatibility`.
 7. **Stay within change-local `contracts/schemas/`.** Do not modify baseline files in root `contracts/`, do not touch `contracts/http/` or `contracts/messages/`, and do not invent fields the spec does not justify — mark unknowns with `[unknown]` instead.
 
 ## Invocation
@@ -29,9 +29,9 @@ The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong 
 Optional internal positionals (recognised by the verifier sibling):
 
 - `mode single` — default. Validate the slice's schema artefacts in isolation against the specs and any baseline bindings that reference them. Read-only, markdown report.
-- `mode cross-project` — invoked by `/change:execute` after a producer's contract change merges. Compares each merged schema against each consumer's tier-2 workspace clone view of the same schema. Read-only, structured YAML report. See `verifier.md` §Cross-project mode.
+- `mode cross-project` — merge-time baseline validation delegate. Walks the merged `contracts/` directory through `specify tool run contract`; it does not compare consumer workspace clones. Read-only, JSON envelope. See `verifier.md` §Cross-project mode.
 
-When invoked from the contracts capability build brief during `/spec:build`, `<slice-dir>` is the active slice directory; the brief routes the intent (author or importer) based on whether the operator supplied external schema files for `contracts/schemas/`. When invoked post-merge by `/change:execute`, the verifier sibling runs in `cross-project` mode against the producer's merged schemas.
+When invoked from the contracts capability build brief during `/spec:build`, `<slice-dir>` is the active slice directory; the brief routes the intent (author or importer) based on whether the operator supplied external schema files for `contracts/schemas/`. Consumer-impact reporting is a CLI concern under `specify compatibility`.
 
 ## Artifact layout
 
@@ -66,7 +66,7 @@ Pick the sibling that matches the trigger. Each sibling is a self-contained algo
 |---|---|---|
 | Author or extend reusable schemas from a spec | contracts capability build brief during `/spec:build`; operator extending the baseline for new payload types | `author.md` |
 | Import or normalise external schema files | operator drops schema files into a slice's `contracts/schemas/` directory | `importer.md` |
-| Verify `$ref` consistency, metadata, and cross-format consumer compatibility | contracts capability build verification; post-merge cross-project checks | `verifier.md` |
+| Verify `$ref` consistency, metadata, cross-format consumer compatibility, or merge-time baseline validation | contracts capability build verification; post-merge contract baseline gate | `verifier.md` |
 
 The three intents share a common artefact contract (filename → `$id` derivation, one-type-per-file, draft policy) but have distinct algorithms — never conflate them. An import must be followed by a verifier run before the brief considers the artefacts ready for merge; an author run normally ends with a verifier run too.
 
@@ -86,7 +86,7 @@ A corollary: this skill **never** writes outside `contracts/schemas/`. Schema-sh
 
 - [`author.md`](./author.md) — `$id` assignment policy, one-type-per-file decomposition, schema-file naming, vocabulary for shared payloads, spec → schema mapping rules.
 - [`importer.md`](./importer.md) — schema-only file detection, OpenAPI / AsyncAPI bundle rejection, draft upgrades (draft-04 / -06 / -07 / 2019-09 → 2020-12), Specify metadata injection.
-- [`verifier.md`](./verifier.md) — `$ref` resolution, metadata completeness, duplicate-`$id` detection, cross-format consumer compatibility checks against existing OpenAPI / AsyncAPI bindings, single-mode and cross-project verifier modes.
+- [`verifier.md`](./verifier.md) — `$ref` resolution, metadata completeness, duplicate-`$id` detection, cross-format consumer compatibility checks against existing OpenAPI / AsyncAPI bindings, single-mode verifier behavior, and cross-project baseline validation delegation.
 
 ## Shared format guidance
 
@@ -113,7 +113,7 @@ These constraints are non-negotiable for any of the three sibling paths:
 Because protocol bindings reference these schemas, edits in this skill can break already-merged HTTP and messaging contracts. The verifier sibling is the safety net:
 
 - In `single` mode, verifier Check 4 (cross-format consumer compatibility) cross-references each touched schema against `$BASELINE_CONTRACTS/http/` and `$BASELINE_CONTRACTS/messages/` and flags any backwards-incompatible change before the brief approves the artefact.
-- In `cross-project` mode, the same compatibility checks run against each consumer's tier-2 workspace clone of the schema, recording warnings on the merging change's `journal.yaml`.
+- Cross-project producer-to-consumer impact is reported by `specify compatibility`; the verifier's `cross-project` mode is only the merge-time baseline validation delegate.
 
 When authoring or importing, never silently delete or narrow a baseline schema's fields; if the spec requires it, surface the slice as a warning and let a human operator decide whether to bump the schema's `$id` (effectively introducing a new type with a deprecation path on the old one).
 
@@ -131,7 +131,7 @@ When authoring or importing, never silently delete or narrow a baseline schema's
 - [`artifact-structure`](../../references/artifact-structure.md) — directory layout for root `contracts/`.
 - [`baseline-vs-delta`](../../references/baseline-vs-delta.md) — cross-format rules for computing the minimal delta between baseline and change-local files, including the `$id` stability rule and opaque-file-replacement merge contract.
 - [`import-upgrade-policy`](../../references/import-upgrade-policy.md) — shared framework for the importer sibling (format detection, draft upgrades, lossless-vs-lossy decisions).
-- [`report-shape`](../../references/report-shape.md) — single-mode markdown and cross-project YAML report formats produced by the verifier sibling.
-- [`cross-project-compatibility`](../../references/cross-project-compatibility.md) — `change-kind` vocabulary used by the verifier in `mode cross-project` and by Check 4 in `single` mode.
+- [`report-shape`](../../references/report-shape.md) — single-mode markdown, baseline validator JSON, and compatibility report JSON formats.
+- [`cross-project-compatibility`](../../references/cross-project-compatibility.md) — RM-04 compatibility classifications and `change-kind` vocabulary used by `specify compatibility` and by Check 4 in `single` mode.
 - [`openapi-conventions`](../../references/openapi-conventions.md) — referenced for understanding how `/contract:openapi` consumes the schemas authored here.
 - [`asyncapi-conventions`](../../references/asyncapi-conventions.md) — referenced for understanding how `/contract:asyncapi` consumes the schemas authored here.

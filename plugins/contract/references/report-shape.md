@@ -2,14 +2,15 @@
 
 Output formats for the format-skill verifiers (`/contract:openapi`, `/contract:asyncapi`, `/contract:json-schema`) and — by convention — the matching alignment / import reports produced by the author and importer paths.
 
-The verifier runs in two modes (see also [`cross-project-compatibility`](cross-project-compatibility.md)):
+The verifier runs in two modes, but RM-04 compatibility reporting is a CLI surface rather than a format-skill report (see also [`cross-project-compatibility`](cross-project-compatibility.md)):
 
-| Mode | Output format | Caller | Trigger |
+| Surface | Output format | Caller | Trigger |
 |---|---|---|---|
-| `single` (default) | Markdown | contracts capability build brief in `/spec:build` | Post-author or post-import; verify-repair loop |
-| `cross-project` | Structured YAML | `/change:execute` post-merge step (RFC-9 §3B) | Producer-side merge of a contract change |
+| Format verifier `single` (default) | Markdown | contracts capability build brief in `/spec:build` | Post-author or post-import; verify-repair loop |
+| Format verifier `cross-project` | JSON envelope from `specify tool run contract` | contracts capability merge brief | Post-merge baseline validation gate |
+| `specify compatibility report --change <name>` | Versioned CLI JSON or text | operator / CI | Read-only producer-to-consumer compatibility classification |
 
-`single` mode is human-readable; the contracts capability build brief drives a verify-repair loop until the report is clean. `cross-project` mode is machine-readable; the execute driver parses `summary.total-findings` to decide whether to render a warning block in the merge transcript.
+`single` mode is human-readable; the contracts capability build brief drives a verify-repair loop until the report is clean. Format-verifier `cross-project` mode delegates to the declared `contract` WASI tool and preserves its baseline-validation JSON envelope. The RM-04 compatibility report is produced by the `specify compatibility` CLI family and classifies consumer impact as `additive`, `breaking`, `ambiguous`, or `unverifiable`.
 
 Both modes share the **read-only** contract — the verifier MUST NOT generate, modify, or delete any files in either mode.
 
@@ -23,7 +24,7 @@ The severity vocabulary is shared across formats and modes:
 | `WARN` (`warning` in YAML) | `⚠` | A finding that requires human review. Common in cross-format compatibility checks where the conservative output is "the wire shape changed in a backwards-incompatible direction; the operator should triage." |
 | `INFO` (`info` in YAML) | `ℹ` | A neutral observation. Common when the consumer's view matches the producer's update or when the consumer has no prior view. |
 
-Single-mode markdown reports use `FAIL` / `WARN` / `INFO` words plus the corresponding glyph in summary tables. Cross-project YAML reports use lowercase `error` / `warning` / `info` strings in the `severity` field.
+Single-mode markdown reports use `FAIL` / `WARN` / `INFO` words plus the corresponding glyph in summary tables. The compatibility CLI does not use this severity vocabulary; it uses the RM-04 `classification` field instead.
 
 ## Single-mode output (markdown)
 
@@ -75,80 +76,88 @@ WARN: contracts/schemas/payment.yaml — "$schema" is Draft 7; expected Draft 20
 
 `single` mode preserves classical exit semantics: zero on a clean report, non-zero on read errors. A clean report with `WARN`-only findings still exits zero — `WARN` is informational for human review, not a blocker. Only `FAIL` findings block the verify-repair loop, but exit code 0 is preserved across the loop iterations because the brief drives repair, not the verifier.
 
-## Cross-project mode output (structured YAML)
+## Compatibility report output (CLI JSON)
 
-The execute driver consumes the cross-project report directly. The schema is stable and machine-readable; format skills must emit the structure verbatim.
+`specify compatibility report --change <name>` emits a normal versioned Specify CLI JSON envelope when `--format json` is selected. `specify compatibility check` emits the same payload and exits validation-failed when any finding is `breaking`, `ambiguous`, or `unverifiable`.
 
 ### Findings present
 
-```yaml
-mode: cross-project
-producer:
-  contract: contracts/http/user-api.yaml
-consumer:
-  workspace: .specify/workspace/mobile/
-findings:
-  - severity: warning
-    contract: contracts/http/user-api.yaml
-    change-kind: removed-field
-    locator: paths./users/{user_id}.get.responses.200.content.application/json.schema.properties.email
-    details: >
-      The producer's update removes the `email` field from the
-      GET /users/{user_id} response body. The consumer's last-known view
-      defines this field; consumer code that reads it will receive
-      `undefined` after the next workspace sync.
-  - severity: warning
-    contract: contracts/http/user-api.yaml
-    change-kind: required-field-added
-    locator: paths./users.post.requestBody.content.application/json.schema.required
-    details: >
-      Producer adds `phone-number` to the required field list of
-      POST /users. Consumer requests built from the prior shape will
-      be rejected with HTTP 400.
-summary:
-  total-findings: 2
-  warnings: 2
-  errors: 0
+```json
+{
+  "schema-version": 3,
+  "change": "user-api-v2",
+  "checked-pairs": 1,
+  "ok": false,
+  "findings": [
+    {
+      "classification": "breaking",
+      "change-kind": "removed-field",
+      "producer-project": "backend",
+      "consumer-project": "mobile",
+      "producer-contract": "contracts/http/user-api.yaml",
+      "consumer-contract": "contracts/http/user-api.yaml",
+      "locator": "paths./users.get.responses.200.content.application/json.schema.properties.email",
+      "details": "Consumer view defines property `email`, but the producer contract removed it"
+    }
+  ],
+  "summary": {
+    "total-findings": 1,
+    "additive": 0,
+    "breaking": 1,
+    "ambiguous": 0,
+    "unverifiable": 0
+  }
+}
 ```
 
 ### No findings
 
-```yaml
-mode: cross-project
-producer:
-  contract: contracts/http/user-api.yaml
-consumer:
-  workspace: .specify/workspace/mobile/
-findings: []
-summary:
-  total-findings: 0
-  warnings: 0
-  errors: 0
+```json
+{
+  "schema-version": 3,
+  "change": "user-api-v2",
+  "checked-pairs": 0,
+  "ok": true,
+  "findings": [],
+  "summary": {
+    "total-findings": 0,
+    "additive": 0,
+    "breaking": 0,
+    "ambiguous": 0,
+    "unverifiable": 0
+  }
+}
 ```
 
-The report is well-formed even when empty — the execute driver always parses `summary.total-findings` to decide whether to render a warning block in the merge transcript.
+The report is well-formed even when empty.
 
 ### Top-level fields
 
 | Field | Type | Description |
 |---|---|---|
-| `mode` | string (literal `cross-project`) | Disambiguates from single-mode reports for any consumer parsing both. |
-| `producer.contract` | path | The producer-side contract path that was compared. Relative to the producer repo root. |
-| `consumer.workspace` | path | The tier-2 workspace clone directory under `.specify/workspace/`. |
-| `findings` | array | One entry per detected change. Empty array when the consumer's view matches the producer's update or no consumer view was found. |
-| `summary.total-findings` | integer | `len(findings)`. The execute driver checks this for the warning-block threshold. |
-| `summary.warnings` | integer | Count of `severity: warning` entries. |
-| `summary.errors` | integer | Count of `severity: error` entries. Always `0` in `cross-project` mode unless the producer's input is unreadable (which exits non-zero before emitting a report). |
+| `schema-version` | integer | Standard Specify CLI JSON envelope version. |
+| `change` | string | Change name supplied with `--change`; absent for `compatibility check`. |
+| `checked-pairs` | integer | Number of producer / consumer contract pairs inspected. |
+| `ok` | boolean | `true` iff no `breaking`, `ambiguous`, or `unverifiable` findings are present. |
+| `findings` | array | One entry per detected compatibility delta or unverifiable pair. |
+| `summary.total-findings` | integer | `len(findings)`. |
+| `summary.additive` | integer | Count of `classification: additive` entries. |
+| `summary.breaking` | integer | Count of `classification: breaking` entries. |
+| `summary.ambiguous` | integer | Count of `classification: ambiguous` entries. |
+| `summary.unverifiable` | integer | Count of `classification: unverifiable` entries. |
 
 ### Per-finding fields
 
 | Field | Type | Description |
 |---|---|---|
-| `severity` | `error` / `warning` / `info` | See severity table above. |
-| `contract` | path | The producer-side contract that contains the slice. Same path as `producer.contract` for single-format checks. |
-| `change-kind` | string | A value from the [`cross-project-compatibility`](cross-project-compatibility.md) `change-kind` enumeration. |
+| `classification` | `additive` / `breaking` / `ambiguous` / `unverifiable` | RM-04 classification. |
+| `change-kind` | string | Optional value from the [`cross-project-compatibility`](cross-project-compatibility.md) `change-kind` enumeration. Present when a stable vocabulary value applies. |
+| `producer-project` | string | Registry project that produces the contract. |
+| `consumer-project` | string | Registry project that consumes the contract. |
+| `producer-contract` | path | Contract path from the producer baseline, relative to the repo root. |
+| `consumer-contract` | path | Contract path from the consumer workspace view, relative to the repo root. |
 | `locator` | string | A dot-separated path into the contract document. See §Locator format below. |
-| `details` | string (typically multi-line) | Human-prose explanation. Surfaces in the merge transcript and the slice's `journal.yaml`. Use `>` (folded scalar) for multi-line entries. |
+| `details` | string | Human-prose explanation suitable for terminal, CI, or review output. |
 
 ### Locator format
 
@@ -170,15 +179,9 @@ Locators are dot-separated paths into the contract document, following the forma
 
 Path segments containing dots (e.g. `application/json`) are kept verbatim — locators are not parsed by the verifier or the execute driver, only emitted for human triage.
 
-### Cross-project exit semantics
+### Compatibility exit semantics
 
-`cross-project` mode exits **0** even when warnings are present. The mode is non-fatal by design (RFC-9 §3B). Exit non-zero only when the inputs are unreadable:
-
-- `cannot-read-producer-contract` — the producer-side contract path does not exist or is not readable.
-- `producer-contract-malformed` — the producer-side contract is malformed YAML and cannot be parsed.
-- Permission denied / unreachable workspace clone.
-
-In these cases the verifier exits non-zero **before** emitting a YAML report (or with a minimal report carrying the diagnostic), and the execute driver records the failure in the merging change's `journal.yaml`.
+`specify compatibility report --change <name>` exits `0` when it can render a report, even if the report contains `breaking`, `ambiguous`, or `unverifiable` findings. `specify compatibility check` exits `0` only when `ok: true`; otherwise it exits with the normal Specify validation-failed code.
 
 ## Author / importer report shape
 
@@ -193,7 +196,7 @@ The author / importer paths always run the verifier afterwards. If the verifier 
 
 ## See also
 
-- [`cross-project-compatibility`](cross-project-compatibility.md) — `change-kind` enumeration used inside cross-project YAML findings.
+- [`cross-project-compatibility`](cross-project-compatibility.md) — RM-04 classification policy and `change-kind` vocabulary.
 - [`baseline-vs-delta`](baseline-vs-delta.md) — alignment report structure for the author paths.
 - [`import-upgrade-policy`](import-upgrade-policy.md) — import report's "Manual Review Required" section.
 - Format-specific verifiers — `plugins/contract/skills/{openapi,asyncapi,json-schema}/verifier.md`.
