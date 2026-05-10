@@ -92,6 +92,10 @@ The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolut
 
 - Every `SKILL.md` in this repository follows the house style codified in [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions); the long-form rationale (discovery model, why metadata is precious, examples of good/bad descriptions, the progressive-disclosure pattern, and the forbidden-frontmatter list) lives at [docs/explanation/skill-authoring.md](docs/explanation/skill-authoring.md).
 
+### Description tightness
+
+Each `SKILL.md` `description` field must be **≤ 512 chars** (tightened from 1024 in CL-S01), lead with a strong verb (imperative `Generate` or third-person `Generates` are both fine), and name a concrete trigger phrase — almost always `Use when …` — so the skill-discovery surface can match on intent rather than vocabulary. Mechanically enforced by `checkDescriptionLength` in [scripts/checks/skill_frontmatter.ts](scripts/checks/skill_frontmatter.ts). The body cap is correspondingly **≤ 400 lines** (tightened from 470 in CL-S02); see `checkBodyLineCount` in [scripts/checks/skill_body.ts](scripts/checks/skill_body.ts). Both caps are floors, not budgets — overflow means the relocate-to-`references/` patterns in §"Skill body discipline" need to fire, not that the cap should be raised.
+
 ### Skill body discipline
 
 The frontmatter rules in `.cursor/rules/project.mdc` and the body line-count ceilings in `scripts/checks.ts` are the floor — a SKILL.md that *passes* `make checks` can still be wasteful. These are the additional rules `make checks` enforces (or that review enforces until they're mechanised):
@@ -113,7 +117,9 @@ The frontmatter rules in `.cursor/rules/project.mdc` and the body line-count cei
 
 Predicates surfaced by Skills-1:
 
-- `checkNoRfcCitationsInSkillBody` — `RFC[- ]?\d+` in skill body, fenced code excluded, `rfcs/` archive links excluded.
+- `checkDescriptionLength` — frontmatter `description` length, hard cap **512 chars** (CL-S01; was 1024).
+- `checkBodyLineCount` — SKILL.md body line count, hard cap **400 lines** (CL-S02; was 470).
+- `checkNoRfcCitationsInSkillBody` — `RFC[- ]?\d+` in skill body, fenced code excluded, `rfcs/` archive links excluded. Per-file baselines were sweep-zeroed in CL-S03; the predicate now refuses any new bare-text RFC citation in a skill body without grandfathering.
 - `checkOneGuardrailsBlockPerSkill` — count of `## Guardrails` and `## Mode-specific guardrails` headings.
 - `checkNoPhaseOutcomeContractRestatement` — restated phase-outcome contract paragraph.
 - `checkNoFrontmatterRestatement` — frontmatter `description` value re-appearing under the first H2.
