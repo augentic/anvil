@@ -31,7 +31,7 @@ Material findings from the second-pass review:
 4. **Phase 2 is wider than rev 1 said.** The 47 `format-match-dispatch` hits land in **eleven** modules, not five. All eleven are listed.
 5. **Phase 3 is wider too.** Sixteen non-test files exceed the 500 cap, not three. All sixteen are listed with split sketches.
 6. **Skill caps are already 470 / 1024 / 30 lines** (`MAX_BODY_LINES`, `MAX_DESCRIPTION_CHARS`, `MAX_INLINE_JSON_LINES`). Tightening them is a deliberate policy choice, not "bringing files under cap" as rev 1 implied.
-7. **`checkSymlinks` validates that symlinks *resolve*, not that they're forbidden.** Switching to plain relative-path links is a new policy (CL-S04) requiring a new check function, not a fix to a current failure.
+7. **`checkSymlinks` validates that symlinks *resolve*, not that they're forbidden.** Whether to disallow symlinks under `plugins/` outright is a policy call this plan defers to a future revision.
 8. **AGENTS.md `Coding standards` is mature.** It already covers comments, naming, format dispatch, DTOs, errors, `#[non_exhaustive]`, deprecation, `#[allow]` posture, module layout, no-op forwarders, wired-but-ignored flags, and the mechanical-enforcement table. Rev 1's CL-20 ("lift to STYLE.md") was reaching; the right move is small, surgical additions to the existing section, not a relocation.
 9. **rev 1 broke `make checks` in the parent repo** by using illustrative path syntax (`rfcs/...`, `./STYLE.md`, `../../references/specify.md`) inside prose. The link checker strips fenced blocks but not inline-code spans. Rev 2 routes every illustrative path through fenced blocks.
 
@@ -70,7 +70,7 @@ Phase 4 — Error & naming polish (parallel after Phase 2)
   CL-E1  CL-E2  CL-E3  CL-N1  CL-N2
 
 Phase 5 — Skills polish (parallel; specify repo)
-  CL-S01  CL-S02  CL-S03  CL-S04  CL-S05  CL-S06
+  CL-S01  CL-S02  CL-S03  CL-S05  CL-S06
 
 Phase 6 — Standards & docs (after Phase 4)
   CL-X1  CL-X2  CL-X3  CL-X4
@@ -211,16 +211,18 @@ Each chunk migrates one binary command module from the legacy pattern (inline DT
 2. Replace every inline `#[derive(Serialize)] struct …` (inside a function body, match arm, or closure) with a call to `emit(ctx.format, &body)?`.
 3. Delete every `match ctx.format { Json => emit_response(…), Text => println!(…) }` block.
 4. Replace every hand-rolled error envelope (`Ok(CliResult::GenericFailure)` + ad-hoc `emit_response(<error body>)`, or direct construction of `output::ErrorResponse`) with `Err(Error::*)`. Where no typed variant fits, use `Error::Diag { code, detail }`. Recurring shapes are promoted in CL-E1.
-5. Drop `ok: true` literal fields from success bodies (presence of `error` in the envelope already means failure; absence means success).
+5. Preserve `ok: true` literal fields on success bodies for now — keep them as `bool` fields on the top-level `*Body` DTO so existing `tests/cli.rs` JSON snapshots stay byte-identical. CL-E3 strips them system-wide and updates the snapshots in one focused PR.
 6. Drop redundant per-file `#![allow(clippy::needless_pass_by_value, items_after_statements, …)]`. The parent `src/commands.rs` already carries the project-wide waiver.
 7. Run `cargo make standards-tighten`.
 
 **Common acceptance for CL-03 through CL-11:**
 
 - Module's allowlist baselines for `inline-dtos`, `format-match-dispatch`, `name-suffix-duplication` drop to 0.
-- Module's `module-line-count` baseline drops by ≥ 20% (typical migration shrinks the file 25–30%).
-- All existing tests pass without modification — JSON envelope keys are preserved verbatim (the migration is structural, not contractual).
+- Module's `module-line-count` baseline typically drops by ≥ 15% for files with ≤ 4 handlers. Files with more handlers, or with `Render` impls that own non-trivial text rendering (e.g. multi-status counters), sit at a structural floor and may shrink less or even grow by single-digit percent — note the reason in the commit message when below 15%. The load-bearing acceptance is the inline-dtos / format-match-dispatch / name-suffix-duplication predicates dropping to 0 and the cumulative workspace LoC dropping.
+- JSON envelope keys are preserved verbatim — the migration is structural, not contractual. Per-module `#[cfg(test)]` updates that mechanically follow renames in the Common-steps rename table are expected.
 - `tests/cli.rs` golden JSON snapshots unchanged.
+
+If a handler's failure envelope is non-standard (carries `path` / `kind` / additional fields that tests pin), keep that shape: introduce a top-level `<Action>ErrBody` + `Render`, emit via `emit`, and return `Ok(CliResult::ValidationFailed)` (mirroring `codex::validate`). Do not force such handlers through `output::ErrorResponse` — that would break the contract.
 
 The full Phase 2 worklist, sorted by violation density:
 
@@ -229,15 +231,15 @@ The full Phase 2 worklist, sorted by violation density:
 | CL-03 | `src/commands/registry.rs` | 7 | 7 | 7 | 927 | Highest debt; rename `show_registry → show`, `validate_registry → validate`, `add_to_registry → add`, `remove_from_registry → remove`, `print_registry_text → print`, `plan_references_for → plan_refs`, `write_registry → save`. |
 | CL-04 | `src/commands/workspace.rs` | 8 | 7 | 0 | 438 | Three duplicated `workspace-no-registry` Diag sites consolidate to `Error::RegistryMissing` (already exists at `crates/error/src/lib.rs:209`). |
 | CL-05 | `src/commands/change/plan/lifecycle.rs` | 7 | 8 | 0 | 349 | The `ValidationRow` shape is shared with `commands/codex.rs`; promote a shared `Validation` rendering helper to `src/output.rs`. |
-| CL-06 | `src/commands/change.rs` | 7 | 7 | 0 | 413 | Promote `BriefCreateErr` → `Error::ChangeBriefExists { path }`, `PlanNotFound` → `Error::PlanNotFound`, `NonTerminal` → `Error::PlanNonTerminalEntries`. The legacy `initiative` field is renamed to `change` in the new typed variant. |
+| CL-06 | `src/commands/change.rs` | 7 | 7 | 0 | 413 | Promote `BriefCreateErr` → `Error::ChangeBriefExists { path }`, `PlanNotFound` → `Error::PlanNotFound`, `NonTerminal` → `Error::PlanNonTerminalEntries`. The legacy `initiative` field is renamed to `change` on the **non-terminal failure envelope only**. The success-path `finalize::Outcome.name` still serializes as `initiative` and stays that way until a separate, focused chunk renames it (touches `tests/cli.rs:1479,1503` + `tests/cross_repo.rs:593`). |
 | CL-07 | `src/commands/tool.rs` | 0 | 4 | 1 | 451 | DTOs are already top-level — easiest of the eleven. Just swap four `match ctx.format` blocks for `emit`. Rename `find_tool → find`, `select_tools → select`. |
 | CL-08 | `src/commands/change/plan/status.rs` | 4 | 2 | 1 | 257 | |
 | CL-09 | `src/commands/change/plan/lock.rs` | 3 | 3 | 0 | 140 | |
 | CL-10 | `src/commands/change/plan/create.rs` | 2 | 2 | 0 | 117 | |
 | CL-11 | `src/commands/{change/plan,change/plan/doctor,context}.rs` | 0 | 1+1+2 | 0+0+1 | 177+117+682 | Three small clean-ups; `context.rs` carries the largest residual since it's also targeted by CL-MS-CONTEXT for splitting. Migrate format dispatch only; the split lands separately. |
 
-`src/commands/codex.rs` (398 LoC) is **already migrated** — do not touch.
-`src/output.rs` (193 LoC, 2 format-match-dispatch baseline) is the dispatcher; its two `match` blocks are legitimate.
+`src/commands/codex.rs` (398 LoC) is **already migrated** — do not touch (CL-05 promoted its shared validation row to `src/output.rs::ValidationRow`).
+`src/output.rs` is the dispatcher; its `match ctx.format { Json, Text }` blocks (today on `emit`, `emit_err`, `emit_response`) are legitimate. CL-05 added `emit_err` for non-standard failure envelopes that need stderr text routing.
 `crates/contract-validate/src/main.rs` (147 LoC, 1 format-match-dispatch) is a deliberate carve-out (standalone WASI binary, no `specify-error` dependency by design) — **leave alone**.
 
 ---
@@ -350,7 +352,7 @@ Bake their current LoC into the allowlist as the cap and revisit if they grow pa
 **Steps:**
 
 1. `rg 'ok: (true|false)' src crates` — every hit is dropped. The success-vs-failure signal is the presence of `error:` in the envelope (failure) or its absence (success). Three files have hits today: `src/commands/registry.rs`, `src/commands/change.rs`, `src/commands/codex.rs`. (Tests already do not grep for `"ok":` — verified.)
-2. `rg 'output::ErrorResponse \{' src crates` — every hit outside `src/output.rs` is a hand-rolled error envelope. Today there are two: `src/commands/registry.rs` and `src/commands/change/plan.rs:94-98`. Replace each with `Err(Error::*)` → `emit_error`.
+2. `rg 'output::ErrorResponse \{' src crates` — every hit outside `src/output.rs` is a hand-rolled error envelope. After CL-11 promoted `change/plan.rs::emit_structural_error` to `Error::PlanStructural`, only one site remains: `src/commands/registry.rs`. Replace it with `Err(Error::*)` → `emit_error`.
 3. Update `tests/cli.rs` and `tests/*.rs` JSON snapshots for the removed `ok` field.
 4. **Carve-out:** `crates/contract-validate/src/main.rs` is the standalone WASI binary; it does not use `specify-error`. Its `"ok": true` field is part of the legacy contract-validator JSON envelope and stays. Do not touch.
 
@@ -479,33 +481,6 @@ The framework's skill-discipline checks are mature: 28 predicates run from `scri
 
 ---
 
-### CL-S04 — Replace symlinks with relative-path links (policy)
-
-**Goal:** Eliminate the 27 symlinks under `plugins/` in favour of relative-path markdown links. They are fragile across Windows clones, GitHub web rendering, archive tools, and the Cursor plugin cache.
-
-**Repo:** `specify`. **Depends on:** none.
-
-**Important:** This is a *policy* change. The current `checkSymlinks` predicate validates that symlinks *resolve*; it does not forbid them. CL-S04 forbids them. If the team prefers symlinks over relative paths, drop this chunk and keep the validate-resolves predicate.
-
-**Steps:**
-
-1. `find plugins -type l` to enumerate (currently 27 across 14 SKILL.md directories).
-2. For each symlink, replace with a relative markdown link from the SKILL.md to the target file. Concretely, today's `references/specify.md` symlink (which points at `../../references/specify.md`) is dropped and the SKILL.md gains a body link such as the one shown below — adjusted per skill depth:
-
-   ```markdown
-   See the [shared specify reference](../../../references/specify.md).
-   ```
-3. Add a check in `scripts/checks/plugins.ts`: `checkNoSymlinks` fails on any `(await Deno.lstat(path)).isSymlink` under `plugins/`.
-4. Add the predicate to `scripts/checks.ts`'s parallel block.
-5. Update AGENTS.md `Gotchas` to note symlinks are now disallowed.
-
-**Acceptance:**
-
-- `find plugins -type l` returns zero entries.
-- `make checks` green with `checkNoSymlinks` wired.
-
----
-
 ### CL-S05 — Per-skill description cleanup pass
 
 **Goal:** Once CL-S01's cap is set, do a final per-skill description audit for clarity (not just length). This is the human-judgment chunk; subagents should defer to the skill author when in doubt.
@@ -616,8 +591,7 @@ Add the four predicates to AGENTS.md §Mechanical enforcement table.
 **Steps:**
 
 1. Add §"Description tightness" with the 512-char target (cite CL-S01).
-2. Add §"No symlinks under `plugins/`" if CL-S04 lands; otherwise no change.
-3. The §Mechanical enforcement table already lists the predicates that apply; just refresh the "Predicates surfaced by Skills-1:" list to include any added by CL-S04.
+2. The §Mechanical enforcement table already lists the predicates that apply; refresh the "Predicates surfaced by Skills-1:" list with any predicate added in Phase 5.
 
 **Acceptance:**
 
@@ -657,10 +631,9 @@ After CL-X4 lands, the following invariants hold (and a one-shot subagent can ru
 5. Every body in `specify/plugins/**/SKILL.md` is ≤ 400 lines.
 6. `rg 'match\s+(?:ctx\.|self\.)?format\s*\{' specify-cli/src specify-cli/crates --glob '!output.rs' --glob '!**/contract-validate/**'` returns zero hits.
 7. `rg 'github.com' specify-cli/crates/error/src/lib.rs` returns zero hits.
-8. `find specify/plugins -type l` returns zero entries (only if CL-S04 landed).
-9. The four new predicates (`error-envelope-inlined`, `path-helper-inlined`, `ok-literal-in-body`, `currently-audit`) all exist in `xtask/src/standards.rs` and have allowlist baseline 0 for every file.
+8. The four new predicates (`error-envelope-inlined`, `path-helper-inlined`, `ok-literal-in-body`, `currently-audit`) all exist in `xtask/src/standards.rs` and have allowlist baseline 0 for every file.
 
-When all nine hold, the framework matches the standards it has set itself.
+When all eight hold, the framework matches the standards it has set itself.
 
 ## Out of scope for this plan
 
