@@ -6,12 +6,12 @@ The unpublished/private `specify-vectis` binary and the older `specify vectis ..
 
 ## Tools
 
-### vectis-validate
+### vectis validate
 
 Run deterministic validation for Vectis UI input artifacts:
 
 ```bash
-specify tool run vectis-validate -- <mode> [path]
+specify tool run vectis -- validate <mode> [path]
 ```
 
 | Mode | Validates |
@@ -30,19 +30,19 @@ Exit semantics:
 - **Warnings only** -- exit zero and print the warning report.
 - **Clean** -- exit zero silently.
 
-Skills consume the report rather than reimplementing the checks. Layout inferers run `specify tool run vectis-validate -- layout <output-path>.tmp` and, when sibling token or asset manifests exist, `specify tool run vectis-validate -- composition <output-path>.tmp` before atomically renaming staged output into place.
+Skills consume the report rather than reimplementing the checks. Layout inferers run `specify tool run vectis -- validate layout <output-path>.tmp` and, when sibling token or asset manifests exist, `specify tool run vectis -- validate composition <output-path>.tmp` before atomically renaming staged output into place.
 
-### vectis-scaffold
+### vectis scaffold
 
 Render Vectis project scaffolds from embedded templates and explicit inputs:
 
 ```bash
-specify tool run vectis-scaffold -- core <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
-specify tool run vectis-scaffold -- ios <app-name> [--caps <csv>] [--version-file <path>]
-specify tool run vectis-scaffold -- android <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
+specify tool run vectis -- scaffold core <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
+specify tool run vectis -- scaffold ios <app-name> [--caps <csv>] [--version-file <path>]
+specify tool run vectis -- scaffold android <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
 ```
 
-`vectis-scaffold` is render-only. It writes template output under `PROJECT_DIR` using the permissions declared by `capabilities/vectis/tools.yaml`; it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis writer, reviewer, and template-updater skills.
+`vectis` (`scaffold`) is render-only. It writes template output under `PROJECT_DIR` using the permissions declared by `capabilities/vectis/tools.yaml`; it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis writer, reviewer, and template-updater skills.
 
 Version pins come from embedded defaults unless `--version-file <path>` names a complete TOML override. The tool does not read user config, implicitly discover project-local version files, accept JSON on stdin, or expose per-pin flags in v1.
 
@@ -50,10 +50,10 @@ Version pins come from embedded defaults unless `--version-file <path>` names a 
 
 | Retired surface | Current surface |
 |---|---|
-| `specify-vectis validate <mode> [path]` | `specify tool run vectis-validate -- <mode> [path]` |
-| `specify-vectis init <app-name>` | `specify tool run vectis-scaffold -- core <app-name>` plus optional `ios` / `android` render steps and skill-owned host workflow |
-| `specify-vectis add-shell ios` | `specify tool run vectis-scaffold -- ios <app-name>` plus iOS writer post-processing |
-| `specify-vectis add-shell android` | `specify tool run vectis-scaffold -- android <app-name> [--android-package <package>]` plus Android writer post-processing |
+| `specify-vectis validate <mode> [path]` | `specify tool run vectis -- validate <mode> [path]` |
+| `specify-vectis init <app-name>` | `specify tool run vectis -- scaffold core <app-name>` plus optional `ios` / `android` render steps and skill-owned host workflow |
+| `specify-vectis add-shell ios` | `specify tool run vectis -- scaffold ios <app-name>` plus iOS writer post-processing |
+| `specify-vectis add-shell android` | `specify tool run vectis -- scaffold android <app-name> [--android-package <package>]` plus Android writer post-processing |
 | `specify-vectis verify`, `update-versions`, `versions` | No direct WASI wrapper in v1; skill-owned host workflow and template-updater guidance own these concerns. |
 
 ## See also

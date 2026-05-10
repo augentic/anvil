@@ -87,19 +87,19 @@ RFC-15 reserves three rule ids that compose with the RFC-5 framework linter once
 
 ### Two declared tools
 
-- **`vectis-validate`** — read-only validation for Vectis UI input artifacts (`tokens`, `assets`, `layout`, `composition`, `all`). Replaces `specify-vectis validate <mode> [path]`.
-- **`vectis-scaffold`** — render-only scaffolding for the Vectis core, iOS, and Android shells. Writes template output under `PROJECT_DIR` using the permissions declared by `capabilities/vectis/tools.yaml`. Replaces `specify-vectis init` and `specify-vectis add-shell`.
+- **`vectis` (`validate`)** — read-only validation for Vectis UI input artifacts (`tokens`, `assets`, `layout`, `composition`, `all`). Replaces `specify-vectis validate <mode> [path]`.
+- **`vectis` (`scaffold`)** — render-only scaffolding for the Vectis core, iOS, and Android shells. Writes template output under `PROJECT_DIR` using the permissions declared by `capabilities/vectis/tools.yaml`. Replaces `specify-vectis init` and `specify-vectis add-shell`.
 
 Frozen v1 tool arguments:
 
 ```bash
-specify tool run vectis-validate -- <mode> [path]
-specify tool run vectis-scaffold -- core <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
-specify tool run vectis-scaffold -- ios <app-name> [--caps <csv>] [--version-file <path>]
-specify tool run vectis-scaffold -- android <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
+specify tool run vectis -- validate <mode> [path]
+specify tool run vectis -- scaffold core <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
+specify tool run vectis -- scaffold ios <app-name> [--caps <csv>] [--version-file <path>]
+specify tool run vectis -- scaffold android <app-name> [--caps <csv>] [--android-package <package>] [--version-file <path>]
 ```
 
-`vectis-scaffold` is render-only. It does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis writer, reviewer, and template-updater skills.
+`vectis` (`scaffold`) is render-only. It does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis writer, reviewer, and template-updater skills.
 
 ### Host post-processing is skill-owned
 

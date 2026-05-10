@@ -66,7 +66,7 @@ task -> error
 capability -> error
 ```
 
-Vectis no longer links a capability-specific crate into the root `specify` binary. Its deterministic helpers are published as WASI command components declared by `capabilities/vectis/tools.yaml`: `vectis-validate` for UI artifact validation and `vectis-scaffold` for render-only scaffolding. The root CLI remains responsible for resolving, caching, permissioning, and running those tools; platform SDK, Cargo, Xcode, Gradle, and registry behavior remains skill-owned host workflow.
+Vectis no longer links a capability-specific crate into the root `specify` binary. Its deterministic helpers are published as WASI command components declared by `capabilities/vectis/tools.yaml`: `vectis` (`validate`) for UI artifact validation and `vectis` (`scaffold`) for render-only scaffolding. The root CLI remains responsible for resolving, caching, permissioning, and running those tools; platform SDK, Cargo, Xcode, Gradle, and registry behavior remains skill-owned host workflow.
 
 ## Dispatch pattern
 

@@ -6,12 +6,12 @@ argument-hint: "<slice-dir>"
 
 # Crux Core Application Generator
 
-> **Vectis deterministic tooling runs through declared Specify tools.** Scaffold rendering is `specify tool run vectis-scaffold -- ...`; validation is `specify tool run vectis-validate -- ...`. Scaffolding is render-only: host verification remains skill-owned and must return step evidence (`name`, `passed`, and a failure snippet on error).
+> **Vectis deterministic tooling runs through declared Specify tools.** Scaffold rendering is `specify tool run vectis -- scaffold ...`; validation is `specify tool run vectis -- validate ...`. Scaffolding is render-only: host verification remains skill-owned and must return step evidence (`name`, `passed`, and a failure snippet on error).
 
 ## Critical Path (Quick Reference)
 
 1. Read Specify artifacts (`{slice-dir}/specs/<feature>/spec.md` + `{slice-dir}/design.md`); extract App name, Model, Events, ViewModel/Page/Route, capabilities, and API shapes.
-2. Detect mode from `{project-dir}/shared/src/app.rs`: missing → run `specify tool run vectis-scaffold -- core ...` plus explicit Cargo verification, then enter Update Mode; present → start Update Mode immediately.
+2. Detect mode from `{project-dir}/shared/src/app.rs`: missing → run `specify tool run vectis -- scaffold core ...` plus explicit Cargo verification, then enter Update Mode; present → start Update Mode immediately.
 3. Build an implementation inventory of existing types and diff it against the artifact-derived target — Added / Removed / Modified / Unchanged — per category in dependency order (capabilities → views → domain → model → events → api → logic).
 4. Apply structural edits to `app.rs` (domain types → Page/ViewModel/Route → Model → Event/Effect → imports + `Cargo.toml` for new capabilities).
 5. Apply logic edits to `update()` and `view()` (per-Event match arms, business rules, model-to-ViewModel mapping for new pages); consult `references/crux-command-api.md` and `references/crux-capabilities.md`.
@@ -22,7 +22,7 @@ Generate or update a buildable Crux core (`shared` crate) for a multi-platform a
 
 When an existing project is detected, the skill operates in **update mode**: it compares the Specify artifacts against the current implementation and makes targeted edits rather than regenerating from scratch.
 
-When no project exists yet, the skill runs `specify tool run vectis-scaffold -- core {AppName} [--caps {caps}]` to render the workspace, shared crate, and toolchain files using the active Vectis version pins. The declared scaffold tool is the single source of truth for Cargo manifests, `rust-toolchain.toml`, `.gitignore`, `ffi.rs`, `codegen.rs`, and the `lib.rs`/`app.rs` skeleton, but it does not run Cargo or inspect the host. Once the scaffold exists and the explicit host checks pass, this skill switches to **update mode** and layers feature-specific changes over the generated baseline.
+When no project exists yet, the skill runs `specify tool run vectis -- scaffold core {AppName} [--caps {caps}]` to render the workspace, shared crate, and toolchain files using the active Vectis version pins. The declared scaffold tool is the single source of truth for Cargo manifests, `rust-toolchain.toml`, `.gitignore`, `ffi.rs`, `codegen.rs`, and the `lib.rs`/`app.rs` skeleton, but it does not run Cargo or inspect the host. Once the scaffold exists and the explicit host checks pass, this skill switches to **update mode** and layers feature-specific changes over the generated baseline.
 
 ## Arguments
 
@@ -85,7 +85,7 @@ If the design describes effects not covered by published capabilities, generate 
 
 The skill operates in one of two modes depending on whether an existing project is found:
 
-- **Create Mode** -- used when `{project-dir}/shared/src/app.rs` does **not** exist. The skill invokes `specify tool run vectis-scaffold -- core` to render the baseline, runs explicit Cargo verification, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
+- **Create Mode** -- used when `{project-dir}/shared/src/app.rs` does **not** exist. The skill invokes `specify tool run vectis -- scaffold core` to render the baseline, runs explicit Cargo verification, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- used when `{project-dir}/shared/src/app.rs` **does** exist. Reads the existing code, diffs it against the artifacts, and makes targeted edits (steps U1--U8 below).
 
 The Specify artifacts always represent the **full desired state** of the application, not a partial diff. In update mode the skill compares the full artifacts against the existing implementation to determine what changed.
@@ -94,7 +94,7 @@ Detection rule: check for the file `{project-dir}/shared/src/app.rs`. If the fil
 
 ```bash
 cd {project-dir}
-specify tool run vectis-scaffold -- core {AppName} [--caps {detected-caps}]
+specify tool run vectis -- scaffold core {AppName} [--caps {detected-caps}]
 cargo fmt --check
 cargo check
 cargo clippy --all-targets -- -D warnings
@@ -103,7 +103,7 @@ cargo test
 
 `{AppName}` is the derived App struct name (see Derived Arguments). `{detected-caps}` is the comma-separated list from Capability Detection (e.g. `http,kv`; omit the flag when only Render is needed). If the scaffold command fails, report the tool's structured output to the user and stop -- do **not** attempt a manual scaffold as a fallback. If a host verification command fails, return a verification object with the failed step's `name`, `passed: false`, and the relevant stderr/stdout snippet, then stop.
 
-If the scaffold and host checks succeed, switch to Update Mode (the just-scaffolded project is the "existing implementation" Update Mode diffs against). The baseline emitted by `vectis-scaffold` is a render-only scaffold with type aliases for each selected capability and placeholder `update()` arms; Update Mode fills in domain types, Model fields, Event/ViewModel variants, and real handler logic derived from the Specify artifacts.
+If the scaffold and host checks succeed, switch to Update Mode (the just-scaffolded project is the "existing implementation" Update Mode diffs against). The baseline emitted by `vectis` (`scaffold`) is a render-only scaffold with type aliases for each selected capability and placeholder `update()` arms; Update Mode fills in domain types, Model fields, Event/ViewModel variants, and real handler logic derived from the Specify artifacts.
 
 ### Repair mode
 
@@ -145,7 +145,7 @@ Derive `{AppName}` (see Derived Arguments § App struct name) and `{caps}` (see 
 
 ```bash
 cd {project-dir}
-specify tool run vectis-scaffold -- core {AppName} [--caps {caps}]
+specify tool run vectis -- scaffold core {AppName} [--caps {caps}]
 cargo fmt --check
 cargo check
 cargo clippy --all-targets -- -D warnings
@@ -335,7 +335,7 @@ Consult these references during generation. Do not deviate from the patterns the
 | `references/crux-custom-capabilities.md` | Building custom Operation + capability (SSE example) |
 | `references/crux-testing-patterns.md` | Testing effects, events, resolving requests |
 
-Version pins, Cargo workspace layout, `rust-toolchain.toml`, `ffi.rs`, `codegen.rs`, and `.gitignore` are owned by the Vectis scaffold templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis-scaffold/` and the Vectis template sources). When a spec change requires updating a pinned version, route that through the Vectis version/template workflow rather than editing generated dependency versions in this crate by hand.
+Version pins, Cargo workspace layout, `rust-toolchain.toml`, `ffi.rs`, `codegen.rs`, and `.gitignore` are owned by the Vectis scaffold templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/` and the Vectis template sources). When a spec change requires updating a pinned version, route that through the Vectis version/template workflow rather than editing generated dependency versions in this crate by hand.
 
 ## Examples
 

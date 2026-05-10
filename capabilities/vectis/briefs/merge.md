@@ -13,7 +13,7 @@ The `specify slice merge run` command merges both spec deltas and composition de
 After `specify slice merge run` succeeds, re-run the deterministic UI input validator against the merged baseline:
 
 ```bash
-specify tool run vectis-validate -- composition
+specify tool run vectis -- validate composition
 ```
 
 The validator discovers the now-merged baseline `composition.yaml` and auto-invokes `tokens` / `assets` modes against any sibling `tokens.yaml` / `assets.yaml`. Run this even when the current slice did not generate any platform code, because later shell work may consume the merged baseline input set (RFC-11 §I "Merge handoff"). Validation findings prevent this brief from reporting a clean adoption gate and flow into the journal; warnings flow into the operator-facing summary; clean runs are silent. A tool invocation failure (missing sidecar, bad arguments, unreadable preopen) is a WASI tool failure, not a host prerequisite failure. When `composition.yaml` is absent from the merged baseline (no UI input set in the project), the validator exits cleanly without performing wired-mode checks.
@@ -54,7 +54,7 @@ Host prerequisite failures (missing `cargo`, `gradle`, `xcodebuild`, Java 21, An
 
 When the slice modified neither the core nor a shell (e.g. a docs-only or UI-input-only slice that touched no Crux code), still run the applicable host checks after merge — the cap matrix as a whole must remain green. The post-merge gate intentionally validates the merged baseline, not the staged delta, because shell verification (UniFFI bridging, Java 21 / Gradle wrapper, cargo-swift, cap-marker expansion) is only meaningful once the spec-level deltas are promoted and the writers have a stable baseline to build against.
 
-If the operator wants to re-confirm a scaffold before merge, the render step is `specify tool run vectis-scaffold -- ...` followed by the same explicit host post-processing / verification steps. This brief intentionally re-runs host verification post-merge so cross-cap regressions surface against the merged tree, not the pre-merge slice.
+If the operator wants to re-confirm a scaffold before merge, the render step is `specify tool run vectis -- scaffold ...` followed by the same explicit host post-processing / verification steps. This brief intentionally re-runs host verification post-merge so cross-cap regressions surface against the merged tree, not the pre-merge slice.
 
 ### Cap-matrix re-verification
 
@@ -62,7 +62,7 @@ The host verification gate walks the on-disk project — core (`shared/`) is ver
 
 When host verification reports a failure, use the first failing step's `name` and `failure_snippet` as the load-bearing string in the journal `--summary`; route the full structured step list through `--context`.
 
-Token, asset, and layout regressions surface through `specify tool run vectis-validate -- composition` before host verification runs. If a shell-local theme or asset emission problem survives into merge despite the validator, it will surface here as a downstream shell failure (e.g. the iOS shell's `make build` fails because a generated asset catalog is malformed). Treat that as the same `failure` mode below.
+Token, asset, and layout regressions surface through `specify tool run vectis -- validate composition` before host verification runs. If a shell-local theme or asset emission problem survives into merge despite the validator, it will surface here as a downstream shell failure (e.g. the iOS shell's `make build` fails because a generated asset catalog is malformed). Treat that as the same `failure` mode below.
 
 If the cap-matrix failure looks like a version-pin drift (e.g. AGP / Gradle / uniffi mismatch surfaced after pins changed in this slice), the matching diagnostic belongs to `/vectis:template-updater`, not this merge brief. Record the failure and surface it; the operator decides whether the next step is a template fix, a pin rollback, or a follow-up slice.
 
@@ -74,7 +74,7 @@ The shared phase contract (outcome values, journal kinds, the verbatim-`summary`
 
 ### success — merge applied, cap matrix clean, slice archived
 
-`specify slice merge run` exited zero, `specify tool run vectis-validate -- composition` had no blocking findings, and every required host verification step passed. The CLI atomically stamps `PhaseOutcome { phase: merge, outcome: success }` into `.metadata.yaml`, transitions the lifecycle to `merged`, and moves the slice directory into `.specify/archive/YYYY-MM-DD-<slice>/`.
+`specify slice merge run` exited zero, `specify tool run vectis -- validate composition` had no blocking findings, and every required host verification step passed. The CLI atomically stamps `PhaseOutcome { phase: merge, outcome: success }` into `.metadata.yaml`, transitions the lifecycle to `merged`, and moves the slice directory into `.specify/archive/YYYY-MM-DD-<slice>/`.
 
 The brief MUST NOT call `specify slice outcome set` on this path — the slice directory no longer exists under `.specify/slices/<slice>/` after archiving, so the call would fail with `not found`. The archived `.metadata.yaml` carries the success outcome; `/change:execute` reads it via `specify slice outcome show <slice>`, which falls back to the archive when the active directory is absent. See [`phase-outcome-contract.md`](../../../plugins/spec/references/phase-outcome-contract.md) §"Merge success path is CLI-stamped".
 
@@ -85,7 +85,7 @@ The brief MUST NOT call `specify slice outcome set` on this path — the slice d
 This branch covers three distinct failure modes:
 
 1. **`specify slice merge run` exited non-zero** (a delta could not be applied, baseline coherence failed inside the merge call, the lifecycle gate refused the call). The filesystem is unchanged: no baseline was written and the slice directory was not moved. Same shape as the omnia merge brief's `failure` branch.
-2. **`specify tool run vectis-validate -- composition` returned blocking findings or failed to run after a successful `specify slice merge run`.** The deltas have already landed in the baseline (the CLI stamped `success` atomically), but the merged UI input set is invalid or the declared WASI validator could not run.
+2. **`specify tool run vectis -- validate composition` returned blocking findings or failed to run after a successful `specify slice merge run`.** The deltas have already landed in the baseline (the CLI stamped `success` atomically), but the merged UI input set is invalid or the declared WASI validator could not run.
 3. **One or more host verification steps failed or could not run after a successful `specify slice merge run`.** The deltas have already landed in the baseline, but the merged baseline no longer builds end-to-end, or the required host toolchain prerequisite is missing. Typical sub-cases:
    - Core `cargo fmt --check` / `cargo check` / `cargo clippy --all-targets` / `cargo test` failed against the merged `shared/` crate.
    - A specific platform shell (iOS `make build` / `make sim-build`, Android `make build` / `:shared:cargoBuild` / `:app:assembleDebug`) failed its compile pipeline.
@@ -121,7 +121,7 @@ specify slice journal append <slice> merge failure \
 
 For mode 1, `/change:execute` reads the `failure` outcome and translates it into a plan-entry transition to `failed`, surfaces the journal entries to the operator, and stops the loop. For modes 2 and 3, `/change:execute` reads the CLI-stamped `success` outcome and proceeds with the next plan entry; the operator separately triages the journal `failure` entry on the archived slice and queues a repair slice when ready (typically `/vectis:template-updater` for upstream-pin drift, or a fresh `/spec:define` + `/spec:build` for handler regressions). In none of the modes does the brief retry the merge automatically — the failing delta or invalid baseline state needs human attention before a repeat attempt is safe.
 
-`--summary` writing rules for post-merge findings: the load-bearing string is `"<validator-or-host-step-name>: <one-line failure snippet>"` (e.g. `"vectis-validate.composition: unresolved token colors.primary.dark"`, `"core.cargo-clippy: type mismatch in shared/src/app.rs:142"`, or `"android.gradlew-assembleDebug: unresolved reference 'CoreFfi'"`). Keep it short enough to fit a CLI argument without truncation; route the validator report, invocation stderr, or full structured host step list through `--context` instead. When the declared validator itself fails to start, use `"vectis-validate.composition could not run: <stderr first line>"`; when a host prerequisite is missing, use the failing preflight step name such as `"android.preflight-java21: Java 21 not configured"`.
+`--summary` writing rules for post-merge findings: the load-bearing string is `"<validator-or-host-step-name>: <one-line failure snippet>"` (e.g. `"vectis.validate.composition: unresolved token colors.primary.dark"`, `"core.cargo-clippy: type mismatch in shared/src/app.rs:142"`, or `"android.gradlew-assembleDebug: unresolved reference 'CoreFfi'"`). Keep it short enough to fit a CLI argument without truncation; route the validator report, invocation stderr, or full structured host step list through `--context` instead. When the declared validator itself fails to start, use `"vectis.validate.composition could not run: <stderr first line>"`; when a host prerequisite is missing, use the failing preflight step name such as `"android.preflight-java21: Java 21 not configured"`.
 
 ### deferred — human judgement required
 

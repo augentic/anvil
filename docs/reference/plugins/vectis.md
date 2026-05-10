@@ -2,7 +2,7 @@
 
 Generate cross-platform [Crux](https://github.com/redbadger/crux) applications: Rust shared core, SwiftUI iOS shell, and Kotlin/Jetpack Compose Android shell.
 
-> **Tool entry point.** Vectis deterministic helpers are declared WASI tools run through [`specify tool`](../cli/tool.md). Use `specify tool run vectis-validate -- <mode> [path]` for UI input validation and `specify tool run vectis-scaffold -- core|ios|android ...` for render-only scaffolding. Cargo, Xcode, Gradle, SDK setup, registry behavior, and end-to-end verification remain skill-owned host workflow.
+> **Tool entry point.** Vectis deterministic helpers are declared WASI tools run through [`specify tool`](../cli/tool.md). Use `specify tool run vectis -- validate <mode> [path]` for UI input validation and `specify tool run vectis -- scaffold core|ios|android ...` for render-only scaffolding. Cargo, Xcode, Gradle, SDK setup, registry behavior, and end-to-end verification remain skill-owned host workflow.
 
 ## Why Crux
 
@@ -68,7 +68,7 @@ Generate or update the Rust Crux shared crate from Specify artifacts.
 **Outputs:** `shared/Cargo.toml`, `shared/src/app.rs` (Model, Event, ViewModel, Effect, `update()`, `view()`, tests), `shared/src/ffi.rs`, `shared/src/lib.rs`, workspace `Cargo.toml`, `clippy.toml`, `rust-toolchain.toml`.
 
 **Modes:**
-- **Create** -- invokes `specify tool run vectis-scaffold -- core <app-name>` to render the core scaffold, then applies feature-specific code and host workflow steps.
+- **Create** -- invokes `specify tool run vectis -- scaffold core <app-name>` to render the core scaffold, then applies feature-specific code and host workflow steps.
 - **Update** -- reads existing `app.rs`, compares against specs, and makes targeted edits.
 
 ### /vectis:test-writer
@@ -117,7 +117,7 @@ Reconstruct `layout.yaml` from one or more screenshot images using a staged visi
 
 **Inputs:** PNG or JPEG images of application screens. Optional `--platform ios|android|web` hint for chrome cropping. Optional `--baseline` to refine an existing `layout.yaml` rather than starting fresh.
 
-**Outputs:** `layout.yaml` -- a schema-valid, unwired layout document that `/spec:define` can later wire into `composition.yaml`. Validates staged output via `specify tool run vectis-validate -- layout` before writing.
+**Outputs:** `layout.yaml` -- a schema-valid, unwired layout document that `/spec:define` can later wire into `composition.yaml`. Validates staged output via `specify tool run vectis -- validate layout` before writing.
 
 **Pipeline:** triage images into screens/states, crop platform chrome, infer regions (header/body/footer/fab/overlays), infer containers (rows, columns, cards, lists), infer leaves (text, controls, images, icons), detect candidate components across screens, emit gap comments for ambiguities.
 

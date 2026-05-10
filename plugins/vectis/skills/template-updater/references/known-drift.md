@@ -6,7 +6,7 @@ Concrete fix items carried into this skill from earlier RFC-6 chunks. Each item 
 /vectis:template-updater version-file <scratch proposed versions.toml>
 ```
 
-The skill queries live registries from the host, renders scratch projects with `specify tool run vectis-scaffold -- ... --version-file <scratch proposed versions.toml>`, then runs the explicit host Cargo/codegen/Gradle/Xcode matrix. `vectis-scaffold` is render-only; it does not query registries, discover SDKs, or run scratch builds. When the skill runs against a new bump, it should check this list **first**: if the reproduced failure matches an item below, follow that item's playbook rather than re-diagnosing from scratch.
+The skill queries live registries from the host, renders scratch projects with `specify tool run vectis -- scaffold ... --version-file <scratch proposed versions.toml>`, then runs the explicit host Cargo/codegen/Gradle/Xcode matrix. `vectis` (`scaffold`) is render-only; it does not query registries, discover SDKs, or run scratch builds. When the skill runs against a new bump, it should check this list **first**: if the reproduced failure matches an item below, follow that item's playbook rather than re-diagnosing from scratch.
 
 When a fix ships, remove the item from this file in the same commit that lands the fix. Stale entries make the skill softer than intended.
 
@@ -26,13 +26,13 @@ When a fix ships, remove the item from this file in the same commit that lands t
    - Adding `uniffi_bindgen = "=0.31.0"` to the shared crate's `[dependencies]` behind the `codegen` feature (same feature gate `crux_core::cli::bindgen` sits behind today).
    - Reconstructing the argument set currently passed via `BindgenArgsBuilder` against uniffi_bindgen's public API for `run_pipeline(...)`. Read `https://github.com/mozilla/uniffi-rs/blob/v0.31.0/uniffi_bindgen/src/lib.rs` for the 0.31 surface.
    - Keeping the Swift path untouched (`crux_core::typegen` for Swift types is orthogonal to the uniffi bindgen call).
-2. Bump `<specify-cli>/crates/vectis-scaffold/embedded/versions.toml`:
+2. Bump `<specify-cli>/crates/vectis/embedded/versions.toml`:
    - `uniffi = "=0.31.0"`
    - `cargo_swift = "0.11"`
 3. Update the rationale comment block in `embedded/versions.toml` to note the decoupling -- the existing block says "mixing 0.31 runtime with 0.29 bindgen fails", which is no longer true once step 1 lands.
-4. Validate against the full cap matrix by rendering each combo with `specify tool run vectis-scaffold -- core ... --version-file <proposal>` and running the host build/codegen/deny/vet commands.
+4. Validate against the full cap matrix by rendering each combo with `specify tool run vectis -- scaffold core ... --version-file <proposal>` and running the host build/codegen/deny/vet commands.
 
-**Alternative**: wait for a `crux_core` release that tracks `uniffi_bindgen = "=0.31.0"`. In that case the fix is a plain pin bump in `<specify-cli>/crates/vectis-scaffold/embedded/versions.toml`, no template surgery.
+**Alternative**: wait for a `crux_core` release that tracks `uniffi_bindgen = "=0.31.0"`. In that case the fix is a plain pin bump in `<specify-cli>/crates/vectis/embedded/versions.toml`, no template surgery.
 
 ---
 
@@ -44,7 +44,7 @@ When a fix ships, remove the item from this file in the same commit that lands t
 
 **Fix path** (one of two):
 
-- **Cap AGP below 9.0 in the host proposal step**: when querying Google Maven, ignore AGP `>= 9.0` until `rust-android-gradle` supports Gradle 9. Record the cap in the template-updater report and, if promoting a default, update `<specify-cli>/crates/vectis-scaffold/embedded/versions.toml` with a rationale comment citing this entry. This correctly reflects that *Vectis's Android plugin choice* is what blocks AGP 9.x, not a user preference.
+- **Cap AGP below 9.0 in the host proposal step**: when querying Google Maven, ignore AGP `>= 9.0` until `rust-android-gradle` supports Gradle 9. Record the cap in the template-updater report and, if promoting a default, update `<specify-cli>/crates/vectis/embedded/versions.toml` with a rationale comment citing this entry. This correctly reflects that *Vectis's Android plugin choice* is what blocks AGP 9.x, not a user preference.
 - **Drive `rust-android-gradle` upstream**: file or contribute a PR that removes the `setFileMode(Integer)` call. When a new release ships, drop the cap added above.
 
 The Android scaffold templates currently pin Gradle-the-wrapper to 8.13, so the bundled wrapper works today. The cap prevents the *system* Gradle on the developer's machine from being driven into 9.x territory by a stale AGP pin. Do not remove the template-level wrapper pin when this entry is fixed -- the two are independent.
@@ -91,7 +91,7 @@ The Android scaffold templates currently pin Gradle-the-wrapper to 8.13, so the 
 **Fix path** (choose one):
 
 - **Normalise during host proposal**: convert `^0.x` / `^0.x.y` to `=0.x.y` before writing the scratch proposal file. This preserves the RFC-6 hard-pin convention for every Crux-adjacent coordinate.
-- **Document the exception**: if `facet_generate` is legitimately minor-pinned upstream, change `<specify-cli>/crates/vectis-scaffold/embedded/versions.toml` to carry `= "^0.15"` and update the RFC-6 "hard pins" block to note that `facet_generate` tracks semver-minor. The hard-pin set in the RFC was vetted for `facet` + `crux_core` co-dependencies; `facet_generate` may follow a different policy.
+- **Document the exception**: if `facet_generate` is legitimately minor-pinned upstream, change `<specify-cli>/crates/vectis/embedded/versions.toml` to carry `= "^0.15"` and update the RFC-6 "hard pins" block to note that `facet_generate` tracks semver-minor. The hard-pin set in the RFC was vetted for `facet` + `crux_core` co-dependencies; `facet_generate` may follow a different policy.
 
 This item is purely cosmetic -- no build or verify step actually fails. It is listed so template-updater runs do not emit a noisy "changed" entry on every invocation when nothing has substantively moved.
 

@@ -162,10 +162,10 @@ Capability-scope tool that must create root-level project files:
 ```yaml
 # capabilities/vectis/tools.yaml
 tools:
-  - name: vectis-scaffold
+  - name: vectis
     version: 0.2.0
-    source: "https://github.com/augentic/specify-cli/releases/download/v0.2.0/vectis-scaffold.wasm"
-    sha256: "065e227596b0034072a0c0e442a56e2c914743e8f016c7509ca4e1caaec47ebe"
+    source: "https://github.com/augentic/specify-cli/releases/download/v0.2.0/vectis.wasm"
+    sha256: "<recompute from the v0.2.0 release artifact>"
     permissions:
       read:
         - "$PROJECT_DIR"

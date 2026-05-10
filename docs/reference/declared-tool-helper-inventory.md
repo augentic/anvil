@@ -7,8 +7,8 @@ Use this document when adding or changing a first-party deterministic helper. A 
 ## Declared Tools
 
 - `contract`: declared by [`capabilities/contracts/tools.yaml`](../../capabilities/contracts/tools.yaml) and run as `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It validates the merged `contracts/` baseline and replaces the retired `specify-contract` / `specify-contract-validate` helper surfaces.
-- `vectis-validate`: declared by [`capabilities/vectis/tools.yaml`](../../capabilities/vectis/tools.yaml) and run as `specify tool run vectis-validate -- <mode> [path]`. It owns deterministic Vectis UI input validation for `layout`, `composition`, `tokens`, `assets`, and `all`.
-- `vectis-scaffold`: declared by [`capabilities/vectis/tools.yaml`](../../capabilities/vectis/tools.yaml) and run as `specify tool run vectis-scaffold -- <target> <app-name> ...`. It renders Vectis project scaffolds only; host post-processing stays with Vectis skills.
+- `vectis` (`validate`): declared by [`capabilities/vectis/tools.yaml`](../../capabilities/vectis/tools.yaml) and run as `specify tool run vectis -- validate <mode> [path]`. It owns deterministic Vectis UI input validation for `layout`, `composition`, `tokens`, `assets`, and `all`.
+- `vectis` (`scaffold`): declared by [`capabilities/vectis/tools.yaml`](../../capabilities/vectis/tools.yaml) and run as `specify tool run vectis -- scaffold <target> <app-name> ...`. It renders Vectis project scaffolds only; host post-processing stays with Vectis skills.
 
 ## Active Caller Inventory
 

@@ -53,17 +53,9 @@ const EXPECTED_FIRST_PARTY_TOOLS: ExpectedToolDeclaration[] = [
   },
   {
     capability: "vectis",
-    name: "vectis-validate",
+    name: "vectis",
     source:
-      "https://github.com/augentic/specify-cli/releases/download/v0.2.0/vectis-validate.wasm",
-    read: ["$PROJECT_DIR/.specify", "$PROJECT_DIR/design-system"],
-    write: [],
-  },
-  {
-    capability: "vectis",
-    name: "vectis-scaffold",
-    source:
-      "https://github.com/augentic/specify-cli/releases/download/v0.2.0/vectis-scaffold.wasm",
+      "https://github.com/augentic/specify-cli/releases/download/v0.2.0/vectis.wasm",
     read: ["$PROJECT_DIR", "$CAPABILITY_DIR"],
     write: ["$PROJECT_DIR"],
   },
@@ -186,32 +178,32 @@ const RETIRED_HELPER_PATTERNS: RetiredHelperPattern[] = [
   {
     token: "specify-vectis validate",
     pattern: /\bspecify-vectis\s+validate\b/,
-    replacement: "specify tool run vectis-validate -- <mode> [path]",
+    replacement: "specify tool run vectis -- validate <mode> [path]",
   },
   {
     token: "specify vectis validate",
     pattern: /\bspecify\s+vectis\s+validate\b/,
-    replacement: "specify tool run vectis-validate -- <mode> [path]",
+    replacement: "specify tool run vectis -- validate <mode> [path]",
   },
   {
     token: "specify-vectis init",
     pattern: /\bspecify-vectis\s+init\b/,
-    replacement: "specify tool run vectis-scaffold -- core <app-name>",
+    replacement: "specify tool run vectis -- scaffold core <app-name>",
   },
   {
     token: "specify vectis init",
     pattern: /\bspecify\s+vectis\s+init\b/,
-    replacement: "specify tool run vectis-scaffold -- core <app-name>",
+    replacement: "specify tool run vectis -- scaffold core <app-name>",
   },
   {
     token: "specify-vectis add-shell",
     pattern: /\bspecify-vectis\s+add-shell\b/,
-    replacement: "specify tool run vectis-scaffold -- ios|android <app-name>",
+    replacement: "specify tool run vectis -- scaffold ios|android <app-name>",
   },
   {
     token: "specify vectis add-shell",
     pattern: /\bspecify\s+vectis\s+add-shell\b/,
-    replacement: "specify tool run vectis-scaffold -- ios|android <app-name>",
+    replacement: "specify tool run vectis -- scaffold ios|android <app-name>",
   },
 ];
 

@@ -9,14 +9,14 @@ argument-hint: "<slice-dir>"
 ## Critical Path (Quick Reference)
 
 1. **Read the input contract** — inspect `app.rs`, `lib.rs`, `Cargo.toml`, `tokens.yaml`, `assets.yaml`, `composition.yaml`, and any iOS-specific spec/design sections.
-2. **Detect mode** — if no shell exists, run `specify tool run vectis-scaffold -- ios ...` plus host checks; otherwise inventory existing Swift code for update mode.
+2. **Detect mode** — if no shell exists, run `specify tool run vectis -- scaffold ios ...` plus host checks; otherwise inventory existing Swift code for update mode.
 3. **Diff core and UI artifacts** — classify effects, ViewModel variants, page fields, events, routes, token categories, assets, components, and legacy `VectisDesign` references.
 4. **Apply core/view updates** — edit `Core.swift`, `ContentView.swift`, screen views, navigation, Inject boilerplate, and build config with targeted changes only.
 5. **Refresh generated UI surfaces** — regenerate shell-local `Theme/`, `Components/`, and `Resources/Assets.xcassets/` from validated artifacts while preserving operator-owned files.
 6. **Verify or delegate verification** — run `swiftformat`, `make typegen`, `make package`, and `make xcode` unless the orchestrator passed `skip_verification: true`.
 7. **Enforce shell boundaries** — keep business logic in the Rust core, remove legacy design-system imports, and avoid known SwiftUI interaction hazards.
 
-> **Vectis deterministic tooling runs through declared Specify tools.** Shell scaffolding is `specify tool run vectis-scaffold -- ios ...`; artifact validation is `specify tool run vectis-validate -- ...`. The scaffold is render-only: iOS type generation, packaging, Xcode generation, and build checks remain host-owned steps with explicit verification evidence.
+> **Vectis deterministic tooling runs through declared Specify tools.** Shell scaffolding is `specify tool run vectis -- scaffold ios ...`; artifact validation is `specify tool run vectis -- validate ...`. The scaffold is render-only: iOS type generation, packaging, Xcode generation, and build checks remain host-owned steps with explicit verification evidence.
 
 Generate or update a buildable SwiftUI iOS shell for an existing Crux core application. The shell renders the core's `ViewModel`, dispatches `Event` values from user interactions, and handles platform side-effects (HTTP, KV, SSE) on behalf of the core.
 
@@ -24,7 +24,7 @@ The iOS writer reads `tokens.yaml`, `assets.yaml`, and `composition.yaml` direct
 
 When an existing iOS shell is detected, the skill operates in **update mode**: it compares the current `app.rs` types against the existing Swift code and makes targeted edits rather than regenerating from scratch.
 
-When no iOS shell exists yet, the skill runs `specify tool run vectis-scaffold -- ios {AppName} [--caps {caps}]` from the Crux project root to render the project. The scaffold tool owns `iOS/project.yml`, `iOS/Makefile`, the Inject SPM wiring, the `{AppName}App.swift` entry point, a render-only `Core.swift` with CAP markers, a baseline `ContentView.swift`, and the starter `Views/LoadingScreen.swift` / `Views/HomeScreen.swift`. The writer adds `Theme/`, `Components/`, and `Resources/Assets.xcassets/` on first generation when the corresponding inputs exist. Once the scaffold exists and host checks pass, this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
+When no iOS shell exists yet, the skill runs `specify tool run vectis -- scaffold ios {AppName} [--caps {caps}]` from the Crux project root to render the project. The scaffold tool owns `iOS/project.yml`, `iOS/Makefile`, the Inject SPM wiring, the `{AppName}App.swift` entry point, a render-only `Core.swift` with CAP markers, a baseline `ContentView.swift`, and the starter `Views/LoadingScreen.swift` / `Views/HomeScreen.swift`. The writer adds `Theme/`, `Components/`, and `Resources/Assets.xcassets/` on first generation when the corresponding inputs exist. Once the scaffold exists and host checks pass, this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
 
 This skill targets **Swift 6** and **SwiftUI** with iOS 17+ deployment target.
 
@@ -80,18 +80,18 @@ Also read:
 
 When `slice-dir` is provided, also read:
 - `{slice-dir}/specs/{feature-name}/spec.md` -- read the `## iOS Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## iOS Shell Details` section of `{slice-dir}/design.md` for platform design decisions.
-- `{slice-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- wired composition artifact for deterministic layout instructions. Cross-artifact reference checks (every `bind` / `event` / token / asset reference resolves) are owned by `specify tool run vectis-validate -- composition`; the writer consumes the already-validated input set rather than re-validating at generation time.
+- `{slice-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- wired composition artifact for deterministic layout instructions. Cross-artifact reference checks (every `bind` / `event` / token / asset reference resolves) are owned by `specify tool run vectis -- validate composition`; the writer consumes the already-validated input set rather than re-validating at generation time.
 
 ## Mode Detection
 
-- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes `specify tool run vectis-scaffold -- ios` to render the baseline, runs explicit iOS host checks, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
+- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes `specify tool run vectis -- scaffold ios` to render the baseline, runs explicit iOS host checks, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- `{project-dir}/` **does** exist and contains `.swift` files. Read existing code, diff against the core, and make targeted edits (steps U1--U8 below).
 
 Detection rule: check for `{project-dir}/*/Core.swift`. If present, switch to update mode. If not, run:
 
 ```bash
 cd {app-dir}
-specify tool run vectis-scaffold -- ios {AppName} [--caps {caps}]
+specify tool run vectis -- scaffold ios {AppName} [--caps {caps}]
 cd {project-dir}
 make typegen
 make package
@@ -124,7 +124,7 @@ Run:
 
 ```bash
 cd {app-dir}
-specify tool run vectis-scaffold -- ios {AppName} [--caps {caps}]
+specify tool run vectis -- scaffold ios {AppName} [--caps {caps}]
 cd {project-dir}
 make typegen
 make package
@@ -221,7 +221,7 @@ When a category is removed from `tokens.yaml`, delete the corresponding file und
 
 ### U6b. Refresh `Components/` from `composition.yaml`
 
-For every `group` carrying `component: <slug>`, emit one named SwiftUI `View` under `iOS/<App>/Components/<PascalCaseSlug>.swift`. Props are inferred from variation observed across instances of the slug: `bind`, `event`, `error`, `asset`, token references, `*-when` keys, and free text content that differ across instances become parameters; values constant across all instances are baked into the view body. The structural-identity rule is enforced by `specify tool run vectis-validate -- composition` before this skill runs, so the writer can trust every instance of the slug shares the same skeleton.
+For every `group` carrying `component: <slug>`, emit one named SwiftUI `View` under `iOS/<App>/Components/<PascalCaseSlug>.swift`. Props are inferred from variation observed across instances of the slug: `bind`, `event`, `error`, `asset`, token references, `*-when` keys, and free text content that differ across instances become parameters; values constant across all instances are baked into the view body. The structural-identity rule is enforced by `specify tool run vectis -- validate composition` before this skill runs, so the writer can trust every instance of the slug shares the same skeleton.
 
 When a slug disappears from `composition.yaml`, delete the corresponding `Components/<PascalCaseSlug>.swift` file and rewrite each former call site to inline the group body. See [`references/design-system-integration.md`](references/design-system-integration.md) for a worked `task-row` example.
 
@@ -288,7 +288,7 @@ When `composition.yaml` is absent, the existing inference behavior is unchanged 
 | `references/design-system-integration.md` | Shell-local theme + asset integration: generated layout under `iOS/<App>/Theme/`, HIG fallback when `tokens.yaml` is absent, asset copy-on-generate rules, component-directive contract |
 | `references/swift-token-templates.md` | Concrete Swift code templates per token category (color, typography, scalar, border, theme bundle); shell-local emission |
 
-XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffolding (`project.yml` packages, Inject SPM wiring, CAP markers, starter screens) are owned by the Vectis scaffold templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis-scaffold/` and the Vectis template sources). Do not hand-edit those files in Create Mode; let `specify tool run vectis-scaffold -- ios` write them and then modify in Update Mode.
+XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffolding (`project.yml` packages, Inject SPM wiring, CAP markers, starter screens) are owned by the Vectis scaffold templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/` and the Vectis template sources). Do not hand-edit those files in Create Mode; let `specify tool run vectis -- scaffold ios` write them and then modify in Update Mode.
 
 ## Examples
 
@@ -306,7 +306,7 @@ XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffold
 | `xcodegen` fails | Check `project.yml` syntax; verify path references |
 | Build fails with missing types | Verify `uniffi` matches the active Vectis version pins, then rerun `make typegen`, `make package`, and `make xcode` to isolate the mismatch |
 | Build fails on `import VectisDesign` | Legacy migration debt — the shell now emits theme code under `iOS/<App>/Theme/`. Drop the `import` line and the `package: VectisDesign` entry from `project.yml`; existing token references (`VectisColors.*`, `VectisSpacing.*`, etc.) keep working because the Theme files live in the same target |
-| `specify tool run vectis-validate -- composition` reports unresolved token / asset reference | The composition is referencing a token or asset id that is not declared in `tokens.yaml` / `assets.yaml`. The writer halts; the operator must either add the missing entry or remove the reference |
+| `specify tool run vectis -- validate composition` reports unresolved token / asset reference | The composition is referencing a token or asset id that is not declared in `tokens.yaml` / `assets.yaml`. The writer halts; the operator must either add the missing entry or remove the reference |
 | Missing iOS export for a `kind: vector` asset | This is a validation error and not a deferred TODO. Halt shell generation for the affected screen and report the missing `sources.ios` field |
 
 ## Verification Checklist

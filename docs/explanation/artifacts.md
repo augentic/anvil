@@ -65,8 +65,8 @@ Contract artifacts live in two locations:
 Contracts are a platform concern -- they describe interfaces *between* components, not internals of any one project. Both producer and consumer reference the same central contracts.
 
 The composition surface ships as two sibling artifacts (RFC-11), both validated against the same JSON Schema:
-- **`layout.yaml` (unwired layout input)** -- regions and layout structure with token / asset references but no data bindings. Produced by layout inferers (the screenshot-fronted [`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers per RFC-11) or hand-authored before the define pipeline runs. Validated by `specify tool run vectis-validate -- layout`.
-- **`composition.yaml` (wired lifecycle artifact)** -- the same regions enriched with `bind`, `event`, `maps_to`, overlay `trigger`, navigation, and `*-when` keys. Produced by the define pipeline and consumed by shell writers. Validated by `specify tool run vectis-validate -- composition` (which auto-invokes `tokens` / `assets` modes when sibling manifests exist).
+- **`layout.yaml` (unwired layout input)** -- regions and layout structure with token / asset references but no data bindings. Produced by layout inferers (the screenshot-fronted [`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers per RFC-11) or hand-authored before the define pipeline runs. Validated by `specify tool run vectis -- validate layout`.
+- **`composition.yaml` (wired lifecycle artifact)** -- the same regions enriched with `bind`, `event`, `maps_to`, overlay `trigger`, navigation, and `*-when` keys. Produced by the define pipeline and consumed by shell writers. Validated by `specify tool run vectis -- validate composition` (which auto-invokes `tokens` / `assets` modes when sibling manifests exist).
 
 ### Proposal
 
