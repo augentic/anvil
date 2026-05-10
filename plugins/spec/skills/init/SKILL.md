@@ -35,7 +35,7 @@ I'll ensure the `specify` CLI is available, decide whether this is a regular sin
 - `specify init` (no positional, no `--hub`) → exits with `init-requires-capability-or-hub`.
 - `specify init <capability> --hub` (both supplied) → exits with `init-requires-capability-or-hub`.
 
-A regular project must declare a capability; a hub must declare `--hub` and never carries a `capability:`. See [RFC-13 §Migration "Hub project shape"](../../../../rfcs/archive/rfc-13-extensibility.md#migration) for the post-cut-over shape.
+A regular project must declare a capability; a hub must declare `--hub` and never carries a `capability:`.
 
 **Steps**
 
@@ -216,7 +216,7 @@ Next steps:
 ```
 ## Specify Initialized (Platform Hub)
 
-**Topology**: registry-only hub (RFC-9 §1D)
+**Topology**: registry-only hub
 **Config**: .specify/project.yaml (`hub: true`; `capability:` omitted)
 **Context**: AGENTS.md
 **Context lock**: .specify/context.lock
@@ -238,3 +238,8 @@ Next steps:
 - Never combine a capability positional with `--hub`; the CLI rejects that combination with `init-requires-capability-or-hub`
 - Hub init refuses to run over an existing `.specify/`; if the user wants to convert a regular project into a hub, they must remove `.specify/` first
 - If the CLI exits non-zero, surface the error and stop; do not hand-roll the scaffold
+
+## References
+
+- [RFC-9: Platform](../../../../rfcs/archive/rfc-9-platform.md) — registry-only platform hub topology.
+- [RFC-13: Extensibility](../../../../rfcs/archive/rfc-13-extensibility.md) — capability vs `--hub` shape requirements.

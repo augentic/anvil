@@ -119,7 +119,7 @@ pattern-based checks that verify the shell correctly maps to the Crux core:
 - Build configuration correctness
 - Fill-max-size components inside unbounded scrollable containers
 - Crash recovery handler presence in Application class
-- Recurring composition groups without a `component:` slug (RFC-11 §I "Reviewer surface")
+- Recurring composition groups without a `component:` slug
 
 For each finding, report: check ID (AND-NNN), stable rule_id when it
 clearly maps to a codex rule, file:line, code snippet, severity

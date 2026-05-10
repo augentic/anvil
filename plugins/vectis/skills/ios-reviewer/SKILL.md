@@ -106,7 +106,7 @@ pattern-based checks that verify the shell correctly maps to the Crux core:
 - Design system token usage (resolved against shell-local `iOS/<App>/Theme/`)
 - ContentView switch exhaustiveness
 - ScrollView interaction hazards (touch delay, nested gesture conflicts)
-- Recurring composition groups without a `component:` slug (RFC-11 §I "Reviewer surface")
+- Recurring composition groups without a `component:` slug
 
 For each finding, report: check ID (IOS-NNN), stable rule_id when it
 clearly maps to a codex rule, file:line, code snippet, severity

@@ -158,3 +158,19 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 **Decision:** The lifecycle (states, transitions, core artifacts, baseline accumulation) is invariant across capabilities. Capabilities control the *content* of brief pipelines, may add capability-specific stages (e.g. Vectis adds `composition` to the define pipeline), and determine which specialist skills are invoked during build.
 
 **Rationale:** The workflow is the value -- define-build-merge, baseline accumulation, drift detection. Making this capability-agnostic means every project gets the same tooling regardless of target platform. Capabilities customise the generation content and may extend the pipeline without fragmenting the workflow.
+
+## Planning briefs ship with the skill, not the capability manifest
+
+**Decision:** The planning briefs (`discovery`, `propose`) live alongside the `/change:plan` skill under `plugins/change/skills/plan/briefs/<capability>/` rather than under `capability.yaml:pipeline.plan`. The capability manifest schema actively rejects a `pipeline.plan` block.
+
+**Rationale:** Planning is orchestration, not capability-owned slice work. A capability decides what define/build/merge produces inside an individual slice; it does not decide how a *change* (potentially spanning many slices and projects) gets composed. Putting plan briefs in the capability manifest blurred that boundary and forced every capability to ship near-duplicate plan briefs. Keeping the briefs with the plan skill keeps the framework concern at the framework, with capabilities free to ship their own plan-time variants by name (`briefs/<capability>/`).
+
+**Source:** [RFC-13: Extensibility](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md)
+
+## Capability vs `--hub` is mutually exclusive at init
+
+**Decision:** `specify init` accepts either a capability positional or `--hub`, never both and never neither. A regular project carries a `capability:` in `.specify/project.yaml`; a hub carries `hub: true` and never carries a `capability:`. The CLI rejects the two pathological combinations (no positional + no `--hub`, or both supplied) with the stable `init-requires-capability-or-hub` diagnostic.
+
+**Rationale:** Hubs are registry-only repositories that never run phase pipelines, so they have no capability to resolve. Allowing an empty capability would force every downstream verb to special-case the missing field; allowing both would double the topology surface. The mutual-exclusion is mechanically enforced at init so every later verb can rely on the invariant without re-checking.
+
+**Source:** [RFC-9: Platform](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-9-platform.md), [RFC-13: Extensibility](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md)

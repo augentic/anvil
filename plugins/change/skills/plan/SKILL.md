@@ -147,11 +147,6 @@ Follow these steps in order on every invocation. Each step is normative; every s
                       the registry-proposal sub-step for unresolved
                       project names).
 
-   RFC-13 §3.11 moved these briefs out of `capability.yaml:pipeline.plan`
-   (now actively rejected by the manifest schema) — planning is
-   orchestration, not capability-owned slice work, so the briefs ride
-   with this skill rather than the capability manifest.
-
 4. Final validation gate.
 
      specify change plan validate
@@ -268,3 +263,7 @@ No other on-disk state is written by `/change:plan` itself.
 - For `dry-run` specifically: the skill MUST NOT shell out to `specify change plan create`, `specify change plan add`, `specify change plan amend`, or `specify change plan transition`; MUST NOT create `.specify/plans/<name>/`; MUST NOT write `discovery.md` or any other file under `.specify/`. The discovery brief's input-reading side still runs so the stdout inventory preview is real.
 - For `extend` specifically: step 2 is skipped in full; step 3(c) only appends entries via `specify change plan add` — it never calls `specify change plan transition` on existing entries. The only `specify change plan amend` call is step 3(d) Assignment (`--project`), which tags newly created entries, not pre-existing ones. Draft slices whose names collide with existing plan entries are skipped with decision `skip-existing` in `proposal.md`.
 - Treat a missing `briefs/<capability>/discovery.md` or `briefs/<capability>/propose.md` for the active capability as a hard failure: print the resolved capability name and the expected brief paths, then exit non-zero. Do not speculate about brief ordering or fall back to a different capability's briefs.
+
+## References
+
+- [RFC-13: Extensibility](../../../../rfcs/archive/rfc-13-extensibility.md) — pipelines may not declare a `pipeline.plan` block; planning briefs ship with this skill.

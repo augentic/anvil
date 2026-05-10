@@ -9,29 +9,9 @@
 # Predicate definitions live in `scripts/checks/skill_discipline.ts`.
 # Loaded by `scripts/checks/_shared.ts::standardsAllowlist`.
 
-[file."plugins/change/skills/plan/SKILL.md"]
-noRfcCitationsInSkillBody = 4
-
-[file."plugins/change/skills/execute/SKILL.md"]
-noRfcCitationsInSkillBody = 5
-
-[file."plugins/spec/skills/init/SKILL.md"]
-noRfcCitationsInSkillBody = 1
-
-[file."plugins/spec/skills/analyze/SKILL.md"]
-noRfcCitationsInSkillBody = 1
-
-[file."plugins/vectis/skills/image-layout-inferer/SKILL.md"]
-noRfcCitationsInSkillBody = 3
-
-[file."plugins/vectis/skills/ios-writer/SKILL.md"]
-noRfcCitationsInSkillBody = 11
-
-[file."plugins/vectis/skills/android-writer/SKILL.md"]
-noRfcCitationsInSkillBody = 9
-
-[file."plugins/vectis/skills/ios-reviewer/SKILL.md"]
-noRfcCitationsInSkillBody = 2
-
-[file."plugins/vectis/skills/android-reviewer/SKILL.md"]
-noRfcCitationsInSkillBody = 4
+# CL-S03 drove every `noRfcCitationsInSkillBody` baseline to 0:
+# - inline body citations were relocated to a trailing `## References`
+#   block (markdown link form, stripped by the predicate),
+# - migration prose was moved to `docs/explanation/decision-log.md`,
+# - decorative citations inside fenced specialist prompts were dropped.
+# New SKILL.md violations now fail CI without grandfathering.
