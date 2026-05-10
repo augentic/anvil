@@ -252,7 +252,8 @@ Sixteen non-test files exceed the 500-line cap or sit close enough to it that a 
 2. Convert `src/<parent>/<module>.rs` into `src/<parent>/<module>/mod.rs` only if absolutely necessary; per AGENTS.md `Module layout`, **prefer `<parent>/<module>.rs` + `<parent>/<module>/<concern>.rs`**.
 3. No public-API change; pure relocation.
 4. Strip RFC citations from doc comments while moving — most splits drop the file's `rfc-numbers-in-code` baseline by 5+.
-5. `cargo make standards-tighten`.
+5. If a fat inline `#[cfg(test)] mod tests` dominates the LoC, move it to `<module>/tests.rs`. The standards-check skips files whose path ends in `tests.rs` for the `module-line-count` predicate, so the test block doesn't have to be artificially split across the new submodules.
+6. `cargo make standards-tighten`.
 
 **Common acceptance:** every resulting file ≤ 500 LoC (or the file is grandfathered with a justification baseline); `cargo make ci` green; tests pass unchanged.
 
@@ -261,15 +262,15 @@ Sixteen non-test files exceed the 500-line cap or sit close enough to it that a 
 | CL-MS-CHANGE-FINALIZE | `crates/change/src/finalize.rs` | 1569 | `mod.rs` (public surface) / `archive.rs` (atomic plan/brief/plans-dir sweep) / `probe.rs` (`gh pr view`, `git status`, branch matching) / `summary.rs` (aggregation, `blocked_reason`, `is_passing`). Also strips 7 RFC citations. |
 | CL-MS-CHANGE-DOCTOR | `crates/change/src/plan/doctor.rs` | 1128 | `mod.rs` (public `run`, `Diagnostic`) / `cycle.rs` / `orphan_source.rs` / `stale_clone.rs` / `unreachable.rs`. Strips 8 RFC citations. |
 | CL-MS-CHANGE-LOCK | `crates/change/src/plan/lock.rs` | 691 | `mod.rs` (public surface) / `acquire.rs` / `release.rs` / `status.rs` / `pid.rs` (PID-validity check). Strips 2 RFC citations + 7 ritual-doc paragraphs. |
-| CL-MS-MERGE-SLICE | `crates/merge/src/slice.rs` | 761 | `mod.rs` / `read.rs` (delta-spec discovery, baseline read) / `write.rs` (atomic baseline write, archive move) / `parse.rs` (`parse_rfc3339`, mtime conversion). The 30+ `Error::Diag { code: "merge-*-failed" }` sites surface as the right place to introduce `Error::Filesystem { op, path, source }` — see CL-E2. |
+| CL-MS-MERGE-SLICE | `crates/merge/src/slice.rs` | 761 | `mod.rs` / `read.rs` (delta-spec discovery, baseline read) / `write.rs` (atomic baseline write, archive move) / `parse.rs` (`parse_rfc3339`, mtime conversion). The 30+ `Error::Diag { code: "merge-*-failed" }` sites surface as the right place to introduce `Error::Filesystem { op, path, source }` — see CL-E1. |
 | CL-MS-SLICE-LIB | `crates/slice/src/lib.rs` | 709 | `mod.rs` (re-exports) / `metadata.rs` (`Metadata` struct + atomic save) / `lifecycle.rs` (state machine) / `outcome.rs` (`Outcome` enum + transitions). Strips 6 RFC citations. |
 | CL-MS-TOOL-CACHE | `crates/tool/src/cache.rs` | 778 | `mod.rs` / `fetch.rs` (download + atomic install) / `gc.rs` (orphan-cache scan) / `meta.rs` (cache-meta read/write). |
 | CL-MS-CONTEXT | `src/commands/context.rs` | 682 | `mod.rs` (public `run`) / `generate.rs` / `check.rs`. Two `format-match-dispatch` go away in CL-11; the rest of the size is structural and survives the migration. |
-| CL-MS-CONTEXT-DETECT | `src/commands/context/detect.rs` | 735 | `mod.rs` / `agents_md.rs` (AGENTS.md detection) / `markers.rs` (fence + lock-file probes). |
+| CL-MS-CONTEXT-DETECT | `src/commands/context/detect.rs` | 735 | `detect.rs` (parent) / `runtimes.rs` (per-language `Detector` passes + orchestrator) / `markers.rs` (TOML / JSON-with-comments / Makefile / go.mod parsers). The earlier "AGENTS.md detection / fence + lock-file probes" sketch was a mis-attribution — those concerns live in `context/fences.rs` and `context/lock.rs`, both already split out. |
 | CL-MS-CONTEXT-FENCES | `src/commands/context/fences.rs` | 472 | Just under cap today but routinely grows. Split now: `mod.rs` / `parse.rs` / `render.rs`. Drops the 1 `name-suffix-duplication` baseline. |
 | CL-MS-REGISTRY-BRANCH | `crates/registry/src/branch.rs` | 642 | `mod.rs` / `prepare.rs` / `infer.rs` / `validate.rs`. Strips 2 RFC citations + 2 name-suffix duplication. |
 | CL-MS-VECTIS-SCAFFOLD | `crates/vectis/src/scaffold.rs` | 648 | The new file from the in-flight refactor. `mod.rs` keeps the clap derive types + dispatch; `runtime.rs` carries the planner + writer. The `scaffold/error.rs`, `scaffold/templates*`, `scaffold/versions.rs` submodules already exist; the dispatcher is what's oversized. |
-| CL-MS-CLI | `src/cli.rs` | 704 | Move every per-verb action enum into `src/commands/<verb>/cli.rs`. Keep `Cli`, `Commands`, `OutputFormat`, `parse_source_kv` in `src/cli.rs`; everything else relocates. Consolidate `OutcomeKindAction::RegistryAmendmentRequired`'s 6 named `#[arg(long)]` fields into a `RegistryAmendmentArgs` struct used via `#[clap(flatten)]`. **Depends on Phase 2** (so the per-command modules are settled). |
+| CL-MS-CLI | `src/cli.rs` | 704 | Move every per-verb action enum into `src/commands/<verb>/cli.rs`. Keep `Cli`, `Commands`, `OutputFormat`, `parse_source_kv` in `src/cli.rs`; everything else relocates. Consolidate `OutcomeKindAction::RegistryAmendmentRequired`'s 7 named `#[arg(long)]` fields into a `RegistryAmendmentArgs` struct used via `#[clap(flatten)]`. RFC citations inside clap doc-comments are preserved (they render in `--help`); convert to hyperlinks in a separate chunk. **Depends on Phase 2** (so the per-command modules are settled). |
 
 The following are slightly over cap (500–565) but worth deferring as they are tightly cohesive and split poorly:
 
@@ -302,7 +303,7 @@ Bake their current LoC into the allowlist as the cap and revisit if they grow pa
 
 **Acceptance:**
 
-- `rg 'Error::Diag \{' crates src` returns at least 30% fewer hits than HEAD.
+- Every `Error::Diag` **construction site** with `code` matching `merge-{readdir,dir-entry,mkdir,path-prefix,copy}-failed` or `capability-manifest-missing` is gone (count construction sites only — pattern-match sites in tests and doc cross-references dominate the global `rg 'Error::Diag \{'` count and are not load-bearing).
 - New variants documented in `crates/error/src/lib.rs` with a doc comment naming the canonical call site.
 - All existing JSON snapshots unchanged (the `error` discriminant is preserved).
 
