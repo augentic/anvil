@@ -138,7 +138,7 @@ export async function validateSkillFrontmatter(): Promise<void> {
 
 export async function checkDescriptionLength(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-  const MAX_DESCRIPTION_CHARS = 1024;
+  const MAX_DESCRIPTION_CHARS = 512;
 
   for await (
     const entry of walk(PLUGINS_DIR, {

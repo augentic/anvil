@@ -1,6 +1,6 @@
 ---
 name: vectis-image-layout-inferer
-description: Reconstructs `layout.yaml` from one or more screenshot images using a staged vision-assisted pipeline (triage, chrome cropping, region / container / leaf inference, conservative `component:` emission, gap reporting), validates the output via `specify tool run vectis -- validate layout`, and folds cross-artifact reference checks against sibling `tokens.yaml` / `assets.yaml` when present. Use when an operator supplies PNG or JPEG screenshots and wants a schema-valid, unwired layout document `/spec:define` can later wire into `composition.yaml`, when refining an existing `layout.yaml` from new screenshot evidence, or when the user mentions image-layout-inferer.
+description: Reconstruct an unwired `layout.yaml` from screenshot images via a staged vision pipeline (triage, cropping, region / container / leaf inference, `component:` emission, gap reporting), validate via `specify tool run vectis`, and cross-check sibling `tokens.yaml` / `assets.yaml` when present. Use when an operator supplies screenshots and wants a schema-valid layout `/spec:define` can wire into `composition.yaml`, when refining a layout from new evidence, or when the user mentions image-layout-inferer.
 argument-hint: "<image-paths>"
 ---
 

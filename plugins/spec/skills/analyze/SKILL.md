@@ -1,11 +1,6 @@
 ---
 name: specify-analyze
-description: |
-  Plan-time capability inference for both legacy code and documentation
-  inputs. Emits capability summaries into discovery.md — not full specs.
-  Branches internally on the kind positional; per-kind clustering / extraction prompts
-  are capability-owned. Use when the plan-time discovery brief needs a
-  capability-level inventory of a source before propose slices it.
+description: Infer plan-time capability summaries from legacy code or documentation inputs and emit them into `discovery.md` — not full specs. Branches internally on the `kind` positional; per-kind clustering and extraction prompts are capability-owned. Use when the plan-time discovery brief needs a capability-level inventory of a source before `propose` slices it.
 argument-hint: "<input-path> <output-dir>"
 ---
 

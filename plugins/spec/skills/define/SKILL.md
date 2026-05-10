@@ -1,6 +1,6 @@
 ---
 name: specify-define
-description: Define a new Specify slice with all artifacts generated in one step. Use when the user wants to describe what they want to build and get a complete proposal with design, specs, and tasks ready for implementation.
+description: Define a new Specify slice end-to-end — proposal, design, specs, and tasks — in a single pass. Use when an operator describes what they want to build and wants a complete, ready-to-implement slice proposal.
 argument-hint: "[description]"
 ---
 
