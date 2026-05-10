@@ -15,7 +15,7 @@ import {
   walk,
 } from "./_shared.ts";
 
-const MAX_BODY_LINES = 470;
+const MAX_BODY_LINES = 400;
 const CRITICAL_PATH_MIN_LINES = 150;
 const CRITICAL_PATH_HEADING = "## Critical Path (Quick Reference)";
 const MAX_INLINE_JSON_LINES = 30;
