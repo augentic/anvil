@@ -120,3 +120,4 @@
 - [Plugin Development](contributing/plugin-development.md)
 - [CLI Architecture](contributing/cli-architecture.md)
 - [Consistency Checks](contributing/checks.md)
+- [Skills Test Coverage](contributing/skills-test-coverage.md)
