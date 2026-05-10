@@ -21,6 +21,7 @@ export async function checkMarkdownLinks(): Promise<void> {
   const SKIP_DIRS = [/node_modules/, /\.git/, /temp/];
   const LINK_RE = /\[[^\]]*\]\(([^)]+)\)/g;
   const FENCE_RE = /```[\s\S]*?```/g;
+  const INLINE_CODE_RE = /`[^`]+`/g;
 
   for await (
     const entry of walk(REPO_ROOT, {
@@ -40,7 +41,8 @@ export async function checkMarkdownLinks(): Promise<void> {
       continue;
     }
 
-    const stripped = stripHtmlComments(content.replace(FENCE_RE, ""));
+    const stripped = stripHtmlComments(content.replace(FENCE_RE, ""))
+      .replace(INLINE_CODE_RE, "");
 
     for (const m of stripped.matchAll(LINK_RE)) {
       const target = m[1];
