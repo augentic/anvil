@@ -14,7 +14,7 @@ The producer surface every layout inferer shares (arguments, output rules, idemp
 
 ## Critical Path (Quick Reference)
 
-1. Run the **vision prerequisite check** by attempting to read at least one input image through the agent runtime's native attachment / file-read mechanism (RFC-11 §C). If the runtime cannot inspect images, exit 1 with the supported-runtimes message — never fall back to filename-based inference.
+1. Run the **vision prerequisite check** by attempting to read at least one input image through the agent runtime's native attachment / file-read mechanism. If the runtime cannot inspect images, exit 1 with the supported-runtimes message — never fall back to filename-based inference.
 2. **Triage and crop.** Group inputs into screens / states, then crop platform chrome (status bars, navigation bars, browser chrome, emulator frames) when `platform` is supplied or detected.
 3. **Stage the recovery.** Walk top-down: regions (header / body / footer / fab / overlays / state replacements) → containers (rows, columns, lists, grids, cards, padding, gap, alignment, sizing, surface decoration) → leaves (text, controls, images, icons, fields).
 4. **Detect candidate components conservatively.** Compare groups across screens for structural identity (§G); emit `component: <slug>` only when the operator confirms it or the same skeleton appears in **≥2 screens of the same run**, otherwise leave a `# candidate component: <slug>` comment. See [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md#component-directive-emission).
@@ -64,7 +64,7 @@ and re-run.
 
 ## Pipeline
 
-The pipeline mirrors RFC-11 §C and runs top-down. Each stage produces evidence the next stage refines; comments record uncertainty so the operator can act on it without re-running.
+The pipeline runs top-down. Each stage produces evidence the next stage refines; comments record uncertainty so the operator can act on it without re-running.
 
 ### 1. Triage
 
@@ -231,7 +231,7 @@ The skill ships paired regression fixtures under `fixtures/<name>/`:
 - `fixtures/<name>/input.png` — the screenshot bundle that exercises a recovery path.
 - `fixtures/<name>/expected.layout.yaml` — the layout the pipeline should produce.
 
-Fixtures are operator-runnable references: they exist so a reviewer can replay the pipeline against a known input and diff against an accepted output. v1 does **not** enforce these in `make checks` (RFC-11 §C); a future RFC may promote them into a CI gate once the runner shape is established.
+Fixtures are operator-runnable references: they exist so a reviewer can replay the pipeline against a known input and diff against an accepted output. v1 does **not** enforce these in `make checks`; a future change may promote them into a CI gate once the runner shape is established.
 
 When adding a fixture, follow the existing convention:
 

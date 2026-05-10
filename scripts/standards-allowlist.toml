@@ -1,0 +1,37 @@
+# Per-predicate per-file violation baselines snapshotted by Skills-1.
+#
+# Each `[file."<rel-path>"]` table caps the number of violations of each
+# predicate for that file. A live count strictly greater than the
+# baseline fails CI; missing entries default to 0 (new files start
+# clean). Reductions are encouraged (Skills-2 drives every entry to 0);
+# raises require justification in the PR.
+#
+# Predicate definitions live in `scripts/checks/skill_discipline.ts`.
+# Loaded by `scripts/checks/_shared.ts::standardsAllowlist`.
+
+[file."plugins/change/skills/plan/SKILL.md"]
+noRfcCitationsInSkillBody = 4
+
+[file."plugins/change/skills/execute/SKILL.md"]
+noRfcCitationsInSkillBody = 5
+
+[file."plugins/spec/skills/init/SKILL.md"]
+noRfcCitationsInSkillBody = 1
+
+[file."plugins/spec/skills/analyze/SKILL.md"]
+noRfcCitationsInSkillBody = 1
+
+[file."plugins/vectis/skills/image-layout-inferer/SKILL.md"]
+noRfcCitationsInSkillBody = 3
+
+[file."plugins/vectis/skills/ios-writer/SKILL.md"]
+noRfcCitationsInSkillBody = 11
+
+[file."plugins/vectis/skills/android-writer/SKILL.md"]
+noRfcCitationsInSkillBody = 9
+
+[file."plugins/vectis/skills/ios-reviewer/SKILL.md"]
+noRfcCitationsInSkillBody = 2
+
+[file."plugins/vectis/skills/android-reviewer/SKILL.md"]
+noRfcCitationsInSkillBody = 4

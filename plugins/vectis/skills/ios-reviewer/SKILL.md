@@ -62,7 +62,7 @@ Read the following files from `{target-dir}`:
 
 If `reference-dir` is provided, also read the corresponding files from the reference app.
 
-Also read the wired UI input set (RFC-11 §H + §I) to compare generated code against the validated artifacts:
+Also read the wired UI input set to compare generated code against the validated artifacts:
 
 - `composition.yaml` -- canonical layout (slice-local `.specify/slices/<name>/composition.yaml` then baseline `.specify/specs/composition.yaml`); the source of truth for component-directive (`component: <slug>`) detection and recurring-group identification
 - `tokens.yaml` -- expected design tokens (change-local then `design-system/tokens.yaml`); the source of truth for token-usage checks
@@ -288,7 +288,7 @@ The **lead** applies all auto-fixes directly (specialists and antagonist have co
 Apply fixes for findings that are mechanical and confirmed or upgraded (not disputed):
 
 - Adding missing accessibility labels
-- Removing stale `import VectisDesign` lines (RFC-11 migration debt — same-target Swift code resolves the names without the import)
+- Removing stale `import VectisDesign` lines (legacy migration debt — same-target Swift code resolves the names without the import)
 - Replacing hardcoded colors with `VectisColors` tokens (resolved from the shell-local `iOS/<App>/Theme/Colors.swift`)
 - Replacing hardcoded spacing with `VectisSpacing` tokens (resolved from the shell-local `iOS/<App>/Theme/Spacing.swift`)
 - Adding missing `#Preview` blocks

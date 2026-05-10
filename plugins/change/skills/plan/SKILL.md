@@ -9,10 +9,10 @@ argument-hint: "<change-name>"
 1. **Parse and validate inputs** — validate `<change-name>` as kebab-case. Require at least one of `from`, `against`, `source`, or a populated `change.md:inputs` (also accepts the legacy `initiative.md:inputs` until the operator migrates). Refuse if `plan.yaml` already exists (unless `extend`).
 2. **Scaffold the plan** — `specify change plan create <change-name> [--source <key>=<path-or-url> ...]`. Skipped under `extend`.
 3. **Run the plan brief pipeline** from `capability.yaml`:
-   - **(a) Discovery** — invoke the discovery brief via `/spec:analyze`; writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** (RFC-9 §2B) before step 3(b) when no `registry.yaml` exists yet. See [discovery.md](discovery.md).
+   - **(a) Discovery** — invoke the discovery brief via `/spec:analyze`; writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** before step 3(b) when no `registry.yaml` exists yet. See [discovery.md](discovery.md).
    - **(b) Sync peers** (multi-repo only) — discovery-time `specify workspace sync` (may sync all peers) + author `workspace.md`. Execution-time sync is separate and prepares only the selected entry's project unless the operator asks for more. See [sync-peers.md](sync-peers.md).
    - **(c) Propose** — run the propose brief; iterate accept/edit/reject/abort per slice; `specify change plan add` for each accepted slice. See [propose.md](propose.md).
-   - **(d) Assignment** (multi-repo only) — infer `project` per entry; `specify change plan amend --project <project>`. When an unresolved row names a project that does not exist in `registry.yaml`, run the **registry-proposal sub-step** (RFC-9 §2B) — `specify registry add` + `specify workspace sync` — before continuing. See [assignment.md](assignment.md).
+   - **(d) Assignment** (multi-repo only) — infer `project` per entry; `specify change plan amend --project <project>`. When an unresolved row names a project that does not exist in `registry.yaml`, run the **registry-proposal sub-step** — `specify registry add` + `specify workspace sync` — before continuing. See [assignment.md](assignment.md).
 4. **Validate** — `specify change plan validate`. Non-zero exit on any `Error`-level finding. Never skip this step.
 5. **Exit with hand-off summary** — point the operator at `specify change plan status` and `/change:execute loop`.
 
@@ -38,7 +38,7 @@ The on-disk contracts the authoring skill depends on are:
 |---|---|---|
 | `plan.yaml` | library (`Plan::{create, amend, transition, archive}`) | Ordered change list with per-entry status; write boundaries are in [plan-single-writer.md](../../references/plan-single-writer.md). |
 | `.specify/plans/<name>/` | skill (planning briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify change plan archive` alongside the plan itself. |
-| `briefs/<capability>/{discovery,propose}.md` | skill (this directory) | Per-capability planning briefs the skill renders for steps 3(a) and 3(c). Bundled here under `briefs/omnia/` and `briefs/vectis/`; further capabilities ship their planning brief variant alongside. RFC-13 §3.11 moved these briefs out of `capability.yaml:pipeline.plan` (now rejected by the schema) — planning is orchestration, not capability-owned slice work. |
+| `briefs/<capability>/{discovery,propose}.md` | skill (this directory) | Per-capability planning briefs the skill renders for steps 3(a) and 3(c). Bundled here under `briefs/omnia/` and `briefs/vectis/`; further capabilities ship their planning brief variant alongside. The capability manifest schema rejects a `pipeline.plan` block — planning is orchestration, not capability-owned slice work, so the briefs ride with this skill rather than the capability manifest. |
 
 ## Invocation
 
@@ -63,7 +63,7 @@ Positional arguments:
 - **`focus <area>`** — optional scoping hint for the propose brief (L3.G). Free-form string; the propose brief decides how to interpret it.
 - **`extend`** — add to an existing `plan.yaml` instead of refusing. See §Modes → `extend` for the full contract.
 - **`dry-run`** — emit the readiness report and the proposed plan to stdout; write nothing. See §Modes → `dry-run`.
-- **`orchestrate`** — enable orchestration mode: run the cross-repo umbrella (RFC-9 §2C) after the authoring loop. The umbrella pushes per-project PRs, stops for operator merge when PRs are still open, and later finalizes after `specify change finalize` verifies every PR is merged. See [orchestration.md](orchestration.md). Required when `shape` is supplied.
+- **`orchestrate`** — enable orchestration mode: run the cross-repo umbrella after the authoring loop. The umbrella pushes per-project PRs, stops for operator merge when PRs are still open, and later finalizes after `specify change finalize` verifies every PR is merged. See [orchestration.md](orchestration.md). Required when `shape` is supplied.
 - **`shape migrate-legacy|new-feature|update-existing`** — explicit shape override under `orchestrate`. Inferred from the supplied inputs when omitted. Rejected with a hard diagnostic when `orchestrate` is absent. See [shapes.md](shapes.md).
 - **`auto-merge`** — retired. Treat this positional as an error that explains `/change:plan <name> orchestrate` never calls `specify workspace merge` or `gh pr merge`. Operators merge the PRs opened by `specify workspace push` through the forge UI or an explicit hand-run `gh pr merge`, then re-run the umbrella to finalize.
 

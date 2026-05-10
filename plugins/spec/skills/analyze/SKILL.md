@@ -149,7 +149,7 @@ A byte-stable output lets the propose brief cache its slicing decisions and surf
 
 ## Per-kind prompts (planning-skill-owned)
 
-The detailed clustering / extraction prompt for each `kind` value lives under `plugins/change/skills/plan/briefs/<capability>/analyze.md` (RFC-13 §3.11 moved planning briefs out of the capability manifest into the change-planning skill):
+The detailed clustering / extraction prompt for each `kind` value lives under `plugins/change/skills/plan/briefs/<capability>/analyze.md` (planning briefs ship with the change-planning skill rather than the capability manifest):
 
 - [`plugins/change/skills/plan/briefs/omnia/analyze.md`](../../../change/skills/plan/briefs/omnia/analyze.md) — Omnia's per-kind prompt (documentation branch and code branch).
 - Other capabilities ship their own variant alongside under `plugins/change/skills/plan/briefs/<capability>/`.

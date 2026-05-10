@@ -8,7 +8,7 @@ argument-hint: "<target-dir>"
 
 ## Critical Path (Quick Reference)
 
-1. Gather context — read `shared/src/app.rs`, every `.kt` file under `Android/app/src/main/java/`, Gradle/manifest config, and the wired UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml` — change-local then baseline / project paths per RFC-11 §H); if `reference-dir` is provided, read its counterparts too.
+1. Gather context — read `shared/src/app.rs`, every `.kt` file under `Android/app/src/main/java/`, Gradle/manifest config, and the wired UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml` — change-local then baseline / project paths); if `reference-dir` is provided, read its counterparts too.
 2. Spawn team — Structural + Quality (always); Integration only on the first iteration when `scope = full`. Each specialist applies its own check set (AND-, KTL-, INT-).
 3. Lead applies universal codex checks (UNI-001..021) with Android/Compose heuristics, attaches `rule_id` on mapped findings, and skips checks already covered by the specialists.
 4. Antagonist (see [`team-protocol.md`](team-protocol.md)) challenges every finding with evidence and counter-scans for Android blind spots; lead synthesises into a single iteration report and assigns a confidence level.
@@ -67,7 +67,7 @@ Read the following files from `{target-dir}`:
 
 If `reference-dir` is provided, also read the corresponding files from the reference app.
 
-Also read the wired UI input set (RFC-11 §H + §I) to compare generated code against the validated artifacts:
+Also read the wired UI input set to compare generated code against the validated artifacts:
 
 - `composition.yaml` -- canonical layout (slice-local `.specify/slices/<name>/composition.yaml` then baseline `.specify/specs/composition.yaml`); the source of truth for component-directive (`component: <slug>`) detection and recurring-group identification
 - `tokens.yaml` -- expected design tokens (change-local then `design-system/tokens.yaml`); the source of truth for token-usage checks
@@ -270,12 +270,12 @@ The **lead** applies all auto-fixes directly (specialists and antagonist have co
 Apply fixes for findings that are mechanical and confirmed or upgraded (not disputed):
 
 - Adding missing accessibility `contentDescription` values
-- Replacing stale `import com.vectis.design.*` lines with `import com.vectis.<appname>.ui.theme.*` (RFC-11 migration debt — theme types live in the `ui.theme` sibling package and require an explicit import from `ui.screens` / `ui.components`)
+- Replacing stale `import com.vectis.design.*` lines with `import com.vectis.<appname>.ui.theme.*` (legacy migration debt — theme types live in the `ui.theme` sibling package and require an explicit import from `ui.screens` / `ui.components`)
 - Replacing hardcoded colors with design system tokens (resolved from the shell-local `ui/theme/Color.kt` / `MaterialTheme.colorScheme`)
 - Replacing hardcoded spacing with design system tokens (resolved from the shell-local `ui/theme/Spacing.kt`)
 - Adding missing `@Preview` composables
 - Adding missing `@OptIn(ExperimentalUnsignedTypes::class)` annotations
-- Adding missing `import com.example.app.*` statements (generated FFI types — distinct from the legacy `com.vectis.design` package retired by RFC-11)
+- Adding missing `import com.example.app.*` statements (generated FFI types — distinct from the retired legacy `com.vectis.design` package)
 - Adding `CancellationException` rethrow to catch blocks
 
 Do NOT auto-promote a recurring group into a `component:` slug (AND-027). That finding is intentionally surfaced as a candidate for the operator to review — promoting it requires a `composition.yaml` edit and per-platform component file scaffolding, which sit outside the reviewer's mechanical-fix scope.

@@ -19,7 +19,7 @@ argument-hint: "<slice-dir>"
 
 Generate or update a buildable Kotlin/Jetpack Compose Android shell for an existing Crux core application. The shell renders the core's `ViewModel`, dispatches `Event` values from user interactions, and handles platform side-effects (HTTP, KV, SSE, Time, Platform) on behalf of the core.
 
-The Android writer reads `tokens.yaml`, `assets.yaml`, and `composition.yaml` directly and emits **shell-local** theme + asset resources inside the Android shell tree (RFC-11 §L "Generated layout"). There is no separate `:vectis-design` Gradle module, no `implementation(project(":vectis-design"))` dependency, and no path back into `design-system/android/` from the rendered shell project. When `tokens.yaml` is absent, the writer falls back to platform-native Material 3 defaults (RFC-11 §F "Fallback policy belongs to shell writers"). See [`references/design-system-integration.md`](references/design-system-integration.md) for the full integration contract and [`references/kotlin-token-templates.md`](references/kotlin-token-templates.md) for the per-category Kotlin code templates.
+The Android writer reads `tokens.yaml`, `assets.yaml`, and `composition.yaml` directly and emits **shell-local** theme + asset resources inside the Android shell tree. There is no separate `:vectis-design` Gradle module, no `implementation(project(":vectis-design"))` dependency, and no path back into `design-system/android/` from the rendered shell project. When `tokens.yaml` is absent, the writer falls back to platform-native Material 3 defaults — fallback policy belongs to the shell writer, not to the design-system manifest. See [`references/design-system-integration.md`](references/design-system-integration.md) for the full integration contract and [`references/kotlin-token-templates.md`](references/kotlin-token-templates.md) for the per-category Kotlin code templates.
 
 When an existing Android shell is detected, the skill operates in **update mode**: it compares the current `app.rs` types against the existing Kotlin code and makes targeted edits rather than regenerating from scratch.
 
@@ -85,7 +85,7 @@ Also read:
 - `{app-dir}/shared/src/ffi.rs` -- CoreFFI struct definition
 - `{app-dir}/shared/src/bin/codegen.rs` -- codegen binary for type generation
 - `tokens.yaml` -- design tokens. Resolution: change-local `{change-dir}/tokens.yaml` then project-level `design-system/tokens.yaml`. Absent → Material 3 fallback (see [`references/design-system-integration.md`](references/design-system-integration.md)).
-- `assets.yaml` plus referenced files -- asset inventory for `image` / `icon` / `icon-button` / `fab` references in `composition.yaml`. Resolution: change-local `{change-dir}/assets.yaml` + `{change-dir}/assets/` then `design-system/assets.yaml` + `design-system/assets/`. Writer copies into `Android/app/src/main/res/drawable*/` per copy-on-generate (RFC-11 §E, §I).
+- `assets.yaml` plus referenced files -- asset inventory for `image` / `icon` / `icon-button` / `fab` references in `composition.yaml`. Resolution: change-local `{change-dir}/assets.yaml` + `{change-dir}/assets/` then `design-system/assets.yaml` + `design-system/assets/`. Writer copies into `Android/app/src/main/res/drawable*/` per copy-on-generate (see [`references/design-system-integration.md`](references/design-system-integration.md)).
 
 When `slice-dir` is provided, also read:
 - `{slice-dir}/specs/{feature-name}/spec.md` -- read the `## Android Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## Android Shell Details` section of `{slice-dir}/design.md` for platform design decisions.
@@ -196,7 +196,7 @@ Walk through in this order:
 4. **Event variants** -- new or removed user actions affect screen composables.
 5. **Route variants** -- new or removed navigation destinations affect navigation code.
 6. **Token categories / asset entries / component directives** -- diff `tokens.yaml` against `ui/theme/`, `assets.yaml` against `res/drawable*/`, and `composition.yaml` `component:` slugs against `ui/components/` per the U6a-c contract; refer to [`references/kotlin-token-templates.md`](references/kotlin-token-templates.md) and [`references/design-system-integration.md`](references/design-system-integration.md) for category-by-category rules.
-7. **Legacy `:vectis-design` references** -- `include(":vectis-design")` in `settings.gradle.kts` and `implementation(project(":vectis-design"))` in `app/build.gradle.kts` are migration debt and MUST be removed; `import com.vectis.design.*` lines MUST be replaced with `import com.vectis.<appname>.ui.theme.*` (RFC-11 §L "Compatibility policy"). Shell-local `ui/theme/` now satisfies the same role.
+7. **Legacy `:vectis-design` references** -- `include(":vectis-design")` in `settings.gradle.kts` and `implementation(project(":vectis-design"))` in `app/build.gradle.kts` are migration debt and MUST be removed; `import com.vectis.design.*` lines MUST be replaced with `import com.vectis.<appname>.ui.theme.*`. Shell-local `ui/theme/` now satisfies the same role.
 
 Output the diff summary before making edits.
 
@@ -223,7 +223,7 @@ When `tokens.yaml` / `assets.yaml` / `composition.yaml` change, regenerate the m
 
 - **U6a — `ui/theme/` from `tokens.yaml`**: one Kotlin file per category (`spacing` / `cornerRadius` colocated in `Spacing.kt`) plus structural `Theme.kt` defining `VectisTheme`. Generated files carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header (except `Theme.kt`); operator-authored files (no header) are preserved on category removal. The header always uses the canonical project-level path `design-system/tokens.yaml` regardless of whether the current generation reads from a change-local file — this keeps the header stable across the change lifecycle and avoids breaking header-based detection of generated files. Absent `tokens.yaml` → emit the Material 3 fallback `Theme.kt`.
 - **U6b — `ui/components/` from `composition.yaml`**: one named `@Composable` per `group.component: <slug>` under `ui/components/<PascalCaseSlug>.kt`. Props inferred from variation; constants baked in. Structural identity is pre-enforced by `specify tool run vectis-validate -- composition`. Removed slugs have their files deleted and call sites inlined.
-- **U6c — `res/drawable*/` from `assets.yaml`**: copy per-density `kind: raster` files into `res/drawable-<density>/<asset-id>.<ext>`, vector drawables into `res/drawable/<asset-id>.xml`; translate kebab-case ids to lowercase-with-underscores. `kind: symbol` skips the resource step (emit `Icons.Default.<glyph>` at the call site). Canonical `source:` SVG is provenance only — never copied. Missing Android exports for referenced vector entries halt generation per RFC-11 §E.
+- **U6c — `res/drawable*/` from `assets.yaml`**: copy per-density `kind: raster` files into `res/drawable-<density>/<asset-id>.<ext>`, vector drawables into `res/drawable/<asset-id>.xml`; translate kebab-case ids to lowercase-with-underscores. `kind: symbol` skips the resource step (emit `Icons.Default.<glyph>` at the call site). Canonical `source:` SVG is provenance only — never copied. Missing Android exports for referenced vector entries halt generation; the writer never falls back to the canonical SVG, generates a placeholder, or skips the screen.
 
 ### U7. Update build configuration
 
@@ -254,7 +254,7 @@ When `composition.yaml` is present, the region structure and group container tre
 - **Surface decoration** maps to card-like containers: `background` + `corner_radius` → `Card` or `Surface` with shape and color, `elevation` → `Modifier.shadow()` or `Card(elevation:)`.
 - **Platform-specific overrides**: When `composition.yaml` contains `platforms.android` region overrides for a screen, use those in preference to the shared regions.
 
-When `composition.yaml` is absent, the existing inference behavior is unchanged — this preserves backward compatibility for pre-RFC-7 projects.
+When `composition.yaml` is absent, the existing inference behavior is unchanged — this preserves backward compatibility for projects that predate the wired-composition input set.
 
 ## Spec-to-Code Mapping
 
@@ -312,9 +312,9 @@ Gradle build files, the version catalog, the Makefile, `AndroidManifest.xml`, CA
 | `Namespace 'X' is used in multiple modules` | Use `com.vectis.{appname}.shared` namespace for the shared module |
 | `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- rerun `make build`, `./gradlew :shared:cargoBuild`, and `./gradlew :app:assembleDebug` and inspect the active Vectis version pins |
 | `This declaration needs opt-in` (unsigned types) | Add `@OptIn(ExperimentalUnsignedTypes::class)` to the class |
-| Build fails on `:vectis-design` (`Project ':vectis-design' not found` or `Unresolved reference 'com.vectis.design'`) | Legacy migration debt — the shell now emits theme code under `app/src/main/java/com/vectis/<appname>/ui/theme/` (RFC-11 §L). Drop the `include(":vectis-design")` line from `settings.gradle.kts`, the matching `implementation(project(":vectis-design"))` from `app/build.gradle.kts`, and replace `import com.vectis.design.*` lines with `import com.vectis.<appname>.ui.theme.*`; `MaterialTheme.colorScheme.*` / `MaterialTheme.typography.*` continue to resolve via standard M3 imports, while `VectisSpacing.*` / `VectisCornerRadius.*` etc. require the explicit theme-package import because `ui.theme` is a sibling package to `ui.screens` and `ui.components` |
-| `specify tool run vectis-validate -- composition` reports unresolved token / asset reference | The composition references a token or asset id missing from `tokens.yaml` / `assets.yaml`. Writer halts; operator must add the missing entry or remove the reference (RFC-11 §F, §I "Validation gate") |
-| Missing Android export for a `kind: vector` asset | Per RFC-11 §E, this is an error not a deferred TODO. Halt the affected screen and report the missing `sources.android` (Vector Drawable XML — SVG sources need converting first) |
+| Build fails on `:vectis-design` (`Project ':vectis-design' not found` or `Unresolved reference 'com.vectis.design'`) | Legacy migration debt — the shell now emits theme code under `app/src/main/java/com/vectis/<appname>/ui/theme/`. Drop the `include(":vectis-design")` line from `settings.gradle.kts`, the matching `implementation(project(":vectis-design"))` from `app/build.gradle.kts`, and replace `import com.vectis.design.*` lines with `import com.vectis.<appname>.ui.theme.*`; `MaterialTheme.colorScheme.*` / `MaterialTheme.typography.*` continue to resolve via standard M3 imports, while `VectisSpacing.*` / `VectisCornerRadius.*` etc. require the explicit theme-package import because `ui.theme` is a sibling package to `ui.screens` and `ui.components` |
+| `specify tool run vectis-validate -- composition` reports unresolved token / asset reference | The composition references a token or asset id missing from `tokens.yaml` / `assets.yaml`. Writer halts; operator must add the missing entry or remove the reference |
+| Missing Android export for a `kind: vector` asset | This is a validation error, not a deferred TODO. Halt the affected screen and report the missing `sources.android` (Vector Drawable XML — SVG sources need converting first) |
 
 ### Runtime crashes
 

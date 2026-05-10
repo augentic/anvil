@@ -107,7 +107,9 @@ The frontmatter rules in `.cursor/rules/project.mdc` and the body line-count cei
 
 ### Mechanical enforcement
 
-`make checks` runs [scripts/checks.ts](scripts/checks.ts). Per-predicate per-file baselines for the skill-body discipline live in [scripts/standards-allowlist.json](scripts/standards-allowlist.json); a live count strictly greater than its baseline fails CI. New files start clean (missing entries default to 0). Reductions are encouraged in any PR that touches a skill; raising a number requires a justification in the PR description.
+`make checks` runs [scripts/checks.ts](scripts/checks.ts), a thin orchestrator over the per-concern modules under [scripts/checks/](scripts/checks/) (`links.ts`, `capability.ts`, `tools.ts`, `plugins.ts`, `skill_frontmatter.ts`, `skill_body.ts`, `skill_discipline.ts`, `prose.ts`, `scenarios.ts`, `codex.ts`). Per-predicate per-file baselines for the skill-body discipline live in [scripts/standards-allowlist.toml](scripts/standards-allowlist.toml); a live count strictly greater than its baseline fails CI. New files start clean (missing entries default to 0).
+
+**Ratchet** — any PR that touches a skill is expected to reduce its baselines where it can. A predicate baseline is grandfathering, not a license; raising a number requires a justification in the PR description.
 
 Predicates surfaced by Skills-1:
 
