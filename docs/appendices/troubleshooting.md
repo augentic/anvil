@@ -151,7 +151,7 @@ If self-heal itself fails, manually resolve:
 specify slice journal show <slice>             # read the proposal payload
 specify registry add <proposed-name> \
     --url <proposed-url> \
-    --capability <proposed-schema> \
+    --capability <proposed-capability> \
     --description "<proposed-description>"
 specify workspace sync                          # bootstrap the new slot
 specify change plan amend <slice> --project <proposed-name>
@@ -289,7 +289,7 @@ specify registry add <existing-name> \
 
 ### `stale-workspace-clone`
 
-**Symptom:** `specify change plan doctor` reports `stale-workspace-clone` (warning) with reason `signature-changed` (URL or schema diverged) or `missing-sync-stamp` (no stamp file and no readable git remote).
+**Symptom:** `specify change plan doctor` reports `stale-workspace-clone` (warning) with reason `signature-changed` (URL or capability diverged) or `missing-sync-stamp` (no stamp file and no readable git remote).
 
 **Cause:** The workspace clone's signature has drifted from the registry, typically because `registry.yaml` was edited after the clone was first materialised.
 

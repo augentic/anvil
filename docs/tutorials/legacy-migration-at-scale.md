@@ -27,21 +27,21 @@ version: 1
 projects:
   - name: auth-service
     url: git@github.com:org/auth-service.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       Authentication and authorization. Token management,
       OAuth providers, session handling, RBAC.
 
   - name: order-service
     url: git@github.com:org/order-service.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       Order processing. Cart management, checkout flow,
       payment integration, order lifecycle.
 
   - name: notification-service
     url: git@github.com:org/notification-service.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       Notification dispatch. Email, SMS, push notifications,
       template management, delivery tracking.

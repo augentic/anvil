@@ -51,4 +51,4 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | [specify init](init.md) | Project scaffold | One-time setup |
 | [Vectis WASI tool](vectis.md) | Declared `vectis` tool (subcommands: `validate`, `scaffold`) run through `specify tool run` | Capability-owned validation + render-only scaffolding |
 
-The previous standalone families `specify validate`, `specify spec`, `specify task`, and `specify merge` were absorbed into [`specify slice`](slice.md) (`slice validate`, `slice merge {preview, conflict-check, run}`, `slice task {progress, mark}`).
+Per-slice validation, spec preview/conflict checks, task progress, and merging all live under [`specify slice`](slice.md).

@@ -38,16 +38,16 @@ When invoked from the contracts capability build brief during `/spec:build`, `<s
 OpenAPI files live in two locations — the slice-local delta and the platform baseline:
 
 ```text
-.specify/
-├── contracts/
-│   └── http/
-│       └── <api-domain>.yaml          # Baseline: merged contracts only
-└── changes/<slice-name>/
-    └── contracts/
-        ├── http/
-        │   └── <api-domain>.yaml      # Change-local delta or normalised import
-        └── schemas/
-            └── <type>.yaml            # Owned by /contract:json-schema
+contracts/
+└── http/
+    └── <api-domain>.yaml              # Baseline: merged contracts only
+
+.specify/slices/<slice-name>/
+└── contracts/
+    ├── http/
+    │   └── <api-domain>.yaml          # Slice-local delta or normalised import
+    └── schemas/
+        └── <type>.yaml                # Owned by /contract:json-schema
 ```
 
 Conventions enforced for every OpenAPI file in either location:

@@ -38,16 +38,16 @@ When invoked from the contracts capability build brief during `/spec:build`, `<s
 AsyncAPI files live in two locations — the slice-local delta and the platform baseline:
 
 ```text
-.specify/
-├── contracts/
-│   └── messages/
-│       └── <event-domain>-events.yaml   # Baseline: merged contracts only
-└── changes/<slice-name>/
-    └── contracts/
-        ├── messages/
-        │   └── <event-domain>-events.yaml   # Change-local delta or normalised import
-        └── schemas/
-            └── <type>.yaml                  # Owned by /contract:json-schema
+contracts/
+└── messages/
+    └── <event-domain>-events.yaml       # Baseline: merged contracts only
+
+.specify/slices/<slice-name>/
+└── contracts/
+    ├── messages/
+    │   └── <event-domain>-events.yaml   # Slice-local delta or normalised import
+    └── schemas/
+        └── <type>.yaml                  # Owned by /contract:json-schema
 ```
 
 Conventions enforced for every AsyncAPI file in either location:

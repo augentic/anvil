@@ -230,7 +230,7 @@ When `tokens.yaml` / `assets.yaml` / `composition.yaml` change, regenerate the m
 - Update `build.gradle.kts` files if new dependencies are needed.
 - Update `libs.versions.toml` if new library versions are needed.
 - Update `AndroidManifest.xml` if permissions changed (e.g., INTERNET for HTTP).
-- Remove legacy `include(":vectis-design")` from `settings.gradle.kts` and the matching `implementation(project(":vectis-design"))` from `app/build.gradle.kts`. The shell-local `ui/theme/` files satisfy the same role; leaving the entries breaks the build once `design-system/android/` is removed post-Phase 4.1.
+- Remove legacy `include(":vectis-design")` from `settings.gradle.kts` and the matching `implementation(project(":vectis-design"))` from `app/build.gradle.kts`. The shell-local `ui/theme/` files satisfy the same role; leaving the entries breaks the build once `design-system/android/` is absent.
 
 ### U8. Build and verify
 

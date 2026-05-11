@@ -7,7 +7,7 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 - Every successful `--format json` response is wrapped in a top-level envelope:
   ```json
   {
-    "schema-version": 4,
+    "schema-version": 5,
     "ok": true,
     "data": { /* command-specific body */ }
   }

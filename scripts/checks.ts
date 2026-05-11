@@ -45,8 +45,10 @@ import {
 import {
   checkInvocationPositionals,
   checkLegacyLayout,
+  checkOperationalVocabulary,
   checkRetiredAffectsField,
   checkRetiredSlashCommands,
+  checkSkillNumericCaps,
   checkStaleClaims,
   checkWorkspaceLanding,
 } from "./checks/prose.ts";
@@ -67,8 +69,10 @@ await Promise.all([
   checkFirstPartyToolDeclarations(),
   checkInstructionPreambles(),
   checkWorkspaceLanding(),
+  checkOperationalVocabulary(),
   checkRetiredAffectsField(),
   checkLegacyLayout(),
+  checkSkillNumericCaps(),
   validateScenarioFrontmatter(),
   checkRecordedTraceFreshness(),
   validateCodexRuleShape(),

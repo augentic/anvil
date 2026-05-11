@@ -238,7 +238,7 @@ Missing iOS exports for `vector` entries referenced from `composition.yaml` are 
 - Update `project.yml` if new dependencies are needed.
 - Update `Makefile` if build targets changed.
 - If `project.yml` lacks the `Inject` SPM package, add it along with the `- package: Inject` target dependency, Debug-only `OTHER_LDFLAGS` (`["-w", "-Xlinker", "-interposable"]`), and `EMIT_FRONTEND_COMMAND_LINES: "YES"` in the Debug config.
-- Remove any legacy `VectisDesign` package declaration (`packages: VectisDesign: { path: ../../../design-system/ios }`) and the matching `- package: VectisDesign` target dependency. The shell-local `Theme/` files satisfy the same role without an external Swift Package; leaving the entries causes XcodeGen to fail when `design-system/ios/` no longer exists post-Phase 4.1.
+- Remove any legacy `VectisDesign` package declaration (`packages: VectisDesign: { path: ../../../design-system/ios }`) and the matching `- package: VectisDesign` target dependency. The shell-local `Theme/` files satisfy the same role without an external Swift Package; leaving the entries causes XcodeGen to fail when `design-system/ios/` is absent.
 
 ### U8. Format and verify
 

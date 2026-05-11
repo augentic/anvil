@@ -13,7 +13,7 @@ The plugin separation reflects the RFC-13 dependency direction: *capabilities* o
 
 ## CLI counterpart
 
-The matching CLI surface lives under [`specify change`](../cli/change.md). The umbrella verbs (`create`, `show`, `finalize`) and the nested plan family (`specify change plan {add, amend, next, status, doctor, lock, transition, validate, archive}`) replace the v1.x `specify change *` and `specify plan *` groups, which were retired in RFC-13 §3.5.
+The matching CLI surface lives under [`specify change`](../cli/change.md). The umbrella verbs (`create`, `show`, `finalize`) and the nested plan family (`specify change plan {add, amend, next, status, doctor, lock, transition, validate, archive}`) are the current operator-facing commands.
 
 ## See also
 

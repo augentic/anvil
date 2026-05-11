@@ -27,11 +27,11 @@ version: 1
 projects:
   - name: traffic
     url: git@github.com:org/traffic.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: Real-time traffic ingestion service.
   - name: command-centre
     url: git@github.com:org/command-centre.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: Operator dashboard and control plane.
 ```
 
@@ -41,11 +41,11 @@ projects:
 | `projects`    | optional (defaults to empty)      | Ordered list of registered projects. Empty or single-entry registries behave like single-repo mode.                                                                                  |
 | `projects[].name` | yes                           | Kebab-case identifier. Must be unique within the registry.                                                                                                                           |
 | `projects[].url`  | yes                           | Clone target — `.`, a repo-relative path (`../peer`, `./foo`), `git@host:path`, or an `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://` remote.                            |
-| `projects[].schema` | yes                         | Capability identifier — e.g. `omnia@v1`. Opaque at the registry layer; the `name@version` suffix is not parsed here.                                                                 |
+| `projects[].capability` | yes                         | Capability identifier — e.g. `omnia@v1`. Opaque at the registry layer; the `name@version` suffix is not parsed here.                                                                 |
 | `projects[].description` | conditional               | Single-sentence domain characterisation. Required when more than one project is declared (the `description-missing-multi-repo` invariant); optional in single-project registries.   |
 | `projects[].contracts`   | optional                  | Per-project contract role declarations (`produces`, `consumes`); see RFC-12 for the role surface.                                                                                    |
 
-> **Note on the `schema:` field name.** RFC-13 Phase 1 renamed the *extension primitive* from "schema" to "capability" everywhere except this one field on registry entries. The on-disk key continues to be spelled `schema:` until a later phase ships the corresponding rename and migration. Treat the field name as opaque registry vocabulary for now.
+> **Note on the `capability:` field name.** RFC-13 Phase 1 renamed the *extension primitive* from "schema" to "capability" everywhere except this one field on registry entries. The on-disk key continues to be spelled `capability:` until a later phase ships the corresponding rename and migration. Treat the field name as opaque registry vocabulary for now.
 
 The wire-level shape is enforced by the registry crate's `Registry::validate_shape` (kebab-case, non-empty required strings, version, URL classification, multi-project description, optional `contracts` consistency). For the full type definition, see `crates/registry/src/registry.rs` in `augentic/specify-cli`.
 

@@ -38,14 +38,14 @@ When invoked from the contracts capability build brief during `/spec:build`, `<s
 JSON Schema files live in two locations — the slice-local delta and the platform baseline:
 
 ```text
-.specify/
-├── contracts/
-│   └── schemas/
-│       └── <type>.yaml             # Baseline: merged schemas only
-└── changes/<slice-name>/
-    └── contracts/
-        └── schemas/
-            └── <type>.yaml         # Change-local delta or normalised import
+contracts/
+└── schemas/
+    └── <type>.yaml                 # Baseline: merged schemas only
+
+.specify/slices/<slice-name>/
+└── contracts/
+    └── schemas/
+        └── <type>.yaml             # Slice-local delta or normalised import
 ```
 
 Conventions enforced for every schema file in either location:

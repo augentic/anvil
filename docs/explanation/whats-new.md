@@ -6,13 +6,13 @@ The bulk of the additions ship under [RFC-9: Platform-First Operator Experience]
 
 ## RFC-13 — capability rename and platform-component split
 
-[RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md) reframes Specify's extensibility model. The "schema" noun is renamed to **capability** throughout the framework, the `change` / `initiative` lifecycle nouns are renormalised, and the registry and change orchestration become first-party **platform components** rather than capabilities.
+[RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md) reframes Specify's extensibility model. The extension noun is now **capability** throughout the framework, the lifecycle nouns are **slice** and **change**, and the registry and change orchestration are first-party **platform components** rather than capabilities.
 
 ### Capability vocabulary
 
-- **`schemas/` → `capabilities/`.** First-party capabilities now live at `capabilities/<name>/capability.yaml` with an explicit JSON Schema at `capabilities/capability.schema.json`. The legacy `schemas/<name>/schema.yaml` layout is gone.
-- **`specify schema {resolve, check, pipeline}` → `specify capability {resolve, check, pipeline}`.** The CLI surface follows the noun rename.
-- **`/spec:init <capability>`.** The init positional is now a capability identifier (a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI), with optional `@ref` suffixes for git pinning. The `--schema-uri` flag is gone; `specify init` invoked with neither a capability positional nor `--hub` errors with `init-requires-capability-or-hub`.
+- **Capabilities live under `capabilities/`.** First-party capabilities now live at `capabilities/<name>/capability.yaml` with an explicit JSON Schema at `capabilities/capability.schema.json`.
+- **`specify capability {resolve, check, pipeline}`.** The CLI surface uses the capability noun.
+- **`/spec:init <capability>`.** The init positional is a capability identifier (a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI), with optional `@ref` suffixes for git pinning. `specify init` invoked with neither a capability positional nor `--hub` errors with `init-requires-capability-or-hub`.
 - **`capability.yaml` is closed and minimal.** The post-RFC manifest drops the legacy `domain` and `extends` fields. Tech-stack guidance, architectural notes, and testing context belong in capability references and skills, not in always-loaded manifest metadata.
 - **`pipeline.plan` is rejected.** Both `capabilities/capability.schema.json` (this repo) and `schemas/capability.schema.json` (CLI) reject `pipeline.plan` outright; planning is platform-component orchestration, not capability-owned per-slice work. Planning briefs live with the change-planning skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../plugins/change/skills/plan/briefs/).
 
@@ -23,7 +23,7 @@ The two lifecycle nouns are now stable:
 - **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step; lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
 - **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, and the `specify change *` CLI verbs (which include the `specify change plan *` subresource).
 
-Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "initiative". Both were renamed in Phase 3 of the RFC; "the change loop" no longer exists as a phrase — call it the *slice loop*. Current releases expect `.specify/slices/` and `change.md`; the temporary RFC-13 migration shims have been removed.
+Current releases expect `.specify/slices/` and `change.md`; call the per-slice lifecycle the *slice loop*.
 
 ### Platform components are not capabilities
 
@@ -31,7 +31,7 @@ The registry and the change component are first-party Specify components — the
 
 ### Hub project shape simplified
 
-A hub now carries `project.yaml { hub: true, … }` with the `capability:` field omitted (its absence is what disables capability resolution and the per-project phase pipelines). The legacy `schema: hub` sentinel is removed in the same release that lands the capability rename.
+A hub carries `project.yaml { hub: true, … }` with the `capability:` field omitted; its absence disables capability resolution and the per-project phase pipelines.
 
 ## RFC-14 — workspace branch and PR ownership
 
@@ -192,13 +192,11 @@ The distinction was always implicit; RFC-9 ?1E codifies it so operators stop los
 
 ## `/change:plan <name> orchestrate` umbrella mode (Layer 4)
 
-A Layer 4 mode of `/change:plan` (RFC-9 ?2C) drives the cross-repo loop end-to-end as a single operator action:
+A Layer 4 mode of `/change:plan` drives the cross-repo loop end-to-end as a single operator action:
 
 ```text
 /change:plan <name> orchestrate [shape ...] [from ...] [source ...]
 ```
-
-> **Note.** This was originally a separate `/spec:initiative` skill; it was folded into `/change:plan` as a flag-gated `orchestrate` mode in a progressive-disclosure pass. The seven-step umbrella sequence is unchanged.
 
 The mode composes: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute loop` -> `specify workspace push` -> operator PR merge -> `specify change finalize`. Every automated step is a shell-out to a Layer 1 verb or a Layer 3 skill; the orchestration mode adds no new logic. Halts (self-heal, `stuck`, `registry-amendment-required`, unmerged PRs) surface verbatim, and re-running `--orchestrate` against an in-progress change resumes at the first incomplete step.
 
@@ -217,7 +215,7 @@ specify registry add <name> --url <url> --capability <capability> --description 
 specify registry remove <name>
 ```
 
-`add` validates kebab-case names, URL classification, and the `description-missing-multi-repo` invariant after the write. `remove` warns when plan entries reference the removed project. `/change:plan`'s registry-proposal sub-step (RFC-9 ?2B) shells out to `add` automatically when assignment names a project not yet in `registry.yaml`.
+`add` validates kebab-case names, URL classification, and the `description-missing-multi-repo` invariant after the write. `remove` warns when plan entries reference the removed project. `/change:plan`'s registry-proposal sub-step shells out to `add` automatically when assignment names a project not yet in `registry.yaml`.
 
 - Reference: [`specify registry`](../reference/cli/registry.md)
 - How-to: [Manage Registry Projects](../how-to/manage-registry-projects.md)
@@ -230,7 +228,7 @@ RFC-14 removed the cross-repo PR-landing verb. Specify does not inspect checks, 
 
 ## `specify change plan doctor`
 
-A strict superset of `specify change plan validate` with four additional health diagnostics (RFC-9 ?4B):
+A strict superset of `specify change plan validate` with four additional health diagnostics:
 
 | Code | Severity | Meaning |
 |------|----------|---------|
@@ -246,7 +244,7 @@ A strict superset of `specify change plan validate` with four additional health 
 
 ## `specify change finalize`
 
-The canonical closure verb for the platform-first loop (RFC-9 ?4C):
+The canonical closure verb for the platform-first loop:
 
 ```bash
 specify change finalize [--clean] [dry-run]
@@ -275,24 +273,12 @@ The `contracts` brief in the define pipeline runs alignment validation against t
 
 ## `registry-amendment-required` outcome
 
-A new phase outcome variant (RFC-9 ?2B) for cases where a phase skill discovers that a change targets a capability needing a new registry project. The outcome carries a structured payload (`{ proposed-name, proposed-url, proposed-schema, proposed-description, rationale }`); the executor classifies it as `blocked`, records the payload in the dropped change's `journal.yaml`, and surfaces the proposal to the operator. The framework never auto-modifies the registry.
+A phase outcome variant for cases where a phase skill discovers that a change targets a capability needing a new registry project. The outcome carries a structured payload (`{ proposed-name, proposed-url, proposed-capability, proposed-description, rationale }`); the executor classifies it as `blocked`, records the payload in the dropped slice's `journal.yaml`, and surfaces the proposal to the operator. The framework never auto-modifies the registry.
 
 The canonical recovery sequence: `specify registry add` -> `specify workspace sync` -> `specify change plan amend <change> --project <new>` -> `specify change plan transition <change> pending` -> re-run `/change:execute`.
 
 - How-to: [Recover from `registry-amendment-required`](../how-to/recover-from-registry-amendment.md)
 - Troubleshooting: [Registry amendment required](../appendices/troubleshooting.md#registry-amendment-required)
-
-## v1.x verb renames (RFC-9 ??1F, 1G)
-
-Three renames landed on top of the v1 cleanup so every noun-create verb now uses `create`:
-
-| Old verb (v1) | New verb (v1.x) |
-|---|---|
-| `specify change init <name>` | `specify change create <name>` |
-| `specify change plan init <name>` | `specify change plan create <name>` |
-| `specify change plan create <name>` | `specify change plan add <name>` |
-
-The renames ship together so the `plan` group never spent an interim release with `init` and `create` for the same noun.
 
 ## See also
 

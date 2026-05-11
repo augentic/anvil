@@ -151,7 +151,7 @@ Task complete
 ```
 ## Implementation Complete
 
-**Change:** <slice-name>
+**Slice:** <slice-name>
 **Progress:** 7/7 tasks complete
 
 ### Completed This Session
@@ -168,7 +168,7 @@ Run `/spec:merge` to finalize.
 ```
 ## Implementation Paused
 
-**Change:** <slice-name>
+**Slice:** <slice-name>
 **Progress:** 4/7 tasks complete
 
 ### Issue Encountered

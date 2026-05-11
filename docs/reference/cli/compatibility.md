@@ -38,7 +38,7 @@ With `--format json`, the command emits the standard Specify CLI envelope:
 
 ```json
 {
-  "schema-version": 3,
+  "schema-version": 5,
   "change": "user-api-v2",
   "checked-pairs": 1,
   "ok": false,

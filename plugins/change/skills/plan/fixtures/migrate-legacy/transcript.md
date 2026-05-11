@@ -324,8 +324,8 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ## Invariants pinned by this transcript
 
-- **Verb hygiene.** Every shell-out is a post-Phase-3 verb: `specify change create`, `specify change plan {create, add, amend, validate}`, `specify registry {add, validate}`, `specify workspace {sync, push}`, `gh pr list`, `specify slice journal append` (inside the executor's self-heal — not visible here because the run is clean), `specify change finalize`. No retired verbs appear anywhere in the trace.
+- **Verb hygiene.** Every shell-out is a current verb: `specify change create`, `specify change plan {create, add, amend, validate}`, `specify registry {add, validate}`, `specify workspace {sync, push}`, `gh pr list`, `specify slice journal append` (inside the executor's self-heal — not visible here because the run is clean), `specify change finalize`. No retired verbs appear anywhere in the trace.
 - **Greenfield ordering.** `specify registry add` (×2) precedes `specify workspace sync`, which precedes any `specify change plan add` for entries routed to the new projects. This is the 2B invariant.
 - **Cross-project contract change has no `project`.** `migrate-foo-contract` runs against the hub itself (no `Routing:` diagnostic from `/change:execute`), exactly as the cross-repo tutorial pins.
-- **PR merge is outside orchestration.** The transcript shows the umbrella stopping with open PRs in run 1, then observing both PRs as `MERGED` in run 2. It never calls `specify workspace merge` or `gh pr merge`.
+- **PR merge is outside orchestration.** The transcript shows the umbrella stopping with open PRs in run 1, then observing both PRs as `MERGED` in run 2. The merge itself happens outside the umbrella.
 - **Idempotent re-entry.** The umbrella's terminal summary points the operator at re-running `/change:plan <name> orchestrate migrate-foo`, which exits zero with `plan-not-found` after the archive completes.

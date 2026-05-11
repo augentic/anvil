@@ -36,7 +36,7 @@ The `0` / `1` / `2` mapping is the conventional shell-friendly shape so capabili
 
 ```json
 {
-  "schema-version": 2,
+  "schema-version": 5,
   "contracts-dir": "<absolute-baseline-path>",
   "ok": false,
   "findings": [
@@ -52,7 +52,7 @@ The `0` / `1` / `2` mapping is the conventional shell-friendly shape so capabili
 
 Field semantics:
 
-- `schema-version` — currently `2`; bumps follow RFC-12.
+- `schema-version` — currently `5`, matching the CLI JSON envelope version.
 - `contracts-dir` — the absolute path the tool walked, echoing the positional argument.
 - `ok` — `true` iff `findings` is empty.
 - `findings[].path` — repo-relative when the parent of `<BASELINE_DIR>` matches the path's prefix, otherwise absolute. Suitable for verbatim rendering.
@@ -60,7 +60,7 @@ Field semantics:
 - `findings[].detail` — single-line human-readable description.
 - `exit-code` — mirrors the validator's process-style exit code.
 
-The envelope is byte-compatible with the retired in-binary contract validator for successful validator invocation and findings cases. Resolver, permission, or runtime failures come from `specify tool run` and use the standard Specify error envelope.
+Resolver, permission, or runtime failures come from `specify tool run` and use the standard Specify error envelope.
 
 This tool is the baseline-validation gate only. It does not compare producer contracts against consumer workspace views. Use `specify compatibility check` or `specify compatibility report --change <name>` for RM-04 consumer-impact classification.
 

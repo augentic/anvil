@@ -1,6 +1,6 @@
 # specify slice
 
-Create, inspect, validate, transition, merge, and archive individual slices. The `slice` noun group covers every per-slice operation (renamed from `specify change *` by RFC-13 §3.2 — the `change` noun now belongs to the umbrella surface). The previously top-level groups `specify validate`, `specify merge`, `specify spec`, and `specify task` were folded into `specify slice` by the CLI cleanup.
+Create, inspect, validate, transition, merge, and archive individual slices. The `slice` noun group covers every per-slice operation; the `change` noun belongs to the umbrella surface.
 
 Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk directory from the name internally (no `<slice-dir>` arg).
 
@@ -12,7 +12,7 @@ Every per-slice verb takes the slice `<name>`. The CLI resolves the on-disk dire
 | [`list`](#specify-slice-list) | List all active slices. |
 | [`status`](#specify-slice-status) | Detailed status for one slice (lifecycle state, artifacts, tasks, timestamps). |
 | [`transition`](#specify-slice-transition) | Move a slice through the lifecycle state machine (`created` -> `defining` -> `defined` -> `building` -> `complete` -> `merged`/`dropped`). |
-| [`validate`](#specify-slice-validate) | Run artifact validation (formerly top-level `specify validate`). |
+| [`validate`](#specify-slice-validate) | Run artifact validation. |
 | [`merge`](#specify-slice-merge) | `merge {preview, conflict-check, run}` -- preview the delta merge, detect baseline conflicts, or execute the merge. |
 | [`task`](#specify-slice-task) | `task {progress, mark}` -- inspect or update the task checkbox state in `tasks.md`. |
 | [`outcome`](#specify-slice-outcome) | `outcome {set, show}` -- write or read the phase outcome that `/change:execute` consumes. |
@@ -127,7 +127,7 @@ Returns a JSON report with `Pass` / `Fail` / `Deferred` classifications. The Pas
 
 ### specify slice merge
 
-Three subcommands cover the merge surface (renamed from the old top-level `specify merge` / `specify spec preview` / `specify spec conflict-check`).
+Three subcommands cover the merge surface.
 
 #### specify slice merge preview
 

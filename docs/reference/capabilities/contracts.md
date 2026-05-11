@@ -54,11 +54,11 @@ The `contracts` capability and the implementation capabilities serve complementa
 | Concern | Contracts capability | Omnia/Vectis capabilities |
 |---------|----------------------|---------------------------|
 | Purpose | Author or import contract artifacts | Implement code that conforms to baseline contracts |
-| Plan entry | `schema: contracts@v1` (no `project`) | Normal project-bound entry |
+| Plan entry | `capability: contracts@v1` (no `project`) | Normal project-bound entry |
 | Build phase | Author/import + validation | Code generation |
 | Typical delta | Full contract set (new API), import normalisation, or contract modification | Spec/design/code changes with no contract artifact delta |
 
-> The plan-entry key on the table above is still spelled `schema:` because the `plan.yaml` per-entry field name is intentionally kept distinct from the capability rename — it identifies the artefact-path identifier the entry targets, not the capability that owns the work. RFC-13 leaves that key unchanged; any future plan-field rename is a separate cut-over.
+> The plan-entry key on the table above is still spelled `capability:` because the `plan.yaml` per-entry field name is intentionally kept distinct from the capability rename — it identifies the artefact-path identifier the entry targets, not the capability that owns the work. RFC-13 leaves that key unchanged; any future plan-field rename is a separate cut-over.
 
 ## Domain context
 

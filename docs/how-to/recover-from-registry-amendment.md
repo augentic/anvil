@@ -11,7 +11,7 @@ This how-to walks the canonical recovery sequence end-to-end. RFC-9 Section 2B i
 
 ## 1. Read the proposal payload
 
-The driver records the proposal payload (`{ proposed-name, proposed-url, proposed-schema, proposed-description, rationale }`) on the dropped change's `journal.yaml` before transitioning the entry to `blocked`. Read it via:
+The driver records the proposal payload (`{ proposed-name, proposed-url, proposed-capability, proposed-description, rationale }`) on the dropped change's `journal.yaml` before transitioning the entry to `blocked`. Read it via:
 
 ```bash
 specify slice journal show <change>
@@ -40,7 +40,7 @@ Four CLI verbs in this exact order. Skipping or reordering any step breaks the v
 ```bash
 specify registry add <proposed-name> \
     --url <proposed-url> \
-    --capability <proposed-schema> \
+    --capability <proposed-capability> \
     --description "<proposed-description>"
 ```
 

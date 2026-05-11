@@ -14,7 +14,7 @@ Two lifecycle nouns recur throughout this codebase. RFC-13 §Migration locked th
 - **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
 - **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, and the `specify change *` CLI verbs (which include the `specify change plan *` subresource).
 
-Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "initiative". Both were renamed in Phase 3 of the RFC; "the change loop" no longer exists as a phrase — it is the *slice loop*.
+Use *slice loop* for the per-slice lifecycle; reserve *change* for the umbrella that owns `change.md` and `plan.yaml`.
 
 ## Operating Model
 
@@ -224,7 +224,7 @@ Every `SKILL.md` in this repository follows the same house style. The long-form 
 Required:
 
 - `name` — globally unique, plugin-qualified skill identifier.
-- `description` — what the skill does *and* when to use it, third person, ≤1024 characters.
+- `description` — what the skill does *and* when to use it, third person, ≤512 characters.
 
 Optional:
 
@@ -253,7 +253,7 @@ Portability posture:
 
 - Third person, single line (block-scalar literals are fine if short, but avoid them as a way to smuggle in more text).
 - States both **what** the skill does and **when** to use it. The "when" half is what lets Claude pick the right skill out of a catalogue; missing it is the most common drift.
-- ≤1024 characters (Anthropic limit; enforced by `make checks`).
+- ≤512 characters (repository limit; enforced by `make checks`).
 - No RFC citations, internal layer numbers, or workflow jargon — those belong in the body. Always-loaded metadata is a precious budget; spend it on triggers and capabilities.
 
 ### `argument-hint`
@@ -271,7 +271,7 @@ The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/cha
 
 ### Body length
 
-- SKILL.md body (post-frontmatter) must stay under 500 lines (Anthropic guidance, enforced by `make checks`).
+- SKILL.md body (post-frontmatter) must stay under 400 lines (repository limit, enforced by `make checks`).
 - Push depth into siblings linked one level deep: `references/`, `examples/`, or topical files such as `author.md` / `importer.md` / `verifier.md`.
 - When a skill body is split, the SKILL.md retains the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points; the siblings carry the long-form rules, examples, templates, and edge-case prose.
 
@@ -280,10 +280,10 @@ The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/cha
 `make checks` enforces the mechanical parts of this section:
 
 - `name` matches `^[a-z][a-z0-9-]*$`, carries the plugin prefix, and is globally unique across all SKILL.md files.
-- `description` is ≤1024 characters.
+- `description` is ≤512 characters.
 - `argument-hint` contains no `?`, no `--`, and no `|`.
 - Slash-skill invocation examples use positionals only; leading double-dash option tokens are reserved for ordinary CLI commands and fail checks when used as skill arguments.
-- SKILL.md body is ≤500 lines (post-frontmatter).
+- SKILL.md body is ≤400 lines (post-frontmatter).
 - SKILL.md bodies with ≥150 post-frontmatter lines include a `## Critical Path (Quick Reference)` block with 5–7 bullets or numbered items.
 - No SKILL.md carries a top-level `license:` (or any other forbidden frontmatter key).
 

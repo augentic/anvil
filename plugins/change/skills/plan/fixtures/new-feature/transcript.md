@@ -300,8 +300,8 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ## Invariants pinned by this transcript
 
-- **Verb hygiene.** Every shell-out is a post-Phase-3 verb: `specify change {create, finalize}`, `specify change plan {create, add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`. No retired verbs.
+- **Verb hygiene.** Every shell-out is a current verb: `specify change {create, finalize}`, `specify change plan {create, add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`. No retired verbs.
 - **No registry mutation under `new-feature`.** `registry.yaml` is byte-identical between run-1 input and run-2 output. The 2B registry-proposal sub-step does not fire because every assignment routes to an existing project.
-- **Step 6 stops for operator merge.** The umbrella never invokes `gh pr merge` or `specify workspace merge` in run 1. It surfaces the open-PR list and exits zero. The operator's manual merges happen off-fixture.
+- **Step 6 stops for operator merge.** The umbrella surfaces the open-PR list and exits zero. The operator's manual merges happen off-fixture.
 - **Re-entry is idempotent.** Run 2 traverses every step but does **work** only at step 7. Each earlier step short-circuits because its on-disk state is already terminal: brief present, registry unchanged, plan terminal, workspace clones up-to-date, every PR `MERGED` on remote.
 - **Cross-project contract change has no `project`.** `dark-mode-contract` runs against the hub itself; the per-project routing applies only to `dark-mode-backend` and `dark-mode-mobile`.

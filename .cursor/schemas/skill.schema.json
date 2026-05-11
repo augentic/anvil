@@ -16,8 +16,8 @@
     "description": {
       "type": "string",
       "minLength": 10,
-      "maxLength": 1024,
-      "description": "One-line description stating both what the skill does and when to use it, in third person (max 1024 chars per Anthropic spec). Avoid XML tags."
+      "maxLength": 512,
+      "description": "One-line description stating both what the skill does and when to use it, in third person (max 512 chars for this repository). Avoid XML tags."
     },
     "argument-hint": {
       "type": "string",

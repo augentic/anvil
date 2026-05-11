@@ -40,7 +40,7 @@ All paths below are rooted at the `specify-cli` checkout (`{repo-dir}`); the Vec
 - **Template engine + registries** at `{repo-dir}/crates/vectis/src/scaffold/templates.rs and {repo-dir}/crates/vectis/src/scaffold/templates/{core.rs,ios.rs,android.rs}` (placeholder chain, cap-conditional logic, per-file target paths).
 - **Capability map** at `{repo-dir}/crates/vectis/src/scaffold/templates.rs` -- the active list of `--caps` tags and CAP-marker names. When a Crux bump renames or adds a capability, edit this module in lockstep with the `app.rs` template.
 - **Host verify recipe** in this skill -- the ordered Cargo, codegen, deny/vet, Gradle, and Xcode commands that replaced the old bundled verify path. Failures from these commands are the primary signal this skill works from.
-- **Known drift backlog** at [`references/known-drift.md`](references/known-drift.md) -- the running list of deferred items from chunk 11/12 verification. Start here before diagnosing a new bump; the odds are non-trivial that the failure is one of these.
+- **Known drift backlog** at [`references/known-drift.md`](references/known-drift.md) -- the running list of deferred items from prior template verification. Start here before diagnosing a new bump; the odds are non-trivial that the failure is one of these.
 
 ## Prerequisites
 
@@ -77,7 +77,7 @@ The skill runs a five-step flow (Detect → Diagnose → Update → Validate →
 
    ```bash
    dir={scratch-dir}/combo-<N>
-   rm -rf "$dir"
+   test ! -e "$dir"
    mkdir -p "$dir"
    cd "$dir"
    specify init https://github.com/augentic/specify/capabilities/vectis
@@ -152,7 +152,7 @@ After each atomic edit:
 1. Re-run the single combo that reproduced the failure:
 
    ```bash
-   rm -rf "{scratch-dir}/combo-<N>"
+   test ! -e "{scratch-dir}/combo-<N>"
    # Repeat D1's scratch project bootstrap and `specify tool run vectis -- scaffold`
    # render for this combo, then rerun the exact host command that failed.
    ```
@@ -167,7 +167,7 @@ Once every failing combo passes individually, run the whole matrix to catch unin
 # Pseudocode: run the same explicit render + host verify flow for every combo.
 for caps in "" "http" "http,kv" "http,kv,time,platform,sse"; do
   dir="{scratch-dir}/matrix-${caps//,/}-core"
-  rm -rf "$dir"
+  test ! -e "$dir"
   mkdir -p "$dir"
   cd "$dir"
   specify init https://github.com/augentic/specify/capabilities/vectis
@@ -247,7 +247,7 @@ No template-module edit (no new files, no new placeholders, no predicate change)
 - **Silencing a new advisory without understanding it.** `RUSTSEC-*` IDs added to `<specify-cli>/templates/vectis/core/deny.toml`'s `[advisories] ignore` list must have (a) a rationale comment naming the transitive chain that forces the advisory, and (b) no known safe upgrade path. A one-line `# upstream unmaintained` with no chain is not acceptable.
 - **Speculative rewrites.** Do not edit a template file that is not covered by at least one reproduced failure. Templates that look "stylistically outdated" are out of scope for this skill -- they belong in a separate refactor.
 - **Changing the placeholder order.** `templates::mod.rs::substitute_placeholders` substitutes superstrings first (`__APP_NAME_LOWER__` before `__APP_NAME__`; `__ANDROID_PACKAGE_PATH__` before `__APP_NAME_LOWER__`). Adding a new placeholder always means slotting it into this chain in superstring-first order -- never appending.
-- **Dropping an existing `#[allow(...)]` on a capability type alias or `update()` match.** The render-only baseline intentionally carries `#[allow(dead_code)]` on capability `type` aliases and `#[allow(clippy::match_same_arms)]` on `update()`. These are the writer-skill's handover contract from chunk 12; do not touch them unless the writer skills have been updated in lockstep.
+- **Dropping an existing `#[allow(...)]` on a capability type alias or `update()` match.** The render-only baseline intentionally carries `#[allow(dead_code)]` on capability `type` aliases and `#[allow(clippy::match_same_arms)]` on `update()`. These are part of the writer-skill handoff contract; do not touch them unless the writer skills have been updated in lockstep.
 
 ## Reference documentation
 

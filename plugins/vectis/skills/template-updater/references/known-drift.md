@@ -18,7 +18,7 @@ When a fix ships, remove the item from this file in the same commit that lands t
 
 **Root cause**: `crux_core 0.17.0`'s `cli` feature transitively pins `uniffi_bindgen = "=0.29.4"`. `<specify-cli>/templates/vectis/core/codegen.rs` calls `crux_core::cli::bindgen(...)` for Kotlin bindings. Mixing a 0.31 runtime (in `shared`) with a 0.29 bindgen fails. There is no Crux release today that tracks `uniffi_bindgen 0.31`.
 
-**Why it cannot be hotfixed by pin bumping**: tried and reverted during chunk 11. The Xcode 26+ iOS concern that originally motivated the bump (`import sharedFFI` failing under cargo-swift 0.9's bindgen output) is already addressed by bumping the *per-developer* cargo-swift install to 0.11; cargo-swift 0.11's bindgen reads uniffi 0.29.4 metadata correctly because the metadata format is stable across 0.29 → 0.31.
+**Why it cannot be hotfixed by pin bumping**: the Xcode 26+ iOS concern that originally motivated the bump (`import sharedFFI` failing under cargo-swift 0.9's bindgen output) is already addressed by bumping the *per-developer* cargo-swift install to 0.11; cargo-swift 0.11's bindgen reads uniffi 0.29.4 metadata correctly because the metadata format is stable across 0.29 → 0.31.
 
 **Fix path** (structural, scoped by this item):
 
@@ -99,4 +99,4 @@ This item is purely cosmetic -- no build or verify step actually fails. It is li
 
 ## Sizing reminder
 
-All four items above were concretely produced by chunk 11's cap-matrix verification. When chunk 13 (this skill) runs for the first time against live registries, the only item it is blocked from fixing mechanically is **item 1** -- that needs a code edit in `<specify-cli>/templates/vectis/core/codegen.rs` that is a meaningful piece of work. Items 2, 3, and 4 are short, scoped, and should land first.
+All four items above were produced by cap-matrix verification. The only item this skill is blocked from fixing mechanically is **item 1** -- that needs a code edit in `<specify-cli>/templates/vectis/core/codegen.rs` that is a meaningful piece of work. Items 2, 3, and 4 are short, scoped, and should land first.

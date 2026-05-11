@@ -40,7 +40,7 @@ The plan that lands has three changes:
 ```yaml
 changes:
   - name: oauth-login-contract     # platform-level contract change
-    schema: contracts@v1
+    capability: contracts@v1
     depends-on: []
   - name: add-oauth-tokens         # backend implementation
     project: shop-backend
@@ -151,14 +151,14 @@ version: 1
 projects:
   - name: shop-backend
     url: git@github.com:org/shop-backend.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       User registration, account management, and the authoritative
       implementation of the shop's HTTP API. Owns persistence, OAuth
       provider integration, token storage, and order processing.
   - name: shop-mobile
     url: git@github.com:org/shop-mobile.git
-    schema: vectis@v1
+    capability: vectis@v1
     description: >
       iOS and Android mobile clients for the shop. Owns login and
       registration screens, the cart, checkout, and OAuth redirect
@@ -224,7 +224,7 @@ Run the planning skill:
 | **Propose** | Decomposes the inventory into change slices via the accept / edit / reject loop; appends each accepted slice via `specify change plan add`. | `plan.yaml` (entries without `project`), `.specify/plans/oauth-login/proposal.md` |
 | **Assignment** *(multi-repo only)* | Infers `project` per entry from registry descriptions, baseline specs, and schema; writes via `specify change plan amend --project`. | `plan.yaml` (entries gain `project:`) |
 
-When the skill detects an API boundary between the two projects, it inserts a **contract change** before the implementation changes and populates `contracts.produces` / `contracts.consumes` on the relevant registry entries. The contract change carries `schema: contracts@v1` and no `project` — it runs against the hub itself.
+When the skill detects an API boundary between the two projects, it inserts a **contract change** before the implementation changes and populates `contracts.produces` / `contracts.consumes` on the relevant registry entries. The contract change carries `capability: contracts@v1` and no `project` — it runs against the hub itself.
 
 `specify change plan validate` is the final gate; the skill exits non-zero on any error-level finding.
 

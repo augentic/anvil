@@ -25,12 +25,10 @@ If `$LEGACY` is missing or not a directory, fail with: `"Error: legacy-dir is re
 
 ### Step 0: Bootstrap the legacy tree (if remote)
 
-`/rt:wiretapper` only operates on a local directory. When the legacy source lives on a remote, materialise it first with the following guarded clone — the inlined replacement for the retired RT clone skill — and pass the resulting `$DEST` as `$LEGACY`:
+`/rt:wiretapper` only operates on a local directory. When the legacy source lives on a remote, materialise it first into a fresh temporary directory and pass the resulting `$DEST` as `$LEGACY`:
 
 ```bash
-# Quote DEST and never run rm -rf without verifying the target.
 git clone "$URL" "$DEST"
-test -d "$DEST/.git" && rm -rf "$DEST/.git"   # only if --detach mode is required
 ```
 
 ### Step 1: Validate

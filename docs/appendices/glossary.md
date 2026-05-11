@@ -54,7 +54,7 @@ The optional `context` field on a plan entry -- a list of baseline paths (relati
 The repository where an operator runs a coordinated change. It owns `registry.yaml`, `plan.yaml`, `change.md`, `.specify/plans/`, and the registry workspace under `.specify/workspace/`. For a hub topology, the coordinator root may contain no product code; for platform-as-project, it is also one of the registered projects.
 
 **Contract-first**
-Authorship pattern where a dedicated contract change defines interface shapes before implementation begins. `/change:plan` inserts these automatically when it detects an API boundary between projects. The contract change uses `schema: contracts@v1` and has no `project`. Implementation changes depend on the contract change.
+Authorship pattern where a dedicated contract change defines interface shapes before implementation begins. `/change:plan` inserts these automatically when it detects an API boundary between projects. The contract change uses `capability: contracts@v1` and has no `project`. Implementation changes depend on the contract change.
 
 **Contract-given**
 Authorship pattern where API contracts are imported from an external system or legacy API. The operator places the external files into the change's `contracts/` directory. `/change:plan` inserts import changes when a source is flagged as external.
@@ -93,14 +93,8 @@ A registry-only platform repo. Identified by `project.yaml: hub: true` (with the
 
 ## I
 
-**Initiative**
-Legacy term for a change before RFC-13 renormalised the lifecycle nouns. Current docs use **change** for the operator umbrella and **slice** for each define-build-merge unit.
-
 **Contract id**
 The optional `info.x-specify-id` field on a top-level OpenAPI 3.1 / AsyncAPI 3.0 contract (RFC-12). Kebab-case (`^[a-z][a-z0-9-]*$`), ≤ 64 characters, unique across every top-level contract in the repo. The id is a **rename-stable hint** that survives file moves and `info.version` bumps — once set on a contract, never change it. Path-based references in `registry.yaml` remain canonical; the id is not a substitute. Format and uniqueness are enforced by the declared `contract` WASI tool (`specify tool run contract`, the contracts capability's post-merge baseline gate, RFC-13 §"Merge and adoption contract") and by the `/contract:openapi` / `/contract:asyncapi` verifier intents only when the field is present — contracts without one remain valid indefinitely.
-
-**Initiative finalize**
-Legacy name for `specify change finalize`. The command verifies operator-merged PRs and archives `plan.yaml`, `change.md`, and `.specify/plans/<name>/`; it does not merge pull requests.
 
 **Change shapes (three)**
 The three input topologies the platform-first loop handles uniformly: `migrate-legacy` (sources via `--source <key>=<git-url-or-path>`, targets are existing or newly-minted registered projects), `new-feature` (sources via `--from <docs>`, targets are existing registered projects with new ones spawned at assignment time via the registry-proposal sub-step), and `update-existing` (no input flags, targets are existing registered projects, baseline accumulation in workspace clones is the dominant signal). All three flow through the same `/change:plan <name> orchestrate` sequence.
@@ -136,12 +130,12 @@ The stable `ID: REQ-XXX` line in a spec requirement. Used to match delta spec op
 ## O
 
 **Opaque replacement**
-The merge semantics used for contract files. Unlike spec files (which use the ADDED/MODIFIED/REMOVED delta format), contract files are replaced wholesale during merge -- `specify merge` copies the change's `contracts/` files into `contracts/`, replacing files that share a path. Files absent from the change are left untouched.
+The merge semantics used for contract files. Unlike spec files (which use the ADDED/MODIFIED/REMOVED delta format), contract files are replaced wholesale during merge -- `specify slice merge run` copies the slice's `contracts/` files into `contracts/`, replacing files that share a path. Files absent from the slice are left untouched.
 
 ## P
 
 **Phase outcome**
-A classification (`success`, `failure`, `deferred`, or `registry-amendment-required`) written to `.metadata.yaml` after a phase completes. Used by `/change:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`. The `registry-amendment-required` variant (RFC-9 Section 2B) carries a structured payload `{ proposed-name, proposed-url, proposed-schema, proposed-description, rationale }` and triggers the operator-driven recovery sequence -- the framework never auto-modifies the registry.
+A classification (`success`, `failure`, `deferred`, or `registry-amendment-required`) written to `.metadata.yaml` after a phase completes. Used by `/change:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`. The `registry-amendment-required` variant (RFC-9 Section 2B) carries a structured payload `{ proposed-name, proposed-url, proposed-capability, proposed-description, rationale }` and triggers the operator-driven recovery sequence -- the framework never auto-modifies the registry.
 
 **Plan**
 An ordered, dependency-aware list of slices stored in `plan.yaml`. The change's table of contents.
@@ -170,7 +164,7 @@ The first artifact generated during define. Captures why the change exists, what
 `registry.yaml` -- a platform catalogue declaring the repos in a multi-repo system. Each entry has a name, URL, capability identifier, and domain description.
 
 **Registry amendment** (also: **`registry-amendment-required`**)
-The phase outcome variant added by RFC-9 Section 2B for cases where a phase skill discovers that a capability needs a new registry project (e.g. `/spec:extract` surfacing tangled code that should split into a new repo). The driver classifies the outcome as `blocked`, records the structured payload in the dropped change's `journal.yaml`, and surfaces the proposal to the operator. The canonical recovery sequence is `specify registry add <proposed-name> --url <proposed-url> --capability <proposed-schema> --description "<proposed-description>"` -> `specify workspace sync` -> `specify change plan amend <change> --project <proposed-name>` -> `specify change plan transition <change> pending` -> re-run `/change:execute`. The framework never auto-modifies the registry.
+The phase outcome variant added by RFC-9 Section 2B for cases where a phase skill discovers that a capability needs a new registry project (e.g. `/spec:extract` surfacing tangled code that should split into a new repo). The driver classifies the outcome as `blocked`, records the structured payload in the dropped change's `journal.yaml`, and surfaces the proposal to the operator. The canonical recovery sequence is `specify registry add <proposed-name> --url <proposed-url> --capability <proposed-capability> --description "<proposed-description>"` -> `specify workspace sync` -> `specify change plan amend <change> --project <proposed-name>` -> `specify change plan transition <change> pending` -> re-run `/change:execute`. The framework never auto-modifies the registry.
 
 **Registry workspace**
 The derived local view of registry projects under `.specify/workspace/`. `specify workspace sync` creates or refreshes slots from `registry.yaml`; without selectors it syncs all registry projects, and with selectors it materialises only the selected slots. The registry workspace is scratch execution state, not durable source state.

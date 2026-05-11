@@ -6,7 +6,7 @@ argument-hint: "<change-name>"
 
 ## Critical Path (Quick Reference)
 
-1. **Parse and validate inputs** — validate `<change-name>` as kebab-case. Require at least one of `from`, `against`, `source`, or a populated `change.md:inputs` (also accepts the legacy `initiative.md:inputs` until the operator migrates). Refuse if `plan.yaml` already exists (unless `extend`).
+1. **Parse and validate inputs** — validate `<change-name>` as kebab-case. Require at least one of `from`, `against`, `source`, or a populated `change.md:inputs`. Refuse if `plan.yaml` already exists (unless `extend`).
 2. **Scaffold the plan** — `specify change plan create <change-name> [--source <key>=<path-or-url> ...]`. Skipped under `extend`.
 3. **Run the plan brief pipeline** from `capability.yaml`:
    - **(a) Discovery** — invoke the discovery brief via `/spec:analyze`; writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** before step 3(b) when no `registry.yaml` exists yet. See [discovery.md](discovery.md).
@@ -65,8 +65,6 @@ Positional arguments:
 - **`dry-run`** — emit the readiness report and the proposed plan to stdout; write nothing. See §Modes → `dry-run`.
 - **`orchestrate`** — enable orchestration mode: run the cross-repo umbrella after the authoring loop. The umbrella pushes per-project PRs, stops for operator merge when PRs are still open, and later finalizes after `specify change finalize` verifies every PR is merged. See [orchestration.md](orchestration.md). Required when `shape` is supplied.
 - **`shape migrate-legacy|new-feature|update-existing`** — explicit shape override under `orchestrate`. Inferred from the supplied inputs when omitted. Rejected with a hard diagnostic when `orchestrate` is absent. See [shapes.md](shapes.md).
-- **`auto-merge`** — retired. Treat this positional as an error that explains `/change:plan <name> orchestrate` never calls `specify workspace merge` or `gh pr merge`. Operators merge the PRs opened by `specify workspace push` through the forge UI or an explicit hand-run `gh pr merge`, then re-run the umbrella to finalize.
-
 At least one of `from`, `against`, `source`, or a populated change-brief `inputs` list must be supplied. A bare `/change:plan <name>` with no slash inputs **and** no change brief (or a brief with empty `inputs`) is a hard exit — the skill cannot decide the change's shape without at least one input.
 
 When the change-brief `inputs` list is the only source of inputs, the skill reads them via `specify change show --format json` before entering the core loop and treats each entry as if it had been supplied as slash-positionals: `kind: legacy-code` entries route through the same path as `source <k>=<path>:legacy-code`, and `kind: documentation` entries route through the `from` path. Both documentation and legacy-code dispatch are live via `/spec:analyze`. Plan-time `/spec:extract` call sites have been fully retired; `/spec:extract` now runs only at `/spec:define` time with scope inferred from the slice's description.
@@ -172,13 +170,13 @@ Every plan write this skill performs follows [plan-single-writer.md](../../refer
 
 ## Working directory (`.specify/plans/<name>/`)
 
-Authoring artefacts live under `.specify/plans/<slice-name>/`, mirroring the `.specify/slices/<name>/` pattern used by the phase skills:
+Authoring artefacts live under `.specify/plans/<change-name>/`, mirroring the change name recorded in `plan.yaml`:
 
 ```text
 .specify/
 ├── plan.yaml                       # the authored plan
 └── plans/
-    └── <slice-name>/
+    └── <change-name>/
         ├── discovery.md            # from the discovery brief (step 3a)
         ├── workspace.md            # from sync-peers (step 3b; multi-repo only)
         ├── proposal.md             # from the propose brief (step 3c) + assignment table (step 3d)
@@ -187,7 +185,7 @@ Authoring artefacts live under `.specify/plans/<slice-name>/`, mirroring the `.s
 
 The working directory is created lazily — by the discovery brief itself when it writes `discovery.md`, not by the skill scaffold. Step 2 (`specify change plan create`) does not create it.
 
-`.specify/plans/<slice-name>/analyze/<key>/` is the **tier-1** legacy-source clone — read-only, ephemeral, and bound to this change. The **tier-2** registered project clones materialised by step 3(b) live separately under `.specify/workspace/<project>/`, are read-write during execution, and outlive any single change. See [Workspace Tiers](../../../../docs/explanation/workspace-tiers.md) for the full contrast.
+`.specify/plans/<change-name>/analyze/<key>/` is the **tier-1** legacy-source clone — read-only, ephemeral, and bound to this change. The **tier-2** registered project clones materialised by step 3(b) live separately under `.specify/workspace/<project>/`, are read-write during execution, and outlive any single change. See [Workspace Tiers](../../../../docs/explanation/workspace-tiers.md) for the full contrast.
 
 On archive, `specify change plan archive` sweeps this directory alongside `plan.yaml` into `.specify/archive/plans/<name>-<YYYYMMDD>/`, preserving the authoring trail with the plan it produced.
 
@@ -205,9 +203,9 @@ Add to an existing `plan.yaml` instead of refusing. The skill-level contract is:
 
 - **Step 1 refuses when `plan.yaml` is absent.** `extend` is an explicit "I know there's a plan here" signal; the skill never silently creates a fresh plan under `extend`.
 - **Step 2 (`specify change plan create`) is skipped entirely.**
-- **Step 3(a) is skipped when `.specify/plans/<slice-name>/discovery.md` already exists**, with a log line `Discovery already present; reusing existing inventory.` Discovery is explicitly a one-shot artefact; an operator who wants to refresh it archives the plan and re-runs without `extend`. When `discovery.md` does not yet exist under `extend` (e.g. a plan authored by hand, or an earlier run aborted), step 3(a) runs normally.
+- **Step 3(a) is skipped when `.specify/plans/<change-name>/discovery.md` already exists**, with a log line `Discovery already present; reusing existing inventory.` Discovery is explicitly a one-shot artefact; an operator who wants to refresh it archives the plan and re-runs without `extend`. When `discovery.md` does not yet exist under `extend` (e.g. a plan authored by hand, or an earlier run aborted), step 3(a) runs normally.
 - **Step 3(c) skips collisions silently.** Draft slices whose proposed `name` collides with an existing plan entry are recorded in `proposal.md` with decision `skip-existing` and the existing entry's name in the "Plan entry" column; the human is not re-prompted. Slices whose names do not collide run through the usual accept / edit / reject / abort loop.
-- **Sync-peers (step 3(b)):** when the registry declares more than one project, **do not** shell `specify workspace sync`. Still regenerate `.specify/plans/<slice-name>/workspace.md` from the existing `.specify/workspace/` cache (read-only walk) so propose stays deterministic without an implicit `git fetch`.
+- **Sync-peers (step 3(b)):** when the registry declares more than one project, **do not** shell `specify workspace sync`. Still regenerate `.specify/plans/<change-name>/workspace.md` from the existing `.specify/workspace/` cache (read-only walk) so propose stays deterministic without an implicit `git fetch`.
 - **Pre-existing entries are never modified.** The skill never calls `specify change plan transition` on existing entries. The only `specify change plan amend` call is step 3(d) Assignment (`--project`), which tags newly created entries — it does not modify pre-existing ones.
 
 No new positional is introduced beyond `extend`. A future change may add `force-discovery` if refreshing the inventory mid-plan becomes a real need.
@@ -218,9 +216,9 @@ Emit a readiness report, the would-be-produced capability inventory, and the wou
 
 Under `dry-run` the skill MUST NOT:
 
-- create `.specify/plans/<slice-name>/`;
+- create `.specify/plans/<change-name>/`;
 - shell out to `specify change plan create`, `specify change plan add`, `specify change plan amend`, or `specify change plan transition`;
-- shell out to **`specify workspace sync`** or write **`.specify/plans/<slice-name>/workspace.md`** (sync-peers dry-run rule);
+- shell out to **`specify workspace sync`** or write **`.specify/plans/<change-name>/workspace.md`** (sync-peers dry-run rule);
 - write any file under `.specify/` (including under `.specify/workspace/`).
 
 The discovery brief's input-reading side (reading `from` files, invoking `/spec:analyze` against `source` / `against` inputs) runs under `dry-run` so the preview inventory is real; only the write to `discovery.md` and the `.specify/plans/<name>/` directory creation are suppressed. The propose brief's slice-decomposition pass also runs (the preview plan shape is real against the previewed inventory); the accept / edit / reject loop and every `specify change plan add` call are skipped.
@@ -249,9 +247,9 @@ Under `orchestrate dry-run`, the umbrella is observation-only end-to-end: the au
 The state the skill mutates:
 
 1. `plan.yaml` through the CLI verbs allowed by [plan-single-writer.md](../../references/plan-single-writer.md).
-2. `.specify/plans/<slice-name>/discovery.md` written by the discovery brief (step 3a).
-3. `.specify/plans/<slice-name>/proposal.md` written by the propose brief (step 3c).
-4. `.specify/plans/<slice-name>/workspace.md` written by step 3(b) when the registry declares more than one project.
+2. `.specify/plans/<change-name>/discovery.md` written by the discovery brief (step 3a).
+3. `.specify/plans/<change-name>/proposal.md` written by the propose brief (step 3c).
+4. `.specify/plans/<change-name>/workspace.md` written by step 3(b) when the registry declares more than one project.
 
 No other on-disk state is written by `/change:plan` itself.
 
@@ -259,7 +257,7 @@ No other on-disk state is written by `/change:plan` itself.
 
 - Never hand-edit `plan.yaml`; follow [plan-single-writer.md](../../references/plan-single-writer.md).
 - Never skip `specify change plan validate` (step 4). A plan that ships to `/change:execute` without a clean validate is a regression.
-- Validate `<slice-name>` before any filesystem read or CLI shell-out. A bad name should never leave a half-written plan behind.
+- Validate `<change-name>` before any filesystem read or CLI shell-out. A bad name should never leave a half-written plan behind.
 - For `dry-run` specifically: the skill MUST NOT shell out to `specify change plan create`, `specify change plan add`, `specify change plan amend`, or `specify change plan transition`; MUST NOT create `.specify/plans/<name>/`; MUST NOT write `discovery.md` or any other file under `.specify/`. The discovery brief's input-reading side still runs so the stdout inventory preview is real.
 - For `extend` specifically: step 2 is skipped in full; step 3(c) only appends entries via `specify change plan add` — it never calls `specify change plan transition` on existing entries. The only `specify change plan amend` call is step 3(d) Assignment (`--project`), which tags newly created entries, not pre-existing ones. Draft slices whose names collide with existing plan entries are skipped with decision `skip-existing` in `proposal.md`.
 - Treat a missing `briefs/<capability>/discovery.md` or `briefs/<capability>/propose.md` for the active capability as a hard failure: print the resolved capability name and the expected brief paths, then exit non-zero. Do not speculate about brief ordering or fall back to a different capability's briefs.

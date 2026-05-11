@@ -45,7 +45,7 @@ Stage 1 selection is exactly the moment the second question gets asked. A descri
 Two cleanup rules apply globally:
 
 - **No RFC citations in descriptions.** RFC-9 §2C and "Layer 4 umbrella" mean nothing to the discovery scorer. They belong in the body's overview.
-- **Prefer single-line descriptions.** Block-scalar literals are allowed, but using them as a way to smuggle several paragraphs of prose into Stage 1 metadata is exactly the failure mode the 1024-character ceiling exists to prevent. If a description does not fit in ~250 characters, the missing detail is body content, not metadata.
+- **Prefer single-line descriptions.** Block-scalar literals are allowed, but using them as a way to smuggle several paragraphs of prose into Stage 1 metadata is exactly the failure mode the 512-character ceiling exists to prevent. If a description does not fit in ~250 characters, the missing detail is body content, not metadata.
 
 ### Examples — good
 
@@ -104,11 +104,11 @@ The shape constraints are enforced by `make checks`. A SKILL.md that ships `argu
 
 ## Body-length ceiling
 
-Anthropic's published guidance: SKILL.md body should stay under 500 lines, with longer content split into sibling files. RFC-10 codifies this as a hard ceiling enforced in `make checks`.
+This repository's hard ceiling is 400 post-frontmatter lines, enforced in `make checks`. Longer content belongs in sibling files.
 
 Why a ceiling at all: every line of the SKILL.md body is loaded into context the moment the skill triggers. A 1,200-line skill body crowds out the operator's request, the artefacts under inspection, and any other skill body that fires later. The model's attention is not free.
 
-Why 500 specifically: Anthropic's number; we did not invent it. The lower the ceiling, the harder the pressure to factor; 500 lines is enough room for the algorithm spine plus the Critical Path block plus a moderate amount of inline prose, but not enough to absorb every example and edge-case forever.
+Why 400 specifically: it leaves room for the algorithm spine plus the Critical Path block plus a moderate amount of inline prose, but not enough to absorb every example and edge-case forever.
 
 Long-form material moves out of the body and into siblings linked one level deep. The body keeps the algorithm, the dispatch table (when relevant), the invocation block, and pointers to the depth.
 
@@ -202,10 +202,10 @@ The forbidden list is enforced in [`.cursor/schemas/skill.schema.json`](../../.c
 - **Name shape.** `name` matches `^[a-z][a-z0-9-]*$`, with `≤64` characters.
 - **Plugin prefix.** `name` starts with the containing plugin's directory name plus `-`. The `spec/` plugin uses `specify-` per the override in `scripts/checks.ts`.
 - **Global uniqueness.** No two SKILL.md files in the repo carry the same `name`.
-- **Description length.** `description` is ≤1024 characters.
+- **Description length.** `description` is ≤512 characters.
 - **Argument-hint shape.** `argument-hint` contains no `?`, no `--`, and no `|`.
 - **Slash invocation shape.** `/plugin:skill` examples use positional arguments only; leading double-dash option tokens after a slash skill are rejected.
-- **Body length.** SKILL.md body (post-frontmatter) is ≤500 lines.
+- **Body length.** SKILL.md body (post-frontmatter) is ≤400 lines.
 - **Critical Path.** SKILL.md bodies with ≥150 post-frontmatter lines include a `## Critical Path (Quick Reference)` block with 5–7 bullets or numbered items.
 - **Forbidden keys.** No top-level `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `context`, or `paths`. Enforced by the `additionalProperties: false` clause in `.cursor/schemas/skill.schema.json`.
 

@@ -47,7 +47,7 @@ No other top-level keys are permitted. RFC-10 (§D) removed `license`, `compatib
 | Field | Required | Description |
 |-------|----------|-------------|
 | `name` | yes | Globally unique, plugin-qualified, kebab-case identifier (`^[a-z][a-z0-9-]*$`, ≤64 chars). Must start with the containing plugin's directory name plus `-` (e.g. `omnia-crate-writer`, `vectis-core-writer`, `contract-openapi`). The `spec/` plugin uses the `specify-` prefix per RFC §A.1 (so `plugins/spec/skills/init/` carries `name: specify-init`). Reserved words `anthropic` and `claude` are not allowed. |
-| `description` | yes | Description that includes both *what* the skill does and *when* to use it, in third person (10–1024 characters). Avoid XML tags and avoid RFC / layer citations — those belong in the body. |
+| `description` | yes | Description that includes both *what* the skill does and *when* to use it, in third person (10–512 characters). Avoid XML tags and avoid RFC / layer citations — those belong in the body. |
 | `argument-hint` | no | Cursor placeholder text shown after the user types the slash command. Single short hint with `<>` for required and `[]` for optional positional arguments; no flag names; no trailing `?`; no `--` prefix; avoid alternation pipes outside bracketed enums. Secondary skill arguments belong in the body's "Invocation" section as positionals. |
 | `allowed-tools` | no | Space-separated list of tools the skill may use. Recommended policy is to omit this field and inherit the caller's full toolbelt; see RFC §A.5 for the rationale. When set, values are validated against a known toolset plus `mcp__*` prefixed tools. |
 
@@ -164,9 +164,9 @@ The Cursor agent reads these directives and loads the referenced skill when it r
    plugins/<plugin>/skills/<skill-name>/SKILL.md
    ```
 
-2. **Write the frontmatter.** The `name` field must be globally unique, plugin-qualified (start with the containing plugin's directory name + `-`, with `specify-` for the `spec/` plugin), and lowercase-kebab-case. Include a `description` (10–1024 characters) that names both *what* the skill does and *when* to use it.
+2. **Write the frontmatter.** The `name` field must be globally unique, plugin-qualified (start with the containing plugin's directory name + `-`, with `specify-` for the `spec/` plugin), and lowercase-kebab-case. Include a `description` (10–512 characters) that names both *what* the skill does and *when* to use it.
 
-3. **Write the body.** Lead with a "Critical Path (Quick Reference)" 5–7 bullet block when the body will exceed 150 lines. Keep total body length under 500 lines; factor longer content into sibling files (`rules.md`, `team-protocol.md`, `categories.md`, `template.md`, etc.) linked one level deep. Generator skills should define an authority hierarchy in a sibling; workflow skills should document the phase outcome contract via the shared reference at `plugins/spec/references/phase-outcome-contract.md`.
+3. **Write the body.** Lead with a "Critical Path (Quick Reference)" 5–7 bullet block when the body will exceed 150 lines. Keep total body length under 400 lines; factor longer content into sibling files (`rules.md`, `team-protocol.md`, `categories.md`, `template.md`, etc.) linked one level deep. Generator skills should define an authority hierarchy in a sibling; workflow skills should document the phase outcome contract via the shared reference at `plugins/spec/references/phase-outcome-contract.md`.
 
 4. **Add references** if needed. Place supporting documents in a `references/` subdirectory or alongside SKILL.md as `<topic>.md`, and link to them from the skill body using relative paths like `./rules.md` or `references/guardrails.md`.
 
@@ -175,9 +175,9 @@ The Cursor agent reads these directives and loads the referenced skill when it r
 6. **Run `make checks`** to verify:
    - Frontmatter validates against `.cursor/schemas/skill.schema.json`
    - `name` is globally unique, plugin-qualified, and matches `^[a-z][a-z0-9-]*$`
-   - SKILL.md body (post-frontmatter) is ≤500 lines
+   - SKILL.md body (post-frontmatter) is ≤400 lines
    - SKILL.md bodies with ≥150 post-frontmatter lines include `## Critical Path (Quick Reference)` with 5-7 bullets or numbered items
-   - `description` is ≤1024 characters
+   - `description` is ≤512 characters
    - `argument-hint` does not contain `?`, `--`, or `|`
    - No retired or host-specific top-level keys (`license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `context`, `paths`)
    - Any `allowed-tools` entries are recognized

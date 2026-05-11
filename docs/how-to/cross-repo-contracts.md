@@ -9,7 +9,7 @@ When `/change:plan` detects an API boundary between two projects in the registry
 ```yaml
 changes:
   - name: auth-api-contract
-    schema: contracts@v1
+    capability: contracts@v1
     description: "Define the auth API contract"
     depends-on: []
 

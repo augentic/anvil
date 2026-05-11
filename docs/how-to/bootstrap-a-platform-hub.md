@@ -83,7 +83,7 @@ specify registry show
 
 `validate` confirms three invariants the hub topology relies on:
 
-- Every entry has a kebab-case `name`, a well-formed `url`, and a non-empty `schema` capability value.
+- Every entry has a kebab-case `name`, a well-formed `url`, and a non-empty `capability` capability value.
 - Every entry has a `description` (the `description-missing-multi-repo` invariant fires above one project).
 - No entry has `url: .` (the `hub-cannot-be-project` invariant fires when `project.yaml: hub: true`).
 

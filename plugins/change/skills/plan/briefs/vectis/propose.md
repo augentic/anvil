@@ -38,7 +38,7 @@ When the assignment step (3(d)) routes an entry to a project that does not yet e
 
 ### Resulting draft order
 
-For a two-platform initiative with two shared-core capabilities and matching iOS + Android views, with no independently-reviewable UI-input work in scope, the heuristic produces the following draft order:
+For a two-platform change with two shared-core capabilities and matching iOS + Android views, with no independently-reviewable UI-input work in scope, the heuristic produces the following draft order:
 
 ```text
 1. <name>-core                    (shared core; leaves first)
@@ -82,7 +82,7 @@ Present slices in the order the heuristics produce (shared-core first, then any 
 Write `.specify/plans/<name>/proposal.md` regardless of per-slice decisions — the proposal is the audit trail of the authoring run. Shape:
 
 ```markdown
-# Proposal — <initiative-name>
+# Proposal — <change-name>
 
 ## Slices
 

@@ -11,7 +11,7 @@ Two lifecycle nouns recur throughout this codebase. RFC-13 §Migration locked th
 - **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
 - **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, and the `specify change *` CLI verbs (which include the `specify change plan *` subresource).
 
-Pre-RFC-13 the per-loop unit was called "change" and the umbrella was called "initiative". Both were renamed in Phase 3 of the RFC; "the change loop" no longer exists as a phrase — call it the *slice loop*.
+Use *slice loop* for the per-slice lifecycle; reserve *change* for the umbrella that owns `change.md` and `plan.yaml`.
 
 ### Workflow overview
 
@@ -38,13 +38,13 @@ CLI surface the skills depend on:
 - `specify init <capability>` — scaffold `.specify/`, resolve/cache the capability identifier (a bare name, `https://…` URL, or `file:///…` URI), and write `project.yaml` with `capability:` set. `--hub` (RFC-9 §1D) is the mutually exclusive alternative: it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true` (the `capability:` field is omitted). `specify init` invoked with neither (or both) errors with `init-requires-capability-or-hub`. See [RFC-13 §Migration "Hub project shape"](rfcs/archive/rfc-13-extensibility.md#migration).
 - `specify status` — project dashboard summarising registry, active change, and active slices (single-slice view lives at `specify slice status <name>`).
 - `specify slice {create, list, status, transition, touched-specs, overlap, archive, drop, validate, merge {preview, conflict-check, run}, task {progress, mark}, outcome {set, show}, journal {append, show}}` — every per-slice verb (renamed from `specify change *` by RFC-13 §3.2). `outcome set` stamps the `.metadata.yaml:outcome` that `/change:execute` reads; `journal append` writes `question` / `failure` / `recovery` entries into `journal.yaml`.
-- `specify change plan {create, validate, doctor, next, status, add, amend, transition, archive, lock}` — plan CRUD and lifecycle (RFC-2 Layer 1 + RFC-3a + RFC-9 §§1G/4B; folded under `specify change` by RFC-13 §3.5, replacing the v1.x `specify plan *` group). `create` scaffolds an empty plan (renamed from `init` in v1.x); `add` appends an entry (renamed from the v1 entry-append `create`); `doctor` is a strict superset of `validate` with cycle / orphan-source / stale-clone / unreachable-entry diagnostics; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/change:execute`.
+- `specify change plan {create, validate, doctor, next, status, add, amend, transition, archive, lock}` — plan CRUD and lifecycle. `create` scaffolds an empty plan; `add` appends an entry; `doctor` is a strict superset of `validate` with cycle / orphan-source / stale-clone / unreachable-entry diagnostics; `lock {acquire, release, status}` manages `.specify/plan.lock` for `/change:execute`.
 - `specify change {create, show, finalize}` — operator brief at `change.md` plus the canonical closure verb (RFC-9 §4C; replaces the v1.x `specify change *` group, which was renamed to `specify change *` by RFC-13 §3.5). `create` was renamed from v1 `init`; `finalize` confirms every per-project PR has merged before archiving.
 - `specify registry {add, remove, show, validate}` — platform registry at `registry.yaml`. `add` and `remove` were added by RFC-9 §2A; both validate the resulting shape (including the `description-missing-multi-repo` invariant) after the write.
 - `specify workspace {sync, status, push}` — `sync` materialises `.specify/workspace/<peer>/` for multi-repo planning and selected execution preparation; `push` transports prepared `specify/<change-name>` branches and creates/updates PRs only. `specify workspace merge` has been removed and must not be called by skills; operators merge through the forge UI or explicit `gh pr merge`, then `specify change finalize` verifies remote PR state.
 - `specify capability {resolve, check, pipeline}` — capability resolution and brief topology (renamed from `specify schema {resolve, check, pipeline}` by RFC-13 §Migration).
 
-The previous standalone groups (`specify validate`, `specify spec`, `specify task`, `specify merge`) and the previous nested verbs (`specify change {brief, registry}`, `specify change phase-outcome`, `specify slice journal-append`) were folded into the post-RFC-13 surface in successive CLI cleanups; today the per-slice verbs live under `specify slice *` and the umbrella verbs live under `specify change *`.
+Today the per-slice verbs live under `specify slice *` and the umbrella verbs live under `specify change *`.
 
 Never hand-edit `.metadata.yaml`, never `mkdir -p .specify/...`, and never `mv` anything into `.specify/archive/`. Route through the CLI — it enforces the legal set of lifecycle states and validates inputs in one place for humans, agents, and CI alike.
 
@@ -94,7 +94,7 @@ The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolut
 
 ### Description tightness
 
-Each `SKILL.md` `description` field must be **≤ 512 chars** (tightened from 1024 in CL-S01), lead with a strong verb (imperative `Generate` or third-person `Generates` are both fine), and name a concrete trigger phrase — almost always `Use when …` — so the skill-discovery surface can match on intent rather than vocabulary. Mechanically enforced by `checkDescriptionLength` in [scripts/checks/skill_frontmatter.ts](scripts/checks/skill_frontmatter.ts). The body cap is correspondingly **≤ 400 lines** (tightened from 470 in CL-S02); see `checkBodyLineCount` in [scripts/checks/skill_body.ts](scripts/checks/skill_body.ts). Both caps are floors, not budgets — overflow means the relocate-to-`references/` patterns in §"Skill body discipline" need to fire, not that the cap should be raised.
+Each `SKILL.md` `description` field must be **≤ 512 chars**, lead with a strong verb (imperative `Generate` or third-person `Generates` are both fine), and name a concrete trigger phrase — almost always `Use when …` — so the skill-discovery surface can match on intent rather than vocabulary. Mechanically enforced by `checkDescriptionLength` in [scripts/checks/skill_frontmatter.ts](scripts/checks/skill_frontmatter.ts). The body cap is correspondingly **≤ 400 lines**; see `checkBodyLineCount` in [scripts/checks/skill_body.ts](scripts/checks/skill_body.ts). Both caps are floors, not budgets — overflow means the relocate-to-`references/` patterns in §"Skill body discipline" need to fire, not that the cap should be raised.
 
 ### Skill body discipline
 
@@ -117,8 +117,10 @@ The frontmatter rules in `.cursor/rules/project.mdc` and the body line-count cei
 
 Predicates surfaced by Skills-1:
 
-- `checkDescriptionLength` — frontmatter `description` length, hard cap **512 chars** (CL-S01; was 1024).
-- `checkBodyLineCount` — SKILL.md body line count, hard cap **400 lines** (CL-S02; was 470).
+- `checkDescriptionLength` — frontmatter `description` length, hard cap **512 chars**.
+- `checkBodyLineCount` — SKILL.md body line count, hard cap **400 lines**.
+- `checkSkillNumericCaps` — keeps the 512/400 caps synchronized across scripts, schema, rules, and docs.
+- `checkOperationalVocabulary` — blocks active prose from reintroducing retired slice paths, top-level CLI commands, or pre-cutover umbrella nouns outside archived/historical material.
 - `checkNoRfcCitationsInSkillBody` — `RFC[- ]?\d+` in skill body, fenced code excluded, `rfcs/` archive links excluded. Per-file baselines were sweep-zeroed in CL-S03; the predicate now refuses any new bare-text RFC citation in a skill body without grandfathering.
 - `checkOneGuardrailsBlockPerSkill` — count of `## Guardrails` and `## Mode-specific guardrails` headings.
 - `checkNoPhaseOutcomeContractRestatement` — restated phase-outcome contract paragraph.

@@ -8,7 +8,7 @@ The registry was promoted from `specify change registry ...` to a top-level noun
 
 | Verb | When to use |
 |------|-------------|
-| [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name, URL classification, the capability identifier stored in `schema:`, and the `description-missing-multi-repo` invariant after the write. |
+| [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name, URL classification, the capability identifier stored in `capability:`, and the `description-missing-multi-repo` invariant after the write. |
 | [`remove`](#specify-registry-remove) | Delete a project entry. Warns when `plan.yaml` references the removed project. |
 | [`show`](#specify-registry-show) | Render the registry as parsed YAML (or JSON via `--format json`). The canonical surface `/change:plan`'s sync-peers step consumes. |
 | [`validate`](#specify-registry-validate) | Structural and referential check; runs the multi-repo description invariant and (on hubs) the `hub-cannot-be-project` invariant. |
@@ -37,7 +37,7 @@ Validates:
 
 - Registry shape (required fields, kebab-case names, well-formed `url:` values).
 - `description` is required when more than one project is declared (multi-repo invariant).
-- Per-project `schema:` capability identifiers or URLs are resolvable.
+- Per-project `capability:` capability identifiers or URLs are resolvable.
 - When `contracts` blocks are present on entries, the producer / consumer / imports invariants are coherent.
 
 Used by `/change:plan` after populating contract roles, and by operators who edit `registry.yaml` by hand.

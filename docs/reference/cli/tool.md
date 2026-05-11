@@ -71,11 +71,11 @@ Tool exit codes are clamped to `0..=255`. Runtime traps and resolver failures do
 
 ## JSON envelopes
 
-Structured responses use the standard v2 envelope:
+Structured responses use the standard CLI envelope:
 
 ```json
 {
-  "schema-version": 2
+  "schema-version": 5
 }
 ```
 
@@ -83,7 +83,7 @@ Structured responses use the standard v2 envelope:
 
 ```json
 {
-  "schema-version": 2,
+  "schema-version": 5,
   "tools": [
     {
       "name": "contract",
@@ -105,7 +105,7 @@ Validation failures include rule results so callers can branch on rule ids such 
 
 ```json
 {
-  "schema-version": 2,
+  "schema-version": 5,
   "error": "validation",
   "message": "validation failed with 1 error(s)",
   "exit-code": 2,
