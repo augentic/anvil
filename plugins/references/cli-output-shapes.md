@@ -86,6 +86,27 @@ Returns the `.metadata.yaml.outcome` block verbatim under `outcome`, or `null` w
 { "name": "slice-name", "status": "building", "tasks": { "complete": 3, "total": 7 } }
 ```
 
+### `specify slice task progress`
+
+```json
+{
+  "total": 7,
+  "complete": 2,
+  "pending": 5,
+  "tasks": [
+    {
+      "group": "Implement",
+      "number": "1.1",
+      "description": "...",
+      "complete": false,
+      "skill-directive": null
+    }
+  ]
+}
+```
+
+`pending` is `total - complete`. `skill-directive` is the parsed `{ plugin, skill, args? }` triple when the task carries a skill anchor, else `null`.
+
 ### `specify capability resolve`
 
 ```json

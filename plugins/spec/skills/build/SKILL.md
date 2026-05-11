@@ -80,11 +80,7 @@ This skill is the **build** phase of the `/change:execute` driver loop. Apply th
 
 6. **Show current progress**
 
-   Run `specify slice task progress <name> --format json` for structured counts:
-
-   ```json
-   {"total": 7, "complete": 2, "pending": 5, "tasks": [{"number": "1.1", ...}]}
-   ```
+   Run `specify slice task progress <name> --format json` for structured counts. See [output shape](../../../references/cli-output-shapes.md#specify-slice-task-progress).
 
    Display the summary and remaining tasks. If `pending` is zero, congratulate and suggest `/spec:merge`.
 

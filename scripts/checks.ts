@@ -36,6 +36,7 @@ import {
   checkBodyLineCount,
   checkCriticalPath,
   checkInlineJsonBlocks,
+  checkNoEnvelopeExamples,
   checkSectionLineCount,
   checkVariables,
 } from "./checks/skill_body.ts";
@@ -96,6 +97,7 @@ await Promise.all([
   checkInvocationPositionals(),
   checkNoLicense(),
   checkInlineJsonBlocks(),
+  checkNoEnvelopeExamples(),
   checkReferences(),
   checkVariables(),
   checkDirectives(),

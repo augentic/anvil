@@ -4,6 +4,9 @@
 //     `references/` rather than letting the SKILL.md body sprawl,
 //   - long bodies must include a 5-7 item Critical Path block,
 //   - inline `json` / `jsonc` fences must not exceed 30 lines,
+//   - inline `json` / `jsonc` fences must not show CLI envelope shapes
+//     (`schema-version` or wrapped `ok` + `data`/`error`); those live
+//     in `plugins/references/cli-output-shapes.md`,
 //   - `$VAR`s defined in the Arguments section must be referenced in the
 //     body (and vice versa).
 
@@ -215,6 +218,92 @@ export async function checkInlineJsonBlocks(): Promise<void> {
       if (inBlock) blockLength++;
     }
   }
+}
+
+// Detect fenced ```json / ```jsonc blocks whose contents look like a
+// `specify *` CLI envelope (the wrapper that lives in
+// `plugins/references/cli-output-shapes.md`). Forbid those in the
+// SKILL.md body so envelope shapes drift in exactly one place. Body
+// shapes that are NOT wrapped envelopes (e.g. a one-line config
+// snippet, or a sidecar artifact like analyze's `metadata.json`)
+// remain allowed; the predicate is intentionally narrow.
+//
+// Per-file baselines come from `scripts/standards-allowlist.toml` so
+// legitimate orientation demos can be grandfathered while new
+// embeddings fail fast.
+export async function checkNoEnvelopeExamples(): Promise<void> {
+  const FENCE_OPEN_RE = /^\s*(`{3,})(json|jsonc)\b/;
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
+    if (await underSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+    const lines = content.split("\n");
+
+    let inBlock = false;
+    let blockStart = 0;
+    let blockBody: string[] = [];
+    let openFence: string | null = null;
+    let count = 0;
+    const violations: number[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!inBlock) {
+        const m = line.match(FENCE_OPEN_RE);
+        if (m) {
+          inBlock = true;
+          openFence = m[1];
+          blockStart = i + 1;
+          blockBody = [];
+        }
+        continue;
+      }
+      // Close on a fence of the same length (or longer) at the start of
+      // the line, ignoring leading whitespace, and with no trailing
+      // language tag.
+      const closeRe = new RegExp(`^\\s*${openFence}\\s*$`);
+      if (closeRe.test(line)) {
+        if (isEnvelopeBody(blockBody)) {
+          violations.push(blockStart);
+          count++;
+        }
+        inBlock = false;
+        openFence = null;
+        blockBody = [];
+        continue;
+      }
+      blockBody.push(line);
+    }
+
+    const baseline = await baselineFor("noEnvelopeExamples", rel);
+    if (count > baseline) {
+      const where = violations.map((n) => `line ${n}`).join(", ");
+      fail(
+        `Envelope JSON in skill body: ${rel} — ${count} block(s) at ${where} > baseline ${baseline} (link to plugins/references/cli-output-shapes.md instead of embedding the envelope shape)`,
+      );
+    }
+  }
+}
+
+// True when the block body looks like a CLI envelope wrapper or one of
+// its discriminator keys. Body shapes that merely describe a
+// command's `data` payload (no `schema-version`, no `ok`/`data` pair)
+// do not match.
+function isEnvelopeBody(body: string[]): boolean {
+  const text = body.join("\n");
+  if (/"schema[-_]version"\s*:/.test(text)) return true;
+  const hasOk = /"ok"\s*:\s*(true|false)\b/.test(text);
+  const hasData = /"data"\s*:/.test(text);
+  const hasError = /"error"\s*:\s*\{/.test(text);
+  if (hasOk && (hasData || hasError)) return true;
+  return false;
 }
 
 export async function checkVariables(): Promise<void> {
