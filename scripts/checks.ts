@@ -36,6 +36,7 @@ import {
   checkBodyLineCount,
   checkCriticalPath,
   checkInlineJsonBlocks,
+  checkSectionLineCount,
   checkVariables,
 } from "./checks/skill_body.ts";
 import {
@@ -86,6 +87,7 @@ await Promise.all([
 await Promise.all([
   validateSkillFrontmatter(),
   checkBodyLineCount(),
+  checkSectionLineCount(),
   checkCriticalPath(),
   checkDescriptionLength(),
   checkDescriptionStartsWithVerb(),

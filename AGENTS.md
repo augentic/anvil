@@ -94,7 +94,7 @@ The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolut
 
 ### Description tightness
 
-Each `SKILL.md` `description` field must be **≤ 512 chars**, lead with a strong verb (imperative `Generate` or third-person `Generates` are both fine), and name a concrete trigger phrase — almost always `Use when …` — so the skill-discovery surface can match on intent rather than vocabulary. Mechanically enforced by `checkDescriptionLength` in [scripts/checks/skill_frontmatter.ts](scripts/checks/skill_frontmatter.ts). The body cap is correspondingly **≤ 400 lines**; see `checkBodyLineCount` in [scripts/checks/skill_body.ts](scripts/checks/skill_body.ts). Both caps are floors, not budgets — overflow means the relocate-to-`references/` patterns in §"Skill body discipline" need to fire, not that the cap should be raised.
+Each `SKILL.md` `description` field must be **≤ 512 chars**, lead with a strong verb (imperative `Generate` or third-person `Generates` are both fine), and name a concrete trigger phrase — almost always `Use when …` — so the skill-discovery surface can match on intent rather than vocabulary. Mechanically enforced by `checkDescriptionLength` in [scripts/checks/skill_frontmatter.ts](scripts/checks/skill_frontmatter.ts). The body cap is correspondingly **≤ 400 lines**; see `checkBodyLineCount` in [scripts/checks/skill_body.ts](scripts/checks/skill_body.ts). Per-H2 sections additionally cap at **≤ 60 lines** (non-blank, non-comment) via `checkSectionLineCount` so depth migrates into `references/` rather than letting individual sections sprawl. All three caps are floors, not budgets — overflow means the relocate-to-`references/` patterns in §"Skill body discipline" need to fire, not that the cap should be raised.
 
 ### Skill body discipline
 
@@ -119,6 +119,7 @@ Predicates surfaced by Skills-1:
 
 - `checkDescriptionLength` — frontmatter `description` length, hard cap **512 chars**.
 - `checkBodyLineCount` — SKILL.md body line count, hard cap **400 lines**.
+- `checkSectionLineCount` — per-H2 section line count, hard cap **60 lines** (non-blank, non-comment). The S2 audit found 21 sections over the original 50-line target (above the 5-section budget defined in the chunk plan), so the cap was bumped to 60 and per-file baselines in `scripts/standards-allowlist.toml` grandfather the irreducible remainder. New sections still fail fast.
 - `checkSkillNumericCaps` — keeps the 512/400 caps synchronized across scripts, schema, rules, and docs.
 - `checkOperationalVocabulary` — blocks active prose from reintroducing retired slice paths, top-level CLI commands, or pre-cutover umbrella nouns outside archived/historical material.
 - `checkNoRfcCitationsInSkillBody` — `RFC[- ]?\d+` in skill body, fenced code excluded, `rfcs/` archive links excluded. Per-file baselines were sweep-zeroed in CL-S03; the predicate now refuses any new bare-text RFC citation in a skill body without grandfathering.

@@ -272,6 +272,7 @@ The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/cha
 ### Body length
 
 - SKILL.md body (post-frontmatter) must stay under 400 lines (repository limit, enforced by `make checks`).
+- Each H2 section caps at 60 non-blank, non-comment lines (enforced by `checkSectionLineCount`); per-file baselines in `scripts/standards-allowlist.toml` grandfather sections that have not yet been split.
 - Push depth into siblings linked one level deep: `references/`, `examples/`, or topical files such as `author.md` / `importer.md` / `verifier.md`.
 - When a skill body is split, the SKILL.md retains the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points; the siblings carry the long-form rules, examples, templates, and edge-case prose.
 
@@ -284,6 +285,7 @@ The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/cha
 - `argument-hint` contains no `?`, no `--`, and no `|`.
 - Slash-skill invocation examples use positionals only; leading double-dash option tokens are reserved for ordinary CLI commands and fail checks when used as skill arguments.
 - SKILL.md body is ≤400 lines (post-frontmatter).
+- Each H2 section is ≤60 non-blank, non-comment lines (`checkSectionLineCount`); migrate depth into `references/` rather than letting the section sprawl.
 - SKILL.md bodies with ≥150 post-frontmatter lines include a `## Critical Path (Quick Reference)` block with 5–7 bullets or numbered items.
 - No SKILL.md carries a top-level `license:` (or any other forbidden frontmatter key).
 

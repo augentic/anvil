@@ -1,11 +1,14 @@
 // SKILL.md body shape (RFC-10 §D + AGENTS.md "Skill body discipline"):
 //   - body line count is bounded,
+//   - per-H2 section line count is bounded so depth migrates to
+//     `references/` rather than letting the SKILL.md body sprawl,
 //   - long bodies must include a 5-7 item Critical Path block,
 //   - inline `json` / `jsonc` fences must not exceed 30 lines,
 //   - `$VAR`s defined in the Arguments section must be referenced in the
 //     body (and vice versa).
 
 import {
+  baselineFor,
   fail,
   join,
   relative,
@@ -19,6 +22,12 @@ const MAX_BODY_LINES = 400;
 const CRITICAL_PATH_MIN_LINES = 150;
 const CRITICAL_PATH_HEADING = "## Critical Path (Quick Reference)";
 const MAX_INLINE_JSON_LINES = 30;
+// Per-H2 section cap. Default 50 in the original RFC; the 21-section
+// audit at cap 50 exceeded the >5 budget so the cap was bumped to 60
+// per the S2 chunk plan. Per-file baselines in
+// `scripts/standards-allowlist.toml` grandfather the irreducible
+// remainder; new sections still fail fast.
+const MAX_SECTION_LINES = 60;
 
 export async function checkBodyLineCount(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
@@ -40,6 +49,75 @@ export async function checkBodyLineCount(): Promise<void> {
     if (lineCount > MAX_BODY_LINES) {
       fail(
         `Skill body too long: ${rel} — ${lineCount} body lines (limit ${MAX_BODY_LINES})`,
+      );
+    }
+  }
+}
+
+// Count lines that contribute to the per-section budget: blank lines
+// and HTML comments are free; everything else (prose, list items,
+// table rows, code-fence delimiters, fenced content) costs one line.
+function countSectionBodyLines(sectionLines: string[]): number {
+  let count = 0;
+  let inFence = false;
+  for (const line of sectionLines) {
+    if (line.startsWith("```")) {
+      inFence = !inFence;
+      count++;
+      continue;
+    }
+    if (inFence) {
+      count++;
+      continue;
+    }
+    const trimmed = line.trim();
+    if (trimmed === "") continue;
+    if (trimmed.startsWith("<!--") && trimmed.endsWith("-->")) continue;
+    count++;
+  }
+  return count;
+}
+
+export async function checkSectionLineCount(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
+    if (await underSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+
+    const lines = skillBodyLines(content);
+    if (!lines) continue;
+
+    const h2Indices: number[] = [];
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].startsWith("## ")) h2Indices.push(i);
+    }
+
+    const violations: { title: string; count: number }[] = [];
+    for (let i = 0; i < h2Indices.length; i++) {
+      const start = h2Indices[i];
+      const end = i + 1 < h2Indices.length ? h2Indices[i + 1] : lines.length;
+      const title = lines[start].slice(3).trim();
+      const sectionLines = lines.slice(start + 1, end);
+      const cnt = countSectionBodyLines(sectionLines);
+      if (cnt > MAX_SECTION_LINES) {
+        violations.push({ title, count: cnt });
+      }
+    }
+
+    const baseline = await baselineFor("sectionLineCount", rel);
+    if (violations.length > baseline) {
+      const detail = violations
+        .map((v) => `'${v.title}' (${v.count} lines)`)
+        .join(", ");
+      fail(
+        `Skill section too long: ${rel} — ${violations.length} section(s) over ${MAX_SECTION_LINES} lines > baseline ${baseline}: ${detail} (move depth into references/ and link from the H2)`,
       );
     }
   }
