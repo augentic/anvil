@@ -1,6 +1,6 @@
 ---
 name: vectis-image-layout-inferer
-description: Reconstruct an unwired `layout.yaml` from screenshot images via a staged vision pipeline (triage, cropping, region / container / leaf inference, `component:` emission, gap reporting), validate via `specify tool run vectis`, and cross-check sibling `tokens.yaml` / `assets.yaml` when present. Use when an operator supplies screenshots and wants a schema-valid layout `/spec:define` can wire into `composition.yaml`, when refining a layout from new evidence, or when the user mentions image-layout-inferer.
+description: Reconstruct an unwired `layout.yaml` from screenshot images via a staged vision pipeline (triage, cropping, region / container / leaf inference, `component:` emission, gap reporting); validate via `specify tool run vectis` and cross-check sibling `tokens.yaml` / `assets.yaml`. Use when screenshots are the only source for a layout `/spec:define` will wire into `composition.yaml`, or when an existing layout needs new visual evidence; not when `layout.yaml` is already the source of truth.
 argument-hint: "<image-path>..."
 ---
 
@@ -12,7 +12,7 @@ This skill is a layout recovery tool, not a visual design extraction tool. It do
 
 The producer surface every layout inferer shares (arguments, output rules, idempotence rules, `component: <slug>` emission policy, verification verbs, terminal-summary contents) lives in the shared contract: [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md). Read that document first; this SKILL.md adds only image-specific guidance on top.
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. Run the **vision prerequisite check** by attempting to read at least one input image through the agent runtime's native attachment / file-read mechanism. If the runtime cannot inspect images, exit 1 with the supported-runtimes message — never fall back to filename-based inference.
 2. **Triage and crop.** Group inputs into screens / states, then crop platform chrome (status bars, navigation bars, browser chrome, emulator frames) when `platform` is supplied or detected.

@@ -1,12 +1,12 @@
 ---
 name: vectis-core-reviewer
-description: Review generated Crux core (Rust shared crate) code for structural issues, logic bugs, and quality problems. Use when reviewing a Crux app's core after generation, or when the user mentions core-reviewer.
+description: Review generated Crux core (Rust shared crate) code for structural issues, logic bugs, and quality problems. Use when `core-writer` has just produced or updated a Crux core crate and the slice is ready for review; not for platform-shell reviews (`ios-reviewer` / `android-reviewer`).
 argument-hint: "<target-dir>"
 ---
 
 # Crux Core Reviewer
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. Gather context — read `spec.md`, `shared/Cargo.toml`, every `.rs` file under `shared/src/`; if `reference-dir` is provided read its counterparts too.
 2. Spawn team — Structural + Quality (always); Logic only on the first iteration when `scope = full`. Each specialist applies its own check set (CRX-, LOG-, GEN-).

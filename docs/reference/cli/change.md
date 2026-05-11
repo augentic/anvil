@@ -73,7 +73,7 @@ Text mode prints the per-project status rows followed by a summary line and a fi
 
 ```json
 {
-  "schema-version": 5,
+  "envelope-version": 6,
   "change": "oauth-login",
   "finalized": true,
   "expected-branch": "specify/oauth-login",

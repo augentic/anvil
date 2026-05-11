@@ -10,7 +10,7 @@ Specialist for OpenAPI 3.1 HTTP API contracts on Specify changes. This skill own
 
 The skill is OpenAPI-only. Shared payload schemas under `contracts/schemas/` are owned by the json-schema format skill (`/contract:json-schema`); evented contracts under `contracts/messages/` are owned by `/contract:asyncapi`.
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Read the briefs and specs.** Open the active contracts build brief and the slice's `specs/` to identify what the slice requires; read `contracts/http/` (the HTTP baseline) to know what already exists.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.

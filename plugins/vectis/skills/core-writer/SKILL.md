@@ -1,6 +1,6 @@
 ---
 name: vectis-core-writer
-description: Generate or update a Rust Crux shared crate from Specify artifacts. Use when implementing core tasks from a Specify change, or when the user mentions core-writer.
+description: Generate or update a Rust Crux shared crate from Specify artifacts. Use when a Specify slice has pending Crux core tasks; not for platform shells (`ios-writer` / `android-writer`) or test scaffolding (`test-writer`).
 argument-hint: "<slice-dir>"
 ---
 
@@ -8,7 +8,7 @@ argument-hint: "<slice-dir>"
 
 > **Vectis deterministic tooling runs through declared Specify tools.** Scaffold rendering is `specify tool run vectis -- scaffold ...`; validation is `specify tool run vectis -- validate ...`. Scaffolding is render-only: host verification remains skill-owned and must return step evidence (`name`, `passed`, and a failure snippet on error).
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. Read Specify artifacts (`{slice-dir}/specs/<feature>/spec.md` + `{slice-dir}/design.md`); extract App name, Model, Events, ViewModel/Page/Route, capabilities, and API shapes.
 2. Detect mode from `{project-dir}/shared/src/app.rs`: missing → run `specify tool run vectis -- scaffold core ...` plus explicit Cargo verification, then enter Update Mode; present → start Update Mode immediately.

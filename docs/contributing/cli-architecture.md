@@ -102,14 +102,14 @@ The CLI definition lives in `src/cli.rs`:
 
 The dispatcher in `src/commands.rs` matches on the command variant and routes to a handler function. Most commands load a `CommandContext` from `.specify/project.yaml` (via `CommandContext::load`); a few unscoped commands (like `Init` and `Capability Resolve`) run without project context.
 
-Each handler function returns a `CliResult` that maps to an exit code.
+Each handler function returns an `Exit` that maps to an exit code.
 
 ## JSON Envelope Contract
 
 All JSON output follows the shared envelope contract:
 
-- **Kebab-case keys** -- `app-name`, `project-dir`, `schema-version` (never `app_name` or `projectDir`); the `schema-version` JSON envelope key is intentionally kept as the wire-protocol version stamp and is unrelated to the Specify capability noun
-- **`schema-version`** -- auto-injected on every object response by the binary's `emit_response` helper. The current value is `JSON_ENVELOPE_VERSION` in `specify-cli/src/output.rs`.
+- **Kebab-case keys** -- `app-name`, `project-dir`, `envelope-version` (never `app_name` or `projectDir`); the `envelope-version` JSON envelope key is intentionally kept as the wire-protocol version stamp and is unrelated to the Specify capability noun
+- **`envelope-version`** -- auto-injected on every object response by the binary's `emit_response` helper. The current value is `ENVELOPE_VERSION` in `specify-cli/src/output.rs`.
 - **Kebab-case error variants** -- `missing-prerequisites`, `invalid-project`, `io` (never `missing_prerequisites`)
 
 The `--format` flag is global on `Cli` and controls output:
@@ -117,11 +117,11 @@ The `--format` flag is global on `Cli` and controls output:
 | Format | Success | Error |
 |--------|---------|-------|
 | `text` | Humanised summary | `error: <message>` on stderr |
-| `json` | `{ "schema-version": N, ...payload }` | `{ "schema-version": N, "error": "<variant>", "message": "...", "exit-code": N }` |
+| `json` | `{ "envelope-version": N, ...payload }` | `{ "envelope-version": N, "error": "<variant>", "message": "...", "exit-code": N }` |
 
 Key helpers in the binary:
 
-- `emit_response(value)` -- injects `schema-version` into an object and prints to stdout
+- `emit_response(value)` -- injects `envelope-version` into an object and prints to stdout
 - `emit(format, value)` / `emit_err(format, value)` -- route typed `Render` bodies to text or JSON
 - `emit_error` / `emit_json_error` -- maps `specify_error::Error` variants to kebab-case error envelopes
 
@@ -151,7 +151,7 @@ The pattern for a command handler:
 
 1. Call into a library crate function that returns `Result<T, specify_error::Error>`
 2. On success, format the result as text or JSON depending on `--format`
-3. On error, emit the error envelope and return the appropriate `CliResult`
+3. On error, emit the error envelope and return the appropriate `Exit`
 
 ## Public Rust API
 

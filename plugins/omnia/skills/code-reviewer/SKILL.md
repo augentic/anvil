@@ -1,12 +1,12 @@
 ---
 name: omnia-code-reviewer
-description: Review generated Omnia Rust WASM crates for security, error handling, WASM constraints, and code quality issues. Use when reviewing crates produced by `/omnia:crate-writer` or when the user mentions code review for a generated crate.
+description: Review generated Omnia Rust WASM crates for security, error handling, WASM constraints, and code quality issues. Use when `crate-writer` has just produced or updated an Omnia crate and the slice is ready for review; not for reviewing tests (`test-writer` covers its own loop) or guest wrappers.
 argument-hint: "[crate-path]"
 ---
 
 # AI Code Review Skill
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Parse invocation**: resolve `$CRATE_PATH` and the `fix` positional; verify `cargo check` passes (see [Invocation](#invocation)).
 2. **Initialize team**: spawn Security, Correctness, and Quality specialist sub-agents with the prompts in [`team-protocol.md`](team-protocol.md).

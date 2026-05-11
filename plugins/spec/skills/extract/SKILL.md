@@ -1,10 +1,10 @@
 ---
 name: specify-extract
-description: Extract Specify artifacts (specs + design.md) from existing source code. Produces reconstruction-grade, language-agnostic artifacts capturing domain-level business logic. Supports optional `include` / `exclude` / `manifest` filters that scope which source files are read for business-logic extraction without changing the artifact output shape. Use when reconstructing Specify artifacts from a legacy code tree, or when the user mentions `extract`.
+description: Extract Specify artifacts (specs + design.md) from existing source code as reconstruction-grade, language-agnostic artifacts capturing domain-level business logic. Optional `include` / `exclude` / `manifest` filters scope which source files are read. Use when bootstrapping Specify artifacts from a pre-existing codebase with no `.specify/`; not for fresh slices (`define`) or plan-time capability inference (`analyze`).
 argument-hint: "<source-path> <slice-dir>"
 ---
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Identify component structure** — detect source language, entry points, module organization, async patterns, and guest/entry-point layer. Pin dependency versions from the lock file, not the manifest.
 2. **Extract business logic** — apply scope filters (`include`/`exclude`/`manifest`), then analyze depth-first by domain. Tag every statement `[domain]`, `[infrastructure]`, `[mechanical]`, or `[unknown]`. Copy type definitions verbatim; capture all serialization attributes, wire-format names, and field optionality. See [business-logic.md](business-logic.md).

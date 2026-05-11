@@ -1,24 +1,12 @@
 ---
 name: specify-merge
-description: Merge a completed slice. Merges delta specs into baseline and moves the slice to the archive. Use when the user wants to finalize a slice after implementation is complete.
+description: Merge a completed slice — apply delta specs to the baseline and archive the slice. Use when an implementation slice is finished and the operator is ready to fold it into `.specify/specs/`; not for discarding a slice (that is `/spec:drop`).
 argument-hint: "[slice-name]"
 ---
 
 # Merge
 
-## Critical Path (Quick Reference)
-
-1. **Select and confirm the slice** — infer or ask for the slice, then confirm before any merge operation.
-2. **Check prerequisites via CLI** — run status, validate, and task progress; warn on non-`complete`, validation failures, or pending tasks before proceeding.
-3. **Preview and conflict-check** — run `specify slice merge preview` and `specify slice merge conflict-check`, render operations, and surface baseline drift clearly.
-4. **Get explicit confirmation** — let the user proceed, inspect full content, or cancel; record `deferred` if merge is not invoked.
-5. **Apply through `merge run` only** — run `specify slice merge run <name> --format json`; never hand-merge specs, edit metadata, or move archives manually.
-6. **Handle outcomes correctly** — on success, trust the CLI-stamped merge outcome; on non-zero exit, record merge `failure` via the shared [phase outcome contract](../../references/phase-outcome-contract.md).
-7. **Summarize the archive** — report merged specs, created baselines, archive path, and any workspace auto-commit warning or residue note.
-
-Merge a completed slice.
-
-Deterministic bookkeeping — slice selection, prerequisite validation, merge operation computation, baseline conflict detection, the per-capability merge itself, baseline coherence validation, status transitions, and the archive move — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the merge preview, coordinating the `AskQuestion` confirmation flow, and summarising results.
+Merge a completed slice. Deterministic bookkeeping — slice selection, prerequisite validation, merge operation computation, baseline conflict detection, the per-capability merge itself, baseline coherence validation, status transitions, and the archive move — is delegated to the `specify` CLI. This skill drives the agent-side work: reading the merge preview, coordinating the `AskQuestion` confirmation flow, and summarising results.
 
 When working plan-driven (a `plan.yaml` exists), after `specify slice merge run` returns successfully the plan entry should be transitioned to `done`:
 
@@ -28,108 +16,95 @@ specify change plan transition <name> done
 
 This is an advisory note — this skill does not run the command itself. `/change:execute` will run it automatically; in Layer 1 the human closes the loop.
 
-## Phase outcome contract
+## Critical Path
 
-This skill is the **merge** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including merge's CLI-stamped success path, non-success deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
+### 1. Select and confirm the slice
 
-## Input
+If a slice name was provided, use it. Otherwise run `specify status --format json` to enumerate active slices from the dashboard:
 
-Optionally specify a slice name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available slices.
+- If only one entry exists, use it but confirm with the user.
+- If multiple, use the **AskQuestion tool** to let the user select.
 
-## Steps
+Always confirm the slice name before merging.
 
-1. **Select the slice**
+### 2. Check prerequisites via CLI
 
-   If a name is provided, use it. Otherwise run `specify status --format json` to enumerate active slices from the dashboard:
+Run, in order:
 
-   - If only one entry exists, use it but confirm with the user.
-   - If multiple, use the **AskQuestion tool** to let the user select.
+```bash
+specify slice status <name> --format json
+specify slice validate <name> --format json
+specify slice task progress <name> --format json
+```
 
-   **IMPORTANT**: Always confirm the slice name before merging.
+Branch on the responses:
 
-2. **Check prerequisites (status, needs, artifacts, tasks)**
+- **Status** — `complete` is the expected value. Warn on anything else (e.g. `building`, `defining`) and use **AskQuestion** to confirm proceeding. `specify slice merge run` will fail later if status isn't `Complete`, so this is a courtesy early exit.
+- **Validate** — if `passed` is `false`, surface the `brief-results` and `cross-checks` failures. Use **AskQuestion** to let the user proceed or abort. Failures in merge-phase needs (usually missing/incomplete artifacts) are the typical blocker.
+- **Tasks** — if `pending > 0`, warn with the count and use **AskQuestion** to confirm proceeding. If there is no tasks file, proceed without warning.
 
-   Run in order:
+`specify slice validate` already runs baseline coherence checks, so a separate "Baseline coherence check" step is unnecessary.
 
-   ```bash
-   specify slice status <name> --format json
-   specify slice validate <name> --format json
-   specify slice task progress <name> --format json
-   ```
+### 3. Preview the merge and check for baseline drift
 
-   Interpret:
+Run:
 
-   - **Status**: `complete` is the expected value. Warn on anything else (e.g., `building`, `defining`), and use **AskQuestion** to confirm proceeding. `specify slice merge run` will fail later if status isn't `Complete`, so this is a courtesy early exit.
-   - **Validate**: if `passed` is `false`, surface the `brief-results` and `cross-checks` failures. Use **AskQuestion** to let the user proceed or abort. Failures in merge-phase needs (usually missing/incomplete artifacts) are the typical blocker.
-   - **Tasks**: if `pending > 0`, warn with the count and use **AskQuestion** to confirm proceeding. If there is no tasks file, proceed without warning.
+```bash
+specify slice merge preview <name> --format json
+specify slice merge conflict-check <name> --format json
+```
 
-   `specify slice validate` already runs baseline coherence checks, so the explicit "Baseline coherence check" step from the previous version of this skill is folded in here.
+Render the preview as a human-readable summary using the `operations[]` array from `specify slice merge preview`. For each spec, operations are typed as `added`, `modified`, `removed`, `renamed`, or `created_baseline`:
 
-3. **Preview the merge and check for baseline drift**
+```text
+## Merge Preview: <slice-name>
 
-   Run:
+### <capability-1>/spec.md (existing baseline)
+- REMOVING: REQ-001 — <name>
+- MODIFYING: REQ-002 — <name>
+- ADDING: REQ-003 — <name>
 
-   ```bash
-   specify slice merge preview <name> --format json
-   specify slice merge conflict-check <name> --format json
-   ```
+### <capability-2>/spec.md (new baseline)
+- CREATING baseline with N requirements
+```
 
-   Render the preview in a human-friendly summary using the `operations[]` array from `specify slice merge preview`. For each spec, operations are typed as `added`, `modified`, `removed`, `renamed`, or `created_baseline`:
+If `specify slice merge preview` returns an empty `specs` array, report "No delta specs to merge" and stop.
 
-   ```text
-   ## Merge Preview: <slice-name>
+If `slice merge conflict-check` returns any entries under `conflicts`, surface them clearly — each entry names the capability, the slice's `defined-at`, and the baseline's `baseline-modified-at`:
 
-   ### <capability-1>/spec.md (existing baseline)
-   - REMOVING: REQ-001 — <name>
-   - MODIFYING: REQ-002 — <name>
-   - ADDING: REQ-003 — <name>
+> "The baseline for `<capability>` was modified at `<baseline-modified-at>` (after this slice was defined at `<defined-at>`). Another change may have already touched it."
 
-   ### <capability-2>/spec.md (new baseline)
-   - CREATING baseline with N requirements
-   ```
+### 4. Get explicit confirmation
 
-   If `specify slice merge preview` returns an empty `specs` array, report "No delta specs to merge" and stop.
+Use the **AskQuestion tool** to let the user:
 
-   If `change merge conflict-check` returns any entries under `conflicts`, surface them clearly — each entry names the capability, the slice's `defined-at`, and the baseline's `baseline-modified-at`:
+- **Proceed** — apply the merge (next step).
+- **Show full content** — display the merged baseline that would be written (re-run `slice merge preview --format json` and extract the operations list, or read each delta/baseline pair from disk).
+- **Cancel** — abort and stamp `deferred` via the [phase outcome contract](../../references/phase-outcome-contract.md).
 
-   > "The baseline for `<capability>` was modified at `<baseline-modified-at>` (after this slice was defined at `<defined-at>`). Another change may have already touched it."
+Only proceed after the user confirms.
 
-   Use the **AskQuestion tool** to let the user:
+### 5. Apply the merge through `merge run`
 
-   - **Proceed**: apply the merge (step 4)
-   - **Show full content**: display the merged baseline that would be written (re-run `change merge preview --format json` and extract the operations list, or read each delta/baseline pair from disk)
-   - **Cancel**: abort
+Run:
 
-   Only proceed after the user confirms.
+```bash
+specify slice merge run <name> --format json
+```
 
-4. **Apply the merge**
+This single call gates on `.metadata.yaml.status == Complete` (errors with `lifecycle` if not), computes the same operations as `slice merge preview`, runs baseline coherence validation on every merged output (`specify slice validate` semantics), writes each merged baseline under `.specify/specs/<capability>/spec.md`, transitions `.metadata.yaml` to `merged`, stamps `merged-at` / `completed-at` and `PhaseOutcome { phase: merge, outcome: success }`, and moves `.specify/slices/<name>/` into `.specify/archive/YYYY-MM-DD-<name>/`. Never hand-merge specs, edit metadata, or move archives manually.
 
-   Run:
+**Workspace clone auto-commit.** When CWD is inside a workspace clone (`.specify/workspace/*/` with `.specify/project.yaml`), the CLI auto-commits **only** `.specify/specs/` and `.specify/archive/` with message `specify: merge <slice-name>`. Commit failure is a **warning**, not an error — the spec merge still succeeds. Any project-output residue outside those two trees is left for `/change:execute` to commit as `specify: residue <slice-name>`. Committed changes remain local until the operator explicitly runs `specify workspace push`.
 
-   ```bash
-   specify slice merge run <name> --format json
-   ```
+### 6. Handle outcomes
 
-   This single call:
+On success, the CLI has already stamped the merge outcome — **do not call `outcome set`** (see §Phase outcome contract below).
 
-   - Gates on `.metadata.yaml.status == Complete` (errors with `lifecycle` if not).
-   - Computes the same operations as `change merge preview`.
-   - Runs baseline coherence validation on every merged output (`specify slice validate` semantics).
-   - Writes each merged baseline under `.specify/specs/<capability>/spec.md`.
-   - Transitions `.metadata.yaml` to `merged`, stamps `merged-at` / `completed-at`, and stamps `PhaseOutcome { phase: merge, outcome: success }`.
-   - Moves `.specify/slices/<name>/` into `.specify/archive/YYYY-MM-DD-<name>/`.
+If the call exits non-zero, the filesystem is unchanged (baselines not written, slice dir not moved). Record the failure via `specify slice outcome set` (the slice directory still exists), report the error, and stop — do not retry until the user has edited the failing delta or addressed the lifecycle state.
 
-   On success, the outcome is already recorded — **do not call `outcome set`** (see §Phase outcome contract above).
+### 7. Summarise the archive
 
-   **Workspace clone auto-commit.** When CWD is inside a workspace clone (`.specify/workspace/*/` with `.specify/project.yaml`), the CLI auto-commits **only** `.specify/specs/` and `.specify/archive/` with message `specify: merge <slice-name>`. Commit failure is a **warning**, not an error — the spec merge still succeeds. Any project-output residue outside those two trees is left for `/change:execute` to commit as `specify: residue <slice-name>`. Committed changes remain local until the operator explicitly runs `specify workspace push`.
-
-   **If the call exits non-zero**: the filesystem is unchanged (baselines not written, slice dir not moved). Record the failure via `specify slice outcome set` (the slice directory still exists). Report the error and stop — do not retry until the user has edited the failing delta or addressed the lifecycle state.
-
-5. **Display summary**
-
-   On success, the CLI returns `merged-specs[]` with the same operation list. Render a completion summary:
-
-## Output On Success
+On success, the CLI returns `merged-specs[]` with the same operation list. Render a completion summary:
 
 ```text
 ## Merge Complete
@@ -145,6 +120,16 @@ Optionally specify a slice name. If omitted, check if it can be inferred from co
 
 All artifacts complete. All tasks complete.
 ```
+
+Mention any workspace auto-commit warning or residue note returned by the CLI.
+
+## Phase outcome contract
+
+This skill is the **merge** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including merge's CLI-stamped success path, non-success deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
+
+## Input
+
+Optionally specify a slice name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available slices.
 
 ## Guardrails
 

@@ -24,8 +24,18 @@
 # files start at 0; grandfathered entries below carry today's audit
 # count and are expected to ratchet down with each touch.
 
+# `bodyLineCount` baselines (Phase 9). Each entry caps the total body
+# line count for a SKILL.md when the live count exceeds the global
+# `MAX_BODY_LINES` (250) enforced by `checkBodyLineCount`. Entries
+# below are grandfathered after the cap tightened from 400 → 250 and
+# are expected to ratchet down with each touch; the baseline is the
+# exact observed line count so any further growth (or the next
+# reduction) becomes immediately visible. New SKILL.md files start at
+# 0.
+
 [file."plugins/change/skills/plan/SKILL.md"]
 sectionLineCount = 1
+bodyLineCount = 262
 
 [file."plugins/spec/skills/init/SKILL.md"]
 sectionLineCount = 1
@@ -41,24 +51,31 @@ sectionLineCount = 1
 
 [file."plugins/vectis/skills/ios-writer/SKILL.md"]
 sectionLineCount = 1
+bodyLineCount = 385
 
 [file."plugins/vectis/skills/core-writer/SKILL.md"]
 sectionLineCount = 1
+bodyLineCount = 392
 
 [file."plugins/vectis/skills/android-writer/SKILL.md"]
 sectionLineCount = 1
+bodyLineCount = 394
 
 [file."plugins/vectis/skills/ios-reviewer/SKILL.md"]
 sectionLineCount = 1
+bodyLineCount = 387
 
 [file."plugins/vectis/skills/test-writer/SKILL.md"]
 sectionLineCount = 1
+bodyLineCount = 336
 
 [file."plugins/vectis/skills/core-reviewer/SKILL.md"]
 sectionLineCount = 1
+bodyLineCount = 372
 
 [file."plugins/vectis/skills/android-reviewer/SKILL.md"]
 sectionLineCount = 1
+bodyLineCount = 384
 
 [file."plugins/omnia/skills/test-writer/SKILL.md"]
 sectionLineCount = 1
@@ -68,3 +85,4 @@ sectionLineCount = 1
 
 [file."plugins/omnia/skills/crate-writer/SKILL.md"]
 sectionLineCount = 1
+bodyLineCount = 369

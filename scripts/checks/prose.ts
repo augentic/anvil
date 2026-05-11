@@ -204,7 +204,7 @@ export async function checkOperationalVocabulary(): Promise<void> {
 
 export async function checkSkillNumericCaps(): Promise<void> {
   const EXPECTED_DESCRIPTION = 512;
-  const EXPECTED_BODY = 400;
+  const EXPECTED_BODY = 250;
   const FILES: Array<[string, boolean, boolean]> = [
     [".cursor/schemas/skill.schema.json", true, false],
     [".cursor/rules/project.mdc", true, true],

@@ -75,7 +75,7 @@ Structured responses use the standard CLI envelope:
 
 ```json
 {
-  "schema-version": 5
+  "envelope-version": 6
 }
 ```
 
@@ -83,7 +83,7 @@ Structured responses use the standard CLI envelope:
 
 ```json
 {
-  "schema-version": 5,
+  "envelope-version": 6,
   "tools": [
     {
       "name": "contract",
@@ -105,7 +105,7 @@ Validation failures include rule results so callers can branch on rule ids such 
 
 ```json
 {
-  "schema-version": 5,
+  "envelope-version": 6,
   "error": "validation",
   "message": "validation failed with 1 error(s)",
   "exit-code": 2,

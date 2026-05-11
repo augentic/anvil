@@ -1,12 +1,12 @@
 ---
 name: omnia-test-writer
-description: "Generate or update test suites for Omnia Rust WASM crates from Specify artifacts -- MockProvider setup, integration tests, spec-to-test mapping, and drift detection. Use when implementing test tasks from a Specify change, regenerating tests after a crate update, or when the user mentions `test-writer`."
+description: "Generate or update test suites for Omnia Rust WASM crates from Specify artifacts -- MockProvider setup, integration tests, spec-to-test mapping, and drift detection. Use when an Omnia slice has pending crate-test tasks, or when an existing test suite needs to be regenerated after a crate update; not for the crate itself (`crate-writer`) or guest wiring (`guest-writer`)."
 argument-hint: "[crate-name]"
 ---
 
 # Test Writer
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Load artifacts and references** — read `spec.md`, `design.md`, `mock-provider.md`, `spec-to-test-mapping.md`, and the closest example before generating tests.
 2. **Inventory crate and tests** — inspect handlers, provider trait bounds, input/output types, existing `tests/`, fixtures, and assertion style.

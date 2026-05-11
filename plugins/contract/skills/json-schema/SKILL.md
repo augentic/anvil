@@ -10,7 +10,7 @@ Specialist for standalone JSON Schema (Draft 2020-12) documents on Specify chang
 
 The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong to `/contract:openapi`; evented bindings under `contracts/messages/` belong to `/contract:asyncapi`. Both protocol skills delegate every payload-schema decision (`$id` shape, naming, decomposition, draft policy, metadata) to this skill.
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Read the briefs and specs.** Open the active contracts build brief and the slice's `specs/` to identify which payload types the slice requires; read `contracts/schemas/` (the schema baseline) to know what shared vocabulary already exists.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.

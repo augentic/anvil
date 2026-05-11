@@ -1,10 +1,10 @@
 ---
 name: specify-init
-description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, decides between a regular single-project init and a registry-only platform hub, then invokes `specify init <capability>` (regular) or `specify init --hub` (hub) to scaffold `.specify/`, write `project.yaml`, and generate starter `AGENTS.md` context when absent. Use when setting up a new project for spec-driven development.
+description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, picks between a regular single-project init and a registry-only platform hub, then invokes `specify init <capability>` or `specify init --hub` to scaffold `.specify/`, write `project.yaml`, and generate starter `AGENTS.md`. Use when first wiring up a project before any other `/spec:*` or `/change:*` command; not for re-initializing an existing `.specify/`.
 argument-hint: "<capability>"
 ---
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Verify the CLI** — run `specify --version`; install with `cargo install --git https://github.com/augentic/specify-cli` only after explicit user confirmation.
 2. **Check existing initialization** — detect `.specify/project.yaml`, ask before reinitializing, and treat reinit as an upgrade path owned by the CLI.

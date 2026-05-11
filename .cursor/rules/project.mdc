@@ -267,15 +267,15 @@ Portability posture:
   - `--flag` — long flag (no value); when a flag carries a value, model the value as a sibling token: `--kind <kind>`.
 - Bare prose ("the slice name"), mixed punctuation (`<arg>: arg2`), trailing `?`, and short flags (`-f`) are rejected. Skills that only take secondary mode tokens keep those tokens out of the hint unless a primary positional exists (e.g. `/change:execute` uses `[mode]` only in its body).
 
-### Critical Path (Quick Reference)
+### Critical Path
 
-Every SKILL.md ≥150 body lines must lead with a `## Critical Path (Quick Reference)` block of 5–7 bullets that name the algorithmic spine of the skill — the steps a maintainer (or Claude itself, when a sibling has not been read) must follow. Each bullet may link to the sibling that holds the depth (`See [verifier.md](verifier.md).`).
+Every SKILL.md ≥150 body lines must lead with a `## Critical Path` block — either 5–7 numbered/bullet items, or 5–7 `### N. Title` H3 step headings — that names the algorithmic spine of the skill. Each entry may link to the sibling that holds the depth (`See [verifier.md](verifier.md).`). The earlier "Critical Path (Quick Reference)" + parallel `## Steps` restatement pattern is retired: pick one form per skill.
 
-The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/change/skills/execute/`, `plugins/change/skills/plan/`, `plugins/spec/skills/merge/`, and the three `plugins/contract/skills/*/` skills.
+The pattern is in use under `plugins/spec/skills/extract/`, `plugins/change/skills/execute/`, `plugins/change/skills/plan/`, `plugins/spec/skills/merge/`, and the three `plugins/contract/skills/*/` skills.
 
 ### Body length
 
-- SKILL.md body (post-frontmatter) must stay under 400 lines (repository limit, enforced by `make checks`).
+- SKILL.md body (post-frontmatter) must stay under 250 lines (repository limit, enforced by `make checks`). New skills must comply; pre-existing skills above the cap are grandfathered via per-file `bodyLineCount` baselines in `scripts/standards-allowlist.toml` and are expected to ratchet down with each touch.
 - Each H2 section caps at 60 non-blank, non-comment lines (enforced by `checkSectionLineCount`); per-file baselines in `scripts/standards-allowlist.toml` grandfather sections that have not yet been split.
 - Push depth into siblings linked one level deep: `references/`, `examples/`, or topical files such as `author.md` / `importer.md` / `verifier.md`.
 - When a skill body is split, the SKILL.md retains the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points; the siblings carry the long-form rules, examples, templates, and edge-case prose.
@@ -288,9 +288,9 @@ The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/cha
 - `description` is ≤512 characters.
 - `argument-hint` parses as whitespace-separated tokens of the canonical grammar (`<name>`, `[name]`, trailing `...`, `<a|b>`, `[a|b]`, `--flag`); see `checkArgumentHintGrammar`.
 - Slash-skill invocation examples use positionals only; leading double-dash option tokens are reserved for ordinary CLI commands and fail checks when used as skill arguments.
-- SKILL.md body is ≤400 lines (post-frontmatter).
+- SKILL.md body is ≤250 lines (post-frontmatter); per-file `bodyLineCount` baselines in `scripts/standards-allowlist.toml` grandfather oversized files.
 - Each H2 section is ≤60 non-blank, non-comment lines (`checkSectionLineCount`); migrate depth into `references/` rather than letting the section sprawl.
-- SKILL.md bodies with ≥150 post-frontmatter lines include a `## Critical Path (Quick Reference)` block with 5–7 bullets or numbered items.
+- SKILL.md bodies with ≥150 post-frontmatter lines include a `## Critical Path` block with 5–7 bullets, numbered items, or `### N. Title` H3 step headings.
 - No SKILL.md carries a top-level `license:` (or any other forbidden frontmatter key).
 
 See `scripts/checks.ts` and `.cursor/schemas/skill.schema.json` for the exact rules.

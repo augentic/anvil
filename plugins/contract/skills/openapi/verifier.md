@@ -231,7 +231,7 @@ The declared tool writes a single JSON object to stdout in `--format json` when 
 
 ```json
 {
-  "schema-version": 2,
+  "envelope-version": 2,
   "contracts-dir": "<absolute-baseline-path>",
   "ok": false,
   "findings": [
@@ -244,7 +244,7 @@ The declared tool writes a single JSON object to stdout in `--format json` when 
 
 Field semantics:
 
-- `schema-version` — currently `2`; bumps follow RFC-12. Callers MUST validate this before parsing the rest of the envelope.
+- `envelope-version` — currently `2`; bumps follow RFC-12. Callers MUST validate this before parsing the rest of the envelope.
 - `contracts-dir` — the absolute path the tool walked, echoing the positional argument.
 - `ok` — `true` iff `findings` is empty.
 - `findings[].path` — repo-relative when the parent of `<baseline-dir>` matches the path's prefix, otherwise absolute. Suitable for verbatim rendering in operator-facing reports.

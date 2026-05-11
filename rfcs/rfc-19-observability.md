@@ -135,7 +135,7 @@ Common fields:
 | `source_kind` | Tool source kind such as `file`, `https`, or `oci`. |
 | `cache_status` | `hit`, `miss`, `stale`, or `installed`. |
 | `duration_ms` | Elapsed duration for explicit timing events. |
-| `exit_code` | Final `CliResult` code. |
+| `exit_code` | Final `Exit` code. |
 | `error` | Stable kebab-case error discriminant when available. |
 
 Prefer low-cardinality structured fields over prose. Event messages should be short, because JSON log consumers should primarily key on fields.
@@ -174,7 +174,7 @@ Do not instrument every helper at once. The first implementation should cover co
 
 Generate a `run_id` once at process start and attach it to the top-level command span. For the first implementation, keep `run_id` in logs only. Do not add it to every JSON success or error envelope, because that would change the public wire shape.
 
-If operators later need direct error-to-log correlation, add an optional `diagnostic-id` field to JSON error envelopes and bump `JSON_ENVELOPE_VERSION` if the repository treats that additive field as a contract change. Text errors may include a short trailing line only when diagnostics were enabled:
+If operators later need direct error-to-log correlation, add an optional `diagnostic-id` field to JSON error envelopes and bump `ENVELOPE_VERSION` if the repository treats that additive field as a contract change. Text errors may include a short trailing line only when diagnostics were enabled:
 
 ```text
 diagnostic-id: 20260511T004212Z-12345

@@ -1,6 +1,6 @@
 ---
 name: vectis-template-updater
-description: Fix Vectis scaffold templates and version pins when upstream crate or tooling bumps break a fresh render. Use when Crux, uniffi, Gradle, Xcode, or Android SDK drift breaks the Vectis cap matrix, or when the user mentions template-updater.
+description: Fix Vectis scaffold templates and version pins when upstream crate or tooling bumps break a fresh render. Use when Crux, uniffi, Gradle, Xcode, or Android SDK drift breaks the Vectis cap matrix; not for changes to template structure or feature work (those go through a normal Specify slice).
 argument-hint: "[cli-repo-dir]"
 ---
 
@@ -12,7 +12,7 @@ Close the loop on version bumps. This skill owns the host workflow that used to 
 
 Version pins remain skill-readable data until another RFC creates a dedicated version tool. The canonical inputs today are the embedded defaults in `<specify-cli>/crates/vectis/embedded/versions.toml` plus an optional complete TOML override passed to `vectis scaffold --version-file`.
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. Copy the embedded `versions.toml` to a scratch proposal file, query live registries from the host, and edit the proposal by hand.
 2. Consult [`references/known-drift.md`](references/known-drift.md) before diagnosing a failure.

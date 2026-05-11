@@ -7,14 +7,14 @@ Canonical JSON envelope shapes for `specify *` commands that skills shell out to
 - Every successful `--format json` response is wrapped in a top-level envelope:
   ```json
   {
-    "schema-version": 5,
+    "envelope-version": 6,
     "ok": true,
     "data": { /* command-specific body */ }
   }
   ```
 - Errors use the same envelope with `"ok": false` and `"error": { "code": "<kebab-discriminant>", "detail": "..." }`. The `code` is grep-stable and forms part of the public contract; see [`AGENTS.md` in `augentic/specify-cli`](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#error-handling-and-exit-codes) for the full discriminant catalogue.
 - Paths are emitted as plain strings relative to the repo root unless the field name says otherwise (`absolute-path`, `tempdir-path`).
-- All keys are `kebab-case`. The `schema-version` integer bumps on any breaking change to a body shape.
+- All keys are `kebab-case`. The `envelope-version` integer bumps on any breaking change to a body shape.
 
 ## Shapes
 

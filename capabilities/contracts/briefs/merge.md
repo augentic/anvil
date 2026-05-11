@@ -31,7 +31,7 @@ The JSON envelope is the canonical shape callers parse. Field reference (matches
 
 ```json
 {
-  "schema-version": 2,
+  "envelope-version": 2,
   "contracts-dir": "<absolute-baseline-path>",
   "ok": false,
   "findings": [

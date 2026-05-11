@@ -28,7 +28,7 @@ Format detection: a YAML file is top-level iff its root carries `openapi:` or `a
 | `1` | One or more findings. Caller (typically the contracts merge brief) MUST treat as `failure`. |
 | `2` | The tool could not run, either because `specify` could not resolve/instantiate it or because the validator rejected its invocation. Caller MUST treat as `failure`. |
 
-The `0` / `1` / `2` mapping is the conventional shell-friendly shape so capability skills can branch on the exit code without needing the broader `specify` `CliResult` taxonomy. For normal validator runs, the JSON envelope's `"exit-code"` field reflects the same value.
+The `0` / `1` / `2` mapping is the conventional shell-friendly shape so capability skills can branch on the exit code without needing the broader `specify` `Exit` taxonomy. For normal validator runs, the JSON envelope's `"exit-code"` field reflects the same value.
 
 ## JSON Envelope
 
@@ -36,7 +36,7 @@ The `0` / `1` / `2` mapping is the conventional shell-friendly shape so capabili
 
 ```json
 {
-  "schema-version": 5,
+  "envelope-version": 6,
   "contracts-dir": "<absolute-baseline-path>",
   "ok": false,
   "findings": [
@@ -52,7 +52,7 @@ The `0` / `1` / `2` mapping is the conventional shell-friendly shape so capabili
 
 Field semantics:
 
-- `schema-version` — currently `5`, matching the CLI JSON envelope version.
+- `envelope-version` — currently `6`, matching the CLI JSON envelope version.
 - `contracts-dir` — the absolute path the tool walked, echoing the positional argument.
 - `ok` — `true` iff `findings` is empty.
 - `findings[].path` — repo-relative when the parent of `<BASELINE_DIR>` matches the path's prefix, otherwise absolute. Suitable for verbatim rendering.

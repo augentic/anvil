@@ -1,12 +1,12 @@
 ---
 name: vectis-ios-writer
-description: Generate or update a SwiftUI iOS shell for a Crux application from Specify artifacts. Use when implementing iOS shell tasks from a Specify change, or when the user mentions ios-writer.
+description: Generate or update a SwiftUI iOS shell for a Crux application from Specify artifacts. Use when a Specify slice has pending iOS shell tasks routed through a Vectis capability; not for the Rust core (`core-writer`) or the Android shell (`android-writer`).
 argument-hint: "<slice-dir>"
 ---
 
 # Crux iOS Shell Generator
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Read the input contract** — inspect `app.rs`, `lib.rs`, `Cargo.toml`, `tokens.yaml`, `assets.yaml`, `composition.yaml`, and any iOS-specific spec/design sections.
 2. **Detect mode** — if no shell exists, run `specify tool run vectis -- scaffold ios ...` plus host checks; otherwise inventory existing Swift code for update mode.

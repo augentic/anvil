@@ -5,7 +5,7 @@
 //   - long bodies must include a 5-7 item Critical Path block,
 //   - inline `json` / `jsonc` fences must not exceed 30 lines,
 //   - inline `json` / `jsonc` fences must not show CLI envelope shapes
-//     (`schema-version` or wrapped `ok` + `data`/`error`); those live
+//     (`envelope-version` or wrapped `ok` + `data`/`error`); those live
 //     in `plugins/references/cli-output-shapes.md`,
 //   - `$VAR`s defined in the Arguments section must be referenced in the
 //     body (and vice versa).
@@ -21,9 +21,9 @@ import {
   walk,
 } from "./_shared.ts";
 
-const MAX_BODY_LINES = 400;
+const MAX_BODY_LINES = 250;
 const CRITICAL_PATH_MIN_LINES = 150;
-const CRITICAL_PATH_HEADING = "## Critical Path (Quick Reference)";
+const CRITICAL_PATH_HEADING = "## Critical Path";
 const MAX_INLINE_JSON_LINES = 30;
 // Per-H2 section cap. Default 50 in the original RFC; the 21-section
 // audit at cap 50 exceeded the >5 budget so the cap was bumped to 60
@@ -49,9 +49,17 @@ export async function checkBodyLineCount(): Promise<void> {
     if (!lines) continue;
     const lineCount = lines.length;
 
-    if (lineCount > MAX_BODY_LINES) {
+    // Per-file `bodyLineCount` baselines in
+    // `scripts/standards-allowlist.toml` grandfather files that exceed
+    // the cap (`bodyLineCount = <observed-line-count>`); the baseline
+    // raises the effective cap for that file only and is expected to
+    // ratchet down as content is migrated into siblings.
+    const baseline = await baselineFor("bodyLineCount", rel);
+    const effectiveCap = Math.max(MAX_BODY_LINES, baseline);
+    if (lineCount > effectiveCap) {
+      const extra = baseline > 0 ? ` > grandfathered baseline ${baseline}` : "";
       fail(
-        `Skill body too long: ${rel} — ${lineCount} body lines (limit ${MAX_BODY_LINES})`,
+        `Skill body too long: ${rel} — ${lineCount} body lines (limit ${MAX_BODY_LINES})${extra}`,
       );
     }
   }
@@ -159,17 +167,36 @@ export async function checkCriticalPath(): Promise<void> {
     const sectionLines = nextH2Offset >= 0
       ? lines.slice(headingIndex + 1, headingIndex + 1 + nextH2Offset)
       : lines.slice(headingIndex + 1);
+    // Items may be expressed either as a flat 5-7 entry numbered/bullet
+    // list (compact form) or as 5-7 `### ` H3 headings (one per step
+    // when each step has its own concise body). Count whichever form
+    // appears first.
     let itemCount = 0;
-    let inCriticalPathList = false;
+    let mode: "list" | "h3" | null = null;
     for (const line of sectionLines) {
-      if (line.trim() === "") {
-        if (inCriticalPathList) break;
+      const trimmed = line.trim();
+      if (mode === null) {
+        if (trimmed === "") continue;
+        if (line.startsWith("### ")) {
+          mode = "h3";
+          itemCount++;
+          continue;
+        }
+        if (LIST_ITEM_RE.test(line)) {
+          mode = "list";
+          itemCount++;
+          continue;
+        }
+        // Lead-in prose before the items is allowed; keep scanning.
         continue;
       }
-      if (LIST_ITEM_RE.test(line)) {
-        inCriticalPathList = true;
-        itemCount++;
+      if (mode === "h3") {
+        if (line.startsWith("### ")) itemCount++;
+        continue;
       }
+      // List mode: empty line ends the list, additional list items add.
+      if (trimmed === "") break;
+      if (LIST_ITEM_RE.test(line)) itemCount++;
     }
 
     if (itemCount < 5 || itemCount > 7) {
@@ -294,11 +321,11 @@ export async function checkNoEnvelopeExamples(): Promise<void> {
 
 // True when the block body looks like a CLI envelope wrapper or one of
 // its discriminator keys. Body shapes that merely describe a
-// command's `data` payload (no `schema-version`, no `ok`/`data` pair)
+// command's `data` payload (no `envelope-version`, no `ok`/`data` pair)
 // do not match.
 function isEnvelopeBody(body: string[]): boolean {
   const text = body.join("\n");
-  if (/"schema[-_]version"\s*:/.test(text)) return true;
+  if (/"envelope[-_]version"\s*:/.test(text)) return true;
   const hasOk = /"ok"\s*:\s*(true|false)\b/.test(text);
   const hasData = /"data"\s*:/.test(text);
   const hasError = /"error"\s*:\s*\{/.test(text);

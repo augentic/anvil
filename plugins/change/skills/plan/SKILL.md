@@ -4,7 +4,7 @@ description: "Author `plan.yaml` for a change on the change surface via the plan
 argument-hint: "<change-name>"
 ---
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Parse and validate inputs** — validate `<change-name>` as kebab-case. Require at least one of `from`, `against`, `source`, or a populated `change.md:inputs`. Refuse if `plan.yaml` already exists (unless `extend`).
 2. **Scaffold the plan** — `specify change plan create <change-name> [--source <key>=<path-or-url> ...]`. Skipped under `extend`.

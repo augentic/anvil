@@ -1,6 +1,6 @@
 ---
 name: omnia-crate-writer
-description: "Write Rust WASM crates from Specify artifacts -- greenfield creation or incremental updates -- following Omnia SDK patterns with provider-based dependency injection. Use when implementing crate tasks from a Specify change, regenerating a crate from updated artifacts, or when the user mentions `crate-writer`."
+description: "Write Rust WASM crates from Specify artifacts -- greenfield creation or incremental updates -- following Omnia SDK patterns with provider-based dependency injection. Use when an Omnia slice has pending crate-implementation tasks, or when an existing crate must be regenerated after artifact updates; not for guest wiring (`guest-writer`) or test scaffolding (`test-writer`)."
 argument-hint: "[crate-name]"
 ---
 
@@ -13,7 +13,7 @@ This skill accepts Specify artifacts from any producer:
 - **Code-Analysis artifacts** (from `/spec:extract`) -- generates/updates crates from existing source code
 - **Feature specs** (from Specify change artifacts) -- updated specs derived from requirements changes
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Detect mode**: `$CRATE_PATH/Cargo.toml` exists -> update; missing -> create.
 2. **Read** [rules.md](./rules.md) — the Hard Rules and Authority Hierarchy bind every step below.

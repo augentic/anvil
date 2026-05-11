@@ -10,7 +10,7 @@ Specialist for AsyncAPI 3.0 evented contracts on Specify changes — pub/sub, st
 
 The skill is AsyncAPI-only. Shared payload schemas under `contracts/schemas/` are owned by the json-schema format skill (`/contract:json-schema`); HTTP contracts under `contracts/http/` are owned by `/contract:openapi`.
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Read the briefs and specs.** Open the active contracts build brief and the slice's `specs/` to identify what evented interactions the slice requires; read `contracts/messages/` (the AsyncAPI baseline) to know which channels, operations, and messages already exist.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.

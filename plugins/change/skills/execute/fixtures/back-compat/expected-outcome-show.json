@@ -1,5 +1,5 @@
 {
-  "schema-version": 2,
+  "envelope-version": 2,
   "name": "archived-feature",
   "outcome": {
     "phase": "merge",

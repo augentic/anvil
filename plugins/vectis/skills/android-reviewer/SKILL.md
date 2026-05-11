@@ -1,12 +1,12 @@
 ---
 name: vectis-android-reviewer
-description: Review generated Android shell (Kotlin/Jetpack Compose) code for structural issues, integration correctness, and quality problems. Use when reviewing a Crux app's Android shell after generation, or when the user mentions android-reviewer.
+description: Review generated Android shell (Kotlin/Jetpack Compose) code for structural issues, integration correctness, and quality problems. Use when `android-writer` has just produced or updated an Android shell and the slice is ready for review; not for the core (`core-reviewer`) or iOS shell (`ios-reviewer`).
 argument-hint: "<target-dir>"
 ---
 
 # Crux Android Shell Reviewer
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. Gather context — read `shared/src/app.rs`, every `.kt` file under `Android/app/src/main/java/`, Gradle/manifest config, and the wired UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml` — change-local then baseline / project paths); if `reference-dir` is provided, read its counterparts too.
 2. Spawn team — Structural + Quality (always); Integration only on the first iteration when `scope = full`. Each specialist applies its own check set (AND-, KTL-, INT-).

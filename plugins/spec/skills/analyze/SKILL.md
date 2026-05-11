@@ -6,7 +6,7 @@ argument-hint: "<input-path> <output-dir>"
 
 # Analyze Skill
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Validate invocation** — require a local `$INPUT_PATH`, writable `$OUTPUT_DIR`, and kind exactly `legacy-code` or `documentation`; fail before partial writes.
 2. **Materialize remotes outside analyze** — if the source is remote, use the guarded clone snippet first and pass the resulting local path as `$INPUT_PATH`.

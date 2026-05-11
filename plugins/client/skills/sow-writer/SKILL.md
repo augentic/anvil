@@ -1,12 +1,12 @@
 ---
 name: client-sow-writer
-description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a delivery lead asks for a SoW from completed Specify artifacts, when exporting client deliverables from a slice directory, or when the user mentions `sow-writer`.
+description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a slice (or change) is fully defined and the operator wants to package its artifacts as a client deliverable; not while artifacts are still being authored (`define`) or implemented (`build`).
 argument-hint: "<slice-dir>"
 ---
 
 # SoW Generator Skill
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. Read Specify artifacts at `$SLICE_DIR` (specs + `design.md`); validate required Context + Business Logic sections; determine `code-analysis` (migration) vs `requirements` (greenfield) origin.
 2. Extract project metadata (name, purpose, source reference) and derive `$OUTPUT_PATH` from `$SLICE_DIR` unless one was supplied.

@@ -1,12 +1,12 @@
 ---
 name: vectis-ios-reviewer
-description: Review generated iOS shell (SwiftUI) code for structural issues, integration correctness, and quality problems. Use when reviewing a Crux app's iOS shell after generation, or when the user mentions ios-reviewer.
+description: Review generated iOS shell (SwiftUI) code for structural issues, integration correctness, and quality problems. Use when `ios-writer` has just produced or updated an iOS shell and the slice is ready for review; not for reviewing the core (`core-reviewer`) or Android shell (`android-reviewer`).
 argument-hint: "<target-dir>"
 ---
 
 # Crux iOS Shell Reviewer
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Gather review context** — read Crux core files, all iOS Swift/build files, optional reference app files, and available composition/tokens/assets inputs.
 2. **Spawn the review team** — run Structural and Quality every iteration; add Integration on the first full-scope iteration only.

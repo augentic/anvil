@@ -1,13 +1,13 @@
 ---
 name: vectis-android-writer
-description: Generate or update a Kotlin/Jetpack Compose Android shell for a Crux application. Use when the user wants to create an Android shell, scaffold Android UI, or generate Compose views for a Crux app, or mentions android-writer.
+description: Generate or update a Kotlin/Jetpack Compose Android shell for a Crux application. Use when a Specify slice has pending Android shell tasks, or when an existing Android shell needs to be regenerated after a core or layout update; not for the Rust core (`core-writer`) or the iOS shell (`ios-writer`).
 argument-hint: "<slice-dir>"
 ---
 
 # Crux Android Shell Generator
 > **Vectis deterministic tooling runs through declared Specify tools.** Shell scaffolding is `specify tool run vectis -- scaffold android ...`; artifact validation is `specify tool run vectis -- validate ...`. The scaffold is render-only: Android SDK/NDK detection, `local.properties`, Java 21 pinning, Gradle wrapper bootstrap, and Gradle builds remain host-owned steps with explicit verification evidence.
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. Read `{app-dir}/shared/src/app.rs` (and optional `slice-dir` shell-requirements + `composition.yaml`); extract App name, ViewModel/Effect/Event/Route variants and the capability set.
 2. Detect mode by checking `{project-dir}/app/src/main/java/*/Core.kt`: missing → run `specify tool run vectis -- scaffold android ...` plus Android host post-processing, then enter Update Mode; present → start Update Mode immediately.

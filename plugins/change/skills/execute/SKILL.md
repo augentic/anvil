@@ -3,7 +3,7 @@ name: change-execute
 description: "Drive a change through its plan.yaml on the change surface: read the plan, pick the next eligible slice, run define → build → merge, and update status. Use when running the next eligible slice in a change or processing all eligible slices via `loop`."
 ---
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Resolve project root** — walk upward from CWD looking for `.specify/project.yaml`; exit non-zero if not found.
 2. **Acquire driver lock** — `specify change plan lock acquire --pid <agent-session-pid>`. On `DriverBusy`, report and exit.

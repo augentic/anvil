@@ -1,6 +1,6 @@
 ---
 name: specify-drop
-description: Drop a slice without merging specs into the baseline. Use when the user wants to discard a slice that should not be merged normally.
+description: Drop a slice without merging specs into the baseline. Use when an in-progress slice must be abandoned and archived without folding its deltas into the baseline — the rollback counterpart to `merge`.
 argument-hint: "[slice-name]"
 ---
 
