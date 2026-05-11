@@ -52,7 +52,7 @@ Validates every resolved codex file and the resolved set invariants. A clean cod
 specify codex export --format json
 ```
 
-Exports the resolved codex as the consumer contract for future review tooling. The JSON envelope uses `schema-version: 3` and includes `rule-count` plus ordered `rules`.
+Exports the resolved codex as the consumer contract for future review tooling. The JSON envelope uses the standard CLI `envelope-version` and includes `rule-count` plus ordered `rules`.
 
 Each rule includes frontmatter fields, Markdown `body`, `source-path`, `provenance-kind`, and provenance-specific fields:
 

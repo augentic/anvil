@@ -1,6 +1,6 @@
 # Change shapes (orchestration mode)
 
-The three change shapes (RFC-9 §Motivation → *The three initiative shapes*) flow through the same seven-step sequence in [orchestration.md](orchestration.md). Only the inputs to step 3 (Plan) differ; steps 4–7 are shape-agnostic.
+The three change shapes flow through the same seven-step sequence in [orchestration.md](orchestration.md). Only the inputs to step 3 (Plan) differ; steps 4–7 are shape-agnostic.
 
 ## Shape inference (when `--shape` is omitted)
 

@@ -78,16 +78,6 @@ A composable function body should not exceed 60 lines. Complex composables shoul
 
 **Fix**: Extract sections into private composable functions or separate files.
 
-## KTL-006: Stale Design System Import
-
-**Severity**: Warning
-
-`com.vectis.design` was the package exported by the pre-RFC-11 standalone `:vectis-design` Gradle module. Post-RFC-11 (§J / §L), `vectis:android-writer` emits the same `VectisSpacing` / `VectisCornerRadius` / `VectisTypography` types as **shell-local** Kotlin files under `Android/app/src/main/java/com/vectis/<appname>/ui/theme/`. Because `ui.theme` is a sibling package to `ui.screens` and `ui.components`, consumer files need an explicit `import com.vectis.<appname>.ui.theme.*` — Kotlin only auto-imports declarations within the exact same package. Any surviving `import com.vectis.design.*` line is stale migration debt: it refers to a Gradle module the writer no longer scaffolds and the project no longer declares as a dependency. `Color` and typography accessed via `MaterialTheme.colorScheme` / `MaterialTheme.typography` continue to require the standard Material 3 imports — those are unrelated to the legacy `:vectis-design` surface.
-
-**Detection**: Search every `.kt` file under the **app module** source roots for `import com.vectis.design.` (with or without trailing star). Flag every occurrence.
-
-**Fix**: Replace the `import com.vectis.design.*` line with `import com.vectis.<appname>.ui.theme.*`. The shell-local `ui/theme/` types (`VectisSpacing`, `VectisCornerRadius`, `VectisTypography`) require this explicit import from sibling packages. If the project still declares `implementation(project(":vectis-design"))` in `app/build.gradle.kts` or `include(":vectis-design")` in `settings.gradle.kts`, flag those as follow-up cleanup tasks per the android-writer's Update Mode Step U7 (RFC-11 Phase 3.2).
-
 ## KTL-007: Deprecated Compose API Usage
 
 **Severity**: Info

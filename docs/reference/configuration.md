@@ -2,13 +2,21 @@
 
 Specify uses several YAML and Markdown files for configuration. All are managed through the CLI or skills -- direct editing is supported for `project.yaml`, `registry.yaml`, and `change.md`, but `.metadata.yaml` and `plan.yaml` should only be written by the CLI.
 
+## Contents
+
+- [project.yaml](#projectyaml)
+- [plan.yaml](#planyaml)
+- [registry.yaml](#registryyaml)
+- [change.md](#changemd)
+- [.metadata.yaml](#metadatayaml)
+
 ## project.yaml
 
 **Location:** `.specify/project.yaml`
 **Created by:** `/spec:init` (via `specify init`)
 **Edited by:** Operator (directly)
 
-Project-level configuration that persists across changes. Two shapes -- the regular project shape (default) and the hub shape (`specify init --hub`, RFC-9 Section 1D).
+Project-level configuration that persists across changes. Two shapes -- the regular project shape (default) and the hub shape (`specify init --hub`).
 
 ### Regular project shape
 
@@ -48,7 +56,7 @@ A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `hub` | Yes | `true`. The presence of this flag (paired with the **absence** of `capability:`) is the post-RFC-13 hub sentinel — it disables capability resolution on the hub and triggers `Registry::validate_shape` to reject `url: .` entries with `hub-cannot-be-project`. |
+| `hub` | Yes | `true`. The presence of this flag (paired with the **absence** of `capability:`) is the hub sentinel — it disables capability resolution on the hub and triggers `Registry::validate_shape` to reject `url: .` entries with `hub-cannot-be-project`. |
 | `capability` | -- | **Omitted.** A hub has no capability — its absence is what tells the CLI to skip capability resolution and the per-project phase pipelines. |
 | `rules` | -- | Omitted -- a hub has no phase pipelines to scaffold. |
 
@@ -78,7 +86,7 @@ changes:
     project: api
 
   - name: auth-api-contract
-    schema: contracts@v1
+    capability: contracts@v1
     description: "Define the auth API contract"
     depends-on: [extract-auth]
     status: pending
@@ -113,10 +121,10 @@ changes:
 | `depends-on` | No | List of slice names that must be `done` first |
 | `sources` | No | List of source keys from the top-level `sources` |
 | `status` | Yes | Current state: `pending`, `in-progress`, `done`, `failed`, `blocked`, `skipped` |
-| `schema` | No | Plan-entry schema identifier for project-less entries (e.g. `contracts@v1`). Required when `project` is absent. The `schema:` key on a `plan.yaml` entry is intentionally kept as-is by [RFC-13](../../rfcs/archive/rfc-13-extensibility.md) — it identifies the artefact-path identifier the entry targets, not the capability that owns the work; revisited as part of the slice → slice rename in a later phase. |
+| `capability` | No | Plan-entry capability identifier for project-less entries (e.g. `contracts@v1`). Required when `project` is absent. The `capability:` key on a `plan.yaml` entry identifies the artefact-path identifier the entry targets, not the capability that owns the work. |
 | `context` | No | List of baseline paths (relative to `.specify/`) relevant to this slice. Used by briefs as a focus hint when scanning baseline directories. |
 | `status-reason` | No | Explanation for non-happy-path status |
-| `project` | No | Registry project name (multi-repo only, see RFC-3b). Each entry must have at least one of `project` or `schema`. |
+| `project` | No | Registry project name (multi-repo only). Each entry must have at least one of `project` or `capability`. |
 
 ## registry.yaml
 
@@ -131,7 +139,7 @@ version: 1
 projects:
   - name: traffic
     url: git@github.com:org/traffic.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       Real-time traffic ingestion and route optimisation.
       Owns Kafka consumers, the routing engine, and the
@@ -139,14 +147,14 @@ projects:
 
   - name: command-centre
     url: git@github.com:org/command-centre.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       Operator dashboard and alerting. Owns the web UI,
       notification dispatch, and escalation workflows.
 
   - name: mobile
     url: ../mobile
-    schema: vectis@v1
+    capability: vectis@v1
     description: >
       iOS and Android mobile application for field operators.
 ```
@@ -156,7 +164,7 @@ projects:
 | `version` | Yes | Schema version (currently `1`) |
 | `projects[].name` | Yes | Project identifier (kebab-case) |
 | `projects[].url` | Yes | Clone URL or relative path. For local paths, `workspace push` reads `git remote get-url origin` to discover the push target. |
-| `projects[].schema` | Yes | Capability identifier or URL for this project. (The YAML key remains spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/archive/rfc-13-extensibility.md).) |
+| `projects[].capability` | Yes | Capability identifier or URL for this project. The YAML key is spelled `capability:`; the value is a capability identifier. |
 | `projects[].description` | Conditional | Required when multiple projects exist. Describes the project's business domain. |
 
 ## change.md
@@ -202,7 +210,7 @@ Per-slice lifecycle metadata. **Never hand-edit this file.**
 status: building
 created_at: "2026-04-24T10:30:00Z"
 updated_at: "2026-04-24T11:15:00Z"
-schema: https://github.com/augentic/specify/capabilities/omnia
+capability: https://github.com/augentic/specify/capabilities/omnia
 touched_specs:
   - specs/greeting/spec.md
 outcome: null
@@ -213,6 +221,6 @@ outcome: null
 | `status` | Current lifecycle state |
 | `created_at` | ISO 8601 creation timestamp |
 | `updated_at` | ISO 8601 last-transition timestamp |
-| `schema` | Capability identifier or URL used for this slice. (The YAML key remains spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/archive/rfc-13-extensibility.md).) |
+| `capability` | Capability identifier or URL used for this slice. The YAML key is spelled `capability:`; the value is a capability identifier. |
 | `touched_specs` | Spec files this slice affects |
 | `outcome` | Phase outcome: `success`, `failure`, `deferred`, or `null` |

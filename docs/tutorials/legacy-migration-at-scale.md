@@ -4,6 +4,17 @@ Migrating a large legacy codebase is one of the most demanding uses of Specify. 
 
 **Prerequisites:** Familiarity with [multi-slice changes](single-repo-change.md) and [cross-repo planning](cross-repo-change.md).
 
+## Contents
+
+- [The scaling challenge](#the-scaling-challenge)
+- [1. Set up the registry](#1-set-up-the-registry)
+- [2. Plan the migration](#2-plan-the-migration)
+- [3. Handle tangled code](#3-handle-tangled-code)
+- [4. Execute the migration](#4-execute-the-migration)
+- [5. Mix extraction and greenfield slices](#5-mix-extraction-and-greenfield-slices)
+- [The migration workflow](#the-migration-workflow)
+- [What you learned](#what-you-learned)
+
 ## The scaling challenge
 
 A legacy monolith might have hundreds of thousands of lines of code. You cannot extract full specs from the entire codebase in one pass -- it would be too slow, too expensive, and the output would be overwhelming.
@@ -27,21 +38,21 @@ version: 1
 projects:
   - name: auth-service
     url: git@github.com:org/auth-service.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       Authentication and authorization. Token management,
       OAuth providers, session handling, RBAC.
 
   - name: order-service
     url: git@github.com:org/order-service.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       Order processing. Cart management, checkout flow,
       payment integration, order lifecycle.
 
   - name: notification-service
     url: git@github.com:org/notification-service.git
-    schema: omnia@v1
+    capability: omnia@v1
     description: >
       Notification dispatch. Email, SMS, push notifications,
       template management, delivery tracking.

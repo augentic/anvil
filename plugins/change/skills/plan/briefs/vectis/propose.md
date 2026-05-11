@@ -24,7 +24,7 @@ Vectis is a Crux stack: one Rust shared core crate with an `App` trait that is c
    - one SwiftUI view or binding per iOS capability,
    - one Compose view or binding per Android capability,
    - optionally, one UI-input slice per artifact (`tokens.yaml`, `assets.yaml`, or `layout.yaml`) when heuristic 2 promotes the work.
-   Never merge two independently-shippable shell views into a single entry; never split a single `App` trait across entries; never bundle two distinct UI-input artifacts (e.g. `tokens.yaml` AND `assets.yaml`) into a single slice — they are validated and reviewed independently by `specify tool run vectis-validate -- tokens` / `assets`.
+   Never merge two independently-shippable shell views into a single entry; never split a single `App` trait across entries; never bundle two distinct UI-input artifacts (e.g. `tokens.yaml` AND `assets.yaml`) into a single slice — they are validated and reviewed independently by `specify tool run vectis -- validate tokens` / `assets`.
 5. **iOS and Android shells are siblings.** iOS-shell and Android-shell entries never depend on each other directly — both depend on the same shared-core ancestors plus any UI-input slices that were promoted under heuristic 2. Present iOS entries before Android in the draft order (alphabetical tie-break by capability name), but dependency edges never cross the two shells.
 6. **Cross-cutting refactors are their own entries.** "Extract a shared ViewModel adapter", "consolidate `Command` error types", or similar horizontal work becomes a discrete plan entry with explicit `depends-on` edges from the feature entries that need it — never folded into a feature slice. Present cross-cutting entries immediately before the feature entries that seed their `depends-on` edges so rejects only trim drafts (never already-written entries).
 7. **Dependency edges follow capability ordering hints.** If discovery records "depends on X" or "consumes X" on a capability, the proposed entry inherits a `--depends-on X` flag unless X is rejected during review, in which case the edge is dropped with a note in `proposal.md`.
@@ -38,7 +38,7 @@ When the assignment step (3(d)) routes an entry to a project that does not yet e
 
 ### Resulting draft order
 
-For a two-platform initiative with two shared-core capabilities and matching iOS + Android views, with no independently-reviewable UI-input work in scope, the heuristic produces the following draft order:
+For a two-platform change with two shared-core capabilities and matching iOS + Android views, with no independently-reviewable UI-input work in scope, the heuristic produces the following draft order:
 
 ```text
 1. <name>-core                    (shared core; leaves first)
@@ -82,7 +82,7 @@ Present slices in the order the heuristics produce (shared-core first, then any 
 Write `.specify/plans/<name>/proposal.md` regardless of per-slice decisions — the proposal is the audit trail of the authoring run. Shape:
 
 ```markdown
-# Proposal — <initiative-name>
+# Proposal — <change-name>
 
 ## Slices
 

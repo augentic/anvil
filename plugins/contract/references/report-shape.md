@@ -84,7 +84,7 @@ WARN: contracts/schemas/payment.yaml — "$schema" is Draft 7; expected Draft 20
 
 ```json
 {
-  "schema-version": 3,
+  "envelope-version": 3,
   "change": "user-api-v2",
   "checked-pairs": 1,
   "ok": false,
@@ -114,7 +114,7 @@ WARN: contracts/schemas/payment.yaml — "$schema" is Draft 7; expected Draft 20
 
 ```json
 {
-  "schema-version": 3,
+  "envelope-version": 3,
   "change": "user-api-v2",
   "checked-pairs": 0,
   "ok": true,
@@ -135,7 +135,7 @@ The report is well-formed even when empty.
 
 | Field | Type | Description |
 |---|---|---|
-| `schema-version` | integer | Standard Specify CLI JSON envelope version. |
+| `envelope-version` | integer | Standard Specify CLI JSON envelope version. |
 | `change` | string | Change name supplied with `--change`; absent for `compatibility check`. |
 | `checked-pairs` | integer | Number of producer / consumer contract pairs inspected. |
 | `ok` | boolean | `true` iff no `breaking`, `ambiguous`, or `unverifiable` findings are present. |

@@ -9,7 +9,7 @@ sources:
 changes:
   - name: migrate-foo-contract
     status: done
-    schema: contracts@v1
+    capability: contracts@v1
     sources: [monolith]
     description: |
       Define the cross-project HTTP contract between foo-backend and

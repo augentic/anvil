@@ -2,6 +2,16 @@
 
 This is the definitive reference for the structure and conventions of Specify artifacts. For a high-level overview, see [Artifacts in Depth](../explanation/artifacts.md).
 
+## Contents
+
+- [Spec files (behavioral "what")](#spec-files-behavioral-what)
+- [Design document (technical "how")](#design-document-technical-how)
+- [Proposal document](#proposal-document)
+- [Tasks document](#tasks-document)
+- [Composition document (Vectis only)](#composition-document-vectis-only)
+- [Contract artifacts (API "shape")](#contract-artifacts-api-shape)
+- [Validation checklists](#validation-checklists)
+
 ## Spec files (behavioral "what")
 
 One spec file per capability, at `specs/<name>/spec.md`.
@@ -240,12 +250,10 @@ Tasks without a skill tag are implemented via the capability's default build ins
 
 ### Layout vs composition
 
-RFC-11 split the pre-define and post-define surfaces into two sibling artifacts; both share the same JSON Schema:
+The pre-define and post-define surfaces are two sibling artifacts that share the same JSON Schema:
 
-- **`layout.yaml` (unwired layout input)** — regions, group hierarchy, gap / padding / align / size, token references, asset references, and the optional cross-shell `component: <slug>` directive, *without* the wiring keys above. Produced by layout inferers ([`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers per RFC-11 §B/D) or hand-authored. Validated by `specify tool run vectis-validate -- layout`, which enforces the unwired-subset rule and the RFC-11 §G structural-identity rule.
-- **`composition.yaml` (wired lifecycle artifact)** — the same regions enriched with the wiring keys above. Produced by the define pipeline (the composition brief reads `layout.yaml` when present) and consumed by shell writers. Validated by `specify tool run vectis-validate -- composition`, which auto-invokes `tokens` / `assets` modes when sibling manifests exist.
-
-(RFC-7 expressed this distinction as "skeleton mode" vs "wired mode" of a single `composition.yaml`; RFC-11 made the boundary explicit by separating the filenames.)
+- **`layout.yaml` (unwired layout input)** — regions, group hierarchy, gap / padding / align / size, token references, asset references, and the optional cross-shell `component: <slug>` directive, *without* the wiring keys above. Produced by layout inferers ([`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers) or hand-authored. Validated by `specify tool run vectis -- validate layout`, which enforces the unwired-subset rule and the structural-identity rule.
+- **`composition.yaml` (wired lifecycle artifact)** — the same regions enriched with the wiring keys above. Produced by the define pipeline (the composition brief reads `layout.yaml` when present) and consumed by shell writers. Validated by `specify tool run vectis -- validate composition`, which auto-invokes `tokens` / `assets` modes when sibling manifests exist.
 
 ### Format
 
@@ -330,7 +338,7 @@ delta:
 - Every shell-facing Event should have an `event` wiring (composition.yaml only).
 - `event` values follow PascalCase: `EventName` or `EventName(arg1, arg2)`.
 
-For the full schema definition and item vocabulary, see [RFC-7](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md).
+For the full schema definition and item vocabulary, see the [Vectis composition schema](../../capabilities/vectis/composition.schema.json).
 
 ## Contract artifacts (API "shape")
 

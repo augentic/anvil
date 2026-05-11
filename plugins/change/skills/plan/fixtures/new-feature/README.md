@@ -1,6 +1,6 @@
 # `--shape new-feature` — `dark-mode` end-to-end
 
-This fixture pins the **happy path** of `/change:plan <name> orchestrate` (formerly `/spec:initiative`) driving the `new-feature` shape against a populated multi-project hub. Sources arrive via `from <docs>` only; the registry is already populated, so step 3 routes work to existing projects without any registry mutation. Step 6 lists open PRs and stops, and the operator re-runs the umbrella after merging by hand to land step 7.
+This fixture pins the **happy path** of `/change:plan <name> orchestrate` driving the `new-feature` shape against a populated multi-project hub. Sources arrive via `from <docs>` only; the registry is already populated, so step 3 routes work to existing projects without any registry mutation. Step 6 lists open PRs and stops, and the operator re-runs the umbrella after merging by hand to land step 7.
 
 ## Scenario
 
@@ -69,12 +69,11 @@ The umbrella inspects on-disk state, sees the brief present, the plan terminal, 
 ## Key invariants
 
 - **No registry mutation under `new-feature`.** Both projects exist in the registry at start; assignment routes work to them without any `specify registry add` shell-out. The 2B registry-proposal sub-step does not fire.
-- **Step 6 stops for operator merge.** The umbrella never invokes `gh pr merge` or `specify workspace merge`. It surfaces the list of open PRs and exits zero — the operator merges by hand and re-runs to finalize.
+- **Step 6 stops for operator merge.** The umbrella surfaces the list of open PRs and exits zero — the operator merges by hand and re-runs to finalize.
 - **Re-entry is idempotent.** The second run skips steps 1–6 (each shell-out underneath is idempotent: `specify change create` refuses on populated brief, `/change:plan` would refuse without `extend` but the umbrella never re-enters `/change:plan` because the plan is already terminal, `specify workspace push` reports `up-to-date`) and lands directly at step 7.
-- **Verb hygiene.** Every shell-out in [`transcript.md`](transcript.md) uses post-Phase-3 verbs (`specify change {create, finalize}`, `specify change plan {add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`, `gh pr view`).
+- **Verb hygiene.** Every shell-out in [`transcript.md`](transcript.md) uses current verbs (`specify change {create, finalize}`, `specify change plan {add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`, `gh pr view`).
 
 ## Counter-examples (not pinned)
 
-- Supplying retired `--auto-merge` — the skill exits non-zero before side effects.
 - A halt at step 4 with `registry-amendment-required` (operator decides one of the slices needs a new project mid-execute) — recovery is documented in the SKILL but not pinned here.
 - A `--dry-run` rendering — see [§`--dry-run` semantics](../../SKILL.md#--dry-run-semantics).

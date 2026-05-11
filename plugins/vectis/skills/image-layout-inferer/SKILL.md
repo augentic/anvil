@@ -1,7 +1,7 @@
 ---
 name: vectis-image-layout-inferer
-description: Reconstructs `layout.yaml` from one or more screenshot images using a staged vision-assisted pipeline (triage, chrome cropping, region / container / leaf inference, conservative `component:` emission, gap reporting), validates the output via `specify tool run vectis-validate -- layout`, and folds cross-artifact reference checks against sibling `tokens.yaml` / `assets.yaml` when present. Use when an operator supplies PNG or JPEG screenshots and wants a schema-valid, unwired layout document `/spec:define` can later wire into `composition.yaml`, when refining an existing `layout.yaml` from new screenshot evidence, or when the user mentions image-layout-inferer.
-argument-hint: "<image-paths>"
+description: Reconstruct an unwired `layout.yaml` from screenshot images via a staged vision pipeline (triage, cropping, region / container / leaf inference, `component:` emission, gap reporting); validate via `specify tool run vectis` and cross-check sibling `tokens.yaml` / `assets.yaml`. Use when screenshots are the only source for a layout `/spec:define` will wire into `composition.yaml`, or when an existing layout needs new visual evidence; not when `layout.yaml` is already the source of truth.
+argument-hint: <image-path>...
 ---
 
 # Vectis Image Layout Inferer
@@ -12,14 +12,14 @@ This skill is a layout recovery tool, not a visual design extraction tool. It do
 
 The producer surface every layout inferer shares (arguments, output rules, idempotence rules, `component: <slug>` emission policy, verification verbs, terminal-summary contents) lives in the shared contract: [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md). Read that document first; this SKILL.md adds only image-specific guidance on top.
 
-## Critical Path (Quick Reference)
+## Critical Path
 
-1. Run the **vision prerequisite check** by attempting to read at least one input image through the agent runtime's native attachment / file-read mechanism (RFC-11 §C). If the runtime cannot inspect images, exit 1 with the supported-runtimes message — never fall back to filename-based inference.
+1. Run the **vision prerequisite check** by attempting to read at least one input image through the agent runtime's native attachment / file-read mechanism. If the runtime cannot inspect images, exit 1 with the supported-runtimes message — never fall back to filename-based inference.
 2. **Triage and crop.** Group inputs into screens / states, then crop platform chrome (status bars, navigation bars, browser chrome, emulator frames) when `platform` is supplied or detected.
 3. **Stage the recovery.** Walk top-down: regions (header / body / footer / fab / overlays / state replacements) → containers (rows, columns, lists, grids, cards, padding, gap, alignment, sizing, surface decoration) → leaves (text, controls, images, icons, fields).
 4. **Detect candidate components conservatively.** Compare groups across screens for structural identity (§G); emit `component: <slug>` only when the operator confirms it or the same skeleton appears in **≥2 screens of the same run**, otherwise leave a `# candidate component: <slug>` comment. See [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md#component-directive-emission).
 5. **Reference siblings, never invent.** Use `tokens.yaml` / `assets.yaml` names only when they already resolve; otherwise emit raw values plus `# TODO` comments and a gap entry.
-6. **Stage, validate, then rename.** Write the inferred YAML to `<output-path>.tmp`, run `specify tool run vectis-validate -- layout <output-path>.tmp` (and `specify tool run vectis-validate -- composition <output-path>.tmp` when sibling token / asset manifests exist), and only on a clean / warnings-only result atomically rename onto `<output-path>`. Errors delete the staging file and exit non-zero; the previous `<output-path>` is preserved untouched.
+6. **Stage, validate, then rename.** Write the inferred YAML to `<output-path>.tmp`, run `specify tool run vectis -- validate layout <output-path>.tmp` (and `specify tool run vectis -- validate composition <output-path>.tmp` when sibling token / asset manifests exist), and only on a clean / warnings-only result atomically rename onto `<output-path>`. Errors delete the staging file and exit non-zero; the previous `<output-path>` is preserved untouched.
 7. **Print the terminal summary** named in the contract: screens added, screens refined, warnings, unresolved gaps, source provenance entries appended, candidate components, exact output path.
 
 ## Authority Hierarchy
@@ -64,7 +64,7 @@ and re-run.
 
 ## Pipeline
 
-The pipeline mirrors RFC-11 §C and runs top-down. Each stage produces evidence the next stage refines; comments record uncertainty so the operator can act on it without re-running.
+The pipeline runs top-down. Each stage produces evidence the next stage refines; comments record uncertainty so the operator can act on it without re-running.
 
 ### 1. Triage
 
@@ -192,12 +192,12 @@ Detection rule: if `baseline` is supplied OR a file exists at the resolved `outp
 Verification is the contract's deterministic gate; full surface — including the stage-then-validate-then-rename rationale — lives in [`references/layout-inferer-contract.md`](references/layout-inferer-contract.md#verification). The validator reads its input from disk, so the image inferer MUST:
 
 1. Write the inferred YAML to a sibling staging path (`<output-path>.tmp`) instead of writing `<output-path>` directly. Refine runs MUST stage even when an existing `<output-path>` already validates clean, otherwise the validator inspects the prior content rather than the new content.
-2. Run `specify tool run vectis-validate -- layout <output-path>.tmp` against the staging path explicitly (do not rely on default-path resolution here). Errors MUST block the rename; warnings MUST be forwarded into the terminal summary but do not block.
-3. Run `specify tool run vectis-validate -- composition <output-path>.tmp` against the same staging path whenever a sibling `tokens.yaml` or `assets.yaml` exists at the canonical slice-local or project-level paths. The CLI auto-invokes the `tokens` and `assets` modes when those siblings exist; reports surface in the same envelope and fold into the same rename-blocking gate.
+2. Run `specify tool run vectis -- validate layout <output-path>.tmp` against the staging path explicitly (do not rely on default-path resolution here). Errors MUST block the rename; warnings MUST be forwarded into the terminal summary but do not block.
+3. Run `specify tool run vectis -- validate composition <output-path>.tmp` against the same staging path whenever a sibling `tokens.yaml` or `assets.yaml` exists at the canonical slice-local or project-level paths. The CLI auto-invokes the `tokens` and `assets` modes when those siblings exist; reports surface in the same envelope and fold into the same rename-blocking gate.
 4. On a clean or warnings-only result, atomically rename `<output-path>.tmp` onto `<output-path>`. On errors, delete the staging file and exit non-zero — the previous `<output-path>` (if any) is left untouched.
 5. Surface the validator output verbatim into the terminal summary (the operator should never have to re-run validation by hand to see what failed).
 
-The skill MUST NOT roll its own schema, structural-identity, or cross-artifact reference validation. Every check the contract requires has an authoritative `specify tool run vectis-validate -- <mode>` command; reimplementing them in skill prose causes drift.
+The skill MUST NOT roll its own schema, structural-identity, or cross-artifact reference validation. Every check the contract requires has an authoritative `specify tool run vectis -- validate <mode>` command; reimplementing them in skill prose causes drift.
 
 Exit semantics:
 
@@ -211,7 +211,7 @@ Every run MUST conclude with the seven-item summary named in the contract ([`ref
 
 1. Screens added.
 2. Screens refined.
-3. Warnings (including stale-source and stale-directive warnings, plus warnings forwarded from `specify tool run vectis-validate -- layout` / `composition`).
+3. Warnings (including stale-source and stale-directive warnings, plus warnings forwarded from `specify tool run vectis -- validate layout` / `composition`).
 4. Unresolved gaps (every `# TODO` and `# candidate component` comment emitted in this run, plus unresolved token / asset references).
 5. Source provenance entries appended (one line per `provenance.sources[]` entry written — `kind: screenshots` for an image run, with the input image count).
 6. Candidate components — both directives emitted (`component: <slug>` written into the YAML) and `# candidate component: <slug>` comments left for operator review.
@@ -231,13 +231,13 @@ The skill ships paired regression fixtures under `fixtures/<name>/`:
 - `fixtures/<name>/input.png` — the screenshot bundle that exercises a recovery path.
 - `fixtures/<name>/expected.layout.yaml` — the layout the pipeline should produce.
 
-Fixtures are operator-runnable references: they exist so a reviewer can replay the pipeline against a known input and diff against an accepted output. v1 does **not** enforce these in `make checks` (RFC-11 §C); a future RFC may promote them into a CI gate once the runner shape is established.
+Fixtures are operator-runnable references: they exist so a reviewer can replay the pipeline against a known input and diff against an accepted output. v1 does **not** enforce these in `make checks`; a future change may promote them into a CI gate once the runner shape is established.
 
 When adding a fixture, follow the existing convention:
 
 - Use a synthetic graphic (no real product screenshots, no third-party imagery).
 - Cover at least one new pipeline branch (e.g. a new region kind, a new state replacement, a new candidate-component skeleton).
-- The expected YAML MUST validate cleanly under `specify tool run vectis-validate -- layout fixtures/<name>/expected.layout.yaml`.
+- The expected YAML MUST validate cleanly under `specify tool run vectis -- validate layout fixtures/<name>/expected.layout.yaml`.
 
 ## Operator ergonomics
 

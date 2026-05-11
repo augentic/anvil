@@ -1,6 +1,6 @@
 # specify change plan
 
-Scaffold, populate, validate, transition, and archive change plans. The `plan` subresource lives under `specify change` (RFC-13 §3.5 folded the previous top-level `specify plan *` group under the change umbrella). Each verb on this page is invoked as `specify change plan <verb>`.
+Scaffold, populate, validate, transition, and archive change plans. The `plan` subresource lives under `specify change`; each verb on this page is invoked as `specify change plan <verb>`.
 
 ## Verb cheat-sheet
 
@@ -37,16 +37,16 @@ Check structural and referential integrity of the plan.
 specify change plan validate
 ```
 
-Checks for: duplicate entry names, dependency cycles, unknown `depends-on` / `sources` references, at most one `in-progress` entry, and the following RFC-3b cross-registry checks when `registry.yaml` is present:
+Checks for: duplicate entry names, dependency cycles, unknown `depends-on` / `sources` references, at most one `in-progress` entry, and the following cross-registry checks when `registry.yaml` is present:
 
 - `project-not-in-registry` (error) -- every `project` value must match a `projects[].name` in the registry.
 - `project-missing-multi-repo` (error) -- when the registry has multiple projects, every change must carry a `project` field.
 - `description-missing-multi-repo` (error) -- when the registry has multiple projects, every project must carry a `description`.
-- `schema-mismatch-workspace` (warning) -- a workspace clone's `project.yaml` declares a different schema than the corresponding registry entry.
+- `capability-mismatch-workspace` (warning) -- a workspace clone's `project.yaml` declares a different schema than the corresponding registry entry.
 
 ### specify change plan doctor
 
-Diagnose plan health (RFC-9 §4B). `doctor` is a strict superset of `validate`: it runs every check `validate` runs (preserving every diagnostic code listed above) and then layers four additional health diagnostics on top.
+Diagnose plan health. `doctor` is a strict superset of `validate`: it runs every check `validate` runs (preserving every diagnostic code listed above) and then layers four additional health diagnostics on top.
 
 ```bash
 specify change plan doctor
@@ -56,7 +56,7 @@ specify change plan doctor
 |------|----------|---------|----------|
 | `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; doctor is the only place where the cycle structure surfaces. Payload carries the cycle path, e.g. `["a", "b", "a"]`. | `specify change plan amend <name> --depends-on …` to break the cycle, then re-run doctor. |
 | `orphan-source-key` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list or remove the declaration. |
-| `stale-workspace-clone` | warning | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or schema diverged) or `missing-sync-stamp` (no stamp file and no readable git remote). | `specify workspace sync` to refresh the clone. |
+| `stale-workspace-clone` | warning | Workspace clone's signature has drifted from the registry, or no signature is readable at all. Reason is one of `signature-changed` (URL or capability diverged) or `missing-sync-stamp` (no stamp file and no readable git remote). | `specify workspace sync` to refresh the clone. |
 | `unreachable-entry` | error | Pending entry whose dependency closure is rooted in a `failed`/`skipped` predecessor. Payload lists the immediate blocking predecessors and their statuses. | `specify change plan transition <pred> pending` (after fixing the underlying issue) or `specify change plan transition <entry> skipped --reason …` to drop the leaf. |
 
 JSON output (`--format json`) wraps the rows under `diagnostics:` with a top-level `ok:` boolean (`false` whenever any error-severity diagnostic was emitted). Each row carries `severity`, `code`, `message`, optional `entry`, and an optional structured `data` payload (`kind` is one of `cycle` / `orphan-source` / `stale-clone` / `unreachable-entry`). Validate-level findings carry no `data` field; doctor-only diagnostics always do.

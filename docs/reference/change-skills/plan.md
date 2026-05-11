@@ -55,12 +55,12 @@ The skill runs a fixed flow:
 
 `/change:plan` automatically determines how API contracts enter the plan based on registry topology, source declarations, and API boundary detection. Three patterns emerge:
 
-**Contract-first (dedicated contract slice).** When the plan contains slices in multiple projects that share an API boundary, `/change:plan` inserts a dedicated contract slice before the implementation slices on both sides. The contract slice uses `schema: contracts@v1` (no `project`) and defines interface-level behavioral specs. Implementation slices `depends-on` the contract slice and validate alignment:
+**Contract-first (dedicated contract slice).** When the plan contains slices in multiple projects that share an API boundary, `/change:plan` inserts a dedicated contract slice before the implementation slices on both sides. The contract slice uses `capability: contracts@v1` (no `project`) and defines interface-level behavioral specs. Implementation slices `depends-on` the contract slice and validate alignment:
 
 ```yaml
 changes:
   - name: user-api-contract
-    schema: contracts@v1
+    capability: contracts@v1
     description: "Define the user registration API contract"
     status: pending
 
@@ -79,7 +79,7 @@ changes:
 
 **Spec-first (inline derivation).** For single-repo slices with no identified API boundary and no external consumers, no separate contract slice is inserted. The `contracts` brief derives interface shapes inline during the slice's define phase.
 
-After the loop, runs `specify change plan validate` to check structural integrity (no cycles, no dangling dependencies) and the RFC-3b cross-registry checks (`project-not-in-registry`, `project-missing-multi-repo`, `description-missing-multi-repo`, `schema-mismatch-workspace`).
+After the loop, runs `specify change plan validate` to check structural integrity (no cycles, no dangling dependencies) and the cross-registry checks (`project-not-in-registry`, `project-missing-multi-repo`, `description-missing-multi-repo`, `capability-mismatch-workspace`).
 
 ## Lifecycle transitions
 

@@ -99,4 +99,4 @@ specify change plan status         # review the plan
 - [/change:plan](plan.md) -- author the plan that execute consumes
 - [/spec:define](../slice-skills/define.md), [/spec:build](../slice-skills/build.md), [/spec:merge](../slice-skills/merge.md) -- the skills invoked per slice
 - [Lifecycle](../lifecycle.md) -- plan entry states
-- [Troubleshooting](../../appendices/troubleshooting.md) -- self-heal, lock issues
+- [Troubleshooting](../../how-to/troubleshooting/index.md) -- self-heal, lock issues

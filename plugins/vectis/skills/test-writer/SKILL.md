@@ -1,12 +1,12 @@
 ---
 name: vectis-test-writer
-description: "Generate or update test suites for Crux shared crates from Specify artifacts -- spec-to-test mapping, traceability, drift detection, and synchronous Crux testing patterns. Use when implementing test tasks from a Specify change, regenerating tests after a core update, or when the user mentions `test-writer`."
+description: "Generate or update test suites for Crux shared crates from Specify artifacts -- spec-to-test mapping, traceability, drift detection, and synchronous Crux testing patterns. Use when a Vectis slice has pending Crux test tasks, or when an existing test suite needs to be regenerated after a core update; not for the core itself (`core-writer`) or platform-shell tests."
 argument-hint: "[feature-name]"
 ---
 
 # Crux Test Writer
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Resolve mode and inputs** — derive `$FEATURE_NAME`, `$SPEC_PATH`, `$DESIGN_PATH`, `$APP_RS`, then choose create, update, or repair mode from traceability comments or caller input.
 2. **Read references and artifacts** — load spec-to-test mapping, Crux testing patterns, the feature spec, design.md, and `app.rs` before writing tests.

@@ -6,6 +6,19 @@ When a body of work spans multiple related slices -- a migration, a new feature 
 
 > **Choosing your topology.** This tutorial is for **single-repo** work -- one project under `/spec:init` with phase pipelines enabled, no platform hub. If your change spans two or more repos (e.g. backend + mobile), use the platform-hub topology instead -- see [Cross-Repo Changes](cross-repo-change.md). The platform-as-project shape (single-repo with `url: .` in `registry.yaml`) is also valid; see [Platform repo topologies](../explanation/platform-repo.md) for the comparison.
 
+## Contents
+
+- [When you need a plan](#when-you-need-a-plan)
+- [1. Author the plan](#1-author-the-plan)
+- [2. Review the plan](#2-review-the-plan)
+- [3. Preview execution](#3-preview-execution)
+- [4. Run one slice](#4-run-one-slice)
+- [5. Run until completion](#5-run-until-completion)
+- [6. Handle failures](#6-handle-failures)
+- [7. Drop down a layer](#7-drop-down-a-layer)
+- [What you learned](#what-you-learned)
+- [Next](#next)
+
 ## When you need a plan
 
 A plan is useful when:
@@ -192,7 +205,7 @@ specify change plan transition add-oauth-integration in-progress
 specify change plan transition add-oauth-integration done
 ```
 
-The plan is just a data file that tracks status. The Layer 1 CLI commands give you full control.
+The plan is just a data file that tracks status. The CLI commands give you full control.
 
 ## What you learned
 
@@ -201,7 +214,7 @@ The plan is just a data file that tracks status. The Layer 1 CLI commands give y
 - `/change:execute` automates the define-build-merge loop per slice.
 - `--dry-run` previews, bare invocation runs one slice, `--loop` runs until done.
 - Failures transition plan entries to `failed`. You can reset, skip, or restructure.
-- Layer 1 CLI commands are always available as manual fallback.
+- The `specify` CLI is always available as a manual fallback.
 
 ## Next
 

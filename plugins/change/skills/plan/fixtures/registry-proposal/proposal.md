@@ -26,7 +26,7 @@ The registry-proposal sub-step (step 3(d).1) added one new project to `registry.
 
 Trigger: `alpha-gateway-extract` was unresolved during step 3(d) — no existing project (`legacy-monolith`, `command-centre`) was a clean owner for the gateway capability. The operator opted to create a new project rather than route the slice to one of the incumbents. Subsequent shell-outs ran in this exact order:
 
-1. `specify registry add alpha-gateway --url git@github.com:augentic/alpha-gateway.git --schema omnia@v1 --description "Inbound traffic gateway carved out of the monolith's edge layer."`
+1. `specify registry add alpha-gateway --url git@github.com:augentic/alpha-gateway.git --capability omnia@v1 --description "Inbound traffic gateway carved out of the monolith's edge layer."`
 2. `specify workspace sync`
 3. `specify change plan amend alpha-gateway-extract --project alpha-gateway`
 

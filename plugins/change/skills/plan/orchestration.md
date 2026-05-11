@@ -1,10 +1,10 @@
 # Orchestration mode (`--orchestrate`)
 
-When invoked with `--orchestrate`, `/change:plan` runs the full Layer 4 umbrella sequence: brief → registry validate → plan author → execute --loop → workspace push / PR handoff → change finalize after operator merge. This is the cross-repo umbrella driver formerly exposed as the v1 `/spec:initiative create` skill.
+When invoked with `--orchestrate`, `/change:plan` runs the full umbrella sequence: brief → registry validate → plan author → execute --loop → workspace push / PR handoff → change finalize after operator merge.
 
-`--orchestrate` is **composition only**. Every step shells out to a verb that already exists in the v1 CLI surface or to another Layer 3 / Layer 2 surface. The orchestration mode adds no new logic, owns no new on-disk state, and never invents a CLI verb. Any deviation from the underlying skill's behaviour is a bug in the underlying skill, not in this mode.
+`--orchestrate` is **composition only**. Every step shells out to an existing CLI verb or another skill surface. The orchestration mode adds no new logic, owns no new on-disk state, and never invents a CLI verb. Any deviation from the underlying skill's behaviour is a bug in the underlying skill, not in this mode.
 
-> **Status.** Layer 4 is fully landed (RFC-9 §2C). The mode honours every halt the underlying skills surface (self-heal, `stuck`, `registry-amendment-required`), is **idempotent on re-entry** (running it again resumes from the first incomplete step), and supports the three canonical change shapes — `migrate-legacy`, `new-feature`, `update-existing` — through a single uniform sequence. See [shapes.md](shapes.md) for the shape inference and validation rules; see [re-entry.md](re-entry.md) for the idempotent re-entry algorithm.
+> **Status.** The mode honours every halt the underlying skills surface (self-heal, `stuck`, `registry-amendment-required`), is **idempotent on re-entry** (running it again resumes from the first incomplete step), and supports the three canonical change shapes — `migrate-legacy`, `new-feature`, `update-existing` — through a single uniform sequence. See [shapes.md](shapes.md) for the shape inference and validation rules; see [re-entry.md](re-entry.md) for the idempotent re-entry algorithm.
 
 ## On-disk contracts
 
@@ -26,12 +26,11 @@ Run **all** of the following before any side-effect. Any failure exits non-zero 
 1. **Hub presence.** Walk upward from CWD for `.specify/project.yaml`. Absent → exit non-zero pointing the operator at `/spec:init` (and, for cross-repo work, `/spec:init` with the hub option per [Platform repo topologies](../../../../docs/explanation/platform-repo.md)).
 2. **`specify` binary.** `which specify`. Missing → exit non-zero pointing the operator at the [installation instructions](../../../../docs/orientation/prerequisites.md). The skill does not attempt a prose fallback — every step depends on the binary.
 3. **`<name>` validation.** Reject any value not matching `^[a-z][a-z0-9-]*$`.
-4. **Retired `--auto-merge` flag.** If supplied, exit non-zero before any side effect. The diagnostic MUST say `/change:plan <name> orchestrate` never calls `specify workspace merge` or `gh pr merge`; operators merge PRs through the forge UI or an explicit hand-run `gh pr merge`, then re-run to finalize.
-5. **Shape resolution.** Apply the rules in [shapes.md](shapes.md) to pin a single shape value before step 1. Conflicts (e.g. explicit `--shape new-feature` with `--source ...`) are hard exits.
+4. **Shape resolution.** Apply the rules in [shapes.md](shapes.md) to pin a single shape value before step 1. Conflicts (e.g. explicit `--shape new-feature` with `--source ...`) are hard exits.
 
 ## Internal sequence (composition only)
 
-The seven steps below are normative. Each step lists its **invocation**, the **halts** it can surface, the **manual-fallback** sequence an operator would run by hand to perform the same step, and the **failure recovery** rule when the step exits non-zero. Step 6 is intentionally observe-only: `specify workspace merge` has been removed and MUST NOT be called by orchestration.
+The seven steps below are normative. Each step lists its **invocation**, the **halts** it can surface, the **manual-fallback** sequence an operator would run by hand to perform the same step, and the **failure recovery** rule when the step exits non-zero. Step 6 is intentionally observe-only: orchestration opens or updates PRs, then waits for the operator to merge them.
 
 ### Step 1 — Brief
 
@@ -65,7 +64,7 @@ specify registry validate
 Three branches based on the resolved registry:
 
 1. **Empty registry + `--shape migrate-legacy | new-feature`.** Hand off to the 2B greenfield path inside `/change:plan`'s default mode — the discovery brief proposes an initial topology, the operator approves, and `specify registry add` runs once per accepted entry. The orchestration mode does **not** call `specify registry add` itself.
-2. **Multi-project registry.** `specify registry validate` enforces the `description-missing-multi-repo` invariant (RFC-3b §Validation; per RFC-9 §2A). Refusal exits the umbrella non-zero pointing the operator at `specify registry add <name> --description "..."` for each entry missing a description.
+2. **Multi-project registry.** `specify registry validate` enforces the `description-missing-multi-repo` invariant. Refusal exits the umbrella non-zero pointing the operator at `specify registry add <name> --description "..."` for each entry missing a description.
 3. **Single-project registry or `--shape update-existing` with a populated registry.** Pass-through — the validate output is reported and the umbrella continues.
 
 **Halts.** Operator-actionable validation failures (missing description, kebab-case violation, invalid URL, capability identifier typo) halt the umbrella with the validator's diagnostic verbatim.
@@ -74,7 +73,7 @@ Three branches based on the resolved registry:
 
 ```bash
 specify registry validate
-specify registry add <name> --url <url> --schema <capability> --description "..."
+specify registry add <name> --url <url> --capability <capability> --description "..."
 specify registry remove <name>     # if needed
 specify workspace sync             # after any add/remove
 ```
@@ -103,7 +102,7 @@ The plan skill internally:
 - on multi-project registries, runs discovery-oriented `specify workspace sync` and authors `workspace.md` (step 3b);
 - proposes slices and lands accepted ones via `specify change plan add` (step 3c);
 - on multi-project registries, assigns each entry to a project via `specify change plan amend --project` (step 3d);
-- when assignment names a project not yet in the registry, runs the **registry-proposal sub-step** — `specify registry add` + `specify workspace sync` — and continues (RFC-9 §2B);
+- when assignment names a project not yet in the registry, runs the **registry-proposal sub-step** — `specify registry add` + `specify workspace sync` — and continues;
 - gates the run on `specify change plan validate`.
 
 **Halts.**
@@ -118,7 +117,7 @@ specify change plan create <name> [source ...]
 # discovery / sync-peers / propose / assignment cycles run by hand or via /change:plan default
 specify change plan add <slice-name> ...
 specify change plan amend <slice-name> --project <project>
-specify registry add <project> --url ... --schema <capability> --description "..."
+specify registry add <project> --url ... --capability <capability> --description "..."
 specify workspace sync
 specify change plan validate
 ```
@@ -145,14 +144,14 @@ Execution owns mutation-time workspace preparation. For each selected plan entry
 | `stuck` | dependency chain blocked by `failed` / `blocked` predecessors | `specify change plan doctor` → `specify change plan transition <name> pending` (or `skipped`) → re-run umbrella |
 | `halted` | self-heal saw an ambiguous on-disk state | manual triage of `.specify/slices/<name>/.metadata.yaml` against `plan.yaml` → re-run umbrella |
 | `driver-interrupted` | SIGINT/SIGTERM mid-run | re-run umbrella; self-heal reclaims the in-flight entry on the next startup |
-| `registry-amendment-required` | RFC-9 §2B; phase emitted the structured payload | review proposal in journal → run the canonical recovery sequence (below) → re-run umbrella |
+| `registry-amendment-required` | phase emitted the structured payload | review proposal in journal → run the canonical recovery sequence (below) → re-run umbrella |
 
 The umbrella **only** continues to step 5 on `all-done`. Every other classification stops the umbrella and surfaces the executor's terminal summary verbatim.
 
 **Canonical `registry-amendment-required` recovery.** The driver records the proposal payload to the dropped slice's `journal.yaml` before transitioning the entry to `blocked`. The operator reviews the proposal and runs:
 
 ```bash
-specify registry add <proposed-name> --url <proposed-url> --schema <proposed-schema> --description "<proposed-description>"
+specify registry add <proposed-name> --url <proposed-url> --capability <proposed-capability> --description "<proposed-description>"
 specify workspace sync
 specify change plan amend <slice-name> --project <proposed-name>
 specify change plan transition <slice-name> pending
@@ -202,7 +201,7 @@ The umbrella **lists** PRs for `specify/<name>` (using `gh pr list --head specif
 - If any PR is open, pending, failed, closed, missing, or has the wrong head branch, the umbrella stops before step 7 and prints the PR table plus the next action: merge the open PRs through the forge UI or a hand-run `gh pr merge`, then re-run `/change:plan <name> orchestrate` to finalize.
 - If every PR is already `MERGED`, the umbrella continues to step 7.
 
-The umbrella MUST NOT call `specify workspace merge` or `gh pr merge`. `workspace merge` has been removed; invoking it from orchestration is a regression.
+The umbrella does not merge PRs. It only observes remote PR state and waits for the operator to merge through the forge UI or their own explicit command.
 
 **Manual fallback.**
 
@@ -247,7 +246,7 @@ Under `--dry-run` with `--orchestrate` the mode is **observation-only** end-to-e
 - run `specify change create` (step 1 is a no-op when the brief is missing — diagnostic only);
 - modify `registry.yaml` (step 2 runs `specify registry validate` only — read-only);
 - invoke `/change:execute` (step 4 is skipped entirely);
-- run `specify workspace push` or any PR merge command (steps 5 and 6 are skipped);
+- run `specify workspace push` or merge PRs (steps 5 and 6 are skipped);
 - run `specify change finalize` (step 7 is skipped);
 - write any file under `.specify/` other than what `/change:plan <name> dry-run` itself emits (and the plan skill's default mode under `dry-run` writes nothing under `.specify/` either).
 
@@ -275,20 +274,9 @@ Would invoke specify change finalize (skipped under dry-run).
 No changes written. Remove --dry-run to run the full sequence.
 ```
 
-## Retired `--auto-merge` flag
-
-`--auto-merge` is retired. Supplying it with `--orchestrate` is a hard pre-flight error before any side effect. The error text MUST direct the operator to:
-
-1. run `/change:plan <name> orchestrate` without `auto-merge`;
-2. let `specify workspace push` create or update PRs;
-3. merge those PRs through the forge UI or an explicit hand-run `gh pr merge`;
-4. re-run `/change:plan <name> orchestrate` so step 6 observes `MERGED` PR state and step 7 invokes `specify change finalize`.
-
-The orchestration never calls `specify workspace merge` and never calls `gh pr merge`. `specify workspace merge` has been removed and is not an active automation path.
-
 ## Verb hygiene
 
-Every shell-out in this mode is a v1 verb verbatim. The list a reviewer can grep:
+Every shell-out in this mode is listed here so reviewers can grep for accidental drift:
 
 | Step | Verb |
 |---|---|
@@ -303,29 +291,17 @@ Every shell-out in this mode is a v1 verb verbatim. The list a reviewer can grep
 | 6 PR handoff | `gh pr list`, `gh pr view` (read-only listing only) |
 | 7 Finalize | `specify change finalize` |
 
-**Pre-v1 forms that MUST NOT appear:**
-
-- the hyphenated `phase-outcome` form → use `specify slice outcome set`.
-- the hyphenated `journal-append` form → use `specify slice journal append`.
-- the nested `change brief …` form → use `specify change {create, show, finalize}`.
-- the nested `initiative registry …` form → use top-level `specify registry`.
-- the v1 `initiative init <name>` form → use `specify change create <name>` (RFC-9 §1F).
-- the v1 `plan init <name>` form → use `specify change plan create <name>` (RFC-9 §1G).
-- the v1 entry-append `plan create <entry>` form → use `specify change plan add <entry>` (RFC-9 §1G).
-
-The retired-verb checker in `scripts/checks.ts` enforces this list; any drift fails `make checks`.
-
 ## Composition discipline
 
 This mode adds **no new logic**. Every step is a documented shell-out to either:
 
-- a Layer 1 CLI verb that already shipped before 2C (1F, 1G, 2A, 4A, 4C); or
-- a Layer 3 / Layer 2 surface that already shipped before 2C (`/change:plan` default mode, `/change:execute`); or
+- a Layer 1 CLI verb listed above; or
+- a Layer 3 / Layer 2 surface listed above (`/change:plan` default mode, `/change:execute`); or
 - the `gh` CLI for read-only forge observation, plus whatever `specify workspace push` and `specify change finalize` perform internally.
 
 Concretely, this mode MUST NOT:
 
-- introduce a new CLI verb (the v1 surface is closed for 2C);
+- introduce a new CLI verb;
 - modify any file under `.specify/` directly (every write is a shell-out);
 - re-implement halt classification (the underlying skills own it);
 - re-implement the registry-amendment recovery (operator-driven via Layer 1, surfaced by Layer 2);
@@ -349,21 +325,20 @@ If a behaviour drift surfaces between the orchestration mode and a manual run of
 - **Refuse cleanly when prerequisites are missing.** No `specify` binary → exit. No `.specify/` → exit. Bad `<name>` → exit. The pre-flight section is non-negotiable.
 - **Idempotent by re-entry.** Running the orchestration twice with the same `<name>` and the same flags MUST advance through completed steps without re-doing them. The on-disk state is the source of truth; the orchestration never tracks its own progress. See [re-entry.md](re-entry.md).
 - **`--dry-run` is observation-only.** No mutations under dry-run, period.
-- **Pre-v1 verbs are an automatic regression.** A retired-verb hit in any fixture, transcript, or doc is a failing `make checks`. Use only the v1 verb shapes in the table above.
-- **No PR merge automation.** The orchestration never calls `specify workspace merge` or `gh pr merge`. It observes PR state, stops for operator merge, and finalizes only after remote PRs are already merged.
+- **Verb hygiene is enforced mechanically.** A retired-verb hit in any active skill, fixture, transcript, or operational doc is a failing `make checks`. Use only the verb shapes in the table above.
+- **No PR merge automation.** The orchestration observes PR state, stops for operator merge, and finalizes only after remote PRs are already merged.
 
 ## Cross-links
 
 - [`/change:plan` default mode](SKILL.md) — the authoring path step 3 delegates to.
-- [`/change:execute`](../execute/SKILL.md) — Layer 2 plan-driver skill (step 4); see also [`/change:execute` per-slice-algorithm.md §Registry amendment required](../execute/per-slice-algorithm.md#registry-amendment-required-rfc-9-2b) for the recovery surface step 4 surfaces.
+- [`/change:execute`](../execute/SKILL.md) — plan-driver skill (step 4); see also [`/change:execute` per-slice-algorithm.md §Registry amendment required](../execute/per-slice-algorithm.md#registry-amendment-required) for the recovery surface step 4 surfaces.
 - [`specify change`](../../../../docs/reference/cli/change.md) — `create`, `show`, and `finalize` (steps 1 and 7).
 - [`specify registry`](../../../../docs/reference/cli/registry.md) — `add`, `remove`, `show`, `validate` (step 2 and recovery).
-- [`specify plan`](../../../../docs/reference/cli/plan.md) — Layer 1 plan CRUD and lifecycle (recovery and manual fallback).
+- [`specify change plan`](../../../../docs/reference/cli/plan.md) — plan CRUD and lifecycle (recovery and manual fallback).
 - [`specify workspace`](../../../../docs/reference/cli/workspace.md) — `sync`, `status`, and `push` (plan-time peer discovery and PR transport).
-- [Cross-Repo Changes tutorial](../../../../docs/tutorials/cross-repo-change.md) — worked example for all three shapes (RFC-9 §1C and §2C).
+- [Cross-Repo Changes tutorial](../../../../docs/tutorials/cross-repo-change.md) — worked example for all three shapes.
 - [The Layered Stack](../../../../docs/explanation/three-layer-stack.md) — Layer 4's place in Specify's layered architecture.
 - [Drop down a layer](../../../../docs/how-to/drop-down-a-layer.md) — when to bypass the orchestration and run the steps by hand.
-- [RFC-9 §2C](../../../../rfcs/archive/rfc-9-platform.md) — the design that introduced this orchestration.
 
 ## Fixtures
 

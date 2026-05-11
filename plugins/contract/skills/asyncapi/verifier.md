@@ -15,7 +15,7 @@ The verifier accepts a `--mode {single, cross-project}` flag. The mode determine
 
 `single` mode feeds the brief's verify-repair loop. `cross-project` mode is a thin delegate over the declared `contract` WASI tool (RFC-13 §4.2a, RFC-15) — the verifier shells out through `specify tool run contract` and surfaces its findings; it does not implement its own cross-baseline check. Both modes share the read-only contract.
 
-`--mode` was previously exposed as a top-level flag on the standalone validator skill in the (now retired) `contracts` plugin (RFC-10 §C.3). It is now an internal flag of the format-specific verifier. `cross-project` was further re-homed in RFC-13 §"Merge and adoption contract": the consumer-compatibility heuristic that lived in this file pre-RFC-13 has been retired in favour of the deterministic baseline check that the declared `contract` tool runs on the merged `contracts/` directory. Single-mode behaviour is unchanged.
+`--mode` is an internal flag of the format-specific verifier. Cross-project consumer-impact analysis lives in the `specify compatibility` CLI surface; this verifier owns deterministic single-slice and merged-baseline checks.
 
 ## Inputs
 
@@ -242,11 +242,11 @@ esac
 
 ### JSON envelope
 
-The declared tool writes a single JSON object to stdout in `--format json` when the validator runs. The shape is byte-for-byte identical to the envelope the retired in-binary contract validator emitted before chunk 2.7:
+The declared tool writes a single JSON object to stdout in `--format json` when the validator runs:
 
 ```json
 {
-  "schema-version": 2,
+  "envelope-version": 2,
   "contracts-dir": "<absolute-baseline-path>",
   "ok": false,
   "findings": [
@@ -259,7 +259,7 @@ The declared tool writes a single JSON object to stdout in `--format json` when 
 
 Field semantics:
 
-- `schema-version` — currently `2`; bumps follow RFC-12. Callers MUST validate this before parsing the rest of the envelope.
+- `envelope-version` — currently `2`; bumps follow RFC-12. Callers MUST validate this before parsing the rest of the envelope.
 - `contracts-dir` — the absolute path the tool walked, echoing the positional argument.
 - `ok` — `true` iff `findings` is empty.
 - `findings[].path` — repo-relative when the parent of `<baseline-dir>` matches the path's prefix, otherwise absolute. Suitable for verbatim rendering in operator-facing reports.
@@ -281,9 +281,9 @@ The mode is **deterministic**: the WASI tool is a thin shell over `specify_valid
 
 ### Why a WASI tool delegate?
 
-Per RFC-13 §"Merge and adoption contract" and §Open Question 4, the contracts capability owns merge gating; the core no longer ships an in-binary contract validator (chunk 2.7 deleted that command surface). The declared `contract` WASI tool is the replacement: a deterministic, capability-owned gate the merge brief can run through `specify` without crossing the core boundary or re-introducing concern-specific behavior into core crates.
+The contracts capability owns merge gating through the declared `contract` WASI tool: a deterministic, capability-owned gate the merge brief can run through `specify` without crossing the core boundary or re-introducing concern-specific behavior into core crates.
 
-The pre-RFC-13 consumer-compatibility heuristic that the verifier markdowns described — comparing a producer contract against each consumer's tier-2 workspace clone, classifying breaking changes into a `change-kind` vocabulary — has been retired from this verifier. The deterministic baseline check is the canonical post-merge gate. Cross-project consumer-impact analysis now lives in `specify compatibility check` and `specify compatibility report --change <name>` (RM-04).
+The deterministic baseline check is the canonical post-merge gate. Cross-project consumer-impact analysis lives in `specify compatibility check` and `specify compatibility report --change <name>`.
 
 ## Edge cases
 

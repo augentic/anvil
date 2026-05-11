@@ -50,7 +50,7 @@ The phase skills trigger transitions at well-defined points:
 | `/spec:define` completes all artifacts | `defining --> defined` | `specify slice transition` |
 | `/spec:build` starts implementation | `defined --> building` | `specify slice transition` |
 | All tasks marked complete | `building --> complete` | `specify slice transition` |
-| `/spec:merge` succeeds | `complete --> merged` | `specify merge` |
+| `/spec:merge` succeeds | `complete --> merged` | `specify slice merge run` |
 | `/spec:drop` invoked | `* --> dropped` | `specify slice drop` |
 
 ## `.metadata.yaml`
@@ -60,7 +60,7 @@ Each slice directory contains a `.metadata.yaml` file managed exclusively by the
 - **`status`** -- the current lifecycle state.
 - **`created_at`** / **`updated_at`** -- ISO 8601 timestamps.
 - **`outcome`** -- phase outcome (`success`, `failure`, `deferred`) written by `specify slice outcome set`. Used by `/change:execute` to determine whether to transition a plan entry to `done`, `failed`, or `blocked`.
-- **`schema`** -- the capability identifier used for this slice. (The YAML key is still spelled `schema:` until the matching CLI rename lands; the value is a capability identifier per [RFC-13](../../rfcs/archive/rfc-13-extensibility.md).)
+- **`capability`** -- the capability identifier used for this slice.
 - **`touched_specs`** -- the list of spec files this slice affects.
 
 Never hand-edit `.metadata.yaml`. All writes flow through the CLI.

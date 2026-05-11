@@ -14,7 +14,7 @@ name: checkout-api
 status: building
 created-at: 2026-04-19T11:00:00Z
 updated-at: 2026-04-19T11:23:47Z
-schema: omnia
+capability: omnia
 outcome:
   phase: build
   outcome: failure

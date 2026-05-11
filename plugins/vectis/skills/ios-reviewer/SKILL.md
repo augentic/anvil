@@ -1,12 +1,12 @@
 ---
 name: vectis-ios-reviewer
-description: Review generated iOS shell (SwiftUI) code for structural issues, integration correctness, and quality problems. Use when reviewing a Crux app's iOS shell after generation, or when the user mentions ios-reviewer.
-argument-hint: "<target-dir>"
+description: Review generated iOS shell (SwiftUI) code for structural issues, integration correctness, and quality problems. Use when `ios-writer` has just produced or updated an iOS shell and the slice is ready for review; not for reviewing the core (`core-reviewer`) or Android shell (`android-reviewer`).
+argument-hint: <target-dir>
 ---
 
 # Crux iOS Shell Reviewer
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Gather review context** — read Crux core files, all iOS Swift/build files, optional reference app files, and available composition/tokens/assets inputs.
 2. **Spawn the review team** — run Structural and Quality every iteration; add Integration on the first full-scope iteration only.
@@ -37,7 +37,7 @@ This skill uses an agent team with 3 specialist reviewers and 1 antagonist. The 
 
 Keep review-local finding IDs separate from stable codex rule IDs:
 
-- **Finding ID**: the report-local occurrence identifier used for triage and ownership, such as `IOS-001-1`, `SWF-006-1`, `UNI-1`, or `NEW-1`. These remain scoped to this review run.
+- **Finding ID**: the report-local occurrence identifier used for triage and ownership, such as `IOS-001-1`, `SWF-007-1`, `UNI-1`, or `NEW-1`. These remain scoped to this review run.
 - **Rule ID**: the stable codex catalogue identifier when the finding maps to a codex rule, such as `VECTIS-003` or `UNI-016`. Include it as `rule_id` in structured outputs and as `**Rule ID**` in markdown reports.
 
 Use the resolved project codex when the caller provides it. Read first-party rules directly from `capabilities/default/codex/` and `capabilities/vectis/codex/`. Do not copy full codex prose into reports or prompts.
@@ -62,7 +62,7 @@ Read the following files from `{target-dir}`:
 
 If `reference-dir` is provided, also read the corresponding files from the reference app.
 
-Also read the wired UI input set (RFC-11 §H + §I) to compare generated code against the validated artifacts:
+Also read the wired UI input set to compare generated code against the validated artifacts:
 
 - `composition.yaml` -- canonical layout (slice-local `.specify/slices/<name>/composition.yaml` then baseline `.specify/specs/composition.yaml`); the source of truth for component-directive (`component: <slug>`) detection and recurring-group identification
 - `tokens.yaml` -- expected design tokens (change-local then `design-system/tokens.yaml`); the source of truth for token-usage checks
@@ -106,7 +106,7 @@ pattern-based checks that verify the shell correctly maps to the Crux core:
 - Design system token usage (resolved against shell-local `iOS/<App>/Theme/`)
 - ContentView switch exhaustiveness
 - ScrollView interaction hazards (touch delay, nested gesture conflicts)
-- Recurring composition groups without a `component:` slug (RFC-11 §I "Reviewer surface")
+- Recurring composition groups without a `component:` slug
 
 For each finding, report: check ID (IOS-NNN), stable rule_id when it
 clearly maps to a codex rule, file:line, code snippet, severity
@@ -142,7 +142,7 @@ clearly maps to a codex rule, file:line, code snippet, severity
 auto-fixable.
 
 Output your findings as a numbered list in markdown. Prefix each finding
-ID with "SWF-" (e.g., SWF-001-1, SWF-006-1).
+ID with "SWF-" (e.g., SWF-001-1, SWF-007-1).
 ```
 
 If `iteration > 1`, append: "Scope your analysis to these files modified in the previous iteration: [list of changed files]."
@@ -218,51 +218,7 @@ Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004, UNI-007, U
 
 After the specialist reports and universal checks are complete, the lead sends all combined findings (IOS-, SWF-, INT-, and UNI- prefixed) to the antagonist.
 
-**Spawn Antagonist**:
-
-```text
-You are the Antagonist Reviewer for a Crux iOS shell at $TARGET_DIR.
-
-You receive findings from specialist reviewers (Structural, Quality,
-Integration) and from the lead's universal checks. Your job is to
-challenge every finding and find what they missed.
-
-For EACH finding (IOS-, SWF-, INT-, and UNI- prefixed):
-1. Validate evidence: Is there a real file:line reference and code snippet?
-2. Challenge severity: Is Critical really critical? Is Info actually higher?
-3. Check for false positives: Could this be a non-issue or acceptable
-   SwiftUI pattern?
-4. Assess auto-fix safety: Could the suggested fix introduce regressions?
-5. Preserve any attached rule_id. For new findings, add rule_id only when
-   the issue clearly maps to a stable codex rule.
-
-Then perform a COUNTER-SCAN of all `.swift` files under `iOS/` looking
-for issues ALL specialists missed. Common SwiftUI blind spots:
-- Missing `@MainActor` on classes that update `@Published` properties
-- `Sendable` conformance violations in async contexts
-- Preview data that is stale relative to the current ViewModel structure
-- Retain cycles from `self` capture in Task or URLSession closures
-- Navigation state inconsistencies (deep link paths not handled)
-- Missing `onDisappear` cleanup for SSE or timer subscriptions
-- Hardcoded design tokens that don't match `tokens.yaml`
-
-Output format:
-## Confirmed: [ID] -- evidence solid, severity accurate
-## Downgraded: [ID] ORIG_SEVERITY -> NEW_SEVERITY -- rationale
-## Upgraded: [ID] ORIG_SEVERITY -> NEW_SEVERITY -- rationale
-## Disputed: [ID] -- rationale (must cite evidence for dispute)
-## New Findings: NEW-1, NEW-2, etc. with full finding details
-
-You MUST provide evidence for every challenge. Opinion alone is insufficient.
-You CANNOT remove findings entirely -- the minimum action is to downgrade.
-Severity downgrades move at most one level (Critical to Warning, not to Info).
-```
-
-The antagonist:
-
-1. Reviews every finding for evidence quality and severity accuracy
-2. Performs a counter-scan for missed SwiftUI-specific issues
-3. Sends challenged report to lead with: confirmed, downgraded, upgraded, disputed, and new findings
+**Spawn Antagonist**: see [`team-protocol.md`](team-protocol.md) for the verbatim spawn prompt and the SwiftUI-specific blind-spot list (`@MainActor` gaps, `Sendable` violations, stale `#Preview` data, retain cycles, deep-link navigation gaps, missing `onDisappear` cleanup, hardcoded tokens). The antagonist reviews every finding for evidence and severity, counter-scans for SwiftUI-specific issues, and returns a challenged report (confirmed / downgraded / upgraded / disputed / new findings).
 
 #### 2e. Synthesis
 
@@ -277,65 +233,7 @@ The lead merges all findings (specialist reports, universal checks, and antagoni
 
 #### 2f. Produce iteration report
 
-Output the synthesized findings for this iteration. On the first iteration, use the full report format. On subsequent iterations, report only new findings discovered in re-review and note the iteration number.
-
-````
-## iOS Shell Review Report: {app-name} (iteration {N})
-
-**Review Team**: 3 specialists + 1 antagonist
-**Confidence Level**: [HIGH | MEDIUM | LOW]
-
-### Summary
-- Critical: N findings
-- Warning: N findings
-- Info: N findings
-
-### Critical Findings
-
-#### [IOS-001-1] Missing screen view for ViewModel variant
-- **Rule ID**: VECTIS-003
-- **File**: iOS/{AppName}/ContentView.swift
-- **Reviewer**: Structural Specialist
-- **Antagonist**: Confirmed
-- **Issue**: ViewModel variant `Settings(SettingsView)` has no corresponding
-  screen view file.
-- **Fix**: Create `Views/SettingsScreen.swift` and add the case to ContentView.
-
-### Warning Findings
-...
-
-### Info Findings
-...
-
-### Adversarial Review
-
-**Antagonist Activity Summary**:
-
-| Action       | Count   |
-| ------------ | ------- |
-| Confirmed    | [count] |
-| Downgraded   | [count] |
-| Upgraded     | [count] |
-| Disputed     | [count] |
-| New Findings | [count] |
-
-**Acceptance Rate**: [confirmed / total specialist findings]%
-
-#### Downgraded Findings
-- [ID] ORIG -> NEW: rationale
-
-#### Upgraded Findings
-- [ID] ORIG -> NEW: rationale
-
-#### Disputed Findings
-- [ID] Reported as SEVERITY: "description"
-  Dispute: rationale
-  Lead Decision: [Included | Excluded]
-
-#### New Findings (Missed by Specialists)
-- [NEW-1] SEVERITY: description (file:line)
-  Evidence: details
-````
+Output the synthesized findings for this iteration using the template at [`references/iteration-report.md`](references/iteration-report.md). Use the full format on the first iteration; on subsequent iterations report only new findings and note the iteration number.
 
 Classify each finding as **mechanical** (auto-fixable) or **design-level**.
 
@@ -346,7 +244,6 @@ The **lead** applies all auto-fixes directly (specialists and antagonist have co
 Apply fixes for findings that are mechanical and confirmed or upgraded (not disputed):
 
 - Adding missing accessibility labels
-- Removing stale `import VectisDesign` lines (RFC-11 migration debt — same-target Swift code resolves the names without the import)
 - Replacing hardcoded colors with `VectisColors` tokens (resolved from the shell-local `iOS/<App>/Theme/Colors.swift`)
 - Replacing hardcoded spacing with `VectisSpacing` tokens (resolved from the shell-local `iOS/<App>/Theme/Spacing.swift`)
 - Adding missing `#Preview` blocks
@@ -370,7 +267,7 @@ When the cycle exits, shut down all remaining teammates and output a summary acr
 
 ```
 ### Review Cycle Summary
-- Iteration 1: Fixed N mechanical issues (IOS-005 x2, SWF-006, UNI-016).
+- Iteration 1: Fixed N mechanical issues (IOS-005 x2, SWF-007, UNI-016).
   M design-level findings deferred. Confidence: HIGH.
 - Iteration 2: Fixed K regressions from iteration 1 fixes.
   No new design-level findings. Confidence: HIGH.

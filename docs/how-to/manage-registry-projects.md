@@ -1,6 +1,6 @@
 # Manage Registry Projects
 
-`registry.yaml` is the platform catalogue declaring which repos are in scope for cross-repo changes. Projects are added and removed via `specify registry add` and `specify registry remove` (RFC-9 Section 2A) -- never by hand-editing `registry.yaml` and hoping validation passes.
+`registry.yaml` is the platform catalogue declaring which repos are in scope for cross-repo changes. Projects are added and removed via `specify registry add` and `specify registry remove` -- never by hand-editing `registry.yaml` and hoping validation passes.
 
 This how-to covers the day-to-day flow: registering a new project, removing one, handling the `description-missing-multi-repo` invariant, and rewiring plan entries after a removal.
 
@@ -15,7 +15,7 @@ This how-to covers the day-to-day flow: registering a new project, removing one,
 ```bash
 specify registry add <name> \
     --url <url> \
-    --schema <capability> \
+    --capability <capability> \
     --description "<one-paragraph domain description>"
 ```
 
@@ -61,7 +61,7 @@ description-missing-multi-repo: registry.yaml: projects[<idx>] (<name>) has no `
 There is no in-band fix because `registry add` cannot retro-add a description to an existing entry without overwriting it. Two recovery paths:
 
 1. **Hand-edit `registry.yaml`** to add the missing description, then re-run `specify registry add` for the new project.
-2. **Recreate the offending entry**: `specify registry remove <existing>`, then `specify registry add <existing> --url <existing-url> --schema <existing-capability> --description "..."`. (This second path also triggers the plan-reference warning if the existing entry was already wired into a plan -- preferable to use the hand-edit unless the description rewrite is the intent.)
+2. **Recreate the offending entry**: `specify registry remove <existing>`, then `specify registry add <existing> --url <existing-url> --capability <existing-capability> --description "..."`. (This second path also triggers the plan-reference warning if the existing entry was already wired into a plan -- preferable to use the hand-edit unless the description rewrite is the intent.)
 
 The descriptions matter beyond validation: `/change:plan`'s assignment step reads them when inferring which project each plan entry targets. Sparse descriptions force unresolved (`?`) prompts during planning. Plan a paragraph per project, not a sentence.
 
@@ -70,7 +70,7 @@ The descriptions matter beyond validation: `/change:plan`'s assignment step read
 Any `add` or `remove` should be followed by `specify workspace sync` to bring the workspace clones in line with the registry. The verb is idempotent -- existing slots refresh, missing slots materialise.
 
 ```bash
-specify registry add new-project --url ... --schema <capability> --description "..."
+specify registry add new-project --url ... --capability <capability> --description "..."
 specify workspace sync
 ```
 
@@ -86,7 +86,7 @@ specify workspace sync              # bootstrap the workspace slot
 specify change plan add ... --project <name>   # OR specify change plan amend ... --project <name>
 ```
 
-`/change:plan`'s registry-proposal sub-step (RFC-9 Section 2B) enforces the same order automatically. Hand-driven flows must respect it manually.
+`/change:plan`'s registry-proposal sub-step enforces the same order automatically. Hand-driven flows must respect it manually.
 
 ## See also
 
@@ -94,4 +94,4 @@ specify change plan add ... --project <name>   # OR specify change plan amend ..
 - [Bootstrap a platform hub](bootstrap-a-platform-hub.md) -- the first time you populate a registry.
 - [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- how registry descriptions feed into `/change:plan`'s assignment.
 - [Recover from registry-amendment-required](recover-from-registry-amendment.md) -- handling the case where `/change:execute` halts and proposes a new project.
-- [`description-missing-multi-repo`](../appendices/troubleshooting.md#description-missing-multi-repo) -- troubleshooting entry.
+- [`description-missing-multi-repo`](troubleshooting/hub-and-registry.md#description-missing-multi-repo) -- troubleshooting entry.

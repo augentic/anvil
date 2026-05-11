@@ -22,27 +22,27 @@
 
 ```text
 /spec:init hub                                     # bootstrap a platform hub
-specify registry add <project> --url ... --schema ...      # `--schema` flag is the legacy spelling; renamed in a later phase
+specify registry add <project> --url ... --capability ...
 /change:plan <name> orchestrate [shape ...]
 ```
 
 ## All skills
 
-| Skill | Layer | Purpose |
-|-------|-------|---------|
-| `/spec:init` | 2 | One-time project setup (`hub` for a platform hub) |
-| `/spec:define` | 2 | Generate artifacts for a new slice |
-| `/spec:build` | 2 | Implement tasks |
-| `/spec:merge` | 2 | Merge completed slice into baseline |
-| `/spec:drop` | 2 | Discard a slice |
-| `/spec:extract` | 2 | Extract specs from existing code |
-| `/spec:analyze` | 3 | Plan-time capability inference (invoked by `/change:plan`) |
-| `/change:plan` | 3 | Author a multi-slice plan |
-| `/change:execute` | 3 | Automate the plan loop |
-| `/change:plan <name> orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> operator PR merge -> finalize |
-| `/contract:openapi` | -- | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
-| `/contract:asyncapi` | -- | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
-| `/contract:json-schema` | -- | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |
+| Skill | Purpose |
+|-------|---------|
+| `/spec:init` | One-time project setup (`hub` for a platform hub) |
+| `/spec:define` | Generate artifacts for a new slice |
+| `/spec:build` | Implement tasks |
+| `/spec:merge` | Merge completed slice into baseline |
+| `/spec:drop` | Discard a slice |
+| `/spec:extract` | Extract specs from existing code |
+| `/spec:analyze` | Plan-time capability inference (invoked by `/change:plan`) |
+| `/change:plan` | Author a multi-slice plan |
+| `/change:execute` | Automate the plan loop |
+| `/change:plan <name> orchestrate` | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> PR merge -> finalize |
+| `/contract:openapi` | Author / import / verify OpenAPI 3.1 contracts (HTTP / resource APIs); intent dispatched internally |
+| `/contract:asyncapi` | Author / import / verify AsyncAPI 3.0 contracts (evented / pub-sub / streaming); intent dispatched internally |
+| `/contract:json-schema` | Author / import / verify reusable JSON Schema payloads; intent dispatched internally |
 
 ## Artifacts
 
@@ -74,7 +74,7 @@ specify slice status <name>              # single-slice view
 
 # Project setup
 specify init <capability>                 # regular single-project scaffold (positional capability identifier or URL)
-specify init --hub                        # registry-only platform hub (RFC-9 1D)
+specify init --hub                        # registry-only platform hub
 specify context generate                  # write or refresh generated AGENTS.md guidance
 specify context generate --check          # CI dry-run; exit 1 when context would change
 specify context check                     # report stale AGENTS.md/context.lock state
@@ -98,13 +98,13 @@ specify workspace push [<project>...]      # transport existing specify/<change-
 # Platform registry (multi-repo)
 specify registry show
 specify registry validate
-specify registry add <name> --url <url> --schema <schema> --description "..."
+specify registry add <name> --url <url> --capability <schema> --description "..."
 specify registry remove <name>
 
 # Change brief and closure
 specify change create <name>         # scaffold change.md
 specify change show
-specify change finalize              # verify operator-merged PRs, archive plan (RFC-9 4C / RFC-14)
+specify change finalize              # verify merged PRs, archive plan
 specify change finalize --clean      # also remove clean .specify/workspace/<peer>/ clones
 
 # Plan authoring (multi-repo)

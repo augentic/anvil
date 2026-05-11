@@ -28,7 +28,7 @@ For each documentation input, invoke [`/spec:analyze`](../../../../../spec/skill
 /spec:analyze <input-path> <plan-dir> documentation <k>
 ```
 
-where `<plan-dir>` is `.specify/plans/<initiative-name>/` — the same directory this brief writes `discovery.md` to — and `<k>` is the source key used to tag the emitted capabilities:
+where `<plan-dir>` is `.specify/plans/<change-name>/` — the same directory this brief writes `discovery.md` to — and `<k>` is the source key used to tag the emitted capabilities:
 
 - `--from <p>` → `--source-key <basename(p) without extension, kebab-cased>`.
 - `--source <k>=<p>:documentation` → `--source-key <k>`.
@@ -45,7 +45,7 @@ For each legacy-code input, invoke [`/spec:analyze`](../../../../../spec/skills/
 /spec:analyze <input-path> <plan-dir> legacy-code <k>
 ```
 
-where `<plan-dir>` is `.specify/plans/<initiative-name>/` and `<k>` is the source key used to tag the emitted capabilities:
+where `<plan-dir>` is `.specify/plans/<change-name>/` and `<k>` is the source key used to tag the emitted capabilities:
 
 - `--source <k>=<p>` (default kind `legacy-code`) → `--source-key <k>`.
 - `--source <k>=<p>:legacy-code` (explicit) → `--source-key <k>`.
@@ -69,7 +69,7 @@ This brief does NOT re-write, re-sort, or re-deduplicate analyze's output; analy
 `discovery.md` has this shape:
 
 ````markdown
-# Discovery — <initiative-name>
+# Discovery — <change-name>
 
 ## Capability inventory
 
@@ -100,7 +100,7 @@ confidence: <high | medium | low>
 
 Section rules:
 
-- The `# Discovery — <initiative-name>` header and the `## Capability inventory` wrapper are written by this brief (the first thing discovery writes before invoking `/spec:analyze`). `/spec:analyze` appends its `### <name>` blocks — each preceded by a `<!-- source-key: <k> -->` marker — under the wrapper.
+- The `# Discovery — <change-name>` header and the `## Capability inventory` wrapper are written by this brief (the first thing discovery writes before invoking `/spec:analyze`). `/spec:analyze` appends its `### <name>` blocks — each preceded by a `<!-- source-key: <k> -->` marker — under the wrapper.
 - Every capability block is emitted by `/spec:analyze` regardless of kind; both branches share the single YAML shape pinned in [`analyze/SKILL.md` §Output contract](../../../../../spec/skills/analyze/SKILL.md).
 - The `## Constraints (from documentation)` and `## Open questions (from documentation)` blocks are documentation-branch-only. Omit either heading when empty; never emit an empty section. If no documentation inputs were supplied, both headings are absent.
 - A run with only legacy-code inputs produces `## Capability inventory` followed by nothing else. A run with only documentation inputs produces `## Capability inventory` followed by the two appendix blocks (when non-empty).

@@ -1,6 +1,6 @@
 ---
 name: contract-asyncapi
-description: Authors, imports, and verifies AsyncAPI 3.0 event, pub/sub, stream, and WebSocket-style contracts for Specify changes, including channels, messages, bindings, producers, consumers, and schema references. Use when a contracts build needs an evented contract, when an operator supplies or asks for an AsyncAPI document, or when verifying AsyncAPI compatibility after a merge.
+description: Author, import, and verify AsyncAPI 3.0 event, pub/sub, stream, and WebSocket-style contracts for Specify changes, including channels, messages, bindings, producers, consumers, and schema references. Use when a contracts build needs an evented contract, when an operator supplies or asks for an AsyncAPI document, or when verifying AsyncAPI compatibility after a merge.
 argument-hint: "[slice-dir]"
 ---
 
@@ -10,7 +10,7 @@ Specialist for AsyncAPI 3.0 evented contracts on Specify changes — pub/sub, st
 
 The skill is AsyncAPI-only. Shared payload schemas under `contracts/schemas/` are owned by the json-schema format skill (`/contract:json-schema`); HTTP contracts under `contracts/http/` are owned by `/contract:openapi`.
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Read the briefs and specs.** Open the active contracts build brief and the slice's `specs/` to identify what evented interactions the slice requires; read `contracts/messages/` (the AsyncAPI baseline) to know which channels, operations, and messages already exist.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.
@@ -38,16 +38,16 @@ When invoked from the contracts capability build brief during `/spec:build`, `<s
 AsyncAPI files live in two locations — the slice-local delta and the platform baseline:
 
 ```text
-.specify/
-├── contracts/
-│   └── messages/
-│       └── <event-domain>-events.yaml   # Baseline: merged contracts only
-└── changes/<slice-name>/
-    └── contracts/
-        ├── messages/
-        │   └── <event-domain>-events.yaml   # Change-local delta or normalised import
-        └── schemas/
-            └── <type>.yaml                  # Owned by /contract:json-schema
+contracts/
+└── messages/
+    └── <event-domain>-events.yaml       # Baseline: merged contracts only
+
+.specify/slices/<slice-name>/
+└── contracts/
+    ├── messages/
+    │   └── <event-domain>-events.yaml   # Slice-local delta or normalised import
+    └── schemas/
+        └── <type>.yaml                  # Owned by /contract:json-schema
 ```
 
 Conventions enforced for every AsyncAPI file in either location:
@@ -101,7 +101,7 @@ These constraints are non-negotiable for any of the three sibling paths:
 2. **`$ref` discipline.** All payload schema references use relative file paths into `../schemas/`. Internal references (channel → message, operation → channel) use `#/components/...` and `#/channels/...` per the conventions. No inline payload schemas in the baseline.
 3. **`$id` stability.** Once a schema has a `$id`, do not change it. New schemas get new `$id` values; the writer and importer never reassign existing ones.
 4. **Kebab-case filenames.** All `.yaml` files use kebab-case names; no PascalCase or snake_case variants.
-5. **Baseline immutability.** Never modify files in root `contracts/`. All output goes in the slice-local `contracts/` directory.
+5. **Baseline immutability.** All output goes in the slice-local `contracts/` directory; baseline `contracts/` is read-only here. See [shared guardrails — Baseline immutability](../../../references/guardrails.md#baseline-immutability-for-contract-authoring).
 6. **No invention.** When the spec does not provide enough detail to derive a channel or message shape, mark the gap with `[unknown]` in the alignment report rather than guessing. Importer flags unrecognised constructs with `[import — manual review required]`.
 7. **Read-only verifier.** The verifier sibling must not create, modify, or delete any files in either mode.
 
@@ -109,8 +109,7 @@ These constraints are non-negotiable for any of the three sibling paths:
 
 - Only emit `.yaml` files under `$SLICE_DIR/contracts/`.
 - Create `contracts/messages/`, `contracts/schemas/` only when they will contain at least one file.
-- Do not modify any file outside `$SLICE_DIR/contracts/`.
-- Do not modify baseline files in root `contracts/`.
+- Stay inside `$SLICE_DIR/contracts/`; the baseline is off-limits per [shared guardrails](../../../references/guardrails.md#baseline-immutability-for-contract-authoring).
 
 ## See also
 

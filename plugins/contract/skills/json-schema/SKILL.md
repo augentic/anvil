@@ -1,6 +1,6 @@
 ---
 name: contract-json-schema
-description: Authors, imports, and verifies standalone JSON Schema documents shared by OpenAPI, AsyncAPI, and other contract formats. Use when a Specify change needs reusable payload schemas, when an operator supplies schema files without a protocol wrapper, or when validating schema compatibility across generated contracts.
+description: Author, import, and verify standalone JSON Schema documents shared by OpenAPI, AsyncAPI, and other contract formats. Use when a Specify change needs reusable payload schemas, when an operator supplies schema files without a protocol wrapper, or when validating schema compatibility across generated contracts.
 argument-hint: "[slice-dir]"
 ---
 
@@ -10,7 +10,7 @@ Specialist for standalone JSON Schema (Draft 2020-12) documents on Specify chang
 
 The skill is JSON-Schema-only. Protocol bindings under `contracts/http/` belong to `/contract:openapi`; evented bindings under `contracts/messages/` belong to `/contract:asyncapi`. Both protocol skills delegate every payload-schema decision (`$id` shape, naming, decomposition, draft policy, metadata) to this skill.
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Read the briefs and specs.** Open the active contracts build brief and the slice's `specs/` to identify which payload types the slice requires; read `contracts/schemas/` (the schema baseline) to know what shared vocabulary already exists.
 2. **Identify the intent.** Map the trigger to one of three sibling files using the [Intent dispatch](#intent-dispatch) table — author, importer, or verifier. Stop reading SKILL.md once the sibling is selected; load only the relevant sibling.
@@ -38,14 +38,14 @@ When invoked from the contracts capability build brief during `/spec:build`, `<s
 JSON Schema files live in two locations — the slice-local delta and the platform baseline:
 
 ```text
-.specify/
-├── contracts/
-│   └── schemas/
-│       └── <type>.yaml             # Baseline: merged schemas only
-└── changes/<slice-name>/
-    └── contracts/
-        └── schemas/
-            └── <type>.yaml         # Change-local delta or normalised import
+contracts/
+└── schemas/
+    └── <type>.yaml                 # Baseline: merged schemas only
+
+.specify/slices/<slice-name>/
+└── contracts/
+    └── schemas/
+        └── <type>.yaml             # Slice-local delta or normalised import
 ```
 
 Conventions enforced for every schema file in either location:
@@ -106,7 +106,7 @@ These constraints are non-negotiable for any of the three sibling paths:
 6. **No invention.** When the spec does not provide enough detail to derive a shape, mark the gap with `[unknown]` in the alignment report rather than guessing. Importer flags unrecognised constructs with `[import — manual review required]`.
 7. **No protocol-specific authoring.** This skill never writes path operations, channels, operations, request bodies, or response wrappers. Those belong to `/contract:openapi` and `/contract:asyncapi`.
 8. **Read-only verifier.** The verifier sibling must not create, modify, or delete any files in either mode.
-9. **Baseline immutability.** Never modify files in root `contracts/`. All output goes in the slice-local `contracts/` directory.
+9. **Baseline immutability.** All output goes in the slice-local `contracts/` directory; baseline `contracts/` is read-only here. See [shared guardrails — Baseline immutability](../../../references/guardrails.md#baseline-immutability-for-contract-authoring).
 
 ## Cross-format coordination
 
@@ -115,14 +115,13 @@ Because protocol bindings reference these schemas, edits in this skill can break
 - In `single` mode, verifier Check 4 (cross-format consumer compatibility) cross-references each touched schema against `$BASELINE_CONTRACTS/http/` and `$BASELINE_CONTRACTS/messages/` and flags any backwards-incompatible change before the brief approves the artefact.
 - Cross-project producer-to-consumer impact is reported by `specify compatibility`; the verifier's `cross-project` mode is only the merge-time baseline validation delegate.
 
-When authoring or importing, never silently delete or narrow a baseline schema's fields; if the spec requires it, surface the slice as a warning and let a human operator decide whether to bump the schema's `$id` (effectively introducing a new type with a deprecation path on the old one).
+When authoring or importing, never silently delete or narrow a baseline schema's fields; if the spec requires it, surface the slice as a warning and let a human operator decide whether to bump the schema's `$id` (effectively introducing a new type alongside the old one). See [shared guardrails — Baseline immutability](../../../references/guardrails.md#baseline-immutability-for-contract-authoring) for the cross-skill rule.
 
 ## Output hygiene
 
 - Only emit `.yaml` files under `$SLICE_DIR/contracts/schemas/`.
 - Create `contracts/schemas/` only when it will contain at least one file.
-- Do not modify any file outside `$SLICE_DIR/contracts/schemas/`.
-- Do not modify baseline files in root `contracts/`.
+- Stay inside `$SLICE_DIR/contracts/schemas/`; the baseline is off-limits per [shared guardrails](../../../references/guardrails.md#baseline-immutability-for-contract-authoring).
 - Do not touch `contracts/http/` or `contracts/messages/` from this skill — even when the verifier reads them, it never writes.
 
 ## See also

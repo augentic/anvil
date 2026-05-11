@@ -1,16 +1,16 @@
 ---
 name: vectis-android-writer
-description: Generate or update a Kotlin/Jetpack Compose Android shell for a Crux application. Use when the user wants to create an Android shell, scaffold Android UI, or generate Compose views for a Crux app, or mentions android-writer.
-argument-hint: "<slice-dir>"
+description: Generate or update a Kotlin/Jetpack Compose Android shell for a Crux application. Use when a Specify slice has pending Android shell tasks, or when an existing Android shell needs to be regenerated after a core or layout update; not for the Rust core (`core-writer`) or the iOS shell (`ios-writer`).
+argument-hint: <slice-dir>
 ---
 
 # Crux Android Shell Generator
-> **Vectis deterministic tooling runs through declared Specify tools.** Shell scaffolding is `specify tool run vectis-scaffold -- android ...`; artifact validation is `specify tool run vectis-validate -- ...`. The scaffold is render-only: Android SDK/NDK detection, `local.properties`, Java 21 pinning, Gradle wrapper bootstrap, and Gradle builds remain host-owned steps with explicit verification evidence.
+> **Vectis deterministic tooling runs through declared Specify tools.** Shell scaffolding is `specify tool run vectis -- scaffold android ...`; artifact validation is `specify tool run vectis -- validate ...`. The scaffold is render-only: Android SDK/NDK detection, `local.properties`, Java 21 pinning, Gradle wrapper bootstrap, and Gradle builds remain host-owned steps with explicit verification evidence.
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. Read `{app-dir}/shared/src/app.rs` (and optional `slice-dir` shell-requirements + `composition.yaml`); extract App name, ViewModel/Effect/Event/Route variants and the capability set.
-2. Detect mode by checking `{project-dir}/app/src/main/java/*/Core.kt`: missing → run `specify tool run vectis-scaffold -- android ...` plus Android host post-processing, then enter Update Mode; present → start Update Mode immediately.
+2. Detect mode by checking `{project-dir}/app/src/main/java/*/Core.kt`: missing → run `specify tool run vectis -- scaffold android ...` plus Android host post-processing, then enter Update Mode; present → start Update Mode immediately.
 3. Build an implementation inventory of existing Kotlin code (effect handlers, ViewModel cases, screen composables, event dispatches, capability clients, DI modules).
 4. Diff Rust core types vs Kotlin inventory by category (Effect → ViewModel → view-fields → Event → Route) and emit a summary edit plan.
 5. Apply changes: expand or strip CAP blocks in `Core.kt` + `AndroidManifest.xml` + Gradle, add/remove screen composables for each ViewModel variant, update the root `when`, dispatch new Events.
@@ -19,11 +19,11 @@ argument-hint: "<slice-dir>"
 
 Generate or update a buildable Kotlin/Jetpack Compose Android shell for an existing Crux core application. The shell renders the core's `ViewModel`, dispatches `Event` values from user interactions, and handles platform side-effects (HTTP, KV, SSE, Time, Platform) on behalf of the core.
 
-The Android writer reads `tokens.yaml`, `assets.yaml`, and `composition.yaml` directly and emits **shell-local** theme + asset resources inside the Android shell tree (RFC-11 §L "Generated layout"). There is no separate `:vectis-design` Gradle module, no `implementation(project(":vectis-design"))` dependency, and no path back into `design-system/android/` from the rendered shell project. When `tokens.yaml` is absent, the writer falls back to platform-native Material 3 defaults (RFC-11 §F "Fallback policy belongs to shell writers"). See [`references/design-system-integration.md`](references/design-system-integration.md) for the full integration contract and [`references/kotlin-token-templates.md`](references/kotlin-token-templates.md) for the per-category Kotlin code templates.
+The Android writer reads `tokens.yaml`, `assets.yaml`, and `composition.yaml` directly and emits **shell-local** theme + asset resources inside the Android shell tree. There is no separate `:vectis-design` Gradle module, no `implementation(project(":vectis-design"))` dependency, and no path back into `design-system/android/` from the rendered shell project. When `tokens.yaml` is absent, the writer falls back to platform-native Material 3 defaults — fallback policy belongs to the shell writer, not to the design-system manifest. See [`references/design-system-integration.md`](references/design-system-integration.md) for the full integration contract and [`references/kotlin-token-templates.md`](references/kotlin-token-templates.md) for the per-category Kotlin code templates.
 
 When an existing Android shell is detected, the skill operates in **update mode**: it compares the current `app.rs` types against the existing Kotlin code and makes targeted edits rather than regenerating from scratch.
 
-When no Android shell exists yet, the skill runs `specify tool run vectis-scaffold -- android {AppName} [--caps {caps}] [--android-package <package>]` from the Crux project root to render the project. The scaffold tool owns render-only build and shell files: `Android/Makefile`, the `build.gradle.kts` / `settings.gradle.kts` / `gradle.properties` triad, the `gradle/libs.versions.toml` version catalog, `app/build.gradle.kts` and `shared/build.gradle.kts`, `AndroidManifest.xml` (including conditional `networkSecurityConfig` when HTTP/SSE is selected), the `{AppName}Application.kt` entry point with the UniFFI library override, a render-only baseline `Core.kt` with CAP markers, `MainActivity.kt`, the `ui/screens/HomeScreen.kt` starter, and `res/xml/network_security_config.xml` when needed. Host post-processing owns `local.properties`, Java 21 pinning, NDK checks, and Gradle wrapper bootstrap. The writer adds `ui/components/`, `ui/theme/`, and per-density `res/drawable*/` resources on first generation when the corresponding inputs exist. Once the scaffold exists and host checks pass, this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
+When no Android shell exists yet, the skill runs `specify tool run vectis -- scaffold android {AppName} [--caps {caps}] [--android-package <package>]` from the Crux project root to render the project. The scaffold tool owns render-only build and shell files: `Android/Makefile`, the `build.gradle.kts` / `settings.gradle.kts` / `gradle.properties` triad, the `gradle/libs.versions.toml` version catalog, `app/build.gradle.kts` and `shared/build.gradle.kts`, `AndroidManifest.xml` (including conditional `networkSecurityConfig` when HTTP/SSE is selected), the `{AppName}Application.kt` entry point with the UniFFI library override, a render-only baseline `Core.kt` with CAP markers, `MainActivity.kt`, the `ui/screens/HomeScreen.kt` starter, and `res/xml/network_security_config.xml` when needed. Host post-processing owns `local.properties`, Java 21 pinning, NDK checks, and Gradle wrapper bootstrap. The writer adds `ui/components/`, `ui/theme/`, and per-density `res/drawable*/` resources on first generation when the corresponding inputs exist. Once the scaffold exists and host checks pass, this skill switches to **update mode** and layers spec-driven changes over the generated baseline.
 
 This skill targets **Kotlin 2.x**, **Jetpack Compose** with Material 3, and minimum SDK 34.
 
@@ -85,128 +85,26 @@ Also read:
 - `{app-dir}/shared/src/ffi.rs` -- CoreFFI struct definition
 - `{app-dir}/shared/src/bin/codegen.rs` -- codegen binary for type generation
 - `tokens.yaml` -- design tokens. Resolution: change-local `{change-dir}/tokens.yaml` then project-level `design-system/tokens.yaml`. Absent → Material 3 fallback (see [`references/design-system-integration.md`](references/design-system-integration.md)).
-- `assets.yaml` plus referenced files -- asset inventory for `image` / `icon` / `icon-button` / `fab` references in `composition.yaml`. Resolution: change-local `{change-dir}/assets.yaml` + `{change-dir}/assets/` then `design-system/assets.yaml` + `design-system/assets/`. Writer copies into `Android/app/src/main/res/drawable*/` per copy-on-generate (RFC-11 §E, §I).
+- `assets.yaml` plus referenced files -- asset inventory for `image` / `icon` / `icon-button` / `fab` references in `composition.yaml`. Resolution: change-local `{change-dir}/assets.yaml` + `{change-dir}/assets/` then `design-system/assets.yaml` + `design-system/assets/`. Writer copies into `Android/app/src/main/res/drawable*/` per copy-on-generate (see [`references/design-system-integration.md`](references/design-system-integration.md)).
 
 When `slice-dir` is provided, also read:
 - `{slice-dir}/specs/{feature-name}/spec.md` -- read the `## Android Shell Requirements` section for platform-specific behavioral requirements (navigation style, gestures, haptics, accessibility). Also read the `## Android Shell Details` section of `{slice-dir}/design.md` for platform design decisions.
-- `{slice-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- the wired composition artifact. Cross-artifact reference checks (token / asset / `bind` / `event`) are pre-enforced by `specify tool run vectis-validate -- composition`; the writer consumes the validated input.
+- `{slice-dir}/composition.yaml` or `.specify/specs/composition.yaml` -- the wired composition artifact. Cross-artifact reference checks (token / asset / `bind` / `event`) are pre-enforced by `specify tool run vectis -- validate composition`; the writer consumes the validated input.
 
 ## Generated Type Conventions (CRITICAL)
 
-The codegen binary produces two sets of Kotlin files:
-
-1. **Bincode types** in `generated/com/example/app/` -- `Event`, `ViewModel`, `Effect`, `Request`, `Requests`, and all view structs, enums, and capability types (`HttpRequest`, `HttpResponse`, `SseRequest`, `SseResponse`, `KeyValueOperation`, `TimeRequest`, `TimeResponse`, `Filter`, etc.)
-2. **UniFFI bindings** in `generated/uniffi/shared/` -- the `CoreFfi` class that bridges to the Rust native library.
-
-### Import rules for all hand-written Kotlin files
-
-Every `.kt` file that references generated types MUST have explicit imports:
-
-```kotlin
-// For bincode types (Event, ViewModel, Effect, etc.)
-import com.example.app.Event
-import com.example.app.ViewModel
-import com.example.app.Effect
-// ... import each type individually
-
-// For the CoreFfi bridge (only in Core.kt)
-import uniffi.shared.CoreFfi
-```
-
-**NEVER** assume these types are in the same package as the hand-written code. The hand-written code lives in `com.vectis.{appname}` but the generated types are in `com.example.app` and `uniffi.shared`.
-
-### Enum class naming conventions
-
-Simple Rust enums without payloads (e.g., `Filter { All, Active, Completed }`, `SyncStatus { Idle, Syncing, Offline }`, `SseState`) are generated as Kotlin `enum class` with **UPPER_CASE** values:
-
-```kotlin
-// Generated as:
-enum class Filter { ALL, ACTIVE, COMPLETED }
-enum class SyncStatus { IDLE, SYNCING, OFFLINE }
-enum class SseState { DISCONNECTED, CONNECTING, CONNECTED }
-```
-
-Pattern match with `==` equality, NOT `is`:
-
-```kotlin
-// CORRECT:
-when (filter) {
-    Filter.ALL -> ...
-    Filter.ACTIVE -> ...
-    Filter.COMPLETED -> ...
-}
-
-// WRONG (will not compile):
-when (filter) {
-    is Filter.All -> ...    // ← enum values are not types
-}
-```
-
-### Sealed interface naming conventions
-
-Rust enums WITH payloads (e.g., `Event`, `ViewModel`, `Effect`) are generated as Kotlin `sealed interface` with nested `data class` or `data object` variants:
-
-```kotlin
-// Generated as:
-sealed interface Event {
-    data class Navigate(val value: Route) : Event
-    data class SetNewTitle(val value: String) : Event
-    data object ClearCompleted : Event     // unit variant → data object
-}
-```
-
-Pattern match with `is` for data classes, direct reference for data objects:
-
-```kotlin
-when (event) {
-    is Event.Navigate -> event.value       // data class
-    is Event.SetNewTitle -> event.value    // data class
-    Event.ClearCompleted -> ...            // data object (no `is`)
-}
-```
-
-### Numeric type mapping
-
-| Rust type | Kotlin generated type | Notes |
-|---|---|---|
-| `usize` / `u64` | `ULong` | Use `.toLong()` when passing to Compose UI that expects `Long` |
-| `u32` | `UInt` | Effect IDs are `UInt` |
-| `u16` | `UShort` | HTTP status codes |
-| `Vec<u8>` | `List<UByte>` | Use `.toUByteArray().toList()` to convert from `ByteArray` |
-
-### KeyValue types
-
-- `Value.Bytes` takes `List<UByte>` (not `List<Byte>`) -- convert with `byteArray.toUByteArray().toList()`
-- `KeyValueOperation.Set.value` is `List<UByte>` -- convert back with `op.value.map { it.toByte() }.toByteArray()`
-- `KeyValueResponse.ListKeys` takes `(keys: List<String>, nextCursor: ULong)` -- pass `0UL` for no more keys, NOT a `String`
-- `KeyValueError` is a sealed interface with variants `Io`, `Timeout`, `CursorNotFound`, `Other` -- use `KeyValueError.Other(msg)`, NOT `KeyValueError(msg)`
-
-### Time types
-
-- `Duration` has a single field `nanos: ULong` (total nanoseconds), NOT separate `secs`/`nanos` fields
-- `TimeRequest` variants: `Now`, `NotifyAt(id, instant)`, `NotifyAfter(id, duration)`, `Clear(id)` -- each has a `TimerId` field
-- `TimeResponse` variants: `Now(instant)`, `InstantArrived(id)`, `DurationElapsed(id)`, `Cleared(id)` -- NOT `DURATIONREACHED`
-- `NotifyAfter` and `NotifyAt` handlers must store their coroutine `Job` in a `timerJobs` map keyed by `TimerId`. `Clear` must cancel and remove the stored job before responding with `Cleared`. Without job tracking, cleared timers continue to fire stale events into the core.
-
-### @OptIn annotations
-
-Classes that call `.toUByteArray()` need:
-
-```kotlin
-@OptIn(ExperimentalUnsignedTypes::class)
-class SseClient { ... }
-```
+The codegen binary produces bincode types in `generated/com/example/app/` and UniFFI bindings in `generated/uniffi/shared/`. Hand-written code lives in `com.vectis.{appname}` and **must** import generated types explicitly. See [`references/generated-type-conventions.md`](references/generated-type-conventions.md) for the full rules covering imports, enum vs sealed interface naming, numeric type mapping (`usize` → `ULong` etc.), KeyValue types, Time types and required `@OptIn(ExperimentalUnsignedTypes::class)` annotations.
 
 ## Mode Detection
 
-- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes `specify tool run vectis-scaffold -- android` to render the baseline, runs Android host post-processing and checks, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
+- **Create Mode** -- `{project-dir}/` does **not** exist. The skill invokes `specify tool run vectis -- scaffold android` to render the baseline, runs Android host post-processing and checks, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- `{project-dir}/` **does** exist and contains `.kt` files. Read existing code, diff against the core, and make targeted edits (steps U1--U8 below).
 
 Detection rule: check for `{project-dir}/app/src/main/java/*/Core.kt`. If present, switch to update mode. If not, run:
 
 ```bash
 cd {app-dir}
-specify tool run vectis-scaffold -- android {AppName} [--caps {caps}] [--android-package com.example.app]
+specify tool run vectis -- scaffold android {AppName} [--caps {caps}] [--android-package com.example.app]
 ```
 
 `{app-dir}` is the parent directory of `shared/`; `{project-dir}` is normally `{app-dir}/Android`. `--android-package` is optional and defaults to `com.vectis.<appname-lowercase>`. On scaffold failure, surface the tool's structured output and stop -- do **not** attempt to hand-author Gradle files, `AndroidManifest.xml`, or any of the baseline `.kt` files. After scaffold success, run the host post-processing and verification steps in U8; record each step as `name`, `passed`, and a failure snippet.
@@ -235,7 +133,7 @@ Run:
 
 ```bash
 cd {app-dir}
-specify tool run vectis-scaffold -- android {AppName} [--caps {caps}] [--android-package <package>]
+specify tool run vectis -- scaffold android {AppName} [--caps {caps}] [--android-package <package>]
 ```
 
 `--android-package` is optional; when omitted, the scaffold uses `com.vectis.<appname-lowercase>`. The tool generates the render-only Gradle project (root + `app` + `shared` modules) and a baseline shell in `Android/app/src/main/java/<package-path>/` with CAP markers for every optional capability. The output is structured. On non-zero exit, surface the tool output to the user and stop.
@@ -250,7 +148,7 @@ After the scaffold and host checks return green, treat the scaffolded Android sh
 - Rewrite the root composable in `MainActivity.kt` to cover every ViewModel variant.
 - Apply any `## Android Shell Requirements` from the active Specify change (when `slice-dir` is provided).
 
-Dependency version pins (Kotlin, AGP, Ktor, Koin, Compose BOM, etc.) come from the active Vectis version pins used by `vectis-scaffold`; route pin changes through the Vectis version/template workflow rather than hand-editing `libs.versions.toml` / `shared/build.gradle.kts`.
+Dependency version pins (Kotlin, AGP, Ktor, Koin, Compose BOM, etc.) come from the active Vectis version pins used by `vectis` (`scaffold`); route pin changes through the Vectis version/template workflow rather than hand-editing `libs.versions.toml` / `shared/build.gradle.kts`.
 
 ## Process: Update Mode
 
@@ -284,7 +182,7 @@ Extract from existing Kotlin code:
 | Event dispatches | All `onEvent(...)` or `core.update(...)` calls |
 | Capability clients | Client classes in `core/` |
 | DI modules | Koin module definitions |
-| Design system usage | `MaterialTheme.colorScheme` / `MaterialTheme.typography` / `VectisSpacing` / `VectisCornerRadius` / `VectisElevation` references; presence or absence of `import com.vectis.design.*` and `implementation(project(":vectis-design"))` (legacy — must be removed) |
+| Design system usage | `MaterialTheme.colorScheme` / `MaterialTheme.typography` / `VectisSpacing` / `VectisCornerRadius` / `VectisElevation` references |
 
 ### U4. Diff analysis
 
@@ -298,7 +196,6 @@ Walk through in this order:
 4. **Event variants** -- new or removed user actions affect screen composables.
 5. **Route variants** -- new or removed navigation destinations affect navigation code.
 6. **Token categories / asset entries / component directives** -- diff `tokens.yaml` against `ui/theme/`, `assets.yaml` against `res/drawable*/`, and `composition.yaml` `component:` slugs against `ui/components/` per the U6a-c contract; refer to [`references/kotlin-token-templates.md`](references/kotlin-token-templates.md) and [`references/design-system-integration.md`](references/design-system-integration.md) for category-by-category rules.
-7. **Legacy `:vectis-design` references** -- `include(":vectis-design")` in `settings.gradle.kts` and `implementation(project(":vectis-design"))` in `app/build.gradle.kts` are migration debt and MUST be removed; `import com.vectis.design.*` lines MUST be replaced with `import com.vectis.<appname>.ui.theme.*` (RFC-11 §L "Compatibility policy"). Shell-local `ui/theme/` now satisfies the same role.
 
 Output the diff summary before making edits.
 
@@ -317,22 +214,21 @@ Output the diff summary before making edits.
 - Update existing screen composables for changed per-page view struct fields.
 - Add/remove event dispatch calls for changed Event variants.
 - Verify newly generated scrollable containers do not contain fill-max-size children (see `references/compose-view-patterns.md` Layout Constraint Rules).
-- Replace lingering `import com.vectis.design.*` lines in screen / component / activity / Application files with `import com.vectis.<appname>.ui.theme.*`. Theme types (`VectisSpacing`, `VectisCornerRadius`, etc.) live in the `ui.theme` sibling package and require an explicit import from `ui.screens` / `ui.components` (Kotlin only auto-imports within the exact same package).
+- Theme types (`VectisSpacing`, `VectisCornerRadius`, etc.) live in the `ui.theme` sibling package; screen / component files need an explicit `import com.vectis.<appname>.ui.theme.*` (Kotlin only auto-imports within the exact same package).
 
 ### U6a-c. Refresh shell-local design system inputs
 
 When `tokens.yaml` / `assets.yaml` / `composition.yaml` change, regenerate the matching shell-local trees using the rules in [`references/design-system-integration.md`](references/design-system-integration.md) and [`references/kotlin-token-templates.md`](references/kotlin-token-templates.md):
 
 - **U6a — `ui/theme/` from `tokens.yaml`**: one Kotlin file per category (`spacing` / `cornerRadius` colocated in `Spacing.kt`) plus structural `Theme.kt` defining `VectisTheme`. Generated files carry the `// Generated from design-system/tokens.yaml — do not edit manually.` header (except `Theme.kt`); operator-authored files (no header) are preserved on category removal. The header always uses the canonical project-level path `design-system/tokens.yaml` regardless of whether the current generation reads from a change-local file — this keeps the header stable across the change lifecycle and avoids breaking header-based detection of generated files. Absent `tokens.yaml` → emit the Material 3 fallback `Theme.kt`.
-- **U6b — `ui/components/` from `composition.yaml`**: one named `@Composable` per `group.component: <slug>` under `ui/components/<PascalCaseSlug>.kt`. Props inferred from variation; constants baked in. Structural identity is pre-enforced by `specify tool run vectis-validate -- composition`. Removed slugs have their files deleted and call sites inlined.
-- **U6c — `res/drawable*/` from `assets.yaml`**: copy per-density `kind: raster` files into `res/drawable-<density>/<asset-id>.<ext>`, vector drawables into `res/drawable/<asset-id>.xml`; translate kebab-case ids to lowercase-with-underscores. `kind: symbol` skips the resource step (emit `Icons.Default.<glyph>` at the call site). Canonical `source:` SVG is provenance only — never copied. Missing Android exports for referenced vector entries halt generation per RFC-11 §E.
+- **U6b — `ui/components/` from `composition.yaml`**: one named `@Composable` per `group.component: <slug>` under `ui/components/<PascalCaseSlug>.kt`. Props inferred from variation; constants baked in. Structural identity is pre-enforced by `specify tool run vectis -- validate composition`. Removed slugs have their files deleted and call sites inlined.
+- **U6c — `res/drawable*/` from `assets.yaml`**: copy per-density `kind: raster` files into `res/drawable-<density>/<asset-id>.<ext>`, vector drawables into `res/drawable/<asset-id>.xml`; translate kebab-case ids to lowercase-with-underscores. `kind: symbol` skips the resource step (emit `Icons.Default.<glyph>` at the call site). Canonical `source:` SVG is provenance only — never copied. Missing Android exports for referenced vector entries halt generation; the writer never falls back to the canonical SVG, generates a placeholder, or skips the screen.
 
 ### U7. Update build configuration
 
 - Update `build.gradle.kts` files if new dependencies are needed.
 - Update `libs.versions.toml` if new library versions are needed.
 - Update `AndroidManifest.xml` if permissions changed (e.g., INTERNET for HTTP).
-- Remove legacy `include(":vectis-design")` from `settings.gradle.kts` and the matching `implementation(project(":vectis-design"))` from `app/build.gradle.kts`. The shell-local `ui/theme/` files satisfy the same role; leaving the entries breaks the build once `design-system/android/` is removed post-Phase 4.1.
 
 ### U8. Build and verify
 
@@ -356,7 +252,7 @@ When `composition.yaml` is present, the region structure and group container tre
 - **Surface decoration** maps to card-like containers: `background` + `corner_radius` → `Card` or `Surface` with shape and color, `elevation` → `Modifier.shadow()` or `Card(elevation:)`.
 - **Platform-specific overrides**: When `composition.yaml` contains `platforms.android` region overrides for a screen, use those in preference to the shared regions.
 
-When `composition.yaml` is absent, the existing inference behavior is unchanged — this preserves backward compatibility for pre-RFC-7 projects.
+When `composition.yaml` is absent, fall back to convention-based inference for composable body composition.
 
 ## Spec-to-Code Mapping
 
@@ -382,7 +278,7 @@ In Update Mode, minimize collateral changes — never regenerate from scratch; p
 | `references/design-system-integration.md` | Shell-local theme + asset integration: generated layout, M3 fallback, copy-on-generate, component directive contract |
 | `references/kotlin-token-templates.md` | Concrete Kotlin code templates per token category (color, typography, scalar, border, theme composable) |
 
-Gradle build files, the version catalog, the Makefile, `AndroidManifest.xml`, CAP-marker scaffolding for the baseline `Core.kt` / `app/build.gradle.kts` / `libs.versions.toml`, and the starter Kotlin layout are owned by the Vectis scaffold templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis-scaffold/` and the Vectis template sources). Do not hand-edit those files in Create Mode; let `specify tool run vectis-scaffold -- android` write them and then modify in Update Mode. Host-derived files and settings (`local.properties`, Gradle wrapper artefacts, Java 21 pinning, SDK/NDK checks) are handled by the writer/verify workflow after render.
+Gradle build files, the version catalog, the Makefile, `AndroidManifest.xml`, CAP-marker scaffolding for the baseline `Core.kt` / `app/build.gradle.kts` / `libs.versions.toml`, and the starter Kotlin layout are owned by the Vectis scaffold templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/` and the Vectis template sources). Do not hand-edit those files in Create Mode; let `specify tool run vectis -- scaffold android` write them and then modify in Update Mode. Host-derived files and settings (`local.properties`, Gradle wrapper artefacts, Java 21 pinning, SDK/NDK checks) are handled by the writer/verify workflow after render.
 
 ## Examples
 
@@ -405,18 +301,17 @@ Gradle build files, the version catalog, the Makefile, `AndroidManifest.xml`, CA
 | NDK not found | Install via `sdkmanager "ndk;29.0.14206865"` or Android Studio SDK Manager |
 | Python 3 not found | Required by rust-android-gradle; install via system package manager |
 | `./gradlew: No such file or directory` | Run the host wrapper bootstrap from `{project-dir}` (`gradle wrapper`) and record the step result |
-| `Minimum supported Gradle version is X.Y` | Gradle/AGP drift -- route the pin change through the Vectis version/template workflow, rerender with `specify tool run vectis-scaffold -- android ...`, then rerun host verification |
+| `Minimum supported Gradle version is X.Y` | Gradle/AGP drift -- route the pin change through the Vectis version/template workflow, rerender with `specify tool run vectis -- scaffold android ...`, then rerun host verification |
 | `java.lang.IllegalArgumentException: 25.0.1` (or similar Java version parse error) | Set `org.gradle.java.home` to Java 21 in `gradle.properties` (derive with `/usr/libexec/java_home -v 21` on macOS when available) |
-| `resource style/Theme.{AppName} not found` | Scaffold output is missing `res/values/themes.xml` -- rerender with `specify tool run vectis-scaffold -- android ...` and stop if the file is still absent |
+| `resource style/Theme.{AppName} not found` | Scaffold output is missing `res/values/themes.xml` -- rerender with `specify tool run vectis -- scaffold android ...` and stop if the file is still absent |
 | `Unresolved reference 'Event'` (or `ViewModel`, `Effect`, etc.) | Add `import com.example.app.*` imports to the affected Kotlin file |
 | `Unresolved reference 'CoreFfi'` | Add `import uniffi.shared.CoreFfi` to `Core.kt` |
 | `Unresolved reference 'Icons'` | Add `material-icons-extended` dependency to `libs.versions.toml` + `app/build.gradle.kts` |
 | `Namespace 'X' is used in multiple modules` | Use `com.vectis.{appname}.shared` namespace for the shared module |
 | `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- rerun `make build`, `./gradlew :shared:cargoBuild`, and `./gradlew :app:assembleDebug` and inspect the active Vectis version pins |
 | `This declaration needs opt-in` (unsigned types) | Add `@OptIn(ExperimentalUnsignedTypes::class)` to the class |
-| Build fails on `:vectis-design` (`Project ':vectis-design' not found` or `Unresolved reference 'com.vectis.design'`) | Legacy migration debt — the shell now emits theme code under `app/src/main/java/com/vectis/<appname>/ui/theme/` (RFC-11 §L). Drop the `include(":vectis-design")` line from `settings.gradle.kts`, the matching `implementation(project(":vectis-design"))` from `app/build.gradle.kts`, and replace `import com.vectis.design.*` lines with `import com.vectis.<appname>.ui.theme.*`; `MaterialTheme.colorScheme.*` / `MaterialTheme.typography.*` continue to resolve via standard M3 imports, while `VectisSpacing.*` / `VectisCornerRadius.*` etc. require the explicit theme-package import because `ui.theme` is a sibling package to `ui.screens` and `ui.components` |
-| `specify tool run vectis-validate -- composition` reports unresolved token / asset reference | The composition references a token or asset id missing from `tokens.yaml` / `assets.yaml`. Writer halts; operator must add the missing entry or remove the reference (RFC-11 §F, §I "Validation gate") |
-| Missing Android export for a `kind: vector` asset | Per RFC-11 §E, this is an error not a deferred TODO. Halt the affected screen and report the missing `sources.android` (Vector Drawable XML — SVG sources need converting first) |
+| `specify tool run vectis -- validate composition` reports unresolved token / asset reference | The composition references a token or asset id missing from `tokens.yaml` / `assets.yaml`. Writer halts; operator must add the missing entry or remove the reference |
+| Missing Android export for a `kind: vector` asset | This is a validation error, not a deferred TODO. Halt the affected screen and report the missing `sources.android` (Vector Drawable XML — SVG sources need converting first) |
 
 ### Runtime crashes
 

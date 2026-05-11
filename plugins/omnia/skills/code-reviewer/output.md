@@ -16,7 +16,7 @@ Every finding in `REVIEW.md` carries a review-local prefix so the originating re
 
 Numbering restarts at 1 within each prefix (`SEC-1`, `SEC-2`, …). When the antagonist upgrades or downgrades a finding, the original prefix is preserved and the severity change is recorded in the **Adversarial Review** section.
 
-The report-local finding ID is not the codex rule ID. When a finding maps to a stable codex rule, add a separate `rule_id` field with the canonical value (`OMNIA-001`, `OMNIA-002`, `RUST-001`, `SEC-001`, or a migrated `UNI-###` rule). Leave the field out for genuinely unmapped findings; do not invent a rule ID. This is a reviewer report convention for RM-03 citations, not the final RM-04 finding schema.
+The report-local finding ID is not the codex rule ID. When a finding maps to a stable codex rule, add a separate `rule_id` field with the canonical value (`OMNIA-001`, `OMNIA-002`, `RUST-001`, `SEC-001`, or a `UNI-###` rule). Leave the field out for genuinely unmapped findings; do not invent a rule ID. This is a reviewer report convention for RM-03 citations, not the final RM-04 finding schema.
 
 ## REVIEW.md template
 

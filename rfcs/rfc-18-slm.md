@@ -1,4 +1,4 @@
-# RFC: Specialized SLM Code Generation
+# RFC-18: Specialized SLM Code Generation
 
 > Status: Draft - Depends: [RM-03](roadmap.md#rm-03-codex-rule-format), [RFC-10](archive/rfc-10-skills.md), [RFC-13](archive/rfc-13-extensibility.md)
 

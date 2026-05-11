@@ -54,5 +54,5 @@ Point them to:
 
 ## See also
 
-- [Troubleshooting](../appendices/troubleshooting.md) -- common issues and fixes
+- [Troubleshooting](troubleshooting/index.md) -- common issues and fixes
 - [specify status](../reference/cli/status.md) -- project dashboard CLI

@@ -34,7 +34,7 @@ specify change show [--format json]
 
 ### specify change finalize
 
-Close out a change once every plan entry is in a terminal state and every per-project PR has already been merged by the operator on its remote (RFC-9 §4C / RFC-14). This is the **canonical closure verb** for the platform-first loop: it verifies landing state, archives coordinator artifacts, and optionally removes clean workspace clones. It never merges, force-merges, approves, or otherwise mutates a pull request.
+Close out a change once every plan entry is in a terminal state and every per-project PR has already been merged on its remote. This is the **canonical closure verb** for the platform-first loop: it verifies landing state, archives coordinator artifacts, and optionally removes clean workspace clones. It never merges, force-merges, approves, or otherwise mutates a pull request.
 
 ```bash
 specify change finalize [--clean] [--dry-run]
@@ -73,7 +73,7 @@ Text mode prints the per-project status rows followed by a summary line and a fi
 
 ```json
 {
-  "schema-version": 2,
+  "envelope-version": 6,
   "change": "oauth-login",
   "finalized": true,
   "expected-branch": "specify/oauth-login",

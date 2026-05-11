@@ -16,12 +16,12 @@
     "description": {
       "type": "string",
       "minLength": 10,
-      "maxLength": 1024,
-      "description": "One-line description stating both what the skill does and when to use it, in third person (max 1024 chars per Anthropic spec). Avoid XML tags."
+      "maxLength": 512,
+      "description": "One-line description stating both what the skill does and when to use it, in third person (max 512 chars for this repository). Avoid XML tags."
     },
     "argument-hint": {
       "type": "string",
-      "description": "Cursor slash-command placeholder text rendered after `/plugin:skill ` in chat. Convention: short, single-line; `<arg>` for required positional arguments, `[arg]` for optional ones. No `--flag` prefixes; secondary skill arguments are documented as positionals in the SKILL.md body. The shape constraints (no `?`, `--`, or `|`) are enforced by `scripts/checks.ts`."
+      "description": "Cursor slash-command placeholder text rendered after `/plugin:skill ` in chat. Whitespace-separated tokens drawn from a fixed grammar: `<name>` (required positional), `[name]` (optional), trailing `...` for repeated, `<a|b>` / `[a|b]` for mutually exclusive alternatives, `--flag` for long flags (values follow as a separate `<value>`/`[value]` token, e.g. `--kind <kind>`). Names are kebab-case. Bare prose hints (e.g. `the slice name`) and mixed punctuation (e.g. `<arg>: arg2`) are rejected by `checkArgumentHintGrammar` in `scripts/checks/skill_frontmatter.ts`."
     },
     "allowed-tools": {
       "type": "string",

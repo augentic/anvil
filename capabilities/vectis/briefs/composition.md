@@ -7,7 +7,7 @@ needs: [specs, proposal]
 
 Generate a `composition.yaml` file describing the spatial composition of every screen in the application. The artifact uses the region-based format with `group` containers and item vocabulary defined in RFC-7, and follows the schema at `capabilities/vectis/composition.schema.json`. Groups carry flexbox-like layout properties (`direction`, `gap`, `padding`, `align`, `justify`) and optional sizing and surface decoration.
 
-This brief discovers `layout.yaml` first from the active slice and then from the project design-system directory, falling back to existing `composition.yaml` inputs only when no layout is present (RFC-11 §H). It calls `specify tool run vectis-validate -- layout` (or `composition` when the resolved input is already wired) on the input before consuming it, and `specify tool run vectis-validate -- composition` on its output for cross-artifact token / asset checks.
+This brief discovers `layout.yaml` first from the active slice and then from the project design-system directory, falling back to existing `composition.yaml` inputs only when no layout is present (RFC-11 §H). It calls `specify tool run vectis -- validate layout` (or `composition` when the resolved input is already wired) on the input before consuming it, and `specify tool run vectis -- validate composition` on its output for cross-artifact token / asset checks.
 
 ## Input Resolution
 
@@ -21,7 +21,7 @@ Resolve the starting point for this run by checking inputs in this order. Stop a
 
 The canonical locations are `.specify/slices/<name>/layout.yaml`, `design-system/layout.yaml`, `.specify/slices/<name>/composition.yaml`, and `.specify/specs/composition.yaml`. The CLI validators below honour the same cascade automatically when no explicit `[path]` is supplied.
 
-When a `design-system/tokens.yaml` file exists, or an explicit slice-local `tokens.yaml` file is supplied at `.specify/slices/<name>/tokens.yaml`, reference token names for `style`, `color`, and `size` properties. The trigger keys off **file existence**, not Platforms membership: `design-system` is no longer a peer platform (RFC-11 §L), so its presence in the proposal's `Platforms` is neither sufficient nor necessary — the post-write `specify tool run vectis-validate -- composition` gate will auto-invoke `tokens` mode whenever a sibling `tokens.yaml` is present, and the absence of one short-circuits the check cleanly.
+When a `design-system/tokens.yaml` file exists, or an explicit slice-local `tokens.yaml` file is supplied at `.specify/slices/<name>/tokens.yaml`, reference token names for `style`, `color`, and `size` properties. The trigger keys off **file existence**, not Platforms membership: `design-system` is no longer a peer platform (RFC-11 §L), so its presence in the proposal's `Platforms` is neither sufficient nor necessary — the post-write `specify tool run vectis -- validate composition` gate will auto-invoke `tokens` mode whenever a sibling `tokens.yaml` is present, and the absence of one short-circuits the check cleanly.
 
 ### Validate the resolved input
 
@@ -30,13 +30,13 @@ Before consuming the resolved input, run the deterministic CLI validator. The ve
 - For `layout.yaml` (cases 1–2 above) — validate the unwired subset (composition schema + `screens` only + no define-owned wiring keys + the §G structural-identity rule for any `component:` directives present):
 
   ```bash
-  specify tool run vectis-validate -- layout
+  specify tool run vectis -- validate layout
   ```
 
 - For `composition.yaml` (cases 3–4 above) — validate the wired lifecycle artifact (composition schema + cross-artifact token / asset / wiring resolution + the §G structural-identity rule):
 
   ```bash
-  specify tool run vectis-validate -- composition
+  specify tool run vectis -- validate composition
   ```
 
 Both verbs auto-discover the resolved path via the canonical Vectis cascade and exit non-zero on errors, zero with a printed warning report on warnings, and zero silently on a clean run. **Errors block this brief** — surface the report verbatim to the operator and stop; the brief MUST NOT fabricate a wired composition from invalid input. Warnings flow through into the operator-facing summary at the end of the brief but do not block consumption.
@@ -51,7 +51,7 @@ The brief's job is the wiring layer on top of layout-owned structure. The follow
 - **Add only define-owned wiring.** `maps_to`, `bind`, `event`, `error`, overlay `trigger`, navigation targets encoded in event values, and conditional visual keys such as `strikethrough-when` are this brief's responsibility — and only this brief's.
 - **Add screens only when specs require them.** When a spec describes a screen the layout has no entry for, add it with a `# inferred-from-requirements` comment so the operator can spot define-derived layout next to externally supplied layout.
 - **Do not silently insert or remove a `component:` slug.** When this brief observes structurally identical groups across screens that suggest a missing slug, propose it as a `# GAP` comment adjacent to each occurrence (e.g. `# GAP: candidate component task-row`). Promotion to a directive is operator work; demotion of an existing directive is also operator work.
-- **Do not rewrite token names or asset IDs** unless the existing reference is invalid AND a single confirmed replacement exists in `tokens.yaml` / `assets.yaml`. When neither holds, emit a `# GAP` comment naming the unresolved reference and stop wiring that property — `specify tool run vectis-validate -- composition` treats unresolved token / asset references as **errors** (not warnings), so the post-write gate will block the brief and the operator will see the validator report verbatim. The brief MUST NOT invent a replacement to silence the gate; an explicit `# GAP` plus a hard exit is the contract.
+- **Do not rewrite token names or asset IDs** unless the existing reference is invalid AND a single confirmed replacement exists in `tokens.yaml` / `assets.yaml`. When neither holds, emit a `# GAP` comment naming the unresolved reference and stop wiring that property — `specify tool run vectis -- validate composition` treats unresolved token / asset references as **errors** (not warnings), so the post-write gate will block the brief and the operator will see the validator report verbatim. The brief MUST NOT invent a replacement to silence the gate; an explicit `# GAP` plus a hard exit is the contract.
 - **Single-artifact handoff.** v1 has no separate pre-define merge ceremony. The brief consumes one resolved input from the cascade above and reports any conflicts with prior structure as `# GAP` comments — it does not attempt to reconcile multiple layout sources itself. Future RFCs may define a richer multi-source workflow.
 
 ## Steps
@@ -117,7 +117,7 @@ Include gap reports as YAML comments in the output (e.g., `# GAP: spec describes
 After writing `composition.yaml`, run the cross-artifact validator:
 
 ```bash
-specify tool run vectis-validate -- composition
+specify tool run vectis -- validate composition
 ```
 
 This re-validates the wired composition against the patched composition schema and **automatically invokes** `tokens` and `assets` validation whenever sibling `tokens.yaml` / `assets.yaml` files exist (whether slice-local or project-level). It enforces the §G structural-identity rule on every `component: <slug>` instance in the document.
@@ -126,7 +126,7 @@ This re-validates the wired composition against the patched composition schema a
 - **Warnings only** — proceed, and forward the warning report into the operator-facing summary so the operator can decide whether to act now or in a follow-up change.
 - **Clean** — proceed silently.
 
-The build phase repeats `specify tool run vectis-validate -- composition` on the resolved artifact set (RFC-11 §I), so any warning the brief leaves behind will reappear there too.
+The build phase repeats `specify tool run vectis -- validate composition` on the resolved artifact set (RFC-11 §I), so any warning the brief leaves behind will reappear there too.
 
 ## Output Structure
 

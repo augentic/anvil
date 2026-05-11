@@ -103,7 +103,7 @@ Present slices in the order the emit rule produces; do not re-order mid-loop bey
 Write `.specify/plans/<name>/proposal.md` regardless of per-slice decisions — the proposal is the audit trail of the authoring run. Shape:
 
 ```markdown
-# Proposal — <initiative-name>
+# Proposal — <change-name>
 
 ## Slices
 

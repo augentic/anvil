@@ -19,7 +19,7 @@
 
 The specs and design briefs read baseline contracts at `contracts/` as read-only context. Implementation changes conform to existing contracts; new or changed interface shapes should be introduced through a dedicated `contracts@v1` change before implementation depends on them. See [Contract Plugin](../plugins/contract.md) for skill details.
 
-The `composition` brief produces a YAML artifact (not markdown) that describes the spatial layout of each screen. It runs between specs and design so that the design brief can adopt screen names, ViewModel variants, and field names proposed by the composition artifact. See [RFC-7](https://github.com/augentic/specify/blob/main/rfcs/rfc-7-ui.md) for the full design.
+The `composition` brief produces a YAML artifact (not markdown) that describes the spatial layout of each screen. It runs between specs and design so that the design brief can adopt screen names, ViewModel variants, and field names proposed by the composition artifact.
 
 ### Build phase
 
@@ -33,9 +33,9 @@ Build order: core first, shells second. Each skill reads the single feature spec
 
 | Brief | Skills invoked |
 |-------|---------------|
-| `merge.md` | -- (drives `specify slice merge {preview, conflict-check, run}` plus capability-owned post-merge validation through `specify tool run vectis-validate -- composition`) |
+| `merge.md` | -- (drives `specify slice merge {preview, conflict-check, run}` plus capability-owned post-merge validation through `specify tool run vectis -- validate composition`) |
 
-The Vectis merge brief validates the merged UI baseline with [`vectis-validate`](../cli/vectis.md#vectis-validate). Host toolchain and cap-matrix checks are not part of the WASI scaffold/validate tools; writer, reviewer, and template-updater skills own those platform workflow steps.
+The Vectis merge brief validates the merged UI baseline with [`vectis validate`](../cli/vectis.md#vectis-validate). Host toolchain and cap-matrix checks are not part of the WASI scaffold/validate tools; writer, reviewer, and template-updater skills own those platform workflow steps.
 
 ## Specialist skills
 

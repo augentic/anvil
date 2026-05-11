@@ -12,8 +12,8 @@ The reference section is the lookup table for Specify. Use it when you need prec
 
 ### Skills
 
-- [Slice Skills (Layer 2)](slice-skills/index.md) -- the define-build-merge loop and supporting skills (init, drop, extract).
-- [Change Skills (Layers 3 & 4)](change-skills/index.md) -- `/change:plan`, `/change:execute`, and `/spec:analyze` for multi-slice changes (Layer 3); `/change:plan <name> orchestrate` for cross-repo changes end-to-end (Layer 4).
+- [Slice Skills](slice-skills/index.md) -- the define-build-merge loop and supporting skills (init, drop, extract).
+- [Change Skills](change-skills/index.md) -- `/change:plan`, `/change:execute`, and `/spec:analyze` for multi-slice changes; `/change:plan <name> orchestrate` for cross-repo changes end-to-end.
 
 ### CLI
 
@@ -44,7 +44,7 @@ The reference section is the lookup table for Specify. Use it when you need prec
 | See what a plugin provides | [Plugins](plugins/index.md) |
 | Understand capability differences | [Capabilities](capabilities/index.md) |
 | Look up a term | [Glossary](../appendices/glossary.md) |
-| Troubleshoot an error | [Troubleshooting](../appendices/troubleshooting.md) |
+| Troubleshoot an error | [Troubleshooting](../how-to/troubleshooting/index.md) |
 
 ## Design decisions
 

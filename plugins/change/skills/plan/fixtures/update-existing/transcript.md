@@ -282,10 +282,10 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ## Invariants pinned by this transcript
 
-- **Verb hygiene.** Every shell-out is a post-Phase-3 verb: `specify change {create, finalize}`, `specify change plan {create, add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`. No retired verbs.
+- **Verb hygiene.** Every shell-out is a current verb: `specify change {create, finalize}`, `specify change plan {create, add, amend, validate}`, `specify registry validate`, `specify workspace {sync, push}`, `gh pr list`. No retired verbs.
 - **No `--from` / `--source` / `--against`.** Pre-flight enforces this; the dispatch is unambiguous when shape is `update-existing`.
 - **`inputs:` is empty in the brief.** Discovery falls back to baseline accumulation; the `.specify/workspace/<peer>/specs/` trees are the only signal.
 - **No registry mutation.** `registry.yaml` is byte-identical between input and output. The 2B registry-proposal sub-step does not fire.
 - **No contract change.** The polish pass does not cross the API boundary, so propose surfaces only two slices — one per project. The two implementation entries each carry `project:` written by the assignment step.
-- **PR merge is outside orchestration.** The transcript shows the umbrella stopping with open PRs in run 1, then observing both PRs as `MERGED` in run 2. It never calls `specify workspace merge` or `gh pr merge`.
+- **PR merge is outside orchestration.** The transcript shows the umbrella stopping with open PRs in run 1, then observing both PRs as `MERGED` in run 2. The merge itself happens outside the umbrella.
 - **Idempotent re-entry.** Re-running the umbrella with the same flags after a successful finalize exits zero with `plan-not-found`.

@@ -1,10 +1,10 @@
 ---
 name: specify-extract
-description: Extract Specify artifacts (specs + design.md) from existing source code. Produces reconstruction-grade, language-agnostic artifacts capturing domain-level business logic. Supports optional `include` / `exclude` / `manifest` filters that scope which source files are read for business-logic extraction without changing the artifact output shape. Use when reconstructing Specify artifacts from a legacy code tree, or when the user mentions `extract`.
-argument-hint: "<source-path> <slice-dir>"
+description: Extract Specify artifacts (specs + design.md) from existing source as language-agnostic captures of domain logic. Use when bootstrapping artifacts from a codebase with no `.specify/`; not for fresh slices or plan-time capability inference.
+argument-hint: <source-path> <slice-dir>
 ---
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Identify component structure** — detect source language, entry points, module organization, async patterns, and guest/entry-point layer. Pin dependency versions from the lock file, not the manifest.
 2. **Extract business logic** — apply scope filters (`include`/`exclude`/`manifest`), then analyze depth-first by domain. Tag every statement `[domain]`, `[infrastructure]`, `[mechanical]`, or `[unknown]`. Copy type definitions verbatim; capture all serialization attributes, wire-format names, and field optionality. See [business-logic.md](business-logic.md).
@@ -52,15 +52,7 @@ The full filter rules, the sentinel file list, and the v1 manifest schema live i
 
 ## Principles (non-negotiable)
 
-1. **Focus**: Extract only domain/business logic and its inputs/outputs. Exclude infrastructure unless part of a domain rule.
-2. **Descriptive, not interpretive**: Produce algorithmic descriptions of what the code does. Do not infer "why" unless present in source.
-3. **Zero inference**: Do not invent behavior or semantics. Use explicit `unknown` tokens.
-4. **Explicit constants**: List every constant by identifier and semantic availability.
-5. **Traceability**: Each statement must be traceable to code. Do not attribute intent not in comments.
-6. **Tagging**: Each Business Logic line must include one tag: `[domain]`, `[infrastructure]`, `[mechanical]`, or `[unknown]`.
-7. **Conservatism**: Prefer `unknown` over guessing.
-8. **Language-agnostic**: Do not introduce target-language concepts. Describe behavior, not implementation.
-9. **Depth-first when possible**: When the source has clear functional domain boundaries, analyze depth-first by domain (all types + handlers + utilities for one domain before moving to the next). Fall back to step-by-step for simpler or single-domain components.
+Nine principles govern every extract: domain-only focus, descriptive not interpretive prose, zero inference, explicit constants, traceability to source, mandatory tagging of every business-logic line, conservatism (prefer `unknown` over guessing), language-agnostic descriptions, and depth-first analysis when domain boundaries are clear. The full text — each principle is non-negotiable — lives in [extract-principles.md](../../references/extract-principles.md).
 
 ## Tags and Unknown Tokens
 
@@ -177,6 +169,19 @@ Detailed examples are available in the `references/examples/` directory:
 ## Verification Checklist
 
 Before completing, verify all items from the [Specify Artifact Validation Checklist](references/specify.md#validation-checklists) are satisfied, plus the skill-specific items in [verification.md](verification.md). Common error modes and recovery steps also live in that file.
+
+## What this skill does NOT do
+
+| Surface | Status |
+|---|---|
+| Author `tasks.md` or implement code | Never — task authoring lives in `/spec:define`; implementation lives in `/spec:build`. Extract only writes `specs/` and `design.md`. |
+| Write outside the supplied `<slice-dir>` | Never — every artifact is rooted at `$SLICE_DIR`; the source tree is read-only. |
+| Run plan-time capability inference | Delegates to `/spec:analyze`. Extract is reconstruction-grade; analyze emits capability summaries into `discovery.md`. |
+| Merge extracted specs into the baseline | Never — that lives in `/spec:merge`. Extract leaves the slice in `defining`. |
+| Transition slice status | Never — lifecycle transitions route through `specify slice transition` from `/spec:define` and `/spec:merge`. |
+| Clone git URLs from `<source-path>` | Never — the caller (or the invoking define brief) materialises the source tree before extract runs. |
+| Extend the closed kind enum | Never — `legacy-code` / `documentation` are frozen at `/spec:analyze`; extract operates on a materialised path regardless of kind. |
+| Infer behaviour the source does not state | Never — uses explicit `unknown` tokens; see [extract-principles.md](../../references/extract-principles.md). |
 
 ## Guardrails
 

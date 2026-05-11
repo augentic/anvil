@@ -12,7 +12,7 @@ name: user-registration
 status: defined
 created-at: 2026-04-19T10:00:00Z
 updated-at: 2026-04-19T10:04:12Z
-schema: omnia
+capability: omnia
 outcome:
   phase: define
   outcome: success

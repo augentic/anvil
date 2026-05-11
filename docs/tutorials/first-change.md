@@ -182,42 +182,16 @@ This baseline (see [Glossary](../appendices/glossary.md)) is permanent. Future s
     └── specs/greeting/spec.md
 ```
 
-## 6. Aside: dropping a slice
-
-If at any point you decide a slice should not be merged -- it was exploratory, superseded, or just wrong -- you can discard it:
-
-```text
-/spec:drop
-```
-
-<details>
-<summary>Expected output</summary>
-
-```text
-Drop slice add-greeting-endpoint? (y/n): y
-
-Slice dropped.
-  Archived: .specify/archive/2026-04-27-add-greeting-endpoint/
-  Baseline unchanged.
-```
-
-</details>
-
-The slice is archived with status `dropped`. Baseline specs remain unchanged. You can provide a reason to skip the interactive confirmation:
-
-```text
-/spec:drop reason "Superseded by a different approach"
-```
-
 ## What you learned
 
 - **`/spec:init`** sets up the project once.
 - **`/spec:define`** generates all artifacts from a description.
 - **`/spec:build`** implements the tasks, delegating to specialist skills.
 - **`/spec:merge`** applies specs to the baseline and archives the slice.
-- **`/spec:drop`** discards a slice without affecting the baseline.
 - Artifacts separate *why*, *what*, *how*, and *sequence*.
 - The baseline accumulates over time, giving future slices context.
+
+If you decide a slice should not be merged, see [Drop a slice](../how-to/drop-a-slice.md) -- but for this tutorial we'll merge it.
 
 ## Next
 

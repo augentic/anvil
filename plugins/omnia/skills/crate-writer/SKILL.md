@@ -1,6 +1,6 @@
 ---
 name: omnia-crate-writer
-description: "Write Rust WASM crates from Specify artifacts -- greenfield creation or incremental updates -- following Omnia SDK patterns with provider-based dependency injection. Use when implementing crate tasks from a Specify change, regenerating a crate from updated artifacts, or when the user mentions `crate-writer`."
+description: "Write Rust WASM crates from Specify artifacts -- greenfield creation or incremental updates -- following Omnia SDK patterns with provider-based dependency injection. Use when an Omnia slice has pending crate-implementation tasks, or when an existing crate must be regenerated after artifact updates; not for guest wiring (`guest-writer`) or test scaffolding (`test-writer`)."
 argument-hint: "[crate-name]"
 ---
 
@@ -13,7 +13,7 @@ This skill accepts Specify artifacts from any producer:
 - **Code-Analysis artifacts** (from `/spec:extract`) -- generates/updates crates from existing source code
 - **Feature specs** (from Specify change artifacts) -- updated specs derived from requirements changes
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Detect mode**: `$CRATE_PATH/Cargo.toml` exists -> update; missing -> create.
 2. **Read** [rules.md](./rules.md) — the Hard Rules and Authority Hierarchy bind every step below.
@@ -229,33 +229,7 @@ Before starting code generation, verify artifact completeness per [checklists.md
 4. Determine artifact origin from design.md Context section
 5. Read reference documents from `references/`
 6. Read matching example from `examples/`
-7. **Cross-Cutting Analysis** -- before generating any handler code, build three matrices from the spec and design artifacts. These matrices are working artifacts (not persisted) but every cell must be satisfied in the generated code. If a cell cannot be implemented, mark it with a TODO per the todo-markers rules.
-
-   **a. Side-Effect Matrix**
-
-   For every handler that performs write operations (e.g., HTTP POST/PUT/PATCH/DELETE endpoints, message-triggered handlers that insert or update data), read the design.md Business Logic section and list every entity the handler must read or mutate *beyond its primary entity*. Include cross-handler delegations where one handler invokes or depends on another handler's write path.
-
-   | Handler | Primary Entity | Cross-Entity Read | Cross-Entity Mutation | Spec Reference |
-   |---------|---------------|-------------------|----------------------|----------------|
-
-   Every cell in the Cross-Entity Mutation column becomes a mandatory code path in the generated handler. If a handler's Business Logic references another entity's data, that reference MUST appear in the generated code -- even if the handler could function without it on the "happy path."
-
-   **b. Outbound Message Matrix**
-
-   For every event or notification published as a side effect in design.md, compare the outbound payload shape against the primary entity's API response shape. If they differ, document the transformation (field additions, removals, renames). Each transformation becomes a dedicated serialization function -- never serialize the entity struct directly for outbound messages unless the shapes are confirmed identical.
-
-   | Topic | Source Entity | Stripped Fields | Added Fields | Transform Function | Spec Reference |
-   |-------|-------------|----------------|--------------|-------------------|----------------|
-
-   **c. Transaction Boundary Matrix**
-
-   For every handler whose Business Logic contains multiple sequential write operations (inserts/updates, or delegated calls to other handlers that write), identify whether the spec requires atomicity (look for REQ references to transactions, "all-or-nothing" language, multi-entity consistency requirements, or post-commit-only side effects).
-
-   | Handler | Write Operations | Atomic? | Post-Commit Side Effects | Spec Reference |
-   |---------|-----------------|---------|--------------------------|----------------|
-
-   Every row with Atomic=Yes MUST generate transaction-scoped wrapping for its write operations, with event/notification publishes occurring only after successful commit.
-
+7. **Cross-Cutting Analysis** — before generating any handler code, build the three matrices (Side-Effect, Outbound Message, Transaction Boundary) defined in [cross-cutting-matrices.md](references/cross-cutting-matrices.md). The matrices are working artifacts (not persisted) but every cell must be satisfied in the generated code. If a cell cannot be implemented, mark it with a TODO per the todo-markers rules.
 8. Run pre-generation checklist above (verify artifact completeness)
 9. Generate `Cargo.toml` (see [cargo-toml.md](references/cargo-toml.md))
 10. Generate `src/lib.rs` with module declarations and re-exports
@@ -264,23 +238,7 @@ Before starting code generation, verify artifact completeness per [checklists.md
 13. Generate domain-specific modules as needed
 14. Generate `Migration.md`, `Architecture.md`, `.env.example`
 15. Run `cargo check` as a smoke check (full verification runs at the orchestration level after test-writer completes)
-16. **Traceability Verification** -- verify that every spec requirement and design.md Business Logic step has a corresponding code path in the generated crate. For each `### Requirement:` block in spec.md:
-    - Verify a traceability comment referencing the requirement ID exists in the generated code
-    - For each `#### Scenario:` under that requirement, verify that the described behavior has a corresponding branch or code path in a handler
-
-    For each row in the Side-Effect Matrix (step 7a):
-    - Verify that every Cross-Entity Mutation has a corresponding function call in the handler
-
-    For each row in the Outbound Message Matrix (step 7b):
-    - Verify that the transform function exists and is called before publishing
-
-    For each row in the Transaction Boundary Matrix (step 7c) where Atomic=Yes:
-    - Verify that transaction-scoped wrapping encloses the handler's write operations and that post-commit side effects are outside the transaction
-
-    If any verification fails: implement the missing code path before proceeding. Do not rely on the verify-repair loop or test-writer to catch these -- the code must satisfy the spec before handoff.
-
-    After implementing any missing code paths, re-run `cargo check` to verify the new code compiles.
-
+16. **Traceability Verification** — verify every spec requirement, design.md Business Logic step, and matrix cell has a corresponding code path per [cross-cutting-matrices.md → Traceability Verification](references/cross-cutting-matrices.md#traceability-verification). Implement any missing path before handoff and re-run `cargo check`.
 17. If `src/lib.rs` exists: inject guest wiring (see Guest Wiring section above)
 
 ---
@@ -343,43 +301,11 @@ See [change-classification.md](references/change-classification.md) for detailed
 
 #### Step 2a: Cross-Cutting Analysis (changed handlers only)
 
-For every handler that is classified as **Additive** or **Modifying** in the slice set, build the same three matrices as Create mode step 7. Also include any unchanged handler whose cross-cutting behavior depends on a modified entity or handler (e.g., an unchanged handler that reads or mutates an entity whose schema changed).
-
-- **Side-Effect Matrix** -- list cross-entity reads and mutations for each changed handler
-- **Outbound Message Matrix** -- list payload transformations for each changed handler's outbound messages
-- **Transaction Boundary Matrix** -- identify atomicity requirements for each changed handler's write sequences
-
-See step 7 in the Create mode Generation Process for the full matrix definitions. Every cell in these matrices must be satisfied in the updated code.
+For every handler classified as **Additive** or **Modifying** — plus any unchanged handler whose cross-cutting behavior depends on a modified entity or handler — build the three matrices defined in [cross-cutting-matrices.md](references/cross-cutting-matrices.md). Every cell must be satisfied in the updated code.
 
 #### Step 3: Generate Update Plan
 
-For each slice, determine the specific edit operations. The plan is a structured list:
-
-```text
-STRUCTURAL (apply first):
-  1. Rename OrderEvent → PurchaseEvent
-     - src/types.rs: lines 15-30 (struct definition)
-     - src/handler.rs: lines 45, 67 (references)
-
-SUBTRACTIVE (apply second):
-  2. Remove GET /legacy-status endpoint
-     - src/handlers/legacy_status.rs: delete file
-     - src/handlers.rs: remove mod + pub use
-     - guest src/lib.rs: remove route + import
-
-MODIFYING (apply third):
-  3. Add `priority` field to WorksiteRequest
-     - src/handlers/worksite.rs: lines 20-28 (struct definition)
-     - src/handlers/worksite.rs: lines 45-60 (filter builder)
-
-ADDITIVE (apply last):
-  4. Add POST /worksite handler
-     - src/handlers/create_worksite.rs: new file
-     - src/handlers.rs: add mod + pub use
-     - guest src/lib.rs: add route + import
-```
-
-Log the plan for traceability. Do not modify any files in this step.
+For each slice, determine the specific edit operations and produce a structured plan grouped by category (structural → subtractive → modifying → additive). See [cross-cutting-matrices.md → Update mode example plan](references/cross-cutting-matrices.md#update-mode--example-plan) for the canonical shape. Log the plan for traceability; do not modify any files in this step.
 
 #### Step 4: Apply Changes by Category
 
@@ -425,14 +351,7 @@ Run `cargo check` as a quick sanity check after applying all changes.
 
 #### Step 7: Traceability Verification (changed handlers only)
 
-For every handler classified as **Additive** or **Modifying** in the slice set, verify that the updated code satisfies the spec and cross-cutting matrices from Step 2a:
-
-- For each spec requirement and scenario that maps to a changed handler, verify a corresponding code path exists
-- For each row in the Side-Effect Matrix (Step 2a), verify cross-entity mutations are implemented
-- For each row in the Outbound Message Matrix (Step 2a), verify transform functions exist and are called
-- For each row in the Transaction Boundary Matrix (Step 2a) where Atomic=Yes, verify transaction-scoped wrapping is in place
-
-If any verification fails: implement the missing code path and re-run `cargo check` to verify the new code compiles.
+For every handler classified as **Additive** or **Modifying**, run the verification rules in [cross-cutting-matrices.md → Traceability Verification](references/cross-cutting-matrices.md#traceability-verification) against the updated code. Implement any missing path and re-run `cargo check`.
 
 Full verification (fmt, clippy, test suite, regression detection) runs at the orchestration level after test-writer completes.
 

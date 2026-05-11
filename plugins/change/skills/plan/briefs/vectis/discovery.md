@@ -32,7 +32,7 @@ At least one of `--from`, `--against`, or `--source` must be supplied.
 ## Output
 
 ```markdown
-# Discovery — <initiative-name>
+# Discovery — <change-name>
 
 ## Capability inventory
 
@@ -71,7 +71,7 @@ At least one of `--from`, `--against`, or `--source` must be supplied.
 <!-- UI inputs (layout.yaml, tokens.yaml, assets.yaml, future
 components.yaml) are operator-maintained input artifacts the shells
 consume — they are NOT a peer Crux tier (RFC-11 §L). Surface each
-input the initiative authors, migrates, or refines as a subsection
+input the change authors, migrates, or refines as a subsection
 here. Omit the entire section when no UI-input work is in scope.
 Subsections are level-3 headings (no enclosing tier wrapper, unlike
 the capability subsections above which sit one level deeper inside

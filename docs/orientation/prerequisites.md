@@ -24,6 +24,9 @@ The `specify` binary backs every skill in the Specify plugin. If you are setting
 cargo install --git https://github.com/augentic/specify-cli
 ```
 
+<details>
+<summary>Manual install (alternative)</summary>
+
 For manual setup, install via one of the following methods:
 
 ```bash
@@ -41,6 +44,8 @@ make build
 ```
 
 Pin a specific version with `SPECIFY_VERSION=v0.1.0` in front of the `curl` command, or override the install location with `SPECIFY_INSTALL_DIR=/usr/local/bin`.
+
+</details>
 
 Verify the installation:
 

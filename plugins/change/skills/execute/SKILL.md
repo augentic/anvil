@@ -1,16 +1,16 @@
 ---
 name: change-execute
-description: "Drives a change through its plan.yaml on the change surface: reads the plan, picks the next eligible slice, runs define → build → merge, and updates status. Use when running the next eligible slice in a change or processing all eligible slices via `loop`."
+description: "Drive a change through its plan.yaml on the change surface: read the plan, pick the next eligible slice, run define → build → merge, and update status. Use when running the next eligible slice in a change or processing all eligible slices via `loop`."
 ---
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Resolve project root** — walk upward from CWD looking for `.specify/project.yaml`; exit non-zero if not found.
 2. **Acquire driver lock** — `specify change plan lock acquire --pid <agent-session-pid>`. On `DriverBusy`, report and exit.
 3. **Self-heal** — reconcile any `in-progress` entries left by a prior crash: read `.metadata.yaml:outcome`, apply terminal transitions or resume mid-slice. Halt on ambiguity. See [self-heal.md](self-heal.md).
 4. **Pick next slice** — `specify change plan next --format json`. Handle `all-done` (exit 0), `stuck` (exit 0), or `in-progress` (exit non-zero). Capture `project`, `description`, and `sources` from the response.
 5. **Prepare workspace entry** — for multi-repo entries, resolve `entry.project` through `registry.yaml`, materialise only the selected slot when missing, and run `specify workspace prepare-branch <project> --change <change-name>` before phase writes. Then transition `pending → in-progress` and `chdir` into the slot. See [multi-repo.md](multi-repo.md).
-6. **Run phase sequence** — invoke `/spec:define` → `/spec:build` → `/spec:merge`, reading `.metadata.yaml:outcome` after each phase. On `failure` → drop + transition `failed`. On `deferred` → drop + transition `blocked`. On `registry-amendment-required` (RFC-9 §2B) → record proposal payload to journal → drop + transition `blocked`. Copy `outcome.summary` verbatim into `reason`.
+6. **Run phase sequence** — invoke `/spec:define` → `/spec:build` → `/spec:merge`, reading `.metadata.yaml:outcome` after each phase. On `failure` → drop + transition `failed`. On `deferred` → drop + transition `blocked`. On `registry-amendment-required` → record proposal payload to journal → drop + transition `blocked`. Copy `outcome.summary` verbatim into `reason`.
 7. **Wrap up** — after merge success in a workspace slot, verify the baseline commit boundary and commit non-baseline residue as `specify: residue <slice-name>` before `done`. Release the driver lock on **every** exit path. In `loop` mode, repeat from step 4 until no eligible slice remains, then emit the terminal summary. Cross-project consumer-impact reporting is a separate `specify compatibility` CLI surface.
 
 The full algorithm lives in [per-slice-algorithm.md](per-slice-algorithm.md). Shared state-handoff rules live in [execute-state-handoff.md](../../references/execute-state-handoff.md). Mode-specific deltas (`dry-run`, supervised, `loop`) live in [modes.md](modes.md). Rendered output shapes live in [output-format.md](output-format.md). Behavioural fixtures pinning each shape live in [fixtures.md](fixtures.md).
@@ -19,7 +19,7 @@ The full algorithm lives in [per-slice-algorithm.md](per-slice-algorithm.md). Sh
 
 Drive a change through `plan.yaml` by automating the Layer 1 loop: `get next slice` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify change plan transition`.
 
-> **Status.** Layer 2 is fully landed. The driver supports multi-repo workspace routing (`project` field on plan entries), selected slot materialisation, RFC-14 branch preparation on `specify/<change-name>`, `plan next` field extensions (`project`, `description`, `sources` in JSON), merge-baseline commit verification, residue commits in workspace slots, and self-heal under multi-repo. This skill ships the `dry-run` preview, the supervised single-slice run, the self-heal pass on startup, `loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/change:execute loop` drives the `platform-v2` example end-to-end against a plan authored by `/change:plan` — see [fixtures.md](fixtures.md) for the exit-gate meta-fixture.
+> **Status.** Layer 2 is fully landed. The driver supports multi-repo workspace routing (`project` field on plan entries), selected slot materialisation, branch preparation on `specify/<change-name>`, `plan next` field extensions (`project`, `description`, `sources` in JSON), merge-baseline commit verification, residue commits in workspace slots, and self-heal under multi-repo. This skill ships the `dry-run` preview, the supervised single-slice run, the self-heal pass on startup, `loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/change:execute loop` drives the `platform-v2` example end-to-end against a plan authored by `/change:plan` — see [fixtures.md](fixtures.md) for the exit-gate meta-fixture.
 
 ## Overview
 
@@ -76,7 +76,7 @@ Notes on the protocol:
 
 ## Per-slice algorithm at a glance
 
-The full algorithm — including step 9's phase-outcome classifier and the RFC-9 §2B `registry-amendment-required` branch — lives in [per-slice-algorithm.md](per-slice-algorithm.md). The 13 steps in summary:
+The full algorithm — including step 9's phase-outcome classifier and the `registry-amendment-required` branch — lives in [per-slice-algorithm.md](per-slice-algorithm.md). The 13 steps in summary:
 
 1. Resolve project directory (walk upward for `.specify/project.yaml`).
 2. Acquire driver lock (`specify change plan lock acquire`).
@@ -91,7 +91,7 @@ The full algorithm — including step 9's phase-outcome classifier and the RFC-9
 9b. Restore CWD for multi-repo entries.
 10. On terminal `success`: `specify change plan transition <name> done`.
 11. On `failure`: `/spec:drop` + `specify change plan transition <name> failed --reason "<outcome.summary>"`.
-12. On `deferred` (or `registry-amendment-required`): journal append (RFC-9 §2B path only) → `/spec:drop` + `specify change plan transition <name> blocked --reason "<outcome.summary>"`.
+12. On `deferred` (or `registry-amendment-required`): journal append (`registry-amendment-required` path only) → `/spec:drop` + `specify change plan transition <name> blocked --reason "<outcome.summary>"`.
 13. Release driver lock — on every exit path.
 
 `outcome.summary` is copied byte-for-byte into `--reason` at steps 11c and 12c. Never paraphrase.
@@ -131,7 +131,7 @@ The state this skill may mutate is limited to the driver lock, plan status trans
 
 ## Guardrails
 
-- Never hand-edit `plan.yaml`, `.specify/slices/<name>/.metadata.yaml`, or `.specify/slices/<name>/journal.yaml`. Route every write through the CLI verbs above — the single-writer invariant depends on it.
+- Route every write to `plan.yaml`, `.specify/slices/<name>/.metadata.yaml`, and `.specify/slices/<name>/journal.yaml` through the CLI verbs above — the single-writer invariant depends on it. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
 - Never skip the lock-release step. If the skill exits early after a successful acquire, run `specify change plan lock release --pid <agent-session-pid>` on the way out. Stale stamps can be reclaimed by a later run, but only after a visible-to-the-operator failure.
 - Treat an unexpected `specify change plan next` response shape (missing keys, unknown `reason`) as a hard failure: print the raw JSON, release the lock, and exit non-zero. Do not speculate.
 - For `dry-run` specifically: the skill MUST NOT invoke any phase skill, MUST NOT shell out to `specify change plan transition`, MUST NOT shell out to `specify slice journal append`, and MUST NOT invoke `/spec:drop`. This prohibition extends to the self-heal step: dry-run self-heal is report-only ([self-heal.md](self-heal.md) §Dry-run variant). The first-line banner prefixes the rendered output with `[dry-run] `.
@@ -146,7 +146,7 @@ The state this skill may mutate is limited to the driver lock, plan status trans
 
 ### When the loop reports `stuck`: run `specify change plan doctor`
 
-When `specify change plan next` returns `reason: stuck`, or when the terminal summary classifies a `loop` exit as `stuck`, the operator's first triage step is `specify change plan doctor`. `doctor` is a strict superset of `change plan validate` (RFC-9 §4B): it surfaces the four health issues `validate` does not catch, each with a stable diagnostic code so dashboards and runbooks can route them mechanically.
+When `specify change plan next` returns `reason: stuck`, or when the terminal summary classifies a `loop` exit as `stuck`, the operator's first triage step is `specify change plan doctor`. `doctor` is a strict superset of `change plan validate`: it surfaces the four health issues `validate` does not catch, each with a stable diagnostic code so dashboards and runbooks can route them mechanically.
 
 | Code | Severity | Meaning | Recovery |
 |---|---|---|---|

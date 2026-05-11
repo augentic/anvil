@@ -1,11 +1,11 @@
 ---
 name: omnia-guest-writer
-description: Generate a Rust project that exposes HTTP endpoints, subscribes to message topics, and handles WebSocket events in order to surface business logic via the Omnia WASI runtime. Use when scaffolding the WASM guest wrapper for a set of generated Omnia crates or when the user mentions `guest-writer`.
+description: Generate a Rust project that exposes HTTP endpoints, subscribes to message topics, and handles WebSocket events in order to surface business logic via the Omnia WASI runtime. Use when scaffolding or updating the WASM guest wrapper after `crate-writer` has produced the crates it surfaces; not for writing the crates themselves or for non-Omnia projects.
 ---
 
 # Guest Generator Skill
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. **Read references first** — load handler, provider/runtime, project, and configuration references; they are specifications, not examples.
 2. **Keep the guest thin** — route HTTP, messaging, WebSocket, config, and provider setup through the WASI boundary; keep all business logic in domain crates.

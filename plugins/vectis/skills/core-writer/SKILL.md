@@ -1,17 +1,17 @@
 ---
 name: vectis-core-writer
-description: Generate or update a Rust Crux shared crate from Specify artifacts. Use when implementing core tasks from a Specify change, or when the user mentions core-writer.
-argument-hint: "<slice-dir>"
+description: Generate or update a Rust Crux shared crate from Specify artifacts. Use when a Specify slice has pending Crux core tasks; not for platform shells (`ios-writer` / `android-writer`) or test scaffolding (`test-writer`).
+argument-hint: <slice-dir>
 ---
 
 # Crux Core Application Generator
 
-> **Vectis deterministic tooling runs through declared Specify tools.** Scaffold rendering is `specify tool run vectis-scaffold -- ...`; validation is `specify tool run vectis-validate -- ...`. Scaffolding is render-only: host verification remains skill-owned and must return step evidence (`name`, `passed`, and a failure snippet on error).
+> **Vectis deterministic tooling runs through declared Specify tools.** Scaffold rendering is `specify tool run vectis -- scaffold ...`; validation is `specify tool run vectis -- validate ...`. Scaffolding is render-only: host verification remains skill-owned and must return step evidence (`name`, `passed`, and a failure snippet on error).
 
-## Critical Path (Quick Reference)
+## Critical Path
 
 1. Read Specify artifacts (`{slice-dir}/specs/<feature>/spec.md` + `{slice-dir}/design.md`); extract App name, Model, Events, ViewModel/Page/Route, capabilities, and API shapes.
-2. Detect mode from `{project-dir}/shared/src/app.rs`: missing → run `specify tool run vectis-scaffold -- core ...` plus explicit Cargo verification, then enter Update Mode; present → start Update Mode immediately.
+2. Detect mode from `{project-dir}/shared/src/app.rs`: missing → run `specify tool run vectis -- scaffold core ...` plus explicit Cargo verification, then enter Update Mode; present → start Update Mode immediately.
 3. Build an implementation inventory of existing types and diff it against the artifact-derived target — Added / Removed / Modified / Unchanged — per category in dependency order (capabilities → views → domain → model → events → api → logic).
 4. Apply structural edits to `app.rs` (domain types → Page/ViewModel/Route → Model → Event/Effect → imports + `Cargo.toml` for new capabilities).
 5. Apply logic edits to `update()` and `view()` (per-Event match arms, business rules, model-to-ViewModel mapping for new pages); consult `references/crux-command-api.md` and `references/crux-capabilities.md`.
@@ -22,7 +22,7 @@ Generate or update a buildable Crux core (`shared` crate) for a multi-platform a
 
 When an existing project is detected, the skill operates in **update mode**: it compares the Specify artifacts against the current implementation and makes targeted edits rather than regenerating from scratch.
 
-When no project exists yet, the skill runs `specify tool run vectis-scaffold -- core {AppName} [--caps {caps}]` to render the workspace, shared crate, and toolchain files using the active Vectis version pins. The declared scaffold tool is the single source of truth for Cargo manifests, `rust-toolchain.toml`, `.gitignore`, `ffi.rs`, `codegen.rs`, and the `lib.rs`/`app.rs` skeleton, but it does not run Cargo or inspect the host. Once the scaffold exists and the explicit host checks pass, this skill switches to **update mode** and layers feature-specific changes over the generated baseline.
+When no project exists yet, the skill runs `specify tool run vectis -- scaffold core {AppName} [--caps {caps}]` to render the workspace, shared crate, and toolchain files using the active Vectis version pins. The declared scaffold tool is the single source of truth for Cargo manifests, `rust-toolchain.toml`, `.gitignore`, `ffi.rs`, `codegen.rs`, and the `lib.rs`/`app.rs` skeleton, but it does not run Cargo or inspect the host. Once the scaffold exists and the explicit host checks pass, this skill switches to **update mode** and layers feature-specific changes over the generated baseline.
 
 ## Arguments
 
@@ -85,7 +85,7 @@ If the design describes effects not covered by published capabilities, generate 
 
 The skill operates in one of two modes depending on whether an existing project is found:
 
-- **Create Mode** -- used when `{project-dir}/shared/src/app.rs` does **not** exist. The skill invokes `specify tool run vectis-scaffold -- core` to render the baseline, runs explicit Cargo verification, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
+- **Create Mode** -- used when `{project-dir}/shared/src/app.rs` does **not** exist. The skill invokes `specify tool run vectis -- scaffold core` to render the baseline, runs explicit Cargo verification, then proceeds directly into Update Mode to apply feature-specific changes from the Specify artifacts.
 - **Update Mode** -- used when `{project-dir}/shared/src/app.rs` **does** exist. Reads the existing code, diffs it against the artifacts, and makes targeted edits (steps U1--U8 below).
 
 The Specify artifacts always represent the **full desired state** of the application, not a partial diff. In update mode the skill compares the full artifacts against the existing implementation to determine what changed.
@@ -94,7 +94,7 @@ Detection rule: check for the file `{project-dir}/shared/src/app.rs`. If the fil
 
 ```bash
 cd {project-dir}
-specify tool run vectis-scaffold -- core {AppName} [--caps {detected-caps}]
+specify tool run vectis -- scaffold core {AppName} [--caps {detected-caps}]
 cargo fmt --check
 cargo check
 cargo clippy --all-targets -- -D warnings
@@ -103,7 +103,7 @@ cargo test
 
 `{AppName}` is the derived App struct name (see Derived Arguments). `{detected-caps}` is the comma-separated list from Capability Detection (e.g. `http,kv`; omit the flag when only Render is needed). If the scaffold command fails, report the tool's structured output to the user and stop -- do **not** attempt a manual scaffold as a fallback. If a host verification command fails, return a verification object with the failed step's `name`, `passed: false`, and the relevant stderr/stdout snippet, then stop.
 
-If the scaffold and host checks succeed, switch to Update Mode (the just-scaffolded project is the "existing implementation" Update Mode diffs against). The baseline emitted by `vectis-scaffold` is a render-only scaffold with type aliases for each selected capability and placeholder `update()` arms; Update Mode fills in domain types, Model fields, Event/ViewModel variants, and real handler logic derived from the Specify artifacts.
+If the scaffold and host checks succeed, switch to Update Mode (the just-scaffolded project is the "existing implementation" Update Mode diffs against). The baseline emitted by `vectis` (`scaffold`) is a render-only scaffold with type aliases for each selected capability and placeholder `update()` arms; Update Mode fills in domain types, Model fields, Event/ViewModel variants, and real handler logic derived from the Specify artifacts.
 
 ### Repair mode
 
@@ -145,7 +145,7 @@ Derive `{AppName}` (see Derived Arguments § App struct name) and `{caps}` (see 
 
 ```bash
 cd {project-dir}
-specify tool run vectis-scaffold -- core {AppName} [--caps {caps}]
+specify tool run vectis -- scaffold core {AppName} [--caps {caps}]
 cargo fmt --check
 cargo check
 cargo clippy --all-targets -- -D warnings
@@ -287,116 +287,11 @@ After all edits and verification pass, do a final review of every changed line. 
 
 ## Artifact-to-Code Mapping
 
-This table shows how each Specify artifact section maps to code constructs. Use it during update mode diff analysis (step U4) to systematically identify what changed.
-
-| Artifact Section | Code Construct | File(s) | Diff Indicators |
-|---|---|---|---|
-| **Design** -- Overview | App struct name, `impl App for X` | `app.rs`, `ffi.rs` | Renamed app |
-| **Spec** -- Feature requirements | Shell-facing Event variants | `app.rs` `enum Event` | New/removed/renamed user actions |
-| **Spec** -- Feature requirements | `update()` match arms | `app.rs` `fn update()` | New/removed/changed handler logic |
-| **Design** -- Domain Model (entities) | Domain structs and enums | `app.rs` top section | New/changed/removed fields or types |
-| **Design** -- Domain Model (state) | `struct Model` fields | `app.rs` `struct Model` | New/changed/removed state fields |
-| **Spec** -- View/page requirements | `enum ViewModel` variants | `app.rs` `enum ViewModel` | New/removed/renamed views |
-| **Spec** -- View/page requirements | `enum Page` variants | `app.rs` `enum Page` | New/removed/renamed internal page states |
-| **Spec** -- View/page requirements | `enum Route` variants | `app.rs` `enum Route` | New/removed navigable destinations |
-| **Spec** -- View/page requirements | `Event::Navigate` match arm | `app.rs` `fn update()` | Changed navigation handling |
-| **Spec** -- View/page requirements | `fn view()` match arms | `app.rs` `fn view()` | New/removed page-to-view mappings |
-| **Spec** -- View/page requirements | Per-page view struct fields | `app.rs` per-page structs | New/changed/removed display data |
-| **Spec** -- View/page requirements | `fn view()` body | `app.rs` `fn view()` | Changed model-to-view mapping |
-| **Design** -- Capabilities | `enum Effect` variants | `app.rs` `enum Effect` | Added/removed capabilities |
-| **Design** -- Capabilities | Type aliases (`type Http = ...`) | `app.rs` top section | Added/removed aliases |
-| **Design** -- Capabilities | Crate dependencies | `shared/Cargo.toml` | Added/removed deps |
-| **Design** -- Capabilities | Custom capability modules | `shared/src/*.rs`, `lib.rs` | Added/removed modules |
-| **Design** -- Capabilities | Internal Event variants | `app.rs` `enum Event` | Callback variants for added/removed capabilities |
-| **Design** -- API Contracts (endpoints) | HTTP call sites in `update()` | `app.rs` `fn update()` | Changed URLs, methods |
-| **Design** -- API Contracts (shapes) | Request/response body structs | `app.rs` domain types | Changed fields |
-| **Spec** -- Scenario conditions | Validation logic in `update()` | `app.rs` `fn update()` | Changed guards, conditions |
-| **Spec** -- Scenario conditions | Helper functions | `app.rs` free functions | Changed conflict resolution, sync logic |
-
-> **Note:** Per-page view struct fields align with `composition.yaml` field bindings via `design.md`. The core-writer reads `design.md`, not `composition.yaml` — layout is a shell concern. The composition artifact declares which data fields each screen needs (via `bind` keys), the design brief formalizes them into per-page view structs, and the core-writer generates the Rust types from the design.
+See [`references/artifact-to-code-mapping.md`](references/artifact-to-code-mapping.md) for the full table mapping each Specify artifact section to its code construct, target file, and diff indicators. Walk it during Update-Mode diff analysis (U4) to identify what changed.
 
 ## Update Change Patterns
 
-Common change patterns and which code elements they touch. Use this as a checklist when applying changes in steps U5--U7.
-
-### Adding a view
-
-1. Add a new variant to `enum Page`.
-2. Add a corresponding variant to `enum ViewModel`, wrapping a new per-page view struct if the view carries data.
-3. Define the per-page view struct with `Facet, Serialize, Deserialize, Clone, Debug, Default` derives.
-4. If the view is user-navigable (not an internal state like Loading/Error), add a variant to `enum Route` and a match arm in the `Event::Navigate(route)` handler.
-5. Add a match arm in `view()` that maps the new `Page` variant to the new `ViewModel` variant.
-6. Add page transition logic in the relevant `update()` arms (`model.page = Page::NewView`).
-7. If the view has user interactions, add shell-facing Event variants for them.
-
-### Removing a view
-
-1. Remove all `update()` arms that transition to the removed `Page` variant.
-2. If the view had a `Route` variant, remove it from `enum Route` and from the `Navigate` match arm.
-3. Remove the match arm from `view()`.
-4. Remove the `Page` variant.
-5. Remove the `ViewModel` variant and its per-page view struct.
-6. Remove any Event variants that were exclusive to the removed view.
-
-### Adding a feature
-
-1. Add a new shell-facing Event variant to `enum Event`.
-2. Add a match arm in `update()` with the handler logic.
-3. If the feature needs new state, add a field to `Model` (with a `Default` value).
-4. If the feature produces new display data, add a field to the relevant per-page view struct and update the corresponding match arm in `view()`.
-5. Ensure the new Event variant is testable (test-writer will generate tests).
-
-### Removing a feature
-
-1. Remove the Event variant from `enum Event`.
-2. Remove the match arm from `update()`.
-3. Remove any Model fields that are now unused (not referenced by any remaining event handler or `view()`).
-4. Remove any per-page view struct fields that are now unused.
-5. Check for helper functions that are now unused and remove them.
-
-### Modifying a feature
-
-1. Update the Event variant payload if the signature changed.
-2. Update the match arm logic in `update()`.
-3. Update any Model or ViewModel fields affected by the slice.
-4. Ensure modified Event variant remains testable (test-writer will update tests).
-
-### Adding a capability
-
-1. Add the crate to `[workspace.dependencies]` in the workspace `Cargo.toml`.
-2. Add the crate to `[dependencies]` in `shared/Cargo.toml`.
-3. Add a variant to `enum Effect` for the new capability's operation type.
-4. Add a type alias: `type X = crate_name::X<Effect, Event>;`.
-5. Add `use` imports for the capability's types.
-6. If the capability is custom (not a published crate), create the module file, add `pub mod {name};` to `lib.rs`, and add `use crate::{name}::...;` to `app.rs`.
-7. Add internal Event variants for the capability's callbacks (with `#[serde(skip)]` and `#[facet(skip)]`).
-8. Add match arms in `update()` for the new internal Event variants.
-
-### Removing a capability
-
-Reverse of adding -- remove in this order to avoid compilation errors:
-
-1. Remove match arms for the capability's internal Event variants from `update()`.
-2. Remove the internal Event variants from `enum Event`.
-3. Remove the type alias.
-4. Remove the Effect variant.
-5. Remove `use` imports.
-6. Remove the crate from `shared/Cargo.toml` and workspace `Cargo.toml`.
-7. If custom, delete the module file and remove `pub mod {name};` from `lib.rs`.
-
-### Changing an API endpoint
-
-1. Update the URL pattern in the HTTP call site within `update()`.
-2. Update the HTTP method if it changed (e.g., `Http::post` -> `Http::put`).
-3. Update request body structs if the payload shape changed.
-4. Update response handling if the response shape changed (may require updating the internal Event variant's payload type).
-5. Ensure changed API shapes remain testable (test-writer will update tests).
-
-### Changing a business rule
-
-1. Locate the match arm(s) in `update()` that enforce the rule.
-2. Update the guard condition, validation logic, or helper function.
-3. Ensure changed rule is testable (test-writer will update tests).
+See [`references/update-change-patterns.md`](references/update-change-patterns.md) for the full checklist of which code elements each common change pattern (add/remove view, add/remove feature, add/remove capability, change API endpoint, change business rule) touches. Use it as a step-by-step guide during U5--U7.
 
 ## Preservation Rules
 
@@ -414,7 +309,7 @@ Consult these references during generation. Do not deviate from the patterns the
 | `references/crux-custom-capabilities.md` | Building custom Operation + capability (SSE example) |
 | `references/crux-testing-patterns.md` | Testing effects, events, resolving requests |
 
-Version pins, Cargo workspace layout, `rust-toolchain.toml`, `ffi.rs`, `codegen.rs`, and `.gitignore` are owned by the Vectis scaffold templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis-scaffold/` and the Vectis template sources). When a spec change requires updating a pinned version, route that through the Vectis version/template workflow rather than editing generated dependency versions in this crate by hand.
+Version pins, Cargo workspace layout, `rust-toolchain.toml`, `ffi.rs`, `codegen.rs`, and `.gitignore` are owned by the Vectis scaffold templates in the [`augentic/specify-cli`](https://github.com/augentic/specify-cli) repo (`<specify-cli>/crates/vectis/` and the Vectis template sources). When a spec change requires updating a pinned version, route that through the Vectis version/template workflow rather than editing generated dependency versions in this crate by hand.
 
 ## Examples
 

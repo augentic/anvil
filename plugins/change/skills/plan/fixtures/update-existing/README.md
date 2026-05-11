@@ -1,6 +1,6 @@
 # `--shape update-existing` — `polish-pass` end-to-end
 
-This fixture pins the **happy path** of `/change:plan <name> orchestrate` (formerly `/spec:initiative`) driving the `update-existing` shape against a populated multi-project hub. No `from`, no `source`, no `against` — sources are unused and `/change:plan` reads `.specify/workspace/<peer>/specs/` baselines as the dominant signal during discovery. The umbrella pushes PRs, stops for operator merge, and finalizes on re-entry.
+This fixture pins the **happy path** of `/change:plan <name> orchestrate` driving the `update-existing` shape against a populated multi-project hub. No `from`, no `source`, no `against` — sources are unused and `/change:plan` reads `.specify/workspace/<peer>/specs/` baselines as the dominant signal during discovery. The umbrella pushes PRs, stops for operator merge, and finalizes on re-entry.
 
 ## Scenario
 
@@ -46,7 +46,7 @@ The umbrella runs through PR handoff, then resumes after operator merge:
 - **`inputs:` is empty in the brief.** The discovery brief detects the empty input set and falls back to baseline accumulation. `/change:plan` does not read any external file beyond `.specify/workspace/<peer>/specs/`.
 - **No registry mutation.** Both projects exist; neither the discovery brief nor the assignment step proposes a new entry. The 2B registry-proposal sub-step does not fire.
 - **No contract change.** The polish pass does not cross the API boundary, so propose surfaces only two slices (one per project). This contrasts with the migrate-legacy and new-feature fixtures, both of which include a cross-project `<name>-contract` slice.
-- **PR merge is operator-owned.** The umbrella never invokes `specify workspace merge` or `gh pr merge`; it stops after `specify workspace push` until the operator merges the PRs outside the skill.
+- **PR merge is operator-owned.** The umbrella stops after `specify workspace push` until the operator merges the PRs outside the skill.
 - **Re-entry is idempotent.** A second run of the same invocation reports `plan-not-found` from `specify change finalize` and exits zero.
 
 ## Counter-examples (not pinned)
@@ -54,4 +54,3 @@ The umbrella runs through PR handoff, then resumes after operator merge:
 - A run where the discovery brief surfaces no polish opportunities — the propose step would skip every slice and `specify change plan validate` would fail with an empty-plan diagnostic; the umbrella halts at step 3.
 - A `--dry-run` rendering — see [§`--dry-run` semantics](../../SKILL.md#--dry-run-semantics).
 - A run that surfaces a `registry-amendment-required` outcome at step 4 (operator decides one of the polish slices needs a new project mid-execute) — recovery is documented in the SKILL but not pinned here.
-- Supplying retired `--auto-merge` — the skill exits non-zero before side effects.

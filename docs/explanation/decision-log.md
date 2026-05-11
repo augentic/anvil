@@ -125,9 +125,9 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 ## Platform artifacts at the repo root, framework state under `.specify/`
 
-**Decision:** The four operator-facing platform artifacts -- `registry.yaml`, `plan.yaml`, `change.md`, `contracts/` -- live at the repo root. Generated `AGENTS.md` guidance also lives at the root, with Specify owning only its fenced block. `.specify/` retains framework-managed state: `project.yaml`, `context.lock`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`. The CLI ships one-shot migrations to upgrade existing projects in place and refuses every project-aware verb on a v1-layout project with the stable `legacy-layout` error code (hard cutover, no transition window).
+**Decision:** The four operator-facing platform artifacts -- `registry.yaml`, `plan.yaml`, `change.md`, `contracts/` -- live at the repo root. Generated `AGENTS.md` guidance also lives at the root, with Specify owning only its fenced block. `.specify/` retains framework-managed state: `project.yaml`, `context.lock`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`.
 
-**Rationale:** `.specify/` started life as workflow scratch -- cache, archive, working changes, lifecycle metadata. The artifacts that have accreted there since (the registry, the operator brief, the plan, contracts) are durable, PR-reviewed, human-edited material. Putting them under a dot-prefixed framework directory understated their importance and forced operators to navigate framework internals to inspect or hand-edit them. Pulling them up to the root makes the boundary explicit: framework owns `.specify/`; operators own everything else. The hard-cutover stance avoids carrying a dual-read code path indefinitely; the migrate verb is a one-line operator action that addresses the upgrade in a single step.
+**Rationale:** The operator-facing artifacts (the registry, the operator brief, the plan, contracts) are durable, PR-reviewed, human-edited material. Putting them under a dot-prefixed framework directory understates their importance and forces operators to navigate framework internals to inspect or hand-edit them. Keeping them at the root makes the boundary explicit: framework owns `.specify/`; operators own everything else.
 
 **Source:** specify-cli [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) (v2 layout entry).
 
@@ -158,3 +158,73 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 **Decision:** The lifecycle (states, transitions, core artifacts, baseline accumulation) is invariant across capabilities. Capabilities control the *content* of brief pipelines, may add capability-specific stages (e.g. Vectis adds `composition` to the define pipeline), and determine which specialist skills are invoked during build.
 
 **Rationale:** The workflow is the value -- define-build-merge, baseline accumulation, drift detection. Making this capability-agnostic means every project gets the same tooling regardless of target platform. Capabilities customise the generation content and may extend the pipeline without fragmenting the workflow.
+
+## Planning briefs ship with the skill, not the capability manifest
+
+**Decision:** The planning briefs (`discovery`, `propose`) live alongside the `/change:plan` skill under `plugins/change/skills/plan/briefs/<capability>/` rather than under `capability.yaml:pipeline.plan`. The capability manifest schema actively rejects a `pipeline.plan` block.
+
+**Rationale:** Planning is orchestration, not capability-owned slice work. A capability decides what define/build/merge produces inside an individual slice; it does not decide how a *change* (potentially spanning many slices and projects) gets composed. Putting plan briefs in the capability manifest blurred that boundary and forced every capability to ship near-duplicate plan briefs. Keeping the briefs with the plan skill keeps the framework concern at the framework, with capabilities free to ship their own plan-time variants by name (`briefs/<capability>/`).
+
+**Source:** [RFC-13: Extensibility](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md)
+
+## Capability vs `--hub` is mutually exclusive at init
+
+**Decision:** `specify init` accepts either a capability positional or `--hub`, never both and never neither. A regular project carries a `capability:` in `.specify/project.yaml`; a hub carries `hub: true` and never carries a `capability:`. The CLI rejects the two pathological combinations (no positional + no `--hub`, or both supplied) with the stable `init-requires-capability-or-hub` diagnostic.
+
+**Rationale:** Hubs are registry-only repositories that never run phase pipelines, so they have no capability to resolve. Allowing an empty capability would force every downstream verb to special-case the missing field; allowing both would double the topology surface. The mutual-exclusion is mechanically enforced at init so every later verb can rely on the invariant without re-checking.
+
+**Source:** [RFC-9: Platform](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-9-platform.md), [RFC-13: Extensibility](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md)
+
+## Platform components are not capabilities
+
+**Decision:** The registry and the change orchestrator are first-party **platform components**, not capabilities. They have commands, libraries, and files, but they never appear in any `capability.yaml`, never participate in the manifest protocol, and are never activated through a capability-name switch. The dependency direction is fixed at the crate level: `specify-core` does not depend on `specify-registry` or `specify-change`, and `specify-registry` does not depend on `specify-change`.
+
+**Rationale:** Treating the registry and change orchestration as capabilities created a circular activation problem — the surface that decides which capabilities are active was itself a capability. Promoting them to platform components keeps capability composition strictly downward and means a capability author never has to think about whether the registry or change loop is "available." The hard-coded crate dependency direction makes the invariant a build-time guarantee rather than a convention.
+
+**Source:** [RFC-13: Extensibility](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md)
+
+## Operator owns PR merge; Specify prepares and publishes
+
+**Decision:** Specify materialises workspace slots, prepares the `specify/<change-name>` branch before phase writes, accumulates a baseline commit from `/spec:merge` and a residue commit from `/change:execute`, and pushes the branch through `specify workspace push`. PR review and merge happen through the forge UI, `gh pr merge`, or the team's normal merge queue. The framework never inspects checks or calls `gh pr merge` itself, and `specify change finalize` only verifies that each PR is already merged before archiving the plan. `specify workspace merge` is removed.
+
+**Rationale:** Automated PR merge couples the framework to forge APIs, check-suite semantics, and team-specific review rules that vary across operators. Holding the framework at "prepare and publish" lets every team layer its own merge policy — checks, reviewers, merge queue, manual approval — without the framework modelling any of it. The split also gives a natural rollback surface: an unmerged PR can be closed or rebased without rewinding any framework state.
+
+**Source:** [RFC-14: Workspace](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-14-workspace.md)
+
+## Declared WASI capability tools
+
+**Decision:** Helper tools shipped by capabilities or projects are declared as WASI command components in a `tools.yaml` sidecar (capability scope) or in `.specify/project.yaml` (project scope), and run through a single CLI surface — `specify tool {list, fetch, show, run}`. Project scope wins on collision, so an operator can redirect a capability-shipped tool to a local build or pinned mirror without editing the capability. Permissions are directory preopens, not globs; the host canonicalises every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. Released first-party tool declarations require `sha256` so cache fills verify exact component bytes.
+
+**Rationale:** Capabilities used to extend the framework either by adding more in-binary CLI verbs or by shelling out to host binaries the operator had to install separately. Both paths broke on every CLI release: in-binary verbs grew the host surface unboundedly; host binaries diverged in version, permissions, and discoverability across machines. WASI command components keep the helpers sandboxed and deterministic while making them data — the host fetches them, the host enforces the preopens, the host caches them — so a capability can ship behavior without growing the host.
+
+**Source:** [RFC-15: WASM Plugins](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasm-plugins.md)
+
+## One `specify` binary; capability-specific helpers ship as declared tools
+
+**Decision:** Operators install one binary — `specify`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by `capabilities/vectis/tools.yaml`. Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in Vectis skills as ordinary shell commands the agent runs and journals.
+
+**Rationale:** A separate capability-specific binary would double the install, packaging, release, and version-coordination surface for every capability that needs helpers. Applying the declared-tool model from RFC-15 keeps the surface to one binary and keeps the "deterministic rendering" layer cleanly separated from the "host toolchain" layer, which never belongs inside a WASI wrapper.
+
+**Source:** [RFC-16: WASI Vectis](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-16-wasi-vectis.md)
+
+## SemVer `info.version` and rename-stable `info.x-specify-id`
+
+**Decision:** Every top-level OpenAPI 3.1 and AsyncAPI 3.0 document under `contracts/` MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels. Every top-level contract MAY set `info.x-specify-id` to a kebab-case slug (`^[a-z][a-z0-9-]*$`, ≤64 characters, repo-unique) that survives file moves and `info.version` bumps. Path-based references in `registry.yaml` remain canonical — the id is a hint, not a substitute. Bump rules (when to advance major / minor / patch) remain skill-side judgement.
+
+**Rationale:** Pre-RFC-12 contracts used a mix of `YYYY-MM-DD` dates and bare majors as `info.version`, which prevented any tooling from comparing two contract versions programmatically. Requiring SemVer aligns contract evolution with the broader ecosystem (`progenitor`, `typify`, `schemars`) and makes producer/consumer compatibility classification (`specify compatibility`) decidable. The optional rename-stable id captures the identity of a contract independent of its file location, so a file move or a major-version rename does not look like deletion-plus-creation to baseline diff tools.
+
+**Source:** [RFC-12: Refine RFC-8](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-12-refine-rfc-8.md)
+
+## SKILL.md discipline cleanup (2026-05)
+
+**Decision:** Five mechanical predicates lock down the SKILL.md shape that operators read every day:
+
+- **Description grammar** (S1) — `checkDescriptionStartsWithVerb` + `checkDescriptionHasUseWhen` enforce a leading imperative verb (curated allow-list in `scripts/checks/skill_frontmatter.ts`) and a `Use when …` clause, in addition to the pre-existing `checkDescriptionLength` ≤ 512 char cap.
+- **Section line cap** (S2) — `checkSectionLineCount` caps each H2 section at 60 lines (non-blank, non-comment). Depth migrates into `references/<topic>.md` instead of letting individual sections sprawl.
+- **Argument-hint grammar** (S3) — `checkArgumentHintGrammar` accepts only `<name>`, `[name]`, trailing `...`, `<a|b>` / `[a|b]`, and `--flag` tokens (kebab-case names). Bare prose, mixed punctuation, and short flags are rejected.
+- **Envelope-example forbid** (S5) — `checkNoEnvelopeExamples` flags fenced ```json``` blocks whose body looks like a CLI envelope wrapper. Envelope shapes live with stable anchors in `plugins/references/cli-output-shapes.md`; SKILL.md bodies link instead of embed.
+- **Vocabulary / guardrails consolidation** (S4) — cross-cutting guardrails (the recurring `.metadata.yaml` / slice-dir / plan-write rules) live in `plugins/references/guardrails.md`; SKILL.md files link, not restate. Pre-1.0 sweep dropped "previously / migrate / backward-compat" prose that did not document a real legacy-migration feature, and stale CLI names were replaced in docs (`initiative` → `change`, `JSON_SCHEMA_VERSION` → `ENVELOPE_VERSION`).
+
+**Rationale:** The skill-discovery surface needs to match on intent ("does this skill apply to my task?") rather than vocabulary, which means the description and argument-hint shapes have to be mechanically tight. The body and section caps push depth into `references/` so a SKILL.md stays an orientation artifact. The envelope-example forbid pins one place where the wire shape can drift. The pre-1.0 vocabulary stance — no backward compatibility constraints, no migration prose unless documenting a real legacy-migration feature — keeps the skill bodies honest about what the system does today rather than how it was built.
+
+**Source:** Cleanup chunks S1–S5 on the `code-review` branch.

@@ -2,24 +2,29 @@
 
 Task-oriented recipes for common Specify operations. Each guide assumes you have completed at least the [Quick Start](../tutorials/quick-start.md) or [Your First Slice](../tutorials/first-change.md) tutorial.
 
-## I want to...
+## Recovery
 
-### Single-change work
+- [Recover from a failed change](recover-failed-change.md)
+- [Recover from `registry-amendment-required`](recover-from-registry-amendment.md)
+- [Resolve cross-project compatibility findings](resolve-cross-project-contract-warnings.md)
 
-| Task | Guide |
-|------|-------|
-| Fix a change that failed during build or merge | [Recover from a Failed Change](recover-failed-change.md) |
-| Add a new feature to a project that already has a baseline | [Add a Capability to an Existing Project](add-capability.md) |
-| Get a colleague set up on a project that already uses Specify | [Onboard a Team Member](onboard-team-member.md) |
-| Use CLI commands directly when a skill isn't doing what I need | [Drop Down a Layer](drop-down-a-layer.md) |
+## Setup
 
-### Cross-repo and platform work
+- [Add a capability to an existing project](add-capability.md)
+- [Bootstrap a platform hub](bootstrap-a-platform-hub.md)
+- [Onboard a team member](onboard-team-member.md)
 
-| Task | Guide |
-|------|-------|
-| Bootstrap a registry-only platform hub | [Bootstrap a Platform Hub](bootstrap-a-platform-hub.md) |
-| Add or remove a project from the registry | [Manage Registry Projects](manage-registry-projects.md) |
-| Land a change end-to-end (autonomous or supervised) | [Land a Change](land-a-change.md) |
-| Define API contracts that span multiple repositories | [Work with Contracts Across Repos](cross-repo-contracts.md) |
-| Triage cross-project compatibility findings | [Resolve Cross-Project Compatibility Findings](resolve-cross-project-contract-warnings.md) |
-| Recover when `/change:execute` halts on `registry-amendment-required` | [Recover from `registry-amendment-required`](recover-from-registry-amendment.md) |
+## Cross-repo
+
+- [Manage registry projects](manage-registry-projects.md)
+- [Work with contracts across repos](cross-repo-contracts.md)
+- [Land a change](land-a-change.md)
+
+## Escape hatches
+
+- [Drop down to the CLI](drop-down-a-layer.md)
+- [Drop a slice](drop-a-slice.md)
+
+## Troubleshooting
+
+- [Troubleshooting index](troubleshooting/index.md) -- catalogue of symptoms and fixes.

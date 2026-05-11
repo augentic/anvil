@@ -1,5 +1,5 @@
 ---
-description: Specify plugin context -- Specify workflow orchestration for defining, building, merging, and dropping changes
+description: Specify plugin context -- Specify workflow orchestration for defining, building, merging, and dropping slices
 alwaysApply: true
 ---
 
@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Overview
 
-This plugin provides the core Specify workflow skills: define a slice, build (validate and implement) a slice, merge a completed slice, drop a discarded change, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Client) build on.
+This plugin provides the core Specify workflow skills: define a slice, build (validate and implement) a slice, merge a completed slice, drop a discarded slice, and initialize new projects. These skills orchestrate the human-driven Specify lifecycle that the specialist plugins (Omnia, RT, Client) build on.
 
 **Purpose**: Drive the define -> build -> merge workflow, with drop for cleanup.
 
@@ -25,7 +25,7 @@ capabilities/<name>/
 
 ## Slice Lifecycle
 
-Changes track their status in `.metadata.yaml`:
+Slices track their status in `.metadata.yaml`:
 
 ```text
 defining -> defined -> building -> complete -> merged
@@ -37,8 +37,8 @@ defining -> defined -> building -> complete -> merged
 - **defined**: All artifacts created, ready for implementation
 - **building**: Tasks are being implemented (artifacts validated on entry)
 - **complete**: All tasks done, ready to merge
-- **merged**: Specs merged into baseline, change moved to archive
-- **dropped**: Change moved to archive without merging specs into the baseline
+- **merged**: Specs merged into baseline, slice moved to archive
+- **dropped**: Slice moved to archive without merging specs into the baseline
 
 ## Workflow
 

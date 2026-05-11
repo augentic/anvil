@@ -1,14 +1,14 @@
 ---
 name: vectis-android-reviewer
-description: Review generated Android shell (Kotlin/Jetpack Compose) code for structural issues, integration correctness, and quality problems. Use when reviewing a Crux app's Android shell after generation, or when the user mentions android-reviewer.
-argument-hint: "<target-dir>"
+description: Review generated Android shell (Kotlin/Jetpack Compose) code for structural issues, integration correctness, and quality problems. Use when `android-writer` has just produced or updated an Android shell and the slice is ready for review; not for the core (`core-reviewer`) or iOS shell (`ios-reviewer`).
+argument-hint: <target-dir>
 ---
 
 # Crux Android Shell Reviewer
 
-## Critical Path (Quick Reference)
+## Critical Path
 
-1. Gather context — read `shared/src/app.rs`, every `.kt` file under `Android/app/src/main/java/`, Gradle/manifest config, and the wired UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml` — change-local then baseline / project paths per RFC-11 §H); if `reference-dir` is provided, read its counterparts too.
+1. Gather context — read `shared/src/app.rs`, every `.kt` file under `Android/app/src/main/java/`, Gradle/manifest config, and the wired UI input set (`composition.yaml`, `tokens.yaml`, `assets.yaml` — change-local then baseline / project paths); if `reference-dir` is provided, read its counterparts too.
 2. Spawn team — Structural + Quality (always); Integration only on the first iteration when `scope = full`. Each specialist applies its own check set (AND-, KTL-, INT-).
 3. Lead applies universal codex checks (UNI-001..021) with Android/Compose heuristics, attaches `rule_id` on mapped findings, and skips checks already covered by the specialists.
 4. Antagonist (see [`team-protocol.md`](team-protocol.md)) challenges every finding with evidence and counter-scans for Android blind spots; lead synthesises into a single iteration report and assigns a confidence level.
@@ -37,7 +37,7 @@ This skill uses an agent team with 3 specialist reviewers and 1 antagonist. The 
 
 Keep review-local finding IDs separate from stable codex rule IDs:
 
-- **Finding ID**: the report-local occurrence identifier used for triage and ownership, such as `AND-001-1`, `KTL-006-1`, `UNI-1`, or `NEW-1`. These remain scoped to this review run.
+- **Finding ID**: the report-local occurrence identifier used for triage and ownership, such as `AND-001-1`, `KTL-007-1`, `UNI-1`, or `NEW-1`. These remain scoped to this review run.
 - **Rule ID**: the stable codex catalogue identifier when the finding maps to a codex rule, such as `VECTIS-003` or `UNI-016`. Include it as `rule_id` in structured outputs and as `**Rule ID**` in markdown reports.
 
 Use the resolved project codex when the caller provides it. Read first-party rules directly from `capabilities/default/codex/` and `capabilities/vectis/codex/`. Do not copy full codex prose into reports or prompts.
@@ -67,7 +67,7 @@ Read the following files from `{target-dir}`:
 
 If `reference-dir` is provided, also read the corresponding files from the reference app.
 
-Also read the wired UI input set (RFC-11 §H + §I) to compare generated code against the validated artifacts:
+Also read the wired UI input set to compare generated code against the validated artifacts:
 
 - `composition.yaml` -- canonical layout (slice-local `.specify/slices/<name>/composition.yaml` then baseline `.specify/specs/composition.yaml`); the source of truth for component-directive (`component: <slug>`) detection and recurring-group identification
 - `tokens.yaml` -- expected design tokens (change-local then `design-system/tokens.yaml`); the source of truth for token-usage checks
@@ -119,7 +119,7 @@ pattern-based checks that verify the shell correctly maps to the Crux core:
 - Build configuration correctness
 - Fill-max-size components inside unbounded scrollable containers
 - Crash recovery handler presence in Application class
-- Recurring composition groups without a `component:` slug (RFC-11 §I "Reviewer surface")
+- Recurring composition groups without a `component:` slug
 
 For each finding, report: check ID (AND-NNN), stable rule_id when it
 clearly maps to a codex rule, file:line, code snippet, severity
@@ -158,7 +158,7 @@ clearly maps to a codex rule, file:line, code snippet, severity
 auto-fixable.
 
 Output your findings as a numbered list in markdown. Prefix each finding
-ID with "KTL-" (e.g., KTL-001-1, KTL-006-1).
+ID with "KTL-" (e.g., KTL-001-1, KTL-007-1).
 ```
 
 If `iteration > 1`, append: "Scope your analysis to these files modified in the previous iteration: [list of changed files]."
@@ -207,38 +207,7 @@ The specialists analyze the shell concurrently. Each reads all `.kt` files under
 
 #### 2c. Universal checks (lead; skip if scope = quick)
 
-After all specialists report, the lead applies universal codex rules `UNI-001` through `UNI-021` from the resolved default codex with Kotlin/Android-specific detection. Read `capabilities/default/codex/*.md` directly. Several universal checks overlap with categories already assigned to the specialists. Skip those and focus on the gaps:
-
-| Universal check | Already covered by | Action |
-|---|---|---|
-| UNI-003 Serialization failures | AND-013, AND-014, AND-020 | Skip |
-| UNI-006 Race conditions | KTL-003, AND-015, AND-016 | Skip |
-| UNI-010 Panics/crashes | KTL-001 | Skip |
-
-Apply the remaining checks with these Kotlin/Android-specific heuristics:
-
-- **UNI-001** (uninitialised values): Look for `var` properties initialised to `null` or placeholder values that are accessed before a coroutine load completes. Check for `MutableStateFlow` initialised with default values that represent an invalid domain state.
-- **UNI-002** (unvalidated input): Look for shell-side `TextField` values dispatched to the core via `onEvent(Event.Something(text))` without local trim or empty check. While the core should also validate, the shell should prevent obviously invalid dispatches.
-- **UNI-004** (logic bugs): Reason about the `processRequest` `when` for missing branches, incorrect effect resolution sequences, and navigation handlers that produce unreachable states.
-- **UNI-005** (unbounded growth): Look for `scope.launch` blocks that create coroutines without cancellation tracking, growing lists of SSE observations without cleanup, and `MutableStateFlow` subscribers that are never collected. Check for `Job` references stored without cancellation.
-- **UNI-007** (chatty calls): Look for Ktor HTTP calls that re-fetch data the core already has from SSE or other real-time channels. Check for effect handlers that fire identical resolve calls on repeated recompositions.
-- **UNI-008** (instrumentation balance): Look for error paths with no `Log.e` or `Log.w` call. Flag per-event logging inside hot loops (e.g., logging every SSE chunk body).
-- **UNI-009** (handle-then-throw): Look for `try/catch` blocks that partially update `_viewModel.value` or other `MutableStateFlow` values before rethrowing, leaving the UI in an inconsistent state.
-- **UNI-011** (timeout/retry): Look for Ktor `HttpClient` instances without `HttpTimeout` installed. Check whether SSE reconnection logic exists for transient network failures.
-- **UNI-012** (persisted state compat): Look for `SharedPreferences` model changes (new keys, changed serialization format) that would break deserialization of existing stored data.
-- **UNI-013** (dead code): Look for `when` branches that can never match, unreachable code after `return` / `break`, unused private functions or properties, and composables with no call site.
-- **UNI-014** (hardcoded config): Look for hardcoded timeout intervals, literal URL strings, and magic number page sizes or retry counts.
-- **UNI-015** (stale captures): Look for `scope.launch` blocks capturing `this` or local state that may mutate before the coroutine completes. Check for lambda captures in `LazyColumn` `items` blocks that reference loop-scoped variables.
-- **UNI-016** (error message quality): Look for `Log.e` messages with no context about which item or operation failed, and catch blocks that log the exception type but not the message.
-- **UNI-017** (type safety): Look for `String` properties on view model types or event types that hold values from a known closed set (should be Kotlin enums or sealed interfaces).
-- **UNI-018** (hardcoded secrets): Look for API keys, tokens, passwords, or connection strings embedded as string literals in Kotlin source files. Check for secrets in `local.properties` committed to git, hardcoded `Authorization` headers, and credentials stored in plain-text `SharedPreferences` rather than `EncryptedSharedPreferences` or the Android Keystore.
-- **UNI-019** (injection vulnerabilities): Look for user input interpolated into `WebView` HTML content without escaping, URL path segments built via string concatenation, and `Runtime.exec` invocations with user-controlled arguments.
-- **UNI-020** (unsafe deserialization): Look for bincode or JSON deserialization of untrusted external payloads directly into model types that carry privilege state. Check for missing payload size limits on data fetched from external sources.
-- **UNI-021** (missing auth checks): Check that effect handlers attaching authentication credentials (Bearer tokens, API keys) to outbound requests source them from secure storage (Android Keystore / `EncryptedSharedPreferences`), not from hardcoded values or unprotected `SharedPreferences`. Flag API calls to protected endpoints dispatched without any auth header.
-
-Prefix findings from this step with `UNI-` occurrence IDs (e.g., `UNI-1`, `UNI-2`) and include the matching stable `rule_id` (e.g., `UNI-016`) on each finding. Use the severity defined by the codex rule.
-
-Tag findings that have a **Spec-change indicator** (UNI-002, UNI-004, UNI-007, UNI-008, UNI-011, UNI-012, UNI-014, UNI-021) for inclusion in the adversarial review and spec-change output in step 3.
+After all specialists report, apply universal codex rules `UNI-001` through `UNI-021` per [`references/universal-checks.md`](references/universal-checks.md), which lists the skip table (rules already covered by AND/KTL specialists) and the per-rule Kotlin/Android heuristics. Read `capabilities/default/codex/*.md` for the canonical rule prose; do not copy it into reports.
 
 #### 2d. Adversarial challenge
 
@@ -259,66 +228,7 @@ The lead merges all findings (specialist reports, universal checks, and antagoni
 
 #### 2f. Produce iteration report
 
-Output the synthesized findings for this iteration. On the first iteration, use the full report format. On subsequent iterations, report only new findings discovered in re-review and note the iteration number.
-
-````
-## Android Shell Review Report: {app-name} (iteration {N})
-
-**Review Team**: 3 specialists + 1 antagonist
-**Confidence Level**: [HIGH | MEDIUM | LOW]
-
-### Summary
-- Critical: N findings
-- Warning: N findings
-- Info: N findings
-
-### Critical Findings
-
-#### [AND-001-1] Missing screen composable for ViewModel variant
-- **Rule ID**: VECTIS-003
-- **File**: Android/app/src/main/java/com/vectis/{appname}/ui/screens/
-- **Reviewer**: Structural Specialist
-- **Antagonist**: Confirmed
-- **Issue**: ViewModel variant `Settings(SettingsView)` has no corresponding
-  screen composable file.
-- **Fix**: Create `ui/screens/SettingsScreen.kt` and add the branch to the
-  root composable.
-
-### Warning Findings
-...
-
-### Info Findings
-...
-
-### Adversarial Review
-
-**Antagonist Activity Summary**:
-
-| Action       | Count   |
-| ------------ | ------- |
-| Confirmed    | [count] |
-| Downgraded   | [count] |
-| Upgraded     | [count] |
-| Disputed     | [count] |
-| New Findings | [count] |
-
-**Acceptance Rate**: [confirmed / total specialist findings]%
-
-#### Downgraded Findings
-- [ID] ORIG -> NEW: rationale
-
-#### Upgraded Findings
-- [ID] ORIG -> NEW: rationale
-
-#### Disputed Findings
-- [ID] Reported as SEVERITY: "description"
-  Dispute: rationale
-  Lead Decision: [Included | Excluded]
-
-#### New Findings (Missed by Specialists)
-- [NEW-1] SEVERITY: description (file:line)
-  Evidence: details
-````
+Output the synthesized findings for this iteration using the template at [`references/iteration-report.md`](references/iteration-report.md). Use the full format on the first iteration; on subsequent iterations report only new findings and note the iteration number.
 
 Classify each finding as **mechanical** (auto-fixable) or **design-level**.
 
@@ -329,12 +239,11 @@ The **lead** applies all auto-fixes directly (specialists and antagonist have co
 Apply fixes for findings that are mechanical and confirmed or upgraded (not disputed):
 
 - Adding missing accessibility `contentDescription` values
-- Replacing stale `import com.vectis.design.*` lines with `import com.vectis.<appname>.ui.theme.*` (RFC-11 migration debt — theme types live in the `ui.theme` sibling package and require an explicit import from `ui.screens` / `ui.components`)
 - Replacing hardcoded colors with design system tokens (resolved from the shell-local `ui/theme/Color.kt` / `MaterialTheme.colorScheme`)
 - Replacing hardcoded spacing with design system tokens (resolved from the shell-local `ui/theme/Spacing.kt`)
 - Adding missing `@Preview` composables
 - Adding missing `@OptIn(ExperimentalUnsignedTypes::class)` annotations
-- Adding missing `import com.example.app.*` statements (generated FFI types — distinct from the legacy `com.vectis.design` package retired by RFC-11)
+- Adding missing `import com.example.app.*` statements (generated FFI types — distinct from the retired legacy `com.vectis.design` package)
 - Adding `CancellationException` rethrow to catch blocks
 
 Do NOT auto-promote a recurring group into a `component:` slug (AND-027). That finding is intentionally surfaced as a candidate for the operator to review — promoting it requires a `composition.yaml` edit and per-platform component file scaffolding, which sit outside the reviewer's mechanical-fix scope.
@@ -355,7 +264,7 @@ When the cycle exits, shut down all remaining teammates and output a summary acr
 
 ```
 ### Review Cycle Summary
-- Iteration 1: Fixed N mechanical issues (AND-009 x2, KTL-006, UNI-016).
+- Iteration 1: Fixed N mechanical issues (AND-009 x2, KTL-007, UNI-016).
   M design-level findings deferred. Confidence: HIGH.
 - Iteration 2: Fixed K regressions from iteration 1 fixes.
   No new design-level findings. Confidence: HIGH.

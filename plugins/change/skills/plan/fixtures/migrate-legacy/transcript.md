@@ -80,10 +80,10 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
     Approve each row? [Y/n/edit] Y
 
     Greenfield bootstrap — running:
-      $ specify registry add foo-backend --url git@github.com:org/foo-backend.git --schema omnia@v1 --description "Backend service migrated from the legacy mono-repo-foo TypeScript monolith. Owns user accounts, order processing, and the HTTP API that the mobile app calls into."
+      $ specify registry add foo-backend --url git@github.com:org/foo-backend.git --capability omnia@v1 --description "Backend service migrated from the legacy mono-repo-foo TypeScript monolith. Owns user accounts, order processing, and the HTTP API that the mobile app calls into."
       ok: appended `foo-backend` to registry.yaml (1 project)
 
-      $ specify registry add foo-mobile --url git@github.com:org/foo-mobile.git --schema vectis@v1 --description "iOS and Android mobile clients migrated from the legacy mono-repo-foo monolith's mobile shells. Owns the storefront, checkout, and account-management flows."
+      $ specify registry add foo-mobile --url git@github.com:org/foo-mobile.git --capability vectis@v1 --description "iOS and Android mobile clients migrated from the legacy mono-repo-foo monolith's mobile shells. Owns the storefront, checkout, and account-management flows."
       ok: appended `foo-mobile` to registry.yaml (2 projects)
 
       $ specify workspace sync
@@ -324,8 +324,8 @@ Every PR is `MERGED` on remote. Continuing to step 7.
 
 ## Invariants pinned by this transcript
 
-- **Verb hygiene.** Every shell-out is a post-Phase-3 verb: `specify change create`, `specify change plan {create, add, amend, validate}`, `specify registry {add, validate}`, `specify workspace {sync, push}`, `gh pr list`, `specify slice journal append` (inside the executor's self-heal — not visible here because the run is clean), `specify change finalize`. No retired verbs appear anywhere in the trace.
+- **Verb hygiene.** Every shell-out is a current verb: `specify change create`, `specify change plan {create, add, amend, validate}`, `specify registry {add, validate}`, `specify workspace {sync, push}`, `gh pr list`, `specify slice journal append` (inside the executor's self-heal — not visible here because the run is clean), `specify change finalize`. No retired verbs appear anywhere in the trace.
 - **Greenfield ordering.** `specify registry add` (×2) precedes `specify workspace sync`, which precedes any `specify change plan add` for entries routed to the new projects. This is the 2B invariant.
 - **Cross-project contract change has no `project`.** `migrate-foo-contract` runs against the hub itself (no `Routing:` diagnostic from `/change:execute`), exactly as the cross-repo tutorial pins.
-- **PR merge is outside orchestration.** The transcript shows the umbrella stopping with open PRs in run 1, then observing both PRs as `MERGED` in run 2. It never calls `specify workspace merge` or `gh pr merge`.
+- **PR merge is outside orchestration.** The transcript shows the umbrella stopping with open PRs in run 1, then observing both PRs as `MERGED` in run 2. The merge itself happens outside the umbrella.
 - **Idempotent re-entry.** The umbrella's terminal summary points the operator at re-running `/change:plan <name> orchestrate migrate-foo`, which exits zero with `plan-not-found` after the archive completes.
