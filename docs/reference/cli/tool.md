@@ -163,10 +163,9 @@ Write permissions must not directly target Specify lifecycle state such as `.spe
 
 Declared tools are for deterministic helper behavior. Tools must not depend on host environment variables, host binaries on `PATH`, runtime network access, wall-clock time, host randomness, current user identity, or undeclared files for correctness.
 
-A helper that genuinely needs host toolchains, network access, or platform SDKs belongs in a skill or a future declared host-runner model, not in the RFC-15 WASI runner.
+A helper that genuinely needs host toolchains, network access, or platform SDKs belongs in a skill or a future declared host-runner model, not in the WASI runner.
 
 ## See also
 
 - [Tool declarations](../../explanation/tool-declarations.md) -- where tools are declared and how precedence works
 - [Anatomy of a Capability](../../contributing/capability-anatomy.md) -- optional capability `tools.yaml` sidecar
-- [RFC-15 WASI Capability Tools](../../../rfcs/archive/rfc-15-wasm-plugins.md) -- source RFC; the implementation plan updates the manifest location to the two declaration sites documented here

@@ -2,7 +2,7 @@
 
 When `/change:execute loop` halts on a change with the `registry-amendment-required` outcome, a phase skill (typically `/spec:extract` or a build brief) discovered that the change targets a capability that does not fit any existing registry project and proposed a new one. The framework refuses to auto-modify `registry.yaml`; the operator owns the decision.
 
-This how-to walks the canonical recovery sequence end-to-end. RFC-9 Section 2B introduces the outcome variant and pins this exact sequence so phase skills, executors, and umbrella skills compose against it.
+This how-to walks the canonical recovery sequence end-to-end. The framework pins this exact sequence so phase skills, executors, and umbrella skills compose against it.
 
 ## Prerequisites
 
@@ -112,7 +112,7 @@ The framework reports drift; the operator decides what to do about it. Same post
 
 ## See also
 
-- [Registry amendment required](../appendices/troubleshooting.md#registry-amendment-required) -- troubleshooting entry.
+- [Registry amendment required](troubleshooting/plan-and-execution.md#registry-amendment-required) -- troubleshooting entry.
 - [`specify registry`](../reference/cli/registry.md) -- CLI reference for `add` and `remove`.
 - [Manage registry projects](manage-registry-projects.md) -- the broader add/remove how-to.
 - [`/change:execute`](../reference/change-skills/execute.md) -- the executor that surfaces the halt.

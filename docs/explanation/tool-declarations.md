@@ -184,7 +184,7 @@ specify tool run contract -- "$PROJECT_DIR/contracts" --format json
 
 ## Future lints
 
-RFC-5 owns the long-term framework linter. RFC-15 adds rule ids for this surface:
+The framework linter reserves rule ids for this surface:
 
 - `tool.write-permission-too-broad` may warn on broad writes, including `$PROJECT_DIR`, when a future framework linter has enough context to distinguish root-file scaffolding from unnecessarily broad authority.
 - `tool.lifecycle-state-write-denied` rejects writes to Specify lifecycle state.
@@ -196,4 +196,3 @@ The current CLI already validates tool declaration structure during `specify too
 
 - [specify tool](../reference/cli/tool.md) -- command reference
 - [Anatomy of a Capability](../contributing/capability-anatomy.md) -- capability sidecar conventions
-- [RFC-15 WASI Capability Tools](../../rfcs/archive/rfc-15-wasm-plugins.md) -- source RFC; the implementation uses the two declaration sites documented here

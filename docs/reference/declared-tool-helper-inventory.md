@@ -1,6 +1,6 @@
 # Declared Tool Helper Inventory
 
-RM-09 tracks first-party helper binaries that should run through [`specify tool`](cli/tool.md) instead of as separate host executables. This inventory is the reviewable source for that migration boundary.
+This inventory tracks first-party helper binaries that should run through [`specify tool`](cli/tool.md) instead of as separate host executables. It is the reviewable source for that migration boundary.
 
 Use this document when adding or changing a first-party deterministic helper. A helper belongs behind `specify tool run` when it is capability-owned, deterministic, filesystem-bounded, and can run as a WASI Preview 2 command component with explicit permissions. Host workflow remains appropriate when the work requires language toolchains, platform SDKs, package managers, network registries, forge operations, or core Specify lifecycle authority.
 
@@ -20,7 +20,7 @@ These active callers are expected to use declared tools and should be kept in sy
 
 ## Host-Owned Surfaces
 
-The following command families are intentionally outside RM-09. They are not first-party helper binaries with declared-tool equivalents.
+The following command families are intentionally outside this scope. They are not first-party helper binaries with declared-tool equivalents.
 
 - Core Specify lifecycle and orchestration: `specify slice *`, `specify change *`, `specify registry *`, `specify workspace *`, `specify capability *`, `specify codex *`, `specify context *`, and `specify init`.
 - Forge and transport commands: `git`, `gh`, SSH, PR/MR merge queues, and future forge adapters.
@@ -28,7 +28,7 @@ The following command families are intentionally outside RM-09. They are not fir
 - Repository maintenance scripts: `deno run scripts/checks.ts`, plugin cache helpers, acceptance harnesses, and release/build scripts.
 - Vectis host verification and template maintenance: `specify-vectis verify`, `update-versions`, and `versions` have no direct WASI wrapper in v1; active skills should express them as host workflow or template-updater work, not as declared tools.
 
-## Current RM-09 Status
+## Current status
 
 No additional first-party helper binary in the active skill and brief surface currently meets the migration threshold. Contracts and the filesystem-only Vectis helpers are already declared tools. `default` and `omnia` do not currently expose a first-party helper that should become a WASI component.
 
@@ -36,4 +36,4 @@ Future migrations should update this inventory first, then add the WASI componen
 
 ## Enforcement
 
-`make checks` includes the reserved RFC-15 rule id `skill.invokes-host-binary-with-declared-tool-equivalent`. The check scans active capability briefs and plugin skills for retired first-party helper invocations when a declared-tool equivalent exists. Historical RFCs and explanatory migration docs may still mention retired commands when the prose clearly describes them as retired.
+`make checks` includes the rule `skill.invokes-host-binary-with-declared-tool-equivalent`. The check scans active capability briefs and plugin skills for retired first-party helper invocations when a declared-tool equivalent exists. Historical RFCs and explanatory migration docs may still mention retired commands when the prose clearly describes them as retired.

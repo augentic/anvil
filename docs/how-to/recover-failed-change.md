@@ -73,6 +73,6 @@ If `/change:execute` was interrupted (crash, Ctrl+C), the next invocation perfor
 
 ## See also
 
-- [Troubleshooting](../appendices/troubleshooting.md) -- symptom/cause/fix index for common errors
+- [Troubleshooting](troubleshooting/index.md) -- symptom/cause/fix index for common errors
 - [/spec:drop](../reference/slice-skills/drop.md) -- reference for discarding changes
 - [/change:execute](../reference/change-skills/execute.md) -- self-heal and failure handling details

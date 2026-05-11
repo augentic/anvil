@@ -33,14 +33,14 @@ That is the entire core workflow. Everything else in Specify builds on this loop
 
 - **Planning a large change?** Read [Your First Slice](tutorials/first-change.md) and [Iterating on a Baseline](tutorials/iterating-on-baseline.md) first, then skip to [A Multi-Slice Change](tutorials/single-repo-change.md).
 
-- **Returning after a few releases?** [What's New Since v0.23](explanation/whats-new.md) catalogues the additive RFC-8 and RFC-9 work.
+- **Returning after a few releases?** [Release Notes](explanation/release-notes.md) catalogues the recent additive work.
 
 ## Learning Path
 
 1. **Run one slice.** Use the [Quick Start](tutorials/quick-start.md), then read [Your First Slice](tutorials/first-change.md) to understand the artifacts.
 2. **Build on a baseline.** Read [Iterating on a Baseline](tutorials/iterating-on-baseline.md) and [Brownfield Onboarding](tutorials/brownfield-onboarding.md).
 3. **Coordinate a larger change.** Move to [A Multi-Slice Change](tutorials/single-repo-change.md) when work needs dependencies or automated execution.
-4. **Work across repos.** Use [Cross-Repo Changes](tutorials/cross-repo-change.md), [Landing a Change](tutorials/landing-a-change.md), and the [Quick Reference](reference/quick-reference.md).
+4. **Work across repos.** Walk through [Working across repos: planning](tutorials/cross-repo-change.md), [executing](tutorials/cross-repo-execute.md), and [landing](tutorials/landing-a-change.md), then keep the [Quick Reference](reference/quick-reference.md) handy.
 
 ## Guide structure
 

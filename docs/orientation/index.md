@@ -4,11 +4,11 @@ Specify is a plugin system that orchestrates **spec-driven software development*
 
 ## The core idea
 
-Every slice flows through three phases:
+Every slice (a self-contained unit of change with its own specs and tasks) flows through three phases:
 
 1. **Define** -- Describe what you want to build. Specify generates a proposal, behavioral specs, technical design, and an implementation task list.
 2. **Build** -- The agent works through the task list, delegating to specialist skills that generate code from the artifacts.
-3. **Merge** -- The slice's specs merge into your project's baseline, building a cumulative record of what the system does.
+3. **Merge** -- The slice's specs merge into your project's baseline (the cumulative, version-controlled record of every spec the system has agreed on so far).
 
 ```d2
 direction: right
@@ -45,20 +45,18 @@ Specify artifacts live in a `.specify/` directory at your project root. They are
 
 You interact with Specify through **skills** -- commands prefixed with `/spec:` that you invoke in Cursor's agent chat:
 
-| Skill | Layer | Purpose |
-|-------|-------|---------|
-| `/spec:init` | 2 | One-time project setup (`hub` for a registry-only platform hub) |
-| `/spec:define` | 2 | Generate artifacts for a new slice |
-| `/spec:build` | 2 | Implement tasks from a defined slice |
-| `/spec:merge` | 2 | Merge completed specs into baseline |
-| `/spec:drop` | 2 | Discard a slice |
-| `/spec:extract` | 2 | Extract specs from existing code |
-| `/spec:analyze` | 3 | Plan-time capability inference (used internally by `/change:plan`) |
-| `/change:plan` | 3 | Author a multi-slice change plan |
-| `/change:execute` | 3 | Drive a plan through the define-build-merge loop |
-| `/change:plan <name> orchestrate` | 4 | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> operator PR merge -> finalize |
+| Skill | Purpose |
+|-------|---------|
+| `/spec:init` | One-time project setup; selects a capability plugin (Omnia, Vectis, …) |
+| `/spec:define` | Generate artifacts for a new slice |
+| `/spec:build` | Implement tasks from a defined slice |
+| `/spec:merge` | Merge completed specs into the baseline |
 
-Skills are grouped by layer. Layer 2 owns single-slice work; Layer 3 coordinates multi-slice changes; Layer 4 strings the cross-repo loop into one operator action. See [The Layered Stack](../explanation/three-layer-stack.md) for when to climb between layers.
+Multi-slice and cross-repo workflows are covered in [later tutorials](../tutorials/index.md).
+
+> **Note:** The word "capability" has a second meaning inside Specify spec files (a unit of behavior). This page uses only the first meaning.
+
+For the architectural framing of how these skills compose with multi-slice and cross-repo workflows, see [The layered stack](../explanation/three-layer-stack.md).
 
 Behind these skills, a Rust CLI binary (`specify`) handles every deterministic operation -- validation, lifecycle transitions, spec merging, task tracking. The agent keeps judgment; the CLI keeps correctness.
 

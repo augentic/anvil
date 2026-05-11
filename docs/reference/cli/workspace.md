@@ -148,7 +148,7 @@ Under `--dry-run`, JSON adds `"dry-run": true` at the top level and human-readab
 
 ## PR landing
 
-Automated workspace merge was removed by RFC-14. There is no active `specify workspace merge` subcommand. Merge each PR through the forge UI or `gh pr merge`, then run:
+Automated workspace merge has been removed. There is no active `specify workspace merge` subcommand. Merge each PR through the forge UI or `gh pr merge`, then run:
 
 ```bash
 specify change finalize

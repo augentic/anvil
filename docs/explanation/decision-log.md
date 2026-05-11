@@ -174,3 +174,43 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 **Rationale:** Hubs are registry-only repositories that never run phase pipelines, so they have no capability to resolve. Allowing an empty capability would force every downstream verb to special-case the missing field; allowing both would double the topology surface. The mutual-exclusion is mechanically enforced at init so every later verb can rely on the invariant without re-checking.
 
 **Source:** [RFC-9: Platform](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-9-platform.md), [RFC-13: Extensibility](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md)
+
+## Platform components are not capabilities
+
+**Decision:** The registry and the change orchestrator are first-party **platform components**, not capabilities. They have commands, libraries, and files, but they never appear in any `capability.yaml`, never participate in the manifest protocol, and are never activated through a capability-name switch. The dependency direction is fixed at the crate level: `specify-core` does not depend on `specify-registry` or `specify-change`, and `specify-registry` does not depend on `specify-change`.
+
+**Rationale:** Treating the registry and change orchestration as capabilities created a circular activation problem — the surface that decides which capabilities are active was itself a capability. Promoting them to platform components keeps capability composition strictly downward and means a capability author never has to think about whether the registry or change loop is "available." The hard-coded crate dependency direction makes the invariant a build-time guarantee rather than a convention.
+
+**Source:** [RFC-13: Extensibility](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md)
+
+## Operator owns PR merge; Specify prepares and publishes
+
+**Decision:** Specify materialises workspace slots, prepares the `specify/<change-name>` branch before phase writes, accumulates a baseline commit from `/spec:merge` and a residue commit from `/change:execute`, and pushes the branch through `specify workspace push`. PR review and merge happen through the forge UI, `gh pr merge`, or the team's normal merge queue. The framework never inspects checks or calls `gh pr merge` itself, and `specify change finalize` only verifies that each PR is already merged before archiving the plan. `specify workspace merge` is removed.
+
+**Rationale:** Automated PR merge couples the framework to forge APIs, check-suite semantics, and team-specific review rules that vary across operators. Holding the framework at "prepare and publish" lets every team layer its own merge policy — checks, reviewers, merge queue, manual approval — without the framework modelling any of it. The split also gives a natural rollback surface: an unmerged PR can be closed or rebased without rewinding any framework state.
+
+**Source:** [RFC-14: Workspace](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-14-workspace.md)
+
+## Declared WASI capability tools
+
+**Decision:** Helper tools shipped by capabilities or projects are declared as WASI command components in a `tools.yaml` sidecar (capability scope) or in `.specify/project.yaml` (project scope), and run through a single CLI surface — `specify tool {list, fetch, show, run}`. Project scope wins on collision, so an operator can redirect a capability-shipped tool to a local build or pinned mirror without editing the capability. Permissions are directory preopens, not globs; the host canonicalises every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. Released first-party tool declarations require `sha256` so cache fills verify exact component bytes.
+
+**Rationale:** Capabilities used to extend the framework either by adding more in-binary CLI verbs or by shelling out to host binaries the operator had to install separately. Both paths broke on every CLI release: in-binary verbs grew the host surface unboundedly; host binaries diverged in version, permissions, and discoverability across machines. WASI command components keep the helpers sandboxed and deterministic while making them data — the host fetches them, the host enforces the preopens, the host caches them — so a capability can ship behavior without growing the host.
+
+**Source:** [RFC-15: WASM Plugins](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasm-plugins.md)
+
+## One `specify` binary; capability-specific helpers ship as declared tools
+
+**Decision:** Operators install one binary — `specify`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by `capabilities/vectis/tools.yaml`; the standalone `specify-vectis` binary is deleted rather than wrapped. Host post-processing that previously lived inside `specify-vectis` (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) moves into Vectis skills as ordinary shell commands the agent runs and journals.
+
+**Rationale:** A second binary doubled the install, packaging, release, and version-coordination surface for a single capability and set the precedent that every future capability needing helpers would do the same. Applying the declared-tool model from RFC-15 collapses that surface back to one binary and keeps the "deterministic rendering" layer cleanly separated from the "host toolchain" layer, which never belonged inside a WASI wrapper to begin with.
+
+**Source:** [RFC-16: WASI Vectis](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-16-wasi-vectis.md)
+
+## SemVer `info.version` and rename-stable `info.x-specify-id`
+
+**Decision:** Every top-level OpenAPI 3.1 and AsyncAPI 3.0 document under `contracts/` MUST set `info.version` to a value that parses per [semver.org](https://semver.org), including optional prerelease labels. Every top-level contract MAY set `info.x-specify-id` to a kebab-case slug (`^[a-z][a-z0-9-]*$`, ≤64 characters, repo-unique) that survives file moves and `info.version` bumps. Path-based references in `registry.yaml` remain canonical — the id is a hint, not a substitute. Bump rules (when to advance major / minor / patch) remain skill-side judgement.
+
+**Rationale:** Pre-RFC-12 contracts used a mix of `YYYY-MM-DD` dates and bare majors as `info.version`, which prevented any tooling from comparing two contract versions programmatically. Requiring SemVer aligns contract evolution with the broader ecosystem (`progenitor`, `typify`, `schemars`) and makes producer/consumer compatibility classification (`specify compatibility`) decidable. The optional rename-stable id captures the identity of a contract independent of its file location, so a file move or a major-version rename does not look like deletion-plus-creation to baseline diff tools.
+
+**Source:** [RFC-12: Refine RFC-8](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-12-refine-rfc-8.md)

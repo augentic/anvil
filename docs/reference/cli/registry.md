@@ -44,7 +44,7 @@ Used by `/change:plan` after populating contract roles, and by operators who edi
 
 ### specify registry add
 
-Append a new project entry to `registry.yaml`. Creates the file with `version: 1` when absent. (RFC-9 §2A.)
+Append a new project entry to `registry.yaml`. Creates the file with `version: 1` when absent.
 
 ```bash
 specify registry add <name> --url <url> --capability <capability> [--description "..."]
@@ -57,11 +57,11 @@ Behaviour:
 - Runs `Registry::validate_shape` after the write — including the `description-missing-multi-repo` invariant: if the addition produces a multi-project registry and any existing entry lacks a `description`, the verb fails with a diagnostic naming the offending entry.
 - Hub repos (`project.yaml: hub: true`) layer on the `hub-cannot-be-project` invariant: an entry with `url: .` is rejected.
 
-Used by `/change:plan`'s registry-proposal sub-step (RFC-9 §2B) and by operators staging a new peer ahead of `specify change plan amend --project <new>`. The validation-ordering invariant is: `specify registry add` before `specify change plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
+Used by `/change:plan`'s registry-proposal sub-step and when staging a new peer ahead of `specify change plan amend --project <new>`. The validation-ordering invariant is: `specify registry add` before `specify change plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
 
 ### specify registry remove
 
-Delete a project entry from `registry.yaml`. (RFC-9 §2A.)
+Delete a project entry from `registry.yaml`.
 
 ```bash
 specify registry remove <name>

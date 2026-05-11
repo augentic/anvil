@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `specify` CLI is the Layer 1 foundation that every skill builds on. It owns all deterministic operations: creating and transitioning slices, validating artifacts, parsing tasks, merging specs, and managing change plans.
+The `specify` CLI is the foundation every skill builds on. It owns all deterministic operations: creating and transitioning slices, validating artifacts, parsing tasks, merging specs, and managing change plans.
 
 ## Installation
 
@@ -38,9 +38,9 @@ For the rationale behind this split, see [CLI owns correctness, agent owns judgm
 | Family | Purpose | Reference |
 |--------|---------|-----------|
 | [specify status](status.md) | Project dashboard -- registry summary, plan progress, active slices | Top-level convenience |
-| [specify slice](slice.md) | Per-slice CRUD, validation, merge, task tracking, outcome, journal | Layer 2 operations |
-| [specify change plan](plan.md) | Scaffold, populate, validate, and transition change plans | Layer 3 operations (subresource of `specify change`) |
-| [specify change](change.md) | Manage the operator-authored change brief and finalize landed changes | Layers 3–4 closure |
+| [specify slice](slice.md) | Per-slice CRUD, validation, merge, task tracking, outcome, journal | Single-slice operations |
+| [specify change plan](plan.md) | Scaffold, populate, validate, and transition change plans | Multi-slice operations (subresource of `specify change`) |
+| [specify change](change.md) | Manage the change brief and finalize landed changes | Multi-slice and cross-repo closure |
 | [specify registry](registry.md) | Manage the platform registry at `registry.yaml` | Multi-repo platform |
 | [specify capability](capability.md) | Capability resolution and brief pipeline queries | Capability infrastructure |
 | [specify codex](codex.md) | Resolve, validate, show, and export review rules | Review rule catalogue |

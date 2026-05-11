@@ -19,7 +19,7 @@ gh pr checks <pr> -R <owner/repo>
 gh pr merge <pr> -R <owner/repo> --squash
 ```
 
-Specify does not merge PRs automatically. RFC-14 removed `workspace merge` automation; `specify workspace merge` is no longer an active CLI subcommand. Use forge UI / `gh pr merge` plus `specify change finalize`.
+Specify does not merge PRs automatically. `specify workspace merge` is no longer an active CLI subcommand; use the forge UI or `gh pr merge`, then run `specify change finalize`.
 
 ## 2. Confirm and archive
 
@@ -35,7 +35,7 @@ The verb runs four guards in order. **All-or-nothing:** any guard failure refuse
 |-------|--------------|----------|
 | Plan-presence (`plan.yaml` exists) | `plan-not-found` | The change is already finalized -- no action needed. |
 | Plan terminal-state (every entry `done`/`failed`/`skipped`) | `non-terminal-entries-present` | Drive the offending entry to terminal via `/change:execute` or `specify change plan transition`. |
-| Per-project PR-state (every `specify/<name>` PR is `MERGED`) | `unmerged` / `closed` / `branch-pattern-mismatch` / `failed` | Merge the outstanding PR through the forge UI or `gh pr merge`; see [change landing issues](../appendices/troubleshooting.md#change-landing-issues) for `branch-pattern-mismatch`. |
+| Per-project PR-state (every `specify/<name>` PR is `MERGED`) | `unmerged` / `closed` / `branch-pattern-mismatch` / `failed` | Merge the outstanding PR through the forge UI or `gh pr merge`; see [change landing issues](troubleshooting/change-landing.md) for `branch-pattern-mismatch`. |
 | Workspace-cleanliness (`git status --porcelain` empty per clone) | `dirty` | Commit or stash uncommitted work in `.specify/workspace/<peer>/`. |
 
 When every guard passes, the verb runs `Plan::archive` programmatically. `plan.yaml`, `change.md`, and `.specify/plans/<name>/` move atomically into `.specify/archive/plans/<YYYYMMDD>-<name>/`. The archive write is preflighted (both destinations) so a collision returns an error before any file is touched.
@@ -80,5 +80,5 @@ Refer to [`specify change finalize` -- output](../reference/cli/change.md#specif
 - [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- end-to-end walkthrough that exercises this landing flow.
 - [`specify workspace`](../reference/cli/workspace.md) -- CLI reference for `sync`, `status`, and `push`.
 - [`specify change`](../reference/cli/change.md) -- CLI reference for `finalize`.
-- [`/change:plan <name> orchestrate`](../reference/change-skills/change.md) -- the Layer 4 umbrella mode that automates through PR creation, then finalizes after operator merge.
-- [Change landing issues](../appendices/troubleshooting.md#change-landing-issues) -- `branch-pattern-mismatch`, `plan-not-found`, dirty clones.
+- [`/change:plan <name> orchestrate`](../reference/change-skills/change.md) -- the cross-repo umbrella mode that automates through PR creation, then finalizes after you merge the resulting PRs.
+- [Change landing issues](troubleshooting/change-landing.md) -- `branch-pattern-mismatch`, `plan-not-found`, dirty clones.

@@ -2,8 +2,6 @@
 
 Specify is organised in four layers. Each layer is independently useful, and each builds on the one below it.
 
-> **Naming note.** The pre-RFC-9 stack was a "three-layer stack" topped by `/change:plan` and `/change:execute`. RFC-9 §2C added the umbrella verb at Layer 4, promoting plan-and-drive to its own dedicated layer. The filename of this page (`three-layer-stack.md`) is preserved so existing cross-references keep resolving — see the [decision log entry](decision-log.md#independently-useful-layers) for the rationale.
-
 ```d2
 direction: down
 

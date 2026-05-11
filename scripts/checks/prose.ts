@@ -136,7 +136,7 @@ export async function checkOperationalVocabulary(): Promise<void> {
   const ALLOWED_PREFIXES = [
     "rfcs/",
     "docs/explanation/decision-log.md",
-    "docs/explanation/whats-new.md",
+    "docs/explanation/release-notes.md",
   ];
   const ALLOWED_SEGMENTS = [
     "/fixtures/",
@@ -208,7 +208,7 @@ export async function checkSkillNumericCaps(): Promise<void> {
   const FILES: Array<[string, boolean, boolean]> = [
     [".cursor/schemas/skill.schema.json", true, false],
     [".cursor/rules/project.mdc", true, true],
-    ["docs/explanation/skill-authoring.md", true, true],
+    ["docs/contributing/skill-authoring.md", true, true],
     ["docs/contributing/skill-anatomy.md", true, true],
     ["scripts/checks/skill_frontmatter.ts", true, false],
     ["scripts/checks/skill_body.ts", false, true],
@@ -400,7 +400,7 @@ export async function checkLegacyLayout(): Promise<void> {
   // - rfcs/archive/* — historical RFCs carry v2-layout banners and
   //   intentionally retain their original paths.
   // - rfcs/roadmap.md — narrative may still reference legacy shapes.
-  // - docs/explanation/whats-new.md, docs/explanation/decision-log.md,
+  // - docs/explanation/release-notes.md, docs/explanation/decision-log.md,
   //   docs/reference/directory-layout.md — these documents *describe*
   //   the migration and so must mention both the old and new paths.
   // - The CLI's own legacy-layout error message (in scripts that quote
@@ -420,7 +420,7 @@ export async function checkLegacyLayout(): Promise<void> {
     "rfcs/archive/",
     "rfcs/roadmap.md",
     "docs/reference/directory-layout.md",
-    "docs/explanation/whats-new.md",
+    "docs/explanation/release-notes.md",
     "docs/explanation/decision-log.md",
     "scripts/checks.ts",
     "scripts/checks/",

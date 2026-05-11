@@ -1,8 +1,8 @@
 # Drop Down a Layer
 
-Specify is organized in four layers. Higher layers invoke lower layers, but you can always bypass a higher layer and work directly with the one below it. This is useful when automation does something unexpected, when you need fine-grained control, or when you want to debug state.
+Specify automation is layered: higher-level skills invoke lower-level ones, and you can always bypass a higher level and work directly with the level below. This is useful when automation does something unexpected, when you need fine-grained control, or when you want to debug state.
 
-## From Layer 4 to Layer 3: skip the umbrella
+## From cross-repo orchestration to manual plan execution
 
 If `/change:plan <name> orchestrate` halts on the registry-amendment-required path, on `stuck`, or on a step you want to drive yourself, the same composition can be run by hand:
 
@@ -18,7 +18,7 @@ specify change finalize                # Step 7 — finalize
 
 The umbrella is **idempotent on re-entry** — re-running `/change:plan <name> orchestrate` after dropping down picks up from the first step that still has work to do. See [`/change:plan <name> orchestrate` — Re-entry / idempotency](../../plugins/change/skills/plan/re-entry.md).
 
-## From Layer 3 to Layer 2: manual change execution
+## From plan-driven execution to single-slice loops
 
 If `/change:execute` is stuck or you want to handle a specific change yourself:
 
@@ -37,7 +37,7 @@ specify change plan transition add-oauth done
 
 The plan is just a data file that tracks status. You can transition entries freely.
 
-## From Layer 2 to Layer 1: direct CLI control
+## From slice skills to direct CLI control
 
 If a skill is not behaving as expected, you can inspect and manipulate state directly:
 
@@ -106,6 +106,6 @@ Every skill is built on CLI commands. If a skill does something you don't unders
 ## See also
 
 - [The Layered Stack](../explanation/three-layer-stack.md) -- architectural explanation
-- [/change:plan <name> orchestrate](../../plugins/change/skills/plan/orchestration.md) -- the Layer 4 umbrella mode
+- [/change:plan <name> orchestrate](../../plugins/change/skills/plan/orchestration.md) -- the cross-repo umbrella mode
 - [CLI Reference](../reference/cli/index.md) -- all CLI commands
 - [Recover from a Failed Change](recover-failed-change.md) -- focused recovery guide

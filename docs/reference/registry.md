@@ -1,10 +1,10 @@
 # Registry
 
-> Status: Draft (Phase 2.10 of [RFC-13](../../rfcs/archive/rfc-13-extensibility.md) landed). The registry is a first-party Specify component, not a capability — it owns project topology and the local materialised view that change orchestration runs against.
+The registry is a first-party Specify component, not a capability — it owns project topology and the local materialised view that change orchestration runs against.
 
 ## What is the registry?
 
-The registry is the first-party Specify component that owns *project topology* — the declared list of projects, their repository locations, human descriptions, and default capability — **and** the local *materialised view* of those projects under `.specify/workspace/`. It is not a capability: it has commands, libraries, and files, but it does not participate in the capability manifest protocol and is not activated through `capability.yaml`. See [RFC-13 §"Platform components are not capabilities"](../../rfcs/archive/rfc-13-extensibility.md#platform-components-are-not-capabilities) and [RFC-13 §"Registry-materialised execution"](../../rfcs/archive/rfc-13-extensibility.md#registry-materialised-execution).
+The registry is the first-party Specify component that owns *project topology* — the declared list of projects, their repository locations, human descriptions, and default capability — **and** the local *materialised view* of those projects under `.specify/workspace/`. It is not a capability: it has commands, libraries, and files, but it does not participate in the capability manifest protocol and is not activated through `capability.yaml`. See [Platform components are not capabilities](../explanation/decision-log.md#platform-components-are-not-capabilities) for the rationale.
 
 Capabilities own outcome artefacts and their mechanics; the registry coordinates *where* — which project a slice runs against and how that project's working tree is materialised. The slice component (see [`change-component.md`](change-component.md)) coordinates *when* — sequencing slices across one or more registry projects.
 
@@ -43,9 +43,9 @@ projects:
 | `projects[].url`  | yes                           | Clone target — `.`, a repo-relative path (`../peer`, `./foo`), `git@host:path`, or an `http(s)://`, `ssh://`, or `git+http(s)://` / `git+ssh://` remote.                            |
 | `projects[].capability` | yes                         | Capability identifier — e.g. `omnia@v1`. Opaque at the registry layer; the `name@version` suffix is not parsed here.                                                                 |
 | `projects[].description` | conditional               | Single-sentence domain characterisation. Required when more than one project is declared (the `description-missing-multi-repo` invariant); optional in single-project registries.   |
-| `projects[].contracts`   | optional                  | Per-project contract role declarations (`produces`, `consumes`); see RFC-12 for the role surface.                                                                                    |
+| `projects[].contracts`   | optional                  | Per-project contract role declarations (`produces`, `consumes`).                                                                                                                     |
 
-> **Note on the `capability:` field name.** RFC-13 Phase 1 renamed the *extension primitive* from "schema" to "capability" everywhere except this one field on registry entries. The on-disk key continues to be spelled `capability:` until a later phase ships the corresponding rename and migration. Treat the field name as opaque registry vocabulary for now.
+> **Note on the `capability:` field name.** The on-disk key on registry entries is spelled `capability:`. Treat the field name as opaque registry vocabulary.
 
 The wire-level shape is enforced by the registry crate's `Registry::validate_shape` (kebab-case, non-empty required strings, version, URL classification, multi-project description, optional `contracts` consistency). For the full type definition, see `crates/registry/src/registry.rs` in `augentic/specify-cli`.
 
@@ -78,7 +78,7 @@ Selection is resolved once, before side effects. This means `specify workspace s
 
 Before `/change:execute` mutates a remote-backed slot, it prepares the slot on the change branch (`specify/<change-name>`) from the remote default branch (`origin/HEAD`). If `origin/HEAD` cannot be resolved, the executor surfaces `origin-head-unresolved` and does not run define/build/merge. Humans generally do not invoke the hidden branch-preparation helper directly; they use `/change:execute`, inspect with `workspace status`, publish with `workspace push`, merge PRs through their forge, and close with `change finalize`. `specify workspace merge` has been removed.
 
-The registry-materialisation resolver — the registry service that maps a registry-declared project to its materialised project root — is what change execution consumes when running the slice loop against a peer project (see [RFC-13 §"Registry-materialised execution"](../../rfcs/archive/rfc-13-extensibility.md#registry-materialised-execution)). Capability skills run relative to *the clone's project root*; the core receives only the project root it should run against.
+The registry-materialisation resolver — the registry service that maps a registry-declared project to its materialised project root — is what change execution consumes when running the slice loop against a peer project. Capability skills run relative to *the clone's project root*; the core receives only the project root it should run against.
 
 After `workspace push` opens or updates PRs, landing is an explicit operator action outside Specify. Use the forge UI, `gh pr merge`, or the repository's normal merge queue. `specify change finalize` later verifies that every required per-project PR is merged, checks workspace cleanliness, archives the coordinator state, and optionally removes clean workspace clones with `--clean`; it never merges PRs.
 
@@ -91,11 +91,11 @@ specify-change → specify-registry → specify-capability
                                  → specify-core
 ```
 
-The invariant: **`specify-core` does not depend on `specify-registry`**, and `specify-registry` does not depend on `specify-change`. The slice component MAY depend on the registry because orchestration composes registry materialisation; the reverse is forbidden. RFC-13 invariant #4 spells this out and [RFC-5](../../rfcs/rfc-5-lint.md) is the home for the lint that enforces it. See [RFC-13 §Migration](../../rfcs/archive/rfc-13-extensibility.md#migration).
+The invariant: **`specify-core` does not depend on `specify-registry`**, and `specify-registry` does not depend on `specify-change`. The slice component MAY depend on the registry because orchestration composes registry materialisation; the reverse is forbidden. A workspace lint enforces it.
 
 ## What the registry must NOT own
 
-The registry is topology plus local materialisation. It is **not** a place to park orchestration, validation findings, or PR metadata. Mirror of the [RFC-13 §"Platform components are not capabilities"](../../rfcs/archive/rfc-13-extensibility.md#platform-components-are-not-capabilities) table:
+The registry is topology plus local materialisation. It is **not** a place to park orchestration, validation findings, or PR metadata:
 
 - Change or plan status — owned by `specify change` (`change.md`, `plan.yaml`, `.specify/slices/<name>/.metadata.yaml`).
 - Contract relationships beyond the per-project role declarations — owned by the `contracts@v1` capability.
@@ -110,4 +110,3 @@ The registry is topology plus local materialisation. It is **not** a place to pa
 - [Change Component](change-component.md) — operator brief, plan, execution state, finalization, and archive.
 - [Platform Repo Topologies](../explanation/platform-repo.md) — the registry-only hub vs platform-as-project shapes.
 - [`specify registry`](cli/registry.md) and [`specify workspace`](cli/workspace.md) — current CLI command reference.
-- [RFC-13: Extensibility](../../rfcs/archive/rfc-13-extensibility.md) — capability protocol, platform components, and migration plan.

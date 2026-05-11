@@ -215,5 +215,5 @@ A skill that fails any of these checks will fail CI. When a check fires, the rig
 
 - [Agent Skills overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) — Anthropic's high-level introduction to skills, frontmatter, and discovery.
 - [Agent Skills best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices) — the published patterns for naming, descriptions, body length, and progressive disclosure.
-- [`docs/contributing/skill-anatomy.md`](../contributing/skill-anatomy.md) — the contributor-facing reference for skill directory structure and body sections.
+- [`docs/contributing/skill-anatomy.md`](./skill-anatomy.md) — the contributor-facing reference for skill directory structure and body sections.
 - [`rfcs/archive/rfc-10-skills.md`](../../rfcs/archive/rfc-10-skills.md) — the RFC that landed this house style, including the rename tables and the alternatives that were considered and rejected.

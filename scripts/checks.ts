@@ -53,6 +53,10 @@ import {
   checkWorkspaceLanding,
 } from "./checks/prose.ts";
 import {
+  checkNoLayerNumbersInDocs,
+  checkNoRfcCitationsInDocs,
+} from "./checks/docs_quality.ts";
+import {
   checkRecordedTraceFreshness,
   validateScenarioFrontmatter,
 } from "./checks/scenarios.ts";
@@ -96,6 +100,8 @@ await Promise.all([
   checkOneGuardrailsBlockPerSkill(),
   checkNoPhaseOutcomeContractRestatement(),
   checkNoFrontmatterRestatement(),
+  checkNoLayerNumbersInDocs(),
+  checkNoRfcCitationsInDocs(),
 ]);
 
 console.log();

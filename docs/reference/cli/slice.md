@@ -167,7 +167,7 @@ Performs:
 
 This is the CLI command invoked by `/spec:merge` after preview and conflict-check pass. It is a single atomic operation -- if any step fails, no changes are committed.
 
-**Workspace clone auto-commit (RFC-3b).** When `slice merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. The operator uses `specify workspace push` to publish commits to remotes.
+**Workspace clone auto-commit.** When `slice merge run` runs inside a workspace clone (CWD is under `.specify/workspace/*/` and contains `.specify/project.yaml`), it auto-commits the merged baseline and archived slice directory with message `"specify: merge <slice-name>"`. Only `.specify/` subtrees are staged. A commit failure is a warning, not an error -- the spec-merge still succeeds. Use `specify workspace push` to publish commits to remotes.
 
 **Preconditions.** Slice must be in `complete` state; `slice merge preview` and `slice merge conflict-check` should pass (the skill checks these before calling `merge run`).
 

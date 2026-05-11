@@ -90,7 +90,7 @@ The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolut
 
 ### Skill authoring
 
-- Every `SKILL.md` in this repository follows the house style codified in [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions); the long-form rationale (discovery model, why metadata is precious, examples of good/bad descriptions, the progressive-disclosure pattern, and the forbidden-frontmatter list) lives at [docs/explanation/skill-authoring.md](docs/explanation/skill-authoring.md).
+- Every `SKILL.md` in this repository follows the house style codified in [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions); the long-form rationale (discovery model, why metadata is precious, examples of good/bad descriptions, the progressive-disclosure pattern, and the forbidden-frontmatter list) lives at [docs/contributing/skill-authoring.md](docs/contributing/skill-authoring.md).
 
 ### Description tightness
 
@@ -104,7 +104,7 @@ The frontmatter rules in `.cursor/rules/project.mdc` and the body line-count cei
 2. **No inline JSON output blocks ≥30 lines.** Long fenced ` ```json ` examples of CLI envelope shapes belong in [plugins/references/cli-output-shapes.md](plugins/references/cli-output-shapes.md), not in the skill body. The skill links to the reference and shows at most a stub. Mechanically enforced by `checkInlineJsonBlocks`.
 3. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by `checkNoFrontmatterRestatement`.
 4. **`Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose.
-5. **Trim deprecated migration prose every release.** "Pre-RFC-N this used to be …" / "Phase 3.7 renamed it …" / "the v1.x verb was …" lines belong in [docs/explanation/decision-log.md](docs/explanation/decision-log.md) and [docs/explanation/whats-new.md](docs/explanation/whats-new.md), not in the skill that operators read every day.
+5. **Trim deprecated migration prose every release.** "Pre-RFC-N this used to be …" / "Phase 3.7 renamed it …" / "the v1.x verb was …" lines belong in [docs/explanation/decision-log.md](docs/explanation/decision-log.md) and [docs/explanation/release-notes.md](docs/explanation/release-notes.md), not in the skill that operators read every day.
 6. **No RFC citations in skill bodies.** `RFC-N` references in prose train operators on how the system was *built*, not how it works *today*. Move them to a trailing `## References` block as `[RFC-N](rfcs/...)` links, or to [docs/explanation/decision-log.md](docs/explanation/decision-log.md). Mechanically enforced by `checkNoRfcCitationsInSkillBody`.
 7. **Cross-cutting guardrails live in [plugins/references/specify.md](plugins/references/specify.md).** Per-skill restatements of the same `.metadata.yaml` / slice-dir / plan-write rules drift over time. Each SKILL.md links — does not restate — them.
 8. **`## Phase outcome contract` is a single-line link, not a paragraph.** Replace the canonical opening prose with `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` Mechanically enforced by `checkNoPhaseOutcomeContractRestatement`.

@@ -2,7 +2,7 @@
 
 Drive a cross-repo Specify change from a single operator action: brief -> registry validate -> `/change:plan` (default mode) -> `/change:execute loop` -> `specify workspace push`, then resume to `specify change finalize` after the operator merges PRs through the forge UI or `gh pr merge`.
 
-`/change:plan <name> orchestrate` is the Layer 4 umbrella mode (RFC-9 Section 2C). It is **composition only** -- every step shells out to a Layer 1 CLI verb or a Layer 3 skill; the orchestration mode adds no new logic, owns no new on-disk state, and never invents a CLI verb.
+`/change:plan <name> orchestrate` is the cross-repo umbrella mode. It is **composition only** -- every step shells out to a CLI verb or a multi-slice skill; the orchestration mode adds no new logic, owns no new on-disk state, and never invents a CLI verb.
 
 ## Synopsis
 
@@ -52,7 +52,7 @@ The umbrella drives the canonical platform-first loop:
 | 6. Land | Operator merges PRs through forge UI or `gh pr merge`; umbrella lists PRs and stops until this is done | Unmerged PRs |
 | 7. Finalize | `specify change finalize` | Non-terminal plan entry, unmerged PR, dirty workspace clone |
 
-Every state mutation is a shell-out -- the umbrella never writes any of these files itself. Manual-fallback equivalents for each step are documented in the SKILL body so an operator can drop down a layer at any point. See [Drop down a layer](../../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the canonical sequence.
+Every state mutation is a shell-out -- the umbrella never writes any of these files itself. Manual-fallback equivalents for each step are documented in the SKILL body so you can drop down a layer at any point. See [Drop down a layer](../../how-to/drop-down-a-layer.md#from-cross-repo-orchestration-to-manual-plan-execution) for the canonical sequence.
 
 ## Shape inference
 
@@ -150,8 +150,8 @@ The umbrella is a composition of existing skills and CLI verbs. It does not intr
 
 ## See also
 
-- [/change:plan](plan.md) -- the Layer 3 plan-authoring skill the umbrella invokes at step 3.
-- [/change:execute](execute.md) -- the Layer 2 driver the umbrella invokes at step 4.
+- [/change:plan](plan.md) -- the plan-authoring skill the umbrella invokes at step 3.
+- [/change:execute](execute.md) -- the slice driver the umbrella invokes at step 4.
 - [specify change](../cli/change.md) -- the `create` / `show` / `finalize` CLI verbs.
 - [specify workspace](../cli/workspace.md) -- workspace `push` (step 5).
 - [Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- end-to-end worked example.

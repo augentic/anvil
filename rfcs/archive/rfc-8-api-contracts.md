@@ -4,7 +4,7 @@
 >
 > **Note**: Verb names in this archived RFC predate the CLI cleanup. See current CLI reference under `docs/reference/cli/`.
 >
-> **v2 layout note**: this RFC was authored against the v1 layout, where every platform artifact (`registry.yaml`, `plan.yaml`, `initiative.md`, and `contracts/`) sat under `.specify/`. The v2 layout (specify-cli `0.2.0`) moved these to the repo root — `contracts/` (with `schemas/`, `http/`, `messages/` subdirectories), `registry.yaml`, `plan.yaml`, and `initiative.md` all live alongside the project's source rather than under `.specify/`. The rationale, the format choice, the produces/consumes role model, the brief, and the merge semantics described below are unchanged; only the on-disk paths moved. See [docs/explanation/whats-new.md](../../docs/explanation/whats-new.md) for the migration story.
+> **v2 layout note**: this RFC was authored against the v1 layout, where every platform artifact (`registry.yaml`, `plan.yaml`, `initiative.md`, and `contracts/`) sat under `.specify/`. The v2 layout (specify-cli `0.2.0`) moved these to the repo root — `contracts/` (with `schemas/`, `http/`, `messages/` subdirectories), `registry.yaml`, `plan.yaml`, and `initiative.md` all live alongside the project's source rather than under `.specify/`. The rationale, the format choice, the produces/consumes role model, the brief, and the merge semantics described below are unchanged; only the on-disk paths moved. See [docs/explanation/release-notes.md](../../docs/explanation/release-notes.md) for the migration story.
 
 ## Abstract
 

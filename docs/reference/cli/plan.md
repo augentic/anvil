@@ -37,7 +37,7 @@ Check structural and referential integrity of the plan.
 specify change plan validate
 ```
 
-Checks for: duplicate entry names, dependency cycles, unknown `depends-on` / `sources` references, at most one `in-progress` entry, and the following RFC-3b cross-registry checks when `registry.yaml` is present:
+Checks for: duplicate entry names, dependency cycles, unknown `depends-on` / `sources` references, at most one `in-progress` entry, and the following cross-registry checks when `registry.yaml` is present:
 
 - `project-not-in-registry` (error) -- every `project` value must match a `projects[].name` in the registry.
 - `project-missing-multi-repo` (error) -- when the registry has multiple projects, every change must carry a `project` field.
@@ -46,7 +46,7 @@ Checks for: duplicate entry names, dependency cycles, unknown `depends-on` / `so
 
 ### specify change plan doctor
 
-Diagnose plan health (RFC-9 §4B). `doctor` is a strict superset of `validate`: it runs every check `validate` runs (preserving every diagnostic code listed above) and then layers four additional health diagnostics on top.
+Diagnose plan health. `doctor` is a strict superset of `validate`: it runs every check `validate` runs (preserving every diagnostic code listed above) and then layers four additional health diagnostics on top.
 
 ```bash
 specify change plan doctor

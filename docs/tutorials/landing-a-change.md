@@ -1,22 +1,42 @@
-# Landing a Change
+# Working across repos: landing
 
-This tutorial picks up where [Cross-Repo Changes](cross-repo-change.md) leaves off: two PRs are open against the registered projects, and the `oauth-login` plan has every entry `done`. We now exercise the **landing half** of the platform-first loop -- merging the PRs through the forge and archiving the plan -- and round it out with the `/change:plan <name> orchestrate` umbrella that drives each of the three change shapes.
+This tutorial picks up where [Working across repos: planning](cross-repo-change.md) and [Working across repos: executing](cross-repo-execute.md) leave off: two PRs are open against the registered projects, and the `oauth-login` plan has every entry `done`. We now exercise the **landing half** of the cross-repo loop -- merging the PRs through the forge and archiving the plan -- and round it out with the `/change:plan <name> orchestrate` umbrella that drives each of the three change shapes.
 
 Use this page when you want the worked scenario and full end-to-end narrative. If you already have PRs open and just need the operator checklist, use [Land a Change](../how-to/land-a-change.md).
 
-It exercises Steps 8-9 of the RFC-9 §1C critical path:
+## Where you are in the cross-repo loop
 
-8. Operator PR merge -- review and merge each PR through the forge UI or `gh pr merge`
-9. `specify change finalize` -- confirm landing and archive (RFC-9 §4C)
+The full loop is nine steps. This page covers steps **8-9**.
 
-Together with [Cross-Repo Changes](cross-repo-change.md), the page-pair walks the full Steps 1-9 path. Both halves can be replayed against the live CLI as an integration test (per RFC-9 §1C, any deviation is a blocker).
+1. Initialise the platform hub (`specify init --hub`)
+2. Register code projects (`specify registry add`)
+3. Write the change brief (`specify change create`)
+4. Plan the change (`/change:plan`)
+5. Inspect the workspace
+6. Execute the plan (`/change:execute loop`)
+7. Push branches and open PRs (`specify workspace push`)
+8. **Operator merges the PRs**
+9. **Finalize the change** (`specify change finalize`)
 
-> **Choosing your topology.** This tutorial extends the platform-hub flow from [Cross-Repo Changes](cross-repo-change.md). The Steps 8-9 verbs work identically against the platform-as-project shape (`url: .` in the registry), but the workspace clones in that case are symlinks to the initiating repo rather than separate clones.
+Steps 1-4 live in [Working across repos: planning](cross-repo-change.md); Steps 5-7 in [Working across repos: executing](cross-repo-execute.md). Together, the three pages walk the full loop and can be replayed against the live CLI as an integration test -- any deviation is a blocker.
+
+> **Choosing your topology.** This tutorial extends the platform-hub flow from the planning and executing tutorials. The Steps 8-9 verbs work identically against the platform-as-project shape (`url: .` in the registry), but the workspace clones in that case are symlinks to the initiating repo rather than separate clones.
 
 **Prerequisites:**
 
-- Completed [Cross-Repo Changes](cross-repo-change.md) up to and including Step 7. Two PRs are open on `specify/oauth-login` against `org/shop-backend` and `org/shop-mobile`.
+- Completed [Working across repos: planning](cross-repo-change.md) and [Working across repos: executing](cross-repo-execute.md) up to and including Step 7. Two PRs are open on `specify/oauth-login` against `org/shop-backend` and `org/shop-mobile`.
 - [`gh`](https://cli.github.com/) installed and authenticated against your GitHub org. `specify change finalize` shells out to `gh` to confirm PR state; PR merge itself is an operator action through the forge UI or an explicit `gh pr merge`.
+
+## Contents
+
+- [State on entry](#state-on-entry)
+- [8. Land the PRs](#8-land-the-prs)
+- [9. Finalize the change](#9-finalize-the-change)
+- [Verification](#verification)
+- [Change shapes](#change-shapes)
+- [What you learned](#what-you-learned)
+- [Cross-links](#cross-links)
+- [Next](#next)
 
 ## State on entry
 
@@ -41,7 +61,7 @@ gh pr checks 18 -R org/shop-mobile
 gh pr merge 18 -R org/shop-mobile --squash
 ```
 
-Specify does not merge PRs automatically. The pre-RFC-14 `specify workspace merge` command has been removed; operators merge through forge UI / `gh pr merge`, then run `specify change finalize`.
+Specify does not merge PRs automatically. The older `specify workspace merge` command has been removed; operators merge through forge UI / `gh pr merge`, then run `specify change finalize`.
 
 <details>
 <summary>Expected verification after merge</summary>
@@ -66,7 +86,7 @@ Once every PR is merged, close the change with the canonical closure verb:
 specify change finalize
 ```
 
-`finalize` confirms the whole change is landed and atomically sweeps local plan state into the archive (RFC-9 §4C). It runs four guards in order before any move:
+`finalize` confirms the whole change is landed and atomically sweeps local plan state into the archive. It runs four guards in order before any move:
 
 1. **Plan-presence:** `plan.yaml` exists.
 2. **Plan terminal-state:** every entry is `done` / `failed` / `skipped`.
@@ -103,11 +123,11 @@ specify change finalize --clean
 
 Use `--dry-run` to preview the guard table without writing anything -- useful for verifying readiness before you commit. `finalize` is **idempotent**: re-running it after manually clearing a refused guard (e.g. merging the last PR by hand) completes the archive on the second invocation. Re-running after a successful finalize returns `plan-not-found`, the explicit "already finalized" signal.
 
-> **One-shot variant -- `/change:plan <name> orchestrate` (RFC-9 §2C).** The Layer 4 umbrella mode composes the automated half of the loop: brief -> registry validate -> plan -> execute -> push. It then lists the opened PRs and stops. After the operator merges those PRs through the forge UI or `gh pr merge`, re-running the umbrella resumes at `specify change finalize`. The three subsections below show the umbrella driving each of the three change shapes against the same hub. See [`/change:plan <name> orchestrate`](../reference/change-skills/change.md) for the full algorithm, halt semantics, and re-entry rules.
+> **One-shot variant -- `/change:plan <name> orchestrate`.** The umbrella mode composes the automated half of the loop: brief -> registry validate -> plan -> execute -> push. It then lists the opened PRs and stops. After the operator merges those PRs through the forge UI or `gh pr merge`, re-running the umbrella resumes at `specify change finalize`. The three subsections below show the umbrella driving each of the three change shapes against the same hub. See [`/change:plan <name> orchestrate`](../reference/change-skills/change.md) for the full algorithm, halt semantics, and re-entry rules.
 
 ## Verification
 
-Continuing from the [Cross-Repo Changes](cross-repo-change.md#verification) verification table, Steps 8-9 produce these expected outputs:
+Continuing from the [Working across repos: executing](cross-repo-execute.md#verification) verification table, Steps 8-9 produce these expected outputs:
 
 | After | Command | Expect |
 |---|---|---|
@@ -116,11 +136,11 @@ Continuing from the [Cross-Repo Changes](cross-repo-change.md#verification) veri
 | Step 9 | `ls plan.yaml` | `No such file or directory` -- the plan moved to the archive. |
 | Step 9 | `specify change finalize` (re-run) | Exits `1` with `error: plan-not-found` -- the canonical "already finalized" signal. |
 
-Any deviation is a blocker. File the failing transcript against this tutorial; per RFC-9 §1C the gap is in the implementation, not the design.
+Any deviation is a blocker. File the failing transcript against this tutorial; the gap is in the implementation, not the design.
 
 ## Change shapes
 
-The platform-first loop is shape-agnostic. The same Steps 1-9 drive three change shapes: `migrate-legacy`, `new-feature`, and `update-existing`. Only the inputs to Step 4 (Plan) differ. Each shape is also drivable via the Layer 4 umbrella mode `/change:plan <name> orchestrate`. The transcripts below show each shape from the umbrella's perspective; the manual fallback for every step is the same Layer 1 verb the umbrella shells out to (see [Drop down a layer](../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the exact verb sequence).
+The cross-repo loop is shape-agnostic. The same Steps 1-9 drive three change shapes: `migrate-legacy`, `new-feature`, and `update-existing`. Only the inputs to Step 4 (Plan) differ. Each shape is also drivable via the umbrella mode `/change:plan <name> orchestrate`. The transcripts below show each shape from the umbrella's perspective; the manual fallback for every step is the same CLI verb the umbrella shells out to (see [Drop down a layer](../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the exact verb sequence).
 
 ### Variant: migrate-legacy
 
@@ -137,7 +157,7 @@ Run against an empty hub:
 The umbrella runs through PR creation, stops for operator merge, then finalizes on re-entry:
 
 1. **Brief.** `specify change create migrate-foo` scaffolds `change.md`; the operator confirms a default body listing the legacy monolith as a `legacy-code` input.
-2. **Registry.** Empty + `--shape migrate-legacy` -> hand off to the 2B greenfield path inside `/change:plan`.
+2. **Registry.** Empty + `--shape migrate-legacy` -> hand off to the greenfield registry-proposal path inside `/change:plan`.
 3. **Plan.** `/change:plan` runs discovery against the cloned monolith, proposes a two-project topology (`foo-backend` + `foo-mobile`), shells `specify registry add` x 2 and `specify workspace sync` once, then propose decomposes into one cross-project contract change plus one implementation slice per project. Assignment routes the implementation slices.
 4. **Execute.** `/change:execute loop` drives all three changes to `done` (contract change runs against the hub; the two implementation changes run inside their workspace clones).
 5. **Push.** `specify workspace push` opens two PRs.
@@ -148,9 +168,9 @@ Verb sequence: `specify change create` -> `specify registry validate` -> `/chang
 
 ### Variant: new-feature
 
-Sources arrive via `--from <docs>` only (or via `change.md:inputs`). Targets are existing registered projects, possibly with new ones spawned at assignment time via the registry-proposal sub-step (RFC-9 §2B).
+Sources arrive via `--from <docs>` only (or via `change.md:inputs`). Targets are existing registered projects, possibly with new ones spawned at assignment time via the registry-proposal sub-step.
 
-Run against the populated hub from [Cross-Repo Changes](cross-repo-change.md) Steps 1-3 (or your own equivalent):
+Run against the populated hub from [Working across repos: planning](cross-repo-change.md) Steps 1-3 (or your own equivalent):
 
 ```text
 /change:plan <name> orchestrate dark-mode \
@@ -158,7 +178,7 @@ Run against the populated hub from [Cross-Repo Changes](cross-repo-change.md) St
     from ./docs/dark-mode-spec.md
 ```
 
-**The walkthrough across [Cross-Repo Changes](cross-repo-change.md) and this tutorial is this shape.** The umbrella drives the same nine-step flow, with one deliberate pause: after `specify workspace push`, it lists the open PRs and **stops**. The operator merges PRs through the forge UI or `gh pr merge`, then re-runs the umbrella to finalize. Re-entry inspects on-disk state -- brief present, plan terminal, every PR `MERGED` on remote -- and skips straight to `specify change finalize`.
+**The walkthrough across the planning, executing, and landing tutorials is this shape.** The umbrella drives the same nine-step flow, with one deliberate pause: after `specify workspace push`, it lists the open PRs and **stops**. The operator merges PRs through the forge UI or `gh pr merge`, then re-runs the umbrella to finalize. Re-entry inspects on-disk state -- brief present, plan terminal, every PR `MERGED` on remote -- and skips straight to `specify change finalize`.
 
 Verb sequence (run 1, halts at step 6): `specify change create` -> `specify registry validate` -> `/change:plan <name> from ./docs/dark-mode-spec.md` -> `specify change plan create` -> `specify workspace sync` -> `specify change plan add` x 3 -> `specify change plan amend --project` x 2 -> `specify change plan validate` -> `/change:execute loop` -> `specify workspace push` -> `gh pr list` (read-only). No registry mutation -- both projects exist before the run.
 
@@ -198,19 +218,19 @@ Each step in every shape above is a shell-out the umbrella runs verbatim. Operat
 ## What you learned
 
 - Specify opens PRs but does not merge them. Landing is an explicit operator action through the forge UI or `gh pr merge`; `specify change finalize` only verifies that the PRs are already `MERGED`.
-- `specify change finalize` is the canonical closure verb (RFC-9 §4C): four guards in order (plan-presence, terminal-state, PR-state, workspace-cleanliness) before atomically archiving `plan.yaml`, `change.md`, and `.specify/plans/<name>/` into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+- `specify change finalize` is the canonical closure verb: four guards in order (plan-presence, terminal-state, PR-state, workspace-cleanliness) before atomically archiving `plan.yaml`, `change.md`, and `.specify/plans/<name>/` into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 - `--clean` prunes `.specify/workspace/<peer>/` after the archive completes; `--dry-run` previews the guard table without writing.
 - `finalize` is idempotent: re-running after a refused guard completes the archive on the second invocation; re-running after a successful finalize returns `plan-not-found` (the "already finalized" signal).
 - The same Steps 8-9 close out all three change shapes (`migrate-legacy`, `new-feature`, `update-existing`); only the inputs to Step 4 (Plan) differ.
-- The Layer 4 umbrella `/change:plan <name> orchestrate` composes Steps 1-9 into a single operator action; it is composition only and adds no behaviour beyond the underlying skills and CLI verbs.
+- The umbrella mode `/change:plan <name> orchestrate` composes Steps 1-9 into a single operator action; it is composition only and adds no behaviour beyond the underlying skills and CLI verbs.
 
 ## Cross-links
 
-- [`/change:plan <name> orchestrate`](../reference/change-skills/change.md) -- Layer 4 umbrella reference page.
+- [`/change:plan <name> orchestrate`](../reference/change-skills/change.md) -- umbrella mode reference page.
 - [Land a change](../how-to/land-a-change.md) -- focused how-to on autonomous vs supervised landing.
 - [`specify workspace`](../reference/cli/workspace.md) -- workspace sync, status, and push.
 - [`specify change finalize`](../reference/cli/change.md#specify-change-finalize) -- CLI reference, the four guards, JSON v2 envelope.
-- [Change landing issues](../appendices/troubleshooting.md#change-landing-issues) -- `branch-pattern-mismatch`, `plan-not-found`, dirty clones.
+- [Change landing issues](../how-to/troubleshooting/change-landing.md) -- `branch-pattern-mismatch`, `plan-not-found`, dirty clones.
 - [Drop down a layer](../how-to/drop-down-a-layer.md) -- manual-fallback for every umbrella step.
 
 ## Next

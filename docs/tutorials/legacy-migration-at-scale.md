@@ -4,6 +4,17 @@ Migrating a large legacy codebase is one of the most demanding uses of Specify. 
 
 **Prerequisites:** Familiarity with [multi-slice changes](single-repo-change.md) and [cross-repo planning](cross-repo-change.md).
 
+## Contents
+
+- [The scaling challenge](#the-scaling-challenge)
+- [1. Set up the registry](#1-set-up-the-registry)
+- [2. Plan the migration](#2-plan-the-migration)
+- [3. Handle tangled code](#3-handle-tangled-code)
+- [4. Execute the migration](#4-execute-the-migration)
+- [5. Mix extraction and greenfield slices](#5-mix-extraction-and-greenfield-slices)
+- [The migration workflow](#the-migration-workflow)
+- [What you learned](#what-you-learned)
+
 ## The scaling challenge
 
 A legacy monolith might have hundreds of thousands of lines of code. You cannot extract full specs from the entire codebase in one pass -- it would be too slow, too expensive, and the output would be overwhelming.

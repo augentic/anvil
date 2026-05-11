@@ -1,6 +1,6 @@
-# Change Skills (Layer 2)
+# Slice skills
 
-Layer 2 skills operate on a single slice inside `.specify/slices/<name>/`. They form the core define-build-merge loop and provide supporting capabilities for extracting artifacts from existing source.
+Slice skills operate on a single slice inside `.specify/slices/<name>/`. They form the core define-build-merge loop and provide supporting capabilities for extracting artifacts from existing source.
 
 ## The define-build-merge loop
 
@@ -25,6 +25,6 @@ This is the primary workflow. You initialise a project once, then repeat the def
 
 ## How skills delegate
 
-Each skill is an agent-driven orchestrator. Deterministic operations are delegated to the `specify` CLI (Layer 1). Skills never hand-edit `.metadata.yaml`, never create directories under `.specify/`, and never move files to the archive directly.
+Each skill is an agent-driven orchestrator. Deterministic operations are delegated to the `specify` CLI. Skills never hand-edit `.metadata.yaml`, never create directories under `.specify/`, and never move files to the archive directly.
 
 During `/spec:build`, tasks with skill directive tags (e.g. `<!-- skill: omnia:crate-writer -->`) are delegated to the named specialist plugin skill. Tasks without tags are implemented via the capability's default build instruction.

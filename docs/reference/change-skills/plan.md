@@ -79,7 +79,7 @@ changes:
 
 **Spec-first (inline derivation).** For single-repo slices with no identified API boundary and no external consumers, no separate contract slice is inserted. The `contracts` brief derives interface shapes inline during the slice's define phase.
 
-After the loop, runs `specify change plan validate` to check structural integrity (no cycles, no dangling dependencies) and the RFC-3b cross-registry checks (`project-not-in-registry`, `project-missing-multi-repo`, `description-missing-multi-repo`, `capability-mismatch-workspace`).
+After the loop, runs `specify change plan validate` to check structural integrity (no cycles, no dangling dependencies) and the cross-registry checks (`project-not-in-registry`, `project-missing-multi-repo`, `description-missing-multi-repo`, `capability-mismatch-workspace`).
 
 ## Lifecycle transitions
 

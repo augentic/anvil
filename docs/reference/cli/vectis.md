@@ -16,7 +16,7 @@ specify tool run vectis -- validate <mode> [path]
 
 | Mode | Validates |
 |------|-----------|
-| `layout` | `layout.yaml` against the unwired subset of [`composition.schema.json`](../../../capabilities/vectis/composition.schema.json): YAML syntax, schema shape, `screens` only (no `delta`), no define-owned wiring keys (`maps_to`, `bind`, `event`, `error`, overlay `trigger`, `*-when`), and the RFC-11 structural-identity rule for any `component:` directives present. |
+| `layout` | `layout.yaml` against the unwired subset of [`composition.schema.json`](../../../capabilities/vectis/composition.schema.json): YAML syntax, schema shape, `screens` only (no `delta`), no define-owned wiring keys (`maps_to`, `bind`, `event`, `error`, overlay `trigger`, `*-when`), and the structural-identity rule for any `component:` directives present. |
 | `composition` | `composition.yaml` (wired or unwired), including schema shape, structural identity, and cross-artifact reference resolution against sibling `tokens.yaml` / `assets.yaml`. Auto-invokes `tokens` and `assets` modes when those siblings exist. |
 | `tokens` | `tokens.yaml` against [`tokens.schema.json`](../../../capabilities/vectis/tokens.schema.json). |
 | `assets` | `assets.yaml` against [`assets.schema.json`](../../../capabilities/vectis/assets.schema.json), plus referenced-file existence under `design-system/assets/**` and per-platform source coverage. |

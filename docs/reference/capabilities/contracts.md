@@ -35,7 +35,7 @@ A verify-repair loop runs up to 2 iterations: if the verifier reports failures, 
 
 Contract files use **opaque replacement** semantics during merge -- the entire file is replaced rather than delta-merged. When `specify slice merge run` processes the slice, it copies the slice's `contracts/` files into root `contracts/`, replacing files that share a path.
 
-After the standard delta merge succeeds, the merge brief shells out to the declared [`contract` WASI tool](../cli/contract.md) with `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. The tool enforces the RFC-12 §Validation rules (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness) and is the contracts capability's adoption gate per RFC-13 §"Merge and adoption contract". The merge brief maps the tool's exit code to the §Merge and adoption contract three-branch outcome contract (`success` / `failure` / `deferred`); see [`capabilities/contracts/briefs/merge.md`](../../../capabilities/contracts/briefs/merge.md) for the full wiring.
+After the standard delta merge succeeds, the merge brief shells out to the declared [`contract` WASI tool](../cli/contract.md) with `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. The tool enforces the contract validation rules (SemVer `info.version`, kebab-case `info.x-specify-id` when present, cross-repo id uniqueness) and is the contracts capability's adoption gate. The merge brief maps the tool's exit code to the three-branch merge outcome (`success` / `failure` / `deferred`); see [`capabilities/contracts/briefs/merge.md`](../../../capabilities/contracts/briefs/merge.md) for the full wiring.
 
 ## When to use
 
@@ -58,7 +58,7 @@ The `contracts` capability and the implementation capabilities serve complementa
 | Build phase | Author/import + validation | Code generation |
 | Typical delta | Full contract set (new API), import normalisation, or contract modification | Spec/design/code changes with no contract artifact delta |
 
-> The plan-entry key on the table above is still spelled `capability:` because the `plan.yaml` per-entry field name is intentionally kept distinct from the capability rename — it identifies the artefact-path identifier the entry targets, not the capability that owns the work. RFC-13 leaves that key unchanged; any future plan-field rename is a separate cut-over.
+> The plan-entry key on the table above is spelled `capability:` because it identifies the artefact-path identifier the entry targets, not the capability that owns the work.
 
 ## Domain context
 
