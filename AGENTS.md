@@ -92,6 +92,18 @@ The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolut
 
 - Every `SKILL.md` in this repository follows the house style codified in [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions); the long-form rationale (discovery model, why metadata is precious, examples of good/bad descriptions, the progressive-disclosure pattern, and the forbidden-frontmatter list) lives at [docs/contributing/skill-authoring.md](docs/contributing/skill-authoring.md).
 
+### Argument-hint grammar
+
+Each `SKILL.md` `argument-hint:` value is a whitespace-separated sequence of tokens drawn from a fixed grammar (enforced by `checkArgumentHintGrammar` in [scripts/checks/skill_frontmatter.ts](scripts/checks/skill_frontmatter.ts)):
+
+- `<name>` — required positional, kebab-case noun (e.g. `<slice-dir>`, `<change-name>`).
+- `[name]` — optional positional (e.g. `[crate-name]`, `[mode]`).
+- trailing `...` — repeated (e.g. `<image-path>...`, `[file]...`).
+- `<a|b|c>` / `[a|b|c]` — mutually exclusive alternatives.
+- `--flag` — long flag (no value); when a flag carries a value, model the value as a sibling token: `--kind <kind>`.
+
+Bare prose ("the slice name"), mixed punctuation (`<arg>: arg2`), trailing `?`, and short flags (`-f`) are rejected. The hint is the slash-command placeholder, not the full CLI signature — secondary arguments still belong in the body's "Invocation" section.
+
 ### Description tightness
 
 Each `SKILL.md` `description` field must be **≤ 512 chars**, lead with a strong verb (imperative `Generate` or third-person `Generates` are both fine), and name a concrete trigger phrase — almost always `Use when …` — so the skill-discovery surface can match on intent rather than vocabulary. Mechanically enforced by `checkDescriptionLength` in [scripts/checks/skill_frontmatter.ts](scripts/checks/skill_frontmatter.ts). The body cap is correspondingly **≤ 400 lines**; see `checkBodyLineCount` in [scripts/checks/skill_body.ts](scripts/checks/skill_body.ts). Per-H2 sections additionally cap at **≤ 60 lines** (non-blank, non-comment) via `checkSectionLineCount` so depth migrates into `references/` rather than letting individual sections sprawl. All three caps are floors, not budgets — overflow means the relocate-to-`references/` patterns in §"Skill body discipline" need to fire, not that the cap should be raised.
@@ -126,6 +138,7 @@ Predicates surfaced by Skills-1:
 - `checkOneGuardrailsBlockPerSkill` — count of `## Guardrails` and `## Mode-specific guardrails` headings.
 - `checkNoPhaseOutcomeContractRestatement` — restated phase-outcome contract paragraph.
 - `checkNoFrontmatterRestatement` — frontmatter `description` value re-appearing under the first H2.
+- `checkArgumentHintGrammar` — each whitespace-separated token in `argument-hint:` matches the canonical grammar (`<name>`, `[name]`, trailing `...`, `<a|b>`, `[a|b]`, `--flag`).
 
 ### Gotchas
 

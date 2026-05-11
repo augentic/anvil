@@ -1,7 +1,7 @@
 ---
 name: vectis-image-layout-inferer
 description: Reconstruct an unwired `layout.yaml` from screenshot images via a staged vision pipeline (triage, cropping, region / container / leaf inference, `component:` emission, gap reporting), validate via `specify tool run vectis`, and cross-check sibling `tokens.yaml` / `assets.yaml` when present. Use when an operator supplies screenshots and wants a schema-valid layout `/spec:define` can wire into `composition.yaml`, when refining a layout from new evidence, or when the user mentions image-layout-inferer.
-argument-hint: "<image-paths>"
+argument-hint: "<image-path>..."
 ---
 
 # Vectis Image Layout Inferer

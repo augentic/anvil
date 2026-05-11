@@ -258,10 +258,14 @@ Portability posture:
 
 ### `argument-hint`
 
-- Single short hint that names the **primary positional** argument as Cursor placeholder text (the grey hint shown after `/plugin:skill `).
-- Required positional → angle brackets: `<slice-dir>`. Optional positional → square brackets: `[crate-name]`.
-- No flag names (`--dry-run`, `--source`), no `?` optional-suffix marker, no `|` alternative-value pipes. Secondary skill arguments are documented as positionals in the body's "Invocation" section.
-- Skills that only take secondary mode tokens keep those tokens out of the hint unless a primary positional exists (e.g. `/change:execute` uses `[mode]` only in its body).
+- Short, single-line Cursor placeholder text (the grey hint shown after `/plugin:skill `). Names the skill's invocation surface, not its full CLI signature — depth still belongs in the body's "Invocation" section.
+- Tokens are whitespace-separated and drawn from a fixed grammar (enforced by `checkArgumentHintGrammar` in [scripts/checks/skill_frontmatter.ts](../../scripts/checks/skill_frontmatter.ts)):
+  - `<name>` — required positional (kebab-case noun): `<slice-dir>`, `<change-name>`.
+  - `[name]` — optional positional: `[crate-name]`, `[mode]`.
+  - trailing `...` — repeated positional: `<image-path>...`, `[file]...`.
+  - `<a|b|c>` / `[a|b|c]` — mutually exclusive alternatives.
+  - `--flag` — long flag (no value); when a flag carries a value, model the value as a sibling token: `--kind <kind>`.
+- Bare prose ("the slice name"), mixed punctuation (`<arg>: arg2`), trailing `?`, and short flags (`-f`) are rejected. Skills that only take secondary mode tokens keep those tokens out of the hint unless a primary positional exists (e.g. `/change:execute` uses `[mode]` only in its body).
 
 ### Critical Path (Quick Reference)
 
@@ -282,7 +286,7 @@ The pattern is already in use under `plugins/spec/skills/extract/`, `plugins/cha
 
 - `name` matches `^[a-z][a-z0-9-]*$`, carries the plugin prefix, and is globally unique across all SKILL.md files.
 - `description` is ≤512 characters.
-- `argument-hint` contains no `?`, no `--`, and no `|`.
+- `argument-hint` parses as whitespace-separated tokens of the canonical grammar (`<name>`, `[name]`, trailing `...`, `<a|b>`, `[a|b]`, `--flag`); see `checkArgumentHintGrammar`.
 - Slash-skill invocation examples use positionals only; leading double-dash option tokens are reserved for ordinary CLI commands and fail checks when used as skill arguments.
 - SKILL.md body is ≤400 lines (post-frontmatter).
 - Each H2 section is ≤60 non-blank, non-comment lines (`checkSectionLineCount`); migrate depth into `references/` rather than letting the section sprawl.

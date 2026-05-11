@@ -171,13 +171,54 @@ export async function checkDescriptionLength(): Promise<void> {
   }
 }
 
-export async function checkArgumentHint(): Promise<void> {
+// Canonical `argument-hint:` grammar (S3). A hint is a whitespace-
+// separated sequence of tokens; each token must be one of:
+//
+//   <name>          required positional         e.g. <slice-dir>
+//   [name]          optional positional         e.g. [crate-name]
+//   <a|b|c>         required, mutually exclusive
+//   [a|b|c]         optional, mutually exclusive
+//   <name>...       repeated required positional
+//   [name]...       repeated optional positional
+//   --flag          long flag (no value; values follow as a separate
+//                   <value>/[value] token, e.g. `--kind <kind>`)
+//
+// `name` is kebab-case: `[a-z][a-z0-9-]*` per alternative. Bare prose
+// ("the slice name", "kind <foo>") and mixed punctuation (`<arg>: foo`)
+// are rejected. Unset hints are ignored — the field is optional.
+const HINT_NAME = "[a-z][a-z0-9]*(?:-[a-z0-9]+)*";
+const HINT_ALT = `${HINT_NAME}(?:\\|${HINT_NAME})*`;
+const ARGUMENT_HINT_TOKEN_RE = new RegExp(
+  "^(?:" +
+    `<${HINT_ALT}>(?:\\.\\.\\.)?` +
+    "|" +
+    `\\[${HINT_ALT}\\](?:\\.\\.\\.)?` +
+    "|" +
+    "--[a-z][a-z0-9]*(?:-[a-z0-9]+)*" +
+    ")$",
+);
+
+// Pure per-hint predicate. Returns `null` when the hint is well-formed
+// (or empty), or a human-readable failure message otherwise. The `ctx`
+// is threaded through so future call sites (lints, IDE plugins) can
+// produce richer diagnostics without coupling to the `fail()` counter.
+export function checkArgumentHintGrammar(
+  hint: string,
+  ctx: { rel: string },
+): string | null {
+  const trimmed = hint.trim();
+  if (trimmed === "") return null;
+  const tokens = trimmed.split(/\s+/);
+  for (const token of tokens) {
+    if (!ARGUMENT_HINT_TOKEN_RE.test(token)) {
+      return `Invalid argument-hint in ${ctx.rel}: token '${token}' (in '${hint}') does not match grammar — allowed tokens are <name>, [name], <a|b>, [a|b], <name>..., [name]..., --flag (kebab-case names)`;
+    }
+  }
+  return null;
+}
+
+export async function validateArgumentHints(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-  const FORBIDDEN: { token: string; reason: string }[] = [
-    { token: "?", reason: "trailing optional marker" },
-    { token: "--", reason: "flag dashes" },
-    { token: "|", reason: "alternative-value pipe" },
-  ];
 
   for await (
     const entry of walk(PLUGINS_DIR, {
@@ -206,13 +247,8 @@ export async function checkArgumentHint(): Promise<void> {
       continue;
     }
 
-    for (const { token, reason } of FORBIDDEN) {
-      if (hint.includes(token)) {
-        fail(
-          `Invalid argument-hint in ${rel}: '${hint}' contains forbidden ${reason} '${token}'`,
-        );
-      }
-    }
+    const err = checkArgumentHintGrammar(hint, { rel });
+    if (err !== null) fail(err);
   }
 }
 
