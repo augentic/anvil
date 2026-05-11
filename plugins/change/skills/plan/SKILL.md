@@ -1,6 +1,6 @@
 ---
 name: change-plan
-description: "Authors `plan.yaml` for a change on the change surface via the planning brief pipeline; with the `orchestrate` positional, drives the cross-repo umbrella end to end. Use when scoping a new change or coordinating multi-repo execution from a single command on the `/change` surface."
+description: "Author `plan.yaml` for a change on the change surface via the planning brief pipeline; with the `orchestrate` positional, drive the cross-repo umbrella end to end. Use when scoping a new change or coordinating multi-repo execution from a single command on the `/change` surface."
 argument-hint: "<change-name>"
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: contract-json-schema
-description: Authors, imports, and verifies standalone JSON Schema documents shared by OpenAPI, AsyncAPI, and other contract formats. Use when a Specify change needs reusable payload schemas, when an operator supplies schema files without a protocol wrapper, or when validating schema compatibility across generated contracts.
+description: Author, import, and verify standalone JSON Schema documents shared by OpenAPI, AsyncAPI, and other contract formats. Use when a Specify change needs reusable payload schemas, when an operator supplies schema files without a protocol wrapper, or when validating schema compatibility across generated contracts.
 argument-hint: "[slice-dir]"
 ---
 

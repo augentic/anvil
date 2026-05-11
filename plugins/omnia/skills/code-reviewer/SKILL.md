@@ -1,6 +1,6 @@
 ---
 name: omnia-code-reviewer
-description: Reviews generated Omnia Rust WASM crates for security, error handling, WASM constraints, and code quality issues. Use when reviewing crates produced by `/omnia:crate-writer` or when the user mentions code review for a generated crate.
+description: Review generated Omnia Rust WASM crates for security, error handling, WASM constraints, and code quality issues. Use when reviewing crates produced by `/omnia:crate-writer` or when the user mentions code review for a generated crate.
 argument-hint: "[crate-path]"
 ---
 

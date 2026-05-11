@@ -1,6 +1,6 @@
 ---
 name: change-execute
-description: "Drives a change through its plan.yaml on the change surface: reads the plan, picks the next eligible slice, runs define → build → merge, and updates status. Use when running the next eligible slice in a change or processing all eligible slices via `loop`."
+description: "Drive a change through its plan.yaml on the change surface: read the plan, pick the next eligible slice, run define → build → merge, and update status. Use when running the next eligible slice in a change or processing all eligible slices via `loop`."
 ---
 
 ## Critical Path (Quick Reference)

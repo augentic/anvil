@@ -216,6 +216,168 @@ export async function checkArgumentHint(): Promise<void> {
   }
 }
 
+// Imperative verbs allowed as the first word of a SKILL.md
+// `description:` field. Curated and intentionally inclusive — adding a
+// verb here is cheaper than rejecting an otherwise-fine description.
+// Anthropic's Skills guidance recommends descriptions start with an
+// imperative verb so a model can quickly judge whether the skill is
+// callable for the current task.
+const IMPERATIVE_VERBS = new Set([
+  "add",
+  "annotate",
+  "apply",
+  "audit",
+  "author",
+  "build",
+  "categorise",
+  "categorize",
+  "check",
+  "compare",
+  "compile",
+  "complete",
+  "compose",
+  "compute",
+  "configure",
+  "convert",
+  "create",
+  "define",
+  "describe",
+  "design",
+  "diff",
+  "discover",
+  "drive",
+  "drop",
+  "enforce",
+  "execute",
+  "expose",
+  "export",
+  "extract",
+  "fetch",
+  "fix",
+  "format",
+  "generate",
+  "guard",
+  "implement",
+  "import",
+  "infer",
+  "ingest",
+  "init",
+  "initialize",
+  "list",
+  "load",
+  "merge",
+  "monitor",
+  "orchestrate",
+  "plan",
+  "preview",
+  "process",
+  "produce",
+  "propose",
+  "publish",
+  "reconstruct",
+  "render",
+  "resolve",
+  "review",
+  "run",
+  "scaffold",
+  "select",
+  "show",
+  "shorten",
+  "split",
+  "stage",
+  "store",
+  "summarize",
+  "test",
+  "translate",
+  "transform",
+  "trim",
+  "validate",
+  "verify",
+  "wire",
+  "wrap",
+  "write",
+]);
+
+export async function checkDescriptionStartsWithVerb(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
+    if (await underSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) continue;
+
+    let fm: Record<string, unknown>;
+    try {
+      fm = parseYaml(fmMatch[1]) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    const description = fm.description;
+    if (typeof description !== "string") continue;
+
+    const firstWordMatch = description.trimStart().match(/^([A-Za-z]+)/);
+    if (!firstWordMatch) {
+      fail(
+        `Skill description must start with an imperative verb: ${rel} — no leading word found`,
+      );
+      continue;
+    }
+
+    const firstWord = firstWordMatch[1].toLowerCase();
+    if (!IMPERATIVE_VERBS.has(firstWord)) {
+      fail(
+        `Skill description must start with an imperative verb: ${rel} — '${
+          firstWordMatch[1]
+        }' not in allow-list (add to IMPERATIVE_VERBS in scripts/checks/skill_frontmatter.ts if it is genuinely imperative)`,
+      );
+    }
+  }
+}
+
+export async function checkDescriptionHasUseWhen(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+  const USE_WHEN_RE = /\b[Uu]se when\b/;
+
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
+    if (await underSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) continue;
+
+    let fm: Record<string, unknown>;
+    try {
+      fm = parseYaml(fmMatch[1]) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+
+    const description = fm.description;
+    if (typeof description !== "string") continue;
+
+    if (!USE_WHEN_RE.test(description)) {
+      fail(
+        `Skill description missing 'Use when' clause: ${rel} — add a 'Use when …' sentence so the agent knows when to apply this skill`,
+      );
+    }
+  }
+}
+
 export async function checkNoLicense(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 

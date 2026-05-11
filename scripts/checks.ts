@@ -26,7 +26,9 @@ import {
 import { checkPluginConsistency, checkSymlinks } from "./checks/plugins.ts";
 import {
   checkArgumentHint,
+  checkDescriptionHasUseWhen,
   checkDescriptionLength,
+  checkDescriptionStartsWithVerb,
   checkNoLicense,
   validateSkillFrontmatter,
 } from "./checks/skill_frontmatter.ts";
@@ -86,6 +88,8 @@ await Promise.all([
   checkBodyLineCount(),
   checkCriticalPath(),
   checkDescriptionLength(),
+  checkDescriptionStartsWithVerb(),
+  checkDescriptionHasUseWhen(),
   checkArgumentHint(),
   checkInvocationPositionals(),
   checkNoLicense(),

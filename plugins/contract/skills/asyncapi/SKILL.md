@@ -1,6 +1,6 @@
 ---
 name: contract-asyncapi
-description: Authors, imports, and verifies AsyncAPI 3.0 event, pub/sub, stream, and WebSocket-style contracts for Specify changes, including channels, messages, bindings, producers, consumers, and schema references. Use when a contracts build needs an evented contract, when an operator supplies or asks for an AsyncAPI document, or when verifying AsyncAPI compatibility after a merge.
+description: Author, import, and verify AsyncAPI 3.0 event, pub/sub, stream, and WebSocket-style contracts for Specify changes, including channels, messages, bindings, producers, consumers, and schema references. Use when a contracts build needs an evented contract, when an operator supplies or asks for an AsyncAPI document, or when verifying AsyncAPI compatibility after a merge.
 argument-hint: "[slice-dir]"
 ---
 
