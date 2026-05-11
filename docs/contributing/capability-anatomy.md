@@ -94,17 +94,10 @@ Capabilities may ship a `tools.yaml` sidecar next to `capability.yaml` to declar
 ```yaml
 # capabilities/contracts/tools.yaml
 tools:
-  - name: contract
-    version: 1.0.0
-    source: "https://github.com/augentic/specify-tools/releases/download/1.0.0/contract.wasm"
-    sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-    permissions:
-      read:
-        - "$PROJECT_DIR/contracts"
-      write: []
+  - "specify:contract@0.3.0"
 ```
 
-Use absolute local paths or `file://` URIs for vendored and first-party development artifacts. Use `https://` for third-party or released artifacts. Released tool declarations should include `sha256`; first-party release declarations require it so cache fills verify the exact component bytes.
+Use scalar `specify:<tool>@<semver>` package requests for first-party released WASI tools. Use object declarations with absolute local paths or `file://` URIs for vendored and first-party development artifacts; those object declarations may include `sha256` pins when cache verification is useful.
 
 Capability-scope tools may use `$CAPABILITY_DIR` in permission paths to read capability-owned templates or resources. Project-scope declarations in `.specify/project.yaml` may not use `$CAPABILITY_DIR`.
 

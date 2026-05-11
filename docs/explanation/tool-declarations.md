@@ -43,17 +43,10 @@ capabilities/contracts/
 ```yaml
 # capabilities/contracts/tools.yaml
 tools:
-  - name: contract
-    version: 1.0.0
-    source: "https://github.com/augentic/specify-tools/releases/download/1.0.0/contract.wasm"
-    sha256: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-    permissions:
-      read:
-        - "$PROJECT_DIR/contracts"
-      write: []
+  - "specify:contract@0.3.0"
 ```
 
-The sidecar has the same top-level shape as the project declaration: a `tools:` array. `capability.yaml` itself remains closed and does not gain a `tools:` field.
+First-party capability entries are exact wasm-pkg package requests in the `specify` namespace. The CLI derives the tool name and version from the package request and applies embedded permission defaults for first-party tools. `capability.yaml` itself remains closed and does not gain a `tools:` field.
 
 Use capability scope when the helper is part of the capability's promised behavior, such as a merge validator or a deterministic artifact checker.
 
@@ -78,6 +71,8 @@ Variables are expanded only in `permissions.read` and `permissions.write`. They 
 
 Permissions are directory preopens, not globs. The host canonicalizes every path and rejects `..` segments, glob metacharacters, symlink escapes, and direct writes to Specify lifecycle state. A tool that writes files should ask for the narrowest existing parent directory it needs. Use `$PROJECT_DIR` only when the tool's contract must create or update root-level files such as `Cargo.toml`.
 
+First-party scalar package declarations do not repeat permissions in YAML. `specify` embeds the current defaults for `specify:contract` and `specify:vectis`; project-local object declarations still carry explicit permissions.
+
 ## Cache segmentation
 
 The global cache is segmented by declaration scope:
@@ -98,13 +93,13 @@ Project and capability entries stay isolated even when the name, version, and so
 
 The cache root follows the `specify tool` reference order: `SPECIFY_TOOLS_CACHE`, then `XDG_CACHE_HOME`, then the platform cache directory, then `$HOME/.cache/specify/tools`.
 
-## SHA-256 pins
+## Package Sources and SHA-256 Pins
 
-`sha256` pins the component bytes. When present, the resolver verifies bytes before installation and rejects a cache entry whose sidecar digest no longer matches the live declaration.
+First-party package sources use `specify:<tool>@<semver>` and resolve through wasm-pkg registry metadata at `augentic.io` to OCI artifacts in GHCR. Operators still run only `specify tool fetch` and `specify tool run`; they do not install `wkg`.
 
-Use `sha256` for released artifacts. First-party release declarations must include it. Omitting `sha256` is acceptable for local development, but it means cache reuse relies on the `(scope, name, version, source)` tuple alone.
+`sha256` pins object-declared component bytes. When present, the resolver verifies bytes before installation and rejects a cache entry whose sidecar digest no longer matches the live declaration.
 
-Changing a tool's bytes should also change either `version`, `source`, or `sha256`; otherwise existing caches may continue to use the earlier bytes until garbage collection removes them.
+Package-backed first-party declarations do not carry a separate `sha256`; the package resolver validates package content through the registry client and records package/OCI metadata in `meta.yaml`. For local object declarations, changing a tool's bytes should also change either `version`, `source`, or `sha256`; otherwise existing caches may continue to use the earlier bytes until garbage collection removes them.
 
 ## Choosing scope
 
@@ -157,21 +152,12 @@ tools:
         - "$PROJECT_DIR/generated"
 ```
 
-Capability-scope tool that must create root-level project files:
+First-party capability-scope package that must create root-level project files:
 
 ```yaml
 # capabilities/vectis/tools.yaml
 tools:
-  - name: vectis
-    version: 0.2.0
-    source: "https://github.com/augentic/specify-cli/releases/download/v0.2.0/vectis.wasm"
-    sha256: "<recompute from the v0.2.0 release artifact>"
-    permissions:
-      read:
-        - "$PROJECT_DIR"
-        - "$CAPABILITY_DIR"
-      write:
-        - "$PROJECT_DIR"
+  - "specify:vectis@0.3.0"
 ```
 
 Invocation:
