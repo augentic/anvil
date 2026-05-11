@@ -131,7 +131,7 @@ The state this skill may mutate is limited to the driver lock, plan status trans
 
 ## Guardrails
 
-- Never hand-edit `plan.yaml`, `.specify/slices/<name>/.metadata.yaml`, or `.specify/slices/<name>/journal.yaml`. Route every write through the CLI verbs above — the single-writer invariant depends on it.
+- Route every write to `plan.yaml`, `.specify/slices/<name>/.metadata.yaml`, and `.specify/slices/<name>/journal.yaml` through the CLI verbs above — the single-writer invariant depends on it. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
 - Never skip the lock-release step. If the skill exits early after a successful acquire, run `specify change plan lock release --pid <agent-session-pid>` on the way out. Stale stamps can be reclaimed by a later run, but only after a visible-to-the-operator failure.
 - Treat an unexpected `specify change plan next` response shape (missing keys, unknown `reason`) as a hard failure: print the raw JSON, release the lock, and exit non-zero. Do not speculate.
 - For `dry-run` specifically: the skill MUST NOT invoke any phase skill, MUST NOT shell out to `specify change plan transition`, MUST NOT shell out to `specify slice journal append`, and MUST NOT invoke `/spec:drop`. This prohibition extends to the self-heal step: dry-run self-heal is report-only ([self-heal.md](self-heal.md) §Dry-run variant). The first-line banner prefixes the rendered output with `[dry-run] `.

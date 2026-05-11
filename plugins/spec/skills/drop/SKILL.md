@@ -107,4 +107,4 @@ The baseline remains unchanged.
 - Do not merge or rewrite any files under `.specify/specs/`.
 - Warn if the slice is already `complete`, since `/spec:merge` may be the intended action.
 - Stop if the slice is already finalized as `merged` or `dropped`.
-- Never hand-edit `.metadata.yaml` or the archive directory. `specify slice drop` is the sole supported code path.
+- `specify slice drop` is the sole writer for `.metadata.yaml` and the archive directory on drop. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).

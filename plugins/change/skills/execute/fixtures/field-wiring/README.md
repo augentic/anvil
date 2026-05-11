@@ -1,6 +1,6 @@
 # `/change:execute` — `sources` / description-driven argument-wiring fixtures
 
-These fixtures pin the three argument-shape variants `/change:execute` builds for `/spec:define` from a plan entry's `sources` and `description` fields. Delta targeting (previously handled by the `affects` field) is now description-driven: the define skill infers which baseline specs a change targets by reading the entry's description. The algorithm they illustrate lives in [`../../SKILL.md` → §Argument resolution](../../SKILL.md).
+These fixtures pin the three argument-shape variants `/change:execute` builds for `/spec:define` from a plan entry's `sources` and `description` fields. Delta targeting is description-driven: the define skill infers which baseline specs a change targets by reading the entry's description. The algorithm they illustrate lives in [`../../SKILL.md` → §Argument resolution](../../SKILL.md).
 
 There is no automated harness that runs these fixtures. They are prose artefacts: a human reviewing a change to `/change:execute`'s argument-resolution code should be able to diff a new invocation rendering against the `invocation.txt` files here, and a change to the rendered transcript format against the `transcript.md` files.
 

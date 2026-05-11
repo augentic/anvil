@@ -255,7 +255,7 @@ No other on-disk state is written by `/change:plan` itself.
 
 ## Guardrails
 
-- Never hand-edit `plan.yaml`; follow [plan-single-writer.md](../../references/plan-single-writer.md).
+- Single-writer for `plan.yaml`: see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) and [plan-single-writer.md](../../references/plan-single-writer.md) for the full contract.
 - Never skip `specify change plan validate` (step 4). A plan that ships to `/change:execute` without a clean validate is a regression.
 - Validate `<change-name>` before any filesystem read or CLI shell-out. A bad name should never leave a half-written plan behind.
 - For `dry-run` specifically: the skill MUST NOT shell out to `specify change plan create`, `specify change plan add`, `specify change plan amend`, or `specify change plan transition`; MUST NOT create `.specify/plans/<name>/`; MUST NOT write `discovery.md` or any other file under `.specify/`. The discovery brief's input-reading side still runs so the stdout inventory preview is real.

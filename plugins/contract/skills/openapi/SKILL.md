@@ -101,7 +101,7 @@ These constraints are non-negotiable for any of the three sibling paths:
 2. **`$ref` discipline.** All schema references use relative file paths into `../schemas/`. No `#/components/schemas/...` pointers in the baseline. No inline domain types.
 3. **`$id` stability.** Once a schema has a `$id`, do not change it. New schemas get new `$id` values; the writer and importer never reassign existing ones.
 4. **Kebab-case filenames.** All `.yaml` files use kebab-case names; no PascalCase or snake_case variants.
-5. **Baseline immutability.** Never modify files in root `contracts/`. All output goes in the slice-local `contracts/` directory.
+5. **Baseline immutability.** All output goes in the slice-local `contracts/` directory; baseline `contracts/` is read-only here. See [shared guardrails — Baseline immutability](../../../references/guardrails.md#baseline-immutability-for-contract-authoring).
 6. **No invention.** When the spec does not provide enough detail to derive a shape, mark the gap with `[unknown]` in the alignment report rather than guessing. Importer flags unrecognised constructs with `[import — manual review required]`.
 7. **Read-only verifier.** The verifier sibling must not create, modify, or delete any files in either mode.
 
@@ -109,8 +109,7 @@ These constraints are non-negotiable for any of the three sibling paths:
 
 - Only emit `.yaml` files under `$SLICE_DIR/contracts/`.
 - Create `contracts/http/`, `contracts/schemas/` only when they will contain at least one file.
-- Do not modify any file outside `$SLICE_DIR/contracts/`.
-- Do not modify baseline files in root `contracts/`.
+- Stay inside `$SLICE_DIR/contracts/`; the baseline is off-limits per [shared guardrails](../../../references/guardrails.md#baseline-immutability-for-contract-authoring).
 
 ## See also
 

@@ -234,7 +234,7 @@ Next steps:
 - Do not overwrite an existing project.yaml without user confirmation
 - For regular projects, pass the capability identifier (bare name or URL) as the **first positional argument** to `specify init`; do not hand-populate `.specify/.cache/`
 - For hubs, never populate `.specify/.cache/` and never resolve a capability — the absence of `capability:` (paired with `hub: true`) disables phase pipelines on the hub itself, so there is nothing to cache
-- Do not hand-roll `AGENTS.md` during init. The CLI generates it when absent, preserves an existing root `AGENTS.md`, and writes `.specify/context.lock` for `specify context check`.
+- The CLI is the single writer for `AGENTS.md` during init — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state). `specify init` generates it when absent, preserves an existing root `AGENTS.md`, and writes `.specify/context.lock` for `specify context check`.
 - Never combine a capability positional with `--hub`; the CLI rejects that combination with `init-requires-capability-or-hub`
 - Hub init refuses to run over an existing `.specify/`; if the user wants to convert a regular project into a hub, they must remove `.specify/` first
 - If the CLI exits non-zero, surface the error and stop; do not hand-roll the scaffold

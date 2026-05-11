@@ -182,7 +182,7 @@ Extract from existing Kotlin code:
 | Event dispatches | All `onEvent(...)` or `core.update(...)` calls |
 | Capability clients | Client classes in `core/` |
 | DI modules | Koin module definitions |
-| Design system usage | `MaterialTheme.colorScheme` / `MaterialTheme.typography` / `VectisSpacing` / `VectisCornerRadius` / `VectisElevation` references; presence or absence of `import com.vectis.design.*` and `implementation(project(":vectis-design"))` (legacy — must be removed) |
+| Design system usage | `MaterialTheme.colorScheme` / `MaterialTheme.typography` / `VectisSpacing` / `VectisCornerRadius` / `VectisElevation` references |
 
 ### U4. Diff analysis
 
@@ -196,7 +196,6 @@ Walk through in this order:
 4. **Event variants** -- new or removed user actions affect screen composables.
 5. **Route variants** -- new or removed navigation destinations affect navigation code.
 6. **Token categories / asset entries / component directives** -- diff `tokens.yaml` against `ui/theme/`, `assets.yaml` against `res/drawable*/`, and `composition.yaml` `component:` slugs against `ui/components/` per the U6a-c contract; refer to [`references/kotlin-token-templates.md`](references/kotlin-token-templates.md) and [`references/design-system-integration.md`](references/design-system-integration.md) for category-by-category rules.
-7. **Legacy `:vectis-design` references** -- `include(":vectis-design")` in `settings.gradle.kts` and `implementation(project(":vectis-design"))` in `app/build.gradle.kts` are migration debt and MUST be removed; `import com.vectis.design.*` lines MUST be replaced with `import com.vectis.<appname>.ui.theme.*`. Shell-local `ui/theme/` now satisfies the same role.
 
 Output the diff summary before making edits.
 
@@ -215,7 +214,7 @@ Output the diff summary before making edits.
 - Update existing screen composables for changed per-page view struct fields.
 - Add/remove event dispatch calls for changed Event variants.
 - Verify newly generated scrollable containers do not contain fill-max-size children (see `references/compose-view-patterns.md` Layout Constraint Rules).
-- Replace lingering `import com.vectis.design.*` lines in screen / component / activity / Application files with `import com.vectis.<appname>.ui.theme.*`. Theme types (`VectisSpacing`, `VectisCornerRadius`, etc.) live in the `ui.theme` sibling package and require an explicit import from `ui.screens` / `ui.components` (Kotlin only auto-imports within the exact same package).
+- Theme types (`VectisSpacing`, `VectisCornerRadius`, etc.) live in the `ui.theme` sibling package; screen / component files need an explicit `import com.vectis.<appname>.ui.theme.*` (Kotlin only auto-imports within the exact same package).
 
 ### U6a-c. Refresh shell-local design system inputs
 
@@ -230,7 +229,6 @@ When `tokens.yaml` / `assets.yaml` / `composition.yaml` change, regenerate the m
 - Update `build.gradle.kts` files if new dependencies are needed.
 - Update `libs.versions.toml` if new library versions are needed.
 - Update `AndroidManifest.xml` if permissions changed (e.g., INTERNET for HTTP).
-- Remove legacy `include(":vectis-design")` from `settings.gradle.kts` and the matching `implementation(project(":vectis-design"))` from `app/build.gradle.kts`. The shell-local `ui/theme/` files satisfy the same role; leaving the entries breaks the build once `design-system/android/` is absent.
 
 ### U8. Build and verify
 
@@ -254,7 +252,7 @@ When `composition.yaml` is present, the region structure and group container tre
 - **Surface decoration** maps to card-like containers: `background` + `corner_radius` → `Card` or `Surface` with shape and color, `elevation` → `Modifier.shadow()` or `Card(elevation:)`.
 - **Platform-specific overrides**: When `composition.yaml` contains `platforms.android` region overrides for a screen, use those in preference to the shared regions.
 
-When `composition.yaml` is absent, the existing inference behavior is unchanged — this preserves backward compatibility for projects that predate the wired-composition input set.
+When `composition.yaml` is absent, fall back to convention-based inference for composable body composition.
 
 ## Spec-to-Code Mapping
 
@@ -312,7 +310,6 @@ Gradle build files, the version catalog, the Makefile, `AndroidManifest.xml`, CA
 | `Namespace 'X' is used in multiple modules` | Use `com.vectis.{appname}.shared` namespace for the shared module |
 | `unresolved module path shared::ffi` (codegen error) | UniFFI version mismatch -- rerun `make build`, `./gradlew :shared:cargoBuild`, and `./gradlew :app:assembleDebug` and inspect the active Vectis version pins |
 | `This declaration needs opt-in` (unsigned types) | Add `@OptIn(ExperimentalUnsignedTypes::class)` to the class |
-| Build fails on `:vectis-design` (`Project ':vectis-design' not found` or `Unresolved reference 'com.vectis.design'`) | Legacy migration debt — the shell now emits theme code under `app/src/main/java/com/vectis/<appname>/ui/theme/`. Drop the `include(":vectis-design")` line from `settings.gradle.kts`, the matching `implementation(project(":vectis-design"))` from `app/build.gradle.kts`, and replace `import com.vectis.design.*` lines with `import com.vectis.<appname>.ui.theme.*`; `MaterialTheme.colorScheme.*` / `MaterialTheme.typography.*` continue to resolve via standard M3 imports, while `VectisSpacing.*` / `VectisCornerRadius.*` etc. require the explicit theme-package import because `ui.theme` is a sibling package to `ui.screens` and `ui.components` |
 | `specify tool run vectis -- validate composition` reports unresolved token / asset reference | The composition references a token or asset id missing from `tokens.yaml` / `assets.yaml`. Writer halts; operator must add the missing entry or remove the reference |
 | Missing Android export for a `kind: vector` asset | This is a validation error, not a deferred TODO. Halt the affected screen and report the missing `sources.android` (Vector Drawable XML — SVG sources need converting first) |
 

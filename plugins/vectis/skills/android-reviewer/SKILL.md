@@ -37,7 +37,7 @@ This skill uses an agent team with 3 specialist reviewers and 1 antagonist. The 
 
 Keep review-local finding IDs separate from stable codex rule IDs:
 
-- **Finding ID**: the report-local occurrence identifier used for triage and ownership, such as `AND-001-1`, `KTL-006-1`, `UNI-1`, or `NEW-1`. These remain scoped to this review run.
+- **Finding ID**: the report-local occurrence identifier used for triage and ownership, such as `AND-001-1`, `KTL-007-1`, `UNI-1`, or `NEW-1`. These remain scoped to this review run.
 - **Rule ID**: the stable codex catalogue identifier when the finding maps to a codex rule, such as `VECTIS-003` or `UNI-016`. Include it as `rule_id` in structured outputs and as `**Rule ID**` in markdown reports.
 
 Use the resolved project codex when the caller provides it. Read first-party rules directly from `capabilities/default/codex/` and `capabilities/vectis/codex/`. Do not copy full codex prose into reports or prompts.
@@ -158,7 +158,7 @@ clearly maps to a codex rule, file:line, code snippet, severity
 auto-fixable.
 
 Output your findings as a numbered list in markdown. Prefix each finding
-ID with "KTL-" (e.g., KTL-001-1, KTL-006-1).
+ID with "KTL-" (e.g., KTL-001-1, KTL-007-1).
 ```
 
 If `iteration > 1`, append: "Scope your analysis to these files modified in the previous iteration: [list of changed files]."
@@ -239,7 +239,6 @@ The **lead** applies all auto-fixes directly (specialists and antagonist have co
 Apply fixes for findings that are mechanical and confirmed or upgraded (not disputed):
 
 - Adding missing accessibility `contentDescription` values
-- Replacing stale `import com.vectis.design.*` lines with `import com.vectis.<appname>.ui.theme.*` (legacy migration debt — theme types live in the `ui.theme` sibling package and require an explicit import from `ui.screens` / `ui.components`)
 - Replacing hardcoded colors with design system tokens (resolved from the shell-local `ui/theme/Color.kt` / `MaterialTheme.colorScheme`)
 - Replacing hardcoded spacing with design system tokens (resolved from the shell-local `ui/theme/Spacing.kt`)
 - Adding missing `@Preview` composables
@@ -265,7 +264,7 @@ When the cycle exits, shut down all remaining teammates and output a summary acr
 
 ```
 ### Review Cycle Summary
-- Iteration 1: Fixed N mechanical issues (AND-009 x2, KTL-006, UNI-016).
+- Iteration 1: Fixed N mechanical issues (AND-009 x2, KTL-007, UNI-016).
   M design-level findings deferred. Confidence: HIGH.
 - Iteration 2: Fixed K regressions from iteration 1 fixes.
   No new design-level findings. Confidence: HIGH.

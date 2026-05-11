@@ -193,7 +193,6 @@ Walk through in this order:
 6. **Token categories** -- categories added / removed / changed in `tokens.yaml` map to files added / removed / rewritten under `Theme/` (per [`references/swift-token-templates.md`](references/swift-token-templates.md)). Categories absent from `tokens.yaml` follow the HIG fallback in [`references/design-system-integration.md`](references/design-system-integration.md).
 7. **Asset entries** -- entries added / removed / changed in `assets.yaml` map to copies / deletions / re-copies under `Resources/Assets.xcassets/` per the copy-on-generate rule.
 8. **Component directives** -- `component: <slug>` entries in `composition.yaml` map to files added / removed / refreshed under `Components/`.
-9. **Legacy VectisDesign references** -- any `import VectisDesign` line, any `package: VectisDesign` entry in `project.yml`, and any `path: ../../../design-system/ios` package declaration are migration debt and MUST be removed; the shell-local `Theme/` files now satisfy the same role.
 
 Output the diff summary before making edits.
 
@@ -211,7 +210,6 @@ Output the diff summary before making edits.
 - Update existing screen views for changed per-page view struct fields.
 - Add/remove event dispatch calls for changed Event variants.
 - If Inject is missing from any view file (including `ContentView.swift`, `{AppName}App.swift`, and all screen views), add the boilerplate: `import Inject`, `@ObserveInjection var inject` property, and `.enableInjection()` as the outermost body modifier.
-- Remove any lingering `import VectisDesign` lines from screen / component / app entry-point files. Token references (`VectisColors.*`, `VectisSpacing.*`, etc.) keep working unchanged because they now resolve to the shell-local `Theme/` files in the same target.
 
 ### U6a. Refresh `Theme/` from `tokens.yaml`
 
@@ -238,7 +236,6 @@ Missing iOS exports for `vector` entries referenced from `composition.yaml` are 
 - Update `project.yml` if new dependencies are needed.
 - Update `Makefile` if build targets changed.
 - If `project.yml` lacks the `Inject` SPM package, add it along with the `- package: Inject` target dependency, Debug-only `OTHER_LDFLAGS` (`["-w", "-Xlinker", "-interposable"]`), and `EMIT_FRONTEND_COMMAND_LINES: "YES"` in the Debug config.
-- Remove any legacy `VectisDesign` package declaration (`packages: VectisDesign: { path: ../../../design-system/ios }`) and the matching `- package: VectisDesign` target dependency. The shell-local `Theme/` files satisfy the same role without an external Swift Package; leaving the entries causes XcodeGen to fail when `design-system/ios/` is absent.
 
 ### U8. Format and verify
 
@@ -257,7 +254,7 @@ When `composition.yaml` is present, the region structure and group container tre
 - **Surface decoration** maps to styled container views: `background` → `.background()`, `corner_radius` → `.cornerRadius()` or `.clipShape(RoundedRectangle())`, `elevation` → `.shadow()`.
 - **Platform-specific overrides**: When `composition.yaml` contains `platforms.ios` region overrides for a screen, use those in preference to the shared regions.
 
-When `composition.yaml` is absent, the existing inference behavior is unchanged — this preserves backward compatibility for projects that predate the wired-composition input set.
+When `composition.yaml` is absent, fall back to convention-based inference for view body composition.
 
 ## Spec-to-Code Mapping
 
@@ -305,7 +302,6 @@ XcodeGen `project.yml`, the `Makefile` pipeline, and all baseline shell scaffold
 | Unknown Effect variant | Add a placeholder `case` with a `fatalError("unhandled")` and report |
 | `xcodegen` fails | Check `project.yml` syntax; verify path references |
 | Build fails with missing types | Verify `uniffi` matches the active Vectis version pins, then rerun `make typegen`, `make package`, and `make xcode` to isolate the mismatch |
-| Build fails on `import VectisDesign` | Legacy migration debt — the shell now emits theme code under `iOS/<App>/Theme/`. Drop the `import` line and the `package: VectisDesign` entry from `project.yml`; existing token references (`VectisColors.*`, `VectisSpacing.*`, etc.) keep working because the Theme files live in the same target |
 | `specify tool run vectis -- validate composition` reports unresolved token / asset reference | The composition is referencing a token or asset id that is not declared in `tokens.yaml` / `assets.yaml`. The writer halts; the operator must either add the missing entry or remove the reference |
 | Missing iOS export for a `kind: vector` asset | This is a validation error and not a deferred TODO. Halt shell generation for the affected screen and report the missing `sources.ios` field |
 

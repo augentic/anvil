@@ -2,8 +2,6 @@
 
 Vectis deterministic helpers are declared capability tools and are run through [`specify tool`](tool.md). Operators install and invoke `specify`; no separate Vectis host binary is part of the current command surface.
 
-The unpublished/private `specify-vectis` binary and the older `specify vectis ...` subcommand tree are superseded. Historical RFCs may still mention them, but active docs and skills should use the declared tool commands below.
-
 ## Tools
 
 ### vectis validate
@@ -45,16 +43,6 @@ specify tool run vectis -- scaffold android <app-name> [--caps <csv>] [--android
 `vectis` (`scaffold`) is render-only. It writes template output under `PROJECT_DIR` using the permissions declared by `capabilities/vectis/tools.yaml`; it does not run Cargo, Xcode, Gradle, SDK installers, registry updates, or cap-matrix verification. Those host workflow steps belong to the Vectis writer, reviewer, and template-updater skills.
 
 Version pins come from embedded defaults unless `--version-file <path>` names a complete TOML override. The tool does not read user config, implicitly discover project-local version files, accept JSON on stdin, or expose per-pin flags in v1.
-
-## Migration map
-
-| Retired surface | Current surface |
-|---|---|
-| `specify-vectis validate <mode> [path]` | `specify tool run vectis -- validate <mode> [path]` |
-| `specify-vectis init <app-name>` | `specify tool run vectis -- scaffold core <app-name>` plus optional `ios` / `android` render steps and skill-owned host workflow |
-| `specify-vectis add-shell ios` | `specify tool run vectis -- scaffold ios <app-name>` plus iOS writer post-processing |
-| `specify-vectis add-shell android` | `specify tool run vectis -- scaffold android <app-name> [--android-package <package>]` plus Android writer post-processing |
-| `specify-vectis verify`, `update-versions`, `versions` | No direct WASI wrapper in v1; skill-owned host workflow and template-updater guidance own these concerns. |
 
 ## See also
 

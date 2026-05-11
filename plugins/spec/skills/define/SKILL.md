@@ -226,7 +226,7 @@ The user's request should include a slice name (kebab-case) OR a description of 
 - Always read dependency artifacts (from each brief's `needs`) before creating a new one.
 - **All artifacts MUST be written under `.specify/slices/<name>/`**.
 - If context is critically unclear, ask the user -- but prefer making reasonable decisions to keep momentum.
-- Never hand-edit `.metadata.yaml`. All status transitions and timestamp writes go through `specify slice transition`; all `touched-specs` updates go through `specify slice touched-specs`. The CLI enforces the legal set of lifecycle values — you do not need to track them yourself.
+- Route `.metadata.yaml` writes through the CLI — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state). All status transitions and timestamp writes go through `specify slice transition`; all `touched-specs` updates go through `specify slice touched-specs`.
 - If a slice with that name already exists, use `specify slice status <name>` to decide how to proceed.
 - Verify each artifact file exists after writing before proceeding to next.
 - **IMPORTANT**: `domain` and effective rules (project config overrides) are constraints for YOU, not content for the file. Do NOT copy `<domain>`, `<rules>`, `<project_context>` blocks into any artifact.

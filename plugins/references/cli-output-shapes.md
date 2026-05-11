@@ -118,12 +118,6 @@ Returns the `.metadata.yaml.outcome` block verbatim under `outcome`, or `null` w
 }
 ```
 
-### `specify migrate capability-noun`
-
-```json
-{ "dry-run": false, "rewritten": [".specify/project.yaml", "registry.yaml"] }
-```
-
 ### `specify tool *` (WASI tooling)
 
 WASI-host commands all emit:

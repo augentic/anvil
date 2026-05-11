@@ -1,0 +1,23 @@
+# Shared guardrails
+
+Cross-cutting "do not / never / always" rules that apply across many skills. Skills should **link** to the relevant section here rather than restating these rules verbatim in their `SKILL.md` body (see [AGENTS.md "Skill body discipline"](../../AGENTS.md#skill-body-discipline)).
+
+Per-skill guardrails — rules that only make sense for one skill ("never auto-promote a `component:` slug", "never invent cost figures", etc.) — stay in the owning `SKILL.md`. Lift to this file only when 3+ skills repeat the same rule.
+
+## Single-writer for lifecycle state
+
+The CLI is the **only** writer for change and slice lifecycle state. Skills route every write through a CLI verb; they never edit the underlying files by hand.
+
+- **Never hand-edit `plan.yaml`.** Append entries through `specify change plan add`; transition entries through `specify change plan transition`; close out the plan through `specify change finalize`. See [plan-single-writer.md](../change/references/plan-single-writer.md) for the full single-writer contract.
+- **Never hand-edit `.specify/slices/<name>/.metadata.yaml`.** Status transitions and timestamp writes go through `specify slice transition`; `touched-specs` updates go through `specify slice touched-specs`; phase outcomes go through `specify slice outcome set`. The CLI enforces the legal lifecycle edges — skills do not need to track them.
+- **Never hand-edit `.specify/slices/<name>/journal.yaml`.** Use `specify slice journal append` (or the driver-owned equivalents called out in [execute-state-handoff.md](../change/references/execute-state-handoff.md)).
+- **Never hand-edit `.specify/archive/`.** Archive moves are atomic operations performed by `specify slice merge run`, `specify slice drop`, and `specify change finalize`.
+- **Never hand-roll `AGENTS.md` during init.** `specify init` generates it when absent, preserves an existing root `AGENTS.md`, and writes `.specify/context.lock` for `specify context check`.
+
+## Baseline immutability for contract authoring
+
+Contract authoring skills (OpenAPI, AsyncAPI, JSON Schema) write only inside the active slice directory. The shared baseline is read-only to authoring; merge into the baseline is a separate, explicit step.
+
+- **Do not modify any file outside `$SLICE_DIR/contracts/`** (or `$SLICE_DIR/contracts/schemas/` for the JSON Schema skill).
+- **Never modify baseline files in root `contracts/`.** All authored output lands in the slice-local `contracts/` directory; merging into the baseline is `specify slice merge run`'s job.
+- **Never silently delete or narrow a baseline schema's fields.** If the spec requires it, surface the slice as a warning and let a human operator decide whether to bump the schema's `$id`.

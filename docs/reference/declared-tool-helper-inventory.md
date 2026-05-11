@@ -6,7 +6,7 @@ Use this document when adding or changing a first-party deterministic helper. A 
 
 ## Declared Tools
 
-- `contract`: declared by [`capabilities/contracts/tools.yaml`](../../capabilities/contracts/tools.yaml) and run as `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It validates the merged `contracts/` baseline and replaces the retired `specify-contract` / `specify-contract-validate` helper surfaces.
+- `contract`: declared by [`capabilities/contracts/tools.yaml`](../../capabilities/contracts/tools.yaml) and run as `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It validates the merged `contracts/` baseline.
 - `vectis` (`validate`): declared by [`capabilities/vectis/tools.yaml`](../../capabilities/vectis/tools.yaml) and run as `specify tool run vectis -- validate <mode> [path]`. It owns deterministic Vectis UI input validation for `layout`, `composition`, `tokens`, `assets`, and `all`.
 - `vectis` (`scaffold`): declared by [`capabilities/vectis/tools.yaml`](../../capabilities/vectis/tools.yaml) and run as `specify tool run vectis -- scaffold <target> <app-name> ...`. It renders Vectis project scaffolds only; host post-processing stays with Vectis skills.
 
@@ -26,7 +26,7 @@ The following command families are intentionally outside this scope. They are no
 - Forge and transport commands: `git`, `gh`, SSH, PR/MR merge queues, and future forge adapters.
 - Language and platform toolchains: `cargo`, `rustup`, `swift`, `swiftformat`, `make`, `xcodebuild`, `gradle`, `./gradlew`, Java/Android SDK tools, `npm`, and `npx`.
 - Repository maintenance scripts: `deno run scripts/checks.ts`, plugin cache helpers, acceptance harnesses, and release/build scripts.
-- Vectis host verification and template maintenance: `specify-vectis verify`, `update-versions`, and `versions` have no direct WASI wrapper in v1; active skills should express them as host workflow or template-updater work, not as declared tools.
+- Vectis host verification and template maintenance: verify, version-pin updates, and version queries have no direct WASI wrapper in v1; active skills express them as host workflow or template-updater work, not as declared tools.
 
 ## Current status
 

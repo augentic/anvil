@@ -151,7 +151,7 @@ All artifacts complete. All tasks complete.
 - Always confirm the slice before merging.
 - Validate prerequisites via the CLI before running `specify slice merge run`; warn but don't block if the user explicitly accepts.
 - All spec-level operations (preview, merge, validate, conflict-check) go through the `specify` CLI. Never hand-merge delta sections or re-implement the algorithm — the CLI is the sole implementation.
-- Never hand-edit `.metadata.yaml` or the archive directory. `specify slice merge run` handles the status transition and archive move atomically; on failure the filesystem is left untouched.
+- `specify slice merge run` is the sole writer for `.metadata.yaml` and the archive directory on merge — it handles the status transition and archive move atomically; on failure the filesystem is left untouched. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
 - If `specify slice merge run` reports an error, stop and ask the user before retrying.
 
 For the merge algorithm and a worked example, see `delta-merge.md`.

@@ -191,7 +191,7 @@ What would you like to do?
 - If implementation reveals issues, pause and suggest artifact updates.
 - Keep code changes minimal and scoped to each task.
 - Flip task checkboxes through `specify slice task mark`; do not edit `tasks.md` directly.
-- Never hand-edit `.metadata.yaml`. All status transitions go through `specify slice transition`; the CLI enforces the legal set of lifecycle values.
+- Route `.metadata.yaml` writes through `specify slice transition` — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
 - Pause on errors, blockers, or unclear requirements — don't guess.
 
 **Fluid Workflow Integration**

@@ -125,9 +125,9 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 ## Platform artifacts at the repo root, framework state under `.specify/`
 
-**Decision:** The four operator-facing platform artifacts -- `registry.yaml`, `plan.yaml`, `change.md`, `contracts/` -- live at the repo root. Generated `AGENTS.md` guidance also lives at the root, with Specify owning only its fenced block. `.specify/` retains framework-managed state: `project.yaml`, `context.lock`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`. The CLI ships one-shot migrations to upgrade existing projects in place and refuses every project-aware verb on a v1-layout project with the stable `legacy-layout` error code (hard cutover, no transition window).
+**Decision:** The four operator-facing platform artifacts -- `registry.yaml`, `plan.yaml`, `change.md`, `contracts/` -- live at the repo root. Generated `AGENTS.md` guidance also lives at the root, with Specify owning only its fenced block. `.specify/` retains framework-managed state: `project.yaml`, `context.lock`, `slices/`, `specs/`, `archive/`, `.cache/`, `workspace/`, `plans/`, and the advisory `plan.lock`.
 
-**Rationale:** `.specify/` started life as workflow scratch -- cache, archive, working changes, lifecycle metadata. The artifacts that have accreted there since (the registry, the operator brief, the plan, contracts) are durable, PR-reviewed, human-edited material. Putting them under a dot-prefixed framework directory understated their importance and forced operators to navigate framework internals to inspect or hand-edit them. Pulling them up to the root makes the boundary explicit: framework owns `.specify/`; operators own everything else. The hard-cutover stance avoids carrying a dual-read code path indefinitely; the migrate verb is a one-line operator action that addresses the upgrade in a single step.
+**Rationale:** The operator-facing artifacts (the registry, the operator brief, the plan, contracts) are durable, PR-reviewed, human-edited material. Putting them under a dot-prefixed framework directory understates their importance and forces operators to navigate framework internals to inspect or hand-edit them. Keeping them at the root makes the boundary explicit: framework owns `.specify/`; operators own everything else.
 
 **Source:** specify-cli [`DECISIONS.md`](https://github.com/augentic/specify-cli/blob/main/DECISIONS.md) (v2 layout entry).
 
@@ -201,9 +201,9 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 
 ## One `specify` binary; capability-specific helpers ship as declared tools
 
-**Decision:** Operators install one binary — `specify`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by `capabilities/vectis/tools.yaml`; the standalone `specify-vectis` binary is deleted rather than wrapped. Host post-processing that previously lived inside `specify-vectis` (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) moves into Vectis skills as ordinary shell commands the agent runs and journals.
+**Decision:** Operators install one binary — `specify`. The deterministic Vectis helpers (validation and scaffold rendering) ship as WASI tools declared by `capabilities/vectis/tools.yaml`. Host post-processing for Vectis projects (Cargo, Gradle wrapper bootstrap, Xcode and `make typegen` / `make package` / `make xcode`, `local.properties`, Java home and NDK detection, prerequisite checks, registry queries, cap-matrix verification) lives in Vectis skills as ordinary shell commands the agent runs and journals.
 
-**Rationale:** A second binary doubled the install, packaging, release, and version-coordination surface for a single capability and set the precedent that every future capability needing helpers would do the same. Applying the declared-tool model from RFC-15 collapses that surface back to one binary and keeps the "deterministic rendering" layer cleanly separated from the "host toolchain" layer, which never belonged inside a WASI wrapper to begin with.
+**Rationale:** A separate capability-specific binary would double the install, packaging, release, and version-coordination surface for every capability that needs helpers. Applying the declared-tool model from RFC-15 keeps the surface to one binary and keeps the "deterministic rendering" layer cleanly separated from the "host toolchain" layer, which never belongs inside a WASI wrapper.
 
 **Source:** [RFC-16: WASI Vectis](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-16-wasi-vectis.md)
 
