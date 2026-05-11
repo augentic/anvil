@@ -90,7 +90,19 @@ The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolut
 
 ### Skill authoring
 
-- Every `SKILL.md` in this repository follows the house style codified in [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions); the long-form rationale (discovery model, why metadata is precious, examples of good/bad descriptions, the progressive-disclosure pattern, and the forbidden-frontmatter list) lives at [docs/contributing/skill-authoring.md](docs/contributing/skill-authoring.md).
+Every `SKILL.md` in this repository follows the house style codified in [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions); the long-form rationale (discovery model, why metadata is precious, examples of good/bad descriptions, the progressive-disclosure pattern, and the forbidden-frontmatter list) lives at [docs/contributing/skill-authoring.md](docs/contributing/skill-authoring.md). This section captures the mechanically enforced rules.
+
+This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. "Pre-RFC-N this used to be …" / "Phase 3.7 renamed it …" / "the v1.x verb was …" prose belongs in [docs/explanation/decision-log.md](docs/explanation/decision-log.md) and [docs/explanation/release-notes.md](docs/explanation/release-notes.md), not in the skill that operators read every day. Migration prose only stays in a SKILL.md when the skill itself documents a real legacy-migration feature (e.g. `/spec:extract` migrating off a legacy codebase).
+
+### Description grammar
+
+Each `SKILL.md` `description` field must:
+
+- Lead with an **imperative verb** drawn from the curated allow-list in [scripts/checks/skill_frontmatter.ts](scripts/checks/skill_frontmatter.ts) (`IMPERATIVE_VERBS`). Extend the allow-list when a new verb is genuinely imperative; adding a verb is cheaper than rejecting a fine description.
+- Contain a `Use when …` clause so the skill-discovery surface can match on intent rather than vocabulary.
+- Stay **≤ 512 chars** total.
+
+`checkDescriptionStartsWithVerb`, `checkDescriptionHasUseWhen`, and `checkDescriptionLength` enforce the three rules respectively.
 
 ### Argument-hint grammar
 
@@ -98,47 +110,57 @@ Each `SKILL.md` `argument-hint:` value is a whitespace-separated sequence of tok
 
 - `<name>` — required positional, kebab-case noun (e.g. `<slice-dir>`, `<change-name>`).
 - `[name]` — optional positional (e.g. `[crate-name]`, `[mode]`).
-- trailing `...` — repeated (e.g. `<image-path>...`, `[file]...`).
+- `<name>...` / `[name]...` — repeated positional (e.g. `<image-path>...`, `[file]...`).
 - `<a|b|c>` / `[a|b|c]` — mutually exclusive alternatives.
 - `--flag` — long flag (no value); when a flag carries a value, model the value as a sibling token: `--kind <kind>`.
 
-Bare prose ("the slice name"), mixed punctuation (`<arg>: arg2`), trailing `?`, and short flags (`-f`) are rejected. The hint is the slash-command placeholder, not the full CLI signature — secondary arguments still belong in the body's "Invocation" section.
+Names are kebab-case (`[a-z][a-z0-9-]*` per alternative). Bare prose ("the slice name"), mixed punctuation (`<arg>: arg2`), trailing `?`, and short flags (`-f`) are rejected. The hint is the slash-command placeholder, not the full CLI signature — secondary arguments still belong in the body's "Invocation" section.
 
-### Description tightness
+### Body caps
 
-Each `SKILL.md` `description` field must be **≤ 512 chars**, lead with a strong verb (imperative `Generate` or third-person `Generates` are both fine), and name a concrete trigger phrase — almost always `Use when …` — so the skill-discovery surface can match on intent rather than vocabulary. Mechanically enforced by `checkDescriptionLength` in [scripts/checks/skill_frontmatter.ts](scripts/checks/skill_frontmatter.ts). The body cap is correspondingly **≤ 400 lines**; see `checkBodyLineCount` in [scripts/checks/skill_body.ts](scripts/checks/skill_body.ts). Per-H2 sections additionally cap at **≤ 60 lines** (non-blank, non-comment) via `checkSectionLineCount` so depth migrates into `references/` rather than letting individual sections sprawl. All three caps are floors, not budgets — overflow means the relocate-to-`references/` patterns in §"Skill body discipline" need to fire, not that the cap should be raised.
+- **Body line count** ≤ **400 lines** (`checkBodyLineCount`).
+- **Per-H2 section** ≤ **60 lines** (non-blank, non-comment) (`checkSectionLineCount`). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. The original cap was 50; the S2 audit surfaced 21 sections over that line, so the cap was bumped to 60 and per-file baselines in `scripts/standards-allowlist.toml` grandfather the irreducible remainder. New sections still fail fast.
+
+All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised.
+
+### Cross-cutting guardrails
+
+Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules that recur across skills — live in [plugins/references/guardrails.md](plugins/references/guardrails.md). SKILL.md files **link** to them; they do **not** restate them inline. Per-skill guardrails (don'ts that only apply to one skill) stay in the SKILL.md under a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
+
+### Envelope examples
+
+CLI envelope shapes (the `schema-version` + `data` / `error` wrapper) live in [plugins/references/cli-output-shapes.md](plugins/references/cli-output-shapes.md) with stable anchors. SKILL.md bodies **link** to the reference; they do not embed the envelope. `checkNoEnvelopeExamples` flags fenced ` ```json ` / ` ```jsonc ` blocks whose body looks like an envelope wrapper (`"schema-version"` key, or `"ok"` + `"data"` / `"error"` pair). Body shapes that describe only a command's `data` payload — a one-line config snippet, an analyze sidecar — are still fine; the predicate is intentionally narrow.
 
 ### Skill body discipline
 
-The frontmatter rules in `.cursor/rules/project.mdc` and the body line-count ceilings in `scripts/checks.ts` are the floor — a SKILL.md that *passes* `make checks` can still be wasteful. These are the additional rules `make checks` enforces (or that review enforces until they're mechanised):
+The frontmatter and body caps above are the floor. These additional rules tighten the SKILL.md as a navigable artifact:
 
-1. **One Guardrails block per SKILL.md.** Scattered IMPORTANT / Never / Critical scolding throughout the body trains agents to skim. Each SKILL.md gets a single `## Guardrails` (or `## Mode-specific guardrails`) section that consolidates the don'ts; everything else stays imperative. Mechanically enforced by `checkOneGuardrailsBlockPerSkill`.
-2. **No inline JSON output blocks ≥30 lines.** Long fenced ` ```json ` examples of CLI envelope shapes belong in [plugins/references/cli-output-shapes.md](plugins/references/cli-output-shapes.md), not in the skill body. The skill links to the reference and shows at most a stub. Mechanically enforced by `checkInlineJsonBlocks`.
-3. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by `checkNoFrontmatterRestatement`.
-4. **`Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose.
-5. **Trim deprecated migration prose every release.** "Pre-RFC-N this used to be …" / "Phase 3.7 renamed it …" / "the v1.x verb was …" lines belong in [docs/explanation/decision-log.md](docs/explanation/decision-log.md) and [docs/explanation/release-notes.md](docs/explanation/release-notes.md), not in the skill that operators read every day.
-6. **No RFC citations in skill bodies.** `RFC-N` references in prose train operators on how the system was *built*, not how it works *today*. Move them to a trailing `## References` block as `[RFC-N](rfcs/...)` links, or to [docs/explanation/decision-log.md](docs/explanation/decision-log.md). Mechanically enforced by `checkNoRfcCitationsInSkillBody`.
-7. **Cross-cutting guardrails live in [plugins/references/specify.md](plugins/references/specify.md).** Per-skill restatements of the same `.metadata.yaml` / slice-dir / plan-write rules drift over time. Each SKILL.md links — does not restate — them.
-8. **`## Phase outcome contract` is a single-line link, not a paragraph.** Replace the canonical opening prose with `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` Mechanically enforced by `checkNoPhaseOutcomeContractRestatement`.
+1. **No restating frontmatter in the body.** `description` and `argument-hint` already render on every invocation; do not repeat them in the first H2 (or any other body section). Mechanically enforced by `checkNoFrontmatterRestatement`.
+2. **`Critical Path` is the table of contents.** When a skill body is split into siblings, the SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points. Sibling files (`references/`, `examples/`, topical files) carry the long-form rules, examples, templates, and edge-case prose.
+3. **No RFC citations in skill bodies.** `RFC-N` references in prose train operators on how the system was *built*, not how it works *today*. Move them to a trailing `## References` block as `[RFC-N](rfcs/...)` links, or to [docs/explanation/decision-log.md](docs/explanation/decision-log.md). Mechanically enforced by `checkNoRfcCitationsInSkillBody`.
+4. **`## Phase outcome contract` is a single-line link, not a paragraph.** Replace the canonical opening prose with `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` Mechanically enforced by `checkNoPhaseOutcomeContractRestatement`.
 
 ### Mechanical enforcement
 
-`make checks` runs [scripts/checks.ts](scripts/checks.ts), a thin orchestrator over the per-concern modules under [scripts/checks/](scripts/checks/) (`links.ts`, `capability.ts`, `tools.ts`, `plugins.ts`, `skill_frontmatter.ts`, `skill_body.ts`, `skill_discipline.ts`, `prose.ts`, `scenarios.ts`, `codex.ts`). Per-predicate per-file baselines for the skill-body discipline live in [scripts/standards-allowlist.toml](scripts/standards-allowlist.toml); a live count strictly greater than its baseline fails CI. New files start clean (missing entries default to 0).
+`make checks` runs [scripts/checks.ts](scripts/checks.ts), a thin orchestrator over the per-concern modules under [scripts/checks/](scripts/checks/) (`links.ts`, `capability.ts`, `tools.ts`, `plugins.ts`, `skill_frontmatter.ts`, `skill_body.ts`, `skill_discipline.ts`, `prose.ts`, `scenarios.ts`, `codex.ts`, `docs_quality.ts`). Per-predicate per-file baselines for the skill-body discipline live in [scripts/standards-allowlist.toml](scripts/standards-allowlist.toml); a live count strictly greater than its baseline fails CI. New files start clean (missing entries default to 0).
 
 **Ratchet** — any PR that touches a skill is expected to reduce its baselines where it can. A predicate baseline is grandfathering, not a license; raising a number requires a justification in the PR description.
 
-Predicates surfaced by Skills-1:
-
-- `checkDescriptionLength` — frontmatter `description` length, hard cap **512 chars**.
-- `checkBodyLineCount` — SKILL.md body line count, hard cap **400 lines**.
-- `checkSectionLineCount` — per-H2 section line count, hard cap **60 lines** (non-blank, non-comment). The S2 audit found 21 sections over the original 50-line target (above the 5-section budget defined in the chunk plan), so the cap was bumped to 60 and per-file baselines in `scripts/standards-allowlist.toml` grandfather the irreducible remainder. New sections still fail fast.
-- `checkSkillNumericCaps` — keeps the 512/400 caps synchronized across scripts, schema, rules, and docs.
-- `checkOperationalVocabulary` — blocks active prose from reintroducing retired slice paths, top-level CLI commands, or pre-cutover umbrella nouns outside archived/historical material.
-- `checkNoRfcCitationsInSkillBody` — `RFC[- ]?\d+` in skill body, fenced code excluded, `rfcs/` archive links excluded. Per-file baselines were sweep-zeroed in CL-S03; the predicate now refuses any new bare-text RFC citation in a skill body without grandfathering.
-- `checkOneGuardrailsBlockPerSkill` — count of `## Guardrails` and `## Mode-specific guardrails` headings.
-- `checkNoPhaseOutcomeContractRestatement` — restated phase-outcome contract paragraph.
-- `checkNoFrontmatterRestatement` — frontmatter `description` value re-appearing under the first H2.
-- `checkArgumentHintGrammar` — each whitespace-separated token in `argument-hint:` matches the canonical grammar (`<name>`, `[name]`, trailing `...`, `<a|b>`, `[a|b]`, `--flag`).
+| Predicate | What it counts |
+|---|---|
+| `checkArgumentHintGrammar` | Each whitespace-separated token in `argument-hint:` matches the canonical grammar (`<name>`, `[name]`, trailing `...`, `<a|b>`, `[a|b]`, `--flag`). |
+| `checkBodyLineCount` | SKILL.md body line count, hard cap **400 lines**. |
+| `checkDescriptionHasUseWhen` | SKILL.md `description` contains a `Use when …` clause. |
+| `checkDescriptionLength` | SKILL.md `description` length, hard cap **512 chars**. |
+| `checkDescriptionStartsWithVerb` | SKILL.md `description` starts with an imperative verb from the curated allow-list in `scripts/checks/skill_frontmatter.ts`. |
+| `checkNoEnvelopeExamples` | Fenced ` ```json` / ` ```jsonc ` blocks whose body looks like a CLI envelope wrapper. Link to `plugins/references/cli-output-shapes.md` instead. |
+| `checkNoFrontmatterRestatement` | Frontmatter `description` value re-appearing under the first H2. |
+| `checkNoPhaseOutcomeContractRestatement` | Restated phase-outcome contract paragraph. Use the one-line link form. |
+| `checkNoRfcCitationsInSkillBody` | `RFC[- ]?\d+` in skill body, fenced code excluded, `rfcs/` archive links excluded. |
+| `checkOneGuardrailsBlockPerSkill` | Count of `## Guardrails` and `## Mode-specific guardrails` headings — exactly one per SKILL.md. |
+| `checkOperationalVocabulary` | Active prose using retired slice paths, top-level CLI commands, or pre-cutover umbrella nouns outside archived/historical material. |
+| `checkSectionLineCount` | Per-H2 section line count, hard cap **60 lines** (non-blank, non-comment). |
+| `checkSkillNumericCaps` | Keeps the 512/400/60 caps synchronized across scripts, schema, rules, and docs. |
 
 ### Gotchas
 

@@ -214,3 +214,17 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 **Rationale:** Pre-RFC-12 contracts used a mix of `YYYY-MM-DD` dates and bare majors as `info.version`, which prevented any tooling from comparing two contract versions programmatically. Requiring SemVer aligns contract evolution with the broader ecosystem (`progenitor`, `typify`, `schemars`) and makes producer/consumer compatibility classification (`specify compatibility`) decidable. The optional rename-stable id captures the identity of a contract independent of its file location, so a file move or a major-version rename does not look like deletion-plus-creation to baseline diff tools.
 
 **Source:** [RFC-12: Refine RFC-8](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-12-refine-rfc-8.md)
+
+## SKILL.md discipline cleanup (2026-05)
+
+**Decision:** Five mechanical predicates lock down the SKILL.md shape that operators read every day:
+
+- **Description grammar** (S1) — `checkDescriptionStartsWithVerb` + `checkDescriptionHasUseWhen` enforce a leading imperative verb (curated allow-list in `scripts/checks/skill_frontmatter.ts`) and a `Use when …` clause, in addition to the pre-existing `checkDescriptionLength` ≤ 512 char cap.
+- **Section line cap** (S2) — `checkSectionLineCount` caps each H2 section at 60 lines (non-blank, non-comment). Depth migrates into `references/<topic>.md` instead of letting individual sections sprawl.
+- **Argument-hint grammar** (S3) — `checkArgumentHintGrammar` accepts only `<name>`, `[name]`, trailing `...`, `<a|b>` / `[a|b]`, and `--flag` tokens (kebab-case names). Bare prose, mixed punctuation, and short flags are rejected.
+- **Envelope-example forbid** (S5) — `checkNoEnvelopeExamples` flags fenced ```json``` blocks whose body looks like a CLI envelope wrapper. Envelope shapes live with stable anchors in `plugins/references/cli-output-shapes.md`; SKILL.md bodies link instead of embed.
+- **Vocabulary / guardrails consolidation** (S4) — cross-cutting guardrails (the recurring `.metadata.yaml` / slice-dir / plan-write rules) live in `plugins/references/guardrails.md`; SKILL.md files link, not restate. Pre-1.0 sweep dropped "previously / migrate / backward-compat" prose that did not document a real legacy-migration feature, and stale CLI names were replaced in docs (`initiative` → `change`, `JSON_SCHEMA_VERSION` → `JSON_ENVELOPE_VERSION`).
+
+**Rationale:** The skill-discovery surface needs to match on intent ("does this skill apply to my task?") rather than vocabulary, which means the description and argument-hint shapes have to be mechanically tight. The body and section caps push depth into `references/` so a SKILL.md stays an orientation artifact. The envelope-example forbid pins one place where the wire shape can drift. The pre-1.0 vocabulary stance — no backward compatibility constraints, no migration prose unless documenting a real legacy-migration feature — keeps the skill bodies honest about what the system does today rather than how it was built.
+
+**Source:** Cleanup chunks S1–S5 on the `code-review` branch.
