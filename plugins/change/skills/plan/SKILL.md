@@ -1,7 +1,7 @@
 ---
 name: change-plan
 description: "Author `plan.yaml` for a change on the change surface via the planning brief pipeline; with the `orchestrate` positional, drive the cross-repo umbrella end to end. Use when scoping a new change or coordinating multi-repo execution from a single command on the `/change` surface."
-argument-hint: "<change-name>"
+argument-hint: <change-name>
 ---
 
 ## Critical Path
@@ -44,30 +44,12 @@ The on-disk contracts the authoring skill depends on are:
 
 ```text
 /change:plan <change-name> \
-    [from <path>...] \
-    [against <path>] \
-    [source <key>=<path-or-url>...] \
-    [focus <area>] \
-    [extend] \
-    [dry-run] \
-    [orchestrate] \
-    [shape migrate-legacy|new-feature|update-existing]
+    [from <path>...] [against <path>] [source <key>=<path-or-url>...] \
+    [focus <area>] [extend] [dry-run] \
+    [orchestrate] [shape migrate-legacy|new-feature|update-existing]
 ```
 
-Positional arguments:
-
-- **`<change-name>`** — kebab-case identifier; becomes the plan's top-level `name` field. Validated with the same rules as slice names (regex `^[a-z][a-z0-9-]*$`) before any other work. An invalid name is a hard exit with a clear diagnostic — the skill never rewrites or "helps" the name.
-- **`from <path>`** — artefact file(s) or directory describing the target shape for greenfield authoring. Repeatable. Consumed by the discovery brief (L3.F). Kind defaults to `documentation`; override via `:<kind>` suffix (see §Kind defaults for positional inputs).
-- **`against <path>`** — an existing codebase to delta against, used for refactor or modernisation changes. Consumed by the discovery brief (L3.F). Kind defaults to `legacy-code`; override via `:<kind>` suffix.
-- **`source <key>=<path-or-url>`** — a named source for migration. Repeatable. The `key` is a kebab-case identifier recorded in the plan's top-level `sources` map and referenced by individual plan entries via their `sources` list; the `value` is either a local filesystem path or a git URL. The skill forwards the tuple verbatim; cloning (if any) is the discovery brief's concern via `/spec:analyze` (which inlines a guarded `git clone` snippet — see the *Cloning a source tree* subsection in [`../../../spec/skills/analyze/SKILL.md`](../../../spec/skills/analyze/SKILL.md)). Kind defaults to `legacy-code`; override via `:<kind>` suffix.
-- **`focus <area>`** — optional scoping hint for the propose brief (L3.G). Free-form string; the propose brief decides how to interpret it.
-- **`extend`** — add to an existing `plan.yaml` instead of refusing. See §Modes → `extend` for the full contract.
-- **`dry-run`** — emit the readiness report and the proposed plan to stdout; write nothing. See §Modes → `dry-run`.
-- **`orchestrate`** — enable orchestration mode: run the cross-repo umbrella after the authoring loop. The umbrella pushes per-project PRs, stops for operator merge when PRs are still open, and later finalizes after `specify change finalize` verifies every PR is merged. See [orchestration.md](orchestration.md). Required when `shape` is supplied.
-- **`shape migrate-legacy|new-feature|update-existing`** — explicit shape override under `orchestrate`. Inferred from the supplied inputs when omitted. Rejected with a hard diagnostic when `orchestrate` is absent. See [shapes.md](shapes.md).
-At least one of `from`, `against`, `source`, or a populated change-brief `inputs` list must be supplied. A bare `/change:plan <name>` with no slash inputs **and** no change brief (or a brief with empty `inputs`) is a hard exit — the skill cannot decide the change's shape without at least one input.
-
-When the change-brief `inputs` list is the only source of inputs, the skill reads them via `specify change show --format json` before entering the core loop and treats each entry as if it had been supplied as slash-positionals: `kind: legacy-code` entries route through the same path as `source <k>=<path>:legacy-code`, and `kind: documentation` entries route through the `from` path. Both documentation and legacy-code dispatch are live via `/spec:analyze`. Plan-time `/spec:extract` call sites have been fully retired; `/spec:extract` now runs only at `/spec:define` time with scope inferred from the slice's description.
+Positional grammar, kind suffixes, and the input-sufficiency rule live in [plan-invocation.md](../../references/plan-invocation.md).
 
 ## Input kinds (normative)
 
@@ -191,45 +173,14 @@ On archive, `specify change plan archive` sweeps this directory alongside `plan.
 
 ## Modes
 
-Each mode below describes only the *delta* from the core five-step loop. The default mode runs the loop unchanged; `extend` and `dry-run` each relax or suppress specific writes.
+| Mode | Behaviour |
+|---|---|
+| Default (no positional) | Run the five-step loop unchanged. |
+| `extend` | Append to an existing plan; skip step 2; reuse discovery; collisions silently skipped. |
+| `dry-run` | Read-only preview; suppress every write under `.specify/`. |
+| `orchestrate` | Default authoring loop, then the cross-repo umbrella sequence ([orchestration.md](orchestration.md), [shapes.md](shapes.md), [re-entry.md](re-entry.md)). |
 
-### Default (no mode positional)
-
-Run the five-step loop exactly as written. `plan.yaml` is initialised via step 2, populated via step 3(c), validated in step 4. A pre-existing `plan.yaml` is refused at step 1 (the operator is pointed at `specify change plan archive`).
-
-### `extend`
-
-Add to an existing `plan.yaml` instead of refusing. The skill-level contract is:
-
-- **Step 1 refuses when `plan.yaml` is absent.** `extend` is an explicit "I know there's a plan here" signal; the skill never silently creates a fresh plan under `extend`.
-- **Step 2 (`specify change plan create`) is skipped entirely.**
-- **Step 3(a) is skipped when `.specify/plans/<change-name>/discovery.md` already exists**, with a log line `Discovery already present; reusing existing inventory.` Discovery is explicitly a one-shot artefact; an operator who wants to refresh it archives the plan and re-runs without `extend`. When `discovery.md` does not yet exist under `extend` (e.g. a plan authored by hand, or an earlier run aborted), step 3(a) runs normally.
-- **Step 3(c) skips collisions silently.** Draft slices whose proposed `name` collides with an existing plan entry are recorded in `proposal.md` with decision `skip-existing` and the existing entry's name in the "Plan entry" column; the human is not re-prompted. Slices whose names do not collide run through the usual accept / edit / reject / abort loop.
-- **Sync-peers (step 3(b)):** when the registry declares more than one project, **do not** shell `specify workspace sync`. Still regenerate `.specify/plans/<change-name>/workspace.md` from the existing `.specify/workspace/` cache (read-only walk) so propose stays deterministic without an implicit `git fetch`.
-- **Pre-existing entries are never modified.** The skill never calls `specify change plan transition` on existing entries. The only `specify change plan amend` call is step 3(d) Assignment (`--project`), which tags newly created entries — it does not modify pre-existing ones.
-
-No new positional is introduced beyond `extend`. A future change may add `force-discovery` if refreshing the inventory mid-plan becomes a real need.
-
-### `dry-run`
-
-Emit a readiness report, the would-be-produced capability inventory, and the would-be-proposed plan to stdout; write nothing. Dry-run folds the L3.E readiness gate, the L3.F discovery preview, and the L3.G propose preview into a single pass.
-
-Under `dry-run` the skill MUST NOT:
-
-- create `.specify/plans/<change-name>/`;
-- shell out to `specify change plan create`, `specify change plan add`, `specify change plan amend`, or `specify change plan transition`;
-- shell out to **`specify workspace sync`** or write **`.specify/plans/<change-name>/workspace.md`** (sync-peers dry-run rule);
-- write any file under `.specify/` (including under `.specify/workspace/`).
-
-The discovery brief's input-reading side (reading `from` files, invoking `/spec:analyze` against `source` / `against` inputs) runs under `dry-run` so the preview inventory is real; only the write to `discovery.md` and the `.specify/plans/<name>/` directory creation are suppressed. The propose brief's slice-decomposition pass also runs (the preview plan shape is real against the previewed inventory); the accept / edit / reject loop and every `specify change plan add` call are skipped.
-
-The full output shape (banner / sources block / pipeline line / capability inventory preview / would-be-proposed plan / assignment preview) is pinned by `fixtures/dry-run/expected-output.md`, `fixtures/discovery/expected-discovery.md`, and `fixtures/propose/expected-proposal.md`. The `[dry-run]` banner on the first line is enough — body lines do not need a per-line prefix.
-
-### `orchestrate`
-
-Run the cross-repo umbrella sequence after the authoring loop completes. The orchestration mode is composition only — every step shells out to a verb that already exists in the v1 surface. It does not own the human PR merge; it only opens/updates PRs via `specify workspace push`, observes whether they have been merged, and invokes `specify change finalize` once the remote PR state is ready. See [orchestration.md](orchestration.md) for the full sequence, halts table, manual fallbacks, and verb hygiene; [shapes.md](shapes.md) for shape inference and validation; [re-entry.md](re-entry.md) for the idempotent resume algorithm.
-
-Under `orchestrate dry-run`, the umbrella is observation-only end-to-end: the authoring loop runs in dry-run (per the §`dry-run` section above), and the execution, push, PR-observation, and finalize portions emit "would invoke" preview lines without invoking any phase skill, push, forge merge, or finalize. See [orchestration.md](orchestration.md) §"`dry-run` semantics".
+Per-mode deltas, dry-run write prohibitions, and `extend` collision rules live in [plan-modes.md](../../references/plan-modes.md).
 
 ## Non-goals
 

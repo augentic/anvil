@@ -1,7 +1,7 @@
 ---
 name: specify-init
 description: Initialize Specify in a project. Bootstraps the `specify` CLI when missing, picks between a regular single-project init and a registry-only platform hub, then invokes `specify init <capability>` or `specify init --hub` to scaffold `.specify/`, write `project.yaml`, and generate starter `AGENTS.md`. Use when first wiring up a project before any other `/spec:*` or `/change:*` command; not for re-initializing an existing `.specify/`.
-argument-hint: "<capability>"
+argument-hint: <capability>
 ---
 
 ## Critical Path
@@ -177,56 +177,21 @@ A regular project must declare a capability; a hub must declare `--hub` and neve
 
    The CLI validates the name, creates `.specify/slices/initial-baseline/specs/`, and writes the initial `.metadata.yaml` (status `defining`, `created_at` timestamp). Show the **brownfield output** and stop.
 
-**Output (greenfield — regular project, no existing codebase, or user declined extraction)**
+**Output**
 
-```
-## Specify Initialized
+Render the **greenfield** template for a regular project with no codebase indicators (or when the user declined extraction in step 7), the **brownfield** template after the user opted into baseline extraction, or the **hub** template when `$HUB_MODE=true`. Each template substitutes the resolved `$CAPABILITY` (regular and brownfield only; hub omits it). The verbatim templates live in [init-output-templates.md](../../references/init-output-templates.md).
 
-**Capability**: $CAPABILITY
-**Config**: .specify/project.yaml
-**Context**: AGENTS.md
-**Context lock**: .specify/context.lock
-**Slices**: .specify/slices/
-**Baseline specs**: .specify/specs/
+## What this skill does NOT do
 
-Next steps:
-1. Edit `.specify/project.yaml` to describe your project
-2. Run `/spec:define` to create your first change
-```
-
-**Output (brownfield — regular project, user opted for baseline extraction)**
-
-```
-## Specify Initialized (Existing Codebase Detected)
-
-**Capability**: $CAPABILITY
-**Config**: .specify/project.yaml
-**Context**: AGENTS.md
-**Baseline change**: .specify/slices/initial-baseline/
-
-Next steps:
-1. Edit `.specify/project.yaml` to describe your project
-2. Run `/spec:extract . .specify/slices/initial-baseline/` to analyze the codebase
-3. After extraction, run `/spec:merge initial-baseline` to promote specs to baseline
-4. Then run `/spec:define` for future changes
-```
-
-**Output (hub — `$HUB_MODE=true`)**
-
-```
-## Specify Initialized (Platform Hub)
-
-**Topology**: registry-only hub
-**Config**: .specify/project.yaml (`hub: true`; `capability:` omitted)
-**Context**: AGENTS.md
-**Context lock**: .specify/context.lock
-**Registry**: registry.yaml (`version: 1`, `projects: []`)
-
-Next steps:
-1. Add registered projects with `specify registry add`
-2. Run `specify change create <name>` to frame the first change
-3. Run `/change:plan <name>` to author a plan, then `/change:execute loop` to drive it
-```
+| Surface | Status |
+|---|---|
+| Hand-roll `.specify/` scaffolding when the CLI fails | Never — surface the CLI error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`. |
+| Pre-populate `.specify/.cache/` with capability material | Never — `specify init` owns capability fetch and copy when invoked with the capability positional. |
+| Extract baseline specs from the existing codebase | Delegates to `/spec:extract`. Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in. |
+| Author `plan.yaml` or `change.md` | Never — `change.md` is minted by `specify change create`, `plan.yaml` by `/change:plan` or `specify change plan create`. |
+| Register peers into `registry.yaml` | Never — peer registration lives in `specify registry add`. Hub init only seeds an empty `projects: []`. |
+| Reinitialize an existing `.specify/` without confirmation | Always asks via the **AskQuestion tool** before treating the run as an upgrade. |
+| Combine `<capability>` (`$CAPABILITY`) with `--hub` | Never — the CLI rejects that combination with `init-requires-capability-or-hub`; the skill picks exactly one shape per run. |
 
 **Guardrails**
 - `/spec:init` may install the CLI only after explicit user confirmation, using `cargo install --git https://github.com/augentic/specify-cli`

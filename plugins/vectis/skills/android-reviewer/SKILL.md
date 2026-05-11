@@ -1,7 +1,7 @@
 ---
 name: vectis-android-reviewer
 description: Review generated Android shell (Kotlin/Jetpack Compose) code for structural issues, integration correctness, and quality problems. Use when `android-writer` has just produced or updated an Android shell and the slice is ready for review; not for the core (`core-reviewer`) or iOS shell (`ios-reviewer`).
-argument-hint: "<target-dir>"
+argument-hint: <target-dir>
 ---
 
 # Crux Android Shell Reviewer

@@ -1,7 +1,7 @@
 ---
 name: rt-wiretapper
 description: Add wiretap code to a cloned legacy TypeScript repo to capture request/response and side-effect data as fixture JSON; detect patterns, generate adapters, wire entrypoint, verify compile. Use when a legacy TypeScript service must be wiretapped for replay-ready fixtures before migration; not for replaying captured fixtures (that is `replay-writer`) or for non-TypeScript sources.
-argument-hint: "<legacy-dir>"
+argument-hint: <legacy-dir>
 ---
 
 # Wiretapper Skill

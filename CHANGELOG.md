@@ -8,7 +8,7 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ## Unreleased
 
-- (placeholder for in-flight work)
+- Code & skill review consolidation: trimmed `change/skills/plan` and `spec/skills/init` SKILLs to live under their 250-line cap by relocating long sections into `plugins/{change,spec}/references/`; trimmed the `spec/skills/extract` description and moved its `Principles` block to a reference doc; standardised `argument-hint:` quoting across every plugin; added a `## What this skill does NOT do` table to `/spec:{define,extract,init,build}` mirroring the canonical one in `/change:execute`; added a "Related coding standards" cross-link to the CLI repo's AGENTS.md.
 
 ## v0.x — RFC-16 — Vectis WASI tools and `specify-vectis` retirement
 

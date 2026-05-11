@@ -1,7 +1,7 @@
 ---
 name: vectis-ios-writer
 description: Generate or update a SwiftUI iOS shell for a Crux application from Specify artifacts. Use when a Specify slice has pending iOS shell tasks routed through a Vectis capability; not for the Rust core (`core-writer`) or the Android shell (`android-writer`).
-argument-hint: "<slice-dir>"
+argument-hint: <slice-dir>
 ---
 
 # Crux iOS Shell Generator

@@ -1,7 +1,7 @@
 ---
 name: vectis-android-writer
 description: Generate or update a Kotlin/Jetpack Compose Android shell for a Crux application. Use when a Specify slice has pending Android shell tasks, or when an existing Android shell needs to be regenerated after a core or layout update; not for the Rust core (`core-writer`) or the iOS shell (`ios-writer`).
-argument-hint: "<slice-dir>"
+argument-hint: <slice-dir>
 ---
 
 # Crux Android Shell Generator

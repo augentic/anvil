@@ -1,7 +1,7 @@
 ---
 name: vectis-core-reviewer
 description: Review generated Crux core (Rust shared crate) code for structural issues, logic bugs, and quality problems. Use when `core-writer` has just produced or updated a Crux core crate and the slice is ready for review; not for platform-shell reviews (`ios-reviewer` / `android-reviewer`).
-argument-hint: "<target-dir>"
+argument-hint: <target-dir>
 ---
 
 # Crux Core Reviewer

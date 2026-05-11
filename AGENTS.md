@@ -167,3 +167,7 @@ The frontmatter and body caps above are the floor. These additional rules tighte
 - In a fresh clone, run `/spec:init` before using other `/spec:*` commands. The workflow skills expect the `.specify/` project structure to exist.
 - `checks.ts` enforces documentation consistency; if you remove or rename workflow terms, update the checks in the same change.
 - Some skills use symlinks to share reference documents from `plugins/references/`. If a symlink target is removed, the skill's documentation may reference content that no longer resolves.
+
+### Related coding standards
+
+- CLI binary and crate conventions (errors, DTOs, hint colocation, brevity) live in the CLI repo's [AGENTS.md](https://github.com/augentic/specify-cli/blob/main/AGENTS.md#coding-standards). Skills that shell out to `specify` rely on the kebab-case `error` discriminants documented there.

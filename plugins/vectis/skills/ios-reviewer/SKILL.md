@@ -1,7 +1,7 @@
 ---
 name: vectis-ios-reviewer
 description: Review generated iOS shell (SwiftUI) code for structural issues, integration correctness, and quality problems. Use when `ios-writer` has just produced or updated an iOS shell and the slice is ready for review; not for reviewing the core (`core-reviewer`) or Android shell (`android-reviewer`).
-argument-hint: "<target-dir>"
+argument-hint: <target-dir>
 ---
 
 # Crux iOS Shell Reviewer

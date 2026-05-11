@@ -131,6 +131,18 @@ The authoritative contract for how `/change:execute` builds these flag values li
 
 This skill is the **define** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including define's per-phase deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
 
+## What this skill does NOT do
+
+| Surface | Status |
+|---|---|
+| Implement code or run task checkboxes | Never — implementation is `/spec:build`'s phase. Define stops once artifacts are written and the slice is `defined`. |
+| Merge specs into `.specify/specs/` | Never — baseline merge lives in `/spec:merge`. |
+| Write `.specify/slices/<name>/.metadata.yaml` directly | Only via `specify slice create` / `specify slice transition` / `specify slice touched-specs`. Never hand-edited. |
+| Transition `plan.yaml` status | Never — `plan.yaml` status writes belong to `/change:execute` (driver) or the human Layer 1 loop. |
+| Author or amend `plan.yaml` entries proactively | Only when the run uncovers neighbouring work; mutations route through `specify change plan add` / `specify change plan amend` per the [phase outcome contract](../../references/phase-outcome-contract.md). |
+| Extract specs from external source code | Delegates to `/spec:extract`, invoked by define briefs in driver-supplied `<source>` mode (and never by define itself outside that pipeline). |
+| Run plan-time capability inference | Never — that lives in `/spec:analyze`, which the `/change:plan` discovery brief orchestrates. |
+
 ## Input
 
 The user's request should include a slice name (kebab-case) OR a description of what they want to build. Optionally, an artifact ID to regenerate a single artifact for an existing slice (e.g., `/spec:define my-change design`).

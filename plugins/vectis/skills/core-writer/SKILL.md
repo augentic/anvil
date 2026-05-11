@@ -1,7 +1,7 @@
 ---
 name: vectis-core-writer
 description: Generate or update a Rust Crux shared crate from Specify artifacts. Use when a Specify slice has pending Crux core tasks; not for platform shells (`ios-writer` / `android-writer`) or test scaffolding (`test-writer`).
-argument-hint: "<slice-dir>"
+argument-hint: <slice-dir>
 ---
 
 # Crux Core Application Generator
