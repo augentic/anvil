@@ -1,12 +1,12 @@
-# RFC-17: OCI Distribution for Wasm Components
+# RFC-17: Wasm Package Distribution for WASI Tools
 
 > Status: Draft - Depends: [RFC-15](archive/rfc-15-wasm-plugins.md), [RFC-16](archive/rfc-16-wasi-vectis.md) - Enables: [RM-21](roadmap.md#rm-21-capability-ecosystem-operating-model)
 
 ## Abstract
 
-Specify's declared WASI tools should be distributed as OCI artifacts in Augentic's GitHub Container Registry namespace, `ghcr.io/augentic`, rather than as raw `.wasm` files attached to GitHub Releases.
+Specify's declared WASI tools should be distributed as `wasm-pkg-tools` packages in the Augentic `specify` namespace, resolved through Augentic registry metadata to OCI artifacts in GitHub Container Registry, rather than as raw `.wasm` files attached to GitHub Releases.
 
-This RFC standardizes the build, publish, fetch, local-test, and manifest-update workflow for first-party `specify-cli` WASI extensions. Maintainers publish built components with Bytecode Alliance `wasm-pkg-tools` (`wkg`), capability `tools.yaml` declarations point at immutable OCI references, and `specify tool fetch` resolves those references into the existing local tool cache.
+This RFC standardizes the build, publish, fetch, local-test, and capability declaration update workflow for first-party `specify-cli` WASI extensions. Maintainers publish built components with Bytecode Alliance `wasm-pkg-tools` (`wkg`), capability `tools.yaml` declarations use exact package references such as `specify:contract@0.3.0`, and `specify tool fetch` resolves those references into the existing local tool cache.
 
 Native `specify` CLI binaries may continue to use GitHub Releases. This RFC only replaces GitHub Release assets for declared WASI tools.
 
@@ -17,17 +17,17 @@ RFC-15 intentionally decoupled deterministic capability helpers from the `specif
 - first-party capability manifests point at GitHub Release asset URLs;
 - release packaging for WASI tools is hand-written beside the native binary matrix;
 - local development has separate paths for `contract` and `vectis`;
-- published capability declarations must wait for raw release asset checksums before they can be pinned;
+- published capability declarations must wait for raw release assets to be uploaded before they can be updated;
 - the release workflow can drift from the set of first-party tools declared in `capabilities/*/tools.yaml`;
 - consumers fetch raw bytes from a forge release surface rather than a package registry built for immutable artifacts.
 
-WebAssembly components are packages. OCI registries already provide immutable tags, digest addressing, authentication, retention policy, package permissions, and a familiar supply-chain surface. `wasm-pkg-tools` gives Specify a standard way to publish and pull components without inventing a bespoke artifact protocol.
+WebAssembly components are packages. `wasm-pkg-tools` already defines package-name syntax, registry configuration, well-known registry metadata, SemVer version selection, and OCI/Warg protocol resolution. OCI registries provide the backing immutable tags, digest addressing, authentication, retention policy, package permissions, and familiar supply-chain surface. Specify should use the package layer as the manifest contract, rather than exposing raw OCI repository paths as first-party capability declarations.
 
 The goal is to make first-party WASI tools feel like a small package ecosystem:
 
 1. Build every declared first-party component the same way.
-2. Publish every release component to `ghcr.io/augentic`.
-3. Reference components from capability manifests with OCI sources.
+2. Publish every release component as a `wasm-pkg-tools` package backed by `ghcr.io/augentic`.
+3. Reference components from capability manifests with package request entries.
 4. Fetch components through `specify tool fetch` without requiring operators to install a second CLI.
 5. Keep local development and CI smoke tests close to the release path.
 
@@ -35,76 +35,92 @@ The goal is to make first-party WASI tools feel like a small package ecosystem:
 
 ### Distribution Model
 
-First-party WASI tools are published as OCI artifacts under `ghcr.io/augentic`.
-
-The canonical OCI reference shape is:
+First-party WASI tools are published as `wasm-pkg-tools` packages in the `specify` namespace. The canonical package request shape is:
 
 ```text
-ghcr.io/augentic/specify-cli/<tool-name>:<semver>
+specify:<tool-name>@<semver>
 ```
 
 Examples:
 
 ```text
-ghcr.io/augentic/specify-cli/contract:0.3.0
-ghcr.io/augentic/specify-cli/vectis:0.3.0
+specify:contract@0.3.0
+specify:vectis@0.3.0
 ```
 
 If RFC-16 later splits Vectis into multiple components, the same convention applies:
 
 ```text
-ghcr.io/augentic/specify-cli/vectis-validate:0.3.0
-ghcr.io/augentic/specify-cli/vectis-scaffold:0.3.0
+specify:vectis-validate@0.3.0
+specify:vectis-scaffold@0.3.0
 ```
 
-Tags MUST be exact SemVer versions without a leading `v`. Capability declarations MUST NOT use `latest`, branch names, or mutable prerelease aliases. If maintainers need prerelease testing, they publish SemVer prerelease tags such as `0.4.0-alpha.1`.
+The scalar `tools:` entry is the full package request. It identifies both the package and the exact SemVer version. First-party package declarations do not carry a separate `version` field.
 
-The `specify-cli` release version and the first-party WASI tool versions remain aligned for first-party tools. A future RFC may allow independently versioned tool packages once compatibility policy exists.
+Augentic hosts wasm-pkg registry metadata at `augentic.io`, backed by OCI artifacts in GHCR. `specify` embeds a first-party namespace default equivalent to the following `wkg` configuration, and maintainers may use the same config for publishing and local smoke tests:
+
+```toml
+default_registry = "augentic.io"
+
+[namespace_registries]
+specify = "augentic.io"
+```
+
+After the `specify` namespace maps to `augentic.io`, `https://augentic.io/.well-known/wasm-pkg/registry.json` provides protocol and storage metadata:
+
+```json
+{
+  "preferredProtocol": "oci",
+  "oci": {
+    "registry": "ghcr.io",
+    "namespacePrefix": "augentic/"
+  }
+}
+```
+
+With that metadata, `specify:vectis@0.3.0` resolves to the OCI artifact `ghcr.io/augentic/specify/vectis:0.3.0`. The resolved OCI reference is implementation metadata; first-party capability declarations should not expose it.
+
+Package entries MUST include exact SemVer versions without a leading `v`. Capability declarations MUST NOT use `latest`, branch names, mutable prerelease aliases, or version ranges. If maintainers need prerelease testing, they publish SemVer prerelease versions such as `0.4.0-alpha.1`.
+
+The `specify-cli` release version and the first-party WASI tool versions remain aligned for first-party tools. A future RFC may allow independently versioned tool packages once package support policy exists.
+
+The first implementation supports only first-party `specify:*` package entries. Third-party or private namespaces can follow once Specify has a policy for namespace trust, registry configuration, and capability authorship.
 
 ### Tool Manifest Sources
 
-RFC-15's string `source` field grows one new source kind: `oci://`.
+RFC-15's `tools:` array grows one new first-party entry shape: an exact wasm-pkg package request string.
 
 ```yaml
 tools:
-  - name: contract
-    version: 0.3.0
-    source: "oci://ghcr.io/augentic/specify-cli/contract:0.3.0"
-    sha256: "<component-byte-sha256>"
-    permissions:
-      read:
-        - "$PROJECT_DIR/contracts"
-      write: []
+  - "specify:contract@0.3.0"
 ```
 
 Rules:
 
-- `oci://` sources are direct OCI artifact references. The resolver strips the scheme before calling the OCI client.
-- The tag in `source` MUST match `version` exactly for first-party declarations.
-- `sha256` keeps its RFC-15 meaning: a lowercase SHA-256 over the resolved component bytes, not the OCI manifest digest.
-- First-party release declarations MUST include `sha256`.
-- Local development may continue to use absolute paths or `file://` sources with `sha256` omitted.
-- `https://` raw-byte sources remain supported for compatibility, but first-party capability declarations move to `oci://`.
+- First-party package entries MUST be valid wasm-pkg package requests in the `specify` namespace.
+- First-party package entries MUST include an exact SemVer version, for example `specify:contract@0.3.0`.
+- The CLI-facing tool name is derived from the package segment after `:` and before `@`. For example, `specify:contract@0.3.0` declares the tool name `contract`.
+- Duplicate derived tool names are invalid within one capability declaration.
+- Runtime filesystem permissions remain governed by RFC-15 and are only required when a tool needs filesystem preopens. They are not part of the package-distribution contract introduced here.
+- Local development should use package prerelease versions or a local wasm-pkg registry configuration.
 
-Keeping `source` as a string avoids a manifest shape break and keeps project-scope overrides simple. A structured source object can follow later if Specify needs multiple registry protocols, signatures, or fallback mirrors.
+Keeping each `tools:` entry as a string matches wasm-pkg package request syntax and keeps project-scope overrides simple. A structured object can follow later if Specify needs aliases, signatures, fallback mirrors, or richer registry policy.
 
-### Publishing With `wkg`
+### Build And Publish
 
-The release workflow installs `wkg` and publishes each built component with `wkg oci push`.
+The release workflow installs `wkg`, configures the `specify` namespace to resolve through `augentic.io`, builds each releasable component with ordinary Cargo commands, and publishes the resulting `.wasm` directly. Publishing still writes OCI artifacts to GHCR because Augentic registry metadata selects the OCI protocol and GHCR backing registry.
 
-Example maintainer-equivalent command:
-
-```bash
-wkg oci push ghcr.io/augentic/specify-cli/contract:0.3.0 target/wasm32-wasip2/release/specify-contract.wasm
-```
-
-For Vectis:
+Illustrative maintainer-equivalent commands:
 
 ```bash
-wkg oci push ghcr.io/augentic/specify-cli/vectis:0.3.0 target/wasm32-wasip2/release/vectis.wasm
+cargo build -p specify-contract --target wasm32-wasip2 --release
+wkg publish specify:contract@0.3.0 ./target/wasm32-wasip2/release/specify-contract.wasm
+
+cargo build -p specify-vectis --target wasm32-wasip2 --release
+wkg publish specify:vectis@0.3.0 ./target/wasm32-wasip2/release/vectis.wasm
 ```
 
-The workflow authenticates to GHCR using GitHub Actions package permissions. It should prefer Docker credential configuration because `wkg` can read Docker credentials for OCI registries:
+The exact `wkg` CLI spelling may follow the installed `wasm-pkg-tools` release, but the workflow should use the package publish path rather than hand-constructing OCI repository names. The workflow authenticates to GHCR using GitHub Actions package permissions. It should prefer Docker credential configuration because `wkg` can read Docker credentials for OCI registries:
 
 ```bash
 echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
@@ -120,158 +136,102 @@ permissions:
 
 `contents: write` is still needed for native GitHub Releases if that path remains. WASI publishing needs `packages: write`.
 
-### Build And Dist Layout
-
-`specify-cli` gains one shared dist command that builds every first-party WASI tool and writes a machine-readable manifest.
-
-Target surface:
-
-```bash
-cargo make wasi-artifacts
-```
-
-Output:
-
-```text
-target/wasi-tools/release/
-|-- manifest.json
-|-- contract.wasm
-|-- contract.wasm.sha256
-|-- vectis.wasm
-`-- vectis.wasm.sha256
-```
-
-`manifest.json` records enough information for both CI and humans:
-
-```json
-{
-  "schema-version": 1,
-  "version": "0.3.0",
-  "tools": [
-    {
-      "name": "contract",
-      "package": "specify-contract",
-      "target": "wasm32-wasip2",
-      "path": "target/wasi-tools/release/contract.wasm",
-      "oci": "ghcr.io/augentic/specify-cli/contract:0.3.0",
-      "sha256": "<component-byte-sha256>"
-    },
-    {
-      "name": "vectis",
-      "package": "specify-vectis",
-      "target": "wasm32-wasip2",
-      "path": "target/wasi-tools/release/vectis.wasm",
-      "oci": "ghcr.io/augentic/specify-cli/vectis:0.3.0",
-      "sha256": "<component-byte-sha256>"
-    }
-  ]
-}
-```
-
-The workflow publishes from this manifest rather than duplicating one shell block per tool. Adding a new first-party WASI tool becomes a one-line manifest/config change plus tests, not a bespoke release-job edit.
-
 ### Release Workflow
 
 The `specify-cli` release workflow changes from a special `wasi-tools` job that builds Vectis only to a generic `wasi-tools` job:
 
 1. Install stable Rust with `wasm32-wasip2`.
 2. Install `wkg`.
-3. Build all first-party WASI artifacts with `cargo make wasi-artifacts`.
-4. Verify every manifest entry has a file and a SHA-256.
-5. Log in to `ghcr.io`.
-6. Push every manifest entry with `wkg oci push`.
-7. Pull each just-published artifact with `wkg oci pull` into a scratch directory.
-8. Recompute SHA-256 and compare with `manifest.json`.
-9. Upload `manifest.json` and checksum files as workflow artifacts for audit only.
+3. Configure `wkg` with `default_registry = "augentic.io"` and `specify = "augentic.io"` namespace mapping, or rely on Augentic well-known registry metadata when available.
+4. Log in to `ghcr.io`.
+5. For each first-party package entry, run `cargo build -p <crate> --target wasm32-wasip2 --release`.
+6. Publish the built `./target/wasm32-wasip2/release/<tool>.wasm` with `wkg publish <package-request>`.
+7. Pull each just-published artifact through package resolution into a scratch directory.
+8. Verify the pulled component can be read as bytes and, when practical, validated as a component.
 
-The release job that creates GitHub Releases no longer attaches raw `.wasm` files. The GitHub Release may include the `manifest.json` for discoverability, but the authoritative component distribution location is GHCR.
+The release job that creates GitHub Releases no longer attaches raw `.wasm` files. The authoritative component distribution surface is the wasm-pkg package name backed by GHCR.
 
 ### Runtime Fetching
 
 Operators should not need to install `wkg`. `specify tool fetch` and `specify tool run` remain the only runtime surfaces.
 
-The resolver adds OCI support behind the existing source-resolution boundary:
+The resolver adds wasm-pkg package support behind the existing source-resolution boundary:
 
 ```bash
 specify tool fetch contract
 specify tool run contract -- "$PROJECT_DIR/contracts" --format json
 ```
 
-On an `oci://` source, the resolver:
+On a package entry such as `specify:contract@0.3.0`, the resolver:
 
-1. Parses and validates the OCI reference.
-2. Reuses the existing cache when the sidecar matches `scope`, `tool-name`, `tool-version`, `source`, and `sha256`.
-3. Otherwise pulls the component bytes from the OCI registry.
-4. Verifies the component-byte `sha256` when present.
+1. Parses and validates the wasm-pkg package name and exact version from the `tools:` entry.
+2. Reuses the existing cache when the sidecar matches `scope`, `tool-name`, and `source`.
+3. Resolves the package registry through built-in Augentic first-party defaults, standard wasm-pkg config, or `.well-known/wasm-pkg/registry.json`.
+4. Pulls the component bytes through the selected registry protocol. The first-party path resolves to OCI in GHCR.
 5. Stages `module.wasm` and `meta.yaml` together.
 6. Atomically installs into the existing tool cache layout.
 
-Implementation should use `wasm-pkg-tools` crates or an equivalent narrow OCI client inside `specify-tool`. It MUST NOT shell out to `wkg` at operator runtime because RFC-15 and RFC-16 preserve the single-installed-binary contract.
+Implementation should use `wasm-pkg-tools` crates inside `specify-tool` so package parsing, registry metadata, config loading, and OCI resolution follow the same rules as `wkg`. It MUST NOT shell out to `wkg` at operator runtime because RFC-15 and RFC-16 preserve the single-installed-binary contract.
 
-The cache sidecar gains optional OCI metadata:
+The cache sidecar gains optional package and OCI metadata:
 
 ```yaml
 schema-version: 1
 scope: capability--contracts
 tool-name: contract
 tool-version: 0.3.0
-source: oci://ghcr.io/augentic/specify-cli/contract:0.3.0
+source: specify:contract@0.3.0
 fetched-at: "2026-05-10T00:00:00Z"
-permissions-snapshot:
-  read:
-    - "$PROJECT_DIR/contracts"
-  write: []
-sha256: "<component-byte-sha256>"
+package:
+  name: specify:contract
+  version: 0.3.0
+  registry: augentic.io
 oci:
-  reference: "ghcr.io/augentic/specify-cli/contract:0.3.0"
-  manifest-digest: "sha256:<oci-manifest-digest>"
+  reference: "ghcr.io/augentic/specify/contract:0.3.0"
 ```
 
-The `oci` block is informational in the first implementation. Cache validity continues to be governed by the live declaration tuple and component-byte `sha256`.
+The `package` and `oci` blocks are informational in the first implementation. Cache validity continues to be governed by the live declaration tuple.
 
 ### Authentication
 
-Public first-party tool pulls should work anonymously when GHCR package visibility allows it. Private or internal registries use existing OCI credentials.
+Public first-party tool pulls should work anonymously when GHCR package visibility allows it. Private or internal registries use standard wasm-pkg registry configuration and the selected protocol's credentials.
 
 Resolver credential order:
 
-1. Docker credential config, matching `wkg` behavior.
-2. `WKG_CONFIG` / standard wasm-pkg config if the selected library supports it without extra user ceremony.
-3. Future `SPECIFY_OCI_AUTH_*` environment variables only if Docker/wkg config proves insufficient.
+1. Standard wasm-pkg config, including `WKG_CONFIG` when set.
+2. Docker credential config for OCI registries, matching `wkg` behavior.
+3. Anonymous registry access when no credentials are configured.
+4. Future `SPECIFY_REGISTRY_AUTH_*` environment variables only if standard wasm-pkg and Docker config prove insufficient.
 
-The first implementation SHOULD avoid adding new Specify-specific credential files. OCI auth is already a solved workstation and CI problem.
+The first implementation SHOULD avoid adding new Specify-specific credential files. Registry auth is already a solved workstation and CI problem in the wasm-pkg and OCI tooling layers.
 
 Publish authentication remains CI-owned and uses the GitHub Actions token or an explicit package-publish token.
 
 ### Local Development
 
-For rapid local iteration, developers keep using project-scope or local capability-scope overrides:
+For rapid local iteration, developers still build local artifacts with:
 
 ```bash
-cargo make wasi-artifacts
+cargo build -p specify-contract --target wasm32-wasip2 --release
 ```
 
-Project-scope override example:
+They can test those artifacts through a temporary package prerelease source:
 
 ```yaml
 tools:
-  - name: contract
-    version: 0.3.0-dev
-    source: "file:///absolute/path/to/specify-cli/target/wasi-tools/release/contract.wasm"
-    permissions:
-      read:
-        - "$PROJECT_DIR/contracts"
-      write: []
+  - "specify:contract@0.3.0-dev.<run-id>"
 ```
 
-For local OCI smoke tests, maintainers can publish to an explicitly temporary tag:
+For local package smoke tests, maintainers can publish an explicitly temporary prerelease version:
 
 ```bash
-wkg oci push ghcr.io/augentic/specify-cli/contract:0.3.0-dev.<run-id> target/wasi-tools/release/contract.wasm
-wkg oci pull ghcr.io/augentic/specify-cli/contract:0.3.0-dev.<run-id> -o /tmp/contract.wasm
+wkg publish specify:contract@0.3.0-dev.<run-id> ./target/wasm32-wasip2/release/specify-contract.wasm
+wkg pull specify:contract@0.3.0-dev.<run-id> -o /tmp/contract.wasm
 ```
 
-Temporary tags MUST NOT appear in checked-in first-party `tools.yaml`.
+The exact `wkg` pull command may follow the installed `wasm-pkg-tools` release. Temporary prerelease versions MUST NOT appear in checked-in first-party `tools.yaml`.
+
+The local test loop is therefore: build the component, publish it under a unique prerelease package request, update a local `tools.yaml` override to that request, and run `specify tool fetch` or `specify tool run` with an isolated cache.
 
 For cache-isolated tests:
 
@@ -279,7 +239,7 @@ For cache-isolated tests:
 SPECIFY_TOOLS_CACHE="$(mktemp -d)" specify tool fetch contract
 ```
 
-This keeps local rebuilds from fighting the global cache. When reusing the global cache, developers still need to change `version`, `source`, or `sha256`, or run `specify tool gc`, because RFC-15 cache semantics intentionally treat unchanged declaration tuples as immutable.
+This keeps local rebuilds from fighting the global cache. When reusing the global cache, developers still need to change `source` or run `specify tool gc`, because cache semantics intentionally treat unchanged declaration tuples as immutable.
 
 ### Capability Declaration Updates
 
@@ -289,60 +249,46 @@ The plugin repository's first-party declarations move from GitHub Release URLs:
 source: "https://github.com/augentic/specify-cli/releases/download/v0.2.0/contract.wasm"
 ```
 
-to OCI references:
+to wasm-pkg package references:
 
 ```yaml
-source: "oci://ghcr.io/augentic/specify-cli/contract:0.3.0"
+tools:
+  - "specify:contract@0.3.0"
 ```
 
-The declaration update should be generated from `target/wasi-tools/release/manifest.json` or by a small helper command rather than hand-edited. The helper updates:
-
-- `version`;
-- `source`;
-- `sha256`;
-- any first-party declaration checks in `scripts/checks`.
-
-Target helper surface:
-
-```bash
-specify tool manifest update-first-party --manifest target/wasi-tools/release/manifest.json --repo ../specify
-```
-
-That command name is provisional. It may land as an `xtask` in `specify-cli` instead if keeping framework-repo mutation out of the runtime binary is cleaner.
+The declaration update is a direct edit to the checked-in capability manifests and any first-party declaration checks in `scripts/checks`.
 
 ### Verification
 
 Release verification must fail before publish completion when any of these are true:
 
-- a first-party capability declares a WASI tool that is absent from `manifest.json`;
-- `manifest.json` contains a tool that no first-party capability declares, unless explicitly marked internal;
-- a declaration's `version` does not match the OCI tag;
-- a declaration's `sha256` does not match the built component bytes;
-- a published component cannot be pulled back from GHCR;
-- a pulled component's SHA-256 differs from `manifest.json`;
-- `specify tool fetch` cannot fetch a fixture declaration that points at the just-published OCI artifact.
+- a first-party capability declares a package request that the release workflow does not publish;
+- the release workflow publishes a first-party package request that no first-party capability declares, unless explicitly marked internal;
+- a first-party package request is not exact SemVer;
+- a published component cannot be pulled back through package resolution;
+- a pulled component cannot be read back from the package resolver;
+- `specify tool fetch` cannot fetch a fixture declaration that points at the just-published package.
 
-The checks should run in CI and locally. They are the replacement for manual "download release asset and recompute checksum" steps.
+The checks should run in CI and locally. They are the replacement for manual "download release asset and inspect it by hand" steps.
+
+Resolver tests should mock registry and package-client responses by default so ordinary PR checks are deterministic and do not depend on GHCR availability, credentials, or rate limits. Mocked coverage should include accepted and rejected package request syntax, embedded `specify -> augentic.io` namespace resolution, cache hit and miss behavior, unavailable packages, malformed registry metadata, auth failures, and invalid component bytes. A narrow local OCI registry fixture with wasm-pkg metadata may run as an integration smoke when the environment supports it. Public GHCR package pulls belong in release verification, not normal PR CI.
 
 ## Implementation Plan
 
-1. **Define the first-party WASI tool manifest.** Add a checked-in list of releasable WASI components in `specify-cli`, including tool name, package, built filename, OCI repository suffix, and capability declaration target.
-2. **Unify local artifact builds.** Replace `contract-wasm`, `vectis-wasm`, and `vectis-wasi-artifacts` drift with one `cargo make wasi-artifacts` path. Keep compatibility aliases temporarily if useful for maintainers.
-3. **Publish with `wkg`.** Update `.github/workflows/release.yaml` to install `wkg`, authenticate to GHCR, push every manifest entry, and pull/verify each component after publish.
-4. **Add `oci://` resolver support.** Extend `specify-tool` source parsing, validation, cache sidecars, resolver tests, and fetch/show/list output to understand OCI sources.
-5. **Keep runtime single-binary.** Implement OCI pulls inside `specify-tool`; do not require operator-installed `wkg`.
-6. **Update first-party declarations.** Change `capabilities/contracts/tools.yaml` and `capabilities/vectis/tools.yaml` to `oci://ghcr.io/augentic/specify-cli/...` sources with real SHA-256 pins.
-7. **Add release drift checks.** Extend framework checks so first-party tool declarations must match the manifest-derived OCI source, version, permissions, and SHA-256 format.
-8. **Revise docs.** Update `specify-cli/docs/release.md`, `docs/explanation/tool-declarations.md`, `docs/reference/cli/tool.md`, and capability-specific docs to describe OCI distribution and local override workflows.
-9. **Add end-to-end smoke coverage.** Use a public test artifact or a local OCI registry fixture for resolver tests, and run a release-pipeline smoke after pushing to GHCR.
+1. **Publish with `wkg`.** Update `.github/workflows/release.yaml` to install `wkg`, configure the `specify` namespace, authenticate to GHCR, build each first-party component with `cargo build -p <crate> --target wasm32-wasip2 --release`, publish each package request, and pull/verify each component after publish.
+2. **Add wasm-pkg resolver support.** Extend `specify-tool` tools-entry parsing, validation, cache sidecars, resolver tests, and fetch/show/list output to understand package entries.
+3. **Keep runtime single-binary.** Implement package resolution and pulls inside `specify-tool`; do not require operator-installed `wkg`.
+4. **Update first-party declarations.** Change `capabilities/contracts/tools.yaml` and `capabilities/vectis/tools.yaml` to scalar `specify:*@<semver>` package entries.
+5. **Add release drift checks.** Extend framework checks so first-party tool declarations and release workflow package requests stay aligned.
+6. **Revise docs.** Update `specify-cli/docs/release.md`, `docs/explanation/tool-declarations.md`, `docs/reference/cli/tool.md`, and capability-specific docs to describe wasm-pkg distribution and local override workflows.
+7. **Add end-to-end smoke coverage.** Use a public test package or a local OCI registry fixture with wasm-pkg metadata for resolver tests, and run a release-pipeline smoke after publishing to GHCR.
 
 ## Migration
 
 For capability authors:
 
-- Replace first-party `https://github.com/.../*.wasm` sources with `oci://ghcr.io/augentic/specify-cli/<tool>:<version>`.
-- Keep `sha256` pins over component bytes.
-- Continue using project-scope `file://` overrides for local development.
+- Replace first-party `https://github.com/.../*.wasm` sources with scalar package entries such as `specify:contract@0.3.0`.
+- Use package prerelease sources or a local wasm-pkg registry for local development.
 
 For operators:
 
@@ -352,28 +298,26 @@ For operators:
 
 For maintainers:
 
-- Use `cargo make wasi-artifacts` to build all WASI components.
-- Use `wkg oci push` for manual publish tests.
-- Use `wkg oci pull` to inspect published components.
+- Use `cargo build -p <crate> --target wasm32-wasip2 --release` to build WASI components.
+- Use `wkg publish` package-name flows for manual publish tests.
+- Use `wkg` package fetch/pull flows to inspect published components.
 - Do not upload raw first-party `.wasm` files to GitHub Releases as the canonical distribution surface.
 
 For existing caches:
 
-- Existing cached GitHub Release sources stay valid until declarations move.
-- Once a declaration switches to `oci://`, the source tuple changes and `specify tool fetch` installs a new cache entry.
+- No compatibility shim is required for cached GitHub Release sources.
+- Once declarations switch to package entries, the source tuple changes and `specify tool fetch` installs package-backed cache entries.
 - `specify tool gc` removes unused old entries in scopes visible to the current project.
 
 ## Alternatives Considered
 
-**Keep GitHub Release assets.** Rejected because release assets are a forge artifact surface, not a component package registry. They work for raw downloads but provide poor package naming, weaker publish/fetch symmetry, and more manual checksum choreography.
+**Keep GitHub Release assets.** Rejected because release assets are a forge artifact surface, not a component package registry. They work for raw downloads but provide poor package naming, weaker publish/fetch symmetry, and more manual release choreography.
 
 **Require users to install `wkg`.** Rejected because RFC-15 and RFC-16 deliberately preserve one installed `specify` binary for operators. `wkg` is appropriate for maintainers and CI; runtime fetch belongs in `specify`.
 
-**Use `wkg publish` package names in `tools.yaml`.** Deferred. Package names such as `specify:contract@0.3.0` are attractive, but they require registry configuration or well-known metadata. Direct OCI references are explicit, work immediately with GHCR, and avoid adding a configuration dependency to capability resolution.
+**Use direct `oci://` references in `tools.yaml`.** Rejected for first-party declarations. Direct OCI references are explicit and easy to bootstrap, but they leak storage layout into the capability contract, bypass wasm-pkg's package identity and registry metadata, and make a future move to Warg or a different OCI namespace harder.
 
-**Make `sha256` the OCI manifest digest.** Rejected for the first implementation. RFC-15 already defines `sha256` as component-byte integrity. OCI manifest digests are useful metadata, but changing the meaning of `sha256` would confuse local path, `file://`, `https://`, and `oci://` sources.
-
-**Attach both GitHub Release assets and OCI packages.** Rejected as the steady state because dual canonical sources drift. GitHub Releases may link to the OCI package or include an audit manifest, but GHCR should be authoritative for WASI tools.
+**Attach both GitHub Release assets and wasm-pkg packages.** Rejected as the steady state because dual canonical sources drift. GitHub Releases may link to the package or include an audit manifest, but the wasm-pkg package should be authoritative for WASI tools.
 
 **Use `oras` instead of `wkg`.** Rejected for this RFC because `wasm-pkg-tools` is component-aware and aligned with Bytecode Alliance conventions. `oras` remains useful for debugging generic OCI artifacts but should not define Specify's component workflow.
 
@@ -385,19 +329,14 @@ For existing caches:
 - Adding mutable version ranges to `tools.yaml`.
 - Adding runtime WASI network access.
 - Adding native host runners to declared tools.
-- Designing signed provenance or SLSA attestations for the first implementation.
+- Designing signed provenance, SLSA attestations, or implementation hooks for future signing.
 - Changing tool permission semantics.
-- Requiring a public `.well-known/wasm-pkg/registry.json` endpoint for Augentic.
 
 ## Open Questions
 
-1. **Registry path.** Is `ghcr.io/augentic/specify-cli/<tool>` the final namespace, or should first-party components live under `ghcr.io/augentic/specify-tools/<tool>` to decouple tool packages from the CLI repository name?
-2. **Independent versions.** How soon should first-party WASI tools version independently from the `specify-cli` release?
-3. **OCI metadata.** Which annotations should be mandatory on published components: source repository, license, description, revision, and build timestamp?
-4. **Provenance.** Should the next step after byte SHA-256 be Sigstore signing, GitHub artifact attestations, Warg, or another verification model?
-5. **Private capability registries.** Should third-party/private capabilities use the same `oci://` source syntax with their own registries, or should Specify define a package-name abstraction first?
-6. **Local OCI registry tests.** Should CI run resolver tests against a local registry fixture, a public GHCR test package, or mocked registry responses?
-7. **Well-known metadata.** Should Augentic eventually host `.well-known/wasm-pkg/registry.json` so declarations can use package names such as `specify:contract@0.3.0`?
+1. **Independent versions.** How soon should first-party WASI tools version independently from the `specify-cli` release?
+2. **OCI metadata.** Which annotations should be mandatory on published components: source repository, license, description, revision, and build timestamp?
+3. **Bundled defaults.** How should `specify` version and override its embedded `specify -> augentic.io` namespace default if Augentic registry metadata changes?
 
 ## References
 
@@ -406,3 +345,4 @@ For existing caches:
 - [Specify Roadmap RM-21](roadmap.md#rm-21-capability-ecosystem-operating-model)
 - [Bytecode Alliance wasm-pkg-tools](https://github.com/bytecodealliance/wasm-pkg-tools)
 - [WebAssembly Component Model: Distributing and Fetching Components and WIT](https://component-model.bytecodealliance.org/composing-and-distributing/distributing.html)
+
