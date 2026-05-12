@@ -333,6 +333,111 @@ function isEnvelopeBody(body: string[]): boolean {
   return false;
 }
 
+// Skills-§7: Critical Path is the table of contents; step bodies are
+// short pointers to references. Verbatim duplication between a
+// Critical Path entry and any line elsewhere in the skill body
+// collapses into the triplication pattern (Critical Path → Step body
+// → Guardrails) the task is meant to eliminate.
+//
+// The predicate parses the `## Critical Path` block (numbered list,
+// bullet list, or `### Step` headings — same shapes accepted by
+// `checkCriticalPath`), normalises each entry to its prose, then scans
+// every line in the rest of the body (everything after the Critical
+// Path block ends). A whitespace-normalised exact match between a
+// Critical Path entry and a downstream line — when that downstream
+// line is a list item or H3/H4 heading — is flagged.
+//
+// Lines inside fenced code blocks are ignored (they are templates or
+// snippets, not narrative prose).
+function normaliseEntry(text: string): string {
+  return text
+    .replace(/^(?:\d+\.|-|\*)\s+/, "")
+    .replace(/^#{2,4}\s+/, "")
+    .replace(/^Step\s+\d+\s*[:.\-]\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function isListOrHeadingLine(line: string): boolean {
+  return /^(?:\d+\.|-|\*)\s+\S/.test(line) || line.startsWith("### ") ||
+    line.startsWith("#### ");
+}
+
+export async function checkNoStepBodyDuplicatesCriticalPath(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
+    if (await underSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+    const lines = skillBodyLines(content);
+    if (!lines) continue;
+
+    const cpStart = lines.findIndex((l) => l.trim() === "## Critical Path");
+    if (cpStart < 0) continue;
+    const cpEndOffset = lines.slice(cpStart + 1).findIndex((l) =>
+      l.startsWith("## ")
+    );
+    const cpEnd = cpEndOffset < 0 ? lines.length : cpStart + 1 + cpEndOffset;
+
+    const cpEntries = new Set<string>();
+    let inFence = false;
+    for (let i = cpStart + 1; i < cpEnd; i++) {
+      const line = lines[i];
+      if (line.startsWith("```")) {
+        inFence = !inFence;
+        continue;
+      }
+      if (inFence) continue;
+      if (!isListOrHeadingLine(line)) continue;
+      const norm = normaliseEntry(line);
+      if (norm.length === 0) continue;
+      cpEntries.add(norm);
+    }
+    if (cpEntries.size === 0) continue;
+
+    const violations: { line: number; text: string }[] = [];
+    inFence = false;
+    for (let i = cpEnd; i < lines.length; i++) {
+      const raw = lines[i];
+      if (raw.startsWith("```")) {
+        inFence = !inFence;
+        continue;
+      }
+      if (inFence) continue;
+      if (!isListOrHeadingLine(raw)) continue;
+      const norm = normaliseEntry(raw);
+      if (norm.length === 0) continue;
+      if (cpEntries.has(norm)) {
+        violations.push({ line: i + 1, text: raw.trim() });
+      }
+    }
+
+    const baseline = await baselineFor(
+      "noStepBodyDuplicatesCriticalPath",
+      rel,
+    );
+    if (violations.length > baseline) {
+      const detail = violations
+        .slice(0, 3)
+        .map((v) => `line ${v.line}: '${v.text.slice(0, 80)}'`)
+        .join("; ");
+      const more = violations.length > 3
+        ? ` (+${violations.length - 3} more)`
+        : "";
+      fail(
+        `Step body duplicates Critical Path: ${rel} — ${violations.length} match(es) > baseline ${baseline}: ${detail}${more} (Critical Path is the TOC; keep step bodies as short pointers to references)`,
+      );
+    }
+  }
+}
+
 export async function checkVariables(): Promise<void> {
   const DEF_RE = /^\$([A-Z_][A-Z_0-9]*)\s*=/gm;
   const USE_RE = /\$([A-Z_][A-Z_0-9]*)/g;

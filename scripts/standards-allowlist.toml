@@ -39,12 +39,14 @@ bodyLineCount = 262
 
 [file."plugins/spec/skills/init/SKILL.md"]
 sectionLineCount = 1
+argumentHintCoversBodyArguments = 4
 
 [file."plugins/spec/skills/define/SKILL.md"]
 sectionLineCount = 1
 
 [file."plugins/spec/skills/build/SKILL.md"]
 sectionLineCount = 1
+argumentHintCoversBodyArguments = 1
 
 [file."plugins/vectis/skills/image-layout-inferer/SKILL.md"]
 sectionLineCount = 1
@@ -60,6 +62,10 @@ bodyLineCount = 392
 [file."plugins/vectis/skills/android-writer/SKILL.md"]
 sectionLineCount = 1
 bodyLineCount = 394
+argumentHintCoversBodyArguments = 1
+
+[file."plugins/vectis/skills/template-updater/SKILL.md"]
+argumentHintCoversBodyArguments = 1
 
 [file."plugins/vectis/skills/ios-reviewer/SKILL.md"]
 sectionLineCount = 1
@@ -85,4 +91,8 @@ sectionLineCount = 1
 
 [file."plugins/omnia/skills/crate-writer/SKILL.md"]
 sectionLineCount = 1
-bodyLineCount = 369
+bodyLineCount = 371
+argumentHintCoversBodyArguments = 1
+
+[file."plugins/contract/skills/json-schema/SKILL.md"]
+argumentHintCoversBodyArguments = 1

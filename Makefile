@@ -4,6 +4,10 @@ DENO := $(or $(shell command -v deno 2>/dev/null),$(wildcard $(HOME)/.deno/bin/d
 checks:
 	@$(DENO) run --allow-read scripts/checks.ts
 
+.PHONY: doc-envelopes
+doc-envelopes:
+	@$(DENO) run --allow-read --allow-write --allow-env scripts/gen-envelope-doc.ts
+
 .PHONY: test
 test:
 	@$(DENO) test \

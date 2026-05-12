@@ -46,7 +46,7 @@ Show one declared tool's metadata, permissions, digest pin, and cache state.
 specify tool show <name> [--format json]
 ```
 
-`show` reports the live declaration plus cache metadata when the tool has already been fetched. The cache metadata includes the `fetched-at` timestamp from `meta.yaml`.
+`show` reports the live declaration plus cache metadata when the tool has already been fetched. The cache metadata includes the `fetched-at` timestamp from `meta.yaml` and, for package-backed tools, package and OCI metadata.
 
 ### specify tool gc
 
@@ -87,19 +87,19 @@ Structured responses use the standard CLI envelope:
   "tools": [
     {
       "name": "contract",
-      "version": "1.0.0",
-      "source": "https://example.com/contract.wasm",
+      "version": "0.3.0",
+      "source": "specify:contract@0.3.0",
       "scope": "capability",
       "scope-detail": "contracts",
       "cache-status": "hit",
-      "cached-path": "/Users/alex/.cache/specify/tools/capability--contracts/contract/1.0.0/module.wasm"
+      "cached-path": "/Users/alex/.cache/specify/tools/capability--contracts/contract/0.3.0/module.wasm"
     }
   ],
   "warnings": []
 }
 ```
 
-`fetch` uses the same row shape and adds `fetched: true|false`. `show` returns a single `tool` row with `permissions`, `sha256`, and `fetched-at`. `gc` returns `removed`, `all`, and `warnings`.
+`fetch` uses the same row shape and adds `fetched: true|false`. `show` returns a single `tool` row with `permissions`, optional `sha256`, `fetched-at`, and optional `package` / `oci` blocks. `gc` returns `removed`, `all`, and `warnings`.
 
 Validation failures include rule results so callers can branch on rule ids such as `tool.lifecycle-state-write-denied`:
 
@@ -143,7 +143,7 @@ Scope segments are `project--<project-name>` for tools declared in `.specify/pro
 
 ## Digest verification
 
-`sha256` is optional for local development and strongly recommended for every released artifact. First-party release declarations must pin it.
+`sha256` is optional for local development object declarations. First-party package declarations do not include a separate `sha256`; the package client validates package content and records package metadata in `meta.yaml`.
 
 When a digest is present, Specify verifies fetched or copied bytes before installing them into the cache. A cache hit is accepted only when the live declaration tuple matches the sidecar metadata: scope, name, version, source, and `sha256`. If the tuple changes, the resolver stages fresh bytes and installs them atomically.
 
@@ -153,7 +153,7 @@ Without `sha256`, cache reuse is based on the manifest tuple. If bytes at a URL 
 
 Operators still install one binary: `specify`. Cached modules are never executed directly as host binaries; `specify tool run` always goes through the Wasmtime host.
 
-Filesystem access is deny-by-default. A tool receives only the read and write preopens declared in its manifest, and permission paths must already exist. Runtime network access is disabled for WASI tools; resolver network access for `https://` sources is separate and happens before execution.
+Filesystem access is deny-by-default. A tool receives only the read and write preopens declared in its manifest or embedded for first-party package declarations, and permission paths must already exist. Runtime network access is disabled for WASI tools; resolver network access for `https://` and wasm-pkg sources is separate and happens before execution.
 
 The host passes only `PROJECT_DIR` and, for capability-scope tools, `CAPABILITY_DIR`. It does not inherit `PATH`, credentials, shell variables, user identity, current working directory authority, or ambient filesystem access.
 

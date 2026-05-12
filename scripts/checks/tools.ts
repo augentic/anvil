@@ -1,7 +1,6 @@
 // First-party tool surface enforcement (RM-09):
 //   - first-party WASM tools declared in capability tools.yaml are
-//     pinned at the release version with sha256 + permissions matching
-//     the expected shape,
+//     exact scalar wasm-pkg package requests matching the release version,
 //   - retired host helpers (specify-vectis, specify-contract, …) must
 //     be re-routed through their declared-tool equivalent in active
 //     briefs and skill bodies.
@@ -17,66 +16,35 @@ import {
   walk,
 } from "./_shared.ts";
 
-interface ToolDeclaration {
-  name?: unknown;
-  version?: unknown;
-  source?: unknown;
-  sha256?: unknown;
-  permissions?: {
-    read?: unknown;
-    write?: unknown;
-  };
-}
-
 interface ToolManifest {
-  tools?: ToolDeclaration[];
+  tools?: unknown[];
 }
 
 interface ExpectedToolDeclaration {
   capability: string;
   name: string;
-  source: string;
-  read: string[];
-  write: string[];
+  package: string;
 }
 
-const SHA256_RE = /^[a-f0-9]{64}$/;
+const PACKAGE_RE = /^specify:([a-z][a-z0-9-]*)@(\d+\.\d+\.\d+)$/;
 
 const EXPECTED_FIRST_PARTY_TOOLS: ExpectedToolDeclaration[] = [
   {
     capability: "contracts",
     name: "contract",
-    source:
-      "https://github.com/augentic/specify-cli/releases/download/v0.2.0/contract.wasm",
-    read: ["$PROJECT_DIR/contracts"],
-    write: [],
+    package: "specify:contract@0.3.0",
   },
   {
     capability: "vectis",
     name: "vectis",
-    source:
-      "https://github.com/augentic/specify-cli/releases/download/v0.2.0/vectis.wasm",
-    read: ["$PROJECT_DIR", "$CAPABILITY_DIR"],
-    write: ["$PROJECT_DIR"],
+    package: "specify:vectis@0.3.0",
   },
 ];
-
-function stringArray(value: unknown): string[] | null {
-  if (!Array.isArray(value)) return null;
-  if (!value.every((entry) => typeof entry === "string")) return null;
-  return value;
-}
-
-function sameStringArray(actual: unknown, expected: string[]): boolean {
-  const values = stringArray(actual);
-  if (!values || values.length !== expected.length) return false;
-  return values.every((value, index) => value === expected[index]);
-}
 
 export async function checkFirstPartyToolDeclarations(): Promise<void> {
   const declarationsByCapability = new Map<
     string,
-    Map<string, ToolDeclaration>
+    Map<string, string>
   >();
 
   for (const expected of EXPECTED_FIRST_PARTY_TOOLS) {
@@ -99,57 +67,44 @@ export async function checkFirstPartyToolDeclarations(): Promise<void> {
     }
 
     const tools = Array.isArray(manifest.tools) ? manifest.tools : [];
+    const declarations = new Map<string, string>();
+    for (const tool of tools) {
+      if (typeof tool !== "string") {
+        fail(
+          `First-party tool declaration: ${rel} — entries must be scalar package requests`,
+        );
+        continue;
+      }
+      const match = PACKAGE_RE.exec(tool);
+      if (!match) {
+        fail(
+          `First-party tool declaration: ${rel} — '${tool}' must be an exact specify:*@<semver> package request without prerelease metadata`,
+        );
+        continue;
+      }
+      declarations.set(match[1], tool);
+    }
     declarationsByCapability.set(
       expected.capability,
-      new Map(
-        tools
-          .filter((tool) => tool && typeof tool === "object")
-          .map((
-            tool,
-          ) => [String((tool as ToolDeclaration).name), tool as ToolDeclaration]),
-      ),
+      declarations,
     );
   }
 
   for (const expected of EXPECTED_FIRST_PARTY_TOOLS) {
     const rel = `capabilities/${expected.capability}/tools.yaml`;
-    const tool = declarationsByCapability
+    const packageRequest = declarationsByCapability
       .get(expected.capability)
       ?.get(expected.name);
-    if (!tool) {
+    if (!packageRequest) {
       fail(
         `First-party tool declaration: ${rel} — missing tool '${expected.name}'`,
       );
       continue;
     }
 
-    if (tool.version !== "0.2.0") {
+    if (packageRequest !== expected.package) {
       fail(
-        `First-party tool declaration: ${rel} — '${expected.name}' must use release version 0.2.0`,
-      );
-    }
-    if (tool.source !== expected.source) {
-      fail(
-        `First-party tool declaration: ${rel} — '${expected.name}' source must be '${expected.source}'`,
-      );
-    }
-    if (typeof tool.sha256 !== "string" || !SHA256_RE.test(tool.sha256)) {
-      fail(
-        `First-party tool declaration: ${rel} — '${expected.name}' must include a lowercase SHA-256 pin`,
-      );
-    }
-    if (!sameStringArray(tool.permissions?.read, expected.read)) {
-      fail(
-        `First-party tool declaration: ${rel} — '${expected.name}' read permissions must be ${
-          JSON.stringify(expected.read)
-        }`,
-      );
-    }
-    if (!sameStringArray(tool.permissions?.write, expected.write)) {
-      fail(
-        `First-party tool declaration: ${rel} — '${expected.name}' write permissions must be ${
-          JSON.stringify(expected.write)
-        }`,
+        `First-party tool declaration: ${rel} — '${expected.name}' package must be '${expected.package}'`,
       );
     }
   }

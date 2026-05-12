@@ -1,18 +1,5 @@
 # Capability-scope tool declarations for the Vectis capability.
 # Schema: ../../../specify-cli/schemas/tool.schema.json
 #
-# IMPORTANT: the `sha256` value below is a placeholder. After the next
-# specify-cli release that ships vectis.wasm, recompute it from the
-# release artifact (e.g. `shasum -a 256 vectis.wasm`) and pin the real
-# digest here in the same PR that lands the consumer migration.
 tools:
-  - name: vectis
-    version: 0.2.0
-    source: "https://github.com/augentic/specify-cli/releases/download/v0.2.0/vectis.wasm"
-    sha256: "0000000000000000000000000000000000000000000000000000000000000000"
-    permissions:
-      read:
-        - "$PROJECT_DIR"
-        - "$CAPABILITY_DIR"
-      write:
-        - "$PROJECT_DIR"
+  - "specify:vectis@0.3.0"

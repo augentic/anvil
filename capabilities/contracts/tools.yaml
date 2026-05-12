@@ -2,11 +2,4 @@
 # Schema: ../../../specify-cli/schemas/tool.schema.json
 #
 tools:
-  - name: contract
-    version: 0.2.0
-    source: "https://github.com/augentic/specify-cli/releases/download/v0.2.0/contract.wasm"
-    sha256: "6f32f636b7e1872f23a76b8adcccb8855a882bf83691151f7392a16df294a805"
-    permissions:
-      read:
-        - "$PROJECT_DIR/contracts"
-      write: []
+  - "specify:contract@0.3.0"

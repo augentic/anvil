@@ -66,11 +66,11 @@ This tool is the baseline-validation gate only. It does not compare producer con
 
 ## Distribution
 
-The contracts capability ships `capabilities/contracts/tools.yaml`, a sidecar declaration next to `capability.yaml`. That sidecar pins the `contract` tool version, `source`, SHA-256 digest, and read-only permission on `$PROJECT_DIR/contracts`.
+The contracts capability ships `capabilities/contracts/tools.yaml`, a sidecar declaration next to `capability.yaml`. That sidecar declares the exact `specify:contract@0.3.0` package request; the CLI derives the tool name and applies the embedded read-only permission on `$PROJECT_DIR/contracts`.
 
-Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify tool run contract` resolves and caches the WASI component, verifies its SHA-256 pin, applies the declared filesystem preopen, and runs it through the embedded WASI host.
+Operators install `specify`; no separate contract-validator binary is required for the canonical path. `specify tool run contract` resolves and caches the WASI component through wasm-pkg package metadata, applies the filesystem preopen, and runs it through the embedded WASI host.
 
-During local development, project authors may override the capability declaration with a project-scope `file://` source that points at a locally built `contract.wasm`. The first-party capability declaration uses the released `https://` source and SHA-256 pin.
+During local development, project authors may override the capability declaration with a project-scope object declaration whose `file://` source points at a locally built `contract.wasm`.
 
 ## See Also
 
