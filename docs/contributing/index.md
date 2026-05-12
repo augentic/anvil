@@ -41,7 +41,7 @@ The two repos are independently versioned and released. Skills invoke the CLI as
 
 ## What to read next
 
-- [Anatomy of a Skill](skill-anatomy.md) -- how skills are structured and how to write one
+- [Skill Authoring Standards](../standards/skill-authoring.md) -- the enforced rules for every `SKILL.md` (frontmatter shape, body caps, references discipline) plus the long-form rationale
 - [Anatomy of a Capability](capability-anatomy.md) -- how capabilities declare brief pipelines
 - [Plugin Development](plugin-development.md) -- the dev/prod workflow, marketplace manifest, and testing
 - [CLI Architecture](cli-architecture.md) -- crate graph, dispatch pattern, and JSON contract

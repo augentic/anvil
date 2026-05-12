@@ -125,8 +125,7 @@
 # Contributing
 
 - [Overview](contributing/index.md)
-- [Skill authoring](contributing/skill-authoring.md)
-- [Anatomy of a skill](contributing/skill-anatomy.md)
+- [Skill authoring standards](standards/skill-authoring.md)
 - [Anatomy of a capability](contributing/capability-anatomy.md)
 - [Plugin development](contributing/plugin-development.md)
 - [CLI architecture](contributing/cli-architecture.md)

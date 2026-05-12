@@ -68,7 +68,7 @@ The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolut
 
 ### Skill authoring
 
-Long-form rationale (discovery model, why metadata is precious, examples of good/bad descriptions, progressive-disclosure pattern, forbidden-frontmatter list) lives at [docs/contributing/skill-authoring.md](docs/contributing/skill-authoring.md); the normative checklist is [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). This section captures the rules `make checks` enforces.
+The normative checklist is [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (which also carries the long-form rationale under `## Rationale`: discovery model, why metadata is precious, examples of good/bad descriptions, progressive-disclosure pattern, forbidden-frontmatter list) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). This section captures the rules `make checks` enforces.
 
 This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. Migration prose ("Pre-RFC-N this used to be …", "Phase 3.7 renamed it …", "the v1.x verb was …") belongs in [docs/explanation/decision-log.md](docs/explanation/decision-log.md), not in skills.
 

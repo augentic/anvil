@@ -217,7 +217,7 @@ In this repository:
 
 ## Skill authoring conventions
 
-Every `SKILL.md` in this repository follows the same house style. The long-form rationale lives in [docs/contributing/skill-authoring.md](../../docs/contributing/skill-authoring.md); the Anthropic upstream specs are the [Agent Skills overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) and the [best-practices guide](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices).
+Every `SKILL.md` in this repository follows the same house style. The long-form rationale lives under `## Rationale` in [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md); the Anthropic upstream specs are the [Agent Skills overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) and the [best-practices guide](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices).
 
 ### Frontmatter shape
 
@@ -297,7 +297,7 @@ See `scripts/checks.ts` and `.cursor/schemas/skill.schema.json` for the exact ru
 
 ## For Contributors
 
-- All skills follow the shared `SKILL.md` structure — see [docs/contributing/skill-authoring.md](../../docs/contributing/skill-authoring.md) for the full rationale.
+- All skills follow the shared `SKILL.md` structure — see [docs/standards/skill-authoring.md](../../docs/standards/skill-authoring.md) for the full rationale.
 - Changes to generation behavior belong in the relevant skill or reference
 - Keep the repo aligned with the Specify-first operating model
 

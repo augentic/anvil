@@ -208,8 +208,6 @@ export async function checkSkillNumericCaps(): Promise<void> {
   const FILES: Array<[string, boolean, boolean]> = [
     [".cursor/schemas/skill.schema.json", true, false],
     [".cursor/rules/project.mdc", true, true],
-    ["docs/contributing/skill-authoring.md", true, true],
-    ["docs/contributing/skill-anatomy.md", true, true],
     ["scripts/checks/skill_frontmatter.ts", true, false],
     ["scripts/checks/skill_body.ts", false, true],
   ];
