@@ -1,98 +1,48 @@
-# Per-predicate per-file violation baselines snapshotted by Skills-1.
+# Per-predicate per-file violation baselines.
 #
 # Each `[file."<rel-path>"]` table caps the number of violations of each
 # predicate for that file. A live count strictly greater than the
 # baseline fails CI; missing entries default to 0 (new files start
-# clean). Reductions are encouraged (Skills-2 drives every entry to 0);
-# raises require justification in the PR.
+# clean). Reductions are encouraged; raises require justification in
+# the PR.
 #
-# Predicate definitions live in `scripts/checks/skill_discipline.ts`.
+# Predicate definitions live under `scripts/checks/`.
 # Loaded by `scripts/checks/_shared.ts::standardsAllowlist`.
 
-# CL-S03 drove every `noRfcCitationsInSkillBody` baseline to 0:
-# - inline body citations were relocated to a trailing `## References`
-#   block (markdown link form, stripped by the predicate),
-# - migration prose was moved to `docs/explanation/decision-log.md`,
-# - decorative citations inside fenced specialist prompts were dropped.
-# New SKILL.md violations now fail CI without grandfathering.
-
-# `sectionLineCount` baselines (S2). Each entry caps the number of H2
-# sections that may exceed the 60-line per-section ceiling enforced by
-# `checkSectionLineCount`. The baseline counts whole oversized
-# *sections*, not lines, so reducing a section under 60 (or moving its
-# depth into `references/`) is the way to drop the entry. New SKILL.md
-# files start at 0; grandfathered entries below carry today's audit
-# count and are expected to ratchet down with each touch.
-
-# `bodyLineCount` baselines (Phase 9). Each entry caps the total body
-# line count for a SKILL.md when the live count exceeds the global
-# `MAX_BODY_LINES` (250) enforced by `checkBodyLineCount`. Entries
-# below are grandfathered after the cap tightened from 400 → 250 and
-# are expected to ratchet down with each touch; the baseline is the
-# exact observed line count so any further growth (or the next
-# reduction) becomes immediately visible. New SKILL.md files start at
-# 0.
-
-[file."plugins/change/skills/plan/SKILL.md"]
-sectionLineCount = 1
-bodyLineCount = 262
-
 [file."plugins/spec/skills/init/SKILL.md"]
-sectionLineCount = 1
 argumentHintCoversBodyArguments = 4
 
-[file."plugins/spec/skills/define/SKILL.md"]
-sectionLineCount = 1
-
 [file."plugins/spec/skills/build/SKILL.md"]
-sectionLineCount = 1
 argumentHintCoversBodyArguments = 1
 
-[file."plugins/vectis/skills/image-layout-inferer/SKILL.md"]
-sectionLineCount = 1
-
-[file."plugins/vectis/skills/ios-writer/SKILL.md"]
-sectionLineCount = 1
-bodyLineCount = 385
-
-[file."plugins/vectis/skills/core-writer/SKILL.md"]
-sectionLineCount = 1
-bodyLineCount = 392
-
 [file."plugins/vectis/skills/android-writer/SKILL.md"]
-sectionLineCount = 1
-bodyLineCount = 394
 argumentHintCoversBodyArguments = 1
 
 [file."plugins/vectis/skills/template-updater/SKILL.md"]
 argumentHintCoversBodyArguments = 1
 
-[file."plugins/vectis/skills/ios-reviewer/SKILL.md"]
-sectionLineCount = 1
-bodyLineCount = 387
-
-[file."plugins/vectis/skills/test-writer/SKILL.md"]
-sectionLineCount = 1
-bodyLineCount = 336
-
-[file."plugins/vectis/skills/core-reviewer/SKILL.md"]
-sectionLineCount = 1
-bodyLineCount = 372
-
-[file."plugins/vectis/skills/android-reviewer/SKILL.md"]
-sectionLineCount = 1
-bodyLineCount = 384
-
-[file."plugins/omnia/skills/test-writer/SKILL.md"]
-sectionLineCount = 1
-
-[file."plugins/omnia/skills/guest-writer/SKILL.md"]
-sectionLineCount = 1
-
 [file."plugins/omnia/skills/crate-writer/SKILL.md"]
-sectionLineCount = 1
-bodyLineCount = 371
 argumentHintCoversBodyArguments = 1
 
 [file."plugins/contract/skills/json-schema/SKILL.md"]
 argumentHintCoversBodyArguments = 1
+
+# `sectionLineCount` baselines. Each entry caps the number of H2
+# sections that may exceed the 45-line per-section ceiling. Grandfathered
+# below the line-count cap tightened from 60 → 45 in F7. New SKILL.md
+# files start at 0; entries here ratchet down with each touch.
+
+[file."plugins/spec/skills/define/SKILL.md"]
+sectionLineCount = 1
+
+[file."plugins/spec/skills/merge/SKILL.md"]
+sectionLineCount = 1
+
+[file."plugins/spec/skills/extract/SKILL.md"]
+sectionLineCount = 1
+
+[file."plugins/rt/skills/wiretapper/SKILL.md"]
+sectionLineCount = 1
+
+[file."plugins/vectis/skills/test-writer/SKILL.md"]
+argumentHintCoversBodyArguments = 3

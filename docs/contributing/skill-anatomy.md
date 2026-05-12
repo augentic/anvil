@@ -166,7 +166,7 @@ The Cursor agent reads these directives and loads the referenced skill when it r
 
 2. **Write the frontmatter.** The `name` field must be globally unique, plugin-qualified (start with the containing plugin's directory name + `-`, with `specify-` for the `spec/` plugin), and lowercase-kebab-case. Include a `description` (10–512 characters) that names both *what* the skill does and *when* to use it.
 
-3. **Write the body.** Lead with a `## Critical Path` 5–7 entry block (numbered/bullet items, or `### N. Title` H3 step headings) when the body will exceed 150 lines. Keep total body length under 250 lines; factor longer content into sibling files (`rules.md`, `team-protocol.md`, `categories.md`, `template.md`, etc.) linked one level deep. Generator skills should define an authority hierarchy in a sibling; workflow skills should document the phase outcome contract via the shared reference at `plugins/spec/references/phase-outcome-contract.md`.
+3. **Write the body.** Lead with a `## Critical Path` 5–7 entry block (numbered/bullet items, or `### N. Title` H3 step headings) when the body will exceed 150 lines. Keep total body length under 200 lines and per-H2 section under 45 lines; factor longer content into sibling files (`rules.md`, `team-protocol.md`, `references/runbook.md`, `categories.md`, `template.md`, etc.) linked one level deep. Generator skills should define an authority hierarchy in a sibling; workflow skills should document the phase outcome contract via the shared reference at `plugins/spec/references/phase-outcome-contract.md`.
 
 4. **Add references** if needed. Place supporting documents in a `references/` subdirectory or alongside SKILL.md as `<topic>.md`, and link to them from the skill body using relative paths like `./rules.md` or `references/guardrails.md`.
 
@@ -175,7 +175,7 @@ The Cursor agent reads these directives and loads the referenced skill when it r
 6. **Run `make checks`** to verify:
    - Frontmatter validates against `.cursor/schemas/skill.schema.json`
    - `name` is globally unique, plugin-qualified, and matches `^[a-z][a-z0-9-]*$`
-   - SKILL.md body (post-frontmatter) is ≤250 lines (per-file `bodyLineCount` baselines in `scripts/standards-allowlist.toml` grandfather oversized files)
+   - SKILL.md body (post-frontmatter) is ≤200 lines and per-H2 section ≤45 lines (per-file `bodyLineCount` / `sectionLineCount` baselines in `scripts/standards-allowlist.toml` grandfather oversized files)
    - SKILL.md bodies with ≥150 post-frontmatter lines include `## Critical Path` with 5-7 bullets, numbered items, or `### N. Title` H3 step headings
    - `description` is ≤512 characters
    - `argument-hint` does not contain `?`, `--`, or `|`

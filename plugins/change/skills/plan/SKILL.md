@@ -4,6 +4,10 @@ description: "Author `plan.yaml` for a change on the change surface via the plan
 argument-hint: <change-name>
 ---
 
+# Plan skill
+
+> **Author `plan.yaml` by running the capability's planning brief pipeline.** `/change:plan` is the Layer 3 authoring counterpart to `/change:execute`: one *writes* the plan, the other *runs* it. The skill never writes `plan.yaml` directly; every write goes through `specify change plan {create, add, amend}`.
+
 ## Critical Path
 
 1. **Parse and validate inputs** — validate `<change-name>` as kebab-case. Require at least one of `from`, `against`, `source`, or a populated `change.md:inputs`. Refuse if `plan.yaml` already exists (unless `extend`).
@@ -16,203 +20,38 @@ argument-hint: <change-name>
 4. **Validate** — `specify change plan validate`. Non-zero exit on any `Error`-level finding. Never skip this step.
 5. **Exit with hand-off summary** — point the operator at `specify change plan status` and `/change:execute loop`.
 
-**Orchestration mode (`orchestrate`).** When `orchestrate` is set, after step 5 above the skill continues into the cross-repo umbrella sequence (brief → registry → plan → execute → push/PR handoff → finalize after operator merge). The plan-authoring half of orchestration delegates to the same default mode documented above. See [orchestration.md](orchestration.md) for the full sequence, [shapes.md](shapes.md) for shape inference / validation, and [re-entry.md](re-entry.md) for the idempotent re-entry algorithm.
+## Orientation
 
-# Plan skill
+`/change:plan` runs a five-step loop driven by the active capability's `capability.yaml`: parse → scaffold → brief-pipeline → validate → hand-off. Every shell-out targets the Layer 1 `specify` CLI; the skill writes nothing to `plan.yaml` directly. A clean `specify change plan validate` is the contract this skill owes its caller.
 
-Author `plan.yaml` for a change by running the planning brief pipeline declared in the active capability's `capability.yaml`. `/change:plan` is the Layer 3 authoring counterpart to `/change:execute`: one *writes* the plan, the other *runs* it.
+The brief pipeline is two-step for single-repo capabilities (discovery → propose) and four-step for multi-repo (discovery → sync-peers → propose → assignment). Multi-repo behaviour fires whenever `registry.yaml` declares more than one project; assignment infers `project` per entry and may run a registry-proposal sub-step when a row names a project that does not exist yet.
 
-> **Status.** Layer 3 is fully landed: discovery (step 3(a)) routes through `/spec:analyze`; when the registry declares **more than one project**, a **sync-peers** step (3(b)) runs `specify workspace sync` and authors `workspace.md` before propose (step 3(c)); after propose, an **assignment** step (3(d)) infers and writes `project` per entry for multi-repo routing.
+**Orchestration mode (`orchestrate`).** When `orchestrate` is set, after the five-step loop the skill continues into the cross-repo umbrella sequence (brief → registry → plan → execute → push/PR handoff → finalize after operator merge). The plan-authoring half of orchestration delegates to the same default mode documented above. See [orchestration.md](orchestration.md) for the full sequence, [shapes.md](shapes.md) for shape inference / validation, and [re-entry.md](re-entry.md) for the idempotent re-entry algorithm.
 
-## Overview
+Modes: `extend` (append-only; skip step 2 and reuse discovery), `dry-run` (read-only preview; suppress every write under `.specify/`), and `orchestrate` (above) compose with the default loop. Layer 3 is fully landed today.
 
-Specify at authoring time is a three-layer stack — mirror of the execution stack documented in [`../execute/SKILL.md`](../execute/SKILL.md):
+See [`references/runbook.md`](references/runbook.md) for the operational detail (invocation grammar, input kinds, kind defaults, the verbatim five-step loop body, single-writer invariant, working-directory layout, mode deltas, non-goals, and state-mutation surface).
 
-1. **Plan CLI** (`specify change plan {create, add, amend, next, status, doctor, lock, transition, validate, archive}`) — the library-backed verbs that read and write `plan.yaml`. The shared single-writer rules live in [plan-single-writer.md](../../references/plan-single-writer.md).
-2. **Authoring skill** (`/change:plan`, this one) — the Layer 3 driver that runs the planning brief pipeline and shells out to `specify change plan add` for each accepted slice.
-3. **Driver skill** (`/change:execute`) — the Layer 2 automation that consumes the plan this skill authored.
+## Reference Documentation
 
-The on-disk contracts the authoring skill depends on are:
-
-| File / directory | Owner | Role |
-|---|---|---|
-| `plan.yaml` | library (`Plan::{create, amend, transition, archive}`) | Ordered change list with per-entry status; write boundaries are in [plan-single-writer.md](../../references/plan-single-writer.md). |
-| `.specify/plans/<name>/` | skill (planning briefs) | Working directory for authoring artefacts — `discovery.md`, optional `workspace.md` (multi-repo), `proposal.md`, `analyze/<key>/metadata.json` (legacy-code). Swept by `specify change plan archive` alongside the plan itself. |
-| `briefs/<capability>/{discovery,propose}.md` | skill (this directory) | Per-capability planning briefs the skill renders for steps 3(a) and 3(c). Bundled here under `briefs/omnia/` and `briefs/vectis/`; further capabilities ship their planning brief variant alongside. The capability manifest schema rejects a `pipeline.plan` block — planning is orchestration, not capability-owned slice work, so the briefs ride with this skill rather than the capability manifest. |
-
-## Invocation
-
-```text
-/change:plan <change-name> \
-    [from <path>...] [against <path>] [source <key>=<path-or-url>...] \
-    [focus <area>] [extend] [dry-run] \
-    [orchestrate] [shape migrate-legacy|new-feature|update-existing]
-```
-
-Positional grammar, kind suffixes, and the input-sufficiency rule live in [plan-invocation.md](../../references/plan-invocation.md).
-
-## Input kinds (normative)
-
-Every input eventually analysed by the plan flow — whether slash-supplied (`from` / `against` / `source`) or brief-supplied (`change.md:inputs[].kind`) — is classified by a **closed kind enum**:
-
-| kind            | Purpose                                                                                                 |
-| --------------- | ------------------------------------------------------------------------------------------------------- |
-| `legacy-code`   | Source code to be inferred into capability summaries at plan time and extracted per-slice at define time. |
-| `documentation` | Prose, PDFs, runbooks, API specs — parsed for capability summaries, constraints, and open questions.    |
-
-The enum is closed: any other value is a hard error at the analyse phase (see `/spec:analyze`). This enum is frozen — NEVER extend it from this skill. This keeps the plan-time discovery contract auditable — every line in `discovery.md` is traceable to the kind-branch that produced it.
-
-## Kind defaults for positional inputs
-
-When an input is supplied via a positional input, its kind is determined as follows. The suffix syntax applies to `source`, `from`, and `against` identically, though in practice only `source` tends to carry explicit suffixes.
-
-| Positional input            | Default kind    | Explicit override                |
-| ------------------- | --------------- | -------------------------------- |
-| `source <k>=<p>`  | `legacy-code`   | `source <k>=<p>:<kind>`        |
-| `from <p>`        | `documentation` | `from <p>:<kind>`              |
-| `against <p>`     | `legacy-code`   | `against <p>:<kind>`           |
-
-Inputs supplied via `change.md:inputs` carry their `kind:` explicitly in the frontmatter; no default is applied.
-
-An explicit `:<kind>` suffix whose value is not in the closed enum is a hard exit before the core loop begins (same diagnostic as `/spec:analyze`'s unknown-kind error). The suffix grammar is `<value>[:<kind>]`, where `<kind>` is one of `legacy-code` or `documentation` (kebab-case, case-sensitive).
-
-## Core loop (five steps)
-
-Follow these steps in order on every invocation. Each step is normative; every shell-out is to the Layer 1 `specify` CLI; this skill writes nothing to `plan.yaml` directly.
-
-```text
-1. Parse inputs; resolve source paths; assert plan.yaml absent
-   (or extend).
-
-   - Validate <change-name> as kebab-case. Reject with a hard
-     exit on failure.
-   - Require at least one of from, against, source, or a
-     populated change-brief `inputs` list. Discover the brief's
-     inputs via `specify change show --format json`
-     (exit 0 and `"brief": null` ⇒ brief absent ⇒ no brief inputs;
-     `"frontmatter.inputs": []` ⇒ present but empty ⇒ no brief
-    inputs). A bare /change:plan <name> with neither slash inputs nor
-     populated change-brief inputs is still a hard exit.
-   - If plan.yaml exists and extend was NOT supplied,
-     refuse with a diagnostic pointing at `specify change plan archive`.
-     (There is no force positional. Overwriting an existing plan would drop
-     audit history.)
-   - If extend was supplied but plan.yaml does NOT
-     exist, also refuse — there is nothing to extend.
-
-2. Scaffold the plan.
-
-     specify change plan create <change-name> \
-         [--source <key>=<path-or-url> ...]
-
-   Writes an empty plan.yaml with just the change
-   `name` and the supplied `source` entries in the top-level
-   `sources` map. `changes: []` until step 3(c) populates it.
-
-   Skipped entirely when extend is set.
-
-3. Run the planning brief pipeline.
-
-   The briefs are bundled with this skill under
-   `briefs/<capability>/`. Resolve the active capability via:
-     specify capability resolve --format json
-
-   Then load `briefs/<capability>/discovery.md` and
-   `briefs/<capability>/propose.md` from this skill directory and
-   run each in order:
-     a. discovery   — see discovery.md (greenfield registry bootstrap also).
-     b. sync-peers  — see sync-peers.md (multi-repo only).
-     c. propose     — see propose.md.
-     d. assignment  — see assignment.md (multi-repo only; includes
-                      the registry-proposal sub-step for unresolved
-                      project names).
-
-4. Final validation gate.
-
-     specify change plan validate
-
-   Runs the Layer 1 validator against the authored plan. Report
-   every `ValidationResult` verbatim. Non-zero exit on any result
-   with `level == Error`. A clean validate is the contract the
-   skill owes its caller.
-
-5. Exit with a hand-off summary.
-
-   Point the human at:
-     - `specify change plan status` — review the authored plan.
-     - `/change:execute loop` — start executing it (Layer 2).
-
-   Non-zero exit on any earlier step's hard failure; zero exit on
-   a clean validate.
-```
-
-## Single-writer invariant
-
-Every plan write this skill performs follows [plan-single-writer.md](../../references/plan-single-writer.md): create the shell through `specify change plan create`, add accepted entries through `specify change plan add`, amend only assignment fields through `specify change plan amend`, and never call `specify change plan transition` from the authoring step.
-
-## Working directory (`.specify/plans/<name>/`)
-
-Authoring artefacts live under `.specify/plans/<change-name>/`, mirroring the change name recorded in `plan.yaml`:
-
-```text
-.specify/
-├── plan.yaml                       # the authored plan
-└── plans/
-    └── <change-name>/
-        ├── discovery.md            # from the discovery brief (step 3a)
-        ├── workspace.md            # from sync-peers (step 3b; multi-repo only)
-        ├── proposal.md             # from the propose brief (step 3c) + assignment table (step 3d)
-        └── analyze/                # `/spec:analyze` sidecars (legacy-code): `<source-key>/metadata.json`
-```
-
-The working directory is created lazily — by the discovery brief itself when it writes `discovery.md`, not by the skill scaffold. Step 2 (`specify change plan create`) does not create it.
-
-`.specify/plans/<change-name>/analyze/<key>/` is the **tier-1** legacy-source clone — read-only, ephemeral, and bound to this change. The **tier-2** registered project clones materialised by step 3(b) live separately under `.specify/workspace/<project>/`, are read-write during execution, and outlive any single change. See [Workspace Tiers](../../../../docs/explanation/workspace-tiers.md) for the full contrast.
-
-On archive, `specify change plan archive` sweeps this directory alongside `plan.yaml` into `.specify/archive/plans/<name>-<YYYYMMDD>/`, preserving the authoring trail with the plan it produced.
-
-## Modes
-
-| Mode | Behaviour |
+| Reference | Purpose |
 |---|---|
-| Default (no positional) | Run the five-step loop unchanged. |
-| `extend` | Append to an existing plan; skip step 2; reuse discovery; collisions silently skipped. |
-| `dry-run` | Read-only preview; suppress every write under `.specify/`. |
-| `orchestrate` | Default authoring loop, then the cross-repo umbrella sequence ([orchestration.md](orchestration.md), [shapes.md](shapes.md), [re-entry.md](re-entry.md)). |
-
-Per-mode deltas, dry-run write prohibitions, and `extend` collision rules live in [plan-modes.md](../../references/plan-modes.md).
-
-## Non-goals
-
-- **Execute the plan in default mode.** Never. Execution is `/change:execute`'s concern (Layer 2). `/change:plan` exits with a hand-off summary that points the operator at `/change:execute loop`; `orchestrate` composes that separate skill after authoring.
-- **Modify existing plan entries.** Never. `extend` is append-only; pre-existing entries are left untouched. Editing a pending entry mid-authoring is done via `specify change plan amend` by the human, not by this skill.
-- **Skip `specify change plan validate`.** Never. Step 4 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero.
-- **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/change:execute`.** Never. `/change:plan` only invokes the planning briefs bundled with this skill under `briefs/<capability>/`, plus the `specify change plan` CLI for scaffolding, entry creation, and validation.
-- **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/change:execute`; authoring runs outside that lock.
-- **Write `plan.yaml` directly.** Never. Every write follows [plan-single-writer.md](../../references/plan-single-writer.md).
-- **Clone git URLs from this skill.** Never for **discovery** inputs: `source` git URLs are passed through to `/spec:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync` (Layer 1 CLI), invoked only in the sync-peers step when `len(registry.projects) > 1`.
-- **Merge PRs.** Never. `specify workspace push` opens or updates PRs; the operator merges them through the forge UI or a hand-run `gh pr merge`; `specify change finalize` only verifies that remote state.
-- **Author propose brief bodies.** Never. The propose brief body is owned by the capability; the skill only drives the accept / edit / reject loop against whatever the brief emits.
-- **Auto-repair a failing `specify change plan validate`.** Never. Step 4's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify change plan amend` / `specify change plan transition skipped` fix, never an in-skill edit.
-
-The state the skill mutates:
-
-1. `plan.yaml` through the CLI verbs allowed by [plan-single-writer.md](../../references/plan-single-writer.md).
-2. `.specify/plans/<change-name>/discovery.md` written by the discovery brief (step 3a).
-3. `.specify/plans/<change-name>/proposal.md` written by the propose brief (step 3c).
-4. `.specify/plans/<change-name>/workspace.md` written by step 3(b) when the registry declares more than one project.
-
-No other on-disk state is written by `/change:plan` itself.
+| [`references/runbook.md`](references/runbook.md) | Invocation grammar, input kinds, kind defaults, verbatim five-step loop, single-writer invariant, working-directory layout, mode deltas, non-goals, state-mutation surface |
+| [`discovery.md`](discovery.md) | Discovery brief (step 3a) — `/spec:analyze` integration and greenfield registry bootstrap |
+| [`sync-peers.md`](sync-peers.md) | Sync-peers brief (step 3b, multi-repo only) — `specify workspace sync` + `workspace.md` authoring |
+| [`propose.md`](propose.md) | Propose brief (step 3c) — accept/edit/reject loop, `specify change plan add` |
+| [`assignment.md`](assignment.md) | Assignment brief (step 3d, multi-repo only) — `--project` inference and registry-proposal sub-step |
+| [`orchestration.md`](orchestration.md) | `orchestrate` cross-repo umbrella sequence |
+| [`shapes.md`](shapes.md) | Shape inference / validation for `migrate-legacy` / `new-feature` / `update-existing` |
+| [`re-entry.md`](re-entry.md) | Idempotent re-entry algorithm for `orchestrate` |
+| [`briefs/`](briefs/) | Bundled per-capability planning briefs (`omnia/`, `vectis/`) |
+| [`fixtures/`](fixtures/) | Per-flow regression fixtures (discovery, propose, multi-project, registry-proposal, dry-run, plan-layer2, shape variants) |
+| [`../../references/plan-single-writer.md`](../../references/plan-single-writer.md) | Shared single-writer contract for `plan.yaml` writes |
+| [`../../references/plan-invocation.md`](../../references/plan-invocation.md) | Positional grammar, kind suffix syntax, input-sufficiency rule |
+| [`../../references/plan-modes.md`](../../references/plan-modes.md) | Per-mode deltas, dry-run prohibitions, `extend` collision rules |
 
 ## Guardrails
 
-- Single-writer for `plan.yaml`: see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) and [plan-single-writer.md](../../references/plan-single-writer.md) for the full contract.
-- Never skip `specify change plan validate` (step 4). A plan that ships to `/change:execute` without a clean validate is a regression.
-- Validate `<change-name>` before any filesystem read or CLI shell-out. A bad name should never leave a half-written plan behind.
-- For `dry-run` specifically: the skill MUST NOT shell out to `specify change plan create`, `specify change plan add`, `specify change plan amend`, or `specify change plan transition`; MUST NOT create `.specify/plans/<name>/`; MUST NOT write `discovery.md` or any other file under `.specify/`. The discovery brief's input-reading side still runs so the stdout inventory preview is real.
-- For `extend` specifically: step 2 is skipped in full; step 3(c) only appends entries via `specify change plan add` — it never calls `specify change plan transition` on existing entries. The only `specify change plan amend` call is step 3(d) Assignment (`--project`), which tags newly created entries, not pre-existing ones. Draft slices whose names collide with existing plan entries are skipped with decision `skip-existing` in `proposal.md`.
-- Treat a missing `briefs/<capability>/discovery.md` or `briefs/<capability>/propose.md` for the active capability as a hard failure: print the resolved capability name and the expected brief paths, then exit non-zero. Do not speculate about brief ordering or fall back to a different capability's briefs.
-
-## References
-
-- [RFC-13: Extensibility](../../../../rfcs/archive/rfc-13-extensibility.md) — pipelines may not declare a `pipeline.plan` block; planning briefs ship with this skill.
+- **Single-writer for `plan.yaml`.** Every write goes through `specify change plan {create, add, amend}`; never edit the file by hand. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) and [`../../references/plan-single-writer.md`](../../references/plan-single-writer.md).
+- **Never skip `specify change plan validate` (step 4).** A plan that ships to `/change:execute` without a clean validate is a regression. Validate `<change-name>` as kebab-case before any filesystem read or CLI shell-out.
+- **`dry-run` MUST NOT write under `.specify/`** (no `create` / `add` / `amend` / `transition`, no `discovery.md`). **`extend` skips step 2 entirely** and only `amend --project` may touch newly added entries — never pre-existing ones. A missing `briefs/<capability>/{discovery,propose}.md` for the active capability is a hard failure: print the resolved capability and expected paths, then exit non-zero.

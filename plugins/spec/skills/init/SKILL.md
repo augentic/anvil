@@ -4,6 +4,10 @@ description: Initialize Specify in a project. Bootstraps the `specify` CLI when 
 argument-hint: <capability>
 ---
 
+# Specify Init
+
+> **The one Specify skill that may install the CLI.** `/spec:init` bootstraps `specify` when missing, decides regular vs hub topology, then delegates every filesystem write to `specify init`. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.
+
 ## Critical Path
 
 1. **Verify the CLI** — run `specify --version`; install with `cargo install --git https://github.com/augentic/specify-cli` only after explicit user confirmation.
@@ -14,197 +18,31 @@ argument-hint: <capability>
 6. **Offer baseline extraction** — for regular projects with code indicators, ask whether to create `initial-baseline`; skip this entirely for hubs.
 7. **Summarize the correct shape** — report regular vs hub outputs, next actions, and any baseline-extraction handoff.
 
-## CLI bootstrap
+## Orientation
 
-`/spec:init` is the one Specify skill that may install the CLI before continuing. Other CLI-dependent skills still stop when `specify` is missing.
+`/spec:init` selects between two on-disk shapes per run. A **regular project** carries code and `.specify/` together; the CLI scaffolds `slices/`, `specs/`, `archive/`, `.cache/`, and a `project.yaml` whose `capability:` field drives every downstream pipeline. A **platform hub** carries only platform state (`registry.yaml`, later `change.md` / `plan.yaml` / `workspace/`); `project.yaml` records `hub: true` with no `capability:`, and phase pipelines are disabled on the hub itself.
 
-## Arguments
+Capability vs `--hub` is mutually exclusive: `specify init` with neither, or both, exits with `init-requires-capability-or-hub`. A regular project must declare a capability; a hub must declare `--hub` and never carries a `capability:`.
 
-```text
-$CAPABILITY     = $ARGUMENTS[0]
-```
+The CLI owns every filesystem write — `.specify/`, `project.yaml`, the resolved capability cache, root `AGENTS.md`, and `.specify/context.lock`. When `AGENTS.md` already exists, the CLI preserves it byte-for-byte. The skill never hand-rolls scaffold files; on non-zero exit it surfaces the CLI error and stops.
 
-I'll ensure the `specify` CLI is available, decide whether this is a regular single-project init or a registry-only platform hub, then invoke `specify init <capability>` (regular) or `specify init --hub` (hub) to install a starter `project.yaml` and generated `AGENTS.md` context.
+After a regular init, the skill optionally detects existing code indicators (`Cargo.toml`, `package.json`, `src/`, etc.) and offers to create an `initial-baseline` slice via `specify slice create`. Hub init skips that step entirely — a hub never carries code. The three render templates (greenfield / brownfield / hub) live in [`../../references/init-output-templates.md`](../../references/init-output-templates.md).
 
----
+See [`references/init-runbook.md`](references/init-runbook.md) for the operational detail (CLI bootstrap rules, full seven-step procedure with verbatim shell snippets, regular and hub invocation bodies, output templates, and the "what this skill does NOT do" matrix).
 
-**Input**: None required. Optionally a capability identifier (a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI) and project context. The capability argument is irrelevant for hub mode and must be omitted there.
+## Reference Documentation
 
-**Capability vs `--hub` is mutually exclusive.** The CLI rejects both pathological invocations with the same diagnostic:
-
-- `specify init` (no positional, no `--hub`) → exits with `init-requires-capability-or-hub`.
-- `specify init <capability> --hub` (both supplied) → exits with `init-requires-capability-or-hub`.
-
-A regular project must declare a capability; a hub must declare `--hub` and never carries a `capability:`.
-
-**Steps**
-
-1. **Ensure the CLI is available**
-
-   Run:
-
-   ```bash
-   specify --version
-   ```
-
-   If the command succeeds, continue to step 2.
-
-   If `specify` is not on PATH, tell the user:
-
-   > "The `specify` CLI is required before I can initialize this project. I can install it now with `cargo install --git https://github.com/augentic/specify-cli`, then verify `specify --version` before continuing."
-
-   Use the **AskQuestion tool** to confirm whether they want to install the CLI now.
-
-   - If they decline, stop and tell them to install the CLI manually, then re-run `/spec:init`.
-   - If they confirm, run:
-
-     ```bash
-     cargo install --git https://github.com/augentic/specify-cli
-     ```
-
-   After installation, run `specify --version` again.
-
-   - If verification succeeds, continue.
-   - If installation or verification fails, surface the error and stop. Do not attempt a prose fallback or hand-roll `.specify/` scaffolding.
-
-2. **Check if already initialized**
-
-   Check whether `.specify/project.yaml` exists.
-
-   - If it exists, inform the user: "Specify is already initialized in this project. Your config is at `.specify/project.yaml`."
-   - Use **AskQuestion tool** to confirm whether they want to reinitialize (which overwrites project.yaml).
-   - If they decline, stop.
-   - If they confirm, treat the run as `$UPGRADE=true` so the CLI rewrites `specify-version` to the running binary.
-
-3. **Decide the topology — regular project or platform hub**
-
-   See [Platform repo topologies](../../../../docs/explanation/platform-repo.md) for the full background on the two shapes. Briefly:
-
-   - **Regular project** — a single repository that contains both code and `.specify/`. The most common shape; choose this for single-repo projects, small teams, and any case where the operator just wants to track changes against the code in this repo. Phase pipelines (define / build / merge) run against this repo's working tree, driven by the active **capability**.
-   - **Platform hub** — a registry-only repository that holds platform state (`registry.yaml`, `change.md`, `plan.yaml`, `workspace/`) but never carries code itself. Choose this when the platform spans multiple repos and the operator wants the platform repo's identity to be unambiguous. Phase pipelines are disabled on the hub itself; code lives in registered project repos under `.specify/workspace/<name>/`.
-
-   Ask the user via **AskQuestion tool** unless the answer is obvious from context (e.g. an existing `Cargo.toml` / `package.json` / `src/` strongly implies a regular project, while an empty directory in a multi-repo organisation often points at a hub). Treat the result as `$HUB_MODE=true|false`.
-
-   Branch:
-
-   - When `$HUB_MODE=true`, skip step 4's capability selection and jump to step 5's hub invocation.
-   - When `$HUB_MODE=false`, continue with the capability-driven flow below.
-
-4. **Choose capability** *(regular only — skip in hub mode)*
-
-   If `$CAPABILITY` is provided (as an argument), use it directly. Otherwise, prefer the canonical Omnia capability identifier unless project context clearly indicates another capability:
-
-   ```text
-   https://github.com/augentic/specify/capabilities/omnia
-   ```
-
-   For local development in this repository, a local capability directory such as `./capabilities/omnia` is also valid. If multiple capabilities are plausible, use the **AskQuestion tool** to let the user select which one.
-
-   Store the result as `$CAPABILITY`. Do not pre-populate `.specify/.cache/`; the CLI owns capability fetch/copy during `specify init <capability>`.
-
-5. **Collect project metadata and invoke `specify init`**
-
-   Determine `$PROJECT_NAME` (default: project directory basename) and optionally `$DOMAIN` (project description). Use the **AskQuestion tool** to confirm `$PROJECT_NAME` and to prompt for `$DOMAIN` if the user hasn't supplied one. An empty `$DOMAIN` is fine — the CLI omits the field. For hub mode, `$PROJECT_NAME` MUST be kebab-case (lowercase ascii, digits, single hyphens; no leading/trailing/doubled hyphens) — the CLI bakes it into `change.md`'s frontmatter and rejects non-kebab values.
-
-   **Regular invocation** (capability is the required first positional):
-
-   ```bash
-   specify init "$CAPABILITY" \
-     --name "$PROJECT_NAME" \
-     ${DOMAIN:+--domain "$DOMAIN"}
-   ```
-
-   **Hub invocation** (when `$HUB_MODE=true` — no positional, `--hub` is the discriminator):
-
-   ```bash
-   specify init --hub \
-     --name "$PROJECT_NAME" \
-     ${DOMAIN:+--domain "$DOMAIN"}
-   ```
-
-   Never combine the two: `specify init "$CAPABILITY" --hub` errors with `init-requires-capability-or-hub`. `specify init` with neither supplied errors with the same diagnostic.
-
-   The CLI writes:
-
-   - **Regular** — `.specify/{slices,specs,archive,.cache}/`, `.specify/project.yaml` with `capability:` set to the resolved value and one empty `rules:` entry per `pipeline.define` brief, the resolved capability manifest cached under `.specify/.cache/`, `.specify/.cache/` upserted into `.gitignore`, `specify-version` recorded, and generated root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent.
-   - **Hub** — `.specify/project.yaml` with `hub: true` only (the `capability:` field is **omitted** — its absence is the sentinel that disables capability resolution on the hub itself), no `rules:` block; `registry.yaml` with `version: 1` and `projects: []`; `.specify/.cache/` and `.specify/workspace/` upserted into `.gitignore`; generated hub-shaped root `AGENTS.md` plus `.specify/context.lock` when `AGENTS.md` was absent. Phase-pipeline directories (`slices/`, `specs/`, `.cache/`) are NOT scaffolded — the hub disables those pipelines. `change.md` and `plan.yaml` are minted later by their owning commands.
-
-   If root `AGENTS.md` already exists, `specify init` preserves it byte-for-byte and prints `AGENTS.md already present; skipping context generate` in text mode. Init inside `.specify/workspace/<peer>/` also skips nested context generation.
-
-   For agent automation that needs structured output, add the global `--format json` flag before `init` and parse `config-path`, `capability-name`, `cache-present`, `directories-created`, `scaffolded-rule-keys`, `specify-version`, `hub`, `context-generated`, `context-skipped`, and optional `context-skip-reason`. Normal operator-facing examples should use text output.
-
-   On non-zero exit, surface the CLI error. Do not attempt a prose fallback. Hub mode in particular refuses to scaffold over an existing `.specify/` directory — if the user wants to convert an existing single-repo project into a hub, they remove `.specify/` first.
-
-6. **Prompt for customization**
-
-   For a **regular** init, tell the user:
-   - "Specify initialized. Config written to `.specify/project.yaml`."
-   - "Generated starter context at `AGENTS.md`; refresh it later with `specify context generate`."
-   - "Edit the `domain` field to describe your project's tech stack, architecture, and testing approach."
-   - "Fill in the scaffolded `rules` entries to add project-level rules for specific artifacts. For fallback context, check the `domain` section in `.specify/.cache/<capability>/capability.yaml`."
-
-   For a **hub** init, tell the user:
-   - "Specify initialized as a registry-only platform hub. Config written to `.specify/project.yaml` (`hub: true`, no `capability:`)."
-   - "Generated hub context at `AGENTS.md`; refresh it later with `specify context generate`."
-   - "Add code projects to `registry.yaml` once they exist. The hub starts with `projects: []`."
-
-   Do NOT print "Next steps" yet — Step 7 determines which output to show.
-
-7. **Detect existing codebase and offer baseline extraction** *(regular only — skip in hub mode)*
-
-   When `$HUB_MODE=true`, skip this step entirely and show the **hub output** below. A hub never carries code, so codebase detection and baseline extraction do not apply.
-
-   For regular projects, check whether the project root contains an active codebase by looking for:
-
-   - **Manifest files**: `Cargo.toml`, `package.json`, `go.mod`, `pyproject.toml`, `pom.xml`, `*.csproj`, `build.gradle`, `Gemfile`
-   - **Source directories**: `src/`, `lib/`, `app/`, `cmd/`
-
-   If **none** of these are found, show the **greenfield output** and stop.
-
-   If at least one indicator is found, use the **AskQuestion tool**:
-
-   > "I've detected an existing codebase (found `<indicator>`). Would you like me to analyze it and generate baseline specs that capture its current behavior? This uses `/spec:extract`."
-
-   Options:
-   - **Yes, generate baseline specs** — proceed to create the slice
-   - **No, skip for now** — show the greenfield output and stop (user can run `/spec:extract` manually later)
-
-   If the user chooses **yes**, create the slice via the CLI:
-
-   ```bash
-   specify slice create initial-baseline --format json
-   ```
-
-   The CLI validates the name, creates `.specify/slices/initial-baseline/specs/`, and writes the initial `.metadata.yaml` (status `defining`, `created_at` timestamp). Show the **brownfield output** and stop.
-
-**Output**
-
-Render the **greenfield** template for a regular project with no codebase indicators (or when the user declined extraction in step 7), the **brownfield** template after the user opted into baseline extraction, or the **hub** template when `$HUB_MODE=true`. Each template substitutes the resolved `$CAPABILITY` (regular and brownfield only; hub omits it). The verbatim templates live in [init-output-templates.md](../../references/init-output-templates.md).
-
-## What this skill does NOT do
-
-| Surface | Status |
+| Reference | Purpose |
 |---|---|
-| Hand-roll `.specify/` scaffolding when the CLI fails | Never — surface the CLI error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`. |
-| Pre-populate `.specify/.cache/` with capability material | Never — `specify init` owns capability fetch and copy when invoked with the capability positional. |
-| Extract baseline specs from the existing codebase | Delegates to `/spec:extract`. Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in. |
-| Author `plan.yaml` or `change.md` | Never — `change.md` is minted by `specify change create`, `plan.yaml` by `/change:plan` or `specify change plan create`. |
-| Register peers into `registry.yaml` | Never — peer registration lives in `specify registry add`. Hub init only seeds an empty `projects: []`. |
-| Reinitialize an existing `.specify/` without confirmation | Always asks via the **AskQuestion tool** before treating the run as an upgrade. |
-| Combine `<capability>` (`$CAPABILITY`) with `--hub` | Never — the CLI rejects that combination with `init-requires-capability-or-hub`; the skill picks exactly one shape per run. |
+| [`references/init-runbook.md`](references/init-runbook.md) | CLI bootstrap, full seven-step procedure, regular vs hub invocations, output templates, "does NOT do" matrix |
+| [`../../references/init-output-templates.md`](../../references/init-output-templates.md) | Verbatim greenfield / brownfield / hub output templates rendered after `specify init` returns |
+| [`../../references/topology-flow.md`](../../references/topology-flow.md) | Regular project vs platform hub decision tree and on-disk shape |
+| [`../../references/capability-resolution.md`](../../references/capability-resolution.md) | Capability identifier resolution (bare name / URL / file URI) and `.specify/.cache/` ownership |
+| [`../../references/baseline-detection.md`](../../references/baseline-detection.md) | Manifest / source-dir indicators used to offer `initial-baseline` extraction |
+| [`../../references/specify.md`](../../references/specify.md) | High-level Specify mental model and how init seats inside it |
 
-**Guardrails**
-- `/spec:init` may install the CLI only after explicit user confirmation, using `cargo install --git https://github.com/augentic/specify-cli`
-- Always verify `specify --version` before invoking `specify init`
-- Do not overwrite an existing project.yaml without user confirmation
-- For regular projects, pass the capability identifier (bare name or URL) as the **first positional argument** to `specify init`; do not hand-populate `.specify/.cache/`
-- For hubs, never populate `.specify/.cache/` and never resolve a capability — the absence of `capability:` (paired with `hub: true`) disables phase pipelines on the hub itself, so there is nothing to cache
-- The CLI is the single writer for `AGENTS.md` during init — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state). `specify init` generates it when absent, preserves an existing root `AGENTS.md`, and writes `.specify/context.lock` for `specify context check`.
-- Never combine a capability positional with `--hub`; the CLI rejects that combination with `init-requires-capability-or-hub`
-- Hub init refuses to run over an existing `.specify/`; if the user wants to convert a regular project into a hub, they must remove `.specify/` first
-- If the CLI exits non-zero, surface the error and stop; do not hand-roll the scaffold
+## Guardrails
 
-## References
-
-- [RFC-9: Platform](../../../../rfcs/archive/rfc-9-platform.md) — registry-only platform hub topology.
-- [RFC-13: Extensibility](../../../../rfcs/archive/rfc-13-extensibility.md) — capability vs `--hub` shape requirements.
+- **`/spec:init` is the one Specify skill that may install the CLI.** Install only after explicit user confirmation via `cargo install --git https://github.com/augentic/specify-cli`, always verify `specify --version` before invoking `specify init`, and never overwrite `project.yaml` without user confirmation.
+- **The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.** On non-zero exit, surface the error and stop; never hand-roll the scaffold. Never pre-populate `.specify/.cache/` — `specify init` owns capability fetch when invoked with the capability positional.
+- **Capability vs `--hub` is mutually exclusive.** Pass `$CAPABILITY` as the first positional for regular projects; pass `--hub` (and only `--hub`) for hubs. Hub init refuses to run over an existing `.specify/`; converting a regular project to a hub requires the operator to remove `.specify/` first.

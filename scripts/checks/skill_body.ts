@@ -1,4 +1,4 @@
-// SKILL.md body shape (RFC-10 §D + AGENTS.md "Skill body discipline"):
+// SKILL.md body shape:
 //   - body line count is bounded,
 //   - per-H2 section line count is bounded so depth migrates to
 //     `references/` rather than letting the SKILL.md body sprawl,
@@ -21,18 +21,15 @@ import {
   walk,
 } from "./_shared.ts";
 
-const MAX_BODY_LINES = 250;
+const MAX_BODY_LINES = 200;
 const CRITICAL_PATH_MIN_LINES = 150;
 const CRITICAL_PATH_HEADING = "## Critical Path";
 const MAX_INLINE_JSON_LINES = 30;
-// Per-H2 section cap. Default 50 in the original RFC; the 21-section
-// audit at cap 50 exceeded the >5 budget so the cap was bumped to 60
-// per the S2 chunk plan. Per-file baselines in
-// `scripts/standards-allowlist.toml` grandfather the irreducible
-// remainder; new sections still fail fast.
-const MAX_SECTION_LINES = 60;
+const MAX_SECTION_LINES = 45;
 
-export async function checkBodyLineCount(): Promise<void> {
+// Single walk: cheaper than two passes and keeps the body and per-H2
+// section budgets co-located.
+export async function checkBodyAndSectionLineCounts(): Promise<void> {
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
 
   for await (
@@ -47,21 +44,53 @@ export async function checkBodyLineCount(): Promise<void> {
 
     const lines = skillBodyLines(content);
     if (!lines) continue;
-    const lineCount = lines.length;
 
-    // Per-file `bodyLineCount` baselines in
-    // `scripts/standards-allowlist.toml` grandfather files that exceed
-    // the cap (`bodyLineCount = <observed-line-count>`); the baseline
-    // raises the effective cap for that file only and is expected to
-    // ratchet down as content is migrated into siblings.
-    const baseline = await baselineFor("bodyLineCount", rel);
-    const effectiveCap = Math.max(MAX_BODY_LINES, baseline);
-    if (lineCount > effectiveCap) {
-      const extra = baseline > 0 ? ` > grandfathered baseline ${baseline}` : "";
-      fail(
-        `Skill body too long: ${rel} — ${lineCount} body lines (limit ${MAX_BODY_LINES})${extra}`,
-      );
-    }
+    await assertBodyLineCount(rel, lines);
+    await assertSectionLineCounts(rel, lines);
+  }
+}
+
+async function assertBodyLineCount(
+  rel: string,
+  lines: string[],
+): Promise<void> {
+  const baseline = await baselineFor("bodyLineCount", rel);
+  const effectiveCap = Math.max(MAX_BODY_LINES, baseline);
+  if (lines.length > effectiveCap) {
+    const extra = baseline > 0 ? ` > grandfathered baseline ${baseline}` : "";
+    fail(
+      `Skill body too long: ${rel} — ${lines.length} body lines (limit ${MAX_BODY_LINES})${extra}`,
+    );
+  }
+}
+
+async function assertSectionLineCounts(
+  rel: string,
+  lines: string[],
+): Promise<void> {
+  const h2Indices: number[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (lines[i].startsWith("## ")) h2Indices.push(i);
+  }
+
+  const violations: { title: string; count: number }[] = [];
+  for (let i = 0; i < h2Indices.length; i++) {
+    const start = h2Indices[i];
+    const end = i + 1 < h2Indices.length ? h2Indices[i + 1] : lines.length;
+    const title = lines[start].slice(3).trim();
+    const sectionLines = lines.slice(start + 1, end);
+    const cnt = countSectionBodyLines(sectionLines);
+    if (cnt > MAX_SECTION_LINES) violations.push({ title, count: cnt });
+  }
+
+  const baseline = await baselineFor("sectionLineCount", rel);
+  if (violations.length > baseline) {
+    const detail = violations
+      .map((v) => `'${v.title}' (${v.count} lines)`)
+      .join(", ");
+    fail(
+      `Skill section too long: ${rel} — ${violations.length} section(s) over ${MAX_SECTION_LINES} lines > baseline ${baseline}: ${detail} (move depth into references/ and link from the H2)`,
+    );
   }
 }
 
@@ -87,51 +116,6 @@ function countSectionBodyLines(sectionLines: string[]): number {
     count++;
   }
   return count;
-}
-
-export async function checkSectionLineCount(): Promise<void> {
-  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
-
-  for await (
-    const entry of walk(PLUGINS_DIR, {
-      match: [/SKILL\.md$/],
-      includeDirs: false,
-    })
-  ) {
-    if (await underSymlink(entry.path)) continue;
-    const rel = relative(REPO_ROOT, entry.path);
-    const content = await Deno.readTextFile(entry.path);
-
-    const lines = skillBodyLines(content);
-    if (!lines) continue;
-
-    const h2Indices: number[] = [];
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].startsWith("## ")) h2Indices.push(i);
-    }
-
-    const violations: { title: string; count: number }[] = [];
-    for (let i = 0; i < h2Indices.length; i++) {
-      const start = h2Indices[i];
-      const end = i + 1 < h2Indices.length ? h2Indices[i + 1] : lines.length;
-      const title = lines[start].slice(3).trim();
-      const sectionLines = lines.slice(start + 1, end);
-      const cnt = countSectionBodyLines(sectionLines);
-      if (cnt > MAX_SECTION_LINES) {
-        violations.push({ title, count: cnt });
-      }
-    }
-
-    const baseline = await baselineFor("sectionLineCount", rel);
-    if (violations.length > baseline) {
-      const detail = violations
-        .map((v) => `'${v.title}' (${v.count} lines)`)
-        .join(", ");
-      fail(
-        `Skill section too long: ${rel} — ${violations.length} section(s) over ${MAX_SECTION_LINES} lines > baseline ${baseline}: ${detail} (move depth into references/ and link from the H2)`,
-      );
-    }
-  }
 }
 
 export async function checkCriticalPath(): Promise<void> {
@@ -333,11 +317,11 @@ function isEnvelopeBody(body: string[]): boolean {
   return false;
 }
 
-// Skills-§7: Critical Path is the table of contents; step bodies are
-// short pointers to references. Verbatim duplication between a
-// Critical Path entry and any line elsewhere in the skill body
-// collapses into the triplication pattern (Critical Path → Step body
-// → Guardrails) the task is meant to eliminate.
+// `## Critical Path` is the table of contents; step bodies are short
+// pointers to references. Verbatim duplication between a Critical
+// Path entry and any line elsewhere in the skill body collapses into
+// the triplication pattern (Critical Path → Step body → Guardrails)
+// the body cap is meant to eliminate.
 //
 // The predicate parses the `## Critical Path` block (numbered list,
 // bullet list, or `### Step` headings — same shapes accepted by

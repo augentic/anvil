@@ -104,11 +104,11 @@ The shape constraints are enforced by `make checks`. A SKILL.md that ships `argu
 
 ## Body-length ceiling
 
-This repository's hard ceiling is 250 post-frontmatter lines, enforced in `make checks`. Longer content belongs in sibling files. Pre-existing skills that exceed the cap are grandfathered via per-file `bodyLineCount` baselines in `scripts/standards-allowlist.toml` and are expected to ratchet down with each touch; new skills must comply on the first commit.
+This repository's hard ceiling is 200 post-frontmatter lines, enforced in `make checks`. Longer content belongs in sibling files. Pre-existing skills that exceed the cap are grandfathered via per-file `bodyLineCount` baselines in `scripts/standards-allowlist.toml` and are expected to ratchet down with each touch; new skills must comply on the first commit.
 
 Why a ceiling at all: every line of the SKILL.md body is loaded into context the moment the skill triggers. A 1,200-line skill body crowds out the operator's request, the artefacts under inspection, and any other skill body that fires later. The model's attention is not free.
 
-Why 250 specifically: it leaves room for the algorithm spine plus the Critical Path block plus a moderate amount of inline prose, but not enough to absorb every example, every flag re-documentation, and every edge case forever. The previous 400-line cap permitted a "Critical Path quick reference" block plus a parallel `## Steps` restatement of the same items in long form; the 250-line cap forces a single canonical step list.
+Why 200 specifically: it leaves room for the algorithm spine plus the Critical Path block plus a moderate amount of inline prose, but not enough to absorb every example, every flag re-documentation, and every edge case forever. The previous 400-line cap permitted a "Critical Path quick reference" block plus a parallel `## Steps` restatement of the same items in long form; the 200-line cap forces a single canonical step list with the rest in siblings.
 
 Long-form material moves out of the body and into siblings linked one level deep. The body keeps the algorithm, the dispatch table (when relevant), the invocation block, and pointers to the depth.
 
@@ -119,7 +119,7 @@ A SKILL.md ≥150 body lines opens with a `## Critical Path` section in one of t
 - a flat 5–7 entry numbered or bullet list that names the algorithmic spine of the skill, each entry optionally linking to the sibling file that owns the depth (`See [verifier.md](verifier.md).`); or
 - 5–7 `### N. Title` H3 step headings, when each step has its own concise body inline.
 
-Pick one form. The earlier "Critical Path (Quick Reference)" + parallel `## Steps` restatement pattern is retired; carrying both is the duplication trap the 250-line cap is meant to prevent.
+Pick one form. The earlier "Critical Path (Quick Reference)" + parallel `## Steps` restatement pattern is retired; carrying both is the duplication trap the 200-line cap is meant to prevent.
 
 The pattern serves three audiences:
 
@@ -152,7 +152,7 @@ A useful rule of thumb when a SKILL.md grows past ~300 body lines:
 - If a section is a **template, table, or example library**, factor it into `references/` or `examples/` and link from the body.
 - If a section is **load-bearing for every run** (a hard rules list a writer skill must consult on every invocation), keep it in the body — factoring it out trades brevity for an extra read every time the skill fires.
 
-The default direction is "factor sooner rather than later". A 480-line SKILL.md with no Critical Path is harder to maintain than a 250-line SKILL.md plus three siblings, even if the total line count is similar.
+The default direction is "factor sooner rather than later". A 480-line SKILL.md with no Critical Path is harder to maintain than a 200-line SKILL.md plus three siblings, even if the total line count is similar.
 
 ## Worked example: the phase-outcome contract
 
@@ -210,7 +210,7 @@ The forbidden list is enforced in [`.cursor/schemas/skill.schema.json`](../../.c
 - **Description length.** `description` is ≤512 characters.
 - **Argument-hint shape.** `argument-hint` contains no `?`, no `--`, and no `|`.
 - **Slash invocation shape.** `/plugin:skill` examples use positional arguments only; leading double-dash option tokens after a slash skill are rejected.
-- **Body length.** SKILL.md body (post-frontmatter) is ≤250 lines; per-file `bodyLineCount` baselines in `scripts/standards-allowlist.toml` grandfather oversized files.
+- **Body length.** SKILL.md body (post-frontmatter) is ≤200 lines; per-H2 section ≤45 lines; per-file `bodyLineCount` / `sectionLineCount` baselines in `scripts/standards-allowlist.toml` grandfather oversized files.
 - **Critical Path.** SKILL.md bodies with ≥150 post-frontmatter lines include a `## Critical Path` block with 5–7 bullets, numbered items, or `### N. Title` H3 step headings.
 - **Forbidden keys.** No top-level `license`, `compatibility`, `metadata`, `disable-model-invocation`, `when_to_use`, `user-invocable`, `context`, or `paths`. Enforced by the `additionalProperties: false` clause in `.cursor/schemas/skill.schema.json`.
 
