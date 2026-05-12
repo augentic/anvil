@@ -1,7 +1,7 @@
 ---
 name: vectis-ios-writer
 description: Generate or update a SwiftUI iOS shell for a Crux application from Specify artifacts. Use when a Specify slice has pending iOS shell tasks routed through a Vectis capability; not for the Rust core (`core-writer`) or the Android shell (`android-writer`).
-argument-hint: <slice-dir>
+argument-hint: <app-dir> [project-dir] [slice-dir]
 ---
 
 # Crux iOS Shell Generator
@@ -28,15 +28,9 @@ When no iOS shell exists yet, the skill runs `specify tool run vectis -- scaffol
 
 This skill targets **Swift 6** and **SwiftUI** with iOS 17+ deployment target.
 
-## Arguments
-
-| Argument | Required | Description |
-|---|---|---|
-| `app-dir` | **Yes** | Path to the Crux app directory (must contain `shared/src/app.rs`) |
-| `project-dir` | No | Directory for the iOS shell. Defaults to `{app-dir}/iOS` |
-| `slice-dir` | No | Path to `.specify/slices/<change>/`. When provided, the skill reads the `## iOS Shell Requirements` section from `{slice-dir}/specs/{feature-name}/spec.md` for platform-specific requirements |
-
 ## Prerequisites
+
+`{app-dir}` must contain `shared/src/app.rs`. `{project-dir}` defaults to `{app-dir}/iOS`. When `{slice-dir}` is supplied, the writer reads the `## iOS Shell Requirements` section from `{slice-dir}/specs/{feature-name}/spec.md` for platform-specific requirements.
 
 The following tools must be installed (see README.md for installation):
 
@@ -379,12 +373,11 @@ When `tokens.yaml` is **absent** (HIG fallback path):
 - [ ] No `TextField` or small `Button` inside a `ScrollView` within a `NavigationStack` -- use `.safeAreaInset(edge:)` to pin interactive controls outside the scroll content, or use `List`
 - [ ] No horizontal `ScrollView` nested inside a vertical `ScrollView` with tappable content -- use `.safeAreaInset(edge:)` for the inner scrollable, or ensure tappable elements use `Button` with `.buttonStyle(.plain)`
 
-## Important Notes
+## Guardrails
 
-- **Core only must exist first**: This skill generates the iOS shell for an existing Crux core. Run the core-writer skill first to generate the `shared` crate.
-- **Shell is thin**: All business logic lives in the Rust core. The shell only renders views and performs platform I/O. Never add business logic to Swift code.
-- **UniFFI bridging**: The shared crate must have `crate-type = ["staticlib"]` and the `uniffi` feature gate. The ios-writer assumes this is already configured by the core-writer. The `uniffi` crate pin must be compatible with the UniFFI contract expected by `cargo-swift` and the `crux_core` bundled bindgen (strict version equality is not required; cargo-swift 0.11 can read uniffi 0.29.x metadata). Run `make package` and `make xcode` to detect mismatches.
-- **Generated types**: Two Swift packages are produced: `SharedTypes` (domain types via facet_typegen) and `Shared` (UniFFI bindings + XCFramework via cargo-swift).
-- **Hot reloading**: All generated shells include the [Inject](https://github.com/krzysztofzablocki/Inject) library for hot reloading during development. Inject is a no-op in Release builds (stripped by LLVM), so the boilerplate can remain permanently. Each developer must install [InjectionIII](https://github.com/nicklama/InjectionIII/releases) separately. The scaffold wires Inject into `project.yml` (SPM package + Debug-only `OTHER_LDFLAGS: -Xlinker -interposable` + `EMIT_FRONTEND_COMMAND_LINES: YES`); Update Mode only has to add `@ObserveInjection`/`.enableInjection()` to new screen views.
-- **ScrollView interaction hazards**: Do not place `TextField` or small `Button` elements inside a `ScrollView` within a `NavigationStack`. The `UIScrollView` touch-delay mechanism (`delaysContentTouches`) suppresses taps on non-`UIButton` views. Use `.safeAreaInset(edge:)` to pin interactive controls outside the scroll content, or use `List` which handles this internally. Similarly, avoid nesting a horizontal `ScrollView` (e.g. chip row) inside a vertical `ScrollView` -- the compound gesture conflicts cause missed taps. Pin the inner scrollable with `.safeAreaInset`, or ensure all tappable elements use `Button` with `.buttonStyle(.plain)`. See `references/swiftui-view-patterns.md` for examples.
-- **Specify integration**: When `slice-dir` is provided, the skill reads the `## iOS Shell Requirements` section from the feature spec and the `## iOS Shell Details` section from design.md. The primary input remains `app.rs` from the core; the feature spec's platform section supplements with requirements that may not be expressed in the Rust types alone (e.g., navigation style, specific UX behaviors, accessibility requirements, layout constraints).
+- **NEVER add business logic to Swift code.** All business logic lives in the Rust core; the shell only renders views and performs platform I/O. Run `core-writer` first — this skill assumes an existing Crux core with `crate-type = ["staticlib"]` and the `uniffi` feature gate.
+- **NEVER hand-pin UniFFI versions inside the Swift project.** The `uniffi` crate pin must be compatible with the contract expected by `cargo-swift` and the `crux_core` bundled bindgen; surface mismatches via `make package` and `make xcode` rather than editing pins by hand.
+- **NEVER place `TextField` or small `Button` inside a `ScrollView` within a `NavigationStack`.** The `UIScrollView` touch-delay mechanism suppresses taps; use `.safeAreaInset(edge:)` to pin interactive controls or use `List`. The same hazard applies to a horizontal `ScrollView` nested inside a vertical one — pin the inner scrollable, or ensure tappable elements use `Button` with `.buttonStyle(.plain)`. See `references/swiftui-view-patterns.md`.
+- **ALWAYS produce both Swift packages**: `SharedTypes` (domain types via `facet_typegen`) and `Shared` (UniFFI bindings + XCFramework via `cargo-swift`).
+- **ALWAYS leave the Inject hot-reload boilerplate in place.** Inject is a no-op in Release builds (stripped by LLVM); the scaffold wires Inject into `project.yml` (SPM + Debug-only `OTHER_LDFLAGS: -Xlinker -interposable` + `EMIT_FRONTEND_COMMAND_LINES: YES`). Update Mode only has to add `@ObserveInjection` / `.enableInjection()` to new screen views.
+- **ALWAYS treat `app.rs` as the primary input.** When `{slice-dir}` is supplied, supplement with `## iOS Shell Requirements` from the feature spec and `## iOS Shell Details` from `design.md` for platform-specific requirements not expressible in the Rust types alone.

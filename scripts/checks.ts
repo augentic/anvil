@@ -25,6 +25,7 @@ import {
 } from "./checks/tools.ts";
 import { checkPluginConsistency, checkSymlinks } from "./checks/plugins.ts";
 import {
+  checkArgumentHintCoversBodyArguments,
   checkDescriptionHasUseWhen,
   checkDescriptionLength,
   checkDescriptionStartsWithVerb,
@@ -37,6 +38,7 @@ import {
   checkCriticalPath,
   checkInlineJsonBlocks,
   checkNoEnvelopeExamples,
+  checkNoStepBodyDuplicatesCriticalPath,
   checkSectionLineCount,
   checkVariables,
 } from "./checks/skill_body.ts";
@@ -65,11 +67,13 @@ import {
   validateScenarioFrontmatter,
 } from "./checks/scenarios.ts";
 import { validateCodexRuleShape } from "./checks/codex.ts";
+import { checkEnvelopeDoc } from "./checks/envelope_doc.ts";
 
 await Promise.all([
   checkMarkdownLinks(),
   checkStaleClaims(),
   checkSymlinks(),
+  checkEnvelopeDoc(),
 ]);
 await Promise.all([
   validateCapabilityYaml(),
@@ -94,10 +98,12 @@ await Promise.all([
   checkDescriptionStartsWithVerb(),
   checkDescriptionHasUseWhen(),
   validateArgumentHints(),
+  checkArgumentHintCoversBodyArguments(),
   checkInvocationPositionals(),
   checkNoLicense(),
   checkInlineJsonBlocks(),
   checkNoEnvelopeExamples(),
+  checkNoStepBodyDuplicatesCriticalPath(),
   checkReferences(),
   checkVariables(),
   checkDirectives(),

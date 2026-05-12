@@ -1,7 +1,7 @@
 ---
 name: vectis-core-writer
 description: Generate or update a Rust Crux shared crate from Specify artifacts. Use when a Specify slice has pending Crux core tasks; not for platform shells (`ios-writer` / `android-writer`) or test scaffolding (`test-writer`).
-argument-hint: <slice-dir>
+argument-hint: <slice-dir> <feature-name> [project-dir]
 ---
 
 # Crux Core Application Generator
@@ -24,15 +24,9 @@ When an existing project is detected, the skill operates in **update mode**: it 
 
 When no project exists yet, the skill runs `specify tool run vectis -- scaffold core {AppName} [--caps {caps}]` to render the workspace, shared crate, and toolchain files using the active Vectis version pins. The declared scaffold tool is the single source of truth for Cargo manifests, `rust-toolchain.toml`, `.gitignore`, `ffi.rs`, `codegen.rs`, and the `lib.rs`/`app.rs` skeleton, but it does not run Cargo or inspect the host. Once the scaffold exists and the explicit host checks pass, this skill switches to **update mode** and layers feature-specific changes over the generated baseline.
 
-## Arguments
-
-| Argument | Required | Description |
-|---|---|---|
-| `slice-dir` | **Yes** | Path to the active Specify slice directory (`.specify/slices/<change>/`). |
-| `feature-name` | **Yes** | Spec folder name under `{slice-dir}/specs/` identifying the feature to generate. |
-| `project-dir` | No | Directory to create the project in. Defaults to current directory. |
-
 ## Input Artifacts
+
+`{slice-dir}` is the active Specify slice (`.specify/slices/<change>/`); `{feature-name}` is the spec folder under `{slice-dir}/specs/`; `{project-dir}` defaults to the current directory.
 
 The skill reads from Specify artifacts rather than a standalone spec file:
 
@@ -52,9 +46,9 @@ The skill maps artifact content to Crux code constructs:
 
 If a required section is missing or too vague, ask **one** clarifying question before proceeding.
 
-## Derived Arguments
+## Inferred from Artifacts
 
-The following are inferred from the Specify artifacts. Do **not** prompt for them unless the artifacts are too ambiguous to proceed.
+The following are inferred from the Specify artifacts (not CLI arguments). Do **not** prompt for them unless the artifacts are too ambiguous to proceed.
 
 | Derived | How to infer | Example |
 |---|---|---|
@@ -385,13 +379,13 @@ Before completing, verify. Items marked **(update)** apply only in update mode; 
 - [ ] **(update)** No orphaned imports (`use` statements) for removed crates or types
 - [ ] **(update)** Preservation rules were followed -- unchanged code, comments, helpers, and test utilities were not modified
 
-## Important Notes
+## Guardrails
 
-- **Crux versions**: The Vectis scaffold owns all generated version pins through embedded defaults or an explicit `--version-file`. Never hand-edit Cargo dependency versions in a generated project. `crux_core`, `facet`, `uniffi`, and companion crates are selected together so that `crux_core`'s bundled `uniffi_bindgen` matches the runtime `uniffi` crate.
-- **No `Capabilities` struct**: The 0.17 API does not use a `Capabilities` struct. Define `Effect` directly as an enum with `#[effect(facet_typegen)]`. The `App` trait requires `type Effect = Effect;`.
-- **`Command` is generic**: Return `Command<Effect, Event>` from `update()`.
-- **`#[repr(C)]` on Event enums**: Required by `facet` for enums that cross the FFI boundary.
-- **Codegen uses `TypeRegistry`**: The codegen binary uses `crux_core::type_generation::facet::TypeRegistry` for compile-time type extraction. Do NOT use `crux_core::cli::run()` which depends on `rustdoc-types` and breaks with newer Rust versions.
-- **SSE is not a published crate**: It is a custom capability. Generate it inline when needed.
-- **Tests are test-writer's responsibility**: core-writer generates code only. The build orchestration layer runs test-writer after core-writer, then runs a unified verify-repair loop. Test coverage, spec traceability, and test updates are all owned by test-writer.
-- **Core only**: This skill generates only the `shared` crate. Shell skills are separate.
+- **NEVER hand-edit Cargo dependency versions in a generated project.** The Vectis scaffold owns version pins through embedded defaults or an explicit `--version-file`; `crux_core`, `facet`, `uniffi`, and companion crates are selected together so that `crux_core`'s bundled `uniffi_bindgen` matches the runtime `uniffi` crate.
+- **NEVER define a `Capabilities` struct.** The 0.17 API uses `Effect` directly as an enum with `#[effect(facet_typegen)]`; the `App` trait requires `type Effect = Effect;`.
+- **NEVER call `crux_core::cli::run()`.** It depends on `rustdoc-types` and breaks with newer Rust versions; use `crux_core::type_generation::facet::TypeRegistry` for compile-time type extraction.
+- **NEVER write tests in this skill.** `test-writer` owns tests, coverage, spec traceability, and test updates; the unified verify-repair loop runs after both writers complete.
+- **NEVER generate shell code.** This skill generates only the `shared` crate; iOS / Android / Web shells are separate skills.
+- **ALWAYS return `Command<Effect, Event>` from `update()`** — `Command` is generic over both type parameters.
+- **ALWAYS mark Event enums `#[repr(C)]`** — required by `facet` for enums that cross the FFI boundary.
+- **ALWAYS generate SSE inline as a custom capability.** It is not a published crate.

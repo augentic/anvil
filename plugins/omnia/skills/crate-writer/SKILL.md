@@ -368,7 +368,9 @@ Full verification (fmt, clippy, test suite, regression detection) runs at the or
 
 Only emit `.rs` source files, `Cargo.toml`, and the required docs. Never emit `target/`, `Cargo.lock`, or build artifacts. Test verification runs at the orchestration level after test-writer completes.
 
-## Important Notes
+## Guardrails
 
-- Mode is auto-detected from `$CRATE_PATH/Cargo.toml`; tests are test-writer's responsibility (a unified verify-repair loop runs after both writers).
-- In update mode, apply categories in fixed order (structural → subtractive → modifying → additive) and re-inventory after structural changes; if an artifact section already matches the existing code, do nothing.
+- **NEVER write tests in this skill.** Tests are `test-writer`'s responsibility; a unified verify-repair loop runs after both writers complete.
+- **NEVER reorder update categories.** Apply them in fixed order — structural → subtractive → modifying → additive — and re-run the inventory after structural changes (Hard Rule 16 in [rules.md](./rules.md)).
+- **NEVER touch sections of an existing crate that already match the artifacts.** Idempotency: if the artifact section matches the code, do nothing.
+- **ALWAYS delegate authority through [rules.md](./rules.md).** Hard Rules and the Authority Hierarchy bind every decision in this skill; conflicts are resolved by that document, not local prose.

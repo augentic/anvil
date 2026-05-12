@@ -1,7 +1,7 @@
 ---
 name: client-sow-writer
 description: Generate a Statement of Work (SoW) document from Specify artifacts and project context. Use when a slice (or change) is fully defined and the operator wants to package its artifacts as a client deliverable; not while artifacts are still being authored (`define`) or implemented (`build`).
-argument-hint: <slice-dir>
+argument-hint: <slice-dir> [output-path] [client-name] [company-name] [pdf]
 ---
 
 # SoW Generator Skill
@@ -14,7 +14,7 @@ argument-hint: <slice-dir>
 4. Generate Services — Scope statement + In-Scope bullets, Design Inputs table, Deliverables table with placeholder costs (always include an Automated Test Suite line item) and lettered Exclusions.
 5. Generate Fees + Payment Schedule with placeholder amounts and the Other Issues block (Dependencies, Assumptions, Change Requests, Warranty).
 6. Generate Acceptance, Appendix A (verbatim from `references/sow-template.md`), and Appendix B only when test-related artifact content is available.
-7. Write Markdown to `$OUTPUT_PATH`, emit a review checklist, and optionally render a branded PDF when `pdf` is passed.
+7. Write Markdown to `<output-path>`, emit a review checklist, and optionally render a branded PDF when `pdf` is passed.
 
 ## Authority
 
@@ -24,28 +24,7 @@ The SoW translates technical artifacts into business-oriented deliverables. Do n
 
 The SoW must match the $COMPANY_NAME house style — first person plural, direct prose, business language, lettered items for exclusions/dependencies/assumptions, and section-specific prose patterns. See [`template.md`](template.md) for the full voice-and-tone rules and per-section formatting patterns. Follow it consistently when drafting any SoW section.
 
-## Derived Arguments
-
-```text
-$SLICE_DIR  = $ARGUMENTS[0]                           # Path to Specify slice directory
-$OUTPUT_PATH = $ARGUMENTS[1] OR derive_from_change_dir # Output SoW path
-$CLIENT_NAME  = $ARGUMENTS[2] OR "unknown — to be confirmed" # Client organisation name
-$COMPANY_NAME = $ARGUMENTS[3] OR "Propellerhead"             # Company name (default: Propellerhead)
-$PDF_FLAG     = "pdf" present in $ARGUMENTS                # Optional: also generate PDF
-```
-
-Path derivation:
-
-```text
-IF $OUTPUT_PATH not provided:
-  $OUTPUT_DIR  = dirname($SLICE_DIR)/../
-  $CRATE_NAME  = basename($SLICE_DIR)
-  $OUTPUT_PATH = $OUTPUT_DIR/SOW-$CRATE_NAME.md
-
-# Extracted from artifacts at runtime (Step 2):
-$PROJECT_NAME     = design.md ## Context → Purpose summary
-$SOURCE_REFERENCE = design.md header → Source field (if present)
-```
+Defaults: `<output-path>` derives to `dirname(<slice-dir>)/../SOW-basename(<slice-dir>).md`; `<client-name>` falls back to `"unknown — to be confirmed"`; `<company-name>` defaults to `"Propellerhead"`; `pdf` is a literal positional that, when present, also renders a branded PDF. `$PROJECT_NAME` and `$SOURCE_REFERENCE` are extracted from `design.md` at runtime (Step 2).
 
 ## Process
 
@@ -62,12 +41,16 @@ If required sections are missing, fail with a clear error listing them. Determin
 
 ### Step 2: Extract Project Metadata
 
-Pull from the artifacts:
+Pull from the artifacts and bind the runtime template variables used downstream:
 
-- **Project Name** — design.md `## Context` → Purpose summary (extract a name where possible, otherwise reuse the Purpose).
-- **Project Purpose** — design.md `## Context` → Purpose summary.
-- **Artifact Origin** — design.md header → migration vs greenfield framing.
-- **Source Reference** — design.md header → Source field (repo URL or design document path).
+```text
+$PROJECT_NAME     = design.md ## Context → Purpose summary (extract a name; else reuse Purpose)
+$PROJECT_PURPOSE  = design.md ## Context → Purpose summary
+$ARTIFACT_ORIGIN  = design.md header → migration vs greenfield framing
+$SOURCE_REFERENCE = design.md header → Source field (repo URL or design document path)
+$TODAY            = current date formatted DD MMMM YYYY
+$VERSION_DATE     = current date formatted YYYYMMDD_1
+```
 
 ### Step 3: Generate Cover Page
 
@@ -86,7 +69,7 @@ Compose:
 Compose Scope (with In-Scope bullets), Design Inputs table, Deliverables table, and Exclusions block per the matching sections in [section-templates.md](references/section-templates.md). Decision points:
 
 - Always include an **Automated Test Suite** deliverable.
-- Never invent cost figures — every cost cell stays as `$X,XXX (N d)` for the Client Strategist.
+- Never invent cost figures — leave each cost cell as a placeholder amount and effort (see [section-templates.md → Deliverables table](references/section-templates.md#deliverables-table)) for the Client Strategist.
 - Order Exclusions: domain-specific first (derived from artifacts and `[unknown]` tokens), then the standard exclusions list.
 
 ### Step 6: Generate Fees
@@ -115,7 +98,7 @@ Write the complete SoW to `$OUTPUT_PATH` and emit the summary report from [secti
 
 ### Step 12: Generate PDF (Optional)
 
-If `$PDF_FLAG` is set, follow the [section-templates.md → PDF rendering](references/section-templates.md#pdf-rendering-optional) procedure. Requires Python with `reportlab` and `pypdf` packages installed.
+If `pdf` was passed as the trailing positional, follow the [section-templates.md → PDF rendering](references/section-templates.md#pdf-rendering-optional) procedure. Requires Python with `reportlab` and `pypdf` packages installed.
 
 ## Reference Documentation
 

@@ -1,7 +1,7 @@
 ---
 name: specify-extract
 description: Extract Specify artifacts (specs + design.md) from existing source as language-agnostic captures of domain logic. Use when bootstrapping artifacts from a codebase with no `.specify/`; not for fresh slices or plan-time capability inference.
-argument-hint: <source-path> <slice-dir>
+argument-hint: <source-path> <slice-dir> [include]... [exclude]... [manifest]
 ---
 
 ## Critical Path
@@ -12,7 +12,7 @@ argument-hint: <source-path> <slice-dir>
 4. **Capture external service dependencies** — classify each service by type (`database`, `managed table store`, `message broker`, `cache`, `identity provider`, `API`, `WebSocket`). See [dependencies.md](dependencies.md).
 5. **Capture publication & timing patterns** — document exact publication counts, delay placement, payload identity, partition keys, and message metadata. See [dependencies.md](dependencies.md).
 6. **Capture metrics and observability** — record metric names, types, emission points, and labels. See [observability.md](observability.md).
-7. **Write artifacts** — create `$SPECS_DIR/$CRATE_NAME/spec.md` (flat `### Requirement:` blocks with `ID: REQ-XXX`) and `$DESIGN_PATH` (all 14 sections from Context through Notes). See [design-template.md](design-template.md). Validate against [verification.md](verification.md) before completing.
+7. **Write artifacts** — create `<slice-dir>/specs/<crate-name>/spec.md` (flat `### Requirement:` blocks with `ID: REQ-XXX`) and `<slice-dir>/design.md` (all 14 sections from Context through Notes). See [design-template.md](design-template.md). Validate against [verification.md](verification.md) before completing.
 
 # Extract
 
@@ -23,26 +23,6 @@ argument-hint: <source-path> <slice-dir>
 Analyze a source codebase to produce reconstruction-grade, **language-agnostic** Specify artifacts (specs + design.md) capturing domain-level business logic. The artifacts split behavioral requirements (specs) from technical details (design), enabling cleaner separation of "what" from "how", in a format suitable for migration to any target language or runtime.
 
 **Key principle**: The artifacts are an intermediary format with **no bias toward any target language**. They describe what the code does, not how it should be implemented in a specific language.
-
-## Derived Arguments
-
-1. **Source Path** (`$SOURCE_PATH`): Path to the source codebase
-2. **Change Directory** (`$SLICE_DIR`): Specify slice directory (e.g., `./.specify/slices/component/`)
-3. **Include globs** (`$INCLUDE`): Zero or more `include <glob>` values that narrow the read set for business-logic extraction. Empty ≡ today's behaviour.
-4. **Exclude globs** (`$EXCLUDE`): Zero or more `exclude <glob>` values that remove paths from the read set for business-logic extraction. Empty ≡ today's behaviour.
-5. **Manifest path** (`$MANIFEST`): Optional single `manifest <path>` pointing at a slice manifest. Mutually exclusive with `$INCLUDE` / `$EXCLUDE`. See [scope-filters.md](scope-filters.md) §Manifest shape.
-
-```text
-$SOURCE_PATH = $ARGUMENTS[0]
-$SLICE_DIR  = $ARGUMENTS[1]
-$SPECS_DIR   = $SLICE_DIR/specs
-$DESIGN_PATH = $SLICE_DIR/design.md
-$INCLUDE     = [include <glob> ...]       # repeatable; possibly empty
-$EXCLUDE     = [exclude <glob> ...]       # repeatable; possibly empty
-$MANIFEST    = manifest <path>            # single; mutually exclusive with $INCLUDE/$EXCLUDE
-```
-
-`$MANIFEST` is mutually exclusive with `$INCLUDE` / `$EXCLUDE`. Invoking extract with a `$MANIFEST` alongside any `$INCLUDE` or `$EXCLUDE` positional is a hard error — the driver (`/change:execute`) and the capability's define brief should have caught it upstream at `specify change plan validate` time. Extract fails fast with a clear message rather than trying to reconcile the two modes.
 
 ## Scope filters at a glance
 
@@ -143,7 +123,7 @@ Record metric names, types (counter / gauge / histogram), emission points, dimen
 
 ### Step 7: Write Specify Artifacts
 
-Synthesize findings, create `$SLICE_DIR/` and `$SPECS_DIR/`, write `$DESIGN_PATH` with all 14 sections (Context through Notes) and `$SPECS_DIR/$CRATE_NAME/spec.md` with flat `### Requirement:` blocks tagged `ID: REQ-XXX`.
+Synthesize findings, create the slice directory and `specs/`, write `<slice-dir>/design.md` with all 14 sections (Context through Notes) and `<slice-dir>/specs/<crate-name>/spec.md` with flat `### Requirement:` blocks tagged `ID: REQ-XXX`.
 
 The pre-write synthesis checklist, the directory layout, the 14-section design.md template, the managed-data-store classification rules, and the spec file format live in [design-template.md](design-template.md). The post-write verification checklist lives in [verification.md](verification.md).
 
@@ -215,10 +195,3 @@ Before completing, verify all items from the [Specify Artifact Validation Checkl
 - Document every outbound API call body completely, including vendor-specific field names for audit/secondary calls
 - For orchestration handlers, document exact format strings, conditional null fields, and wrapper structures independently
 
-## Important Notes
-
-- **Language-agnostic**: Do not introduce target language concepts (e.g., Rust traits, Python decorators). Describe behavior only.
-- **Preserve structure**: Maintain exact field names, nesting, and type shapes from source
-- **No inference**: Use `unknown` tokens rather than guessing behavior or values
-- **Traceability**: Every statement must be traceable to source code or comments
-- **Reconstruction-grade**: The artifacts must contain sufficient detail for accurate code generation in any language

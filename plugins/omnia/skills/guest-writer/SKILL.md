@@ -29,30 +29,9 @@ Generate a complete WASM guest project that wraps one or more domain crates cont
 
 The guest is a thin wrapper. It handles WASI/wasm32 boundary concerns such as HTTP routing, subscribing to message topics, handling WebSocket events, and provider setup. **ALL** business logic is delegated to project crates (in the crates/ directory).
 
-## ⚠️ IMPORTANT: Consult reference documentation before commencing
-
-**Before building the guest project:**
-
-1. **Read the relevant reference docs** for the features you're implementing:
-   - HTTP endpoints, messaging, and WebSocket → [Handlers](references/handlers.md)
-   - Provider and runtime → [Providers](references/omnia/providers/README.md), [Runtime](references/omnia/runtime.md)
-   - Dependencies, config templates, and CI/CD → [Configuration](references/configuration.md)
-
-2. **Verify all constraints and patterns** in the reference docs match your generated code
-
-3. **Use the reference docs as the source of truth** for:
-   - Correct dependency versions and registry configuration
-   - Export macros and trait implementations
-   - Error handling patterns
-   - Configuration validation patterns
-
-**Reference docs are NOT examples. They are specifications.** Please follow them exactly.
-
-## Derived Arguments
-
-All paths are relative to the project root, consistent with crate-writer and test-writer.
-
 ## Process
+
+All paths in this skill are relative to the project root, consistent with `crate-writer` and `test-writer`. The reference docs cited from each step are specifications, not examples — follow them exactly.
 
 ### Step 1: Generate project structure
 
@@ -200,7 +179,7 @@ Each example includes the expected directory structure, generated files, and key
 | Missing messaging handler    | Topic subscription from domain crate not wired        | Check domain crate messaging handlers; add topic match arm          |
 | Missing WebSocket handler    | WebSocket handler from domain crate not wired         | Check domain crate WebSocket exports; add handler delegation        |
 | Provider missing trait impl  | New provider needed by domain crate    | Add trait implementation to Provider struct             |
-| Cargo.toml dependency error  | Domain crate path incorrect            | Verify `$CRATE_PATH` relative to guest project root     |
+| Cargo.toml dependency error  | Domain crate path incorrect            | Verify the domain crate path relative to guest project root |
 | Build fails on wasm32 target | Non-WASM-compatible code in guest      | Check for std::env, std::fs, std::net usage             |
 
 ### Recovery Process
@@ -229,21 +208,13 @@ Before completing, verify:
 - [ ] `supply-chain/` directory present with `config.toml`, `audits.toml`, and `README.md`
 - [ ] Handlers annotated with `#[omnia_wasi_otel::instrument]`
 
-## Important Notes
+## Guardrails
 
-### Hard Rules
-
-1. **No business logic** -- All logic must live in domain crates
-2. **wasm32 target only** -- `#![cfg(target_arch = "wasm32")]` guard required
-3. **Provider-only I/O** -- All external i/o must be through provider traits
-4. **Explicit topic routing** -- Messaging handler must match topics, return `Err` for unhandled
-5. **WebSocket export** -- WebSocket handler must use `omnia_wasi_websocket::export!` and implement `omnia_wasi_websocket::incoming_handler::Guest`
-6. **Owner required** -- Every handler invocation must include `.owner("...")` in the builder chain
-7. **Builder API** -- Handler invocation uses `.provider(&p).owner("o").await`, not `.process(&p)`
-8. **Route params** -- Use `{param}` brace syntax (Axum 0.8), not `:param`
-
-### wasm32 Compatibility
-
-- No `std::env`, `std::fs`, `std::net`, `std::thread`
-- Config via `omnia_sdk::Config` trait
-- Async only, no blocking operations
+- **NEVER put business logic in the guest.** All domain logic lives in project crates; the guest is wiring only.
+- **ALWAYS gate the guest with `#![cfg(target_arch = "wasm32")]`** — wasm32 is the only supported target.
+- **NEVER use `std::env`, `std::fs`, `std::net`, or `std::thread`.** All I/O routes through provider traits; configuration via `omnia_sdk::Config`. Async only — no blocking operations.
+- **ALWAYS dispatch messaging handlers explicitly.** Match topics directly and return `Err` for any unhandled topic.
+- **ALWAYS export WebSocket handlers via `omnia_wasi_websocket::export!`** and implement `omnia_wasi_websocket::incoming_handler::Guest`.
+- **ALWAYS pass an owner.** Every handler invocation must include `.owner("...")` in the builder chain.
+- **ALWAYS use the builder API**: `.provider(&p).owner("o").await` — never the legacy `.process(&p)` form.
+- **ALWAYS use `{param}` brace syntax** for Axum 0.8 route params, never `:param`.

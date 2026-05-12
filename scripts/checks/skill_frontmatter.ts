@@ -7,12 +7,14 @@
 
 import {
   Ajv2020,
+  baselineFor,
   CURSOR_SCHEMA_DIR,
   fail,
   join,
   parseYaml,
   relative,
   REPO_ROOT,
+  skillBodyLines,
   underSymlink,
   walk,
 } from "./_shared.ts";
@@ -249,6 +251,130 @@ export async function validateArgumentHints(): Promise<void> {
 
     const err = checkArgumentHintGrammar(hint, { rel });
     if (err !== null) fail(err);
+  }
+}
+
+// Skills-§7: every `$VAR_NAME`-style reference in the SKILL.md body
+// must correspond to a token in the frontmatter `argument-hint:`
+// (matching by kebab-case form: `$SOURCE_PATH` ↔ `<source-path>`).
+//
+// Skip the framework-provided positional array (`$ARGUMENTS` and
+// indexed accesses like `$ARGUMENTS[0]`) plus common shell environment
+// variables (`$HOME`, `$PATH`, `$USER`, `$PWD`, `$SHELL`, `$TMPDIR`).
+//
+// Skip variables defined inside the body via a `$X = ...` line in any
+// fenced code block — those are derived working variables (extracted
+// from artifacts at runtime, computed from another argument, or used
+// as shell-locals in a bash snippet) and not skill arguments.
+//
+// Variables whose only occurrences are inside fenced shell blocks
+// (` ```bash ` / ` ```sh ` / ` ```shell ` / ` ```zsh `) are also
+// skipped — those are shell-language references where `$X` is shell
+// syntax, not a skill argument.
+//
+// The check is intentionally conservative: only `$NAME_LIKE_THIS` (all
+// caps + underscores) is considered. Lowercase shell variables, money
+// placeholders escaped with `\$`, and anything that already maps to an
+// argument-hint token are silent.
+const VAR_USE_RE = /\$([A-Z][A-Z0-9_]*)/g;
+const VAR_DEF_RE = /^\s*\$([A-Z][A-Z0-9_]*)\s*=/gm;
+const FENCED_BLOCK_RE = /```[\s\S]*?```/g;
+const SHELL_FENCED_BLOCK_RE = /```(?:bash|sh|shell|zsh)\b[\s\S]*?```/g;
+const HINT_TOKEN_RE = /[<\[]([a-z][a-z0-9-]*(?:\|[a-z][a-z0-9-]*)*)[>\]]/g;
+const ARGUMENT_BUILTINS = new Set([
+  "ARGUMENTS",
+  "HOME",
+  "PATH",
+  "USER",
+  "PWD",
+  "SHELL",
+  "TMPDIR",
+]);
+
+function kebabToScreamingSnake(name: string): string {
+  return name.replace(/-/g, "_").toUpperCase();
+}
+
+function collectHintVarNames(hint: string): Set<string> {
+  const out = new Set<string>();
+  for (const m of hint.matchAll(HINT_TOKEN_RE)) {
+    for (const alt of m[1].split("|")) {
+      out.add(kebabToScreamingSnake(alt));
+    }
+  }
+  return out;
+}
+
+function collectBodyDefinitions(content: string): Set<string> {
+  const out = new Set<string>();
+  for (const block of content.matchAll(FENCED_BLOCK_RE)) {
+    for (const m of block[0].matchAll(VAR_DEF_RE)) {
+      out.add(m[1]);
+    }
+  }
+  return out;
+}
+
+function collectBodyUses(bodyText: string): Set<string> {
+  const stripped = bodyText.replace(SHELL_FENCED_BLOCK_RE, "");
+  const out = new Set<string>();
+  for (const m of stripped.matchAll(VAR_USE_RE)) {
+    if (ARGUMENT_BUILTINS.has(m[1])) continue;
+    out.add(m[1]);
+  }
+  return out;
+}
+
+export async function checkArgumentHintCoversBodyArguments(): Promise<void> {
+  const PLUGINS_DIR = join(REPO_ROOT, "plugins");
+
+  for await (
+    const entry of walk(PLUGINS_DIR, {
+      match: [/SKILL\.md$/],
+      includeDirs: false,
+    })
+  ) {
+    if (await underSymlink(entry.path)) continue;
+    const rel = relative(REPO_ROOT, entry.path);
+    const content = await Deno.readTextFile(entry.path);
+    const lines = skillBodyLines(content);
+    if (!lines) continue;
+
+    const fmMatch = content.match(/^---\n([\s\S]*?)\n---/);
+    if (!fmMatch) continue;
+    let fm: Record<string, unknown>;
+    try {
+      fm = parseYaml(fmMatch[1]) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
+    const hint = typeof fm["argument-hint"] === "string"
+      ? (fm["argument-hint"] as string)
+      : "";
+
+    const declared = collectHintVarNames(hint);
+    const bodyText = lines.join("\n");
+    const definitions = collectBodyDefinitions(bodyText);
+    const uses = collectBodyUses(bodyText);
+
+    const missing: string[] = [];
+    for (const v of uses) {
+      if (declared.has(v)) continue;
+      if (definitions.has(v)) continue;
+      missing.push(v);
+    }
+    if (missing.length === 0) continue;
+
+    const baseline = await baselineFor(
+      "argumentHintCoversBodyArguments",
+      rel,
+    );
+    if (missing.length > baseline) {
+      const detail = missing.sort().map((v) => `$${v}`).join(", ");
+      fail(
+        `Body references undeclared argument(s): ${rel} — ${missing.length} > baseline ${baseline}: ${detail} (add a kebab-case token to the frontmatter argument-hint, or define the variable in a body code block)`,
+      );
+    }
   }
 }
 

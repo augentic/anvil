@@ -228,3 +228,19 @@ The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 w
 **Rationale:** The skill-discovery surface needs to match on intent ("does this skill apply to my task?") rather than vocabulary, which means the description and argument-hint shapes have to be mechanically tight. The body and section caps push depth into `references/` so a SKILL.md stays an orientation artifact. The envelope-example forbid pins one place where the wire shape can drift. The pre-1.0 vocabulary stance — no backward compatibility constraints, no migration prose unless documenting a real legacy-migration feature — keeps the skill bodies honest about what the system does today rather than how it was built.
 
 **Source:** Cleanup chunks S1–S5 on the `code-review` branch.
+
+## CLI verb renames (RFC-9 / RFC-13)
+
+**Decision:** Several CLI verb groups were renamed during the RFC-9 → RFC-13 cutover so the top-level surface matches the operator-facing nouns (slice / change / registry / workspace / capability):
+
+- `specify change *` (per-slice verbs) → `specify slice *` (RFC-13 §3.2).
+- `specify change *` (umbrella verbs) → `specify change *` (RFC-13 §3.5); `specify change create` was renamed from the v1 `specify change init`.
+- `specify schema {resolve, check, pipeline}` → `specify capability {resolve, check, pipeline}` (RFC-13 §Migration).
+- `specify registry {add, remove}` were added by RFC-9 §2A and both validate the resulting shape after the write.
+- The pre-RFC-13 in-binary `specify contract { list, validate }` family was retired in chunk 2.7 when contracts became a first-party capability owning its own validation behaviour; the contracts merge brief now shells out through `specify tool run contract` as the post-merge baseline gate (RFC-15).
+- `specify init --hub` (RFC-9 §1D) is the mutually exclusive alternative to `specify init <capability>` — it scaffolds a registry-only platform hub whose `project.yaml` carries only `hub: true`.
+- `specify workspace merge` has been removed; operators merge through the forge UI or `gh pr merge`, then `specify change finalize` verifies remote PR state.
+
+**Rationale:** Specify is pre-1.0 and the wire/CLI surface is allowed to evolve. Capturing the rename trail here keeps `AGENTS.md` free of "renamed from … by RFC-N" parentheticals while preserving the trail for anyone tracing a stale call site.
+
+**Source:** [RFC-9](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-9-platform.md), [RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md), [RFC-15](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasi-tools.md).

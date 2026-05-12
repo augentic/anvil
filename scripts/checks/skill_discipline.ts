@@ -51,21 +51,33 @@ export async function checkNoRfcCitationsInSkillBody(): Promise<void> {
   }
 }
 
+// Guardrails consolidation (Skills-§7): `## Guardrails` is the sole
+// canonical place for NEVER/ALWAYS rules. `## Important Notes` and
+// `## Constraints` are legacy synonyms — count them all together so a
+// SKILL.md cannot smuggle a second rule block in under a different
+// heading. Total occurrences across the three heading types must be
+// ≤ 1 per SKILL.md.
 export async function checkOneGuardrailsBlockPerSkill(): Promise<void> {
+  const GUARDRAILS_SYNONYMS = new Set([
+    "## Guardrails",
+    "## Important Notes",
+    "## Constraints",
+  ]);
   for (const path of await walkSkillFiles()) {
     const rel = relative(REPO_ROOT, path);
     const lines = skillBodyLines(await Deno.readTextFile(path));
     if (!lines) continue;
-    let guardrails = 0;
+    const seen: string[] = [];
     let modeGuardrails = 0;
     for (const line of lines) {
       const trimmed = line.trim();
-      if (trimmed === "## Guardrails") guardrails++;
+      if (GUARDRAILS_SYNONYMS.has(trimmed)) seen.push(trimmed);
       else if (trimmed === "## Mode-specific guardrails") modeGuardrails++;
     }
-    if (guardrails > 1) {
+    if (seen.length > 1) {
+      const detail = seen.map((h) => `'${h}'`).join(", ");
       fail(
-        `Multiple ## Guardrails blocks in ${rel} (found ${guardrails}; expected ≤1)`,
+        `Multiple guardrail-equivalent blocks in ${rel} (found ${seen.length}: ${detail}; expected ≤1 across ## Guardrails / ## Important Notes / ## Constraints — fold into a single ## Guardrails)`,
       );
     }
     if (modeGuardrails > 1) {

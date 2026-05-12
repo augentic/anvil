@@ -1,7 +1,7 @@
 ---
 name: vectis-android-writer
 description: Generate or update a Kotlin/Jetpack Compose Android shell for a Crux application. Use when a Specify slice has pending Android shell tasks, or when an existing Android shell needs to be regenerated after a core or layout update; not for the Rust core (`core-writer`) or the iOS shell (`ios-writer`).
-argument-hint: <slice-dir>
+argument-hint: <app-dir> [project-dir] [slice-dir]
 ---
 
 # Crux Android Shell Generator
@@ -27,15 +27,9 @@ When no Android shell exists yet, the skill runs `specify tool run vectis -- sca
 
 This skill targets **Kotlin 2.x**, **Jetpack Compose** with Material 3, and minimum SDK 34.
 
-## Arguments
-
-| Argument | Required | Description |
-|---|---|---|
-| `app-dir` | **Yes** | Path to the Crux app directory (must contain `shared/src/app.rs`) |
-| `project-dir` | No | Directory for the Android shell. Defaults to `{app-dir}/Android` |
-| `slice-dir` | No | Path to `.specify/slices/<change>/`. When provided, the skill reads the `## Android Shell Requirements` section from `{slice-dir}/specs/{feature-name}/spec.md` for platform-specific requirements |
-
 ## Prerequisites
+
+`{app-dir}` must contain `shared/src/app.rs`. `{project-dir}` defaults to `{app-dir}/Android`. When `{slice-dir}` is supplied, the writer reads the `## Android Shell Requirements` section from `{slice-dir}/specs/{feature-name}/spec.md` for platform-specific requirements.
 
 The following tools must be installed:
 
@@ -394,6 +388,6 @@ Gradle build files, the version catalog, the Makefile, `AndroidManifest.xml`, CA
 - [ ] App can be installed: `./gradlew :app:installDebug`
 - [ ] App can be launched: `adb shell am start -n <package>/.MainActivity`
 
-## Important Notes
+## Guardrails
 
-The platform-level normative facts — UniFFI bridging and library override, generated-type packages, Gradle wrapper bootstrap, Java 21 pin, network security config, defensive `CoreFFI` error handling, mandatory `themes.xml`, the crash-recovery pattern, and how `slice-dir` integrates — are covered in [`rules.md`](rules.md). Read it once at the start of any Android run before editing the scaffold.
+- **ALWAYS read [`rules.md`](rules.md) first.** The platform-level normative facts — UniFFI bridging and library override, generated-type packages, Gradle wrapper bootstrap, Java 21 pin, network security config, defensive `CoreFFI` error handling, mandatory `themes.xml`, the crash-recovery pattern, and how `{slice-dir}` integrates — live there. Edit no scaffold output before consulting it.
