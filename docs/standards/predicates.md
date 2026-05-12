@@ -35,7 +35,7 @@ The following predicates are enforced over Rust source in the sibling `specify-c
 | Predicate | What it catches | Implementation | Allowlist |
 |---|---|---|---|
 | `crate-root-prose` | A `lib.rs` or `main.rs` whose leading `//!` doc paragraph exceeds 30 non-blank lines. Architectural prose belongs in `docs/standards/` or an in-repo RFC. | `specify-cli/xtask/src/standards.rs` | Per-file baseline in `specify-cli/scripts/standards-allowlist.toml`. |
-| `display-serde-mirror` | `impl Display for T` where `T` derives `Serialize` and the body is `match self { Self::Variant => "literal" }` (the pattern `kebab_enum!` replaces). | `specify-cli/xtask/src/standards.rs` | Per-file baseline; defaults to 0 — fix by switching to `kebab_enum!`. |
+| `display-serde-mirror` | `impl Display for T` where `T` derives `Serialize` and the body is `match self { Self::Variant => "literal" }`. | `specify-cli/xtask/src/standards.rs` | Per-file baseline; defaults to 0 — fix by extracting a `const fn discriminant(&self) -> &'static str` (or `as_str`) and delegating from `Display::fmt` via `f.write_str(self.discriminant())`. |
 | `unit-test-serde-roundtrip` | A `#[test]` with a matching `serde_*::to_string` + `serde_*::from_str` pair. Soft predicate; allowlist when a custom Visitor or similar warrants the in-crate test. | `specify-cli/xtask/src/standards.rs` | Per-file baseline. |
 
 ## Adjacent checks
