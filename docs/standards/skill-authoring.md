@@ -12,7 +12,7 @@ Each `SKILL.md` `description` field must:
 - Contain a `Use when …` clause so the skill-discovery surface can match on intent rather than vocabulary. The clause describes a trigger condition (when an operator should reach for this skill over its siblings), not a restatement of what the skill does. "Use when an operator wants to X" is an anti-pattern; "Use when starting Y from scratch, not when resuming Z" is the shape.
 - Stay **≤ 512 chars** total.
 
-`checkDescriptionStartsWithVerb`, `checkDescriptionHasUseWhen`, and `checkDescriptionLength` enforce the three rules respectively. See [predicates.md](predicates.md) for the full table.
+`checkDescriptionStartsWithVerb`, `checkDescriptionHasUseWhen`, and `checkDescriptionLength` enforce the three rules respectively. See [scripts/checks/](../../scripts/checks/) for the implementation.
 
 ## Argument-hint grammar
 
