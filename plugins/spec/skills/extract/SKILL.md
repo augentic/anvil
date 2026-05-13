@@ -16,7 +16,7 @@ argument-hint: <source-path> <slice-dir> [include]... [exclude]... [manifest]
 
 # Extract
 
-> See also [`../analyze/SKILL.md`](../analyze/SKILL.md) for plan-time capability inference — the sibling skill that emits capability summaries into `discovery.md`, not full `specs/` + `design.md`.
+> See also `/spec:analyze` for plan-time capability inference — the sibling skill that emits capability summaries into `discovery.md`, not full `specs/` + `design.md`.
 
 ## Overview
 

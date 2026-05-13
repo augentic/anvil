@@ -45,5 +45,5 @@ See [`references/runbook.md`](references/runbook.md) for the operational detail 
 ## Guardrails
 
 - **NEVER compile or execute tests.** Compilation and `cargo test` belong to the orchestration layer's verify-repair loop; this skill verifies structural checklist items only.
-- **NEVER skip side-effect assertions for design-specified provider interactions.** Specs and design.md are ground truth — generate the assertion even if the current handler code does not yet satisfy it; a failing test routes back to `crate-writer`.
+- **Assert every design-specified provider interaction.** Specs and design.md are ground truth — generate the assertion even if the current handler code does not yet satisfy it; a failing test routes back to `crate-writer`.
 - **NEVER delete manual tests during drift handling.** Flag extras and assertion drift; leave operator-authored tests in place unless they are clearly obsolete.

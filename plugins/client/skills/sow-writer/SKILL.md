@@ -151,5 +151,5 @@ If `pdf` was passed as the trailing positional, follow the [section-templates.md
 - **Standard boilerplate is canonical.** The Reference Agreement, Fees terms, Change Requests, Warranty, and Acceptance sections are consistent across all SoWs and must come from the templates verbatim.
 - **Client Strategist review.** The generated SoW is a draft. It must be reviewed and completed by the Client Strategist before being sent to the client.
 - **Appendix A is fixed.** Include the Standard Services and Deliverables appendix verbatim from [sow-template.md](references/sow-template.md).
-- **Exclusions protect scope.** Be thorough; better to explicitly exclude something than to leave scope ambiguous. Keep descriptions terse.
+- **Exclusions protect scope.** Explicitly exclude rather than leaving scope ambiguous. Keep descriptions terse.
 - **`[unknown]` tokens become assumptions.** Each unknown represents a decision that needs client confirmation.

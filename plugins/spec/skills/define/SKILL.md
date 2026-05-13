@@ -106,7 +106,7 @@ When invoked by `/change:execute` from a plan entry, this skill accepts:
     [source <key>=<path-or-url>...]
 ```
 
-- **`--source <key>=<path-or-url>`** — a resolved entry from the plan's top-level `sources` map. The key is the kebab-case identifier used in the plan entry's `sources` list; the value is either a local filesystem path or a git URL. `/change:execute` has already validated that the key exists in the plan's top-level `sources` map; this skill treats the `value` as opaque and forwards it to whichever define brief invokes `/spec:extract` (which inlines a guarded `git clone` snippet for URL values — see the *Cloning a source tree* subsection in [`../analyze/SKILL.md`](../analyze/SKILL.md)). The driver never clones; that stays inside the brief pipeline.
+- **`--source <key>=<path-or-url>`** — a resolved entry from the plan's top-level `sources` map. The key is the kebab-case identifier used in the plan entry's `sources` list; the value is either a local filesystem path or a git URL. `/change:execute` has already validated that the key exists in the plan's top-level `sources` map; this skill treats the `value` as opaque and forwards it to whichever define brief invokes `/spec:extract` (which inlines a guarded `git clone` snippet for URL values — see the *Cloning a source tree* subsection in `/spec:analyze`). The driver never clones; that stays inside the brief pipeline.
 
 The plan entry's `description` field provides the scoping and delta-targeting context that the specs brief uses to infer extract filters and baseline targets. See §Scope inference and §Delta-target inference below.
 
@@ -125,7 +125,7 @@ The specs brief infers which existing baselines this slice modifies by reading t
 
 The brief logs the inferred delta targets in the journal. If the description does not reference any existing baselines, all extracted specs remain in fresh new-crate form.
 
-The authoritative contract for how `/change:execute` builds these flag values lives in [`../../../change/skills/execute/SKILL.md` → §Argument resolution (`sources`)](../../../change/skills/execute/SKILL.md). The downstream contract for how extract's native filter flags work lives in [`../extract/SKILL.md`](../extract/SKILL.md) (§Scope filters, §Sentinels always read, §Manifest shape).
+The authoritative contract for how `/change:execute` builds these flag values lives in `/change:execute` §Argument resolution (`sources`). The downstream contract for how extract's native filter flags work lives in `/spec:extract` (§Scope filters, §Sentinels always read, §Manifest shape).
 
 ## Phase outcome contract
 
