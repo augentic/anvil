@@ -61,47 +61,9 @@ All commands are run from the repository root:
 
 The cross-repo test requires a built `specify` binary. Set `SPECIFY_BIN=/absolute/path/to/specify-cli/target/release/specify` (the system PATH `specify` is typically the older v0.1.0 install and the test will skip against it). Full operator guide: [docs/contributing/acceptance.md](docs/contributing/acceptance.md).
 
-### Markdown style
-
-- Do not hard-wrap prose in Markdown files solely for column width. Keep paragraphs and list-item prose on a single line unless the line break is semantically meaningful.
-- Preserve intentional line breaks in frontmatter, tables, lists, blockquotes, and fenced code blocks.
-
 ### Skill authoring
 
-The normative checklist is [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (which also carries the long-form rationale under `## Rationale`: discovery model, why metadata is precious, examples of good/bad descriptions, progressive-disclosure pattern, forbidden-frontmatter list) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). This section captures the rules `make checks` enforces.
-
-This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. Migration prose ("Pre-RFC-N this used to be …", "Phase 3.7 renamed it …", "the v1.x verb was …") belongs in [docs/explanation/decision-log.md](docs/explanation/decision-log.md), not in skills.
-
-**Description grammar.** Each `description` (a) starts with an imperative verb from the curated allow-list in [scripts/checks/skill_frontmatter.ts](scripts/checks/skill_frontmatter.ts) (`IMPERATIVE_VERBS`); (b) contains a `Use when …` clause describing a trigger condition, not a restatement ("Use when starting Y from scratch, not when resuming Z" — not "Use when an operator wants to X"); (c) stays ≤ **512 chars**.
-
-**Argument-hint grammar.** Each `argument-hint:` value is a whitespace-separated sequence of tokens drawn from a fixed grammar (enforced by `checkArgumentHintGrammar`): `<name>` (required positional), `[name]` (optional), trailing `...` (repeated), `<a|b|c>` / `[a|b|c]` (alternatives), `--flag` (long flag; value-bearing flags model the value as a sibling token `--kind <kind>`). Names are kebab-case (`[a-z][a-z0-9-]*`). Bare prose, mixed punctuation, trailing `?`, and short flags are rejected.
-
-**Body caps.** SKILL.md body ≤ **200 lines** and per-H2 section ≤ **45 lines** non-blank, non-comment (`checkBodyAndSectionLineCounts`). Caps are floors — overflow means push depth into `references/<topic>.md`, not raise the cap. Pre-existing oversized files are grandfathered via per-file baselines in [scripts/standards-allowlist.toml](scripts/standards-allowlist.toml) and are expected to ratchet down with each touch.
-
-**Cross-cutting guardrails.** The recurring `.metadata.yaml` / slice-dir / plan-write rules live in [plugins/references/guardrails.md](plugins/references/guardrails.md). SKILL.md files **link** to them; they do not restate them inline. Per-skill guardrails (don'ts that only apply to one skill) stay in a single `## Guardrails` (or `## Mode-specific guardrails`) H2; scattered IMPORTANT / Never / Critical scolding trains agents to skim. Enforced by `checkOneGuardrailsBlockPerSkill`.
-
-**Envelope examples.** CLI envelope shapes (flat `envelope-version` + body keys on success; `error` / `message` / `exit-code` on failure — no `ok`, no `data` wrapper) live in [plugins/references/cli-output-shapes.md](plugins/references/cli-output-shapes.md). The reference is regenerated from the CLI's `tests/fixtures/` via `make doc-envelopes`. SKILL.md bodies **link** to the reference; `checkNoEnvelopeExamples` flags any fenced ` ```json` / ` ```jsonc ` block whose body carries an `"envelope-version"` key (or, for legacy embeddings, pairs `"ok"` with `"data"` / `"error"`).
-
-**Skill body discipline.** `## Critical Path` is the table of contents: sibling files carry the long-form prose; the body keeps the Critical Path, invocation surface, dispatch table (when applicable), and canonical decision points. Critical Path is either a flat 5–7 entry list or 5–7 `### N. Title` H3 step headings — never both (`checkNoStepBodyDuplicatesCriticalPath`). Don't restate frontmatter under the first H2, don't cite RFC numbers inline, and use `> See [Phase outcome contract](../../references/phase-outcome-contract.md).` rather than restating the contract — these are review-time concerns, not predicates.
-
-### Mechanical enforcement
-
-`make checks` runs [scripts/checks.ts](scripts/checks.ts), a thin orchestrator over per-concern modules under [scripts/checks/](scripts/checks/) (`links.ts`, `capability.ts`, `tools.ts`, `plugins.ts`, `skill_frontmatter.ts`, `skill_body.ts`, `prose.ts`, `scenarios.ts`, `codex.ts`, `docs_quality.ts`). Per-predicate per-file baselines live in [scripts/standards-allowlist.toml](scripts/standards-allowlist.toml); a live count strictly greater than its baseline fails CI.
-
-**Ratchet** — any PR that touches a skill is expected to reduce its baselines where it can. A baseline is grandfathering, not a license; raising a number requires a justification in the PR description.
-
-| Predicate | What it counts |
-|---|---|
-| `checkArgumentHintCoversBodyArguments` | Every `$VAR_NAME` reference in the SKILL.md body resolves to a kebab-case token in `argument-hint:` (e.g. `$SOURCE_PATH` ↔ `<source-path>`), or is defined inline as `$VAR = ...` in a body code block. `$ARGUMENTS` and `$ARGUMENTS[N]` are framework-provided and skipped. |
-| `checkArgumentHintGrammar` | Each whitespace-separated token in `argument-hint:` matches the canonical grammar. |
-| `checkBodyAndSectionLineCounts` | SKILL.md body line count, hard cap **200 lines**; per-H2 section line count, hard cap **45 lines** (non-blank, non-comment). |
-| `checkDescriptionHasUseWhen` | SKILL.md `description` contains a `Use when …` clause. |
-| `checkDescriptionLength` | SKILL.md `description` length, hard cap **512 chars**. |
-| `checkDescriptionStartsWithVerb` | SKILL.md `description` starts with an imperative verb from the curated allow-list in `scripts/checks/skill_frontmatter.ts`. |
-| `checkNoEnvelopeExamples` | Fenced ` ```json` / ` ```jsonc ` blocks whose body looks like a full CLI envelope (carries `"envelope-version"`, or pairs `"ok"` with `"data"` / `"error"`). |
-| `checkNoStepBodyDuplicatesCriticalPath` | Whitespace-normalised verbatim duplication between an entry in `## Critical Path` and any line under `## Process`. |
-| `checkOperationalVocabulary` | Active prose using retired slice paths, top-level CLI commands, or pre-cutover umbrella nouns outside archived/historical material. |
-| `checkSkillNumericCaps` | Keeps the 512/200/45 caps synchronized across scripts, schema, rules, and docs. |
+Skill authoring rules — markdown style, description grammar, argument-hint grammar, 200/45/512 caps, skill body discipline, cross-cutting guardrails, envelope examples — live in [docs/standards/skill-authoring.md](docs/standards/skill-authoring.md) (with the long-form rationale under `## Rationale`) and [.cursor/rules/project.mdc](.cursor/rules/project.mdc#skill-authoring-conventions). The full predicate table lives in [docs/standards/predicates.md](docs/standards/predicates.md). Enforced by `make checks`; per-predicate per-file baselines in [scripts/standards-allowlist.toml](scripts/standards-allowlist.toml).
 
 ### Gotchas
 

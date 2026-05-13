@@ -1,6 +1,6 @@
 # Shared guardrails
 
-Cross-cutting "do not / never / always" rules that apply across many skills. Skills should **link** to the relevant section here rather than restating these rules verbatim in their `SKILL.md` body (see [AGENTS.md "Skill body discipline"](../../AGENTS.md#skill-body-discipline)).
+Cross-cutting "do not / never / always" rules that apply across many skills. Skills should **link** to the relevant section here rather than restating these rules verbatim in their `SKILL.md` body (see [docs/standards/skill-authoring.md "Skill body discipline"](../../docs/standards/skill-authoring.md#skill-body-discipline)).
 
 Per-skill guardrails — rules that only make sense for one skill ("never auto-promote a `component:` slug", "never invent cost figures", etc.) — stay in the owning `SKILL.md`. Lift to this file only when 3+ skills repeat the same rule.
 
