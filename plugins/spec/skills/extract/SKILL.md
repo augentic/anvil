@@ -150,20 +150,17 @@ Detailed examples are available in the `references/examples/` directory:
 
 Before completing, verify all items from the [Specify Artifact Validation Checklist](references/specify.md#validation-checklists) are satisfied, plus the skill-specific items in [verification.md](verification.md). Common error modes and recovery steps also live in that file.
 
-## What this skill does NOT do
-
-| Surface | Status |
-|---|---|
-| Author `tasks.md` or implement code | Never — task authoring lives in `/spec:define`; implementation lives in `/spec:build`. Extract only writes `specs/` and `design.md`. |
-| Write outside the supplied `<slice-dir>` | Never — every artifact is rooted at `$SLICE_DIR`; the source tree is read-only. |
-| Run plan-time capability inference | Delegates to `/spec:analyze`. Extract is reconstruction-grade; analyze emits capability summaries into `discovery.md`. |
-| Merge extracted specs into the baseline | Never — that lives in `/spec:merge`. Extract leaves the slice in `defining`. |
-| Transition slice status | Never — lifecycle transitions route through `specify slice transition` from `/spec:define` and `/spec:merge`. |
-| Clone git URLs from `<source-path>` | Never — the caller (or the invoking define brief) materialises the source tree before extract runs. |
-| Extend the closed kind enum | Never — `legacy-code` / `documentation` are frozen at `/spec:analyze`; extract operates on a materialised path regardless of kind. |
-| Infer behaviour the source does not state | Never — uses explicit `unknown` tokens; see [extract-principles.md](../../references/extract-principles.md). |
-
 ## Guardrails
+
+Lifecycle state (`.metadata.yaml` transitions, baseline merge into `.specify/specs/`) is owned by `/spec:define` and `/spec:merge` via the CLI verbs in [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state); extract writes only inside the supplied `<slice-dir>` and leaves the slice in `defining`.
+
+### Skill scope
+
+- Write only `specs/` and `design.md` under the supplied `<slice-dir>`; the source tree is read-only.
+- Never author `tasks.md` or implement code — task authoring lives in `/spec:define`; implementation lives in `/spec:build`.
+- Never run plan-time capability inference — that delegates to `/spec:analyze`, which emits capability summaries into `discovery.md`.
+- Never clone git URLs from `<source-path>` — the caller (or the invoking define brief) materialises the source tree before extract runs.
+- Never extend the closed kind enum — `legacy-code` / `documentation` are frozen at `/spec:analyze`; extract operates on a materialised path regardless of kind.
 
 ### NEVER
 

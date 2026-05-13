@@ -131,18 +131,6 @@ The authoritative contract for how `/change:execute` builds these flag values li
 
 This skill is the **define** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including define's per-phase deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
 
-## What this skill does NOT do
-
-| Surface | Status |
-|---|---|
-| Implement code or run task checkboxes | Never — implementation is `/spec:build`'s phase. Define stops once artifacts are written and the slice is `defined`. |
-| Merge specs into `.specify/specs/` | Never — baseline merge lives in `/spec:merge`. |
-| Write `.specify/slices/<name>/.metadata.yaml` directly | Only via `specify slice create` / `specify slice transition` / `specify slice touched-specs`. Never hand-edited. |
-| Transition `plan.yaml` status | Never — `plan.yaml` status writes belong to `/change:execute` (driver) or the human Layer 1 loop. |
-| Author or amend `plan.yaml` entries proactively | Only when the run uncovers neighbouring work; mutations route through `specify change plan add` / `specify change plan amend` per the [phase outcome contract](../../references/phase-outcome-contract.md). |
-| Extract specs from external source code | Delegates to `/spec:extract`, invoked by define briefs in driver-supplied `<source>` mode (and never by define itself outside that pipeline). |
-| Run plan-time capability inference | Never — that lives in `/spec:analyze`, which the `/change:plan` discovery brief orchestrates. |
-
 ## Input
 
 The user's request should include a slice name (kebab-case) OR a description of what they want to build. Optionally, an artifact ID to regenerate a single artifact for an existing slice (e.g., `/spec:define my-change design`).
@@ -153,7 +141,10 @@ The user's request should include a slice name (kebab-case) OR a description of 
 - Always read dependency artifacts (from each brief's `needs`) before creating a new one.
 - **All artifacts MUST be written under `.specify/slices/<name>/`**.
 - If context is critically unclear, ask the user — but prefer making reasonable decisions to keep momentum.
-- Route `.metadata.yaml` writes through the CLI — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state). All status transitions and timestamp writes go through `specify slice transition`; all `touched-specs` updates go through `specify slice touched-specs`.
+- Route every write to `.metadata.yaml`, `plan.yaml`, and the `.specify/specs/` baseline through the CLI — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state). Status transitions and timestamp writes go through `specify slice transition`; `touched-specs` updates go through `specify slice touched-specs`; plan amendments only when the run uncovers neighbouring work and only via `specify change plan add` / `specify change plan amend` per the [phase outcome contract](../../references/phase-outcome-contract.md).
+- Never implement code or flip task checkboxes here — implementation is `/spec:build`'s phase; define stops once artifacts are written and the slice is `defined`.
+- Never extract specs from external source code directly — delegate to `/spec:extract` (invoked by define briefs in driver-supplied `<source>` mode).
+- Never run plan-time capability inference — that lives in `/spec:analyze`, orchestrated by the `/change:plan` discovery brief.
 - If a slice with that name already exists, use `specify slice status <name>` to decide how to proceed.
 - Verify each artifact file exists after writing before proceeding to next.
 - **IMPORTANT**: `domain` and effective rules (project config overrides) are constraints for YOU, not content for the file. Do NOT copy `<domain>`, `<rules>`, `<project_context>` blocks into any artifact.

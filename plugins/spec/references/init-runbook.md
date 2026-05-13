@@ -172,17 +172,16 @@ The CLI validates the name, creates `.specify/slices/initial-baseline/specs/`, a
 
 Render the **greenfield** template for a regular project with no codebase indicators (or when the user declined extraction in step 7), the **brownfield** template after the user opted into baseline extraction, or the **hub** template when `$HUB_MODE=true`. Each template substitutes the resolved `$CAPABILITY` (regular and brownfield only; hub omits it). The verbatim templates live in [`init-output-templates.md`](init-output-templates.md).
 
-## What this skill does NOT do
+## Skill scope
 
-| Surface | Status |
-|---|---|
-| Hand-roll `.specify/` scaffolding when the CLI fails | Never — surface the CLI error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`. |
-| Pre-populate `.specify/.cache/` with capability material | Never — `specify init` owns capability fetch and copy when invoked with the capability positional. |
-| Extract baseline specs from the existing codebase | Delegates to `/spec:extract`. Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in. |
-| Author `plan.yaml` or `change.md` | Never — `change.md` is minted by `specify change create`, `plan.yaml` by `/change:plan` or `specify change plan create`. |
-| Register peers into `registry.yaml` | Never — peer registration lives in `specify registry add`. Hub init only seeds an empty `projects: []`. |
-| Reinitialize an existing `.specify/` without confirmation | Always asks via the **AskQuestion tool** before treating the run as an upgrade. |
-| Combine `<capability>` (`$CAPABILITY`) with `--hub` | Never — the CLI rejects that combination with `init-requires-capability-or-hub`; the skill picks exactly one shape per run. |
+`/spec:init` keeps a narrow boundary; `plan.yaml` / `.metadata.yaml` / archive moves are owned elsewhere per [shared guardrails](../../references/guardrails.md#single-writer-for-lifecycle-state).
+
+- **CLI-only scaffolding.** Never hand-roll `.specify/` when `specify init` fails — surface the error and stop. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.
+- **No pre-cache.** Never pre-populate `.specify/.cache/` with capability material — `specify init` owns capability fetch and copy when invoked with the capability positional.
+- **Baseline extraction is delegated.** Init only creates the `initial-baseline` slice (via `specify slice create`) when the operator opts in; the actual extraction is `/spec:extract`'s job.
+- **No registry peer registration.** Hub init only seeds an empty `projects: []`; peer registration lives in `specify registry add`.
+- **Reinit is always confirmed.** Use the **AskQuestion tool** before treating the run as an upgrade.
+- **Capability vs `--hub` is mutually exclusive.** The CLI rejects the combination with `init-requires-capability-or-hub`; pick exactly one shape per run.
 
 ## References
 

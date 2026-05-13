@@ -28,13 +28,13 @@ The CLI owns every filesystem write — `.specify/`, `project.yaml`, the resolve
 
 After a regular init, the skill optionally detects existing code indicators (`Cargo.toml`, `package.json`, `src/`, etc.) and offers to create an `initial-baseline` slice via `specify slice create`. Hub init skips that step entirely — a hub never carries code. The three render templates (greenfield / brownfield / hub) live in [`../../references/init-output-templates.md`](../../references/init-output-templates.md).
 
-See [`references/init-runbook.md`](references/init-runbook.md) for the operational detail (CLI bootstrap rules, full seven-step procedure with verbatim shell snippets, regular and hub invocation bodies, output templates, and the "what this skill does NOT do" matrix).
+See [`references/init-runbook.md`](references/init-runbook.md) for the operational detail (CLI bootstrap rules, full seven-step procedure with verbatim shell snippets, regular and hub invocation bodies, output templates, and the skill-scope boundaries).
 
 ## Reference Documentation
 
 | Reference | Purpose |
 |---|---|
-| [`references/init-runbook.md`](references/init-runbook.md) | CLI bootstrap, full seven-step procedure, regular vs hub invocations, output templates, "does NOT do" matrix |
+| [`references/init-runbook.md`](references/init-runbook.md) | CLI bootstrap, full seven-step procedure, regular vs hub invocations, output templates, skill-scope boundaries |
 | [`../../references/init-output-templates.md`](../../references/init-output-templates.md) | Verbatim greenfield / brownfield / hub output templates rendered after `specify init` returns |
 | [`../../references/topology-flow.md`](../../references/topology-flow.md) | Regular project vs platform hub decision tree and on-disk shape |
 | [`../../references/capability-resolution.md`](../../references/capability-resolution.md) | Capability identifier resolution (bare name / URL / file URI) and `.specify/.cache/` ownership |

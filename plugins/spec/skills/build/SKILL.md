@@ -85,18 +85,6 @@ Output templates for the per-session implementation, completion, and pause summa
 
 This skill is the **build** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including build's per-phase deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
 
-## What this skill does NOT do
-
-| Surface | Status |
-|---|---|
-| Author or rewrite `tasks.md` | Never — task authoring lives in `/spec:define`. If a task is unclear or needs a rewrite, halt and ask the user to re-run define. |
-| Edit `tasks.md` checkboxes directly | Never — task completion flips through `specify slice task mark`, which is the only writer of the checkbox column. |
-| Write `.specify/slices/<name>/.metadata.yaml` (status, timestamps) | Only via `specify slice transition`; never hand-edited. |
-| Transition `plan.yaml` status | Never — `plan.yaml` writes belong to `/change:execute` (driver) or the human Layer 1 loop. |
-| Merge specs into the `.specify/specs/` baseline | Never — baseline merge lives in `/spec:merge`. |
-| Run extract / analyze passes against external source code | Never — those are `/spec:extract` and `/spec:analyze`. Build operates on the slice already on disk. |
-| Invoke writer / reviewer specialist skills | Yes — when a task carries a `skill-directive`, the build loop dispatches it directly with the standard arguments. |
-
 ## Input
 
 Optionally specify a slice name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available slices.
@@ -109,8 +97,9 @@ Optionally specify a slice name. If omitted, check if it can be inferred from co
 - If a task is ambiguous, pause and ask before implementing.
 - If implementation reveals issues, pause and suggest artifact updates.
 - Keep code changes minimal and scoped to each task.
-- Flip task checkboxes through `specify slice task mark`; do not edit `tasks.md` directly.
-- Route `.metadata.yaml` writes through `specify slice transition` — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
+- Flip task checkboxes through `specify slice task mark`; never edit `tasks.md` directly. Task authoring (rewrites, additions) lives in `/spec:define` — halt and ask the user to re-run define if a task needs rewriting.
+- Route every write to `.metadata.yaml`, `plan.yaml`, and the `.specify/specs/` baseline through the CLI — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state). Status transitions and timestamps go through `specify slice transition`; baseline merge lives in `/spec:merge`.
+- Never run extract or analyze passes here — those are `/spec:extract` and `/spec:analyze`. Build operates on the slice already on disk.
 - Pause on errors, blockers, or unclear requirements — don't guess.
 
 ## Fluid workflow integration
