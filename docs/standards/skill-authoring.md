@@ -28,8 +28,10 @@ Names are kebab-case (`[a-z][a-z0-9-]*` per alternative). Bare prose ("the slice
 
 ## Body caps
 
-- **Body line count** ≤ **200 lines** (`checkBodyLineCount`). New skills must comply; existing skills that still exceed the cap are grandfathered via per-file `bodyLineCount` baselines in [scripts/standards-allowlist.toml](../../scripts/standards-allowlist.toml) and are expected to ratchet down with each touch.
-- **Per-H2 section** ≤ **45 lines** (non-blank, non-comment) (`checkSectionLineCount`). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. Per-file `sectionLineCount` baselines in `scripts/standards-allowlist.toml` grandfather the irreducible remainder; new sections still fail fast.
+- **Body line count** ≤ **200 lines**. New skills must comply; existing skills that still exceed the cap are grandfathered via per-file `bodyLineCount` baselines in [scripts/standards-allowlist.toml](../../scripts/standards-allowlist.toml) and are expected to ratchet down with each touch.
+- **Per-H2 section** ≤ **45 lines** (non-blank, non-comment). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. Per-file `sectionLineCount` baselines in `scripts/standards-allowlist.toml` grandfather the irreducible remainder; new sections still fail fast.
+
+Both caps are enforced in a single walk by `checkBodyAndSectionLineCounts` (see [scripts/checks/skill_body.ts](../../scripts/checks/skill_body.ts)).
 
 All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 200 / 45 / 512 numbers are kept synchronized across scripts, schema, rules, and docs by `checkSkillNumericCaps`.
 
@@ -37,7 +39,7 @@ All caps are floors, not budgets — overflow means the relocate-to-`references/
 
 Long-form rules, code-block examples, output templates, and edge-case enumerations belong in siblings the SKILL.md body links to (Anthropic's [progressive disclosure](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#progressive-disclosure-patterns) pattern). The SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points; sibling files (`references/`, `examples/`, topical files) carry the prose.
 
-Push prose to `references/<topic>.md` (or, for cross-skill prose, [plugins/references/](../../plugins/references/)) before raising any cap. The relocate-to-`references/` pattern is the canonical response when a section approaches the 60-line ceiling.
+Push prose to `references/<topic>.md` (or, for cross-skill prose, [plugins/references/](../../plugins/references/)) before raising any cap. The relocate-to-`references/` pattern is the canonical response when a section approaches the 45-line ceiling.
 
 ## Skill body discipline
 
