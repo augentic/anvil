@@ -11,11 +11,10 @@
 
 import { walk } from "jsr:@std/fs@1/walk";
 import { parse as parseYaml } from "jsr:@std/yaml@1";
-import { parse as parseToml } from "jsr:@std/toml@1";
 import { dirname, fromFileUrl, join, relative, resolve } from "jsr:@std/path@1";
 import Ajv2020Module from "npm:ajv@8/dist/2020.js";
 
-export { dirname, join, parseToml, parseYaml, relative, resolve, walk };
+export { dirname, join, parseYaml, relative, resolve, walk };
 
 // `_shared.ts` lives one extra directory deeper than the original
 // `scripts/checks.ts`, so REPO_ROOT walks up two levels instead of one.
@@ -114,60 +113,6 @@ export function skillFrontmatter(
   } catch {
     return null;
   }
-}
-
-// ──────────────────────────────────────────────────────────────
-// Per-predicate per-file baselines for skill-body discipline.
-//
-// Skills-1: snapshot the current violation count per file. A live
-// count strictly greater than the baseline fails CI; missing entries
-// default to 0 (new files start clean). Baselines drop as Skills-2
-// migrates each skill body.
-//
-// The on-disk layout is file-major TOML to match the sibling
-// `specify-cli` workspace:
-//
-//   [file."<rel-path>"]
-//   <predicate-name> = <count>
-//
-// We invert that into the predicate-major shape expected by the
-// individual predicates.
-// ──────────────────────────────────────────────────────────────
-
-export type StandardsAllowlist = Record<string, Record<string, number>>;
-
-let standardsAllowlistCache: StandardsAllowlist | null = null;
-
-export async function standardsAllowlist(): Promise<StandardsAllowlist> {
-  if (standardsAllowlistCache !== null) return standardsAllowlistCache;
-  const path = join(REPO_ROOT, "scripts", "standards-allowlist.toml");
-  try {
-    const raw = await Deno.readTextFile(path);
-    const parsed = parseToml(raw) as {
-      file?: Record<string, Record<string, unknown>>;
-    };
-    const out: StandardsAllowlist = {};
-    for (const [file, predicates] of Object.entries(parsed.file ?? {})) {
-      if (!predicates || typeof predicates !== "object") continue;
-      for (const [predicate, count] of Object.entries(predicates)) {
-        if (typeof count !== "number") continue;
-        if (!out[predicate]) out[predicate] = {};
-        out[predicate][file] = count;
-      }
-    }
-    standardsAllowlistCache = out;
-  } catch {
-    standardsAllowlistCache = {};
-  }
-  return standardsAllowlistCache;
-}
-
-export async function baselineFor(
-  predicate: string,
-  file: string,
-): Promise<number> {
-  const all = await standardsAllowlist();
-  return all[predicate]?.[file] ?? 0;
 }
 
 // Walk every SKILL.md under plugins/, skipping files that live under

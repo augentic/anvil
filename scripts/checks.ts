@@ -4,9 +4,8 @@
 //
 // This file is the thin orchestration layer. Predicates live in
 // `scripts/checks/<concern>.ts`; shared helpers (the failure counter,
-// REPO_ROOT, the standards-allowlist loader, etc.) live in
-// `scripts/checks/_shared.ts`. The split keeps each concern under
-// ~500 LoC and makes the per-PR diff easier to review.
+// REPO_ROOT, etc.) live in `scripts/checks/_shared.ts`. The split keeps
+// each concern under ~500 LoC and makes the per-PR diff easier to review.
 
 import { errorCount, NC, RED } from "./checks/_shared.ts";
 import {

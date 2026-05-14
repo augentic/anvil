@@ -32,7 +32,7 @@ git clone "$url" "$dest"
 
 ### Step 2: Detect Patterns
 
-Read `$LEGACY_DIR/package.json` (dependencies and devDependencies) and scan source under `$LEGACY_DIR` (e.g. `src/`, `lib/`, or root `*.ts`/`*.js`). The eight-pattern detection table (A–H), the per-pattern signals, and the HTTP-entry mutual-exclusion rule (NestJS > Fastify/Express) live in [references/design.md](references/design.md) §Pattern detection. Be conservative — when in doubt, do not add a pattern.
+Read `$LEGACY_DIR/package.json` (dependencies and devDependencies) and scan source under `$LEGACY_DIR` (e.g. `src/`, `lib/`, or root `*.ts`/`*.js`). The eight-pattern detection table (A–H), the per-pattern signals, and the HTTP-entry mutual-exclusion rule (NestJS > Fastify/Express) live in [references/design.md](references/design.md) §Detection. Be conservative — when in doubt, do not add a pattern.
 
 ### Step 3: Generate Core and Adapters
 
@@ -43,7 +43,7 @@ Create `$LEGACY_DIR/src/wiretap/` and generate only the files below. Use the **e
 - `$LEGACY_DIR/src/wiretap/session.ts` — `WiretapSession`, `WiretapEntry`, `WiretapHttpCall`, `WiretapDbQuery`, `WiretapKafkaPublish`, `extractError`. AsyncLocalStorage-based session; `toEntry(output, statusCode)`. (See [references/design.md](references/design.md) for session/wiretap core.)
 - `$LEGACY_DIR/src/wiretap/wiretap.ts` — `Wiretap` singleton: `AsyncLocalStorage<WiretapSession>`, `init(appName)`, `getInstance()`, `getCurrentSession()`, `enterSession()`, `runWithSession()`, `flush(handler, entry)` writing to `{appName}.wiretap.json`.
 
-**Generated only when the corresponding pattern is detected.** The pattern → adapter file → reference document mapping (A–H) lives in [references/design.md](references/design.md) §Adapter mapping. Generate one adapter file under `$LEGACY_DIR/src/wiretap/adapters/` per detected pattern, copying verbatim from the listed reference.
+**Generated only when the corresponding pattern is detected.** The pattern → adapter file → reference document mapping (A–H) lives in [references/design.md](references/design.md) §Generated Layout. Generate one adapter file under `$LEGACY_DIR/src/wiretap/adapters/` per detected pattern, copying verbatim from the listed reference.
 
 ### Step 4: Wire Up the Start
 

@@ -40,7 +40,7 @@ Read the source at `$SOURCE_PATH` and identify:
    validation performed before the domain handler.
 
 Scope filters never hide manifest files from this step — see
-[scope-filters.md](../scope-filters.md) §"Sentinels always read". Language
+[scope-filters.md](scope-filters.md) §"Sentinels always read". Language
 detection and dependency extraction always run against the full set of
 sentinel files regardless of `$INCLUDE` / `$EXCLUDE` / `$MANIFEST`.
 

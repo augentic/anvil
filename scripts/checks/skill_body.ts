@@ -11,7 +11,6 @@
 //     body (and vice versa).
 
 import {
-  baselineFor,
   fail,
   join,
   relative,
@@ -45,29 +44,26 @@ export async function checkBodyAndSectionLineCounts(): Promise<void> {
     const lines = skillBodyLines(content);
     if (!lines) continue;
 
-    await assertBodyLineCount(rel, lines);
-    await assertSectionLineCounts(rel, lines);
+    assertBodyLineCount(rel, lines);
+    assertSectionLineCounts(rel, lines);
   }
 }
 
-async function assertBodyLineCount(
+function assertBodyLineCount(
   rel: string,
   lines: string[],
-): Promise<void> {
-  const baseline = await baselineFor("bodyLineCount", rel);
-  const effectiveCap = Math.max(MAX_BODY_LINES, baseline);
-  if (lines.length > effectiveCap) {
-    const extra = baseline > 0 ? ` > grandfathered baseline ${baseline}` : "";
+): void {
+  if (lines.length > MAX_BODY_LINES) {
     fail(
-      `Skill body too long: ${rel} — ${lines.length} body lines (limit ${MAX_BODY_LINES})${extra}`,
+      `Skill body too long: ${rel} — ${lines.length} body lines (limit ${MAX_BODY_LINES})`,
     );
   }
 }
 
-async function assertSectionLineCounts(
+function assertSectionLineCounts(
   rel: string,
   lines: string[],
-): Promise<void> {
+): void {
   const h2Indices: number[] = [];
   for (let i = 0; i < lines.length; i++) {
     if (lines[i].startsWith("## ")) h2Indices.push(i);
@@ -83,13 +79,12 @@ async function assertSectionLineCounts(
     if (cnt > MAX_SECTION_LINES) violations.push({ title, count: cnt });
   }
 
-  const baseline = await baselineFor("sectionLineCount", rel);
-  if (violations.length > baseline) {
+  if (violations.length > 0) {
     const detail = violations
       .map((v) => `'${v.title}' (${v.count} lines)`)
       .join(", ");
     fail(
-      `Skill section too long: ${rel} — ${violations.length} section(s) over ${MAX_SECTION_LINES} lines > baseline ${baseline}: ${detail} (move depth into references/ and link from the H2)`,
+      `Skill section too long: ${rel} — ${violations.length} section(s) over ${MAX_SECTION_LINES} lines: ${detail} (move depth into references/ and link from the H2)`,
     );
   }
 }
@@ -238,10 +233,6 @@ export async function checkInlineJsonBlocks(): Promise<void> {
 // shapes that are NOT wrapped envelopes (e.g. a one-line config
 // snippet, or a sidecar artifact like analyze's `metadata.json`)
 // remain allowed; the predicate is intentionally narrow.
-//
-// Per-file baselines come from `scripts/standards-allowlist.toml` so
-// legitimate orientation demos can be grandfathered while new
-// embeddings fail fast.
 export async function checkNoEnvelopeExamples(): Promise<void> {
   const FENCE_OPEN_RE = /^\s*(`{3,})(json|jsonc)\b/;
   const PLUGINS_DIR = join(REPO_ROOT, "plugins");
@@ -293,11 +284,10 @@ export async function checkNoEnvelopeExamples(): Promise<void> {
       blockBody.push(line);
     }
 
-    const baseline = await baselineFor("noEnvelopeExamples", rel);
-    if (count > baseline) {
+    if (count > 0) {
       const where = violations.map((n) => `line ${n}`).join(", ");
       fail(
-        `Envelope JSON in skill body: ${rel} — ${count} block(s) at ${where} > baseline ${baseline} (link to plugins/references/cli-output-shapes.md instead of embedding the envelope shape)`,
+        `Envelope JSON in skill body: ${rel} — ${count} block(s) at ${where} (link to plugins/references/cli-output-shapes.md instead of embedding the envelope shape)`,
       );
     }
   }
@@ -403,11 +393,7 @@ export async function checkNoStepBodyDuplicatesCriticalPath(): Promise<void> {
       }
     }
 
-    const baseline = await baselineFor(
-      "noStepBodyDuplicatesCriticalPath",
-      rel,
-    );
-    if (violations.length > baseline) {
+    if (violations.length > 0) {
       const detail = violations
         .slice(0, 3)
         .map((v) => `line ${v.line}: '${v.text.slice(0, 80)}'`)
@@ -416,7 +402,7 @@ export async function checkNoStepBodyDuplicatesCriticalPath(): Promise<void> {
         ? ` (+${violations.length - 3} more)`
         : "";
       fail(
-        `Step body duplicates Critical Path: ${rel} — ${violations.length} match(es) > baseline ${baseline}: ${detail}${more} (Critical Path is the TOC; keep step bodies as short pointers to references)`,
+        `Step body duplicates Critical Path: ${rel} — ${violations.length} match(es): ${detail}${more} (Critical Path is the TOC; keep step bodies as short pointers to references)`,
       );
     }
   }
