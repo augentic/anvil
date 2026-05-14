@@ -6,7 +6,7 @@ argument-hint: "[description]"
 
 # Define Skill
 
-Define a new slice - create it and generate all artifacts in one step. When ready to implement, run `/spec:build`.
+When ready to implement, run `/spec:build`.
 
 When working plan-driven (a `plan.yaml` exists), the active entry is claimed before `/spec:define` starts. If this skill uncovers a neighbouring slice or dependency that should be tracked, mutate the plan only through the commands allowed by the shared [phase outcome contract](../../references/phase-outcome-contract.md).
 
