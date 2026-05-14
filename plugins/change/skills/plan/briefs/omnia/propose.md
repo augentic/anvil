@@ -10,7 +10,7 @@ Turn the capability inventory in `discovery.md` into a concrete set of plan entr
 ## Input
 
 - `.specify/plans/<name>/discovery.md` (authored by `discovery.md`). If the file is missing, stop and report — the discovery brief must run first.
-- **`.specify/plans/<name>/workspace.md`** when present (multi-repo / Layer 2). Authored by `/change:plan` step 3(b) after `specify workspace sync`. Summarises each peer under `.specify/workspace/<project>/` so propose can attach capabilities that land in a peer repo. When absent, assume single-repo mode — every `<!-- source-key: <k> -->` MUST resolve to a key in the change plan's top-level `sources:` map.
+- **`.specify/plans/<name>/workspace.md`** when present (multi-repo). Authored by `/change:plan` step 3(b) after `specify workspace sync`. Summarises each peer under `.specify/workspace/<project>/` so propose can attach capabilities that land in a peer repo. When absent, assume single-repo mode — every `<!-- source-key: <k> -->` MUST resolve to a key in the change plan's top-level `sources:` map.
 - Assumed shape: unified capability summaries as `### <name>` headings + fenced YAML (`summary`, `sources`, `depends-on`, optional `hints`, `confidence`), each prefixed by a `<!-- source-key: <k> -->` HTML comment. Optional trailing `## Constraints` and `## Open questions` sections (documentation inputs only) are operator context; they do not drive slice emission.
 
 ## Decomposition — 1:1 capability → slice

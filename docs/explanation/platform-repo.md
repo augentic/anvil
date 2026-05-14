@@ -117,7 +117,7 @@ For the platform-as-project shape, use the regular `specify init <capability>` f
 ## See also
 
 - [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- end-to-end worked example that bootstraps a hub via `specify init --hub` and drives a change across two registered projects.
-- [The Layered Stack](three-layer-stack.md) -- where the platform repo fits in the layered model.
+- [The Layered Stack](layered-stack.md) -- where the platform repo fits in the layered model.
 - [Workspace Tiers](workspace-tiers.md) -- the legacy-source vs registered-project clone distinction the hub relies on.
 - [`specify init`](../reference/cli/init.md) -- CLI reference for the `--hub` flag.
 - [`specify registry`](../reference/cli/registry.md) -- CLI reference for `validate` (hub-mode dispatch) and `show`.

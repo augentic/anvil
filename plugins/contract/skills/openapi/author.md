@@ -285,7 +285,7 @@ After producing the report, run [`verifier.md`](./verifier.md) in `single` mode 
 | Spec references a payload type not yet authored | Mark `[unknown]` in the report; the json-schema skill (called first by the contracts capability build brief) should have produced the schema. If it did not, halt and surface the gap. |
 | Spec asserts a status code with no response shape | Use `$ref: "../schemas/error-response.yaml"` (or the spec-named error schema) and add a one-sentence `description` derived from the spec's wording. |
 | Two specs claim the same `(path, method)` with different shapes | Surface the conflict as a warning; do not write a delta until the specs are reconciled. |
-| Baseline operation uses `components/schemas` (legacy from a Layer-1 import) | Do not propagate the inline form into the delta. Run [`importer.md`](./importer.md) on the baseline file first, then re-author. |
+| Baseline operation uses `components/schemas` (legacy from a manual import) | Do not propagate the inline form into the delta. Run [`importer.md`](./importer.md) on the baseline file first, then re-author. |
 | Spec describes pagination | Use the standard `limit` / `offset` query params from [`../../references/openapi-conventions.md`](../../references/openapi-conventions.md) §Pagination unless the spec requires cursor-based — in which case define a pagination wrapper schema via `/contract:json-schema`. |
 
 ## Verification checklist

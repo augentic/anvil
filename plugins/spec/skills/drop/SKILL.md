@@ -23,7 +23,7 @@ specify change plan transition <name> failed  --reason "<short rationale>"
 specify change plan transition <name> blocked --reason "<short rationale>"
 ```
 
-This is an advisory note — this skill does not run the command itself. `/change:execute` will run it automatically; in Layer 1 the human closes the loop.
+This is an advisory note — this skill does not run the command itself. `/change:execute` will run it automatically; when driving the loop manually, the operator closes it.
 
 ## Phase outcome contract
 

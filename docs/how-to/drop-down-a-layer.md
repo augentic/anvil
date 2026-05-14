@@ -2,7 +2,7 @@
 
 Specify automation is layered: higher-level skills invoke lower-level ones, and you can always bypass a higher level and work directly with the level below. This is useful when automation does something unexpected, when you need fine-grained control, or when you want to debug state.
 
-## From cross-repo orchestration to manual plan execution
+## Skip the orchestrate umbrella
 
 If `/change:plan <name> orchestrate` halts on the registry-amendment-required path, on `stuck`, or on a step you want to drive yourself, the same composition can be run by hand:
 
@@ -105,7 +105,7 @@ Every skill is built on CLI commands. If a skill does something you don't unders
 
 ## See also
 
-- [The Layered Stack](../explanation/three-layer-stack.md) -- architectural explanation
+- [The Layered Stack](../explanation/layered-stack.md) -- architectural explanation
 - [/change:plan <name> orchestrate](../../plugins/change/skills/plan/orchestration.md) -- the cross-repo umbrella mode
 - [CLI Reference](../reference/cli/index.md) -- all CLI commands
 - [Recover from a Failed Change](recover-failed-change.md) -- focused recovery guide

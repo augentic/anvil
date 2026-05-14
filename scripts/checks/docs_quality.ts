@@ -1,8 +1,9 @@
 // User-facing documentation hygiene:
-//   - Layer-number terminology ("Layer 2/3/4", "Layers 3 and 4") must
-//     not appear outside the one essay that owns it; user-facing prose
-//     uses the operational vocabulary (single slice, multi-slice
-//     change, cross-repo program).
+//   - Obsolete layer-number terminology ("Layer 3", "Layer 4",
+//     "Layers 3 and 4") must not appear anywhere in user-facing docs:
+//     the architecture stack collapsed to Layer 0/1/2 and any lingering
+//     reference to the old four-layer numbering is a stale citation.
+//     The current Layer 0/1/2 vocabulary is allowed everywhere.
 //   - RFC citations belong in the decision log and release notes, not
 //     in tutorials, how-tos, references, or explanations. Linking the
 //     archived RFC file via a markdown link target is still allowed so
@@ -23,13 +24,13 @@ import {
 export async function checkNoLayerNumbersInDocs(): Promise<void> {
   const SCAN_ROOT = join(REPO_ROOT, "docs");
   const ALLOWED_PREFIXES = [
-    "docs/explanation/three-layer-stack.md",
+    "docs/explanation/layered-stack.md",
     "docs/explanation/decision-log.md",
     "docs/contributing/",
   ];
   const PATTERNS: RegExp[] = [
-    /\bLayer\s+[234]\b/,
-    /Layers\s+[234]/,
+    /\bLayer\s+[34]\b/,
+    /Layers\s+[34]/,
   ];
 
   try {
@@ -59,9 +60,9 @@ export async function checkNoLayerNumbersInDocs(): Promise<void> {
       for (const pattern of PATTERNS) {
         if (pattern.test(lines[i])) {
           fail(
-            `Layer-number terminology in ${rel}:${i + 1} -- ${
+            `Obsolete Layer 3/4 terminology in ${rel}:${i + 1} -- ${
               lines[i].trim()
-            } -- use 'single slice' / 'multi-slice change' / 'cross-repo program'`,
+            } -- the stack is Layer 0/1/2 (configuration / executing a change / planning a change); update or remove the citation`,
           );
           break;
         }

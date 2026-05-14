@@ -28,14 +28,14 @@ The intended workflow is human-driven Specify. Single-slice loop:
 /spec:drop
 ```
 
-Multi-slice change (Layer 3):
+Multi-slice change:
 
 ```bash
 /change:plan <name> source legacy=./path
 /change:execute loop
 ```
 
-Cross-repo change end-to-end (Layer 4 umbrella, RFC-9 §2C):
+Cross-repo change end-to-end (`orchestrate` umbrella mode, RFC-9 §2C):
 
 ```bash
 /change:plan <name> orchestrate [shape migrate-legacy|new-feature|update-existing]
@@ -89,7 +89,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Change Plugin (`plugins/change/`)
 
-- `plan` - author `plan.yaml` via the planning brief pipeline; with the `orchestrate` positional, drives the Layer 4 cross-repo umbrella (brief → registry validate → plan → execute → push → operator PR merge → finalize) — RFC-9 §2C.
+- `plan` - author `plan.yaml` via the planning brief pipeline; with the `orchestrate` positional, drives the cross-repo umbrella (brief → registry validate → plan → execute → push → operator PR merge → finalize) — RFC-9 §2C.
 - `execute` - drive a change's plan through define, build, merge per slice.
 
 ### Omnia Plugin (`plugins/omnia/`)

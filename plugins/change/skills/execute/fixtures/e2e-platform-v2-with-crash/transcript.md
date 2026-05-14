@@ -2,7 +2,7 @@
 
 Same seed as the sibling [`../e2e-platform-v2/`](../e2e-platform-v2/) fixture, but a SIGKILL arrives mid-iteration-4 (while `/spec:build product-catalog` is running), leaving the workspace partially- progressed. An operator re-runs `/change:execute loop` against the unchanged workspace; self-heal picks up where the crash left off and the change continues to the same terminal state as the uncrashed sibling.
 
-This fixture is the Layer 2 exit-gate acceptance for crash recovery: "An injected mid-build SIGKILL, followed by a re-run, recovers via self-heal and completes the change."
+This fixture is the exit-gate acceptance for crash recovery: "An injected mid-build SIGKILL, followed by a re-run, recovers via self-heal and completes the change."
 
 There is no automated harness. The two runs below are narrated as documentation.
 

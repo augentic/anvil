@@ -18,29 +18,7 @@ argument-hint: "[crate-path]"
 
 ## Overview
 
-Perform comprehensive AI-powered code review on generated Rust WASM crates, identifying security vulnerabilities, missing validation, performance issues, and code quality problems.
-
-**Research validation**: Studies show AI-generated code has **1.7× more issues than human code**, with specific weaknesses in:
-
-- Missing null checks and error handling
-- Security vulnerabilities (SQL injection, XSS, command injection)
-- Excessive I/O operations (~8× more common)
-- Unclear naming and poor readability
-
-**AI-on-AI review**: Using AI to review AI-generated code catches issues one model missed -- a paradoxical but effective quality gate.
-
-### Why code review?
-
-Research findings on AI code quality:
-
-1. **10.83 issues per PR** vs 6.45 for human code (1.68× multiplier)
-2. **Security vulnerabilities** appear 1.5-2× more frequently
-3. **Missing guardrails**: no null checks, missing early returns, inadequate exception logic
-4. **Excessive I/O**: ~8× more likely to have inefficient I/O patterns
-5. **Unclear naming**: generic identifiers increase cognitive load
-6. **Business logic errors**: incorrect dependencies, flawed control flow
-
-This skill provides automated detection of common AI code issues, specific fixes for critical problems (not just "check this"), an auto-fix path for simple issues (`fix`), and educational feedback to improve future generations.
+Perform comprehensive AI-powered code review on generated Rust WASM crates, identifying security vulnerabilities, missing validation, performance issues, and code quality problems. The skill provides automated detection of common AI code issues, specific fixes for critical problems (not just "check this"), an auto-fix path for simple issues (`fix`), and educational feedback to improve future generations.
 
 ## Invocation
 

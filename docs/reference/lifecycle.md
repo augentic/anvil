@@ -2,7 +2,7 @@
 
 Every Specify slice moves through a sequence of lifecycle states. Transitions are enforced by the `specify` CLI -- skills never write state directly.
 
-Specify's layered design is explained in [The Layered Stack](../explanation/three-layer-stack.md). For the rationale, see the [Decision Log](../explanation/decision-log.md#independently-useful-layers).
+Specify's layered design is explained in [The Layered Stack](../explanation/layered-stack.md). For the rationale, see the [Decision Log](../explanation/decision-log.md#independently-useful-layers).
 
 ## State diagram
 

@@ -10,7 +10,7 @@ All AsyncAPI files use **AsyncAPI 3.0.0**. AsyncAPI 3.0 separates channels from 
 asyncapi: "3.0.0"
 ```
 
-Do not use AsyncAPI 2.x — it conflates channel definition with operation semantics and uses a JSON Schema subset. If importing an existing AsyncAPI 2.x document, upgrade it to 3.0 first (see the importer skill in Layer 2).
+Do not use AsyncAPI 2.x — it conflates channel definition with operation semantics and uses a JSON Schema subset. If importing an existing AsyncAPI 2.x document, upgrade it to 3.0 first (see the importer skill).
 
 ## File Naming
 

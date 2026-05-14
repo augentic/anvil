@@ -20,11 +20,11 @@ No field is invented; every value is lifted from the capability block. `hints.*`
 
 ## Emit order
 
-Dependency-order + within-layer alphabetical:
+Dependency-order + within-depth alphabetical:
 
-1. `email-verification` (layer 0)
-2. `shared-validation` (layer 0)
-3. `user-registration` (layer 1, depends on both leaves)
+1. `email-verification` (depth 0)
+2. `shared-validation` (depth 0)
+3. `user-registration` (depth 1, depends on both leaves)
 
 Matches the order `specify change plan next` would walk at execution time.
 
@@ -37,7 +37,7 @@ Matches the order `specify change plan next` would walk at execution time.
 
 - **Initiative name.** `traffic`, lifted from the `# Discovery — traffic` header in the starting-state discovery files.
 - **`sources.monolith` path.** `./inputs`, matching the C22 invocation `--source monolith=./inputs`.
-- **Change ordering.** Dependency-order + within-layer alphabetical: `email-verification`, `shared-validation`, `user-registration`.
+- **Change ordering.** Dependency-order + within-depth alphabetical: `email-verification`, `shared-validation`, `user-registration`.
 - **`depends-on` list order.** Alphabetical — `[email-verification, shared-validation]` for `user-registration`.
 - **Field order inside each plan entry.** Matches the CLI's serde output: `name`, `project`, `status`, `depends-on`, `sources`, `description`, `status-reason`.
 

@@ -27,7 +27,7 @@ Slash commands operators reach for, in roughly the order they appear in a projec
 - `/change:plan <name> orchestrate` — umbrella mode that strings the cross-repo loop into one operator action: brief → plan → execute → push → operator PR merge → finalize. Opens/updates PRs, never merges them.
 - `/change:execute` — drive a change's `plan.yaml` through define → build → merge; supports `dry-run`, single-slice supervised run, and `loop` mode with self-heal and SIGINT/SIGTERM handling.
 
-For the four-layer composition (CLI primitives → slice lifecycle → plan & drive → change orchestration) and the rename trail from earlier verb names, see [docs/explanation/decision-log.md](docs/explanation/decision-log.md).
+For the three-layer composition (Layer 0 configuration → Layer 1 executing a change → Layer 2 planning a change, with the `specify` CLI as the substrate underneath) and the rename trail from earlier verb names, see [docs/explanation/decision-log.md](docs/explanation/decision-log.md).
 
 ### Skill / CLI responsibility split
 

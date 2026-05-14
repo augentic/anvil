@@ -101,6 +101,30 @@ First-party package sources use `specify:<tool>@<semver>` and resolve through wa
 
 Package-backed first-party declarations do not carry a separate `sha256`; the package resolver validates package content through the registry client and records package/OCI metadata in `meta.yaml`. For local object declarations, changing a tool's bytes should also change either `version`, `source`, or `sha256`; otherwise existing caches may continue to use the earlier bytes until garbage collection removes them.
 
+The `oci.reference` written into `meta.yaml` is derived best-effort from the resolved registry's well-known wasm-pkg metadata (`oci.registry`, `oci.namespacePrefix`). When a registry advertises no OCI backend or the metadata cannot be fetched, the field is omitted rather than synthesised, so the sidecar stays truthful for any registry — not only `augentic.io`.
+
+## Registry configuration
+
+`specify tool fetch` and `specify tool run` resolve registries through wasm-pkg with a layered config (last write wins per key):
+
+1. The wasm-pkg global defaults (`~/.config/wasm-pkg/config.toml`).
+2. The project-local `.specify/wasm-pkg.toml`, when present.
+3. The `WKG_CONFIG` override, when the env var is set.
+4. An embedded `specify -> augentic.io` namespace fallback, applied only when no earlier layer mapped the `specify` namespace.
+
+`specify init` (regular and hub modes) scaffolds `.specify/wasm-pkg.toml` with the canonical contents:
+
+```toml
+default_registry = "augentic.io"
+
+[namespace_registries]
+specify = "augentic.io"
+```
+
+The file is checked in. Operators edit it to point first-party tool fetches at an internal mirror, register private namespaces, or override the default registry. The shape is intentionally compatible with `wkg --config .specify/wasm-pkg.toml ...` so maintainers can publish and pull packages with the same config the runtime honours.
+
+Re-running `init` never overwrites an operator-edited file; deleting it falls back to the embedded `specify -> augentic.io` default so existing projects and workspace clones keep working without re-init.
+
 ## Choosing scope
 
 Choose project scope when:

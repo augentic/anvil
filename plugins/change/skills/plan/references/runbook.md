@@ -4,10 +4,10 @@ Operational detail for `/change:plan`. The SKILL.md keeps only the orientation s
 
 ## Overview
 
-Specify at authoring time is a three-layer stack — mirror of the execution stack documented in [`../../execute/SKILL.md`](../../execute/SKILL.md):
+Specify at authoring time is a small stack — mirror of the execution stack documented in [`../../execute/SKILL.md`](../../execute/SKILL.md):
 
-1. **Plan CLI** (`specify change plan {create, add, amend, next, status, doctor, lock, transition, validate, archive}`) — the library-backed verbs that read and write `plan.yaml`. The shared single-writer rules live in [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md).
-2. **Authoring skill** (`/change:plan`, this one) — the Layer 3 driver that runs the planning brief pipeline and shells out to `specify change plan add` for each accepted slice.
+1. **Plan CLI** (`specify change plan {create, add, amend, next, status, doctor, lock, transition, validate, archive}`) — the library-backed `specify` verbs that read and write `plan.yaml`. The shared single-writer rules live in [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md).
+2. **Authoring skill** (`/change:plan`, this one) — the Layer 2 authoring counterpart that runs the planning brief pipeline and shells out to `specify change plan add` for each accepted slice.
 3. **Driver skill** (`/change:execute`) — the Layer 2 automation that consumes the plan this skill authored.
 
 The on-disk contracts the authoring skill depends on are:
@@ -56,7 +56,7 @@ An explicit `:<kind>` suffix whose value is not in the closed enum is a hard exi
 
 ## Core loop (five steps)
 
-Follow these steps in order on every invocation. Each step is normative; every shell-out is to the Layer 1 `specify` CLI; this skill writes nothing to `plan.yaml` directly.
+Follow these steps in order on every invocation. Each step is normative; every shell-out is to the `specify` CLI; this skill writes nothing to `plan.yaml` directly.
 
 ```text
 1. Parse inputs; resolve source paths; assert plan.yaml absent
@@ -109,7 +109,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
 
      specify change plan validate
 
-   Runs the Layer 1 validator against the authored plan. Report
+   Runs the CLI validator against the authored plan. Report
    every `ValidationResult` verbatim. Non-zero exit on any result
    with `level == Error`. A clean validate is the contract the
    skill owes its caller.
@@ -118,7 +118,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
 
    Point the human at:
      - `specify change plan status` — review the authored plan.
-     - `/change:execute loop` — start executing it (Layer 2).
+     - `/change:execute loop` — start executing it.
 
    Non-zero exit on any earlier step's hard failure; zero exit on
    a clean validate.
@@ -162,13 +162,13 @@ Per-mode deltas, dry-run write prohibitions, and `extend` collision rules live i
 
 ## Non-goals
 
-- **Execute the plan in default mode.** Never. Execution is `/change:execute`'s concern (Layer 2). `/change:plan` exits with a hand-off summary that points the operator at `/change:execute loop`; `orchestrate` composes that separate skill after authoring.
+- **Execute the plan in default mode.** Never. Execution is `/change:execute`'s concern. `/change:plan` exits with a hand-off summary that points the operator at `/change:execute loop`; `orchestrate` composes that separate skill after authoring.
 - **Modify existing plan entries.** Never. `extend` is append-only; pre-existing entries are left untouched. Editing a pending entry mid-authoring is done via `specify change plan amend` by the human, not by this skill.
 - **Skip `specify change plan validate`.** Never. Step 4 is unconditional — every run ends with a validation gate, and a non-clean validate exits non-zero.
 - **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/change:execute`.** Never. `/change:plan` only invokes the planning briefs bundled with this skill under `briefs/<capability>/`, plus the `specify change plan` CLI for scaffolding, entry creation, and validation.
 - **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/change:execute`; authoring runs outside that lock.
 - **Write `plan.yaml` directly.** Never. Every write follows [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md).
-- **Clone git URLs from this skill.** Never for **discovery** inputs: `source` git URLs are passed through to `/spec:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync` (Layer 1 CLI), invoked only in the sync-peers step when `len(registry.projects) > 1`.
+- **Clone git URLs from this skill.** Never for **discovery** inputs: `source` git URLs are passed through to `/spec:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync`, invoked only in the sync-peers step when `len(registry.projects) > 1`.
 - **Merge PRs.** Never. `specify workspace push` opens or updates PRs; the operator merges them through the forge UI or a hand-run `gh pr merge`; `specify change finalize` only verifies that remote state.
 - **Author propose brief bodies.** Never. The propose brief body is owned by the capability; the skill only drives the accept / edit / reject loop against whatever the brief emits.
 - **Auto-repair a failing `specify change plan validate`.** Never. Step 4's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify change plan amend` / `specify change plan transition skipped` fix, never an in-skill edit.

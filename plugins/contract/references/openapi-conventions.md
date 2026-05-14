@@ -10,7 +10,7 @@ All OpenAPI files use **OpenAPI 3.1.0**. OpenAPI 3.1 has native JSON Schema supp
 openapi: "3.1.0"
 ```
 
-Do not use OpenAPI 3.0.x — it uses a JSON Schema *subset* that diverges from the standard. If importing an existing OpenAPI 3.0 document, upgrade it to 3.1 first (see the importer skill in Layer 2).
+Do not use OpenAPI 3.0.x — it uses a JSON Schema *subset* that diverges from the standard. If importing an existing OpenAPI 3.0 document, upgrade it to 3.1 first (see the importer skill).
 
 ## File Naming
 

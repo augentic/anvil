@@ -38,4 +38,4 @@ Re-running on an unchanged registry + workspace cache MUST yield byte-identical 
 
 **`--extend`.** Do **not** shell `specify workspace sync` during the sync-peers step — operators refresh clones explicitly between runs. If `.specify/workspace/` already exists, still **rewrite** `workspace.md` from the current on-disk cache (read-only walk) so propose sees an up-to-date peer inventory without an implicit `git fetch`.
 
-Fixture for the inventory shape lives at `fixtures/plan-layer2/workspace.md` (placeholder peer names; copy the heading / bullet contract verbatim).
+Fixture for the inventory shape lives at `fixtures/plan-multi-repo/workspace.md` (placeholder peer names; copy the heading / bullet contract verbatim).

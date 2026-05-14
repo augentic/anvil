@@ -1,6 +1,6 @@
 # e2e-platform-v2 — `/change:execute loop` drains the `platform-v2` plan
 
-This is the Layer 2 exit-gate meta-fixture. The seed is the full `platform-v2` plan — nine entries spanning every shape the driver must handle: greenfield, `sources`-only, description-driven, combined, pre-failed, mid-run-crashed. `/change:execute loop` starts against this seed and drives the plan until no eligible change remains.
+This is the exit-gate meta-fixture for `/change:execute loop`. The seed is the full `platform-v2` plan — nine entries spanning every shape the driver must handle: greenfield, `sources`-only, description-driven, combined, pre-failed, mid-run-crashed. `/change:execute loop` starts against this seed and drives the plan until no eligible change remains.
 
 There is no automated harness; this is an authoring pin covering the argument-resolution plumbing introduced in L2.I end-to-end.
 
@@ -246,7 +246,7 @@ Exit code: 0 (stuck is a partial-success terminal state; the driver did nothing 
 
 The RFC-2 acceptance language reads "drives… to `all-done`", but the seeded plan contains a pre-`failed` `checkout-api` whose `status-reason` says "Needs design revision after shopping-cart specs are updated" — human triage, not an automatic retry. The loop cannot reach `Completion: all-done` without the operator either (a) transitioning `checkout-api` back to `pending` and retrying, or (b) flipping `checkout-ui` to `skipped` to break the dangling dependency.
 
-This fixture pins the faithful read: the loop drains every entry it *can* (seven `done` plus the already-failed and its dependent), then exits with `Completion: stuck`. That is the Layer 2 exit-gate guarantee — the driver drives a change as far as the plan's dependency graph and per-entry `status` allow, then surfaces the remaining triage cleanly. The `all-done` path is exercised by the existing `fixtures/loop/all-done/` fixture on a three-entry plan with no pre-failed entries.
+This fixture pins the faithful read: the loop drains every entry it *can* (seven `done` plus the already-failed and its dependent), then exits with `Completion: stuck`. That is the exit-gate guarantee for the driver — it drives a change as far as the plan's dependency graph and per-entry `status` allow, then surfaces the remaining triage cleanly. The `all-done` path is exercised by the existing `fixtures/loop/all-done/` fixture on a three-entry plan with no pre-failed entries.
 
 ## Invariants pinned by this fixture
 

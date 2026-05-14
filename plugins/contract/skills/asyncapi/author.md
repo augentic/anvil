@@ -279,7 +279,7 @@ After producing the report, run [`verifier.md`](./verifier.md) in `single` mode 
 | Spec references a payload type not yet authored | Mark `[unknown]` in the report; the json-schema skill (called first by the contracts capability build brief) should have produced the schema. If it did not, halt and surface the gap. |
 | Spec describes a command pattern (`order.cancel`) rather than an event | Use present-tense address (`order.cancel`) and pair with `action: send` from the requester and `action: receive` from the handler — see the conventions reference. |
 | Two specs claim the same channel address with different message shapes | Surface the conflict as a warning; do not write a delta until the specs are reconciled. |
-| Baseline channel uses inline payload (legacy from a Layer-1 import) | Do not propagate the inline form into the delta. Run [`importer.md`](./importer.md) on the baseline file first, then re-author. |
+| Baseline channel uses inline payload (legacy from a manual import) | Do not propagate the inline form into the delta. Run [`importer.md`](./importer.md) on the baseline file first, then re-author. |
 | Spec describes broker-specific bindings (Kafka partition strategy, RabbitMQ queue policy) | Out of scope — those belong in `design.md`. Capture only structural shape (channel, message, headers) in the contract. See [`../../references/asyncapi-conventions.md`](../../references/asyncapi-conventions.md) §Scope Boundary. |
 | Spec describes a non-JSON wire format (Avro, Protobuf) | Set `contentType` accordingly (`application/avro`, `application/protobuf`) and reference the payload schema as usual; the json-schema skill produces the schema regardless of wire format. |
 

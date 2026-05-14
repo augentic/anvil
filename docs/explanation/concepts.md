@@ -71,4 +71,4 @@ The agent runs the define pipeline, generates the four artifacts, and stops. You
 
 - [Quick Start](../tutorials/quick-start.md) -- run the loop end to end in five minutes.
 - [Your first slice](../tutorials/first-change.md) -- the same loop, annotated.
-- [The layered stack](three-layer-stack.md) -- the architectural framing for readers who want to know how the pieces compose.
+- [The layered stack](layered-stack.md) -- the architectural framing for readers who want to know how the pieces compose.

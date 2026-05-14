@@ -425,5 +425,5 @@ The other items (1A/1B/1E housekeeping, 3B coherence, 4B plan doctor, 4D fixture
 - [RFC-3a: Initiative Planning](rfc-3a-monoliths.md)
 - [RFC-3b: Platform Changes](rfc-3b-platform.md)
 - [RFC-8: API Contracts](rfc-8-api-contracts.md)
-- [Three-Layer Stack](../../docs/explanation/three-layer-stack.md)
+- [Three-Layer Stack](../../docs/explanation/layered-stack.md)
 

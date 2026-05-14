@@ -14,7 +14,7 @@ When working plan-driven (a `plan.yaml` exists), after `specify slice merge run`
 specify change plan transition <name> done
 ```
 
-This is an advisory note — this skill does not run the command itself. `/change:execute` will run it automatically; in Layer 1 the human closes the loop.
+This is an advisory note — this skill does not run the command itself. `/change:execute` will run it automatically; when driving the loop manually, the operator closes it.
 
 ## Critical Path
 

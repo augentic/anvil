@@ -2,7 +2,7 @@
 
 The per-slice algorithm runs a single plan entry to a terminal status (`done` / `failed` / `blocked`) and is the core of every mode. The [§Modes](modes.md) section wires this into the three invocations (`--dry-run`, supervised, `--loop`) by describing only the deltas from this algorithm. Shared outcome, journal, and verbatim-summary rules live in [execute-state-handoff.md](../../references/execute-state-handoff.md).
 
-The algorithm is normative. Every shell-out is to the Layer 1 `specify` CLI; this skill writes nothing to `plan.yaml`, `.metadata.yaml`, or `journal.yaml` directly.
+The algorithm is normative. Every shell-out is to the `specify` CLI; this skill writes nothing to `plan.yaml`, `.metadata.yaml`, or `journal.yaml` directly.
 
 ```text
 1. Resolve the project directory (walk upward from CWD looking for

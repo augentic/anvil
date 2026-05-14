@@ -22,16 +22,13 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 
 ## Independently useful layers
 
-**Decision:** The system is structured in four layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them.
+**Decision:** The system is structured in three layers, each independently useful. Higher layers invoke lower layers but lower layers are unaware of what sits above them. Underneath all of them is the `specify` CLI — the deterministic substrate that exposes verbs at every layer; the CLI is not itself a layer.
 
-1. **Layer 1 — CLI primitives.** Deterministic verbs (`specify slice`, `specify change plan`, `specify change`, `specify registry`, `specify workspace`, `specify capability`).
-2. **Layer 2 — Slice lifecycle.** The define-build-merge skills that operate on a single slice.
-3. **Layer 3 — Plan & Drive.** `/change:plan` authors `plan.yaml`; `/change:execute` runs it.
-4. **Layer 4 — Change orchestration.** `/change:plan <name> orchestrate` composes Layers 1-3 plus `specify workspace push`, operator PR merge, and `specify change finalize` into a single operator action.
+1. **Layer 0 — Configuration.** Static project settings and the verbs that change them: `.specify/project.yaml`, `capability.yaml`, `schemas/`, `tools.yaml`, `specify init`, `specify capability`.
+2. **Layer 1 — Executing a change.** The single-slice define-build-merge loop: `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:extract`, and the `specify slice *` verbs they wrap.
+3. **Layer 2 — Planning a change.** Anything that impacts or uses `registry.yaml` and `plan.yaml`: `/change:plan`, `/change:execute`, the `/change:plan <name> orchestrate` umbrella mode, `/spec:analyze`, and the `specify change *` / `specify change plan *` / `specify registry *` / `specify workspace *` verbs they wrap.
 
-**Rationale:** Not every use case needs automation. A single slice needs only Layer 2. A small change can be driven manually with Layer 1 CLI commands. Plan/execute automation (Layer 3) composes on top, and the cross-repo umbrella (Layer 4) composes on top of that. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
-
-The original three-layer stack (Layers 1–3) was introduced by RFC-2; Layer 4 was promoted from "an aggregator inside Layer 3" to its own layer by RFC-9 §2C because the umbrella verb is a strict superset of the plan/execute layer and giving it a dedicated layer keeps the operator-facing entry-point per layer canonical.
+**Rationale:** Not every use case needs automation. A single slice needs only Layer 1. A small change can be driven manually with the matching CLI verbs. Plan/execute automation (Layer 2) composes on top of Layer 1, and the cross-repo umbrella mode is a composition inside Layer 2 — every step shells out to a CLI verb or a Layer 2 skill in default mode. This means you can always drop down a layer when automation fails — see [Drop down a layer](../how-to/drop-down-a-layer.md).
 
 **Source:** [RFC-2: Execution](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-2-execution.md), [RFC-9 §2C: Change umbrella](https://github.com/augentic/specify/blob/main/rfcs/rfc-9-platform.md)
 

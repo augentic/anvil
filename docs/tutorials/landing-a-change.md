@@ -140,7 +140,7 @@ Any deviation is a blocker. File the failing transcript against this tutorial; t
 
 ## Change shapes
 
-The cross-repo loop is shape-agnostic. The same Steps 1-9 drive three change shapes: `migrate-legacy`, `new-feature`, and `update-existing`. Only the inputs to Step 4 (Plan) differ. Each shape is also drivable via the umbrella mode `/change:plan <name> orchestrate`. The transcripts below show each shape from the umbrella's perspective; the manual fallback for every step is the same CLI verb the umbrella shells out to (see [Drop down a layer](../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the exact verb sequence).
+The cross-repo loop is shape-agnostic. The same Steps 1-9 drive three change shapes: `migrate-legacy`, `new-feature`, and `update-existing`. Only the inputs to Step 4 (Plan) differ. Each shape is also drivable via the umbrella mode `/change:plan <name> orchestrate`. The transcripts below show each shape from the umbrella's perspective; the manual fallback for every step is the same CLI verb the umbrella shells out to (see [Drop down a layer](../how-to/drop-down-a-layer.md#skip-the-orchestrate-umbrella) for the exact verb sequence).
 
 ### Variant: migrate-legacy
 
@@ -213,7 +213,7 @@ Full transcript and on-disk shapes: [`fixtures/update-existing/`](../../plugins/
 
 ### Manual fallback parity
 
-Each step in every shape above is a shell-out the umbrella runs verbatim. Operators can drop down a layer at any step -- see [Drop down a layer](../how-to/drop-down-a-layer.md#from-layer-4-to-layer-3-skip-the-umbrella) for the canonical command sequence. The umbrella's value is single-command convenience plus idempotent re-entry; it adds no behaviour beyond the underlying skills and CLI verbs.
+Each step in every shape above is a shell-out the umbrella runs verbatim. Operators can drop down a layer at any step -- see [Drop down a layer](../how-to/drop-down-a-layer.md#skip-the-orchestrate-umbrella) for the canonical command sequence. The umbrella's value is single-command convenience plus idempotent re-entry; it adds no behaviour beyond the underlying skills and CLI verbs.
 
 ## What you learned
 

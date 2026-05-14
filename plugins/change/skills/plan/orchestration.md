@@ -16,7 +16,7 @@ The orchestration mode never writes any of these files itself. Every state mutat
 | `registry.yaml` | `specify registry {add, remove, show, validate}` | Step 2 — validated; multi-project enforces description invariant. |
 | `plan.yaml` | `/change:plan` (default mode) | Step 3 — authored by the plan skill in default mode (the orchestration mode delegates to itself). |
 | `.specify/slices/<name>/.metadata.yaml` | phase skills via `specify slice outcome set` | Step 4 — read indirectly via `/change:execute`. |
-| `.specify/plan.lock` | `/change:execute` (Layer 2) | Held by the executor for the duration of step 4. |
+| `.specify/plan.lock` | `/change:execute` | Held by the executor for the duration of step 4. |
 | `.specify/workspace/<peer>/` | `specify workspace {sync, status, push}` | Steps 4–6 — peer slots prepared by execution and pushed as PRs. |
 
 ## Pre-flight
@@ -159,7 +159,7 @@ specify change plan transition <slice-name> pending
 
 …then re-runs the umbrella. The umbrella never auto-applies registry amendments — every registry mutation passes through operator confirmation, mirroring the constraint `/change:execute` enforces directly (per the [executor's `registry-amendment-required` recovery contract](../execute/per-slice-algorithm.md#canonical-recovery-sequence-operator-driven)).
 
-**Manual fallback.** Drive the loop by hand using the same Layer 1 verbs the executor uses:
+**Manual fallback.** Drive the loop by hand using the same CLI verbs the executor uses:
 
 ```bash
 specify change plan lock acquire --pid $$
@@ -295,8 +295,8 @@ Every shell-out in this mode is listed here so reviewers can grep for accidental
 
 This mode adds **no new logic**. Every step is a documented shell-out to either:
 
-- a Layer 1 CLI verb listed above; or
-- a Layer 3 / Layer 2 surface listed above (`/change:plan` default mode, `/change:execute`); or
+- a `specify` CLI verb listed above; or
+- a sibling Layer 2 skill listed above (`/change:plan` default mode, `/change:execute`); or
 - the `gh` CLI for read-only forge observation, plus whatever `specify workspace push` and `specify change finalize` perform internally.
 
 Concretely, this mode MUST NOT:
@@ -304,7 +304,7 @@ Concretely, this mode MUST NOT:
 - introduce a new CLI verb;
 - modify any file under `.specify/` directly (every write is a shell-out);
 - re-implement halt classification (the underlying skills own it);
-- re-implement the registry-amendment recovery (operator-driven via Layer 1, surfaced by Layer 2);
+- re-implement the registry-amendment recovery (operator-driven via the CLI, surfaced by `/change:execute`);
 - batch multiple plan transitions, registry mutations, or PR merges (PR merges are operator-owned outside orchestration);
 - swallow halts (every halt is surfaced verbatim with the underlying skill's diagnostic).
 
@@ -320,7 +320,7 @@ If a behaviour drift surfaces between the orchestration mode and a manual run of
 
 ## Guardrails (orchestration mode)
 
-- **No new CLI verbs.** Composition only. Any temptation to add a flag, a sub-verb, or a side-effect is a sign the work belongs in the plan skill's default mode, `/change:execute`, or one of the Layer 1 verbs underneath.
+- **No new CLI verbs.** Composition only. Any temptation to add a flag, a sub-verb, or a side-effect is a sign the work belongs in the plan skill's default mode, `/change:execute`, or one of the `specify` CLI verbs underneath.
 - **Surface halts verbatim.** Self-heal halt, `stuck`, `registry-amendment-required`, `pending-checks`, `failed-checks`, `branch-pattern-mismatch`, `dirty` workspace — every halt that the underlying skill or verb emits flows through to the operator unmodified. The orchestration never paraphrases a diagnostic.
 - **Refuse cleanly when prerequisites are missing.** No `specify` binary → exit. No `.specify/` → exit. Bad `<name>` → exit. The pre-flight section is non-negotiable.
 - **Idempotent by re-entry.** Running the orchestration twice with the same `<name>` and the same flags MUST advance through completed steps without re-doing them. The on-disk state is the source of truth; the orchestration never tracks its own progress. See [re-entry.md](re-entry.md).
@@ -337,7 +337,7 @@ If a behaviour drift surfaces between the orchestration mode and a manual run of
 - [`specify change plan`](../../../../docs/reference/cli/plan.md) — plan CRUD and lifecycle (recovery and manual fallback).
 - [`specify workspace`](../../../../docs/reference/cli/workspace.md) — `sync`, `status`, and `push` (plan-time peer discovery and PR transport).
 - [Cross-Repo Changes tutorial](../../../../docs/tutorials/cross-repo-change.md) — worked example for all three shapes.
-- [The Layered Stack](../../../../docs/explanation/three-layer-stack.md) — Layer 4's place in Specify's layered architecture.
+- [The Layered Stack](../../../../docs/explanation/layered-stack.md) — where the `orchestrate` umbrella mode sits in Specify's layered architecture (Layer 2).
 - [Drop down a layer](../../../../docs/how-to/drop-down-a-layer.md) — when to bypass the orchestration and run the steps by hand.
 
 ## Fixtures
