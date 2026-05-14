@@ -46,9 +46,9 @@ Author `plan.yaml` for a change.
 
 The skill runs a fixed flow:
 
-1. **Analyse inputs.** Dispatches every input to `/spec:analyze`, which branches on `kind` (`legacy-code` or `documentation`) and emits capability summaries into `discovery.md`.
-2. **Sync peers.** *(Runs only when `registry.yaml` declares more than one project.)* Clones every registry project into `.specify/workspace/<project>/` and inventories each repo's baseline specs. Emits `workspace.md` with per-project `Description` and `Schema` bullets from `registry.yaml`.
-3. **Generate plan (propose).** Combines the capability inventory with the peer inventory (when present) into an ordered, dependency-aware list of slices. Presents each proposed slice for interactive accept / edit / reject. Writes accepted slices via `specify change plan add` (without `--project`).
+1. **Analyse inputs.** Dispatches every input to `/change:analyze`, which branches on `kind` (`legacy-code` or `documentation`) and emits capability summaries into `discovery.md`.
+2. **Sync workspace.** *(Runs only when `registry.yaml` declares more than one project.)* Clones every registry project into `.specify/workspace/<project>/` and inventories each repo's baseline specs. Emits `workspace.md` with per-project `Description` and `Schema` bullets from `registry.yaml`.
+3. **Generate plan (propose).** Combines the capability inventory with the project inventory (when present) into an ordered, dependency-aware list of slices. Presents each proposed slice for interactive accept / edit / reject. Writes accepted slices via `specify change plan add` (without `--project`).
 4. **Assignment (multi-repo only).** When `workspace.md` contains more than one project, infers a target project for each new entry using description match, baseline spec affinity, and schema compatibility from `workspace.md`. Presents the full assignment table for operator review and override. Writes each assignment via `specify change plan amend <name> --project <project>`. Appends the assignment rationale to `proposal.md`.
 
 ### Contract authorship patterns
@@ -116,7 +116,7 @@ Creates plan entries in `pending` state via `specify change plan add`.
 ## See also
 
 - [/change:execute](execute.md) -- drive the authored plan
-- [/spec:analyze](analyze.md) -- the discovery skill invoked during planning
+- [/change:analyze](analyze.md) -- the discovery skill invoked during planning
 - [Configuration Files](../configuration.md) -- `plan.yaml` and `registry.yaml` format
 - [Tutorial: A Multi-Slice Change](../../tutorials/single-repo-change.md) -- walkthrough
 - [Tutorial: Cross-Repo Changes](../../tutorials/cross-repo-change.md) -- multi-repo walkthrough

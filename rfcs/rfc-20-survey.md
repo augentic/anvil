@@ -8,16 +8,16 @@ Extend the `/change:plan` brief pipeline so that the operator can produce a **mi
 
 Concretely, this RFC adds:
 
-1. A new closed-enum kind `domain-model` for `/spec:analyze`, with a pinned schema for bounded contexts, aggregates, ownership, and routing hints. This is the top-down architectural anchor for decomposition.
+1. A new closed-enum kind `domain-model` for `/change:analyze`, with a pinned schema for bounded contexts, aggregates, ownership, and routing hints. This is the top-down architectural anchor for decomposition.
 2. A pinned **T-shirt sizing rubric** for plan-time chunks — LOC-based defaults at the framework level, optionally tightened per capability.
-3. A new `survey` brief, run between sync-peers (3b) and propose (3c), that performs an **iterative top-down decomposition** of the system into a DAG of chunks, halting at slice-sized leaves. It emits `survey.md` — a byte-stable representation of the DAG plus per-node sizing, evidence, and routing metadata.
+3. A new `survey` brief, run between sync-workspace (3b) and propose (3c), that performs an **iterative top-down decomposition** of the system into a DAG of chunks, halting at slice-sized leaves. It emits `survey.md` — a byte-stable representation of the DAG plus per-node sizing, evidence, and routing metadata.
 4. A new `synthesise` brief, run after survey, that reconciles documented capabilities against the survey's leaves and appends a `## Reconciliation` block to `discovery.md`.
 
-The plan skill's five-step loop, the single-writer invariant for `plan.yaml`, and the closed-kind enum's strict validation posture are preserved. `/spec:analyze` remains a one-shot fan-out per source — the survey brief consumes its inventory and structural metadata, not the source code itself. The four scenarios this RFC unblocks — single-repo legacy migration, multi-repo legacy migration, greenfield multi-repo, and brownfield multi-repo — share the same pipeline; only the inputs differ.
+The plan skill's five-step loop, the single-writer invariant for `plan.yaml`, and the closed-kind enum's strict validation posture are preserved. `/change:analyze` remains a one-shot fan-out per source — the survey brief consumes its inventory and structural metadata, not the source code itself. The four scenarios this RFC unblocks — single-repo legacy migration, multi-repo legacy migration, greenfield multi-repo, and brownfield multi-repo — share the same pipeline; only the inputs differ.
 
 ## Motivation
 
-The framework already supports per-source capability extraction (`/spec:analyze`), per-input dispatch (the discovery brief), and multi-project routing (assignment + greenfield-registry-bootstrap). What is missing is **the decomposition step that turns "here is a 100k LOC monolith" into "here are the 30 slice-sized chunks to migrate, in dependency order"**.
+The framework already supports per-source capability extraction (`/change:analyze`), per-input dispatch (the discovery brief), and multi-project routing (assignment + greenfield-registry-bootstrap). What is missing is **the decomposition step that turns "here is a 100k LOC monolith" into "here are the 30 slice-sized chunks to migrate, in dependency order"**.
 
 - **No structured architectural input.** Domain models, context maps, EventStorming exports, and design docs all land as opaque `kind: documentation`. Bounded contexts, aggregates, and ownership are not extracted into discrete, queryable form. The greenfield-registry-bootstrap clustering algorithm therefore cannot key on architectural intent — it is driven by capability inference alone.
 - **No decomposition primitive.** Today's discovery brief loops over inputs sequentially and merges by capability name. There is no representation of *the system as a graph of chunks at different granularities*, and no notion of when a chunk is "small enough to migrate." That reasoning falls entirely to the operator reading `discovery.md` line by line.
@@ -41,11 +41,11 @@ The framework already pins a clean separation between *plan-time, shallow* (anal
 8. **Composition only.** Where possible, new behaviour is a brief layered on existing skill primitives. New CLI verbs are introduced only when no existing primitive fits.
 9. **One change at a time.** Multi-plan output, parallel changes, and cross-change state are RFC-21 (catalogue + cache) and RFC-22 (ledger + mapping) concerns.
 
-### `domain-model` as a third closed-enum kind for `/spec:analyze`
+### `domain-model` as a third closed-enum kind for `/change:analyze`
 
-Today the kind enum is `{legacy-code, documentation}` ([`/spec:analyze` SKILL.md](../plugins/spec/skills/analyze/SKILL.md)). This RFC adds `domain-model`. The enum becomes `{legacy-code, documentation, domain-model}` and remains hard-closed; unknown values are still a non-zero exit before any partial write.
+Today the kind enum is `{legacy-code, documentation}` ([`/change:analyze` SKILL.md](../plugins/change/skills/analyze/SKILL.md)). This RFC adds `domain-model`. The enum becomes `{legacy-code, documentation, domain-model}` and remains hard-closed; unknown values are still a non-zero exit before any partial write.
 
-The new kind branches `/spec:analyze` into a third path that:
+The new kind branches `/change:analyze` into a third path that:
 
 - Reads a structured YAML or JSON document (the domain model) at `$INPUT_PATH`.
 - Validates it against the schema below.
@@ -155,7 +155,7 @@ Decomposition halts when every reachable leaf from the root is XS, S, or marked 
 
 ### The `survey` brief
 
-A new brief at `plugins/change/skills/plan/survey.md` runs as **step 3(b.5)** in the plan-skill loop — between sync-peers (3b) and propose (3c). For inputs whose composite root is already XS or S (very small single-source migrations), the survey brief emits a one-node DAG and a one-line `Survey: root is already slice-sized (S, 743 LOC).` summary; everything else gets a full decomposition.
+A new brief at `plugins/change/skills/plan/survey.md` runs as **step 3(b.5)** in the plan-skill loop — between sync-workspace (3b) and propose (3c). For inputs whose composite root is already XS or S (very small single-source migrations), the survey brief emits a one-node DAG and a one-line `Survey: root is already slice-sized (S, 743 LOC).` summary; everything else gets a full decomposition.
 
 The brief is read-only with respect to `plan.yaml`. It reads:
 
@@ -312,7 +312,7 @@ The reconciliation prompt is **capability-owned** and lives in `plugins/change/s
 
 ### Discovery section shape
 
-`/spec:analyze --kind domain-model` appends one well-defined block per bounded context to `discovery.md`, alphabetically sorted by `name`, under a stable `## Domain model` heading. The discovery brief writes the heading once before invoking analyze (analogous to the existing `## Capability inventory` wrapper).
+`/change:analyze --kind domain-model` appends one well-defined block per bounded context to `discovery.md`, alphabetically sorted by `name`, under a stable `## Domain model` heading. The discovery brief writes the heading once before invoking analyze (analogous to the existing `## Capability inventory` wrapper).
 
 ````markdown
 ## Domain model
@@ -340,8 +340,8 @@ The plan skill's brief pipeline (steps 3a–3d) becomes:
 
 | Step | Today | After RFC-20 |
 | --- | --- | --- |
-| 3(a) | Discovery → `/spec:analyze` per input → `discovery.md` | unchanged contract; new `domain-model` kind dispatches a third branch |
-| 3(b) | Sync peers (multi-repo only) → `workspace.md` | unchanged |
+| 3(a) | Discovery → `/change:analyze` per input → `discovery.md` | unchanged contract; new `domain-model` kind dispatches a third branch |
+| 3(b) | Sync workspace (multi-repo only) → `workspace.md` | unchanged |
 | **3(b.5)** | — | **Survey → top-down DAG decomposition → `survey.md`** |
 | **3(b.6)** | — | **Synthesise → appends `## Reconciliation` to `discovery.md`, keyed by survey leaves** |
 | 3(c) | Propose → `specify change plan add` per accepted slice | propose brief consumes `survey.md` leaves as the candidate slice set |
@@ -349,7 +349,7 @@ The plan skill's brief pipeline (steps 3a–3d) becomes:
 
 Steps 1, 2, 4 (validate), and 5 (hand-off) are unchanged. Re-entry of the orchestration mode treats the new artifacts as part of the plan-time scratch; they live under `.specify/plans/<change>/` and are swept by `specify change plan archive`.
 
-`/spec:analyze` remains a single fan-out at 3(a). The survey brief does **not** re-invoke analyze at deeper levels. If a particular cut requires finer-grained capability inventory than the level-0 analyze produced, the surveyor records `unresolved: true` on the parent node and defers to the operator; re-running analyze with refined `--source` scoping is an operator decision, not a survey-internal loop. This preserves analyze's per-source idempotency contract.
+`/change:analyze` remains a single fan-out at 3(a). The survey brief does **not** re-invoke analyze at deeper levels. If a particular cut requires finer-grained capability inventory than the level-0 analyze produced, the surveyor records `unresolved: true` on the parent node and defers to the operator; re-running analyze with refined `--source` scoping is an operator decision, not a survey-internal loop. This preserves analyze's per-source idempotency contract.
 
 ### Routing hint precedence
 
@@ -368,7 +368,7 @@ The first two hints are surfaced in the assignment table's `Rationale` column ve
 
 This RFC adds **no new top-level CLI verbs**. All existing primitives compose:
 
-- `/spec:analyze` gains a third kind branch — same positional arity (`<input-path> <output-dir> <kind> [source-key]`).
+- `/change:analyze` gains a third kind branch — same positional arity (`<input-path> <output-dir> <kind> [source-key]`).
 - `specify change plan create` is unchanged.
 - `specify change plan add` is unchanged.
 - `specify change plan validate` is unchanged.
@@ -379,7 +379,7 @@ One new internal subcommand under the existing `plan` namespace:
 
 Skills change:
 
-- `/spec:analyze` SKILL.md updates: add the third kind to the closed enum table, add a `## Domain model` output contract section, add the structural sidecar shape for `domain-model.json`, update the guardrail list.
+- `/change:analyze` SKILL.md updates: add the third kind to the closed enum table, add a `## Domain model` output contract section, add the structural sidecar shape for `domain-model.json`, update the guardrail list.
 - `/change:plan` SKILL.md updates: add steps 3(b.5) and 3(b.6) to the Critical Path, add references to `survey.md` and `synthesise.md`, document the sizing rubric.
 - New brief siblings: `plugins/change/skills/plan/survey.md`, `plugins/change/skills/plan/synthesise.md`.
 - New per-capability brief siblings: `plugins/change/skills/plan/briefs/<cap>/survey.md`, `plugins/change/skills/plan/briefs/<cap>/synthesise.md`, optional `plugins/change/skills/plan/briefs/<cap>/sizing.toml`.
@@ -397,7 +397,7 @@ Skills change:
 
 1. **Schema and validator.** Add `specify-cli/schemas/domain-model/schema.json` and `specify-cli/schemas/domain-model/README.md`. Extend `specify-validate` with a domain-model validator. Add unit tests covering required fields, kebab-case constraints, the relationship-pattern enum, and `additionalProperties: false`.
 2. **Sizing helper.** Add `specify change plan size` CLI subcommand with framework-default include/exclude globs at `specify-cli/sizing.toml` and a `--capability` flag that loads `briefs/<cap>/sizing.toml`. Pin the LOC counter algorithm (line-based, language-aware blank/comment skipping). v1 languages: TypeScript, JavaScript, Python, Rust, Go. Add fixtures asserting deterministic counts on sample trees.
-3. **Closed-enum extension in `/spec:analyze`.** Update the SKILL.md kind enum, the per-capability `analyze.md` brief structure, and the `--kind` validation in any helper that enforces the enum. Land first as a stub branch that errors with `domain-model-not-yet-implemented` so operators get a stable diagnostic.
+3. **Closed-enum extension in `/change:analyze`.** Update the SKILL.md kind enum, the per-capability `analyze.md` brief structure, and the `--kind` validation in any helper that enforces the enum. Land first as a stub branch that errors with `domain-model-not-yet-implemented` so operators get a stable diagnostic.
 4. **Domain-model branch in the per-capability brief.** Implement the Omnia per-capability variant first (`plugins/change/skills/plan/briefs/omnia/analyze.md`), with fixtures under `plugins/change/skills/plan/briefs/omnia/fixtures/analyze/domain-model/`. Vectis variant follows.
 5. **Discovery section shape.** Extend the discovery brief and the `omnia/discovery.md` brief to write the `## Domain model` heading wrapper. Pin a fixture for the byte-stable shape.
 6. **Survey brief.** Land `plugins/change/skills/plan/survey.md` (framework-level) with the DAG schema, decomposition strategy priority list, and output shape. Land `plugins/change/skills/plan/briefs/omnia/survey.md` (capability-owned) with the Omnia clustering heuristics. Fixtures: root-already-S no-op, single-source XL decomposition, multi-source consolidation, multi-source split with shared dependency, mixed-input with domain model, unresolved-node escape.
@@ -409,7 +409,7 @@ Skills change:
 
 ## Migration
 
-This RFC is **additive**. Every existing `/spec:analyze` invocation, `discovery.md`, and `plan.yaml` continues to work without change.
+This RFC is **additive**. Every existing `/change:analyze` invocation, `discovery.md`, and `plan.yaml` continues to work without change.
 
 For operators:
 
@@ -437,7 +437,7 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 
 **Decompose into a tree, not a DAG.** Rejected. Real legacy systems have shared subcomponents (auth libraries, schema crates, utility packages) that genuinely belong to multiple parents. Forcing a tree shape either duplicates these subcomponents (inflating LOC counts and migration effort estimates) or arbitrarily attributes them to one parent (losing migration-order information).
 
-**Recursive `/spec:analyze` calls driven by the surveyor (analyze-inside-survey).** Rejected for v1. It would couple two skills tightly, blur the per-source idempotency contract, and complicate caching. The level-0 analyze fan-out plus structural metadata is sufficient evidence for the DAG decomposition in the common case; the `unresolved` escape covers the rest.
+**Recursive `/change:analyze` calls driven by the surveyor (analyze-inside-survey).** Rejected for v1. It would couple two skills tightly, blur the per-source idempotency contract, and complicate caching. The level-0 analyze fan-out plus structural metadata is sufficient evidence for the DAG decomposition in the common case; the `unresolved` escape covers the rest.
 
 **Capability-defined sizing rubrics with no framework default.** Rejected. Without a framework anchor, different capabilities produce non-comparable DAGs, and propose cannot rely on the "every input is at most S" invariant. Capabilities may *tighten* the framework rubric, not replace it.
 
@@ -488,7 +488,7 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 - [RFC-3b: Platform](archive/rfc-3b-platform.md) — assignment, registry, and one-slice-one-project invariant.
 - [RFC-9: Platform](archive/rfc-9-platform.md) — orchestration umbrella and shape inference.
 - [RFC-13: Extensibility](archive/rfc-13-extensibility.md) — capability-owned briefs and pipeline composition.
-- [`/spec:analyze` SKILL.md](../plugins/spec/skills/analyze/SKILL.md) — the per-source analyze contract this RFC extends.
+- [`/change:analyze` SKILL.md](../plugins/change/skills/analyze/SKILL.md) — the per-source analyze contract this RFC extends.
 - [`/change:plan` SKILL.md](../plugins/change/skills/plan/SKILL.md) — the plan-skill loop this RFC inserts steps 3(b.5) and 3(b.6) into.
 - [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) — the tier-1 vs tier-2 boundary survey/synthesise sit inside.
 - [`docs/tutorials/legacy-migration-at-scale.md`](../docs/tutorials/legacy-migration-at-scale.md) — the canonical Scenario 1+2 walkthrough this RFC updates.

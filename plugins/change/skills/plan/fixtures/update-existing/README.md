@@ -22,7 +22,7 @@ The umbrella runs through PR handoff, then resumes after operator merge:
 
 1. **Brief.** `specify change create polish-pass` scaffolds `change.md` with **empty** `inputs:` (no `--from` / `--source` / `--against`). The operator writes one paragraph naming the capabilities being polished.
 2. **Registry.** `specify registry validate` passes (multi-project, descriptions complete). No mutation.
-3. **Plan.** `/change:plan polish-pass` runs discovery against the empty input set; the discovery brief falls back to **baseline accumulation** in `.specify/workspace/<peer>/specs/` and surfaces the polish opportunities. Sync-peers refreshes both clones; propose decomposes into two slices (one per project, no contract change because the polish does not change the API surface); assignment routes each slice to its existing project; validate passes.
+3. **Plan.** `/change:plan polish-pass` runs discovery against the empty input set; the discovery brief falls back to **baseline accumulation** in `.specify/workspace/<peer>/specs/` and surfaces the polish opportunities. Sync-workspace refreshes both clones; propose decomposes into two slices (one per project, no contract change because the polish does not change the API surface); assignment routes each slice to its existing project; validate passes.
 4. **Execute.** `/change:execute loop` drives both changes to `done`. Terminal classification: `all-done`.
 5. **Push.** `specify workspace push` opens two PRs on `specify/polish-pass`.
 6. **PR handoff.** The umbrella lists the open PRs and stops. The operator merges both PRs through the forge UI or an explicit hand-run `gh pr merge`.

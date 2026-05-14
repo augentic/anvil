@@ -1,9 +1,9 @@
 # Idempotency notes
 
-The legacy-code branch of `/spec:analyze` is byte-deterministic. Re-running
+The legacy-code branch of `/change:analyze` is byte-deterministic. Re-running
 
 ```
-/spec:analyze legacy-code monolith ./inputs/monolith/ ./expected/plans/legacy-code/
+/change:analyze legacy-code monolith ./inputs/monolith/ ./expected/plans/legacy-code/
 ```
 
 on an unchanged `inputs/monolith/` tree MUST produce byte-identical `expected/discovery.md` and `expected/plans/legacy-code/analyze/monolith/metadata.json`.

@@ -69,7 +69,7 @@ The plan skill runs a three-phase internal flow:
 
 ### Discovery
 
-`/spec:analyze` reads the legacy source and produces a capability inventory in `discovery.md`. Each discovered capability gets a summary, source file hints, dependency edges, and a confidence marker.
+`/change:analyze` reads the legacy source and produces a capability inventory in `discovery.md`. Each discovered capability gets a summary, source file hints, dependency edges, and a confidence marker.
 
 You can review the discovery output at `.specify/plans/migrate-auth/discovery.md`.
 

@@ -2,7 +2,7 @@
 
 For multi-repo changes the driver keeps the coordinator repo as the owner of `plan.yaml`, `.specify/plan.lock`, and terminal status transitions. For each plan entry with `project`, it resolves and prepares that project's materialised workspace slot, `chdir`s into the slot only for phase execution, then restores CWD before writing the terminal plan transition. After a successful merge, the driver commits any non-baseline residue before it can mark the entry `done`. Cross-project consumer-impact reporting is a separate `specify compatibility` CLI surface. Shared plan/outcome/journal ownership rules live in [execute-state-handoff.md](../../references/execute-state-handoff.md).
 
-These clones are the read-write **tier-2** workspace; they outlive the change and are pushed to remotes by `specify workspace push`. The read-only **tier-1** legacy-source clones used by `/spec:analyze` at plan time are a separate concern entirely. See [Workspace Tiers](../../../../docs/explanation/workspace-tiers.md) for the full contrast.
+These clones are the read-write **tier-2** workspace; they outlive the change and are pushed to remotes by `specify workspace push`. The read-only **tier-1** legacy-source clones used by `/change:analyze` at plan time are a separate concern entirely. See [Workspace Tiers](../../../../docs/explanation/workspace-tiers.md) for the full contrast.
 
 ## Workspace routing and branch preparation (per-slice algorithm step 5a)
 

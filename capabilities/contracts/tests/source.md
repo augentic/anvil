@@ -31,7 +31,7 @@ Scenario ID: `contracts-source`
 
 Use this test to verify that `/spec:define` can reverse-engineer Specify
 contract artifacts from a legacy TypeScript codebase whose API surface a
-prior `/spec:analyze legacy-code` run has already identified.
+prior `/change:analyze legacy-code` run has already identified.
 
 Pipeline note:
 
@@ -41,14 +41,14 @@ Pipeline note:
 - Omnia and Vectis implementation changes consume existing baseline contracts
   as context. Reverse-engineered interface shapes should be introduced through
   a separate `contracts@v1` change before implementation depends on them.
-- Extract-from-source changes assume `/spec:analyze legacy-code` has
+- Extract-from-source changes assume `/change:analyze legacy-code` has
   already produced a `discovery.md` capability summary identifying the API
   surface; this test stipulates that precondition rather than exercising it.
 
 ## Intent
 
 Prove that the `contracts@v1` slice loop can extract HTTP and JSON Schema
-artifacts from a legacy TypeScript service when a prior `/spec:analyze`
+artifacts from a legacy TypeScript service when a prior `/change:analyze`
 run has constrained the scope to one capability. The scenario covers
 analysis-bounded extraction: the contract change must stay inside the scoped
 entry points and must mark wire-level fields as `[unknown]` rather than
@@ -65,15 +65,15 @@ guessing.
   and records results in the [run summary](run-summary-template.md).
 - **Precondition:** the discovery block in **Inputs** below must already be
   present in the plan's `discovery.md`. The scenario stipulates this, it does
-  not exercise `/spec:analyze`.
+  not exercise `/change:analyze`.
 
 ## Inputs
 
 ### Discovery precondition
 
-This test assumes a prior `/spec:analyze legacy-code` run against
+This test assumes a prior `/change:analyze legacy-code` run against
 `vendor/orders-service/` has appended this capability block to the plan's
-`discovery.md` (shape pinned by `plugins/spec/skills/analyze/SKILL.md`):
+`discovery.md` (shape pinned by `plugins/change/skills/analyze/SKILL.md`):
 
 ````markdown
 ### orders

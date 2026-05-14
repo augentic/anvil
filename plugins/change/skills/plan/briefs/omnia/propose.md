@@ -5,7 +5,7 @@ needs: [discovery]
 generates: .specify/plans/<name>/proposal.md
 ---
 
-Turn the capability inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered capability. Capability boundaries were decided upstream by `/spec:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify change plan add` for every accepted slice. This is the propose edge of the shared [plan single-writer contract](../../../../references/plan-single-writer.md): entries are added without `--project`, and project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
+Turn the capability inventory in `discovery.md` into a concrete set of plan entries. Decomposition is **mechanical**: one plan entry per discovered capability. Capability boundaries were decided upstream by `/change:analyze`; this brief does not re-cluster. For each candidate slice, drive the human through an accept/edit/reject/abort loop and shell out to `specify change plan add` for every accepted slice. This is the propose edge of the shared [plan single-writer contract](../../../../references/plan-single-writer.md): entries are added without `--project`, and project assignment is handled by the plan skill's assignment step (RFC-3b), not by this brief.
 
 ## Input
 
@@ -15,7 +15,7 @@ Turn the capability inventory in `discovery.md` into a concrete set of plan entr
 
 ## Decomposition — 1:1 capability → slice
 
-`discovery.md` already carries capability boundaries. Propose's job is to mechanically map each capability to a plan entry. The clustering judgement is capability-owned inside `/spec:analyze`.
+`discovery.md` already carries capability boundaries. Propose's job is to mechanically map each capability to a plan entry. The clustering judgement is capability-owned inside `/change:analyze`.
 
 ### Mapping rule
 
@@ -40,7 +40,7 @@ When the assignment step (3(d)) routes an entry to a project that does not yet e
 
 ### Documentation capabilities (no source-key marker for code)
 
-Capabilities produced from `/spec:analyze documentation` carry `sources:` pointing at prose references (`ops-runbook.md#rotate-upstream-ingest-key`), not code files. The `<!-- source-key -->` marker still names the documentation input the capability came from. For these:
+Capabilities produced from `/change:analyze documentation` carry `sources:` pointing at prose references (`ops-runbook.md#rotate-upstream-ingest-key`), not code files. The `<!-- source-key -->` marker still names the documentation input the capability came from. For these:
 - Plan entry `sources:` stays `[<doc-key>]`.
 - `depends-on` still carries over.
 - `description` is `[from docs] <summary>` so the operator knows the intent source. No file-path hints are included since documentation inputs have no extractable file tree.

@@ -1,5 +1,5 @@
 ---
-name: specify-analyze
+name: change-analyze
 description: Infer plan-time capability summaries from legacy code or documentation inputs and emit them into `discovery.md` — not full specs. Branches internally on the `kind` positional; per-kind clustering and extraction prompts are capability-owned. Use when the plan-time discovery brief needs a capability-level inventory of a source before `propose` slices it.
 argument-hint: <input-path> <output-dir> <kind> [source-key]
 ---
@@ -16,7 +16,7 @@ argument-hint: <input-path> <output-dir> <kind> [source-key]
 6. **Write structural metadata for code only** — for `legacy-code`, write byte-stable `<plan-dir>/analyze/<source-key>/metadata.json`; for `documentation`, leave that slot absent.
 7. **Preserve idempotency** — keep field order fixed, sort lists, reject malformed brief output, and prevent timestamps, absolute paths, or host state from leaking into outputs.
 
-`/spec:analyze` is the sole plan-time discovery skill. It reads one input — a legacy code tree or a documentation bundle — and appends **capability summaries** to `<output-dir>/discovery.md`. It does **not** produce full `specs/` + `design.md`; deep per-slice extraction remains `/spec:extract`'s job at define time.
+`/change:analyze` is the sole plan-time discovery skill. It reads one input — a legacy code tree or a documentation bundle — and appends **capability summaries** to `<output-dir>/discovery.md`. It does **not** produce full `specs/` + `design.md`; deep per-slice extraction remains `/spec:extract`'s job at define time.
 
 The rationale for the two-skill split: analyze produces capability summaries at plan time; extract produces full specs + design at define time.
 
@@ -24,13 +24,13 @@ The rationale for the two-skill split: analyze produces capability summaries at 
 
 ### Cloning a source tree
 
-`/spec:analyze` only consumes local paths. When a `source <key>=<url>` (or any caller) needs to materialise a remote git URL into `$INPUT_PATH` first, clone it into a fresh temporary directory and pass that local path as `$INPUT_PATH`:
+`/change:analyze` only consumes local paths. When a `source <key>=<url>` (or any caller) needs to materialise a remote git URL into `$INPUT_PATH` first, clone it into a fresh temporary directory and pass that local path as `$INPUT_PATH`:
 
 ```bash
 git clone "$url" "$dest"
 ```
 
-Pass the resulting local path as `$INPUT_PATH` on the next `/spec:analyze` invocation.
+Pass the resulting local path as `$INPUT_PATH` on the next `/change:analyze` invocation.
 
 ## Input kinds (closed enum)
 
@@ -41,7 +41,7 @@ Pass the resulting local path as `$INPUT_PATH` on the next `/spec:analyze` invoc
 | `legacy-code`   | Cluster code into capability summaries (capability-owned algorithm).  |
 | `documentation` | Extract capability summaries from prose / PDFs / runbooks / API docs. |
 
-Any other value is a hard error; the skill exits non-zero before writing anything to `discovery.md`. See `/change:plan` §*Input kinds* for the normative enum definition — `/spec:analyze` is the enforcement site for unknown-kind errors, but the vocabulary itself is pinned by the plan skill. Do not extend it.
+Any other value is a hard error; the skill exits non-zero before writing anything to `discovery.md`. See `/change:plan` §*Input kinds* for the normative enum definition — `/change:analyze` is the enforcement site for unknown-kind errors, but the vocabulary itself is pinned by the plan skill. Do not extend it.
 
 ## Output contract
 
@@ -72,7 +72,7 @@ The markdown `### <name>` heading keeps `discovery.md` human-scannable with exis
 - **`hints`** — map with optional keys `entry_points` (e.g. `POST /users`) and `external_deps` (e.g. `postgres`, `sendgrid`). Both lists are sorted alphabetically. Either key may be omitted.
 - **`confidence`** — one of `high`, `medium`, `low`.
 
-Append semantics: each `/spec:analyze` invocation appends its capabilities to `discovery.md` in alphabetical order by `name`. The discovery brief calls `/spec:analyze` once per input and the combined file is the union; analyze itself does not dedup across runs beyond the rule below.
+Append semantics: each `/change:analyze` invocation appends its capabilities to `discovery.md` in alphabetical order by `name`. The discovery brief calls `/change:analyze` once per input and the combined file is the union; analyze itself does not dedup across runs beyond the rule below.
 
 The code branch additionally writes a structural-metadata sidecar — see §*Structural metadata* below.
 
@@ -120,7 +120,7 @@ All fields are required. The detection algorithm that produces each field is own
 
 ## Idempotency
 
-`/spec:analyze` must produce byte-equivalent output on unchanged inputs. The rules:
+`/change:analyze` must produce byte-equivalent output on unchanged inputs. The rules:
 
 - No timestamps, environment variables, absolute paths, or other host-state leaks into `discovery.md`.
 - Capabilities are sorted alphabetically by `name`.
@@ -134,10 +134,10 @@ A byte-stable output lets the propose brief cache its slicing decisions and surf
 
 The detailed clustering / extraction prompt for each `kind` value lives under `plugins/change/skills/plan/briefs/<capability>/analyze.md` (planning briefs ship with the change-planning skill rather than the capability manifest):
 
-- [`plugins/change/skills/plan/briefs/omnia/analyze.md`](../../../change/skills/plan/briefs/omnia/analyze.md) — Omnia's per-kind prompt (documentation branch and code branch).
+- [`plugins/change/skills/plan/briefs/omnia/analyze.md`](../plan/briefs/omnia/analyze.md) — Omnia's per-kind prompt (documentation branch and code branch).
 - Other capabilities ship their own variant alongside under `plugins/change/skills/plan/briefs/<capability>/`.
 
-`/spec:analyze` resolves the active capability via `specify capability resolve` and invokes the relevant brief internally. The skill does **not** embed clustering heuristics; those are capability-specific judgement calls (import-graph vs docstring vs endpoint-name weighting, confidence thresholds, etc.).
+`/change:analyze` resolves the active capability via `specify capability resolve` and invokes the relevant brief internally. The skill does **not** embed clustering heuristics; those are capability-specific judgement calls (import-graph vs docstring vs endpoint-name weighting, confidence thresholds, etc.).
 
 ## Process
 

@@ -79,5 +79,5 @@ None directly. Extract is typically invoked as part of `/spec:define`, which han
 ## See also
 
 - [/spec:define](define.md) -- invokes extract when `source` is provided
-- [/spec:analyze](../change-skills/analyze.md) -- the plan-time counterpart (cheap capability summaries vs deep extraction)
+- [/change:analyze](../change-skills/analyze.md) -- the plan-time counterpart (cheap capability summaries vs deep extraction)
 - [Tutorial: Brownfield Onboarding](../../tutorials/brownfield-onboarding.md) -- full walkthrough

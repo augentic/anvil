@@ -23,7 +23,7 @@ Specify solves this with a **two-skill split**:
 
 | Skill | When | Depth | Scope | Cost |
 |-------|------|-------|-------|------|
-| `/spec:analyze` | Plan time | Shallow (capability summaries) | Entire source | Low |
+| `/change:analyze` | Plan time | Shallow (capability summaries) | Entire source | Low |
 | `/spec:extract` | Define time | Deep (full specs + design) | Per-change slice | Higher, but focused |
 
 At plan time, analyze scans the whole monolith cheaply to build an inventory. At define time, extract runs deeply against only the files relevant to each change.
@@ -84,7 +84,7 @@ Discovery:
 
 ### Discovery phase
 
-`/spec:analyze` scans the entire monolith at plan time. For each discovered capability, it emits a summary to `discovery.md`:
+`/change:analyze` scans the entire monolith at plan time. For each discovered capability, it emits a summary to `discovery.md`:
 
 ```markdown
 ### token-validation
@@ -109,7 +109,7 @@ This is intentionally shallow. Analyze identifies *what capabilities exist* and 
 
 ### Workspace sync
 
-Because the registry declares multiple projects, the sync-peers phase clones the target repos and inventories them. For greenfield targets, this confirms they have no existing baselines.
+Because the registry declares multiple projects, the sync-workspace phase clones the target repos and inventories them. For greenfield targets, this confirms they have no existing baselines.
 
 ### Propose phase
 

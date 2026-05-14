@@ -9,7 +9,7 @@ Layer2: "Layer 2 — Planning a change" {
   plan: "/change:plan"
   execute: "/change:execute"
   orchestrate: "/change:plan <name> orchestrate"
-  analyze: "/spec:analyze"
+  analyze: "/change:analyze"
   plan -> execute
 }
 
@@ -87,7 +87,7 @@ Layer 2 coordinates **multi-slice changes** through `plan.yaml` and (for cross-r
 | `/change:plan` | Author `plan.yaml` from inputs (legacy code, docs, or both) |
 | `/change:execute` | Drive the plan through the Layer 1 define-build-merge loop |
 | `/change:plan <name> orchestrate` | Umbrella mode: brief → registry validate → plan → execute → push → operator PR merge → finalize |
-| `/spec:analyze` | Plan-time capability inference (used internally by `/change:plan`) |
+| `/change:analyze` | Plan-time capability inference (used internally by `/change:plan`) |
 
 The plan is the change's table of contents. `/change:plan` produces it by analysing inputs and proposing slices. `/change:execute` consumes it by picking the next eligible slice, running the Layer 1 loop, and updating the plan's status.
 

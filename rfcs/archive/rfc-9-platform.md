@@ -44,7 +44,7 @@ The three-layer stack (CLI primitives → change lifecycle → initiative orches
 
 The platform-first workflow must support three initiative shapes through a single uniform loop:
 
-1. **Migrate legacy.** Sources arrive via `--source <key>=<git-url-or-path>` and are cloned by `/spec:analyze` into `.specify/plans/<name>/analyze/<key>/` for shallow inventory; deep `/spec:extract` runs at define time. Targets are existing or newly-minted registered projects.
+1. **Migrate legacy.** Sources arrive via `--source <key>=<git-url-or-path>` and are cloned by `/change:analyze` into `.specify/plans/<name>/analyze/<key>/` for shallow inventory; deep `/spec:extract` runs at define time. Targets are existing or newly-minted registered projects.
 2. **New feature.** Sources arrive via `--from <docs>` only (or `initiative.md:inputs`); targets are existing registered projects, possibly with new ones spawned at assignment time.
 3. **Update existing feature.** Sources are unused; targets are existing registered projects; baseline accumulation in `.specify/workspace/<peer>/specs/` is the dominant signal.
 
@@ -142,7 +142,7 @@ The two tiers serve different roles — analyze-only reading vs full define-buil
 **Action.** Author `docs/explanation/workspace-tiers.md` covering:
 
 1. The two-tier model (table above plus prose).
-2. When each tier is materialised (`/spec:analyze` for tier 1; `specify workspace sync` for tier 2).
+2. When each tier is materialised (`/change:analyze` for tier 1; `specify workspace sync` for tier 2).
 3. The lifecycle commands that affect each tier (`specify plan archive` for tier 1; `specify workspace sync`, `workspace push`, `workspace status` for tier 2).
 4. Why the two tiers are not interchangeable — read-write writes from tier 1 would be lost; tier 2 is the only place generated code lives.
 

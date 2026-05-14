@@ -57,7 +57,7 @@ contracts/                                  # Baseline API contracts
 │
 ├── plans/                                 # Change-plan working directories
 │   └── <plan-name>/
-│       ├── discovery.md                   # Capability inventory from /spec:analyze
+│       ├── discovery.md                   # Capability inventory from /change:analyze
 │       ├── proposal.md                    # Slice accept/edit/reject audit trail
 │       ├── workspace.md                   # Peer inventory (multi-repo only)
 │       └── analyze/

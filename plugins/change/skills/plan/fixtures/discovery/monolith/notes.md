@@ -2,7 +2,7 @@
 
 ## What this fixture pins
 
-The invocation in [`invocation.txt`](invocation.txt) — `/change:plan traffic source monolith=./inputs` — passes a single legacy-code input through the discovery brief, which dispatches it to [`/spec:analyze legacy-code`](../../../../../../spec/skills/analyze/SKILL.md) per [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md). The fixture pins the byte-stable output of that round-trip: [`expected/discovery.md`](expected/discovery.md) (three capability summaries) and [`expected/plans/traffic/analyze/monolith/metadata.json`](expected/plans/traffic/analyze/monolith/metadata.json) (structural-metadata sidecar).
+The invocation in [`invocation.txt`](invocation.txt) — `/change:plan traffic source monolith=./inputs` — passes a single legacy-code input through the discovery brief, which dispatches it to [`/change:analyze legacy-code`](../../../../analyze/SKILL.md) per [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md). The fixture pins the byte-stable output of that round-trip: [`expected/discovery.md`](expected/discovery.md) (three capability summaries) and [`expected/plans/traffic/analyze/monolith/metadata.json`](expected/plans/traffic/analyze/monolith/metadata.json) (structural-metadata sidecar).
 
 ## Fixture-build choice: (c) purpose-built three-capability tree
 
@@ -16,7 +16,7 @@ The C22 brief gave three options:
 
 - (b) creates a documented drift trap: the inputs would produce four capabilities but the expected pins only three, so re-runs under the eventual C23 discovery brief never match.
 - (a) requires mutating the C21 fixture (`plugins/change/skills/plan/briefs/omnia/fixtures/analyze/legacy-code/`), which is explicitly out of scope per the C22 guardrails — C21 stands as the Omnia-brief-level pin for the four-capability case.
-- (c) lets the two fixtures serve different layers: C21 pins the `/spec:analyze` brief output on a four-capability tree; this fixture pins the `/change:plan` discovery brief output on a three-capability tree. The three files that overlap (`register.ts`, `validation.ts`, `verify.ts`, `common/ validation.ts`) are authored verbatim from C21 so the `user-registration` and `email-verification` blocks remain byte-identical across the two fixtures.
+- (c) lets the two fixtures serve different layers: C21 pins the `/change:analyze` brief output on a four-capability tree; this fixture pins the `/change:plan` discovery brief output on a three-capability tree. The three files that overlap (`register.ts`, `validation.ts`, `verify.ts`, `common/ validation.ts`) are authored verbatim from C21 so the `user-registration` and `email-verification` blocks remain byte-identical across the two fixtures.
 
 ## RFC cross-reference
 
@@ -39,8 +39,8 @@ The three capabilities were chosen to exercise the specific clustering heuristic
 - **`depends-on` order.** Alphabetical — `[email-verification, shared-validation]` for `user-registration`.
 - **`hints.entry_points` order.** Alphabetical — `[GET /auth/verify, POST /auth/verify-email]` for `email-verification`.
 - **`hints.external_deps` order.** Alphabetical kebab-case — `[postgres, sendgrid]`.
-- **`<!-- source-key: monolith -->` marker.** Emitted by the `/spec:analyze` skill (not this brief) immediately before every `### <name>` heading on this invocation.
-- **`metadata.json` field order.** `version`, `source_key`, `language`, `loc`, `module_count`, `top_level_modules` — per [`analyze/SKILL.md` §Structural metadata](../../../../../../spec/skills/analyze/SKILL.md).
+- **`<!-- source-key: monolith -->` marker.** Emitted by the `/change:analyze` skill (not this brief) immediately before every `### <name>` heading on this invocation.
+- **`metadata.json` field order.** `version`, `source_key`, `language`, `loc`, `module_count`, `top_level_modules` — per [`analyze/SKILL.md` §Structural metadata](../../../../analyze/SKILL.md).
 - **`top_level_modules` order.** Alphabetical relative paths.
 - **No host state.** No timestamps, environment variables, absolute paths, or run IDs in either artifact.
 

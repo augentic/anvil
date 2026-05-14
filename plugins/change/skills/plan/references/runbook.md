@@ -38,7 +38,7 @@ Every input eventually analysed by the plan flow — whether slash-supplied (`fr
 | `legacy-code`   | Source code to be inferred into capability summaries at plan time and extracted per-slice at define time. |
 | `documentation` | Prose, PDFs, runbooks, API specs — parsed for capability summaries, constraints, and open questions.    |
 
-The enum is closed: any other value is a hard error at the analyse phase (see `/spec:analyze`). This enum is frozen — NEVER extend it from this skill. This keeps the plan-time discovery contract auditable — every line in `discovery.md` is traceable to the kind-branch that produced it.
+The enum is closed: any other value is a hard error at the analyse phase (see `/change:analyze`). This enum is frozen — NEVER extend it from this skill. This keeps the plan-time discovery contract auditable — every line in `discovery.md` is traceable to the kind-branch that produced it.
 
 ## Kind defaults for positional inputs
 
@@ -52,7 +52,7 @@ When an input is supplied via a positional input, its kind is determined as foll
 
 Inputs supplied via `change.md:inputs` carry their `kind:` explicitly in the frontmatter; no default is applied.
 
-An explicit `:<kind>` suffix whose value is not in the closed enum is a hard exit before the core loop begins (same diagnostic as `/spec:analyze`'s unknown-kind error). The suffix grammar is `<value>[:<kind>]`, where `<kind>` is one of `legacy-code` or `documentation` (kebab-case, case-sensitive).
+An explicit `:<kind>` suffix whose value is not in the closed enum is a hard exit before the core loop begins (same diagnostic as `/change:analyze`'s unknown-kind error). The suffix grammar is `<value>[:<kind>]`, where `<kind>` is one of `legacy-code` or `documentation` (kebab-case, case-sensitive).
 
 ## Core loop (five steps)
 
@@ -99,7 +99,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
    `briefs/<capability>/propose.md` from this skill directory and
    run each in order:
      a. discovery   — see ../discovery.md (greenfield registry bootstrap also).
-     b. sync-peers  — see ../sync-peers.md (multi-repo only).
+     b. sync-workspace  — see ../sync-workspace.md (multi-repo only).
      c. propose     — see ../propose.md.
      d. assignment  — see ../assignment.md (multi-repo only; includes
                       the registry-proposal sub-step for unresolved
@@ -138,9 +138,9 @@ Authoring artefacts live under `.specify/plans/<change-name>/`, mirroring the ch
 └── plans/
     └── <change-name>/
         ├── discovery.md            # from the discovery brief (step 3a)
-        ├── workspace.md            # from sync-peers (step 3b; multi-repo only)
+        ├── workspace.md            # from sync-workspace (step 3b; multi-repo only)
         ├── proposal.md             # from the propose brief (step 3c) + assignment table (step 3d)
-        └── analyze/                # `/spec:analyze` sidecars (legacy-code): `<source-key>/metadata.json`
+        └── analyze/                # `/change:analyze` sidecars (legacy-code): `<source-key>/metadata.json`
 ```
 
 The working directory is created lazily — by the discovery brief itself when it writes `discovery.md`, not by the skill scaffold. Step 2 (`specify change plan create`) does not create it.
@@ -168,7 +168,7 @@ Per-mode deltas, dry-run write prohibitions, and `extend` collision rules live i
 - **Invoke `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, or `/change:execute`.** Never. `/change:plan` only invokes the planning briefs bundled with this skill under `briefs/<capability>/`, plus the `specify change plan` CLI for scaffolding, entry creation, and validation.
 - **Hold a driver lock.** Never. `.specify/plan.lock` is reserved for `/change:execute`; authoring runs outside that lock.
 - **Write `plan.yaml` directly.** Never. Every write follows [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md).
-- **Clone git URLs from this skill.** Never for **discovery** inputs: `source` git URLs are passed through to `/spec:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync`, invoked only in the sync-peers step when `len(registry.projects) > 1`.
+- **Clone git URLs from this skill.** Never for **discovery** inputs: `source` git URLs are passed through to `/change:analyze` verbatim. Multi-repo **workspace** materialisation is exclusively `specify workspace sync`, invoked only in the sync-workspace step when `len(registry.projects) > 1`.
 - **Merge PRs.** Never. `specify workspace push` opens or updates PRs; the operator merges them through the forge UI or a hand-run `gh pr merge`; `specify change finalize` only verifies that remote state.
 - **Author propose brief bodies.** Never. The propose brief body is owned by the capability; the skill only drives the accept / edit / reject loop against whatever the brief emits.
 - **Auto-repair a failing `specify change plan validate`.** Never. Step 4's validation gate is read-only; any `Error`-level finding surfaces to the human with a recommended `specify change plan amend` / `specify change plan transition skipped` fix, never an in-skill edit.

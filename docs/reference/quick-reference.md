@@ -36,7 +36,7 @@ specify registry add <project> --url ... --capability ...
 | `/spec:merge` | Merge completed slice into baseline |
 | `/spec:drop` | Discard a slice |
 | `/spec:extract` | Extract specs from existing code |
-| `/spec:analyze` | Plan-time capability inference (invoked by `/change:plan`) |
+| `/change:analyze` | Plan-time capability inference (invoked by `/change:plan`) |
 | `/change:plan` | Author a multi-slice plan |
 | `/change:execute` | Automate the plan loop |
 | `/change:plan <name> orchestrate` | Cross-repo umbrella mode: brief -> registry -> plan -> execute -> push -> PR merge -> finalize |

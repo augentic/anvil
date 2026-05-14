@@ -182,7 +182,7 @@ Step 3/3: merge
 
 # The driver does NOT clone here. /spec:define's brief pipeline
 # invokes /spec:extract, which inlines a guarded `git clone`
-# snippet (see plugins/spec/skills/analyze/SKILL.md
+# snippet (see plugins/change/skills/analyze/SKILL.md
 # §"Cloning a source tree") to materialize the tree into its
 # clone cache. The --source value travels through as a URL string.
 

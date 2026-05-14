@@ -354,7 +354,7 @@ The workspace is derived state, but safety still matters because it contains rea
 1. Update `docs/reference/registry.md` with the RFC-14 workspace lifecycle, including the operator-driven PR merge step and the removal of `workspace merge` automation.
 2. Update `docs/reference/cli/workspace.md` for selectors, branch preparation, dirty-checkout push refusal, default-branch push refusal, and the removal of the `merge` subcommand.
 3. Update `docs/reference/cli/change.md` for the operator-merge expectation in `change finalize`.
-4. Update `/change:plan` sync-peers guidance to distinguish discovery sync from execution sync.
+4. Update `/change:plan` sync-workspace guidance to distinguish discovery sync from execution sync.
 5. Update `/change:execute` guidance to run project entries inside materialised slots, prepare branches before mutation, and commit non-baseline residue post-merge.
 6. Update `/spec:merge` guidance to own the baseline workspace auto-commit explicitly (paths and commit message) so the split with `/change:execute` is unambiguous.
 7. Add glossary entries for coordinator root, registry workspace, workspace slot, and change branch.

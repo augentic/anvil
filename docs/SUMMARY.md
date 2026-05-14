@@ -70,7 +70,7 @@
   - [/change:plan <name> orchestrate](reference/change-skills/change.md)
   - [/change:plan](reference/change-skills/plan.md)
   - [/change:execute](reference/change-skills/execute.md)
-  - [/spec:analyze](reference/change-skills/analyze.md)
+  - [/change:analyze](reference/change-skills/analyze.md)
 - [CLI reference](reference/cli/index.md)
   - [specify status](reference/cli/status.md)
   - [specify slice](reference/cli/slice.md)

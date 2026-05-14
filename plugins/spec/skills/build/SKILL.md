@@ -99,7 +99,7 @@ Optionally specify a slice name. If omitted, check if it can be inferred from co
 - Keep code changes minimal and scoped to each task.
 - Flip task checkboxes through `specify slice task mark`; never edit `tasks.md` directly. Task authoring (rewrites, additions) lives in `/spec:define` — halt and ask the user to re-run define if a task needs rewriting.
 - Route every write to `.metadata.yaml`, `plan.yaml`, and the `.specify/specs/` baseline through the CLI — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state). Status transitions and timestamps go through `specify slice transition`; baseline merge lives in `/spec:merge`.
-- Never run extract or analyze passes here — those are `/spec:extract` and `/spec:analyze`. Build operates on the slice already on disk.
+- Never run extract or analyze passes here — those are `/spec:extract` and `/change:analyze`. Build operates on the slice already on disk.
 - Pause on errors, blockers, or unclear requirements — don't guess.
 
 ## Fluid workflow integration

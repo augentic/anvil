@@ -25,7 +25,7 @@ Re-running `--orchestrate` against an existing change is the canonical resume pa
 | `--shape` | No | Explicit shape override; one of `migrate-legacy`, `new-feature`, `update-existing`. Inferred from the input flags when omitted (see [Shape inference](#shape-inference)). |
 | `--from <path>` | No | Documentation input forwarded to `/change:plan`. Repeatable. Default kind is `documentation`; override per-input via `:<kind>` suffix. |
 | `--against <path>` | No | Refactor-target codebase forwarded to `/change:plan`. Single-valued. Default kind is `legacy-code`. |
-| `--source <key>=<path-or-url>` | No | Named legacy source forwarded to `/change:plan` and threaded through `/change:execute` per-slice. Repeatable. Default kind is `legacy-code`. Git URLs flow into `/spec:analyze` clones (tier-1 workspace); local paths are passed through verbatim. |
+| `--source <key>=<path-or-url>` | No | Named legacy source forwarded to `/change:plan` and threaded through `/change:execute` per-slice. Repeatable. Default kind is `legacy-code`. Git URLs flow into `/change:analyze` clones (tier-1 workspace); local paths are passed through verbatim. |
 | `--dry-run` | No | Observation-only end-to-end. Runs read-side checks for steps 1-3 and invokes `/change:plan <name> dry-run`; never invokes `/change:execute`, `specify workspace push`, or `specify change finalize`. |
 
 `--auto-merge` is retired. Supplying it is a hard error explaining that Specify never calls `specify workspace merge` or `gh pr merge`; operators merge PRs themselves, then re-run the umbrella to finalize.

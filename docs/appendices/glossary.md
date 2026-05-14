@@ -71,7 +71,7 @@ The first phase of the slice lifecycle. Generates all artifacts from a descripti
 A spec that describes modifications to an existing capability using `ADDED`, `MODIFIED`, `REMOVED`, and `RENAMED` sections. Delta specs merge into the baseline by matching on stable `REQ-XXX` IDs.
 
 **Discovery**
-The output of `/spec:analyze` during plan authoring. A `discovery.md` file containing capability summaries (name, description, source files, dependencies, confidence) derived from input analysis.
+The output of `/change:analyze` during plan authoring. A `discovery.md` file containing capability summaries (name, description, source files, dependencies, confidence) derived from input analysis.
 
 ## E
 
@@ -105,7 +105,7 @@ The three input topologies the platform-first loop handles uniformly: `migrate-l
 A schema-validated YAML document (`layout.yaml`, Vectis only) that captures the spatial layout intent for each screen *before* `/spec:define` runs — regions, group hierarchy, gap / padding / align / size, token references, asset references, and the optional cross-shell `component: <slug>` directive, with no `bind` / `event` / `maps_to` / overlay `trigger` / navigation / `*-when` wiring keys yet. Produced by layout inferers (the screenshot-fronted [`vectis:image-layout-inferer`](../../plugins/vectis/skills/image-layout-inferer/SKILL.md) today; future Figma and source-code inferers) or hand-authored. Validated by `specify tool run vectis -- validate layout`, which rejects the wiring keys and enforces the structural-identity rule. Consumed by the composition brief during `/spec:define`, which produces the wired [composition artifact](#c).
 
 **Layered stack**
-Specify is organised in three layers above the `specify` CLI substrate: Layer 0 — configuration (`project.yaml`, `capability.yaml`, `specify init`, `specify capability`); Layer 1 — executing a change (the single-slice define-build-merge loop: `/spec:define`, `/spec:build`, `/spec:merge`, plus supporting skills); and Layer 2 — planning a change (`/change:plan`, `/change:execute`, the `/change:plan <name> orchestrate` umbrella mode, and `/spec:analyze`, all of which read or write `registry.yaml` and `plan.yaml`). See [The Layered Stack](../explanation/layered-stack.md) for the full picture.
+Specify is organised in three layers above the `specify` CLI substrate: Layer 0 — configuration (`project.yaml`, `capability.yaml`, `specify init`, `specify capability`); Layer 1 — executing a change (the single-slice define-build-merge loop: `/spec:define`, `/spec:build`, `/spec:merge`, plus supporting skills); and Layer 2 — planning a change (`/change:plan`, `/change:execute`, the `/change:plan <name> orchestrate` umbrella mode, and `/change:analyze`, all of which read or write `registry.yaml` and `plan.yaml`). See [The Layered Stack](../explanation/layered-stack.md) for the full picture.
 
 **Lifecycle state**
 The current status of a slice: `created`, `defining`, `defined`, `building`, `complete`, `merged`, or `dropped`. `defining` and `building` are transient states indicating a phase is in-flight. Managed by the CLI via `.metadata.yaml`.
@@ -183,7 +183,7 @@ A behavioral specification at `specs/<capability>/spec.md`. Contains requirement
 **Spec-first (inline derivation)**
 Authorship pattern where contracts are derived inline from specs during a single slice's define phase. Used as a convenience fallback for single-repo services with no external consumers and no API boundary. The baseline is empty, so the delta is the full contract set.
 
-**Sync peers**
+**Sync workspace**
 The phase during `/change:plan` (multi-repo only) that clones registry projects into `.specify/workspace/` and inventories their baseline specs. Produces `workspace.md`.
 
 ## T
@@ -194,7 +194,7 @@ A YAML file under root `contracts/` whose root carries `openapi:` (OpenAPI 3.1 d
 ## W
 
 **Workspace**
-The registry workspace under `.specify/workspace/`: a derived local view of registered projects. Each child is a workspace slot. It is read-only during planning (sync-peers phase) and writable during execution (`/change:execute` routes define-build-merge into the selected slot via CWD-based routing). Local commits are published through `specify workspace push`; PR merge remains an operator action outside Specify.
+The registry workspace under `.specify/workspace/`: a derived local view of registered projects. Each child is a workspace slot. It is read-only during planning (sync-workspace phase) and writable during execution (`/change:execute` routes define-build-merge into the selected slot via CWD-based routing). Local commits are published through `specify workspace push`; PR merge remains an operator action outside Specify.
 
 **Workspace merge**
 Retired PR-landing automation. `specify workspace merge` is no longer an active CLI subcommand. Merge through the forge UI, `gh pr merge`, or your normal merge queue, then run `specify change finalize`.
@@ -203,7 +203,7 @@ Retired PR-landing automation. `specify workspace merge` is no longer an active 
 One project-specific child of the registry workspace, normally `.specify/workspace/<project>/`. A slot is a Git clone for remote registry URLs or a symlink for local targets. `workspace status` reports its path, materialisation type, configured target, actual origin or symlink target, branch, HEAD, dirty state, exact change-branch match, `.specify/project.yaml` presence, and active slices.
 
 **Workspace tier 1** (also: **Legacy-source clone**)
-The ephemeral, read-only clone materialised under `.specify/plans/<name>/analyze/<key>/` by `/spec:analyze` (using the inlined guarded `git clone` snippet documented at [`plugins/spec/skills/analyze/SKILL.md` §*Cloning a source tree*](../../plugins/spec/skills/analyze/SKILL.md) when the source is a git URL) so the discovery brief can read source code that is not on your local disk. Belongs to a single change and is swept into `.specify/archive/plans/<YYYYMMDD>-<name>/` by `specify change plan archive`. Anything edited inside a tier-1 clone moves into the archive when the change ends -- it never propagates back to the original source. See [Workspace tiers](../explanation/workspace-tiers.md).
+The ephemeral, read-only clone materialised under `.specify/plans/<name>/analyze/<key>/` by `/change:analyze` (using the inlined guarded `git clone` snippet documented at [`plugins/change/skills/analyze/SKILL.md` §*Cloning a source tree*](../../plugins/change/skills/analyze/SKILL.md) when the source is a git URL) so the discovery brief can read source code that is not on your local disk. Belongs to a single change and is swept into `.specify/archive/plans/<YYYYMMDD>-<name>/` by `specify change plan archive`. Anything edited inside a tier-1 clone moves into the archive when the change ends -- it never propagates back to the original source. See [Workspace tiers](../explanation/workspace-tiers.md).
 
 **Workspace tier 2** (also: **Registered project clone**)
 The durable, read-write slot materialised under `.specify/workspace/<name>/` by `specify workspace sync` from an entry in `registry.yaml`. Belongs to the platform, not to any one change; persists across changes. `/change:execute` `chdir`s into this slot before invoking the phase skills, so the slice directory, the merged baseline, and the workspace's git history accumulate here. `specify workspace push` is the explicit publication gate that opens or updates PRs from `specify/<change-name>`. See [Workspace tiers](../explanation/workspace-tiers.md).

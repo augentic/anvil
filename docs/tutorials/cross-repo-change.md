@@ -236,7 +236,7 @@ Run the planning skill:
 | Phase | What happens | On-disk artefact |
 |---|---|---|
 | **Discovery** | Reads `change.md` and `./docs/oauth-login.md`; emits a neutral capability inventory. | `.specify/plans/oauth-login/discovery.md` |
-| **Sync peers** *(multi-repo only)* | Runs `specify workspace sync` to materialise every registry project; inventories each peer slot. | `.specify/workspace/<peer>/`, `.specify/plans/oauth-login/workspace.md` |
+| **Sync workspace** *(multi-repo only)* | Runs `specify workspace sync` to materialise every registry project; inventories each project slot. | `.specify/workspace/<project>/`, `.specify/plans/oauth-login/workspace.md` |
 | **Propose** | Decomposes the inventory into change slices via the accept / edit / reject loop; appends each accepted slice via `specify change plan add`. | `plan.yaml` (entries without `project`), `.specify/plans/oauth-login/proposal.md` |
 | **Assignment** *(multi-repo only)* | Infers `project` per entry from registry descriptions, baseline specs, and schema; writes via `specify change plan amend --project`. | `plan.yaml` (entries gain `project:`) |
 
@@ -281,7 +281,7 @@ The plan is now the single source of truth for what runs where. Run `cat plan.ya
 - The platform-hub topology (`specify init --hub`) is the canonical starting shape for multi-repo changes. The hub holds platform state and never carries code.
 - `specify registry add` registers code projects with kebab-case names, capability identifiers, and domain descriptions. Descriptions drive automated assignment in `/change:plan`.
 - `specify change create` scaffolds the operator brief; the `inputs:` frontmatter feeds the discovery brief.
-- `/change:plan` runs discovery -> sync-peers -> propose -> assignment, and finishes with `specify change plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
+- `/change:plan` runs discovery -> sync-workspace -> propose -> assignment, and finishes with `specify change plan validate` as the gate. When it detects a cross-project API boundary it inserts a contract change before the implementation changes.
 
 ## Next
 

@@ -1,14 +1,14 @@
 ---
 id: analyze
-description: Per-kind clustering / extraction prompt for /spec:analyze (Omnia).
+description: Per-kind clustering / extraction prompt for /change:analyze (Omnia).
 generates: .specify/plans/<name>/discovery.md
 ---
 
-# Omnia per-kind prompts for `/spec:analyze`
+# Omnia per-kind prompts for `/change:analyze`
 
-This brief carries Omnia's clustering / extraction prompts for the [`/spec:analyze`](../../../../../spec/skills/analyze/SKILL.md) skill. The skill resolves this file, dispatches on `$KIND`, and executes exactly one of the branches below.
+This brief carries Omnia's clustering / extraction prompts for the [`/change:analyze`](../../../analyze/SKILL.md) skill. The skill resolves this file, dispatches on `$KIND`, and executes exactly one of the branches below.
 
-Both branches emit the same on-disk shape — one `### <name>` heading per capability followed by a fenced YAML block. The normative capability-summary contract lives in [`analyze/SKILL.md` §Output contract](../../../../../spec/skills/analyze/SKILL.md). Do not invent new fields, drop required fields, or deviate from the fixed field order.
+Both branches emit the same on-disk shape — one `### <name>` heading per capability followed by a fenced YAML block. The normative capability-summary contract lives in [`analyze/SKILL.md` §Output contract](../../../analyze/SKILL.md). Do not invent new fields, drop required fields, or deviate from the fixed field order.
 
 **Fixed field order (hard contract):** inside each YAML block, fields MUST appear in the order `summary`, `sources`, `depends-on`, `hints`, `confidence`. Capabilities MUST be sorted alphabetically by name. Within each capability, `sources`, `depends-on`, `hints.entry_points`, and `hints.external_deps` MUST each be sorted alphabetically.
 
@@ -107,7 +107,7 @@ Rules:
 
 ### 5. Idempotency
 
-Follow the rules pinned in [`analyze/SKILL.md` §Idempotency](../../../../../spec/skills/analyze/SKILL.md):
+Follow the rules pinned in [`analyze/SKILL.md` §Idempotency](../../../analyze/SKILL.md):
 
 - Capabilities sorted alphabetically by name.
 - Fixed field order inside each YAML block (§Step 3 above).
@@ -136,7 +136,7 @@ Fixture tree: [`./fixtures/analyze/documentation/`](./fixtures/analyze/documenta
 Invocation (run from the fixture directory):
 
 ```
-/spec:analyze documentation ./inputs/ ./expected/
+/change:analyze documentation ./inputs/ ./expected/
 ```
 
 Input: a single runbook under [`inputs/ops-runbook.md`](./fixtures/analyze/documentation/inputs/ops-runbook.md) describing two operational procedures plus one deferred decision.
@@ -175,7 +175,7 @@ Capability names are kebab-case, 2–4 tokens, noun-phrases describing the behav
 
 ### 3. Per-capability output
 
-Emit one capability summary per inferred capability, in the on-disk shape pinned by [`analyze/SKILL.md` §Output contract](../../../../../spec/skills/analyze/SKILL.md) — `### <name>` heading followed by a fenced YAML block.
+Emit one capability summary per inferred capability, in the on-disk shape pinned by [`analyze/SKILL.md` §Output contract](../../../analyze/SKILL.md) — `### <name>` heading followed by a fenced YAML block.
 
 Fields, in strict order:
 
@@ -196,7 +196,7 @@ Do NOT emit `## Constraints` or `## Open questions` appendix blocks from this br
 
 ### 4. Structural metadata (`metadata.json`)
 
-In addition to capability summaries, write `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json` with the shape pinned in [`analyze/SKILL.md` §Structural metadata](../../../../../spec/skills/analyze/SKILL.md). Omnia conventions for the numeric fields:
+In addition to capability summaries, write `<plan-dir>/analyze/<$SOURCE_KEY>/metadata.json` with the shape pinned in [`analyze/SKILL.md` §Structural metadata](../../../analyze/SKILL.md). Omnia conventions for the numeric fields:
 
 - **`language`** — detected primary source language, kebab-case (`typescript`, `javascript`, `rust`, `go`, `python`, `java`, `kotlin`, `csharp`). Prefer the language with the largest share of non-generated LOC.
 - **`loc`** — total non-blank non-comment source lines. Exclude test files, vendored dependency directories (`node_modules`, `vendor`, `target`, `.venv`), and generated code (`*.gen.ts`, `*_pb.go`, etc.).
@@ -208,7 +208,7 @@ In addition to capability summaries, write `<plan-dir>/analyze/<$SOURCE_KEY>/met
   - Java / Kotlin / C#: top-level types (classes + interfaces) under the primary source tree.
 - **`top_level_modules`** — immediate children of the source root that are directories, alphabetically sorted, relative paths (`src/auth`, `src/ingest`). Flat-layout projects with code at the root produce an empty array.
 
-The documentation branch MUST NOT write this file — see [`analyze/SKILL.md` §*Error handling*](../../../../../spec/skills/analyze/SKILL.md).
+The documentation branch MUST NOT write this file — see [`analyze/SKILL.md` §*Error handling*](../../../analyze/SKILL.md).
 
 ### 5. Idempotency
 
@@ -233,7 +233,7 @@ Fixture tree: [`./fixtures/analyze/legacy-code/`](./fixtures/analyze/legacy-code
 Invocation (run from the fixture directory):
 
 ```
-/spec:analyze legacy-code monolith ./inputs/monolith/ ./expected/plans/legacy-code/
+/change:analyze legacy-code monolith ./inputs/monolith/ ./expected/plans/legacy-code/
 ```
 
 Input: a small TypeScript monolith under [`inputs/monolith/`](./fixtures/analyze/legacy-code/inputs/monolith/) with four inferable capabilities spanning `src/users`, `src/auth`, `src/common`, and `src/billing`.

@@ -114,7 +114,7 @@ The plan skill internally:
 
 ```bash
 specify change plan create <name> [source ...]
-# discovery / sync-peers / propose / assignment cycles run by hand or via /change:plan default
+# discovery / sync-workspace / propose / assignment cycles run by hand or via /change:plan default
 specify change plan add <slice-name> ...
 specify change plan amend <slice-name> --project <project>
 specify registry add <project> --url ... --capability <capability> --description "..."
@@ -134,7 +134,7 @@ specify change plan validate
 
 The execute skill takes the `.specify/plan.lock` PID stamp, runs self-heal, then iterates `specify change plan next → /spec:define → /spec:build → /spec:merge → specify change plan transition` until no eligible change remains. Multi-repo entries route into `.specify/workspace/<project>/` via the executor's CWD-routing step.
 
-Execution owns mutation-time workspace preparation. For each selected plan entry that carries `project`, `/change:execute` materialises/prepares only that project's slot, checks out the exact `specify/<change-name>` branch before any define/build/merge mutation, and never refreshes unrelated peers unless the operator explicitly ran a broader sync outside the umbrella. This is distinct from plan-time sync-peers, which may refresh every registered peer for discovery context.
+Execution owns mutation-time workspace preparation. For each selected plan entry that carries `project`, `/change:execute` materialises/prepares only that project's slot, checks out the exact `specify/<change-name>` branch before any define/build/merge mutation, and never refreshes unrelated projects unless the operator explicitly ran a broader sync outside the umbrella. This is distinct from plan-time sync-workspace, which may refresh every registered project for discovery context.
 
 **Halts.** All terminal classifications surface verbatim:
 

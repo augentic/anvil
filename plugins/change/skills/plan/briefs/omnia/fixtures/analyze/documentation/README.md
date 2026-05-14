@@ -12,7 +12,7 @@ Worked example for the documentation branch of [Omnia `analyze.md`](../../../ana
 Run from this directory:
 
 ```
-/spec:analyze documentation ./inputs/ ./expected/
+/change:analyze documentation ./inputs/ ./expected/
 ```
 
 The brief walks `./inputs/`, extracts two capabilities (`drain-backpressure-queue`, `rotate-upstream-ingest-key` — alphabetical), emits constraints and open questions into the two appendix blocks, and writes the merged result to `./expected/discovery.md`.
@@ -29,5 +29,5 @@ The brief walks `./inputs/`, extracts two capabilities (`drain-backpressure-queu
 
 - Multi-file input (directory with several artifacts) — the same contract applies; sources would carry distinct paths.
 - OpenAPI inputs — deep-link via JSON pointer (e.g. `api-spec.yaml#/paths/~1users/post`). Not exercised here.
-- `--source-key` tagging — exercised by the scaffold fixture under `plugins/spec/skills/analyze/fixtures/scaffold-example/`.
+- `--source-key` tagging — exercised by the scaffold fixture under `plugins/change/skills/analyze/fixtures/scaffold-example/`.
 - Code-branch output — lands with RFC-3a C21.

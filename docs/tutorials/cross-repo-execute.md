@@ -40,7 +40,7 @@ Steps 1-4 live in [Working across repos: planning](cross-repo-change.md); Steps 
 
 ## 5. Inspect the workspace
 
-`/change:plan` already ran `specify workspace sync` during the sync-peers phase. Verify the resulting clones:
+`/change:plan` already ran `specify workspace sync` during the sync-workspace phase. Verify the resulting clones:
 
 ```bash
 specify workspace status

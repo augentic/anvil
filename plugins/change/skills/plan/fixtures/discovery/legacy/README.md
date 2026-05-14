@@ -1,6 +1,6 @@
 # Legacy monolith — capability overview
 
-This is the reference fixture tree used by `plugins/change/skills/plan/SKILL.md` §"Step 3(a) — Discovery" to pin the shape of a single-`--source` capability inventory. It is a deliberately small, hand-authored "legacy monolith" with three modules; `/spec:analyze` run against this directory should surface the capabilities listed below in the accompanying `../expected-discovery.md` golden.
+This is the reference fixture tree used by `plugins/change/skills/plan/SKILL.md` §"Step 3(a) — Discovery" to pin the shape of a single-`--source` capability inventory. It is a deliberately small, hand-authored "legacy monolith" with three modules; `/change:analyze` run against this directory should surface the capabilities listed below in the accompanying `../expected-discovery.md` golden.
 
 ## Modules
 

@@ -90,7 +90,7 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
       ok: materialised .specify/workspace/foo-backend/
       ok: materialised .specify/workspace/foo-mobile/
 
-  Step 3(b) — Sync peers
+  Step 3(b) — Sync workspace
     Wrote .specify/plans/migrate-foo/workspace.md
 
   Step 3(c) — Propose

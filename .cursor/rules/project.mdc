@@ -85,12 +85,12 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `merge` - finalize and merge a completed slice
 - `drop` - discard a slice without merging specs into baseline
 - `extract` - extract Specify artifacts from existing source code
-- `analyze` - plan-time capability inference; emits capability summaries
 
 ### Change Plugin (`plugins/change/`)
 
 - `plan` - author `plan.yaml` via the planning brief pipeline; with the `orchestrate` positional, drives the cross-repo umbrella (brief → registry validate → plan → execute → push → operator PR merge → finalize) — RFC-9 §2C.
 - `execute` - drive a change's plan through define, build, merge per slice.
+- `analyze` - plan-time capability inference; emits capability summaries.
 
 ### Omnia Plugin (`plugins/omnia/`)
 
@@ -104,7 +104,7 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 - `replay-writer` - add regression tests from captured fixtures
 - `wiretapper` - capture fixture data from legacy services
 
-Cloning a remote source tree is no longer a dedicated skill — both callers (`/spec:analyze` and `/rt:wiretapper`) inline a guarded `git clone` snippet directly. See the *Cloning a source tree* subsection in `plugins/spec/skills/analyze/SKILL.md` (or `plugins/rt/skills/wiretapper/SKILL.md` for legacy-repo bootstrap).
+Cloning a remote source tree is no longer a dedicated skill — both callers (`/change:analyze` and `/rt:wiretapper`) inline a guarded `git clone` snippet directly. See the *Cloning a source tree* subsection in `plugins/change/skills/analyze/SKILL.md` (or `plugins/rt/skills/wiretapper/SKILL.md` for legacy-repo bootstrap).
 
 ### Vectis Plugin (`plugins/vectis/`)
 
@@ -142,7 +142,8 @@ See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for
 /docs/                    # Extended documentation (architecture, plugins)
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
-  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, extract, analyze)
+  ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, extract)
+  ├── change/             # Change orchestration plugin (plan, execute, analyze)
   │   └── references/     # Artifact templates and capability resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)

@@ -1,6 +1,6 @@
 # Change skills
 
-Change-scoped skills coordinate multi-slice changes through `plan.yaml`. They sit above the [slice lifecycle skills](../slice-skills/index.md) and invoke them per-slice. The plan-and-drive skills live on the `change` plugin (`/change:plan`, `/change:execute`) and the `spec` plugin (`/spec:analyze`); the cross-repo umbrella mode (`/change:plan <name> orchestrate`) composes plan + execute + push, then resumes to finalize after you merge the resulting PRs — see the [layered stack](../../explanation/layered-stack.md) for the relationship.
+Change-scoped skills coordinate multi-slice changes through `plan.yaml`. They sit above the [slice lifecycle skills](../slice-skills/index.md) and invoke them per-slice. All change-scoped skills (`/change:plan`, `/change:execute`, `/change:analyze`) live on the `change` plugin; the cross-repo umbrella mode (`/change:plan <name> orchestrate`) composes plan + execute + push, then resumes to finalize after you merge the resulting PRs — see the [layered stack](../../explanation/layered-stack.md) for the relationship.
 
 ## The plan-execute flow
 
@@ -45,7 +45,7 @@ Every halt -- registry validation failure, `stuck`, `registry-amendment-required
 | [/change:plan <name> orchestrate](change.md) | Drive the cross-repo loop through push, then finalize after the resulting PRs are merged | `change.md`, `registry.yaml`, `plan.yaml`, workspace clones | Composition only -- shells out; never writes directly |
 | [/change:plan](plan.md) | Author `plan.yaml` from inputs | Sources, docs, registry, baseline specs | `plan.yaml`, `discovery.md`, `proposal.md`, optional `workspace.md`; for multi-project plans, amends entries with the CLI project option via the assignment step |
 | [/change:execute](execute.md) | Drive the plan through define-build-merge | `plan.yaml` | Plan status transitions (via CLI); prepares workspace branches, routes into workspace clones for multi-project plans, and commits non-baseline residue after merge |
-| [/spec:analyze](analyze.md) | Plan-time capability inference (used internally by `/change:plan`) | Source code or documentation | `discovery.md`, optional `metadata.json` |
+| [/change:analyze](analyze.md) | Plan-time capability inference (used internally by `/change:plan`) | Source code or documentation | `discovery.md`, optional `metadata.json` |
 
 ## Layered composition
 

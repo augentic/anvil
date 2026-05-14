@@ -12,9 +12,9 @@ This RFC adds:
 2. **`specify sources {add, remove, show, list, validate, sync}`** — a new CLI verb family, structurally parallel to `specify registry`.
 3. **`.specify/.cache/sources/<key>/`** — a durable, shared tier-1 cache that survives `specify change plan archive`. Per-change `analyze/<key>/` slots become read-only symlinks into the cache.
 4. **`--source @<key>`** — a new selector form on `/change:plan` (and any caller that accepts `--source`) that resolves the key against `sources.yaml`.
-5. **`--analyze-concurrency <N>`** — a brief-level fan-out knob on `/change:plan` for parallel `/spec:analyze` invocations across many sources.
+5. **`--analyze-concurrency <N>`** — a brief-level fan-out knob on `/change:plan` for parallel `/change:analyze` invocations across many sources.
 
-These additions are **strictly additive**: the existing `--source <key>=<path-or-url>` form, the `/spec:analyze` per-input contract, the workspace-tier separation, and every existing schema continue to work unchanged. The cumulative migration ledger and the `mapping` field on `planSlice` are deferred to RFC-22.
+These additions are **strictly additive**: the existing `--source <key>=<path-or-url>` form, the `/change:analyze` per-input contract, the workspace-tier separation, and every existing schema continue to work unchanged. The cumulative migration ledger and the `mapping` field on `planSlice` are deferred to RFC-22.
 
 ## Motivation
 
@@ -22,10 +22,10 @@ The framework already supports the *mechanics* of multi-source migration: `plan.
 
 - **Sources are declared every change.** Operators repeat `--source <k>=<url>` for every plan invocation. Forty repos times two re-plans is eighty CLI flags. There is no artifact saying "these are the legacy sources we are migrating", separate from any one change.
 - **Tier-1 clones are per-change and ephemeral.** Each `--source <k>=<git-url>` clones into `.specify/plans/<change>/analyze/<key>/` and is swept by `specify change plan archive`. Re-planning the same source means re-cloning. The survey brief from RFC-20 compounds the cost when run across many sources, because each survey re-iteration starts from scratch.
-- **Discovery fan-out is sequential.** RFC-20's discovery brief invokes `/spec:analyze` once per source in CLI declaration order. With 80 sources, the wall-clock hit is real, even though each invocation is cheap and independent.
+- **Discovery fan-out is sequential.** RFC-20's discovery brief invokes `/change:analyze` once per source in CLI declaration order. With 80 sources, the wall-clock hit is real, even though each invocation is cheap and independent.
 - **Sources and targets get mixed.** Without a sources artifact, operators are tempted to record legacy URLs in `change.md` or as comments — both unsearchable and not validated. Without a clear separation, the workspace-tier boundary in [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) blurs.
 
-This RFC is the smallest set of additions that fix all four issues without violating Specify's existing posture (`registry.yaml` is target-only; archives are immutable; `/spec:analyze` is per-input).
+This RFC is the smallest set of additions that fix all four issues without violating Specify's existing posture (`registry.yaml` is target-only; archives are immutable; `/change:analyze` is per-input).
 
 ## Design
 
@@ -33,7 +33,7 @@ This RFC is the smallest set of additions that fix all four issues without viola
 
 1. **Sources are platform state, not change state.** `sources.yaml` lives at the platform-repo / hub root alongside `registry.yaml`. Like the registry, a missing file is *not* an error — it activates only when used.
 2. **The CLI is the single writer.** `specify sources {add, remove, sync}` are the only writers to `sources.yaml`. No skill hand-edits the file; this mirrors the writer rules for `registry.yaml` and `plan.yaml`.
-3. **The tier-1 boundary is preserved.** `.specify/.cache/sources/<key>/` is read-only with respect to `/spec:analyze` and every other planner-time skill. Nothing in this RFC writes into a source clone.
+3. **The tier-1 boundary is preserved.** `.specify/.cache/sources/<key>/` is read-only with respect to `/change:analyze` and every other planner-time skill. Nothing in this RFC writes into a source clone.
 4. **Schemas are strict.** `additionalProperties: false`, kebab-case identifiers, deny-unknown-fields, byte-stable serialisation. Same posture as `plan.schema.json` and `Registry::validate_shape`.
 5. **Composition over invention.** One new verb family (`specify sources`) and one new flag form (`--source @<key>`); everything else reuses existing primitives.
 6. **No cross-change durable state.** This RFC stops at "sources are declared and cached." Cross-change memory (the migration ledger) and slice-level mapping metadata are RFC-22 concerns.
@@ -68,7 +68,7 @@ Schema rules:
 | Field | Required | Notes |
 |---|---|---|
 | `version` | yes | `1` only. |
-| `sources[].key` | yes | Kebab-case, unique within the file. Used as `<source-key>` everywhere (the `--source-key` positional on `/spec:analyze`, the `<k>` segment in `analyze/<k>/metadata.json`, etc.). |
+| `sources[].key` | yes | Kebab-case, unique within the file. Used as `<source-key>` everywhere (the `--source-key` positional on `/change:analyze`, the `<k>` segment in `analyze/<k>/metadata.json`, etc.). |
 | `sources[].url` | yes | Same shape as `registry.yaml:projects[].url` — `.`, repo-relative path, `git@host:path`, `http(s)://`, `ssh://`, `git+http(s)://`, `git+ssh://`. Stored verbatim. |
 | `sources[].language` | no | Free-form kebab-case (`typescript`, `python`, `csharp`, …). Advisory; surfaces in survey. |
 | `sources[].description` | no | Single-line free text. |
@@ -110,12 +110,12 @@ Lifecycle:
 | Verb | Effect |
 |---|---|
 | `specify sources sync` | Idempotent. For each entry: clone into `.specify/.cache/sources/<key>/` if missing; `git fetch` if present and remote; no-op for symlink/local URLs. |
-| `/spec:analyze` (legacy-code branch) | Reads from `.specify/.cache/sources/<key>/` via the per-change symlink. Writes nothing into the cache. |
+| `/change:analyze` (legacy-code branch) | Reads from `.specify/.cache/sources/<key>/` via the per-change symlink. Writes nothing into the cache. |
 | `specify change plan create` (when invoked with `--source @<key>`) | Materialises `.specify/plans/<change>/analyze/<key>/` as a symlink to `.specify/.cache/sources/<key>/`, calling `specify sources sync <key>` first if the cache slot is missing. |
 | `specify change plan archive` | Sweeps `.specify/plans/<change>/analyze/<key>/` (the symlink) into the archive. Does **not** touch `.specify/.cache/sources/<key>/`. The cache outlives the change. |
 | `specify sources remove <key>` | Removes the cache entry alongside the catalogue entry. Refuses if any active plan slice still references the key. |
 
-The downstream `/spec:analyze` skill reads through the symlink unchanged; its idempotency contract is unaffected. Archives preserve the symlink target by recording a small sidecar at `.specify/archive/plans/<date>-<name>/.snapshot.yaml`:
+The downstream `/change:analyze` skill reads through the symlink unchanged; its idempotency contract is unaffected. Archives preserve the symlink target by recording a small sidecar at `.specify/archive/plans/<date>-<name>/.snapshot.yaml`:
 
 ```yaml
 version: 1
@@ -148,11 +148,11 @@ The RFC-20 `change.md:inputs[]` schema gains a sibling form too: an entry with `
 
 ### Scaling the analyze fan-out (`--analyze-concurrency`)
 
-With `sources.yaml` and the shared tier-1 cache in place, `/change:plan`'s discovery brief (RFC-20 step 3a) gains a *parallel* fan-out: `/spec:analyze` invocations per source are independent (they write to disjoint `analyze/<key>/` slots and append to a shared `discovery.md` whose merge contract is owned by `/spec:analyze`). The brief may dispatch up to `--analyze-concurrency <N>` (default `4`, capped at `min(8, num_cpus)`) invocations concurrently.
+With `sources.yaml` and the shared tier-1 cache in place, `/change:plan`'s discovery brief (RFC-20 step 3a) gains a *parallel* fan-out: `/change:analyze` invocations per source are independent (they write to disjoint `analyze/<key>/` slots and append to a shared `discovery.md` whose merge contract is owned by `/change:analyze`). The brief may dispatch up to `--analyze-concurrency <N>` (default `4`, capped at `min(8, num_cpus)`) invocations concurrently.
 
-The byte-stable output contract is unchanged: `/spec:analyze` already sorts capability blocks alphabetically within each source-key block, and the discovery brief sorts source-key blocks alphabetically before flushing `discovery.md`. Concurrent invocations cannot produce non-deterministic output as long as each writes its own `<key>/` sidecar (which they already do) and the brief defers the final merge until all invocations have completed.
+The byte-stable output contract is unchanged: `/change:analyze` already sorts capability blocks alphabetically within each source-key block, and the discovery brief sorts source-key blocks alphabetically before flushing `discovery.md`. Concurrent invocations cannot produce non-deterministic output as long as each writes its own `<key>/` sidecar (which they already do) and the brief defers the final merge until all invocations have completed.
 
-This is a brief-level change, not a CLI change; the existing `/spec:analyze` contract is unmodified. The `--analyze-concurrency` knob lives on `/change:plan` (and is propagated through orchestration mode).
+This is a brief-level change, not a CLI change; the existing `/change:analyze` contract is unmodified. The `--analyze-concurrency` knob lives on `/change:plan` (and is propagated through orchestration mode).
 
 ### CLI surface summary
 
@@ -194,24 +194,24 @@ No verb is renamed, retired, or repurposed. No existing schema field is changed 
 
 ## Migration
 
-This RFC is **strictly additive**. Pre-existing plans, registries, changes, and `/spec:analyze` invocations continue to work without change.
+This RFC is **strictly additive**. Pre-existing plans, registries, changes, and `/change:analyze` invocations continue to work without change.
 
 For operators:
 
 - Continue using `--source <key>=<path-or-url>` if you prefer per-change declarations. Adopt `sources.yaml` only when you have more than a handful of legacy sources or want to avoid re-cloning.
 - After upgrade, the tier-1 cache directory `.specify/.cache/sources/` will appear when you next run `specify sources sync` or a change with `--source @<key>`. Add `.specify/.cache/` to `.gitignore` (the `specify init` defaults will be updated to include it).
-- The symlink view for `.specify/plans/<change>/analyze/<key>/` is transparent to `/spec:analyze`; nothing changes for skill consumers.
+- The symlink view for `.specify/plans/<change>/analyze/<key>/` is transparent to `/change:analyze`; nothing changes for skill consumers.
 
 For capability authors:
 
-- No required changes. The discovery brief and `/spec:analyze` skill contracts are unchanged.
+- No required changes. The discovery brief and `/change:analyze` skill contracts are unchanged.
 - Survey briefs that want to read `sources.yaml` may do so; it is now a stable file under the platform-repo root. Existing survey briefs that ignore it continue to work.
 
 For skill authors:
 
 - `specify sources show --format json` is a new readable surface with a stable JSON envelope. Treat it like `specify registry show`.
 
-There is **no breaking change** to: existing `plan.yaml` files, existing `registry.yaml` files, existing `/spec:analyze` invocations, existing exit codes (new discriminants live within `EXIT_VALIDATION_FAILED=2` and `EXIT_GENERIC_FAILURE=1`), or existing archive layouts (the `.snapshot.yaml` file is additive inside the archive directory).
+There is **no breaking change** to: existing `plan.yaml` files, existing `registry.yaml` files, existing `/change:analyze` invocations, existing exit codes (new discriminants live within `EXIT_VALIDATION_FAILED=2` and `EXIT_GENERIC_FAILURE=1`), or existing archive layouts (the `.snapshot.yaml` file is additive inside the archive directory).
 
 ## Alternatives Considered
 
@@ -227,7 +227,7 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 
 **Include a `status` field in `sources.yaml`.** Deferred to RFC-22. Without a ledger, status would be operator-maintained and writer-less, which the framework does not do for any other state. RFC-22 introduces the writers (`specify change plan transition done`, `specify change finalize`) that make `status` honest.
 
-**Run analyze concurrency through a CLI verb (`specify analyze fan-out`).** Rejected. The existing `/spec:analyze` skill is already per-input and idempotent; concurrency is a brief-level scheduling decision, not a new contract. The `--analyze-concurrency` flag on `/change:plan` is the natural place because the brief already orchestrates the fan-out.
+**Run analyze concurrency through a CLI verb (`specify analyze fan-out`).** Rejected. The existing `/change:analyze` skill is already per-input and idempotent; concurrency is a brief-level scheduling decision, not a new contract. The `--analyze-concurrency` flag on `/change:plan` is the natural place because the brief already orchestrates the fan-out.
 
 ## Non-Goals
 

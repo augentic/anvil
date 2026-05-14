@@ -1,6 +1,6 @@
 # Tiny hypothetical monolith
 
-A three-capability TypeScript service used only to illustrate the `/spec:analyze` output shape. The files referenced below are not present — this fixture pins the *expected output* for a notional input, not a runnable tree.
+A three-capability TypeScript service used only to illustrate the `/change:analyze` output shape. The files referenced below are not present — this fixture pins the *expected output* for a notional input, not a runnable tree.
 
 Capabilities the scaffold example summarises:
 

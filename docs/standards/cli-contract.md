@@ -53,7 +53,7 @@ Today the per-slice verbs live under `specify slice *` and the umbrella verbs li
 
 When a change is coordinated through a `plan.yaml`, the recommended skill / CLI composition is:
 
-1. **Author.** `/change:plan <change-name> source <key>=<path-or-url> ...` runs the planning brief pipeline, optionally **sync-peers** + `workspace.md` when the registry is multi-project, then `specify change plan create` + one `specify change plan add` per accepted slice (globs or `--scope-manifest`). Plan-time sync-peers is discovery-oriented and may sync all registered peers.
+1. **Author.** `/change:plan <change-name> source <key>=<path-or-url> ...` runs the planning brief pipeline, optionally **sync-workspace** + `workspace.md` when the registry is multi-project, then `specify change plan create` + one `specify change plan add` per accepted slice (globs or `--scope-manifest`). Plan-time sync-workspace is discovery-oriented and may sync all registered projects.
 2. **Execute.** `/change:execute loop` repeatedly picks `specify change plan next`, prepares only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set, runs `/spec:define → /spec:build → /spec:merge`, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
 3. **Archive.** `specify change plan archive` sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 

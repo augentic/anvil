@@ -68,7 +68,7 @@ Multi-project registry; descriptions complete. Continuing.
     No `## Proposed registry topology` section in discovery.md →
     skipping greenfield bootstrap (registry already populated).
 
-  Step 3(b) — Sync peers
+  Step 3(b) — Sync workspace
     $ specify workspace sync
     ok: refreshed .specify/workspace/omnia-backend/
     ok: refreshed .specify/workspace/vectis-mobile/

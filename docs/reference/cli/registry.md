@@ -10,7 +10,7 @@ The registry was promoted from `specify change registry ...` to a top-level noun
 |------|-------------|
 | [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name, URL classification, the capability identifier stored in `capability:`, and the `description-missing-multi-repo` invariant after the write. |
 | [`remove`](#specify-registry-remove) | Delete a project entry. Warns when `plan.yaml` references the removed project. |
-| [`show`](#specify-registry-show) | Render the registry as parsed YAML (or JSON via `--format json`). The canonical surface `/change:plan`'s sync-peers step consumes. |
+| [`show`](#specify-registry-show) | Render the registry as parsed YAML (or JSON via `--format json`). The canonical surface `/change:plan`'s sync-workspace step consumes. |
 | [`validate`](#specify-registry-validate) | Structural and referential check; runs the multi-repo description invariant and (on hubs) the `hub-cannot-be-project` invariant. |
 
 ## Subcommands
@@ -23,7 +23,7 @@ Render the registry content.
 specify registry show [--format json]
 ```
 
-`--format json` is the canonical shape consumed by `/change:plan`'s sync-peers step (`projects.length > 1` triggers multi-repo authoring).
+`--format json` is the canonical shape consumed by `/change:plan`'s sync-workspace step (`projects.length > 1` triggers multi-repo authoring).
 
 ### specify registry validate
 

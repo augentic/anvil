@@ -144,7 +144,7 @@ The cross-repo loop is shape-agnostic. The same Steps 1-9 drive three change sha
 
 ### Variant: migrate-legacy
 
-Sources arrive via `--source <key>=<git-url-or-path>`. `/spec:analyze` clones each source into `.specify/plans/<change>/analyze/<key>/` (the [tier-1 workspace](../explanation/workspace-tiers.md#the-two-tiers)) for shallow capability inventory; deep `/spec:extract` runs at define time per slice. Targets are existing or newly-minted registered projects.
+Sources arrive via `--source <key>=<git-url-or-path>`. `/change:analyze` clones each source into `.specify/plans/<change>/analyze/<key>/` (the [tier-1 workspace](../explanation/workspace-tiers.md#the-two-tiers)) for shallow capability inventory; deep `/spec:extract` runs at define time per slice. Targets are existing or newly-minted registered projects.
 
 Run against an empty hub:
 

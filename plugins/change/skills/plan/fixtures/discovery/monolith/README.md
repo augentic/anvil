@@ -1,6 +1,6 @@
 # Monolith discovery fixture
 
-Pins the `.specify/plans/<name>/discovery.md` shape for a small, purpose-built three-capability TypeScript monolith passed through [`/spec:analyze legacy-code`](../../../../../../spec/skills/analyze/SKILL.md) via [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md). Sibling of [`mixed-inputs/`](../mixed-inputs/), which pins the combined documentation + legacy-code shape.
+Pins the `.specify/plans/<name>/discovery.md` shape for a small, purpose-built three-capability TypeScript monolith passed through [`/change:analyze legacy-code`](../../../../analyze/SKILL.md) via [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md). Sibling of [`mixed-inputs/`](../mixed-inputs/), which pins the combined documentation + legacy-code shape.
 
 This fixture is the acceptance target for:
 
@@ -11,7 +11,7 @@ This fixture is the acceptance target for:
 | [`invocation.txt`](invocation.txt)                      | Operator invocation exercised by this fixture.                                                            |
 | [`inputs/`](inputs/)                                    | Three-capability TypeScript monolith: `src/users/` + `src/auth/` + `src/common/`. Four source files + `package.json`. |
 | [`expected/discovery.md`](expected/discovery.md)        | Byte-stable combined output. Three capability summaries (YAML), alphabetically sorted, all carrying the `<!-- source-key: monolith -->` marker. |
-| [`expected/plans/traffic/analyze/monolith/metadata.json`](expected/plans/traffic/analyze/monolith/metadata.json) | Structural-metadata sidecar written by the legacy-code branch of `/spec:analyze` alongside `discovery.md`. |
+| [`expected/plans/traffic/analyze/monolith/metadata.json`](expected/plans/traffic/analyze/monolith/metadata.json) | Structural-metadata sidecar written by the legacy-code branch of `/change:analyze` alongside `discovery.md`. |
 | [`notes.md`](notes.md)                                  | Capability-level rationale + C24 cross-references + per-capability clustering signals.                     |
 
 Read [`notes.md`](notes.md) before extending the fixture — capability boundaries were chosen to exercise specific clustering signals (import edges, docstrings, READMEs) and reordering the `sources:` lists or renaming capabilities changes what downstream C24 propose produces.
@@ -26,13 +26,13 @@ Three capabilities, alphabetical order:
 
 ## Relationship to the Omnia analyze fixture
 
-The Omnia fixture at [`plugins/change/skills/plan/briefs/omnia/fixtures/analyze/legacy-code/`](../../../briefs/omnia/fixtures/analyze/legacy-code/) pins the **brief-level** output of `/spec:analyze legacy-code` on a four-capability tree (adds `billing-subscription`). This fixture pins the **plan-level** combined `discovery.md` produced after `/change:plan`'s discovery brief wraps the analyze output in `# Discovery — <name>` + `## Capability inventory`. Different layers, different scopes, different owners — the two fixtures do not share source trees or expected outputs.
+The Omnia fixture at [`plugins/change/skills/plan/briefs/omnia/fixtures/analyze/legacy-code/`](../../../briefs/omnia/fixtures/analyze/legacy-code/) pins the **brief-level** output of `/change:analyze legacy-code` on a four-capability tree (adds `billing-subscription`). This fixture pins the **plan-level** combined `discovery.md` produced after `/change:plan`'s discovery brief wraps the analyze output in `# Discovery — <name>` + `## Capability inventory`. Different layers, different scopes, different owners — the two fixtures do not share source trees or expected outputs.
 
 ## What this fixture pins
 
-- `# Discovery — traffic` header + `## Capability inventory` wrapper emitted by [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md) before dispatching to `/spec:analyze`.
+- `# Discovery — traffic` header + `## Capability inventory` wrapper emitted by [`plugins/change/skills/plan/briefs/omnia/discovery.md`](../../../briefs/omnia/discovery.md) before dispatching to `/change:analyze`.
 - Three `### <name>` + fenced YAML blocks, alphabetically sorted by name, all prefixed with `<!-- source-key: monolith -->` (emitted by the skill because `--source monolith=…` supplies the key).
-- Fixed YAML field order (`summary`, `sources`, `depends-on`, `hints`, `confidence`) per [`analyze/SKILL.md` §Output contract](../../../../../../spec/skills/analyze/SKILL.md).
+- Fixed YAML field order (`summary`, `sources`, `depends-on`, `hints`, `confidence`) per [`analyze/SKILL.md` §Output contract](../../../../analyze/SKILL.md).
 - Alphabetic ordering within `sources`, `depends-on`, `hints.entry_points`, `hints.external_deps`.
 - `shared-validation` omits `hints:` entirely (a legal shape).
 - **No** `## Constraints (from documentation)` or `## Open questions (from documentation)` blocks — those are documentation-branch-only and this fixture has no documentation inputs.

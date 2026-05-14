@@ -23,7 +23,7 @@ Slash commands operators reach for, in roughly the order they appear in a projec
 - `/spec:build` — implement a slice's tasks.
 - `/spec:merge` — fold a slice's deltas into the baseline and archive it.
 - `/spec:drop` — abandon a slice without merging.
-- `/change:plan` — author a change's `plan.yaml` via the planning brief pipeline; in multi-project hubs `sync-peers` + `workspace.md` precede the propose step.
+- `/change:plan` — author a change's `plan.yaml` via the planning brief pipeline; in multi-project hubs `sync-workspace` + `workspace.md` precede the propose step.
 - `/change:plan <name> orchestrate` — umbrella mode that strings the cross-repo loop into one operator action: brief → plan → execute → push → operator PR merge → finalize. Opens/updates PRs, never merges them.
 - `/change:execute` — drive a change's `plan.yaml` through define → build → merge; supports `dry-run`, single-slice supervised run, and `loop` mode with self-heal and SIGINT/SIGTERM handling.
 
