@@ -216,7 +216,7 @@ typography:
   code-inline:
     typeface: mono
     size: 14
-    weight: 400
+    weight: regular
     lineHeight: 20
     letterSpacing: 0
 
