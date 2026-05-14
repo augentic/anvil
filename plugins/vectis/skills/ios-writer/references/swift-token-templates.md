@@ -20,7 +20,7 @@ Generated under `iOS/<App>/Theme/`:
 | `colors` | `Theme/Colors.swift` | One file per category. |
 | `typography` | `Theme/Typography.swift` | |
 | `spacing` + `cornerRadius` | `Theme/Spacing.swift` | Colocated as two enums. |
-| `elevation` | `Theme/Elevation.swift` | New v1 category (RFC-11 §F); separate file. |
+| `elevation` | `Theme/Elevation.swift` | New v1 category; separate file. |
 | `border` | `Theme/Border.swift` | New v1 category; uses composite shape. |
 | `opacity` | `Theme/Opacity.swift` | New v1 category. |
 | _any new scalar / color / font category_ | `Theme/<Name>.swift` | One file per new category unless the writer explicitly colocates. |

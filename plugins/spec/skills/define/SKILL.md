@@ -6,7 +6,7 @@ argument-hint: "[description]"
 
 # Define Skill
 
-Define a new slice - create it and generate all artifacts in one step. When ready to implement, run `/spec:build`.
+When ready to implement, run `/spec:build`.
 
 When working plan-driven (a `plan.yaml` exists), the active entry is claimed before `/spec:define` starts. If this skill uncovers a neighbouring slice or dependency that should be tracked, mutate the plan only through the commands allowed by the shared [phase outcome contract](../../references/phase-outcome-contract.md).
 
@@ -26,28 +26,7 @@ Read `.specify/project.yaml` for `capability`, `domain`, and `rules`. If the fil
 
 ### 2. Handle regenerate mode (artifact ID supplied)
 
-If the user supplied an artifact ID (e.g., `/spec:define my-change design`):
-
-a. Run `specify slice status <name> --format json`. If the CLI returns `not_found`, the slice is missing; if `status` is some value other than `defined` / `building`, warn before proceeding.
-b. Run `specify capability pipeline define --change .specify/slices/<name> --format json` to resolve the brief for the target artifact ID. The returned `briefs[]` lists every define brief in topological order with each brief's `path`, `needs`, and `generates`.
-c. For the brief matching the requested artifact ID, verify each entry in its `needs` is already `present` on the pipeline response.
-d. Read the required dependency artifacts for context (paths come from each brief's `generates` joined to `.specify/slices/<name>/`).
-e. Read the brief file from the returned `path`.
-f. Regenerate ONLY the specified artifact, applying `domain` and effective rules as constraints.
-g. Do NOT change `.metadata.yaml` status — there is no `specify slice transition` call in regenerate mode.
-h. Show output:
-
-   ```markdown
-   ## Artifact Regenerated
-
-   **Change:** <name>
-   **Artifact:** <generates> (regenerated)
-   **Dependencies read:** <list of needs artifacts>
-
-   The artifact has been updated. Other artifacts are unchanged.
-   ```
-
-i. Stop — do not proceed to the full define flow.
+If the user supplied an artifact ID (e.g., `/spec:define my-change design`), follow [`references/define-regenerate.md`](references/define-regenerate.md) — it owns the eight-step regenerate procedure and the output template. Regenerate mode does not transition lifecycle status and stops once the single artifact is rewritten.
 
 ### 3. Create or resume the slice
 

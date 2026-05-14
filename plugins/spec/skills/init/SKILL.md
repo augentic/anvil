@@ -6,14 +6,12 @@ argument-hint: <capability>
 
 # Specify Init
 
-> **The one Specify skill that may install the CLI.** `/spec:init` bootstraps `specify` when missing, decides regular vs hub topology, then delegates every filesystem write to `specify init`. The CLI is the single writer for `.specify/`, `project.yaml`, root `AGENTS.md`, and `.specify/context.lock`.
-
 ## Critical Path
 
 1. **Verify the CLI** — run `specify --version`; install with `cargo install --git https://github.com/augentic/specify-cli` only after explicit user confirmation.
 2. **Check existing initialization** — detect `.specify/project.yaml`, ask before reinitializing, and treat reinit as an upgrade path owned by the CLI.
 3. **Choose topology** — decide regular project vs registry-only platform hub; capability is required for regular projects and forbidden in hub mode.
-4. **Resolve metadata** — choose `$CAPABILITY`, `$PROJECT_NAME`, and optional `$DOMAIN`; never pre-populate `.specify/.cache/`.
+4. **Resolve metadata** — choose `$CAPABILITY`, the project name, and an optional domain; never pre-populate `.specify/.cache/`.
 5. **Invoke `specify init`** — run either `specify init "$CAPABILITY" ...` or `specify init --hub ...`; let the CLI scaffold files and generate starter context, and surface non-zero CLI errors without hand-rolling scaffold files.
 6. **Offer baseline extraction** — for regular projects with code indicators, ask whether to create `initial-baseline`; skip this entirely for hubs.
 7. **Summarize the correct shape** — report regular vs hub outputs, next actions, and any baseline-extraction handoff.
@@ -28,18 +26,7 @@ The CLI owns every filesystem write — `.specify/`, `project.yaml`, the resolve
 
 After a regular init, the skill optionally detects existing code indicators (`Cargo.toml`, `package.json`, `src/`, etc.) and offers to create an `initial-baseline` slice via `specify slice create`. Hub init skips that step entirely — a hub never carries code. The three render templates (greenfield / brownfield / hub) live in [`../../references/init-output-templates.md`](../../references/init-output-templates.md).
 
-See [`references/init-runbook.md`](references/init-runbook.md) for the operational detail (CLI bootstrap rules, full seven-step procedure with verbatim shell snippets, regular and hub invocation bodies, output templates, and the skill-scope boundaries).
-
-## Reference Documentation
-
-| Reference | Purpose |
-|---|---|
-| [`references/init-runbook.md`](references/init-runbook.md) | CLI bootstrap, full seven-step procedure, regular vs hub invocations, output templates, skill-scope boundaries |
-| [`../../references/init-output-templates.md`](../../references/init-output-templates.md) | Verbatim greenfield / brownfield / hub output templates rendered after `specify init` returns |
-| [`../../references/topology-flow.md`](../../references/topology-flow.md) | Regular project vs platform hub decision tree and on-disk shape |
-| [`../../references/capability-resolution.md`](../../references/capability-resolution.md) | Capability identifier resolution (bare name / URL / file URI) and `.specify/.cache/` ownership |
-| [`../../references/baseline-detection.md`](../../references/baseline-detection.md) | Manifest / source-dir indicators used to offer `initial-baseline` extraction |
-| [`../../references/specify.md`](../../references/specify.md) | High-level Specify mental model and how init seats inside it |
+See [`references/init-runbook.md`](references/init-runbook.md) for the operational detail (CLI bootstrap rules, full seven-step procedure with verbatim shell snippets, regular and hub invocation bodies, output templates, and the skill-scope boundaries). The runbook in turn links the shared references siblings (output templates, topology flow, capability resolution, baseline detection, and the high-level Specify model).
 
 ## Guardrails
 

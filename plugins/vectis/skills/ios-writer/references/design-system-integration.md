@@ -15,11 +15,9 @@ which carries the concrete code templates per token shape.
 When this document conflicts with another source, follow this precedence:
 
 1. `tokens.yaml` and `assets.yaml` — the operator-owned input artifacts.
-2. RFC-11 §E (assets pipeline), §F (tokens artifact), §I (shell handoff +
-   component directive), §L (no generated platform between inputs and shells).
-3. [`swift-token-templates.md`](swift-token-templates.md) — concrete code
+2. [`swift-token-templates.md`](swift-token-templates.md) — concrete code
    templates per token category.
-4. This document — integration policy and fallback rules.
+3. This document — integration policy and fallback rules.
 
 ## Generated layout
 
@@ -59,15 +57,14 @@ are required when adding new theme or component files.
 
 The generated app **MUST NOT** depend on `import VectisDesign` and **MUST
 NOT** reference an external Swift Package, Xcode framework, or path under
-`design-system/ios/` (per RFC-11 §L "Generated layout"). The `iOS/` shell
-must build from its own platform directory after generation.
+`design-system/ios/`. The `iOS/` shell must build from its own platform
+directory after generation.
 
 ## Token integration
 
 ### Reading `tokens.yaml`
 
-The iOS writer's primary token input is `tokens.yaml`. Resolution order
-matches RFC-11 §H "Inputs":
+The iOS writer's primary token input is `tokens.yaml`. Resolution order:
 
 1. Slice-local `.specify/slices/<name>/tokens.yaml`, when present.
 2. Project-level `design-system/tokens.yaml`.
@@ -142,7 +139,7 @@ When `tokens.yaml` defines an `opacity.disabled` token, prefer
 
 The deterministic check that every token reference in `composition.yaml`
 resolves to a `tokens.yaml` entry lives in
-`specify tool run vectis -- validate composition` (RFC-11 §H, Phase 1.9): when sibling
+`specify tool run vectis -- validate composition`: when sibling
 `tokens.yaml` exists, the validator auto-invokes `tokens` mode and reports
 unresolved references as errors before the iOS writer is called. The writer
 does not need to re-validate references at generation time; it consumes the
@@ -151,9 +148,9 @@ already-validated input set.
 ## HIG fallback policy
 
 When `tokens.yaml` is **absent** the iOS writer falls back to platform-native
-HIG defaults instead of emitting a Theme directory (RFC-11 §F "Fallback
-policy belongs to shell writers"). The skill emits no `Theme/` directory and
-no Theme enums; screen views reference the platform defaults directly.
+HIG defaults instead of emitting a Theme directory — fallback policy belongs
+to shell writers. The skill emits no `Theme/` directory and no Theme enums;
+screen views reference the platform defaults directly.
 
 Per-category fallback:
 
@@ -184,8 +181,7 @@ scaffolded app looks correct on both appearances without any token authoring.
 
 ### Reading `assets.yaml`
 
-The iOS writer's primary asset input is `assets.yaml`. Resolution order
-matches RFC-11 §I "Inputs":
+The iOS writer's primary asset input is `assets.yaml`. Resolution order:
 
 1. Slice-local `.specify/slices/<name>/assets.yaml`, when present, plus
    files under `.specify/slices/<name>/assets/`.
@@ -198,13 +194,13 @@ matches RFC-11 §I "Inputs":
 The deterministic check that every asset reference in `composition.yaml`
 resolves to an `assets.yaml` entry lives in
 `specify tool run vectis -- validate composition` (auto-invokes `assets` mode when
-present). Missing files are errors; missing optional densities are warnings
-(per Phase 1.7). The writer consumes the already-validated input set.
+present). Missing files are errors; missing optional densities are warnings.
+The writer consumes the already-validated input set.
 
 ### Copy-on-generate
 
-Per RFC-11 §E "Build hand-off is copy-on-generate", the iOS writer **copies**
-referenced asset files into the shell target's asset catalog at
+Build hand-off is copy-on-generate: the iOS writer **copies** referenced
+asset files into the shell target's asset catalog at
 `iOS/<App>/Resources/Assets.xcassets/`. The generated shell project must build
 from its own platform directory after generation; it MUST NOT symlink, alias,
 or path-reference `design-system/assets/` from `project.yml`, nor consume
@@ -234,8 +230,8 @@ PDF is rendered with template intent.
 
 When a `vector` asset is referenced from `composition.yaml` but
 `sources.ios` is missing, the validator reports an error and shell
-generation halts for the affected screen (per RFC-11 §E "Missing vector
-exports are validation errors, not deferred TODOs"). The iOS writer does
+generation halts for the affected screen — missing vector exports are
+validation errors, not deferred TODOs. The iOS writer does
 **not** silently fall back to a placeholder, generate from the canonical
 `source:` SVG, or skip the screen. The legitimate operator responses are to
 add an iOS export to `assets.yaml`, re-declare the asset as `kind: raster`
@@ -252,8 +248,8 @@ entries it generated.
 
 ## Component directive contract
 
-When a `composition.yaml` `group` carries `component: <slug>` (RFC-11 §G,
-§I), the iOS writer emits **one named SwiftUI `View`** per slug under
+When a `composition.yaml` `group` carries `component: <slug>`, the iOS
+writer emits **one named SwiftUI `View`** per slug under
 `iOS/<App>/Components/`, PascalCased from the slug:
 
 | `composition.yaml` slug | Generated file | Type |
@@ -262,8 +258,7 @@ When a `composition.yaml` `group` carries `component: <slug>` (RFC-11 §G,
 | `news-card` | `Components/NewsCard.swift` | `struct NewsCard: View` |
 
 Every call site in `composition.yaml` becomes a use of the named view.
-Props are inferred from variation observed across instances of the slug per
-RFC-11 §I "Component directive contract":
+Props are inferred from variation observed across instances of the slug:
 
 - `bind`, `event`, `error`, `asset`, token references, `*-when` keys, and
   free text content that **differ** across instances become parameters on
@@ -271,15 +266,14 @@ RFC-11 §I "Component directive contract":
 - Values that are **constant** across all instances are baked into the view
   body.
 
-The structural-identity rule (§G) is enforced by
+The structural-identity rule is enforced by
 `specify tool run vectis -- validate composition` before the iOS writer runs, so the
 writer can trust that every instance of the slug shares the same skeleton
 and only the wiring varies.
 
 The directive is platform-agnostic; the inferred prop shape is per-platform.
 Android may emit a slightly different prop signature for the same slug —
-v1 does not require cross-shell prop agreement (RFC-11 §I closing
-paragraph).
+v1 does not require cross-shell prop agreement.
 
 ### Component examples
 
@@ -343,13 +337,12 @@ The `vectis-ios-reviewer` skill checks generated views for:
    for color references, `VectisTypography` for fonts, `VectisSpacing` for
    spacing values, `VectisCornerRadius` for corner radii.
 2. **No** stale external design-system dependencies — `import VectisDesign`,
-   `:vectis-design`, `design-system/ios`, `design-system/android` (RFC-11 §I
-   "Reviewer surface" + §L "Compatibility policy").
+   `:vectis-design`, `design-system/ios`, `design-system/android`.
 3. Asset references that resolve to entries in the shell-local
    `Assets.xcassets/` (no string-literal paths into `design-system/assets/`).
 4. Groups that visibly recur in `composition.yaml` without a `component:`
    slug — flagged so the operator can promote them to a named component
-   before drift compounds (RFC-11 §I "Reviewer surface").
+   before drift compounds.
 
 When `tokens.yaml` is absent (HIG fallback path), the reviewer accepts
 SwiftUI semantic colors (`.primary`, `.secondary`, `.accentColor`),
@@ -361,3 +354,7 @@ fallback path because the operator can always introduce `tokens.yaml` later.
 Exceptions are allowed for system-provided styles (e.g.,
 `.buttonStyle(.borderedProminent)`, `.tint(...)`) where the platform applies
 its own colors.
+
+## References
+
+- [RFC-11 — UI Spec (archived)](../../../../../rfcs/archive/rfc-11-ui-spec.md) — Vectis platform contract: assets pipeline (§E), tokens artifact (§F), structural identity and component directive (§G–§I), generated layout and compatibility policy (§L).

@@ -7,7 +7,6 @@
 
 import {
   Ajv2020,
-  baselineFor,
   CURSOR_SCHEMA_DIR,
   fail,
   join,
@@ -365,16 +364,10 @@ export async function checkArgumentHintCoversBodyArguments(): Promise<void> {
     }
     if (missing.length === 0) continue;
 
-    const baseline = await baselineFor(
-      "argumentHintCoversBodyArguments",
-      rel,
+    const detail = missing.sort().map((v) => `$${v}`).join(", ");
+    fail(
+      `Body references undeclared argument(s): ${rel} — ${missing.length}: ${detail} (add a kebab-case token to the frontmatter argument-hint, or define the variable in a body code block)`,
     );
-    if (missing.length > baseline) {
-      const detail = missing.sort().map((v) => `$${v}`).join(", ");
-      fail(
-        `Body references undeclared argument(s): ${rel} — ${missing.length} > baseline ${baseline}: ${detail} (add a kebab-case token to the frontmatter argument-hint, or define the variable in a body code block)`,
-      );
-    }
   }
 }
 

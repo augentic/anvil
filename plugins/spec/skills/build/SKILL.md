@@ -57,7 +57,7 @@ If the slice's current status is `defined`, run `specify slice transition <name>
 
 For each pending task returned by `specify slice task progress`:
 
-- Inspect the task's `skill-directive` field. When present (`plugin` / `skill` pair), invoke that skill directly with the standard arguments (e.g. `/omnia:crate-writer $CRATE_PATH`). When absent, follow the build brief body's step-by-step execution (mode detection, verification loop, etc.).
+- Inspect the task's `skill-directive` field. When present (`plugin` / `skill` pair), invoke that skill directly with the standard arguments (e.g. `/omnia:crate-writer <crate-path>`). When absent, follow the build brief body's step-by-step execution (mode detection, verification loop, etc.).
 - Announce which task is being worked on.
 - Make the code changes required. Keep changes minimal and focused.
 - Mark the task complete: `specify slice task mark <name> <task-number> --format json`. The call is idempotent — a re-mark on an already-completed task is a no-op.

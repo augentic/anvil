@@ -28,8 +28,8 @@ Names are kebab-case (`[a-z][a-z0-9-]*` per alternative). Bare prose ("the slice
 
 ## Body caps
 
-- **Body line count** ≤ **200 lines**. New skills must comply; existing skills that still exceed the cap are grandfathered via per-file `bodyLineCount` baselines in [scripts/standards-allowlist.toml](../../scripts/standards-allowlist.toml) and are expected to ratchet down with each touch.
-- **Per-H2 section** ≤ **45 lines** (non-blank, non-comment). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. Per-file `sectionLineCount` baselines in `scripts/standards-allowlist.toml` grandfather the irreducible remainder; new sections still fail fast.
+- **Body line count** ≤ **200 lines**. Strictly enforced — no per-file grandfathering.
+- **Per-H2 section** ≤ **45 lines** (non-blank, non-comment). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. Strictly enforced — no per-file grandfathering.
 
 Both caps are enforced in a single walk by `checkBodyAndSectionLineCounts` (see [scripts/checks/skill_body.ts](../../scripts/checks/skill_body.ts)).
 

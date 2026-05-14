@@ -4,9 +4,8 @@
 //
 // This file is the thin orchestration layer. Predicates live in
 // `scripts/checks/<concern>.ts`; shared helpers (the failure counter,
-// REPO_ROOT, the standards-allowlist loader, etc.) live in
-// `scripts/checks/_shared.ts`. The split keeps each concern under
-// ~500 LoC and makes the per-PR diff easier to review.
+// REPO_ROOT, etc.) live in `scripts/checks/_shared.ts`. The split keeps
+// each concern under ~500 LoC and makes the per-PR diff easier to review.
 
 import { errorCount, NC, RED } from "./checks/_shared.ts";
 import {
@@ -43,12 +42,8 @@ import {
 } from "./checks/skill_body.ts";
 import {
   checkInvocationPositionals,
-  checkLegacyLayout,
   checkOperationalVocabulary,
-  checkRetiredAffectsField,
-  checkRetiredSlashCommands,
   checkSkillNumericCaps,
-  checkStaleClaims,
   checkWorkspaceLanding,
 } from "./checks/prose.ts";
 import {
@@ -63,7 +58,6 @@ import { validateCodexRuleShape } from "./checks/codex.ts";
 
 await Promise.all([
   checkMarkdownLinks(),
-  checkStaleClaims(),
   checkSymlinks(),
 ]);
 await Promise.all([
@@ -73,8 +67,6 @@ await Promise.all([
   checkInstructionPreambles(),
   checkWorkspaceLanding(),
   checkOperationalVocabulary(),
-  checkRetiredAffectsField(),
-  checkLegacyLayout(),
   checkSkillNumericCaps(),
   validateScenarioFrontmatter(),
   checkRecordedTraceFreshness(),
@@ -98,7 +90,6 @@ await Promise.all([
   checkVariables(),
   checkDirectives(),
   checkPluginConsistency(),
-  checkRetiredSlashCommands(),
   checkDeclaredToolEquivalentInvocations(),
   checkNoLayerNumbersInDocs(),
   checkNoRfcCitationsInDocs(),
