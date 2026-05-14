@@ -34,7 +34,7 @@ The framework already pins a clean separation between *plan-time, shallow* (anal
 3. **Idempotency is non-negotiable.** Every new artifact (`survey.md`, the `## Reconciliation` block, the `## Domain model` section) must be byte-stable on unchanged inputs, with sorted ordering and no host-state leaks.
 4. **Read-only with respect to `plan.yaml`.** Survey and synthesise emit Markdown under `.specify/plans/<change>/`; neither writes to `plan.yaml`. The propose brief still owns slice creation through `specify change plan add`.
 5. **Composition only.** Where possible, new behaviour is a brief layered on existing skill primitives. New CLI verbs are introduced only when no existing primitive fits.
-6. **One change at a time.** This RFC does not introduce multi-plan output, parallel changes, or cross-change state — those are RFC-21 concerns.
+6. **One change at a time.** This RFC does not introduce multi-plan output, parallel changes, or cross-change state — those are RFC-21 (catalogue + cache) and RFC-22 (ledger + mapping) concerns.
 
 ### `domain-model` as a third closed-enum kind for `/spec:analyze`
 
@@ -82,7 +82,7 @@ Schema rules (`additionalProperties: false` everywhere, mirroring `plan.schema.j
 | `bounded_contexts[].aggregates`          | no       | Kebab-case; sorted alphabetically.                                                                                                                                                                        |
 | `bounded_contexts[].owners`              | no       | Kebab-case team identifiers; sorted.                                                                                                                                                                      |
 | `bounded_contexts[].target_project`      | no       | Kebab-case; matches `registry.yaml:projects[].name` when the registry exists. Routing hint, not a binding.                                                                                                |
-| `bounded_contexts[].sources`             | no       | Kebab-case source-keys; matches the `--source <key>=…` namespace (or, with RFC-21, a key in `sources.yaml`).                                                                                              |
+| `bounded_contexts[].sources`             | no       | Kebab-case source-keys; matches the `--source <key>=…` namespace (or, with RFC-21, a key in `sources.yaml`).                                                                                            |
 | `bounded_contexts[].ubiquitous_language` | no       | Optional glossary; surfaces in propose for naming consistency checks.                                                                                                                                     |
 | `relationships[].pattern`                | no       | Closed enum: `customer-supplier`, `partnership`, `shared-kernel`, `conformist`, `anti-corruption-layer`, `published-language`, `open-host-service`, `separate-ways`. Standard DDD context-map vocabulary. |
 
@@ -253,7 +253,7 @@ Skills change:
 | Scenario                          | Pre-RFC-20                                                 | Post-RFC-20                                                                                                                                                                     |
 | --------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1. Legacy monolith → multi-target | Discovery clusters; topology proposal is code-driven only. | Domain model can drive the `## Proposed registry topology` block; survey identifies splits within the monolith; synthesise reconciles docs vs code.                             |
-| 2. Multi-repo legacy migration    | Sequential per-source analyze; no cross-source view.       | Survey synthesises across N sources; consolidation/split candidates surface explicitly; domain model anchors target-project routing. (Scale and durability deferred to RFC-21.) |
+| 2. Multi-repo legacy migration    | Sequential per-source analyze; no cross-source view.       | Survey synthesises across N sources; consolidation/split candidates surface explicitly; domain model anchors target-project routing. (Catalogue and tier-1 cache deferred to RFC-21; cross-change ledger and `mapping` field deferred to RFC-22.) |
 | 3. Greenfield multi-repo          | Topology proposal driven by capability clustering of docs. | Domain model directly seeds the topology; bounded contexts → projects mapping is explicit and reviewable.                                                                       |
 | 4. Brownfield multi-repo          | Routing via `workspace.md` baseline affinity.              | Domain-model `target_project` hints take precedence; survey aligns new capabilities with bounded contexts before assignment.                                                    |
 
@@ -299,7 +299,7 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 
 **Add the survey logic to `discovery.md` directly.** Rejected. Discovery is per-input by design; smearing cross-input synthesis into it conflates two responsibilities and breaks the per-source idempotency contract. Survey is a separate brief precisely so cross-source reasoning has its own byte-stable output.
 
-**Make `survey.md` a sibling of `plan.yaml` rather than `.specify/plans/<change>/`.** Rejected. The survey is per-change scratch and should archive with the rest of the plan-time tier-1 state. Promoting it to a top-level artifact would also imply cross-change durability that this RFC does not provide (RFC-21 handles durable cross-change state separately).
+**Make `survey.md` a sibling of `plan.yaml` rather than `.specify/plans/<change>/`.** Rejected. The survey is per-change scratch and should archive with the rest of the plan-time tier-1 state. Promoting it to a top-level artifact would also imply cross-change durability that this RFC does not provide (RFC-21 adds the durable source catalogue and tier-1 cache; RFC-22 adds the cumulative migration ledger).
 
 **Promote `survey` to a top-level `/spec:survey` skill in this RFC.** Deferred. The brief-first approach lets us validate the artifact shape and capability-owned algorithms before committing to a slash-command surface. A future RFC can promote it once demand is clear.
 
@@ -311,10 +311,10 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 
 ## Non-Goals
 
-- Cross-change durable state (covered by RFC-21).
 - A source-repo catalogue (covered by RFC-21).
 - Tier-1 clone caching beyond the current per-change scope (covered by RFC-21).
-- A `mapping` field on plan slices (covered by RFC-21).
+- Cross-change durable state — the migration ledger (covered by RFC-22).
+- A `mapping` field on plan slices (covered by RFC-22).
 - Replacing the propose accept/edit/reject loop with automated decisions.
 - Replacing operator review of `discovery.md` with model-driven judgement.
 - A general "context map import" workflow from external DDD tools (out of scope; the schema is small enough for hand authoring or a thin importer in a future RFC).
