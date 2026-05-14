@@ -106,7 +106,7 @@ When invoked by `/change:execute` from a plan entry, this skill accepts:
     [source <key>=<path-or-url>...]
 ```
 
-- **`--source <key>=<path-or-url>`** — a resolved entry from the plan's top-level `sources` map. The key is the kebab-case identifier used in the plan entry's `sources` list; the value is either a local filesystem path or a git URL. `/change:execute` has already validated that the key exists in the plan's top-level `sources` map; this skill treats the `value` as opaque and forwards it to whichever define brief invokes `/spec:extract` (which inlines a guarded `git clone` snippet for URL values — see the *Cloning a source tree* subsection in [`../analyze/SKILL.md`](../analyze/SKILL.md)). The driver never clones; that stays inside the brief pipeline.
+- **`--source <key>=<path-or-url>`** — a resolved entry from the plan's top-level `sources` map. The key is the kebab-case identifier used in the plan entry's `sources` list; the value is either a local filesystem path or a git URL. `/change:execute` has already validated that the key exists in the plan's top-level `sources` map; this skill treats the `value` as opaque and forwards it to whichever define brief invokes `/spec:extract` (which inlines a guarded `git clone` snippet for URL values — see the *Cloning a source tree* subsection in `/spec:analyze`). The driver never clones; that stays inside the brief pipeline.
 
 The plan entry's `description` field provides the scoping and delta-targeting context that the specs brief uses to infer extract filters and baseline targets. See §Scope inference and §Delta-target inference below.
 
@@ -125,23 +125,11 @@ The specs brief infers which existing baselines this slice modifies by reading t
 
 The brief logs the inferred delta targets in the journal. If the description does not reference any existing baselines, all extracted specs remain in fresh new-crate form.
 
-The authoritative contract for how `/change:execute` builds these flag values lives in [`../../../change/skills/execute/SKILL.md` → §Argument resolution (`sources`)](../../../change/skills/execute/SKILL.md). The downstream contract for how extract's native filter flags work lives in [`../extract/SKILL.md`](../extract/SKILL.md) (§Scope filters, §Sentinels always read, §Manifest shape).
+The authoritative contract for how `/change:execute` builds these flag values lives in `/change:execute` §Argument resolution (`sources`). The downstream contract for how extract's native filter flags work lives in `/spec:extract` (§Scope filters, §Sentinels always read, §Manifest shape).
 
 ## Phase outcome contract
 
 This skill is the **define** phase of the `/change:execute` driver loop. Apply the shared [phase outcome contract](../../references/phase-outcome-contract.md), including define's per-phase deltas, journal rules, plan-mutation allowlist, and verbatim-`summary` rule.
-
-## What this skill does NOT do
-
-| Surface | Status |
-|---|---|
-| Implement code or run task checkboxes | Never — implementation is `/spec:build`'s phase. Define stops once artifacts are written and the slice is `defined`. |
-| Merge specs into `.specify/specs/` | Never — baseline merge lives in `/spec:merge`. |
-| Write `.specify/slices/<name>/.metadata.yaml` directly | Only via `specify slice create` / `specify slice transition` / `specify slice touched-specs`. Never hand-edited. |
-| Transition `plan.yaml` status | Never — `plan.yaml` status writes belong to `/change:execute` (driver) or the human Layer 1 loop. |
-| Author or amend `plan.yaml` entries proactively | Only when the run uncovers neighbouring work; mutations route through `specify change plan add` / `specify change plan amend` per the [phase outcome contract](../../references/phase-outcome-contract.md). |
-| Extract specs from external source code | Delegates to `/spec:extract`, invoked by define briefs in driver-supplied `<source>` mode (and never by define itself outside that pipeline). |
-| Run plan-time capability inference | Never — that lives in `/spec:analyze`, which the `/change:plan` discovery brief orchestrates. |
 
 ## Input
 
@@ -153,7 +141,10 @@ The user's request should include a slice name (kebab-case) OR a description of 
 - Always read dependency artifacts (from each brief's `needs`) before creating a new one.
 - **All artifacts MUST be written under `.specify/slices/<name>/`**.
 - If context is critically unclear, ask the user — but prefer making reasonable decisions to keep momentum.
-- Route `.metadata.yaml` writes through the CLI — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state). All status transitions and timestamp writes go through `specify slice transition`; all `touched-specs` updates go through `specify slice touched-specs`.
+- Route every write to `.metadata.yaml`, `plan.yaml`, and the `.specify/specs/` baseline through the CLI — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state). Status transitions and timestamp writes go through `specify slice transition`; `touched-specs` updates go through `specify slice touched-specs`; plan amendments only when the run uncovers neighbouring work and only via `specify change plan add` / `specify change plan amend` per the [phase outcome contract](../../references/phase-outcome-contract.md).
+- Never implement code or flip task checkboxes here — implementation is `/spec:build`'s phase; define stops once artifacts are written and the slice is `defined`.
+- Never extract specs from external source code directly — delegate to `/spec:extract` (invoked by define briefs in driver-supplied `<source>` mode).
+- Never run plan-time capability inference — that lives in `/spec:analyze`, orchestrated by the `/change:plan` discovery brief.
 - If a slice with that name already exists, use `specify slice status <name>` to decide how to proceed.
 - Verify each artifact file exists after writing before proceeding to next.
 - **IMPORTANT**: `domain` and effective rules (project config overrides) are constraints for YOU, not content for the file. Do NOT copy `<domain>`, `<rules>`, `<project_context>` blocks into any artifact.

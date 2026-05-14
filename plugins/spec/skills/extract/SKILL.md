@@ -16,7 +16,7 @@ argument-hint: <source-path> <slice-dir> [include]... [exclude]... [manifest]
 
 # Extract
 
-> See also [`../analyze/SKILL.md`](../analyze/SKILL.md) for plan-time capability inference — the sibling skill that emits capability summaries into `discovery.md`, not full `specs/` + `design.md`.
+> See also `/spec:analyze` for plan-time capability inference — the sibling skill that emits capability summaries into `discovery.md`, not full `specs/` + `design.md`.
 
 ## Overview
 
@@ -150,48 +150,14 @@ Detailed examples are available in the `references/examples/` directory:
 
 Before completing, verify all items from the [Specify Artifact Validation Checklist](references/specify.md#validation-checklists) are satisfied, plus the skill-specific items in [verification.md](verification.md). Common error modes and recovery steps also live in that file.
 
-## What this skill does NOT do
-
-| Surface | Status |
-|---|---|
-| Author `tasks.md` or implement code | Never — task authoring lives in `/spec:define`; implementation lives in `/spec:build`. Extract only writes `specs/` and `design.md`. |
-| Write outside the supplied `<slice-dir>` | Never — every artifact is rooted at `$SLICE_DIR`; the source tree is read-only. |
-| Run plan-time capability inference | Delegates to `/spec:analyze`. Extract is reconstruction-grade; analyze emits capability summaries into `discovery.md`. |
-| Merge extracted specs into the baseline | Never — that lives in `/spec:merge`. Extract leaves the slice in `defining`. |
-| Transition slice status | Never — lifecycle transitions route through `specify slice transition` from `/spec:define` and `/spec:merge`. |
-| Clone git URLs from `<source-path>` | Never — the caller (or the invoking define brief) materialises the source tree before extract runs. |
-| Extend the closed kind enum | Never — `legacy-code` / `documentation` are frozen at `/spec:analyze`; extract operates on a materialised path regardless of kind. |
-| Infer behaviour the source does not state | Never — uses explicit `unknown` tokens; see [extract-principles.md](../../references/extract-principles.md). |
-
 ## Guardrails
 
-### NEVER
+Lifecycle state (`.metadata.yaml` transitions, baseline merge into `.specify/specs/`) is owned by `/spec:define` and `/spec:merge` via the CLI verbs in [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state); extract writes only inside the supplied `<slice-dir>` and leaves the slice in `defining`.
 
-- Assume a field type — verify against source
-- Rename config keys — capture verbatim
-- Invent wire names — extract from serialization attributes/decorators/annotations
-- Skip fields — document every field (use `[unknown]` if unclear)
-- Skip field-level attributes — keyword-collision renames, aliases, and unconditional skips are wire-format-critical
-- Hand-write types from memory — copy from source
-- Assume two handlers share construction details because they target the same API — verify each independently
-- State patterns as universal rules — always check for exceptions (e.g., "all collection fields have default-when-absent" is rarely true for all)
-- Skip the guest/entry-point layer — middleware, error mapping, body injection, and parameter sourcing are load-bearing behaviors
-- Say one function "behaves like" another — verify each function's code paths independently
-- Generate test fixtures without verifying against source response shapes
-- Record dependency names without versions — always capture exact versions from manifest AND lock file
-- Assume "latest" version compatibility — API surfaces change between versions
-- Merge cross-struct column headers — use separate columns for each struct type
+### Skill scope
 
-### ALWAYS
-
-- Compare every type/class/interface field against source definition, including field-level renames, aliases, and serialization skips
-- Include source traceability for every requirement
-- Use `[unknown]` rather than guessing
-- Capture dependency versions from both manifest and lock file; use manifest specifiers in design.md
-- Check serialization wire names by applying naming convention rules — flag divergent naming
-- Document each utility function's behavior independently, including error messages and status code handling
-- Include guest/entry-point behaviors in the analysis (CORS, error mapping, body injection, owner parameter sourcing)
-- Document response type serialization ownership — which module contains the canonical impl, which modules reuse it
-- Document every outbound API call body completely, including vendor-specific field names for audit/secondary calls
-- For orchestration handlers, document exact format strings, conditional null fields, and wrapper structures independently
-
+- Write only `specs/` and `design.md` under the supplied `<slice-dir>`; the source tree is read-only.
+- Never author `tasks.md` or implement code — task authoring lives in `/spec:define`; implementation lives in `/spec:build`.
+- Never run plan-time capability inference — that delegates to `/spec:analyze`, which emits capability summaries into `discovery.md`.
+- Never clone git URLs from `<source-path>` — the caller (or the invoking define brief) materialises the source tree before extract runs.
+- Never extend the closed kind enum — `legacy-code` / `documentation` are frozen at `/spec:analyze`; extract operates on a materialised path regardless of kind.

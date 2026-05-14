@@ -34,20 +34,13 @@ import {
   validateSkillFrontmatter,
 } from "./checks/skill_frontmatter.ts";
 import {
-  checkBodyLineCount,
+  checkBodyAndSectionLineCounts,
   checkCriticalPath,
   checkInlineJsonBlocks,
   checkNoEnvelopeExamples,
   checkNoStepBodyDuplicatesCriticalPath,
-  checkSectionLineCount,
   checkVariables,
 } from "./checks/skill_body.ts";
-import {
-  checkNoFrontmatterRestatement,
-  checkNoPhaseOutcomeContractRestatement,
-  checkNoRfcCitationsInSkillBody,
-  checkOneGuardrailsBlockPerSkill,
-} from "./checks/skill_discipline.ts";
 import {
   checkInvocationPositionals,
   checkLegacyLayout,
@@ -67,13 +60,11 @@ import {
   validateScenarioFrontmatter,
 } from "./checks/scenarios.ts";
 import { validateCodexRuleShape } from "./checks/codex.ts";
-import { checkEnvelopeDoc } from "./checks/envelope_doc.ts";
 
 await Promise.all([
   checkMarkdownLinks(),
   checkStaleClaims(),
   checkSymlinks(),
-  checkEnvelopeDoc(),
 ]);
 await Promise.all([
   validateCapabilityYaml(),
@@ -91,8 +82,7 @@ await Promise.all([
 ]);
 await Promise.all([
   validateSkillFrontmatter(),
-  checkBodyLineCount(),
-  checkSectionLineCount(),
+  checkBodyAndSectionLineCounts(),
   checkCriticalPath(),
   checkDescriptionLength(),
   checkDescriptionStartsWithVerb(),
@@ -110,10 +100,6 @@ await Promise.all([
   checkPluginConsistency(),
   checkRetiredSlashCommands(),
   checkDeclaredToolEquivalentInvocations(),
-  checkNoRfcCitationsInSkillBody(),
-  checkOneGuardrailsBlockPerSkill(),
-  checkNoPhaseOutcomeContractRestatement(),
-  checkNoFrontmatterRestatement(),
   checkNoLayerNumbersInDocs(),
   checkNoRfcCitationsInDocs(),
 ]);

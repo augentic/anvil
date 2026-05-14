@@ -114,22 +114,9 @@ Self-heal is the driver's reconciliation pass. It runs **once per `/change:execu
 
 `/change:execute` does not run the RM-04 compatibility classifier as part of the slice loop. Operators can run `specify compatibility report --change <name>` or `specify compatibility check` after workspace sync or after producer contract changes to compare root `contracts/` against consumer workspace views. RM-11 will decide which classifications become lifecycle gates.
 
-## What this skill does NOT do
-
-| Surface | Status |
-|---|---|
-| Write `plan.yaml` *entries* (`create` / `amend`) | Never — phases, briefs, and humans use the entry-write verbs described in [plan-single-writer.md](../../references/plan-single-writer.md). |
-| Write `plan.yaml` *status* (`transition`) | Only via `specify change plan transition`, at the points named in the per-slice algorithm and [execute-state-handoff.md](../../references/execute-state-handoff.md). |
-| Write `.specify/slices/<name>/.metadata.yaml` (including the `outcome` field) | Never — phase skills own outcomes via `specify slice outcome set` or CLI-stamped merge/drop paths. |
-| Write `.specify/slices/<name>/journal.yaml` | Only the driver-owned append cases listed in [execute-state-handoff.md](../../references/execute-state-handoff.md). Phases own ordinary `question` and `failure` entries. |
-| Invoke `/spec:define`, `/spec:build`, `/spec:merge`, or `/spec:drop` | Never in `dry-run` (including dry-run self-heal); in supervised and `loop` modes, exactly as the algorithm prescribes. |
-| Run self-heal on `in-progress` entries | Yes — see [self-heal.md](self-heal.md). Five fixtures under `fixtures/self-heal/` pin the clean / done / failed / ambiguous-halt / mid-slice-resume paths. |
-| Loop across slices | `loop` iterates `specify change plan next → execute slice` until no eligible slice remains. The driver lock is held for the entire run (not per iteration). Individual failures / deferrals do NOT halt the loop. |
-| Resolve `sources` keys to paths / URLs and hand them to define | Yes — see [argument-resolution.md](argument-resolution.md). The driver does NOT clone git URLs or stat local paths; it only forwards the values. |
-
-The state this skill may mutate is limited to the driver lock, plan status transitions, routed workspace Git state, and the driver-owned journal append cases in [execute-state-handoff.md](../../references/execute-state-handoff.md). No other on-disk state is written by `/change:execute` itself.
-
 ## Guardrails
+
+The state this skill may mutate is limited to the driver lock, plan status transitions, routed workspace Git state, and the driver-owned journal append cases in [execute-state-handoff.md](../../references/execute-state-handoff.md). No other on-disk state is written by `/change:execute` itself; see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) for the cross-skill single-writer rules and [plan-single-writer.md](../../references/plan-single-writer.md) for the `plan.yaml` entry-write verbs.
 
 - Route every write to `plan.yaml`, `.specify/slices/<name>/.metadata.yaml`, and `.specify/slices/<name>/journal.yaml` through the CLI verbs above — the single-writer invariant depends on it. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state).
 - Never skip the lock-release step. If the skill exits early after a successful acquire, run `specify change plan lock release --pid <agent-session-pid>` on the way out. Stale stamps can be reclaimed by a later run, but only after a visible-to-the-operator failure.

@@ -54,11 +54,11 @@ specify codex export --format json
 
 Exports the resolved codex as the consumer contract for future review tooling. The JSON envelope uses the standard CLI `envelope-version` and includes `rule-count` plus ordered `rules`.
 
-Each rule includes frontmatter fields, Markdown `body`, `source-path`, `provenance-kind`, and provenance-specific fields:
+Each rule includes frontmatter fields, Markdown `body`, `source-path`, and an internally-tagged `kind` plus provenance-specific fields:
 
-- Capability rules include `capability-name` and `capability-version`.
-- Catalog rules include `catalog-name`.
-- Repo overlay rules set capability and catalog fields to `null`.
+- Capability rules (`"kind": "capability"`) include `name` and `version`.
+- Catalog rules (`"kind": "catalog"`) include `name`.
+- Repo overlay rules (`"kind": "repo"`) carry no provenance-specific fields.
 - Missing optional `review-mode` is emitted as `null`.
 
 The export is a rule-catalog contract, not the future review finding schema. RM-04 owns finding-specific fields such as evidence, remediation, file references, and CI annotation shape; RM-11 consumes both the resolved codex export and the RM-04 finding schema when `specify review` lands.

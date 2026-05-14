@@ -16,7 +16,7 @@ argument-hint: <input-path> <output-dir> <kind> [source-key]
 6. **Write structural metadata for code only** — for `legacy-code`, write byte-stable `<plan-dir>/analyze/<source-key>/metadata.json`; for `documentation`, leave that slot absent.
 7. **Preserve idempotency** — keep field order fixed, sort lists, reject malformed brief output, and prevent timestamps, absolute paths, or host state from leaking into outputs.
 
-`/spec:analyze` is the sole plan-time discovery skill. It reads one input — a legacy code tree or a documentation bundle — and appends **capability summaries** to `<output-dir>/discovery.md`. It does **not** produce full `specs/` + `design.md`; deep per-slice extraction remains [`../extract/SKILL.md`](../extract/SKILL.md)'s job at define time.
+`/spec:analyze` is the sole plan-time discovery skill. It reads one input — a legacy code tree or a documentation bundle — and appends **capability summaries** to `<output-dir>/discovery.md`. It does **not** produce full `specs/` + `design.md`; deep per-slice extraction remains `/spec:extract`'s job at define time.
 
 The rationale for the two-skill split: analyze produces capability summaries at plan time; extract produces full specs + design at define time.
 
@@ -41,7 +41,7 @@ Pass the resulting local path as `$INPUT_PATH` on the next `/spec:analyze` invoc
 | `legacy-code`   | Cluster code into capability summaries (capability-owned algorithm).  |
 | `documentation` | Extract capability summaries from prose / PDFs / runbooks / API docs. |
 
-Any other value is a hard error; the skill exits non-zero before writing anything to `discovery.md`. See [`../../../change/skills/plan/SKILL.md` §*Input kinds*](../../../change/skills/plan/SKILL.md) for the normative enum definition — `/spec:analyze` is the enforcement site for unknown-kind errors, but the vocabulary itself is pinned by the plan skill. Do not extend it.
+Any other value is a hard error; the skill exits non-zero before writing anything to `discovery.md`. See `/change:plan` §*Input kinds* for the normative enum definition — `/spec:analyze` is the enforcement site for unknown-kind errors, but the vocabulary itself is pinned by the plan skill. Do not extend it.
 
 ## Output contract
 
@@ -150,7 +150,7 @@ The detailed clustering / extraction prompt for each `kind` value lives under `p
 
 ## Error handling
 
-- **Unknown `kind`** — hard exit. The diagnostic names the closed enum and points at [`../../../change/skills/plan/SKILL.md` §*Input kinds*](../../../change/skills/plan/SKILL.md).
+- **Unknown `kind`** — hard exit. The diagnostic names the closed enum and points at `/change:plan` §*Input kinds*.
 - **Missing `$INPUT_PATH`** — hard exit; no placeholder entry.
 - **Malformed brief output** (missing required field, non-enum confidence, non-string summary) — halt with a diagnostic that names the offending capability and the brief path; do not write a partially-valid `discovery.md`.
 - **Metadata sidecar on the documentation branch** — hard guardrail, not a runtime error: `$KIND = documentation` MUST NOT write `<plan-dir>/analyze/<source-key>/metadata.json`. The documentation branch has no code structure to measure, so the slot stays absent for doc inputs.
@@ -161,7 +161,7 @@ The detailed clustering / extraction prompt for each `kind` value lives under `p
 
 ## Guardrails
 
-- Never emit full specs; analyze produces capability summaries only. Deep extraction is [`../extract/SKILL.md`](../extract/SKILL.md)'s job, run per-slice at define time.
+- Never emit full specs; analyze produces capability summaries only. Deep extraction is `/spec:extract`'s job, run per-slice at define time.
 - Never embed clustering heuristics in this SKILL; those live in the capability-owned per-kind brief (§*Per-kind prompts*).
 - Never let timestamps, absolute paths, or run IDs leak into `discovery.md` or the structural-metadata sidecar — idempotency is a hard contract, not a nicety.
 - Never mutate files outside `discovery.md` and `<plan-dir>/analyze/<source-key>/metadata.json`. The structural-metadata sidecar is written by the code branch only; the documentation branch must leave the slot untouched.

@@ -1,6 +1,6 @@
 # Skill Authoring Standards
 
-Mechanically enforced rules for every `SKILL.md` in this repository: frontmatter shape, body discipline, references hand-off, and what skills must never do. The long-form rationale (discovery model, why metadata is precious, examples, the progressive-disclosure pattern, and the forbidden-frontmatter list) lives at [docs/contributing/skill-authoring.md](../contributing/skill-authoring.md); the rule file at [.cursor/rules/project.mdc](../../.cursor/rules/project.mdc#skill-authoring-conventions) is the normative checklist. This document captures the rules `make checks` enforces and the cross-cutting policies skills inherit by convention.
+Mechanically enforced rules for every `SKILL.md` in this repository: frontmatter shape, body discipline, references hand-off, and what skills must never do. The rule file at [.cursor/rules/project.mdc](../../.cursor/rules/project.mdc#skill-authoring-conventions) is the normative checklist. This document captures the rules `make checks` enforces, the cross-cutting policies skills inherit by convention, and the long-form rationale (discovery model, why metadata is precious, the progressive-disclosure pattern, worked description examples, and the forbidden-frontmatter list) under `## Rationale` at the bottom.
 
 This is a pre-1.0 codebase. There are no backward-compatibility constraints on skill shape, frontmatter, or wire envelopes — when a rule changes, the SKILL.md changes with it. "Pre-RFC-N this used to be …" / "Phase 3.7 renamed it …" / "the v1.x verb was …" prose belongs in [docs/explanation/decision-log.md](../explanation/decision-log.md) and [docs/explanation/release-notes.md](../explanation/release-notes.md), not in the skill that operators read every day. Migration prose only stays in a SKILL.md when the skill itself documents a real legacy-migration feature (e.g. `/spec:extract` migrating off a legacy codebase).
 
@@ -12,7 +12,7 @@ Each `SKILL.md` `description` field must:
 - Contain a `Use when …` clause so the skill-discovery surface can match on intent rather than vocabulary. The clause describes a trigger condition (when an operator should reach for this skill over its siblings), not a restatement of what the skill does. "Use when an operator wants to X" is an anti-pattern; "Use when starting Y from scratch, not when resuming Z" is the shape.
 - Stay **≤ 512 chars** total.
 
-`checkDescriptionStartsWithVerb`, `checkDescriptionHasUseWhen`, and `checkDescriptionLength` enforce the three rules respectively. See [predicates.md](predicates.md) for the full table.
+`checkDescriptionStartsWithVerb`, `checkDescriptionHasUseWhen`, and `checkDescriptionLength` enforce the three rules respectively. See [scripts/checks/](../../scripts/checks/) for the implementation.
 
 ## Argument-hint grammar
 
@@ -28,16 +28,18 @@ Names are kebab-case (`[a-z][a-z0-9-]*` per alternative). Bare prose ("the slice
 
 ## Body caps
 
-- **Body line count** ≤ **250 lines** (`checkBodyLineCount`). New skills must comply; existing skills that still exceed the cap are grandfathered via per-file `bodyLineCount` baselines in [scripts/standards-allowlist.toml](../../scripts/standards-allowlist.toml) and are expected to ratchet down with each touch.
-- **Per-H2 section** ≤ **60 lines** (non-blank, non-comment) (`checkSectionLineCount`). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. Per-file `sectionLineCount` baselines in `scripts/standards-allowlist.toml` grandfather the irreducible remainder; new sections still fail fast.
+- **Body line count** ≤ **200 lines**. New skills must comply; existing skills that still exceed the cap are grandfathered via per-file `bodyLineCount` baselines in [scripts/standards-allowlist.toml](../../scripts/standards-allowlist.toml) and are expected to ratchet down with each touch.
+- **Per-H2 section** ≤ **45 lines** (non-blank, non-comment). Depth migrates into `references/<topic>.md`, linked from the section, rather than letting individual sections sprawl. Per-file `sectionLineCount` baselines in `scripts/standards-allowlist.toml` grandfather the irreducible remainder; new sections still fail fast.
 
-All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 250 / 60 / 512 numbers are kept synchronized across scripts, schema, rules, and docs by `checkSkillNumericCaps`.
+Both caps are enforced in a single walk by `checkBodyAndSectionLineCounts` (see [scripts/checks/skill_body.ts](../../scripts/checks/skill_body.ts)).
+
+All caps are floors, not budgets — overflow means the relocate-to-`references/` pattern needs to fire, not that the cap should be raised. The 200 / 45 / 512 numbers are kept synchronized across scripts, schema, rules, and docs by `checkSkillNumericCaps`.
 
 ## References discipline
 
 Long-form rules, code-block examples, output templates, and edge-case enumerations belong in siblings the SKILL.md body links to (Anthropic's [progressive disclosure](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#progressive-disclosure-patterns) pattern). The SKILL.md keeps the Critical Path, the invocation surface, the dispatch table (when applicable), and the canonical decision points; sibling files (`references/`, `examples/`, topical files) carry the prose.
 
-Push prose to `references/<topic>.md` (or, for cross-skill prose, [plugins/references/](../../plugins/references/)) before raising any cap. The relocate-to-`references/` pattern is the canonical response when a section approaches the 60-line ceiling.
+Push prose to `references/<topic>.md` (or, for cross-skill prose, [plugins/references/](../../plugins/references/)) before raising any cap. The relocate-to-`references/` pattern is the canonical response when a section approaches the 45-line ceiling.
 
 ## Skill body discipline
 
@@ -76,3 +78,44 @@ The wire contract itself — exit codes, kebab-case `error` discriminants, the `
 The phase skills (`/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:init`) are agent-driven orchestrators. Every deterministic operation — kebab-case name validation, `.metadata.yaml` reads and writes, lifecycle transitions, capability and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive move — runs through the `specify` CLI. The skill markdown drives the agent-side work: eliciting user intent, reading brief bodies, writing artifacts, invoking plugin skills (e.g. `/omnia:crate-writer`), and rendering summaries.
 
 When a skill currently does something deterministic in prose (parsing YAML, validating shape, computing topology, transitioning state), the right fix is to add a CLI verb and have the skill call it. The wrong fix is to make the skill smarter. The CLI surface the skills depend on is documented in [cli-contract.md](cli-contract.md).
+
+## Rationale
+
+The upstream specs are Anthropic's [Agent Skills overview](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/overview) and the [best-practices guide](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices). Where this repository diverges, the reasoning is below. Pre-cutover history and the chunk-by-chunk rename trail live in [docs/explanation/decision-log.md](../explanation/decision-log.md).
+
+**Discovery model: two-stage loading.** Every SKILL.md *frontmatter* in the repo is loaded into context at session start so the agent can pick which skill applies (Stage 1); the *body* is loaded once the skill triggers (Stage 2). Stage 1 metadata is therefore precious — with ~29 skills, ~100 tokens of metadata per skill is ~2,900 tokens spent before the operator has typed a request. Stage 2 should layer via [progressive disclosure](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices#progressive-disclosure-patterns): the body keeps the algorithm spine plus the Critical Path; long-form rules, code examples, output templates, and edge-case enumerations move into siblings the body links to. The `name` field is global across every loaded SKILL.md, which is why every name carries its plugin directory as a `<plugin>-` prefix (the `spec/` plugin uses `specify-` for product-name alignment).
+
+**Why the 200-line body cap.** Every line of a SKILL.md body is loaded into context the moment the skill triggers. A 1,200-line skill crowds out the operator's request, the artifacts under inspection, and every other skill body that fires later. 200 specifically leaves room for the algorithm spine + Critical Path + a moderate amount of inline prose, but not enough to absorb every example, every flag re-documentation, and every edge case forever — the previous 400-line cap permitted "Critical Path quick reference" + parallel `## Steps` restatement; the 200-line cap forces a single canonical step list with the rest in siblings.
+
+**Description examples — good.**
+
+> "Reviews generated Omnia Rust WASM crates for security, error handling, WASM constraints, and code quality issues. Use when reviewing crates produced by `/omnia:crate-writer` or when the user mentions code review for a generated crate."
+
+What + when, with a concrete trigger (`/omnia:crate-writer`) the discovery scorer can match.
+
+> "Authors, imports, and verifies OpenAPI 3.1 HTTP API contracts for Specify changes, including path operations, request and response schemas, parameters, auth, examples, and baseline deltas. Use when a contracts build needs an HTTP API contract, when an operator supplies or asks for an OpenAPI document, or when verifying OpenAPI compatibility after a merge."
+
+The format word (`OpenAPI`) appears in both halves; three concrete triggers cover the operator-supplied, build-driven, and post-merge paths.
+
+**Description examples — bad.**
+
+> "AI-powered code review for generated Rust crates, catching security issues and quality problems."
+
+What is fine; *when* is missing. `AI-powered` is filler — the scorer cannot tell this apart from a generic Rust linter.
+
+> "Review code (per the internal §3B writer-protocol classification)."
+
+Internal section citations and layer numbers occupy Stage 1 budget without telling the scorer anything; no capability or trigger. Repo-history references belong in [docs/explanation/decision-log.md](../explanation/decision-log.md), not in a discovery `description`.
+
+**Forbidden frontmatter (and why).** The Anthropic spec is permissive; this repository narrows the surface explicitly. Enforced via `additionalProperties: false` in [`.cursor/schemas/skill.schema.json`](../../.cursor/schemas/skill.schema.json).
+
+- **`license`** — already declared in the plugin manifest and the repo `LICENSE`; not part of the Anthropic SKILL.md spec.
+- **`compatibility`** — environment requirements belong in a body "Prerequisites" / "Setup" section.
+- **`metadata`** — open-ended key-value bag; if a value is worth carrying it deserves a named field or body prose.
+- **`disable-model-invocation`** — Claude Code knob. Source skills stay agent-invocable in Cursor; export profiles can add this for mutating workflows on stricter hosts.
+- **`when_to_use`** — Claude Code's appended-trigger field. Triggers belong in `description` per Anthropic's own guidance; carrying them twice doubles the metadata cost without doubling the signal.
+- **`user-invocable`** — Claude Code's hide-from-`/`-menu knob; Cursor source visibility is governed by plugin manifests and slash commands.
+- **`context`** — Claude Code context-attachment metadata. Source skills load durable context through body links and `<!-- skill: ... -->` directives.
+- **`paths`** — Claude Code auto-activation glob. Specify skills are invoked by slash command, by phase pipeline, or by direct trigger phrases — not by file pattern.
+
+**Portability posture.** Source skills are Cursor-plugin-first; the Cursor-only surface (marketplace layout, `/plugin:skill` slash routing, `argument-hint` placeholder text, Cursor tool names, MCP tool prefixes, `<!-- skill: plugin:skill -->` directives) is part of the source contract because that is how skills compose inside Cursor. A Claude Code / upstream Agent Skills consumer should ship a separate compatibility *profile* that strips or maps Cursor-only fields, replaces Cursor-only tool names, translates `<!-- skill: ... -->` delegation, and (where useful) adds target-only metadata such as `disable-model-invocation`, `user-invocable`, `context`, or `paths`. Source visibility for mutating workflows is governed at runtime by skill bodies and the `specify` CLI; export profiles may choose stricter activation policy.
