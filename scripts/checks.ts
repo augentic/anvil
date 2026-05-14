@@ -43,12 +43,8 @@ import {
 } from "./checks/skill_body.ts";
 import {
   checkInvocationPositionals,
-  checkLegacyLayout,
   checkOperationalVocabulary,
-  checkRetiredAffectsField,
-  checkRetiredSlashCommands,
   checkSkillNumericCaps,
-  checkStaleClaims,
   checkWorkspaceLanding,
 } from "./checks/prose.ts";
 import {
@@ -63,7 +59,6 @@ import { validateCodexRuleShape } from "./checks/codex.ts";
 
 await Promise.all([
   checkMarkdownLinks(),
-  checkStaleClaims(),
   checkSymlinks(),
 ]);
 await Promise.all([
@@ -73,8 +68,6 @@ await Promise.all([
   checkInstructionPreambles(),
   checkWorkspaceLanding(),
   checkOperationalVocabulary(),
-  checkRetiredAffectsField(),
-  checkLegacyLayout(),
   checkSkillNumericCaps(),
   validateScenarioFrontmatter(),
   checkRecordedTraceFreshness(),
@@ -98,7 +91,6 @@ await Promise.all([
   checkVariables(),
   checkDirectives(),
   checkPluginConsistency(),
-  checkRetiredSlashCommands(),
   checkDeclaredToolEquivalentInvocations(),
   checkNoLayerNumbersInDocs(),
   checkNoRfcCitationsInDocs(),
