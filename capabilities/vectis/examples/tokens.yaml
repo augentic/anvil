@@ -1,0 +1,295 @@
+version: 1
+
+provenance:
+  sources:
+    - kind: figma-variables
+      uri: "https://www.figma.com/design/abc123/DesignSystem"
+      captured_at: "2026-05-07T20:00:00Z"
+    - kind: manual
+
+# ── Colours ────────────────────────────────────────────────
+# Every colour must supply both light and dark variants (#RRGGBB).
+colors:
+  # Brand
+  brand-primary:
+    light: "#1A73E8"
+    dark:  "#8AB4F8"
+  brand-secondary:
+    light: "#E8710A"
+    dark:  "#FFA940"
+  brand-accent:
+    light: "#0D9488"
+    dark:  "#5EEAD4"
+
+  # Surfaces
+  surface-background:
+    light: "#FFFFFF"
+    dark:  "#121212"
+  surface-card:
+    light: "#F8F9FA"
+    dark:  "#1E1E1E"
+  surface-elevated:
+    light: "#FFFFFF"
+    dark:  "#2C2C2C"
+
+  # Text
+  text-primary:
+    light: "#1F2937"
+    dark:  "#E5E7EB"
+  text-secondary:
+    light: "#6B7280"
+    dark:  "#9CA3AF"
+  text-disabled:
+    light: "#D1D5DB"
+    dark:  "#4B5563"
+  text-inverse:
+    light: "#FFFFFF"
+    dark:  "#111827"
+  text-link:
+    light: "#1A73E8"
+    dark:  "#8AB4F8"
+
+  # Semantic
+  semantic-success:
+    light: "#16A34A"
+    dark:  "#4ADE80"
+  semantic-warning:
+    light: "#CA8A04"
+    dark:  "#FACC15"
+  semantic-error:
+    light: "#DC2626"
+    dark:  "#F87171"
+  semantic-info:
+    light: "#2563EB"
+    dark:  "#60A5FA"
+
+  # Borders / dividers
+  border-default:
+    light: "#E5E7EB"
+    dark:  "#374151"
+  border-strong:
+    light: "#9CA3AF"
+    dark:  "#6B7280"
+  border-focus:
+    light: "#1A73E8"
+    dark:  "#8AB4F8"
+
+  # Interactive states
+  state-hover:
+    light: "#F3F4F6"
+    dark:  "#374151"
+  state-pressed:
+    light: "#E5E7EB"
+    dark:  "#4B5563"
+  state-selected:
+    light: "#DBEAFE"
+    dark:  "#1E3A5F"
+
+# ── Typefaces ─────────────────────────────────────────────
+# Named font families referenced by typography entries via the optional
+# typeface field. Shell writers that prefer the platform default font
+# (e.g. San Francisco on iOS, Roboto on Android) may ignore this section.
+typefaces:
+  default:
+    family: "Inter"
+    fallback: "system-ui, sans-serif"
+    source: google-fonts
+  mono:
+    family: "Roboto Mono"
+    fallback: "ui-monospace, monospace"
+    source: google-fonts
+
+# ── Typography ─────────────────────────────────────────────
+# size in pt, lineHeight in pt, letterSpacing in pt
+# The optional typeface field references a key from the typefaces section.
+# When omitted, shell writers use the platform default font.
+typography:
+  display-large:
+    typeface: default
+    size: 57
+    weight: bold
+    lineHeight: 64
+    letterSpacing: -0.25
+  display-medium:
+    typeface: default
+    size: 45
+    weight: bold
+    lineHeight: 52
+    letterSpacing: 0
+  display-small:
+    typeface: default
+    size: 36
+    weight: bold
+    lineHeight: 44
+    letterSpacing: 0
+
+  headline-large:
+    typeface: default
+    size: 32
+    weight: semibold
+    lineHeight: 40
+    letterSpacing: 0
+  headline-medium:
+    typeface: default
+    size: 28
+    weight: semibold
+    lineHeight: 36
+    letterSpacing: 0
+  headline-small:
+    typeface: default
+    size: 24
+    weight: semibold
+    lineHeight: 32
+    letterSpacing: 0
+
+  title-large:
+    typeface: default
+    size: 22
+    weight: medium
+    lineHeight: 28
+    letterSpacing: 0
+  title-medium:
+    typeface: default
+    size: 16
+    weight: medium
+    lineHeight: 24
+    letterSpacing: 0.15
+  title-small:
+    typeface: default
+    size: 14
+    weight: medium
+    lineHeight: 20
+    letterSpacing: 0.1
+
+  body-large:
+    typeface: default
+    size: 16
+    weight: regular
+    lineHeight: 24
+    letterSpacing: 0.5
+  body-medium:
+    typeface: default
+    size: 14
+    weight: regular
+    lineHeight: 20
+    letterSpacing: 0.25
+  body-small:
+    typeface: default
+    size: 12
+    weight: regular
+    lineHeight: 16
+    letterSpacing: 0.4
+
+  label-large:
+    typeface: default
+    size: 14
+    weight: medium
+    lineHeight: 20
+    letterSpacing: 0.1
+  label-medium:
+    typeface: default
+    size: 12
+    weight: medium
+    lineHeight: 16
+    letterSpacing: 0.5
+  label-small:
+    typeface: default
+    size: 11
+    weight: medium
+    lineHeight: 16
+    letterSpacing: 0.5
+
+  caption:
+    typeface: default
+    size: 10
+    weight: regular
+    lineHeight: 14
+    letterSpacing: 0.4
+
+  overline:
+    typeface: default
+    size: 10
+    weight: semibold
+    lineHeight: 14
+    letterSpacing: 1.5
+
+  code-inline:
+    typeface: mono
+    size: 14
+    weight: regular
+    lineHeight: 20
+    letterSpacing: 0
+
+# ── Spacing scale ──────────────────────────────────────────
+# Values in logical points.
+spacing:
+  none: 0
+  xxs: 2
+  xs: 4
+  sm: 8
+  md: 12
+  lg: 16
+  xl: 24
+  xxl: 32
+  xxxl: 48
+  section: 64
+
+# ── Corner radius ─────────────────────────────────────────
+cornerRadius:
+  none: 0
+  xs: 2
+  sm: 4
+  md: 8
+  lg: 12
+  xl: 16
+  pill: 9999
+
+# ── Elevation ─────────────────────────────────────────────
+# Unitless elevation level; shell writers map to platform shadow specs.
+elevation:
+  none: 0
+  low: 1
+  medium: 2
+  high: 3
+  overlay: 4
+
+# ── Borders ────────────────────────────────────────────────
+# width in pt; color references a colors token; radius references a cornerRadius token.
+border:
+  thin:
+    width: 1
+    color: border-default
+  medium:
+    width: 1.5
+    color: border-default
+    radius: md
+  thick:
+    width: 2
+    color: border-strong
+    radius: lg
+  focus-ring:
+    width: 2
+    color: border-focus
+    radius: md
+  card:
+    width: 1
+    color: border-default
+    radius: lg
+  input:
+    width: 1
+    color: border-default
+    radius: md
+  input-error:
+    width: 2
+    color: semantic-error
+    radius: md
+
+# ── Opacity ────────────────────────────────────────────────
+# 0.0 = fully transparent, 1.0 = fully opaque.
+opacity:
+  transparent: 0
+  disabled: 0.38
+  scrim: 0.5
+  hover-overlay: 0.08
+  pressed-overlay: 0.12
+  opaque: 1

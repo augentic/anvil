@@ -27,6 +27,12 @@
       "propertyNames": { "$ref": "#/$defs/tokenName" },
       "additionalProperties": { "$ref": "#/$defs/borderEntry" }
     },
+    "typefaces": {
+      "type": "object",
+      "description": "Named typeface declarations that typography entries can reference via the optional typeface field. Shell writers that prefer the platform default font (e.g. San Francisco on iOS, Roboto on Android) may ignore this section.",
+      "propertyNames": { "$ref": "#/$defs/tokenName" },
+      "additionalProperties": { "$ref": "#/$defs/typefaceEntry" }
+    },
     "opacity": {
       "type": "object",
       "propertyNames": { "$ref": "#/$defs/tokenName" },
@@ -46,7 +52,7 @@
     },
     "tokenRef": {
       "type": "string",
-      "description": "Reference to a token name defined elsewhere in this document (typically a colors entry for border.color)."
+      "description": "Reference to a token name defined elsewhere in this document (e.g. a colors entry for border.color, or a cornerRadius entry for border.radius)."
     },
     "hexColor": {
       "type": "string",
@@ -131,10 +137,36 @@
       "required": ["size"],
       "additionalProperties": false,
       "properties": {
+        "typeface": {
+          "$ref": "#/$defs/tokenName",
+          "description": "Reference to a key in the typefaces section. Omit to use the platform default font."
+        },
         "size": { "type": "number", "exclusiveMinimum": 0 },
         "weight": { "$ref": "#/$defs/weight" },
         "lineHeight": { "type": "number", "exclusiveMinimum": 0 },
         "letterSpacing": { "type": "number" }
+      }
+    },
+
+    "typefaceEntry": {
+      "type": "object",
+      "required": ["family"],
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Primary font family name (e.g. \"Inter\", \"Roboto\", \"SF Pro\")."
+        },
+        "fallback": {
+          "type": "string",
+          "description": "Fallback font stack for platforms that support it (e.g. \"system-ui, sans-serif\")."
+        },
+        "source": {
+          "type": "string",
+          "enum": ["system", "google-fonts", "bundled"],
+          "description": "How the font is obtained: platform-provided, Google Fonts catalog, or bundled with the project."
+        }
       }
     },
 
@@ -145,7 +177,7 @@
       "properties": {
         "width": { "type": "number", "minimum": 0 },
         "color": { "$ref": "#/$defs/tokenRef" },
-        "radius": { "type": "number", "minimum": 0 }
+        "radius": { "$ref": "#/$defs/tokenRef" }
       }
     }
   }
