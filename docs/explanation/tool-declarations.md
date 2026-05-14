@@ -112,7 +112,7 @@ The `oci.reference` written into `meta.yaml` is derived best-effort from the res
 3. The `WKG_CONFIG` override, when the env var is set.
 4. An embedded `specify -> augentic.io` namespace fallback, applied only when no earlier layer mapped the `specify` namespace.
 
-`specify init` (regular and hub modes) scaffolds `.specify/wasm-pkg.toml` with the canonical RFC-17 contents:
+`specify init` (regular and hub modes) scaffolds `.specify/wasm-pkg.toml` with the canonical contents:
 
 ```toml
 default_registry = "augentic.io"

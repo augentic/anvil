@@ -156,7 +156,7 @@ slices:
     status: pending
 ```
 
-Schema (additive change to [`plan.schema.json`](../../specify-cli/schemas/plan/plan.schema.json)):
+Schema (additive change to [`plan.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/plan/plan.schema.json)):
 
 ```json
 "mapping": {
@@ -292,5 +292,5 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 - [RM-12: Catalog import — Backstage adapter](roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for catalogue export.
 - [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) — tier-1 / tier-2 boundary the ledger preserves.
 - [`docs/tutorials/legacy-migration-at-scale.md`](../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
-- [`schemas/plan/plan.schema.json`](../../specify-cli/schemas/plan/plan.schema.json) — the schema this RFC additively extends with `mapping`.
-- [`crates/domain/src/registry/catalog.rs`](../../specify-cli/crates/domain/src/registry/catalog.rs) — reference implementation for the `Registry` posture the ledger mirrors.
+- [`schemas/plan/plan.schema.json`](https://github.com/augentic/specify-cli/blob/main/schemas/plan/plan.schema.json) — the schema this RFC additively extends with `mapping`.
+- [`crates/domain/src/registry/catalog.rs`](https://github.com/augentic/specify-cli/blob/main/crates/domain/src/registry/catalog.rs) — reference implementation for the `Registry` posture the ledger mirrors.

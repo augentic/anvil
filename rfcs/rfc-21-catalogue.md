@@ -74,7 +74,7 @@ Schema rules:
 | `sources[].description` | no | Single-line free text. |
 | `sources[].target_projects` | no | Kebab-case names that should match `registry.yaml:projects[].name` when the registry exists. Routing hints, not bindings. Multiple values are legitimate for sources whose code splits across targets. |
 
-`additionalProperties: false` everywhere; `serde(deny_unknown_fields)` in the Rust parser, mirroring [`Registry`](../../specify-cli/crates/domain/src/registry/catalog.rs). Duplicate `key` values fail validation. Kebab-case violations fail validation.
+`additionalProperties: false` everywhere; `serde(deny_unknown_fields)` in the Rust parser, mirroring [`Registry`](https://github.com/augentic/specify-cli/blob/main/crates/domain/src/registry/catalog.rs). Duplicate `key` values fail validation. Kebab-case violations fail validation.
 
 > **Note.** The `status` field on `sources[]` (with values `pending` / `in-progress` / `migrated` / `abandoned`) lands in **RFC-22** alongside the migration ledger. Without a ledger, status would be writer-less and operator-maintained, and the framework's posture is to avoid hand-edited state. Operators who need an early signal can use `description` or wait for RFC-22.
 
@@ -183,7 +183,7 @@ No verb is renamed, retired, or repurposed. No existing schema field is changed 
 1. **Schema and validator.** Land `specify-cli/schemas/sources/sources.schema.json` and `specify-cli/schemas/sources/README.md`. Add a `Sources` validator in `specify-validate`.
 2. **Domain types.** Add `Sources`, `SourceEntry` types in `specify-domain` (`crates/domain/src/sources/`). Mirror the `Registry` posture: `serde(deny_unknown_fields)`, `path()` / `load()` helpers, `validate_shape()`. `specify-error` gains `sources-*` discriminants.
 3. **`specify sources` verb family.** Add `src/commands/sources/{cli,add,remove,show,list,validate,sync}.rs`. Each verb gets a JSON envelope mirroring `specify registry`. Land integration tests under `tests/sources.rs`.
-4. **Tier-1 cache lifecycle.** Implement `.specify/.cache/sources/<key>/` materialisation in `specify sources sync`. Update `.gitignore` defaults (already covered by [`Registry::ensure_specify_gitignore_entries`](../../specify-cli/crates/domain/src/registry/gitignore.rs); extend to add `.specify/.cache/`).
+4. **Tier-1 cache lifecycle.** Implement `.specify/.cache/sources/<key>/` materialisation in `specify sources sync`. Update `.gitignore` defaults (already covered by [`Registry::ensure_specify_gitignore_entries`](https://github.com/augentic/specify-cli/blob/main/crates/domain/src/registry/gitignore.rs); extend to add `.specify/.cache/`).
 5. **Symlink view for `analyze/<key>/`.** When `/change:plan` resolves `--source @<key>`, materialise `.specify/plans/<change>/analyze/<key>/` as a symlink to the cache slot. Land integration tests for the symlink lifecycle.
 6. **Archive snapshot.** Update `specify change plan archive` to write `.specify/archive/plans/<date>-<name>/.snapshot.yaml`. Define schema at `specify-cli/schemas/archive-snapshot/schema.json`.
 7. **`--source @<key>` selector parsing.** Update `/change:plan` invocation grammar in [`plan-invocation.md`](../plugins/change/references/plan-invocation.md) and the CLI flag handler. Hard-fail on unknown keys.
@@ -261,4 +261,4 @@ There is **no breaking change** to: existing `plan.yaml` files, existing `regist
 - [RM-12: Catalog import — Backstage adapter](roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for source catalogue import.
 - [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) — tier-1 / tier-2 boundary the cache refinement preserves.
 - [`docs/tutorials/legacy-migration-at-scale.md`](../docs/tutorials/legacy-migration-at-scale.md) — the canonical multi-source migration walkthrough this RFC updates.
-- [`crates/domain/src/registry/catalog.rs`](../../specify-cli/crates/domain/src/registry/catalog.rs) — reference implementation for the `Registry` posture `Sources` mirrors.
+- [`crates/domain/src/registry/catalog.rs`](https://github.com/augentic/specify-cli/blob/main/crates/domain/src/registry/catalog.rs) — reference implementation for the `Registry` posture `Sources` mirrors.
