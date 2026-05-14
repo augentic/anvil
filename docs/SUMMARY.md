@@ -105,7 +105,7 @@
 
 # Understanding Specify
 
-- [The layered stack](explanation/three-layer-stack.md)
+- [The layered stack](explanation/layered-stack.md)
 - [Artifacts in depth](explanation/artifacts.md)
 - [Capabilities and plugins](explanation/capabilities-and-plugins.md)
 - [Platform repo topologies](explanation/platform-repo.md)

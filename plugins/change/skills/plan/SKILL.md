@@ -6,7 +6,7 @@ argument-hint: <change-name>
 
 # Plan skill
 
-> **Author `plan.yaml` by running the capability's planning brief pipeline.** `/change:plan` is the Layer 3 authoring counterpart to `/change:execute`: one *writes* the plan, the other *runs* it. The skill never writes `plan.yaml` directly; every write goes through `specify change plan {create, add, amend}`.
+> **Author `plan.yaml` by running the capability's planning brief pipeline.** `/change:plan` is the Layer 2 authoring counterpart to `/change:execute`: one *writes* the plan, the other *runs* it. The skill never writes `plan.yaml` directly; every write goes through `specify change plan {create, add, amend}`.
 
 ## Critical Path
 
@@ -22,13 +22,13 @@ argument-hint: <change-name>
 
 ## Orientation
 
-`/change:plan` runs a five-step loop driven by the active capability's `capability.yaml`: parse → scaffold → brief-pipeline → validate → hand-off. Every shell-out targets the Layer 1 `specify` CLI; the skill writes nothing to `plan.yaml` directly. A clean `specify change plan validate` is the contract this skill owes its caller.
+`/change:plan` runs a five-step loop driven by the active capability's `capability.yaml`: parse → scaffold → brief-pipeline → validate → hand-off. Every shell-out targets the `specify` CLI; the skill writes nothing to `plan.yaml` directly. A clean `specify change plan validate` is the contract this skill owes its caller.
 
 The brief pipeline is two-step for single-repo capabilities (discovery → propose) and four-step for multi-repo (discovery → sync-peers → propose → assignment). Multi-repo behaviour fires whenever `registry.yaml` declares more than one project; assignment infers `project` per entry and may run a registry-proposal sub-step when a row names a project that does not exist yet.
 
 **Orchestration mode (`orchestrate`).** When `orchestrate` is set, after the five-step loop the skill continues into the cross-repo umbrella sequence (brief → registry → plan → execute → push/PR handoff → finalize after operator merge). The plan-authoring half of orchestration delegates to the same default mode documented above. See [orchestration.md](orchestration.md) for the full sequence, [shapes.md](shapes.md) for shape inference / validation, and [re-entry.md](re-entry.md) for the idempotent re-entry algorithm.
 
-Modes: `extend` (append-only; skip step 2 and reuse discovery), `dry-run` (read-only preview; suppress every write under `.specify/`), and `orchestrate` (above) compose with the default loop. Layer 3 is fully landed today.
+Modes: `extend` (append-only; skip step 2 and reuse discovery), `dry-run` (read-only preview; suppress every write under `.specify/`), and `orchestrate` (above) compose with the default loop. The Layer 2 planning surface is fully landed today.
 
 See [`references/runbook.md`](references/runbook.md) for the operational detail (invocation grammar, input kinds, kind defaults, the verbatim five-step loop body, single-writer invariant, working-directory layout, mode deltas, non-goals, and state-mutation surface).
 
@@ -45,7 +45,7 @@ See [`references/runbook.md`](references/runbook.md) for the operational detail 
 | [`shapes.md`](shapes.md) | Shape inference / validation for `migrate-legacy` / `new-feature` / `update-existing` |
 | [`re-entry.md`](re-entry.md) | Idempotent re-entry algorithm for `orchestrate` |
 | [`briefs/`](briefs/) | Bundled per-capability planning briefs (`omnia/`, `vectis/`) |
-| [`fixtures/`](fixtures/) | Per-flow regression fixtures (discovery, propose, multi-project, registry-proposal, dry-run, plan-layer2, shape variants) |
+| [`fixtures/`](fixtures/) | Per-flow regression fixtures (discovery, propose, multi-project, registry-proposal, dry-run, plan-multi-repo, shape variants) |
 | [`../../references/plan-single-writer.md`](../../references/plan-single-writer.md) | Shared single-writer contract for `plan.yaml` writes |
 | [`../../references/plan-invocation.md`](../../references/plan-invocation.md) | Positional grammar, kind suffix syntax, input-sufficiency rule |
 | [`../../references/plan-modes.md`](../../references/plan-modes.md) | Per-mode deltas, dry-run prohibitions, `extend` collision rules |

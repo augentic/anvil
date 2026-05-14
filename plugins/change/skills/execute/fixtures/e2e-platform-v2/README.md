@@ -1,6 +1,6 @@
 # `/change:execute loop` — `platform-v2` meta-fixture
 
-This is the Layer 2 exit-gate meta-fixture. It pins the behaviour of `/change:execute loop` driven against the full nine-entry `platform-v2` plan, exercising every argument-resolution shape end to end:
+This is the exit-gate meta-fixture for `/change:execute loop`. It pins the behaviour of the driver against the full nine-entry `platform-v2` plan, exercising every argument-resolution shape end to end:
 
 - greenfield (`notification-preferences`)
 - description-driven delta targeting, single target (`registration-duplicate-email-crash`)
@@ -38,4 +38,4 @@ Together the two fixture sets pin the full `/change:plan → /change:execute loo
 
 ## Terminal classification note
 
-The RFC-2 Change L2.I acceptance says "drives… to `all-done`" but the seed contains a pre-`failed` `checkout-api` whose dependant `checkout-ui` is therefore permanently ineligible. The loop drains every entry it *can* complete (seven `done`) and surfaces the rest as `Completion: stuck` — which is the faithful Layer 2 guarantee. `transcript.md` has a dedicated section explaining the tension. A true `Completion: all-done` run requires a seed without dangling failed-dep chains, which is what `../loop/all-done/` pins on a three-entry plan.
+The RFC-2 Change L2.I acceptance says "drives… to `all-done`" but the seed contains a pre-`failed` `checkout-api` whose dependant `checkout-ui` is therefore permanently ineligible. The loop drains every entry it *can* complete (seven `done`) and surfaces the rest as `Completion: stuck` — which is the faithful exit-gate guarantee for the driver. `transcript.md` has a dedicated section explaining the tension. A true `Completion: all-done` run requires a seed without dangling failed-dep chains, which is what `../loop/all-done/` pins on a three-entry plan.

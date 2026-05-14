@@ -298,7 +298,7 @@ The deterministic baseline check is the canonical post-merge gate. Cross-project
 | Mixed resolution: some targets in baseline, some in change | Pass — both directories are valid resolution scope. |
 | No spec files in the slice | Skip Check 3; record the skip in the report. |
 | Schema referenced only via `$ref` from other schemas | Exempt from Check 3 (shared vocabulary). |
-| Channel uses inline payload (legacy from a Layer-1 import) | `$ref` resolution still verified inside the document; emit `WARN` recommending importer normalisation. |
+| Channel uses inline payload (legacy from a manual import) | `$ref` resolution still verified inside the document; emit `WARN` recommending importer normalisation. |
 | Channel declared with no operations | Emit `FAIL` — every channel must have at least one `send` or `receive` operation. |
 
 ### `cross-project` mode

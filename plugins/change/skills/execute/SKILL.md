@@ -17,19 +17,19 @@ The full algorithm lives in [per-slice-algorithm.md](per-slice-algorithm.md). Sh
 
 # Execute skill
 
-Drive a change through `plan.yaml` by automating the Layer 1 loop: `get next slice` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify change plan transition`.
+Drive a change through `plan.yaml` by automating the per-slice loop: `get next slice` → `/spec:define` → `/spec:build` → `/spec:merge` (or `/spec:drop`) → `specify change plan transition`.
 
-> **Status.** Layer 2 is fully landed. The driver supports multi-repo workspace routing (`project` field on plan entries), selected slot materialisation, branch preparation on `specify/<change-name>`, `plan next` field extensions (`project`, `description`, `sources` in JSON), merge-baseline commit verification, residue commits in workspace slots, and self-heal under multi-repo. This skill ships the `dry-run` preview, the supervised single-slice run, the self-heal pass on startup, `loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/change:execute loop` drives the `platform-v2` example end-to-end against a plan authored by `/change:plan` — see [fixtures.md](fixtures.md) for the exit-gate meta-fixture.
+> **Status.** The driver is fully landed. It supports multi-repo workspace routing (`project` field on plan entries), selected slot materialisation, branch preparation on `specify/<change-name>`, `plan next` field extensions (`project`, `description`, `sources` in JSON), merge-baseline commit verification, residue commits in workspace slots, and self-heal under multi-repo. This skill ships the `dry-run` preview, the supervised single-slice run, the self-heal pass on startup, `loop` mode with terminal summary and SIGINT / SIGTERM handling, and the `sources` execution wiring. `/change:execute loop` drives the `platform-v2` example end-to-end against a plan authored by `/change:plan` — see [fixtures.md](fixtures.md) for the exit-gate meta-fixture.
 
 ## Overview
 
-Specify at runtime is a three-layer stack:
+Specify at runtime is a small stack composed of:
 
-1. **Phase skills** (`/spec:define`, `/spec:build`, `/spec:merge`, and `/spec:drop`) — the define-build-merge loop that operates on a single slice.
-2. **Plan CLI** (`specify change plan {validate, next, status, create, add, amend, transition, archive, lock, doctor}`) — the library-backed verbs that read and write `plan.yaml`. Both humans (Layer 1) and this skill (Layer 2) drive the loop through these verbs; no other code path writes the plan file.
+1. **Phase skills** (`/spec:define`, `/spec:build`, `/spec:merge`, and `/spec:drop`) — the Layer 1 define-build-merge loop that operates on a single slice.
+2. **Plan CLI** (`specify change plan {validate, next, status, create, add, amend, transition, archive, lock, doctor}`) — the library-backed `specify` verbs that read and write `plan.yaml`. Both manual operators and this skill drive the loop through these verbs; no other code path writes the plan file.
 3. **Driver skill** (`/change:execute`, this one) — the Layer 2 automation that reads `plan.yaml`, picks the next entry, invokes the phase sequence, and records outcomes.
 
-The on-disk contracts are the same files humans read in Layer 1; `/change:execute` introduces no new storage of its own. The shared state-channel ownership table lives in [execute-state-handoff.md](../../references/execute-state-handoff.md).
+The on-disk contracts are the same files an operator would read when driving the loop manually; `/change:execute` introduces no new storage of its own. The shared state-channel ownership table lives in [execute-state-handoff.md](../../references/execute-state-handoff.md).
 
 For multi-repo changes the driver resolves the plan entry's `project` through `registry.yaml`, materialises that selected slot when missing, prepares `specify/<change-name>` before phase writes, and `chdir`s into the prepared project root before invoking the phase skills. See [multi-repo.md](multi-repo.md) for the routing algorithm and post-merge residue commit. Use `specify compatibility` separately when the operator wants a classified producer-to-consumer contract report.
 
@@ -43,7 +43,7 @@ These invariants constrain this skill's behaviour.
 | Phases own verify-repair loops | Phase skills exhaust their repair budget before returning |
 | Exactly one of `success`/`failure`/`deferred` per phase | Phase writes `outcome` into `.metadata.yaml` before returning |
 | Slice *entries* written only via `Plan::create` / `Plan::amend` | Phases and humans both run `specify change plan add` / `specify change plan amend`; see [plan-single-writer.md](../../references/plan-single-writer.md) |
-| Slice *status* updates written only via `Plan::transition` | `/change:execute` (Layer 2) or humans (Layer 1) run `specify change plan transition`; see [execute-state-handoff.md](../../references/execute-state-handoff.md) |
+| Slice *status* updates written only via `Plan::transition` | `/change:execute` or operators driving the loop manually run `specify change plan transition`; see [execute-state-handoff.md](../../references/execute-state-handoff.md) |
 | Single `in-progress` at a time | `change plan next` / `change plan validate` |
 | Single `/change:execute` driver at a time | `.specify/plan.lock` advisory lock (see §Driver lock below) |
 

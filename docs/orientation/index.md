@@ -56,10 +56,10 @@ Multi-slice and cross-repo workflows are covered in [later tutorials](../tutoria
 
 > **Note:** The word "capability" has a second meaning inside Specify spec files (a unit of behavior). This page uses only the first meaning.
 
-For the architectural framing of how these skills compose with multi-slice and cross-repo workflows, see [The layered stack](../explanation/three-layer-stack.md).
+For the architectural framing of how these skills compose with multi-slice and cross-repo workflows, see [The layered stack](../explanation/layered-stack.md).
 
 Behind these skills, a Rust CLI binary (`specify`) handles every deterministic operation -- validation, lifecycle transitions, spec merging, task tracking. The agent keeps judgment; the CLI keeps correctness.
 
 ## Going deeper
 
-For a detailed understanding of Specify's layered architecture, artifact system, and schema/plugin model, see [The Layered Stack](../explanation/three-layer-stack.md).
+For a detailed understanding of Specify's layered architecture, artifact system, and schema/plugin model, see [The Layered Stack](../explanation/layered-stack.md).
