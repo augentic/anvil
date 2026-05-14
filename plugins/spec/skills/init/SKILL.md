@@ -13,7 +13,7 @@ argument-hint: <capability>
 1. **Verify the CLI** — run `specify --version`; install with `cargo install --git https://github.com/augentic/specify-cli` only after explicit user confirmation.
 2. **Check existing initialization** — detect `.specify/project.yaml`, ask before reinitializing, and treat reinit as an upgrade path owned by the CLI.
 3. **Choose topology** — decide regular project vs registry-only platform hub; capability is required for regular projects and forbidden in hub mode.
-4. **Resolve metadata** — choose `$CAPABILITY`, `$PROJECT_NAME`, and optional `$DOMAIN`; never pre-populate `.specify/.cache/`.
+4. **Resolve metadata** — choose `$CAPABILITY`, the project name, and an optional domain; never pre-populate `.specify/.cache/`.
 5. **Invoke `specify init`** — run either `specify init "$CAPABILITY" ...` or `specify init --hub ...`; let the CLI scaffold files and generate starter context, and surface non-zero CLI errors without hand-rolling scaffold files.
 6. **Offer baseline extraction** — for regular projects with code indicators, ask whether to create `initial-baseline`; skip this entirely for hubs.
 7. **Summarize the correct shape** — report regular vs hub outputs, next actions, and any baseline-extraction handoff.

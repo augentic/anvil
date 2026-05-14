@@ -112,7 +112,7 @@ These constraints are non-negotiable for any of the three sibling paths:
 
 Because protocol bindings reference these schemas, edits in this skill can break already-merged HTTP and messaging contracts. The verifier sibling is the safety net:
 
-- In `single` mode, verifier Check 4 (cross-format consumer compatibility) cross-references each touched schema against `$BASELINE_CONTRACTS/http/` and `$BASELINE_CONTRACTS/messages/` and flags any backwards-incompatible change before the brief approves the artefact.
+- In `single` mode, verifier Check 4 (cross-format consumer compatibility) cross-references each touched schema against the baseline `contracts/http/` and `contracts/messages/` directories and flags any backwards-incompatible change before the brief approves the artefact.
 - Cross-project producer-to-consumer impact is reported by `specify compatibility`; the verifier's `cross-project` mode is only the merge-time baseline validation delegate.
 
 When authoring or importing, never silently delete or narrow a baseline schema's fields; if the spec requires it, surface the slice as a warning and let a human operator decide whether to bump the schema's `$id` (effectively introducing a new type alongside the old one). See [shared guardrails — Baseline immutability](../../../references/guardrails.md#baseline-immutability-for-contract-authoring) for the cross-skill rule.

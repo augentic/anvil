@@ -49,7 +49,7 @@ Before starting, make sure:
 1. The `specify-cli` working tree is clean. `git status` shows no unstaged changes. This skill makes small, verifiable edits; mixing them with unrelated WIP will cause the validation matrix to attribute unrelated failures to the bump.
 2. `specify` is on `PATH` and supports `specify tool run`. The scratch projects must resolve the Vectis capability declaration that exposes `vectis` (`scaffold`).
 3. If local WASI artifacts are under test, build or fetch them before the matrix run and point the scratch project's tool declaration at those component bytes. Do not execute a cached component directly; always run it through `specify tool run vectis -- scaffold`.
-4. Platform prerequisites for each shell being validated are present (`xcodegen`, `cargo-swift`, `$ANDROID_HOME` with NDK, Gradle/Xcode as required). Confirm missing SDKs before editing templates.
+4. Platform prerequisites for each shell being validated are present (`xcodegen`, `cargo-swift`, an `ANDROID_HOME` environment variable pointing at an SDK with the NDK, Gradle/Xcode as required). Confirm missing SDKs before editing templates.
 
 ---
 

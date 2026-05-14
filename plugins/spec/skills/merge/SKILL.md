@@ -54,25 +54,7 @@ specify slice merge preview <name> --format json
 specify slice merge conflict-check <name> --format json
 ```
 
-Render the preview as a human-readable summary using the `operations[]` array from `specify slice merge preview`. For each spec, operations are typed as `added`, `modified`, `removed`, `renamed`, or `created_baseline`:
-
-```text
-## Merge Preview: <slice-name>
-
-### <capability-1>/spec.md (existing baseline)
-- REMOVING: REQ-001 — <name>
-- MODIFYING: REQ-002 — <name>
-- ADDING: REQ-003 — <name>
-
-### <capability-2>/spec.md (new baseline)
-- CREATING baseline with N requirements
-```
-
-If `specify slice merge preview` returns an empty `specs` array, report "No delta specs to merge" and stop.
-
-If `slice merge conflict-check` returns any entries under `conflicts`, surface them clearly — each entry names the capability, the slice's `defined-at`, and the baseline's `baseline-modified-at`:
-
-> "The baseline for `<capability>` was modified at `<baseline-modified-at>` (after this slice was defined at `<defined-at>`). Another change may have already touched it."
+Render the preview as a human-readable summary using the preview template in [`references/merge-runbook.md`](references/merge-runbook.md#preview-template); surface any `slice merge conflict-check` `conflicts` entries using the format in that file's conflict-check section. If the preview's `specs` array is empty, report "No delta specs to merge" and stop.
 
 ### 4. Get explicit confirmation
 
@@ -92,9 +74,7 @@ Run:
 specify slice merge run <name> --format json
 ```
 
-This single call gates on `.metadata.yaml.status == Complete` (errors with `lifecycle` if not), computes the same operations as `slice merge preview`, runs baseline coherence validation on every merged output (`specify slice validate` semantics), writes each merged baseline under `.specify/specs/<capability>/spec.md`, transitions `.metadata.yaml` to `merged`, stamps `merged-at` / `completed-at` and `PhaseOutcome { phase: merge, outcome: success }`, and moves `.specify/slices/<name>/` into `.specify/archive/YYYY-MM-DD-<name>/`. Never hand-merge specs, edit metadata, or move archives manually.
-
-**Workspace clone auto-commit.** When CWD is inside a workspace clone (`.specify/workspace/*/` with `.specify/project.yaml`), the CLI auto-commits **only** `.specify/specs/` and `.specify/archive/` with message `specify: merge <slice-name>`. Commit failure is a **warning**, not an error — the spec merge still succeeds. Any project-output residue outside those two trees is left for `/change:execute` to commit as `specify: residue <slice-name>`. Committed changes remain local until the operator explicitly runs `specify workspace push`.
+This single call gates on `.metadata.yaml.status == Complete` (errors with `lifecycle` if not), computes the same operations as `slice merge preview`, runs baseline coherence validation on every merged output (`specify slice validate` semantics), writes each merged baseline under `.specify/specs/<capability>/spec.md`, transitions `.metadata.yaml` to `merged`, stamps `merged-at` / `completed-at` and `PhaseOutcome { phase: merge, outcome: success }`, and moves `.specify/slices/<name>/` into `.specify/archive/YYYY-MM-DD-<name>/`. Never hand-merge specs, edit metadata, or move archives manually. Workspace-clone auto-commit semantics (which trees get committed, warning-vs-error, residue handling) live in [`references/merge-runbook.md`](references/merge-runbook.md#workspace-clone-auto-commit).
 
 ### 6. Handle outcomes
 
@@ -104,24 +84,7 @@ If the call exits non-zero, the filesystem is unchanged (baselines not written, 
 
 ### 7. Summarise the archive
 
-On success, the CLI returns `merged-specs[]` with the same operation list. Render a completion summary:
-
-```text
-## Merge Complete
-
-**Slice:** <slice-name>
-**Merged to:** .specify/archive/YYYY-MM-DD-<name>/
-
-### Specs Merged
-- <capability-1>: merged into .specify/specs/<capability-1>/spec.md
-- <capability-2>: new baseline created at .specify/specs/<capability-2>/spec.md
-
-(or "No delta specs to merge" if `specify slice merge preview` returned an empty `specs` array)
-
-All artifacts complete. All tasks complete.
-```
-
-Mention any workspace auto-commit warning or residue note returned by the CLI.
+On success, the CLI returns `merged-specs[]` with the same operation list. Render the completion summary using the template in [`references/merge-runbook.md`](references/merge-runbook.md#summary-template), and mention any workspace auto-commit warning or residue note returned by the CLI.
 
 ## Phase outcome contract
 

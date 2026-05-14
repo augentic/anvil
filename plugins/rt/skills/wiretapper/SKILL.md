@@ -32,21 +32,7 @@ git clone "$url" "$dest"
 
 ### Step 2: Detect Patterns
 
-Read `$LEGACY_DIR/package.json` (dependencies and devDependencies) and scan source under `$LEGACY_DIR` (e.g. `src/`, `lib/`, or root `*.ts`/`*.js`) for the signals below. Set of patterns is the union of all detected.
-
-| Pattern | Description | Detection signal |
-|---------|--------------|------------------|
-| **A** | HTTP entry — Fastify (standalone) | `fastify` in deps **and** no `@nestjs/core` |
-| **B** | HTTP entry — Express | `express` in deps **and** no `@nestjs/core` |
-| **C** | HTTP entry — NestJS | `@nestjs/core` in deps |
-| **D** | Kafka consumer entry | Source contains `KafkaConsumer` and `onMessage` (or equivalent consumer callback pattern) |
-| **E** | Outbound HTTP — HttpClient | Source contains `HttpClient` or `httpClient.get` (e.g. from `at-realtime-common` or similar) |
-| **F** | TypeORM | `typeorm` in deps **and** source contains `DataSource` or `@InjectRepository` or `createQueryRunner` |
-| **G** | Kafka publisher — NestJS ClientKafka | `@nestjs/microservices` in deps **and** source contains `ClientKafka` |
-| **H** | Kafka publisher — standalone | Source contains `KafkaProducer` or kafkajs producer usage, **and** no NestJS (no `@nestjs/core`) |
-
-- **Conservative**: If in doubt, do **not** add a pattern; generate only adapters for patterns that are clearly present.
-- **Mutually exclusive for HTTP entry**: At most one of A, B, C (NestJS takes precedence over Fastify/Express if present).
+Read `$LEGACY_DIR/package.json` (dependencies and devDependencies) and scan source under `$LEGACY_DIR` (e.g. `src/`, `lib/`, or root `*.ts`/`*.js`). The eight-pattern detection table (A–H), the per-pattern signals, and the HTTP-entry mutual-exclusion rule (NestJS > Fastify/Express) live in [references/design.md](references/design.md) §Pattern detection. Be conservative — when in doubt, do not add a pattern.
 
 ### Step 3: Generate Core and Adapters
 
@@ -57,18 +43,7 @@ Create `$LEGACY_DIR/src/wiretap/` and generate only the files below. Use the **e
 - `$LEGACY_DIR/src/wiretap/session.ts` — `WiretapSession`, `WiretapEntry`, `WiretapHttpCall`, `WiretapDbQuery`, `WiretapKafkaPublish`, `extractError`. AsyncLocalStorage-based session; `toEntry(output, statusCode)`. (See [references/design.md](references/design.md) for session/wiretap core.)
 - `$LEGACY_DIR/src/wiretap/wiretap.ts` — `Wiretap` singleton: `AsyncLocalStorage<WiretapSession>`, `init(appName)`, `getInstance()`, `getCurrentSession()`, `enterSession()`, `runWithSession()`, `flush(handler, entry)` writing to `{appName}.wiretap.json`.
 
-**Generated only when the corresponding pattern is detected** (full code in `references/adapters/<name>.md`):
-
-| Pattern | File | Reference |
-|---------|------|-----------|
-| A | `adapters/fastify-hooks.ts` | [fastify-hooks.md](references/adapters/fastify-hooks.md) |
-| B | `adapters/express-middleware.ts` | [express-middleware.md](references/adapters/express-middleware.md) |
-| C | `adapters/nest-interceptor.ts` | [nest-interceptor.md](references/adapters/nest-interceptor.md) |
-| D | `adapters/kafka-consumer-wrapper.ts` | [kafka-consumer-wrapper.md](references/adapters/kafka-consumer-wrapper.md) |
-| E | `adapters/http-client-wrapper.ts` | [http-client-wrapper.md](references/adapters/http-client-wrapper.md) |
-| F | `adapters/typeorm-wrapper.ts` | [typeorm-wrapper.md](references/adapters/typeorm-wrapper.md) |
-| G | `adapters/kafka-nestclient-wrapper.ts` | [kafka-nestclient-wrapper.md](references/adapters/kafka-nestclient-wrapper.md) |
-| H | `adapters/kafka-producer-wrapper.ts` | [kafka-producer-wrapper.md](references/adapters/kafka-producer-wrapper.md) (dual-API: `.publish` and `.send`) |
+**Generated only when the corresponding pattern is detected.** The pattern → adapter file → reference document mapping (A–H) lives in [references/design.md](references/design.md) §Adapter mapping. Generate one adapter file under `$LEGACY_DIR/src/wiretap/adapters/` per detected pattern, copying verbatim from the listed reference.
 
 ### Step 4: Wire Up the Start
 
