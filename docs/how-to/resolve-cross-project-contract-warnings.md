@@ -1,6 +1,6 @@
 # Resolve Cross-Project Compatibility Findings
 
-After a producer contract changes, run `specify compatibility report --change <name>` or `specify compatibility check` to classify downstream consumer impact. Findings are advisory in RM-04, but `compatibility check` exits validation-failed for `breaking`, `ambiguous`, or `unverifiable` results so CI or operators can stop and triage.
+After a producer contract changes, run `specify compatibility check --change <name> --report-only` (read-only) or `specify compatibility check` (strict gate) to classify downstream consumer impact. Findings are advisory in RM-04, but the bare `compatibility check` exits validation-failed for `breaking`, `ambiguous`, or `unverifiable` results so CI or operators can stop and triage; `--report-only` suppresses that exit code.
 
 This how-to covers where the findings appear, how to read them, and the four canonical responses.
 
@@ -16,7 +16,7 @@ For background on the check itself, see [Cross-project compatibility classificat
 Run:
 
 ```bash
-specify compatibility report --change <name>
+specify compatibility check --change <name> --report-only
 ```
 
 Each finding includes the producer project, consumer project, producer contract, consumer view path, classification (`additive`, `breaking`, `ambiguous`, or `unverifiable`), optional `change-kind`, locator, and details.
@@ -79,7 +79,7 @@ git push origin main
 After applying any of paths A, B, or C, confirm the findings are accounted for:
 
 ```bash
-specify compatibility report --change <name>     # findings are understood or now additive
+specify compatibility check --change <name> --report-only   # findings are understood or now additive
 specify slice status <consumer-change>           # if path A or B, follow-up change is tracked
 specify change plan status                                # if path A, the entry is queued
 ```

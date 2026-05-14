@@ -62,8 +62,8 @@ In a multi-repo setup, contracts live in the initiating repo's `contracts/`. Aft
 Run a compatibility report when a producer contract has changed and consumer workspace clones still hold their prior view:
 
 ```bash
-specify compatibility report --change <name>
-specify compatibility check
+specify compatibility check --change <name> --report-only   # read-only RM-04 report, always exits 0
+specify compatibility check                                  # strict gate, exits 2 on non-additive findings
 ```
 
 The report is read-only. It classifies producer-to-consumer deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable`. The existing merge gate, `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`, still validates the merged baseline's SemVer and `x-specify-id` rules; compatibility reporting is a separate consumer-impact surface.
@@ -77,8 +77,8 @@ The report is read-only. It classifies producer-to-consumer deltas as `additive`
 
 **Where the findings appear:**
 
-- `specify compatibility report --change <name>` prints a report and exits `0` when it can render the report.
-- `specify compatibility check` prints the same report and exits validation-failed if any finding is `breaking`, `ambiguous`, or `unverifiable`.
+- `specify compatibility check --change <name> --report-only` prints the report and exits `0` regardless of finding severity.
+- `specify compatibility check` prints the same payload and exits validation-failed if any finding is `breaking`, `ambiguous`, or `unverifiable`.
 
 **Triage:**
 

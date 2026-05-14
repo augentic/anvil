@@ -69,7 +69,7 @@ The contract plugin (`/contract:openapi`, `/contract:asyncapi`, `/contract:json-
 
 The matching CLI surface is the declared `contract` WASI tool, run through `specify tool run contract -- "$PROJECT_ROOT/contracts" --format json`. It walks a baseline `contracts/` directory and runs the SemVer, id-format, and cross-repo id-uniqueness checks, exiting `0` clean / `1` findings / `2` tool or invocation error. The earlier in-binary `specify contract { list, validate }` family was retired when contracts became a first-party capability owning its own validation behaviour; the contracts capability merge brief now shells out through `specify tool run` as the post-merge baseline gate.
 
-Cross-project consumer-impact classification is exposed separately as `specify compatibility` (`compatibility report --change <name>` and `compatibility check`), which classifies producer-to-consumer contract deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable` and exits validation-failed for every non-additive risk.
+Cross-project consumer-impact classification is exposed separately as `specify compatibility check` (with `--change <name>` to echo the change name and `--report-only` for read-only audits), which classifies producer-to-consumer contract deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable` and exits validation-failed for every non-additive risk unless `--report-only` is passed.
 
 ## JSON envelope
 
@@ -82,7 +82,7 @@ The `error` discriminants are part of the public contract that skills and tests 
 - `init-requires-capability-or-hub` — `specify init` invoked with neither or both of `<capability>` / `--hub`.
 - `registry-amendment-required` — `/change:execute` phase outcome carrying a structured proposal payload for capabilities that need a new registry project.
 - `description-missing-multi-repo` — `specify registry` shape validation invariant.
-- `cycle-in-depends-on` / `orphan-source-key` / `stale-workspace-clone` / `unreachable-entry` — `specify change plan doctor` diagnostics.
+- `cycle-in-depends-on` / `orphan-source-key` / `stale-workspace-clone` / `unreachable-entry` — `specify change plan validate` health diagnostics.
 - `no-branch` — `specify workspace push` invoked on `main`, `master`, `origin/HEAD`, or any non-`specify/<change-name>` branch.
 - `legacy-layout` — every project-aware verb refusing a v1-layout project.
 

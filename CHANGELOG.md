@@ -53,14 +53,14 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ## v0.x — Cross-project compatibility classification
 
-- `specify compatibility report --change <name>` and `specify compatibility check` classify producer-to-consumer contract deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable`. `compatibility check` exits validation-failed for every non-additive risk.
+- `specify compatibility check [--change <name>] [--report-only]` classifies producer-to-consumer contract deltas as `additive`, `breaking`, `ambiguous`, or `unverifiable`. The bare verb exits validation-failed for every non-additive risk; `--report-only` prints the same payload and always exits `0` for read-only audits.
 - `/change:execute` no longer owns journal or transcript warning side effects for this report.
 
 ## v0.x — Platform-first operator surface (RFC-9)
 
 - `/change:plan <name> orchestrate` umbrella drives brief → registry validate → plan → execute loop → workspace push → operator PR merge → `specify change finalize` as a single operator action across three change shapes (`migrate-legacy`, `new-feature`, `update-existing`).
 - `specify init --hub --name <name>` scaffolds a registry-only platform hub; `Registry::validate_shape` gains a `hub-only` mode rejecting any registry entry whose `url` is `.`.
-- New CLI verbs: `specify registry add/remove`, `specify change plan doctor` (strict superset of `validate` with `cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`, `unreachable-entry` diagnostics), and `specify change finalize` (`--clean`, `dry-run`) for atomic plan closure.
+- New CLI verbs: `specify registry add/remove`, the four health diagnostics on `specify change plan validate` (`cycle-in-depends-on`, `orphan-source-key`, `stale-workspace-clone`, `unreachable-entry`), and `specify change finalize` (`--clean`, `dry-run`) for atomic plan closure.
 - The two-tier workspace model is codified: tier 1 (legacy-source clones under `.specify/plans/<name>/analyze/<key>/`) is ephemeral and read-only; tier 2 (registered project clones under `.specify/workspace/<name>/`) is durable and read-write.
 - New `registry-amendment-required` phase outcome carries a structured proposal payload (`{ proposed-name, proposed-url, proposed-capability, proposed-description, rationale }`) for changes that target a capability needing a new registry project. The framework never auto-modifies the registry.
 

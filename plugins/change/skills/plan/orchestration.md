@@ -141,7 +141,7 @@ Execution owns mutation-time workspace preparation. For each selected plan entry
 | Classification | Source | Operator action |
 |---|---|---|
 | `all-done` | every entry `done` / `skipped` | continue to step 5 |
-| `stuck` | dependency chain blocked by `failed` / `blocked` predecessors | `specify change plan doctor` → `specify change plan transition <name> pending` (or `skipped`) → re-run umbrella |
+| `stuck` | dependency chain blocked by `failed` / `blocked` predecessors | `specify change plan validate` → `specify change plan transition <name> pending` (or `skipped`) → re-run umbrella |
 | `halted` | self-heal saw an ambiguous on-disk state | manual triage of `.specify/slices/<name>/.metadata.yaml` against `plan.yaml` → re-run umbrella |
 | `driver-interrupted` | SIGINT/SIGTERM mid-run | re-run umbrella; self-heal reclaims the in-flight entry on the next startup |
 | `registry-amendment-required` | phase emitted the structured payload | review proposal in journal → run the canonical recovery sequence (below) → re-run umbrella |

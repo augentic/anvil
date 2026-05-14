@@ -71,8 +71,8 @@ If the CWD routing step (5c) changed the working directory, restore CWD to the s
 `/change:execute` does not run consumer-impact classification as a side-effect of step 10. Operators can run the CLI-owned report explicitly:
 
 ```bash
-specify compatibility report --change <change-name>
-specify compatibility check
+specify compatibility check --change <change-name> --report-only   # read-only RM-04 report, always exits 0
+specify compatibility check                                         # strict gate, exits 2 on non-additive findings
 ```
 
-The report walks `registry.yaml`, matches `contracts.produces` to `contracts.consumes`, compares root `contracts/<path>` to `.specify/workspace/<consumer>/contracts/<path>`, and classifies each comparable delta as `additive`, `breaking`, `ambiguous`, or `unverifiable`. `compatibility check` exits validation-failed when any finding is not additive; RM-11 will decide how those classifications become plan lifecycle gates.
+The report walks `registry.yaml`, matches `contracts.produces` to `contracts.consumes`, compares root `contracts/<path>` to `.specify/workspace/<consumer>/contracts/<path>`, and classifies each comparable delta as `additive`, `breaking`, `ambiguous`, or `unverifiable`. The bare `compatibility check` exits validation-failed when any finding is not additive; `--report-only` suppresses that exit code for audit/CI workflows. RM-11 will decide how those classifications become plan lifecycle gates.

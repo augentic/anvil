@@ -3,8 +3,9 @@
 `specify compatibility` reports cross-project consumer impact for contracts declared in `registry.yaml`.
 
 ```bash
-specify compatibility check
-specify compatibility report --change <name>
+specify compatibility check                                  # strict gate (exits 2 on non-additive findings)
+specify compatibility check --change <name>                  # strict gate, echoing the change name
+specify compatibility check --change <name> --report-only    # read-only RM-04 report, always exits 0
 ```
 
 `compat` is accepted as a shorthand alias for the command family.
@@ -30,7 +31,7 @@ Findings use four RM-04 classifications:
 
 ## Exit Codes
 
-`specify compatibility report --change <name>` exits `0` when it can render the report. `specify compatibility check` emits the same report and exits `0` only when every finding is additive or clean; `breaking`, `ambiguous`, and `unverifiable` findings use the normal validation-failed exit code.
+`specify compatibility check --report-only` exits `0` when it can render the report, regardless of finding severity. Without `--report-only`, `specify compatibility check` emits the same payload and exits `0` only when every finding is additive or clean; `breaking`, `ambiguous`, and `unverifiable` findings use the normal validation-failed exit code.
 
 ## JSON Shape
 

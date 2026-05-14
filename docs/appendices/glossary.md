@@ -60,7 +60,7 @@ Authorship pattern where a dedicated contract change defines interface shapes be
 Authorship pattern where API contracts are imported from an external system or legacy API. The operator places the external files into the change's `contracts/` directory. `/change:plan` inserts import changes when a source is flagged as external.
 
 **Cross-project compatibility classification**
-The RM-04 CLI report produced by `specify compatibility report --change <name>` or `specify compatibility check`. It walks `registry.yaml`, matches `contracts.produces` to `contracts.consumes`, compares root producer contracts with consumer workspace views, and classifies findings as `additive`, `breaking`, `ambiguous`, or `unverifiable`.
+The RM-04 CLI report produced by `specify compatibility check` (strict gate) or `specify compatibility check --change <name> --report-only` (read-only). It walks `registry.yaml`, matches `contracts.produces` to `contracts.consumes`, compares root producer contracts with consumer workspace views, and classifies findings as `additive`, `breaking`, `ambiguous`, or `unverifiable`.
 
 ## D
 
@@ -131,8 +131,8 @@ A classification (`success`, `failure`, `deferred`, or `registry-amendment-requi
 **Plan**
 An ordered, dependency-aware list of slices stored in `plan.yaml`. The change's table of contents.
 
-**Plan doctor**
-`specify change plan doctor`. A strict superset of `specify change plan validate` that runs every check `validate` runs and then layers four health diagnostics on top: `cycle-in-depends-on` (dependency cycles in `depends-on`), `orphan-source-key` (top-level `sources:` keys no entry references), `stale-workspace-clone` (clones whose registry signature has drifted), and `unreachable-entry` (pending entries blocked by `failed`/`skipped` predecessors). The first triage step when `/change:execute loop` reports `stuck`.
+**Plan health diagnostics**
+The four extra checks `specify change plan validate` layers on top of its base shape rules: `cycle-in-depends-on` (dependency cycles in `depends-on`), `orphan-source-key` (top-level `sources:` keys no entry references), `stale-workspace-clone` (clones whose registry signature has drifted), and `unreachable-entry` (pending entries blocked by `failed`/`skipped` predecessors). The first triage step when `/change:execute loop` reports `stuck`. Previously surfaced through the retired `specify change plan doctor` verb.
 
 **Platform-as-project**
 The single-repo platform topology where the initiating repo is both the platform repo and a code project. Identified by `url: .` on the repo's own registry entry. Phase pipelines run normally because `project.yaml:capability:` resolves to a real capability (`hub:` is absent or `false`). Still permitted for single-repo and small-team cases. Contrast with [Hub](#h). See [Platform repo topologies](../explanation/platform-repo.md).

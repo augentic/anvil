@@ -62,7 +62,7 @@ Field semantics:
 
 Resolver, permission, or runtime failures come from `specify tool run` and use the standard Specify error envelope.
 
-This tool is the baseline-validation gate only. It does not compare producer contracts against consumer workspace views. Use `specify compatibility check` or `specify compatibility report --change <name>` for RM-04 consumer-impact classification.
+This tool is the baseline-validation gate only. It does not compare producer contracts against consumer workspace views. Use `specify compatibility check` (optionally `--change <name>` and `--report-only`) for RM-04 consumer-impact classification.
 
 ## Distribution
 

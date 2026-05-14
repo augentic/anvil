@@ -283,7 +283,7 @@ The mode is **deterministic**: the WASI tool is a thin shell over `specify_valid
 
 The contracts capability owns merge gating through the declared `contract` WASI tool: a deterministic, capability-owned gate the merge brief can run through `specify` without crossing the core boundary or re-introducing concern-specific behavior into core crates.
 
-The deterministic baseline check is the canonical post-merge gate. Cross-project consumer-impact analysis lives in `specify compatibility check` and `specify compatibility report --change <name>`.
+The deterministic baseline check is the canonical post-merge gate. Cross-project consumer-impact analysis lives in `specify compatibility check` (with optional `--change <name>` and `--report-only` flags).
 
 ## Edge cases
 

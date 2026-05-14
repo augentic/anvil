@@ -288,7 +288,7 @@ The mode is **deterministic**: the WASI tool is a thin shell over `specify_valid
 
 The contracts capability owns merge gating through the declared `contract` WASI tool: a deterministic, capability-owned gate the merge brief can run through `specify` without crossing the core boundary or re-introducing concern-specific behavior into core crates.
 
-Schema-side breakage is caught earlier, in `single`-mode Check 4 (cross-format consumer compatibility), before the merge phase. The deterministic binary is the canonical post-merge gate. Cross-project consumer-impact analysis lives in `specify compatibility check` and `specify compatibility report --change <name>`.
+Schema-side breakage is caught earlier, in `single`-mode Check 4 (cross-format consumer compatibility), before the merge phase. The deterministic binary is the canonical post-merge gate. Cross-project consumer-impact analysis lives in `specify compatibility check` (with optional `--change <name>` and `--report-only` flags).
 
 ## Edge cases
 

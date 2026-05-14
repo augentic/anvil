@@ -89,7 +89,7 @@ If self-heal itself fails, manually resolve:
 **Cause:** No `pending` entry has all dependencies satisfied. Typically because a dependency is `failed` or `blocked`, or a structural problem in the plan (cycle, unreachable entry) is preventing progress.
 
 **Resolution:**
-1. **First triage step:** run `specify change plan doctor` -- it surfaces every structural problem (cycles, orphan sources, stale clones, unreachable entries) that `validate` would miss. See [Plan doctor diagnostics](#plan-doctor-diagnostics) below.
+1. **First triage step:** run `specify change plan validate` -- it surfaces every structural problem (cycles, orphan sources, stale clones, unreachable entries) alongside the base shape rules. See [Plan health diagnostics](#plan-health-diagnostics) below.
 2. Check plan status: `specify change plan status`
 3. Identify the blocking entries.
 4. Options:
@@ -130,21 +130,21 @@ For the full how-to, see [Recover from registry-amendment-required](../recover-f
 2. Review the failure in the journal: check `.specify/slices/<name>/journal.yaml` (if it exists before archiving).
 3. To retry: reset the plan entry to `pending` and re-run `/change:execute`.
 
-## Plan doctor diagnostics
+## Plan health diagnostics
 
-`specify change plan doctor` is the first triage step when `/change:execute loop` reports `stuck`. It runs every check `validate` runs, then layers four health diagnostics.
+`specify change plan validate` is the first triage step when `/change:execute loop` reports `stuck`. It runs the base shape rules, then layers four health diagnostics.
 
 ### `cycle-in-depends-on`
 
-**Symptom:** `specify change plan doctor` reports `cycle-in-depends-on` with the cycle path (e.g. `["a", "b", "a"]`).
+**Symptom:** `specify change plan validate` reports `cycle-in-depends-on` with the cycle path (e.g. `["a", "b", "a"]`).
 
-**Cause:** Two or more plan entries form a `depends-on` cycle. `next_eligible` silently skips cycles at runtime, so the executor reports `stuck`; `doctor` is the only place where the cycle structure is surfaced.
+**Cause:** Two or more plan entries form a `depends-on` cycle. `next_eligible` silently skips cycles at runtime, so the executor reports `stuck`; this diagnostic is the only place where the cycle structure is surfaced.
 
-**Resolution:** Break the cycle with `specify change plan amend <name> --depends-on <updated-list>` on one of the entries on the cycle path, then re-run doctor.
+**Resolution:** Break the cycle with `specify change plan amend <name> --depends-on <updated-list>` on one of the entries on the cycle path, then re-run validate.
 
 ### `orphan-source-key`
 
-**Symptom:** `specify change plan doctor` reports `orphan-source-key` (warning) for a key declared in the top-level `sources:` map but referenced by no entry.
+**Symptom:** `specify change plan validate` reports `orphan-source-key` (warning) for a key declared in the top-level `sources:` map but referenced by no entry.
 
 **Cause:** A `--source <key>=<path>` was supplied at plan time but no proposed slice ended up using it (rejected during the propose loop, or scope changed).
 
@@ -152,7 +152,7 @@ For the full how-to, see [Recover from registry-amendment-required](../recover-f
 
 ### `stale-workspace-clone`
 
-**Symptom:** `specify change plan doctor` reports `stale-workspace-clone` (warning) with reason `signature-changed` (URL or capability diverged) or `missing-sync-stamp` (no stamp file and no readable git remote).
+**Symptom:** `specify change plan validate` reports `stale-workspace-clone` (warning) with reason `signature-changed` (URL or capability diverged) or `missing-sync-stamp` (no stamp file and no readable git remote).
 
 **Cause:** The workspace clone's signature has drifted from the registry, typically because `registry.yaml` was edited after the clone was first materialised.
 
@@ -160,7 +160,7 @@ For the full how-to, see [Recover from registry-amendment-required](../recover-f
 
 ### `unreachable-entry`
 
-**Symptom:** `specify change plan doctor` reports `unreachable-entry` for a pending entry whose dependency closure is rooted in a `failed` or `skipped` predecessor.
+**Symptom:** `specify change plan validate` reports `unreachable-entry` for a pending entry whose dependency closure is rooted in a `failed` or `skipped` predecessor.
 
 **Cause:** The entry's `depends-on` list (transitively) names an entry that can never become `done` (it is in a terminal non-success state).
 

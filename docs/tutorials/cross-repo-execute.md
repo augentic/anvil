@@ -78,7 +78,7 @@ The driver:
 6. Restores CWD to the hub root and transitions the plan entry to `done`/`failed`/`blocked`.
 7. Repeats from step 2 until `specify change plan next` reports `all-done` or `stuck`.
 
-After producer contracts change, run `specify compatibility report --change oauth-login` when you want a classified consumer-impact report against workspace views.
+After producer contracts change, run `specify compatibility check --change oauth-login --report-only` when you want a classified consumer-impact report against workspace views.
 
 <details>
 <summary>Expected loop transcript (abbreviated)</summary>
@@ -223,10 +223,10 @@ If you stop here, the cross-repo work is shipped but unmerged. The PRs sit on th
 
 ## Troubleshooting
 
-If `/change:execute loop` exits with `Completion: stuck` or any single invocation reports `reason: stuck`, the first triage step is `specify change plan doctor`:
+If `/change:execute loop` exits with `Completion: stuck` or any single invocation reports `reason: stuck`, the first triage step is `specify change plan validate`:
 
 ```bash
-specify change plan doctor
+specify change plan validate
 ```
 
 `doctor` is a strict superset of `specify change plan validate` — it runs every check `validate` runs, then layers four health diagnostics on top:
@@ -238,13 +238,13 @@ specify change plan doctor
 | `stale-workspace-clone` | warning | Refresh: `specify workspace sync`. |
 | `unreachable-entry` | error | `specify change plan transition <pred> pending` after fixing the predecessor, or `specify change plan transition <entry> skipped --reason "…"` to drop the leaf. |
 
-See [`specify change plan doctor`](../reference/cli/plan.md#specify-plan-doctor) for the full diagnostic table and JSON shape.
+See [`specify change plan validate`](../reference/cli/plan.md#specify-change-plan-validate) for the full diagnostic table and JSON shape.
 
 Other common issues:
 
 - **`Error::DriverBusy { pid }`** — another `/change:execute` is holding `.specify/plan.lock`. If it is dead, `specify change plan lock release --pid <pid>` reclaims the stamp; otherwise wait for the live driver.
 - **`hub-cannot-be-project`** — a registry entry has `url: .` on a hub. Either remove the entry (`specify registry remove <name>`) or convert the hub to a platform-as-project shape by removing `.specify/` and re-running `specify init <capability>` without `--hub`.
-- **Breaking compatibility findings** — run `specify compatibility report --change <name>` to inspect producer-to-consumer contract deltas, then see [Resolve Cross-Project Compatibility Findings](../how-to/resolve-cross-project-contract-warnings.md).
+- **Breaking compatibility findings** — run `specify compatibility check --change <name> --report-only` to inspect producer-to-consumer contract deltas, then see [Resolve Cross-Project Compatibility Findings](../how-to/resolve-cross-project-contract-warnings.md).
 
 ## Verification
 
@@ -276,7 +276,7 @@ The cross-repo loop above is shape-agnostic. The same Steps 1-7 drive three chan
 - `/change:execute loop` `chdir`s into each workspace clone, runs define-build-merge, transitions the plan entry, and routes back. Multi-repo CWD routing is invisible to the phase skills.
 - The contract slice (no `project`) runs against the hub itself; routed implementation slices run inside `.specify/workspace/<peer>/` and leave two commits per slice (baseline merge + residue) ready to push.
 - `specify workspace push` ships prepared `specify/<change-name>` branches as PRs without creating branches, committing residue, pushing default branches, or merging PRs.
-- `specify change plan doctor` is the first triage step when a loop ends `stuck` -- it is `validate` plus four health diagnostics (cycle, orphan source key, stale clone, unreachable entry).
+- `specify change plan validate` is the first triage step when a loop ends `stuck` -- the base shape rules plus four health diagnostics (cycle, orphan source key, stale clone, unreachable entry).
 
 ## Cross-links
 

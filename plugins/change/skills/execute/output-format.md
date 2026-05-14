@@ -69,7 +69,7 @@ Step 3/3: merge
 
 The `(sources: [...])` suffix is rendered only when the plan entry has `sources`; greenfield entries become `### Processing: <name> (greenfield)`. The extract sub-step block inside `Step 1/3: define` is elided when the entry has no `sources`. The `Workspace:` line appears only for entries with `project`. The residue line is omitted when the non-baseline worktree is clean; render `Residue: clean; no commit.` in debug transcripts when showing shell-outs.
 
-Cross-project consumer-impact findings are no longer rendered by `/change:execute`; use `specify compatibility report --change <name>` or `specify compatibility check` for the classified RM-04 report.
+Cross-project consumer-impact findings are no longer rendered by `/change:execute`; use `specify compatibility check --change <name> --report-only` (read-only) or `specify compatibility check` (strict gate) for the classified RM-04 report.
 
 ### Failure
 

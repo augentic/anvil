@@ -112,7 +112,7 @@ Self-heal is the driver's reconciliation pass. It runs **once per `/change:execu
 
 ## Cross-project compatibility report (RM-04)
 
-`/change:execute` does not run the RM-04 compatibility classifier as part of the slice loop. Operators can run `specify compatibility report --change <name>` or `specify compatibility check` after workspace sync or after producer contract changes to compare root `contracts/` against consumer workspace views. RM-11 will decide which classifications become lifecycle gates.
+`/change:execute` does not run the RM-04 compatibility classifier as part of the slice loop. Operators can run `specify compatibility check --change <name> --report-only` (read-only) or `specify compatibility check` (strict gate) after workspace sync or after producer contract changes to compare root `contracts/` against consumer workspace views. RM-11 will decide which classifications become lifecycle gates.
 
 ## Guardrails
 
@@ -129,17 +129,17 @@ The state this skill may mutate is limited to the driver lock, plan status trans
 - Phase outcome missing or malformed after a phase returns means the phase crashed or skipped its `specify slice outcome set` call. Treat as `deferred` with a synthetic summary (`"phase outcome missing after <phase>; driver stopping for triage."`) — do not speculate about which of success / failure was really intended.
 - Self-heal applies the same verbatim-`summary` rule as steps 11c / 12c. Self-heal never paraphrases ambiguity away — halt with exit code 2 and leave the plan entry as `in-progress`.
 - Argument resolution never speculates over an unresolved `sources` key. If a key on the plan entry is absent from the plan's top-level `sources` map, halt with `Error::Config`, name the offending `(slice, key)` pair, release the lock, and exit non-zero.
-- Cross-project compatibility reporting is outside `/change:execute`; run `specify compatibility report --change <name>` or `specify compatibility check` when consumer-impact classification is needed.
+- Cross-project compatibility reporting is outside `/change:execute`; run `specify compatibility check --change <name> --report-only` (read-only) or `specify compatibility check` (strict gate) when consumer-impact classification is needed.
 
-### When the loop reports `stuck`: run `specify change plan doctor`
+### When the loop reports `stuck`: run `specify change plan validate`
 
-When `specify change plan next` returns `reason: stuck`, or when the terminal summary classifies a `loop` exit as `stuck`, the operator's first triage step is `specify change plan doctor`. `doctor` is a strict superset of `change plan validate`: it surfaces the four health issues `validate` does not catch, each with a stable diagnostic code so dashboards and runbooks can route them mechanically.
+When `specify change plan next` returns `reason: stuck`, or when the terminal summary classifies a `loop` exit as `stuck`, the operator's first triage step is `specify change plan validate`. `validate` carries the base shape rules plus the four health diagnostics, each with a stable code so dashboards and runbooks can route them mechanically.
 
 | Code | Severity | Meaning | Recovery |
 |---|---|---|---|
-| `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; doctor is the only place where the cycle path surfaces. | `specify change plan amend <name> --depends-on …` to break the cycle on the offending entry, then re-run `change plan doctor`. |
-| `orphan-source-key` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of validate's `unknown-source`). | Either reference the key from an entry's `sources:` list via `specify change plan amend <name> --sources …` or remove it from the top-level map. Non-fatal. |
+| `cycle-in-depends-on` | error | Dependency cycle in `depends-on`. `next_eligible` silently skips cycles at runtime; validate is the only place where the cycle path surfaces. | `specify change plan amend <name> --depends-on …` to break the cycle on the offending entry, then re-run `change plan validate`. |
+| `orphan-source-key` | warning | Top-level `sources:` key declared but no plan entry references it (the inverse of `unknown-source`). | Either reference the key from an entry's `sources:` list via `specify change plan amend <name> --sources …` or remove it from the top-level map. Non-fatal. |
 | `stale-workspace-clone` | warning | `.specify/workspace/<project>/` clone's signature has drifted from `registry.yaml`, or no signature is readable. | `specify workspace sync` to refresh the clone. Non-fatal. |
 | `unreachable-entry` | error | Pending entry whose dependency closure is rooted in a `failed`/`skipped` predecessor. Distinct from cycles — entries inside a cycle are reported only under `cycle-in-depends-on`. | Recover the predecessor (`specify change plan transition <pred> pending` once the underlying issue is fixed) or `specify change plan transition <entry> skipped --reason "…"` to drop the leaf. |
 
-The driver itself never invokes `change plan doctor` — it is an operator triage verb, not a runtime check. `specify change plan validate` continues to be invoked verbatim by `change plan next` / `change plan status` for the structural-error short-circuit; doctor's four additional codes are surfaced only when the operator asks.
+`change plan next` and `change plan status` short-circuit on the same base shape rules; the four health diagnostics are non-fatal at runtime — they only fail validate's exit code when their severity is `error`. Operators run `change plan validate` ad-hoc as the triage entry point.

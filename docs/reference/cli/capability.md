@@ -14,16 +14,6 @@ specify capability resolve <capability>
 
 Returns the filesystem path to the cached capability. Used by skills to locate brief files.
 
-### specify capability check
-
-Validate a capability manifest's structural integrity.
-
-```bash
-specify capability check [<capability>]
-```
-
-Checks that `capability.yaml` conforms to the capability JSON Schema, all referenced brief files exist, and the pipeline topology is acyclic.
-
 ### specify capability pipeline
 
 Show the brief pipeline for a phase.

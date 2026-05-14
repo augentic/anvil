@@ -80,13 +80,13 @@ specify context generate --check          # CI dry-run; exit 1 when context woul
 specify context check                     # report stale AGENTS.md/context.lock state
 
 # Slice management
-specify slice list
+specify status                                   # render every active slice
 specify slice transition <name> <target>
 
 # Plan management
 specify change plan status
 specify change plan next
-specify change plan doctor                       # validate + cycle / orphan / stale-clone / unreachable
+specify change plan validate                     # base shape + cycle / orphan / stale-clone / unreachable
 specify change plan transition <name> <target>
 specify change plan lock status
 

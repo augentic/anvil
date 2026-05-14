@@ -8,7 +8,7 @@ The verifier runs in two modes, but RM-04 compatibility reporting is a CLI surfa
 |---|---|---|---|
 | Format verifier `single` (default) | Markdown | contracts capability build brief in `/spec:build` | Post-author or post-import; verify-repair loop |
 | Format verifier `cross-project` | JSON envelope from `specify tool run contract` | contracts capability merge brief | Post-merge baseline validation gate |
-| `specify compatibility report --change <name>` | Versioned CLI JSON or text | operator / CI | Read-only producer-to-consumer compatibility classification |
+| `specify compatibility check --change <name> --report-only` | Versioned CLI JSON or text | operator / CI | Read-only producer-to-consumer compatibility classification |
 
 `single` mode is human-readable; the contracts capability build brief drives a verify-repair loop until the report is clean. Format-verifier `cross-project` mode delegates to the declared `contract` WASI tool and preserves its baseline-validation JSON envelope. The RM-04 compatibility report is produced by the `specify compatibility` CLI family and classifies consumer impact as `additive`, `breaking`, `ambiguous`, or `unverifiable`.
 
@@ -78,7 +78,7 @@ WARN: contracts/schemas/payment.yaml — "$schema" is Draft 7; expected Draft 20
 
 ## Compatibility report output (CLI JSON)
 
-`specify compatibility report --change <name>` emits a normal versioned Specify CLI JSON envelope when `--format json` is selected. `specify compatibility check` emits the same payload and exits validation-failed when any finding is `breaking`, `ambiguous`, or `unverifiable`.
+`specify compatibility check --change <name> --report-only` emits a normal versioned Specify CLI JSON envelope when `--format json` is selected. The bare `specify compatibility check` (with or without `--change`) emits the same payload and exits validation-failed when any finding is `breaking`, `ambiguous`, or `unverifiable`; `--report-only` suppresses that exit code.
 
 ### Findings present
 
@@ -136,7 +136,7 @@ The report is well-formed even when empty.
 | Field | Type | Description |
 |---|---|---|
 | `envelope-version` | integer | Standard Specify CLI JSON envelope version. |
-| `change` | string | Change name supplied with `--change`; absent for `compatibility check`. |
+| `change` | string | Change name supplied with `--change`; absent when no `--change` flag was passed. |
 | `checked-pairs` | integer | Number of producer / consumer contract pairs inspected. |
 | `ok` | boolean | `true` iff no `breaking`, `ambiguous`, or `unverifiable` findings are present. |
 | `findings` | array | One entry per detected compatibility delta or unverifiable pair. |
@@ -181,7 +181,7 @@ Path segments containing dots (e.g. `application/json`) are kept verbatim — lo
 
 ### Compatibility exit semantics
 
-`specify compatibility report --change <name>` exits `0` when it can render a report, even if the report contains `breaking`, `ambiguous`, or `unverifiable` findings. `specify compatibility check` exits `0` only when `ok: true`; otherwise it exits with the normal Specify validation-failed code.
+`specify compatibility check --report-only` exits `0` when it can render a report, even if the report contains `breaking`, `ambiguous`, or `unverifiable` findings. Without `--report-only`, `specify compatibility check` exits `0` only when `ok: true`; otherwise it exits with the normal Specify validation-failed code.
 
 ## Author / importer report shape
 
