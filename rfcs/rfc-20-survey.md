@@ -1,6 +1,6 @@
 # RFC-20: Survey-to-Plan Pipeline
 
-> Status: Draft - Depends: [RFC-3a](archive/rfc-3a-monoliths.md), [RFC-3b](archive/rfc-3b-platform.md), [RFC-9](archive/rfc-9-platform.md), [RFC-13](archive/rfc-13-extensibility.md)
+> Status: Draft - Depends: [RFC-3a](archive/rfc-3a-monoliths.md), [RFC-3b](archive/rfc-3b-platform.md), [RFC-9](archive/rfc-9-platform.md), [RFC-13](archive/rfc-13-extensibility.md) - See also: [RFC-23](archive/rfc-23-change-lifecycle.md)
 
 ## Abstract
 
@@ -10,12 +10,12 @@ Concretely, this RFC adds:
 
 1. A new closed-enum kind `domain-model` for `/change:analyze`, with a pinned schema for bounded contexts, aggregates, ownership, and routing hints. This is the top-down architectural anchor for decomposition.
 2. A pinned **T-shirt sizing rubric** for plan-time chunks — LOC-based defaults at the framework level, optionally tightened per capability.
-3. A new `survey` brief, run between sync-workspace (3b) and propose (3c), that performs an **iterative top-down decomposition** of the system into a DAG of chunks, halting at slice-sized leaves. It emits `survey.md` — a byte-stable representation of the DAG plus per-node sizing, evidence, and routing metadata.
-4. A new `synthesise` brief, run after survey, that reconciles documented capabilities against the survey's leaves and appends a `## Reconciliation` block to `discovery.md`.
+3. A new `survey` brief, run between sync-workspace (4b) and propose (4c) of the `/change:draft` Critical Path, that performs an **iterative top-down decomposition** of the system into a DAG of chunks, halting at slice-sized leaves. It emits `survey.md` — a byte-stable representation of the DAG plus per-node sizing, evidence, and routing metadata.
+4. A new `synthesize` brief, run after survey, that reconciles documented capabilities against the survey's leaves and appends a `## Reconciliation` block to `discovery.md`.
 
 The `/change:draft` skill's five-step loop, the single-writer invariant for `plan.yaml`, and the closed-kind enum's strict validation posture are preserved. `/change:analyze` remains a one-shot fan-out per source — the survey brief consumes its inventory and structural metadata, not the source code itself. The four scenarios this RFC unblocks — single-repo legacy migration, multi-repo legacy migration, greenfield multi-repo, and brownfield multi-repo — share the same pipeline; only the inputs differ.
 
-Splitting today's plan-skill umbrella into the three-skill change lifecycle (`/change:draft` → operator review → `/change:execute loop` → `/change:finalize`) is an independent concern tracked in [RFC-23](rfc-23-change-lifecycle.md); the two RFCs do not depend on each other, but if both land in the same release the CHANGELOG combines the operator-facing notes.
+Splitting today's plan-skill umbrella into the three-skill change lifecycle (`/change:draft` → operator review → `/change:execute loop` → `/change:finalize`) is an independent concern tracked in [RFC-23](archive/rfc-23-change-lifecycle.md); the two RFCs do not depend on each other, but if both land in the same release the CHANGELOG combines the operator-facing notes.
 
 ## Motivation
 
@@ -27,7 +27,7 @@ The framework already supports per-source capability extraction (`/change:analyz
 - **No reconciliation step.** When the docs claim capability X exists and the code shows capability Y, today's pipeline appends both with their respective confidences and lets the operator notice the mismatch in the propose review. There is no first-class reconciliation block that flags "documented but not in code", "in code but undocumented", or "evidence concordance".
 - **Scenario coverage is uneven.** Single-source migrations work cleanly when the source is already small. Larger sources and multi-source migrations (80+ repos) degrade because each plan is sequential, idempotent only at the per-source level, and lacks a structured decomposition.
 
-The framework already pins a clean separation between *plan-time, shallow* (analyze) and *define-time, deep* (extract) work ([`legacy-migration-at-scale.md`](../docs/tutorials/legacy-migration-at-scale.md)). This RFC adds the missing **decomposition** primitive on top of analyze, and adds the structured architectural input that anchors it.
+The framework already pins a clean separation between *plan-time, shallow* (analyze) and *define-time, deep* (extract) work (`[legacy-migration-at-scale.md](../docs/tutorials/legacy-migration-at-scale.md)`). This RFC adds the missing **decomposition** primitive on top of analyze, and adds the structured architectural input that anchors it.
 
 ## Design
 
@@ -36,16 +36,16 @@ The framework already pins a clean separation between *plan-time, shallow* (anal
 1. **Migration planning, not spec extraction.** The surveyor reads enough of the system to decompose it; it does not extract aggregate-level domain logic. Specs remain the responsibility of `/spec:extract` and `/spec:define`, invoked at slice-implementation time.
 2. **Top-down decomposition with an explicit stopping criterion.** The system is decomposed iteratively, level by level, until every leaf is T-shirt: Small (or smaller). Decomposition halts at the first level that satisfies the rubric — there is no over-decomposition.
 3. **DAG, not tree.** Shared subcomponents (a common auth library, a shared schema crate) appear once and are referenced from multiple parents. The migration order falls out of the DAG's topological sort.
-4. **Capability-owned, framework-shaped.** The new kind, the survey brief, and the synthesise brief are framework concerns; per-capability prompts (clustering heuristics, refined sizing rubrics, reconciliation algorithms) live in `plugins/change/skills/plan/briefs/<capability>/`.
+4. **Capability-owned, framework-shaped.** The new kind, the survey brief, and the synthesize brief are framework concerns; per-capability prompts (clustering heuristics, refined sizing rubrics, reconciliation algorithms) live in `plugins/change/skills/draft/briefs/<capability>/`.
 5. **Closed enums stay closed.** Adding `domain-model` to the kind enum is an explicit change, not an open extension point. Unknown kinds remain a hard exit.
 6. **Idempotency is non-negotiable.** Every new artifact (`survey.md`, `## Reconciliation`, `## Domain model`) must be byte-stable on unchanged inputs, with sorted ordering, fixed field order, and no host-state leaks.
-7. **Read-only with respect to `plan.yaml`.** Survey and synthesise emit Markdown under `.specify/plans/<change>/`; neither writes to `plan.yaml`. The propose brief still owns slice creation through `specify plan add`.
+7. **Read-only with respect to `plan.yaml`.** Survey and synthesize emit Markdown under `.specify/plans/<change>/`; neither writes to `plan.yaml`. The propose brief still owns slice creation through `specify plan add`.
 8. **Composition only.** Where possible, new behaviour is a brief layered on existing skill primitives. New CLI verbs are introduced only when no existing primitive fits.
 9. **One change at a time.** Multi-plan output, parallel changes, and cross-change state are RFC-21 (catalogue + cache) and RFC-22 (ledger + mapping) concerns.
 
 ### `domain-model` as a third closed-enum kind for `/change:analyze`
 
-Today the kind enum is `{legacy-code, documentation}` ([`/change:analyze` SKILL.md](../plugins/change/skills/analyze/SKILL.md)). This RFC adds `domain-model`. The enum becomes `{legacy-code, documentation, domain-model}` and remains hard-closed; unknown values are still a non-zero exit before any partial write.
+Today the kind enum is `{legacy-code, documentation}` (`[/change:analyze` SKILL.md](../plugins/change/skills/analyze/SKILL.md)). This RFC adds `domain-model`. The enum becomes `{legacy-code, documentation, domain-model}` and remains hard-closed; unknown values are still a non-zero exit before any partial write.
 
 The new kind branches `/change:analyze` into a third path that:
 
@@ -55,7 +55,7 @@ The new kind branches `/change:analyze` into a third path that:
   1. A `## Domain model` section appended to `<output-dir>/discovery.md` (under the existing `## Capability inventory` wrapper) — see *Discovery section shape* below.
   2. A structural sidecar at `<plan-dir>/analyze/<source-key>/domain-model.json` — the parsed, byte-canonicalised model, ready for the survey brief to consume without re-parsing the source.
 
-The clustering and extraction prompts for the new branch live alongside the existing two in `plugins/change/skills/plan/briefs/<capability>/analyze.md`, so capability-specific name-mapping conventions stay capability-owned.
+The clustering and extraction prompts for the new branch live alongside the existing two in `plugins/change/skills/draft/briefs/<capability>/analyze.md`, so capability-specific name-mapping conventions stay capability-owned.
 
 ### `domain-model` schema
 
@@ -81,17 +81,19 @@ relationships:
 
 Schema rules (`additionalProperties: false` everywhere, mirroring `plan.schema.json` and `registry.yaml` posture):
 
-| Field | Required | Notes |
-| --- | --- | --- |
-| `version` | yes | `1` only; future bumps go through an RFC update. |
-| `bounded_contexts[].name` | yes | Kebab-case, unique within the document. |
-| `bounded_contexts[].description` | yes | Single-line free text. |
-| `bounded_contexts[].aggregates` | no | Kebab-case; sorted alphabetically. |
-| `bounded_contexts[].owners` | no | Kebab-case team identifiers; sorted. |
-| `bounded_contexts[].target_project` | no | Kebab-case; matches `registry.yaml:projects[].name` when the registry exists. Routing hint, not a binding. |
-| `bounded_contexts[].sources` | no | Kebab-case source-keys; matches the `--source <key>=…` namespace (or, with RFC-21, a key in `sources.yaml`). |
-| `bounded_contexts[].ubiquitous_language` | no | Optional glossary; surfaces in propose for naming consistency checks. |
-| `relationships[].pattern` | no | Closed enum: `customer-supplier`, `partnership`, `shared-kernel`, `conformist`, `anti-corruption-layer`, `published-language`, `open-host-service`, `separate-ways`. Standard DDD context-map vocabulary. |
+
+| Field                                    | Required | Notes                                                                                                                                                                                                     |
+| ---------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version`                                | yes      | `1` only; future bumps go through an RFC update.                                                                                                                                                          |
+| `bounded_contexts[].name`                | yes      | Kebab-case, unique within the document.                                                                                                                                                                   |
+| `bounded_contexts[].description`         | yes      | Single-line free text.                                                                                                                                                                                    |
+| `bounded_contexts[].aggregates`          | no       | Kebab-case; sorted alphabetically.                                                                                                                                                                        |
+| `bounded_contexts[].owners`              | no       | Kebab-case team identifiers; sorted.                                                                                                                                                                      |
+| `bounded_contexts[].target_project`      | no       | Kebab-case; matches `registry.yaml:projects[].name` when the registry exists. Routing hint, not a binding.                                                                                                |
+| `bounded_contexts[].sources`             | no       | Kebab-case source-keys; matches the `--source <key>=…` namespace (or, with RFC-21, a key in `sources.yaml`).                                                                                              |
+| `bounded_contexts[].ubiquitous_language` | no       | Optional glossary; surfaces in propose for naming consistency checks.                                                                                                                                     |
+| `relationships[].pattern`                | no       | Closed enum: `customer-supplier`, `partnership`, `shared-kernel`, `conformist`, `anti-corruption-layer`, `published-language`, `open-host-service`, `separate-ways`. Standard DDD context-map vocabulary. |
+
 
 The schema rejects unknown top-level keys, unknown bounded-context keys, and unknown relationship patterns. Validation is performed by a small library extension to the existing `specify-validate` crate; invalid input fails before any write.
 
@@ -99,19 +101,21 @@ The schema rejects unknown top-level keys, unknown bounded-context keys, and unk
 
 Every node in the decomposition DAG carries a T-shirt size computed from a framework-pinned rubric. The default thresholds are LOC-based on **production source only**, excluding tests, generated code, vendored dependencies, third-party imports, blank lines, and comment-only lines:
 
-| Size | Production LOC | Plan-time meaning |
-| --- | --- | --- |
-| XS | `< 200` | Already slice-sized; promote directly. Often already extracted or trivially mappable. |
-| **S** | `200–999` | **Slice-sized. STOP — emit as a leaf.** |
-| M | `1000–4999` | Decompose further. |
-| L | `5000–19999` | Decompose further. |
-| XL | `≥ 20000` | Decompose further; expect ≥ 2 levels of decomposition remaining. |
 
-A node is a **slice-candidate leaf** iff its size is XS or S. Internal (non-leaf) nodes are M or larger. The stopping criterion is uniform across the DAG: any node that measures XS or S becomes a leaf, regardless of depth.
+| Size  | Production LOC | Plan-time meaning                                                                     |
+| ----- | -------------- | ------------------------------------------------------------------------------------- |
+| XS    | `< 200`        | Already slice-sized; promote directly. Often already extracted or trivially mappable. |
+| **S** | `200–1499`     | **Slice-sized. STOP — emit as a leaf.**                                               |
+| M     | `1500–4999`    | Decompose further.                                                                    |
+| L     | `5000–19999`   | Decompose further.                                                                    |
+| XL    | `≥ 20000`      | Decompose further; expect ≥ 2 levels of decomposition remaining.                      |
+
+
+A node is a **slice-candidate leaf** if its size is XS or S. Internal (non-leaf) nodes are M or larger. The stopping criterion is uniform across the DAG: any node that measures XS or S becomes a leaf, regardless of depth.
 
 Per-capability briefs MAY refine the rubric with additional constraints — for example, "Omnia slices are S iff LOC < 1000 *and* aggregate count ≤ 1 *and* external endpoint count ≤ 3." Refinements may only *tighten* the framework rubric (a node the framework calls S may be re-classified M by the capability), never loosen it. This guarantees that propose can rely on the leaf invariant: every input it receives is at most S by both framework and capability measures.
 
-A small CLI helper `specify plan size --path <dir> [--capability <name>]` computes the production-LOC count using a pinned set of language-aware include/exclude globs (framework defaults at `specify-cli/sizing.toml`; per-capability overrides at `plugins/change/skills/plan/briefs/<cap>/sizing.toml`). The survey loop calls it under the hood; operators can call it directly to audit sizing decisions. The globs and LOC counter are deterministic — re-running on unchanged inputs yields identical counts.
+A small CLI helper `specify plan size --path <dir> [--capability <name>]` computes the production-LOC count using a pinned set of language-aware include/exclude globs (framework defaults at `specify-cli/sizing.toml`; per-capability overrides at `plugins/change/skills/draft/briefs/<cap>/sizing.toml`). The survey loop calls it under the hood; operators can call it directly to audit sizing decisions. The globs and LOC counter are deterministic — re-running on unchanged inputs yields identical counts.
 
 ### Survey topology: the decomposition DAG
 
@@ -125,21 +129,23 @@ The system being surveyed is modelled as a directed acyclic graph:
 
 Each node carries:
 
-| Attribute | Notes |
-| --- | --- |
-| `id` | Kebab-case, unique within the survey. Hierarchical (`identity.user-registration`) for readability; not parsed structurally. |
-| `name` | Short human label. |
-| `size` | `xs | s | m | l | xl`. |
-| `loc` | Production LOC count, integer. |
-| `sources` | `[source-key, ...]` the node spans. Multi-source nodes are first-class. |
-| `bounded_context` | Optional, present when the node aligns with a documented bounded context. |
-| `target_project` | Optional routing hint, inherited from the nearest ancestor (or bounded context) that carries one. |
-| `capabilities` | `[capability-name, ...]` from the per-source analyze inventory that fall within this node. |
-| `evidence` | Short prose explaining why this cut was chosen (e.g., "module boundary `src/billing/`", "bounded context `billing`", "import-graph cluster"). |
-| `children` | `[node-id, ...]`, empty for leaves. |
-| `depends_on` | `[node-id, ...]` cross-edges to shared chunks. |
-| `depends_on_by` | `[node-id, ...]` reverse cross-edges. Populated by the framework from `depends_on`; emitted for shared leaves so the migration-order section is self-contained. |
-| `unresolved` | `true` when no signal cleanly applies and the node still measures M or larger. Operator review required. |
+
+| Attribute         | Notes                                                                                                                                                           |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`              | Kebab-case, unique within the survey. Hierarchical (`identity.user-registration`) for readability; not parsed structurally.                                     |
+| `name`            | Short human label.                                                                                                                                              |
+| `size`            | `xs                                                                                                                                                             |
+| `loc`             | Production LOC count, integer.                                                                                                                                  |
+| `sources`         | `[source-key, ...]` the node spans. Multi-source nodes are first-class.                                                                                         |
+| `bounded_context` | Optional, present when the node aligns with a documented bounded context.                                                                                       |
+| `target_project`  | Optional routing hint, inherited from the nearest ancestor (or bounded context) that carries one.                                                               |
+| `capabilities`    | `[capability-name, ...]` from the per-source analyze inventory that fall within this node.                                                                      |
+| `evidence`        | Short prose explaining why this cut was chosen (e.g., "module boundary `src/billing/`", "bounded context `billing`", "import-graph cluster").                   |
+| `children`        | `[node-id, ...]`, empty for leaves.                                                                                                                             |
+| `depends_on`      | `[node-id, ...]` cross-edges to shared chunks.                                                                                                                  |
+| `depends_on_by`   | `[node-id, ...]` reverse cross-edges. Populated by the framework from `depends_on`; emitted for shared leaves so the migration-order section is self-contained. |
+| `unresolved`      | `true` when no signal cleanly applies and the node still measures M or larger. Operator review required.                                                        |
+
 
 Edges within each list are sorted by child `id` for byte-stability; nodes are emitted in topological order (root first, then BFS by depth, alphabetical within each depth band).
 
@@ -157,7 +163,7 @@ Decomposition halts when every reachable leaf from the root is XS, S, or marked 
 
 ### The `survey` brief
 
-A new brief at `plugins/change/skills/plan/survey.md` runs as **step 3(b.5)** in the `/change:draft` loop — between sync-workspace (3b) and propose (3c). For inputs whose composite root is already XS or S (very small single-source migrations), the survey brief emits a one-node DAG and a one-line `Survey: root is already slice-sized (S, 743 LOC).` summary; everything else gets a full decomposition.
+A new brief at `plugins/change/skills/draft/survey.md` runs as **step 4(b.5)** in the `/change:draft` loop — between sync-workspace (4b) and propose (4c). For inputs whose composite root is already XS or S (very small single-source migrations), the survey brief emits a one-node DAG and a one-line `Survey: root is already slice-sized (S, 743 LOC).` summary; everything else gets a full decomposition.
 
 The brief is read-only with respect to `plan.yaml`. It reads:
 
@@ -259,7 +265,7 @@ Topological sort of leaves, dependencies-first:
 
 Idempotency rules mirror `discovery.md`: alphabetical sort within every list/table, no timestamps, no absolute paths, no run IDs, no host-state leaks. Re-running survey on unchanged inputs produces a byte-identical `survey.md`. Field order inside each node block is fixed: `sources`, `bounded_context`, `target_project`, `capabilities`, `evidence`, `children`, `depends_on`, `depends_on_by`, `unresolved`.
 
-The detailed clustering, cut-selection, and dependency-extraction algorithms are **capability-owned** and live in `plugins/change/skills/plan/briefs/<capability>/survey.md`. The framework brief pins:
+The detailed clustering, cut-selection, and dependency-extraction algorithms are **capability-owned** and live in `plugins/change/skills/draft/briefs/<capability>/survey.md`. The framework brief pins:
 
 - the input set;
 - the sizing rubric (LOC defaults; capability refinements layer on);
@@ -267,9 +273,9 @@ The detailed clustering, cut-selection, and dependency-extraction algorithms are
 - the decomposition strategy priority list;
 - the byte-stable output contract.
 
-### The `synthesise` brief
+### The `synthesize` brief
 
-A new brief at `plugins/change/skills/plan/synthesise.md` runs as **step 3(b.6)** — immediately after survey, before propose. Its job is to reconcile *what the docs and domain model say* against *what the decomposition revealed*, and to emit a `## Reconciliation` block appended to `discovery.md`.
+A new brief at `plugins/change/skills/draft/synthesize.md` runs as **step 4(b.6)** — immediately after survey, before propose. Its job is to reconcile *what the docs and domain model say* against *what the decomposition revealed*, and to emit a `## Reconciliation` block appended to `discovery.md`.
 
 Reconciliation operates at the **leaf level** of the survey DAG. This is a deliberate choice: reconciling at intermediate nodes inflates noise (the same mismatch echoes up the tree), while leaf-level reconciliation surfaces concrete actionable mismatches per slice candidate.
 
@@ -310,13 +316,13 @@ Output: a single appended `## Reconciliation` section in `discovery.md`:
 
 Each subsection is omitted if empty. Within each subsection, entries are sorted alphabetically by their leading identifier. The reconciliation block is written once per run; an `extend` mode rewrites it from current state.
 
-The reconciliation prompt is **capability-owned** and lives in `plugins/change/skills/plan/briefs/<capability>/synthesise.md`. The framework brief pins the section structure and idempotency rules.
+The reconciliation prompt is **capability-owned** and lives in `plugins/change/skills/draft/briefs/<capability>/synthesize.md`. The framework brief pins the section structure and idempotency rules.
 
 ### Discovery section shape
 
 `/change:analyze --kind domain-model` appends one well-defined block per bounded context to `discovery.md`, alphabetically sorted by `name`, under a stable `## Domain model` heading. The discovery brief writes the heading once before invoking analyze (analogous to the existing `## Capability inventory` wrapper).
 
-````markdown
+```markdown
 ## Domain model
 
 <!-- source-key: <k> -->
@@ -332,26 +338,29 @@ relationships:
   - downstream: notifications
     pattern: customer-supplier
 ```
-````
+
+```
 
 Field order inside the YAML block is fixed: `description`, `aggregates`, `owners`, `target_project`, `sources`, `relationships`. Lists are sorted alphabetically. The `relationships` array within a context lists only the relationships *originating* from that context (deduplication by upstream).
 
 ### Pipeline ordering
 
-The `/change:draft` skill's brief pipeline (steps 3a–3d) becomes:
+The `/change:draft` skill's brief pipeline (sub-steps 4a–4d of the draft Critical Path) becomes:
+
 
 | Step | Today | After RFC-20 |
-| --- | --- | --- |
-| 3(a) | Discovery → `/change:analyze` per input → `discovery.md` | unchanged contract; new `domain-model` kind dispatches a third branch |
-| 3(b) | Sync workspace (multi-repo only) → `workspace.md` | unchanged |
-| **3(b.5)** | — | **Survey → top-down DAG decomposition → `survey.md`** |
-| **3(b.6)** | — | **Synthesise → appends `## Reconciliation` to `discovery.md`, keyed by survey leaves** |
-| 3(c) | Propose → `specify plan add` per accepted slice | propose brief consumes `survey.md` leaves as the candidate slice set |
-| 3(d) | Assignment (multi-repo only) → `specify plan amend --project` | unchanged contract; assignment reads `target_project` hints from survey nodes |
+| ---- | ----- | ------------ |
+| 4(a) | Discovery → `/change:analyze` per input → `discovery.md` | unchanged contract; new `domain-model` kind dispatches a third branch |
+| 4(b) | Sync workspace (multi-repo only) → `workspace.md` | unchanged |
+| **4(b.5)** | — | **Survey → top-down DAG decomposition → `survey.md`** |
+| **4(b.6)** | — | **Synthesize → appends `## Reconciliation` to `discovery.md`, keyed by survey leaves** |
+| 4(c) | Propose → `specify plan add` per accepted slice | propose brief consumes `survey.md` leaves as the candidate slice set |
+| 4(d) | Assignment (multi-repo only) → `specify plan amend --project` | unchanged contract; assignment reads `target_project` hints from survey nodes |
 
-Steps 1, 2, 4 (validate), and 5 (hand-off) are unchanged. Re-entry of `/change:draft` treats the new artifacts as part of the plan-time scratch; they live under `.specify/plans/<change>/` and are swept by `specify plan archive`.
 
-`/change:analyze` remains a single fan-out at 3(a). The survey brief does **not** re-invoke analyze at deeper levels. If a particular cut requires finer-grained capability inventory than the level-0 analyze produced, the surveyor records `unresolved: true` on the parent node and defers to the operator; re-running analyze with refined `--source` scoping is an operator decision, not a survey-internal loop. This preserves analyze's per-source idempotency contract.
+The `/change:draft` Critical Path's outer steps — pre-flight (1), brief scaffold (2), registry validate (3), final `specify plan validate` (5), and hand-off summary (6) — are unchanged. Re-entry of `/change:draft` treats the new artifacts as part of the plan-time scratch; they live under `.specify/plans/<change>/` and are swept by `specify plan archive`.
+
+`/change:analyze` remains a single fan-out at 4(a). The survey brief does **not** re-invoke analyze at deeper levels. If a particular cut requires finer-grained capability inventory than the level-0 analyze produced, the surveyor records `unresolved: true` on the parent node and defers to the operator; re-running analyze with refined `--source` scoping is an operator decision, not a survey-internal loop. This preserves analyze's per-source idempotency contract.
 
 ### Routing hint precedence
 
@@ -382,29 +391,31 @@ One new internal subcommand under the existing `plan` namespace:
 Skills change:
 
 - `/change:analyze` SKILL.md updates: add the third kind to the closed enum table, add a `## Domain model` output contract section, add the structural sidecar shape for `domain-model.json`, update the guardrail list.
-- `/change:draft` SKILL.md updates: add steps 3(b.5) and 3(b.6) to the Critical Path, add references to `survey.md` and `synthesise.md`, document the sizing rubric.
-- New brief siblings: `plugins/change/skills/plan/survey.md`, `plugins/change/skills/plan/synthesise.md`.
-- New per-capability brief siblings: `plugins/change/skills/plan/briefs/<cap>/survey.md`, `plugins/change/skills/plan/briefs/<cap>/synthesise.md`, optional `plugins/change/skills/plan/briefs/<cap>/sizing.toml`.
+- `/change:draft` SKILL.md updates: add steps 4(b.5) and 4(b.6) to the Critical Path, add references to `survey.md` and `synthesize.md`, document the sizing rubric.
+- New brief siblings: `plugins/change/skills/draft/survey.md`, `plugins/change/skills/draft/synthesize.md`.
+- New per-capability brief siblings: `plugins/change/skills/draft/briefs/<cap>/survey.md`, `plugins/change/skills/draft/briefs/<cap>/synthesize.md`, optional `plugins/change/skills/draft/briefs/<cap>/sizing.toml`.
 
 ### Scenario coverage
 
+
 | Scenario | Pre-RFC-20 | Post-RFC-20 |
-| --- | --- | --- |
-| 1. Legacy monolith → multi-target | Discovery clusters; topology proposal is code-driven only; operator decomposes by hand. | DAG decomposition produces slice-sized leaves directly; domain model drives bounded-context cuts; synthesise reconciles docs vs code per leaf. |
-| 2. Multi-repo legacy migration | Sequential per-source analyze; no cross-source view; no migration order. | Survey synthesises across N sources, identifies shared dependencies, produces a topological migration order; consolidation/split candidates are explicit leaves. (Catalogue and tier-1 cache deferred to RFC-21; cross-change ledger and `mapping` field deferred to RFC-22.) |
+| ---------| ---------- | ----------- |
+| 1. Legacy monolith → multi-target | Discovery clusters; topology proposal is code-driven only; operator decomposes by hand. | DAG decomposition produces slice-sized leaves directly; domain model drives bounded-context cuts; synthesize reconciles docs vs code per leaf. |
+| 2. Multi-repo legacy migration | Sequential per-source analyze; no cross-source view; no migration order. | Survey synthesizes across N sources, identifies shared dependencies, produces a topological migration order; consolidation/split candidates are explicit leaves. (Catalogue and tier-1 cache deferred to RFC-21; cross-change ledger and `mapping` field deferred to RFC-22.) |
 | 3. Greenfield multi-repo | Topology proposal driven by capability clustering of docs. | Domain model seeds the DAG root; bounded contexts → projects mapping is explicit; the DAG is sparse but the same shape. |
 | 4. Brownfield multi-repo | Routing via `workspace.md` baseline affinity. | Survey leaves carry inherited `target_project` hints; domain-model overrides cleanly when bounded contexts cross baseline boundaries. |
+
 
 ## Implementation Plan
 
 1. **Schema and validator.** Add `specify-cli/schemas/domain-model/schema.json` and `specify-cli/schemas/domain-model/README.md`. Extend `specify-validate` with a domain-model validator. Add unit tests covering required fields, kebab-case constraints, the relationship-pattern enum, and `additionalProperties: false`.
 2. **Sizing helper.** Add `specify plan size` CLI subcommand with framework-default include/exclude globs at `specify-cli/sizing.toml` and a `--capability` flag that loads `briefs/<cap>/sizing.toml`. Pin the LOC counter algorithm (line-based, language-aware blank/comment skipping). v1 languages: TypeScript, JavaScript, Python, Rust, Go. Add fixtures asserting deterministic counts on sample trees.
 3. **Closed-enum extension in `/change:analyze`.** Update the SKILL.md kind enum, the per-capability `analyze.md` brief structure, and the `--kind` validation in any helper that enforces the enum. Land first as a stub branch that errors with `domain-model-not-yet-implemented` so operators get a stable diagnostic.
-4. **Domain-model branch in the per-capability brief.** Implement the Omnia per-capability variant first (`plugins/change/skills/plan/briefs/omnia/analyze.md`), with fixtures under `plugins/change/skills/plan/briefs/omnia/fixtures/analyze/domain-model/`. Vectis variant follows.
+4. **Domain-model branch in the per-capability brief.** Implement the Omnia per-capability variant first (`plugins/change/skills/draft/briefs/omnia/analyze.md`), with fixtures under `plugins/change/skills/draft/briefs/omnia/fixtures/analyze/domain-model/`. Vectis variant follows.
 5. **Discovery section shape.** Extend the discovery brief and the `omnia/discovery.md` brief to write the `## Domain model` heading wrapper. Pin a fixture for the byte-stable shape.
-6. **Survey brief.** Land `plugins/change/skills/plan/survey.md` (framework-level) with the DAG schema, decomposition strategy priority list, and output shape. Land `plugins/change/skills/plan/briefs/omnia/survey.md` (capability-owned) with the Omnia clustering heuristics. Fixtures: root-already-S no-op, single-source XL decomposition, multi-source consolidation, multi-source split with shared dependency, mixed-input with domain model, unresolved-node escape.
-7. **Synthesise brief.** Land `plugins/change/skills/plan/synthesise.md` and `plugins/change/skills/plan/briefs/omnia/synthesise.md`. Fixtures: docs-only, code-only, mixed concordance, unresolved-node carry-through.
-8. **Pipeline wiring.** Update `/change:draft` SKILL.md and `references/runbook.md` to add steps 3(b.5) and 3(b.6). Update the verb-hygiene table. Document the sizing rubric and the leaf-invariant contract between survey and propose.
+6. **Survey brief.** Land `plugins/change/skills/draft/survey.md` (framework-level) with the DAG schema, decomposition strategy priority list, and output shape. Land `plugins/change/skills/draft/briefs/omnia/survey.md` (capability-owned) with the Omnia clustering heuristics. Fixtures: root-already-S no-op, single-source XL decomposition, multi-source consolidation, multi-source split with shared dependency, mixed-input with domain model, unresolved-node escape.
+7. **Synthesize brief.** Land `plugins/change/skills/draft/synthesize.md` and `plugins/change/skills/draft/briefs/omnia/synthesize.md`. Fixtures: docs-only, code-only, mixed concordance, unresolved-node carry-through.
+8. **Pipeline wiring.** Update `/change:draft` SKILL.md and `references/runbook.md` to add steps 4(b.5) and 4(b.6). Update the verb-hygiene table. Document the sizing rubric and the leaf-invariant contract between survey and propose.
 9. **Routing-hint precedence.** Update `assignment.md` to document the new precedence order and the survey-leaf `target_project` surface. Land fixtures showing routing rationale text quoting survey nodes.
 10. **Tutorials.** Add `docs/tutorials/decomposing-a-monolith.md` walking Scenarios 1 and 2 through the survey DAG. Update `docs/tutorials/legacy-migration-at-scale.md` to cite the survey brief instead of describing manual decomposition.
 11. **Acceptance.** Extend the cross-repo Deno acceptance suite with a domain-model-driven greenfield fixture, a multi-source consolidation fixture with shared dependency, and an XL monolith decomposition fixture.
@@ -423,7 +434,7 @@ For operators:
 For capability authors:
 
 - Add a `## Domain model` branch to the per-capability `analyze.md` brief.
-- Add a `survey.md` and `synthesise.md` brief under the capability's brief directory; reference the framework fixtures.
+- Add a `survey.md` and `synthesize.md` brief under the capability's brief directory; reference the framework fixtures.
 - Optionally add a `sizing.toml` to tighten the framework default sizing rubric (e.g., layer aggregate-count or endpoint-count constraints on top of LOC).
 
 For skill authors consuming planning artifacts:
@@ -471,7 +482,7 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 - A general "context map import" workflow from external DDD tools (out of scope; the schema is small enough for hand authoring or a thin importer in a future RFC).
 - Runtime enforcement of bounded-context boundaries in generated code (a runtime concern, not a planning concern).
 - Multi-plan output or parallel changes.
-- **Splitting the plan-skill umbrella into the three-skill change lifecycle (`/change:draft` → `/change:execute` → `/change:finalize`).** Tracked separately in [RFC-23](rfc-23-change-lifecycle.md). The two RFCs are independent; either may land first.
+- **Splitting the plan-skill umbrella into the three-skill change lifecycle (`/change:draft` → `/change:execute` → `/change:finalize`).** Tracked separately in [RFC-23](archive/rfc-23-change-lifecycle.md) (now implemented). The two RFCs are independent; either may land first.
 
 ## Open Questions
 
@@ -483,7 +494,7 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 6. **Shared dependencies — cross-edge vs duplicated leaf.** When `shared-auth-lib` is depended on by two subsystems, this RFC picks DAG (one leaf, two `depends_on_by`). Revisit if the operator burden of tracking shared leaves outweighs the migration-order benefit.
 7. **Should `survey.md` emit JSON alongside Markdown for tooling?** Current preference: defer. The Markdown DAG is parseable enough for v1; a JSON sidecar can land in a follow-up if downstream skills demand it.
 8. **Reconciliation at internal nodes vs leaves only.** Current preference: leaves only. Internal-node reconciliation inflates noise. Revisit if operators report missing context.
-9. **`--dry-run` behaviour for the new briefs.** Current preference: print survey DAG summary and reconciliation previews to stdout; do not write files under `.specify/plans/`.
+9. `**--dry-run` behaviour for the new briefs.** Current preference: print survey DAG summary and reconciliation previews to stdout; do not write files under `.specify/plans/`.
 
 ## References
 
@@ -491,8 +502,11 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 - [RFC-3b: Platform](archive/rfc-3b-platform.md) — assignment, registry, and one-slice-one-project invariant.
 - [RFC-9: Platform](archive/rfc-9-platform.md) — historical change-lifecycle predecessor and shape inference.
 - [RFC-13: Extensibility](archive/rfc-13-extensibility.md) — capability-owned briefs and pipeline composition.
-- [`/change:analyze` SKILL.md](../plugins/change/skills/analyze/SKILL.md) — the per-source analyze contract this RFC extends.
-- [`/change:draft` SKILL.md](../plugins/change/skills/draft/SKILL.md) — the draft-skill loop this RFC inserts steps 3(b.5) and 3(b.6) into.
-- [RFC-23: Three-Skill Change Lifecycle](rfc-23-change-lifecycle.md) — independent split of the plan-skill umbrella into `/change:draft` → `/change:execute` → `/change:finalize`; mentioned for context but not depended on.
-- [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) — the tier-1 vs tier-2 boundary survey/synthesise sit inside.
-- [`docs/tutorials/legacy-migration-at-scale.md`](../docs/tutorials/legacy-migration-at-scale.md) — the canonical Scenario 1+2 walkthrough this RFC updates.
+- `[/change:analyze` SKILL.md](../plugins/change/skills/analyze/SKILL.md) — the per-source analyze contract this RFC extends.
+- `[/change:draft` SKILL.md](../plugins/change/skills/draft/SKILL.md) — the draft-skill loop this RFC inserts steps 4(b.5) and 4(b.6) into.
+- [RFC-23: Three-Skill Change Lifecycle](archive/rfc-23-change-lifecycle.md) — independent split of the plan-skill umbrella into `/change:draft` → `/change:execute` → `/change:finalize`; implemented and archived. Mentioned for context but not depended on.
+- `[docs/explanation/workspace-tiers.md](../docs/explanation/workspace-tiers.md)` — the tier-1 vs tier-2 boundary survey/synthesize sit inside.
+- `[docs/tutorials/legacy-migration-at-scale.md](../docs/tutorials/legacy-migration-at-scale.md)` — the canonical Scenario 1+2 walkthrough this RFC updates.
+
+```
+
