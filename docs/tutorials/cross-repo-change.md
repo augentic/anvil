@@ -128,7 +128,7 @@ shop-platform/
     └── context.lock  # context freshness fingerprint
 ```
 
-`specify init --hub` does not create `change.md` or `plan.yaml`; those are minted later by `specify change create` and `specify change plan create`. It refuses to run when `.specify/` already exists. To convert an existing single-repo project into a hub, remove `.specify/` first.
+`specify init --hub` does not create `change.md` or `plan.yaml`; those are minted later by `specify change create` (which scaffolds both files together). It refuses to run when `.specify/` already exists. To convert an existing single-repo project into a hub, remove `.specify/` first.
 
 > **Why hub mode?** A hub gets `hub: true` (the validation flag that rejects any registry entry whose `url` is `.`) and **omits** `capability:` (the absence of which is what disables phase pipelines on the hub itself). Together these pin the platform repo's identity unambiguously. See [Platform repo topologies](../explanation/platform-repo.md) for the full contract.
 

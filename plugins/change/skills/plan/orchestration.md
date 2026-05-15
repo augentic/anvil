@@ -113,7 +113,7 @@ The plan skill internally:
 **Manual fallback.**
 
 ```bash
-specify change plan create <name> [source ...]
+specify change create <name> [--source <key>=<path-or-url> ...]
 # discovery / sync-workspace / propose / assignment cycles run by hand or via /change:plan default
 specify change plan add <slice-name> ...
 specify change plan amend <slice-name> --project <project>
@@ -284,7 +284,7 @@ Every shell-out in this mode is listed here so reviewers can grep for accidental
 | 1 Brief | `specify change create <name>` |
 | 2 Registry | `specify registry validate`, `specify registry show --format json` |
 | 3 Plan | `/change:plan <name> [from ...] [against ...] [source ...] [dry-run] [extend]` (default mode, not `orchestrate`) |
-| 3 (internal to plan default) | `specify change plan create`, `specify change plan add`, `specify change plan amend`, `specify change plan validate`, `specify registry add`, `specify workspace sync` |
+| 3 (internal to plan default) | `specify change create` (when scaffolding from `/change:plan`), `specify change plan add`, `specify change plan amend`, `specify change plan validate`, `specify registry add`, `specify workspace sync` |
 | 4 Execute | `/change:execute loop` |
 | 4 (internal to execute) | `specify change plan lock {acquire, release}`, `specify change plan next`, `specify change plan transition`, `specify slice outcome show`, `specify slice journal append`, `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` |
 | 5 Push | `specify workspace push` |

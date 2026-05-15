@@ -11,7 +11,7 @@ argument-hint: <change-name>
 ## Critical Path
 
 1. **Parse and validate inputs** — validate `<change-name>` as kebab-case. Require at least one of `from`, `against`, `source`, or a populated `change.md:inputs`. Refuse if `plan.yaml` already exists (unless `extend`).
-2. **Scaffold the plan** — `specify change plan create <change-name> [--source <key>=<path-or-url> ...]`. Skipped under `extend`.
+2. **Scaffold the brief and plan** — `specify change create <change-name> [--source <key>=<path-or-url> ...]`. Writes `change.md` and `plan.yaml` together (atomic refusal if either already exists). Skipped under `extend`.
 3. **Run the plan brief pipeline** from `capability.yaml`:
    - **(a) Discovery** — invoke the discovery brief via `/change:analyze`; writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** before step 3(b) when no `registry.yaml` exists yet. See [discovery.md](discovery.md).
    - **(b) Sync workspace** (multi-repo only) — discovery-time `specify workspace sync` (may sync all projects) + author `workspace.md`. Execution-time sync is separate and prepares only the selected entry's project unless the operator asks for more. See [sync-workspace.md](sync-workspace.md).
@@ -52,6 +52,6 @@ See [`references/runbook.md`](references/runbook.md) for the operational detail 
 
 ## Guardrails
 
-- **Single-writer for `plan.yaml`.** Every write goes through `specify change plan {create, add, amend}`; never edit the file by hand. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) and [`../../references/plan-single-writer.md`](../../references/plan-single-writer.md).
+- **Single-writer for `plan.yaml`.** Every write goes through `specify change create` (initial scaffold, alongside `change.md`) or `specify change plan {add, amend}` (subsequent edits); never edit the file by hand. See [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state) and [`../../references/plan-single-writer.md`](../../references/plan-single-writer.md).
 - **Never skip `specify change plan validate` (step 4).** A plan that ships to `/change:execute` without a clean validate is a regression. Validate `<change-name>` as kebab-case before any filesystem read or CLI shell-out.
 - **`dry-run` MUST NOT write under `.specify/`** (no `create` / `add` / `amend` / `transition`, no `discovery.md`). **`extend` skips step 2 entirely** and only `amend --project` may touch newly added entries — never pre-existing ones. A missing `briefs/<capability>/{discovery,propose}.md` for the active capability is a hard failure: print the resolved capability and expected paths, then exit non-zero.

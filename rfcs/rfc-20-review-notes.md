@@ -10,7 +10,7 @@
 The "five-step loop" refers to the Critical Path that `/change:plan` runs on every invocation, defined in [`plugins/change/skills/plan/SKILL.md`](../plugins/change/skills/plan/SKILL.md):
 
 1. **Parse and validate inputs** — validate `<change-name>` as kebab-case. Require at least one of `from`, `against`, `source`, or a populated `change.md:inputs`. Refuse if `plan.yaml` already exists (unless `extend`).
-2. **Scaffold the plan** — `specify change plan create <change-name> [--source <key>=<path-or-url> ...]`. Skipped under `extend`.
+2. **Scaffold the brief and plan** — `specify change create <change-name> [--source <key>=<path-or-url> ...]`. Writes `change.md` and `plan.yaml` together (atomic refusal if either already exists). Skipped under `extend`.
 3. **Run the plan brief pipeline** from `capability.yaml`:
    - **(a) Discovery** — invoke the discovery brief via `/change:analyze`; writes `discovery.md`. May surface a `## Proposed registry topology` block that triggers the **greenfield registry bootstrap** before step 3(b) when no `registry.yaml` exists yet.
    - **(b) Sync workspace** (multi-repo only) — discovery-time `specify workspace sync` (may sync all projects) + author `workspace.md`.

@@ -6,8 +6,9 @@ Running `/change:plan <name> orchestrate` a second time after a halt is the cano
 
 | State at re-entry | Resume step |
 |---|---|
-| change brief absent (`change.md`) | step 1 |
-| brief present, `plan.yaml` absent | step 3 (with `/change:plan` default mode running fresh) |
+| change brief and plan both absent (`change.md`, `plan.yaml`) | step 1 (the merged `specify change create` scaffolds both files together) |
+| brief present, `plan.yaml` absent (anomalous — usually a manual delete of `plan.yaml`) | operator removes `change.md` (or restores the matching `plan.yaml` from VCS) and re-runs from step 1 — `specify change create` refuses while either file exists |
+| both present, no entries | step 3 (with `/change:plan` default mode running under `--extend` so its step 2 is skipped) |
 | `plan.yaml` present, any entry not in `{done, failed, skipped}` | step 4 (`/change:execute loop` resumes — self-heal reclaims any `in-progress` left by a prior crash) |
 | every plan entry terminal, no PRs pushed yet (no `specify/<name>` branch on any remote) | step 5 |
 | PRs pushed, not all `MERGED` | step 6 lists PRs and stops for operator merge |
@@ -18,8 +19,7 @@ Running `/change:plan <name> orchestrate` a second time after a halt is the cano
 
 The orchestration mode never re-creates a brief, re-runs discovery, or re-pushes a clone whose remote is already up to date. Resume is purely additive — every shell-out underneath is itself idempotent:
 
-- `specify change create` refuses on populated brief;
-- `specify change plan create` refuses on populated plan;
+- `specify change create` refuses atomically on a populated brief or plan (writing neither file);
 - `specify workspace push` reports `up-to-date` for clones it already pushed;
 - step 6 reads remote PR state and reports already-merged PRs without invoking merge automation;
 - `specify change finalize` refuses on `plan-not-found`.
@@ -30,7 +30,7 @@ When step 3 runs against a populated `plan.yaml`, the orchestration forwards `--
 
 The plan skill's own `--extend` semantics apply (see [SKILL.md](SKILL.md) §"Modes → `--extend`"):
 
-- step 2 (`specify change plan create`) is skipped;
+- step 2 (`specify change create`) is skipped;
 - step 3(a) (discovery) is skipped when `discovery.md` already exists;
 - step 3(c) (propose) silently skips draft slices whose names collide with existing entries;
 - pre-existing entries are never modified.

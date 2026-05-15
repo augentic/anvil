@@ -54,7 +54,7 @@ shop-platform/
     └── context.lock  # context freshness fingerprint
 ```
 
-`specify init --hub` does not create `change.md` or `plan.yaml`; `specify change create` and `specify change plan create` mint those operator artifacts when a specific change begins. It refuses to run when `.specify/` already exists -- the guard prevents accidentally clobbering an existing single-project setup. Remove `.specify/` first if you genuinely want to convert.
+`specify init --hub` does not create `change.md` or `plan.yaml`; `specify change create` mints those operator artifacts together when a specific change begins. It refuses to run when `.specify/` already exists -- the guard prevents accidentally clobbering an existing single-project setup. Remove `.specify/` first if you genuinely want to convert.
 
 ## 3. Register code projects
 

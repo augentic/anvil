@@ -24,6 +24,7 @@ change.md is absent.
 
   $ specify change create dark-mode
   ok: wrote change.md
+  ok: scaffolded plan.yaml
 
 Shape `new-feature` with one --from. Suggested default body:
 
@@ -58,8 +59,9 @@ Multi-project registry; descriptions complete. Continuing.
 
   ── /change:plan dark-mode ──
 
-  $ specify change plan create dark-mode
-  ok: scaffolded plan.yaml
+  Step 2 — Scaffold (specify change create) skipped: change.md and
+    plan.yaml are already present from step 1; running under
+    --extend so the existing scaffold is reused.
 
   Step 3(a) — Discovery
     Reading ./docs/dark-mode-spec.md (kind: documentation)…

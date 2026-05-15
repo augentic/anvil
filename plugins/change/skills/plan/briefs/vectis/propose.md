@@ -116,7 +116,7 @@ Emit the proposed plan to stdout as a preview of the same table structure that w
 
 ## `--extend` behaviour
 
-Skip the `specify change plan create` step (the caller, typically the `/change:plan` skill, or the human, has already ensured `plan.yaml` exists). Still run propose against the existing plan: slices whose names collide with existing plan entries are skipped with a note in the proposal; new slices go through the usual accept/edit/reject loop.
+Skip the `specify change create` scaffold step (the caller, typically the `/change:plan` skill, or the human, has already ensured `change.md` and `plan.yaml` exist). Still run propose against the existing plan: slices whose names collide with existing plan entries are skipped with a note in the proposal; new slices go through the usual accept/edit/reject loop.
 
 ## Example fragment
 

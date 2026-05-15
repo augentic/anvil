@@ -111,7 +111,7 @@ Lifecycle:
 |---|---|
 | `specify sources sync` | Idempotent. For each entry: clone into `.specify/.cache/sources/<key>/` if missing; `git fetch` if present and remote; no-op for symlink/local URLs. |
 | `/change:analyze` (legacy-code branch) | Reads from `.specify/.cache/sources/<key>/` via the per-change symlink. Writes nothing into the cache. |
-| `specify change plan create` (when invoked with `--source @<key>`) | Materialises `.specify/plans/<change>/analyze/<key>/` as a symlink to `.specify/.cache/sources/<key>/`, calling `specify sources sync <key>` first if the cache slot is missing. |
+| `specify change create` (when invoked with `--source @<key>`) | Materialises `.specify/plans/<change>/analyze/<key>/` as a symlink to `.specify/.cache/sources/<key>/`, calling `specify sources sync <key>` first if the cache slot is missing. |
 | `specify change plan archive` | Sweeps `.specify/plans/<change>/analyze/<key>/` (the symlink) into the archive. Does **not** touch `.specify/.cache/sources/<key>/`. The cache outlives the change. |
 | `specify sources remove <key>` | Removes the cache entry alongside the catalogue entry. Refuses if any active plan slice still references the key. |
 

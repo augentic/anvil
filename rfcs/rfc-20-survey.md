@@ -369,7 +369,7 @@ The first two hints are surfaced in the assignment table's `Rationale` column ve
 This RFC adds **no new top-level CLI verbs**. All existing primitives compose:
 
 - `/change:analyze` gains a third kind branch — same positional arity (`<input-path> <output-dir> <kind> [source-key]`).
-- `specify change plan create` is unchanged.
+- `specify change create` (the merged brief + plan scaffold) is unchanged by this RFC.
 - `specify change plan add` is unchanged.
 - `specify change plan validate` is unchanged.
 

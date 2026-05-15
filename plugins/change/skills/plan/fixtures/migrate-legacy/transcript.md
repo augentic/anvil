@@ -22,8 +22,9 @@ Pre-flight
 
 change.md is absent.
 
-  $ specify change create migrate-foo
+  $ specify change create migrate-foo --source monolith=git@github.com:org/legacy-foo.git
   ok: wrote change.md
+  ok: scaffolded plan.yaml (sources: monolith)
 
 Shape `migrate-legacy` carries one --source. Suggested default body:
 
@@ -54,12 +55,13 @@ Handing off to /change:plan's greenfield path (RFC-9 §2B).
 
 ## Step 3 — Plan
 
-  $ /change:plan migrate-foo source monolith=git@github.com:org/legacy-foo.git
+  $ /change:plan migrate-foo
 
   ── /change:plan migrate-foo ──
 
-  $ specify change plan create migrate-foo --source monolith=git@github.com:org/legacy-foo.git
-  ok: scaffolded plan.yaml
+  Step 2 — Scaffold (specify change create) skipped: change.md and
+    plan.yaml are already present from step 1; running under
+    --extend so the existing scaffold is reused.
 
   Step 3(a) — Discovery
     Cloned monolith → .specify/plans/migrate-foo/analyze/monolith/

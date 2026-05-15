@@ -1,12 +1,13 @@
 # specify change plan
 
-Scaffold, populate, validate, transition, and archive change plans. The `plan` subresource lives under `specify change`; each verb on this page is invoked as `specify change plan <verb>`.
+Populate, validate, transition, and archive change plans. The `plan` subresource lives under `specify change`; each verb on this page is invoked as `specify change plan <verb>`.
+
+> Looking for plan **scaffolding**? Plan creation now lives on the umbrella verb — see [`specify change create`](change.md#specify-change-create), which writes `change.md` and `plan.yaml` together in a single atomic step (with the same `--source <key>=<path-or-url>` flag the old `plan create` carried).
 
 ## Verb cheat-sheet
 
 | Verb | When to use |
 |------|-------------|
-| [`create`](#specify-change-plan-create) | Scaffold an empty `plan.yaml` at the start of a change (renamed from v1 `plan init`). |
 | [`add`](#specify-change-plan-add) | Append a new entry to the plan in `pending` state (renamed from the v1 entry-append `plan create`). |
 | [`amend`](#specify-change-plan-amend) | Edit non-status fields (`project`, `description`, `depends-on`, `sources`) on an existing entry. |
 | [`transition`](#specify-change-plan-transition) | Move an entry through the status state machine (`pending` -> `in-progress` -> `done` / `failed` / `blocked`, plus `skipped`). |
@@ -17,16 +18,6 @@ Scaffold, populate, validate, transition, and archive change plans. The `plan` s
 | [`lock`](#specify-change-plan-lock) | Manage the advisory `.specify/plan.lock` PID stamp held by `/change:execute`. |
 
 ## Subcommands
-
-### specify change plan create
-
-Scaffold an empty plan.
-
-```bash
-specify change plan create <name> [--source <key>=<path>...]
-```
-
-Creates `plan.yaml` with the given name and an empty `changes:` list. Optional `--source` entries are recorded in the plan's `sources:` section.
 
 ### specify change plan validate
 
@@ -139,7 +130,7 @@ The lock (`.specify/plan.lock`) is a PID stamp held by `/change:execute` to prev
 
 ## See also
 
-- [specify change](change.md) -- the umbrella verbs (`create`, `show`, `finalize`) that own `change.md` and trigger close-out.
+- [specify change](change.md) -- the umbrella verbs (`create`, `show`, `finalize`) that scaffold `change.md` + `plan.yaml` together and trigger close-out.
 - [specify slice](slice.md) -- the per-slice CLI verbs the plan loop drives.
 - [/change:plan](../change-skills/plan.md) -- skill that authors plans
 - [/change:execute](../change-skills/execute.md) -- skill that drives plan execution

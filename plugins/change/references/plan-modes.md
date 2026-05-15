@@ -18,7 +18,7 @@ Run the five-step loop exactly as written. `plan.yaml` is initialised via step 2
 Add to an existing `plan.yaml` instead of refusing. The skill-level contract is:
 
 - **Step 1 refuses when `plan.yaml` is absent.** `extend` is an explicit "I know there's a plan here" signal; the skill never silently creates a fresh plan under `extend`.
-- **Step 2 (`specify change plan create`) is skipped entirely.**
+- **Step 2 (`specify change create` — the merged brief + plan scaffold) is skipped entirely.**
 - **Step 3(a) is skipped when `.specify/plans/<change-name>/discovery.md` already exists**, with a log line `Discovery already present; reusing existing inventory.` Discovery is explicitly a one-shot artefact; an operator who wants to refresh it archives the plan and re-runs without `extend`. When `discovery.md` does not yet exist under `extend` (e.g. a plan authored by hand, or an earlier run aborted), step 3(a) runs normally.
 - **Step 3(c) skips collisions silently.** Draft slices whose proposed `name` collides with an existing plan entry are recorded in `proposal.md` with decision `skip-existing` and the existing entry's name in the "Plan entry" column; the human is not re-prompted. Slices whose names do not collide run through the usual accept / edit / reject / abort loop.
 - **Sync-workspace (step 3(b)):** when the registry declares more than one project, **do not** shell `specify workspace sync`. Still regenerate `.specify/plans/<change-name>/workspace.md` from the existing `.specify/workspace/` cache (read-only walk) so propose stays deterministic without an implicit `git fetch`.
@@ -33,7 +33,7 @@ Emit a readiness report, the would-be-produced capability inventory, and the wou
 Under `dry-run` the skill MUST NOT:
 
 - create `.specify/plans/<change-name>/`;
-- shell out to `specify change plan create`, `specify change plan add`, `specify change plan amend`, or `specify change plan transition`;
+- shell out to `specify change create`, `specify change plan add`, `specify change plan amend`, or `specify change plan transition`;
 - shell out to **`specify workspace sync`** or write **`.specify/plans/<change-name>/workspace.md`** (sync-workspace dry-run rule);
 - write any file under `.specify/` (including under `.specify/workspace/`).
 

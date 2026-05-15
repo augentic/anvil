@@ -110,7 +110,7 @@ The command writes:
 - `registry.yaml` with `version: 1` and `projects: []`. Hub-mode validation runs against this seed; populating the registry happens via `specify registry add` or by hand-editing.
 - `.gitignore` upserts for `.specify/.cache/` and `.specify/workspace/`.
 
-`change.md` and `plan.yaml` are not created by `specify init --hub`; `specify change create` and `specify change plan create` mint them when a specific change begins. The command **refuses** when `.specify/` already exists. This is deliberate: flipping an existing single-repo project into a hub would clobber `project.yaml`. Operators who genuinely want to convert remove `.specify/` first.
+`change.md` and `plan.yaml` are not created by `specify init --hub`; `specify change create` mints them together when a specific change begins. The command **refuses** when `.specify/` already exists. This is deliberate: flipping an existing single-repo project into a hub would clobber `project.yaml`. Operators who genuinely want to convert remove `.specify/` first.
 
 For the platform-as-project shape, use the regular `specify init <capability>` form (no `--hub` flag) where `<capability>` is a bare name like `omnia`, an `https://…` URL, or a `file:///…` URI. The CLI rejects `specify init` with neither a capability positional nor `--hub` -- exactly one of the two is required, never both. See [`specify init`](../reference/cli/init.md) for the full flag surface and the [`/spec:init`](../../plugins/spec/skills/init/SKILL.md) skill for the agent-driven wrapper that prompts for project metadata.
 

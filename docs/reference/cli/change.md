@@ -1,12 +1,12 @@
 # specify change
 
-Manage the operator-authored change brief at `change.md` and close out a change once every per-project PR has merged.
+Scaffold the change pair (`change.md` + `plan.yaml`) at the start of a change, render the brief for tooling, and close out a change once every per-project PR has merged.
 
 ## Verb cheat-sheet
 
 | Verb | When to use |
 |------|-------------|
-| [`create`](#specify-change-create) | Scaffold `change.md` from the canonical template at the start of a change. |
+| [`create`](#specify-change-create) | Scaffold `change.md` and `plan.yaml` together from canonical templates at the start of a change. |
 | [`show`](#specify-change-show) | Render the current brief (frontmatter + prose body) for tooling consumers and review. |
 | [`finalize`](#specify-change-finalize) | Close out a fully-landed change: confirm every per-project PR merged, archive `plan.yaml` + brief + working dir. |
 
@@ -14,13 +14,27 @@ Manage the operator-authored change brief at `change.md` and close out a change 
 
 ### specify change create
 
-Scaffold `change.md` with the frontmatter template.
+Scaffold `change.md` and `plan.yaml` together at the repo root.
 
 ```bash
-specify change create <name>
+specify change create <name> [--source <key>=<path-or-url> ...]
 ```
 
-Refuses to overwrite an existing brief — mirrors the `specify change plan create` posture for `plan.yaml`.
+Writes `change.md` with the canonical frontmatter template (operators fill in the body) and writes `plan.yaml` with the change name and the supplied `--source` map. Each `--source` flag takes one `key=value` pair (repeatable, deduplicated by key); these populate the plan's top-level `sources:` map and become the `<source-key>` namespace that plan entries reference.
+
+**Atomic refusal.** If either `change.md` or `plan.yaml` already exists at the repo root, the command exits with the `already-exists` diagnostic and writes neither file — no partial state. Recover by reviewing/removing the offending file (or running `specify change plan archive` if the existing plan is a stale leftover) and re-running.
+
+The change name must be kebab-case (lowercase ASCII, digits, single hyphens; no leading/trailing/doubled hyphens). Non-kebab input refuses with `change-name-not-kebab` before any write.
+
+JSON output:
+
+```json
+{
+  "name": "oauth-login",
+  "brief": { "path": "/.../change.md" },
+  "plan":  { "path": "/.../plan.yaml" }
+}
+```
 
 ### specify change show
 

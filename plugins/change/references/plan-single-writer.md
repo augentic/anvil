@@ -6,7 +6,7 @@
 
 | Write | Owner | Command |
 |---|---|---|
-| Create the plan shell and top-level `sources` map | `/change:plan` or a human authoring by hand | `specify change plan create <change-name> [--source <key>=<path-or-url> ...]` |
+| Create the plan shell and top-level `sources` map (alongside the `change.md` brief) | `/change:plan` or a human authoring by hand | `specify change create <change-name> [--source <key>=<path-or-url> ...]` |
 | Add plan entries | `/change:plan`, propose briefs, phase skills that discover neighbouring work, or humans | `specify change plan add <name> ...` |
 | Amend non-status fields | Assignment step, phase skills, or humans | `specify change plan amend <name> ...` |
 | Change entry status | `/change:execute` or operators driving the loop manually | `specify change plan transition <name> <status> [--reason "..."]` |

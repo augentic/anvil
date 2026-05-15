@@ -23,6 +23,7 @@ change.md is absent.
 
   $ specify change create polish-pass
   ok: wrote change.md
+  ok: scaffolded plan.yaml
 
 Shape `update-existing` carries no sources. Suggested default body:
 
@@ -56,8 +57,9 @@ Multi-project registry; descriptions complete. Continuing.
 
   ── /change:plan polish-pass ──
 
-  $ specify change plan create polish-pass
-  ok: scaffolded plan.yaml
+  Step 2 — Scaffold (specify change create) skipped: change.md and
+    plan.yaml are already present from step 1; running under
+    --extend so the existing scaffold is reused.
 
   Step 3(a) — Discovery
     No --from / --against / --source supplied.

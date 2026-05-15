@@ -65,7 +65,7 @@ A hub is a registry-only platform repo: it holds `registry.yaml`, `change.md`, `
 ## plan.yaml
 
 **Location:** `plan.yaml`
-**Created by:** `/change:plan` (via `specify change plan create` + `specify change plan add`)
+**Created by:** `/change:plan` (via `specify change create` + `specify change plan add`)
 **Modified by:** `specify change plan amend`, `specify change plan transition`
 
 The change's table of contents -- an ordered, dependency-aware list of slices.

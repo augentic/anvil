@@ -8,6 +8,12 @@ The format is loosely based on [Keep a Changelog](https://keepachangelog.com/en/
 
 ## Unreleased
 
+### Breaking
+
+- `specify change plan create` removed. Use `specify change create <name> [--source <key>=<path-or-url> ...]` instead — the merged verb scaffolds `change.md` and `plan.yaml` together atomically (refuses with `already-exists` if either file is present, writing neither in that case). The diagnostic code emitted by the new verb's name validator is `change-name-not-kebab` (renamed from the brief-only `change-brief-name-not-kebab`); the `plan-source-duplicate-key` diagnostic for repeated `--source` keys is unchanged. The old `change-plan-create` JSON envelope (carrying only a `plan` ref) is replaced by the new `change-create` envelope `{ name, brief: { path }, plan: { path } }`. The plan skill's step 2, the orchestration umbrella, and every per-shape transcript fixture now collapse the prior two-step bootstrap into a single `specify change create` call; orchestration step 3 forwards `--extend` to `/change:plan` whenever the brief and plan are already on disk.
+
+### Other
+
 - Code & skill review consolidation: trimmed `change/skills/plan` and `spec/skills/init` SKILLs to live under their 250-line cap by relocating long sections into `plugins/{change,spec}/references/`; trimmed the `spec/skills/extract` description and moved its `Principles` block to a reference doc; standardised `argument-hint:` quoting across every plugin; added a `## What this skill does NOT do` table to `/spec:{define,extract,init,build}` mirroring the canonical one in `/change:execute`; added a "Related coding standards" cross-link to the CLI repo's AGENTS.md.
 
 ## v0.x — RFC-16 — Vectis WASI tools and `specify-vectis` retirement

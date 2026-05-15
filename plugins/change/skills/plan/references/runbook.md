@@ -78,14 +78,17 @@ Follow these steps in order on every invocation. Each step is normative; every s
    - If extend was supplied but plan.yaml does NOT
      exist, also refuse — there is nothing to extend.
 
-2. Scaffold the plan.
+2. Scaffold the brief and plan together.
 
-     specify change plan create <change-name> \
+     specify change create <change-name> \
          [--source <key>=<path-or-url> ...]
 
-   Writes an empty plan.yaml with just the change
-   `name` and the supplied `source` entries in the top-level
-   `sources` map. `changes: []` until step 3(c) populates it.
+   Writes both `change.md` (operator brief frontmatter
+   template) and `plan.yaml` (carrying the change `name`
+   and the supplied `source` entries in the top-level
+   `sources` map). `changes: []` until step 3(c) populates
+   the plan. Atomic refusal: refuses with `already-exists`
+   when either file is present, leaving both untouched.
 
    Skipped entirely when extend is set.
 
@@ -126,7 +129,7 @@ Follow these steps in order on every invocation. Each step is normative; every s
 
 ## Single-writer invariant
 
-Every plan write this skill performs follows [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md): create the shell through `specify change plan create`, add accepted entries through `specify change plan add`, amend only assignment fields through `specify change plan amend`, and never call `specify change plan transition` from the authoring step.
+Every plan write this skill performs follows [`../../../references/plan-single-writer.md`](../../../references/plan-single-writer.md): create the shell (alongside `change.md`) through `specify change create`, add accepted entries through `specify change plan add`, amend only assignment fields through `specify change plan amend`, and never call `specify change plan transition` from the authoring step.
 
 ## Working directory (`.specify/plans/<name>/`)
 
@@ -143,7 +146,7 @@ Authoring artefacts live under `.specify/plans/<change-name>/`, mirroring the ch
         └── analyze/                # `/change:analyze` sidecars (legacy-code): `<source-key>/metadata.json`
 ```
 
-The working directory is created lazily — by the discovery brief itself when it writes `discovery.md`, not by the skill scaffold. Step 2 (`specify change plan create`) does not create it.
+The working directory is created lazily — by the discovery brief itself when it writes `discovery.md`, not by the skill scaffold. Step 2 (`specify change create`) does not create it.
 
 `.specify/plans/<change-name>/analyze/<key>/` is the **tier-1** legacy-source clone — read-only, ephemeral, and bound to this change. The **tier-2** registered project clones materialised by step 3(b) live separately under `.specify/workspace/<project>/`, are read-write during execution, and outlive any single change. See [Workspace Tiers](../../../../../docs/explanation/workspace-tiers.md) for the full contrast.
 

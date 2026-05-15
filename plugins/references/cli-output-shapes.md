@@ -92,7 +92,7 @@ Source fixture: `tests/fixtures/plan/archive-success-with-working-dir.json`
 }
 ```
 
-### `specify change plan create`
+### `specify change plan add`
 
 Source fixture: `tests/fixtures/plan/create-foo.json`
 
@@ -117,15 +117,23 @@ Source fixture: `tests/fixtures/plan/create-foo.json`
 }
 ```
 
-### `specify change plan init`
+### `specify change create`
 
 Source fixture: `tests/fixtures/plan/init-success.json`
 
+The merged scaffold writes `change.md` and `plan.yaml` together; the
+envelope carries one ref per file. The retired `specify change plan
+create` envelope (which only carried the `plan` ref) has been replaced
+by this shape.
+
 ```json
 {
+  "brief": {
+    "path": "<TEMPDIR>/change.md"
+  },
   "envelope-version": 6,
+  "name": "my-change",
   "plan": {
-    "name": "my-change",
     "path": "<TEMPDIR>/plan.yaml"
   }
 }

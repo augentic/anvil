@@ -57,7 +57,7 @@ Cross-cutting guardrails — the `.metadata.yaml` / slice-dir / plan-write rules
 The canonical "skills MUST NOT" list:
 
 - **Never hand-edit `.metadata.yaml`.** Every lifecycle transition flows through `specify slice transition`, `specify slice outcome set`, `specify slice journal append`, or `specify change plan transition`.
-- **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specify slice create` / `specify change plan create`; the CLI owns directory shape.
+- **Never `mkdir -p .specify/...`.** Slice and plan directories are minted by `specify slice create` / `specify change create`; the CLI owns directory shape.
 - **Never `mv` anything into `.specify/archive/`.** Archive moves are owned by `specify slice merge run`, `specify slice drop`, `specify change plan archive`, and `specify change finalize`.
 - **Never reimplement validation, capability resolution, or merge logic in skill prose.** Those are deterministic operations owned by the CLI; see [cli-contract.md](cli-contract.md).
 - **Never embed raw CLI envelope JSON in a SKILL.md body.** Link to [plugins/references/cli-output-shapes.md](../../plugins/references/cli-output-shapes.md) with a stable anchor instead.
