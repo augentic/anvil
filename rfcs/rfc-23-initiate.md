@@ -30,6 +30,41 @@ The umbrella is composition-only today (`orchestration.md` §"Composition discip
 4. **Bookend symmetry.** `/change:initiate` ↔ `specify change finalize`. The opening and closing surfaces both live on the change noun and read as a deliberate pair.
 5. **Plan stays the planner.** After the rename, `/change:plan` has exactly one job — author `plan.yaml` via its five-step loop. The `orchestrate` positional is gone.
 
+### Manual vs umbrella flow
+
+Specify supports two flows for moving a change through its lifecycle. RFC-23 only changes the *name* of the umbrella — both flows existed before the rehoming and both remain after.
+
+| Flow | Invocation | When to use |
+| --- | --- | --- |
+| **Manual** | `/change:plan <name> [...]` → operator review → `/change:execute loop` → (optional) `specify change finalize` | Hands-on work where the operator wants to inspect or edit `plan.yaml` (or `discovery.md` / `survey.md` / `workspace.md`) between authoring and execution; single-repo runs that don't need PR observation; teams that hand the plan off between people. |
+| **Umbrella** | `/change:initiate <name> [...]` | Multi-repo cross-cutting work where the operator wants one command to drive every step from brief through merged PRs and finalize. Halts at any of the well-defined halt classifications and is re-entrant — recovery is "fix the cause, re-run `/change:initiate <name>`". |
+
+The two flows share every underlying skill and CLI verb. The umbrella is composition over the same surfaces an operator would invoke by hand; nothing is reachable through `/change:initiate` that isn't also reachable through the manual flow. Picking between them is an operator preference about how much of the lifecycle to drive in one step.
+
+**Where operator review fits.** Both flows surface plan-time slice decisions through `/change:plan`'s propose brief — an interactive accept/edit/reject loop per proposed slice (see [`propose.md`](../plugins/change/skills/plan/propose.md)). The umbrella does **not** add a second, post-plan review pause; once propose's loop exits cleanly and `specify plan validate` passes, the umbrella proceeds into `/change:execute loop` immediately. Operators who want a hard pause between authoring and execution (to review `plan.yaml` out of band, run `specify plan amend` against entries, or hand the plan to a teammate) should use the manual flow. Whether the umbrella should grow an opt-in pause is tracked under §Open Questions.
+
+**Composite shape.** The umbrella treats `/change:plan` (step 3) and `/change:execute` (step 4) as units and observes their halt codes; it does not know their internal shape. With RFC-20's survey and synthesise briefs landed, the full picture is:
+
+```text
+/change:initiate <name>
+├─ 1. brief                 specify change create
+├─ 2. registry              specify registry validate
+├─ 3. plan                  /change:plan <name>
+│  ├─ 3(a) discovery        /change:analyze per input → discovery.md
+│  ├─ 3(b) sync-workspace   specify workspace sync → workspace.md  (multi-repo only)
+│  ├─ 3(b.5) survey         [RFC-20] DAG decomposition → survey.md
+│  ├─ 3(b.6) synthesise     [RFC-20] reconciliation → discovery.md §Reconciliation
+│  ├─ 3(c) propose          accept/edit/reject loop → specify plan add per slice
+│  └─ 3(d) assignment       specify plan amend --project per entry  (multi-repo only)
+├─ 4. execute               /change:execute loop
+│  └─ per slice             /spec:define → /spec:build → /spec:merge
+├─ 5. push                  specify workspace push
+├─ 6. PR handoff            gh pr list (operator merges externally)
+└─ 7. finalize              specify change finalize
+```
+
+Adding new sub-steps to either child skill (RFC-20 to plan; future RFCs to execute) does not change the umbrella's own surface — composition discipline is what keeps `/change:initiate` itself stable.
+
 ### Skill shape
 
 | Aspect | Today (`/change:plan orchestrate`) | After RFC-23 (`/change:initiate`) |
@@ -149,6 +184,8 @@ There is no breaking change in this release. The breaking change lands in the re
 
 **Move the umbrella to `/change:execute orchestrate` instead of a new skill.** Rejected. The executor's job is "drive `plan.yaml` through the per-slice loop"; adding the umbrella's pre-execute steps (brief, registry, plan author) would replicate the same double-duty problem the rehoming exists to solve. A peer skill is the cleanest layout.
 
+**Subsume `/change:plan` into `/change:initiate` so the slash menu reads as a single linear workflow (`/change:initiate` to author + drive, `/change:execute` to run the slice loop, with no separate planner verb).** Considered. The argument is conceptual symmetry: if `/change:initiate` is the planning *and* orchestration entry point, `/change:plan` looks like an internal step that doesn't need its own slash verb. Rejected for v1 because (a) the **manual flow loses its planning entry point** — operators who want to author `plan.yaml` and review it out of band before executing would have to invoke `/change:initiate --plan-only` (or some equivalent), inventing a new semi-mode this RFC tries to avoid; (b) `/change:plan` has its own complete brief pipeline (discovery → sync-workspace → [survey, synthesise] → propose → assignment) that is meaningful as a standalone surface for operators driving the plan loop without committing to the umbrella; and (c) the rename is independent of the rehoming and would inflate this RFC well beyond a pure rename. If the symmetry argument grows teeth (operator confusion about three change verbs vs two), it's a follow-up RFC against the slash surface, not part of RFC-23.
+
 ## Non-Goals
 
 - **New behaviour inside `/change:initiate`.** The skill is composition only — pure rename and rehoming. New halt classifications, new recovery sequences, new pre-flight checks, new on-disk state, and forge-merge automation are all out of scope. Any such gap belongs in `/change:plan`, `/change:execute`, or the underlying CLI verb.
@@ -157,6 +194,8 @@ There is no breaking change in this release. The breaking change lands in the re
 - **Multi-plan orchestration.** RFC-3a's single `plan.yaml` invariant is preserved; `/change:initiate` drives one change at a time. Multi-plan output and parallel changes remain a separate concern (deferred to RFC-21 / RFC-22 territory).
 - **Forge-agnostic land step.** Step 6 still uses `gh`; non-GitHub forges still fall back to the manual fallback path (merge by hand, re-run the umbrella to finalize). Forge abstraction is a separate concern.
 - **Re-thinking the seven-step sequence.** The steps and their owners are unchanged. If the steps need to change, that is a separate RFC against the orchestration sequence itself.
+- **Collapsing `/change:plan` into `/change:initiate`.** The two skills stay distinct: `/change:plan` owns the brief pipeline as a standalone surface for the manual flow; `/change:initiate` composes it as step 3. See §Alternatives for the trade-off.
+- **Adding a post-plan / pre-execute pause to the umbrella.** `/change:initiate` proceeds straight from `specify plan validate` into `/change:execute loop`; an explicit `--pause-after-plan` gate is tracked under §Open Questions and is not part of this RFC's landing.
 
 ## Open Questions
 
@@ -165,6 +204,7 @@ There is no breaking change in this release. The breaking change lands in the re
 3. **Stub-redirect at the old path.** Should `plugins/change/skills/plan/orchestration.md` keep a one-line stub for the deprecation window pointing readers at the new location, or be deleted immediately? Current preference: keep the stub for the deprecation window, then delete with the forward.
 4. **Backporting tutorials in the same release.** Should the tutorial rewrites land in the same release as the new skill (so day-1 documentation is consistent), or in the *next* release (so the deprecation notice in the old invocation lines up with the docs that mention it)? Current preference: same release; the deprecation notice already names `/change:initiate` so docs and notice agree.
 5. **Should the new skill carry an `--orchestrate` flag for forward-compatibility with future modes?** Current preference: no. The skill exists *because* it is the orchestrator; a flag would suggest there is a non-orchestrating mode, which there is not.
+6. **Explicit plan-review pause between umbrella step 3 and step 4.** Today (and after this RFC) the umbrella proceeds straight from `specify plan validate` into `/change:execute loop` without a second operator confirmation; operator review of slices happens inside `/change:plan`'s propose accept/edit/reject loop, not at the umbrella seam. Should `/change:initiate` grow an opt-in `--pause-after-plan` (or default-on-with-`--no-pause`) gate so operators can inspect `plan.yaml` out of band — running `specify plan amend`, comparing against `survey.md`, handing the plan to a teammate — before the executor runs? Current preference: no. Operators who want a hard pause use the manual flow (`/change:plan <name>` then `/change:execute loop`); adding a flag to the umbrella would invent a third semi-mode that has to be explained alongside the existing manual/umbrella split. Revisit if usage patterns show operators consistently re-entering the umbrella with `specify plan amend` edits between plan and execute (which would indicate the propose-loop review surface is insufficient and a post-plan gate is doing real work).
 
 ## References
 
