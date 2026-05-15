@@ -15,6 +15,8 @@ Concretely, this RFC adds:
 
 The plan skill's five-step loop, the single-writer invariant for `plan.yaml`, and the closed-kind enum's strict validation posture are preserved. `/change:analyze` remains a one-shot fan-out per source — the survey brief consumes its inventory and structural metadata, not the source code itself. The four scenarios this RFC unblocks — single-repo legacy migration, multi-repo legacy migration, greenfield multi-repo, and brownfield multi-repo — share the same pipeline; only the inputs differ.
 
+Rehoming today's `/change:plan <name> orchestrate` mode as a dedicated `/change:initiate` skill is an independent concern tracked in [RFC-23](rfc-23-initiate.md); the two RFCs do not depend on each other, but if both land in the same release the CHANGELOG combines the operator-facing notes.
+
 ## Motivation
 
 The framework already supports per-source capability extraction (`/change:analyze`), per-input dispatch (the discovery brief), and multi-project routing (assignment + greenfield-registry-bootstrap). What is missing is **the decomposition step that turns "here is a 100k LOC monolith" into "here are the 30 slice-sized chunks to migrate, in dependency order"**.
@@ -469,6 +471,7 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 - A general "context map import" workflow from external DDD tools (out of scope; the schema is small enough for hand authoring or a thin importer in a future RFC).
 - Runtime enforcement of bounded-context boundaries in generated code (a runtime concern, not a planning concern).
 - Multi-plan output or parallel changes.
+- **Rehoming the orchestration umbrella as `/change:initiate`.** Tracked separately in [RFC-23](rfc-23-initiate.md). The two RFCs are independent; either may land first.
 
 ## Open Questions
 
@@ -490,5 +493,6 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 - [RFC-13: Extensibility](archive/rfc-13-extensibility.md) — capability-owned briefs and pipeline composition.
 - [`/change:analyze` SKILL.md](../plugins/change/skills/analyze/SKILL.md) — the per-source analyze contract this RFC extends.
 - [`/change:plan` SKILL.md](../plugins/change/skills/plan/SKILL.md) — the plan-skill loop this RFC inserts steps 3(b.5) and 3(b.6) into.
+- [RFC-23: Rehome the Change Umbrella as `/change:initiate`](rfc-23-initiate.md) — independent rehoming of the orchestration umbrella; mentioned for context but not depended on.
 - [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) — the tier-1 vs tier-2 boundary survey/synthesise sit inside.
 - [`docs/tutorials/legacy-migration-at-scale.md`](../docs/tutorials/legacy-migration-at-scale.md) — the canonical Scenario 1+2 walkthrough this RFC updates.
