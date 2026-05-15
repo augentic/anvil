@@ -35,14 +35,14 @@ Then work through a slice:
 /spec:merge
 ```
 
-For larger efforts, `/change:plan` authors `plan.yaml` and `/change:execute loop` drives each planned slice through the same define-build-merge loop. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, operator-owned PR merge, and `specify change finalize`. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
+For larger efforts, `/change:draft` authors `plan.yaml`, the operator reviews it, `/change:execute loop` drives each planned slice through the same define-build-merge loop, and `/change:finalize` pushes branches and archives the change once every PR has merged. Cross-repo work adds `registry.yaml`, `.specify/workspace/`, `specify workspace push`, and operator-owned PR merge. See the [Quick Reference](docs/reference/quick-reference.md) for command lookup.
 
 ## Plugins
 
 Specify ships as a Cursor plugin marketplace with seven plugins:
 
 - **Specify** (`spec`) -- Per-slice workflow: init, define, build, merge, drop, extract, analyze. Change-level plan authoring and execution live in the `change` plugin.
-- **Change** (`change`) -- Change planning (Layer 2): `/change:plan` (default mode + `orchestrate` umbrella) and `/change:execute` (the plan driver).
+- **Change** (`change`) -- Change lifecycle (Layer 2): `/change:draft` (plan authoring), `/change:execute` (per-slice driver), and `/change:finalize` (push, PR observation, archive).
 - **Omnia** (`omnia`) -- Rust WASM crate generation, testing, and review
 - **Vectis** (`vectis`) -- Cross-platform Crux app generation (Rust core, iOS shells, Android shells, design system)
 - **Contract** (`contract`) -- API contract generation, validation, and import
@@ -56,7 +56,7 @@ See the [Developer Guide](docs/reference/plugins/index.md) for the full skill re
 Two lifecycle nouns appear constantly in this codebase. RFC-13 §Migration locked their meaning:
 
 - **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, the `specify change *` CLI verbs that own `change.md`, and the sibling `specify plan *` verbs that own the executable plan.
+- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:draft`, `/change:execute`, `/change:finalize`, the `specify change *` CLI verbs that own `change.md`, and the sibling `specify plan *` verbs that own the executable plan.
 
 ## Installing the CLI
 

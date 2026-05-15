@@ -45,10 +45,10 @@ The producer change is shipping now and the consumer update is a separate beat (
 
 ```bash
 # After landing the current change (specify change finalize)
-specify change create adopt-<contract-path>-changes
-# Edit change.md to point at the consumer projects
-/change:plan adopt-<contract-path>-changes against ./
+/change:draft adopt-<contract-path>-changes against ./
+# Review plan.yaml; edit with `specify plan amend` if needed
 /change:execute loop
+/change:finalize adopt-<contract-path>-changes
 ```
 
 Record the compatibility report or PR discussion so the audit trail of "we knew about this drift when we merged the producer" is preserved.

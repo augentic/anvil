@@ -68,7 +68,7 @@ Transitions plan entries: `pending --> in-progress --> done|failed|blocked`.
 
 | Error | Cause | Resolution |
 |-------|-------|------------|
-| No plan exists | `plan.yaml` not found | Run `/change:plan` first |
+| No plan exists | `plan.yaml` not found | Run `/change:draft` first |
 | Lock held | Another `/change:execute` session is running | Wait for it to finish or release the lock |
 | Self-heal failure | Stale `in-progress` entry cannot be resolved | Manually transition or drop the stale slice |
 | Stuck | No eligible entries remain but not all are done | Review `failed`/`blocked` entries and resolve |
@@ -89,14 +89,15 @@ Transitions plan entries: `pending --> in-progress --> done|failed|blocked`.
 **Typical change flow:**
 
 ```text
-/change:plan migrate-to-v2 source monolith=/path/to/legacy
-specify plan status         # review the plan
+/change:draft migrate-to-v2 source monolith=/path/to/legacy
+specify plan status              # review the plan
 /change:execute loop             # run until all-done
+/change:finalize migrate-to-v2   # push, observe PRs, archive
 ```
 
 ## See also
 
-- [/change:plan](plan.md) -- author the plan that execute consumes
+- [/change:draft](draft.md) -- author the plan that execute consumes
 - [/spec:define](../slice-skills/define.md), [/spec:build](../slice-skills/build.md), [/spec:merge](../slice-skills/merge.md) -- the skills invoked per slice
 - [Lifecycle](../lifecycle.md) -- plan entry states
 - [Troubleshooting](../../how-to/troubleshooting/index.md) -- self-heal, lock issues

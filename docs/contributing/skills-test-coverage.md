@@ -16,7 +16,7 @@ contract.
   `argument-hint` declared in its YAML frontmatter (the documented primary
   trigger).
 - **Plan-generation scenarios:** [`tests/plan/`](../../tests/plan/) -- two
-  manual scenarios that cover `/change:plan` only (no execution, no push, no
+  manual scenarios that cover `/change:draft` only (no execution, no push, no
   finalize).
 - **Cross-repo scenarios:** [`tests/cross-repo/`](../../tests/cross-repo/) --
   one end-to-end manual scenario that drives `plan` → `execute` → `push` →
@@ -58,7 +58,7 @@ contract.
 | Skill | Primary trigger / argument-hint | Plan trace(s) | Scenario fixture(s) | Status | Notes |
 | --- | --- | --- | --- | --- | --- |
 | [`change-execute`](../../plugins/change/skills/execute/SKILL.md) | `/change:execute` (no argument-hint; positional `loop` documented in body) | [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) (`execute-loop-all-done`) | -- | ✓ | Cross-repo scenario explicitly asserts the loop terminates because the plan is complete. |
-| [`change-plan`](../../plugins/change/skills/plan/SKILL.md) | `<change-name>` (with optional `orchestrate` positional) | [`tests/plan/single-project.md`](../../tests/plan/single-project.md), [`tests/plan/contract-routing.md`](../../tests/plan/contract-routing.md), [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | -- | ✓ | Single-project covers local-only plans; contract-routing covers cross-repo plan authoring; cross-repo/scenario.md drives the full orchestrate path. |
+| [`change-draft`](../../plugins/change/skills/draft/SKILL.md) | `<change-name>` | [`tests/plan/single-project.md`](../../tests/plan/single-project.md), [`tests/plan/contract-routing.md`](../../tests/plan/contract-routing.md), [`tests/cross-repo/scenario.md`](../../tests/cross-repo/scenario.md) | -- | ✓ | Single-project covers local-only plans; contract-routing covers cross-repo plan authoring; cross-repo/scenario.md drives the full draft → execute → finalize path. |
 | [`client-sow-writer`](../../plugins/client/skills/sow-writer/SKILL.md) | `<slice-dir>` | -- | -- | gap | No scenario produces a SoW from a completed slice. |
 | [`contract-asyncapi`](../../plugins/contract/skills/asyncapi/SKILL.md) | `[slice-dir]` (AsyncAPI authoring) | -- | -- | gap | All five contract scenarios author HTTP/JSON-Schema artifacts; none produce an AsyncAPI document. |
 | [`contract-json-schema`](../../plugins/contract/skills/json-schema/SKILL.md) | `[slice-dir]` (standalone JSON Schema) | -- | [`describe.md`](../../capabilities/contracts/tests/describe.md), [`design.md`](../../capabilities/contracts/tests/design.md), [`update.md`](../../capabilities/contracts/tests/update.md), [`import.md`](../../capabilities/contracts/tests/import.md), [`source.md`](../../capabilities/contracts/tests/source.md) | ✓ | Every contracts scenario asserts `contracts/schemas/*.yaml` artifacts and runs `contract-validator-clean`. |
@@ -90,7 +90,7 @@ contract.
 
 | Status | Count | Skills |
 | --- | --- | --- |
-| ✓ | 7 | `change-execute`, `change-plan`, `contract-json-schema`, `contract-openapi`, `specify-define`, `specify-extract`, `specify-init`. |
+| ✓ | 7 | `change-execute`, `change-draft`, `contract-json-schema`, `contract-openapi`, `specify-define`, `specify-extract`, `specify-init`. |
 | partial | 6 | `change-analyze`, `omnia-crate-writer`, `omnia-test-writer`, `specify-build`, `specify-merge`, `vectis-core-writer`. |
 | gap | 15 | `client-sow-writer`, `contract-asyncapi`, `omnia-code-reviewer`, `omnia-guest-writer`, `rt-replay-writer`, `rt-wiretapper`, `specify-drop`, `vectis-android-reviewer`, `vectis-android-writer`, `vectis-core-reviewer`, `vectis-image-layout-inferer`, `vectis-ios-reviewer`, `vectis-ios-writer`, `vectis-template-updater`, `vectis-test-writer`. |
 

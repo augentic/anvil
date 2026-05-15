@@ -8,19 +8,21 @@ The full loop is nine steps. This page covers steps **5-7**.
 
 1. Initialise the platform hub (`specify init --hub`)
 2. Register code projects (`specify registry add`)
-3. Write the change brief (`specify change create`)
-4. Plan the change (`/change:plan`)
+3. Write the change brief (`specify change draft`)
+4. Draft the plan (`/change:draft`)
+   - *(seam — operator reviews `plan.yaml`; see [Reviewing the plan](reviewing-a-plan.md))*
 5. **Inspect the workspace**
 6. **Execute the plan** (`/change:execute loop`)
 7. **Push branches and open PRs** (`specify workspace push`)
 8. Operator merges the PRs
-9. Finalize the change (`specify change finalize`)
+9. Finalize the change (`/change:finalize`)
 
-Steps 1-4 live in [Working across repos: planning](cross-repo-change.md); Steps 8-9 in [Working across repos: landing](landing-a-change.md).
+Steps 1-4 live in [Working across repos: planning](cross-repo-change.md); the review seam in [Reviewing the plan](reviewing-a-plan.md); steps 8-9 in [Working across repos: landing](landing-a-change.md). `/change:finalize <name>` composes steps 7-9 into one operator action; this tutorial still shows step 7 as a discrete `specify workspace push` because the workspace push is the natural end of the executing half of the loop.
 
 **Prerequisites:**
 
 - Completed [Working across repos: planning](cross-repo-change.md) -- the hub is bootstrapped, the registry has both projects, the brief is authored, and `plan.yaml` lists three `pending` changes.
+- You have reviewed the drafted plan (see [Reviewing the plan](reviewing-a-plan.md)). If you skipped the review, do it now -- the draft → review → execute seam is the design.
 - Same toolchain as the planning tutorial: `specify` CLI on `PATH`, `gh` authenticated against your GitHub org.
 
 ## Contents
@@ -40,7 +42,7 @@ Steps 1-4 live in [Working across repos: planning](cross-repo-change.md); Steps 
 
 ## 5. Inspect the workspace
 
-`/change:plan` already ran `specify workspace sync` during the sync-workspace phase. Verify the resulting clones:
+`/change:draft` already ran `specify workspace sync` during the sync-workspace phase. Verify the resulting clones:
 
 ```bash
 specify workspace status
@@ -217,9 +219,9 @@ For greenfield projects (remote did not exist before this run), the per-project 
 
 Two PRs are now open against `org/shop-backend` and `org/shop-mobile`, both on the `specify/oauth-login` branch. The `oauth-login` plan still lives at `plan.yaml` with every entry `done`. The hub is in the canonical "ready to land" state.
 
-[**Continue to Working across repos: landing**](landing-a-change.md) for Steps 8 (operator PR merge through the forge UI or `gh pr merge`) and 9 (archive with `specify change finalize`), plus the `/change:plan <name> orchestrate` umbrella variants and the three change shapes (migrate-legacy / new-feature / update-existing).
+[**Continue to Working across repos: landing**](landing-a-change.md) for the final stage: merging the PRs (operator action) and running `/change:finalize <name>` to observe PR state and archive the plan. The landing tutorial also covers the three change shapes (migrate-legacy / new-feature / update-existing).
 
-If you stop here, the cross-repo work is shipped but unmerged. The PRs sit on the forge until reviewed; nothing is blocking. You can resume landing at any time -- the umbrella is idempotent on re-entry, and the manual flow is to merge the PRs through the forge UI or `gh pr merge`, then run `specify change finalize`.
+If you stop here, the cross-repo work is shipped but unmerged. The PRs sit on the forge until reviewed; nothing is blocking. You can resume landing at any time -- `/change:finalize` is idempotent and re-reads `plan.yaml` and PR state on every invocation. Merge the PRs through the forge UI or `gh pr merge` first.
 
 ## Troubleshooting
 
@@ -238,7 +240,7 @@ specify plan validate
 | `stale-workspace-clone` | warning | Refresh: `specify workspace sync`. |
 | `unreachable-entry` | error | `specify plan transition <pred> pending` after fixing the predecessor, or `specify plan transition <entry> skipped --reason "…"` to drop the leaf. |
 
-See [`specify plan validate`](../reference/cli/plan.md#specify-change-plan-validate) for the full diagnostic table and JSON shape.
+See [`specify plan validate`](../reference/cli/plan.md#specify-plan-validate) for the full diagnostic table and JSON shape.
 
 Other common issues:
 
@@ -269,7 +271,7 @@ Any deviation is a blocker. File the failing transcript against this tutorial; t
 
 ## Change shapes (preview)
 
-The cross-repo loop above is shape-agnostic. The same Steps 1-7 drive three change shapes -- `migrate-legacy`, `new-feature`, `update-existing` -- through a single uniform sequence. The walkthrough across the planning and executing tutorials is the **new-feature** shape (sources are documentation only); the other two arrive in [Working across repos: landing](landing-a-change.md#change-shapes), which also covers the `/change:plan <name> orchestrate` umbrella that drives each shape as a single operator action.
+The cross-repo loop above is shape-agnostic. The same three-skill sequence (`/change:draft` → review → `/change:execute loop` → `/change:finalize`) drives three change shapes -- `migrate-legacy`, `new-feature`, `update-existing` -- with the only difference being the inputs to `/change:draft`. The walkthrough across the planning and executing tutorials is the **new-feature** shape (sources are documentation only); the other two arrive in [Working across repos: landing](landing-a-change.md#change-shapes).
 
 ## What you learned
 
@@ -282,7 +284,7 @@ The cross-repo loop above is shape-agnostic. The same Steps 1-7 drive three chan
 
 - [Platform repo topologies](../explanation/platform-repo.md) -- registry-only hub vs platform-as-project, the validation invariant, and the on-disk shape of each.
 - [Workspace tiers](../explanation/workspace-tiers.md) -- the legacy-source vs registered-project clone distinction the loop relies on.
-- [`/change:plan`](../reference/change-skills/plan.md) -- plan authoring skill (default and orchestrate modes).
+- [`/change:draft`](../reference/change-skills/draft.md) -- plan authoring skill; ends at the operator review seam.
 - [`/change:execute`](../reference/change-skills/execute.md) -- plan driver.
 - [`specify compatibility`](../reference/cli/compatibility.md) -- consumer-impact contract report.
 - [`specify init`](../reference/cli/init.md) -- the `--hub` flag.
@@ -292,4 +294,4 @@ The cross-repo loop above is shape-agnostic. The same Steps 1-7 drive three chan
 
 ## Next
 
-[Working across repos: landing](landing-a-change.md) -- merge the PRs you just pushed, finalize the change, and exercise the `/change:plan <name> orchestrate` umbrella shapes.
+[Working across repos: landing](landing-a-change.md) -- merge the PRs you just pushed, run `/change:finalize <name>` to archive the change, and walk through the three change shapes.

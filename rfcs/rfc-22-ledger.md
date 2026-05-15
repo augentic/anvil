@@ -286,7 +286,7 @@ There is **no breaking change** to: existing `plan.yaml` files (the `mapping` fi
 
 - [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — analyze/extract split this RFC's ledger annotates.
 - [RFC-3b: Platform](archive/rfc-3b-platform.md) — assignment and one-slice-one-project invariant the ledger augments.
-- [RFC-9: Platform](archive/rfc-9-platform.md) — orchestration umbrella; ledger writers fire through `/change:execute` and `specify change finalize`.
+- [RFC-9: Platform](archive/rfc-9-platform.md) — historical change-lifecycle predecessor; ledger writers fire through `/change:execute` and `specify change finalize` in the current `/change:draft` → `/change:execute` → `/change:finalize` flow.
 - [RFC-20: Survey-to-Plan Pipeline](rfc-20-survey.md) — survey, synthesise, propose, and assignment briefs that consume the ledger.
 - [RFC-21: Source Catalogue and Tier-1 Cache](rfc-21-catalogue.md) — `sources.yaml` and the cache the ledger annotates.
 - [RM-12: Catalog import — Backstage adapter](roadmap.md#rm-12-catalog-import-backstage-adapter) — long-term shape alignment for catalogue export.

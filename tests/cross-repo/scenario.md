@@ -3,7 +3,7 @@ id: cross-repo-contract-flow
 owner: cross-repo
 kind: suite
 backend: manual
-entrypoint: /change:plan
+entrypoint: /change:draft
 stages: [define, build, merge]
 isolation: fresh-project
 assertions:
@@ -12,15 +12,21 @@ assertions:
   - contract-slice-first
   - implementation-slices-routed
   - dependencies-contract-before-implementations
+  - draft-stops-at-handoff
+  - review-step-no-op
   - execute-loop-all-done
   - workspace-branches-prepared
-  - push-created-prs
+  - finalize-halts-on-unmerged-prs
   - finalize-archives-plan
+  - archived-plan-path-recorded
+  - archived-change-md-present
+  - merged-pr-list-recorded
   - rerun-finalize-plan-not-found
 expected-artifacts:
   - plan.yaml
   - registry.yaml
   - .specify/workspace
+  - .specify/archive/plans
 negative-expectations:
   - automated-runner-added
   - fake-forge-added
@@ -35,26 +41,35 @@ Scenario ID: `cross-repo-contract-flow`
 
 Use this scenario to manually verify the simplest cross-repo happy path: a short
 feature brief becomes one contract slice and two routed implementation slices,
-then the change executes, pushes project branches, and finalizes after the
-project branches are merged.
+the operator reviews the draft plan, the change executes, and the
+`/change:finalize` skill drives push, PR observation, and archive after the
+project branches are merged externally.
 
-This scenario is deliberately manual. It does not introduce a test runner, fake
-forge, recorded transcript, CI target, or golden output comparison.
+The scenario exercises the three-skill `draft → review → execute → finalize`
+lifecycle (RFC-23) end-to-end and pins the durable end-state outcome (merged
+PRs, archived plan, archived `change.md`). It is deliberately manual. It does
+not introduce a test runner, fake forge, recorded transcript, CI target, or
+golden output comparison.
 
 ## Intent
 
 Prove that the operator-facing Specify workflow can drive the cross-repo
-contract-first path end to end:
+contract-first path end to end through the three-skill change lifecycle, and
+that it produces the same final state the retired `orchestrate` umbrella did:
+identical archived plan path shape, identical merged-PR list (one PR per routed
+project), identical archived `change.md` content next to the archived
+`plan.yaml`.
 
 ```text
 feature brief
-  -> /change:plan
+  -> /change:draft <name>
   -> contract slice
   -> routed backend and mobile implementation slices
+  -> (operator review pause: specify plan status)
   -> /change:execute loop
-  -> workspace push
-  -> operator merge
-  -> specify change finalize
+  -> /change:finalize <name>      (halts on unmerged PRs)
+  -> operator merges PRs externally
+  -> /change:finalize <name>      (archives the plan)
 ```
 
 The scenario checks durable structure and state transitions only. It should not
@@ -84,9 +99,12 @@ Prerequisites:
   the local development environment.
 - Git is available for local branches and remotes. The backend and mobile
   projects should be Git repositories with an `origin` remote configured before
-  `specify workspace push` if the operator wants to exercise PR/MR creation.
+  `/change:finalize` if the operator wants to exercise PR/MR creation.
 - Forge interaction is whatever the operator normally uses for this workspace.
-  Do not add fake `gh` or fake forge behavior for this scenario.
+  Do not add fake `gh` or fake forge behavior for this scenario. The
+  `/change:finalize` skill observes PR state via `gh pr list` and never merges
+  PRs itself; merges happen through the operator's normal forge workflow
+  between the first and second `/change:finalize` invocations.
 
 ## Inputs
 
@@ -178,14 +196,14 @@ specify registry validate
 
 Create `docs/oauth-login.md` from the **Inputs** section.
 
-### 2. Plan the change
+### 2. Draft the change
 
-Run `/change:plan` from the hub:
+Run `/change:draft` from the hub:
 
 ```text
-/change:plan oauth-login source brief=docs/oauth-login.md
+/change:draft oauth-login source brief=docs/oauth-login.md
 
-Plan a cross-repo OAuth login change from docs/oauth-login.md.
+Draft a cross-repo OAuth login change from docs/oauth-login.md.
 
 Expected shape:
 - one contract slice that defines the shared OAuth HTTP and schema contracts
@@ -196,14 +214,27 @@ Expected shape:
 Keep the plan small and happy-path only.
 ```
 
-After planning, validate and inspect the plan:
+The draft skill writes `change.md` and `plan.yaml`, runs the brief pipeline,
+runs `specify plan validate`, and stops at the hand-off summary. It must not
+proceed into execution. After the hand-off, the operator drives the next stage.
+
+### 3. Review the draft (operator pause)
+
+This is the explicit human seam introduced by RFC-23. Inspect the draft plan
+without modifying it:
 
 ```bash
 specify plan validate
 specify plan status
 ```
 
-### 3. Execute the plan
+The review step is a no-op for parity with the retired umbrella: the operator
+observes `plan.yaml`, confirms the slice shape matches the draft hand-off
+summary, and proceeds. If the operator needs to edit the plan, they would run
+`specify plan amend` here; for the parity scenario the plan is accepted as
+authored.
+
+### 4. Execute the plan
 
 Run the supervised execution loop from the hub:
 
@@ -222,39 +253,65 @@ specify plan status
 specify workspace status
 ```
 
-### 4. Push project branches
+Every plan entry should be `done`. The execute loop exits because the plan is
+complete (`all-done`), not because it is stuck, failed, or interrupted.
 
-Push prepared workspace branches from the hub:
+### 5. Finalize — first invocation (halts on unmerged PRs)
 
-```bash
-specify workspace push
+Run `/change:finalize` from the hub:
+
+```text
+/change:finalize oauth-login
 ```
 
-Record the branch or PR/MR identifiers in the run summary.
+The skill executes:
 
-### 5. Merge externally
+1. Pre-flight (`<change-name>` kebab-case, `plan.yaml` present).
+2. Plan terminality (every entry `done`).
+3. `specify workspace push` — pushes the prepared `specify/oauth-login`
+   branches to backend and mobile remotes; surfaces the per-project status
+   table verbatim.
+4. `gh pr list --head specify/oauth-login --state all --json
+   number,state,merged,headRefName,url` — observes PR state per project.
 
-Merge the backend and mobile branches using the normal operator workflow for
-the environment under test. This can be a real forge merge, a local remote
-merge in a disposable environment, or another documented operator action.
+On the first invocation, the freshly opened PRs are not yet merged, so the
+skill halts with `pr-not-merged`, naming each open PR with its URL. Record the
+PR numbers and URLs in the run summary.
 
-Do not add fake forge behavior to the repository as part of this scenario.
+### 6. Merge externally
 
-### 6. Finalize
+Merge the backend and mobile PRs using the normal operator workflow for the
+environment under test. This can be a real forge merge, a local remote merge in
+a disposable environment, or another documented operator action.
 
-Return to the hub and finalize:
+Do not add fake forge behavior to the repository as part of this scenario. The
+`/change:finalize` skill never merges PRs itself — operator merge between the
+two finalize invocations is the design.
 
-```bash
-specify change finalize
+### 7. Finalize — second invocation (archives the plan)
+
+Re-run `/change:finalize` from the hub:
+
+```text
+/change:finalize oauth-login
 ```
 
-Run finalize a second time:
+The second invocation re-runs every step. `specify workspace push` reports
+`up-to-date` for both projects (idempotent re-entry). `gh pr list` reports
+every PR as `MERGED`. The skill then runs `specify change finalize`, which
+archives `plan.yaml` and `change.md` together under
+`.specify/archive/plans/oauth-login-<date>/` (or the equivalent dated archive
+path the verb produces). The wrap-up summary prints the merged-PR list and the
+archived plan path.
 
-```bash
-specify change finalize
+Run `/change:finalize` a third time:
+
+```text
+/change:finalize oauth-login
 ```
 
-The second run should report `plan-not-found`.
+This re-entry should report `plan-not-found` from `specify change finalize` and
+exit 0 — the change is already archived.
 
 ## Expected Artifacts
 
@@ -262,7 +319,7 @@ The run should leave these artifacts or states for inspection:
 
 - `registry.yaml` exists in the hub and contains `shop-backend` and
   `shop-mobile`.
-- `plan.yaml` exists after `/change:plan` and validates cleanly.
+- `plan.yaml` exists after `/change:draft` and validates cleanly.
 - The plan has exactly one contract slice and two implementation slices.
 - The contract slice targets the contract capability and has no routed
   implementation project.
@@ -273,31 +330,53 @@ The run should leave these artifacts or states for inspection:
   exist after sync or execution preparation.
 - Prepared project branches use `specify/oauth-login`.
 - The execute loop reaches `all-done`.
-- `specify workspace push` creates or updates project PRs/MRs, or the local
-  equivalent documented by the operator.
-- `specify change finalize` archives the completed plan after the project
-  branches are merged.
-- A second `specify change finalize` reports `plan-not-found`.
+- The first `/change:finalize oauth-login` invocation runs `specify workspace
+  push` (creating or updating PRs/MRs for both routed projects, or the local
+  equivalent documented by the operator) and halts with `pr-not-merged`.
+- The second `/change:finalize oauth-login` invocation, after external merges,
+  archives the plan under `.specify/archive/plans/`.
+- The archived directory contains both the archived `plan.yaml` and the
+  archived `change.md` for the change.
+- The wrap-up summary names every merged PR (one per routed project) with its
+  URL.
+- A third `/change:finalize oauth-login` invocation reports `plan-not-found`.
 
 ## Assertions
 
-- `plan-exists`: `plan.yaml` exists after `/change:plan`.
-- `plan-validates`: `specify plan validate` exits cleanly.
+- `plan-exists`: `plan.yaml` exists after `/change:draft`.
+- `plan-validates`: `specify plan validate` exits cleanly after the draft
+  hand-off and again during the operator review.
 - `contract-slice-first`: the dependency graph makes the contract slice the
   first executable slice.
 - `implementation-slices-routed`: exactly two implementation slices route to
   the expected projects, `shop-backend` and `shop-mobile`.
 - `dependencies-contract-before-implementations`: each implementation slice
   depends on the contract slice.
+- `draft-stops-at-handoff`: `/change:draft` exits at the hand-off summary
+  without invoking `/change:execute`, pushing branches, or finalizing the
+  change.
+- `review-step-no-op`: `specify plan status` between draft and execute reports
+  the plan as authored; the operator does not run `specify plan amend` for the
+  parity scenario.
 - `execute-loop-all-done`: `/change:execute loop` exits because the plan is
   complete, not because it is stuck, failed, or interrupted.
 - `workspace-branches-prepared`: routed project work happens on
   `specify/oauth-login` branches.
-- `push-created-prs`: `specify workspace push` creates or updates the handoff
-  targets for both routed projects.
-- `finalize-archives-plan`: after external merges, `specify change finalize`
-  archives the plan.
-- `rerun-finalize-plan-not-found`: a second finalize reports `plan-not-found`.
+- `finalize-halts-on-unmerged-prs`: the first `/change:finalize oauth-login`
+  invocation runs push successfully and halts with `pr-not-merged` naming both
+  PR URLs.
+- `finalize-archives-plan`: after external merges, the second
+  `/change:finalize oauth-login` invocation archives the plan via
+  `specify change finalize`.
+- `archived-plan-path-recorded`: the wrap-up summary names the archived plan
+  path under `.specify/archive/plans/`, matching the umbrella's archive shape.
+- `archived-change-md-present`: the archived directory next to the archived
+  `plan.yaml` contains the archived `change.md` for the change.
+- `merged-pr-list-recorded`: the wrap-up summary lists exactly two merged PRs,
+  one for `shop-backend` and one for `shop-mobile`, with their numbers and
+  URLs.
+- `rerun-finalize-plan-not-found`: a third `/change:finalize oauth-login`
+  reports `plan-not-found` and exits 0.
 
 ## Negative Expectations
 
@@ -306,13 +385,17 @@ These are the guardrails for this first cross-repo pass:
 - `automated-runner-added`: this scenario pack must not add a Deno, Rust,
   shell, Cursor SDK, or other automated test runner.
 - `fake-forge-added`: this scenario pack must not add fake `gh`, fake GitHub,
-  or fake forge behavior.
+  or fake forge behavior. PR merges between the two `/change:finalize`
+  invocations are operator actions through the normal forge workflow.
 - `transcript-replay-added`: this scenario pack must not require recorded agent
   transcripts or replay fixtures.
 - `ci-target-added`: this scenario pack must not add a CI job, `make` target,
   or required automated acceptance check.
 - `golden-output-required`: this scenario pack must not require byte-for-byte
-  generated prose, code, or transcript comparisons.
+  generated prose, code, or transcript comparisons. Parity with the retired
+  umbrella is asserted on durable structure (archive path shape, merged-PR
+  count and project mapping, archive directory contents), not on byte-stable
+  output.
 
 ## Cleanup
 
@@ -323,8 +406,10 @@ failure needs investigation. Preserve these items on failure:
 - `docs/oauth-login.md`
 - `registry.yaml`
 - `plan.yaml`, or the archived plan path if finalize succeeded
-- `specify plan status` output
+- `specify plan status` output (review step and post-execute)
 - `specify workspace status` output
-- `specify workspace push` output
-- `specify change finalize` output
+- first `/change:finalize` output (push table + `pr-not-merged` halt)
+- second `/change:finalize` output (push idempotent + PR observation +
+  finalize wrap-up summary)
+- third `/change:finalize` output (`plan-not-found` re-entry)
 - relevant backend and mobile branch or PR/MR identifiers

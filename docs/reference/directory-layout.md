@@ -6,7 +6,7 @@ Specify draws a clear boundary between **operator-facing platform artifacts**, g
 
 ```text
 registry.yaml                               # Platform catalogue (optional, multi-repo only)
-plan.yaml                                   # Change plan (optional, created by /change:plan)
+plan.yaml                                   # Change plan (optional, created by /change:draft)
 change.md                                  # Operator brief (optional)
 AGENTS.md                                  # Generated agent context with operator prose outside fences
 
@@ -55,7 +55,7 @@ contracts/                                  # Baseline API contracts
 │   └── <capability>/
 │       └── spec.md                        # Accumulated behavioral requirements
 │
-├── plans/                                 # Change-plan working directories
+├── plans/                                 # Change-draft working directories
 │   └── <plan-name>/
 │       ├── discovery.md                   # Capability inventory from /change:analyze
 │       ├── proposal.md                    # Slice accept/edit/reject audit trail
@@ -108,13 +108,13 @@ Capability manifest and brief files fetched at `/spec:init` time. These are read
 
 ### `plans/`
 
-Working directories for change-plan authoring. Each plan gets a subdirectory containing the discovery output, proposal audit trail, and optional workspace inventory.
+Working directories for change-draft authoring. Each plan gets a subdirectory containing the discovery output, proposal audit trail, and optional workspace inventory.
 
 ### `workspace/`
 
 Registry workspace slots for multi-repo changes. Created or refreshed by `specify workspace sync`: remote URLs become Git clones and local paths (`.` or repo-relative URLs) become symlinks. With selectors, `workspace sync` materialises only the selected slots; with no selectors, it syncs every registry project.
 
-Slots are read-only during planning (`/change:plan`) and writable during execution (`/change:execute`). Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`; humans normally inspect that state with `specify workspace status`. Committed changes are published explicitly via `specify workspace push`, which only transports an existing exact change branch and creates or updates PRs. PR merge is operator-owned through the forge; `specify change finalize` later verifies the merge state and may remove clean clones under `--clean`.
+Slots are read-only during drafting (`/change:draft`) and writable during execution (`/change:execute`). Before mutation, execution prepares the selected remote-backed slot on `specify/<change-name>` from `origin/HEAD`; humans normally inspect that state with `specify workspace status`. Committed changes are published explicitly via `specify workspace push`, which only transports an existing exact change branch and creates or updates PRs. PR merge is operator-owned through the forge; `specify change finalize` (invoked by `/change:finalize`) later verifies the merge state and may remove clean clones under `--clean`.
 
 ### `archive/`
 

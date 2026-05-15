@@ -3,7 +3,7 @@ id: contract-routing
 owner: plan
 kind: suite
 backend: manual
-entrypoint: /change:plan
+entrypoint: /change:draft
 stages: [define]
 isolation: fresh-project
 assertions:
@@ -37,11 +37,11 @@ This scenario is deliberately manual. It does not introduce a test runner, fake 
 
 ## Intent
 
-Prove that `/change:plan` can author a deterministic cross-repo plan from a registry-only hub:
+Prove that `/change:draft` can author a deterministic cross-repo plan from a registry-only hub:
 
 ```text
 feature brief
-  -> /change:plan
+  -> /change:draft
   -> contract slice
   -> routed backend and mobile implementation slices
   -> specify plan validate
@@ -158,10 +158,10 @@ Create `docs/oauth-login.md` from the **Inputs** section.
 
 ### 2. Plan the change
 
-Run `/change:plan` from the hub:
+Run `/change:draft` from the hub:
 
 ```text
-/change:plan oauth-login-plan from docs/oauth-login.md
+/change:draft oauth-login-plan from docs/oauth-login.md
 
 Plan a cross-repo OAuth login change from docs/oauth-login.md.
 
@@ -189,7 +189,7 @@ Do not run `/change:execute`, `specify workspace push`, or `specify change final
 The run should leave these artifacts or states for inspection:
 
 - `registry.yaml` exists in the hub and contains `shop-backend` and `shop-mobile` with clear descriptions.
-- `plan.yaml` exists after `/change:plan` and validates cleanly.
+- `plan.yaml` exists after `/change:draft` and validates cleanly.
 - `.specify/plans/oauth-login-plan/discovery.md` records the supplied documentation input.
 - `.specify/plans/oauth-login-plan/workspace.md` records the synchronized peer context for routing.
 - `.specify/plans/oauth-login-plan/proposal.md` records the proposed contract-first plan shape.
@@ -200,7 +200,7 @@ The run should leave these artifacts or states for inspection:
 
 ## Assertions
 
-- `plan-exists`: `plan.yaml` exists after `/change:plan`.
+- `plan-exists`: `plan.yaml` exists after `/change:draft`.
 - `plan-validates`: `specify plan validate` exits cleanly.
 - `contract-slice-present`: the plan includes a contract slice before implementation work begins.
 - `implementation-slices-routed`: implementation slices route to the expected projects, `shop-backend` and `shop-mobile`.

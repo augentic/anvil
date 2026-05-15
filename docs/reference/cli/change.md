@@ -6,18 +6,18 @@ Scaffold the change pair (`change.md` + `plan.yaml`) at the start of a change, r
 
 | Verb | When to use |
 |------|-------------|
-| [`create`](#specify-change-create) | Scaffold `change.md` and `plan.yaml` together from canonical templates at the start of a change. |
+| [`draft`](#specify-change-draft) | Scaffold `change.md` and `plan.yaml` together from canonical templates at the start of a change. |
 | [`show`](#specify-change-show) | Render the current brief (frontmatter + prose body) for tooling consumers and review. |
 | [`finalize`](#specify-change-finalize) | Close out a fully-landed change: confirm every per-project PR merged, archive `plan.yaml` + brief + working dir. |
 
 ## Subcommands
 
-### specify change create
+### specify change draft
 
 Scaffold `change.md` and `plan.yaml` together at the repo root.
 
 ```bash
-specify change create <name> [--source <key>=<path-or-url> ...]
+specify change draft <name> [--source <key>=<path-or-url> ...]
 ```
 
 Writes `change.md` with the canonical frontmatter template (operators fill in the body) and writes `plan.yaml` with the change name and the supplied `--source` map. Each `--source` flag takes one `key=value` pair (repeatable, deduplicated by key); these populate the plan's top-level `sources:` map and become the `<source-key>` namespace that plan entries reference.
@@ -44,7 +44,7 @@ Render the brief content (frontmatter + prose body).
 specify change show [--format json]
 ```
 
-`--format json` emits the parsed frontmatter alongside the prose body for tooling consumers (e.g. `/change:plan`).
+`--format json` emits the parsed frontmatter alongside the prose body for tooling consumers (e.g. `/change:draft`).
 
 ### specify change finalize
 
@@ -138,7 +138,8 @@ The old `specify workspace merge` automation has been removed. Operators land PR
 
 ## See also
 
-- [specify plan](plan.md) -- the executable-plan verbs (`create`, `add`, `amend`, `transition`, `validate`, `next`, `status`, `archive`, `lock`) that the umbrella's `create` delegates to for the plan half.
-- [specify slice](slice.md) -- the per-slice CLI verbs that change-orchestration drives through the slice loop.
+- [specify plan](plan.md) -- the executable-plan verbs (`add`, `amend`, `transition`, `validate`, `next`, `status`, `archive`, `lock`) that `specify change draft` scaffolds and the change skills edit.
+- [specify slice](slice.md) -- the per-slice CLI verbs that the change lifecycle drives through the slice loop.
 - [specify registry](registry.md) -- platform registry.
 - [specify workspace](workspace.md) -- sync, status, push.
+- [`/change:draft`](../change-skills/draft.md), [`/change:execute`](../change-skills/execute.md), [`/change:finalize`](../change-skills/finalize.md) -- the three-skill change lifecycle that wraps these CLI verbs.

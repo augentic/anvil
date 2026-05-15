@@ -10,7 +10,7 @@ argument-hint: <input-path> <output-dir> <kind> [source-key]
 
 1. **Validate invocation** — require a local `$INPUT_PATH`, writable `$OUTPUT_DIR`, and kind exactly `legacy-code` or `documentation`; fail before partial writes.
 2. **Materialize remotes outside analyze** — if the source is remote, use the guarded clone snippet first and pass the resulting local path as `$INPUT_PATH`.
-3. **Resolve capability prompt** — run capability resolution and load `plugins/change/skills/plan/briefs/<capability>/analyze.md`; never embed clustering heuristics in this SKILL.
+3. **Resolve capability prompt** — run capability resolution and load `plugins/change/skills/draft/briefs/<capability>/analyze.md`; never embed clustering heuristics in this SKILL.
 4. **Emit capability summaries only** — append one sorted capability block per inferred capability to `<output-dir>/discovery.md`; never produce full `specs/` or `design.md`.
 5. **Tag and deduplicate** — carry `<source-key>` markers when supplied, overwrite same-name capabilities from this run, and preserve unrelated prior discovery blocks.
 6. **Write structural metadata for code only** — for `legacy-code`, write byte-stable `<plan-dir>/analyze/<source-key>/metadata.json`; for `documentation`, leave that slot absent.
@@ -41,7 +41,7 @@ Pass the resulting local path as `$INPUT_PATH` on the next `/change:analyze` inv
 | `legacy-code`   | Cluster code into capability summaries (capability-owned algorithm).  |
 | `documentation` | Extract capability summaries from prose / PDFs / runbooks / API docs. |
 
-Any other value is a hard error; the skill exits non-zero before writing anything to `discovery.md`. See `/change:plan` §*Input kinds* for the normative enum definition — `/change:analyze` is the enforcement site for unknown-kind errors, but the vocabulary itself is pinned by the plan skill. Do not extend it.
+Any other value is a hard error; the skill exits non-zero before writing anything to `discovery.md`. See `/change:draft` §*Input kinds* for the normative enum definition — `/change:analyze` is the enforcement site for unknown-kind errors, but the vocabulary itself is pinned by the draft skill. Do not extend it.
 
 ## Output contract
 
@@ -112,7 +112,7 @@ In addition to appending capability summaries to `discovery.md`, the code branch
 | `module_count` | integer | Total module count. Capability-owned definition (TS: files; Java: classes; Python: modules; …). |
 | `top_level_modules` | array[string] | Immediate children of the source root, alphabetically sorted, relative path strings. May be empty. |
 
-All fields are required. The detection algorithm that produces each field is owned by the capability-specific code branch prompt (`plugins/change/skills/plan/briefs/<capability>/analyze.md`); this SKILL only pins the field names, types, and on-disk shape.
+All fields are required. The detection algorithm that produces each field is owned by the capability-specific code branch prompt (`plugins/change/skills/draft/briefs/<capability>/analyze.md`); this SKILL only pins the field names, types, and on-disk shape.
 
 **Idempotency.** Same rules as §*Output contract*: no timestamps, no host state, byte-stable field order matching the shape above, and alphabetically-sorted `top_level_modules`. Re-running analyze on unchanged inputs emits byte-identical metadata. This lets `specify plan validate` diff the file across runs without drift.
 
@@ -132,17 +132,17 @@ A byte-stable output lets the propose brief cache its slicing decisions and surf
 
 ## Per-kind prompts (planning-skill-owned)
 
-The detailed clustering / extraction prompt for each `kind` value lives under `plugins/change/skills/plan/briefs/<capability>/analyze.md` (planning briefs ship with the change-planning skill rather than the capability manifest):
+The detailed clustering / extraction prompt for each `kind` value lives under `plugins/change/skills/draft/briefs/<capability>/analyze.md` (planning briefs ship with the change-draft skill rather than the capability manifest):
 
-- [`plugins/change/skills/plan/briefs/omnia/analyze.md`](../plan/briefs/omnia/analyze.md) — Omnia's per-kind prompt (documentation branch and code branch).
-- Other capabilities ship their own variant alongside under `plugins/change/skills/plan/briefs/<capability>/`.
+- [`plugins/change/skills/draft/briefs/omnia/analyze.md`](../draft/briefs/omnia/analyze.md) — Omnia's per-kind prompt (documentation branch and code branch).
+- Other capabilities ship their own variant alongside under `plugins/change/skills/draft/briefs/<capability>/`.
 
 `/change:analyze` resolves the active capability via `specify capability resolve` and invokes the relevant brief internally. The skill does **not** embed clustering heuristics; those are capability-specific judgement calls (import-graph vs docstring vs endpoint-name weighting, confidence thresholds, etc.).
 
 ## Process
 
 1. **Validate arguments.** Reject if `$KIND` is not in the closed enum, if `$INPUT_PATH` does not exist, or if `$OUTPUT_DIR` is not writable. Each failure is a hard exit with a clear diagnostic; no partial write to `discovery.md` ever ships.
-2. **Resolve capability and per-kind brief path.** Run `specify capability resolve` and load `plugins/change/skills/plan/briefs/<capability>/analyze.md`.
+2. **Resolve capability and per-kind brief path.** Run `specify capability resolve` and load `plugins/change/skills/draft/briefs/<capability>/analyze.md`.
 3. **Invoke the brief against `$KIND`.** The brief owns clustering (for `legacy-code`) or extraction (for `documentation`) and emits capability summaries in the shape pinned above.
 4. **Write outputs.**
    - **4a.** Write / append to `discovery.md` with the idempotent ordering rules (both branches), optionally tagging each emitted capability with `$SOURCE_KEY`. Report the list of capability names written on stdout for the discovery brief to aggregate.
@@ -150,7 +150,7 @@ The detailed clustering / extraction prompt for each `kind` value lives under `p
 
 ## Error handling
 
-- **Unknown `kind`** — hard exit. The diagnostic names the closed enum and points at `/change:plan` §*Input kinds*.
+- **Unknown `kind`** — hard exit. The diagnostic names the closed enum and points at `/change:draft` §*Input kinds*.
 - **Missing `$INPUT_PATH`** — hard exit; no placeholder entry.
 - **Malformed brief output** (missing required field, non-enum confidence, non-string summary) — halt with a diagnostic that names the offending capability and the brief path; do not write a partially-valid `discovery.md`.
 - **Metadata sidecar on the documentation branch** — hard guardrail, not a runtime error: `$KIND = documentation` MUST NOT write `<plan-dir>/analyze/<source-key>/metadata.json`. The documentation branch has no code structure to measure, so the slot stays absent for doc inputs.

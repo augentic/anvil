@@ -19,13 +19,27 @@ The change component is **not** a capability: it has commands, libraries, and fi
 | `.specify/plan.lock`                   | change component  | Advisory PID stamp serialising concurrent `/change:execute` drivers.                                                                                                                       |
 | `.specify/archive/plans/<YYYYMMDD>-<name>/` | change component | Archive destination written atomically by `specify change finalize` once every per-project PR has merged.                                                                                |
 
+## The three-skill lifecycle
+
+The change component is coordinated agent-side by three peer skills with an explicit operator review seam between authoring and execution:
+
+| Skill | Owns |
+|-------|------|
+| [`/change:draft <name>`](change-skills/draft.md) | Brief scaffold, registry validate, plan brief pipeline (discovery → [sync-workspace] → propose → [assignment]), `specify plan validate`. Ends at hand-off — never starts execution. |
+| *(operator reviews `plan.yaml`)* | Operator runs `specify plan amend`, `specify plan status`, etc. as needed. |
+| [`/change:execute loop`](change-skills/execute.md) | Per-slice `/spec:define → /spec:build → /spec:merge`, status transitions, driver lock. |
+| *(operator reviews implementation)* | |
+| [`/change:finalize <name>`](change-skills/finalize.md) | `specify workspace push`, `gh pr list` observation, `specify change finalize`. |
+
+The lifecycle reads `draft → execute → finalize` and deliberately mirrors `/spec`'s `define → build → merge` rhythm at the change layer. There is no umbrella mode and no automatic transition between the three skills; the human seam between authoring and execution is the design.
+
 ## Verbs
 
-The change component publishes the umbrella surface below. The `Plan` family is folded under `Change` so planning is a subresource — `plan.yaml` is the file name, but it is not a peer top-level CLI noun.
+The change component publishes the CLI surface below. The `Plan` family is folded under `Change` so planning is a subresource — `plan.yaml` is the file name, but it is not a peer top-level CLI noun.
 
 | Verb                                              | Purpose                                                                                                                                                                           |
 | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `specify change create <name>`                    | Scaffold `change.md` from the canonical template. Refuses to overwrite an existing file.                                                                                          |
+| `specify change draft <name>`                     | Scaffold `change.md` and `plan.yaml` together from canonical templates. Refuses to overwrite an existing file.                              |
 | `specify plan add <name>`                  | Append a new plan entry (`pending` status). Validates the entry and the resulting plan shape.                                                                                     |
 | `specify plan amend <name>`                | Edit non-status fields on an existing plan entry (depends-on, sources, description, project, schema, context).                                                                    |
 | `specify plan next`                        | Return the next eligible plan entry, respecting `depends-on` and the `multiple-in-progress` invariant. The selection that `/change:execute` drives.                                 |
@@ -38,7 +52,7 @@ The change component publishes the umbrella surface below. The `Plan` family is 
 | `specify change finalize`                         | Closure verb. Confirms every plan entry is terminal, every per-project PR has merged on its remote, and every workspace clone is clean — then atomically archives the change.    |
 | `specify change archive`                          | Operator-driven archive of a completed change without re-running the finalize guards. Used when finalize ran in a previous session.                                               |
 
-The change component owns only the umbrella + plan surface. The per-slice verbs (`specify slice {create, status, validate, merge, drop, transition, archive, journal, outcome, touched-specs, overlap, task}`) are core and live on the slice loop crate.
+The change component owns only the change + plan surface. The per-slice verbs (`specify slice {create, status, validate, merge, drop, transition, archive, journal, outcome, touched-specs, overlap, task}`) are core and live on the slice loop crate.
 
 ## Dependency direction
 
@@ -50,11 +64,11 @@ specify-change → specify-registry → specify-capability
               → specify-core
 ```
 
-The invariant: **the change component depends on `specify-registry` and the core slice loop, never the reverse.** Orchestration composes registry materialisation and the fixed slice loop; neither lower-level service knows about the umbrella. A workspace lint enforces the rule.
+The invariant: **the change component depends on `specify-registry` and the core slice loop, never the reverse.** Orchestration composes registry materialisation and the fixed slice loop; neither lower-level service knows about the change layer. A workspace lint enforces the rule.
 
 ## Plan / change relationship
 
-A *change* is the umbrella concept: a user-defined outcome that coordinates one or more *slices*. A *slice* is the single unit that flows through the fixed `define → build → merge` loop — a per-project transaction with its own proposal, specs, design, tasks, and merge step.
+A *change* is the operator-defined outcome that coordinates one or more *slices*. A *slice* is the single unit that flows through the fixed `define → build → merge` loop — a per-project transaction with its own proposal, specs, design, tasks, and merge step.
 
 Concretely:
 
@@ -85,6 +99,7 @@ The core does not parse capability diagnostics — they round-trip as opaque jou
 
 - [Capabilities](capabilities/index.md) — capability manifest protocol and the dependency direction sister page.
 - [Registry](registry.md) — topology ledger and workspace materialisation.
-- [`/change:plan`](change-skills/plan.md) — change plan authoring skill.
+- [`/change:draft`](change-skills/draft.md) — change plan authoring skill.
 - [`/change:execute`](change-skills/execute.md) — change execution driver.
+- [`/change:finalize`](change-skills/finalize.md) — change close-out skill (push, observe PRs, archive).
 - [Lifecycle](lifecycle.md) — slice-loop state machine the change component drives entries through.

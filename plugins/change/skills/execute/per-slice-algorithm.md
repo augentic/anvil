@@ -240,7 +240,7 @@ The block is omitted entirely when the deferral was a plain `deferred` outcome.
 
 ### Canonical recovery sequence (operator-driven)
 
-The driver does **not** apply registry amendments automatically — `specify registry add` is reserved for operator-initiated topology changes. Once the operator has reviewed the proposal, they run this exact sequence (or its supervised equivalent inside the §2C `/change:plan <name> orchestrate` umbrella):
+The driver does **not** apply registry amendments automatically — `specify registry add` is reserved for operator-initiated topology changes. Once the operator has reviewed the proposal, they run this exact sequence:
 
 ```text
 specify registry add <proposed-name> \
@@ -259,7 +259,7 @@ Notes:
 
 - **Verb order matters.** The registry must be amended **before** the plan can amend `--project` (the validator rejects `project` values not in `registry.yaml`). The workspace sync between them materialises the new clone slot under `.specify/workspace/<proposed-name>/` so subsequent `/change:execute loop` runs route into a real working tree.
 - **`pending` re-queues.** The slice was dropped at step 12.b; the next `/change:execute loop` pass picks it up via `specify plan next`. The drop archived the prior journal under `.specify/archive/...-<slice-name>/` — the recovery `pending → in-progress` re-creates a fresh slice directory at step 6.
-- **Manual fallback.** Every step is a v1 verb the operator can run by hand; the umbrella skill (RFC-9 §2C, `/change:plan <name> orchestrate`) wraps the same sequence into a single composition. `/change:execute` itself never invokes any of these verbs — that boundary is what keeps the registry under operator control.
+- **Manual fallback.** Every step is a v1 verb the operator can run by hand. `/change:execute` itself never invokes any of these verbs — that boundary is what keeps the registry under operator control.
 
 ### Self-heal interaction
 

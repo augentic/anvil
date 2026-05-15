@@ -19,7 +19,7 @@ Plan-time capability inference for legacy code and documentation inputs.
 
 ## When to use
 
-Typically invoked by the discovery phase during `/change:plan`, not directly. Reads one input and appends capability summaries to `discovery.md`.
+Typically invoked by the discovery phase during `/change:draft`, not directly. Reads one input and appends capability summaries to `discovery.md`.
 
 ## Artifacts produced
 
@@ -82,5 +82,5 @@ None. Analyze is a supporting skill invoked during planning.
 
 ## See also
 
-- [/change:plan](plan.md) -- the primary consumer of analyze
+- [/change:draft](draft.md) -- the primary consumer of analyze
 - [/spec:extract](../slice-skills/extract.md) -- the deep counterpart at define time

@@ -8,7 +8,7 @@ Migrating a large legacy codebase is one of the most demanding uses of Specify. 
 
 - [The scaling challenge](#the-scaling-challenge)
 - [1. Set up the registry](#1-set-up-the-registry)
-- [2. Plan the migration](#2-plan-the-migration)
+- [2. Draft the migration plan](#2-draft-the-migration-plan)
 - [3. Handle tangled code](#3-handle-tangled-code)
 - [4. Execute the migration](#4-execute-the-migration)
 - [5. Mix extraction and greenfield slices](#5-mix-extraction-and-greenfield-slices)
@@ -58,12 +58,12 @@ projects:
       template management, delivery tracking.
 ```
 
-## 2. Plan the migration
+## 2. Draft the migration plan
 
-Point the plan skill at the monolith:
+Point the draft skill at the monolith:
 
 ```text
-/change:plan modernise-platform source monolith=/path/to/legacy-monolith
+/change:draft modernise-platform source monolith=/path/to/legacy-monolith
 ```
 
 <details>
@@ -127,7 +127,7 @@ Propose creates entries without a `project` field -- it handles decomposition, n
 
 ### Assignment
 
-After all slices are accepted, the plan skill's assignment step (3d) matches each entry to a target project. It infers routing from `workspace.md` -- project descriptions, baseline spec affinity, and schema compatibility -- then presents a batch review:
+After all slices are accepted, the draft skill's assignment step (3d) matches each entry to a target project. It infers routing from `workspace.md` -- project descriptions, baseline spec affinity, and schema compatibility -- then presents a batch review:
 
 ```
 | # | Entry                    | Project              | Rationale                              |
@@ -137,7 +137,7 @@ After all slices are accepted, the plan skill's assignment step (3d) matches eac
 | 3 | extract-email-dispatch   | notification-service | baseline spec: email-templates exists   |
 ```
 
-The operator can override any assignment. Once confirmed, the plan skill writes each routing decision via `specify plan amend <name> --project <project>`.
+The operator can override any assignment. Once confirmed, the draft skill writes each routing decision via `specify plan amend <name> --project <project>`.
 
 ## 3. Handle tangled code
 
@@ -211,16 +211,17 @@ changes:
 ```text
 # One-time setup
 Create registry.yaml with target repos
-/change:plan modernise-platform source monolith=/path/to/legacy
+/change:draft modernise-platform source monolith=/path/to/legacy
 
-# Review
+# Review — see [Reviewing the plan](reviewing-a-plan.md)
 specify plan status
 
 # Execute
 /change:execute loop
 
-# Push workspace clones to remotes
-specify workspace push
+# Finalize — pushes branches, observes PR state, halts until PRs are merged,
+# then archives the plan. Re-run after merging PRs externally.
+/change:finalize modernise-platform
 ```
 
 ## What you learned

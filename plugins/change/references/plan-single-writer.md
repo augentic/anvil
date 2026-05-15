@@ -6,8 +6,8 @@
 
 | Write | Owner | Command |
 |---|---|---|
-| Create the plan shell and top-level `sources` map (alongside the `change.md` brief) | `/change:plan` or a human authoring by hand | `specify change create <change-name> [--source <key>=<path-or-url> ...]` |
-| Add plan entries | `/change:plan`, propose briefs, phase skills that discover neighbouring work, or humans | `specify plan add <name> ...` |
+| Create the plan shell and top-level `sources` map (alongside the `change.md` brief) | `/change:draft` or a human authoring by hand | `specify change draft <change-name> [--source <key>=<path-or-url> ...]` |
+| Add plan entries | `/change:draft`, propose briefs, phase skills that discover neighbouring work, or humans | `specify plan add <name> ...` |
 | Amend non-status fields | Assignment step, phase skills, or humans | `specify plan amend <name> ...` |
 | Change entry status | `/change:execute` or operators driving the loop manually | `specify plan transition <name> <status> [--reason "..."]` |
 | Validate, inspect, or archive the plan | Any operator flow | `specify plan validate/status/doctor/archive` |
@@ -16,7 +16,7 @@ The `amend` surface intentionally has no `status` field. Entry status changes ar
 
 ## Authoring rules
 
-- `/change:plan` writes entries one at a time through `specify plan add`; it never batches YAML or rewrites existing entries in place.
+- `/change:draft` writes entries one at a time through `specify plan add`; it never batches YAML or rewrites existing entries in place.
 - Propose briefs are the single-writer edge for accepted draft slices. They create entries without `--project`; project assignment runs later through `specify plan amend --project <project>`.
 - `extend` mode is append-only. Existing entries are not modified except for the explicit assignment step on entries created in the same run.
 - `dry-run` is read-only: no plan create/add/amend/transition calls and no files under `.specify/` are written.

@@ -9,7 +9,7 @@ When a body of work spans multiple related slices -- a migration, a new feature 
 ## Contents
 
 - [When you need a plan](#when-you-need-a-plan)
-- [1. Author the plan](#1-author-the-plan)
+- [1. Draft the plan](#1-draft-the-plan)
 - [2. Review the plan](#2-review-the-plan)
 - [3. Preview execution](#3-preview-execution)
 - [4. Run one slice](#4-run-one-slice)
@@ -30,12 +30,12 @@ A plan is useful when:
 
 For one or two independent slices, the manual define-build-merge loop is simpler.
 
-## 1. Author the plan
+## 1. Draft the plan
 
 Suppose you want to migrate an auth service from a legacy codebase. Start by telling Specify what you are working from:
 
 ```text
-/change:plan migrate-auth source legacy=./src/auth
+/change:draft migrate-auth source legacy=./src/auth
 ```
 
 <details>
@@ -65,7 +65,7 @@ Plan created: plan.yaml (4 entries)
 
 </details>
 
-The plan skill runs a three-phase internal flow:
+`/change:draft` runs a three-phase internal flow before stopping at the operator review seam:
 
 ### Discovery
 
@@ -93,7 +93,7 @@ After all slices are accepted or rejected, the skill runs `specify plan validate
 
 ## 2. Review the plan
 
-After planning completes, inspect the result:
+`/change:draft` ends at "plan validated, hand back to operator." Nothing happens automatically after that -- the seam between draft and execute is the design. Inspect the result:
 
 ```bash
 specify plan status
@@ -111,7 +111,7 @@ migrate-auth
   Summary: 4 pending, 0 in-progress, 0 done
 ```
 
-You can also look at `plan.yaml` directly to see the full plan structure including descriptions, sources, and dependency edges.
+You can also look at `plan.yaml` directly to see the full plan structure including descriptions, sources, and dependency edges. For the full review checklist -- when to edit with `specify plan amend` vs when to abort and re-draft -- see [Reviewing the plan](reviewing-a-plan.md).
 
 ## 3. Preview execution
 
@@ -209,9 +209,9 @@ The plan is just a data file that tracks status. The CLI commands give you full 
 
 ## What you learned
 
-- `/change:plan` discovers capabilities and proposes slices with an interactive accept/edit/reject loop.
+- `/change:draft` discovers capabilities and proposes slices with an interactive accept/edit/reject loop, then stops at the operator review seam.
 - The plan tracks slices, dependencies, and status in `plan.yaml`.
-- `/change:execute` automates the define-build-merge loop per slice.
+- `/change:execute` automates the define-build-merge loop per slice; it never runs automatically after draft.
 - `--dry-run` previews, bare invocation runs one slice, `--loop` runs until done.
 - Failures transition plan entries to `failed`. You can reset, skip, or restructure.
 - The `specify` CLI is always available as a manual fallback.

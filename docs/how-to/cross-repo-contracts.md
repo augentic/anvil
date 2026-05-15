@@ -4,7 +4,7 @@ API contracts define the machine-readable interface shapes between components. I
 
 ## The contract-first pattern
 
-When `/change:plan` detects an API boundary between two projects in the registry, it automatically inserts a **contract change** before the implementation changes:
+When `/change:draft` detects an API boundary between two projects in the registry, it automatically inserts a **contract change** before the implementation changes:
 
 ```yaml
 changes:
@@ -26,7 +26,7 @@ The contract change defines the interface (JSON Schema payloads, OpenAPI binding
 
 ## Manual contract workflow
 
-If you are not using `/change:plan`, you can create contract changes manually:
+If you are not using `/change:draft`, you can create contract changes manually:
 
 ```text
 /spec:init https://github.com/augentic/specify/capabilities/contracts

@@ -241,3 +241,11 @@ Key architectural decisions in Specify, distilled from the design RFCs. Each ent
 **Rationale:** Specify is pre-1.0 and the wire/CLI surface is allowed to evolve. Capturing the rename trail here keeps `AGENTS.md` free of "renamed from … by RFC-N" parentheticals while preserving the trail for anyone tracing a stale call site.
 
 **Source:** [RFC-9](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-9-platform.md), [RFC-13](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-13-extensibility.md), [RFC-15](https://github.com/augentic/specify/blob/main/rfcs/archive/rfc-15-wasi-tools.md).
+
+## Three-skill change lifecycle (RFC-23)
+
+**Decision:** RFC-23 (May 2026): split `/change:plan` (default mode + `orchestrate` umbrella) into three peer skills (`/change:draft`, `/change:execute`, `/change:finalize`); CLI verb `specify change create` renamed to `specify change draft`.
+
+**Rationale:** `/change:plan` doubled as authoring skill and orchestration umbrella, hiding the operator review pause between authoring and execution and breaking lifecycle symmetry with `/spec:define → /spec:build → /spec:merge`. Three peer skills with an explicit human seam between draft and execute restore the rhythm and make the review pause a property of the framework rather than an opt-in manual flow. The seven-step orchestration body survives, redistributed across the three skills; the umbrella mode is removed outright.
+
+**Source:** [RFC-23: Change Lifecycle](https://github.com/augentic/specify/blob/main/rfcs/rfc-23-change-lifecycle.md).

@@ -20,8 +20,8 @@ Each tier is created by a different command, at a different stage of the loop.
 
 | Tier | Materialised by | Triggered from |
 |------|-----------------|----------------|
-| Legacy-source clone | `/change:analyze` (inlined `git clone` snippet for git URLs — see [its SKILL.md §*Cloning a source tree*](../../plugins/change/skills/analyze/SKILL.md)) | The plan-time discovery brief, invoked by `/change:plan` step 3(a) |
-| Registered project clone | `specify workspace sync` | `/change:plan` step 3(b) (sync-workspace, multi-repo only); operators may also run it directly between runs |
+| Legacy-source clone | `/change:analyze` (inlined `git clone` snippet for git URLs — see [its SKILL.md §*Cloning a source tree*](../../plugins/change/skills/analyze/SKILL.md)) | The plan-time discovery brief, invoked by `/change:draft` (brief-pipeline step 4(a)) |
+| Registered project clone | `specify workspace sync` | `/change:draft` (sync-workspace, multi-repo only, brief-pipeline step 4(b)); operators may also run it directly between runs |
 
 Tier 1 is on-demand and per-input: discovery clones one tree per `--source <key>=<git-url>` (and per `kind: legacy-code` entry in `change.md:inputs`). Local paths and `--from` documentation inputs do not produce a tier-1 clone -- the skill reads them in place.
 
@@ -90,8 +90,8 @@ The shorthand: **tier 1 is the input the planner reads; tier 2 is the output the
 ## See also
 
 - [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- end-to-end worked example that exercises tier-2 materialisation, CWD routing during execution, and `specify workspace push`.
-- [The Layered Stack](layered-stack.md) -- where `/change:plan` (default + `orchestrate` modes) and `/change:execute` sit in the layered model.
-- [`/change:plan`](../../plugins/change/skills/plan/SKILL.md) -- the skill that triggers tier-1 materialisation (step 3(a)) and tier-2 materialisation (step 3(b)).
+- [The Layered Stack](layered-stack.md) -- where the three-skill change lifecycle (`/change:draft`, `/change:execute`, `/change:finalize`) sits in the layered model.
+- [`/change:draft`](../../plugins/change/skills/draft/SKILL.md) -- the authoring skill that triggers tier-1 materialisation (discovery brief) and tier-2 materialisation (sync-workspace brief).
 - [`/change:execute`](../../plugins/change/skills/execute/SKILL.md) -- the skill that `chdir`s into tier-2 clones to drive define-build-merge.
 - [`specify workspace`](../reference/cli/workspace.md) -- CLI reference for `sync`, `status`, and `push`.
 - [`specify plan`](../reference/cli/plan.md) -- CLI reference for `archive` (the tier-1 sweep).

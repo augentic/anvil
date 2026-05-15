@@ -3,7 +3,7 @@ id: plan-single-project
 owner: plan
 kind: suite
 backend: manual
-entrypoint: /change:plan
+entrypoint: /change:draft
 stages: [define]
 isolation: fresh-project
 assertions:
@@ -33,11 +33,11 @@ This scenario is deliberately manual. It does not introduce a test runner, fake 
 
 ## Intent
 
-Prove that `/change:plan` can turn a simple documentation input into a reviewable plan for a single project:
+Prove that `/change:draft` can turn a simple documentation input into a reviewable plan for a single project:
 
 ```text
 feature brief
-  -> /change:plan
+  -> /change:draft
   -> local slice entries
   -> specify plan validate
 ```
@@ -102,10 +102,10 @@ Create `docs/inventory-adjustments.md` from the **Inputs** section.
 
 ### 2. Plan the change
 
-Run `/change:plan` from the project root:
+Run `/change:draft` from the project root:
 
 ```text
-/change:plan inventory-adjustments from docs/inventory-adjustments.md
+/change:draft inventory-adjustments from docs/inventory-adjustments.md
 
 Plan a small single-project change from docs/inventory-adjustments.md.
 
@@ -131,7 +131,7 @@ Do not run `/change:execute`. This scenario ends after plan validation and inspe
 
 The run should leave these artifacts or states for inspection:
 
-- `plan.yaml` exists after `/change:plan` and validates cleanly.
+- `plan.yaml` exists after `/change:draft` and validates cleanly.
 - `.specify/plans/inventory-adjustments/discovery.md` records the supplied documentation input.
 - `.specify/plans/inventory-adjustments/proposal.md` records the proposed local slice entries.
 - The plan has one or more named entries with coherent local scopes.
@@ -139,7 +139,7 @@ The run should leave these artifacts or states for inspection:
 
 ## Assertions
 
-- `plan-exists`: `plan.yaml` exists after `/change:plan`.
+- `plan-exists`: `plan.yaml` exists after `/change:draft`.
 - `plan-validates`: `specify plan validate` exits cleanly.
 - `slices-match-expected-shape`: entries are named, scoped, and ordered consistently with the inventory adjustment brief.
 - `no-project-routing-required`: entries do not include project routing fields or registry-derived assignments.

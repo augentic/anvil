@@ -10,7 +10,7 @@ The registry was promoted from `specify change registry ...` to a top-level noun
 |------|-------------|
 | [`add`](#specify-registry-add) | Append a new project entry; creates `registry.yaml` with `version: 1` if absent. Validates kebab-case name, URL classification, the capability identifier stored in `capability:`, and the `description-missing-multi-repo` invariant after the write. |
 | [`remove`](#specify-registry-remove) | Delete a project entry. Warns when `plan.yaml` references the removed project. |
-| [`show`](#specify-registry-show) | Render the registry as parsed YAML (or JSON via `--format json`). The canonical surface `/change:plan`'s sync-workspace step consumes. |
+| [`show`](#specify-registry-show) | Render the registry as parsed YAML (or JSON via `--format json`). The canonical surface `/change:draft`'s sync-workspace step consumes. |
 | [`validate`](#specify-registry-validate) | Structural and referential check; runs the multi-repo description invariant and (on hubs) the `hub-cannot-be-project` invariant. |
 
 ## Subcommands
@@ -23,7 +23,7 @@ Render the registry content.
 specify registry show [--format json]
 ```
 
-`--format json` is the canonical shape consumed by `/change:plan`'s sync-workspace step (`projects.length > 1` triggers multi-repo authoring).
+`--format json` is the canonical shape consumed by `/change:draft`'s sync-workspace step (`projects.length > 1` triggers multi-repo authoring).
 
 ### specify registry validate
 
@@ -40,7 +40,7 @@ Validates:
 - Per-project `capability:` capability identifiers or URLs are resolvable.
 - When `contracts` blocks are present on entries, the producer / consumer / imports invariants are coherent.
 
-Used by `/change:plan` after populating contract roles, and by operators who edit `registry.yaml` by hand.
+Used by `/change:draft` after populating contract roles, and by operators who edit `registry.yaml` by hand.
 
 ### specify registry add
 
@@ -57,7 +57,7 @@ Behaviour:
 - Runs `Registry::validate_shape` after the write — including the `description-missing-multi-repo` invariant: if the addition produces a multi-project registry and any existing entry lacks a `description`, the verb fails with a diagnostic naming the offending entry.
 - Hub repos (`project.yaml: hub: true`) layer on the `hub-cannot-be-project` invariant: an entry with `url: .` is rejected.
 
-Used by `/change:plan`'s registry-proposal sub-step and when staging a new peer ahead of `specify plan amend --project <new>`. The validation-ordering invariant is: `specify registry add` before `specify plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
+Used by `/change:draft`'s registry-proposal sub-step and when staging a new peer ahead of `specify plan amend --project <new>`. The validation-ordering invariant is: `specify registry add` before `specify plan {create, amend} --project <name>`, since the plan verbs reject unknown projects.
 
 ### specify registry remove
 

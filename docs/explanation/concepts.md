@@ -45,7 +45,7 @@ The baseline matters because future slices read from it. When you describe a new
 
 A **slice** is one trip through the define → build → merge loop. It lives at `.specify/slices/<name>/`, owns its own proposal, specs, design, tasks, and metadata, and ends either merged (folded into the baseline) or dropped (discarded).
 
-A **change** is the umbrella that coordinates one or more slices. It sits in `change.md` and `plan.yaml` at the project root and is useful when a single piece of work needs to land in a deliberate order -- for example, a contract change that other implementation slices depend on, or a piece of work that spans several repos. The change owns the dependency order; each slice still goes through the same loop.
+A **change** coordinates one or more slices. It sits in `change.md` and `plan.yaml` at the project root and is useful when a single piece of work needs to land in a deliberate order -- for example, a contract change that other implementation slices depend on, or a piece of work that spans several repos. The change owns the dependency order; each slice still goes through the same loop. Operators drive a change through three peer skills -- `/change:draft` to author the plan, `/change:execute` to run the per-slice loop, and `/change:finalize` to close the change once every PR is merged.
 
 Most beginners never need a change -- a single slice is enough for the vast majority of day-to-day work. Reach for a change when you have multiple slices that must land together, or when the work crosses repository boundaries.
 

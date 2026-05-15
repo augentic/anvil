@@ -22,7 +22,7 @@ Use this page when `specify registry` verbs or `specify init --hub` refuse with 
 
 **Symptom:** `specify registry add` or `specify registry validate` refuses with `description-missing-multi-repo` and names the offending entry.
 
-**Cause:** A multi-project registry must declare a `description` on every entry (the description drives `/change:plan`'s assignment step; sparse descriptions force unresolved prompts during planning). The invariant fires when the addition produces a multi-project registry and any existing entry lacks a description, or when validate is run against an already-violating registry.
+**Cause:** A multi-project registry must declare a `description` on every entry (the description drives `/change:draft`'s assignment step; sparse descriptions force unresolved prompts during planning). The invariant fires when the addition produces a multi-project registry and any existing entry lacks a description, or when validate is run against an already-violating registry.
 
 **Resolution:** Add the missing descriptions. Either re-run `specify registry add` for each existing entry with `--description "..."`, or hand-edit `registry.yaml` and re-run `specify registry validate` to confirm.
 

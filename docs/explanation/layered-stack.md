@@ -6,11 +6,14 @@ Specify is organised in three layers. Each layer is independently useful, and ea
 direction: down
 
 Layer2: "Layer 2 — Planning a change" {
-  plan: "/change:plan"
+  draft: "/change:draft"
+  review: "(operator review of plan.yaml)" {shape: hexagon}
   execute: "/change:execute"
-  orchestrate: "/change:plan <name> orchestrate"
+  finalize: "/change:finalize"
   analyze: "/change:analyze"
-  plan -> execute
+  draft -> review
+  review -> execute
+  execute -> finalize
 }
 
 Layer1: "Layer 1 — Executing a change" {
@@ -80,40 +83,47 @@ The matching CLI surface is the **`specify slice ...`** family: per-slice CRUD, 
 
 ## Layer 2: Planning a change
 
-Layer 2 coordinates **multi-slice changes** through `plan.yaml` and (for cross-repo work) `registry.yaml`. It is the authoring and execution counterpart of a slice-scoped program.
+Layer 2 coordinates **multi-slice changes** through `plan.yaml` and (for cross-repo work) `registry.yaml`. It is the authoring, execution, and close-out counterpart of a slice-scoped program. Three peer skills carry the change lifecycle, with a deliberate operator review pause between authoring and execution:
 
 | Skill | Role |
 |-------|------|
-| `/change:plan` | Author `plan.yaml` from inputs (legacy code, docs, or both) |
+| `/change:draft` | Author `plan.yaml` from inputs (legacy code, docs, or both); stop at the operator review seam |
 | `/change:execute` | Drive the plan through the Layer 1 define-build-merge loop |
-| `/change:plan <name> orchestrate` | Umbrella mode: brief → registry validate → plan → execute → push → operator PR merge → finalize |
-| `/change:analyze` | Plan-time capability inference (used internally by `/change:plan`) |
+| `/change:finalize` | Push branches, observe PR state, and run `specify change finalize` once every PR is merged |
+| `/change:analyze` | Plan-time capability inference (used internally by `/change:draft`) |
 
-The plan is the change's table of contents. `/change:plan` produces it by analysing inputs and proposing slices. `/change:execute` consumes it by picking the next eligible slice, running the Layer 1 loop, and updating the plan's status.
+The plan is the change's table of contents. `/change:draft` produces it by analysing inputs and proposing slices, then halts so the operator can review (and, if needed, edit with `specify plan amend`). `/change:execute` consumes the reviewed plan by picking the next eligible slice, running the Layer 1 loop, and updating the plan's status. `/change:finalize` closes the change once execution is done by pushing branches, confirming each PR is `MERGED`, and archiving `plan.yaml`.
 
 ```text
-/change:plan <name> source legacy=./path  -->  /change:execute loop
+/change:draft <name> source legacy=./path
+        |
+        v
+(operator reviews plan.yaml; edits with `specify plan amend` if needed)
+        |
+        v
+/change:execute loop
+        |
+        v
+/change:finalize <name>
 ```
 
-The matching CLI surface spans **`specify plan ...`** (scaffold, populate, validate, transition, archive a plan), **`specify change ...`** (operator brief at `change.md`, `change finalize`), **`specify registry ...`** (`registry.yaml` CRUD + validate), and **`specify workspace ...`** (materialise, inspect, push workspace clones for multi-repo changes).
+The matching CLI surface spans **`specify plan ...`** (scaffold, populate, validate, transition, archive a plan), **`specify change ...`** (`change draft` mints `change.md` and `plan.yaml`; `change finalize` archives), **`specify registry ...`** (`registry.yaml` CRUD + validate), and **`specify workspace ...`** (materialise, inspect, push workspace clones for multi-repo changes).
 
-### The `orchestrate` umbrella mode
+### The operator review seam
 
-When the change spans multiple registered projects (`registry.yaml` declares more than one project) and the operator wants the entire cross-repo loop driven as a single action, `/change:plan <name> orchestrate` strings together brief → registry validate → `/change:plan` (default mode) → `/change:execute loop` → `specify workspace push` → operator PR merge through forge UI / `gh pr merge` → `specify change finalize`.
+The pause between `/change:draft` and `/change:execute` is the design, not a missing automation. `/change:draft` ends at "plan validated, hand back to operator," and `/change:execute` starts when the operator decides it does — there is no automatic transition between them. This gives operators a deliberate point to inspect `plan.yaml`, run `specify plan status` or `specify plan show`, and amend entries with `specify plan amend` before any per-slice work runs.
 
-The umbrella is **composition only**: every step shells out to a CLI verb or a Layer 2 skill in default mode; the umbrella adds no new logic. It honours every halt the underlying skills surface (self-heal, stuck, `registry-amendment-required`) and is **idempotent on re-entry** — running it again after a halt resumes from the appropriate step.
-
-Single-project changes do not need the umbrella; running `/change:plan` and `/change:execute` directly is sufficient. Power users running CI pipelines or partial reruns also use the default modes because the umbrella's value is single-command convenience, not a new capability.
+The framework does not ship a single "do everything" command for the change layer. Teams that want one-command flow can compose the three skills in their own shell wrapper, accepting that the wrapper opts out of the review pause. The seam is internal to Layer 2; both stages still belong to the planning layer.
 
 ## The layers compose
 
-A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `/change:plan <name> orchestrate` calls `/change:plan` (default mode) and `/change:execute`; `/change:execute` calls `/spec:define`, `/spec:build`, and `/spec:merge` -- the same skills you would invoke manually. The phase skills themselves do not know whether they are running inside an automated loop or being driven by a human.
+A key design principle: higher layers invoke lower layers, but lower layers are unaware of what sits above them. `/change:execute` calls `/spec:define`, `/spec:build`, and `/spec:merge` -- the same skills you would invoke manually. The phase skills themselves do not know whether they are running inside `/change:execute` or being driven by a human.
 
 This means you can always drop down a layer:
 
-- If `/change:plan <name> orchestrate` halts on a step, you can pick up by hand at the next action (`specify workspace push`, operator PR merge, `specify change finalize`).
+- If `/change:draft` produces a plan you want to adjust, you can edit it with `specify plan amend` and drive it yourself with `specify plan next` instead of `/change:execute`.
 - If `/change:execute` fails on a slice, you can finish it manually with `/spec:build` and `/spec:merge`.
-- If `/change:plan` produces a plan you want to adjust, you can edit it with `specify plan amend` and drive it yourself with `specify plan next`.
+- If `/change:finalize` halts on an unmerged PR, you can pick up by hand at the next action (merge through the forge UI, then re-run `specify change finalize`).
 - If a skill does something unexpected, you can inspect the underlying state with `specify slice status` or `specify plan status`.
 
 See [Drop down a layer](../how-to/drop-down-a-layer.md) for worked examples of each escape hatch.

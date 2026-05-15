@@ -123,7 +123,7 @@ The user's request should include a slice name (kebab-case) OR a description of 
 - Route every write to `.metadata.yaml`, `plan.yaml`, and the `.specify/specs/` baseline through the CLI — see [shared guardrails](../../../references/guardrails.md#single-writer-for-lifecycle-state). Status transitions and timestamp writes go through `specify slice transition`; `touched-specs` updates go through `specify slice touched-specs`; plan amendments only when the run uncovers neighbouring work and only via `specify plan add` / `specify plan amend` per the [phase outcome contract](../../references/phase-outcome-contract.md).
 - Never implement code or flip task checkboxes here — implementation is `/spec:build`'s phase; define stops once artifacts are written and the slice is `defined`.
 - Never extract specs from external source code directly — delegate to `/spec:extract` (invoked by define briefs in driver-supplied `<source>` mode).
-- Never run plan-time capability inference — that lives in `/change:analyze`, orchestrated by the `/change:plan` discovery brief.
+- Never run plan-time capability inference — that lives in `/change:analyze`, orchestrated by the `/change:draft` discovery brief.
 - If a slice with that name already exists, use `specify slice status <name>` to decide how to proceed.
 - Verify each artifact file exists after writing before proceeding to next.
 - **IMPORTANT**: `domain` and effective rules (project config overrides) are constraints for YOU, not content for the file. Do NOT copy `<domain>`, `<rules>`, `<project_context>` blocks into any artifact.

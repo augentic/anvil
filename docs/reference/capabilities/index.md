@@ -1,6 +1,6 @@
 # Capabilities
 
-> The capability manifest shape and dependency invariants are pinned. The first-party capabilities (`default`, `omnia`, `contracts`, `vectis`) live at [`capabilities/<name>/capability.yaml`](../../../capabilities/). [`capability.schema.json`](../../../capabilities/capability.schema.json) actively rejects `pipeline.plan` — planning briefs live with the change-planning skill at [`plugins/change/skills/plan/briefs/<capability>/`](../../../plugins/change/skills/plan/briefs/).
+> The capability manifest shape and dependency invariants are pinned. The first-party capabilities (`default`, `omnia`, `contracts`, `vectis`) live at [`capabilities/<name>/capability.yaml`](../../../capabilities/). [`capability.schema.json`](../../../capabilities/capability.schema.json) actively rejects `pipeline.plan` — planning briefs live with the change-draft skill at [`plugins/change/skills/draft/briefs/<capability>/`](../../../plugins/change/skills/draft/briefs/).
 
 ## What is a capability?
 
@@ -61,7 +61,7 @@ The post-RFC manifest deliberately drops the legacy `domain` and `extends` field
 
 - the slice brief (`change.md`) records operator intent,
 - the slice plan (`plan.yaml`) sequences slices across one or more projects,
-- planning briefs and the `/change:plan` (later: `/change:plan`) authoring loop sit on the slice surface rather than inside any capability's manifest.
+- planning briefs and the `/change:draft` authoring loop sit on the slice surface rather than inside any capability's manifest.
 
 A slice flowing through `define → build → merge` therefore reads exactly one capability's pipeline. Cross-capability outcomes are coordinated by change plan entries, not by fusing capabilities into a larger hidden pipeline.
 

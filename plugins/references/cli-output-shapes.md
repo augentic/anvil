@@ -117,7 +117,7 @@ Source fixture: `tests/fixtures/plan/create-foo.json`
 }
 ```
 
-### `specify change create`
+### `specify change draft`
 
 Source fixture: `tests/fixtures/plan/init-success.json`
 

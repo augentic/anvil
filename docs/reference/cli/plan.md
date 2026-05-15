@@ -2,7 +2,7 @@
 
 Scaffold, populate, validate, transition, and archive change plans. The `plan` verb is the top-level home of every `plan.yaml` operation; each verb on this page is invoked as `specify plan <verb>`.
 
-> Need to scaffold `change.md` alongside `plan.yaml` in one step? See [`specify change create`](change.md#specify-change-create), which delegates to the same plan-scaffold helper that backs [`specify plan create`](#specify-plan-create) below.
+> Need to scaffold `change.md` alongside `plan.yaml` in one step? See [`specify change draft`](change.md#specify-change-draft), which delegates to the same plan-scaffold helper that backs [`specify plan create`](#specify-plan-create) below.
 
 ## Verb cheat-sheet
 
@@ -28,7 +28,7 @@ Scaffold an empty plan.
 specify plan create <name> [--source <key>=<path>...]
 ```
 
-Writes `plan.yaml` at the repo root with the given kebab-case name and an empty `slices:` list. Optional `--source` entries are recorded in the plan's top-level `sources:` map. Refuses with `already-exists` when `plan.yaml` is already present. Shares its scaffold helper with [`specify change create`](change.md#specify-change-create), which additionally writes `change.md` in the same atomic step.
+Writes `plan.yaml` at the repo root with the given kebab-case name and an empty `slices:` list. Optional `--source` entries are recorded in the plan's top-level `sources:` map. Refuses with `already-exists` when `plan.yaml` is already present. Shares its scaffold helper with [`specify change draft`](change.md#specify-change-draft), which additionally writes `change.md` in the same atomic step.
 
 ### specify plan validate
 
@@ -141,8 +141,9 @@ The lock (`.specify/plan.lock`) is a PID stamp held by `/change:execute` to prev
 
 ## See also
 
-- [specify change](change.md) -- the umbrella verbs (`create`, `show`, `finalize`) that scaffold `change.md` + `plan.yaml` together and trigger close-out.
+- [specify change](change.md) -- the change-lifecycle verbs (`draft`, `show`, `finalize`) that scaffold `change.md` + `plan.yaml` together and trigger close-out.
 - [specify slice](slice.md) -- the per-slice CLI verbs the plan loop drives.
-- [/change:plan](../change-skills/plan.md) -- skill that authors plans
+- [/change:draft](../change-skills/draft.md) -- skill that authors plans
 - [/change:execute](../change-skills/execute.md) -- skill that drives plan execution
+- [/change:finalize](../change-skills/finalize.md) -- skill that closes out a completed change
 - [Configuration Files](../configuration.md) -- plan.yaml and registry format

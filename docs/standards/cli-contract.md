@@ -1,6 +1,6 @@
 # CLI Contract
 
-The deterministic surface skills depend on. Every phase skill in this repository (`/spec:init`, `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:extract`, `/change:plan`, `/change:execute`) shells out to the `specify` binary for every deterministic operation: name validation, `.metadata.yaml` reads and writes, lifecycle transitions, capability and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive moves, registry shape validation, and plan CRUD.
+The deterministic surface skills depend on. Every phase skill in this repository (`/spec:init`, `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop`, `/spec:extract`, `/change:draft`, `/change:execute`, `/change:finalize`) shells out to the `specify` binary for every deterministic operation: name validation, `.metadata.yaml` reads and writes, lifecycle transitions, capability and brief-pipeline resolution, artifact-completion checks, spec-merge preview, baseline conflict detection, delta merge, coherence validation, archive moves, registry shape validation, and plan CRUD.
 
 The CLI itself is built in the sibling [augentic/specify-cli](https://github.com/augentic/specify-cli) repository. This document captures the verbs skills call, the envelope shape they consume, and pointers to the authoritative wire-contract definitions.
 
@@ -53,15 +53,15 @@ Today the per-slice verbs live under `specify slice *` and the umbrella verbs li
 
 When a change is coordinated through a `plan.yaml`, the recommended skill / CLI composition is:
 
-1. **Author.** `/change:plan <change-name> source <key>=<path-or-url> ...` runs the planning brief pipeline, optionally **sync-workspace** + `workspace.md` when the registry is multi-project, then `specify change create` (which scaffolds `change.md` + `plan.yaml` together) + one `specify plan add` per accepted slice (globs or `--scope-manifest`). Plan-time sync-workspace is discovery-oriented and may sync all registered projects.
+1. **Author.** `/change:draft <change-name> source <key>=<path-or-url> ...` runs the planning brief pipeline, optionally **sync-workspace** + `workspace.md` when the registry is multi-project, then `specify change draft` (which scaffolds `change.md` + `plan.yaml` together) + one `specify plan add` per accepted slice (globs or `--scope-manifest`). Plan-time sync-workspace is discovery-oriented and may sync all registered projects. The skill stops at the operator review seam — execution does not start automatically.
 2. **Execute.** `/change:execute loop` repeatedly picks `specify plan next`, prepares only the selected entry's project slot on exact branch `specify/<change-name>` when `project` is set, runs `/spec:define → /spec:build → /spec:merge`, reads the phase outcome off `.metadata.yaml`, and transitions the plan entry to `done` / `failed` / `blocked`. Exits on `all-done`, `stuck`, self-heal halt, or SIGINT/SIGTERM.
-3. **Archive.** `specify plan archive` sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
+3. **Finalize.** `/change:finalize <change-name>` runs `specify workspace push`, observes PR state via `gh pr list`, and runs `specify change finalize` once every PR is `MERGED`. The CLI verb sweeps `plan.yaml` and the `.specify/plans/<name>/` authoring trail into `.specify/archive/plans/<YYYYMMDD>-<name>/`.
 
-Hand-driven fallback: skip `/change:plan` and `/change:execute`, author `plan.yaml` entry-by-entry with `specify plan {create, add, amend}`, and drive the loop yourself via `specify plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`.
+Hand-driven fallback: skip `/change:draft`, `/change:execute`, and `/change:finalize`, author `plan.yaml` entry-by-entry with `specify plan {create, add, amend}`, drive the loop yourself via `specify plan next → transition in-progress → /spec:define → /spec:build → /spec:merge → transition done`, and run `specify workspace push` + `specify change finalize` by hand.
 
 The phase skills themselves stay unaware of the plan — they operate slice-by-slice. Plan *entries* are only ever written via `specify plan add` / `specify plan amend`; plan *status* is only ever written via `specify plan transition`. A phase that discovers a neighbouring slice mid-run (e.g. a define brief uncovering a bug fix that should be tracked) may shell out to `specify plan add` / `specify plan amend` — the same commands humans run.
 
-The `/change:plan <name> orchestrate` umbrella mode strings the cross-repo loop into one operator action: brief → registry validate → `/change:plan` (default mode) → `/change:execute loop` → `specify workspace push` → operator PR merge → `specify change finalize`. It is composition only, idempotent on re-entry; opens/updates PRs but never merges them; supports `migrate-legacy`, `new-feature`, and `update-existing` shapes through a single uniform sequence.
+The three change-lifecycle skills (`/change:draft`, `/change:execute`, `/change:finalize`) are peers; there is no umbrella that drives all three in one shot. Operators who want a single command can write a thin shell wrapper, accepting that the wrapper opts out of the operator review pause between draft and execute. Each skill is idempotent on re-entry; halts surface verbatim and resume by re-running the same skill.
 
 ## Contracts as a declared WASI tool
 

@@ -1,6 +1,6 @@
 # Plan Generation Manual Scenarios
 
-These documents are manual scenarios for `/change:plan` from an operator's point of view. They exercise plan authoring only:
+These documents are manual scenarios for `/change:draft` from an operator's point of view. They exercise plan authoring only:
 
 1. turn a short brief or source input into `plan.yaml`
 2. validate the plan before execution starts
@@ -11,7 +11,7 @@ This is intentionally not an automated harness. There is no runner, fake forge, 
 
 ## Relationship To Acceptance
 
-These are shared plan-generation scenario documents. They live under `tests/plan/` because `/change:plan` is orchestration: it authors a change-level plan that coordinates slices rather than owning one capability's slice loop.
+These are shared plan-generation scenario documents. They live under `tests/plan/` because `/change:draft` is orchestration: it authors a change-level plan that coordinates slices rather than owning one capability's slice loop.
 
 End-to-end cross-repo acceptance remains in [`tests/cross-repo/`](../cross-repo/). Capability-local tests, such as the contracts scenarios, stay under `capabilities/<capability>/tests/`.
 
@@ -50,7 +50,7 @@ For each run:
 1. Open the scenario file.
 2. Create the temporary workspace described in **Workspace**.
 3. Create any source files described in **Inputs**.
-4. Run the `/change:plan` prompt from **Invocation** exactly as written unless the scenario documents an allowed local substitution.
+4. Run the `/change:draft` prompt from **Invocation** exactly as written unless the scenario documents an allowed local substitution.
 5. Run the listed validation and inspection commands.
 6. Check each item in **Assertions** and **Negative Expectations**.
 7. Preserve failure evidence: `plan.yaml`, `.specify/plans/<change-name>/`, command output, registry state when relevant, and `specify plan status` output.
@@ -68,7 +68,7 @@ Run all plan-generation test scenarios in tests/plan/ in this order:
 Do not ask for confirmation between scenarios. For each scenario:
 - Read the scenario file completely before acting.
 - Create disposable workspaces and source files described by the scenario.
-- Run only the listed /change:plan prompt and validation commands.
+- Run only the listed /change:draft prompt and validation commands.
 - Do not run /change:execute, workspace push, finalize, a scenario runner, or a
   golden-output comparison.
 - Check that plan.yaml exists and validates.

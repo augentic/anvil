@@ -1,59 +1,42 @@
 # Change skills
 
-Change-scoped skills coordinate multi-slice changes through `plan.yaml`. They sit above the [slice lifecycle skills](../slice-skills/index.md) and invoke them per-slice. All change-scoped skills (`/change:plan`, `/change:execute`, `/change:analyze`) live on the `change` plugin; the cross-repo umbrella mode (`/change:plan <name> orchestrate`) composes plan + execute + push, then resumes to finalize after you merge the resulting PRs — see the [layered stack](../../explanation/layered-stack.md) for the relationship.
+Change-scoped skills coordinate multi-slice changes through `change.md` + `plan.yaml`. They sit above the [slice lifecycle skills](../slice-skills/index.md) and invoke them per-slice. All change-scoped skills (`/change:analyze`, `/change:draft`, `/change:execute`, `/change:finalize`) live on the `change` plugin.
 
-## The plan-execute flow
+The change layer is split into three peer skills with an explicit human seam between authoring and execution. The lifecycle reads `draft → execute → finalize`, mirroring `/spec`'s `define → build → merge` rhythm at the change layer. There is no umbrella mode; the human pause between authoring and execution is the design.
+
+## The three-skill lifecycle
 
 ```text
-/change:plan <name> source legacy=./path  -->  /change:execute loop
+/change:draft <name>  →  operator review  →  /change:execute loop  →  /change:finalize <name>
+        │                       │                     │                        │
+        │                       │                     │                        │
+        ▼                       ▼                     ▼                        ▼
+   author plan.yaml,     specify plan amend,   per-slice define →        specify workspace push,
+   stop at hand-off      specify plan status   build → merge until       gh pr list, specify
+                                               no eligible slice         change finalize
+                                               remains
 ```
 
-`/change:plan` produces the plan. `/change:execute` consumes it by running the define-build-merge loop for each slice in dependency order.
+`/change:draft` produces the plan and stops. The operator reviews `plan.yaml` (and may edit it via `specify plan amend`). `/change:execute` consumes the plan by running define-build-merge per slice in dependency order. `/change:finalize` pushes branches, observes PR state, and archives the change once every PR is `MERGED`.
 
-## The cross-repo loop
-
-`/change:plan <name> orchestrate` strings the full platform-first sequence into one operator action. The underlying multi-slice skills (and the default mode of `/change:plan`) are still callable directly for partial reruns and CI pipelines.
-
-```d2
-direction: right
-
-umbrella: "/change:plan <name> orchestrate" {shape: rectangle}
-
-brief: "specify change create" {shape: rectangle}
-registry: "specify registry validate" {shape: rectangle}
-plan: "/change:plan" {shape: rectangle}
-execute: "/change:execute loop" {shape: rectangle}
-push: "specify workspace push" {shape: rectangle}
-mergeStep: "Operator merges PRs\n(forge UI or gh pr merge)" {shape: rectangle}
-finalize: "specify change finalize" {shape: rectangle}
-
-umbrella -> brief: "step 1"
-brief -> registry: "step 2"
-registry -> plan: "step 3"
-plan -> execute: "step 4"
-execute -> push: "step 5"
-push -> mergeStep: "step 6"
-mergeStep -> finalize: "re-enter umbrella"
-```
-
-Every halt -- registry validation failure, `stuck`, `registry-amendment-required`, an unmerged PR -- surfaces verbatim and stops the umbrella. Re-running `/change:plan <name> orchestrate` resumes at the first incomplete step. See [`/change:plan <name> orchestrate`](change.md) for the full algorithm.
+Re-entry across all three skills: fix the cause, re-run the same skill. Nothing tracks "where the operator was" outside `plan.yaml`, `change.md`, and the on-disk brief artefacts.
 
 ## Skill summary
 
 | Skill | Purpose | Reads | Writes |
 |-------|---------|-------|--------|
-| [/change:plan <name> orchestrate](change.md) | Drive the cross-repo loop through push, then finalize after the resulting PRs are merged | `change.md`, `registry.yaml`, `plan.yaml`, workspace clones | Composition only -- shells out; never writes directly |
-| [/change:plan](plan.md) | Author `plan.yaml` from inputs | Sources, docs, registry, baseline specs | `plan.yaml`, `discovery.md`, `proposal.md`, optional `workspace.md`; for multi-project plans, amends entries with the CLI project option via the assignment step |
-| [/change:execute](execute.md) | Drive the plan through define-build-merge | `plan.yaml` | Plan status transitions (via CLI); prepares workspace branches, routes into workspace clones for multi-project plans, and commits non-baseline residue after merge |
-| [/change:analyze](analyze.md) | Plan-time capability inference (used internally by `/change:plan`) | Source code or documentation | `discovery.md`, optional `metadata.json` |
+| [/change:analyze](analyze.md) | Plan-time capability inference (invoked internally by `/change:draft`) | Source code or documentation | `discovery.md`, optional `metadata.json` |
+| [/change:draft](draft.md) | Author `plan.yaml` from inputs; stop at the operator review seam | Sources, docs, registry, baseline specs | `plan.yaml`, `change.md`, `discovery.md`, `proposal.md`, optional `workspace.md`; for multi-project plans, amends entries with the CLI project option via the assignment step |
+| [/change:execute](execute.md) | Drive the plan through define-build-merge per slice; supports supervised, `dry-run`, and `loop` modes with self-heal | `plan.yaml` | Plan status transitions (via CLI); prepares workspace branches, routes into workspace clones for multi-project plans, and commits non-baseline residue after merge |
+| [/change:finalize](finalize.md) | Push branches, observe PR state, run `specify change finalize` once every PR is `MERGED` | `plan.yaml`, workspace clones, remote PR state | Composition only — shells out to `specify workspace push`, `gh pr list`, `specify change finalize`; never writes directly |
 
 ## Layered composition
 
 These skills are optional. You can use the define-build-merge loop without ever touching plans. But when you do need them, they compose:
 
-- **Cross-repo orchestration (`/change:plan <name> orchestrate`)** -- single command for a cross-repo change end-to-end.
-- **Plan authoring alone (`/change:plan`)** -- author a plan, then drive it manually with the CLI.
-- **Plan + drive (`/change:plan` then `/change:execute`)** -- author a plan, then automate execution.
-- **Single slice** -- skip plans entirely, define and build slices one at a time.
+- **Plan authoring alone (`/change:draft`)** — author a plan, then drive it manually with the CLI.
+- **Plan + drive (`/change:draft` then `/change:execute`)** — author a plan, then automate execution.
+- **Full lifecycle (`/change:draft` then `/change:execute` then `/change:finalize`)** — author, drive, and close out a change end-to-end across three skills with an explicit operator review seam between draft and execute.
+- **Single slice** — skip plans entirely, define and build slices one at a time.
 
-The underlying CLI commands (`specify plan ...`, `specify workspace ...`, `specify change ...`) remain available as manual fallback at every level.
+The underlying CLI commands (`specify plan ...`, `specify workspace ...`, `specify change ...`) remain available as manual fallback at every level. There is no one-command convenience wrapper; teams that want one can compose the three skills in their own shell script, accepting that the wrapper opts out of the operator review pause.

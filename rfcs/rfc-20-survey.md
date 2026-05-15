@@ -4,7 +4,7 @@
 
 ## Abstract
 
-Extend the `/change:plan` brief pipeline so that the operator can produce a **migration plan** for a legacy system — single or multi-source — by progressively decomposing the system into coherent chunks until every leaf is **slice-sized (T-shirt: Small)** and ready to feed `/spec:propose`. The surveyor's job is **not** to extract specs from legacy code; it is to understand the system *sufficiently* to plan the migration. Spec authorship remains `/spec:extract` (at define-time) and `/spec:define` (for greenfield).
+Extend the `/change:draft` brief pipeline so that the operator can produce a **migration plan** for a legacy system — single or multi-source — by progressively decomposing the system into coherent chunks until every leaf is **slice-sized (T-shirt: Small)** and ready to feed `/spec:propose`. The surveyor's job is **not** to extract specs from legacy code; it is to understand the system *sufficiently* to plan the migration. Spec authorship remains `/spec:extract` (at define-time) and `/spec:define` (for greenfield).
 
 Concretely, this RFC adds:
 
@@ -13,9 +13,9 @@ Concretely, this RFC adds:
 3. A new `survey` brief, run between sync-workspace (3b) and propose (3c), that performs an **iterative top-down decomposition** of the system into a DAG of chunks, halting at slice-sized leaves. It emits `survey.md` — a byte-stable representation of the DAG plus per-node sizing, evidence, and routing metadata.
 4. A new `synthesise` brief, run after survey, that reconciles documented capabilities against the survey's leaves and appends a `## Reconciliation` block to `discovery.md`.
 
-The plan skill's five-step loop, the single-writer invariant for `plan.yaml`, and the closed-kind enum's strict validation posture are preserved. `/change:analyze` remains a one-shot fan-out per source — the survey brief consumes its inventory and structural metadata, not the source code itself. The four scenarios this RFC unblocks — single-repo legacy migration, multi-repo legacy migration, greenfield multi-repo, and brownfield multi-repo — share the same pipeline; only the inputs differ.
+The `/change:draft` skill's five-step loop, the single-writer invariant for `plan.yaml`, and the closed-kind enum's strict validation posture are preserved. `/change:analyze` remains a one-shot fan-out per source — the survey brief consumes its inventory and structural metadata, not the source code itself. The four scenarios this RFC unblocks — single-repo legacy migration, multi-repo legacy migration, greenfield multi-repo, and brownfield multi-repo — share the same pipeline; only the inputs differ.
 
-Rehoming today's `/change:plan <name> orchestrate` mode as a dedicated `/change:initiate` skill is an independent concern tracked in [RFC-23](rfc-23-initiate.md); the two RFCs do not depend on each other, but if both land in the same release the CHANGELOG combines the operator-facing notes.
+Splitting today's plan-skill umbrella into the three-skill change lifecycle (`/change:draft` → operator review → `/change:execute loop` → `/change:finalize`) is an independent concern tracked in [RFC-23](rfc-23-change-lifecycle.md); the two RFCs do not depend on each other, but if both land in the same release the CHANGELOG combines the operator-facing notes.
 
 ## Motivation
 
@@ -157,7 +157,7 @@ Decomposition halts when every reachable leaf from the root is XS, S, or marked 
 
 ### The `survey` brief
 
-A new brief at `plugins/change/skills/plan/survey.md` runs as **step 3(b.5)** in the plan-skill loop — between sync-workspace (3b) and propose (3c). For inputs whose composite root is already XS or S (very small single-source migrations), the survey brief emits a one-node DAG and a one-line `Survey: root is already slice-sized (S, 743 LOC).` summary; everything else gets a full decomposition.
+A new brief at `plugins/change/skills/plan/survey.md` runs as **step 3(b.5)** in the `/change:draft` loop — between sync-workspace (3b) and propose (3c). For inputs whose composite root is already XS or S (very small single-source migrations), the survey brief emits a one-node DAG and a one-line `Survey: root is already slice-sized (S, 743 LOC).` summary; everything else gets a full decomposition.
 
 The brief is read-only with respect to `plan.yaml`. It reads:
 
@@ -338,7 +338,7 @@ Field order inside the YAML block is fixed: `description`, `aggregates`, `owners
 
 ### Pipeline ordering
 
-The plan skill's brief pipeline (steps 3a–3d) becomes:
+The `/change:draft` skill's brief pipeline (steps 3a–3d) becomes:
 
 | Step | Today | After RFC-20 |
 | --- | --- | --- |
@@ -349,7 +349,7 @@ The plan skill's brief pipeline (steps 3a–3d) becomes:
 | 3(c) | Propose → `specify plan add` per accepted slice | propose brief consumes `survey.md` leaves as the candidate slice set |
 | 3(d) | Assignment (multi-repo only) → `specify plan amend --project` | unchanged contract; assignment reads `target_project` hints from survey nodes |
 
-Steps 1, 2, 4 (validate), and 5 (hand-off) are unchanged. Re-entry of the orchestration mode treats the new artifacts as part of the plan-time scratch; they live under `.specify/plans/<change>/` and are swept by `specify plan archive`.
+Steps 1, 2, 4 (validate), and 5 (hand-off) are unchanged. Re-entry of `/change:draft` treats the new artifacts as part of the plan-time scratch; they live under `.specify/plans/<change>/` and are swept by `specify plan archive`.
 
 `/change:analyze` remains a single fan-out at 3(a). The survey brief does **not** re-invoke analyze at deeper levels. If a particular cut requires finer-grained capability inventory than the level-0 analyze produced, the surveyor records `unresolved: true` on the parent node and defers to the operator; re-running analyze with refined `--source` scoping is an operator decision, not a survey-internal loop. This preserves analyze's per-source idempotency contract.
 
@@ -371,7 +371,7 @@ The first two hints are surfaced in the assignment table's `Rationale` column ve
 This RFC adds **no new top-level CLI verbs**. All existing primitives compose:
 
 - `/change:analyze` gains a third kind branch — same positional arity (`<input-path> <output-dir> <kind> [source-key]`).
-- `specify change create` (the merged brief + plan scaffold) is unchanged by this RFC.
+- `specify change draft` (the merged brief + plan scaffold) is unchanged by this RFC.
 - `specify plan add` is unchanged.
 - `specify plan validate` is unchanged.
 
@@ -382,7 +382,7 @@ One new internal subcommand under the existing `plan` namespace:
 Skills change:
 
 - `/change:analyze` SKILL.md updates: add the third kind to the closed enum table, add a `## Domain model` output contract section, add the structural sidecar shape for `domain-model.json`, update the guardrail list.
-- `/change:plan` SKILL.md updates: add steps 3(b.5) and 3(b.6) to the Critical Path, add references to `survey.md` and `synthesise.md`, document the sizing rubric.
+- `/change:draft` SKILL.md updates: add steps 3(b.5) and 3(b.6) to the Critical Path, add references to `survey.md` and `synthesise.md`, document the sizing rubric.
 - New brief siblings: `plugins/change/skills/plan/survey.md`, `plugins/change/skills/plan/synthesise.md`.
 - New per-capability brief siblings: `plugins/change/skills/plan/briefs/<cap>/survey.md`, `plugins/change/skills/plan/briefs/<cap>/synthesise.md`, optional `plugins/change/skills/plan/briefs/<cap>/sizing.toml`.
 
@@ -404,7 +404,7 @@ Skills change:
 5. **Discovery section shape.** Extend the discovery brief and the `omnia/discovery.md` brief to write the `## Domain model` heading wrapper. Pin a fixture for the byte-stable shape.
 6. **Survey brief.** Land `plugins/change/skills/plan/survey.md` (framework-level) with the DAG schema, decomposition strategy priority list, and output shape. Land `plugins/change/skills/plan/briefs/omnia/survey.md` (capability-owned) with the Omnia clustering heuristics. Fixtures: root-already-S no-op, single-source XL decomposition, multi-source consolidation, multi-source split with shared dependency, mixed-input with domain model, unresolved-node escape.
 7. **Synthesise brief.** Land `plugins/change/skills/plan/synthesise.md` and `plugins/change/skills/plan/briefs/omnia/synthesise.md`. Fixtures: docs-only, code-only, mixed concordance, unresolved-node carry-through.
-8. **Pipeline wiring.** Update `/change:plan` SKILL.md and `references/runbook.md` to add steps 3(b.5) and 3(b.6). Update orchestration verb-hygiene table. Document the sizing rubric and the leaf-invariant contract between survey and propose.
+8. **Pipeline wiring.** Update `/change:draft` SKILL.md and `references/runbook.md` to add steps 3(b.5) and 3(b.6). Update the verb-hygiene table. Document the sizing rubric and the leaf-invariant contract between survey and propose.
 9. **Routing-hint precedence.** Update `assignment.md` to document the new precedence order and the survey-leaf `target_project` surface. Land fixtures showing routing rationale text quoting survey nodes.
 10. **Tutorials.** Add `docs/tutorials/decomposing-a-monolith.md` walking Scenarios 1 and 2 through the survey DAG. Update `docs/tutorials/legacy-migration-at-scale.md` to cite the survey brief instead of describing manual decomposition.
 11. **Acceptance.** Extend the cross-repo Deno acceptance suite with a domain-model-driven greenfield fixture, a multi-source consolidation fixture with shared dependency, and an XL monolith decomposition fixture.
@@ -457,7 +457,7 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 
 **Reconcile at every internal node, not just leaves.** Rejected. The same mismatch echoes up the tree, inflating noise. Leaf-level reconciliation surfaces concrete actionable mismatches per slice candidate; internal-node reconciliation can be added later if operators report missing context.
 
-**Add a CLI verb `specify plan survey`.** Rejected for v1. Brief-driven composition reuses the existing plan-skill orchestration shell; a CLI verb would invent new state-transition ownership outside the single-writer invariant. The `specify plan size` helper is a different shape — pure read-only LOC counting, no state.
+**Add a CLI verb `specify plan survey`.** Rejected for v1. Brief-driven composition reuses the existing `/change:draft` brief-pipeline shell; a CLI verb would invent new state-transition ownership outside the single-writer invariant. The `specify plan size` helper is a different shape — pure read-only LOC counting, no state.
 
 ## Non-Goals
 
@@ -471,7 +471,7 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 - A general "context map import" workflow from external DDD tools (out of scope; the schema is small enough for hand authoring or a thin importer in a future RFC).
 - Runtime enforcement of bounded-context boundaries in generated code (a runtime concern, not a planning concern).
 - Multi-plan output or parallel changes.
-- **Rehoming the orchestration umbrella as `/change:initiate`.** Tracked separately in [RFC-23](rfc-23-initiate.md). The two RFCs are independent; either may land first.
+- **Splitting the plan-skill umbrella into the three-skill change lifecycle (`/change:draft` → `/change:execute` → `/change:finalize`).** Tracked separately in [RFC-23](rfc-23-change-lifecycle.md). The two RFCs are independent; either may land first.
 
 ## Open Questions
 
@@ -489,10 +489,10 @@ There is **no breaking change** to the closed-kind enum's validation behaviour: 
 
 - [RFC-3a: Monoliths](archive/rfc-3a-monoliths.md) — the per-source vs per-slice analyze/extract split this RFC builds on.
 - [RFC-3b: Platform](archive/rfc-3b-platform.md) — assignment, registry, and one-slice-one-project invariant.
-- [RFC-9: Platform](archive/rfc-9-platform.md) — orchestration umbrella and shape inference.
+- [RFC-9: Platform](archive/rfc-9-platform.md) — historical change-lifecycle predecessor and shape inference.
 - [RFC-13: Extensibility](archive/rfc-13-extensibility.md) — capability-owned briefs and pipeline composition.
 - [`/change:analyze` SKILL.md](../plugins/change/skills/analyze/SKILL.md) — the per-source analyze contract this RFC extends.
-- [`/change:plan` SKILL.md](../plugins/change/skills/plan/SKILL.md) — the plan-skill loop this RFC inserts steps 3(b.5) and 3(b.6) into.
-- [RFC-23: Rehome the Change Umbrella as `/change:initiate`](rfc-23-initiate.md) — independent rehoming of the orchestration umbrella; mentioned for context but not depended on.
+- [`/change:draft` SKILL.md](../plugins/change/skills/draft/SKILL.md) — the draft-skill loop this RFC inserts steps 3(b.5) and 3(b.6) into.
+- [RFC-23: Three-Skill Change Lifecycle](rfc-23-change-lifecycle.md) — independent split of the plan-skill umbrella into `/change:draft` → `/change:execute` → `/change:finalize`; mentioned for context but not depended on.
 - [`docs/explanation/workspace-tiers.md`](../docs/explanation/workspace-tiers.md) — the tier-1 vs tier-2 boundary survey/synthesise sit inside.
 - [`docs/tutorials/legacy-migration-at-scale.md`](../docs/tutorials/legacy-migration-at-scale.md) — the canonical Scenario 1+2 walkthrough this RFC updates.

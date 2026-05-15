@@ -1,6 +1,6 @@
 # Plan Generation Scenario Run Summary
 
-> Reusable template for capturing one manual `/change:plan` scenario run.
+> Reusable template for capturing one manual `/change:draft` scenario run.
 
 Fill in the fields below for one run. Keep this document next to the run's evidence, or paste it into the operator's notes for a fully manual run. On failure, preserve enough evidence for another operator to reproduce the state.
 
@@ -29,7 +29,7 @@ List every file the operator created before invocation.
 Record the exact slash-command and CLI commands actually run, in order. These should match the scenario's **Invocation** section; record any deviation explicitly.
 
 ```text
-<paste the /change:plan ... prompt that was run>
+<paste the /change:draft ... prompt that was run>
 ```
 
 ```bash
@@ -38,7 +38,7 @@ Record the exact slash-command and CLI commands actually run, in order. These sh
 
 ## Generated Plan Entries
 
-Record the generated plan entries after `/change:plan` and validation.
+Record the generated plan entries after `/change:draft` and validation.
 
 | Role       | Slice name     | Project | Depends on | Sources   | Status              |
 | ---------- | -------------- | ------- | ---------- | --------- | ------------------- |

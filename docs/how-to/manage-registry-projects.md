@@ -63,7 +63,7 @@ There is no in-band fix because `registry add` cannot retro-add a description to
 1. **Hand-edit `registry.yaml`** to add the missing description, then re-run `specify registry add` for the new project.
 2. **Recreate the offending entry**: `specify registry remove <existing>`, then `specify registry add <existing> --url <existing-url> --capability <existing-capability> --description "..."`. (This second path also triggers the plan-reference warning if the existing entry was already wired into a plan -- preferable to use the hand-edit unless the description rewrite is the intent.)
 
-The descriptions matter beyond validation: `/change:plan`'s assignment step reads them when inferring which project each plan entry targets. Sparse descriptions force unresolved (`?`) prompts during planning. Plan a paragraph per project, not a sentence.
+The descriptions matter beyond validation: `/change:draft`'s assignment step reads them when inferring which project each plan entry targets. Sparse descriptions force unresolved (`?`) prompts during planning. Plan a paragraph per project, not a sentence.
 
 ## After registry mutation: re-sync
 
@@ -86,12 +86,12 @@ specify workspace sync              # bootstrap the workspace slot
 specify plan add ... --project <name>   # OR specify plan amend ... --project <name>
 ```
 
-`/change:plan`'s registry-proposal sub-step enforces the same order automatically. Hand-driven flows must respect it manually.
+`/change:draft`'s registry-proposal sub-step enforces the same order automatically. Hand-driven flows must respect it manually.
 
 ## See also
 
 - [`specify registry`](../reference/cli/registry.md) -- full CLI reference for `add` / `remove` / `show` / `validate`.
 - [Bootstrap a platform hub](bootstrap-a-platform-hub.md) -- the first time you populate a registry.
-- [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- how registry descriptions feed into `/change:plan`'s assignment.
+- [Cross-Repo Changes](../tutorials/cross-repo-change.md) -- how registry descriptions feed into `/change:draft`'s assignment.
 - [Recover from registry-amendment-required](recover-from-registry-amendment.md) -- handling the case where `/change:execute` halts and proposes a new project.
 - [`description-missing-multi-repo`](troubleshooting/hub-and-registry.md#description-missing-multi-repo) -- troubleshooting entry.

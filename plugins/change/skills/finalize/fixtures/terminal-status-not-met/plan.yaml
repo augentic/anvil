@@ -1,0 +1,10 @@
+name: dark-mode
+sources: {}
+changes:
+  - name: dark-mode-contract
+    status: done
+  - name: dark-mode-mobile
+    project: vectis-mobile
+    status: in-progress
+    depends-on:
+      - dark-mode-contract

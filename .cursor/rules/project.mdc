@@ -12,7 +12,7 @@ This repository provides specialist skills and references for Specify-driven dev
 Two lifecycle nouns recur throughout this codebase. RFC-13 §Migration locked their meaning:
 
 - **Slice** — the single unit that flows through the fixed `define → build → merge` loop. Each slice has its own proposal, specs, design, tasks, and merge step. Lives at `.specify/slices/<name>/`. Driven by `/spec:define`, `/spec:build`, `/spec:merge`, `/spec:drop` and the `specify slice *` CLI verbs.
-- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:plan`, `/change:execute`, the `specify change *` CLI verbs that own `change.md`, and the sibling `specify plan *` verbs that own the executable plan.
+- **Change** — the operator-defined umbrella that coordinates one or more slices through `change.md` + `plan.yaml`. Driven by `/change:draft`, `/change:execute`, `/change:finalize`, the `specify change *` CLI verbs that own `change.md`, and the sibling `specify plan *` verbs that own the executable plan.
 
 Use *slice loop* for the per-slice lifecycle; reserve *change* for the umbrella that owns `change.md` and `plan.yaml`.
 
@@ -28,18 +28,16 @@ The intended workflow is human-driven Specify. Single-slice loop:
 /spec:drop
 ```
 
-Multi-slice change:
+Multi-slice change (RFC-23 three-skill lifecycle):
 
 ```bash
-/change:plan <name> source legacy=./path
-/change:execute loop
+/change:draft <name> source legacy=./path   # author plan.yaml, stop at hand-off
+# operator reviews plan.yaml (specify plan amend / status as needed)
+/change:execute loop                        # drive per-slice define → build → merge
+/change:finalize <name>                     # push branches, observe PRs, archive
 ```
 
-Cross-repo change end-to-end (`orchestrate` umbrella mode, RFC-9 §2C):
-
-```bash
-/change:plan <name> orchestrate [shape migrate-legacy|new-feature|update-existing]
-```
+The operator review pause between `/change:draft` and `/change:execute` is deliberate — there is no umbrella mode and no one-command convenience wrapper. Teams that want one compose the three skills in their own shell script.
 
 Specify owns the workflow contract. This repository contributes specialist analysis, generation, enrichment, and review behavior on top of that contract.
 
@@ -88,8 +86,9 @@ Behavioral specs should remain platform-neutral. Omnia trait selection, guest wi
 
 ### Change Plugin (`plugins/change/`)
 
-- `plan` - author `plan.yaml` via the planning brief pipeline; with the `orchestrate` positional, drives the cross-repo umbrella (brief → registry validate → plan → execute → push → operator PR merge → finalize) — RFC-9 §2C.
+- `draft` - author `plan.yaml` via the planning brief pipeline; stop at the operator review seam (RFC-23).
 - `execute` - drive a change's plan through define, build, merge per slice.
+- `finalize` - push branches, observe PR state, run `specify change finalize` once every PR is `MERGED`.
 - `analyze` - plan-time capability inference; emits capability summaries.
 
 ### Omnia Plugin (`plugins/omnia/`)
@@ -143,7 +142,7 @@ See [docs/reference/directory-layout.md](docs/reference/directory-layout.md) for
 /plugins/
   ├── references/         # Shared references (specify.md, agent-teams.md)
   ├── spec/               # Specify workflow plugin (init, define, build, merge, drop, extract)
-  ├── change/             # Change orchestration plugin (plan, execute, analyze)
+  ├── change/             # Change orchestration plugin (draft, execute, finalize, analyze)
   │   └── references/     # Artifact templates and capability resolution
   ├── omnia/              # Omnia code generation plugin
   │   └── references/     # Omnia-specific references (guardrails, providers, etc.)
